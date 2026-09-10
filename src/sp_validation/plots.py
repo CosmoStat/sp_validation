@@ -20,6 +20,7 @@ from lenspack.geometry.projections.gnom import radec2xy
 
 # Imported for its import-time side effect: sets matplotlib rcParams (plot style).
 import sp_validation.plot_style  # noqa: F401
+from sp_validation.galaxy import MASK_COLUMNS
 from sp_validation.masks import Mask
 
 
@@ -477,8 +478,13 @@ def sky_plots(dat, masks, labels, zoom_ra, zoom_dec):
     # No mask
     plot_area_mask(ra, dec, zoom)
 
-    # SExtractor and SP flags
-    m_flags = masks[labels["FLAGS"]]._mask & masks[labels["IMAFLAGS_ISO"]]._mask
+    # SExtractor and SP flags. ShapePipe v2 splits the single IMAFLAGS_ISO
+    # mask into per-reason MASK_n<bit> columns, so combine whichever of them
+    # the mask config declared.
+    m_flags = masks[labels["FLAGS"]]._mask
+    for col in ("IMAFLAGS_ISO",) + tuple(MASK_COLUMNS):
+        if col in labels:
+            m_flags = m_flags & masks[labels[col]]._mask
     plot_area_mask(ra, dec, zoom, mask=m_flags)
 
     # Overlap regions
@@ -486,11 +492,17 @@ def sky_plots(dat, masks, labels, zoom_ra, zoom_dec):
     plot_area_mask(ra, dec, zoom, mask=m_over)
 
     # Coverage mask
-    m_point = masks[labels["npoint3"]]._mask & m_over
+    # Rough pointing coverage; v2 encodes coverage in the MASK_n* columns
+    m_point = m_over
+    if "npoint3" in labels:
+        m_point = masks[labels["npoint3"]]._mask & m_over
     plot_area_mask(ra, dec, zoom, mask=m_point)
 
     # Maximask
-    m_maxi = masks[labels["1024_Maximask"]]._mask & m_point
+    m_maxi = m_point
+    for maxi_key in ("1024_Maximask", "MASK_n1024"):
+        if maxi_key in labels:
+            m_maxi = masks[labels[maxi_key]]._mask & m_point
     plot_area_mask(ra, dec, zoom, mask=m_maxi)
 
     # Combined mask over all supplied masks (was passed in by the caller before
