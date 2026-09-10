@@ -238,6 +238,7 @@ class TestStarCatalogueReader(unittest.TestCase):
 
         self._path = self._dir / "full_starcat_CAMPAIGN.hdf5"
         with h5py.File(self._path, "w") as f:
+            f.attrs["n_exposures"] = len(self._exposures)
             group = f.create_group("exposures")
             for exp, dat in self._exposures.items():
                 group.create_dataset(exp, data=dat)
@@ -249,9 +250,60 @@ class TestStarCatalogueReader(unittest.TestCase):
         dat = catalog.read_star_catalogue(self._path, verbose=False)
 
         self.assertEqual(len(dat), 10)
-        self.assertEqual(tuple(dat.dtype.names), catalog.STAR_CAT_COLUMNS)
+        # the reader appends EXPID to the ShapePipe star columns
+        self.assertEqual(
+            tuple(dat.dtype.names), catalog.STAR_CAT_COLUMNS + ("EXPID",)
+        )
         npt.assert_array_equal(dat["MAG"][:4], np.zeros(4))
         npt.assert_array_equal(dat["MAG"][4:], np.ones(6))
+
+    def test_expid_records_exposure_provenance(self):
+        """Test that EXPID keeps the exposure each star came from.
+
+        The star catalogue holds one dataset per exposure, named by the
+        exposure number; concatenating them otherwise throws that number
+        away, leaving no way to group stars by exposure downstream (for
+        per-exposure PSF residuals, say). The name may be bare
+        ("2086324", as the smk-g7 products write it) or carry the CFIS
+        processed-exposure suffix ("2110000p").
+        """
+        dat = catalog.read_star_catalogue(self._path, verbose=False)
+
+        self.assertEqual(dat.dtype["EXPID"].kind, "i")
+        npt.assert_array_equal(dat["EXPID"][:4], np.full(4, 2110000))
+        npt.assert_array_equal(dat["EXPID"][4:], np.full(6, 2110001))
+
+    def test_truncated_star_catalogue_is_rejected(self):
+        """Test that n_exposures is validated against the datasets found.
+
+        A merge job killed part-way through leaves a readable file with
+        fewer exposures than it declares. Without this check that shows
+        up only as a quietly short star sample, never as an error. The
+        galaxy reader already validates n_tiles this way.
+        """
+        path = self._dir / "truncated.hdf5"
+        with h5py.File(path, "w") as f:
+            f.attrs["n_exposures"] = 7  # but only two datasets written
+            group = f.create_group("exposures")
+            for exp, dat in self._exposures.items():
+                group.create_dataset(exp, data=dat)
+
+        with self.assertRaises(ValueError) as ctx:
+            catalog.read_star_catalogue(path, verbose=False)
+        self.assertIn("n_exposures", str(ctx.exception))
+
+    def test_missing_n_exposures_attr_is_allowed(self):
+        """Test that a product carrying no n_exposures still reads.
+
+        Older products declare no count; that is not a defect.
+        """
+        path = self._dir / "no_attr.hdf5"
+        with h5py.File(path, "w") as f:
+            group = f.create_group("exposures")
+            for exp, dat in self._exposures.items():
+                group.create_dataset(exp, data=dat)
+
+        self.assertEqual(len(catalog.read_star_catalogue(path, verbose=False)), 10)
 
     def test_read_fits(self):
         from astropy.io import fits
@@ -307,6 +359,55 @@ class TestMaskCut(unittest.TestCase):
 
         with self.assertRaises(KeyError):
             galaxy.mask_cut(dat)
+
+    def test_float_and_int_mask_columns(self):
+        """Test that float and int mask columns cut like bool ones.
+
+        ShapePipe's writer emits the real MASK_n* columns as float64
+        {0.0, 1.0} rather than bool (being fixed upstream), so the cut
+        must decide on the value, not on the dtype.
+        """
+        for dtype in ("f8", "i4"):
+            dat = np.zeros(
+                4, dtype=[(col, dtype) for col in galaxy.DEFAULT_MASK_COLUMNS]
+            )
+            dat["MASK_n4"][0] = 1
+            dat["MASK_n1024"][2] = 1
+
+            npt.assert_array_equal(
+                galaxy.mask_cut(dat),
+                np.array([False, True, False, True]),
+                err_msg=f"mask column dtype {dtype}",
+            )
+
+    def test_nan_mask_value_is_not_masked_and_warns(self):
+        """Test that a NaN mask value keeps the object, loudly.
+
+        A bare astype(bool) reads NaN as True, i.e. masked, so an
+        incomplete mask column would silently delete sky. NaN means the
+        masking stage recorded no verdict, so keep the object and warn:
+        a nonzero count means the input product is defective. The real
+        smk-g7 catalogue carries no NaNs, so this is defensive.
+        """
+        dat = np.zeros(3, dtype=[(col, "f8") for col in galaxy.DEFAULT_MASK_COLUMNS])
+        dat["MASK_n4"][0] = np.nan
+        dat["MASK_n4"][1] = 1.0
+
+        with self.assertWarns(RuntimeWarning) as ctx:
+            keep = galaxy.mask_cut(dat)
+
+        # row 0 NaN -> kept, row 1 masked, row 2 clean -> kept
+        npt.assert_array_equal(keep, np.array([True, False, True]))
+        self.assertIn("NaN", str(ctx.warning))
+
+    def test_no_warning_when_no_nan(self):
+        dat = np.zeros(2, dtype=[(col, "f8") for col in galaxy.DEFAULT_MASK_COLUMNS])
+
+        import warnings
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", RuntimeWarning)
+            npt.assert_array_equal(galaxy.mask_cut(dat), np.array([True, True]))
 
 
 class TestCampaignMerge(unittest.TestCase):

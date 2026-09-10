@@ -11,6 +11,7 @@
 """
 
 import re
+import warnings
 
 import numpy as np
 import regions
@@ -119,8 +120,35 @@ def mask_cut(dd, mask_columns=None):
         )
 
     masked = np.zeros(len(dd[columns[0]]), dtype=bool)
+    n_undefined = 0
     for col in columns:
-        masked |= np.asarray(dd[col], dtype=bool)
+        values = np.asarray(dd[col])
+        if values.dtype == bool:
+            flagged = values
+        else:
+            # ShapePipe's writer emits the MASK_n* columns as float64 {0, 1}
+            # rather than bool (being fixed upstream), so decide on the value
+            # rather than on truthiness: a bare astype(bool) would silently
+            # read NaN as True, i.e. masked. Threshold at 0.5 so an integer,
+            # a float and a bool column all behave identically.
+            values = values.astype(float)
+            undefined = np.isnan(values)
+            n_undefined += int(undefined.sum())
+            flagged = np.where(undefined, False, values > 0.5)
+        masked |= flagged
+
+    if n_undefined:
+        # NaN means the masking stage recorded no verdict for this object.
+        # Treat it as un-masked (keep the object) so an incomplete mask
+        # column cannot silently delete sky, but say so loudly: a nonzero
+        # count here means the input product is defective.
+        warnings.warn(
+            f"{n_undefined} NaN value(s) in mask column(s) {columns};"
+            + " treated as not masked. The mask columns of a complete"
+            + " ShapePipe product hold only 0 and 1.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
 
     return ~masked
 
