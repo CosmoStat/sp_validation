@@ -758,71 +758,194 @@ def read_param_file(path, verbose=False):
     return param_list_unique
 
 
-def read_hdf5_file(file_path, name, stats_file, check_only=False, param_path=None):
-    """Read HDF5 File.
+#: Columns written by ShapePipe v2's ``MergeStarCatPSFEX`` into
+#: ``full_starcat_<campaign>.hdf5`` (one dataset per exposure).
+STAR_CAT_COLUMNS = (
+    "X",
+    "Y",
+    "RA",
+    "DEC",
+    "HSM_G1_PSF",
+    "HSM_G2_PSF",
+    "HSM_T_PSF",
+    "HSM_G1_STAR",
+    "HSM_G2_STAR",
+    "HSM_T_STAR",
+    "HSM_FLAG_PSF",
+    "HSM_FLAG_STAR",
+    "MAG",
+    "SNR",
+    "ACCEPTED",
+    "CCD_NB",
+)
 
-    Read hdf5 file and return contained data.
+
+def find_dataset_group(hdf5_file):
+    """Find Dataset Group.
+
+    Descend from the root of an open HDF5 file to the single group whose
+    members are the per-unit datasets (one per tile, or one per exposure).
+
+    This makes the reader independent of how deeply the products nest that
+    group: it walks down as long as the current node holds exactly one
+    sub-group, and stops as soon as the members are datasets. It therefore
+    reads both the legacy ``patches/<campaign>/<tile-ID>`` layout (the
+    "patches" key is a ShapePipe-side compatibility shim, not a concept) and
+    a flat ``tiles/<tile-ID>`` or ``exposures/<exp>`` layout.
+
+    Parameters
+    ----------
+    hdf5_file : h5py.File or h5py.Group
+        open input file
+
+    Returns
+    -------
+    h5py.Group
+        group whose members are the per-unit datasets
+
+    Raises
+    ------
+    ValueError
+        if the file is empty, or a level holds more than one sub-group
+
+    """
+    node = hdf5_file
+    while True:
+        keys = list(node)
+        if not keys:
+            raise ValueError(f"No data found under {node.name!r} in {hdf5_file.file.filename}")
+        if all(isinstance(node[key], h5py.Dataset) for key in keys):
+            return node
+        if len(keys) != 1:
+            raise ValueError(
+                f"Expected a single container group under {node.name!r} in"
+                + f" {hdf5_file.file.filename}, found {len(keys)}: {keys[:5]}"
+            )
+        node = node[keys[0]]
+
+
+def _check_columns(dtype, param_list, file_path):
+    """Raise a clear error if requested columns are absent from the data."""
+    missing = [col for col in param_list if col not in (dtype.names or ())]
+    if missing:
+        raise KeyError(
+            f"Column(s) {missing} not found in catalogue {file_path}."
+            + f" Available columns: {sorted(dtype.names or ())}"
+        )
+
+
+def concatenate_datasets(group, param_list=None, file_path="", verbose=True):
+    """Concatenate Datasets.
+
+    Concatenate every dataset of an HDF5 group into one structured array,
+    optionally restricted to a list of columns.
+
+    Parameters
+    ----------
+    group : h5py.Group
+        group whose members are structured datasets
+    param_list : list of str, optional
+        columns to keep; default is ``None`` (keep all)
+    file_path : str, optional
+        input file path, for error messages
+    verbose : bool, optional
+        verbose output if ``True``
+
+    Returns
+    -------
+    numpy.ndarray
+        concatenated structured array
+
+    """
+    keys = list(group)
+    if param_list is not None:
+        _check_columns(group[keys[0]].dtype, param_list, file_path)
+
+    n_rows = sum(group[key].shape[0] for key in keys)
+    if verbose:
+        n_cols = len(param_list) if param_list is not None else len(group[keys[0]].dtype)
+        print(
+            f"Reading {len(keys)} datasets,"
+            + f" estimating {n_cols * n_rows * 8 / 1024**3:.1f}"
+            + f" Gb memory for the ({n_cols} x {n_rows}) data array ..."
+        )
+
+    data_list = []
+    for key in tqdm.tqdm(keys, disable=not verbose):
+        data = group[key][()]
+        if param_list is not None:
+            data = data[param_list]
+        data_list.append(data)
+
+    return np.concatenate(data_list, axis=0)
+
+
+def read_campaign_catalogue(
+    file_path,
+    param_path=None,
+    param_list=None,
+    verbose=True,
+):
+    """Read Campaign Catalogue.
+
+    Read a campaign galaxy catalogue (``final_cat_<campaign>.hdf5``) and
+    return its per-tile datasets concatenated into one structured array.
 
     Parameters
     ----------
     file_path : str
         input file path
-    name : str
-        patch name
-    stats_file : file handler
-        summary statistics output file handler
-    check_only : bool, optional
-        If True only check, not return data
+    param_path : str, optional
+        path to a parameter file listing the columns to keep
+    param_list : list of str, optional
+        columns to keep; takes precedence over ``param_path``
+    verbose : bool, optional
+        verbose output if ``True``
 
     Returns
     -------
-    dict
-        data
+    numpy.ndarray
+        catalogue data
 
     """
-    param_list = read_param_file(param_path, verbose=True) if param_path else None
+    if param_list is None and param_path:
+        param_list = read_param_file(param_path, verbose=verbose)
 
     with h5py.File(file_path, "r") as hdf5_file:
-        # Find patch group in hierarchical structure
-        if f"patches/{name}" not in hdf5_file:
-            raise KeyError(f"Entry patches/{name} not found in file {file_path}")
-        patch_group = hdf5_file[f"patches/{name}"]
-
-        # Get size of data array
-        num_rows = sum(patch_group[ID].shape[0] for ID in patch_group)
-        # num_cols = patch_group[next(iter(patch_group))].shape[1]
-        num_cols = len(param_list)
-
-        print(
-            f"Estimating {num_cols * num_rows * 8 / 1024**3:.1f}"
-            + f" Gb memory for the ({num_cols} x {num_rows}) data array ..."
+        group = find_dataset_group(hdf5_file)
+        return concatenate_datasets(
+            group, param_list=param_list, file_path=file_path, verbose=verbose
         )
-        # data_comb = np.memmap(output_file, dtype=patch_group[next(iter(patch_group))].dtype,
-        #              mode="w+", shape=(num_rows, num_cols))
 
-        data_list = []
-        ID_pbl = set()
-        for ID in tqdm.tqdm(patch_group):
-            # Get data for this ID from file
-            data = patch_group[ID][()]
 
-            # Restrict to parameter list if given
-            data = data[param_list] if param_list is not None else data
+def read_star_catalogue(file_path, hdu=1, verbose=True):
+    """Read Star Catalogue.
 
-            if not check_only:
-                # Add new to existing data
-                data_list.append(data)
+    Read a campaign star/PSF catalogue. Reads the ShapePipe v2
+    ``full_starcat_<campaign>.hdf5`` (one dataset per exposure), or a legacy
+    FITS star catalogue when ``file_path`` ends in ``.fits``.
 
-        print("Combine tile catalogues")
-        data_comb = np.concatenate(data_list, axis=0)
-        print("Done")
+    Parameters
+    ----------
+    file_path : str
+        input file path
+    hdu : int, optional
+        HDU number for the FITS path; default is 1
+    verbose : bool, optional
+        verbose output if ``True``
 
-    # Print problematic tile IDs
-    for ID in ID_pbl:
-        print("Tile IDs with missing keys:", file=stats_file)
-        print(ID, file=stats_file)
+    Returns
+    -------
+    numpy.ndarray
+        star catalogue data
 
-    return data_comb
+    """
+    if str(file_path).endswith(".fits"):
+        return fits.getdata(file_path, hdu)
+
+    with h5py.File(file_path, "r") as hdf5_file:
+        group = find_dataset_group(hdf5_file)
+        return concatenate_datasets(group, file_path=file_path, verbose=verbose)
 
 
 def get_maked_col(dat, col, mask):
