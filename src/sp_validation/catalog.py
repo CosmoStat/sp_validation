@@ -814,6 +814,72 @@ def find_dataset_group(hdf5_file):
         node = node[keys[0]]
 
 
+def promote_dtypes(dtype_a, dtype_b):
+    """Promote Dtypes.
+
+    Return a scalar dtype that holds both input dtypes without truncation
+    or overflow.
+
+    Parameters
+    ----------
+    dtype_a : numpy.dtype
+        first input dtype
+    dtype_b : numpy.dtype
+        second input dtype
+
+    Returns
+    -------
+    numpy.dtype
+        promoted dtype
+
+    """
+    if dtype_a == dtype_b:
+        return dtype_a
+    if dtype_a.kind in "SU" and dtype_b.kind in "SU":
+        kind = "U" if "U" in (dtype_a.kind, dtype_b.kind) else "S"
+        size_a = dtype_a.itemsize // (4 if dtype_a.kind == "U" else 1)
+        size_b = dtype_b.itemsize // (4 if dtype_b.kind == "U" else 1)
+        return np.dtype(f"{kind}{max(size_a, size_b)}")
+
+    return np.promote_types(dtype_a, dtype_b)
+
+
+def group_dtype(group, keys, param_list=None):
+    """Group Dtype.
+
+    Build the structured output dtype of a group of per-tile datasets,
+    promoting each column across *every* dataset. A campaign that was
+    partially reprocessed can carry e.g. ``S7`` tile IDs in one tile and
+    ``S12`` in another, or ``f4`` next to ``f8``; taking the dtype of the
+    first dataset alone would silently truncate the others.
+
+    Parameters
+    ----------
+    group : h5py.Group
+        group whose members are structured datasets
+    keys : list of str
+        dataset names to consider
+    param_list : list of str, optional
+        columns to keep; default is ``None`` (keep all)
+
+    Returns
+    -------
+    numpy.dtype
+        structured output dtype
+
+    """
+    names = param_list if param_list is not None else list(group[keys[0]].dtype.names)
+
+    fields = []
+    for name in names:
+        promoted = group[keys[0]].dtype[name]
+        for key in keys[1:]:
+            promoted = promote_dtypes(promoted, group[key].dtype[name])
+        fields.append((name, promoted))
+
+    return np.dtype(fields)
+
+
 def _check_columns(dtype, param_list, file_path, dataset_key=None):
     """Raise a clear error if requested columns are absent from the data."""
     missing = [col for col in param_list if col not in (dtype.names or ())]
@@ -862,11 +928,7 @@ def concatenate_datasets(group, param_list=None, file_path="", verbose=True):
         if param_list is not None:
             _check_columns(group[key].dtype, param_list, file_path, key)
 
-    dtype_in = group[keys[0]].dtype
-    if param_list is not None:
-        dtype_out = np.dtype([(name, dtype_in[name]) for name in param_list])
-    else:
-        dtype_out = dtype_in
+    dtype_out = group_dtype(group, keys, param_list=param_list)
 
     n_rows = sum(group[key].shape[0] for key in keys)
     if verbose:
@@ -949,13 +1011,48 @@ def campaign_shape(file_path, param_list=None):
         if not keys:
             raise ValueError(f"No datasets found in catalogue {file_path}")
         n_rows = sum(group[key].shape[0] for key in keys)
-        dtype_in = group[keys[0]].dtype
         if param_list is not None:
             for key in keys:
                 _check_columns(group[key].dtype, param_list, file_path, key)
-            dtype_in = np.dtype([(name, dtype_in[name]) for name in param_list])
+        dtype_out = group_dtype(group, keys, param_list=param_list)
 
-    return n_rows, dtype_in
+    return n_rows, dtype_out
+
+
+def iter_campaign_tiles(file_path, param_list=None, verbose=True):
+    """Iter Campaign Tiles.
+
+    Yield the per-tile datasets of a campaign catalogue one at a time, so a
+    caller filling a preallocated output array never holds more than one
+    tile in memory in addition to that output.
+
+    Parameters
+    ----------
+    file_path : str
+        input file path
+    param_list : list of str, optional
+        columns to keep; default is ``None`` (keep all)
+    verbose : bool, optional
+        verbose output if ``True``
+
+    Yields
+    ------
+    numpy.ndarray
+        one tile as a structured array
+
+    """
+    with h5py.File(file_path, "r") as hdf5_file:
+        group = find_dataset_group(hdf5_file)
+        check_n_tiles(hdf5_file, group, file_path)
+        keys = sorted(group)
+        if not keys:
+            raise ValueError(f"No datasets found in catalogue {file_path}")
+        for key in keys:
+            if param_list is not None:
+                _check_columns(group[key].dtype, param_list, file_path, key)
+        for key in tqdm.tqdm(keys, disable=not verbose):
+            data = group[key][()]
+            yield data if param_list is None else data[param_list]
 
 
 def read_campaign_catalogue(

@@ -240,17 +240,8 @@ class BaseCat(object):
         self._hd5file.close()
 
 
-def _promote(dtype_a, dtype_b):
-    """Return a dtype that holds both input dtypes without truncation."""
-    if dtype_a == dtype_b:
-        return dtype_a
-    if dtype_a.kind in "SU" and dtype_b.kind in "SU":
-        kind = "U" if "U" in (dtype_a.kind, dtype_b.kind) else "S"
-        size_a = dtype_a.itemsize // (4 if dtype_a.kind == "U" else 1)
-        size_b = dtype_b.itemsize // (4 if dtype_b.kind == "U" else 1)
-        return np.dtype(f"{kind}{max(size_a, size_b)}")
-
-    return np.promote_types(dtype_a, dtype_b)
+# Column-dtype promotion is shared with the per-campaign reader in ``catalog``.
+_promote = sp_cat.promote_dtypes
 
 
 def _checked_assign(target, start, end, values, name):
@@ -510,8 +501,7 @@ class JointCat(BaseCat):
         with h5py.File(output_path, "w") as f:
             self.write_hdf5_header(f, campaigns=campaigns)
 
-            dset = f.create_dataset("data", data=dat_all)
-            dset[:] = dat_all
+            f.create_dataset("data", data=dat_all)
 
     def write_hdf5_header(self, hd5file, campaigns=None):
         """Write HDF5 Header.
@@ -572,24 +562,27 @@ class JointCat(BaseCat):
         dat_all = np.empty(n_total, dtype=dtype_out)
         start = 0
         for input_path, campaign in zip(input_paths, campaigns):
-            dat = sp_cat.read_campaign_catalogue(
+            # Fill tile by tile: peak memory is the merged output plus a
+            # single tile, never a whole campaign copy on top of it.
+            n_campaign = 0
+            for dat in sp_cat.iter_campaign_tiles(
                 input_path,
                 param_list=param_list,
                 verbose=self._params["verbose"],
-            )
-
-            end = start + len(dat)
-            for name in dat.dtype.names:
-                _checked_assign(dat_all[name], start, end, dat[name], name)
-            dat_all["campaign"][start:end] = campaign.encode()
-            start = end
+            ):
+                end = start + len(dat)
+                for name in dat.dtype.names:
+                    _checked_assign(dat_all[name], start, end, dat[name], name)
+                dat_all["campaign"][start:end] = campaign.encode()
+                start = end
+                n_campaign += len(dat)
+                del dat
 
             if self._params["verbose"]:
                 print(
-                    f"{campaign}: added {len(dat)}"
-                    + f" (~{format.millify(len(dat))}) objects."
+                    f"{campaign}: added {n_campaign}"
+                    + f" (~{format.millify(n_campaign)}) objects."
                 )
-            del dat
 
         if self._params["verbose"]:
             print(

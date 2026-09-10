@@ -161,6 +161,67 @@ class TestCampaignReader(unittest.TestCase):
         self.assertIn("MAG_AUTO", message)
         self.assertIn("001.000", message)
 
+    def test_dtype_promoted_across_tiles(self):
+        """A per-tile dtype difference within a campaign is not truncated."""
+        narrow = np.zeros(
+            2, dtype=[("N_EPOCH", "i2"), ("TILE_ID", "S7"), ("RA", "f4")]
+        )
+        narrow["N_EPOCH"] = [1, 2]
+        narrow["TILE_ID"] = [b"123.456", b"123.457"]
+        narrow["RA"] = [1.5, 2.5]
+
+        wide = np.zeros(
+            2, dtype=[("N_EPOCH", "i4"), ("TILE_ID", "S12"), ("RA", "f8")]
+        )
+        wide["N_EPOCH"] = [70000, 3]
+        wide["TILE_ID"] = [b"999888.7776", b"123.458"]
+        wide["RA"] = [3.123456789, 4.0]
+
+        path = self._dir / "final_cat_MIX.hdf5"
+        write_campaign(path, "flat", {"000.000": narrow, "000.001": wide})
+        param_list = ["N_EPOCH", "TILE_ID", "RA"]
+
+        dat = catalog.read_campaign_catalogue(
+            str(path), param_list=param_list, verbose=False
+        )
+
+        self.assertEqual(dat.dtype["N_EPOCH"], np.dtype("i4"))
+        self.assertEqual(dat.dtype["TILE_ID"], np.dtype("S12"))
+        self.assertEqual(dat.dtype["RA"], np.dtype("f8"))
+        npt.assert_array_equal(dat["N_EPOCH"], [1, 2, 70000, 3])
+        npt.assert_array_equal(
+            dat["TILE_ID"],
+            [b"123.456", b"123.457", b"999888.7776", b"123.458"],
+        )
+        self.assertEqual(dat["RA"][2], 3.123456789)
+
+        # campaign_shape must report the same promoted dtype, since the merge
+        # preallocates from it.
+        n_rows, dtype_out = catalog.campaign_shape(
+            str(path), param_list=param_list
+        )
+        self.assertEqual(n_rows, 4)
+        self.assertEqual(dtype_out, dat.dtype)
+
+    def test_iter_campaign_tiles(self):
+        """The streaming reader yields one restricted tile at a time."""
+        path = self._dir / "final_cat_CAMPAIGN.hdf5"
+        write_campaign(path, "legacy", self._tiles)
+
+        tiles = list(
+            catalog.iter_campaign_tiles(
+                str(path), param_list=["RA"], verbose=False
+            )
+        )
+
+        self.assertEqual([len(tile) for tile in tiles], [3, 2])
+        for tile in tiles:
+            self.assertEqual(tile.dtype.names, ("RA",))
+        npt.assert_array_equal(
+            np.concatenate([tile["RA"] for tile in tiles]),
+            self._expected()["RA"],
+        )
+
     def test_ambiguous_layout_raises(self):
         path = self._dir / "ambiguous.hdf5"
         with h5py.File(path, "w") as f:
