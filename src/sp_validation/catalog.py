@@ -1187,9 +1187,7 @@ def read_star_catalogue(file_path, hdu=1, verbose=True):
 
     with h5py.File(file_path, "r") as hdf5_file:
         group = find_dataset_group(hdf5_file)
-        check_n_units(
-            hdf5_file, group, file_path, attr="n_exposures", unit="exposure"
-        )
+        check_n_units(hdf5_file, group, file_path, attr="n_exposures", unit="exposure")
         return concatenate_datasets(
             group, file_path=file_path, verbose=verbose, key_column="EXPID"
         )
