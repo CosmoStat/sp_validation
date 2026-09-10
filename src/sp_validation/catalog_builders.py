@@ -240,6 +240,37 @@ class BaseCat(object):
         self._hd5file.close()
 
 
+def _promote(dtype_a, dtype_b):
+    """Return a dtype that holds both input dtypes without truncation."""
+    if dtype_a == dtype_b:
+        return dtype_a
+    if dtype_a.kind in "SU" and dtype_b.kind in "SU":
+        kind = "U" if "U" in (dtype_a.kind, dtype_b.kind) else "S"
+        size_a = dtype_a.itemsize // (4 if dtype_a.kind == "U" else 1)
+        size_b = dtype_b.itemsize // (4 if dtype_b.kind == "U" else 1)
+        return np.dtype(f"{kind}{max(size_a, size_b)}")
+
+    return np.promote_types(dtype_a, dtype_b)
+
+
+def _checked_assign(target, start, end, values, name):
+    """Assign `values` into `target[start:end]`, refusing a lossy cast."""
+    target[start:end] = values
+    written = target[start:end]
+    if written.dtype == values.dtype:
+        return
+    if written.dtype.kind in "fc":
+        bad = np.isfinite(values) & ~np.isfinite(written)
+    else:
+        bad = written != values
+    if np.any(bad):
+        raise ValueError(
+            f"Column {name!r} cannot be stored as {written.dtype}:"
+            + f" {int(np.sum(bad))} value(s) overflow or are truncated."
+            + " Disable reduce_mem or widen the output dtype."
+        )
+
+
 class JointCat(BaseCat):
     """Joint Cat.
 
@@ -391,22 +422,26 @@ class JointCat(BaseCat):
             return dtype_in
         if name not in cols_keep_dtype:
             if dtype_in.kind == "f" and dtype_in.itemsize == 8:
-                return np.float32
+                return np.dtype(np.float32)
             if dtype_in.kind == "i" and dtype_in.itemsize == 4:
-                return np.int8
+                # int32 -> int16, not int8: int8 cannot hold e.g. N_EPOCH or
+                # CCD_NB values and wrapped them silently. Values that do not
+                # fit are caught at assignment time by ``_checked_assign``.
+                return np.dtype(np.int16)
 
         return dtype_in
 
-    def output_dtype(self, dtype_in, n_char_campaign):
+    def output_dtype(self, dtypes_in, n_char_campaign):
         """Output Dtype.
 
         Return the merged-catalogue dtype: the input columns (possibly
-        reduced in precision) plus a ``campaign`` column.
+        reduced in precision, and promoted to a common type across all input
+        campaigns) plus a ``campaign`` column.
 
         Parameters
         ----------
-        dtype_in : numpy.dtype
-            structured dtype of an input campaign catalogue
+        dtypes_in : numpy.dtype or list of numpy.dtype
+            structured dtype(s) of the input campaign catalogues
         n_char_campaign : int
             width of the campaign name column
 
@@ -415,10 +450,40 @@ class JointCat(BaseCat):
         numpy.dtype
             output structured dtype
 
+        Raises
+        ------
+        ValueError
+            if the inputs have different column sets, or a column is
+            multi-dimensional (campaign catalogues are scalar-column only)
+
         """
-        fields = [
-            (name, self.dtype_out(name, dtype_in[name])) for name in dtype_in.names
-        ]
+        if isinstance(dtypes_in, np.dtype):
+            dtypes_in = [dtypes_in]
+
+        names = dtypes_in[0].names
+        for dtype_in in dtypes_in[1:]:
+            if set(dtype_in.names) != set(names):
+                raise ValueError(
+                    "Campaign catalogues have incompatible column sets:"
+                    + f" {sorted(names)} vs {sorted(dtype_in.names)}"
+                )
+
+        fields = []
+        for name in names:
+            subs = [dtype_in[name] for dtype_in in dtypes_in]
+            for sub in subs:
+                if sub.subdtype is not None:
+                    raise ValueError(
+                        f"Column {name!r} is multi-dimensional (shape"
+                        + f" {sub.subdtype[1]}); campaign catalogues are"
+                        + " expected to hold scalar columns only."
+                    )
+            # Promote across campaigns so a wider string or integer column in
+            # a later file is not silently truncated or overflowed.
+            promoted = subs[0]
+            for sub in subs[1:]:
+                promoted = _promote(promoted, sub)
+            fields.append((name, self.dtype_out(name, promoted)))
         fields.append(("campaign", np.dtype(f"S{n_char_campaign}")))
 
         return np.dtype(fields)
@@ -494,8 +559,18 @@ class JointCat(BaseCat):
         campaigns = [self.campaign_name(path) for path in input_paths]
         n_char_campaign = max(len(name) for name in campaigns)
 
-        data_list = []
-        dtype_out = None
+        # First pass over file metadata only (row counts and dtypes), so the
+        # merged array is allocated once and filled in place, instead of
+        # concatenating per-campaign copies (peak memory 2x the output).
+        shapes = [
+            sp_cat.campaign_shape(path, param_list=param_list)
+            for path in input_paths
+        ]
+        n_total = sum(n_rows for n_rows, _ in shapes)
+        dtype_out = self.output_dtype([dtype for _, dtype in shapes], n_char_campaign)
+
+        dat_all = np.empty(n_total, dtype=dtype_out)
+        start = 0
         for input_path, campaign in zip(input_paths, campaigns):
             dat = sp_cat.read_campaign_catalogue(
                 input_path,
@@ -503,28 +578,18 @@ class JointCat(BaseCat):
                 verbose=self._params["verbose"],
             )
 
-            if dtype_out is None:
-                dtype_out = self.output_dtype(dat.dtype, n_char_campaign)
-            elif set(dat.dtype.names) != set(dtype_out.names) - {"campaign"}:
-                raise ValueError(
-                    f"Campaign catalogue {input_path} has columns"
-                    + f" {sorted(dat.dtype.names)}, incompatible with"
-                    + f" {sorted(set(dtype_out.names) - {'campaign'})}"
-                )
-
-            dat_out = np.empty(len(dat), dtype=dtype_out)
+            end = start + len(dat)
             for name in dat.dtype.names:
-                dat_out[name] = dat[name]
-            dat_out["campaign"] = campaign.encode()
-            data_list.append(dat_out)
+                _checked_assign(dat_all[name], start, end, dat[name], name)
+            dat_all["campaign"][start:end] = campaign.encode()
+            start = end
 
             if self._params["verbose"]:
                 print(
                     f"{campaign}: added {len(dat)}"
                     + f" (~{format.millify(len(dat))}) objects."
                 )
-
-        dat_all = np.concatenate(data_list, axis=0)
+            del dat
 
         if self._params["verbose"]:
             print(
@@ -950,8 +1015,8 @@ class ApplyHspMasks(BaseCat):
         ----------
         hd5file : h5py.File
             input HDF5 file
-        patches : list, optional
-            input patches, list of str, default is ``None``
+        campaigns : list, optional
+            input campaign names, list of str, default is ``None``
 
         """
         super().write_hdf5_header(hd5file)
@@ -1027,7 +1092,7 @@ class CalibrateCat(BaseCat):
         verbose = self._params["verbose"]
 
         # Image-simulation path: a single per-run comprehensive catalogue in
-        # FITS, not the joined multi-patch HDF5 the data path builds. Read the
+        # FITS, not the joined multi-campaign HDF5 the data path builds. Read the
         # FITS table directly into memory; there is no separate data_ext group.
         extension = os.path.splitext(fpath)[1]
         if extension == ".fits":

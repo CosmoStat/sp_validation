@@ -176,22 +176,20 @@ def check_matching(
     -------
     ind : array of int
         index list of d2 of objects that were matched to d1
-    mask_area_tiles : array of int
-        index list of tiles in footprint
+    n_tot : int
+        number of objects in d1
 
     """
-    mask_area_tiles = np.arange(len(d1))
-
     # Match stars from exposure (PSF) catalogue to total catalogue
     ind = match_stars2(
         d2[keys_2[0]],
         d2[keys_2[1]],
-        d1[keys_1[0]][mask_area_tiles],
-        d1[keys_1[1]][mask_area_tiles],
+        d1[keys_1[0]],
+        d1[keys_1[1]],
         thresh=thresh,
     )
 
-    n_tot = len(d1[keys_1[0]][mask_area_tiles])
+    n_tot = len(d1[keys_1[0]])
     msg = (
         "Number of matched stars from exposures to total catalogue = "
         + f"{len(ind)}/{n_tot} = {len(ind) / n_tot:.1%}"
@@ -207,7 +205,7 @@ def check_matching(
     )
     io.print_stats(msg, stats_file, verbose=verbose)
 
-    return ind, mask_area_tiles, n_tot
+    return ind, n_tot
 
 
 def check_invalid(dd, key, val, stats_file, name=None, verbose=False):
@@ -816,12 +814,13 @@ def find_dataset_group(hdf5_file):
         node = node[keys[0]]
 
 
-def _check_columns(dtype, param_list, file_path):
+def _check_columns(dtype, param_list, file_path, dataset_key=None):
     """Raise a clear error if requested columns are absent from the data."""
     missing = [col for col in param_list if col not in (dtype.names or ())]
     if missing:
+        where = f" (dataset {dataset_key!r})" if dataset_key is not None else ""
         raise KeyError(
-            f"Column(s) {missing} not found in catalogue {file_path}."
+            f"Column(s) {missing} not found in catalogue {file_path}{where}."
             + f" Available columns: {sorted(dtype.names or ())}"
         )
 
@@ -831,6 +830,10 @@ def concatenate_datasets(group, param_list=None, file_path="", verbose=True):
 
     Concatenate every dataset of an HDF5 group into one structured array,
     optionally restricted to a list of columns.
+
+    The output array is preallocated and filled slice by slice, so peak
+    memory is the output catalogue plus one tile, not the full-width
+    uncut catalogue.
 
     Parameters
     ----------
@@ -849,27 +852,110 @@ def concatenate_datasets(group, param_list=None, file_path="", verbose=True):
         concatenated structured array
 
     """
-    keys = list(group)
+    keys = sorted(group)
+    if not keys:
+        raise ValueError(f"No datasets found in catalogue {file_path}")
+
+    # Validate every dataset up front: a column may be missing from any tile,
+    # not only the first one.
+    for key in keys:
+        if param_list is not None:
+            _check_columns(group[key].dtype, param_list, file_path, key)
+
+    dtype_in = group[keys[0]].dtype
     if param_list is not None:
-        _check_columns(group[keys[0]].dtype, param_list, file_path)
+        dtype_out = np.dtype([(name, dtype_in[name]) for name in param_list])
+    else:
+        dtype_out = dtype_in
 
     n_rows = sum(group[key].shape[0] for key in keys)
     if verbose:
-        n_cols = len(param_list) if param_list is not None else len(group[keys[0]].dtype)
         print(
             f"Reading {len(keys)} datasets,"
-            + f" estimating {n_cols * n_rows * 8 / 1024**3:.1f}"
-            + f" Gb memory for the ({n_cols} x {n_rows}) data array ..."
+            + f" estimating {dtype_out.itemsize * n_rows / 1024**3:.1f}"
+            + f" Gb memory for the ({len(dtype_out.names)} x {n_rows}) data array ..."
         )
 
-    data_list = []
+    data_out = np.empty(n_rows, dtype=dtype_out)
+    start = 0
     for key in tqdm.tqdm(keys, disable=not verbose):
         data = group[key][()]
-        if param_list is not None:
-            data = data[param_list]
-        data_list.append(data)
+        end = start + len(data)
+        for name in dtype_out.names:
+            data_out[name][start:end] = data[name]
+        start = end
+        del data
 
-    return np.concatenate(data_list, axis=0)
+    return data_out
+
+
+def check_n_tiles(hdf5_file, group, file_path):
+    """Check Number of Tiles.
+
+    Compare the number of datasets found against the ``n_tiles`` root
+    attribute the ShapePipe v2 product carries, to catch a catalogue that
+    was truncated by an interrupted merge job or file transfer.
+
+    Parameters
+    ----------
+    hdf5_file : h5py.File
+        open input file
+    group : h5py.Group
+        group holding the per-tile datasets
+    file_path : str
+        input file path, for the error message
+
+    Raises
+    ------
+    ValueError
+        if the number of datasets differs from the ``n_tiles`` attribute
+
+    """
+    n_tiles = hdf5_file.attrs.get("n_tiles")
+    if n_tiles is None:
+        return
+    n_found = len(group)
+    if int(n_tiles) != n_found:
+        raise ValueError(
+            f"Catalogue {file_path} declares n_tiles = {int(n_tiles)} but holds"
+            + f" {n_found} tile dataset(s); the file is incomplete."
+        )
+
+
+def campaign_shape(file_path, param_list=None):
+    """Campaign Shape.
+
+    Return the number of rows and the structured dtype of a campaign
+    catalogue without reading its data, so that a merged output array can
+    be preallocated.
+
+    Parameters
+    ----------
+    file_path : str
+        input file path
+    param_list : list of str, optional
+        columns to keep; default is ``None`` (keep all)
+
+    Returns
+    -------
+    tuple
+        number of rows (int) and dtype (numpy.dtype)
+
+    """
+    with h5py.File(file_path, "r") as hdf5_file:
+        group = find_dataset_group(hdf5_file)
+        check_n_tiles(hdf5_file, group, file_path)
+        keys = sorted(group)
+        if not keys:
+            raise ValueError(f"No datasets found in catalogue {file_path}")
+        n_rows = sum(group[key].shape[0] for key in keys)
+        dtype_in = group[keys[0]].dtype
+        if param_list is not None:
+            for key in keys:
+                _check_columns(group[key].dtype, param_list, file_path, key)
+            dtype_in = np.dtype([(name, dtype_in[name]) for name in param_list])
+
+    return n_rows, dtype_in
 
 
 def read_campaign_catalogue(
@@ -905,6 +991,7 @@ def read_campaign_catalogue(
 
     with h5py.File(file_path, "r") as hdf5_file:
         group = find_dataset_group(hdf5_file)
+        check_n_tiles(hdf5_file, group, file_path)
         return concatenate_datasets(
             group, param_list=param_list, file_path=file_path, verbose=verbose
         )

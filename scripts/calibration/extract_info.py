@@ -142,7 +142,7 @@ if star_cat_path:
 # #### Match to all objects
 
 if star_cat_path:
-    ind_star, mask_area_tiles, n_star_tot = spv_cat.check_matching(
+    ind_star, n_star_tot = spv_cat.check_matching(
         d_star,
         dd,
         ["RA", "DEC"],
@@ -160,7 +160,7 @@ if star_cat_path:
 
     m_star = (
         (dd["FLAGS"][ind_star] == 0)
-        & galaxy.mask_cut(dd, mask_columns)[ind_star]
+        & galaxy.mask_cut(dd[ind_star], mask_columns)
         & (dd["NGMIX_MCAL_FLAGS"][ind_star] == 0)
         & (dd["NGMIX_G1_PSF_ORIG_NOSHEAR"][ind_star] != -10)
     )
