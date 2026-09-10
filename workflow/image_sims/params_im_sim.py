@@ -27,11 +27,11 @@ np.set_printoptions(precision=3, formatter={"float": "{: .3g}".format})
 
 # Survey parameters
 
-## Field name -- derived from the run directory, which is named
+## Campaign name -- derived from the run directory, which is named
 ## after the simulation (e.g. '1z2z_grid_1'), so one shared params file
 ## serves every sim.
-name = os.path.basename(os.getcwd())
-print("Field name = {}".format(name))
+campaign = os.path.basename(os.getcwd())
+print("Campaign name = {}".format(campaign))
 
 ## Area of a tile in deg^2
 area_tile = 0.25
@@ -49,10 +49,10 @@ shape = "ngmix"
 data_dir = "."
 
 ### Tile IDs
-path_tile_ID = f"{data_dir}/tiles_{name}.txt"
+path_tile_ID = f"{data_dir}/tiles_{campaign}.txt"
 
 ### Weak-lensing galaxy catalog name
-galaxy_cat_path = f"{data_dir}/final_cat_{name}.hdf5"
+galaxy_cat_path = f"{data_dir}/final_cat_{campaign}.hdf5"
 print(f"Galaxy catalogue = {galaxy_cat_path}")
 
 ## Parameter list; optional, set to `None` if not required

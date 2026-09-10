@@ -25,8 +25,9 @@ np.set_printoptions(precision=3, formatter={"float": "{: .3g}".format})
 
 # Survey parameters
 
-## Campaign name (the tile list processed by ShapePipe). Put None if n/a
-campaign = None
+## Campaign name (the tile list processed by ShapePipe); required, it names
+## the ShapePipe v2 products (final_cat_<campaign>.hdf5, ...)
+campaign = "W3"
 
 ## Area of a tile in deg^2
 area_tile = 0.25
@@ -43,19 +44,20 @@ shape = "ngmix"
 data_dir = "."
 
 ### Tile IDs
-path_tile_ID = f"{data_dir}/tiles_{name}.txt"
+path_tile_ID = f"{data_dir}/tiles_{campaign}.txt"
 
 ### Weak-lensing galaxy catalog name
-galaxy_cat_path = f"{data_dir}/final_cat_{name}.hdf5"
+galaxy_cat_path = f"{data_dir}/final_cat_{campaign}.hdf5"
 print(f"Galaxy catalogue = {galaxy_cat_path}")
 
 ## Parameter list; optional, set to `None` if not required
 param_list_path = f"{data_dir}/cfis/final_cat.param"
 
 ### Star and PSF catalog name; optional, set to `None` if not required
-star_cat_path = f"{data_dir}/full_starcat-0000000.fits"
+star_cat_path = f"{data_dir}/full_starcat_{campaign}.hdf5"
 
-# HDU number of star and PSF catalogue
+# HDU number of star and PSF catalogue; only used for the legacy FITS star
+# catalogue (a path ending in .fits), ignored for the v2 HDF5 product
 hdu_star_cat = 1
 
 ### External mask; optional, set to `None` if not required
