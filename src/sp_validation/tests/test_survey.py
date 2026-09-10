@@ -28,7 +28,6 @@ class SurveyTestCase(TestCase):
         self._area_amin2 = 3600
         self._tile_IDs = (270.283, 188.308)
 
-
     def tearDown(self):
 
         self.number_tile = None
@@ -54,4 +53,3 @@ class SurveyTestCase(TestCase):
             sorted(tile_IDs) == sorted(self._tile_IDs),
             msg=f"{tile_IDs}!={self._tile_IDs}",
         )
-

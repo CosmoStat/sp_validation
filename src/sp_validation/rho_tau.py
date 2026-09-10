@@ -351,7 +351,9 @@ def get_jackknife_cov(
         tau_chunk = outdir + f"/cov_tau_{version}{i}.npy"
         rho_chunk = outdir + f"/cov_rho_{version}{i}.npy"
         if not (os.path.exists(tau_chunk) and os.path.exists(rho_chunk)):
-            print(f"Computing rho-statistics for {version} (jackknife realisation {i + 1}/{ncov})")
+            print(
+                f"Computing rho-statistics for {version} (jackknife realisation {i + 1}/{ncov})"
+            )
 
             if f"psf_{version}{i}" not in rho_stat_handler.catalogs.catalogs_dict:
                 # Build catalogues

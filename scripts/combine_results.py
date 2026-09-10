@@ -281,9 +281,9 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
                 print(f"area({campaign}) = {area_deg2_campaign} deg^2")
             else:
                 area_deg2_campaign = area_deg2
-            results["value"][key_der][campaign] = results["value"]["N_gal"][campaign] / (
-                area_deg2_campaign * 3600
-            )
+            results["value"][key_der][campaign] = results["value"]["N_gal"][
+                campaign
+            ] / (area_deg2_campaign * 3600)
 
     if area_deg2 < 0:
         with open("area_deg2_tot.txt", "w") as f:

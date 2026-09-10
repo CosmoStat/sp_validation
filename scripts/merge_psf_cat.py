@@ -143,9 +143,7 @@ class MergePsfCat:
             for name in col_names:
                 dat_all[name] = np.append(dat_all[name], dat[name])
 
-            dat_all["campaign"] = np.append(
-                dat_all["campaign"], [campaign] * len(dat)
-            )
+            dat_all["campaign"] = np.append(dat_all["campaign"], [campaign] * len(dat))
 
         col_names = col_names + ("campaign",)
 

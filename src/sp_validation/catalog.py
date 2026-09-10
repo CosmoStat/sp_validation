@@ -803,7 +803,9 @@ def find_dataset_group(hdf5_file):
     while True:
         keys = list(node)
         if not keys:
-            raise ValueError(f"No data found under {node.name!r} in {hdf5_file.file.filename}")
+            raise ValueError(
+                f"No data found under {node.name!r} in {hdf5_file.file.filename}"
+            )
         if all(isinstance(node[key], h5py.Dataset) for key in keys):
             return node
         if len(keys) != 1:

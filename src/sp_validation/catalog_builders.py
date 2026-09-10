@@ -553,8 +553,7 @@ class JointCat(BaseCat):
         # merged array is allocated once and filled in place, instead of
         # concatenating per-campaign copies (peak memory 2x the output).
         shapes = [
-            sp_cat.campaign_shape(path, param_list=param_list)
-            for path in input_paths
+            sp_cat.campaign_shape(path, param_list=param_list) for path in input_paths
         ]
         n_total = sum(n_rows for n_rows, _ in shapes)
         dtype_out = self.output_dtype([dtype for _, dtype in shapes], n_char_campaign)
