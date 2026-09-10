@@ -91,6 +91,10 @@ def mask_cut(dd, mask_columns=None):
 
     """
     columns = list(DEFAULT_MASK_COLUMNS if mask_columns is None else mask_columns)
+    if not columns:
+        # No masking requested (e.g. the image simulations, which run no
+        # imaging-flag masking stage and carry no mask columns).
+        return np.ones(len(dd[_column_names(dd)[0]]), dtype=bool)
 
     available = _column_names(dd)
     missing = [col for col in columns if col not in available]

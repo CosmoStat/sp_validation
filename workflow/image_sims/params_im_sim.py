@@ -27,7 +27,7 @@ np.set_printoptions(precision=3, formatter={"float": "{: .3g}".format})
 
 # Survey parameters
 
-## Field or patch name -- derived from the run directory, which is named
+## Field name -- derived from the run directory, which is named
 ## after the simulation (e.g. '1z2z_grid_1'), so one shared params file
 ## serves every sim.
 name = os.path.basename(os.getcwd())
@@ -125,10 +125,14 @@ add_cols = [
 ## Pre-calibration catalogue, including masked objects and mask flags.
 ## ShapePipe-v2 (post-#761) ngmix grammar: ellipticity in named scalar
 ## components NGMIX_G{1,2}_*, PSF size split into NGMIX_T_PSF_ORIG/RECONV.
-## IMAFLAGS_ISO (present in the data-path params) is omitted: the simulation
-## pipeline runs no imaging-flag masking stage, so the column does not exist.
+## The MASK_n* columns (present in the data-path params) are omitted: the
+## simulation pipeline runs no imaging-flag masking stage, so they do not
+## exist -- hence the empty mask_columns below.
 ## NGMIX_MCAL_TYPES_FAIL is kept -- it is the metacal moments-failure flag the
 ## calibration mask cuts on, identically to the data path.
+## No mask columns to OR: no masking stage in the simulation pipeline
+mask_columns = []
+
 add_cols_pre_cal = [
     "TILE_ID",
     "NUMBER",

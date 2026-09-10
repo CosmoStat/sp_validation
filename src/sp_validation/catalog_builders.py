@@ -279,147 +279,84 @@ class JointCat(BaseCat):
 
         """
         self._params = {
-            "patches": "v1",
+            "input_paths": None,
             "sh": "ngmix",
             "survey": "unions",
             "year": "2024",
             "version": "1.4.2",
             "pipeline": "shapepipe",
-            "hdu": 1,
+            "param_path": None,
             "reduce_mem": False,
             "verbose": False,
         }
         self._short_options = {
-            "patches": "-p",
+            "input_paths": "-i",
             "sh": "-g",
             "survey": "-s",
             "year": "-y",
             "version": "-V",
+            "param_path": "-p",
             "reduce_mem": "-r",
         }
         self._types = {
-            "hdu": "int",
             "reduce_mem": "bool",
         }
         self._help_strings = {
-            "patches": "list of patches separated by '+', or shortcut (allowed are 'v1'), default={}",
+            "input_paths": (
+                "campaign catalogue files (final_cat_<campaign>.hdf5) to merge,"
+                + " separated by '+'"
+            ),
             "sh": "shape measurement method, default={}",
             "survey": "survey name, default={}",
             "year": "year of processing, default={}",
             "version": "catalogue version, default={}",
+            "param_path": "path to parameter file listing columns to keep",
             "reduce_mem": "output some columns in lower precision to reduce memory",
         }
 
-    def get_patches(self):
-        """Get Patches.
+    def get_input_paths(self):
+        """Get Input Paths.
 
-        Return list of patches according to option parameter value.
-
-        Returns
-        -------
-        list
-            patches, list of str
-
-        """
-        if self._params["patches"] == "v1":
-            n_patch = 7
-            patches = [f"P{x}" for x in np.arange(n_patch) + 1]
-        elif self._params["patches"] == "v1.5":
-            n_patch = 8
-            patches = [f"P{x}" for x in np.arange(n_patch) + 1]
-
-        else:
-            patches = self._params["patches"].split("+")
-
-        return patches
-
-    def get_n_obj(self, patches, base_path, input_sub_path):
-        """Get N Obj.
-
-        Get number of objects from FITS file headers.
-
-        Parameters
-        ----------
-        patches : list
-            input patches, type is str
-        base_path : str
-            input base directory, root dir of patches
-        input_sub_path : str
-            input file name; input path is base_path/patch/input_sub_path
-
-        Raises:
-            ValueError: if input file canont be read
-
-        Returns:
-            list
-                HDUs
-            list
-                number of objects per file
-            int
-                total number of objects
-
-        """
-        if self._params["verbose"]:
-            print("Getting number of objects")
-        n_obj_list = []
-        n_obj = 0
-        hdu_lists = []
-        for patch in patches:
-            input_path = f"{base_path}/{patch}/{input_sub_path}"
-            try:
-                hdu_list = fits.open(input_path)
-            except Exception as err:
-                raise ValueError(
-                    f"Could not open file {input_path} at HDU"
-                    + f" #{self._params['hdu']}"
-                ) from err
-            hdu_lists.append(hdu_list)
-
-            this_n = int(hdu_list[self._params["hdu"]].header["NAXIS2"])
-            n_obj_list.append(this_n)
-            n_obj += this_n
-
-        if self._params["verbose"]:
-            print(f"Found a total of {n_obj} (~{format.millify(n_obj)}) objects.")
-
-        return hdu_lists, n_obj_list, n_obj
-
-    def get_col_info(self, dat):
-        """Get Col Info.
-
-        Return information of input columns.
-
-        Parameters
-        ----------
-        dat : numpy.ndarray
-            input data
+        Return the list of campaign catalogue files to merge.
 
         Returns
         -------
-        list
-            column names
-        list
-            column formats
-        int
-            number of columns
+        list of str
+            input file paths
 
         """
-        col_names = dat.dtype.names
+        input_paths = self._params["input_paths"]
+        if not input_paths:
+            raise ValueError(
+                "No input campaign catalogues given; set 'input_paths' to one"
+                + " or more final_cat_<campaign>.hdf5 files separated by '+'"
+            )
+        if isinstance(input_paths, str):
+            input_paths = input_paths.split("+")
 
-        n_col = 0
-        formats = {}
-        ndim = {}
-        for name in col_names:
-            formats[name] = dat.dtype.fields[name][0]
-            ndim[name] = dat[name].ndim
-            n_col += ndim[name]
-        # Add one for patch
-        n_col += 1
+        return [path.strip() for path in input_paths if path.strip()]
 
-        if self._params["verbose"]:
-            print(f"Number of input (output) columns = {len(col_names)} ({n_col})")
+    @staticmethod
+    def campaign_name(input_path):
+        """Campaign Name.
 
-        return col_names, formats, ndim, n_col
+        Return the campaign name encoded in a catalogue file name,
+        ``final_cat_<campaign>.hdf5`` -> ``<campaign>``.
+
+        Parameters
+        ----------
+        input_path : str
+            input file path
+
+        Returns
+        -------
+        str
+            campaign name
+
+        """
+        stem = os.path.splitext(os.path.basename(input_path))[0]
+        prefix = "final_cat_"
+        return stem[len(prefix) :] if stem.startswith(prefix) else stem
 
     def dtype_out(self, name, dtype_in):
         """Set output dtype.
@@ -442,6 +379,7 @@ class JointCat(BaseCat):
         cols_keep_dtype = [
             "RA",
             "Dec",
+            "DEC",
             "FLAGS",
             "NUMBER",
         ]
@@ -449,9 +387,9 @@ class JointCat(BaseCat):
             # Transform unicode to string of equal length
             return np.dtype(f"S{dtype_in.itemsize // 4}")
 
-        if self._params["reduce_mem"] == False:
+        if not self._params["reduce_mem"]:
             return dtype_in
-        elif name not in cols_keep_dtype:
+        if name not in cols_keep_dtype:
             if dtype_in.kind == "f" and dtype_in.itemsize == 8:
                 return np.float32
             if dtype_in.kind == "i" and dtype_in.itemsize == 4:
@@ -459,59 +397,33 @@ class JointCat(BaseCat):
 
         return dtype_in
 
-    def init_data(self, n_col, n_obj, ndim, dat):
-        """Init Data.
+    def output_dtype(self, dtype_in, n_char_campaign):
+        """Output Dtype.
 
-        Initialize empty structured data.
+        Return the merged-catalogue dtype: the input columns (possibly
+        reduced in precision) plus a ``campaign`` column.
 
         Parameters
         ----------
-        n_col : int
-            number of columns
-        n_obj : int
-            number of objects (rows)
-        ndim : dict
-            dimension of input columns
-        dat : numpy.ndarray
-            example data
+        dtype_in : numpy.dtype
+            structured dtype of an input campaign catalogue
+        n_char_campaign : int
+            width of the campaign name column
 
         Returns
         -------
-        numpy.ndarray
-            combined structure data, (n_col x n_obj) array
+        numpy.dtype
+            output structured dtype
 
         """
-        # Create dtypes from input column names and types.
-        # Reduce memory if flag set.
-        # Transform multi-D columns into 1D columns
-        dtype_tmp_list = []
-        for name in ndim:
-            if ndim[name] == 1:
-                dtype_tmp_list.append((name, self.dtype_out(name, dat[name].dtype)))
-            else:
-                for jdx in range(ndim[name]):
-                    dtype_tmp_list.append(
-                        (f"{name}_{jdx}", self.dtype_out(name, dat[name].dtype))
-                    )
-        dtype_tmp_list.append(("patch", np.int8))
-        dtype_tmp_struct = np.dtype(dtype_tmp_list)
+        fields = [
+            (name, self.dtype_out(name, dtype_in[name])) for name in dtype_in.names
+        ]
+        fields.append(("campaign", np.dtype(f"S{n_char_campaign}")))
 
-        if self._params["verbose"]:
-            memory = n_obj * dtype_tmp_struct.itemsize
-            print(
-                f"Allocating <= {memory / 1024**3:.1f}"
-                + f" Gb memory for the ({n_col} x {n_obj}) input data array ...",
-                end="",
-            )
+        return np.dtype(fields)
 
-        dat_all = np.empty((n_obj,), dtype=dtype_tmp_struct)
-
-        if self._params["verbose"]:
-            print("done")
-
-        return dat_all
-
-    def write_hdf5_file(self, dat_all, patches):
+    def write_hdf5_file(self, dat_all, campaigns=None):
         """Write HDF5 File.
 
         Write data to HDF5 file.
@@ -520,8 +432,8 @@ class JointCat(BaseCat):
         ----------
         dat_all : numpy.ndarray
             input data
-        patches : list
-            input patches, list of str
+        campaigns : list, optional
+            input campaign names, list of str
 
         """
         output_path = (
@@ -531,12 +443,12 @@ class JointCat(BaseCat):
         )
 
         with h5py.File(output_path, "w") as f:
-            self.write_hdf5_header(f)
+            self.write_hdf5_header(f, campaigns=campaigns)
 
             dset = f.create_dataset("data", data=dat_all)
             dset[:] = dat_all
 
-    def write_hdf5_header(self, hd5file, patches=None):
+    def write_hdf5_header(self, hd5file, campaigns=None):
         """Write HDF5 Header.
 
         Write header information to HDF5 file.
@@ -545,92 +457,82 @@ class JointCat(BaseCat):
         ----------
         hd5file : h5py.File
             input HDF5 file
-        patches : list, optional
-            input patches, list of str, default is ``None``
+        campaigns : list, optional
+            input campaign names, list of str, default is ``None``
 
         """
         super().write_hdf5_header(hd5file)
 
-        if patches is not None:
-            patches_str = " ".join(patches)
-            hd5file.attrs["patches"] = patches_str
+        if campaigns is not None:
+            hd5file.attrs["campaigns"] = " ".join(campaigns)
 
-    def merge_catalogues(self, patches, base_path="."):
+    def merge_catalogues(self, input_paths):
         """Merge Catalogues.
 
-        Merge individual patch-based catalogues.
+        Merge a list of campaign catalogues into one joint catalogue, adding
+        a ``campaign`` column that records each object's origin.
 
         Parameters
         ----------
-        patches : list
-            input patches; list of `str`
-        base_path : str, optional
-            input base directory path; default is "."
+        input_paths : list of str
+            campaign catalogue files (final_cat_<campaign>.hdf5)
+
+        Returns
+        -------
+        numpy.ndarray
+            merged catalogue
 
         """
-        input_sub_path = (
-            f"sp_output/shape_catalog_comprehensive_{self._params['sh']}.fits"
+        param_list = (
+            sp_cat.read_param_file(
+                self._params["param_path"], verbose=self._params["verbose"]
+            )
+            if self._params["param_path"]
+            else None
         )
 
-        # Get input FITS files
-        hdu_lists, n_obj_list, n_obj = self.get_n_obj(
-            patches,
-            base_path,
-            input_sub_path,
-        )
+        campaigns = [self.campaign_name(path) for path in input_paths]
+        n_char_campaign = max(len(name) for name in campaigns)
 
-        # Read data
-        start = end = 0
-        for idx, patch in enumerate(patches):
-            input_path = f"{base_path}/{patch}/{input_sub_path}"
-            try:
-                dat = fits.getdata(input_path, self._params["hdu"])
-                # dat = hdu_lists[idx][self._params["hdu"]].data
+        data_list = []
+        dtype_out = None
+        for input_path, campaign in zip(input_paths, campaigns):
+            dat = sp_cat.read_campaign_catalogue(
+                input_path,
+                param_list=param_list,
+                verbose=self._params["verbose"],
+            )
 
-                hdu_lists[idx].close()
-            except Exception as err:
+            if dtype_out is None:
+                dtype_out = self.output_dtype(dat.dtype, n_char_campaign)
+            elif set(dat.dtype.names) != set(dtype_out.names) - {"campaign"}:
                 raise ValueError(
-                    f"Could not read data of file {input_path} at HDU"
-                    + f" #{self._params['hdu']}"
-                ) from err
-
-            # Create empty lists if first patch
-            if idx == 0:
-                col_names, formats, ndim, n_col = self.get_col_info(dat)
-                dat_all = self.init_data(n_col, n_obj, ndim, dat)
-
-            # Append new data for that patch (between start and end)
-            end += n_obj_list[idx]
-
-            # Copy data
-            i_col = 0
-            names_out = dat_all.dtype.names
-            for name in col_names:
-                if ndim[name] == 1:
-                    # Copy 1D column
-                    dat_all[names_out[i_col]][start:end] = dat[name]
-                else:
-                    # Copy all components of multi-D column
-                    for jdx in range(ndim[name]):
-                        dat_all[names_out[i_col + jdx]][start:end] = dat[name][:, jdx]
-                i_col += ndim[name]
-            # Add patch number
-            dat_all["patch"][start:end] = patch[1:]
-
-            if i_col + 1 != n_col:
-                raise ValueError(
-                    "Inconsistent number of columns, {i_col + 1}" + f" != {n_col}"
+                    f"Campaign catalogue {input_path} has columns"
+                    + f" {sorted(dat.dtype.names)}, incompatible with"
+                    + f" {sorted(set(dtype_out.names) - {'campaign'})}"
                 )
+
+            dat_out = np.empty(len(dat), dtype=dtype_out)
+            for name in dat.dtype.names:
+                dat_out[name] = dat[name]
+            dat_out["campaign"] = campaign.encode()
+            data_list.append(dat_out)
+
             if self._params["verbose"]:
                 print(
-                    f"{patch}: Added {len(dat)} (~{format.millify(len(dat))})"
-                    + f" objects (from {start} to {end - 1})."
+                    f"{campaign}: added {len(dat)}"
+                    + f" (~{format.millify(len(dat))}) objects."
                 )
-            start = end
 
-        del dat
+        dat_all = np.concatenate(data_list, axis=0)
 
-        self.write_hdf5_file(dat_all, patches)
+        if self._params["verbose"]:
+            print(
+                f"Merged {len(dat_all)} (~{format.millify(len(dat_all))})"
+                + f" objects from {len(campaigns)} campaign(s)."
+            )
+
+        return dat_all
 
     def run(self):
         """Run.
@@ -638,11 +540,12 @@ class JointCat(BaseCat):
         Main processing function.
 
         """
-        patches = self.get_patches()
+        input_paths = self.get_input_paths()
         if self._params["verbose"]:
-            print("Merging patches", patches)
+            print("Merging campaigns", input_paths)
 
-        self.merge_catalogues(patches)
+        dat_all = self.merge_catalogues(input_paths)
+        self.write_hdf5_file(dat_all, [self.campaign_name(p) for p in input_paths])
 
 
 class ApplyHspMasks(BaseCat):

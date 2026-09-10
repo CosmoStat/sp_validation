@@ -25,9 +25,8 @@ np.set_printoptions(precision=3, formatter={"float": "{: .3g}".format})
 
 # Survey parameters
 
-## Field or patch name. Put None if n/a
-name = "P7"
-print("Field name = {}".format(name))
+## Campaign name (the tile list processed by ShapePipe). Put None if n/a
+campaign = None
 
 ## Area of a tile in deg^2
 area_tile = 0.25
