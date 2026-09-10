@@ -59,7 +59,15 @@ dat:
     kind: equal
     value: False
 
-  # Per-band coverage and Pan-STARRS z2; enable as required
+  # r-band coverage: the v2 equivalent of v1's '64_r' cut, kept so that the
+  # v2 selection covers the same imaging footprint as v1.X.
+  - col_name: MASK_n64
+    label: "r-band imaging"
+    kind: equal
+    value: False
+
+  # Remaining per-band coverage bits and Pan-STARRS z2; enable as required.
+  # Cutting on all of them at once leaves essentially no objects.
   # - col_name: MASK_n16
   #   label: "coverage (n16)"
   #   kind: equal
@@ -68,6 +76,12 @@ dat:
   #   label: "no PS-z2"
   #   kind: equal
   #   value: False
+  #
+  # v1.X also applied a rough pointing-coverage cut, 'npoint3' >= 3, from an
+  # external post-processing catalogue. ShapePipe v2 emits no such column and
+  # no MASK_n* bit encodes it, so that cut has no v2 counterpart; add it back
+  # here if an external pointing-coverage map is ever joined onto the
+  # catalogue (it would belong in the 'dat_ext' group below).
 
   # Number of epochs
   - col_name: N_EPOCH
