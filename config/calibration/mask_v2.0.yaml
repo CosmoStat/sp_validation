@@ -1,0 +1,122 @@
+# Config file for masking and calibration, ShapePipe v2 catalogues.
+#
+# ShapePipe v2 replaces the single IMAFLAGS_ISO column with per-reason boolean
+# mask columns MASK_n<bit>, where True means MASKED. They are therefore cut
+# with `kind: equal, value: False` (keep the un-masked objects):
+#
+#   MASK_n1, MASK_n2  bright/faint star halos
+#   MASK_n4           stars
+#   MASK_n8           manual galaxy mask
+#   MASK_n16 .. MASK_n256   per-band coverage
+#   MASK_n1024        MaxiMask
+#   MASK_n2048        no Pan-STARRS z2 coverage
+#
+# The default selection (see sp_validation.galaxy.DEFAULT_MASK_COLUMNS) is
+# n4 + n1 + n2 + n8 + n1024; the coverage bits and n2048 are listed here but
+# commented out, since ORing all of them masks essentially everything.
+
+# General parameters (can also given on command line)
+params:
+  input_path: unions_shapepipe_comprehensive_2025_v2.0.hdf5
+  cmatrices: False
+  sky_regions: False
+  verbose: True
+
+# Masks
+## Using columns in 'dat' group (ShapePipe flags)
+dat:
+  # SExtractor flags
+  - col_name: FLAGS
+    label: SE FLAGS
+    kind: smaller_equal
+    value: 3
+
+  # Duplicate objects
+  - col_name: overlap
+    label: tile overlap
+    kind: equal
+    value: True
+
+  # ShapePipe masks (boolean, True = masked)
+  - col_name: MASK_n4
+    label: "stars"
+    kind: equal
+    value: False
+  - col_name: MASK_n1
+    label: "faint star halos"
+    kind: equal
+    value: False
+  - col_name: MASK_n2
+    label: "bright star halos"
+    kind: equal
+    value: False
+  - col_name: MASK_n8
+    label: "manual mask"
+    kind: equal
+    value: False
+  - col_name: MASK_n1024
+    label: "maximask"
+    kind: equal
+    value: False
+
+  # Per-band coverage and Pan-STARRS z2; enable as required
+  # - col_name: MASK_n16
+  #   label: "coverage (n16)"
+  #   kind: equal
+  #   value: False
+  # - col_name: MASK_n2048
+  #   label: "no PS-z2"
+  #   kind: equal
+  #   value: False
+
+  # Number of epochs
+  - col_name: N_EPOCH
+    label: r"$n_{\rm epoch}$"
+    kind: greater_equal
+    value: 2
+
+  # Magnitude range
+  - col_name: mag
+    label: mag range
+    kind: range
+    value: [15, 30]
+
+  # ngmix flags
+  - col_name: NGMIX_MCAL_TYPES_FAIL
+    label: "ngmix moments failure"
+    kind: equal
+    value: 0
+
+  # invalid PSF ellipticities
+  - col_name: NGMIX_G1_PSF_ORIG_NOSHEAR
+    label: "bad PSF ellipticity comp 1"
+    kind: not_equal
+    value: -10
+  - col_name: NGMIX_G2_PSF_ORIG_NOSHEAR
+    label: "bad PSF ellipticity comp 2"
+    kind: not_equal
+    value: -10
+
+## Using columns in 'dat_ext' group (post-processing flags)
+## ShapePipe v2 carries the imaging masks in the 'dat' group above, so this
+## group is empty unless external masks are added.
+dat_ext: []
+
+# Metacal parameters
+metacal:
+  # Ellipticity dispersion
+  sigma_eps_prior: 0.34
+
+  # Signal-to-noise range
+  gal_snr_min: 10
+  gal_snr_max: 500
+
+  # Relative-size (hlr / hlr_psf) range
+  gal_rel_size_min: 0.707
+  gal_rel_size_max: 3
+
+  # Correct relative size for ellipticity?
+  gal_size_corr_ell: False
+
+  # Weight for global response matrix, None for unweighted mean
+  global_R_weight: w

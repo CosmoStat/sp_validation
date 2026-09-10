@@ -50,13 +50,18 @@ if False:
 
 # +
 # List of masks to apply
+# (labels as declared in config/calibration/mask_v2.0.yaml; ShapePipe v2
+# replaces IMAFLAGS_ISO and the v1 post-processing masks by MASK_n<bit>)
 masks_to_apply = [
     "overlap",
-    "IMAFLAGS_ISO",
+    "MASK_n4",
+    "MASK_n1",
+    "MASK_n2",
+    "MASK_n8",
+    "MASK_n1024",
     "NGMIX_MCAL_TYPES_FAIL",
     "NGMIX_G1_PSF_ORIG_NOSHEAR",
     "NGMIX_G2_PSF_ORIG_NOSHEAR",
-    "8_Manual",
 ]
 
 # List of masks not to apply and not to copy to minimal catalogue
