@@ -57,23 +57,25 @@ def parse_args():
 
 
 def get_n_tiles(grids_dir, num):
-    """Detect number of tiles from final_cat HDF5 files."""
-    try:
-        import h5py
+    """Detect number of tiles from final_cat HDF5 files.
 
-        # Count tiles in first sim's final_cat
-        for sim in ["1z2z_grid", "1m2z_grid", "1p2z_grid", "1z2m_grid", "1z2p_grid"]:
-            sim_name = f"{sim}_{num}"
-            final_cat = os.path.join(grids_dir, sim_name, f"final_cat_{sim_name}.hdf5")
-            if os.path.isfile(final_cat):
-                with h5py.File(final_cat, "r") as hf:
-                    if "patches" in hf:
-                        n_tiles = sum(
-                            1 for patch in hf["patches"] for _ in hf[f"patches/{patch}"]
-                        )
-                        return n_tiles
-    except Exception:
-        pass
+    Layout-agnostic: uses ``sp_validation.catalog.find_dataset_group``, so it
+    works on both the legacy nested and the flat per-tile HDF5 layouts.
+    """
+    import h5py
+
+    from sp_validation.catalog import find_dataset_group
+
+    for sim in ["1z2z_grid", "1m2z_grid", "1p2z_grid", "1z2m_grid", "1z2p_grid"]:
+        sim_name = f"{sim}_{num}"
+        final_cat = os.path.join(grids_dir, sim_name, f"final_cat_{sim_name}.hdf5")
+        if os.path.isfile(final_cat):
+            with h5py.File(final_cat, "r") as hf:
+                n_tiles = hf.attrs.get("n_tiles")
+                if n_tiles is not None:
+                    return int(n_tiles)
+                return len(find_dataset_group(hf))
+
     return None
 
 

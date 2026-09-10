@@ -143,7 +143,9 @@ class MergePsfCat:
             for name in col_names:
                 dat_all[name] = np.append(dat_all[name], dat[name])
 
-            dat_all["campaign"] = np.append(dat_all["campaign"], [idx + 1] * len(dat))
+            dat_all["campaign"] = np.append(
+                dat_all["campaign"], [campaign] * len(dat)
+            )
 
         col_names = col_names + ("campaign",)
 
@@ -152,7 +154,10 @@ class MergePsfCat:
             if name != "campaign":
                 my_format = "D"
             else:
-                my_format = "I"
+                # Store the campaign name, matching JointCat's string
+                # `campaign` column; an ordinal would depend on the order of
+                # the -p argument and could not be joined back.
+                my_format = f"A{max(len(c) for c in campaigns)}"
             column = fits.Column(name=name, array=dat_all[name], format=my_format)
             column_all.append(column)
 

@@ -217,18 +217,26 @@ def print_all(
 
 
 def get_area(fname):
+    """Return the unmasked area in deg^2 read from an area.txt file.
 
-    if os.path.exists(fname):
-        with open(fname) as f:
-            lines = f.readlines()
-        for line in lines:
-            m = re.search("nmasked campaign area without overlap = (.*) deg", line)
-            if m:
-                return float(m[1])
+    Accepts both the v2 wording ("campaign") and the legacy one ("patch"),
+    so results computed before the campaign rename can still be combined.
+    Raises rather than returning a placeholder: a wrong area silently
+    rescales every density.
+    """
+    if not os.path.exists(fname):
+        raise FileNotFoundError(f"No file {fname} found to obtain area")
 
-    else:
-        print(f"Warning: No file {fname} found to obtain area")
-        return 1
+    with open(fname) as f:
+        lines = f.readlines()
+    for line in lines:
+        m = re.search(
+            r"nmasked (?:campaign|patch) area without overlap = (.*) deg", line
+        )
+        if m:
+            return float(m[1])
+
+    raise ValueError(f"No unmasked area found in file {fname}")
 
 
 def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
