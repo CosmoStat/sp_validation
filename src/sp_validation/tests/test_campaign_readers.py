@@ -251,9 +251,7 @@ class TestStarCatalogueReader(unittest.TestCase):
 
         self.assertEqual(len(dat), 10)
         # the reader appends EXPID to the ShapePipe star columns
-        self.assertEqual(
-            tuple(dat.dtype.names), catalog.STAR_CAT_COLUMNS + ("EXPID",)
-        )
+        self.assertEqual(tuple(dat.dtype.names), catalog.STAR_CAT_COLUMNS + ("EXPID",))
         npt.assert_array_equal(dat["MAG"][:4], np.zeros(4))
         npt.assert_array_equal(dat["MAG"][4:], np.ones(6))
 
