@@ -21,6 +21,7 @@ GAL_DTYPE = np.dtype(
         ("MASK_n1", "?"),
         ("MASK_n2", "?"),
         ("MASK_n8", "?"),
+        ("MASK_n64", "?"),
         ("MASK_n1024", "?"),
     ]
 )

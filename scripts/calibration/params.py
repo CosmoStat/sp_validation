@@ -122,12 +122,14 @@ add_cols = [
     "NGMIX_T_PSF_RECONV_NOSHEAR",
 ]
 
-## ShapePipe v2 mask columns OR'd together for the galaxy selection cut
+## ShapePipe v2 mask columns OR'd together for the galaxy selection cut:
+## the reason bits of the r-band default bitmask, whose OR reproduces mask_r
 mask_columns = [
     "MASK_n4",
     "MASK_n1",
     "MASK_n2",
     "MASK_n8",
+    "MASK_n64",
     "MASK_n1024",
 ]
 

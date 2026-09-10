@@ -29,9 +29,16 @@ from tqdm import tqdm
 from sp_validation import io
 
 #: All mask columns written by ShapePipe v2 (bool, ``True`` = masked).
-#: n4 stars; n1/n2 faint/bright star halos; n8 manual galaxy mask;
-#: n1024 MaxiMask; n16..n256 per-band coverage; n2048 no PS-z2 coverage.
-#: These replace the single IMAFLAGS_ISO bitmask of ShapePipe v1.
+#: They replace the single IMAFLAGS_ISO bitmask of ShapePipe v1.
+#:
+#: Reason bits making up the r-band default bitmask: n1/n2 star halos
+#: (which of the two is faint and which bright is unconfirmed for the
+#: Aug-2026 products), n4 stars, n8 manual galaxy mask, n64 (an
+#: undocumented reason bit), n1024 MaxiMask.
+#:
+#: Per-band coverage flags: n16 (u), n32 (g), n128 (i), n256 (z). There is
+#: no r coverage flag because the catalogue is r-selected. n2048 is ``True``
+#: where Pan-STARRS z2 coverage is absent.
 MASK_COLUMNS = (
     "MASK_n1",
     "MASK_n2",
@@ -46,14 +53,18 @@ MASK_COLUMNS = (
     "MASK_n2048",
 )
 
-#: Mask columns OR'd together for the default galaxy selection. Deliberately
-#: not a blanket OR over MASK_COLUMNS: the per-band coverage columns
-#: (n16..n256) and n2048 would mask essentially the whole catalogue.
+#: Mask columns OR'd together for the default galaxy selection. This set is
+#: exactly the reason bits of the ShapePipe r-band default bitmask: their OR
+#: reproduces ``mask_r``, the v1 r-band mask, on the P3 region. Deliberately
+#: not a blanket OR over MASK_COLUMNS: the per-band coverage flags
+#: (n16, n32, n128, n256) and n2048 would mask essentially the whole
+#: catalogue.
 DEFAULT_MASK_COLUMNS = (
     "MASK_n4",
     "MASK_n1",
     "MASK_n2",
     "MASK_n8",
+    "MASK_n64",
     "MASK_n1024",
 )
 

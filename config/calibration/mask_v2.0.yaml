@@ -4,16 +4,26 @@
 # mask columns MASK_n<bit>, where True means MASKED. They are therefore cut
 # with `kind: equal, value: False` (keep the un-masked objects):
 #
-#   MASK_n1, MASK_n2  bright/faint star halos
+# Reason bits of the ShapePipe r-band default bitmask:
+#
+#   MASK_n1, MASK_n2  star halos (which is faint and which is bright is
+#                     unconfirmed for the Aug-2026 products)
 #   MASK_n4           stars
 #   MASK_n8           manual galaxy mask
-#   MASK_n16 .. MASK_n256   per-band coverage
+#   MASK_n64          undocumented reason bit
 #   MASK_n1024        MaxiMask
+#
+# Per-band coverage flags and Pan-STARRS:
+#
+#   MASK_n16, MASK_n32, MASK_n128, MASK_n256   u, g, i, z coverage (no r
+#                     flag: the catalogue is r-selected)
 #   MASK_n2048        no Pan-STARRS z2 coverage
 #
 # The default selection (see sp_validation.galaxy.DEFAULT_MASK_COLUMNS) is
-# n4 + n1 + n2 + n8 + n1024; the coverage bits and n2048 are listed here but
-# commented out, since ORing all of them masks essentially everything.
+# n1 + n2 + n4 + n8 + n64 + n1024, whose OR reproduces mask_r, the v1 r-band
+# mask, exactly on the P3 region. The coverage flags and n2048 are listed
+# here but commented out, since ORing all of them masks essentially
+# everything.
 
 # General parameters (can also given on command line)
 params:
@@ -42,12 +52,14 @@ dat:
     label: "stars"
     kind: equal
     value: False
+  # n1/n2 are the two star-halo bits; the faint/bright assignment is
+  # unconfirmed for the Aug-2026 products.
   - col_name: MASK_n1
-    label: "faint star halos"
+    label: "star halos (n1)"
     kind: equal
     value: False
   - col_name: MASK_n2
-    label: "bright star halos"
+    label: "star halos (n2)"
     kind: equal
     value: False
   - col_name: MASK_n8
@@ -59,17 +71,17 @@ dat:
     kind: equal
     value: False
 
-  # r-band coverage: the v2 equivalent of v1's '64_r' cut, kept so that the
-  # v2 selection covers the same imaging footprint as v1.X.
+  # Undocumented reason bit of the r-band default bitmask. Required for the
+  # OR above to reproduce mask_r; it is not a coverage flag.
   - col_name: MASK_n64
-    label: "r-band imaging"
+    label: "reason bit n64"
     kind: equal
     value: False
 
-  # Remaining per-band coverage bits and Pan-STARRS z2; enable as required.
+  # Per-band coverage flags and Pan-STARRS z2; enable as required.
   # Cutting on all of them at once leaves essentially no objects.
   # - col_name: MASK_n16
-  #   label: "coverage (n16)"
+  #   label: "u coverage"
   #   kind: equal
   #   value: False
   # - col_name: MASK_n2048
