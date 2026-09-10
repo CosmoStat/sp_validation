@@ -61,7 +61,8 @@ class TestCampaignReader(unittest.TestCase):
         self._tmp.cleanup()
 
     def _expected(self):
-        return np.concatenate(list(self._tiles.values()))
+        """Expected concatenation: datasets in sorted-key order."""
+        return np.concatenate([self._tiles[key] for key in sorted(self._tiles)])
 
     def test_legacy_layout(self):
         path = self._dir / "final_cat_CAMPAIGN.hdf5"
@@ -70,7 +71,7 @@ class TestCampaignReader(unittest.TestCase):
         dat = catalog.read_campaign_catalogue(path, verbose=False)
 
         self.assertEqual(len(dat), 5)
-        npt.assert_array_equal(np.sort(dat["RA"]), np.sort(self._expected()["RA"]))
+        npt.assert_array_equal(dat["RA"], self._expected()["RA"])
 
     def test_flat_layout(self):
         path = self._dir / "final_cat_CAMPAIGN.hdf5"
@@ -79,7 +80,7 @@ class TestCampaignReader(unittest.TestCase):
         dat = catalog.read_campaign_catalogue(path, verbose=False)
 
         self.assertEqual(len(dat), 5)
-        npt.assert_array_equal(np.sort(dat["RA"]), np.sort(self._expected()["RA"]))
+        npt.assert_array_equal(dat["RA"], self._expected()["RA"])
 
     def test_layouts_agree(self):
         legacy = self._dir / "legacy.hdf5"
@@ -111,6 +112,54 @@ class TestCampaignReader(unittest.TestCase):
                 path, param_list=["RA", "NOT_A_COLUMN"], verbose=False
             )
         self.assertIn("NOT_A_COLUMN", str(ctx.exception))
+
+
+    def test_row_order_is_tile_name_order(self):
+        """Keys inserted out of order still concatenate in name order."""
+        path = self._dir / "unordered.hdf5"
+        tiles = {
+            "222.000": make_galaxy_data(2, offset=200),
+            "000.000": make_galaxy_data(2, offset=0),
+            "111.000": make_galaxy_data(2, offset=100),
+        }
+        with h5py.File(path, "w") as f:
+            group = f.create_group("tiles")
+            for tile_id, dat in tiles.items():
+                group.create_dataset(tile_id, data=dat)
+            f.attrs["n_tiles"] = len(tiles)
+
+        dat = catalog.read_campaign_catalogue(path, verbose=False)
+
+        npt.assert_array_equal(dat["RA"], [0, 1, 100, 101, 200, 201])
+
+    def test_truncated_file_raises(self):
+        """n_tiles attribute larger than the number of datasets is fatal."""
+        path = self._dir / "truncated.hdf5"
+        write_campaign(path, "flat", self._tiles)
+        with h5py.File(path, "a") as f:
+            f.attrs["n_tiles"] = 10
+
+        with self.assertRaises(ValueError) as ctx:
+            catalog.read_campaign_catalogue(path, verbose=False)
+        self.assertIn("incomplete", str(ctx.exception))
+
+    def test_column_missing_from_later_tile_raises_clear_error(self):
+        """A column absent from a non-first tile is named, with its dataset."""
+        path = self._dir / "ragged.hdf5"
+        with h5py.File(path, "w") as f:
+            group = f.create_group("tiles")
+            group.create_dataset("000.000", data=make_galaxy_data(2))
+            group.create_dataset(
+                "001.000", data=np.zeros(2, dtype=[("RA", "f8"), ("Dec", "f8")])
+            )
+
+        with self.assertRaises(KeyError) as ctx:
+            catalog.read_campaign_catalogue(
+                path, param_list=["RA", "MAG_AUTO"], verbose=False
+            )
+        message = str(ctx.exception)
+        self.assertIn("MAG_AUTO", message)
+        self.assertIn("001.000", message)
 
     def test_ambiguous_layout_raises(self):
         path = self._dir / "ambiguous.hdf5"
@@ -241,6 +290,66 @@ class TestCampaignMerge(unittest.TestCase):
             dat["campaign"], np.array([b"W3"] * 3 + [b"SGC"] * 2)
         )
         npt.assert_array_equal(dat["RA"][:3], np.arange(3))
+
+
+    def test_merge_promotes_column_widths(self):
+        """A wider string/int column in a later file is not truncated."""
+        dtype_narrow = np.dtype([("RA", "f8"), ("TILE_ID", "S7"), ("N", "i4")])
+        dtype_wide = np.dtype([("RA", "f8"), ("TILE_ID", "S12"), ("N", "i8")])
+
+        narrow = np.zeros(1, dtype=dtype_narrow)
+        narrow["TILE_ID"] = b"123.456"
+        narrow["N"] = 7
+        wide = np.zeros(1, dtype=dtype_wide)
+        wide["TILE_ID"] = b"999888.7776"
+        wide["N"] = 2**40
+
+        path_a = self._dir / "final_cat_AA.hdf5"
+        path_b = self._dir / "final_cat_BBBBBBBB.hdf5"
+        write_campaign(path_a, "flat", {"000.000": narrow})
+        write_campaign(path_b, "flat", {"000.000": wide})
+
+        for paths in ([path_a, path_b], [path_b, path_a]):
+            dat = self._obj.merge_catalogues([str(path) for path in paths])
+            by_campaign = {
+                name: row for name, row in zip(dat["campaign"], dat)
+            }
+            self.assertEqual(by_campaign[b"BBBBBBBB"]["TILE_ID"], b"999888.7776")
+            self.assertEqual(by_campaign[b"BBBBBBBB"]["N"], 2**40)
+            self.assertEqual(by_campaign[b"AA"]["TILE_ID"], b"123.456")
+
+    def test_merge_reduce_mem_overflow_raises(self):
+        """reduce_mem never silently wraps out-of-range values."""
+        dat = np.zeros(3, dtype=[("RA", "f8"), ("N_EPOCH", "i4")])
+        dat["N_EPOCH"] = [3, 200, 300000]
+        path = self._dir / "final_cat_Z.hdf5"
+        write_campaign(path, "flat", {"000.000": dat})
+
+        self._obj._params["reduce_mem"] = True
+        with self.assertRaises(ValueError) as ctx:
+            self._obj.merge_catalogues([str(path)])
+        self.assertIn("N_EPOCH", str(ctx.exception))
+
+    def test_merge_reduce_mem_in_range_ok(self):
+        dat = np.zeros(2, dtype=[("RA", "f8"), ("N_EPOCH", "i4")])
+        dat["N_EPOCH"] = [3, 200]
+        path = self._dir / "final_cat_Y.hdf5"
+        write_campaign(path, "flat", {"000.000": dat})
+
+        self._obj._params["reduce_mem"] = True
+        out = self._obj.merge_catalogues([str(path)])
+
+        npt.assert_array_equal(out["N_EPOCH"], [3, 200])
+        self.assertEqual(out.dtype["RA"], np.dtype("f8"))  # RA keeps precision
+
+    def test_merge_rejects_multidimensional_column(self):
+        dat = np.zeros(2, dtype=[("RA", "f8"), ("XY", "f8", (2,))])
+        path = self._dir / "final_cat_M.hdf5"
+        write_campaign(path, "flat", {"000.000": dat})
+
+        with self.assertRaises(ValueError) as ctx:
+            self._obj.merge_catalogues([str(path)])
+        self.assertIn("multi-dimensional", str(ctx.exception))
 
     def test_merge_incompatible_columns_raises(self):
         other = self._dir / "final_cat_X.hdf5"
