@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import copy
+import os
 import sys
 from optparse import OptionParser
 
@@ -152,6 +153,7 @@ def plot_alpha_leakage(
     xmin,
     xmax,
     ylim=None,
+    labels=None,
 ):
     """Plot Alpha Leakage.
 
@@ -173,6 +175,9 @@ def plot_alpha_leakage(
         largest angular scale, interpreted in arcmin
     ylim : list, optional
         y-axis plot limits, default is `Ǹone`
+    labels : list, optional
+        curve labels, one per input curve; default is ``None``, for
+        unlabelled curves
 
     """
     theta = meanr
@@ -187,7 +192,7 @@ def plot_alpha_leakage(
     linewidths[0] = 3
 
     colors = ["grey", "k", "b", "r", "c", "m", "g", "orange"]
-    labels = ["all", "P1", "P2", "P3", "P4", "P5", "P6", "P7"]
+    colors = [colors[idx % len(colors)] for idx in range(len(meanr))]
 
     plot_data_1d(
         theta,
@@ -239,6 +244,12 @@ def main(argv=None):
     if param.verbose:
         print("Input files: ", fnames)
 
+    # Curve labels come from the input file names: the first file is the
+    # reference (all objects), the others whatever selection they hold.
+    labels = ["all"] + [
+        os.path.splitext(os.path.basename(fn))[0] for fn in fnames[1:]
+    ]
+
     # read input files, append data
     theta = []
     alpha_leak = []
@@ -265,6 +276,7 @@ def main(argv=None):
         config.theta_min_amin,
         config.theta_max_amin,
         config.leakage_alpha_ylim,
+        labels=labels,
     )
 
     return 0

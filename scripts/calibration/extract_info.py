@@ -160,7 +160,7 @@ if star_cat_path:
 
     m_star = (
         (dd["FLAGS"][ind_star] == 0)
-        & galaxy.mask_cut(dd[ind_star], mask_columns)
+        & galaxy.mask_cut(dd, mask_columns)[ind_star]
         & (dd["NGMIX_MCAL_FLAGS"][ind_star] == 0)
         & (dd["NGMIX_G1_PSF_ORIG_NOSHEAR"][ind_star] != -10)
     )
