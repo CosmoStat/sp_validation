@@ -113,6 +113,22 @@ dat:
     kind: equal
     value: 0
 
+  # Objects ngmix never fit. ShapePipe's make_cat pre-fills the NGMIX_*
+  # columns with sentinels (G1/G2 = -10, T/FLUX = 0) and overwrites them only
+  # for objects present in the ngmix output, so a never-fit object also keeps
+  # NGMIX_MCAL_FLAGS = 0 and is not caught by any flag cut. In
+  # final_cat_smk-g7.hdf5 that is 18,983 of 1,851,100 objects (1.03%);
+  # admitting them gives mean e1 = -0.107 (std 1.03) against -0.004 (std
+  # 0.22). The -10 cuts below do reject them today, but only because make_cat
+  # happens to use the same literal for the PSF columns: that is an exact
+  # float equality against a sentinel ShapePipe may change, so state the
+  # condition directly. Mirrors the guard in
+  # sp_validation.galaxy.classification_galaxy_ngmix.
+  - col_name: NGMIX_N_EPOCH
+    label: "ngmix never fit"
+    kind: greater_equal
+    value: 1
+
   # invalid PSF ellipticities
   - col_name: NGMIX_G1_PSF_ORIG_NOSHEAR
     label: "bad PSF ellipticity comp 1"
