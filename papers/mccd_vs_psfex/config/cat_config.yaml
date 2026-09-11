@@ -209,7 +209,9 @@ SP_v1.3.6.3:
   shear:
     R: 1.0
     path: v1.3.6.3/unions_shapepipe_cut_struc_2022_v1.3.6.3.fits
-    redshift_path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
+    # CFIS v1.0 (2022) SOM n(z), dndz_SP_{A,B,C}.txt without the '# z dn_dz'
+    # header line, which CosmoCov's multihisto reader parses as a z=0 row
+    redshift_path: /home/mkilbing/astro/repositories/github/sp_validation_mccd_vs_psfex/papers/mccd_vs_psfex/data/nz/dndz_SP_v1.3_A.txt
     w_col: w_des
     e1_col: e1
     e1_col_corrected: e1_leak_corrected
