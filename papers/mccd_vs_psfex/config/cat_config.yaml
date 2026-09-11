@@ -182,11 +182,12 @@ SP_v1.3.6.3:
   marker: h
   # A, n_e, sigma_e from papers/mccd_vs_psfex/scripts/survey_stats.py (same
   # estimators that reproduce the SP_v1.4.6.3 values exactly); A is the area
-  # of the mask below. n_psf = all PSF-catalogue stars / A.
+  # of the mask below. n_psf = PSF-catalogue stars inside the mask / A (only
+  # 59% of the v1.3 PSF stars fall inside the shear footprint).
   cov_th:
     A: 2053.682291713541
     n_e: 4.562505831856058
-    n_psf: 0.704011307586045
+    n_psf: 0.41551339437610907
     sigma_e: 0.3787649648949503
   # binary HEALPix map at nside 4096, despite the file name
   mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_v1.3.6_nside_8192.fits
@@ -209,8 +210,10 @@ SP_v1.3.6.3:
   shear:
     R: 1.0
     path: v1.3.6.3/unions_shapepipe_cut_struc_2022_v1.3.6.3.fits
-    # CFIS v1.0 (2022) SOM n(z), dndz_SP_{A,B,C}.txt without the '# z dn_dz'
-    # header line, which CosmoCov's multihisto reader parses as a z=0 row
+    # CFIS v1.0 (2022) SOM n(z), dndz_SP_{A,B,C}.txt rewritten in the format of
+    # the v1.4.x n(z) files: bin centres (the original first column is the
+    # lower bin edge; cosmosis_fitting.py reads centres), the empty z=5 edge
+    # row dropped, and no '# z dn_dz' header (CosmoCov reads it as a data row)
     redshift_path: /home/mkilbing/astro/repositories/github/sp_validation_mccd_vs_psfex/papers/mccd_vs_psfex/data/nz/dndz_SP_v1.3_A.txt
     w_col: w_des
     e1_col: e1

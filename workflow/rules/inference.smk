@@ -245,6 +245,11 @@ rule inference_prep_nautilus:
         pseudo_cl_cov=lambda w: (
             [pseudo_cl_assets(w.version)[1]] if w.version in NAUTILUS_CL_VERSIONS else []
         ),
+        # tracked so an edit re-triggers the chain (cosmosis reads it at run time)
+        priors=lambda w: (
+            [f"{COSMO_INFERENCE_RUNDIR}/cosmosis_config/templates/priors_psf_{w.version}.ini"]
+            if w.prior_tag else []
+        ),
     output:
         fits_file=str(COSMO_INFERENCE_PROD / f"data/{NAUTILUS_COSMOSIS_ROOT}/cosmosis_{NAUTILUS_COSMOSIS_ROOT}.fits"),
         config_file=str(COSMO_INFERENCE_PROD / f"cosmosis_config/output/cosmosis_pipeline_{NAUTILUS_COSMOSIS_ROOT}.ini"),
