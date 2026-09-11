@@ -187,15 +187,27 @@ rule inference_fiducial:
 # another catalogue's n(z) (same blind letter) -- e.g. MCCD with the v1.4.6.3
 # n(z), so that the two chains share one blinding offset and one delta-z
 # calibration. The xi covariance stays the catalogue's own.
+#
+# {prior_tag} is empty for the shared priors_psf.ini, or "_psfprior_own" to use
+# cosmosis_config/templates/priors_psf_<version>.ini, whose PSF-leakage
+# (alpha, beta) prior is centred on that catalogue's own rho/tau fit -- the
+# procedure that produced the priors_psf.ini values for PSFEx v1.4.6.3.
 NAUTILUS_SUFFIX = (
     f"_{FIDUCIAL['blind']}_minsep={FIDUCIAL['min_sep']}_maxsep={FIDUCIAL['max_sep']}"
     f"_nbins={FIDUCIAL['nbins']}_npatch={FIDUCIAL['npatch']}_nautilus"
 )
-NAUTILUS_COSMOSIS_ROOT = "{version}{nz_tag}" + NAUTILUS_SUFFIX
+NAUTILUS_COSMOSIS_ROOT = "{version}{nz_tag}{prior_tag}" + NAUTILUS_SUFFIX
+NAUTILUS_TAG_CONSTRAINTS = dict(nz_tag=r"(_nz_SP_v[\d.]+)?", prior_tag=r"(_psfprior_own)?")
 NAUTILUS_CHAINS_DIR = str(COSMO_INFERENCE / "chains")
 NAUTILUS_VERSIONS = INFERENCE.get("nautilus_versions", [FIDUCIAL["version"]])
 # Borrowed-n(z) variants: list of [version, n(z) version] pairs.
 NAUTILUS_NZ_VARIANTS = INFERENCE.get("nautilus_nz_variants", [])
+# Own-PSF-prior variants: list of versions.
+NAUTILUS_PRIOR_VARIANTS = INFERENCE.get("nautilus_psfprior_own_versions", [])
+
+
+def nautilus_priors_arg(w):
+    return f"--priors-file priors_psf_{w.version}.ini" if w.prior_tag else ""
 
 
 def nautilus_nz_file(w):
@@ -237,12 +249,13 @@ rule inference_prep_nautilus:
         fits_file=str(COSMO_INFERENCE_PROD / f"data/{NAUTILUS_COSMOSIS_ROOT}/cosmosis_{NAUTILUS_COSMOSIS_ROOT}.fits"),
         config_file=str(COSMO_INFERENCE_PROD / f"cosmosis_config/output/cosmosis_pipeline_{NAUTILUS_COSMOSIS_ROOT}.ini"),
     wildcard_constraints:
-        nz_tag=r"(_nz_SP_v[\d.]+)?",
+        **NAUTILUS_TAG_CONSTRAINTS,
     params:
         cosmosis_root=NAUTILUS_COSMOSIS_ROOT,
         data_dir=f"{NAUTILUS_CHAINS_DIR}/{NAUTILUS_COSMOSIS_ROOT}",
         output_root=str(COSMO_INFERENCE_PROD),
         cl_args=nautilus_pseudo_cl_args,
+        priors_arg=nautilus_priors_arg,
     threads: 1
     resources:
         mem_mb=8000,
@@ -263,7 +276,8 @@ rule inference_prep_nautilus:
             --rho-stats {input.rho_stats} \
             --tau-stats {input.tau_stats} \
             --cov-tau {input.tau_cov} \
-            {params.cl_args}
+            {params.cl_args} \
+            {params.priors_arg}
         """
 
 
@@ -279,7 +293,7 @@ rule inference_run_nautilus:
         # and SCRATCH is itself {data_dir} = {NAUTILUS_CHAINS_DIR}/{root}.
         samples=f"{NAUTILUS_CHAINS_DIR}/{NAUTILUS_COSMOSIS_ROOT}/{NAUTILUS_COSMOSIS_ROOT}/samples_{NAUTILUS_COSMOSIS_ROOT}.txt",
     wildcard_constraints:
-        nz_tag=r"(_nz_SP_v[\d.]+)?",
+        **NAUTILUS_TAG_CONSTRAINTS,
     container: None
     threads: 1
     resources:
@@ -307,12 +321,16 @@ rule inference_run_nautilus:
         """
 
 
-def nautilus_targets(version, nz_version=None):
-    nz_tag = f"_nz_{nz_version}" if nz_version else ""
+def nautilus_targets(version, nz_version=None, own_psf_prior=False):
+    tags = dict(
+        version=version,
+        nz_tag=f"_nz_{nz_version}" if nz_version else "",
+        prior_tag="_psfprior_own" if own_psf_prior else "",
+    )
     return [
-        rules.inference_prep_nautilus.output.fits_file.format(version=version, nz_tag=nz_tag),
-        rules.inference_prep_nautilus.output.config_file.format(version=version, nz_tag=nz_tag),
-        rules.inference_run_nautilus.output.samples.format(version=version, nz_tag=nz_tag),
+        rules.inference_prep_nautilus.output.fits_file.format(**tags),
+        rules.inference_prep_nautilus.output.config_file.format(**tags),
+        rules.inference_run_nautilus.output.samples.format(**tags),
     ]
 
 
@@ -323,10 +341,12 @@ rule inference_nautilus_fiducial:
 
 rule inference_nautilus:
     """Nautilus chains for every catalogue in inference.nautilus_versions,
-    plus the borrowed-n(z) variants in inference.nautilus_nz_variants."""
+    plus the borrowed-n(z) variants (inference.nautilus_nz_variants) and the
+    own-PSF-prior variants (inference.nautilus_psfprior_own_versions)."""
     input:
         [t for v in NAUTILUS_VERSIONS for t in nautilus_targets(v)],
         [t for v, nz in NAUTILUS_NZ_VARIANTS for t in nautilus_targets(v, nz)],
+        [t for v in NAUTILUS_PRIOR_VARIANTS for t in nautilus_targets(v, own_psf_prior=True)],
 
 
 rule inference_glass_mocks:

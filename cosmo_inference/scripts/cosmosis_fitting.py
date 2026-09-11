@@ -461,7 +461,9 @@ def generate_cosmosis_config(args):
     if args.sampler_template:
         template_base_realspace = args.sampler_template
 
-    if args.mock:
+    if args.priors_file:
+        priors_file = args.priors_file
+    elif args.mock:
         priors_file = "priors_mock.ini"
     elif args.use_rho_tau:
         priors_file = "priors_psf.ini"
@@ -557,6 +559,14 @@ Example for glass mock v0 (mock data):
         help="Override the real-space template filename (relative to "
         "--template-dir), e.g. cosmosis_pipeline_A_psf_nautilus.ini to swap "
         "sampler. Defaults to the standard psf/ia template.",
+    )
+    parser.add_argument(
+        "--priors-file",
+        type=str,
+        default=None,
+        help="Override the priors filename (relative to cosmosis_config/templates), "
+        "e.g. a catalogue-specific PSF-leakage prior. Defaults to priors_psf.ini "
+        "with --use-rho-tau, priors_mock.ini with --mock, else priors.ini.",
     )
     parser.add_argument(
         "--data-dir", type=str, required=True, help="Output MCMC chain directory"

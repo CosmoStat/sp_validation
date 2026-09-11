@@ -99,6 +99,10 @@ inference:
   # n(z) the delta-z prior was derived for), isolating catalogue + PSF model
   # from the two independently blinded SOM calibrations.
   nautilus_nz_variants: [[SP_v1.3.6.3_leak_corr, SP_v1.4.6.3]]
+  # MCCD with its PSF-leakage prior centred on its own rho/tau fit
+  # (templates/priors_psf_SP_v1.3.6.3_leak_corr.ini), as priors_psf.ini is
+  # for PSFEx; every other prior unchanged.
+  nautilus_psfprior_own_versions: [SP_v1.3.6.3_leak_corr]
   # Precomputed GLASS mock xi/Cl products (Sacha's pipeline).
   glass_mock_data_dir: "/n09data/guerrini/glass_mock_v1.4.6/results"
   # CosmoSIS chain output root for GLASS mock runs.
