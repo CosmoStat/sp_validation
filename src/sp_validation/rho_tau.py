@@ -45,6 +45,11 @@ def get_params_rho_tau(cat, survey="other"):
         params["star_flag"] = cat["psf"]["star_flag"]
     params["ra_units"] = "deg"
     params["dec_units"] = "deg"
+    # Square the size columns before forming size residuals (sigma -> T ~ sigma^2)
+    # in rho/tau stats and CovTauTh alike. The PSFEx v1.4.6.3 rho/tau files
+    # were built on T; set psf.square_size: true for catalogues whose size
+    # columns are sigma (SIGMA_*_HSM) to match them.
+    params["square_size"] = cat["psf"].get("square_size", False)
 
     params["ra_col"] = cat["shear"].get("ra_col", "RA")
     params["dec_col"] = cat["shear"].get("dec_col", "Dec")
@@ -169,6 +174,7 @@ def get_rho_tau(
         rho_stat_handler.build_cat_to_compute_rho(
             config[version]["psf"]["path"],
             catalog_id=catalog_id,
+            square_size=params["square_size"],
             mask=mask,
             hdu=(
                 config[version]["psf"]["hdu"]
@@ -212,6 +218,7 @@ def get_rho_tau(
                 config[version]["psf"]["path"],
                 cat_type="psf",
                 catalog_id=version,
+                square_size=params["square_size"],
                 mask=mask,
                 hdu=(
                     config[version]["psf"]["hdu"]

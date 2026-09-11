@@ -190,8 +190,10 @@ SP_v1.3.6.3:
     sigma_e: 0.3787649648949503
   # binary HEALPix map at nside 4096, despite the file name
   mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_v1.3.6_nside_8192.fits
-  # column names as they are in the v1.3 PSF catalogue (old HSM grammar)
+  # column names as they are in the v1.3 PSF catalogue (old HSM grammar);
+  # sizes are sigma, squared to T for the size residuals like the PSFEx files
   psf:
+    square_size: true
     PSF_flag: FLAG_PSF_HSM
     PSF_size: SIGMA_PSF_HSM
     star_flag: FLAG_STAR_HSM
