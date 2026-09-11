@@ -89,6 +89,12 @@ harmonic:
 inference:
   # CosmoSIS chain output root for real-data runs.
   chains_dir: "/n09data/guerrini/output_chains"
+  # Catalogues run through the nautilus chain (rule inference_nautilus):
+  # PSFEx fiducial against MCCD, same pipeline, priors, sampler and scale cuts.
+  nautilus_versions: [SP_v1.4.6.3_leak_corr, SP_v1.3.6.3_leak_corr]
+  # Versions whose pseudo-C_ell is packed into the cosmosis FITS file (inert
+  # for the real-space likelihood; keeps the fiducial file as first produced).
+  nautilus_cl_versions: [SP_v1.4.6.3_leak_corr]
   # Precomputed GLASS mock xi/Cl products (Sacha's pipeline).
   glass_mock_data_dir: "/n09data/guerrini/glass_mock_v1.4.6/results"
   # CosmoSIS chain output root for GLASS mock runs.

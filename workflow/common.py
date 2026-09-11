@@ -163,9 +163,16 @@ def build_redshift_path(version, blind):
     if "v1.4.11" in base_version:
         base_version = "SP_v1.4.6"
     version_dir = base_version.replace("SP_", "")
-    return (
-        f"/n17data/sguerrini/UNIONS/WL/nz/{version_dir}/nz_{base_version}_{blind}.txt"
-    )
+    path = f"/n17data/sguerrini/UNIONS/WL/nz/{version_dir}/nz_{base_version}_{blind}.txt"
+    if os.path.exists(path):
+        return path
+    # No SOM n(z) for this version in the shared directory (e.g. the v1.3
+    # MCCD catalogue): fall back to the catalogue's own shear.redshift_path,
+    # with the blind letter substituted as CosmologyValidation.get_redshift does.
+    shear_cfg = (CATALOG_CONFIG or {}).get(base_version, {}).get("shear", {})
+    if "redshift_path" in shear_cfg:
+        return re.sub(r"_[ABC]\.txt$", f"_{blind}.txt", shear_cfg["redshift_path"])
+    return path
 
 
 def get_shear_catalog(wildcards):

@@ -19,9 +19,12 @@ MASK_CLS_BASE = str(COSMO_INFERENCE / "data/mask")
 MASK_CLS_FILES = {
     "footprint": f"{MASK_CLS_BASE}/mask_cls_footprint_nside_4096_norm.txt",
     "footprint_starhalo": f"{MASK_CLS_BASE}/mask_cls_footprint_starhalo_nside_4096_norm.txt",
+    # v1.3 (MCCD) footprint; produced by rule mask_cls_v1_3 from the cat_config mask
+    "footprint_v1.3": f"{MASK_CLS_BASE}/mask_cls_v1.3.6_nside_4096_norm.txt",
 }
 
-# v1.4.8 uses the star-halo footprint; all other versions use the standard footprint
+# v1.4.8 uses the star-halo footprint; v1.3.x its own (2022) footprint;
+# all other versions use the standard footprint
 STARHALO_VERSIONS = {"v1.4.8"}
 
 
@@ -29,8 +32,29 @@ def get_mask_cls_path(version):
     """Return absolute mask Cl path for the requested catalog version."""
     version_dir = version.replace('_leak_corr', '').replace('SP_', '')
     version_dir = re.sub(r'_ecut\d+', '', version_dir)
+    if version_dir.startswith("v1.3."):
+        return MASK_CLS_FILES["footprint_v1.3"]
     key = "footprint_starhalo" if version_dir in STARHALO_VERSIONS else "footprint"
     return MASK_CLS_FILES[key]
+
+
+rule mask_cls_v1_3:
+    """Normalised mask C_ell for CosmoCov from the v1.3 footprint map.
+
+    The map (cat_config SP_v1.3.6.3 mask) is binary HEALPix at nside 4096,
+    despite the 8192 in its file name.
+    """
+    input:
+        # lazy: only papers that request the v1.3 covariance need this entry
+        mask=lambda w: config["SP_v1.3.6.3"]["mask"],
+    output:
+        MASK_CLS_FILES["footprint_v1.3"],
+    threads: 1
+    resources:
+        mem_mb=16000,
+        runtime=120,
+    script:
+        "../scripts/mask_cls_from_map.py"
 
 
 rule cosmology_params:
@@ -163,6 +187,9 @@ rule covariance_cosmocov:
     container:
         None
     threads: 1
+    resources:
+        # the masked non-Gaussian blocks take 1-4 h each (v1.4.6.3, 2026-08-01)
+        runtime=720,
     shell:
         """
         module unload gcc || true

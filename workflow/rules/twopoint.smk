@@ -70,6 +70,9 @@ rule rho_tau_stats:
     output:
         rho_stats=str(COSMO_VAL / "rho_tau_stats/rho_stats_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
         tau_stats=str(COSMO_VAL / "rho_tau_stats/tau_stats_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
+        # analytical tau covariance (CosmologyValidation cov_estimate_method="th"),
+        # consumed by the inference rules
+        tau_cov=str(COSMO_VAL / "rho_tau_stats/cov_tau_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}_th.npy"),
     threads: 48
     params:
         ver="{version}",
@@ -80,6 +83,7 @@ rule rho_tau_stats:
     resources:
         mem_mb=30000,
         disk_mb=20000,
+        runtime=1440,
     script:
         "../scripts/run_rho_tau.py"
 

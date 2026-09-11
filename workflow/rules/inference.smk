@@ -81,6 +81,9 @@ rule inference_prep:
             COSMO_INFERENCE_PROD
             / "cosmosis_config/output/cosmosis_pipeline_{version}_{blind}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.ini"
         )
+    # keep {npatch} from swallowing the "_nautilus" suffix of inference_prep_nautilus
+    wildcard_constraints:
+        npatch=r"\d+",
     params:
         cosmosis_root="{version}_{blind}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}",
         data_dir=f"{CHAINS_DIR}/{{version}}_{{blind}}_minsep={{min_sep}}_maxsep={{max_sep}}_nbins={{nbins}}_npatch={{npatch}}",
@@ -169,29 +172,55 @@ rule inference_fiducial:
         rules.inference_run_fiducial.output.samples,
 
 
-# Ad hoc alternative to the polychord fiducial run above: same blind-A
-# fiducial inputs, but the nautilus sampler (48-core SMP, no MPI rebuild
+# Ad hoc alternative to the polychord fiducial run above: blind-A inputs at
+# the fiducial binning, but the nautilus sampler (48-core SMP, no MPI rebuild
 # needed) and chains written locally under COSMO_INFERENCE instead of
 # guerrini's shared CHAINS_DIR. Kept as separate rules/root name so this
 # doesn't disturb the polychord run above.
-NAUTILUS_COSMOSIS_ROOT = FIDUCIAL_COSMOSIS_ROOT + "_nautilus"
+#
+# The catalogue version is a wildcard, so the same pipeline, priors, sampler
+# settings and scale cuts serve every catalogue in inference.nautilus_versions
+# (mccd_vs_psfex: PSFEx v1.4.6.3 against MCCD v1.3.6.3). For the fiducial
+# version the paths are the ones the fiducial-only rules used to write.
+NAUTILUS_SUFFIX = (
+    f"_{FIDUCIAL['blind']}_minsep={FIDUCIAL['min_sep']}_maxsep={FIDUCIAL['max_sep']}"
+    f"_nbins={FIDUCIAL['nbins']}_npatch={FIDUCIAL['npatch']}_nautilus"
+)
+NAUTILUS_COSMOSIS_ROOT = "{version}" + NAUTILUS_SUFFIX
 NAUTILUS_CHAINS_DIR = str(COSMO_INFERENCE / "chains")
+NAUTILUS_VERSIONS = INFERENCE.get("nautilus_versions", [FIDUCIAL["version"]])
+# Versions whose pseudo-C_ell data vector is packed into the FITS file. The
+# real-space likelihood (XI_PLUS XI_MINUS TAU_0_PLUS TAU_2_PLUS) never reads
+# CELL_EE, and the C_ell covariance is a separate diagonal block, so this is
+# inert for the xi chain; it only keeps the fiducial FITS file as it was.
+NAUTILUS_CL_VERSIONS = INFERENCE.get("nautilus_cl_versions", [FIDUCIAL["version"]])
+
+
+def nautilus_pseudo_cl_args(w):
+    if w.version not in NAUTILUS_CL_VERSIONS:
+        return ""
+    cl, cov = pseudo_cl_assets(w.version)
+    return f"--cl-file {cl} --cov-cl {cov}"
 
 
 rule inference_prep_nautilus:
     input:
-        cov_matrix=covariance_path(
-            FIDUCIAL["version"], FIDUCIAL["blind"],
+        cov_matrix=lambda w: covariance_path(
+            w.version, FIDUCIAL["blind"],
             min_sep=FIDUCIAL["min_sep"], max_sep=FIDUCIAL["max_sep"], nbins=FIDUCIAL["nbins"]
         ),
-        xi_plus=str(COSMO_VAL / f"xi_plus_{FIDUCIAL['version']}_minsep={FIDUCIAL['min_sep']}_maxsep={FIDUCIAL['max_sep']}_nbins={FIDUCIAL['nbins']}_npatch={FIDUCIAL['npatch']}.fits"),
-        xi_minus=str(COSMO_VAL / f"xi_minus_{FIDUCIAL['version']}_minsep={FIDUCIAL['min_sep']}_maxsep={FIDUCIAL['max_sep']}_nbins={FIDUCIAL['nbins']}_npatch={FIDUCIAL['npatch']}.fits"),
-        nz_file=build_redshift_path(FIDUCIAL["version"], FIDUCIAL["blind"]),
-        rho_stats=str(COSMO_VAL / f"rho_tau_stats/rho_stats_{FIDUCIAL['version']}_minsep={FIDUCIAL['min_sep']}_maxsep={FIDUCIAL['max_sep']}_nbins={FIDUCIAL['nbins']}_npatch={FIDUCIAL['npatch']}.fits"),
-        tau_stats=str(COSMO_VAL / f"rho_tau_stats/tau_stats_{FIDUCIAL['version']}_minsep={FIDUCIAL['min_sep']}_maxsep={FIDUCIAL['max_sep']}_nbins={FIDUCIAL['nbins']}_npatch={FIDUCIAL['npatch']}.fits"),
-        tau_cov=str(COSMO_VAL / f"rho_tau_stats/cov_tau_{FIDUCIAL['version']}_minsep={FIDUCIAL['min_sep']}_maxsep={FIDUCIAL['max_sep']}_nbins={FIDUCIAL['nbins']}_npatch={FIDUCIAL['npatch']}_th.npy"),
-        pseudo_cl=pseudo_cl_assets(FIDUCIAL["version"])[0],
-        pseudo_cl_cov=pseudo_cl_assets(FIDUCIAL["version"])[1],
+        xi_plus=str(COSMO_VAL / f"xi_plus_{{version}}{fiducial_binning_suffix()}.fits"),
+        xi_minus=str(COSMO_VAL / f"xi_minus_{{version}}{fiducial_binning_suffix()}.fits"),
+        nz_file=lambda w: build_redshift_path(w.version, FIDUCIAL["blind"]),
+        rho_stats=str(COSMO_VAL / f"rho_tau_stats/rho_stats_{{version}}{fiducial_binning_suffix()}.fits"),
+        tau_stats=str(COSMO_VAL / f"rho_tau_stats/tau_stats_{{version}}{fiducial_binning_suffix()}.fits"),
+        tau_cov=str(COSMO_VAL / f"rho_tau_stats/cov_tau_{{version}}{fiducial_binning_suffix()}_th.npy"),
+        pseudo_cl=lambda w: (
+            [pseudo_cl_assets(w.version)[0]] if w.version in NAUTILUS_CL_VERSIONS else []
+        ),
+        pseudo_cl_cov=lambda w: (
+            [pseudo_cl_assets(w.version)[1]] if w.version in NAUTILUS_CL_VERSIONS else []
+        ),
     output:
         fits_file=str(COSMO_INFERENCE_PROD / f"data/{NAUTILUS_COSMOSIS_ROOT}/cosmosis_{NAUTILUS_COSMOSIS_ROOT}.fits"),
         config_file=str(COSMO_INFERENCE_PROD / f"cosmosis_config/output/cosmosis_pipeline_{NAUTILUS_COSMOSIS_ROOT}.ini"),
@@ -199,6 +228,7 @@ rule inference_prep_nautilus:
         cosmosis_root=NAUTILUS_COSMOSIS_ROOT,
         data_dir=f"{NAUTILUS_CHAINS_DIR}/{NAUTILUS_COSMOSIS_ROOT}",
         output_root=str(COSMO_INFERENCE_PROD),
+        cl_args=nautilus_pseudo_cl_args,
     threads: 1
     resources:
         mem_mb=8000,
@@ -219,12 +249,11 @@ rule inference_prep_nautilus:
             --rho-stats {input.rho_stats} \
             --tau-stats {input.tau_stats} \
             --cov-tau {input.tau_cov} \
-            --cl-file {input.pseudo_cl} \
-            --cov-cl {input.pseudo_cl_cov}
+            {params.cl_args}
         """
 
 
-rule inference_run_nautilus_fiducial:
+rule inference_run_nautilus:
     """Run the nautilus sampler with 48-core SMP (cosmosis --smp, plain
     Python multiprocessing -- no MPI build needed, unlike polychord).
     """
@@ -262,11 +291,23 @@ rule inference_run_nautilus_fiducial:
         """
 
 
+def nautilus_targets(version):
+    return [
+        rules.inference_prep_nautilus.output.fits_file.format(version=version),
+        rules.inference_prep_nautilus.output.config_file.format(version=version),
+        rules.inference_run_nautilus.output.samples.format(version=version),
+    ]
+
+
 rule inference_nautilus_fiducial:
     input:
-        rules.inference_prep_nautilus.output.fits_file,
-        rules.inference_prep_nautilus.output.config_file,
-        rules.inference_run_nautilus_fiducial.output.samples,
+        nautilus_targets(FIDUCIAL["version"]),
+
+
+rule inference_nautilus:
+    """Nautilus chains for every catalogue in inference.nautilus_versions."""
+    input:
+        [t for v in NAUTILUS_VERSIONS for t in nautilus_targets(v)],
 
 
 rule inference_glass_mocks:

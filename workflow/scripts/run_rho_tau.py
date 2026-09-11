@@ -34,12 +34,15 @@ else:
 params = snakemake.params  # type: ignore
 
 # %%
-os.chdir("/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val")
+# Runs from the snakemake working directory (the run directory), reading its
+# ./cat_config.yaml and writing under COSMO_VAL, like run_2pcf.py.
 print("Starting CosmologyValidation")
 
 # Use parameters passed from Snakemake rule
 cv = CosmologyValidation(
     versions=[params["ver"]],
+    catalog_config=params.get("cat_config", "./cat_config.yaml"),
+    output_dir=params.get("output_dir", None),
     theta_min=float(params["min_sep"]),
     theta_max=float(params["max_sep"]),
     nbins=int(params["nbins"]),
@@ -50,7 +53,7 @@ cv.calculate_rho_tau_stats()
 
 # Confirm CosmologyValidation produced the requested outputs
 outputs = snakemake.output  # type: ignore
-for label in ("rho_stats", "tau_stats"):
+for label in ("rho_stats", "tau_stats", "tau_cov"):
     target = Path(outputs[label])
     if not target.exists():
         raise FileNotFoundError(

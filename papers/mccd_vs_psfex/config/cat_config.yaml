@@ -180,25 +180,30 @@ SP_v1.3.6.3:
   getdist_colour: 0.0, 0.5, 1.0
   ls: dashed
   marker: h
+  # A, n_e, sigma_e from papers/mccd_vs_psfex/scripts/survey_stats.py (same
+  # estimators that reproduce the SP_v1.4.6.3 values exactly); A is the area
+  # of the mask below. n_psf = all PSF-catalogue stars / A.
   cov_th:
-    A: 2405.3892055695346
-    n_e: 6.128201234871523
-    n_psf: 0.752316232272063
-    sigma_e: 0.379587601488189
+    A: 2053.682291713541
+    n_e: 4.562505831856058
+    n_psf: 0.704011307586045
+    sigma_e: 0.3787649648949503
+  # binary HEALPix map at nside 4096, despite the file name
   mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_v1.3.6_nside_8192.fits
+  # column names as they are in the v1.3 PSF catalogue (old HSM grammar)
   psf:
-    PSF_flag: HSM_FLAG_PSF
-    PSF_size: HSM_T_PSF
-    star_flag: HSM_FLAG_STAR
-    star_size: HSM_T_STAR
+    PSF_flag: FLAG_PSF_HSM
+    PSF_size: SIGMA_PSF_HSM
+    star_flag: FLAG_STAR_HSM
+    star_size: SIGMA_STAR_HSM
     hdu: 1
     path: unions_shapepipe_psf_2022_v1.3.a.fits
     ra_col: RA
-    dec_col: Dec
-    e1_PSF_col: HSM_G1_PSF
-    e1_star_col: HSM_G1_STAR
-    e2_PSF_col: HSM_G2_PSF
-    e2_star_col: HSM_G2_STAR
+    dec_col: DEC
+    e1_PSF_col: E1_PSF_HSM
+    e1_star_col: E1_STAR_HSM
+    e2_PSF_col: E2_PSF_HSM
+    e2_star_col: E2_STAR_HSM
   shear:
     R: 1.0
     path: v1.3.6.3/unions_shapepipe_cut_struc_2022_v1.3.6.3.fits
