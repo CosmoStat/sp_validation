@@ -19,7 +19,7 @@ def img(m):
     return f"data:image/png;base64,{data}"
 
 
-html = re.sub(r"\{\{img:([\w.\-]+)\}\}", img, html)
+html = re.sub(r"\{\{img:([\w./\-]+)\}\}", img, html)
 
 summary_path = comp / "summary.json"
 if summary_path.exists():

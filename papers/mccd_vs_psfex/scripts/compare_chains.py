@@ -8,7 +8,7 @@ sigma_Delta = sqrt(s1^2 + s2^2 - 2 rho s1 s2) for a few assumed correlations
 rho between the two estimates (the samples share sky, so rho > 0).
 
 Usage:
-    python compare_chains.py --out <dir> LABEL=path/to/samples.txt [...]
+    python compare_chains.py --out <dir> [--rho 0,0.5,0.84] LABEL=path/to/samples.txt [...]
 The first chain is the reference (PSFEx fiducial).
 """
 
@@ -21,6 +21,8 @@ import matplotlib
 matplotlib.use("Agg")
 import numpy as np  # noqa: E402
 from getdist import MCSamples, plots  # noqa: E402
+
+COLORS = ["#1f77b4", "#d62728", "#2ca02c", "#9467bd"]
 
 PARAMS = {
     "cosmological_parameters--s_8": ("S8", r"S_8"),
@@ -71,7 +73,12 @@ def summarize(s):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True)
-    ap.add_argument("--rho", type=float, nargs="*", default=[0.0, 0.5, 0.8])
+    ap.add_argument(
+        "--rho",
+        type=lambda x: [float(r) for r in x.split(",")],
+        default=[0.0, 0.5, 0.84],
+        help="comma-separated correlations between the two S8 estimates",
+    )
     ap.add_argument("chains", nargs="+", help="LABEL=path")
     a = ap.parse_args()
     out = Path(a.out)
@@ -107,13 +114,13 @@ if __name__ == "__main__":
     g.settings.legend_fontsize = 11
     g.triangle_plot(
         samples, ["S8", "Omega_m", "sigma_8"], filled=True,
-        contour_colors=["#1f77b4", "#d62728", "#2ca02c"][: len(samples)],
+        contour_colors=COLORS[: len(samples)],
     )
     g.export(str(out / "triangle_cosmo.png"), dpi=150)
     g = plots.get_subplot_plotter(width_inch=8)
     g.triangle_plot(
         samples, ["S8", "Omega_m", "A_IA", "alpha", "beta"], filled=True,
-        contour_colors=["#1f77b4", "#d62728", "#2ca02c"][: len(samples)],
+        contour_colors=COLORS[: len(samples)],
     )
     g.export(str(out / "triangle_nuisance.png"), dpi=120)
     print(f"written to {out}")

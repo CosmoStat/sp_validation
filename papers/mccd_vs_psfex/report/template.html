@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Report — mccd-vs-psfex</title>
+<style>
+  :root {
+    --parchment: #EDE2CE; --rag: #FBF6E9; --ink: #1B1611; --ink-muted: #7A6F5C;
+    --cinnabar: #BC4538; --teal: #3F8278; --cobalt: #3D5BA0; --ochre: #C49333; --rule: #C5B89E;
+    --serif: 'EB Garamond', Georgia, serif;
+    --mono: 'IBM Plex Mono', 'JetBrains Mono', ui-monospace, monospace;
+  }
+  html, body { margin: 0; padding: 0; }
+  body { background: var(--parchment); color: var(--ink); font-family: var(--serif); font-size: 19px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  .page { padding: 48px clamp(28px, 4vw, 72px) 64px; }
+  .stamp { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-muted); margin-bottom: 20px; display: flex; gap: 14px; align-items: center; }
+  .stamp .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--cinnabar); }
+  .stamp .sep { color: var(--rule); }
+  h1 { font-style: italic; font-weight: 500; font-size: 40px; line-height: 1.15; margin: 0 0 16px; }
+  section { margin-top: 44px; }
+  .section-mark { font-family: var(--mono); font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--cinnabar); margin-bottom: 8px; }
+  h2 { font-style: italic; font-weight: 500; font-size: 30px; line-height: 1.2; margin: 0 0 20px; }
+  h3 { font-weight: 600; font-size: 21px; line-height: 1.3; margin: 32px 0 10px; }
+  p { margin: 0 0 16px; max-width: 60em; }
+  ul { margin: 0 0 16px; padding-left: 22px; max-width: 60em; }
+  li { margin-bottom: 8px; }
+  code { font-family: var(--mono); font-size: 0.85em; background: rgba(196, 147, 51, 0.12); padding: 1px 5px; border-radius: 2px; }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 40px 0; }
+  hr.short { width: 80px; margin: 32px 0; border-top-width: 2px; border-top-color: var(--cinnabar); }
+  figure { margin: 24px 0; max-width: 900px; }
+  figure.wide { max-width: 1300px; }
+  figure img { display: block; width: auto; max-width: 100%; height: auto; background: var(--rag); border: 1px solid var(--rule); }
+  figcaption { font-size: 16px; color: var(--ink-muted); margin-top: 8px; }
+  .hedge { color: var(--ochre); font-family: var(--mono); font-size: 0.78em; letter-spacing: 0.08em; text-transform: uppercase; }
+  table { border-collapse: collapse; font-size: 17px; margin: 8px 0 18px; background: var(--rag); }
+  th, td { border: 1px solid var(--rule); padding: 5px 12px; text-align: left; vertical-align: top; }
+  th { font-weight: 600; }
+  td.num { font-family: var(--mono); font-size: 0.85em; text-align: right; white-space: nowrap; }
+  .tablewrap { overflow-x: auto; }
+  .depth { font-size: 16px; }
+</style>
+</head>
+<body>
+<main class="page">
+
+  <div class="stamp"><span class="dot"></span><span>2026 · 09 · 11</span><span class="sep">·</span><span>mccd-vs-psfex</span></div>
+
+  <h1>With the same n(z), MCCD and PSFEx give the same S<sub>8</sub>. The 0.06 gap between the two catalogues as they stand comes entirely from their n(z).</h1>
+
+  <hr>
+
+  <section>
+    <div class="section-mark">§ State</div>
+    <p>The MCCD catalogue (<code>SP_v1.3.6.3_leak_corr</code>) now has converged nautilus chains beside the PSFEx fiducial (<code>SP_v1.4.6.3_leak_corr</code>). Both use one pipeline: blind A, 1–250′ in 20 bins, the 12–83′ cut on ξ<sub>±</sub>, τ<sub>0,2</sub> in the likelihood, and the same sampler, template and priors. Run on its own inputs, MCCD gives <b>S<sub>8</sub> = 0.741 ± 0.056</b> against PSFEx's <b>0.801 ± 0.069</b>.</p>
+    <p>Rerun with the PSFEx n(z), MCCD gives <b>0.816 ± 0.070</b>, a shift of +0.015 (≤ 0.4σ). So the PSF model and the catalogue behind it barely move cosmology. The 0.06 comes from the two n(z), which have mean z 0.682 and 0.620. They come from different SOM calibrations, and each carries its own blind.</p>
+    <p><b>Your decision:</b> which comparison is the honest headline. The own-n(z) comparison mixes two independent blinding offsets. The borrowed-n(z) comparison is blind-consistent, but it applies the v1.4.6.3 n(z) to a v1.3 galaxy selection. Nothing else blocks.</p>
+  </section>
+
+  <hr class="short">
+
+  <section>
+    <div class="section-mark">§ Standing findings</div>
+    <h2>What is true, and how firmly.</h2>
+
+    <h3>The four chains</h3>
+    <div class="tablewrap"><table>
+      <tr><th>chain</th><th>n(z)</th><th>α, β prior</th><th>S<sub>8</sub></th><th>σ<sub>8</sub></th><th>β posterior</th><th>ΔS<sub>8</sub> vs PSFEx (ρ = 0 / 0.84)</th></tr>
+      <tr><td>PSFEx v1.4.6.3 (fiducial)</td><td>v1.4.6.3 SOM, A</td><td>shared</td><td class="num">0.801 ± 0.069</td><td class="num">0.81 ± 0.18</td><td class="num">0.81 ± 0.08</td><td class="num">—</td></tr>
+      <tr><td>MCCD v1.3.6.3, like-for-like</td><td>2022 SOM, A</td><td>shared</td><td class="num">0.741 ± 0.056</td><td class="num">0.75 ± 0.17</td><td class="num">0.50 ± 0.08</td><td class="num">−0.060 (−0.7σ / −1.6σ)</td></tr>
+      <tr><td>MCCD, PSFEx n(z)</td><td>v1.4.6.3 SOM, A</td><td>shared</td><td class="num">0.816 ± 0.070</td><td class="num">0.83 ± 0.19</td><td class="num">0.50 ± 0.08</td><td class="num">+0.015 (+0.15σ / +0.4σ)</td></tr>
+      <tr><td>MCCD, own PSF prior</td><td>2022 SOM, A</td><td>MCCD τ fit</td><td class="num">0.741 ± 0.057</td><td class="num">0.75 ± 0.17</td><td class="num">0.18 ± 0.08</td><td class="num">−0.060 (−0.7σ / −1.6σ)</td></tr>
+    </table></div>
+    <p>Values are posterior means ± std. Ω<sub>m</sub> = 0.32 ± 0.11 in every chain: it is prior-dominated at these scales, so the table leaves it out. Summaries and triangles: <code>cosmo_inference/comparison/{like_for_like,nz_psfex,psfprior_own,all}/</code> in the run directory.</p>
+
+    <figure>
+      <img src="{{img:all/triangle_cosmo.png}}" alt="Triangle plot of S8, Omega_m, sigma_8 for the four chains">
+      <figcaption>The two MCCD chains on the 2022 n(z) (red and purple, on top of each other) sit 0.06 low in S<sub>8</sub>. Moving MCCD onto the PSFEx n(z) (green) puts it on the PSFEx contour (blue). Ω<sub>m</sub> is the same prior-shaped marginal in all four.</figcaption>
+    </figure>
+
+    <h3>The shift is an n(z) effect, not a PSF-model effect</h3>
+    <p>Swapping only the n(z) moves MCCD by +0.075 in S<sub>8</sub>. Swapping only the PSF-leakage prior moves it by 0.0001. A higher-z n(z) raises the lensing efficiency, so the same ξ<sub>±</sub> needs a lower S<sub>8</sub>. The 2022 n(z) has mean z 0.682, against 0.620 for v1.4.6.3, and blinds B and C sit about ±0.025 around A in both sets. Depending on which letter is true in each set, the unblinded mean-z difference lies anywhere between 0.013 and 0.11. The A-vs-A gap is therefore as much a statement about the blinds as about the catalogues. The δz prior (−0.030 ± 0.018) was derived for the v1.4.6.3 n(z) and is shared by all chains.</p>
+    <p>MCCD's smaller σ(S<sub>8</sub>) on its own n(z) (0.056 against 0.070 with the PSFEx n(z)) also comes from the n(z), through the higher signal at higher z. On the same n(z), MCCD's constraint equals PSFEx's. That holds although MCCD's ξ errors are 29–38 % larger per bin: its footprint is 29 % smaller and its n<sub>eff</sub> 8 % lower.</p>
+
+    <h3>MCCD's PSF residuals are smaller at the inference scales; the leakage prior is catalogue-specific but inert for S<sub>8</sub></h3>
+    <figure class="wide">
+      <img src="{{img:rho_tau.png}}" alt="rho_0,1,2 and tau_0,2 for MCCD and PSFEx">
+      <figcaption>ρ<sub>0</sub> (PSF shape) is the same for both, since it is one survey. The PSF-residual correlations ρ<sub>1</sub> and ρ<sub>2</sub> are 4–5× smaller for MCCD inside the 12–83′ cut. Below 3′ MCCD's ρ<sub>1</sub> is larger. τ<sub>0</sub> and τ<sub>2</sub> agree within errors.</figcaption>
+    </figure>
+    <p>The shared prior β = 0.81 ± 0.115 in <code>priors_psf.ini</code> is PSFEx's own τ fit: a GLS fit gives 0.80 ± 0.105. MCCD's τ gives β = 0.185 ± 0.115. On MCCD, the shared prior and the τ data in the likelihood meet halfway (posterior 0.50). With an own-τ prior, the posterior follows MCCD (0.18). S<sub>8</sub> does not care, because β multiplies MCCD's small ρ<sub>1</sub> and ρ<sub>2</sub>. The same prior also counts the τ data twice, for any catalogue. Details are in the sub-fiber <code>mccd-vs-psfex/psf-leakage-prior</code>.</p>
+
+    <h3>The like-for-like audit: what differs between the PSFEx and MCCD runs</h3>
+    <div class="tablewrap"><table>
+      <tr><th>input</th><th>PSFEx v1.4.6.3</th><th>MCCD v1.3.6.3</th><th>status</th></tr>
+      <tr><td>footprint (A)</td><td>2894 deg²</td><td>2054 deg², nested: 99.9 % inside v1.4</td><td>must differ</td></tr>
+      <tr><td>n<sub>eff</sub>, σ<sub>e</sub></td><td>4.96 arcmin⁻², 0.378</td><td>4.56 arcmin⁻², 0.379</td><td>must differ; the estimator reproduces the PSFEx values exactly</td></tr>
+      <tr><td>mask Cℓ for CosmoCov</td><td>footprint map, nside 4096</td><td>v1.3 map, nside 4096 (the file name says 8192)</td><td>must differ; normalisation reproduces the PSFEx file bit for bit</td></tr>
+      <tr><td>n(z)</td><td>v1.4.6.3 SOM, blind A</td><td>CFIS 2022 SOM, blind A (own), or v1.4.6.3 (variant)</td><td>must differ; independent blinds (see Open)</td></tr>
+      <tr><td>ρ/τ statistics, τ covariance</td><td>inherited files</td><td>computed with the current code</td><td>PSFEx recomputed on this code: ρ/τ within 0.5σ, τ covariance identical</td></tr>
+      <tr><td>n<sub>psf</sub> (τ covariance)</td><td>0.752 (legacy)</td><td>0.416 (stars in footprint)</td><td>not like-for-like: the PSFEx value matches no density I can reproduce (in-footprint 0.551)</td></tr>
+      <tr><td>pseudo-Cℓ in FITS</td><td>included</td><td>omitted</td><td>inert: separate covariance block, not in the real-space likelihood</td></tr>
+      <tr><td>priors (m, δz, IA, Ω<sub>b</sub>h²), sampler, scale cuts, template</td><td colspan="2">identical: the generated inis differ only in paths</td><td>m and δz priors are v1.4.6.3 calibrations</td></tr>
+    </table></div>
+
+    <h3>How correlated the two S<sub>8</sub> estimates are</h3>
+    <p>The v1.3 footprint lies almost entirely inside the v1.4 one. For nested areas, the cosmic-variance correlation is √(A<sub>1.3</sub>/A<sub>1.4</sub>) = 0.84. Much of the imaging is shared, so the shape noise is correlated too. The table therefore quotes shifts at ρ = 0, as a lower bound on significance, and at ρ = 0.84, the better guess. The true ρ needs matched mocks or a galaxy cross-match. <span class="hedge">estimate</span> Either way, the borrowed-n(z) shift stays below 0.5σ.</p>
+
+    <figure>
+      <img src="{{img:xi_pm.png}}" alt="theta xi_plus and xi_minus for MCCD and PSFEx">
+      <figcaption>The data vectors agree within the jackknife errors across 1–250′. Inside the cut (shaded), MCCD's ξ<sub>+</sub> runs slightly high. On the 2022 n(z) that is more than offset by the higher mean z.</figcaption>
+    </figure>
+  </section>
+
+  <hr class="short">
+
+  <section>
+    <div class="section-mark">§ Open</div>
+    <h2>What is not settled.</h2>
+    <ul>
+      <li><b>Which n(z), which blind, for the MCCD headline.</b> The 2022 SOM n(z) (Wittje &amp; Hildebrandt, CFHTLenS W3, for <code>shapepipe_2022_v1.0</code>) is the one calibrated for this selection. But its blind A and v1.4.6.3's blind A are independent draws. Resolving this takes your knowledge of which letter is true in each set, or a decision to quote only the borrowed-n(z) comparison for the PSF-model question.</li>
+      <li><b>δz and m priors for v1.3.</b> Both chains use the v1.4.6.3 δz (−0.030 ± 0.018) and m (−0.0057 ± 0.014) priors. A fresh image-sim m is the job of the sibling <code>imsim-mbias</code>. A δz calibration for the 2022 n(z) would need the SOM team. With the δz prior at 0.018 against a 0.062 mean-z difference, this caveat does not change the verdict.</li>
+      <li><b>PSFEx's legacy n<sub>psf</sub> = 0.752.</b> The in-footprint value would be 0.551, which means about 1.37× more PSF noise in its τ covariance, so α and β would be less tightly constrained. This touches PSFEx α/β, and S<sub>8</sub> only through β. It would need a PSFEx τ covariance recompute and a new PSFEx chain (~3–9 h), which the spec leaves out unless you want strict like-for-like.</li>
+      <li><b>CosmoCov n(z) convention.</b> CosmoCov's multihisto reader takes the first n(z) column as lower bin edges, while both n(z) files are on centres. Both covariances therefore use an n(z) shifted up by half a bin (0.0125), consistently. It is the same for both runs; I estimate a few per cent in amplitude but have not measured it. <span class="hedge">estimate</span></li>
+    </ul>
+  </section>
+
+  <hr class="short">
+
+  <section class="depth">
+    <div class="section-mark">§ Depth</div>
+    <ul>
+      <li>Code: branch <code>mccd_vs_psfex</code> of sp_validation, worktree <code>~/astro/repositories/github/sp_validation_mccd_vs_psfex</code> (not pushed). The nautilus rules take <code>{version}{nz_tag}{prior_tag}</code>; the config keys are <code>inference.nautilus_versions</code>, <code>nautilus_nz_variants</code> and <code>nautilus_psfprior_own_versions</code>.</li>
+      <li>Run: <code>~/astro/Runs/papers-Unions/mccd_vs_psfex</code>. <code>run_mccd_inference.sh</code> rebuilds everything; the chains are in <code>cosmo_inference/chains/</code> and the PSFEx ρ/τ reproduction check in <code>checks/psfex_rhotau/</code>.</li>
+      <li>Scripts, all in <code>papers/mccd_vs_psfex/scripts/</code>: <code>survey_stats.py</code> (cov_th), <code>fit_leakage.py</code> (α, β), <code>compare_chains.py</code>, <code>plot_xi.py</code> and <code>plot_rho_tau.py</code>. <code>report/build_report.py</code> renders this page.</li>
+    </ul>
+  </section>
+
+</main>
+</body>
+</html>
