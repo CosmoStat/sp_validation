@@ -95,6 +95,10 @@ inference:
   # Versions whose pseudo-C_ell is packed into the cosmosis FITS file (inert
   # for the real-space likelihood; keeps the fiducial file as first produced).
   nautilus_cl_versions: [SP_v1.4.6.3_leak_corr]
+  # Diagnostic: MCCD with the PSFEx catalogue's n(z) (same blind A, and the
+  # n(z) the delta-z prior was derived for), isolating catalogue + PSF model
+  # from the two independently blinded SOM calibrations.
+  nautilus_nz_variants: [[SP_v1.3.6.3_leak_corr, SP_v1.4.6.3]]
   # Precomputed GLASS mock xi/Cl products (Sacha's pipeline).
   glass_mock_data_dir: "/n09data/guerrini/glass_mock_v1.4.6/results"
   # CosmoSIS chain output root for GLASS mock runs.

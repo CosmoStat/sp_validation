@@ -182,13 +182,25 @@ rule inference_fiducial:
 # settings and scale cuts serve every catalogue in inference.nautilus_versions
 # (mccd_vs_psfex: PSFEx v1.4.6.3 against MCCD v1.3.6.3). For the fiducial
 # version the paths are the ones the fiducial-only rules used to write.
+#
+# {nz_tag} is empty for a catalogue's own n(z), or "_nz_<version>" to borrow
+# another catalogue's n(z) (same blind letter) -- e.g. MCCD with the v1.4.6.3
+# n(z), so that the two chains share one blinding offset and one delta-z
+# calibration. The xi covariance stays the catalogue's own.
 NAUTILUS_SUFFIX = (
     f"_{FIDUCIAL['blind']}_minsep={FIDUCIAL['min_sep']}_maxsep={FIDUCIAL['max_sep']}"
     f"_nbins={FIDUCIAL['nbins']}_npatch={FIDUCIAL['npatch']}_nautilus"
 )
-NAUTILUS_COSMOSIS_ROOT = "{version}" + NAUTILUS_SUFFIX
+NAUTILUS_COSMOSIS_ROOT = "{version}{nz_tag}" + NAUTILUS_SUFFIX
 NAUTILUS_CHAINS_DIR = str(COSMO_INFERENCE / "chains")
 NAUTILUS_VERSIONS = INFERENCE.get("nautilus_versions", [FIDUCIAL["version"]])
+# Borrowed-n(z) variants: list of [version, n(z) version] pairs.
+NAUTILUS_NZ_VARIANTS = INFERENCE.get("nautilus_nz_variants", [])
+
+
+def nautilus_nz_file(w):
+    nz_version = w.nz_tag[len("_nz_"):] if w.nz_tag else w.version
+    return build_redshift_path(nz_version, FIDUCIAL["blind"])
 # Versions whose pseudo-C_ell data vector is packed into the FITS file. The
 # real-space likelihood (XI_PLUS XI_MINUS TAU_0_PLUS TAU_2_PLUS) never reads
 # CELL_EE, and the C_ell covariance is a separate diagonal block, so this is
@@ -211,7 +223,7 @@ rule inference_prep_nautilus:
         ),
         xi_plus=str(COSMO_VAL / f"xi_plus_{{version}}{fiducial_binning_suffix()}.fits"),
         xi_minus=str(COSMO_VAL / f"xi_minus_{{version}}{fiducial_binning_suffix()}.fits"),
-        nz_file=lambda w: build_redshift_path(w.version, FIDUCIAL["blind"]),
+        nz_file=nautilus_nz_file,
         rho_stats=str(COSMO_VAL / f"rho_tau_stats/rho_stats_{{version}}{fiducial_binning_suffix()}.fits"),
         tau_stats=str(COSMO_VAL / f"rho_tau_stats/tau_stats_{{version}}{fiducial_binning_suffix()}.fits"),
         tau_cov=str(COSMO_VAL / f"rho_tau_stats/cov_tau_{{version}}{fiducial_binning_suffix()}_th.npy"),
@@ -224,6 +236,8 @@ rule inference_prep_nautilus:
     output:
         fits_file=str(COSMO_INFERENCE_PROD / f"data/{NAUTILUS_COSMOSIS_ROOT}/cosmosis_{NAUTILUS_COSMOSIS_ROOT}.fits"),
         config_file=str(COSMO_INFERENCE_PROD / f"cosmosis_config/output/cosmosis_pipeline_{NAUTILUS_COSMOSIS_ROOT}.ini"),
+    wildcard_constraints:
+        nz_tag=r"(_nz_SP_v[\d.]+)?",
     params:
         cosmosis_root=NAUTILUS_COSMOSIS_ROOT,
         data_dir=f"{NAUTILUS_CHAINS_DIR}/{NAUTILUS_COSMOSIS_ROOT}",
@@ -264,6 +278,8 @@ rule inference_run_nautilus:
         # ini [output] filename = %(SCRATCH)s/{root}/samples_{root}.txt,
         # and SCRATCH is itself {data_dir} = {NAUTILUS_CHAINS_DIR}/{root}.
         samples=f"{NAUTILUS_CHAINS_DIR}/{NAUTILUS_COSMOSIS_ROOT}/{NAUTILUS_COSMOSIS_ROOT}/samples_{NAUTILUS_COSMOSIS_ROOT}.txt",
+    wildcard_constraints:
+        nz_tag=r"(_nz_SP_v[\d.]+)?",
     container: None
     threads: 1
     resources:
@@ -291,11 +307,12 @@ rule inference_run_nautilus:
         """
 
 
-def nautilus_targets(version):
+def nautilus_targets(version, nz_version=None):
+    nz_tag = f"_nz_{nz_version}" if nz_version else ""
     return [
-        rules.inference_prep_nautilus.output.fits_file.format(version=version),
-        rules.inference_prep_nautilus.output.config_file.format(version=version),
-        rules.inference_run_nautilus.output.samples.format(version=version),
+        rules.inference_prep_nautilus.output.fits_file.format(version=version, nz_tag=nz_tag),
+        rules.inference_prep_nautilus.output.config_file.format(version=version, nz_tag=nz_tag),
+        rules.inference_run_nautilus.output.samples.format(version=version, nz_tag=nz_tag),
     ]
 
 
@@ -305,9 +322,11 @@ rule inference_nautilus_fiducial:
 
 
 rule inference_nautilus:
-    """Nautilus chains for every catalogue in inference.nautilus_versions."""
+    """Nautilus chains for every catalogue in inference.nautilus_versions,
+    plus the borrowed-n(z) variants in inference.nautilus_nz_variants."""
     input:
         [t for v in NAUTILUS_VERSIONS for t in nautilus_targets(v)],
+        [t for v, nz in NAUTILUS_NZ_VARIANTS for t in nautilus_targets(v, nz)],
 
 
 rule inference_glass_mocks:
