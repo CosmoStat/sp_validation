@@ -171,14 +171,14 @@ These are the low-level primitives; the catalogue <em>construction pipeline</em>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>dd</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – galaxy catalog</p></li>
+<li><p><strong>dd</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – galaxy catalog</p></li>
 <li><p><strong>ell_col_name</strong> (<em>array</em><em> of </em><em>string</em>) – ellipticity column name(s)</p></li>
-<li><p><strong>ell_n_comp</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – dimension (= number of components) of ellipticity column.
+<li><p><strong>ell_n_comp</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – dimension (= number of components) of ellipticity column.
 Should be 1 or 2.</p></li>
-<li><p><strong>n_tot</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – number of total objects</p></li>
+<li><p><strong>n_tot</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – number of total objects</p></li>
 <li><p><strong>stats_file</strong> (<em>file handler</em>) – summary statistics output file handler</p></li>
-<li><p><strong>invalid</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em><em>, </em><em>default -10</em>) – flag objects with ellipticity value = invalid</p></li>
-<li><p><strong>verbose</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em><em>, </em><em>default=False</em>) – verbose output if True</p></li>
+<li><p><strong>invalid</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em><em>, </em><em>default -10</em>) – flag objects with ellipticity value = invalid</p></li>
+<li><p><strong>verbose</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em><em>, </em><em>default=False</em>) – verbose output if True</p></li>
 </ul>
 </dd>
 </dl>
@@ -191,16 +191,16 @@ Should be 1 or 2.</p></li>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>dd</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – galaxy catalog</p></li>
+<li><p><strong>dd</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – galaxy catalog</p></li>
 <li><p><strong>stats_file</strong> (<em>file handler</em>) – summary statistics output file handler</p></li>
-<li><p><strong>verbose</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em><em>, </em><em>default=False</em>) – verbose output if True</p></li>
+<li><p><strong>verbose</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em><em>, </em><em>default=False</em>) – verbose output if True</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><strong>n_tot</strong> – number of objects</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)">int</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -212,13 +212,13 @@ Should be 1 or 2.</p></li>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>d1</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – catalogs</p></li>
-<li><p><strong>d2</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – catalogs</p></li>
-<li><p><strong>keys_1</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a>) – column keys for d1, d2, corresponding to x, y</p></li>
-<li><p><strong>keys_2</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a>) – column keys for d1, d2, corresponding to x, y</p></li>
-<li><p><strong>thres</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – threshold for matching, in deg</p></li>
+<li><p><strong>d1</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – catalogs</p></li>
+<li><p><strong>d2</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – catalogs</p></li>
+<li><p><strong>keys_1</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a>) – column keys for d1, d2, corresponding to x, y</p></li>
+<li><p><strong>keys_2</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a>) – column keys for d1, d2, corresponding to x, y</p></li>
+<li><p><strong>thres</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – threshold for matching, in deg</p></li>
 <li><p><strong>stats_file</strong> (<em>file handler</em>) – summary statistics output file handler</p></li>
-<li><p><strong>verbose</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em><em>, </em><em>default=False</em>) – verbose output if True</p></li>
+<li><p><strong>verbose</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em><em>, </em><em>default=False</em>) – verbose output if True</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -238,12 +238,12 @@ Should be 1 or 2.</p></li>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>dd</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – catalog</p></li>
-<li><p><strong>key</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a>) – key names of (scalar) columns to check</p></li>
-<li><p><strong>val</strong> (<em>array</em><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – values for above columns indicating invalid entries</p></li>
+<li><p><strong>dd</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – catalog</p></li>
+<li><p><strong>key</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a>) – key names of (scalar) columns to check</p></li>
+<li><p><strong>val</strong> (<em>array</em><em> of </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – values for above columns indicating invalid entries</p></li>
 <li><p><strong>stats_file</strong> (<em>file handler</em>) – summary statistics output file handler</p></li>
-<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>, </em><em>optional</em><em>, </em><em>default=None</em>) – for output message. If None, key strings are used</p></li>
-<li><p><strong>verbose</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em><em>, </em><em>default=False</em>) – verbose output if True</p></li>
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>, </em><em>optional</em><em>, </em><em>default=None</em>) – for output message. If None, key strings are used</p></li>
+<li><p><strong>verbose</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em><em>, </em><em>default=False</em>) – verbose output if True</p></li>
 </ul>
 </dd>
 </dl>
@@ -256,15 +256,15 @@ Should be 1 or 2.</p></li>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>dd</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – catalog</p></li>
-<li><p><strong>ind</strong> (<em>array</em><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – index list of d2 of objects that were matched to d1</p></li>
-<li><p><strong>mask</strong> (<em>array</em><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – boolean mask</p></li>
-<li><p><strong>pos_key</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a>) – key names for position columns</p></li>
-<li><p><strong>g1_key</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – key names for the two scalar ellipticity components</p></li>
-<li><p><strong>g2_key</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – key names for the two scalar ellipticity components</p></li>
-<li><p><strong>n_ref</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – reference number of objects</p></li>
+<li><p><strong>dd</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – catalog</p></li>
+<li><p><strong>ind</strong> (<em>array</em><em> of </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – index list of d2 of objects that were matched to d1</p></li>
+<li><p><strong>mask</strong> (<em>array</em><em> of </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – boolean mask</p></li>
+<li><p><strong>pos_key</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a>) – key names for position columns</p></li>
+<li><p><strong>g1_key</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – key names for the two scalar ellipticity components</p></li>
+<li><p><strong>g2_key</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – key names for the two scalar ellipticity components</p></li>
+<li><p><strong>n_ref</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – reference number of objects</p></li>
 <li><p><strong>stats_file</strong> (<em>file handler</em>) – summary statistics output file handler</p></li>
-<li><p><strong>verbose</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em><em>, </em><em>default=False</em>) – verbose output if True</p></li>
+<li><p><strong>verbose</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em><em>, </em><em>default=False</em>) – verbose output if True</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -289,7 +289,7 @@ within a threshold.</p>
 <li><p><strong>dec1</strong> (<em>array_like</em>) – coordinates of reference catalogue [deg]</p></li>
 <li><p><strong>ra2</strong> (<em>array_like</em>) – coordinates of catalogue to match [deg]</p></li>
 <li><p><strong>dec2</strong> (<em>array_like</em>) – coordinates of catalogue to match [deg]</p></li>
-<li><p><strong>thresh_deg</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em>) – maximum separation [deg], default 0.0002</p></li>
+<li><p><strong>thresh_deg</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em>) – maximum separation [deg], default 0.0002</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -315,8 +315,8 @@ within a threshold.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>input_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – input file path</p></li>
-<li><p><strong>w_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – name of weight column, default is “w”</p></li>
+<li><p><strong>input_path</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – input file path</p></li>
+<li><p><strong>w_name</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – name of weight column, default is “w”</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -341,12 +341,12 @@ within a threshold.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>output_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – output file path</p></li>
-<li><p><strong>ra</strong> (<em>arrays</em><em>(</em><em>ngal</em><em>) of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – coordinates in deg</p></li>
-<li><p><strong>dec</strong> (<em>arrays</em><em>(</em><em>ngal</em><em>) of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – coordinates in deg</p></li>
+<li><p><strong>output_path</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – output file path</p></li>
+<li><p><strong>ra</strong> (<em>arrays</em><em>(</em><em>ngal</em><em>) of </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – coordinates in deg</p></li>
+<li><p><strong>dec</strong> (<em>arrays</em><em>(</em><em>ngal</em><em>) of </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – coordinates in deg</p></li>
 <li><p><strong>w</strong> (<em>np.ndarray</em>) – inverse-variance weights</p></li>
-<li><p><strong>mag</strong> (<em>array</em><em>(</em><em>ngal</em><em>) of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em>) – magnitude, signal-to-noise ratio</p></li>
-<li><p><strong>snr</strong> (<em>array</em><em>(</em><em>ngal</em><em>) of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em>) – signal-to-noise ratio, default is <cite>None</cite></p></li>
+<li><p><strong>mag</strong> (<em>array</em><em>(</em><em>ngal</em><em>) of </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em>) – magnitude, signal-to-noise ratio</p></li>
+<li><p><strong>snr</strong> (<em>array</em><em>(</em><em>ngal</em><em>) of </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em>) – signal-to-noise ratio, default is <cite>None</cite></p></li>
 <li><p><strong>g</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – calibrated reduced shear estimate components, corrected for
 multiplicative and additive bias, g = R^-1 g_uncal - c;
 expected type is arrays(2, ngal) of float;
@@ -381,16 +381,16 @@ expected format is arrays(ngal) of float;</p>
 <div><p>default is <code class="docutils literal notranslate"><span class="pre">None</span></code></p>
 </div></blockquote>
 </p></li>
-<li><p><strong>R</strong> (<em>2x2 matrix</em><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em>) – Mean full response matrix, default is <code class="docutils literal notranslate"><span class="pre">None</span></code></p></li>
-<li><p><strong>R_shear</strong> (<em>2x2 matrix</em><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em>) – Mean shear response matrix, default is <code class="docutils literal notranslate"><span class="pre">None</span></code></p></li>
-<li><p><strong>R_select</strong> (<em>2x2 matrix</em><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em>) – Global selection response matrix, default is <code class="docutils literal notranslate"><span class="pre">None</span></code></p></li>
+<li><p><strong>R</strong> (<em>2x2 matrix</em><em> of </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em>) – Mean full response matrix, default is <code class="docutils literal notranslate"><span class="pre">None</span></code></p></li>
+<li><p><strong>R_shear</strong> (<em>2x2 matrix</em><em> of </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em>) – Mean shear response matrix, default is <code class="docutils literal notranslate"><span class="pre">None</span></code></p></li>
+<li><p><strong>R_select</strong> (<em>2x2 matrix</em><em> of </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em>) – Global selection response matrix, default is <code class="docutils literal notranslate"><span class="pre">None</span></code></p></li>
 <li><p><strong>c</strong> (array(2) of float, optional, default is <code class="docutils literal notranslate"><span class="pre">None</span></code>) – additive shear bias</p></li>
 <li><p><strong>c_err</strong> (array(2) of float, optional, default is <code class="docutils literal notranslate"><span class="pre">None</span></code>) – error of c</p></li>
-<li><p><strong>alpha_leakage</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em>) – Mean scale-dependent PSF leakage, default is <code class="docutils literal notranslate"><span class="pre">None</span></code></p></li>
-<li><p><strong>sigma_epsilon</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em>) – shape noise, default is <code class="docutils literal notranslate"><span class="pre">None</span></code></p></li>
-<li><p><strong>w_type</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – weight type, allowed are “iv” (default), “des”</p></li>
+<li><p><strong>alpha_leakage</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em>) – Mean scale-dependent PSF leakage, default is <code class="docutils literal notranslate"><span class="pre">None</span></code></p></li>
+<li><p><strong>sigma_epsilon</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em>) – shape noise, default is <code class="docutils literal notranslate"><span class="pre">None</span></code></p></li>
+<li><p><strong>w_type</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – weight type, allowed are “iv” (default), “des”</p></li>
 <li><p><strong>add_cols</strong> (dict, optional, default is <code class="docutils literal notranslate"><span class="pre">None</span></code>) – data for n additional columns to add</p></li>
-<li><p><strong>add_cols_format</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>, </em><em>optional</em>) – format for n additional columns to add, default is <code class="docutils literal notranslate"><span class="pre">None</span></code>, for which
+<li><p><strong>add_cols_format</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>, </em><em>optional</em>) – format for n additional columns to add, default is <code class="docutils literal notranslate"><span class="pre">None</span></code>, for which
 <code class="docutils literal notranslate"><span class="pre">float</span></code> format is used</p></li>
 <li><p><strong>add_header</strong> (<em>fits.header.Header</em><em>, </em><em>optional</em>) – additional header information; default is <code class="docutils literal notranslate"><span class="pre">None</span></code></p></li>
 </ul>
@@ -407,9 +407,9 @@ random object catalogue.</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>output_path</strong> (<em>string</em>) – output file path</p></li>
-<li><p><strong>ra</strong> (<em>arrays</em><em>(</em><em>ngal</em><em>) of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – coordinates in deg</p></li>
-<li><p><strong>dec</strong> (<em>arrays</em><em>(</em><em>ngal</em><em>) of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – coordinates in deg</p></li>
-<li><p><strong>tile_id</strong> (<em>array</em><em>(</em><em>ngal</em><em>) of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – tile ID of objects</p></li>
+<li><p><strong>ra</strong> (<em>arrays</em><em>(</em><em>ngal</em><em>) of </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – coordinates in deg</p></li>
+<li><p><strong>dec</strong> (<em>arrays</em><em>(</em><em>ngal</em><em>) of </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – coordinates in deg</p></li>
+<li><p><strong>tile_id</strong> (<em>array</em><em>(</em><em>ngal</em><em>) of </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – tile ID of objects</p></li>
 </ul>
 </dd>
 </dl>
@@ -423,10 +423,10 @@ random object catalogue.</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>output_path</strong> (<em>string</em>) – output file path</p></li>
-<li><p><strong>ra</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – coordinates in deg</p></li>
-<li><p><strong>dec</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – coordinates in deg</p></li>
-<li><p><strong>e1</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – first ellipticity  component</p></li>
-<li><p><strong>e2</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – second ellipticity  component</p></li>
+<li><p><strong>ra</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – coordinates in deg</p></li>
+<li><p><strong>dec</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – coordinates in deg</p></li>
+<li><p><strong>e1</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – first ellipticity  component</p></li>
+<li><p><strong>e2</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – second ellipticity  component</p></li>
 </ul>
 </dd>
 </dl>
@@ -440,15 +440,15 @@ MKDEBUG TODO: Move to cs_util. Also used in sp/create_final_cat.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – input file name</p></li>
-<li><p><strong>verbose</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em><em>, </em><em>default=False</em>) – verbose output if True</p></li>
+<li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – input file name</p></li>
+<li><p><strong>verbose</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em><em>, </em><em>default=False</em>) – verbose output if True</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>parameter names</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a> of <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)">list</a> of <a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -460,17 +460,17 @@ MKDEBUG TODO: Move to cs_util. Also used in sp/create_final_cat.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>file_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – input file path</p></li>
-<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – patch name</p></li>
+<li><p><strong>file_path</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – input file path</p></li>
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – patch name</p></li>
 <li><p><strong>stats_file</strong> (<em>file handler</em>) – summary statistics output file handler</p></li>
-<li><p><strong>check_only</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – If True only check, not return data</p></li>
+<li><p><strong>check_only</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – If True only check, not return data</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>data</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -482,8 +482,8 @@ MKDEBUG TODO: Move to cs_util. Also used in sp/create_final_cat.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>dat</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – Input data</p></li>
-<li><p><strong>col</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Key of the column to be returned</p></li>
+<li><p><strong>dat</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – Input data</p></li>
+<li><p><strong>col</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Key of the column to be returned</p></li>
 <li><p><strong>mask</strong> (<em>array-like</em>) – Boolean mask used for selection</p></li>
 </ul>
 </dd>
@@ -503,8 +503,8 @@ MKDEBUG TODO: Move to cs_util. Also used in sp/create_final_cat.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>dat</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – Input data</p></li>
-<li><p><strong>col</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Key of the column to be returned</p></li>
+<li><p><strong>dat</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – Input data</p></li>
+<li><p><strong>col</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Key of the column to be returned</p></li>
 <li><p><strong>m_sel</strong> (<em>array-like</em><em>, </em><em>optional</em>) – Boolean mask used for selection. If specified, m_flg must also be specified;
 default is <code class="docutils literal notranslate"><span class="pre">None</span></code></p></li>
 <li><p><strong>m_flg</strong> (<em>array-like</em><em>, </em><em>optional</em>) – Boolean mask used as a flag. If specified, m_sel must also be specified.
@@ -527,7 +527,7 @@ default is <code class="docutils literal notranslate"><span class="pre">None</sp
 </div>
 <dl class="field-list simple">
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If only one of m_sel or m_flg is specified without the other.</p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If only one of m_sel or m_flg is specified without the other.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -539,8 +539,8 @@ default is <code class="docutils literal notranslate"><span class="pre">None</sp
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>sh</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – shape method identified, e.g. “ngmix”</p></li>
-<li><p><strong>dat</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – Input data</p></li>
+<li><p><strong>sh</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – shape method identified, e.g. “ngmix”</p></li>
+<li><p><strong>dat</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – Input data</p></li>
 <li><p><strong>m_sel</strong> (<em>array-like</em><em>, </em><em>optional</em>) – Boolean mask used for selection. If specified, m_flg must also be specified;
 default is <code class="docutils literal notranslate"><span class="pre">None</span></code></p></li>
 <li><p><strong>m_flg</strong> (<em>array-like</em><em>, </em><em>optional</em>) – Boolean mask used as a flag. If specified, m_sel must also be specified.
@@ -600,7 +600,7 @@ default is <code class="docutils literal notranslate"><span class="pre">None</sp
 </div><footer class="py-6 border-t border-border md:py-0">
 <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
 <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 09 Sep, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 16 Sep, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>
 </div>
 </footer>

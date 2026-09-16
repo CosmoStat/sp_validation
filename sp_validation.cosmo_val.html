@@ -164,37 +164,37 @@ Supports multiple catalog versions with automatic leakage-corrected variants.</p
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>versions</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Catalog version identifiers to analyze. Appending ‘_leak_corr’ to a base
+<li><p><strong>versions</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Catalog version identifiers to analyze. Appending ‘_leak_corr’ to a base
 version creates a virtual catalog using leakage-corrected ellipticity columns
 (e1_col_corrected/e2_col_corrected) from the base version configuration.</p></li>
-<li><p><strong>catalog_config</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>default './cat_config.yaml'</em>) – Path to catalog configuration YAML defining survey metadata, file paths,
+<li><p><strong>catalog_config</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>default './cat_config.yaml'</em>) – Path to catalog configuration YAML defining survey metadata, file paths,
 and analysis settings for each version.</p></li>
-<li><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Override for output directory. If None, falls back to the COSMO_VAL
+<li><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Override for output directory. If None, falls back to the COSMO_VAL
 environment variable, then to the catalog config’s paths.output.</p></li>
 <li><p><strong>rho_tau_method</strong> (<em>{'lsq'</em><em>, </em><em>'mcmc'}</em><em>, </em><em>default 'lsq'</em>) – Fitting method for PSF leakage systematics parameters.</p></li>
 <li><p><strong>cov_estimate_method</strong> (<em>{'th'</em><em>, </em><em>'jk'}</em><em>, </em><em>default 'th'</em>) – Covariance estimation: ‘th’ for semi-analytic theory, ‘jk’ for jackknife.</p></li>
-<li><p><strong>compute_cov_rho</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>default True</em>) – Whether to compute covariance for rho statistics during PSF analysis.</p></li>
-<li><p><strong>n_cov</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>default 100</em>) – Number of realizations for covariance estimation when using theory method.</p></li>
-<li><p><strong>theta_min</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 0.1</em>) – Minimum angular separation in arcminutes for correlation function binning.</p></li>
-<li><p><strong>theta_max</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 250</em>) – Maximum angular separation in arcminutes for correlation function binning.</p></li>
-<li><p><strong>nbins</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>default 20</em>) – Number of angular bins for TreeCorr real-space correlation functions.</p></li>
+<li><p><strong>compute_cov_rho</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>default True</em>) – Whether to compute covariance for rho statistics during PSF analysis.</p></li>
+<li><p><strong>n_cov</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>default 100</em>) – Number of realizations for covariance estimation when using theory method.</p></li>
+<li><p><strong>theta_min</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 0.1</em>) – Minimum angular separation in arcminutes for correlation function binning.</p></li>
+<li><p><strong>theta_max</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 250</em>) – Maximum angular separation in arcminutes for correlation function binning.</p></li>
+<li><p><strong>nbins</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>default 20</em>) – Number of angular bins for TreeCorr real-space correlation functions.</p></li>
 <li><p><strong>var_method</strong> (<em>{'jackknife'</em><em>, </em><em>'sample'</em><em>, </em><em>'bootstrap'</em><em>, </em><em>'marked_bootstrap'}</em><em>, </em><em>default 'jackknife'</em>) – TreeCorr variance estimation method.</p></li>
-<li><p><strong>npatch</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>default 20</em>) – Number of spatial patches for jackknife variance estimation.</p></li>
-<li><p><strong>quantile</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 0.1587</em>) – Quantile for uncertainty bands in plots (default: 1-sigma ≈ 0.159).</p></li>
-<li><p><strong>theta_min_plot</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 0.08</em>) – Minimum angular scale for plotting (may differ from analysis cut).</p></li>
-<li><p><strong>theta_max_plot</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 250</em>) – Maximum angular scale for plotting.</p></li>
-<li><p><strong>ylim_alpha</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default</em><em> [</em><em>-0.005</em><em>, </em><em>0.05</em><em>]</em>) – Y-axis limits for alpha systematic parameter plots.</p></li>
-<li><p><strong>ylim_xi_sys_ratio</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default</em><em> [</em><em>-0.02</em><em>, </em><em>0.5</em><em>]</em>) – Y-axis limits for xi systematics ratio plots.</p></li>
-<li><p><strong>nside</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>default 1024</em>) – HEALPix resolution for pseudo-C_ell analysis and area computation.</p></li>
+<li><p><strong>npatch</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>default 20</em>) – Number of spatial patches for jackknife variance estimation.</p></li>
+<li><p><strong>quantile</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 0.1587</em>) – Quantile for uncertainty bands in plots (default: 1-sigma ≈ 0.159).</p></li>
+<li><p><strong>theta_min_plot</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 0.08</em>) – Minimum angular scale for plotting (may differ from analysis cut).</p></li>
+<li><p><strong>theta_max_plot</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 250</em>) – Maximum angular scale for plotting.</p></li>
+<li><p><strong>ylim_alpha</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default</em><em> [</em><em>-0.005</em><em>, </em><em>0.05</em><em>]</em>) – Y-axis limits for alpha systematic parameter plots.</p></li>
+<li><p><strong>ylim_xi_sys_ratio</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default</em><em> [</em><em>-0.02</em><em>, </em><em>0.5</em><em>]</em>) – Y-axis limits for xi systematics ratio plots.</p></li>
+<li><p><strong>nside</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>default 1024</em>) – HEALPix resolution for pseudo-C_ell analysis and area computation.</p></li>
 <li><p><strong>binning</strong> (<em>{'powspace'</em><em>, </em><em>'linspace'</em><em>, </em><em>'logspace'}</em><em>, </em><em>default 'powspace'</em>) – Ell binning scheme for pseudo-C_ell (powspace = ell^power spacing).</p></li>
-<li><p><strong>power</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 0.5</em>) – Exponent for power-law binning when binning=’powspace’.</p></li>
-<li><p><strong>n_ell_bins</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>default 32</em>) – Number of ell bins for pseudo-C_ell analysis (used with binning=’powspace’).</p></li>
-<li><p><strong>ell_step</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>default 10</em>) – Bin width in ell for linear binning (used with binning=’linear’).</p></li>
-<li><p><strong>pol_factor</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>default True</em>) – Apply polarization correction factor in pseudo-C_ell calculations.</p></li>
-<li><p><strong>nrandom_cell</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>default 10</em>) – Number of random realizations for C_ell error estimation.</p></li>
-<li><p><strong>cell_seed</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>default 8192</em>) – Seed for the random-rotation noise realizations in the pseudo-C_ell
+<li><p><strong>power</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 0.5</em>) – Exponent for power-law binning when binning=’powspace’.</p></li>
+<li><p><strong>n_ell_bins</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>default 32</em>) – Number of ell bins for pseudo-C_ell analysis (used with binning=’powspace’).</p></li>
+<li><p><strong>ell_step</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>default 10</em>) – Bin width in ell for linear binning (used with binning=’linear’).</p></li>
+<li><p><strong>pol_factor</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>default True</em>) – Apply polarization correction factor in pseudo-C_ell calculations.</p></li>
+<li><p><strong>nrandom_cell</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>default 10</em>) – Number of random realizations for C_ell error estimation.</p></li>
+<li><p><strong>cell_seed</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>default 8192</em>) – Seed for the random-rotation noise realizations in the pseudo-C_ell
 noise debiasing, making those realizations reproducible run-to-run.</p></li>
-<li><p><strong>cosmo_params</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>, </em><em>optional</em>) – Cosmological parameters to pass to get_cosmo(). If None, uses Planck 2018.</p></li>
+<li><p><strong>cosmo_params</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>, </em><em>optional</em>) – Cosmological parameters to pass to get_cosmo(). If None, uses Planck 2018.</p></li>
 </ul>
 </dd>
 </dl>
@@ -204,7 +204,7 @@ noise debiasing, making those realizations reproducible run-to-run.</p></li>
 <dd><p>Validated catalog versions after processing _leak_corr variants.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a> of <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)">list</a> of <a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -214,7 +214,7 @@ noise debiasing, making those realizations reproducible run-to-run.</p></li>
 <dd><p>Loaded catalog configuration with resolved absolute paths.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -234,7 +234,7 @@ noise debiasing, making those realizations reproducible run-to-run.</p></li>
 <dd><p>Configuration dictionary passed to TreeCorr correlation objects.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -282,7 +282,7 @@ used throughout the mixins. A single <code class="docutils literal notranslate">
 <dd><p>Load redshift distribution for a catalog version.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>version</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Catalog version identifier</p>
+<dd class="field-odd"><p><strong>version</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Catalog version identifier</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><ul class="simple">
@@ -394,15 +394,15 @@ fiducial scale cut. Statistics that haven’t been computed show ‘–‘.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>fiducial_scale_cut</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>, </em><em>optional</em>) – (min_theta, max_theta) for extracting PTEs (default: (12, 83)).</p></li>
-<li><p><strong>versions</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>, </em><em>optional</em>) – Versions to summarize. Uses self.versions if None.</p></li>
+<li><p><strong>fiducial_scale_cut</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>, </em><em>optional</em>) – (min_theta, max_theta) for extracting PTEs (default: (12, 83)).</p></li>
+<li><p><strong>versions</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>, </em><em>optional</em>) – Versions to summarize. Uses self.versions if None.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">{version:</span> <span class="pre">{statistic:</span> <span class="pre">pte_value,</span> <span class="pre">...},</span> <span class="pre">...}</span></code></p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -609,7 +609,7 @@ fiducial scale cut. Statistics that haven’t been computed show ‘–‘.</p>
 </div><footer class="py-6 border-t border-border md:py-0">
 <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
 <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 09 Sep, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 16 Sep, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>
 </div>
 </footer>

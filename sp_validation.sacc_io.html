@@ -249,11 +249,11 @@ external consumers address tracers through it rather than the f-string.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>nz</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em> or </em><em>sequence</em>) – Redshift distributions, one per source bin. Either a mapping
+<li><p><strong>nz</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em> or </em><em>sequence</em>) – Redshift distributions, one per source bin. Either a mapping
 <code class="docutils literal notranslate"><span class="pre">{i:</span> <span class="pre">(z,</span> <span class="pre">nz)}</span></code> keyed by 0-based bin index, or a sequence of
 <code class="docutils literal notranslate"><span class="pre">(z,</span> <span class="pre">nz)</span></code> array pairs (bin index = position). Tracers are named
 <code class="docutils literal notranslate"><span class="pre">source_{i}</span></code>.</p></li>
-<li><p><strong>metadata</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>, </em><em>optional</em>) – Key/value pairs stored on <code class="docutils literal notranslate"><span class="pre">s.metadata</span></code>.</p></li>
+<li><p><strong>metadata</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>, </em><em>optional</em>) – Key/value pairs stored on <code class="docutils literal notranslate"><span class="pre">s.metadata</span></code>.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -296,7 +296,7 @@ write time instead.</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>s</strong> (<em>sacc.Sacc</em>) – Target, mutated in place.</p></li>
-<li><p><strong>bins</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Source bin pair <code class="docutils literal notranslate"><span class="pre">(i,</span> <span class="pre">j)</span></code>.</p></li>
+<li><p><strong>bins</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Source bin pair <code class="docutils literal notranslate"><span class="pre">(i,</span> <span class="pre">j)</span></code>.</p></li>
 <li><p><strong>theta</strong> (<em>array_like</em>) – Angular separations (arcmin) — TreeCorr <code class="docutils literal notranslate"><span class="pre">meanr</span></code>.</p></li>
 <li><p><strong>xip</strong> (<em>array_like</em>) – ξ+ and ξ− at <code class="docutils literal notranslate"><span class="pre">theta</span></code>.</p></li>
 <li><p><strong>xim</strong> (<em>array_like</em>) – ξ+ and ξ− at <code class="docutils literal notranslate"><span class="pre">theta</span></code>.</p></li>
@@ -319,7 +319,7 @@ disambiguates them in the file.</p></li>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>s</strong> (<em>sacc.Sacc</em>) – Target, mutated in place.</p></li>
-<li><p><strong>bins</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Source bin pair <code class="docutils literal notranslate"><span class="pre">(i,</span> <span class="pre">j)</span></code>.</p></li>
+<li><p><strong>bins</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Source bin pair <code class="docutils literal notranslate"><span class="pre">(i,</span> <span class="pre">j)</span></code>.</p></li>
 <li><p><strong>ell_eff</strong> (<em>array_like</em>) – Effective multipole of each bandpower.</p></li>
 <li><p><strong>cl_ee</strong> (<em>array_like</em>) – EE bandpowers at <code class="docutils literal notranslate"><span class="pre">ell_eff</span></code>.</p></li>
 <li><p><strong>cl_bb</strong> (<em>array_like</em><em>, </em><em>optional</em>) – BB and/or EB bandpowers at <code class="docutils literal notranslate"><span class="pre">ell_eff</span></code>. Each defaults to <code class="docutils literal notranslate"><span class="pre">None</span></code> and
@@ -333,7 +333,7 @@ at all.</p></li>
 bandpower — from NaMaster <code class="docutils literal notranslate"><span class="pre">get_bandpower_windows</span></code>. One
 <code class="docutils literal notranslate"><span class="pre">sacc.BandpowerWindow</span></code> is built and shared across every component
 written.</p></li>
-<li><p><strong>grid</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Stored as the <code class="docutils literal notranslate"><span class="pre">grid</span></code> tag on every point (default <code class="docutils literal notranslate"><span class="pre">'reporting'</span></code>),
+<li><p><strong>grid</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Stored as the <code class="docutils literal notranslate"><span class="pre">grid</span></code> tag on every point (default <code class="docutils literal notranslate"><span class="pre">'reporting'</span></code>),
 joining <code class="docutils literal notranslate"><span class="pre">merge</span></code>’s ℓ-consistency group; variant ℓ binnings belong
 under different tag values.</p></li>
 </ul>
@@ -348,9 +348,9 @@ under different tag values.</p></li>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>s</strong> (<em>sacc.Sacc</em>) – Target, mutated in place.</p></li>
-<li><p><strong>bins</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Source bin pair <code class="docutils literal notranslate"><span class="pre">(i,</span> <span class="pre">j)</span></code>.</p></li>
+<li><p><strong>bins</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Source bin pair <code class="docutils literal notranslate"><span class="pre">(i,</span> <span class="pre">j)</span></code>.</p></li>
 <li><p><strong>En</strong> (<em>array_like</em>) – E-mode COSEBI amplitudes, one per logarithmic mode <code class="docutils literal notranslate"><span class="pre">n</span></code> (1-based).</p></li>
-<li><p><strong>scale_cut</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – <code class="docutils literal notranslate"><span class="pre">(theta_min,</span> <span class="pre">theta_max)</span></code> in arcmin, stored on every point as the
+<li><p><strong>scale_cut</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – <code class="docutils literal notranslate"><span class="pre">(theta_min,</span> <span class="pre">theta_max)</span></code> in arcmin, stored on every point as the
 <code class="docutils literal notranslate"><span class="pre">theta_min</span></code>/<code class="docutils literal notranslate"><span class="pre">theta_max</span></code> tags; multiple cuts coexist in one file,
 told apart by these tags.</p></li>
 <li><p><strong>Bn</strong> (<em>array_like</em><em>, </em><em>optional</em>) – B-mode COSEBI amplitudes at the same <code class="docutils literal notranslate"><span class="pre">n</span></code>. Defaults to <code class="docutils literal notranslate"><span class="pre">None</span></code> and
@@ -371,7 +371,7 @@ covariance layout — whichever subset is present.</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>s</strong> (<em>sacc.Sacc</em>) – Target, mutated in place.</p></li>
-<li><p><strong>bins</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Source bin pair <code class="docutils literal notranslate"><span class="pre">(i,</span> <span class="pre">j)</span></code>.</p></li>
+<li><p><strong>bins</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Source bin pair <code class="docutils literal notranslate"><span class="pre">(i,</span> <span class="pre">j)</span></code>.</p></li>
 <li><p><strong>theta</strong> (<em>array_like</em>) – Angular separations (arcmin), shared by every block written.</p></li>
 <li><p><strong>xip_E</strong> (<em>array_like</em>) – The pure E-mode correlation functions at <code class="docutils literal notranslate"><span class="pre">theta</span></code>.</p></li>
 <li><p><strong>xim_E</strong> (<em>array_like</em>) – The pure E-mode correlation functions at <code class="docutils literal notranslate"><span class="pre">theta</span></code>.</p></li>
@@ -383,7 +383,7 @@ pair is written together or not at all — supply both or neither.</p></li>
 same both-or-neither rule as B.</p></li>
 <li><p><strong>xim_amb</strong> (<em>array_like</em><em>, </em><em>optional</em>) – The ambiguous-mode correlation functions. Both default to <code class="docutils literal notranslate"><span class="pre">None</span></code>;
 same both-or-neither rule as B.</p></li>
-<li><p><strong>grid</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Stored as the <code class="docutils literal notranslate"><span class="pre">grid</span></code> tag on every point (default <code class="docutils literal notranslate"><span class="pre">'reporting'</span></code>),
+<li><p><strong>grid</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Stored as the <code class="docutils literal notranslate"><span class="pre">grid</span></code> tag on every point (default <code class="docutils literal notranslate"><span class="pre">'reporting'</span></code>),
 joining ξ’s theta-consistency group in <code class="docutils literal notranslate"><span class="pre">merge</span></code>’s guard.</p></li>
 </ul>
 </dd>
@@ -397,11 +397,11 @@ joining ξ’s theta-consistency group in <code class="docutils literal notransl
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>s</strong> (<em>sacc.Sacc</em>) – Target, mutated in place.</p></li>
-<li><p><strong>k</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – ρ index (0…5).</p></li>
+<li><p><strong>k</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – ρ index (0…5).</p></li>
 <li><p><strong>theta</strong> (<em>array_like</em>) – Angular separations (arcmin).</p></li>
 <li><p><strong>rho_p</strong> (<em>array_like</em>) – ρ_k+ and ρ_k− at <code class="docutils literal notranslate"><span class="pre">theta</span></code>.</p></li>
 <li><p><strong>rho_m</strong> (<em>array_like</em>) – ρ_k+ and ρ_k− at <code class="docutils literal notranslate"><span class="pre">theta</span></code>.</p></li>
-<li><p><strong>grid</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Stored as the <code class="docutils literal notranslate"><span class="pre">grid</span></code> tag on every point (default <code class="docutils literal notranslate"><span class="pre">'reporting'</span></code>),
+<li><p><strong>grid</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Stored as the <code class="docutils literal notranslate"><span class="pre">grid</span></code> tag on every point (default <code class="docutils literal notranslate"><span class="pre">'reporting'</span></code>),
 joining ξ’s theta-consistency group in <code class="docutils literal notranslate"><span class="pre">merge</span></code>’s guard.</p></li>
 </ul>
 </dd>
@@ -415,13 +415,13 @@ joining ξ’s theta-consistency group in <code class="docutils literal notransl
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>s</strong> (<em>sacc.Sacc</em>) – Target, mutated in place.</p></li>
-<li><p><strong>bins</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Source bin <code class="docutils literal notranslate"><span class="pre">i</span></code> and PSF; the τ tracers are <code class="docutils literal notranslate"><span class="pre">(source_i,</span> <span class="pre">psf_stars)</span></code>.
+<li><p><strong>bins</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Source bin <code class="docutils literal notranslate"><span class="pre">i</span></code> and PSF; the τ tracers are <code class="docutils literal notranslate"><span class="pre">(source_i,</span> <span class="pre">psf_stars)</span></code>.
 Only <code class="docutils literal notranslate"><span class="pre">bins[0]</span></code> is used.</p></li>
-<li><p><strong>k</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – τ index (0, 2 or 5).</p></li>
+<li><p><strong>k</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – τ index (0, 2 or 5).</p></li>
 <li><p><strong>theta</strong> (<em>array_like</em>) – Angular separations (arcmin).</p></li>
 <li><p><strong>tau_p</strong> (<em>array_like</em>) – τ_k+ and τ_k− at <code class="docutils literal notranslate"><span class="pre">theta</span></code>.</p></li>
 <li><p><strong>tau_m</strong> (<em>array_like</em>) – τ_k+ and τ_k− at <code class="docutils literal notranslate"><span class="pre">theta</span></code>.</p></li>
-<li><p><strong>grid</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Stored as the <code class="docutils literal notranslate"><span class="pre">grid</span></code> tag on every point (default <code class="docutils literal notranslate"><span class="pre">'reporting'</span></code>),
+<li><p><strong>grid</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Stored as the <code class="docutils literal notranslate"><span class="pre">grid</span></code> tag on every point (default <code class="docutils literal notranslate"><span class="pre">'reporting'</span></code>),
 joining ξ’s theta-consistency group in <code class="docutils literal notranslate"><span class="pre">merge</span></code>’s guard.</p></li>
 </ul>
 </dd>
@@ -517,7 +517,7 @@ its columns are in the same insertion order as the returned
 makes it optional).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>scale_cut</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em>) – <code class="docutils literal notranslate"><span class="pre">(theta_min,</span> <span class="pre">theta_max)</span></code> to select when several cuts share the file.</p>
+<dd class="field-odd"><p><strong>scale_cut</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em>) – <code class="docutils literal notranslate"><span class="pre">(theta_min,</span> <span class="pre">theta_max)</span></code> to select when several cuts share the file.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -586,8 +586,8 @@ untouched.</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>s</strong> (<em>sacc.Sacc</em>) – Source, left unmodified.</p></li>
-<li><p><strong>data_type</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Data type to keep.</p></li>
-<li><p><strong>tracers</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>, </em><em>optional</em>) – Tracer pair to keep, as SACC tracer <strong>names</strong> (e.g.
+<li><p><strong>data_type</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Data type to keep.</p></li>
+<li><p><strong>tracers</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>, </em><em>optional</em>) – Tracer pair to keep, as SACC tracer <strong>names</strong> (e.g.
 <code class="docutils literal notranslate"><span class="pre">("source_0",</span> <span class="pre">"source_0")</span></code> or <code class="docutils literal notranslate"><span class="pre">("source_0",</span> <span class="pre">"psf_stars")</span></code>) — <em>not</em>
 integer bin indices. This differs deliberately from the <code class="docutils literal notranslate"><span class="pre">add_*</span></code> /
 <code class="docutils literal notranslate"><span class="pre">get_*</span></code> interface, whose <code class="docutils literal notranslate"><span class="pre">bins</span></code> argument takes integer pairs:
@@ -643,7 +643,7 @@ should have. Inputs are left unmodified.</p>
 <dd class="field-odd"><p>sacc.Sacc</p>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If metadata conflicts, a shared tracer differs across inputs, two
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If metadata conflicts, a shared tracer differs across inputs, two
 same-length theta or ell arrays under the same <code class="docutils literal notranslate"><span class="pre">grid</span></code> tag value
 are not bitwise identical, or two ℓ series sharing a grid carry
 different bandpower windows.</p>
@@ -729,8 +729,8 @@ not.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – File to load.</p></li>
-<li><p><strong>allow_unblinded</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – Escape hatch for the two legitimate consumers of unblinded data:
+<li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – File to load.</p></li>
+<li><p><strong>allow_unblinded</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – Escape hatch for the two legitimate consumers of unblinded data:
 the blinding step itself (which must read the true vector to conceal
 it) and the unblinding/verification tooling. Nothing else — no
 analysis, plotting or inference code — may pass <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
@@ -810,7 +810,7 @@ convention CosmoSIS reads.</p>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>s</strong> (<em>sacc.Sacc</em>) – Analysis SACC (reporting ξ±, optional pseudo-Cℓ, covariance, and — for the
 ρ/τ product — the τ data points; see <code class="docutils literal notranslate"><span class="pre">rho_stats_hdu</span></code>).</p></li>
-<li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Output FITS path (overwritten).</p></li>
+<li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Output FITS path (overwritten).</p></li>
 <li><p><strong>rho_stats_hdu</strong> (<em>astropy.io.fits.BinTableHDU</em><em>, </em><em>optional</em>) – The rho-stats / tau-stats sidecar HDUs, copied verbatim as today’s
 assembly does. Required together to write the ρ/τ product; the SACC
 alone cannot rebuild the <code class="docutils literal notranslate"><span class="pre">varrho_*</span></code> columns Sacha’s fork reads. When
@@ -819,7 +819,7 @@ omitted, a pure ξ (± Cℓ) product is written.</p></li>
 assembly does. Required together to write the ρ/τ product; the SACC
 alone cannot rebuild the <code class="docutils literal notranslate"><span class="pre">varrho_*</span></code> columns Sacha’s fork reads. When
 omitted, a pure ξ (± Cℓ) product is written.</p></li>
-<li><p><strong>n_bins</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>optional</em>) – Number of source tomographic bins. Must be <code class="docutils literal notranslate"><span class="pre">1</span></code>: this converter emits
+<li><p><strong>n_bins</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>optional</em>) – Number of source tomographic bins. Must be <code class="docutils literal notranslate"><span class="pre">1</span></code>: this converter emits
 the single-bin 2pt-FITS today’s CosmoSIS pipeline consumes. Tomographic
 emission (multiple bin pairs, per-pair BIN1/BIN2, one NZ column per bin)
 lands with the tomographic round; the converter fails fast on anything
@@ -833,7 +833,7 @@ else rather than silently truncating to bin <code class="docutils literal notran
 <dd class="field-odd"><p>astropy.io.fits.HDUList</p>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If the SACC has no ξ points; if <code class="docutils literal notranslate"><span class="pre">n_bins</span> <span class="pre">!=</span> <span class="pre">1</span></code> or the SACC’s ξ tracer
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If the SACC has no ξ points; if <code class="docutils literal notranslate"><span class="pre">n_bins</span> <span class="pre">!=</span> <span class="pre">1</span></code> or the SACC’s ξ tracer
 pairs are anything other than exactly <code class="docutils literal notranslate"><span class="pre">{(source_0,</span> <span class="pre">source_0)}</span></code> (the
 single-bin contract); or if exactly one of the ρ/τ sidecars is supplied.</p>
 </dd>
@@ -883,7 +883,7 @@ required (the SACC cannot supply them).</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>s</strong> (<em>sacc.Sacc</em>) – SACC holding <code class="docutils literal notranslate"><span class="pre">source_0</span> <span class="pre">…</span> <span class="pre">source_{n_bins-1}</span></code> NZ tracers.</p></li>
-<li><p><strong>n_bins</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of tomographic source bins to write.</p></li>
+<li><p><strong>n_bins</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of tomographic source bins to write.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -895,7 +895,7 @@ OneCovariance combined-file layout (<code class="docutils literal notranslate"><
 <dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)">numpy.ndarray</a></p>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If any source bin is missing, or if the bins do not share one z grid
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If any source bin is missing, or if the bins do not share one z grid
 (OneCovariance’s combined file has a single redshift column, so the
 grids must agree bin-for-bin).</p>
 </dd>
@@ -915,13 +915,13 @@ that points OneCovariance at it.</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>s</strong> (<em>sacc.Sacc</em>) – Analysis SACC with the <code class="docutils literal notranslate"><span class="pre">source_i</span></code> NZ tracers.</p></li>
-<li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>pathlib.Path</em></a>) – Output text-file path (overwritten). Its directory + basename become
+<li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>pathlib.Path</em></a>) – Output text-file path (overwritten). Its directory + basename become
 the <code class="docutils literal notranslate"><span class="pre">[redshift]</span></code> directory/file config values.</p></li>
-<li><p><strong>n_bins</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of tomographic source bins to write.</p></li>
-<li><p><strong>dir_key</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Config key for the redshift directory. Default <code class="docutils literal notranslate"><span class="pre">"zlens_directory"</span></code>
+<li><p><strong>n_bins</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of tomographic source bins to write.</p></li>
+<li><p><strong>dir_key</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Config key for the redshift directory. Default <code class="docutils literal notranslate"><span class="pre">"zlens_directory"</span></code>
 (upstream canonical). Pass <code class="docutils literal notranslate"><span class="pre">"z_directory"</span></code> for the UNIONS template
 driven by <code class="docutils literal notranslate"><span class="pre">pseudo_cl.py._modify_onecov_config</span></code>.</p></li>
-<li><p><strong>header</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code> (default) prepend a <code class="docutils literal notranslate"><span class="pre">#</span> <span class="pre">redshift</span>  <span class="pre">n_1(z)</span> <span class="pre">…</span></code> comment header
+<li><p><strong>header</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code> (default) prepend a <code class="docutils literal notranslate"><span class="pre">#</span> <span class="pre">redshift</span>  <span class="pre">n_1(z)</span> <span class="pre">…</span></code> comment header
 naming the columns; OneCovariance’s <code class="docutils literal notranslate"><span class="pre">genfromtxt</span></code>-style reader ignores
 it. Set <code class="docutils literal notranslate"><span class="pre">False</span></code> for a bare numeric file.</p></li>
 </ul>
@@ -931,7 +931,7 @@ it. Set <code class="docutils literal notranslate"><span class="pre">False</span
 the file just written.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -942,11 +942,11 @@ the file just written.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>directory</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Directory holding the n(z) file (OneCovariance <code class="docutils literal notranslate"><span class="pre">*_directory</span></code> value).</p></li>
-<li><p><strong>filename</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – n(z) file basename (OneCovariance <code class="docutils literal notranslate"><span class="pre">zlens_file</span></code> value).</p></li>
-<li><p><strong>dir_key</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Directory config key — <code class="docutils literal notranslate"><span class="pre">"zlens_directory"</span></code> (upstream) or
+<li><p><strong>directory</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Directory holding the n(z) file (OneCovariance <code class="docutils literal notranslate"><span class="pre">*_directory</span></code> value).</p></li>
+<li><p><strong>filename</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – n(z) file basename (OneCovariance <code class="docutils literal notranslate"><span class="pre">zlens_file</span></code> value).</p></li>
+<li><p><strong>dir_key</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Directory config key — <code class="docutils literal notranslate"><span class="pre">"zlens_directory"</span></code> (upstream) or
 <code class="docutils literal notranslate"><span class="pre">"z_directory"</span></code> (UNIONS template). Default <code class="docutils literal notranslate"><span class="pre">"zlens_directory"</span></code>.</p></li>
-<li><p><strong>value_loc</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – <code class="docutils literal notranslate"><span class="pre">value_loc_in_lensbin</span></code> — where in each histogram bin the tabulated
+<li><p><strong>value_loc</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – <code class="docutils literal notranslate"><span class="pre">value_loc_in_lensbin</span></code> — where in each histogram bin the tabulated
 <code class="docutils literal notranslate"><span class="pre">n(z)</span></code> value sits (<code class="docutils literal notranslate"><span class="pre">mid</span></code>/<code class="docutils literal notranslate"><span class="pre">left</span></code>/<code class="docutils literal notranslate"><span class="pre">right</span></code>). Default <code class="docutils literal notranslate"><span class="pre">"mid"</span></code>,
 matching the bin-centred grids the SACC stores.</p></li>
 </ul>
@@ -957,7 +957,7 @@ matching the bin-centred grids the SACC stores.</p></li>
 <code class="docutils literal notranslate"><span class="pre">config["redshift"]</span></code> of a OneCovariance <code class="docutils literal notranslate"><span class="pre">configparser</span></code> config.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -969,14 +969,14 @@ matching the bin-centred grids the SACC stores.</p></li>
 not stored in the file). Comment/header lines are skipped.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>pathlib.Path</em></a>) – n(z) text file (column 0 = z, columns 1… = per-bin n(z)).</p>
+<dd class="field-odd"><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>pathlib.Path</em></a>) – n(z) text file (column 0 = z, columns 1… = per-bin n(z)).</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">(z,</span> <span class="pre">nz)</span></code> where <code class="docutils literal notranslate"><span class="pre">z</span></code> is the shared redshift grid (shape <code class="docutils literal notranslate"><span class="pre">(n_z,)</span></code>)
 and <code class="docutils literal notranslate"><span class="pre">nz</span></code> is the per-bin distributions (shape <code class="docutils literal notranslate"><span class="pre">(n_z,</span> <span class="pre">n_bins)</span></code>).</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -1008,7 +1008,7 @@ must be <code class="docutils literal notranslate"><span class="pre">None</span>
 <code class="docutils literal notranslate"><span class="pre">(data_type,</span> <span class="pre">tracers[,</span> <span class="pre">tags])</span></code> tuple or an index array, as
 <a class="reference internal" href="#sp_validation.sacc_io.assemble_covariance" title="sp_validation.sacc_io.assemble_covariance"><code class="xref py py-func docutils literal notranslate"><span class="pre">assemble_covariance()</span></code></a> accepts). Must be <code class="docutils literal notranslate"><span class="pre">None</span></code> for the
 multi-block form.</p></li>
-<li><p><strong>gaussian</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – Select the Gaussian-only column (<code class="docutils literal notranslate"><span class="pre">True</span></code>, default) or the
+<li><p><strong>gaussian</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – Select the Gaussian-only column (<code class="docutils literal notranslate"><span class="pre">True</span></code>, default) or the
 Gaussian+non-Gaussian column (<code class="docutils literal notranslate"><span class="pre">False</span></code>); passed straight through to
 <code class="docutils literal notranslate"><span class="pre">cov_from_one_covariance</span></code>.</p></li>
 </ul>
@@ -1018,7 +1018,7 @@ Gaussian+non-Gaussian column (<code class="docutils literal notranslate"><span c
 <code class="docutils literal notranslate"><span class="pre">assemble_covariance(s,</span> <span class="pre">blocks)</span></code>.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)">list</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -1099,7 +1099,7 @@ Gaussian+non-Gaussian column (<code class="docutils literal notranslate"><span c
 </div><footer class="py-6 border-t border-border md:py-0">
 <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
 <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 09 Sep, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 16 Sep, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>
 </div>
 </footer>
