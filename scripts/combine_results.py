@@ -10,11 +10,11 @@ import uncertainties as unc
 from astropy.io import ascii
 
 
-def get_match(stats_files, patch, pattern, previous=None, n_previous=[1], typ=str):
+def get_match(stats_files, campaign, pattern, previous=None, n_previous=[1], typ=str):
 
     prev_ok = False
 
-    for idx, line in enumerate(stats_files[patch]):
+    for idx, line in enumerate(stats_files[campaign]):
         m = re.search(pattern, line)
         if m:
             if (previous and prev_ok) or not previous:
@@ -29,19 +29,19 @@ def get_match(stats_files, patch, pattern, previous=None, n_previous=[1], typ=st
             for prev, n_prev in zip(previous, n_previous):
                 # Line index n_previous earlier, +1 since next line will be read in
                 # next loop; look for pattern in previous line
-                m_prev = re.search(prev, stats_files[patch][idx - n_prev + 1])
+                m_prev = re.search(prev, stats_files[campaign][idx - n_prev + 1])
                 if m_prev:
                     prev_ok = True
 
     raise ValueError(
-        f"No match of '{pattern}' in patch {patch} (prev='{previous}'), n_prev={n_previous}"
+        f"No match of '{pattern}' in campaign {campaign} (prev='{previous}'), n_prev={n_previous}"
     )
 
 
-def read_stats_files(patches, path, verbose=False):
+def read_stats_files(campaigns, path, verbose=False):
 
     stats_files = {}
-    for p in patches:
+    for p in campaigns:
         fname = f"{p}/{path}"
         if os.path.exists(fname):
             if verbose:
@@ -115,7 +115,7 @@ def combine(results):
             # Weight values
             w = np.array(list(results["value"][key_w].values()))
 
-            # Patch mean values
+            # Campaign mean values
             m = np.array(list(results["value"][key_m].values()))
 
             # Overall mean
@@ -142,7 +142,7 @@ def combine(results):
             # Weight values
             w = np.array(list(results["value"][key_w].values()))
 
-            # Patch mean values
+            # Campaign mean values
             m = np.array(list(results["value"][key_m].values()))
 
             # Overall mean
@@ -177,18 +177,18 @@ def print_all(
 
     # Header
     if header:
-        print("# patch", " " * 3, end=" ", file=fout)
+        print("# campaign", " " * 3, end=" ", file=fout)
         for key in keys:
             print(f"{key:>11s}", end=" ", file=fout)
         print(file=fout)
 
-    # Loop over patches
-    for patch in stats_files:
-        print(f"{patch:11s}", end=" ", file=fout)
+    # Loop over campaigns
+    for campaign in stats_files:
+        print(f"{campaign:11s}", end=" ", file=fout)
 
         # Write value for each key
         for key in keys:
-            val = results["value"][key][patch]
+            val = results["value"][key][campaign]
             if key == "N_gal":
                 print(f"{val:>11.0f}", end=" ", file=fout)
             elif key in ("w_tot", "n_gal_am2"):
@@ -217,47 +217,55 @@ def print_all(
 
 
 def get_area(fname):
+    """Return the unmasked area in deg^2 read from an area.txt file.
 
-    if os.path.exists(fname):
-        with open(fname) as f:
-            lines = f.readlines()
-        for line in lines:
-            m = re.search("nmasked patch area without overlap = (.*) deg", line)
-            if m:
-                return float(m[1])
+    Accepts both the v2 wording ("campaign") and the legacy one ("patch"),
+    so results computed before the campaign rename can still be combined.
+    Raises rather than returning a placeholder: a wrong area silently
+    rescales every density.
+    """
+    if not os.path.exists(fname):
+        raise FileNotFoundError(f"No file {fname} found to obtain area")
 
-    else:
-        print(f"Warning: No file {fname} found to obtain area")
-        return 1
+    with open(fname) as f:
+        lines = f.readlines()
+    for line in lines:
+        m = re.search(
+            r"nmasked (?:campaign|patch) area without overlap = (.*) deg", line
+        )
+        if m:
+            return float(m[1])
+
+    raise ValueError(f"No unmasked area found in file {fname}")
 
 
 def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
     """Get Values
 
-    Get values from stats files for all patches.
+    Get values from stats files for all campaigns.
 
     Parameters
     ----------
     results : dict
         results dictionary
     stats_files : dict of array of str
-        stats files content for each patch
+        stats files content for each campaign
     shape : str
         shape measurement method
     use_keys : dict
         keys to include
     area_deg2 : float, optional
         area in square degree, optional is -1 (to be retrieved
-        for each patch)
+        for each campaign)
     """
     # Number of galaxies
     key = "N_gal"
     if use_keys[key]:
         init_key(results, key, "sum")
-        for patch in stats_files:
-            results["value"][key][patch] = get_match(
+        for campaign in stats_files:
+            results["value"][key][campaign] = get_match(
                 stats_files,
-                patch,
+                campaign,
                 r"Number of galaxies after metacal = (\d+)/",
                 previous=[f"^{shape}$"],
                 typ=int,
@@ -266,16 +274,16 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
         area_deg2_tot = 0
         key_der = "n_gal_am2"
         init_key(results, key_der, "w_avg", extra="N_gal")
-        for patch in stats_files:
+        for campaign in stats_files:
             if area_deg2 < 0:
-                area_deg2_patch = get_area(f"{patch}/area.txt")
-                area_deg2_tot += area_deg2_patch
-                print(f"area({patch}) = {area_deg2_patch} deg^2")
+                area_deg2_campaign = get_area(f"{campaign}/area.txt")
+                area_deg2_tot += area_deg2_campaign
+                print(f"area({campaign}) = {area_deg2_campaign} deg^2")
             else:
-                area_deg2_patch = area_deg2
-            results["value"][key_der][patch] = results["value"]["N_gal"][patch] / (
-                area_deg2_patch * 3600
-            )
+                area_deg2_campaign = area_deg2
+            results["value"][key_der][campaign] = results["value"]["N_gal"][
+                campaign
+            ] / (area_deg2_campaign * 3600)
 
     if area_deg2 < 0:
         with open("area_deg2_tot.txt", "w") as f:
@@ -285,10 +293,10 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
     key = "w_tot"
     if use_keys[key]:
         init_key(results, key, "sum")
-        for patch in stats_files:
-            results["value"][key][patch] = get_match(
+        for campaign in stats_files:
+            results["value"][key][campaign] = get_match(
                 stats_files,
-                patch,
+                campaign,
                 r"Sum of weights = (\S+)",
                 typ=float,
                 previous=[f"^{shape}$"],
@@ -300,16 +308,16 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
         for comp in (1, 2):
             key = f"{key_base}{comp}"
             init_key(results, key, "w_avg", extra="N_gal")
-            for patch in stats_files:
+            for campaign in stats_files:
                 c = get_match(
                     stats_files,
-                    patch,
+                    campaign,
                     rf"{key_base}{comp} = (\S+)",
                     previous=[f"^{shape}:$"],
                     n_previous=[2 * comp - 1],
                     typ=float,
                 )
-                results["value"][key][patch] = c
+                results["value"][key][campaign] = c
 
     # Additive bias (unweighted error)
     key_base = "dc_"
@@ -317,16 +325,16 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
         for comp in (1, 2):
             key = f"{key_base}{comp}"
             init_key(results, key, "var", extra=["N_gal", f"c_{comp}"])
-            for patch in stats_files:
+            for campaign in stats_files:
                 dc = get_match(
                     stats_files,
-                    patch,
+                    campaign,
                     rf"{key_base}{comp} = (\S+)",
                     typ=float,
                     previous=[f"^{shape}:$"],
                     n_previous=[2 * comp + 7],
                 )
-                results["value"][key][patch] = dc
+                results["value"][key][campaign] = dc
 
     # Additive bias (unweighted error of mean)
     key_base = "dmc_"
@@ -334,16 +342,16 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
         for comp in (1, 2):
             key = f"{key_base}{comp}"
             init_key(results, key, "var_m", extra=["N_gal", f"c_{comp}"])
-            for patch in stats_files:
+            for campaign in stats_files:
                 dmc = get_match(
                     stats_files,
-                    patch,
+                    campaign,
                     rf"{key_base}{comp} = (\S+)",
                     typ=float,
                     previous=[f"^{shape}:$"],
                     n_previous=[2 * comp + 7],
                 )
-                results["value"][key][patch] = dmc
+                results["value"][key][campaign] = dmc
 
     # Additive bias (weighted mean)
     key_base = "cw_"
@@ -351,16 +359,16 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
         for comp in (1, 2):
             key = f"{key_base}{comp}"
             init_key(results, key, "w_avg", extra="w_tot")
-            for patch in stats_files:
+            for campaign in stats_files:
                 c = get_match(
                     stats_files,
-                    patch,
+                    campaign,
                     rf"{key_base}{comp} = (\S+)",
                     previous=[f"^{shape}:$"],
                     n_previous=[comp * 2],
                     typ=float,
                 )
-                results["value"][key][patch] = c
+                results["value"][key][campaign] = c
 
     # Additive bias (weighted error of mean)
     key_base = "dmcw_"
@@ -368,16 +376,16 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
         for comp in (1, 2):
             key = f"{key_base}{comp}"
             init_key(results, key, "var_m", extra=["N_gal", f"cw_{comp}"])
-            for patch in stats_files:
+            for campaign in stats_files:
                 dmc = get_match(
                     stats_files,
-                    patch,
+                    campaign,
                     rf"{key_base}{comp} = (\S+)",
                     typ=float,
                     previous=[f"^{shape}:$"],
                     n_previous=[2 * comp + 8],
                 )
-                results["value"][key][patch] = dmc
+                results["value"][key][campaign] = dmc
 
     # Additive bias (jackknife)
     key_base = "cjk_"
@@ -393,26 +401,26 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
             key_s = key
             init_key(results, key, "var_m", extra=["w_tot", f"cjk_{comp}"])
 
-            for patch in stats_files:
+            for campaign in stats_files:
                 c, dc = get_match(
                     stats_files,
-                    patch,
+                    campaign,
                     rf"{key_base}{comp} = (\S+)",
                     previous=[f"^{shape}:$"],
                     n_previous=[comp],
                     typ="ufloat",
                 )
-                results["value"][key_m][patch] = c
-                results["value"][key_s][patch] = dc
+                results["value"][key_m][campaign] = c
+                results["value"][key_s][campaign] = dc
 
     # Ellipticity dispersion
     key = "sigma2_epsilon"
     if use_keys[key]:
         init_key(results, key, "w_avg", extra="N_gal")
-        for patch in stats_files:
-            results["value"][key][patch] = get_match(
+        for campaign in stats_files:
+            results["value"][key][campaign] = get_match(
                 stats_files,
-                patch,
+                campaign,
                 r"Dispersion of complex ellipticity = (\S+)",
                 previous=[f"^{shape}$"],
                 typ=float,
@@ -424,60 +432,60 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
         keys = [f"{key_base}11", f"{key_base}12", f"{key_base}21", f"{key_base}22"]
         for key in keys:
             init_key(results, key, "w_avg", extra="N_gal")
-        for patch in stats_files:
+        for campaign in stats_files:
             tmp = get_match(
                 stats_files,
-                patch,
+                campaign,
                 r"\[\[(\s?\S+)\s+\S+]",
                 previous=["ngmix galaxies:", "total response matrix:"],
                 n_previous=[2, 1],
                 typ=float,
             )
-            results["value"][keys[0]][patch] = tmp
+            results["value"][keys[0]][campaign] = tmp
             tmp = get_match(
                 stats_files,
-                patch,
+                campaign,
                 r"\[\[\s?\S+\s+(\S+)]",
                 previous=["ngmix galaxies:", "total response matrix:"],
                 n_previous=[2, 1],
                 typ=float,
             )
-            results["value"][keys[1]][patch] = tmp
+            results["value"][keys[1]][campaign] = tmp
             tmp = get_match(
                 stats_files,
-                patch,
+                campaign,
                 r"\[(\s?\S+)\s+\S+\]\]",
                 previous=["ngmix galaxies", "total response matrix:"],
                 n_previous=[3, 2],
                 typ=float,
             )
-            results["value"][keys[2]][patch] = tmp
+            results["value"][keys[2]][campaign] = tmp
             tmp = get_match(
                 stats_files,
-                patch,
+                campaign,
                 r" \[\s?\S+\s+(\S+)\]\]",
                 previous=["ngmix galaxies:", "total response matrix:"],
                 n_previous=[3, 2],
                 typ=float,
             )
-            results["value"][keys[3]][patch] = tmp
+            results["value"][keys[3]][campaign] = tmp
 
         # Normalised trace = mean diagonal
         key_der = "trN_R_tot"
         init_key(results, key_der, "w_avg", extra="N_gal")
-        for patch in stats_files:
-            results["value"][key_der][patch] = (
-                results["value"]["R_tot_11"][patch]
-                + results["value"]["R_tot_22"][patch]
+        for campaign in stats_files:
+            results["value"][key_der][campaign] = (
+                results["value"]["R_tot_11"][campaign]
+                + results["value"]["R_tot_22"][campaign]
             ) / 2
 
         # Sum of absolute off-diagonal
         key_der = "abs_off_R_tot"
         init_key(results, key_der, "w_avg", extra="N_gal")
-        for patch in stats_files:
-            results["value"][key_der][patch] = np.abs(
-                results["value"]["R_tot_12"][patch]
-            ) + np.abs(results["value"]["R_tot_21"][patch])
+        for campaign in stats_files:
+            results["value"][key_der][campaign] = np.abs(
+                results["value"]["R_tot_12"][campaign]
+            ) + np.abs(results["value"]["R_tot_21"][campaign])
 
     # Galaxy shear response matrix
     key_base = "R_shear_"
@@ -485,60 +493,60 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
         keys = [f"{key_base}11", f"{key_base}12", f"{key_base}21", f"{key_base}22"]
         for key in keys:
             init_key(results, key, "w_avg", extra="N_gal")
-        for patch in stats_files:
+        for campaign in stats_files:
             tmp = get_match(
                 stats_files,
-                patch,
+                campaign,
                 r"\[\[(\s?\S+)\s+\S+]",
                 previous=["ngmix galaxies:", "shear response matrix:"],
                 n_previous=[5, 1],
                 typ=float,
             )
-            results["value"][keys[0]][patch] = tmp
+            results["value"][keys[0]][campaign] = tmp
             tmp = get_match(
                 stats_files,
-                patch,
+                campaign,
                 r"\[\[\s?\S+\s+(\S+)]",
                 previous=["ngmix galaxies:", "shear response matrix:"],
                 n_previous=[5, 1],
                 typ=float,
             )
-            results["value"][keys[1]][patch] = tmp
+            results["value"][keys[1]][campaign] = tmp
             tmp = get_match(
                 stats_files,
-                patch,
+                campaign,
                 r"\[(\s?\S+)\s+\S+\]\]",
                 previous=["ngmix galaxies", "shear response matrix:"],
                 n_previous=[6, 2],
                 typ=float,
             )
-            results["value"][keys[2]][patch] = tmp
+            results["value"][keys[2]][campaign] = tmp
             tmp = get_match(
                 stats_files,
-                patch,
+                campaign,
                 r" \[\s?\S+\s+(\S+)\]\]",
                 previous=["ngmix galaxies:", "shear response matrix:"],
                 n_previous=[6, 2],
                 typ=float,
             )
-            results["value"][keys[3]][patch] = tmp
+            results["value"][keys[3]][campaign] = tmp
 
         # Normalised trace = mean diagonal
         key_der = "trN_R_shear"
         init_key(results, key_der, "w_avg", extra="N_gal")
-        for patch in stats_files:
-            results["value"][key_der][patch] = (
-                results["value"]["R_shear_11"][patch]
-                + results["value"]["R_shear_22"][patch]
+        for campaign in stats_files:
+            results["value"][key_der][campaign] = (
+                results["value"]["R_shear_11"][campaign]
+                + results["value"]["R_shear_22"][campaign]
             ) / 2
 
         # Sum of absolute off-diagonal
         key_der = "abs_off_R_shear"
         init_key(results, key_der, "w_avg", extra="N_gal")
-        for patch in stats_files:
-            results["value"][key_der][patch] = np.abs(
-                results["value"]["R_shear_12"][patch]
-            ) + np.abs(results["value"]["R_shear_21"][patch])
+        for campaign in stats_files:
+            results["value"][key_der][campaign] = np.abs(
+                results["value"]["R_shear_12"][campaign]
+            ) + np.abs(results["value"]["R_shear_21"][campaign])
 
     # Galaxy selection response matrix
     key_base = "R_select_"
@@ -546,60 +554,60 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
         keys = [f"{key_base}11", f"{key_base}12", f"{key_base}21", f"{key_base}22"]
         for key in keys:
             init_key(results, key, "w_avg", extra="N_gal")
-        for patch in stats_files:
+        for campaign in stats_files:
             tmp = get_match(
                 stats_files,
-                patch,
+                campaign,
                 r"\[\[(\s?\S+)\s+\S+]",
                 previous=["ngmix galaxies:", "selection response matrix:"],
                 n_previous=[8, 1],
                 typ=float,
             )
-            results["value"][keys[0]][patch] = tmp
+            results["value"][keys[0]][campaign] = tmp
             tmp = get_match(
                 stats_files,
-                patch,
+                campaign,
                 r"\[\[\s?\S+\s+(\S+)]",
                 previous=["ngmix galaxies:", "selection response matrix:"],
                 n_previous=[8, 1],
                 typ=float,
             )
-            results["value"][keys[1]][patch] = tmp
+            results["value"][keys[1]][campaign] = tmp
             tmp = get_match(
                 stats_files,
-                patch,
+                campaign,
                 r"\[(\s?\S+)\s+\S+\]\]",
                 previous=["ngmix galaxies", "selection response matrix:"],
                 n_previous=[9, 2],
                 typ=float,
             )
-            results["value"][keys[2]][patch] = tmp
+            results["value"][keys[2]][campaign] = tmp
             tmp = get_match(
                 stats_files,
-                patch,
+                campaign,
                 r" \[\s?\S+\s+(\S+)\]\]",
                 previous=["ngmix galaxies:", "selection response matrix:"],
                 n_previous=[9, 2],
                 typ=float,
             )
-            results["value"][keys[3]][patch] = tmp
+            results["value"][keys[3]][campaign] = tmp
 
         # Normalised trace = mean diagonal
         key_der = "trN_R_select"
         init_key(results, key_der, "w_avg", extra="N_gal")
-        for patch in stats_files:
-            results["value"][key_der][patch] = (
-                results["value"]["R_select_11"][patch]
-                + results["value"]["R_select_22"][patch]
+        for campaign in stats_files:
+            results["value"][key_der][campaign] = (
+                results["value"]["R_select_11"][campaign]
+                + results["value"]["R_select_22"][campaign]
             ) / 2
 
         # Sum of absolute off-diagonal
         key_der = "abs_off_R_select"
         init_key(results, key_der, "w_avg", extra="N_gal")
-        for patch in stats_files:
-            results["value"][key_der][patch] = np.abs(
-                results["value"]["R_select_12"][patch]
-            ) + np.abs(results["value"]["R_select_21"][patch])
+        for campaign in stats_files:
+            results["value"][key_der][campaign] = np.abs(
+                results["value"]["R_select_12"][campaign]
+            ) + np.abs(results["value"]["R_select_21"][campaign])
 
     # Object-wise PSF leakage
     key_base = "m_"
@@ -614,70 +622,70 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
         ]
         for key in keys:
             init_key(results, key, "w_avg", extra="N_gal")
-        for patch in stats_files:
+        for campaign in stats_files:
             m, dm = get_match(
                 stats_files,
-                patch,
+                campaign,
                 "\\$e_\\{1\\}\\^\\{\\\\rm PSF\\}\\$: m_1=(\\S*)",
                 previous=["ngmix"],
                 n_previous=[1],
                 typ="ufloat",
             )
-            results["value"]["m_11"][patch] = m
+            results["value"]["m_11"][campaign] = m
             m, dm = get_match(
                 stats_files,
-                patch,
+                campaign,
                 "\\$e_\\{1\\}\\^\\{\\\\rm PSF\\}\\$: m_2=(\\S*)",
                 previous=["ngmix"],
                 n_previous=[2],
                 typ="ufloat",
             )
-            results["value"]["m_12"][patch] = m
+            results["value"]["m_12"][campaign] = m
             m, dm = get_match(
                 stats_files,
-                patch,
+                campaign,
                 "\\$e_\\{2\\}\\^\\{\\\\rm PSF\\}\\$: m_1=(\\S*)",
                 previous=["ngmix"],
                 n_previous=[3],
                 typ="ufloat",
             )
-            results["value"]["m_21"][patch] = m
+            results["value"]["m_21"][campaign] = m
             m, dm = get_match(
                 stats_files,
-                patch,
+                campaign,
                 "\\$e_\\{2\\}\\^\\{\\\\rm PSF\\}\\$: m_2=(\\S*)",
                 previous=["ngmix"],
                 n_previous=[4],
                 typ="ufloat",
             )
-            results["value"]["m_22"][patch] = m
+            results["value"]["m_22"][campaign] = m
             m, dm = get_match(
                 stats_files,
-                patch,
+                campaign,
                 "\\$\\\\mathrm\\{FWHM\\}\\^\\{\\\\rm PSF\\}\\$ \\[arcsec]: m_1=(\\S+)",
                 previous=["ngmix"],
                 n_previous=[5],
                 typ="ufloat",
             )
-            results["value"]["m_s1"][patch] = m
+            results["value"]["m_s1"][campaign] = m
             m, dm = get_match(
                 stats_files,
-                patch,
+                campaign,
                 "\\$\\\\mathrm\\{FWHM\\}\\^\\{\\\\rm PSF\\}\\$ \\[arcsec]: m_2=(\\S+)",
                 previous=["ngmix"],
                 n_previous=[6],
                 typ="ufloat",
             )
-            results["value"]["m_s2"][patch] = m
+            results["value"]["m_s2"][campaign] = m
 
     # Scale-dependent PSF leakage
     key = "alpha"
     if use_keys[key]:
         init_key(results, key, "w_avg", extra="N_gal")
-        for patch in stats_files:
-            results["value"][key][patch] = get_match(
+        for campaign in stats_files:
+            results["value"][key][campaign] = get_match(
                 stats_files,
-                patch,
+                campaign,
                 r"ngmix: Weighted average alpha =(\s?\S+)",
                 typ=float,
             )
@@ -687,15 +695,15 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
     if use_keys[key_base]:
         init_key(results, "xi_sys_p", "w_avg", extra="N_gal")
         init_key(results, "xi_sys_m", "w_avg", extra="N_gal")
-        for patch in stats_files:
+        for campaign in stats_files:
             tmp = get_match(
-                stats_files, patch, r"ngmix: <\|xi_sys_\+\|> = (\S*)", typ=float
+                stats_files, campaign, r"ngmix: <\|xi_sys_\+\|> = (\S*)", typ=float
             )
-            results["value"]["xi_sys_p"][patch] = tmp
+            results["value"]["xi_sys_p"][campaign] = tmp
             tmp = get_match(
-                stats_files, patch, r"ngmix: <\|xi_sys_\-\|> = (\S*)", typ=float
+                stats_files, campaign, r"ngmix: <\|xi_sys_\-\|> = (\S*)", typ=float
             )
-            results["value"]["xi_sys_m"][patch] = tmp
+            results["value"]["xi_sys_m"][campaign] = tmp
 
 
 def latex_table(file_base, cols=None, col_names=None):
@@ -714,7 +722,7 @@ def latex_table(file_base, cols=None, col_names=None):
     print(r"}\hline\hline", file=fout)
 
     # Table header
-    str_line = "patch\t&"
+    str_line = "campaign\t&"
     for name in col_names:
         str_line = f"{str_line} ${name}$\t&"
         # str_line = f'{str_line} \\multicolumn{{2}}{{c}}{{${name}$}}\t&'
@@ -724,7 +732,7 @@ def latex_table(file_base, cols=None, col_names=None):
     for nl in range(n_lines):
         str_line = ""
 
-        str_line = f"{str_line}{dat['patch'][nl]}\t&"
+        str_line = f"{str_line}{dat['campaign'][nl]}\t&"
 
         for col in cols:
             if len(col) == 2:
@@ -767,25 +775,17 @@ def main(argv=None):
 
     if argv[1] == "snr":
         # All directories
-        patches = [f.path for f in os.scandir(".") if f.is_dir()]
+        campaigns = [f.path for f in os.scandir(".") if f.is_dir()]
         all = False
-    elif argv[1] == "v1":
-        n_patch = 7
-        patches = [f"P{x}" for x in np.arange(n_patch) + 1]
-    elif argv[1] == "v1.5":
-        n_patch = 8
-        patches = [f"P{x}" for x in np.arange(n_patch) + 1]
-    elif argv[1] == "test":
-        patches = ["P7", "W3", "S4"]
     elif argv[1] == "comb":
         # Validate with combined catalogue
-        patches = ["comb"]
+        campaigns = ["comb"]
     else:
-        patches = argv[1].split("+")
+        campaigns = argv[1].split("+")
 
-    n_patch = len(patches)
+    n_campaign = len(campaigns)
 
-    print("combine_results.py:", patches)
+    print("combine_results.py:", campaigns)
 
     directory = "sp_output/plots"
     fbase = "stats_file"
@@ -796,7 +796,7 @@ def main(argv=None):
 
     verbose = False
 
-    stats_files = read_stats_files(patches, path, verbose=verbose)
+    stats_files = read_stats_files(campaigns, path, verbose=verbose)
 
     results = {"value": {}, "type": {}, "extra": {}, "all": {}}
 

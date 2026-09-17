@@ -34,10 +34,10 @@ import sys
 
 import h5py
 import numpy as np
-from astropy.io import fits
 
 # from sp_validation.catalog import *
 from sp_validation import catalog as spv_cat
+from sp_validation import galaxy
 from sp_validation.calibration import *
 from sp_validation.calibration import metacal
 from sp_validation.galaxy import *
@@ -69,9 +69,7 @@ if extension == ".fits":
     dd = np.load(galaxy_cat_path, mmap_mode=mmap_mode)
 else:
     print("Loading galaxy .hdf5 file...")
-    dd = spv_cat.read_hdf5_file(
-        galaxy_cat_path, name, stats_file, param_path=param_list_path
-    )
+    dd = spv_cat.read_campaign_catalogue(galaxy_cat_path, param_path=param_list_path)
 
 n_obj = len(dd)
 print_stats(
@@ -116,7 +114,7 @@ print_stats(f"Tiles in input catalogue: {n_found}", stats_file, verbose=verbose)
 # ### Load star catalogue
 
 if star_cat_path:
-    d_star = fits.getdata(star_cat_path, hdu_star_cat)
+    d_star = spv_cat.read_star_catalogue(star_cat_path, hdu=hdu_star_cat)
 
 if star_cat_path:
     print_stats("Stars:", stats_file, verbose=verbose)
@@ -141,14 +139,13 @@ if star_cat_path:
 # #### Match to all objects
 
 if star_cat_path:
-    ind_star, mask_area_tiles, n_star_tot = spv_cat.check_matching(
+    ind_star, n_star_tot = spv_cat.check_matching(
         d_star,
         dd,
         ["RA", "DEC"],
         [col_name_ra, col_name_dec],
         thresh,
         stats_file,
-        name=None,
         verbose=verbose,
     )
 
@@ -160,7 +157,7 @@ if star_cat_path:
 
     m_star = (
         (dd["FLAGS"][ind_star] == 0)
-        & (dd["IMAFLAGS_ISO"][ind_star] == 0)
+        & galaxy.mask_cut(dd, mask_columns)[ind_star]
         & (dd["NGMIX_MCAL_FLAGS"][ind_star] == 0)
         & (dd["NGMIX_G1_PSF_ORIG_NOSHEAR"][ind_star] != -10)
     )
@@ -311,6 +308,7 @@ cut_common = classification_galaxy_base(
     gal_mag_faint=gal_mag_faint,
     flags_keep=flags_keep,
     n_epoch_min=n_epoch_min,
+    mask_columns=mask_columns,
 )
 if shape == "ngmix":
     m_gal = classification_galaxy_ngmix(
@@ -490,7 +488,7 @@ shape_IDs = galaxy_IDs[mask]
 write_tile_id_gal_counts(detection_IDs, galaxy_IDs, shape_IDs, fname)
 
 # +
-# Add all weights (for combining weighted averages of subpatches)
+# Add all weights (for combining weighted averages of sub-samples)
 
 w_tot = np.sum(w)
 

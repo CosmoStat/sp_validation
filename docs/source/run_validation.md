@@ -12,7 +12,7 @@ including the sheared values for metacalibration.
 All inputs and settings are contained in the python configuration script
 `scripts/calibration/params.py`, that needs to be edited accordingly.
 The main parameters are:
-- `name`: field or patch name, can be any string. E.g. `P3` for patch 3. 
+- `campaign`: campaign name (the ShapePipe tile list), can be any string. 
 - `data_dir`: input directory for data. Set to `.` for validation run in
   current directory.
 - `galaxy_cat_path`: path to galaxy catalogue, format `.fits`. or `.hdf5`.
@@ -27,8 +27,9 @@ Optional parameters are:
 - `mask_external_path`: path to external mask file, format `.reg`. Set to
   `None` if not required.  
 
-See the script `prepare_patch_for_spval.sh` for an example of copying
-the required input files to where the validation is to be run.
+Link or copy the campaign's merged products -- `final_cat_<campaign>.hdf5`
+and `full_starcat_<campaign>.hdf5` -- into the directory where the validation
+is to be run.
 
 
 ### Run

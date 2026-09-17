@@ -16,7 +16,17 @@ from sp_validation.masks import apply_condition
 # the footprint definition.
 SPATIAL_CUTS = {
     "overlap",
-    "IMAFLAGS_ISO",
+    "MASK_n1",
+    "MASK_n2",
+    "MASK_n4",
+    "MASK_n8",
+    "MASK_n16",
+    "MASK_n32",
+    "MASK_n64",
+    "MASK_n128",
+    "MASK_n256",
+    "MASK_n1024",
+    "MASK_n2048",
     "N_EPOCH",
     "4_Stars",
     "8_Manual",

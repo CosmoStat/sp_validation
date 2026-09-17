@@ -13,6 +13,7 @@
 
 import getpass
 import os
+import re
 
 import h5py
 import numpy as np
@@ -23,7 +24,6 @@ from astropy.io import fits
 from cs_util import cat
 
 from sp_validation import format, io
-from sp_validation.survey import get_footprint
 from sp_validation.version import __version__
 
 
@@ -154,7 +154,6 @@ def check_matching(
     keys_2,
     thresh,
     stats_file,
-    name=None,
     verbose=False,
 ):
     """Check matching.
@@ -178,28 +177,20 @@ def check_matching(
     -------
     ind : array of int
         index list of d2 of objects that were matched to d1
-    mask_area_tiles : array of int
-        index list of tiles in footprint
+    n_tot : int
+        number of objects in d1
 
     """
-    if name is not None:
-        # Filter stars outside footprint for efficiency
-        mask_area_tiles = get_footprint(name, d1[keys_1[0]], d1[keys_1[1]])
-        if len(np.where(mask_area_tiles)[0]) == 0:
-            raise ValueError(f"Error: no object found in field '{name}'")
-    else:
-        mask_area_tiles = np.arange(len(d1))
-
     # Match stars from exposure (PSF) catalogue to total catalogue
     ind = match_stars2(
         d2[keys_2[0]],
         d2[keys_2[1]],
-        d1[keys_1[0]][mask_area_tiles],
-        d1[keys_1[1]][mask_area_tiles],
+        d1[keys_1[0]],
+        d1[keys_1[1]],
         thresh=thresh,
     )
 
-    n_tot = len(d1[keys_1[0]][mask_area_tiles])
+    n_tot = len(d1[keys_1[0]])
     msg = (
         "Number of matched stars from exposures to total catalogue = "
         + f"{len(ind)}/{n_tot} = {len(ind) / n_tot:.1%}"
@@ -215,7 +206,7 @@ def check_matching(
     )
     io.print_stats(msg, stats_file, verbose=verbose)
 
-    return ind, mask_area_tiles, n_tot
+    return ind, n_tot
 
 
 def check_invalid(dd, key, val, stats_file, name=None, verbose=False):
@@ -758,71 +749,448 @@ def read_param_file(path, verbose=False):
     return param_list_unique
 
 
-def read_hdf5_file(file_path, name, stats_file, check_only=False, param_path=None):
-    """Read HDF5 File.
+#: Columns written by ShapePipe v2's ``MergeStarCatPSFEX`` into
+#: ``full_starcat_<campaign>.hdf5`` (one dataset per exposure).
+STAR_CAT_COLUMNS = (
+    "X",
+    "Y",
+    "RA",
+    "DEC",
+    "HSM_G1_PSF",
+    "HSM_G2_PSF",
+    "HSM_T_PSF",
+    "HSM_G1_STAR",
+    "HSM_G2_STAR",
+    "HSM_T_STAR",
+    "HSM_FLAG_PSF",
+    "HSM_FLAG_STAR",
+    "MAG",
+    "SNR",
+    "ACCEPTED",
+    "CCD_NB",
+)
 
-    Read hdf5 file and return contained data.
+
+def find_dataset_group(hdf5_file):
+    """Find Dataset Group.
+
+    Descend from the root of an open HDF5 file to the single group whose
+    members are the per-unit datasets (one per tile, or one per exposure).
+
+    This makes the reader independent of how deeply the products nest that
+    group: it walks down as long as the current node holds exactly one
+    sub-group, and stops as soon as the members are datasets. It therefore
+    reads both the legacy ``patches/<campaign>/<tile-ID>`` layout (the
+    "patches" key is a ShapePipe-side compatibility shim, not a concept) and
+    a flat ``tiles/<tile-ID>`` or ``exposures/<exp>`` layout.
+
+    Parameters
+    ----------
+    hdf5_file : h5py.File or h5py.Group
+        open input file
+
+    Returns
+    -------
+    h5py.Group
+        group whose members are the per-unit datasets
+
+    Raises
+    ------
+    ValueError
+        if the file is empty, or a level holds more than one sub-group
+
+    """
+    node = hdf5_file
+    while True:
+        keys = list(node)
+        if not keys:
+            raise ValueError(
+                f"No data found under {node.name!r} in {hdf5_file.file.filename}"
+            )
+        if all(isinstance(node[key], h5py.Dataset) for key in keys):
+            return node
+        if len(keys) != 1:
+            raise ValueError(
+                f"Expected a single container group under {node.name!r} in"
+                + f" {hdf5_file.file.filename}, found {len(keys)}: {keys[:5]}"
+            )
+        node = node[keys[0]]
+
+
+def promote_dtypes(dtype_a, dtype_b):
+    """Promote Dtypes.
+
+    Return a scalar dtype that holds both input dtypes without truncation
+    or overflow.
+
+    Parameters
+    ----------
+    dtype_a : numpy.dtype
+        first input dtype
+    dtype_b : numpy.dtype
+        second input dtype
+
+    Returns
+    -------
+    numpy.dtype
+        promoted dtype
+
+    """
+    if dtype_a == dtype_b:
+        return dtype_a
+    if dtype_a.kind in "SU" and dtype_b.kind in "SU":
+        kind = "U" if "U" in (dtype_a.kind, dtype_b.kind) else "S"
+        size_a = dtype_a.itemsize // (4 if dtype_a.kind == "U" else 1)
+        size_b = dtype_b.itemsize // (4 if dtype_b.kind == "U" else 1)
+        return np.dtype(f"{kind}{max(size_a, size_b)}")
+
+    return np.promote_types(dtype_a, dtype_b)
+
+
+def group_dtype(group, keys, param_list=None):
+    """Group Dtype.
+
+    Build the structured output dtype of a group of per-tile datasets,
+    promoting each column across *every* dataset. A campaign that was
+    partially reprocessed can carry e.g. ``S7`` tile IDs in one tile and
+    ``S12`` in another, or ``f4`` next to ``f8``; taking the dtype of the
+    first dataset alone would silently truncate the others.
+
+    Note that ShapePipe currently writes ``TILE_ID`` as ``f8`` (the tile
+    ``183.307`` arrives as the float ``183.307``), not as a string, so the
+    string-promotion branch above is for a future string-valued ``TILE_ID``
+    and is not exercised by today's products.
+
+    TODO: whether ``TILE_ID`` should be a string is an open schema decision.
+    A float cannot represent the ID exactly and cannot be compared for
+    equality safely; changing it is a breaking product change, so it is left
+    as-is here and this reader deliberately handles both.
+
+    Parameters
+    ----------
+    group : h5py.Group
+        group whose members are structured datasets
+    keys : list of str
+        dataset names to consider
+    param_list : list of str, optional
+        columns to keep; default is ``None`` (keep all)
+
+    Returns
+    -------
+    numpy.dtype
+        structured output dtype
+
+    """
+    names = param_list if param_list is not None else list(group[keys[0]].dtype.names)
+
+    fields = []
+    for name in names:
+        promoted = group[keys[0]].dtype[name]
+        for key in keys[1:]:
+            promoted = promote_dtypes(promoted, group[key].dtype[name])
+        fields.append((name, promoted))
+
+    return np.dtype(fields)
+
+
+def _check_columns(dtype, param_list, file_path, dataset_key=None):
+    """Raise a clear error if requested columns are absent from the data."""
+    missing = [col for col in param_list if col not in (dtype.names or ())]
+    if missing:
+        where = f" (dataset {dataset_key!r})" if dataset_key is not None else ""
+        raise KeyError(
+            f"Column(s) {missing} not found in catalogue {file_path}{where}."
+            + f" Available columns: {sorted(dtype.names or ())}"
+        )
+
+
+def concatenate_datasets(
+    group, param_list=None, file_path="", verbose=True, key_column=None
+):
+    """Concatenate Datasets.
+
+    Concatenate every dataset of an HDF5 group into one structured array,
+    optionally restricted to a list of columns.
+
+    The output array is preallocated and filled slice by slice, so peak
+    memory is the output catalogue plus one tile, not the full-width
+    uncut catalogue.
+
+    Parameters
+    ----------
+    group : h5py.Group
+        group whose members are structured datasets
+    param_list : list of str, optional
+        columns to keep; default is ``None`` (keep all)
+    file_path : str, optional
+        input file path, for error messages
+    verbose : bool, optional
+        verbose output if ``True``
+    key_column : str, optional
+        name of an extra integer column to add, filled per row with the
+        integer-valued name of the dataset the row came from. Concatenating
+        the group otherwise throws that name away; the star catalogue needs
+        it to keep exposure provenance. Default is ``None`` (add no column)
+
+    Returns
+    -------
+    numpy.ndarray
+        concatenated structured array
+
+    Raises
+    ------
+    ValueError
+        if ``key_column`` is given but a dataset name is not an integer, or
+        collides with an existing column
+
+    """
+    keys = sorted(group)
+    if not keys:
+        raise ValueError(f"No datasets found in catalogue {file_path}")
+
+    # Validate every dataset up front: a column may be missing from any tile,
+    # not only the first one.
+    for key in keys:
+        if param_list is not None:
+            _check_columns(group[key].dtype, param_list, file_path, key)
+
+    dtype_out = group_dtype(group, keys, param_list=param_list)
+
+    if key_column is not None:
+        if key_column in (dtype_out.names or ()):
+            raise ValueError(
+                f"Cannot add column {key_column!r} to catalogue {file_path}:"
+                + " a column of that name is already present."
+            )
+        # Dataset names are exposure numbers, either bare ("2086324", as the
+        # smk-g7 products write them) or carrying the CFIS processed-exposure
+        # suffix ("2110000p"), so take the leading run of digits.
+        matches = {key: re.match(r"\d+", key) for key in keys}
+        bad = [key for key, match in matches.items() if match is None]
+        if bad:
+            raise ValueError(
+                f"Cannot derive {key_column!r} for catalogue {file_path}:"
+                + f" dataset name(s) {bad} do not begin with an integer."
+            )
+        key_values = {key: int(match.group()) for key, match in matches.items()}
+        dtype_out = np.dtype(dtype_out.descr + [(key_column, "i8")])
+
+    n_rows = sum(group[key].shape[0] for key in keys)
+    if verbose:
+        print(
+            f"Reading {len(keys)} datasets,"
+            + f" estimating {dtype_out.itemsize * n_rows / 1024**3:.1f}"
+            + f" Gb memory for the ({len(dtype_out.names)} x {n_rows}) data array ..."
+        )
+
+    data_out = np.empty(n_rows, dtype=dtype_out)
+    start = 0
+    for key in tqdm.tqdm(keys, disable=not verbose):
+        data = group[key][()]
+        end = start + len(data)
+        for name in dtype_out.names:
+            if key_column is not None and name == key_column:
+                data_out[name][start:end] = key_values[key]
+            else:
+                data_out[name][start:end] = data[name]
+        start = end
+        del data
+
+    return data_out
+
+
+def check_n_units(hdf5_file, group, file_path, attr="n_tiles", unit="tile"):
+    """Check Number of Units.
+
+    Compare the number of datasets found against the count the ShapePipe v2
+    product declares in a root attribute, to catch a catalogue that was
+    truncated by an interrupted merge job or file transfer. Galaxy
+    catalogues declare ``n_tiles`` and hold one dataset per tile; star
+    catalogues declare ``n_exposures`` and hold one per exposure.
+
+    A missing attribute is not an error: older products carry none.
+
+    Parameters
+    ----------
+    hdf5_file : h5py.File
+        open input file
+    group : h5py.Group
+        group holding the per-unit datasets
+    file_path : str
+        input file path, for the error message
+    attr : str, optional
+        root attribute holding the declared count; default is ``n_tiles``
+    unit : str, optional
+        name of one unit, for the error message; default is ``tile``
+
+    Raises
+    ------
+    ValueError
+        if the number of datasets differs from the declared count
+
+    """
+    n_declared = hdf5_file.attrs.get(attr)
+    if n_declared is None:
+        return
+    n_found = len(group)
+    if int(n_declared) != n_found:
+        raise ValueError(
+            f"Catalogue {file_path} declares {attr} = {int(n_declared)} but"
+            + f" holds {n_found} {unit} dataset(s); the file is incomplete."
+        )
+
+
+def campaign_shape(file_path, param_list=None):
+    """Campaign Shape.
+
+    Return the number of rows and the structured dtype of a campaign
+    catalogue without reading its data, so that a merged output array can
+    be preallocated.
 
     Parameters
     ----------
     file_path : str
         input file path
-    name : str
-        patch name
-    stats_file : file handler
-        summary statistics output file handler
-    check_only : bool, optional
-        If True only check, not return data
+    param_list : list of str, optional
+        columns to keep; default is ``None`` (keep all)
 
     Returns
     -------
-    dict
-        data
+    tuple
+        number of rows (int) and dtype (numpy.dtype)
 
     """
-    param_list = read_param_file(param_path, verbose=True) if param_path else None
+    with h5py.File(file_path, "r") as hdf5_file:
+        group = find_dataset_group(hdf5_file)
+        check_n_units(hdf5_file, group, file_path)
+        keys = sorted(group)
+        if not keys:
+            raise ValueError(f"No datasets found in catalogue {file_path}")
+        n_rows = sum(group[key].shape[0] for key in keys)
+        if param_list is not None:
+            for key in keys:
+                _check_columns(group[key].dtype, param_list, file_path, key)
+        dtype_out = group_dtype(group, keys, param_list=param_list)
+
+    return n_rows, dtype_out
+
+
+def iter_campaign_tiles(file_path, param_list=None, verbose=True):
+    """Iter Campaign Tiles.
+
+    Yield the per-tile datasets of a campaign catalogue one at a time, so a
+    caller filling a preallocated output array never holds more than one
+    tile in memory in addition to that output.
+
+    Parameters
+    ----------
+    file_path : str
+        input file path
+    param_list : list of str, optional
+        columns to keep; default is ``None`` (keep all)
+    verbose : bool, optional
+        verbose output if ``True``
+
+    Yields
+    ------
+    numpy.ndarray
+        one tile as a structured array
+
+    """
+    with h5py.File(file_path, "r") as hdf5_file:
+        group = find_dataset_group(hdf5_file)
+        check_n_units(hdf5_file, group, file_path)
+        keys = sorted(group)
+        if not keys:
+            raise ValueError(f"No datasets found in catalogue {file_path}")
+        for key in keys:
+            if param_list is not None:
+                _check_columns(group[key].dtype, param_list, file_path, key)
+        for key in tqdm.tqdm(keys, disable=not verbose):
+            data = group[key][()]
+            yield data if param_list is None else data[param_list]
+
+
+def read_campaign_catalogue(
+    file_path,
+    param_path=None,
+    param_list=None,
+    verbose=True,
+):
+    """Read Campaign Catalogue.
+
+    Read a campaign galaxy catalogue (``final_cat_<campaign>.hdf5``) and
+    return its per-tile datasets concatenated into one structured array.
+
+    Parameters
+    ----------
+    file_path : str
+        input file path
+    param_path : str, optional
+        path to a parameter file listing the columns to keep
+    param_list : list of str, optional
+        columns to keep; takes precedence over ``param_path``
+    verbose : bool, optional
+        verbose output if ``True``
+
+    Returns
+    -------
+    numpy.ndarray
+        catalogue data
+
+    """
+    if param_list is None and param_path:
+        param_list = read_param_file(param_path, verbose=verbose)
 
     with h5py.File(file_path, "r") as hdf5_file:
-        # Find patch group in hierarchical structure
-        if f"patches/{name}" not in hdf5_file:
-            raise KeyError(f"Entry patches/{name} not found in file {file_path}")
-        patch_group = hdf5_file[f"patches/{name}"]
-
-        # Get size of data array
-        num_rows = sum(patch_group[ID].shape[0] for ID in patch_group)
-        # num_cols = patch_group[next(iter(patch_group))].shape[1]
-        num_cols = len(param_list)
-
-        print(
-            f"Estimating {num_cols * num_rows * 8 / 1024**3:.1f}"
-            + f" Gb memory for the ({num_cols} x {num_rows}) data array ..."
+        group = find_dataset_group(hdf5_file)
+        check_n_units(hdf5_file, group, file_path)
+        return concatenate_datasets(
+            group, param_list=param_list, file_path=file_path, verbose=verbose
         )
-        # data_comb = np.memmap(output_file, dtype=patch_group[next(iter(patch_group))].dtype,
-        #              mode="w+", shape=(num_rows, num_cols))
 
-        data_list = []
-        ID_pbl = set()
-        for ID in tqdm.tqdm(patch_group):
-            # Get data for this ID from file
-            data = patch_group[ID][()]
 
-            # Restrict to parameter list if given
-            data = data[param_list] if param_list is not None else data
+def read_star_catalogue(file_path, hdu=1, verbose=True):
+    """Read Star Catalogue.
 
-            if not check_only:
-                # Add new to existing data
-                data_list.append(data)
+    Read a campaign star/PSF catalogue. Reads the ShapePipe v2
+    ``full_starcat_<campaign>.hdf5`` (one dataset per exposure), or a legacy
+    FITS star catalogue when ``file_path`` ends in ``.fits``.
 
-        print("Combine tile catalogues")
-        data_comb = np.concatenate(data_list, axis=0)
-        print("Done")
+    The HDF5 path adds an ``EXPID`` column carrying the exposure number each
+    star came from. The datasets are named by that number and concatenating
+    them would otherwise discard it, leaving no way to group stars by
+    exposure downstream (e.g. for per-exposure PSF residuals).
 
-    # Print problematic tile IDs
-    for ID in ID_pbl:
-        print("Tile IDs with missing keys:", file=stats_file)
-        print(ID, file=stats_file)
+    The dataset count is validated against the ``n_exposures`` root
+    attribute, as the galaxy reader validates ``n_tiles``, so a catalogue
+    truncated by an interrupted merge is caught on read rather than showing
+    up as a quietly short star sample.
 
-    return data_comb
+    Parameters
+    ----------
+    file_path : str
+        input file path
+    hdu : int, optional
+        HDU number for the FITS path; default is 1
+    verbose : bool, optional
+        verbose output if ``True``
+
+    Returns
+    -------
+    numpy.ndarray
+        star catalogue data, with an added ``EXPID`` column on the HDF5 path
+
+    """
+    if str(file_path).endswith(".fits"):
+        return fits.getdata(file_path, hdu)
+
+    with h5py.File(file_path, "r") as hdf5_file:
+        group = find_dataset_group(hdf5_file)
+        check_n_units(hdf5_file, group, file_path, attr="n_exposures", unit="exposure")
+        return concatenate_datasets(
+            group, file_path=file_path, verbose=verbose, key_column="EXPID"
+        )
 
 
 def get_maked_col(dat, col, mask):

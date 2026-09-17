@@ -25,9 +25,9 @@ np.set_printoptions(precision=3, formatter={"float": "{: .3g}".format})
 
 # Survey parameters
 
-## Field or patch name. Put None if n/a
-name = "P7"
-print("Field name = {}".format(name))
+## Campaign name (the tile list processed by ShapePipe); required, it names
+## the ShapePipe v2 products (final_cat_<campaign>.hdf5, ...)
+campaign = "W3"
 
 ## Area of a tile in deg^2
 area_tile = 0.25
@@ -44,19 +44,20 @@ shape = "ngmix"
 data_dir = "."
 
 ### Tile IDs
-path_tile_ID = f"{data_dir}/tiles_{name}.txt"
+path_tile_ID = f"{data_dir}/tiles_{campaign}.txt"
 
 ### Weak-lensing galaxy catalog name
-galaxy_cat_path = f"{data_dir}/final_cat_{name}.hdf5"
+galaxy_cat_path = f"{data_dir}/final_cat_{campaign}.hdf5"
 print(f"Galaxy catalogue = {galaxy_cat_path}")
 
 ## Parameter list; optional, set to `None` if not required
 param_list_path = f"{data_dir}/cfis/final_cat.param"
 
 ### Star and PSF catalog name; optional, set to `None` if not required
-star_cat_path = f"{data_dir}/full_starcat-0000000.fits"
+star_cat_path = f"{data_dir}/full_starcat_{campaign}.hdf5"
 
-# HDU number of star and PSF catalogue
+# HDU number of star and PSF catalogue; only used for the legacy FITS star
+# catalogue (a path ending in .fits), ignored for the v2 HDF5 product
 hdu_star_cat = 1
 
 ### External mask; optional, set to `None` if not required
@@ -121,11 +122,32 @@ add_cols = [
     "NGMIX_T_PSF_RECONV_NOSHEAR",
 ]
 
+## ShapePipe v2 mask columns OR'd together for the galaxy selection cut:
+## the reason bits of the r-band default bitmask, whose OR reproduces mask_r
+mask_columns = [
+    "MASK_n4",
+    "MASK_n1",
+    "MASK_n2",
+    "MASK_n8",
+    "MASK_n64",
+    "MASK_n1024",
+]
+
 ## Pre-calibration catalogue, including masked objects and mask flags
 add_cols_pre_cal = [
     "TILE_ID",
     "NUMBER",
-    "IMAFLAGS_ISO",
+    "MASK_n1",
+    "MASK_n2",
+    "MASK_n4",
+    "MASK_n8",
+    "MASK_n16",
+    "MASK_n32",
+    "MASK_n64",
+    "MASK_n128",
+    "MASK_n256",
+    "MASK_n1024",
+    "MASK_n2048",
     "FLAGS",
     "NGMIX_MCAL_FLAGS",
     "NGMIX_MCAL_TYPES_FAIL",
@@ -141,7 +163,6 @@ add_cols_pre_cal = [
 add_cols_pre_cal_format = {}
 for key in (
     "NUMBER",
-    "IMAFLAGS_ISO",
     "FLAGS",
     "NGMIX_MCAL_FLAGS",
     "NGMIX_MCAL_TYPES_FAIL",
@@ -149,6 +170,9 @@ for key in (
     "NGMIX_N_EPOCH",
 ):
     add_cols_pre_cal_format[key] = "I"
+
+for key in mask_columns:
+    add_cols_pre_cal_format[key] = "L"
 
 add_cols_pre_cal_format["TILE_ID"] = "A7"
 add_cols_pre_cal_format["NUMBER"] = "J"
