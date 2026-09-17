@@ -35,11 +35,13 @@ params:
 # Masks
 ## Using columns in 'dat' group (ShapePipe flags)
 dat:
-  # SExtractor flags
+  # SExtractor flags: keep 0 (clean), 1 (neighbours), 2 (deblended); drop
+  # 3 (both) and above. Same as the image-sims config, so data and sims
+  # select identically (shapepipe#885).
   - col_name: FLAGS
     label: SE FLAGS
     kind: smaller_equal
-    value: 3
+    value: 2
 
   # Duplicate objects
   - col_name: overlap
