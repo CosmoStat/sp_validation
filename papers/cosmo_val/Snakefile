@@ -7,7 +7,7 @@
 # isolation or as the whole suite via the default `cosmo_val_all` target.
 
 configfile: "config/config.yaml"
-configfile: "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val/cat_config.yaml"
+configfile: "/n17data/cdaley/unions/code/sp_validation/cosmo_val/cat_config.yaml"
 
 envvars:
     "PYTHONUNBUFFERED",

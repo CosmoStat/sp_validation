@@ -1,13 +1,34 @@
 # Two-point data-vector rules: xi, rho/tau, and pseudo-Cl products.
 
+# ---------------------------------------------------------------------------
+# ξ± angular grids
+# ---------------------------------------------------------------------------
+# The table itself lives in common.py, where it can be built from a plain config
+# dict and tested; these are the workflow's bindings to it.
+XI_GRIDS = xi_grids(config, FIDUCIAL)
+
+
+def xi_binning(grid):
+    """The `minsep=..._maxsep=..._nbins=..._npatch=...` tag of a named grid."""
+    return grid_binning(XI_GRIDS[grid])
+
+
+def xi_grid_of(wildcards):
+    """Grid label for the binning a job was requested with."""
+    return grid_of(XI_GRIDS, {key: getattr(wildcards, key) for key in XI_KEYS})
+
 
 rule xi:
+    """TreeCorr ξ±(θ) for one version on one angular grid.
+
+    One rule for every grid: outputs are named by their binning, so a request
+    binds the wildcards and `xi_grid_of` resolves the grid label from them.
+    """
     input:
         catalog=get_shear_catalog,
     output:
-        str(COSMO_VAL / "{version}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.txt"),
-        str(COSMO_VAL / "xi_plus_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
-        str(COSMO_VAL / "xi_minus_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
+        txt=str(COSMO_VAL / "{version}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.txt"),
+        sacc=str(COSMO_VAL / "{version}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc"),
     threads: 24
     params:
         ver="{version}",
@@ -15,68 +36,25 @@ rule xi:
         max_sep="{max_sep}",
         nbins="{nbins}",
         npatch="{npatch}",
-        fits=False,
+        cat_config=CAT_CONFIG,
+        grid=lambda w: xi_grid_of(w),
+        cov=lambda w: XI_GRIDS[xi_grid_of(w)]["cov"],
     resources:
-        mem_mb=30000,
+        # The fine integration grid needs more memory and wall time than the
+        # ~20-bin reporting one; scale on nbins rather than splitting the rule.
+        mem_mb=lambda w: 40000 if int(w.nbins) > 100 else 30000,
         disk_mb=20000,
-        runtime=360,
+        runtime=lambda w: 600 if int(w.nbins) > 100 else 360,
     script:
         "../scripts/run_2pcf.py"
-
-
-# PARKED: xi_highres (high-resolution xi for COSEBIS integration). Not runnable
-# as written -- the shell invokes run_2pcf_highres.py bare, but the script has
-# required --cat-config and --out arguments. Revive it with those supplied.
-#
-# The MPI reasoning below is hard-won and must survive the revival:
-#
-#   Exception to the profile-driven container model: this is multi-node MPI, one
-#   `apptainer exec` per rank. Snakemake's own container wrapping puts the
-#   *whole* shell command -- `mpiexec` included -- inside a single container
-#   instance, so only rank 0's node would run inside it; the other ranks,
-#   spawned by SLURM/PMI on their own nodes, would land bare on the host.
-#   `container: None` plus an explicit `mpiexec -n N apptainer exec ...`
-#   per-rank is therefore required.
-#   Snakemake's slurm-jobstep plugin deliberately does NOT prepend `srun` to a
-#   job carrying an `mpi` resource, which is what lets the rule's own launcher
-#   run on the host, outside the container.
-#   Because this rule builds its own apptainer call, reaching the source-cache
-#   copy of the script relies on our `--bind /home` rather than on Snakemake's
-#   automatic mount -- and on a concrete image file, since `apptainer exec`
-#   takes no `docker://` URI. Take that path from `resolve_image()[0]` rather
-#   than naming a second image path that can drift.
-#
-# rule xi_highres:
-#     container: None
-#     params:
-#         image=resolve_image()[0],
-#     input:
-#         script=workflow.source_path("../scripts/run_2pcf_highres.py"),
-#     output:
-#         txt=str(COSMO_VAL / f"{FIDUCIAL['version']}_xi_minsep={FIDUCIAL['min_sep_int']}_maxsep={FIDUCIAL['max_sep_int']}_nbins=10000_npatch=1.txt"),
-#         xi_plus=str(COSMO_VAL / f"xi_plus_{FIDUCIAL['version']}_minsep={FIDUCIAL['min_sep_int']}_maxsep={FIDUCIAL['max_sep_int']}_nbins=10000_npatch=1.fits"),
-#         xi_minus=str(COSMO_VAL / f"xi_minus_{FIDUCIAL['version']}_minsep={FIDUCIAL['min_sep_int']}_maxsep={FIDUCIAL['max_sep_int']}_nbins=10000_npatch=1.fits"),
-#     resources:
-#         tasks=30,
-#         cpus_per_task=12,
-#         nodes=6,
-#         mem_mb_per_cpu=2000,
-#         runtime=2880,
-#         slurm_extra="'--exclude=n17,n09,n36 --partition=pscomp'",
-#         mpi="/softs/openmpi/5.0.5-slurm-CentOS8/bin/mpiexec",
-#     shell:
-#         "{resources.mpi} -n {resources.tasks} "
-#         "apptainer exec "
-#         "--bind /home,/n09data,/n17data,/n23data1,/softs "
-#         "--env LD_LIBRARY_PATH=/softs/openmpi/5.0.5-slurm-CentOS8/lib "
-#         "{params.image} "
-#         "python {input.script} --cat-config <...> --out <...>"
 
 
 rule rho_tau_stats:
     output:
         rho_stats=str(COSMO_VAL / "rho_tau_stats/rho_stats_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
         tau_stats=str(COSMO_VAL / "rho_tau_stats/tau_stats_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
+        # Born-as-SACC ρ/τ part, written alongside the FITS.
+        rho_tau=str(COSMO_VAL / "rho_tau_stats/rho_tau_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc"),
     threads: 48
     params:
         ver="{version}",
@@ -99,9 +77,9 @@ wildcard_constraints:
 
 
 rule pseudo_cl:
-    """Generate pseudo-Cl data vector with configurable binning."""
+    """Generate pseudo-Cl data vector (born as SACC) with configurable binning."""
     output:
-        pseudo_cl=str(COSMO_VAL / "pseudo_cl_{version}_blind={blind}_{binning}_nbins={nbins}.fits"),
+        pseudo_cl=str(COSMO_VAL / "pseudo_cl_{version}_blind={blind}_{binning}_nbins={nbins}.sacc"),
     wildcard_constraints:
         blind="[ABC]",
     params:
@@ -153,7 +131,7 @@ rule pseudo_cl_all:
     """Generate pseudo-Cls for all versions."""
     input:
         expand(
-            str(COSMO_VAL / "pseudo_cl_{version}_blind=A_powspace_nbins=32.fits"),
+            str(COSMO_VAL / "pseudo_cl_{version}_blind=A_powspace_nbins=32.sacc"),
             version=PSEUDO_CL_VERSIONS,
         ),
 
@@ -171,7 +149,7 @@ rule pseudo_cl_fine_all:
     """Generate fine pseudo-Cls for COSEBIS."""
     input:
         expand(
-            str(COSMO_VAL / "pseudo_cl_{version}_blind={blind}_linear_nbins=2040.fits"),
+            str(COSMO_VAL / "pseudo_cl_{version}_blind={blind}_linear_nbins=2040.sacc"),
             version=config["versions"],
             blind=BLINDS,
         ),

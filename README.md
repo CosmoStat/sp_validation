@@ -92,6 +92,15 @@ the profile puts each job in the container itself. For Docker, development
 installs, and more depth, see the
 [installation docs](https://cosmostat.github.io/sp_validation/installation.html).
 
+## Local Installation
+
+Requires Python ≥ 3.12. With [uv](https://docs.astral.sh/uv/):
+
+```bash
+uv venv --python 3.12
+uv pip install -e '.[test]'
+```
+
 
 
 ## Flow chart

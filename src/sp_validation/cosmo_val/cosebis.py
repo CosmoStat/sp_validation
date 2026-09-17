@@ -271,7 +271,7 @@ class CosebisMixin:
 
             plot_cosebis_scale_cut_heatmap(
                 results,
-                gg_temp,
+                (gg_temp.left_edges, gg_temp.right_edges),
                 version,
                 out_stub + "_scalecut_ptes.png",
                 fiducial_scale_cut=fiducial_scale_cut,

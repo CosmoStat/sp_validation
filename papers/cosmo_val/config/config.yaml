@@ -58,11 +58,11 @@ cosmo_val:
         kmax: 20
         kmax_extrapolate: 500
 
-  # Pure E/B-mode decomposition (config space)
-  pure_eb:
-    min_sep_int: 0.08
-    max_sep_int: 300
-    nbins_int: 1000
+  # The fine ξ± grid the B-mode integrals run over.
+  integration:
+    min_sep: 0.08
+    max_sep: 300
+    nbins: 1000
 
   # COSEBIs decomposition (config space, fine integration binning)
   cosebis:
