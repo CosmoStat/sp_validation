@@ -97,3 +97,52 @@ def test_not_equal_2bands_descr_names_both_columns():
     my_mask.create_descr()
 
     assert my_mask._descr == "!=-99 in mag_z or mag_z2"
+
+
+def test_covered_2bands_pairs_each_bit_with_its_own_band():
+
+    # Footprint bits (set = no imaging) in one group, magnitudes in the other
+    bits = np.array(
+        [(False, True), (False, True), (True, False), (True, True), (False, False)],
+        dtype=[("256_z", "?"), ("2048_z2", "?")],
+    )
+    mags = np.array(
+        [(21.0, 20.0), (-99, 20.0), (21.0, 20.0), (21.0, 20.0), (-99, -99)],
+        dtype=[("mag_z", "f8"), ("mag_z2", "f8")],
+    )
+
+    my_mask = Mask(
+        "256_z",
+        "zband",
+        kind="covered_2bands",
+        value=-99,
+        col_name2="2048_z2",
+        mag_col="mag_z",
+        mag_col2="mag_z2",
+        dat=bits,
+        dat_other=mags,
+    )
+
+    # row 0: z measured and covered                      -> keep
+    # row 1: z absent, z2 measured but not covered       -> drop
+    # row 2: z not covered, z2 measured and covered      -> keep
+    # row 3: neither band covered                        -> drop
+    # row 4: both covered but neither measured           -> drop
+    npt.assert_array_equal(my_mask._mask, [True, False, True, False, False])
+
+
+def test_covered_2bands_requires_its_columns_and_other_group():
+
+    with pytest.raises(ValueError, match="mag_col"):
+        Mask("256_z", "zband", kind="covered_2bands", value=-99, col_name2="2048_z2")
+
+    with pytest.raises(ValueError, match="dat_other"):
+        Mask(
+            "256_z",
+            "zband",
+            kind="covered_2bands",
+            value=-99,
+            col_name2="2048_z2",
+            mag_col="mag_z",
+            mag_col2="mag_z2",
+        )

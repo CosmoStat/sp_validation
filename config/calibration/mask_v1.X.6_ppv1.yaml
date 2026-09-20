@@ -101,11 +101,43 @@ dat_ext:
     kind: equal
     value: False
 
+  # u-band footprint
+  - col_name: 16_u
+    label: "u-band imaging"
+    kind: equal
+    value: False
+
+  # g-band footprint
+  - col_name: 32_g
+    label: "g-band imaging"
+    kind: equal
+    value: False
+
   # r-band footprint
   - col_name: 64_r
     label: "r-band imaging"
     kind: equal
     value: False
+
+  # i-band footprint
+  - col_name: 128_i
+    label: "i-band imaging"
+    kind: equal
+    value: False
+
+  # z-band footprint, both z surveys: 256_z is WISHES (Subaru HSC), 2048_z2 is
+  # Pan-STARRS (the deeper data, not the shallow all-sky survey). Told apart by
+  # depth: median MAG_LIM_z = 25.54 vs MAG_LIM_z2 = 24.88.
+  # Each bit is only required where its own band has a magnitude: asking for
+  # both at once keeps only the overlap of the two surveys, which costs ~85% of
+  # the sample. Pairs with the MAG_GAAP_0p7_z / _z2 two-band cut in `dat`.
+  - col_name: 256_z
+    col_name2: 2048_z2
+    mag_col: MAG_GAAP_0p7_z
+    mag_col2: MAG_GAAP_0p7_z2
+    label: "z-band imaging"
+    kind: covered_2bands
+    value: -99
 
   # Maximask
   - col_name: 1024_Maximask

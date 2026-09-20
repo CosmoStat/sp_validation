@@ -687,6 +687,27 @@ def get_calibrate_no_leakage_e_from_cat(path_cat_gal, weight_type="des", verbose
     return e1_noleak, e2_noleak
 
 
+def first_present(data, *candidates):
+    """Return the first of `candidates` present in `data`.
+
+    ngmix columns come in two grammars: v1.6 and earlier catalogues use
+    NGMIX_ELL_<shear>_<comp> and NGMIX_Tpsf_<shear>, ShapePipe v2 writes
+    NGMIX_G<n>_<shear> and NGMIX_T_PSF_RECONV_<shear>.
+    """
+    names = getattr(getattr(data, "dtype", None), "names", None)
+    if names is None:
+        names = getattr(data, "colnames", None)
+    if names is None:
+        names = list(data.keys())
+    for candidate in candidates:
+        if candidate in names:
+            return candidate
+    raise KeyError(
+        f"none of {list(candidates)} in the catalogue; it has neither ngmix"
+        f" column grammar"
+    )
+
+
 class metacal:
     """Metacal.
 
@@ -816,10 +837,14 @@ class metacal:
 
             dict_tmp["flag"] = masked_data[f"{self._prefix}_FLAGS_{name_shear}"]
 
-            # Ellipticity in named scalar components (ShapePipe-v2 grammar)
+            # Either ngmix grammar (see first_present)
             for comp in (0, 1):
                 dict_tmp[f"g{comp + 1}"] = masked_data[
-                    f"{self._prefix}_G{comp + 1}_{name_shear}"
+                    first_present(
+                        masked_data,
+                        f"{self._prefix}_G{comp + 1}_{name_shear}",
+                        f"{self._prefix}_ELL_{name_shear}_{comp}",
+                    )
                 ]
 
             for key in ("flux", "flux_err", "T", "T_err"):
@@ -827,7 +852,13 @@ class metacal:
                     f"{self._prefix}_{key.upper()}_{name_shear}"
                 ]
 
-            dict_tmp["Tpsf"] = masked_data[f"{self._prefix}_T_PSF_RECONV_{name_shear}"]
+            dict_tmp["Tpsf"] = masked_data[
+                first_present(
+                    masked_data,
+                    f"{self._prefix}_T_PSF_RECONV_{name_shear}",
+                    f"{self._prefix}_Tpsf_{name_shear}",
+                )
+            ]
 
         ns["C11"], ns["C22"], ns["w"] = self.get_variance_ivweights(
             masked_data,
@@ -875,8 +906,16 @@ class metacal:
             weight
 
         """
-        C11 = data[f"{prefix}_G1_ERR_NOSHEAR"]
-        C22 = data[f"{prefix}_G2_ERR_NOSHEAR"]
+        C11 = data[
+            first_present(
+                data, f"{prefix}_G1_ERR_NOSHEAR", f"{prefix}_ELL_ERR_NOSHEAR_0"
+            )
+        ]
+        C22 = data[
+            first_present(
+                data, f"{prefix}_G2_ERR_NOSHEAR", f"{prefix}_ELL_ERR_NOSHEAR_1"
+            )
+        ]
         if mask is not None:
             C11 = C11[mask]
             C22 = C22[mask]

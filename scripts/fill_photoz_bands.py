@@ -465,7 +465,9 @@ def main(argv=None):
         ) as pbar:
             for start in range(0, n_total, SCAN_CHUNK):
                 end = min(start + SCAN_CHUNK, n_total)
-                tile_chunk = dset[start:end]["TILE_ID"]
+                # .fields() reads only TILE_ID; dset[start:end]["TILE_ID"]
+                # would materialise all columns first (~3 GB per chunk)
+                tile_chunk = dset.fields("TILE_ID")[start:end]
                 for local_i, tid in enumerate(tile_chunk):
                     tile_index_map_lists[tid].append(start + local_i)
                 pbar.update(end - start)

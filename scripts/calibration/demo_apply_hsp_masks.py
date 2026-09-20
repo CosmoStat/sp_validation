@@ -22,7 +22,6 @@
 
 # +
 import os
-import re
 import tracemalloc
 
 from sp_validation import catalog_builders as sp_joint
@@ -39,41 +38,49 @@ if trace_mem:
 obj = sp_joint.ApplyHspMasks()
 
 
-# Bits set for non-tomographic catalogues
-bit_list = [1, 2, 4, 8, 64, 1024]
 
 # +
+# Set parameters
+base = "unions_shapepipe_comprehensive"
+
+# Major version
+ver_maj = "v1.6"
+
+# Mask release, subdirectory of the mask directory
+mask_release = "dr6-2026-08"
+
+year = 2022 if ver_maj == "v1.3" else 2024
+
+# $HOME/masks is a link to the shared UNIONS mask directory
+mask_base = f"{os.environ['HOME']}/masks"
+
+if ver_maj in ("v1.5", "v1.6"):
+    # Multi-band (tomographic)
+    bit_list = [1, 2, 4, 8, 16, 32, 64, 128, 256, 1024, 2048]
+    obj._params["mask_dir"] = f"{mask_base}/{mask_release}"
+    obj._params["file_base"] = "mask_ugriz_"
+else:
+    # r-band (non-tomographic)
+    bit_list = [1, 2, 4, 8, 64, 1024]
+    obj._params["mask_dir"] = mask_base
+    obj._params["file_base"] = "mask_r_"
+
 # combine bit list with & operator
 # equivalent to bits = sum(bit_list)
 # if elements in bit_list are of type 2^n
-
 bits = 0
 for b in bit_list:
     bits = bits | b
 print(bits)
 
-# +
-# Set parameters
-base = "unions_shapepipe_comprehensive"
-ver = "v1.3.c"
-
-if ver == "v1.3.c":
-    year = 2022
-else:
-    year = 2024
-ver_maj = "v1.5"
-
 obj._params["input_path"] = f"{base}_{year}_{ver_maj}.c.hdf5"
 obj._params["output_path"] = f"{base}_struc_{year}_{ver_maj}.c.hdf5"
-obj._params["mask_dir"] = f"{os.environ['HOME']}/{ver_maj}.x/masks"
 
 obj._params["nside"] = 131072
-obj._params["file_base"] = "mask_r_"
 obj._params["bits"] = bits
 
-obj._params["aux_mask_files"] = f"{obj._params['mask_dir']}/coverage_{ver_maj}.x.hsp"
-ver_x = re.sub(r"c$", "x", ver)
-obj._params["aux_mask_files"] = f"{obj._params['mask_dir']}/coverage_{ver_x}.hsp"
+# Coverage map is in the mask base directory, not in the mask release one
+obj._params["aux_mask_files"] = f"{mask_base}/coverage_{ver_maj}.x.hsp"
 obj._params["aux_mask_labels"] = "npoint3"
 obj._params["verbose"] = True
 # -
