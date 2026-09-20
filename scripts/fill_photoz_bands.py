@@ -35,18 +35,6 @@ import h5py
 import numpy as np
 import tqdm
 from astropy.io import fits
-<<<<<<< HEAD
-
-from cs_util import args as cs_args
-from cs_util import logging
-
-
-FITS_HDU = 1
-EMPTY_VALUE = -199
-COPY_CHUNK = 2_000_000   # rows per chunk when copying input → output
-SCAN_CHUNK = 5_000_000   # rows per chunk when scanning TILE_ID
-MAX_CONSEC_FAILS = 10    # abort if this many tiles in a row fail
-=======
 from cs_util import args as cs_args
 from cs_util import logging
 
@@ -70,17 +58,13 @@ FITS_RADEC_CANDIDATES = [
     ("RA", "Dec"),
     ("X_WORLD", "Y_WORLD"),
 ]
->>>>>>> upstream/develop
 
 REQUESTED_KEYS = [
     "Z_B",
     "Z_B_MIN",
     "Z_B_MAX",
     "T_B",
-<<<<<<< HEAD
-=======
     "Z_ML",
->>>>>>> upstream/develop
     "MAG_GAAP_u",
     "MAGERR_GAAP_u",
     "MAG_GAAP_0p7_u",
@@ -174,11 +158,8 @@ def params_default():
         "output": "unions_shapepipe_comprehensive_struc_ugriz_2024_v1.5.c.hdf5",
         "fits_dir": "UNIONS_DR6",
         "checkpoint": "fill_photoz_bands_checkpoint.json",
-<<<<<<< HEAD
-=======
         "n_check_rows": 10,
         "check_tol_arcsec": 0.5,
->>>>>>> upstream/develop
         "verbose": False,
     }
 
@@ -189,22 +170,16 @@ def params_default():
         "checkpoint": "-c",
     }
 
-<<<<<<< HEAD
-    types = {}
-=======
     types = {
         "n_check_rows": "int",
         "check_tol_arcsec": "float",
     }
->>>>>>> upstream/develop
 
     help_strings = {
         "input": "input HDF5 catalogue (no PhotoPipe fields), default={}",
         "output": "output HDF5 catalogue (PhotoPipe fields added and filled), default={}",
         "fits_dir": "directory with PhotoPipe FITS tiles, default={}",
         "checkpoint": "checkpoint JSON file for resume support, default={}",
-<<<<<<< HEAD
-=======
         "n_check_rows": (
             "number of rows per tile whose RA/Dec are compared between HDF5 and"
             " FITS to verify row order, 0 to disable, default={}"
@@ -213,7 +188,6 @@ def params_default():
             "maximum angular separation [arcsec] for a row-order check to pass,"
             " default={}"
         ),
->>>>>>> upstream/develop
     }
 
     return params, short_options, types, help_strings
@@ -223,10 +197,7 @@ def params_default():
 # Helpers
 # ---------------------------------------------------------------------------
 
-<<<<<<< HEAD
-=======
 
->>>>>>> upstream/develop
 def detect_dataset_name(hf):
     """Return the first dataset name in an HDF5 file.
 
@@ -319,8 +290,6 @@ def check_fits_keys(fits_columns, requested_keys):
     return valid, missing
 
 
-<<<<<<< HEAD
-=======
 def find_fits_radec_columns(fits_columns):
     """Find RA/Dec Columns.
 
@@ -498,20 +467,16 @@ def check_tile_row_order(
     return bool(max_sep <= tol_arcsec), n_checked, max_sep
 
 
->>>>>>> upstream/develop
 def write_tile_to_hdf5(dset, hdf5_indices, fits_data, valid_keys):
     """Write valid_keys from fits_data into dset at hdf5_indices.
 
     Reads the HDF5 range in one chunk, fills fields in memory, writes
     back.  Handles both contiguous and non-contiguous index ranges.
 
-<<<<<<< HEAD
-=======
     Assumes row ``k`` of ``fits_data`` corresponds to HDF5 row
     ``numpy.sort(hdf5_indices)[k]``; ``check_tile_row_order`` spot-checks
     this before the write.
 
->>>>>>> upstream/develop
     Parameters
     ----------
     dset : h5py.Dataset
@@ -554,10 +519,7 @@ def write_tile_to_hdf5(dset, hdf5_indices, fits_data, valid_keys):
 # Phase 1: create output file
 # ---------------------------------------------------------------------------
 
-<<<<<<< HEAD
-=======
 
->>>>>>> upstream/develop
 def create_output_file(input_path, output_path, dataset_name, verbose=False):
     """Create output HDF5 by copying input and appending empty PhotoPipe fields.
 
@@ -623,10 +585,7 @@ def create_output_file(input_path, output_path, dataset_name, verbose=False):
 # Main
 # ---------------------------------------------------------------------------
 
-<<<<<<< HEAD
-=======
 
->>>>>>> upstream/develop
 def main(argv=None):
     """Main.
 
@@ -722,13 +681,9 @@ def main(argv=None):
         ) as pbar:
             for start in range(0, n_total, SCAN_CHUNK):
                 end = min(start + SCAN_CHUNK, n_total)
-<<<<<<< HEAD
                 # .fields() reads only TILE_ID; dset[start:end]["TILE_ID"]
                 # would materialise all columns first (~3 GB per chunk)
                 tile_chunk = dset.fields("TILE_ID")[start:end]
-=======
-                tile_chunk = dset[start:end]["TILE_ID"]
->>>>>>> upstream/develop
                 for local_i, tid in enumerate(tile_chunk):
                     tile_index_map_lists[tid].append(start + local_i)
                 pbar.update(end - start)
@@ -742,12 +697,6 @@ def main(argv=None):
         unique_tiles = sorted(tile_index_map.keys())
         n_tiles = len(unique_tiles)
 
-<<<<<<< HEAD
-        valid_keys = None   # determined from first available FITS tile
-        n_skipped_missing = 0
-        n_skipped_done = 0
-        n_skipped_size = 0
-=======
         valid_keys = None  # determined from first available FITS tile
         fits_radec_cols = None  # idem, (RA, Dec) column names in the FITS tiles
 
@@ -763,7 +712,6 @@ def main(argv=None):
         n_skipped_done = 0
         n_skipped_size = 0
         n_skipped_order = 0
->>>>>>> upstream/develop
         n_errors = 0
         n_consec_fails = 0
         n_processed = 0
@@ -812,8 +760,6 @@ def main(argv=None):
                             )
                         tqdm.tqdm.write(f"\n  Keys to fill: {valid_keys}\n")
 
-<<<<<<< HEAD
-=======
                         fits_radec_cols = find_fits_radec_columns(fits_data.dtype.names)
                         if check_rows > 0 and fits_radec_cols[0] is None:
                             warnings.warn(
@@ -832,7 +778,6 @@ def main(argv=None):
                                 f" {params['check_tol_arcsec']} arcsec\n"
                             )
 
->>>>>>> upstream/develop
                     hdf5_indices = tile_index_map[tile_id]
                     n_hdf5 = len(hdf5_indices)
                     n_fits = len(fits_data)
@@ -849,9 +794,6 @@ def main(argv=None):
                         )
                         continue
 
-<<<<<<< HEAD
-                    write_tile_to_hdf5(dset, hdf5_indices, fits_data, valid_keys)
-=======
                     # write_tile_to_hdf5 pairs FITS row k with HDF5 row
                     # sorted_idx[k]; spot-check that pairing before writing.
                     sorted_idx = np.sort(hdf5_indices)
@@ -890,7 +832,6 @@ def main(argv=None):
                             continue
 
                     write_tile_to_hdf5(dset, sorted_idx, fits_data, valid_keys)
->>>>>>> upstream/develop
 
             except Exception as e:
                 warnings.warn(f"Tile {tile_str}: error ({e}), skipping.")
@@ -920,14 +861,9 @@ def main(argv=None):
     print(f"  Tiles skipped (done)  : {n_skipped_done}")
     print(f"  FITS files missing    : {n_skipped_missing}")
     print(f"  Size mismatches       : {n_skipped_size}")
-<<<<<<< HEAD
-    print(f"  Tiles failed (error)  : {n_errors}")
-    if n_processed == 0 and (n_errors > 0 or n_skipped_size > 0):
-=======
     print(f"  Row-order mismatches  : {n_skipped_order}")
     print(f"  Tiles failed (error)  : {n_errors}")
     if n_processed == 0 and (n_errors > 0 or n_skipped_size > 0 or n_skipped_order > 0):
->>>>>>> upstream/develop
         print(
             "WARNING: no tiles were filled; all available tiles failed.",
             file=sys.stderr,
