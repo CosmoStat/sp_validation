@@ -54,14 +54,24 @@ with h5py.File(HDF5_FILE, "r") as f:
             # Periodic running-fraction report
             if (chunk_idx + 1) % REPORT_EVERY == 0 or (chunk_idx + 1) == n_chunks:
                 rows_done = end
+<<<<<<< HEAD
                 tqdm.write(f"\n  --- after {rows_done:,} rows ({100*rows_done/n_total:.1f}%) ---")
+=======
+                tqdm.write(
+                    f"\n  --- after {rows_done:,} rows ({100 * rows_done / n_total:.1f}%) ---"
+                )
+>>>>>>> upstream/develop
                 tqdm.write(f"  {'Field':<22} {'Filled %':>9}")
                 for field in FIELDS:
                     pct = 100.0 * counts[field] / rows_done
                     tqdm.write(f"  {field:<22} {pct:>8.2f}%")
 
 # Final summary
+<<<<<<< HEAD
 print(f"\n{'='*56}")
+=======
+print(f"\n{'=' * 56}")
+>>>>>>> upstream/develop
 print(f"FINAL SUMMARY  (total rows: {n_total:,})")
 print(f"{'Field':<22} {'Filled':>12} {'Empty':>12} {'Filled %':>10}")
 print("-" * 60)

@@ -28,8 +28,6 @@ if ipython is not None:
         "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val/output/rho_tau_stats/rho_stats_SP_v1.4.5.fits",
         "/home/cdaley/n17data/unions/pure_eb",
     )
-else:
-    from snakemake.script import snakemake
 
 params = snakemake.params  # type: ignore
 

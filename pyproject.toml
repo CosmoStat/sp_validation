@@ -89,7 +89,7 @@ dependencies = [
     # be converted to Python scalars`, failing all get_cosmo-backed tests. camb
     # 1.6.6 (latest on PyPI) and current master are both unfixed. Lift this cap
     # when camb ships > 1.6.6 with the scipy-1.18 fix.
-    "scipy<1.18",
+    "scipy<1.19",
     "seaborn",
     # Intentionally tracks the mutable `develop` branch (NOT SHA-pinned):
     # shear_psf_leakage is actively co-developed CosmoStat code we want to stay
@@ -97,12 +97,10 @@ dependencies = [
     # getdist feature-branch below, which is an external fork we pin for repro.)
     "shear_psf_leakage @ git+https://github.com/CosmoStat/shear_psf_leakage.git@develop",
     "skyproj",
-    # UNIONS-WL fork of DESC Smokescreen, pinned by SHA on the fork's
-    # packaging branch: it declares pyccl and imports its theory backends
-    # lazily, so the install closure is CCL-only. Provisional pin — swapped to the
-    # fork's release tag once the fork packaging PRs merge. Git pin only;
-    # nothing is published to PyPI.
-    "smokescreen @ git+https://github.com/UNIONS-WL/Smokescreen@588a6b9b26560bd5ba3dd5ba342f3c40152644f9",
+    # UNIONS-WL fork of DESC Smokescreen. Tracks the fork's main; uv.lock
+    # freezes the exact commit, so updates land via
+    # `uv lock --upgrade-package smokescreen`. Git only; not on PyPI.
+    "smokescreen @ git+https://github.com/UNIONS-WL/Smokescreen@main",
     "statsmodels",
     "treecorr>=5.0",
     "tqdm",
@@ -111,6 +109,13 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/CosmoStat/sp_validation"
+
+[project.scripts]
+# Host-side management of your own container image (sp_validation.container).
+# Stdlib-only by design -- it has to run on the host, outside the container --
+# so it also works straight from a checkout with nothing installed:
+# `python3 src/sp_validation/container.py status`.
+spv-container = "sp_validation.container:main"
 
 [tool.uv]
 # The reproducibility target is the Linux container; scope the lock to Linux
@@ -134,8 +139,8 @@ docs = [
     "sphinxawesome-theme>=5.3,!=6.0.3"
 ]
 # GLASS mock generation (sp_validation.glass_mock). Kept optional: the core
-# library and its import guard resolve without GLASS, and the production
-# container does not yet ship it. Pinned set (verified 2026-06-13, fiber
+# library and its import guard resolve without GLASS (the production container
+# ships it via the ``glass`` extra). Pinned set (verified 2026-06-13, fiber
 # glass-cosmology-api-pin): glass 2025.1 is the unique version with the flat API
 # the map path uses AND the legacy ``cosmo.dc``/``xm``/``ef`` interface that
 # ``cosmology`` 2022.10.9 (its newest release) provides — newer glass calls
@@ -143,7 +148,7 @@ docs = [
 # lives in the separate ``glass.ext.camb`` package (absent from glass core
 # >=2024.2), so it is pinned explicitly.
 glass = [
-    "glass==2025.1",
+    "glass==2025.3",
     "glass.ext.camb==2023.6",
     "cosmology==2022.10.9",
     # fitsio: make_unions_glass_sim.py writes the mock catalogue as FITS.
@@ -155,8 +160,18 @@ glass = [
 workflow = [
     "snakemake",
     # run_2pcf_highres.py drives the MPI convergence run; the container ships
-    # OpenMPI (/opt/ompi) so mpi4py builds against it.
+    # OpenMPI under /opt/ompi so mpi4py builds against it.
     "mpi4py",
+    # CosmoSIS drives the cosmo_inference sampling step. Sdist-only, so this is a
+    # source build (~2 min) against the base image's gfortran/GSL/cfitsio/OpenMPI —
+    # no extra apt packages needed. Floor at 3.25 simply to stay current; there is
+    # no known-good older version to pin back to. Note the shared-memory pool is
+    # still broken upstream at 3.25.2 (bcast/gather/allreduce in
+    # runtime/process_pool.py return an unassigned `self.data`), so chains must run
+    # under MPI -- which is why the Dockerfile sets MPIFC before syncing this extra.
+    "cosmosis>=3.25",
+    # CSL's project_2d.py imports fastpt (3.x API; 4.0 restructured it).
+    "fast-pt>=3.2,<4",
     # NOTE: workflow/scripts/cv_*.py also import `cv_runner`, which is not
     # published or resolvable (no public repo found) — left undeclared pending
     # its source. Same for `unions_wl` (scripts/check_footprint.py).

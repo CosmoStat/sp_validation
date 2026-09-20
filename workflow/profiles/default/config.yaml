@@ -1,0 +1,39 @@
+# Machine-independent profile: the container model, and nothing else.
+#
+# Use it anywhere that is not candide -- a laptop, a workstation, another
+# cluster's interactive node:
+#
+#     snakemake --profile workflow/profiles/default -s workflow/Snakefile \
+#         <target> --configfile <run config> -j 4
+#
+# On candide -- where the analysis actually runs -- use
+# `--profile workflow/profiles/candide` instead: the GENERIC block below plus
+# the SLURM executor and candide's machine layer.
+#
+# Requirements are the same everywhere: `apptainer` on PATH, and `snakemake`
+# installed host-side (`uv tool install ...`, see workflow/README.md) -- never
+# run from inside an apptainer shell.
+
+# --- GENERIC: mirrored in workflow/profiles/candide/config.yaml -------------
+# Wrap each job's `shell:`/`script:` command in `apptainer exec`, using the
+# image named by the entry Snakefile's `container:` directive.
+software-deployment-method: apptainer
+
+# Rerun a job when its code / params / inputs change, not only on mtime.
+# Caveat: "code" watches rule bodies and `script:` files, not `src/` -- editing
+# a module under src/ does not mark outputs stale on its own.
+rerun-triggers: ["mtime", "params", "input", "code"]
+
+# Give an appearing output file a moment on networked filesystems before
+# Snakemake calls a job failed for a missing output.
+latency-wait: 5
+# --- end GENERIC ------------------------------------------------------------
+
+# Binds are the one thing you almost certainly need to edit for your machine:
+# whatever paths your inputs, outputs and checkout live under. `--cleanenv` so a
+# job's environment is the image's, not your shell's. If $HOME and the working
+# directory cover everything (apptainer mounts both by default), drop `--bind`.
+apptainer-args: "--cleanenv --bind /home"
+
+# No `apptainer-prefix`, here or on candide: the entry Snakefiles resolve
+# `container:` to this user's own image path (workflow/README.md).

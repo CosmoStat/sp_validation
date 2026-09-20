@@ -116,6 +116,36 @@ def generate_samples_for_mock(mock_id, cov_tau, theta, ref_tau_header, output_di
     return f"Generated tau samples for mock {mock_id:05d}"
 
 
+def run(cov_tau_path, ref_tau_path, output_dir, mock_ids):
+    """Generate sampled tau statistics for every mock in ``mock_ids``."""
+    print("Loading tau covariance...")
+    cov_tau = np.load(cov_tau_path)
+    print(f"  cov_tau shape: {cov_tau.shape}")
+
+    print("Loading reference FITS...")
+    ref_tau_data, ref_tau_header = load_reference_fits(ref_tau_path)
+    theta = ref_tau_data["theta"]
+    print(
+        f"  theta range: {theta.min():.3f} - {theta.max():.3f} arcmin, nbins: {len(theta)}"
+    )
+
+    print(f"Generating tau samples for {len(mock_ids)} mocks...")
+    for mock_id in mock_ids:
+        msg = generate_samples_for_mock(
+            mock_id, cov_tau, theta, ref_tau_header, output_dir
+        )
+        print(msg)
+    print("Done!")
+
+
+def parse_mock_ids(spec):
+    """Parse a mock-ID spec, either a single ID or an inclusive ``lo-hi`` range."""
+    if "-" in spec:
+        lo, hi = spec.split("-")
+        return list(range(int(lo), int(hi) + 1))
+    return [int(spec)]
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Generate zero-mean tau samples for GLASS mocks"
@@ -146,37 +176,22 @@ def main():
     )
     args = parser.parse_args()
 
-    # Load tau covariance and reference
-    print("Loading tau covariance...")
-    cov_tau = np.load(args.cov_tau)
-    print(f"  cov_tau shape: {cov_tau.shape}")
+    run(args.cov_tau, args.ref_tau, args.output_dir, parse_mock_ids(args.mock_ids))
 
-    print("Loading reference FITS...")
-    ref_tau_data, ref_tau_header = load_reference_fits(args.ref_tau)
-    theta = ref_tau_data["theta"]
-    print(
-        f"  theta range: {theta.min():.3f} - {theta.max():.3f} arcmin, nbins: {len(theta)}"
+
+# ── Entry point dispatch ─────────────────────────────────────────────────────
+
+try:
+    snakemake  # injected by snakemake's script: directive
+except NameError:
+    snakemake = None
+
+if snakemake is not None:
+    run(
+        snakemake.input.cov_tau,
+        snakemake.input.ref_tau,
+        snakemake.params.output_dir,
+        parse_mock_ids(snakemake.params.mock_id),
     )
-
-    # Parse mock ID range
-    mock_ids = (
-        list(
-            range(
-                int(args.mock_ids.split("-")[0]), int(args.mock_ids.split("-")[1]) + 1
-            )
-        )
-        if "-" in args.mock_ids
-        else [int(args.mock_ids)]
-    )
-
-    print(f"Generating tau samples for {len(mock_ids)} mocks...")
-    for mock_id in mock_ids:
-        msg = generate_samples_for_mock(
-            mock_id, cov_tau, theta, ref_tau_header, args.output_dir
-        )
-        print(msg)
-    print("Done!")
-
-
-if __name__ == "__main__":
+elif __name__ == "__main__":
     main()
