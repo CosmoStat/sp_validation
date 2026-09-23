@@ -184,8 +184,13 @@ def fill_cat_gal(cat_gal, dat, g_uncorr, gal_metacal, mask1, mask2, purpose="wei
     cat_gal["R_g22"] = gal_metacal.R22
 
     cat_gal["NGMIX_T_NOSHEAR"] = sp_cat.get_col(dat, "NGMIX_T_NOSHEAR", mask1, mask2)
+    # v1.6 writes NGMIX_Tpsf_NOSHEAR, ShapePipe v2 NGMIX_T_PSF_RECONV_NOSHEAR;
+    # the output column keeps one name either way.
     cat_gal["NGMIX_T_PSF_RECONV_NOSHEAR"] = sp_cat.get_col(
-        dat, "NGMIX_T_PSF_RECONV_NOSHEAR", mask1, mask2
+        dat,
+        first_present(dat, "NGMIX_T_PSF_RECONV_NOSHEAR", "NGMIX_Tpsf_NOSHEAR"),
+        mask1,
+        mask2,
     )
     cat_gal["size_ratio"] = (
         cat_gal["NGMIX_T_NOSHEAR"] / cat_gal["NGMIX_T_PSF_RECONV_NOSHEAR"]

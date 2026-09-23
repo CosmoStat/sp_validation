@@ -192,6 +192,18 @@ add_cols = [
     "NGMIX_Tpsf_NOSHEAR",
     "fwhm_PSF",
 ]
+
+# PhotoPipe photo-z and multi-band photometry, when fill_photoz_bands.py has
+# put them in the input. Selected against what the input actually holds, for
+# two reasons: no catalogue carries every key (v1.6.c.3 has no Z_ML), and the
+# image-simulation runs share this script with none of these columns at all.
+photoz_cols = [key for key in cat.PHOTOZ_KEYS if key in set(dat.dtype.names or ())]
+if photoz_cols:
+    print(f"Copying {len(photoz_cols)} PhotoPipe columns to the output catalogue")
+else:
+    print("No PhotoPipe columns found in the input; none copied")
+add_cols = add_cols + photoz_cols
+
 add_cols_data = {}
 for key in add_cols:
     add_cols_data[key] = cat.get_col(dat, key, mask_combined._mask, mask_metacal)

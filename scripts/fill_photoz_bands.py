@@ -38,6 +38,8 @@ from astropy.io import fits
 from cs_util import args as cs_args
 from cs_util import logging
 
+import sp_validation.catalog as sp_cat
+
 FITS_HDU = 1
 EMPTY_VALUE = -199
 COPY_CHUNK = 2_000_000  # rows per chunk when copying input → output
@@ -59,86 +61,9 @@ FITS_RADEC_CANDIDATES = [
     ("X_WORLD", "Y_WORLD"),
 ]
 
-REQUESTED_KEYS = [
-    "Z_B",
-    "Z_B_MIN",
-    "Z_B_MAX",
-    "T_B",
-    "Z_ML",
-    "MAG_GAAP_u",
-    "MAGERR_GAAP_u",
-    "MAG_GAAP_0p7_u",
-    "MAGERR_GAAP_0p7_u",
-    "MAG_GAAP_1p0_u",
-    "MAGERR_GAAP_1p0_u",
-    "FLAG_GAAP_u",
-    "MAG_LIM_u",
-    "FLUX_GAAP_u",
-    "FLUXERR_GAAP_u",
-    "EXTINCTION_u",
-    "MAG_GAAP_g",
-    "MAGERR_GAAP_g",
-    "MAG_GAAP_0p7_g",
-    "MAGERR_GAAP_0p7_g",
-    "MAG_GAAP_1p0_g",
-    "MAGERR_GAAP_1p0_g",
-    "FLAG_GAAP_g",
-    "MAG_LIM_g",
-    "FLUX_GAAP_g",
-    "FLUXERR_GAAP_g",
-    "EXTINCTION_g",
-    "MAG_GAAP_r",
-    "MAGERR_GAAP_r",
-    "MAG_GAAP_0p7_r",
-    "MAGERR_GAAP_0p7_r",
-    "MAG_GAAP_1p0_r",
-    "MAGERR_GAAP_1p0_r",
-    "FLAG_GAAP_r",
-    "MAG_LIM_r",
-    "FLUX_GAAP_r",
-    "FLUXERR_GAAP_r",
-    "EXTINCTION_r",
-    "MAG_GAAP_i",
-    "MAGERR_GAAP_i",
-    "MAG_GAAP_0p7_i",
-    "MAGERR_GAAP_0p7_i",
-    "MAG_GAAP_1p0_i",
-    "MAGERR_GAAP_1p0_i",
-    "FLAG_GAAP_i",
-    "MAG_LIM_i",
-    "FLUX_GAAP_i",
-    "FLUXERR_GAAP_i",
-    "EXTINCTION_i",
-    "MAG_GAAP_z",
-    "MAGERR_GAAP_z",
-    "MAG_GAAP_0p7_z",
-    "MAGERR_GAAP_0p7_z",
-    "MAG_GAAP_1p0_z",
-    "MAGERR_GAAP_1p0_z",
-    "FLAG_GAAP_z",
-    "MAG_LIM_z",
-    "FLUX_GAAP_z",
-    "FLUXERR_GAAP_z",
-    "EXTINCTION_z",
-    "MAG_GAAP_z2",
-    "MAGERR_GAAP_z2",
-    "MAG_GAAP_0p7_z2",
-    "MAGERR_GAAP_0p7_z2",
-    "MAG_GAAP_1p0_z2",
-    "MAGERR_GAAP_1p0_z2",
-    "FLAG_GAAP_z2",
-    "MAG_LIM_z2",
-    "FLUX_GAAP_z2",
-    "FLUXERR_GAAP_z2",
-    "EXTINCTION_z2",
-    "EXTINCTION",
-    "ODDS",
-    "CHI_SQUARED_BPZ",
-    "M_0",
-    "BPZ_FILT",
-    "BPZ_NONDETFILT",
-    "BPZ_FLAGFILT",
-]
+# The one list, shared with the calibration script so the two cannot
+# drift (see sp_validation.catalog.PHOTOZ_KEYS).
+REQUESTED_KEYS = sp_cat.PHOTOZ_KEYS
 
 
 def params_default():
