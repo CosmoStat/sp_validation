@@ -783,8 +783,6 @@ def main(argv=None):
     else:
         campaigns = argv[1].split("+")
 
-    n_campaign = len(campaigns)
-
     print("combine_results.py:", campaigns)
 
     directory = "sp_output/plots"
