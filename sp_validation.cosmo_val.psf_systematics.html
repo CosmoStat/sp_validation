@@ -95,6 +95,7 @@
 <li class="toctree-l3 current"><a class="current reference internal" href="#">sp_validation.cosmo_val.psf_systematics</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pure_eb.html">sp_validation.cosmo_val.pure_eb</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.real_space.html">sp_validation.cosmo_val.real_space</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.sacc_writers.html">sp_validation.cosmo_val.sacc_writers</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html">sp_validation.b_modes</a></li>
@@ -160,6 +161,15 @@ object-wise) for catalogue validation.</p>
 <dt class="sig sig-object py" id="sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.calculate_rho_tau_stats">
 <span class="sig-name descname"><span class="pre">calculate_rho_tau_stats</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmo_val/psf_systematics.html#PSFSystematicsMixin.calculate_rho_tau_stats"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.calculate_rho_tau_stats" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.calculate_rho_tau_stats'">¶</a></dt>
 <dd></dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.rho_tau_to_sacc_part">
+<span class="sig-name descname"><span class="pre">rho_tau_to_sacc_part</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">version</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">base</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rho_stat_handler</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tau_stat_handler</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmo_val/psf_systematics.html#PSFSystematicsMixin.rho_tau_to_sacc_part"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.rho_tau_to_sacc_part" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.rho_tau_to_sacc_part'">¶</a></dt>
+<dd><p>Write the ρ/τ SACC part for one version.</p>
+<p>ρ_0…ρ_5 autos and τ_0/τ_2/τ_5 leakage from the handler tables. The
+<code class="docutils literal notranslate"><span class="pre">CovTauTh</span></code> theory covariance <code class="docutils literal notranslate"><span class="pre">cov_tau_{base}_th.npy</span></code> is passed as
+<code class="docutils literal notranslate"><span class="pre">tau_cov_th</span></code> when it exists; without it the τ block falls back —
+loudly — to a variance diagonal.</p>
+</dd></dl>
 <dl class="py property">
 <dt class="sig sig-object py" id="sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.rho_stat_handler">
 <span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">rho_stat_handler</span></span><a class="headerlink" href="#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.rho_stat_handler" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.rho_stat_handler'">¶</a></dt>
@@ -248,6 +258,7 @@ object-wise) for catalogue validation.</p>
 <ul>
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin'" class="reference internal" href="#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin"><code class="docutils literal notranslate"><span class="pre">PSFSystematicsMixin</span></code></a><ul>
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.calculate_rho_tau_stats'" class="reference internal" href="#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.calculate_rho_tau_stats"><code class="docutils literal notranslate"><span class="pre">PSFSystematicsMixin.calculate_rho_tau_stats()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.rho_tau_to_sacc_part'" class="reference internal" href="#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.rho_tau_to_sacc_part"><code class="docutils literal notranslate"><span class="pre">PSFSystematicsMixin.rho_tau_to_sacc_part()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.rho_stat_handler'" class="reference internal" href="#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.rho_stat_handler"><code class="docutils literal notranslate"><span class="pre">PSFSystematicsMixin.rho_stat_handler</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.tau_stat_handler'" class="reference internal" href="#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.tau_stat_handler"><code class="docutils literal notranslate"><span class="pre">PSFSystematicsMixin.tau_stat_handler</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.plot_rho_stats'" class="reference internal" href="#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.plot_rho_stats"><code class="docutils literal notranslate"><span class="pre">PSFSystematicsMixin.plot_rho_stats()</span></code></a></li>

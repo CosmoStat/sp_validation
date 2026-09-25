@@ -95,6 +95,7 @@
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.psf_systematics.html">sp_validation.cosmo_val.psf_systematics</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pure_eb.html">sp_validation.cosmo_val.pure_eb</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.real_space.html">sp_validation.cosmo_val.real_space</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.sacc_writers.html">sp_validation.cosmo_val.sacc_writers</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html">sp_validation.b_modes</a></li>
@@ -285,6 +286,28 @@ is the field/binning <code class="docutils literal notranslate"><span class="pre
 </dd>
 </dl>
 </dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.pseudo_cl.bandpower_window_from_workspace">
+<span class="sig-name descname"><span class="pre">bandpower_window_from_workspace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">wsp</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/pseudo_cl.html#bandpower_window_from_workspace"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.pseudo_cl.bandpower_window_from_workspace" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.pseudo_cl.bandpower_window_from_workspace'">¶</a></dt>
+<dd><p>Extract the bandpower window matrix <code class="docutils literal notranslate"><span class="pre">W</span></code> for a spin-2×spin-2 workspace.</p>
+<p>NaMaster’s <code class="docutils literal notranslate"><span class="pre">get_bandpower_windows()</span></code> returns a four-index array
+<code class="docutils literal notranslate"><span class="pre">(n_cl_out,</span> <span class="pre">n_bpw,</span> <span class="pre">n_cl_in,</span> <span class="pre">n_ell)</span></code> describing how each output bandpower
+is built from the input multipoles across the EE/EB/BE/BB spectra. SACC’s
+<code class="docutils literal notranslate"><span class="pre">BandpowerWindow</span></code> model (one window per bandpower, shared across the
+stored spectra) needs the per-spectrum <em>decoupling</em> window, i.e. the
+diagonal EE←EE block (equal to BB←BB and EB←EB, verified identical).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><ul class="simple">
+<li><p><strong>window_ells</strong> (<em>np.ndarray</em>) – Multipoles the window spans, <code class="docutils literal notranslate"><span class="pre">arange(n_ell)</span></code> — the <code class="docutils literal notranslate"><span class="pre">ell</span></code> axis of
+<code class="docutils literal notranslate"><span class="pre">compute_coupled_cell</span></code>.</p></li>
+<li><p><strong>window_weights</strong> (<em>np.ndarray</em>) – <code class="docutils literal notranslate"><span class="pre">W</span></code> of shape <code class="docutils literal notranslate"><span class="pre">(n_ell,</span> <span class="pre">n_bpw)</span></code> — one column per bandpower, the layout
+<a class="reference internal" href="sp_validation.sacc_io.html#sp_validation.sacc_io.add_pseudo_cl" title="sp_validation.sacc_io.add_pseudo_cl"><code class="xref py py-func docutils literal notranslate"><span class="pre">sp_validation.sacc_io.add_pseudo_cl()</span></code></a> expects.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
 </section>
 </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
 <div class="mr-auto">
@@ -312,6 +335,7 @@ is the field/binning <code class="docutils literal notranslate"><span class="pre
 <li><a :data-current="activeSection === '#sp_validation.pseudo_cl.apply_random_rotation'" class="reference internal" href="#sp_validation.pseudo_cl.apply_random_rotation"><code class="docutils literal notranslate"><span class="pre">apply_random_rotation()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.pseudo_cl.get_pseudo_cls_map'" class="reference internal" href="#sp_validation.pseudo_cl.get_pseudo_cls_map"><code class="docutils literal notranslate"><span class="pre">get_pseudo_cls_map()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.pseudo_cl.get_pseudo_cls_catalog'" class="reference internal" href="#sp_validation.pseudo_cl.get_pseudo_cls_catalog"><code class="docutils literal notranslate"><span class="pre">get_pseudo_cls_catalog()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.pseudo_cl.bandpower_window_from_workspace'" class="reference internal" href="#sp_validation.pseudo_cl.bandpower_window_from_workspace"><code class="docutils literal notranslate"><span class="pre">bandpower_window_from_workspace()</span></code></a></li>
 </ul>
 </div>
 </aside>

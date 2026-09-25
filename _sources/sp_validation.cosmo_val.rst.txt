@@ -20,3 +20,4 @@ Submodules
    sp_validation.cosmo_val.psf_systematics
    sp_validation.cosmo_val.pure_eb
    sp_validation.cosmo_val.real_space
+   sp_validation.cosmo_val.sacc_writers

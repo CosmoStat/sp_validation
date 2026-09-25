@@ -127,6 +127,7 @@
 <li class="toctree-l3"><a class="reference internal" href="../../sp_validation.cosmo_val.psf_systematics.html">sp_validation.cosmo_val.psf_systematics</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../sp_validation.cosmo_val.pure_eb.html">sp_validation.cosmo_val.pure_eb</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../sp_validation.cosmo_val.real_space.html">sp_validation.cosmo_val.real_space</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../sp_validation.cosmo_val.sacc_writers.html">sp_validation.cosmo_val.sacc_writers</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.b_modes.html">sp_validation.b_modes</a></li>
@@ -496,6 +497,38 @@
 </span><span id="line-280">    <span class="n">cl_all</span> <span class="o">=</span> <span class="n">wsp</span><span class="o">.</span><span class="n">decouple_cell</span><span class="p">(</span><span class="n">cl_coupled</span><span class="p">)</span>
 </span><span id="line-281">
 </span><span id="line-282">    <span class="k">return</span> <span class="n">ell_eff</span><span class="p">,</span> <span class="n">cl_all</span><span class="p">,</span> <span class="n">wsp</span></div>
+
+</span><span id="line-283">
+</span><span id="line-284">
+</span><span id="line-285"><span class="c1"># NaMaster spin-2 × spin-2 spectrum order: EE, EB, BE, BB.</span>
+</span><span id="line-286"><span class="n">_NMT_EE</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span id="line-287">
+</span><span id="line-288">
+<div class="viewcode-block" id="bandpower_window_from_workspace">
+<a class="viewcode-back" href="../../sp_validation.pseudo_cl.html#sp_validation.pseudo_cl.bandpower_window_from_workspace">[docs]</a>
+</span><span id="line-289"><span class="k">def</span><span class="w"> </span><span class="nf">bandpower_window_from_workspace</span><span class="p">(</span><span class="n">wsp</span><span class="p">):</span>
+</span><span id="line-290"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract the bandpower window matrix ``W`` for a spin-2×spin-2 workspace.</span>
+</span><span id="line-291">
+</span><span id="line-292"><span class="sd">    NaMaster&#39;s ``get_bandpower_windows()`` returns a four-index array</span>
+</span><span id="line-293"><span class="sd">    ``(n_cl_out, n_bpw, n_cl_in, n_ell)`` describing how each output bandpower</span>
+</span><span id="line-294"><span class="sd">    is built from the input multipoles across the EE/EB/BE/BB spectra. SACC&#39;s</span>
+</span><span id="line-295"><span class="sd">    ``BandpowerWindow`` model (one window per bandpower, shared across the</span>
+</span><span id="line-296"><span class="sd">    stored spectra) needs the per-spectrum *decoupling* window, i.e. the</span>
+</span><span id="line-297"><span class="sd">    diagonal EE←EE block (equal to BB←BB and EB←EB, verified identical).</span>
+</span><span id="line-298">
+</span><span id="line-299"><span class="sd">    Returns</span>
+</span><span id="line-300"><span class="sd">    -------</span>
+</span><span id="line-301"><span class="sd">    window_ells : np.ndarray</span>
+</span><span id="line-302"><span class="sd">        Multipoles the window spans, ``arange(n_ell)`` — the ``ell`` axis of</span>
+</span><span id="line-303"><span class="sd">        ``compute_coupled_cell``.</span>
+</span><span id="line-304"><span class="sd">    window_weights : np.ndarray</span>
+</span><span id="line-305"><span class="sd">        ``W`` of shape ``(n_ell, n_bpw)`` — one column per bandpower, the layout</span>
+</span><span id="line-306"><span class="sd">        :func:`sp_validation.sacc_io.add_pseudo_cl` expects.</span>
+</span><span id="line-307"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-308">    <span class="n">bpw</span> <span class="o">=</span> <span class="n">wsp</span><span class="o">.</span><span class="n">get_bandpower_windows</span><span class="p">()</span>  <span class="c1"># (n_cl_out, n_bpw, n_cl_in, n_ell)</span>
+</span><span id="line-309">    <span class="n">diagonal</span> <span class="o">=</span> <span class="n">bpw</span><span class="p">[</span><span class="n">_NMT_EE</span><span class="p">,</span> <span class="p">:,</span> <span class="n">_NMT_EE</span><span class="p">,</span> <span class="p">:]</span>  <span class="c1"># (n_bpw, n_ell)</span>
+</span><span id="line-310">    <span class="n">window_ells</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">diagonal</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span><span id="line-311">    <span class="k">return</span> <span class="n">window_ells</span><span class="p">,</span> <span class="n">diagonal</span><span class="o">.</span><span class="n">T</span></div>
 
 </span></code></pre></div>
     </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">

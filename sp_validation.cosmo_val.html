@@ -95,6 +95,7 @@
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.psf_systematics.html">sp_validation.cosmo_val.psf_systematics</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pure_eb.html">sp_validation.cosmo_val.pure_eb</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.real_space.html">sp_validation.cosmo_val.real_space</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.sacc_writers.html">sp_validation.cosmo_val.sacc_writers</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html">sp_validation.b_modes</a></li>
@@ -277,6 +278,17 @@ used throughout the mixins. A single <code class="docutils literal notranslate">
 <code class="docutils literal notranslate"><span class="pre">/</span></code> separators.</p>
 </dd></dl>
 <dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.cosmo_val.CosmologyValidation.sacc_nz">
+<span class="sig-name descname"><span class="pre">sacc_nz</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">version</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmo_val/core.html#CosmologyValidation.sacc_nz"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmo_val.CosmologyValidation.sacc_nz" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.CosmologyValidation.sacc_nz'">¶</a></dt>
+<dd><p>Single-bin <code class="docutils literal notranslate"><span class="pre">nz</span></code> mapping <code class="docutils literal notranslate"><span class="pre">{0:</span> <span class="pre">(z,</span> <span class="pre">nz)}</span></code> for the SACC writers.</p>
+<p>The round is single-bin, so the whole survey n(z) is bin 0.</p>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.cosmo_val.CosmologyValidation.sacc_metadata">
+<span class="sig-name descname"><span class="pre">sacc_metadata</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">version</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmo_val/core.html#CosmologyValidation.sacc_metadata"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmo_val.CosmologyValidation.sacc_metadata" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.CosmologyValidation.sacc_metadata'">¶</a></dt>
+<dd><p>Provenance metadata stored on every SACC part for <code class="docutils literal notranslate"><span class="pre">version</span></code>.</p>
+</dd></dl>
+<dl class="py method">
 <dt class="sig sig-object py" id="sp_validation.cosmo_val.CosmologyValidation.get_redshift">
 <span class="sig-name descname"><span class="pre">get_redshift</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">version</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmo_val/core.html#CosmologyValidation.get_redshift"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmo_val.CosmologyValidation.get_redshift" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.CosmologyValidation.get_redshift'">¶</a></dt>
 <dd><p>Load redshift distribution for a catalog version.</p>
@@ -436,6 +448,7 @@ fiducial scale cut. Statistics that haven’t been computed show ‘–‘.</p>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="sp_validation.cosmo_val.core.html">sp_validation.cosmo_val.core</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.print_bmode_summary"><code class="docutils literal notranslate"><span class="pre">print_bmode_summary()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation</span></code></a><ul>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation.versions"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.versions</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation.cc"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.cc</span></code></a></li>
@@ -445,6 +458,8 @@ fiducial scale cut. Statistics that haven’t been computed show ‘–‘.</p>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation._split_seed_variant"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._split_seed_variant()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation._materialize_seed_path"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._materialize_seed_path()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation._output_path"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._output_path()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation.sacc_nz"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.sacc_nz()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation.sacc_metadata"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.sacc_metadata()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation.get_redshift"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.get_redshift()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation._write_catalog_config"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._write_catalog_config()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation.color_reset"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.color_reset()</span></code></a></li>
@@ -477,6 +492,7 @@ fiducial scale cut. Statistics that haven’t been computed show ‘–‘.</p>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html">sp_validation.cosmo_val.pseudo_cl</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.plot_pseudo_cl_spectrum"><code class="docutils literal notranslate"><span class="pre">plot_pseudo_cl_spectrum()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin</span></code></a><ul>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.pseudo_cls"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin.pseudo_cls</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.pseudo_cls_onecov"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin.pseudo_cls_onecov</span></code></a></li>
@@ -489,6 +505,7 @@ fiducial scale cut. Statistics that haven’t been computed show ‘–‘.</p>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin._load_onecovariance_cov"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin._load_onecovariance_cov()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.calculate_pseudo_cl_g_ng_cov"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin.calculate_pseudo_cl_g_ng_cov()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.calculate_pseudo_cl"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin.calculate_pseudo_cl()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin._load_pseudo_cl_sacc"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin._load_pseudo_cl_sacc()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.calculate_pseudo_cl_map"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin.calculate_pseudo_cl_map()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.calculate_pseudo_cl_catalog"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin.calculate_pseudo_cl_catalog()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.get_n_gal_map"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin.get_n_gal_map()</span></code></a></li>
@@ -497,7 +514,7 @@ fiducial scale cut. Statistics that haven’t been computed show ‘–‘.</p>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.get_pseudo_cls_map"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin.get_pseudo_cls_map()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.get_pseudo_cls_catalog"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin.get_pseudo_cls_catalog()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.apply_random_rotation"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin.apply_random_rotation()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.save_pseudo_cl"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin.save_pseudo_cl()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.pseudo_cl_to_sacc_part"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin.pseudo_cl_to_sacc_part()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.plot_pseudo_cl"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin.plot_pseudo_cl()</span></code></a></li>
 </ul>
 </li>
@@ -506,6 +523,7 @@ fiducial scale cut. Statistics that haven’t been computed show ‘–‘.</p>
 <li class="toctree-l1"><a class="reference internal" href="sp_validation.cosmo_val.psf_systematics.html">sp_validation.cosmo_val.psf_systematics</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.psf_systematics.html#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin"><code class="docutils literal notranslate"><span class="pre">PSFSystematicsMixin</span></code></a><ul>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.psf_systematics.html#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.calculate_rho_tau_stats"><code class="docutils literal notranslate"><span class="pre">PSFSystematicsMixin.calculate_rho_tau_stats()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.psf_systematics.html#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.rho_tau_to_sacc_part"><code class="docutils literal notranslate"><span class="pre">PSFSystematicsMixin.rho_tau_to_sacc_part()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.psf_systematics.html#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.rho_stat_handler"><code class="docutils literal notranslate"><span class="pre">PSFSystematicsMixin.rho_stat_handler</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.psf_systematics.html#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.tau_stat_handler"><code class="docutils literal notranslate"><span class="pre">PSFSystematicsMixin.tau_stat_handler</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.psf_systematics.html#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.plot_rho_stats"><code class="docutils literal notranslate"><span class="pre">PSFSystematicsMixin.plot_rho_stats()</span></code></a></li>
@@ -546,6 +564,16 @@ fiducial scale cut. Statistics that haven’t been computed show ‘–‘.</p>
 </li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="sp_validation.cosmo_val.sacc_writers.html">sp_validation.cosmo_val.sacc_writers</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.sacc_writers.html#sp_validation.cosmo_val.sacc_writers.xi_to_sacc"><code class="docutils literal notranslate"><span class="pre">xi_to_sacc()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.sacc_writers.html#sp_validation.cosmo_val.sacc_writers.pseudo_cl_to_sacc"><code class="docutils literal notranslate"><span class="pre">pseudo_cl_to_sacc()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.sacc_writers.html#sp_validation.cosmo_val.sacc_writers.cosebis_to_sacc"><code class="docutils literal notranslate"><span class="pre">cosebis_to_sacc()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.sacc_writers.html#sp_validation.cosmo_val.sacc_writers.pure_eb_to_sacc"><code class="docutils literal notranslate"><span class="pre">pure_eb_to_sacc()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.sacc_writers.html#sp_validation.cosmo_val.sacc_writers.rho_tau_to_sacc"><code class="docutils literal notranslate"><span class="pre">rho_tau_to_sacc()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.sacc_writers.html#sp_validation.cosmo_val.sacc_writers._copy_data_points"><code class="docutils literal notranslate"><span class="pre">_copy_data_points()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.sacc_writers.html#sp_validation.cosmo_val.sacc_writers.assemble_analysis_sacc"><code class="docutils literal notranslate"><span class="pre">assemble_analysis_sacc()</span></code></a></li>
+</ul>
+</li>
 </ul>
 </div>
 </section>
@@ -579,6 +607,8 @@ fiducial scale cut. Statistics that haven’t been computed show ‘–‘.</p>
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.CosmologyValidation._split_seed_variant'" class="reference internal" href="#sp_validation.cosmo_val.CosmologyValidation._split_seed_variant"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._split_seed_variant()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.CosmologyValidation._materialize_seed_path'" class="reference internal" href="#sp_validation.cosmo_val.CosmologyValidation._materialize_seed_path"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._materialize_seed_path()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.CosmologyValidation._output_path'" class="reference internal" href="#sp_validation.cosmo_val.CosmologyValidation._output_path"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._output_path()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.cosmo_val.CosmologyValidation.sacc_nz'" class="reference internal" href="#sp_validation.cosmo_val.CosmologyValidation.sacc_nz"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.sacc_nz()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.cosmo_val.CosmologyValidation.sacc_metadata'" class="reference internal" href="#sp_validation.cosmo_val.CosmologyValidation.sacc_metadata"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.sacc_metadata()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.CosmologyValidation.get_redshift'" class="reference internal" href="#sp_validation.cosmo_val.CosmologyValidation.get_redshift"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.get_redshift()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.CosmologyValidation._write_catalog_config'" class="reference internal" href="#sp_validation.cosmo_val.CosmologyValidation._write_catalog_config"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._write_catalog_config()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.CosmologyValidation.color_reset'" class="reference internal" href="#sp_validation.cosmo_val.CosmologyValidation.color_reset"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.color_reset()</span></code></a></li>

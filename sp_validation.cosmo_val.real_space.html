@@ -28,7 +28,7 @@
 <link href="_static/theme.css?v=d6d7c91b" rel="stylesheet" type="text/css"/>
 <link href="search.html" rel="search" title="Search"/>
 <link href="genindex.html" rel="index" title="Index"/>
-<link href="sp_validation.b_modes.html" rel="next" title="sp_validation.b_modes"/>
+<link href="sp_validation.cosmo_val.sacc_writers.html" rel="next" title="sp_validation.cosmo_val.sacc_writers"/>
 <link href="sp_validation.cosmo_val.pure_eb.html" rel="prev" title="sp_validation.cosmo_val.pure_eb"/>
 </head>
 <body :class="{ 'overflow-hidden': showSidebar }" @scroll.window="showScrollTop = pageYOffset &gt; 100" class="min-h-screen font-sans antialiased bg-background text-foreground" x-data="{ showSidebar: false, showScrollTop: false }">
@@ -95,6 +95,7 @@
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.psf_systematics.html">sp_validation.cosmo_val.psf_systematics</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pure_eb.html">sp_validation.cosmo_val.pure_eb</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">sp_validation.cosmo_val.real_space</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.sacc_writers.html">sp_validation.cosmo_val.sacc_writers</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html">sp_validation.b_modes</a></li>
@@ -160,7 +161,7 @@ and plots. It depends on TreeCorr.</p>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <dl class="py method">
 <dt class="sig sig-object py" id="sp_validation.cosmo_val.real_space.RealSpaceMixin.calculate_2pcf">
-<span class="sig-name descname"><span class="pre">calculate_2pcf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ver</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">npatch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_fits</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">treecorr_config</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmo_val/real_space.html#RealSpaceMixin.calculate_2pcf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmo_val.real_space.RealSpaceMixin.calculate_2pcf" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.real_space.RealSpaceMixin.calculate_2pcf'">¶</a></dt>
+<span class="sig-name descname"><span class="pre">calculate_2pcf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ver</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">npatch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">treecorr_config</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmo_val/real_space.html#RealSpaceMixin.calculate_2pcf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmo_val.real_space.RealSpaceMixin.calculate_2pcf" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.real_space.RealSpaceMixin.calculate_2pcf'">¶</a></dt>
 <dd><p>Calculate the two-point correlation function (2PCF) ξ± for a given catalog
 version with TreeCorr.</p>
 <p>By default the class instance’s <cite>npatch</cite> and <cite>treecorr_config</cite> entries are
@@ -174,8 +175,6 @@ by passing keyword arguments.</p>
 <li><p><strong>ver</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – The catalog version to process.</p></li>
 <li><p><strong>npatch</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>optional</em>) – The number of patches to use for the calculation.</p></li>
 <li><p><strong>attribute.</strong> (<em>Defaults to the instance's npatch</em>)</p></li>
-<li><p><strong>save_fits</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – Whether to save the ξ± results to FITS files.</p></li>
-<li><p><strong>False.</strong> (<em>Defaults to</em>)</p></li>
 <li><p><strong>**treecorr_config</strong> – Additional TreeCorr configuration parameters that will</p></li>
 <li><p><strong>example</strong> (<em>override the instance's default treecorr_config. For</em>)</p></li>
 <li><p><strong>min_sep=1.</strong></p></li>
@@ -195,8 +194,7 @@ computed 2PCF results.</p>
 calculation is skipped, and the results are loaded from the file.</p></li>
 <li><p>If a patch file for the given configuration does not exist, it is
 created during the process.</p></li>
-<li><p>FITS files for ξ+ and ξ− are saved with additional metadata in their
-headers if <cite>save_fits</cite> is True.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">.txt</span></code> TreeCorr dump is the only raw byproduct written here.</p></li>
 </ul>
 </dd></dl>
 <dl class="py method">
@@ -231,8 +229,8 @@ headers if <cite>save_fits</cite> is True.</p></li>
       </a>
 </div>
 <div class="ml-auto">
-<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="sp_validation.b_modes.html">
-        sp_validation.b_modes
+<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="sp_validation.cosmo_val.sacc_writers.html">
+        sp_validation.cosmo_val.sacc_writers
         <svg class="ml-2 h-4 w-4" fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
 <polyline points="9 18 15 12 9 6"></polyline>
 </svg>
