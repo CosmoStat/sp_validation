@@ -264,8 +264,8 @@ class TestCosmologyValidation:
     # catalog/config/estimator together correctly and that the chain produces
     # output of the right shape with finite values. They do NOT re-test the
     # underlying numerical libraries (treecorr, cosmo_numba); only the pure-E/B
-    # test pins values. These are the back-pressure that catches config-path /
-    # wiring breakage during restructuring.
+    # test compares values, against committed ξ±. These are the back-pressure
+    # that catches config-path / wiring breakage during restructuring.
     #
     # Environment-independent: the catalog is synthesized in a tmp dir, so no
     # cluster data is needed. They do require the scientific stack (treecorr,
@@ -506,27 +506,27 @@ class TestCosmologyValidation:
         assert np.all(np.isfinite(res.alpha_leak))
         assert hasattr(res, "C_sys_p") and hasattr(res, "C_sys_m")
 
-    def test_calculate_pure_eb_runs_on_synthetic_catalog(self, tmp_path):
+    def test_calculate_pure_eb_runs_on_synthetic_catalog(self, tmp_path, pure_eb_xi):
         """calculate_pure_eb carries ξ± through cosmo_numba's pure-E/B split.
 
-        Every reporting bin is finite, and the four mode vectors match pins.
+        The ξ± it measures equal the committed ``pure_eb_xi``, its modes are
+        ``pure_eb_from_xi`` of those ξ± and edges, and every reporting bin is
+        finite. ``test_b_modes`` pins the transform itself on the same ξ±, so a
+        failure names the step that moved: measurement, wiring or transform.
 
         Finiteness: the Schneider (2022) integrals are near-singular where a
         reporting bin meets the integration boundary, so the integration grid
         [1, 300]′ brackets the reporting grid [15, 70]′ on both ends and is fine
         (600 bins); about 80 integration bins NaN the edge bins.
 
-        Pins: TreeCorr's default bin_slop/angle_slop approximate separations from
-        its tree, whose top-level split follows the jackknife patches and, through
-        min_top, the thread count TreeCorr takes from cpu_count(). On this
-        catalogue that moves the reporting ξ− by up to 16% between 4 and 48
-        threads. Exact binning makes ξ± a plain pair sum, so the pins move only
-        when sp_validation does; rtol=1e-6 is far above its 1e-12 reduction-order
-        noise and far below a sub-percent change in any mode. The E/B transform
-        alone is pinned on fixed ξ± in ``test_b_modes``.
+        ξ±: exact binning (bin_slop = angle_slop = 0) makes ξ± a plain pair sum,
+        independent of the tree and so of the jackknife patches, whose k-means
+        centres this test does not fix.
         """
         pytest.importorskip("treecorr")
         pytest.importorskip("cosmo_numba")
+        from sp_validation import b_modes
+
         # Coherent shear -> smooth xi+/-, so the pure-E/B integral is well-posed.
         params, version = self._write_synthetic_catalogs(
             tmp_path, n_gal=4000, coherent_shear=True
@@ -552,61 +552,28 @@ class TestCosmologyValidation:
             nbins_int=600,
         )
 
-        # Regenerate by printing repr(results[key]) from the setup above.
-        expected = {
-            "xip_E": np.array(
-                [
-                    -2.9831529669572382e-06,
-                    -1.5008524620255579e-05,
-                    3.221623968699465e-07,
-                    1.1797672310854472e-05,
-                    5.715510692580715e-06,
-                    8.825804523810145e-07,
-                ]
-            ),
-            "xim_E": np.array(
-                [
-                    -4.7375580917647536e-05,
-                    -0.00010853189443992296,
-                    -9.094825175031718e-05,
-                    -5.826599101284305e-05,
-                    -4.6464054157485714e-05,
-                    -1.997802892533382e-05,
-                ]
-            ),
-            "xip_B": np.array(
-                [
-                    1.706912124226553e-05,
-                    3.059889782372767e-05,
-                    -4.880539925382135e-06,
-                    -6.999262696331131e-06,
-                    -1.267200698975249e-05,
-                    -1.2141491389775202e-06,
-                ]
-            ),
-            "xim_B": np.array(
-                [
-                    -0.00011478091634543392,
-                    -5.4451120021397075e-05,
-                    -3.100806652947136e-05,
-                    -1.0940424256752644e-05,
-                    -5.755185146639151e-06,
-                    -1.628217762504009e-06,
-                ]
-            ),
+        measured = {
+            "theta_report": results["theta"],
+            "xip_report": results["xip"],
+            "xim_report": results["xim"],
+            "theta_int": results["theta_int"],
+            "xip_int": results["xip_int"],
+            "xim_int": results["xim_int"],
+            "tmin": results["left_edges"][0],
+            "tmax": results["right_edges"][-1],
         }
+        # Regenerate the fixture with np.savez(conftest.PURE_EB_XI, **measured).
+        for key, value in measured.items():
+            np.testing.assert_allclose(
+                value, pure_eb_xi[key], rtol=1e-10, atol=0, err_msg=key
+            )
 
-        for key in ("xip_E", "xim_E", "xip_B", "xim_B"):
+        modes = b_modes.pure_eb_from_xi(**measured)
+        for key in b_modes._EB_KEYS:
             vec = np.asarray(results[key])
             assert vec.shape == (nbins,)
             assert np.all(np.isfinite(vec)), f"{key} not finite"
-            np.testing.assert_allclose(
-                vec,
-                expected[key],
-                rtol=1e-6,
-                atol=1e-12,
-                err_msg=f"{key} drifted from pinned reference",
-            )
+            np.testing.assert_allclose(vec, modes[key], rtol=1e-10, err_msg=key)
 
         # Jackknife covariance over the 6 stats (xip/xim x E/B/amb) x nbins.
         cov = np.asarray(results["cov"])

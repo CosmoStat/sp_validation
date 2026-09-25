@@ -16,7 +16,6 @@ satisfied by a trivially-broken implementation.
 """
 
 import types
-from pathlib import Path
 
 import numpy as np
 import numpy.testing as npt
@@ -299,8 +298,6 @@ def test_calculate_eb_statistics_has_teeth():
 # 5. pure_eb_from_xi on committed ξ± (the transform pin)
 # ---------------------------------------------------------------------------
 
-_PURE_EB_XI = Path(__file__).parent / "data" / "pure_eb_xi_fixture.npz"
-
 # pure_eb_from_xi(**fixture); regenerated only when the transform is meant to move.
 _PURE_EB_PINS = {
     "xip_E": [
@@ -354,26 +351,18 @@ _PURE_EB_PINS = {
 }
 
 
-def test_pure_eb_from_xi_reproduces_pins_on_committed_xi():
-    """The pure-E/B transform of committed ξ± reproduces its pins.
+def test_pure_eb_from_xi_reproduces_pins_on_committed_xi(pure_eb_xi):
+    """The pure-E/B transform of the committed ξ± reproduces its pins.
 
-    The fixture is the exact-binning ξ± that the synthetic pure-E/B test in
-    ``test_cosmo_val`` measures (reporting [15, 70]′ in 6 bins, integration
-    [1, 300]′ in 600 bins), keyed by ``pure_eb_from_xi``'s parameters. With ξ±
-    frozen, these pins move only when the transform does: when that test fails
-    and this one passes, the drift is upstream of the transform. rtol=1e-6 is
+    With ξ± frozen, these pins move only when the transform does. rtol=1e-6 is
     far above the 1e-12 reduction-order noise across thread counts.
     """
-    pytest.importorskip("cosmo_numba")
-    with np.load(_PURE_EB_XI) as fixture:
-        xi = {k: (v.item() if v.ndim == 0 else v) for k, v in fixture.items()}
-
-    modes = b_modes.pure_eb_from_xi(**xi)
+    modes = b_modes.pure_eb_from_xi(**pure_eb_xi)
     for key in b_modes._EB_KEYS:
         npt.assert_allclose(modes[key], _PURE_EB_PINS[key], rtol=1e-6, err_msg=key)
 
     # Teeth: widening the integration interval by 1% leaves the pins.
-    moved = b_modes.pure_eb_from_xi(**{**xi, "tmax": 1.01 * xi["tmax"]})
+    moved = b_modes.pure_eb_from_xi(**{**pure_eb_xi, "tmax": 1.01 * pure_eb_xi["tmax"]})
     assert not np.allclose(moved["xip_E"], _PURE_EB_PINS["xip_E"], rtol=1e-6, atol=0)
 
 
