@@ -94,9 +94,12 @@ rule executes new script code against an old `import sp_validation` — the two
 halves of one commit, split.
 
 The catalogue config is the launched checkout's too: `cosmo_val/cat_config.yaml`,
-read by the host and handed to every job. Every declared output lies under
-`COSMO_VAL` or `COSMO_INFERENCE` (environment variables, defaulting to the
-shared trees on candide) or the run directory's `results/`.
+read by the host and handed to every job. The `papers/cosmo_val` suite writes
+only under `COSMO_VAL` or `COSMO_INFERENCE` (environment variables, defaulting
+to the shared trees on candide) or the run directory's `results/`. Other rules
+write elsewhere: masks under the run directory's `output/masks/`,
+`papers/bmodes`' figures and macros under its run directory's `docs/`, the
+image sims under their `grids_base`.
 
 **Caveat:** `rerun-triggers: code` watches rule bodies and `script:` files, not
 `src/`. Editing a module under `src/` does not by itself mark outputs stale —
