@@ -131,17 +131,8 @@ class PSFSystematicsMixin:
             + f"{os.path.abspath(self.tau_stat_handler.catalogs._output)}/{savefig}",
         )
 
-    def set_params_rho_tau(self, params, params_psf, survey="other"):
-        params = {**params}
-        if survey in ("DES", "SP_axel_v0.0", "SP_axel_v0.0_repr"):
-            params["patch_number"] = 120
-            print("DES, jackknife patch number = 120")
-        elif survey in ("SP_v1.4-P3", "SP_v1.4-P3_LFmask"):
-            params["patch_number"] = 120
-            print("SP_v1.4, jackknife patch number =120")
-        else:
-            params["patch_number"] = 150
-
+    def set_params_rho_tau(self, params, params_psf, patch_number, survey="other"):
+        params = {**params, "patch_number": patch_number}
         params["ra_PSF_col"] = params_psf["ra_col"]
         params["dec_PSF_col"] = params_psf["dec_col"]
         params["e1_PSF_col"] = params_psf["e1_PSF_col"]
@@ -182,6 +173,7 @@ class PSFSystematicsMixin:
             params = self.set_params_rho_tau(
                 self.results[ver]._params,
                 self.cc[ver]["psf"],
+                self.cc[ver]["patch_number"],
                 survey=ver,
             )
 

@@ -37,6 +37,7 @@ rule xi:
         nbins="{nbins}",
         npatch="{npatch}",
         cat_config=CAT_CONFIG,
+        output_dir=str(COSMO_VAL),
         grid=lambda w: xi_grid_of(w),
         cov=lambda w: XI_GRIDS[xi_grid_of(w)]["cov"],
     resources:
@@ -62,6 +63,8 @@ rule rho_tau_stats:
         max_sep="{max_sep}",
         nbins="{nbins}",
         npatch="{npatch}",
+        cat_config=CAT_CONFIG,
+        output_dir=str(COSMO_VAL),
     resources:
         mem_mb=30000,
         disk_mb=20000,
