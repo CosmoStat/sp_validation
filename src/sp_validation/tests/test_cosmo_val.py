@@ -262,10 +262,11 @@ class TestCosmologyValidation:
     # These run the real compute seams end-to-end on a small, deterministic
     # toy catalog written to disk, asserting that sp_validation wires the
     # catalog/config/estimator together correctly and that the chain produces
-    # output of the right shape with finite values. They do NOT re-test the
-    # underlying numerical libraries (treecorr, cosmo_numba); only the pure-E/B
-    # test compares values, against committed ξ±. These are the back-pressure
-    # that catches config-path / wiring breakage during restructuring.
+    # output of the right shape with finite values; a test that also compares
+    # values says against what in its docstring. They do NOT re-test the
+    # underlying numerical libraries (treecorr, cosmo_numba). These are the
+    # back-pressure that catches config-path / wiring breakage during
+    # restructuring.
     #
     # Environment-independent: the catalog is synthesized in a tmp dir, so no
     # cluster data is needed. They do require the scientific stack (treecorr,
