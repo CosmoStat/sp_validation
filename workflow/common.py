@@ -334,17 +334,10 @@ def build_redshift_path(version, blind):
 # ---------------------------------------------------------------------------
 # ξ± angular grids
 # ---------------------------------------------------------------------------
-# A grid is a binning plus how its covariance is estimated: (min_sep, max_sep,
-# nbins, npatch, cov). `reporting` is the analysis grid, `integration` the fine
-# one both B-mode statistics (COSEBIs, pure-E/B) integrate over. cov is
-# "jackknife" (dense, from the patches), "diagonal" (TreeCorr varxip/varxim) or
-# "none".
-XI_KEYS = (
-    "min_sep",
-    "max_sep",
-    "nbins",
-    "npatch",
-)  # the binning; cov is not in the name
+# A grid is a binning: (min_sep, max_sep, nbins, npatch). `reporting` is the
+# analysis grid, `integration` the fine one both B-mode statistics (COSEBIs,
+# pure-E/B) integrate over.
+XI_KEYS = ("min_sep", "max_sep", "nbins", "npatch")
 
 
 def xi_grids(config, fiducial):
@@ -384,15 +377,15 @@ def xi_grids(config, fiducial):
             grid[key] = float(grid[key])
         for key in ("nbins", "npatch"):
             grid[key] = int(grid[key])
-        grid.setdefault("cov", patch_cov(grid["npatch"]))
     return grids
 
 
 def patch_cov(npatch):
-    """The covariance a measurement with ``npatch`` patches can carry.
+    """The covariance a ξ± part measured with ``npatch`` patches carries.
 
-    A jackknife needs patches; at npatch=1 TreeCorr's var_method is "shot" and
-    its diagonal is the estimate there is.
+    "jackknife" (dense, from the patches) needs patches; at npatch=1 TreeCorr's
+    var_method is "shot" and its "diagonal" (varxip/varxim) is the estimate
+    there is.
     """
     return "jackknife" if int(npatch) > 1 else "diagonal"
 
@@ -405,15 +398,6 @@ def grid_binning(grid):
     )
 
 
-def _named_grid(grids, binning):
-    """Name of the grid a binning is, compared numerically, or ``None``."""
-    key = tuple(float(binning[k]) for k in XI_KEYS)
-    for name, grid in grids.items():
-        if tuple(float(grid[k]) for k in XI_KEYS) == key:
-            return name
-    return None
-
-
 def grid_of(grids, binning):
     """Name of the grid a binning belongs to, compared numerically.
 
@@ -421,13 +405,11 @@ def grid_of(grids, binning):
     grid (e.g. papers/bmodes' nbins=10000 convergence check) are reporting-style
     measurements.
     """
-    return _named_grid(grids, binning) or "reporting"
-
-
-def grid_cov(grids, binning):
-    """Covariance mode for a binning: its grid's, else what its patches allow."""
-    name = _named_grid(grids, binning)
-    return grids[name]["cov"] if name else patch_cov(binning["npatch"])
+    key = tuple(float(binning[k]) for k in XI_KEYS)
+    for name, grid in grids.items():
+        if tuple(float(grid[k]) for k in XI_KEYS) == key:
+            return name
+    return "reporting"
 
 
 def pseudo_cl_tag(config):
@@ -510,18 +492,16 @@ CV_INIT_KEYS = (
 )
 
 
-def cv_init_params(config, version_list=None):
+def cv_init_params(config):
     """Assemble the CosmologyValidation(...) constructor kwargs from config.
 
     Centralizes the run-specific instantiation so every cosmo_val rule script
     builds an identical `cv`: catalogues from CAT_CONFIG and products under
-    COSMO_VAL, never the constructor's cwd-relative defaults. `version_list`
-    overrides config["versions"] (used by per-version rules that pass a single
-    version).
+    COSMO_VAL, never the constructor's cwd-relative defaults.
     """
     cv = config["cosmo_val"]
     return dict(
-        versions=version_list if version_list is not None else config["versions"],
+        versions=config["versions"],
         catalog_config=CAT_CONFIG,
         output_dir=str(COSMO_VAL),
         **{key: cv[key] for key in CV_INIT_KEYS},

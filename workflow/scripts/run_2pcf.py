@@ -16,9 +16,9 @@ The measurement is binning-agnostic: the reporting and the fine integration
 grids are the same compute with different ``--min-sep/--max-sep/--nbins``.
 ``CosmologyValidation.calculate_2pcf`` writes the ``.txt`` dump (a raw
 byproduct); the ξ± data product is born as SACC here, a *part* named by its
-binning and tagged with its ``--grid``. The part carries the covariance its
-grid configures (``--cov``): the dense jackknife estimate from the patches, the
-TreeCorr ``varxip``/``varxim`` diagonal, or none.
+binning and tagged with its ``--grid``. The part carries the covariance
+``--cov`` names: the dense jackknife estimate from the patches, the TreeCorr
+``varxip``/``varxim`` diagonal, or none.
 
 ``output_dir`` is passed explicitly so lc can point each run at its own
 ``{output}`` tree.

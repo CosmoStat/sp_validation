@@ -204,9 +204,8 @@ def cv_analysis_sacc(version):
     return str(COSMO_VAL / f"{version}.sacc")
 
 
-# Common params block shared by every cosmo_val rule: the cv constructor kwargs.
-def cv_params(version_list=None):
-    return dict(cv_init=cv_init_params(config, version_list=version_list))
+# The CosmologyValidation constructor kwargs every cv_runner rule passes.
+CV_INIT = cv_init_params(config)
 
 
 # ---------------------------------------------------------------------------
@@ -227,7 +226,7 @@ rule cv_plot_rho_stats:
     output:
         sentinel=str(CV_SENTINELS / "plot_rho_stats.done"),
     params:
-        **cv_params(),
+        cv_init=CV_INIT,
     resources:
         runtime=20,
     script:
@@ -241,7 +240,7 @@ rule cv_plot_tau_stats:
     output:
         sentinel=str(CV_SENTINELS / "plot_tau_stats.done"),
     params:
-        **cv_params(),
+        cv_init=CV_INIT,
     resources:
         runtime=20,
     script:
@@ -256,7 +255,7 @@ rule cv_rho_tau_fits:
     output:
         sentinel=str(CV_SENTINELS / "rho_tau_fits.done"),
     params:
-        **cv_params(),
+        cv_init=CV_INIT,
     resources:
         mem_mb=16000,
         runtime=120,
@@ -273,7 +272,7 @@ rule cv_footprints:
     output:
         sentinel=str(CV_SENTINELS / "footprints.done"),
     params:
-        **cv_params(),
+        cv_init=CV_INIT,
     resources:
         mem_mb=16000,
         runtime=60,
@@ -286,7 +285,7 @@ rule cv_objectwise_leakage:
     output:
         sentinel=str(CV_SENTINELS / "objectwise_leakage.done"),
     params:
-        **cv_params(),
+        cv_init=CV_INIT,
     threads: 12
     resources:
         mem_mb=30000,
@@ -300,7 +299,7 @@ rule cv_weights:
     output:
         weight_hist=str(COSMO_VAL / "weight_hist.png"),
     params:
-        **cv_params(),
+        cv_init=CV_INIT,
     resources:
         mem_mb=16000,
         runtime=30,
@@ -322,7 +321,7 @@ rule cv_additive_bias:
     output:
         additive_bias=str(COSMO_VAL / "additive_bias.json"),
     params:
-        **cv_params(),
+        cv_init=CV_INIT,
     resources:
         mem_mb=16000,
         runtime=30,
@@ -337,7 +336,7 @@ rule cv_plot_2pcf:
     output:
         sentinel=str(CV_SENTINELS / "plot_2pcf.done"),
     params:
-        **cv_params(),
+        cv_init=CV_INIT,
     resources:
         runtime=20,
     script:
@@ -354,7 +353,7 @@ rule cv_ratio_xi_sys_xi:
         ratio=str(COSMO_VAL / "ratio_xi_sys_xi.png"),
     params:
         offset=0.1,
-        **cv_params(),
+        cv_init=CV_INIT,
     resources:
         mem_mb=16000,
         runtime=120,

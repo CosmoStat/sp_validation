@@ -82,29 +82,24 @@ def test_one_integration_grid():
     assert set(common.xi_grids(CONFIG, FIDUCIAL)) == {"reporting", "integration"}
 
 
-def test_covariance_mode_follows_the_patches():
-    """Patched grids get a jackknife block, unpatched ones the diagonal.
+@pytest.mark.parametrize(
+    "npatch, cov", [(1, "diagonal"), ("1", "diagonal"), ("100", "jackknife")]
+)
+def test_covariance_mode_follows_the_patches(npatch, cov):
+    """A patched part gets a jackknife block, an unpatched one the diagonal.
 
     Every part then carries variances: at npatch=1 TreeCorr's var_method is
-    "shot", and its diagonal is the estimate it has.
+    "shot", and its diagonal is the estimate it has. The rule passes the
+    wildcard, a string.
     """
+    assert common.patch_cov(npatch) == cov
+
+
+def test_unnamed_binning_is_a_reporting_measurement():
+    """The paper's convergence-check binning belongs to no named grid."""
     grids = common.xi_grids(CONFIG, FIDUCIAL)
-    assert grids["reporting"]["cov"] == "jackknife"
-    assert grids["integration"]["cov"] == "diagonal"
-
-
-@pytest.mark.parametrize("npatch, cov", [(1, "diagonal"), (50, "jackknife")])
-def test_unnamed_binning_is_a_reporting_measurement(npatch, cov):
-    """The paper's convergence-check binning belongs to no named grid.
-
-    It is tagged as a reporting measurement, and its covariance follows its own
-    patches rather than the reporting grid's.
-    """
-    grids = common.xi_grids(CONFIG, FIDUCIAL)
-    stray = {"min_sep": 1.0, "max_sep": 250.0, "nbins": 10000, "npatch": npatch}
+    stray = {"min_sep": 1.0, "max_sep": 250.0, "nbins": 10000, "npatch": 1}
     assert common.grid_of(grids, stray) == "reporting"
-    assert common.grid_cov(grids, stray) == cov
-    assert common.grid_cov(grids, {k: str(v) for k, v in stray.items()}) == cov
 
 
 def test_workflow_without_cosmo_val_falls_back_to_fiducial():

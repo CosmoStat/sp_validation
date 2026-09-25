@@ -22,7 +22,8 @@ rule xi:
     """TreeCorr ξ±(θ) for one version on one angular grid.
 
     One rule for every grid: outputs are named by their binning, so a request
-    binds the wildcards and the grid label and covariance resolve from them.
+    binds the wildcards, the grid label resolves from them, and the covariance
+    follows the patches.
     """
     input:
         catalog=get_shear_catalog,
@@ -39,7 +40,7 @@ rule xi:
         cat_config=CAT_CONFIG,
         output_dir=str(COSMO_VAL),
         grid=lambda w: grid_of(XI_GRIDS, xi_binning_of(w)),
-        cov=lambda w: grid_cov(XI_GRIDS, xi_binning_of(w)),
+        cov=lambda w: patch_cov(w.npatch),
     resources:
         # The fine integration grid needs more memory and wall time than the
         # ~20-bin reporting one; scale on nbins rather than splitting the rule.
