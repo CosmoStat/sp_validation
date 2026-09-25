@@ -19,6 +19,11 @@ from scipy import sparse, stats
 _EB_KEYS = ("xip_E", "xim_E", "xip_B", "xim_B", "xip_amb", "xim_amb")
 
 
+def _eb_vector(modes):
+    """Pure-E/B modes concatenated in ``_EB_KEYS`` order, the covariance layout."""
+    return np.concatenate([modes[k] for k in _EB_KEYS])
+
+
 def find_conservative_scale_cut_key(results, requested_scale_cut):
     """
     Find scale cut key that conservatively fits within requested range.
@@ -211,7 +216,7 @@ def calculate_pure_eb_correlation(
         results["cov"] = treecorr.estimate_multi_cov(
             [gg, gg_int],
             var_method,
-            func=lambda x: np.hstack([pure_EB(x)[k] for k in _EB_KEYS]),
+            func=lambda x: _eb_vector(pure_EB(x)),
             cross_patch_weight="match" if var_method == "jackknife" else None,
         )
 
@@ -312,7 +317,7 @@ def pure_eb_covariance_mc(
     samples_rep_xip = (binning_matrix @ samples_int_xip.T).T
     samples_rep_xim = (binning_matrix @ samples_int_xim.T).T
 
-    def eb_vector(i):
+    def eb_draw(i):
         modes = pure_eb_from_xi(
             theta_report=theta,
             xip_report=samples_rep_xip[i],
@@ -323,10 +328,10 @@ def pure_eb_covariance_mc(
             tmin=left_edges[0],
             tmax=right_edges[-1],
         )
-        return np.concatenate([modes[k] for k in _EB_KEYS])
+        return _eb_vector(modes)
 
     eb_samples = np.array(
-        [eb_vector(i) for i in tqdm.tqdm(range(n_samples), desc="MC samples")]
+        [eb_draw(i) for i in tqdm.tqdm(range(n_samples), desc="MC samples")]
     )
     return np.cov(eb_samples.T), eb_samples
 

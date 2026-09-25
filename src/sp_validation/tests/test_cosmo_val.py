@@ -506,13 +506,16 @@ class TestCosmologyValidation:
         assert np.all(np.isfinite(res.alpha_leak))
         assert hasattr(res, "C_sys_p") and hasattr(res, "C_sys_m")
 
-    def test_calculate_pure_eb_runs_on_synthetic_catalog(self, tmp_path, pure_eb_xi):
+    def test_calculate_pure_eb_runs_on_synthetic_catalog(
+        self, tmp_path, pure_eb_xi, monkeypatch
+    ):
         """calculate_pure_eb carries ξ± through cosmo_numba's pure-E/B split.
 
         The ξ± it measures equal the committed ``pure_eb_xi``, its modes are
         ``pure_eb_from_xi`` of those ξ± and edges, and every reporting bin is
         finite. ``test_b_modes`` pins the transform itself on the same ξ±, so a
         failure names the step that moved: measurement, wiring or transform.
+        The jackknife covariance runs the transform once per realisation.
 
         Finiteness: the Schneider (2022) integrals are near-singular where a
         reporting bin meets the integration boundary, so the integration grid
@@ -544,6 +547,12 @@ class TestCosmologyValidation:
         )
         cv.treecorr_config.update(bin_slop=0, angle_slop=0)
 
+        kernel, kernel_calls = b_modes.pure_eb_from_xi, []
+        monkeypatch.setattr(
+            b_modes,
+            "pure_eb_from_xi",
+            lambda **kw: kernel_calls.append(kw) or kernel(**kw),
+        )
         results = cv.calculate_pure_eb(
             version,
             npatch=npatch,
@@ -551,6 +560,8 @@ class TestCosmologyValidation:
             max_sep_int=300.0,
             nbins_int=600,
         )
+        # The modes, then TreeCorr's jackknife: one sizing call and one per patch.
+        assert len(kernel_calls) <= npatch + 2, f"{len(kernel_calls)} transforms"
 
         measured = {
             "theta_report": results["theta"],
