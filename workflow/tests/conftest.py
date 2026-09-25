@@ -113,18 +113,22 @@ class Toy:
     env: dict
     config: dict
     common: object
+    covariances: dict  # (version, "g" | "ng") -> the processed CosmoCov file
 
-    def snakemake(self, *args, container=None, timeout=300):
-        """Run the host Snakemake in the toy's paper directory.
+    def snakemake(self, *args, container=None, cwd=None, env=None, timeout=300):
+        """Run the host Snakemake in the toy's paper directory, or in ``cwd``.
 
-        ``container`` overrides the image (default: the matching fake one).
+        ``container`` overrides the image (default: the matching fake one;
+        ``False`` leaves the choice to the launch). ``env`` replaces the toy's
+        environment.
         """
         cmd = [sys.executable, "-m", "snakemake", "--cores", "1", *args]
-        cmd += ["--config", f"container={container or self.image}"]
+        if container is not False:
+            cmd += ["--config", f"container={container or self.image}"]
         return subprocess.run(
             cmd,
-            cwd=self.rundir,
-            env=self.env,
+            cwd=cwd or self.rundir,
+            env=env or self.env,
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -188,6 +192,9 @@ def toy(tmp_path_factory):
         COSMO_VAL=str(root / "out" / "cosmo_val"),
         COSMO_INFERENCE=str(root / "out" / "cosmo_inference"),
         XDG_CACHE_HOME=str(root / "cache"),
+        # No local image: each launch runs the image its test names.
+        SPV_CONTAINER=str(root / "cache" / "absent.sif"),
+        SPV_SANDBOX=str(root / "cache" / "absent-sandbox"),
         TMPDIR=str(tmp_path_factory.getbasetemp()),
         PYTHONUNBUFFERED="1",
         PYTHONNOUSERSITE="1",
@@ -197,9 +204,10 @@ def toy(tmp_path_factory):
     # The processed CosmoCov covariances the cosmo_val rules read, in place.
     grids = common.xi_grids(config, config["fiducial"])
     mask = "_masked" if config["covariance"].get("default_masked") else ""
+    covariances = {}
     for version in VERSIONS:
         for gaussian, grid in (("ng", grids["reporting"]), ("g", grids["integration"])):
-            path = Path(
+            path = covariances[version, gaussian] = Path(
                 common.covariance_path(
                     version,
                     config["fiducial"]["blind"],
@@ -222,6 +230,7 @@ def toy(tmp_path_factory):
         env=env,
         config=config,
         common=common,
+        covariances=covariances,
     )
 
 

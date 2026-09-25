@@ -1,9 +1,10 @@
-"""P5: one real SLURM job through the committed candide profile.
+"""One real SLURM job through the committed candide profile.
 
-The executor, the apptainer deployment method and the bind mounts come from
-that profile; the image is the module-level ``container:`` in the test
-Snakefile, exactly as real workflows declare it. That contract is what's under
-test, so it runs only on a candide submit host.
+The executor, the apptainer deployment method, the bind mounts and the job
+bound come from that profile, launched as the README launches a target; the
+image is the module-level ``container:`` in the test Snakefile, exactly as real
+workflows declare it. That contract is what's under test, so it runs only on a
+candide submit host.
 
 The job writes a YAML report (see data/container_smoke/container_smoke.py); the
 assertions below check what it reports.
@@ -63,8 +64,6 @@ def test_container_smoke():
             str(SMOKE / "Snakefile"),
             "--directory",
             str(workdir),
-            "--jobs",
-            "1",
             "container_smoke",
         ],
         env=env,

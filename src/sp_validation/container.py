@@ -46,7 +46,10 @@ from pathlib import Path
 # per branch, sanitized, so ``:develop`` tracks the integration branch.
 CONTAINER_URI = "docker://ghcr.io/cosmostat/sp_validation:develop"
 
-CACHE_DIR = Path(os.environ.get("XDG_CACHE_HOME", "~/.cache")) / "sp_validation"
+# Under the home directory, which every node mounts: a job runs the image from
+# the path the launching host resolved, so the image cannot sit on node-local
+# storage -- where a cluster's XDG_CACHE_HOME often points.
+CACHE_DIR = Path("~/.cache/sp_validation")
 
 # Where this user's image lives. Per-user by construction: one file, one owner,
 # no coordination. Override with ``SPV_CONTAINER`` (an absolute path).

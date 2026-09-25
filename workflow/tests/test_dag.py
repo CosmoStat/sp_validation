@@ -1,25 +1,45 @@
 """DAG properties, checked through the host launcher (see conftest.py)."""
 
-import importlib.util
 import os
 import subprocess
 import sys
 from pathlib import Path
 
 import pytest
+import yaml
 from conftest import HOST_PYTHON, REPO, VERSIONS, fake_image, on_candide, parse_jobs
 
 
 def test_assemble_resolves(toy):
-    """P1: the terminal files resolve from a catalogue config and a checkout."""
+    """Each terminal file gathers every part and the analytic covariances.
+
+    The ξ± block takes the CosmoCov covariance on the reporting grid, and the
+    harmonic block is the part on the fiducial harmonic binning with the
+    NaMaster covariance of that same binning.
+    """
     result = toy.snakemake("-n", "assemble_sacc_all")
     assert result.returncode == 0, result.stdout
-    assembled = {Path(o).name for j in parse_jobs(result.stdout) for o in j.output}
-    assert {f"{v}.sacc" for v in VERSIONS} <= assembled, result.stdout
+    jobs = [j for j in parse_jobs(result.stdout) if j.rule == "assemble_sacc"]
+    grids = toy.common.xi_grids(toy.config, toy.config["fiducial"])
+    reporting = toy.common.grid_binning(grids["reporting"])
+    harmonic = toy.common.pseudo_cl_tag(toy.config)
+    assert sorted(j.wildcards["version"] for j in jobs) == sorted(VERSIONS)
+    for job in jobs:
+        version = job.wildcards["version"]
+        assert [Path(o).name for o in job.output] == [f"{version}.sacc"]
+        assert {Path(f).name for f in job.input} == {
+            f"{version}_xi_{reporting}.sacc",
+            toy.covariances[version, "ng"].name,
+            f"pseudo_cl_{version}_{harmonic}.sacc",
+            f"pseudo_cl_cov_{version}_{harmonic}.fits",
+            f"{version}_cosebis.sacc",
+            f"{version}_pure_eb.sacc",
+            f"rho_tau_{version}_{reporting}.sacc",
+        }, job.input
 
 
 def test_one_integration_grid(toy):
-    """P1: ξ± is measured on two grids, and both B-mode statistics share one.
+    """ξ± is measured on two grids, and both B-mode statistics share one.
 
     COSEBIs and pure-E/B read the same integration-grid part and the same
     CosmoCov covariance on that grid; no other binning is measured.
@@ -44,16 +64,13 @@ def test_one_integration_grid(toy):
             j.rule: set(j.input) for j in jobs if j.wildcards.get("version") == version
         }
         part = str(toy.cosmo_val / f"{version}_xi_{tag}.sacc")
-        (covariance,) = [
-            f for f in by_rule["cv_pure_eb"] if Path(f).name.startswith("covariance_")
-        ]
-        assert "_g_" in Path(covariance).name
+        covariance = str(toy.covariances[version, "g"])
         assert by_rule["cv_cosebis"] == {part, covariance}, by_rule["cv_cosebis"]
-        assert part in by_rule["cv_pure_eb"]
+        assert {part, covariance} <= by_rule["cv_pure_eb"], by_rule["cv_pure_eb"]
 
 
 def test_outputs_stay_in_the_output_roots(toy):
-    """P2: nothing the DAG declares lands outside the configured output roots."""
+    """Nothing the suite declares lands outside the configured output roots."""
     result = toy.snakemake("-n", "all")
     assert result.returncode == 0, result.stdout
     roots = [
@@ -76,7 +93,7 @@ def test_outputs_stay_in_the_output_roots(toy):
     ids=["python-minor", "snakemake"],
 )
 def test_image_parity_is_checked_at_launch(toy, tmp_path, python, snakemake_version):
-    """P3: an image whose Python minor or Snakemake differs stops the launch."""
+    """An image whose Python minor or Snakemake differs stops the launch."""
     image = fake_image(
         tmp_path / "image",
         **({"python": python} if python else {}),
@@ -90,12 +107,56 @@ def test_image_parity_is_checked_at_launch(toy, tmp_path, python, snakemake_vers
 
 
 def test_unreadable_image_is_named_not_fatal(toy):
-    """P3: a registry tag cannot be inspected; the launch says so and goes on."""
+    """A registry tag cannot be inspected; the launch says so and goes on."""
     result = toy.snakemake(
         "-n", "assemble_sacc_all", container="docker://example.org/image:tag"
     )
     assert result.returncode == 0, result.stdout
     assert "parity unchecked" in result.stdout
+
+
+def test_launch_reads_the_image_under_home(toy, tmp_path):
+    """The launch finds your image under ~/.cache, whatever XDG_CACHE_HOME says.
+
+    Jobs on other nodes run the image from the path the launching host
+    resolved, and a cluster's XDG_CACHE_HOME is often node-local. The image here
+    reports another Python, so reading it stops the launch.
+    """
+    home = tmp_path / "home"
+    fake_image(home / ".cache" / "sp_validation" / "sandbox", python="3.13.1")
+    env = {k: v for k, v in toy.env.items() if not k.startswith("SPV_")}
+    env.update(HOME=str(home), XDG_CACHE_HOME=str(tmp_path / "node-local"))
+    result = toy.snakemake("-n", "assemble_sacc_all", container=False, env=env)
+    assert result.returncode != 0, result.stdout
+    assert "uv tool install --force --python 3.13 snakemake==" in result.stdout
+
+
+def test_image_sims_checks_parity_at_launch(toy, tmp_path):
+    """The standalone image-sims workflow stops on a mismatched image too."""
+    run = {
+        "image_sims": {
+            "sif": str(fake_image(tmp_path / "image", python="3.13.1")),
+            "grids_base": str(tmp_path / "grids"),
+            "mask_config": "mask.yaml",
+            "match_radius_deg": 0.0002,
+            "w_cols": ["none"],
+            "pair_match": True,
+            "n_bootstrap": 1,
+            "bootstrap_seed": 0,
+        }
+    }
+    (tmp_path / "run.yaml").write_text(yaml.safe_dump(run))
+    result = toy.snakemake(
+        "-n",
+        "-s",
+        "workflow/image_sims/Snakefile",
+        "--configfile",
+        str(tmp_path / "run.yaml"),
+        container=False,
+        cwd=toy.root,
+    )
+    assert result.returncode != 0, result.stdout
+    assert "uv tool install --force --python 3.13 snakemake==" in result.stdout
 
 
 def _real_dry_run(paper, target):
@@ -127,20 +188,13 @@ def _real_dry_run(paper, target):
     "paper, target", [("cosmo_val", "assemble_sacc_all"), ("bmodes", "all_tapestry")]
 )
 def test_papers_resolve_on_candide(paper, target):
-    """P4: the real paper DAGs resolve against the real catalogues and image.
+    """The real paper DAGs resolve against the real catalogues and your image.
 
-    A local image (your SIF or sandbox) is read, so parity was checked.
+    Your image (the SIF or sandbox `spv-container` manages) is read, so parity
+    was checked.
     """
     result = _real_dry_run(paper, target)
     assert result.returncode == 0, result.stdout
-    if _resolve_image()[1] != "tag":
-        assert "parity unchecked" not in result.stdout, result.stdout
-
-
-def _resolve_image():
-    spec = importlib.util.spec_from_file_location(
-        "container", REPO / "src" / "sp_validation" / "container.py"
+    assert "parity unchecked" not in result.stdout, (
+        "no local image was read; run `spv-container pull`\n" + result.stdout
     )
-    container = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(container)
-    return container.resolve_image()
