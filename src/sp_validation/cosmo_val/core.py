@@ -288,7 +288,7 @@ class CosmologyValidation(
             """Resolve relative paths for a version using its subdir."""
             subdir = Path(cc[ver]["subdir"])
             for section in cc[ver].values():
-                if "path" in section:
+                if isinstance(section, dict) and "path" in section:
                     path = Path(section["path"])
                     section["path"] = (
                         str(path) if path.is_absolute() else str(subdir / path)
