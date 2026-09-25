@@ -820,18 +820,18 @@
 </span><span id="line-563">            <span class="c1"># Pure E/B PTEs from stored results</span>
 </span><span id="line-564">            <span class="k">if</span> <span class="n">ver</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pure_eb_results</span><span class="p">:</span>
 </span><span id="line-565">                <span class="n">res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pure_eb_results</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span>
-</span><span id="line-566">                <span class="n">gg</span> <span class="o">=</span> <span class="n">res</span><span class="p">[</span><span class="s2">&quot;gg&quot;</span><span class="p">]</span>
+</span><span id="line-566">                <span class="n">edges</span> <span class="o">=</span> <span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="s2">&quot;left_edges&quot;</span><span class="p">],</span> <span class="n">res</span><span class="p">[</span><span class="s2">&quot;right_edges&quot;</span><span class="p">])</span>
 </span><span id="line-567">                <span class="k">try</span><span class="p">:</span>
 </span><span id="line-568">                    <span class="k">for</span> <span class="n">stat</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;xip_B&quot;</span><span class="p">,</span> <span class="s2">&quot;xim_B&quot;</span><span class="p">,</span> <span class="s2">&quot;combined&quot;</span><span class="p">):</span>
 </span><span id="line-569">                        <span class="n">row</span><span class="p">[</span><span class="n">stat</span><span class="p">]</span> <span class="o">=</span> <span class="n">_get_pte_from_scale_cut</span><span class="p">(</span>
-</span><span id="line-570">                            <span class="n">res</span><span class="p">[</span><span class="s2">&quot;pte_matrices&quot;</span><span class="p">][</span><span class="n">stat</span><span class="p">],</span> <span class="n">gg</span><span class="p">,</span> <span class="n">fiducial_scale_cut</span>
+</span><span id="line-570">                            <span class="n">res</span><span class="p">[</span><span class="s2">&quot;pte_matrices&quot;</span><span class="p">][</span><span class="n">stat</span><span class="p">],</span> <span class="n">edges</span><span class="p">,</span> <span class="n">fiducial_scale_cut</span>
 </span><span id="line-571">                        <span class="p">)</span>
 </span><span id="line-572">                <span class="k">except</span> <span class="p">(</span><span class="ne">KeyError</span><span class="p">,</span> <span class="ne">RuntimeError</span><span class="p">):</span>
 </span><span id="line-573">                    <span class="k">pass</span>
 </span><span id="line-574">                <span class="n">cov_methods</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
 </span><span id="line-575">                    <span class="s2">&quot;semi-analytic&quot;</span>
 </span><span id="line-576">                    <span class="k">if</span> <span class="s2">&quot;eb_samples&quot;</span> <span class="ow">in</span> <span class="n">res</span>
-</span><span id="line-577">                    <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;jackknife (</span><span class="si">{</span><span class="n">gg</span><span class="o">.</span><span class="n">npatch1</span><span class="si">}</span><span class="s2"> patches)&quot;</span>
+</span><span id="line-577">                    <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;jackknife (</span><span class="si">{</span><span class="n">res</span><span class="p">[</span><span class="s1">&#39;n_eff&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> patches)&quot;</span>
 </span><span id="line-578">                <span class="p">)</span>
 </span><span id="line-579">
 </span><span id="line-580">            <span class="c1"># COSEBIs PTE from stored results</span>

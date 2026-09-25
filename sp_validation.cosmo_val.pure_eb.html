@@ -199,9 +199,13 @@ Defaults to 1000.</p></li>
 <li><p>”xip_amb”: Ambiguity mode for xi+.</p></li>
 <li><p>”xim_amb”: Ambiguity mode for xi-.</p></li>
 <li><p>”cov”: Covariance matrix for the pure E/B modes.</p></li>
-<li><p>”gg”: The two-point correlation function object for the reporting binning.</p></li>
-<li><p>”gg_int”: The two-point correlation function object for the
-integration binning.</p></li>
+<li><p>”theta”, “left_edges”, “right_edges”: Reporting-grid bin centres
+and edges.</p></li>
+<li><p>”xip”, “xim”, “var_xip”, “var_xim”: Reporting-grid xi+/xi- and
+their variances.</p></li>
+<li><p>”theta_int”, “xip_int”, “xim_int”: Integration-grid xi+/xi-.</p></li>
+<li><p>”n_eff”: Realisation count behind “cov” (jackknife patches or
+MC draws), which sets the Hartlap debiasing.</p></li>
 <li><p>”eb_samples”: (only when using semi-analytical covariance) Semi-analytic
 EB samples used for covariance calculation. Shape: (n_samples, 6*nbins)</p></li>
 </ul>
