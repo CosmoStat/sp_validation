@@ -29,9 +29,9 @@ def make_cv(snakemake):
     """Build a CosmologyValidation from a rule's ``snakemake.params``.
 
     ``params["cv_init"]`` is the kwargs dict assembled by common.cv_init_params.
-    The object is created with the run directory as cwd so it finds
-    ``cat_config.yaml`` and writes under ``output/`` exactly as interactive runs
-    do.
+    The catalogue config path arrives explicitly in ``cv_init``; the object is
+    created with the run directory as cwd so it writes under ``output/``
+    exactly as interactive runs do.
     """
     from sp_validation.cosmo_val import CosmologyValidation
 

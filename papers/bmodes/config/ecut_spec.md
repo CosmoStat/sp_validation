@@ -32,7 +32,7 @@ DES-Y3 used e < 0.8 to remove stars.
 
 ### How versions flow through the pipeline
 
-Everything is driven by `config["versions"]` in `workflow/config/config.yaml`. Adding a
+Everything is driven by `config["versions"]` in `papers/bmodes/config/config.yaml`. Adding a
 version there (plus its `cat_config.yaml` entry) makes it flow through all existing rules:
 `xi`, `covariance`, `pure_eb_data_vector`, `cosebis_data_vector`, `cl_data_vector`.
 The 2PCF and covariance are independent and can run in parallel.
@@ -43,7 +43,7 @@ Key resolution functions in `workflow/Snakefile`:
 - `resolve_covariance_version()` — identity function (each version gets its own covariance)
 - Wildcard constraint: `version=r"SP_v[\d.]+(_w_iv)?(_leak_corr)?"` — needs `_ecut\d+`
 
-Version comparison rules in `workflow/rules/claims.smk` (lines 131, 271, 386) use
+Version comparison rules in `papers/bmodes/rules/claims.smk` (lines 131, 271, 386) use
 `VERSIONS_LEAK_CORR` for inputs and derive version lists from config in the scripts.
 These should be parameterized to accept a version list via `snakemake.params`, so the
 same rules serve both paper and ecut comparisons.
@@ -71,10 +71,10 @@ uncorrected columns can't be consistently filtered to guarantee the same rows.
 
 | What | Where |
 |------|-------|
-| Workflow config | `workflow/config/config.yaml` (search `ecut`) |
-| Catalog config | `code/sp_validation/cosmo_val/cat_config.yaml` (search `ecut07`) |
+| Workflow config | `papers/bmodes/config/config.yaml` (search `ecut`) |
+| Catalog config | `cosmo_val/cat_config.yaml` (search `ecut07`) |
 | Pipeline orchestration | `workflow/Snakefile` (wildcard constraints, version resolution functions) |
-| Version comparison rules | `workflow/rules/claims.smk` lines 131, 271, 386 |
+| Version comparison rules | `papers/bmodes/rules/claims.smk` lines 131, 271, 386 |
 | Version comparison scripts | `workflow/scripts/{pure_eb,cosebis,cl}_version_comparison.py` |
 | Covariance params | `workflow/rules/covariance.smk` line 4 (`get_cat_params`) |
 

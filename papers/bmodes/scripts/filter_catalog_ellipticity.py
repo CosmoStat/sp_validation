@@ -18,7 +18,6 @@ sys.stderr = (
     sys.stderr if hasattr(sys, "ps1") else open(sys.stderr.fileno(), "w", buffering=1)
 )
 
-from snakemake.script import snakemake  # noqa: E402
 
 input_path = snakemake.input["catalog"]
 output_fits = snakemake.output["catalog"]

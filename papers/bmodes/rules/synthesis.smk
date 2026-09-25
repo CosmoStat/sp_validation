@@ -39,7 +39,7 @@ def _claim_outputs():
 # Paper Macros
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-localrules: xi_cosmology_paper, paper_macros, bmodes_paper_spec, all_tapestry, unblinding_ceremony
+localrules: xi_cosmology_paper, paper_macros, bmodes_paper_spec, all_tapestry
 
 rule xi_cosmology_paper:
     """Spec for B-mode reporting in configuration-space paper (Goh et al.).
@@ -127,40 +127,6 @@ rule bmodes_paper_spec:
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Aggregate Targets
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-_CEREMONY_BLIND = config.get("ceremony_blind", "A")
-_CEREMONY_CHAIN_ROOT = "/n09data/guerrini/output_chains"
-_CEREMONY_COSMOSIS_DIR = "/home/guerrini/sp_validation/cosmo_inference/data"
-
-rule unblinding_ceremony:
-    """Generate unblinding ceremony figure sequence.
-
-    Via snakemake:
-        snakemake unblinding_ceremony --config ceremony_blind=B --nolock
-    Standalone:
-        app python workflow/scripts/unblinding_ceremony.py B
-    """
-    input:
-        xi_data=f"{_CEREMONY_COSMOSIS_DIR}/{FIDUCIAL_VERSION}_{_CEREMONY_BLIND}/cosmosis_{FIDUCIAL_VERSION}_{_CEREMONY_BLIND}.fits",
-        pure_eb=f"results/paper_plots/intermediate/{FIDUCIAL_VERSION}_{_CEREMONY_BLIND}_pure_eb_semianalytic.npz",
-        pseudo_cl=_pseudo_cl_path(FIDUCIAL_VERSION, blind=_CEREMONY_BLIND),
-        pseudo_cl_cov=_pseudo_cl_cov_path(FIDUCIAL_VERSION, blind=_CEREMONY_BLIND),
-        cosmosis_cell_fits=f"{_CEREMONY_COSMOSIS_DIR}/{FIDUCIAL_VERSION}_{_CEREMONY_BLIND}_fid/cosmosis_{FIDUCIAL_VERSION}_{_CEREMONY_BLIND}_fid_cell.fits",
-        bestfit_dir=f"{_CEREMONY_CHAIN_ROOT}/best_fit/{FIDUCIAL_VERSION}_{_CEREMONY_BLIND}_10_80/shear_xi_plus/theta.txt",
-    output:
-        evidence=f"{TAPESTRY_DIR}/unblinding_ceremony/evidence.json",
-    params:
-        blind=_CEREMONY_BLIND,
-        chain_version=FIDUCIAL_VERSION.replace("SP_", "").replace("_leak_corr", ""),
-        chain_prefix=FIDUCIAL_VERSION,
-        chain_root_dir=_CEREMONY_CHAIN_ROOT,
-        results_dir="results/unblinding",
-        bestfit_root_fid_cell=f"{FIDUCIAL_VERSION}_{_CEREMONY_BLIND}_fid_cell",
-        bestfit_root_halofit_cell=f"{FIDUCIAL_VERSION}_{_CEREMONY_BLIND}_halofit_cell",
-        bestfit_root_config=f"{FIDUCIAL_VERSION}_{_CEREMONY_BLIND}_10_80",
-    shell:
-        "python workflow/scripts/unblinding_ceremony.py {params.blind} --chain-version {params.chain_version}"
-
 
 rule all_tapestry:
     """Aggregate target for all claim evidence and paper outputs."""

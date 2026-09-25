@@ -8,6 +8,9 @@ point with each per-statistic block correctly placed. One real small-nside
 NaMaster round-trip proves the pseudo-Cℓ window survives the writer path.
 """
 
+import importlib.util
+from pathlib import Path
+
 import numpy as np
 import pytest
 
@@ -112,6 +115,41 @@ def test_pseudo_cl_to_sacc_window_and_rows(tmp_path):
     assert np.array_equal(bb, cl_all[3])  # BB row (index 3, not 2=BE)
     assert np.array_equal(eb, cl_all[1])  # EB row
     assert window.weight.shape == (24, nbp)
+
+
+def _paper_pseudo_cl_reader():
+    # A paper script, not a package module: load it by path.
+    path = Path(__file__).resolve().parents[3] / "papers/bmodes/scripts/pseudo_cl_io.py"
+    spec = importlib.util.spec_from_file_location("pseudo_cl_io", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.load_pseudo_cl_data
+
+
+def test_paper_pseudo_cl_reader(tmp_path):
+    """The B-mode paper's reader maps NaMaster's EE/EB/BE/BB rows by name."""
+    ell = np.array([30.0, 60.0, 90.0])
+    cl_all = np.vstack(
+        [np.arange(3) * 1e-9, np.arange(3) * 2e-9, np.zeros(3), np.arange(3) * 3e-9]
+    )
+
+    class _Workspace:
+        def get_bandpower_windows(self):
+            window = np.zeros((4, 3, 4, 12))
+            for component in range(4):
+                for band in range(3):
+                    window[component, band, component, band * 4 : (band + 1) * 4] = 1.0
+            return window
+
+    part = sw.pseudo_cl_to_sacc({0: _nz()}, META, ell, cl_all, _Workspace())
+    path = tmp_path / "pseudo_cl.sacc"
+    sio.save(part, str(path), type="mock")
+
+    data = _paper_pseudo_cl_reader()(path)
+    assert np.array_equal(data["ELL"], ell)
+    assert np.array_equal(data["EE"], cl_all[0])
+    assert np.array_equal(data["EB"], cl_all[1])
+    assert np.array_equal(data["BB"], cl_all[3])
 
 
 def test_pseudo_cl_to_sacc_real_namaster(tmp_path):

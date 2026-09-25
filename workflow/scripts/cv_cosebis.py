@@ -10,7 +10,6 @@ blinded and the output is stamped under the same commitment.
 """
 
 from cv_runner import _unbuffer_streams, verify_outputs
-from snakemake.script import snakemake
 
 from sp_validation import sacc_io
 from sp_validation.b_modes import (

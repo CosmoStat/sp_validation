@@ -21,16 +21,16 @@ import seaborn as sns
 from astropy.io import fits
 from cosmo_numba.B_modes.cosebis import COSEBIS
 from plotting_utils import PAPER_MPLSTYLE
+from pseudo_cl_io import load_pseudo_cl_data
 
 plt.style.use(PAPER_MPLSTYLE)
 
 
 def load_bb_data(pseudo_cl_path, pseudo_cov_path):
     """Load BB bandpower data and errorbars."""
-    with fits.open(pseudo_cl_path) as hdul:
-        data = hdul["PSEUDO_CELL"].data
-        ell = np.asarray(data["ELL"], dtype=float)
-        bb = np.asarray(data["BB"], dtype=float)
+    data = load_pseudo_cl_data(pseudo_cl_path)
+    ell = np.asarray(data["ELL"], dtype=float)
+    bb = np.asarray(data["BB"], dtype=float)
 
     with fits.open(pseudo_cov_path) as hdul:
         cov_bb = hdul["COVAR_BB_BB"].data

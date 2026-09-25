@@ -29,12 +29,13 @@ from plotting_utils import (
     get_version_alpha,
     version_label,
 )
+from pseudo_cl_io import load_pseudo_cl_data
 
 plt.style.use(PAPER_MPLSTYLE)
 
 
 def _pseudo_cl(results_dir, ver, blind="A", nbins=32):
-    return f"{results_dir}/pseudo_cl_{ver}_blind={blind}_powspace_nbins={nbins}.fits"
+    return f"{results_dir}/pseudo_cl_{ver}_blind={blind}_powspace_nbins={nbins}.sacc"
 
 
 def _pseudo_cl_cov(results_dir, ver, blind="A", nbins=32):
@@ -55,10 +56,9 @@ def _resolve_pseudo_cl_paths(
     """Resolve the pseudo-Cl and covariance paths for one version in the sweep.
 
     Every version is read from the reconstructed COSMO_VAL pattern, except the
-    fiducial version when explicit override paths are supplied: the lc-produced
-    fiducial FITS files are named `pseudo_cl_{version}.fits` /
-    `pseudo_cl_cov_{version}.fits` (no blind=/nbins= tokens), so pattern
-    reconstruction can't find them and an explicit path is required instead.
+    fiducial version when explicit override paths are supplied: lc-produced
+    fiducial SACC spectrum and FITS covariance files have untagged names, so
+    pattern reconstruction can't find them and explicit paths are required.
     """
     if (
         ver == fiducial_version
@@ -131,10 +131,7 @@ def main(
             fiducial_pseudo_cl_cov_path,
         )
 
-        hdu = fits.open(pseudo_cl_path)
-        data = hdu["PSEUDO_CELL"].data
-        hdu.close()
-
+        data = load_pseudo_cl_data(pseudo_cl_path)
         ell = data["ELL"]
         cl_bb = data["BB"]
         cl_eb = data["EB"]
@@ -379,7 +376,10 @@ def _from_cli(argv=None):
     ap.add_argument(
         "--results-dir",
         required=True,
-        help="COSMO_VAL output dir with per-version pseudo_cl_* / pseudo_cl_cov_* FITS",
+        help=(
+            "COSMO_VAL output dir with per-version pseudo_cl_*.sacc and "
+            "pseudo_cl_cov_*.fits"
+        ),
     )
     ap.add_argument("--out", required=True, help="Output directory (lc {output})")
     ap.add_argument(
@@ -395,7 +395,7 @@ def _from_cli(argv=None):
         "--fiducial-pseudo-cl-path",
         default=None,
         help=(
-            "Explicit path to the fiducial version's pseudo-Cl FITS (lc output). "
+            "Explicit path to the fiducial version's pseudo-Cl SACC part (lc output). "
             "Requires --fiducial-version and --fiducial-pseudo-cl-cov-path."
         ),
     )

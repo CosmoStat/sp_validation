@@ -18,7 +18,7 @@ Tests live in `src/sp_validation/tests/` and import the full scientific stack,
 so run them inside the container.
 - Run all tests: `pytest` (collects from `src/sp_validation/tests`; coverage on by default)
 - Skip the slow tests: `pytest -m "not slow"`
-- Run a single test: `pytest src/sp_validation/tests/test_cosmology.py::test_function_name`
+- Run a single test: `pytest src/sp_validation/tests/test_cosmo_val.py::test_function_name`
 
 CI runs this same suite inside the freshly-built image before publishing it
 (see `.github/workflows/deploy-image.yml`).
@@ -57,11 +57,13 @@ is the container (full scientific stack pre-built). For a local dev environment:
 - **Healpy/HealSparse**: Sky map handling
 
 ### Cosmology Inference Pipeline (`cosmo_inference/`)
-Run via `./pipeline.sh` with flags:
-- `--pcf`: Calculate 2-point correlation functions
-- `--covmat`: Calculate covariance matrix with CosmoCov
-- `--inference`: Run CosmoSIS inference
-- `--mcmc_process`: Analyze MCMC chains
+Orchestrated through Snakemake, not a standalone driver; see
+`cosmo_inference/README.md`. From the repository root:
+
+```bash
+snakemake --profile workflow/profiles/candide -s workflow/Snakefile \
+    inference_fiducial --configfile <run config>
+```
 
 ### Configuration
 Main configuration in `scripts/calibration/params.py` with parameters:
@@ -78,10 +80,26 @@ Main configuration in `scripts/calibration/params.py` with parameters:
 - pyccl for cosmological calculations
 
 ## Container Usage
-Recommended installation via Apptainer/Docker:
+Nothing is hand-built. CI publishes `ghcr.io/cosmostat/sp_validation:<branch>` on
+every push, and each person keeps their own copy at
+`~/.cache/sp_validation/sp_validation.sif`, managed by the `spv-container` CLI:
+
 ```bash
-apptainer build --sandbox sp_validation docker://ghcr.io/cosmostat/sp_validation:develop
+spv-container pull            # fetch :develop there (do it from a compute node)
+spv-container status          # which layer is live, and how current it is
+spv-container exec <command>  # one-off run inside it
 ```
+
+Need a package the image lacks mid-analysis? `spv-container sandbox`, then
+`spv-container exec --writable pip install <pkg>`; the sandbox then takes
+precedence over the SIF everywhere, workflow jobs included.
+
+Every rule runs inside that image, wrapped by Snakemake itself (`--profile
+workflow/profiles/candide` on the cluster, `workflow/profiles/default -j N`
+elsewhere). The `sp_validation` a rule imports comes from the *launched
+checkout*, not the image.
+
+`workflow/README.md` is the full story — profiles, image resolution, refresh.
 
 ## Notebook Configuration
 - The CosmologyValidation class must be initialized in cosmo_val

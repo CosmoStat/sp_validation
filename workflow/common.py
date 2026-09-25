@@ -1,23 +1,56 @@
 """Shared helpers for the B-modes Snakemake workflow."""
 
+import importlib.util
 import json
 import os
 import re
+import sys
 from pathlib import Path
 
 from snakemake.io import temp
 
-# Dependency-free by design: the DAG build gets the blinding file-name
-# conventions without importing numpy + smokescreen.
-from sp_validation.blinding_paths import init_paths, part_paths
-
-# The running checkout, for rules that shell out to a script directly rather
-# than through Snakemake's `script:` directive. Anchored on this module's own
-# location, not workflow.basedir — under `module` composition basedir reflects
-# the composing paper, not the running checkout.
-REPO_ROOT = Path(os.path.realpath(__file__)).parents[1]
+# The running checkout. Anchored on this module's own location, not
+# workflow.basedir — under `module` composition basedir reflects the composing
+# paper, not the running checkout.
+REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_SRC = REPO_ROOT / "src"
+# For rules that shell out to a script directly rather than through Snakemake's
+# `script:` directive.
 WORKFLOW_SCRIPTS = str(REPO_ROOT / "workflow" / "scripts")
 REPO_SCRIPTS = str(REPO_ROOT / "scripts")
+
+
+def _load_checkout_module(name):
+    """Load the stdlib-only module ``sp_validation/<name>.py`` from this checkout.
+
+    Loaded by file path rather than imported: snakemake runs on the host, where
+    sp_validation is usually not installed, and importing the package would drag
+    in ``__init__`` -> ``version`` -> a metadata warning on every launch. Taking
+    it from *this checkout's* src/ also means the workflow and the package can
+    never disagree about what the module says.
+    """
+    alias = f"_spv_{name}"
+    module = importlib.util.module_from_spec(
+        importlib.util.spec_from_file_location(
+            alias, REPO_SRC / "sp_validation" / f"{name}.py"
+        )
+    )
+    sys.modules[alias] = module
+    module.__loader__.exec_module(module)
+    return module
+
+
+# The container model, shared with the ``spv-container`` CLI.
+_container = _load_checkout_module("container")
+compare_revision = _container.compare_revision
+image_revision = _container.image_revision
+resolve_image = _container.resolve_image
+
+# The blinding file-name conventions, shared with ``sp_validation.blinding``.
+_blinding_paths = _load_checkout_module("blinding_paths")
+init_paths = _blinding_paths.init_paths
+part_paths = _blinding_paths.part_paths
+
 
 # Output roots are env-overridable so a reproduction run can write into a
 # fresh tree without clobbering (or silently reusing) prior products.
@@ -76,9 +109,90 @@ PLANCK18 = None
 RUN_TYPE = "data"
 
 
+def inject_checkout_pythonpath(workflow_config):
+    """Make the launched checkout's ``src`` win over the image's baked copy.
+
+    Snakemake's ``script:`` directive already runs the *checkout's* script
+    files, so without this a rule executes new script code against an old
+    ``import sp_validation`` -- the two halves of one commit, split. Prepending
+    ``REPO_SRC`` closes that: the image stays the frozen dependency stack, the
+    checkout supplies sp_validation.
+
+    Apptainer forwards ``APPTAINERENV_``-prefixed host variables into the job as
+    their unprefixed names, surviving the profile's ``--cleanenv``; setting it
+    here on the driver reaches every containerized rule. Any value the user
+    already exported is preserved behind ours.
+
+    Opt out with ``--config checkout_pythonpath=false`` to reproduce a run from
+    the image alone.
+    """
+    flag = workflow_config.get("checkout_pythonpath", True)
+    # `--config key=false` can arrive as the *string* "false" depending on how
+    # Snakemake parses the value, so don't lean on truthiness alone.
+    if isinstance(flag, str):
+        flag = flag.strip().lower() not in ("false", "no", "0", "off", "")
+    if not flag:
+        return
+    if not REPO_SRC.is_dir():
+        return
+    existing = os.environ.get("APPTAINERENV_PYTHONPATH", "")
+    parts = [str(REPO_SRC)] + [p for p in existing.split(":") if p]
+    os.environ["APPTAINERENV_PYTHONPATH"] = ":".join(parts)
+
+
+def resolve_container(override=None):
+    """Return the image every rule should run in.
+
+    ``override`` wins if set (a ``docker://`` tag, a ``.sif`` path or a sandbox
+    directory -- Snakemake's ``container:`` accepts all three); otherwise
+    ``resolve_image()``, so jobs run what interactive ``spv-container`` work
+    runs.
+    """
+    if override:
+        return str(override)
+    return resolve_image()[0]
+
+
+def warn_if_image_stale():
+    """Print one advisory line about a local image that is not pristine or current.
+
+    Never fatal. Two things worth saying at launch:
+
+    * a sandbox is in play, so what jobs run is not fully described by any
+      revision label -- deliberate, but it should not be a silent difference
+      from a clean run;
+    * the image predates the checkout. Usually fine, because the checkout's
+      ``src/`` is what rules import; it matters when the *dependency stack*
+      moved -- a new package, a lockfile bump.
+
+    Silent when there is no local image, no apptainer, or no revision label.
+    """
+    image, kind = resolve_image()
+    if kind == "tag":
+        return
+    revision = image_revision(image)
+    if kind == "sandbox":
+        built = f"built from {revision[:12]}" if revision else "revision unknown"
+        print(
+            f"[container] running the writable sandbox at {image} ({built}). "
+            "Anything installed into it is part of this run; "
+            "`spv-container status` for detail.",
+            file=sys.stderr,
+        )
+    if compare_revision(revision) == "behind":
+        print(
+            f"[container] image was built from {revision[:12]}, which is behind this "
+            "checkout. Fine unless the dependency stack moved; refresh with "
+            "`spv-container pull`.",
+            file=sys.stderr,
+        )
+
+
 def configure(workflow_config):
     """Install config-derived values after Snakemake has loaded configfiles."""
     global CATALOG_CONFIG, DEFAULT_MASK_SUFFIX, FIDUCIAL, PLANCK18, RUN_TYPE
+    inject_checkout_pythonpath(workflow_config)
+    warn_if_image_stale()
     CATALOG_CONFIG = workflow_config
     FIDUCIAL = workflow_config["fiducial"]
     DEFAULT_MASK_SUFFIX = (
@@ -434,10 +548,10 @@ def maybe_temp(part_path):
 # Sentinel directory for pure-plot leaf rules (no natural data-product output).
 CV_SENTINELS = COSMO_VAL / "snakemake_sentinels"
 
-# Working directory in which `CosmologyValidation` must be instantiated: it
-# reads `./cat_config.yaml` and writes to `./output` by default. Resolved to
-# the live (non-worktree) checkout so rules find the catalog config and share
-# the output tree with interactive runs.
+# Working directory in which `CosmologyValidation` is instantiated: its
+# catalogue config comes explicitly from CAT_CONFIG, and it writes to
+# `./output` unless COSMO_VAL is set. Resolved to the live (non-worktree)
+# checkout so rules share the output tree with interactive runs.
 CV_RUNDIR = "/n17data/cdaley/unions/code/sp_validation/cosmo_val"
 
 
@@ -456,35 +570,56 @@ def cv_basename(version, fiducial=None):
     )
 
 
+# CosmologyValidation constructor kwargs read from config["cosmo_val"]. Every
+# keyword with a default is either here or explicitly exempted in
+# src/sp_validation/tests/test_cv_init_params.py, so no default applies silently.
+CV_INIT_KEYS = (
+    "rho_tau_method",
+    "cov_estimate_method",
+    "compute_cov_rho",
+    "n_cov",
+    "theta_min",
+    "theta_max",
+    "nbins",
+    "var_method",
+    "npatch",
+    "quantile",
+    "theta_min_plot",
+    "theta_max_plot",
+    "ylim_alpha",
+    "ylim_xi_sys_ratio",
+    "nside",
+    "nside_mask",
+    "binning",
+    "power",
+    "n_ell_bins",
+    "ell_step",
+    "pol_factor",
+    "cell_method",
+    "noise_bias_method",
+    "fiducial_input_inka",
+    "nrandom_cell",
+    "cell_seed",
+    "path_onecovariance",
+    "cosmo_params",
+)
+
+
 def cv_init_params(config, version_list=None):
     """Assemble the CosmologyValidation(...) constructor kwargs from config.
 
     Centralizes the run-specific instantiation so every cosmo_val rule script
-    builds an identical `cv`. `version_list` overrides config["versions"] (used
-    by per-version rules that pass a single version).
+    builds an identical `cv`. The catalogue config is always CAT_CONFIG, never
+    the constructor's cwd-relative default. `version_list` overrides
+    config["versions"] (used by per-version rules that pass a single version).
     """
     cv = config["cosmo_val"]
-    params = dict(
+    return dict(
         versions=version_list if version_list is not None else config["versions"],
-        npatch=cv["npatch"],
-        theta_min=cv["theta_min"],
-        theta_max=cv["theta_max"],
-        nbins=cv["nbins"],
-        theta_min_plot=cv["theta_min_plot"],
-        theta_max_plot=cv["theta_max_plot"],
-        ylim_alpha=cv["ylim_alpha"],
-        nrandom_cell=cv["nrandom_cell"],
-        cell_method=cv["cell_method"],
-        nside_mask=cv["nside_mask"],
+        catalog_config=CAT_CONFIG,
         # Custody state the cv's part writers need: the SACC `type` they stamp,
         # and the blind whose commitment born-blinded parts are stamped under.
         run_type=run_type(),
         blind_root=blind_root(),
+        **{key: cv[key] for key in CV_INIT_KEYS},
     )
-    if cv.get("path_onecovariance"):
-        params["path_onecovariance"] = cv["path_onecovariance"]
-    if cv.get("rho_tau_method"):
-        params["rho_tau_method"] = cv["rho_tau_method"]
-    if cv.get("cosmo_params"):
-        params["cosmo_params"] = cv["cosmo_params"]
-    return params

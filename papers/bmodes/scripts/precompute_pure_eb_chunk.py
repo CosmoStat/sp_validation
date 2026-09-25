@@ -127,15 +127,15 @@ def compute_chunk(
     row_sums = np.array(binning_matrix.sum(axis=1)).flatten()
     binning_matrix = sparse.diags(1 / row_sums) @ binning_matrix
 
-    mean_int = np.concatenate(
-        get_theo_xi(
-            theta=theta_int,
-            z=z_dist[:, 0],
-            nz=z_dist[:, 1],
-            backend="ccl",
-            cosmo=cosmo_cov,
-        )
-    )
+    # One n(z) gives one tracer pair: get_theo_xi's single (xi+, xi-) entry.
+    (xi_pm,) = get_theo_xi(
+        theta=theta_int,
+        z=z_dist[:, 0],
+        nz=z_dist[:, 1],
+        backend="ccl",
+        cosmo=cosmo_cov,
+    ).values()
+    mean_int = np.concatenate(xi_pm)
 
     rng = np.random.default_rng(seed=42 + chunk_id)
 

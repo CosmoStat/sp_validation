@@ -14,7 +14,7 @@ gathered layout the fiducial single-output writes, which
 config_space_pte_matrices.py adapts via ``_cosebis_matrix_from_npz`` — into
 ``--out``. Serial over versions (~25 min/version, 206 pairs).
 
-    apptainer exec ... /usr/local/bin/python run_cosebis_ptes_sweep.py \
+    python run_cosebis_ptes_sweep.py \
         --config .../config.yaml \
         --xi-sweep-dir <two_point/.../xi_sweep> \
         --cov-sweep-dir <covariance/.../cov_sweep> \

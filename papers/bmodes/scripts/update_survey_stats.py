@@ -5,7 +5,7 @@ n_eff and sigma_e from each version's shear catalog in chunks to limit
 memory usage.
 
 Usage:
-    python workflow/scripts/update_survey_stats.py \
+    python papers/bmodes/scripts/update_survey_stats.py \
         --mask-standard <path> --mask-starhalo <path>
 """
 

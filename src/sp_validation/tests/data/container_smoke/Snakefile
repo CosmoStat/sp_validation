@@ -1,0 +1,21 @@
+# Standalone workflow exercised by src/sp_validation/tests/test_container_smoke.py.
+#
+# The module-level `container:` below mirrors what every real workflow does
+# (workflow/Snakefile) -- Snakemake has no way to take a default image from a
+# profile. Everything else under test arrives from the driving profile
+# (workflow/profiles/candide). See container_smoke.py for what the job checks.
+
+
+# Literal rather than the package's CONTAINER_URI: this Snakefile is test data,
+# deliberately standalone. test_container_smoke.py asserts the two agree, so
+# drift fails the test rather than the run.
+container: config.get("container", "docker://ghcr.io/cosmostat/sp_validation:develop")
+
+
+rule container_smoke:
+    output:
+        "results/container_smoke.yaml",
+    resources:
+        runtime=5,
+    script:
+        "container_smoke.py"

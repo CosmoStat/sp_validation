@@ -9,7 +9,6 @@ something the data products do not.
 import numpy as np
 from astropy.io import fits
 from cv_runner import _unbuffer_streams, verify_outputs
-from snakemake.script import snakemake
 
 from sp_validation import sacc_io
 from sp_validation.cosmo_val.pseudo_cl import plot_pseudo_cl_spectrum

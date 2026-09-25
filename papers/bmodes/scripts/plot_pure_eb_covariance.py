@@ -27,8 +27,6 @@ def _load_snakemake():
             "results/paper_plots/pure_eb_covariance.png",
             str(Path.cwd()),
         )
-    from snakemake.script import snakemake
-
     return snakemake
 
 
