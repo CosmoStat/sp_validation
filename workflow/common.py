@@ -386,16 +386,6 @@ def xi_grids(config, fiducial):
     return grids
 
 
-def patch_cov(npatch):
-    """The covariance a ξ± part measured with ``npatch`` patches carries.
-
-    "jackknife" (dense, from the patches) needs patches; at npatch=1 TreeCorr's
-    var_method is "shot" and its "diagonal" (varxip/varxim) is the estimate
-    there is.
-    """
-    return "jackknife" if int(npatch) > 1 else "diagonal"
-
-
 def grid_binning(grid):
     """The `minsep=..._maxsep=..._nbins=..._npatch=...` tag of one grid."""
     return (

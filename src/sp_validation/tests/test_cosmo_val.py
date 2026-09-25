@@ -354,6 +354,7 @@ class TestCosmologyValidation:
 
         shear_cfg = {
             "path": "shear.fits",
+            "redshift_path": str(nz_dir / "dndz_SP_A.txt"),
             "w_col": "w",
             "e1_col": "e1",
             "e2_col": "e2",
@@ -437,6 +438,49 @@ class TestCosmologyValidation:
         assert np.all(np.isfinite(gg.xim))
         # The additive-bias subtraction in the pipeline must have run.
         assert version in cv.c1 and version in cv.c2
+
+    @pytest.mark.parametrize("npatch", [1, 4])
+    def test_xi_part_carries_the_covariance_the_measurement_estimated(
+        self, tmp_path, npatch
+    ):
+        """run_2pcf's ξ± part carries TreeCorr's covariance, whoever calls it.
+
+        The jackknife covariance with patches, the shot-noise diagonal without,
+        so every part has variances whether the rule or the CLI measured it.
+        """
+        import importlib.util
+
+        import sacc
+
+        from sp_validation import sacc_io
+
+        script = Path(__file__).resolve().parents[3] / "workflow/scripts/run_2pcf.py"
+        spec = importlib.util.spec_from_file_location("run_2pcf_part", script)
+        run_2pcf = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(run_2pcf)
+
+        params, version = self._write_synthetic_catalogs(tmp_path)
+        part = tmp_path / "part.sacc"
+        gg = run_2pcf.run_2pcf(
+            ver=version,
+            min_sep=5.0,
+            max_sep=100.0,
+            nbins=6,
+            npatch=npatch,
+            cat_config=params["catalog_config"],
+            output_dir=params["output_dir"],
+            sacc_out=str(part),
+        )
+
+        cov = sacc_io.load(str(part), allow_unblinded=True).covariance
+        if npatch > 1:
+            assert isinstance(cov, sacc.covariance.FullCovariance)
+            np.testing.assert_array_equal(cov.dense, gg.cov)
+        else:
+            assert isinstance(cov, sacc.covariance.DiagonalCovariance)
+            np.testing.assert_array_equal(
+                cov.diag, np.concatenate([gg.varxip, gg.varxim])
+            )
 
     def test_calculate_2pcf_does_not_depend_on_thread_count(self, tmp_path):
         """calculate_2pcf's ξ± is the same on 4 and on 48 TreeCorr threads.
