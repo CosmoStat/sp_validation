@@ -38,6 +38,7 @@ DES:
     e1_col: obs_e1
     e2_col: obs_e2
     path: psf_y3a1-v29.fits
+  patch_number: 120
 SP_axel_v0.0:
   subdir: /n17data/mkilbing/astro/data/CFIS/v0.0
   pipeline: SP
@@ -77,6 +78,7 @@ SP_axel_v0.0:
     e1_col: HSM_G1_STAR
     e2_col: HSM_G2_STAR
     path: star_cat.fits
+  patch_number: 120
 SP_v0.1.1:
   subdir: /n17data/mkilbing/astro/data/CFIS/v0.0
   pipeline: SP
@@ -110,6 +112,7 @@ SP_v0.1.1:
     e1_col: HSM_G1_STAR
     e2_col: HSM_G2_STAR
     path: star_cat.fits
+  patch_number: 150
 SP_v1.3:
   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/ShapePipe
   pipeline: SP
@@ -145,6 +148,7 @@ SP_v1.3:
     e1_col: e1
     e2_col: e2
     path: unions_shapepipe_star_2022_v1.0.3.fits
+  patch_number: 150
 SP_v1.3.6:
   subdir: /n17data/UNIONS/WL/v1.3.x
   pipeline: SP
@@ -188,6 +192,7 @@ SP_v1.3.6:
     e1_col: e1
     e2_col: e2
     path: unions_shapepipe_star_2022_v1.0.3.fits
+  patch_number: 150
 SP_v1.4.5:
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
@@ -231,6 +236,7 @@ SP_v1.4.5:
     e1_col: e1
     e2_col: e2
     path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
+  patch_number: 150
 SP_v1.4.5.A:
   subdir: /n17data/guinot/CFIS_3500_cat/catalogues_SPv1_v1.4.5
   pipeline: SP
@@ -271,6 +277,7 @@ SP_v1.4.5.A:
     e1_col: e1
     e2_col: e2
     path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
+  patch_number: 150
 SP_v1.4.5_bright:
   subdir: /n17data/murray/unions_cats
   pipeline: SP
@@ -311,6 +318,7 @@ SP_v1.4.5_bright:
     e1_col: e1
     e2_col: e2
     path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
+  patch_number: 150
 SP_v1.4.5_faint:
   subdir: /n17data/murray/unions_cats
   pipeline: SP
@@ -351,6 +359,7 @@ SP_v1.4.5_faint:
     e1_col: e1
     e2_col: e2
     path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
+  patch_number: 150
 SP_v1.4.6_glass_mock:
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
@@ -393,6 +402,7 @@ SP_v1.4.6_glass_mock:
     e1_col: e1
     e2_col: e2
     path: unions_shapepipe_star_2024_v1.4.a.fits
+  patch_number: 150
 SP_v1.4.5_intermediate:
   subdir: /n17data/murray/unions_cats
   pipeline: SP
@@ -433,6 +443,7 @@ SP_v1.4.5_intermediate:
     e1_col: e1
     e2_col: e2
     path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
+  patch_number: 150
 SP_v1.4.6:
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
@@ -476,6 +487,7 @@ SP_v1.4.6:
     e1_col: e1
     e2_col: e2
     path: unions_shapepipe_star_2024_v1.4.a.fits
+  patch_number: 150
 SP_v1.4.6.3:
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
@@ -519,6 +531,7 @@ SP_v1.4.6.3:
     e1_col: e1
     e2_col: e2
     path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
+  patch_number: 150
 SP_v1.4.6.3_B:
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
@@ -562,6 +575,7 @@ SP_v1.4.6.3_B:
     e1_col: e1
     e2_col: e2
     path: unions_shapepipe_star_2024_v1.4.a.fits
+  patch_number: 150
 SP_v1.4.6.3_C:
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
@@ -605,6 +619,7 @@ SP_v1.4.6.3_C:
     e1_col: e1
     e2_col: e2
     path: unions_shapepipe_star_2024_v1.4.a.fits
+  patch_number: 150
 SP_v1.4.6.3_A:
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
@@ -648,6 +663,7 @@ SP_v1.4.6.3_A:
     e1_col: e1
     e2_col: e2
     path: unions_shapepipe_star_2024_v1.4.a.fits
+  patch_number: 150
 SP_v1.4.6_ecut07:
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
@@ -691,6 +707,7 @@ SP_v1.4.6_ecut07:
     e1_col: e1
     e2_col: e2
     path: unions_shapepipe_star_2024_v1.4.a.fits
+  patch_number: 150
 SP_v1.4.6.1:
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
@@ -780,6 +797,7 @@ SP_v1.4.7:
     e1_col: e1
     e2_col: e2
     path: unions_shapepipe_star_2024_v1.4.a.fits
+  patch_number: 150
 SP_v1.4.8:
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
@@ -823,6 +841,7 @@ SP_v1.4.8:
     e1_col: e1
     e2_col: e2
     path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
+  patch_number: 150
 SP_v1.4.11.2:
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
@@ -866,6 +885,7 @@ SP_v1.4.11.2:
     e1_col: e1
     e2_col: e2
     path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
+  patch_number: 150
 SP_v1.4.11.3:
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
@@ -910,6 +930,7 @@ SP_v1.4.11.3:
     e1_col: e1
     e2_col: e2
     path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
+  patch_number: 150
 SP_v1.4.12.3:
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
@@ -955,6 +976,7 @@ SP_v1.4.12.3:
     e1_col: e1
     e2_col: e2
     path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
+  patch_number: 150
 SP_v1.4.13.3:
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
@@ -1000,6 +1022,7 @@ SP_v1.4.13.3:
     e1_col: e1
     e2_col: e2
     path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
+  patch_number: 150
 SP_v1.4.11.3_ecut07:
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
@@ -1043,6 +1066,7 @@ SP_v1.4.11.3_ecut07:
     e1_col: e1
     e2_col: e2
     path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
+  patch_number: 150
 SP_v1.4.6.3_uncal:
   pipeline: SP
   subdir: /n17data/UNIONS/WL/v1.4.x
@@ -1176,6 +1200,7 @@ SP_v1.4_LFmask_8k:
     e1_col: e1
     e2_col: e2
     path: unions_shapepipe_star_2022_v1.4.0_mtheli8k.fits
+  patch_number: 150
 SP_v1.4_LFmask_8k_noalpha:
   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/SP_LFmask
   pipeline: SP
@@ -1216,6 +1241,7 @@ SP_v1.4_LFmask_8k_noalpha:
     e1_col: e1
     e2_col: e2
     path: unions_shapepipe_star_2022_v1.4.0_mtheli8k.fits
+  patch_number: 150
 nz:
   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/nz
   dndz:
@@ -1267,3 +1293,4 @@ SP_v1.6.6:
     e1_col: e1
     e2_col: e2
     path: unions_shapepipe_star_2024_v1.6.a.fits
+  patch_number: 150
