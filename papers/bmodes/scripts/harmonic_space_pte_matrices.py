@@ -26,12 +26,13 @@ from plotting_utils import (
     make_pte_colormap,
     make_pte_norm,
 )
+from pseudo_cl_io import load_pseudo_cl_data
 
 plt.style.use(PAPER_MPLSTYLE)
 
 
 def _pseudo_cl(results_dir, ver, blind="A", nbins=32):
-    return f"{results_dir}/pseudo_cl_{ver}_blind={blind}_powspace_nbins={nbins}.fits"
+    return f"{results_dir}/pseudo_cl_{ver}_blind={blind}_powspace_nbins={nbins}.sacc"
 
 
 def _pseudo_cl_cov(results_dir, ver, blind="A", nbins=32):
@@ -48,7 +49,7 @@ def compute_pte_matrix(
     Parameters
     ----------
     pseudo_cl_path : str
-        Path to pseudo-Cl FITS file.
+        Path to pseudo-Cl SACC part.
     pseudo_cl_cov_path : str
         Path to pseudo-Cl covariance FITS file.
     fiducial_ell_min : float, optional
@@ -66,10 +67,7 @@ def compute_pte_matrix(
         Summary statistics.
     """
     # Load pseudo-Cl data
-    hdu = fits.open(pseudo_cl_path)
-    data = hdu["PSEUDO_CELL"].data
-    hdu.close()
-
+    data = load_pseudo_cl_data(pseudo_cl_path)
     ell = data["ELL"]
     cl_bb = data["BB"]
     n_ell = len(ell)
@@ -533,7 +531,9 @@ def _from_cli(argv=None):
     ap.add_argument(
         "--results-dir",
         required=True,
-        help="COSMO_VAL output dir with per-version pseudo_cl_* / pseudo_cl_cov_* FITS",
+        help=(
+            "COSMO_VAL output dir with pseudo_cl_*.sacc parts and pseudo_cl_cov_*.fits"
+        ),
     )
     ap.add_argument("--out", required=True, help="Output directory (lc {output})")
     ap.add_argument(
@@ -544,7 +544,7 @@ def _from_cli(argv=None):
     ap.add_argument(
         "--fiducial-pseudo-cl-path",
         default=None,
-        help="Explicit path to fiducial pseudo-Cl FITS produced by lc "
+        help="Explicit path to fiducial pseudo-Cl SACC part produced by lc "
         "(overrides pattern reconstruction for --fiducial-version)",
     )
     ap.add_argument(

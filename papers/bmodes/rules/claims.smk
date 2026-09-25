@@ -121,7 +121,7 @@ def _pseudo_cl_path(version, blind="A", nbins=32):
 
     All leak-corrected versions use consistent local naming with blind and binning.
     """
-    return f"{COSMO_VAL_OUTPUT}/pseudo_cl_{version}_blind={blind}_powspace_nbins={nbins}.fits"
+    return f"{COSMO_VAL_OUTPUT}/pseudo_cl_{version}_blind={blind}_powspace_nbins={nbins}.sacc"
 
 
 def _pseudo_cl_cov_path(version, blind="A", nbins=32):
