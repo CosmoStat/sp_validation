@@ -86,10 +86,10 @@ def _xi_reporting_path(version):
 
 
 def _xi_integration_path(version):
-    """Path to fine-binned 2PCF integration file."""
+    """Path to fine-binned 2PCF integration file. Unpatched: values only, no covariance."""
     return (
         f"{COSMO_VAL_OUTPUT}/{version}_xi_minsep={FIDUCIAL['min_sep_int']}"
-        f"_maxsep={FIDUCIAL['max_sep_int']}_nbins={FIDUCIAL['nbins_int']}_npatch={FIDUCIAL['npatch']}.txt"
+        f"_maxsep={FIDUCIAL['max_sep_int']}_nbins={FIDUCIAL['nbins_int']}_npatch=1.txt"
     )
 
 
@@ -121,7 +121,7 @@ def _pseudo_cl_path(version, blind="A", nbins=32):
 
     All leak-corrected versions use consistent local naming with blind and binning.
     """
-    return f"{COSMO_VAL_OUTPUT}/pseudo_cl_{version}_blind={blind}_powspace_nbins={nbins}.fits"
+    return f"{COSMO_VAL_OUTPUT}/pseudo_cl_{version}_blind={blind}_powspace_nbins={nbins}.sacc"
 
 
 def _pseudo_cl_cov_path(version, blind="A", nbins=32):

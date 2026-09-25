@@ -32,6 +32,7 @@ from plotting_utils import (
     iter_version_figures,
     version_label,
 )
+from pseudo_cl_io import load_pseudo_cl_data
 
 from sp_validation.b_modes import calculate_cosebis
 
@@ -107,11 +108,10 @@ def _compute_harmonic_cosebis(
     pseudo_cl_path, pseudo_cov_path, nmodes, theta_min, theta_max
 ):
     """Compute COSEBIS from pseudo-C_ell and propagate covariance."""
-    with fits.open(pseudo_cl_path) as hdul:
-        data = hdul["PSEUDO_CELL"].data
-        ell = np.asarray(data["ELL"], dtype=float)
-        cl_ee = np.asarray(data["EE"], dtype=float)
-        cl_bb = np.asarray(data["BB"], dtype=float)
+    data = load_pseudo_cl_data(pseudo_cl_path)
+    ell = np.asarray(data["ELL"], dtype=float)
+    cl_ee = np.asarray(data["EE"], dtype=float)
+    cl_bb = np.asarray(data["BB"], dtype=float)
 
     cosebis_obj = COSEBIS(theta_min, theta_max, nmodes)
 
@@ -857,7 +857,10 @@ def _from_cli(argv=None):
     ap.add_argument(
         "--cosmo-val-dir",
         required=True,
-        help="COSMO_VAL output dir (pseudo_cl / pseudo_cl_cov FITS + xi_integration txt)",
+        help=(
+            "COSMO_VAL output dir (pseudo_cl SACC parts, pseudo_cl_cov FITS "
+            "+ xi_integration txt)"
+        ),
     )
     ap.add_argument(
         "--covariance-dir",
@@ -883,8 +886,9 @@ def _from_cli(argv=None):
         "--fiducial-pseudo-cl-path",
         default=None,
         help=(
-            "Explicit path to the fiducial 96-bin pseudo-Cl FITS reproduced by lc "
-            "(from lc's cl_bandpowers_fine; e.g. pseudo_cl_SP_v1.4.6.3_leak_corr.fits), "
+            "Explicit path to the fiducial 96-bin pseudo-Cl SACC part reproduced "
+            "by lc (from lc's cl_bandpowers_fine; e.g. "
+            "pseudo_cl_SP_v1.4.6.3_leak_corr.sacc), "
             "overriding the --cosmo-val-dir pattern lookup for --fiducial-version."
         ),
     )
@@ -934,7 +938,7 @@ def _from_cli(argv=None):
             if is_fiducial and a.fiducial_pseudo_cl_path
             else os.path.join(
                 a.cosmo_val_dir,
-                f"pseudo_cl_{ver}_blind={a.blind}_powspace_nbins={cosebis_nbins}.fits",
+                f"pseudo_cl_{ver}_blind={a.blind}_powspace_nbins={cosebis_nbins}.sacc",
             )
         )
         # 96-bin pseudo-Cl covariance is intentionally NOT lc-repointed: lc did not

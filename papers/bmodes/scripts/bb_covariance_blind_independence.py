@@ -22,6 +22,7 @@ import treecorr
 import yaml
 from astropy.io import fits
 from plotting_utils import PAPER_MPLSTYLE
+from pseudo_cl_io import load_pseudo_cl_data
 
 from sp_validation.b_modes import calculate_cosebis
 
@@ -436,9 +437,8 @@ def main(
             nbins_int,
         )
 
-    # Read ell bin centers from pseudo-Cl data file
-    with fits.open(pseudo_cl_path) as hdu:
-        ell_eff = hdu["PSEUDO_CELL"].data["ELL"]
+    # Read ell bin centers from the pseudo-Cl SACC part
+    ell_eff = load_pseudo_cl_data(pseudo_cl_path)["ELL"]
 
     # Compute ratios relative to blind A
     pure_eb_results = {}
@@ -666,7 +666,10 @@ def _from_cli(argv=None):
     ap.add_argument(
         "--cosmo-val-dir",
         required=True,
-        help="COSMO_VAL output dir (pseudo_cl / pseudo_cl_cov FITS + xi_integration txt)",
+        help=(
+            "COSMO_VAL output dir (pseudo_cl SACC parts, pseudo_cl_cov FITS "
+            "+ xi_integration txt)"
+        ),
     )
     ap.add_argument(
         "--covariance-dir",
@@ -711,7 +714,7 @@ def _from_cli(argv=None):
         f"_nbins={nbins_int}_npatch={npatch}.txt",
     )
     pseudo_cl_path = os.path.join(
-        a.cosmo_val_dir, f"pseudo_cl_{version}_blind=A_powspace_nbins=32.fits"
+        a.cosmo_val_dir, f"pseudo_cl_{version}_blind=A_powspace_nbins=32.sacc"
     )
 
     out_dir = Path(a.out)
