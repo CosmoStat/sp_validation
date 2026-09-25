@@ -13,16 +13,11 @@ def xi_binning(grid):
     return grid_binning(XI_GRIDS[grid])
 
 
-def xi_grid_of(wildcards):
-    """Grid label for the binning a job was requested with."""
-    return grid_of(XI_GRIDS, {key: getattr(wildcards, key) for key in XI_KEYS})
-
-
 rule xi:
     """TreeCorr ξ±(θ) for one version on one angular grid.
 
     One rule for every grid: outputs are named by their binning, so a request
-    binds the wildcards and `xi_grid_of` resolves the grid label from them.
+    binds the wildcards and the grid label resolves from them.
     """
     input:
         catalog=get_shear_catalog,
@@ -39,9 +34,8 @@ rule xi:
         npatch="{npatch}",
         cat_config=CAT_CONFIG,
         output_dir=str(COSMO_VAL),
-        grid=lambda w: xi_grid_of(w),
+        grid=lambda w: grid_of(XI_GRIDS, w),
         type=run_type(),  # the part's SACC `type` — custody state at assembly
-        cov=lambda w: XI_GRIDS[xi_grid_of(w)]["cov"],
     resources:
         # The fine integration grid needs more memory and wall time than the
         # ~20-bin reporting one; scale on nbins rather than splitting the rule.

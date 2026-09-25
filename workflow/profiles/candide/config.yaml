@@ -62,6 +62,22 @@ default-resources:
   cpus_per_task: 12
   slurm_extra: "'--exclude=n17,n09,n36'"
 
+# How many jobs may be queued or running at once. Snakemake requires a bound
+# for any remote executor and refuses a real run without one.
+jobs: 100
+
+# Snakemake's source cache lives under the launching shell's XDG_CACHE_HOME,
+# which may be node-local. Leaving source-cache out of the shared-filesystem
+# usages keeps each job from reusing the launch's cache and puts the job's own
+# in its tmp dir.
+shared-fs-usage:
+  - persistence
+  - input-output
+  - software-deployment
+  - sources
+  - storage-local-copies
+  - software-deployment-cache
+
 # Retry a job once on transient node failure, and keep the SLURM logs of
 # successful jobs (candide debugging).
 retries: 1

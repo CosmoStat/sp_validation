@@ -27,7 +27,7 @@ def _ecut_parent_catalog(wildcards):
     parent = ECUT_PARENT_VERSIONS.get(wildcards.version)
     if parent is None:
         raise ValueError(f"No parent version found for {wildcards.version}")
-    cat_config = config[parent]
+    cat_config = CATALOG_CONFIG[parent]
     shear_path = cat_config["shear"]["path"]
     if shear_path.startswith("/"):
         return shear_path
@@ -38,7 +38,7 @@ def _ecut_parent_area(version):
     """Get parent version's area for an ecut version."""
     base = version.replace("_leak_corr", "")
     parent = ECUT_PARENT_VERSIONS.get(base, base)
-    return config[parent]["cov_th"]["A"]
+    return CATALOG_CONFIG[parent]["cov_th"]["A"]
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

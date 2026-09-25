@@ -84,8 +84,7 @@ class CosmologyValidation(
         Path to catalog configuration YAML defining survey metadata, file paths,
         and analysis settings for each version.
     output_dir : str, optional
-        Override for output directory. If None, falls back to the COSMO_VAL
-        environment variable, then to the catalog config's paths.output.
+        Output directory. If None, the catalog config's paths.output.
     rho_tau_method : {'lsq', 'mcmc'}, default 'lsq'
         Fitting method for PSF leakage systematics parameters.
     cov_estimate_method : {'th', 'jk'}, default 'th'
@@ -328,6 +327,11 @@ class CosmologyValidation(
             "nbins": nbins,
             "var_method": var_method,
             "cross_patch_weight": "match" if var_method == "jackknife" else "simple",
+            # min_top sets the depth of TreeCorr's root cells, hence which pairs
+            # bin_slop approximates. Left unset, TreeCorr derives it from its
+            # thread count (max(3, ceil(log2 n))) and ξ± depends on the machine.
+            # 6 is what TreeCorr derives on candide's 48- and 64-CPU nodes.
+            "min_top": 6,
         }
 
         self.catalog_config_path = Path(catalog_config)
@@ -406,11 +410,6 @@ class CosmologyValidation(
 
         self.versions = final_versions
 
-        # Override output directory: explicit arg > COSMO_VAL env var >
-        # catalog config's paths.output. The env hook lets a reproduction
-        # run redirect every product to a fresh tree without touching the
-        # per-script call sites (mirrors workflow/common.py's COSMO_VAL).
-        output_dir = output_dir or os.environ.get("COSMO_VAL")
         if output_dir is not None:
             cc["paths"]["output"] = output_dir
 

@@ -1,5 +1,11 @@
-"""Shared helpers for the B-modes Snakemake workflow."""
+"""Shared helpers for every Snakefile that composes workflow/.
 
+Imported by the host Snakemake, where sp_validation is not installed: this
+module imports only the standard library and snakemake, and loads the
+stdlib-only project modules it needs by file path.
+"""
+
+import functools
 import importlib.util
 import json
 import os
@@ -44,12 +50,19 @@ def _load_checkout_module(name):
 _container = _load_checkout_module("container")
 compare_revision = _container.compare_revision
 image_revision = _container.image_revision
+image_runtime = _container.image_runtime
 resolve_image = _container.resolve_image
 
 # The blinding file-name conventions, shared with ``sp_validation.blinding``.
 _blinding_paths = _load_checkout_module("blinding_paths")
 init_paths = _blinding_paths.init_paths
 part_paths = _blinding_paths.part_paths
+
+# Every job inherits this launch's environment (the slurm executor submits with
+# --export=ALL), and the Snakemake each job step starts keeps its source cache
+# under XDG_CACHE_HOME, which a login shell may point at node-local storage.
+# Without it, jobs use the home directory's cache, which every node mounts.
+os.environ.pop("XDG_CACHE_HOME", None)
 
 
 # Output roots are env-overridable so a reproduction run can write into a
@@ -64,7 +77,9 @@ COSMO_INFERENCE = Path(
         "COSMO_INFERENCE", "/n17data/cdaley/unions/code/sp_validation/cosmo_inference"
     )
 )
-CAT_CONFIG = "/n17data/cdaley/unions/code/sp_validation/cosmo_val/cat_config.yaml"
+# The catalogue config of the launched checkout: the one file both the host
+# (CATALOG_CONFIG, loaded in configure) and every job read catalogues from.
+CAT_CONFIG = str(REPO_ROOT / "cosmo_val" / "cat_config.yaml")
 # "blind" is the glass-mock A/B/C realisation convention, NOT Smokescreen
 # blinding (a separate axis: the concealed=True SACC stamp). The name is baked
 # into on-disk filenames we do not own (e.g. nz_{version}_{A|B|C}.txt).
@@ -188,12 +203,54 @@ def warn_if_image_stale():
         )
 
 
+@functools.cache
+def check_host_parity(image):
+    """Stop the launch unless this Snakemake matches the image's Python and Snakemake.
+
+    A ``script:`` job appends the host's ``sys.path`` -- standard library
+    included -- to its own, as the fallback that lets it unpickle the host's
+    ``snakemake`` object. So the image and the host Snakemake must share a
+    Python minor (else a module the image lacks loads from the host's stdlib)
+    and a Snakemake version (else the pickle does not match its reader).
+
+    An image that cannot be read (a registry tag, no apptainer) is named in one
+    line and passes.
+    """
+    import snakemake
+    from snakemake.exceptions import WorkflowError
+
+    runtime = image_runtime(image)
+    if runtime is None:
+        print(
+            f"[container] cannot read the Python of {image}; host/image parity "
+            "unchecked.",
+            file=sys.stderr,
+        )
+        return
+    python, image_snakemake = runtime
+    host_python = ".".join(str(v) for v in sys.version_info[:2])
+    host = (host_python, snakemake.__version__)
+    if (python, image_snakemake or snakemake.__version__) == host:
+        return
+    raise WorkflowError(
+        f"host Snakemake {snakemake.__version__} on Python {host_python} does not "
+        f"match the image {image} (Snakemake {image_snakemake}, Python {python}).\n"
+        "Reinstall the host Snakemake to match:\n"
+        f"  uv tool install --force --python {python} "
+        f"snakemake=={image_snakemake or snakemake.__version__} "
+        "--with snakemake-executor-plugin-slurm"
+    )
+
+
 def configure(workflow_config):
     """Install config-derived values after Snakemake has loaded configfiles."""
     global CATALOG_CONFIG, DEFAULT_MASK_SUFFIX, FIDUCIAL, PLANCK18, RUN_TYPE
+    from snakemake.common.configfile import load_configfile
+
     inject_checkout_pythonpath(workflow_config)
     warn_if_image_stale()
-    CATALOG_CONFIG = workflow_config
+    check_host_parity(resolve_container(workflow_config.get("container")))
+    CATALOG_CONFIG = load_configfile(CAT_CONFIG)
     FIDUCIAL = workflow_config["fiducial"]
     DEFAULT_MASK_SUFFIX = (
         "_masked" if workflow_config["covariance"].get("default_masked", False) else ""
@@ -318,17 +375,10 @@ def build_redshift_path(version, blind):
 # ---------------------------------------------------------------------------
 # ξ± angular grids
 # ---------------------------------------------------------------------------
-# A grid is a binning plus how its covariance is estimated: (min_sep, max_sep,
-# nbins, npatch, cov). `reporting` is the analysis grid, `integration` the fine
-# one the B-mode integrals run over, `cosebis` the fine patched grid COSEBIs
-# propagates its covariance from. cov is "jackknife" (dense, from the patches),
-# "diagonal" (TreeCorr varxip/varxim) or "none".
-XI_KEYS = (
-    "min_sep",
-    "max_sep",
-    "nbins",
-    "npatch",
-)  # the binning; cov is not in the name
+# A grid is a binning: (min_sep, max_sep, nbins, npatch). `reporting` is the
+# analysis grid, `integration` the fine one both B-mode statistics (COSEBIs,
+# pure-E/B) integrate over.
+XI_KEYS = ("min_sep", "max_sep", "nbins", "npatch")
 
 
 def xi_grids(config, fiducial):
@@ -363,22 +413,11 @@ def xi_grids(config, fiducial):
         ),
     }
     grids["integration"].setdefault("npatch", 1)
-    cb = cv.get("cosebis")
-    if cb:
-        grids["cosebis"] = {
-            "min_sep": cb["min_sep_int"],
-            "max_sep": cb["max_sep_int"],
-            "nbins": cb["nbins_int"],
-            "npatch": cb["npatch"],
-        }
     for grid in grids.values():
         for key in ("min_sep", "max_sep"):
             grid[key] = float(grid[key])
         for key in ("nbins", "npatch"):
             grid[key] = int(grid[key])
-        # A jackknife estimate needs patches; at npatch=1 TreeCorr's var_method
-        # is "shot" and the diagonal is all it can offer.
-        grid.setdefault("cov", "jackknife" if grid["npatch"] > 1 else "none")
     return grids
 
 
@@ -541,18 +580,9 @@ def maybe_temp(part_path):
 # turns each diagnostic into a rule keyed on the real data products it writes
 # under COSMO_VAL. Where a method only emits a figure (no data product), the
 # rule declares a sentinel under CV_SENTINELS so the DAG stays trackable.
-#
-# COSMO_VAL is the cosmo_val/output directory (already defined above), the same
-# location every `cv.*` method writes to via `cc["paths"]["output"]`.
 
 # Sentinel directory for pure-plot leaf rules (no natural data-product output).
 CV_SENTINELS = COSMO_VAL / "snakemake_sentinels"
-
-# Working directory in which `CosmologyValidation` is instantiated: its
-# catalogue config comes explicitly from CAT_CONFIG, and it writes to
-# `./output` unless COSMO_VAL is set. Resolved to the live (non-worktree)
-# checkout so rules share the output tree with interactive runs.
-CV_RUNDIR = "/n17data/cdaley/unions/code/sp_validation/cosmo_val"
 
 
 def cv_basename(version, fiducial=None):
@@ -605,18 +635,18 @@ CV_INIT_KEYS = (
 )
 
 
-def cv_init_params(config, version_list=None):
+def cv_init_params(config):
     """Assemble the CosmologyValidation(...) constructor kwargs from config.
 
     Centralizes the run-specific instantiation so every cosmo_val rule script
-    builds an identical `cv`. The catalogue config is always CAT_CONFIG, never
-    the constructor's cwd-relative default. `version_list` overrides
-    config["versions"] (used by per-version rules that pass a single version).
+    builds an identical `cv`: catalogues from CAT_CONFIG and products under
+    COSMO_VAL, never the constructor's cwd-relative defaults.
     """
     cv = config["cosmo_val"]
     return dict(
-        versions=version_list if version_list is not None else config["versions"],
+        versions=config["versions"],
         catalog_config=CAT_CONFIG,
+        output_dir=str(COSMO_VAL),
         # Custody state the cv's part writers need: the SACC `type` they stamp,
         # and the blind whose commitment born-blinded parts are stamped under.
         run_type=run_type(),

@@ -61,9 +61,14 @@ override, e.g. the image-sims `SIF`).
 A few rules shell out to a host toolchain (CosmoCov, ImageMagick) and keep
 `container: None`; each says why in its own docstring.
 
-`OMP_NUM_THREADS` is not set by the profile either: the slurm executor's
-`--export=ALL` propagates the driver's env, not a profile flag, so a rule that
-needs it pinned sets it itself. Per-rule `mem_mb` / `runtime` stay on the rules.
+The slurm executor submits with `--export=ALL`, so every job starts with the
+launching shell's environment. `OMP_NUM_THREADS` is therefore not a profile
+setting: a rule that needs it pinned sets it itself. A path in that
+environment reaches nodes where it may not exist. For Snakemake's own cache
+this is handled (the launch drops `XDG_CACHE_HOME`, and the profile keeps the
+source cache off the shared filesystem), so a login shell that points it at
+`/scratch` is fine; keep any other path you export on a shared disk. Per-rule
+`mem_mb` / `runtime` stay on the rules.
 
 ### Off candide — the default profile
 
@@ -92,6 +97,14 @@ This is the default because the alternative is incoherent: Snakemake's
 `script:` directive already runs the checkout's *script files*, so without it a
 rule executes new script code against an old `import sp_validation` — the two
 halves of one commit, split.
+
+The catalogue config is the launched checkout's too: `cosmo_val/cat_config.yaml`,
+read by the host and handed to every job. The `papers/cosmo_val` suite writes
+only under `COSMO_VAL` or `COSMO_INFERENCE` (environment variables, defaulting
+to the shared trees on candide) or the run directory's `results/`. Other rules
+write elsewhere: masks under the run directory's `output/masks/`,
+`papers/bmodes`' figures and macros under its run directory's `docs/`, the
+image sims under their `grids_base`.
 
 **Caveat:** `rerun-triggers: code` watches rule bodies and `script:` files, not
 `src/`. Editing a module under `src/` does not by itself mark outputs stale —
@@ -126,11 +139,20 @@ already uses the plain form; keep new paths the same.
 `snakemake` is a thin host-side tool, pinned once per machine:
 
 ```bash
-uv tool install snakemake==9.23.1 --with snakemake-executor-plugin-slurm
+uv tool install --python 3.12 snakemake==9.23.1 --with snakemake-executor-plugin-slurm
 ```
 
-(match the version to `snakemake` in this repo's `uv.lock`). Run every
-`snakemake` command directly on the host — do not `apptainer shell` first.
+The Python minor and the version must match the image's (the image's Python
+and the `snakemake` in this repo's `uv.lock`): a `script:` job appends the
+host's `sys.path` — standard library included — to its own so that it can
+unpickle the host's `snakemake` object, so a host on another Python loads
+modules the image lacks from the host's stdlib, and another Snakemake writes a
+pickle the job cannot read. Every launch checks this (`common.check_host_parity`)
+and stops with the reinstall command on a mismatch; an image it cannot read,
+such as a registry tag, is named in one line and passes.
+
+Run every `snakemake` command directly on the host — do not `apptainer shell`
+first.
 Snakemake itself never touches the science stack; it only reads rule
 definitions and submits jobs. Each job carries its own `apptainer exec`
 wrapping from the profile (see above), so the container is where the science
@@ -267,11 +289,18 @@ For the image-sims workflow, set `image_sims: {sif: ...}` in your run config.
 Either way the image has to sit under one of the profile's bind mounts to be
 visible.
 
-One trap to know: the `script:` directive bind-mounts the host orchestrator's
-`snakemake` into the job and *appends* it to `sys.path`, so a `snakemake`
-importable inside the image wins the lookup. If `script:` rules start failing
-with `ModuleNotFoundError: No module named 'snakemake.iocontainers'` or similar,
-an in-image snakemake older than the host's is the first thing to check.
+### Checking the workflow itself
+
+`workflow/tests/` checks DAG properties through the host launcher, on a toy
+checkout and — on candide — on the real papers:
+
+```bash
+uv run --isolated --no-project --python 3.12 --with snakemake==9.23.1 \
+    --with snakemake-executor-plugin-slurm --with pytest --with numpy \
+    pytest workflow/tests
+```
+
+CI runs the same suite with `-m "not candide"`.
 
 ### `snakemake` in `script:` files
 

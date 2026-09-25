@@ -46,7 +46,10 @@ from pathlib import Path
 # per branch, sanitized, so ``:develop`` tracks the integration branch.
 CONTAINER_URI = "docker://ghcr.io/cosmostat/sp_validation:develop"
 
-CACHE_DIR = Path(os.environ.get("XDG_CACHE_HOME", "~/.cache")) / "sp_validation"
+# Under the home directory, which every node mounts: a job runs the image from
+# the path the launching host resolved, so the image cannot sit on node-local
+# storage -- where a cluster's XDG_CACHE_HOME often points.
+CACHE_DIR = Path("~/.cache/sp_validation")
 
 # Where this user's image lives. Per-user by construction: one file, one owner,
 # no coordination. Override with ``SPV_CONTAINER`` (an absolute path).
@@ -121,6 +124,68 @@ def image_labels(sif):
 def image_revision(sif):
     """Return the sp_validation commit the image was built from, or ``None``."""
     return image_labels(sif).get("org.opencontainers.image.revision")
+
+
+# The image's virtual environment, as the Dockerfile lays it out.
+IMAGE_VENV = "/app/.venv"
+
+
+def image_runtime(image):
+    """Return ``(python_minor, snakemake_version)`` of an image, or ``None``.
+
+    Read from the venv's ``pyvenv.cfg`` and its ``snakemake-*.dist-info``
+    directory: through ``apptainer exec`` for a SIF, straight off disk for a
+    sandbox. ``None`` when the image cannot be read -- a registry tag, a missing
+    ``apptainer``, a venv laid out differently. ``snakemake_version`` is
+    ``None`` when the image carries no snakemake.
+    """
+    image = str(image)
+    venv = IMAGE_VENV.lstrip("/")
+    if Path(image).is_dir():
+        root = Path(image) / venv
+        try:
+            cfg = (root / "pyvenv.cfg").read_text()
+        except OSError:
+            return None
+        listing = [p.name for p in root.glob("lib/python*/site-packages/*")]
+    elif Path(image).is_file() and shutil.which("apptainer") is not None:
+        try:
+            out = subprocess.run(
+                [
+                    "apptainer",
+                    "exec",
+                    "--cleanenv",
+                    image,
+                    "sh",
+                    "-c",
+                    f"cat {IMAGE_VENV}/pyvenv.cfg && "
+                    f"ls {IMAGE_VENV}/lib/python*/site-packages",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+        except (OSError, subprocess.SubprocessError):
+            return None
+        if out.returncode != 0:
+            return None
+        cfg, listing = out.stdout, out.stdout.split()
+    else:
+        return None
+    fields = {}
+    for line in cfg.splitlines():
+        key, sep, value = line.partition("=")
+        if sep:
+            fields[key.strip()] = value.strip()
+    version = fields.get("version_info")
+    if version is None:
+        return None
+    snakemake = [
+        name[len("snakemake-") : -len(".dist-info")]
+        for name in listing
+        if name.startswith("snakemake-") and name.endswith(".dist-info")
+    ]
+    return ".".join(version.split(".")[:2]), (snakemake[0] if snakemake else None)
 
 
 def _require_apptainer():
