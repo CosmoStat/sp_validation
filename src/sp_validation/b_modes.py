@@ -305,9 +305,11 @@ def pure_eb_covariance_mc(
     row_sums = np.array(binning_matrix.sum(axis=1)).flatten()
     binning_matrix = sparse.diags(1 / row_sums) @ binning_matrix
 
-    mean_int = np.concatenate(
-        get_theo_xi(theta=theta_int, z=z, nz=nz, backend="ccl", cosmo=cosmo)
-    )
+    # One n(z) gives one tracer pair: get_theo_xi's single (xi+, xi-) entry.
+    (xi_pm,) = get_theo_xi(
+        theta=theta_int, z=z, nz=nz, backend="ccl", cosmo=cosmo
+    ).values()
+    mean_int = np.concatenate(xi_pm)
     samples_int = np.random.multivariate_normal(mean_int, cov_int, size=n_samples)
     samples_int_xip, samples_int_xim = (
         samples_int[:, :nbins_int],
