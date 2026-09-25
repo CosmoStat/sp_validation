@@ -11,7 +11,7 @@ PSCRIPTS=$WT/papers/bmodes/scripts
 
 # CONTAINER and BIND are resolved exactly as `sp_validation/container.py` does:
 # the writable sandbox if there is one, else the SIF.
-_spv_cache=${XDG_CACHE_HOME:-$HOME/.cache}/sp_validation
+_spv_cache=$HOME/.cache/sp_validation
 _spv_sandbox=${SPV_SANDBOX:-$_spv_cache/sandbox}
 if [ -d "$_spv_sandbox" ]; then
   CONTAINER=$_spv_sandbox
