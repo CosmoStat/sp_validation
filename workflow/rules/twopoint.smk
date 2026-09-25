@@ -15,6 +15,8 @@ rule xi:
         max_sep="{max_sep}",
         nbins="{nbins}",
         npatch="{npatch}",
+        cat_config=CAT_CONFIG,
+        output_dir=str(COSMO_VAL),
         fits=False,
     resources:
         mem_mb=30000,
@@ -35,6 +37,8 @@ rule rho_tau_stats:
         max_sep="{max_sep}",
         nbins="{nbins}",
         npatch="{npatch}",
+        cat_config=CAT_CONFIG,
+        output_dir=str(COSMO_VAL),
     resources:
         mem_mb=30000,
         disk_mb=20000,

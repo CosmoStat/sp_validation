@@ -146,6 +146,7 @@ def _write_synthetic_config(tmp_path):
             "shear": shear_cfg,
             "star": {**psf_cfg},
             "psf": psf_cfg,
+            "patch_number": 150,
         },
     }
     config_path = tmp_path / "config.yaml"

@@ -32,7 +32,6 @@ if ipython is not None:
 params = snakemake.params  # type: ignore
 
 # %%
-os.chdir("/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val")
 print("Starting CosmologyValidation")
 
 # Use parameters passed from Snakemake rule
@@ -42,6 +41,8 @@ cv = CosmologyValidation(
     theta_max=float(params["max_sep"]),
     nbins=int(params["nbins"]),
     npatch=int(params["npatch"]),
+    catalog_config=params["cat_config"],
+    output_dir=params["output_dir"],
 )
 
 cv.calculate_rho_tau_stats()

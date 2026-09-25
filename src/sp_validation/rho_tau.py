@@ -17,21 +17,12 @@ def _extract_xip(correlations):
 
 
 def get_params_rho_tau(cat, survey="other"):
+    """Rho/tau parameters for one catalogue-config entry ``cat``.
 
-    # Set parameters
-    params = {}
-    # TODO to yaml file
-    if survey == "DES":
-        params["patch_number"] = 120
-        print("DES, jackknife patch number = 120")
-    elif survey == "SP_axel_v0.0":
-        params["patch_number"] = 120
-        print("SP_Axel_v0.0, jackknife patch number =120")
-    elif survey == "SP_v1.4-P3" or survey == "SP_v1.4-P3_LFmask":
-        params["patch_number"] = 120
-        print("SP_v1.4, jackknife patch number =120")
-    else:
-        params["patch_number"] = 150
+    The jackknife patch count is the entry's ``patch_number``; a missing key
+    raises ``KeyError``.
+    """
+    params = {"patch_number": cat["patch_number"]}
     params["ra_PSF_col"] = cat["psf"]["ra_col"]
     params["dec_PSF_col"] = cat["psf"]["dec_col"]
     params["e1_PSF_col"] = cat["psf"]["e1_PSF_col"]

@@ -64,12 +64,8 @@ def _from_snakemake(smk):
         max_sep=float(p["max_sep"]),
         nbins=int(p["nbins"]),
         npatch=int(p["npatch"]),
-        # cat_config / output_dir were previously resolved via an os.chdir into
-        # the cosmo_val dir + the COSMO_VAL env var; expose them as optional
-        # params so the rule can pass them explicitly, falling back to the
-        # class defaults (./cat_config.yaml, COSMO_VAL env) otherwise.
-        cat_config=p.get("cat_config", "./cat_config.yaml"),
-        output_dir=p.get("output_dir", None),
+        cat_config=p["cat_config"],
+        output_dir=p["output_dir"],
         save_fits=True,
     )
 
