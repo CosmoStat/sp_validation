@@ -88,9 +88,13 @@ class PureEBMixin:
             - "xip_amb": Ambiguity mode for xi+.
             - "xim_amb": Ambiguity mode for xi-.
             - "cov": Covariance matrix for the pure E/B modes.
-            - "gg": The two-point correlation function object for the reporting binning.
-            - "gg_int": The two-point correlation function object for the
-              integration binning.
+            - "theta", "left_edges", "right_edges": Reporting-grid bin centres
+              and edges.
+            - "xip", "xim", "var_xip", "var_xim": Reporting-grid xi+/xi- and
+              their variances.
+            - "theta_int", "xip_int", "xim_int": Integration-grid xi+/xi-.
+            - "n_eff": Realisation count behind "cov" (jackknife patches or
+              MC draws), which sets the Hartlap debiasing.
             - "eb_samples": (only when using semi-analytical covariance) Semi-analytic
               EB samples used for covariance calculation. Shape: (n_samples, 6*nbins)
 

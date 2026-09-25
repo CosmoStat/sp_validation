@@ -113,6 +113,18 @@ wheels = [
 ]
 
 [[package]]
+name = "array-api-extra"
+version = "0.11.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "array-api-compat" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c4/63/eb18bc7d039c954da3cfb11293c7e461b03eb9682bb0b22733be43f75501/array_api_extra-0.11.4.tar.gz", hash = "sha256:66236f72aaa4cdf97a3c5581696e3a9c89513714612a9bc6010e19fad1a22012", size = 112368, upload-time = "2026-09-07T18:50:34.068Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c7/b3/fcf70b2ed935f26fc15dfd81f72f781d395b09e302af5c86ec285d63524e/array_api_extra-0.11.4-py3-none-any.whl", hash = "sha256:b2d5bd31b3072249fd3f90a2b1f7b398c78e3ccb7575e04e9e3348ae894da60f", size = 120196, upload-time = "2026-09-07T18:50:32.88Z" },
+]
+
+[[package]]
 name = "arrow"
 version = "1.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -563,7 +575,7 @@ wheels = [
 
 [[package]]
 name = "cosmosis"
-version = "3.25.2"
+version = "3.26"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "dulwich" },
@@ -581,7 +593,7 @@ dependencies = [
     { name = "threadpoolctl" },
     { name = "zeus-mcmc" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/80/63/83898440e5486294cb17a7ddf01896af66dd153d7f3e77897ed120abd055/cosmosis-3.25.2.tar.gz", hash = "sha256:4a8333395b600a5e8339c637b947a982bac4c88a7b242e4b6de8274be03004a8", size = 416233, upload-time = "2026-03-09T12:01:08.269Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/46/27/923408c09bc803b349a216974481fc075cb56f54b1ea949efe1233a294f1/cosmosis-3.26.tar.gz", hash = "sha256:bbeed481411d2bfa83d0b14bcc3d16a0b80dcf1c1f099e5066d10e4711c36508", size = 421446, upload-time = "2026-09-03T09:22:44.179Z" }
 
 [[package]]
 name = "coverage"
@@ -1084,18 +1096,18 @@ wheels = [
 
 [[package]]
 name = "glass"
-version = "2025.1"
+version = "2025.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "cosmology" },
+    { name = "array-api-compat" },
+    { name = "array-api-extra" },
     { name = "healpix" },
     { name = "healpy" },
-    { name = "numpy" },
     { name = "transformcl" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a5/d6/26cd58e75834671259f26b9287a584d726e6023da35ddf7ca3b7f2c393fb/glass-2025.1.tar.gz", hash = "sha256:7b1aa2394e16010f7f1b4243f49e7e12d7a4dd28fcbf3e3f7cf25ce4905a8615", size = 48533, upload-time = "2025-02-21T18:43:48.046Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/61/18/6d1387d74f597aacde573ffa9e7d28faa23c74414f69f56bffe9d3ccffaf/glass-2025.3.tar.gz", hash = "sha256:1f55bd5e85dc4eb3964bc6cf9a61e8da0cba4b3ecd60531d58384a27debcda3d", size = 274314, upload-time = "2025-12-12T16:38:18.096Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e4/e7/3e89bc5147a3e84245c783098afffbbacbcdf5678ba1aacc2c9c035434da/glass-2025.1-py3-none-any.whl", hash = "sha256:d7919a7d19e05ab8da4e52dbfbcfb5bd1ed2b72e0cc3afde39ec94ced22883c5", size = 47185, upload-time = "2025-02-21T18:43:46.649Z" },
+    { url = "https://files.pythonhosted.org/packages/6e/99/25a79eb65032d54868b4fc85fd105741858f493c391e9663954c15398e80/glass-2025.3-py3-none-any.whl", hash = "sha256:1cd0cd21aa25f76917235812164a9aa666032222ffb7bacfae766cd12f62b26b", size = 58522, upload-time = "2025-12-12T16:38:16.557Z" },
 ]
 
 [[package]]
@@ -1598,11 +1610,14 @@ wheels = [
 
 [[package]]
 name = "joblib"
-version = "1.5.3"
+version = "1.6.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/41/f2/d34e8b3a08a9cc79a50b2208a93dce981fe615b64d5a4d4abee421d898df/joblib-1.5.3.tar.gz", hash = "sha256:8561a3269e6801106863fd0d6d84bb737be9e7631e33aaed3fb9ce5953688da3", size = 331603, upload-time = "2025-12-15T08:41:46.427Z" }
+dependencies = [
+    { name = "cloudpickle" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d5/1d/537ab090f302b838943a1b56497dd53059b9a9b46a074936470173a2e207/joblib-1.6.0.tar.gz", hash = "sha256:2ccc96785b12046c08fd6d55839c12857831b54a3c1673ffadd2f04bfc4eda03", size = 327903, upload-time = "2026-08-31T09:39:04.122Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7b/91/984aca2ec129e2757d1e4e3c81c3fcda9d0f85b74670a094cc443d9ee949/joblib-1.5.3-py3-none-any.whl", hash = "sha256:5fc3c5039fc5ca8c0276333a188bbd59d6b7ab37fe6632daa76bc7f9ec18e713", size = 309071, upload-time = "2025-12-15T08:41:44.973Z" },
+    { url = "https://files.pythonhosted.org/packages/18/53/84099323c2ec4be98d935f63c033ac4151ee83836ca1050ede3b3aadf155/joblib-1.6.0-py3-none-any.whl", hash = "sha256:3dbbf9f6e4b592a2357b854608e980fe6390d131d7a82f011a377ef2ebef7aba", size = 306115, upload-time = "2026-08-31T09:39:02.298Z" },
 ]
 
 [[package]]
@@ -1893,7 +1908,7 @@ wheels = [
 
 [[package]]
 name = "jupytext"
-version = "1.19.4"
+version = "1.19.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "markdown-it-py" },
@@ -1902,9 +1917,9 @@ dependencies = [
     { name = "packaging" },
     { name = "pyyaml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3b/52/e014296ac8f40ca783aeb73dae52e65edbb0eaae0dcdc1ea41bfaa8aebf7/jupytext-1.19.4.tar.gz", hash = "sha256:739bcd4bc12aa4fe298a38017cdb5ae27b08a6ba3a5470728d2fe9e04b155db1", size = 4581977, upload-time = "2026-06-21T21:48:58.32Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a1/ca/473f8ebb101553fb2ea6ab1d34324d6677844c968947ac050c759d539f2c/jupytext-1.19.5.tar.gz", hash = "sha256:605026446d605aa54fd7f7fc69df6ae51c7a46053d4cebf05afdc64d66de3df0", size = 4600916, upload-time = "2026-07-21T22:00:29.198Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6e/e9/e2ae007456069dbe01865c69a4203a7ada6f7e337b78fc2f12e51bd3fae7/jupytext-1.19.4-py3-none-any.whl", hash = "sha256:032d4ef4bd2e96addcac780b9b1d6b5a266ca39beceaaca95bfb4f06e0b77029", size = 170889, upload-time = "2026-06-21T21:48:56.352Z" },
+    { url = "https://files.pythonhosted.org/packages/7c/c6/76ee9dacedcd8c67d8fa53dd975613733bdd28242a4c41518ff1c8aeaa64/jupytext-1.19.5-py3-none-any.whl", hash = "sha256:af22351202171116b986fe1f4f9233a13ca4a85d5eec57a87900ed48521dbae4", size = 229246, upload-time = "2026-07-21T22:00:27.218Z" },
 ]
 
 [[package]]
@@ -2597,14 +2612,14 @@ wheels = [
 
 [[package]]
 name = "numpydoc"
-version = "1.10.0"
+version = "1.11.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "sphinx" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e9/3c/dfccc9e7dee357fb2aa13c3890d952a370dd0ed071e0f7ed62ed0df567c1/numpydoc-1.10.0.tar.gz", hash = "sha256:3f7970f6eee30912260a6b31ac72bba2432830cd6722569ec17ee8d3ef5ffa01", size = 94027, upload-time = "2025-12-02T16:39:12.937Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c4/2f/5e9bf8ed0a93587b8089242b4926dfd04d4b3b0b65f04345d219a1225f03/numpydoc-1.11.0.tar.gz", hash = "sha256:26db0adaac8087e98da05c86b11198defd962aef7c21f4dffd2703c8c6eb4187", size = 101575, upload-time = "2026-09-15T16:31:08.905Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/62/5e/3a6a3e90f35cea3853c45e5d5fb9b7192ce4384616f932cf7591298ab6e1/numpydoc-1.10.0-py3-none-any.whl", hash = "sha256:3149da9874af890bcc2a82ef7aae5484e5aa81cb2778f08e3c307ba6d963721b", size = 69255, upload-time = "2025-12-02T16:39:11.561Z" },
+    { url = "https://files.pythonhosted.org/packages/fb/e5/f5c38d4899cd8edd5b522071c5658202077d113c3225484d779cf257970e/numpydoc-1.11.0-py3-none-any.whl", hash = "sha256:493ad2ce0d8275ca5da484ec37dbdbbc1334c3a6968dffd10ec729b51753e15e", size = 71464, upload-time = "2026-09-15T16:31:07.521Z" },
 ]
 
 [[package]]
@@ -3907,7 +3922,7 @@ requires-dist = [
     { name = "fast-pt", marker = "extra == 'workflow'", specifier = ">=3.2,<4" },
     { name = "fitsio", marker = "extra == 'glass'" },
     { name = "getdist", git = "https://github.com/benabed/getdist.git?rev=113cd22a9a0d013b6f72fe734be81f260f3d3be5" },
-    { name = "glass", marker = "extra == 'glass'", specifier = "==2025.1" },
+    { name = "glass", marker = "extra == 'glass'", specifier = "==2025.3" },
     { name = "glass-ext-camb", marker = "extra == 'glass'", specifier = "==2023.6" },
     { name = "h5py" },
     { name = "healpy" },
@@ -3937,7 +3952,7 @@ requires-dist = [
     { name = "reproject" },
     { name = "ruff", marker = "extra == 'test'" },
     { name = "sacc", specifier = ">=0.12" },
-    { name = "scipy", specifier = "<1.18" },
+    { name = "scipy", specifier = "<1.19" },
     { name = "seaborn" },
     { name = "shear-psf-leakage", git = "https://github.com/CosmoStat/shear_psf_leakage.git?rev=develop" },
     { name = "skyproj" },
@@ -4346,7 +4361,7 @@ wheels = [
 
 [[package]]
 name = "treecorr"
-version = "5.1.3"
+version = "5.1.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "lsstdesc-coord" },
@@ -4355,12 +4370,16 @@ dependencies = [
     { name = "pyyaml" },
     { name = "setuptools" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5d/95/ff399cb37b9e3d7c758f8cf0d5757f06a38093f223f2a65d7cc5b50313d5/treecorr-5.1.3.tar.gz", hash = "sha256:d921ccace064325a8ebb93f371c624f13fcc9559373e3b37cc216cb94ae81ed2", size = 1146147, upload-time = "2026-03-18T18:38:03.626Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/73/09/c9228fec3dc78910718f2a68306d7b0583b2dae93d6a8ce665ec0e19d9c7/treecorr-5.1.4.tar.gz", hash = "sha256:1514cbbc3ce843b875ea4968d69508554ea240f6738f6b544951969260d58a3f", size = 1149471, upload-time = "2026-09-01T02:33:56.976Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/97/74/1cc590e4fe1afb69ec2f10a67ee8e0a92ecafd36512052755362ff302d9c/treecorr-5.1.3-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:596b6f5eea3115a9e211dc83ec6465887983f41b24e484e08fc47170c6cf4e26", size = 20941767, upload-time = "2026-03-18T18:37:37.874Z" },
-    { url = "https://files.pythonhosted.org/packages/6f/bb/5ba5aa1021fce0cf459fa264cb0d298dfd095ddb48d63fb6589b90fdefac/treecorr-5.1.3-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:660dacd47a9af18790de279bcb6e7f375369096ad77e7cc64bf21a9b78f6c430", size = 19785388, upload-time = "2026-03-18T18:37:40.573Z" },
-    { url = "https://files.pythonhosted.org/packages/be/92/be01211263a4fa488e768c9288c6f9b0f4402870423a88de4d60031b3384/treecorr-5.1.3-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:73c938c6c31e1bad4d5338ad4519d1d78eedf3b7ef579b1e3a19d983e220ed93", size = 20940568, upload-time = "2026-03-18T18:37:44.966Z" },
-    { url = "https://files.pythonhosted.org/packages/dc/a3/69e5a16aa33600ba22d28a47c6d8de3b3118292e79f9ae77dc69a3df7c77/treecorr-5.1.3-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:dc17b1f623bae6769148f57cac8c3a295e26e5d6215698117bd97e14c8bb0d6b", size = 19781991, upload-time = "2026-03-18T18:37:47.468Z" },
+    { url = "https://files.pythonhosted.org/packages/4f/b7/9f52a14c7e48d30875a2e988196554c74affc00ddf3571efb8f1fc9e901b/treecorr-5.1.4-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:9f12d28573a714f105c545921fd4eae8761f69c59b8eb2bc52080a5e3ed07b0d", size = 21593422, upload-time = "2026-09-01T02:33:04.719Z" },
+    { url = "https://files.pythonhosted.org/packages/76/cf/b3ae27f1ef857491268aff4317999995ce939171c545a28363fbc058a961/treecorr-5.1.4-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:61f037dd80385f24158a6e1e1dae963acc904052a346d2b2006da47eff1ad51d", size = 21158309, upload-time = "2026-09-01T02:33:08.284Z" },
+    { url = "https://files.pythonhosted.org/packages/dd/c1/c577503c995d795e31e0a445ad2760d3fa42fb3f314dd3cd1a827fd211b0/treecorr-5.1.4-cp313-cp313-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:a377144861b53d10c1d1cc9ff6dfb9878d44f74ef74943c8990b329925169ac3", size = 21593786, upload-time = "2026-09-01T02:33:14.165Z" },
+    { url = "https://files.pythonhosted.org/packages/cd/96/79e4931447b0b6f42d712bfd5c1b0c171444b1e2e2d99db1528cd8094863/treecorr-5.1.4-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:da932b75e481f18a8a55ac7f761c402d77472e6856744451124a93ad7f6f7273", size = 21153410, upload-time = "2026-09-01T02:33:17.932Z" },
+    { url = "https://files.pythonhosted.org/packages/20/88/9f654adaf4baf2005300ed30390c526bd35c098bea1c1ac08cc04d17694e/treecorr-5.1.4-cp314-cp314-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:c29c61636570815566aa0ab04738ffd98dc5029f06aff7fb1b98aaf4e44d12cc", size = 21585667, upload-time = "2026-09-01T02:33:23.314Z" },
+    { url = "https://files.pythonhosted.org/packages/79/60/f9ea6d17600f8a023b57b006c687bea479f5800aaeb2656429b82a625e12/treecorr-5.1.4-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:c36fb089c8db8b77a230c90007007f1686661748c438bc5ac68640254bde478e", size = 21141746, upload-time = "2026-09-01T02:33:26.924Z" },
+    { url = "https://files.pythonhosted.org/packages/37/bd/97c7aab98013f12cf1ae61a72dac4bff7faaf4f2bcd0a2aa5dcdd99ba748/treecorr-5.1.4-cp314-cp314t-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:67f61ea796a2e3a487638e73abca9183187079f6e82110745e6cb5f4d8a086aa", size = 21583083, upload-time = "2026-09-01T02:33:32.311Z" },
+    { url = "https://files.pythonhosted.org/packages/b9/2f/4378607f9c7a922d78391b5b3e457e2600ff152b143e445c05078e32d428/treecorr-5.1.4-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:be9f97d5e73872a07c8cb5a4a132cab76c71f5ae357410fca2795ba81332c680", size = 21156480, upload-time = "2026-09-01T02:33:36.367Z" },
 ]
 
 [[package]]

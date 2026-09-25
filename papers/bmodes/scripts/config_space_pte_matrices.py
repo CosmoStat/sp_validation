@@ -42,6 +42,14 @@ from plotting_utils import (
 plt.style.use(PAPER_MPLSTYLE)
 
 
+def resolve_fiducial_bin_window(edges, theta_min, theta_max):
+    """Return the first and last reporting bins inside a scale-cut window."""
+    left, right = edges[:-1], edges[1:]
+    inside = (left >= theta_min * (1.0 - 1e-2)) & (right <= theta_max * (1.0 + 1e-2))
+    bins = np.flatnonzero(inside)
+    return int(bins[0]), int(bins[-1])
+
+
 def _path_matches_version(path, version):
     """Check if a file path matches a specific catalog version exactly.
 
@@ -518,10 +526,13 @@ def create_3panel_composite(
     cosebis_fid_start = np.argmin(np.abs(theta_cosebis[:-1] - cosebis_fid[0]))
     cosebis_fid_stop = np.argmin(np.abs(theta_cosebis[1:] - cosebis_fid[1])) + 1
 
-    xip_start = np.argmin(np.abs(theta_pure_eb - xip_fid[0]))
-    xip_stop = np.argmin(np.abs(theta_pure_eb - xip_fid[1]))
-    xim_start = np.argmin(np.abs(theta_pure_eb - xim_fid[0]))
-    xim_stop = np.argmin(np.abs(theta_pure_eb - xim_fid[1]))
+    reporting_edges = np.geomspace(
+        config["fiducial"]["min_sep"],
+        config["fiducial"]["max_sep"],
+        config["fiducial"]["nbins"] + 1,
+    )
+    xip_start, xip_stop = resolve_fiducial_bin_window(reporting_edges, *xip_fid)
+    xim_start, xim_stop = resolve_fiducial_bin_window(reporting_edges, *xim_fid)
 
     # Create subplot axes
     ax_xip = fig.add_subplot(gs[0, 0])
@@ -673,10 +684,13 @@ def create_9panel_composite(
         cosebis_fid_start = np.argmin(np.abs(theta_cosebis[:-1] - cosebis_fid[0]))
         cosebis_fid_stop = np.argmin(np.abs(theta_cosebis[1:] - cosebis_fid[1])) + 1
 
-        xip_start = np.argmin(np.abs(theta_pure_eb - xip_fid[0]))
-        xip_stop = np.argmin(np.abs(theta_pure_eb - xip_fid[1]))
-        xim_start = np.argmin(np.abs(theta_pure_eb - xim_fid[0]))
-        xim_stop = np.argmin(np.abs(theta_pure_eb - xim_fid[1]))
+        reporting_edges = np.geomspace(
+            config["fiducial"]["min_sep"],
+            config["fiducial"]["max_sep"],
+            config["fiducial"]["nbins"] + 1,
+        )
+        xip_start, xip_stop = resolve_fiducial_bin_window(reporting_edges, *xip_fid)
+        xim_start, xim_stop = resolve_fiducial_bin_window(reporting_edges, *xim_fid)
 
         # Create subplot axes for this row
         ax_xip = fig.add_subplot(gs[row_idx, 0])
@@ -900,12 +914,18 @@ def main(
                     config,
                     fiducial_overrides,
                 )
-                theta_pe = matrices["theta_pure_eb"]
                 theta_co = matrices["theta_cosebis"]
-                xip_start = np.argmin(np.abs(theta_pe - xip_fid[0]))
-                xip_stop = np.argmin(np.abs(theta_pe - xip_fid[1]))
-                xim_start = np.argmin(np.abs(theta_pe - xim_fid[0]))
-                xim_stop = np.argmin(np.abs(theta_pe - xim_fid[1]))
+                reporting_edges = np.geomspace(
+                    config["fiducial"]["min_sep"],
+                    config["fiducial"]["max_sep"],
+                    config["fiducial"]["nbins"] + 1,
+                )
+                xip_start, xip_stop = resolve_fiducial_bin_window(
+                    reporting_edges, *xip_fid
+                )
+                xim_start, xim_stop = resolve_fiducial_bin_window(
+                    reporting_edges, *xim_fid
+                )
                 cos_start = np.argmin(np.abs(theta_co[:-1] - cosebis_fid[0]))
                 cos_stop = np.argmin(np.abs(theta_co[1:] - cosebis_fid[1])) + 1
 

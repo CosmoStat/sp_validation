@@ -432,3 +432,52 @@ def test_pure_eb_npz_carries_what_the_summary_reads(tmp_path):
         saved["pte_matrices_xip_B"], edges, (1.0, 100.0)
     )
     assert np.isfinite(pte)
+
+
+def test_pure_eb_covariance_mc_draws_around_the_theory_mean(monkeypatch):
+    """The MC draws centre on cs_util's theory ξ±, binned to the reporting grid.
+
+    ``get_theo_xi`` returns ``{pair: (ξ+, ξ−)}``; one n(z) is one pair. With a
+    zero covariance every draw is the theory mean, so a stub kernel that echoes
+    its reporting-grid ξ± pins the unpack, the [ξ+; ξ−] order and the binning.
+    """
+    nrep = 4
+    left, right = b_modes.log_bin_edges(2.0, 50.0, nrep)
+    theta = np.sqrt(left * right)
+    theta_int = np.geomspace(1.0, 100.0, 40)
+    xip_th, xim_th = theta_int.copy(), 2 * theta_int
+
+    monkeypatch.setattr(
+        b_modes, "get_theo_xi", lambda **kw: {"W0xW0": (xip_th, xim_th)}
+    )
+
+    def _echo(theta, theta_int, xip, xim, xip_int, xim_int, tmin, tmax, parallel):
+        zeros = np.zeros_like(xip)
+        return xip, xim, zeros, zeros, zeros, zeros
+
+    module = types.ModuleType("cosmo_numba.B_modes.schneider2022")
+    module.get_pure_EB_modes = _echo
+    monkeypatch.setitem(
+        __import__("sys").modules, "cosmo_numba.B_modes.schneider2022", module
+    )
+
+    cov, eb_samples = b_modes.pure_eb_covariance_mc(
+        theta=theta,
+        left_edges=left,
+        right_edges=right,
+        theta_int=theta_int,
+        cov_int=np.zeros((2 * len(theta_int), 2 * len(theta_int))),
+        z=np.linspace(0.01, 2.0, 50),
+        nz=np.ones(50),
+        cosmo=None,
+        n_samples=3,
+    )
+
+    inside = [(theta_int >= lo) & (theta_int < hi) for lo, hi in zip(left, right)]
+    expected_xip = np.array([xip_th[m].mean() for m in inside])
+    expected_xim = np.array([xim_th[m].mean() for m in inside])
+    assert eb_samples.shape == (3, 6 * nrep)
+    for draw in eb_samples:
+        npt.assert_allclose(draw[:nrep], expected_xip)
+        npt.assert_allclose(draw[nrep : 2 * nrep], expected_xim)
+    npt.assert_allclose(cov, 0.0, atol=1e-20)
