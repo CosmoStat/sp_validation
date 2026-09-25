@@ -25,7 +25,8 @@ jobs:
       - name: DAG tests
         run: >-
           uv run --isolated --no-project --python 3.12
-          --with snakemake==9.23.1 --with pytest --with numpy
+          --with snakemake==9.23.1 --with snakemake-executor-plugin-slurm
+          --with pytest --with numpy
           pytest workflow/tests -m "not candide"
 
   build-and-push-image:

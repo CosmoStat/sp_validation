@@ -61,9 +61,14 @@ override, e.g. the image-sims `SIF`).
 A few rules shell out to a host toolchain (CosmoCov, ImageMagick) and keep
 `container: None`; each says why in its own docstring.
 
-`OMP_NUM_THREADS` is not set by the profile either: the slurm executor's
-`--export=ALL` propagates the driver's env, not a profile flag, so a rule that
-needs it pinned sets it itself. Per-rule `mem_mb` / `runtime` stay on the rules.
+The slurm executor submits with `--export=ALL`, so every job starts with the
+launching shell's environment. `OMP_NUM_THREADS` is therefore not a profile
+setting: a rule that needs it pinned sets it itself. A path in that
+environment reaches nodes where it may not exist. For Snakemake's own cache
+this is handled (the launch drops `XDG_CACHE_HOME`, and the profile keeps the
+source cache off the shared filesystem), so a login shell that points it at
+`/scratch` is fine; keep any other path you export on a shared disk. Per-rule
+`mem_mb` / `runtime` stay on the rules.
 
 ### Off candide — the default profile
 

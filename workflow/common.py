@@ -33,6 +33,12 @@ image_revision = _container.image_revision
 image_runtime = _container.image_runtime
 resolve_image = _container.resolve_image
 
+# Every job inherits this launch's environment (the slurm executor submits with
+# --export=ALL), and the Snakemake each job step starts keeps its source cache
+# under XDG_CACHE_HOME, which a login shell may point at node-local storage.
+# Without it, jobs use the home directory's cache, which every node mounts.
+os.environ.pop("XDG_CACHE_HOME", None)
+
 
 # Output roots are env-overridable so a reproduction run can write into a
 # fresh tree without clobbering (or silently reusing) prior products.

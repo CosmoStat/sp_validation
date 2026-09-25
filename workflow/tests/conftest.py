@@ -3,12 +3,12 @@
 These tests run under the host launcher, never inside the image::
 
     uv run --isolated --no-project --python 3.12 --with snakemake==9.23.1 \\
-        --with pytest --with numpy pytest workflow/tests
+        --with snakemake-executor-plugin-slurm --with pytest --with numpy \\
+        pytest workflow/tests
 
 ``sp_validation`` is absent from that environment, so every Snakefile has to
 parse with the standard library and Snakemake alone -- the condition a host
-Snakemake is in. The ``candide`` tests drive the candide profile and so also
-need ``--with snakemake-executor-plugin-slurm``; CI deselects them.
+Snakemake is in. The ``candide`` tests need candide itself; CI deselects them.
 
 The ``toy`` fixture is a disposable checkout: copies of ``workflow/`` and
 ``papers/cosmo_val/``, this checkout's ``src/`` symlinked in, a one-catalogue
@@ -101,6 +101,12 @@ def _load_module(path, name, env):
         os.environ.clear()
         os.environ.update(saved)
     return module
+
+
+# The package's image model, loaded by path: sp_validation is absent here.
+container = _load_module(
+    REPO / "src" / "sp_validation" / "container.py", "spv_container", {}
+)
 
 
 @dataclasses.dataclass

@@ -131,6 +131,45 @@ def test_launch_reads_the_image_under_home(toy, tmp_path):
     assert "uv tool install --force --python 3.13 snakemake==" in result.stdout
 
 
+def test_a_job_needs_no_launch_cache(toy, tmp_path):
+    """A job starts on a node where the launch's XDG cache cannot exist.
+
+    Jobs inherit the launching shell's environment, whose XDG_CACHE_HOME may be
+    node-local. Under the candide profile, a Snakemake that cannot create that
+    cache still starts, and a job's environment carries no XDG_CACHE_HOME for
+    the Snakemake its job step starts.
+    """
+    blocker = tmp_path / "a-file"
+    blocker.touch()
+    candide = toy.root / "workflow" / "profiles" / "candide"
+    result = toy.snakemake(
+        "-n",
+        "--profile",
+        str(candide),
+        "assemble_sacc_all",
+        env=toy.env | {"XDG_CACHE_HOME": str(blocker / "cache")},
+    )
+    assert result.returncode == 0, result.stdout
+
+    snakefile = tmp_path / "Snakefile"
+    snakefile.write_text(
+        f"import sys\nsys.path.insert(0, {str(toy.root / 'workflow')!r})\n"
+        "import common\n\n"
+        'rule job:\n    output: "env.txt"\n'
+        '    shell: "printenv XDG_CACHE_HOME > {output} || true"\n'
+    )
+    result = toy.snakemake(
+        "-s",
+        str(snakefile),
+        "--directory",
+        str(tmp_path),
+        container=False,
+        env=toy.env | {"XDG_CACHE_HOME": str(tmp_path / "launch-cache")},
+    )
+    assert result.returncode == 0, result.stdout
+    assert (tmp_path / "env.txt").read_text() == ""
+
+
 def test_image_sims_checks_parity_at_launch(toy, tmp_path):
     """The standalone image-sims workflow stops on a mismatched image too."""
     run = {
@@ -159,7 +198,7 @@ def test_image_sims_checks_parity_at_launch(toy, tmp_path):
     assert "uv tool install --force --python 3.13 snakemake==" in result.stdout
 
 
-def _real_dry_run(paper, target):
+def _real_dry_run(paper, targets):
     env = {k: v for k, v in os.environ.items() if k != "SNAKEMAKE_PROFILE"}
     env.update(PYTHONUNBUFFERED="1", PYTHONNOUSERSITE="1")
     return subprocess.run(
@@ -170,7 +209,7 @@ def _real_dry_run(paper, target):
             "-n",
             "--profile",
             str(REPO / "workflow" / "profiles" / "candide"),
-            target,
+            *targets,
         ],
         cwd=REPO / "papers" / paper,
         env=env,
@@ -185,15 +224,20 @@ def _real_dry_run(paper, target):
 @pytest.mark.candide
 @on_candide
 @pytest.mark.parametrize(
-    "paper, target", [("cosmo_val", "assemble_sacc_all"), ("bmodes", "all_tapestry")]
+    "paper, targets",
+    [
+        ("cosmo_val", ["assemble_sacc_all"]),
+        ("bmodes", ["all_tapestry", "results/ecut/SP_v1.4.6_ecut07.fits"]),
+    ],
+    ids=["cosmo_val", "bmodes"],
 )
-def test_papers_resolve_on_candide(paper, target):
+def test_papers_resolve_on_candide(paper, targets):
     """The real paper DAGs resolve against the real catalogues and your image.
 
-    Your image (the SIF or sandbox `spv-container` manages) is read, so parity
-    was checked.
+    The e-cut catalogue reads its parent's catalogue entry. Your image (the SIF
+    or sandbox `spv-container` manages) is read, so parity was checked.
     """
-    result = _real_dry_run(paper, target)
+    result = _real_dry_run(paper, targets)
     assert result.returncode == 0, result.stdout
     assert "parity unchecked" not in result.stdout, (
         "no local image was read; run `spv-container pull`\n" + result.stdout
