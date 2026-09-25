@@ -2,9 +2,10 @@
 
 The executor, the apptainer deployment method, the bind mounts and the job
 bound come from that profile, launched as the README launches a target; the
-image is the one that launch resolves (your SIF or sandbox), handed to the test
-Snakefile's module-level ``container:`` as real workflows hand theirs. That
-contract is what's under test, so it runs only on a candide submit host.
+test Snakefile composes workflow/ as the entry Snakefiles do, so the job runs
+the image that launch resolves (your SIF or sandbox) in the environment that
+launch hands its jobs. That contract is what's under test, so it runs only on a
+candide submit host.
 
 The job writes a YAML report (see data/container_smoke/container_smoke.py); the
 assertions below check what it reports.
@@ -33,22 +34,13 @@ def _reference_eigenvalues() -> np.ndarray:
     return np.linalg.eigh(a + a.T)[0]
 
 
-def test_smoke_snakefile_names_the_workflow_image():
-    """The test Snakefile's literal image must track the package's CONTAINER_URI."""
-    uri = re.search(
-        r'^CONTAINER_URI = "(.+)"$',
-        (REPO / "src/sp_validation/container.py").read_text(),
-        re.MULTILINE,
-    ).group(1)
-    assert f'"{uri}"' in (SMOKE / "Snakefile").read_text(), uri
-
-
 @pytest.mark.candide
 @on_candide
 @pytest.mark.skipif(shutil.which("sbatch") is None, reason="needs a SLURM submit host")
 def test_container_smoke():
-    image, kind = container.resolve_image()
-    assert kind != "tag", "no local image; run `spv-container pull`"
+    assert container.resolve_image()[1] != "tag", (
+        "no local image; run `spv-container pull`"
+    )
 
     # Not pytest's tmp_path: that lives in the submit host's /tmp, which the
     # compute node cannot see, so the job's output would "go missing". The
@@ -68,8 +60,6 @@ def test_container_smoke():
             "--directory",
             str(workdir),
             "container_smoke",
-            "--config",
-            f"container={image}",
         ],
         env=env,
         text=True,
