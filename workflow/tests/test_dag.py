@@ -141,13 +141,23 @@ def test_a_job_needs_no_launch_cache(toy, tmp_path):
     """
     blocker = tmp_path / "a-file"
     blocker.touch()
+    # The profile deploys with apptainer, whose version Snakemake reads even in
+    # a dry-run; this stub answers where apptainer is not installed.
+    apptainer = tmp_path / "bin" / "apptainer"
+    apptainer.parent.mkdir()
+    apptainer.write_text("#!/bin/sh\necho apptainer version 1.3.4\n")
+    apptainer.chmod(0o755)
     candide = toy.root / "workflow" / "profiles" / "candide"
     result = toy.snakemake(
         "-n",
         "--profile",
         str(candide),
         "assemble_sacc_all",
-        env=toy.env | {"XDG_CACHE_HOME": str(blocker / "cache")},
+        env=toy.env
+        | {
+            "XDG_CACHE_HOME": str(blocker / "cache"),
+            "PATH": f"{apptainer.parent}{os.pathsep}{toy.env['PATH']}",
+        },
     )
     assert result.returncode == 0, result.stdout
 
