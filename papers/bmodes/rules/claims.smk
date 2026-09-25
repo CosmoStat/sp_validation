@@ -355,25 +355,21 @@ rule pure_eb_covariance:
 
 
 rule calculate_pure_eb_ptes:
-    """Calculate PTE matrices for Pure E/B mode scale cut robustness.
+    """PTE matrices for pure E/B-mode scale-cut robustness.
 
-    Per-blind: Uses blind-specific integration covariance for PTE calculation.
-    The pure_eb_data vectors are identical across blinds; only covariance differs.
-
-    In practice, BB covariance is blind-independent (validated by
-    bb_covariance_blind_independence), so downstream consumers (config_space_pte_matrices)
-    only request blind A. The per-blind wildcard is retained for the blind independence test.
+    Nothing here varies with the blind: the data vectors come from the blind-A
+    gather and the PTEs are Hartlap-debiased by the MC draw count, not by a
+    per-blind covariance. The wildcard survives as the filename slot the
+    consumer (config_space_pte_matrices) reads, and only blind A is ever built.
     """
     input:
         pure_eb_data="results/paper_plots/intermediate/{version}_A_pure_eb_semianalytic.npz",
-        cov_integration=lambda w: _cov_integration_path(w.version, w.blind),
     output:
         "results/paper_plots/intermediate/{version}_{blind}_pure_eb_ptes.npz",
     wildcard_constraints:
         blind=r"[ABC]",
     params:
         version="{version}",
-        npatch=FIDUCIAL["npatch"],
         n_samples=config["covariance"]["n_samples"],
     resources:
         mem_mb=16000,
