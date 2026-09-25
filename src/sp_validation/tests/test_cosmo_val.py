@@ -437,6 +437,40 @@ class TestCosmologyValidation:
         # The additive-bias subtraction in the pipeline must have run.
         assert version in cv.c1 and version in cv.c2
 
+    def test_calculate_2pcf_does_not_depend_on_thread_count(self, tmp_path):
+        """calculate_2pcf's ξ± is the same on 4 and on 48 TreeCorr threads.
+
+        Production binning (default bin_slop/angle_slop), both runs on the
+        jackknife patches the first one writes, each from a fresh Catalog; they
+        must agree to far below the jackknife σ.
+        """
+        import treecorr
+
+        params, version = self._write_synthetic_catalogs(
+            tmp_path, n_gal=4000, coherent_shear=True
+        )
+        cv = CosmologyValidation(
+            versions=[version],
+            npatch=8,
+            theta_min=15.0,
+            theta_max=70.0,
+            nbins=6,
+            **params,
+        )
+
+        xi = {}
+        for n_threads in (4, 48):
+            # calculate_2pcf reads back an existing text dump instead of measuring.
+            for dump in Path(params["output_dir"]).glob(f"{version}_xi_*.txt"):
+                dump.unlink()
+            gg = cv.calculate_2pcf(version, num_threads=n_threads)
+            assert treecorr.get_omp_threads() == n_threads  # the count took effect
+            xi[n_threads] = np.concatenate([gg.xip, gg.xim])
+            sigma = np.sqrt(np.concatenate([gg.varxip, gg.varxim]))
+
+        shift = np.max(np.abs(xi[48] - xi[4]) / sigma)
+        assert shift < 1e-6, f"ξ± moves by {shift:.3g}σ between 4 and 48 threads"
+
     def test_calculate_scale_dependent_leakage_runs_on_synthetic_catalog(
         self, tmp_path
     ):

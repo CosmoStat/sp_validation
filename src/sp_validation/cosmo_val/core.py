@@ -313,6 +313,11 @@ class CosmologyValidation(
             "nbins": nbins,
             "var_method": var_method,
             "cross_patch_weight": "match" if var_method == "jackknife" else "simple",
+            # min_top sets the depth of TreeCorr's root cells, hence which pairs
+            # bin_slop approximates. Left unset, TreeCorr derives it from its
+            # thread count (max(3, ceil(log2 n))) and ξ± depends on the machine.
+            # 6 is what TreeCorr derives on candide's 48- and 64-CPU nodes.
+            "min_top": 6,
         }
 
         self.catalog_config_path = Path(catalog_config)
