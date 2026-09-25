@@ -1,0 +1,8 @@
+@sc blind-drawn-once
+The blind registry: one directory per blind, written only by
+`python -m sp_validation.blinding`. `init` creates <blind>/ with
+commitment.json (the public record), seed.fernet (the seed, encrypted) and
+key, all read-only, and `bases`; `share` appends a base catalogue to `bases`;
+`reveal` writes revealed.json once. The record is committed to git. No
+Snakemake rule reads, writes or draws anything here, so no run can re-draw a
+blind, and every checkout resolves the same one.

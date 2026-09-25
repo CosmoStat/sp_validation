@@ -14,11 +14,14 @@ matching what the B-mode PTE reads today.
 """
 
 import argparse
+from pathlib import Path
 
 import numpy as np
+import yaml
 
 from sp_validation import sacc_io
 from sp_validation.cosmo_val.sacc_writers import assemble_analysis_sacc
+from sp_validation.custody import confirm, custody_of, registry_of
 
 # NaMaster iNKA covariance FITS: per-spectrum HDU names, in SACC insertion order.
 _CL_HDUS = ("COVAR_EE_EE", "COVAR_BB_BB", "COVAR_EB_EB")
@@ -86,17 +89,29 @@ def _attach_cov(part, name, xi_cov, pseudo_cl_cov):
     return part
 
 
+def declared_custody(cat_config, version):
+    """The custody ``version`` is declared under in ``cat_config``."""
+    catalogues = yaml.safe_load(Path(cat_config).read_text())
+    return custody_of(catalogues, version, registry=registry_of(cat_config))
+
+
 def assemble_sacc(
     version,
     part_paths,
     out_path,
     *,
+    custody,
     expected=None,
     xi_cov=None,
     pseudo_cl_cov=None,
-    allow_unblinded=False,
 ):
     """Assemble ``{version}.sacc`` from the per-statistic ``part_paths`` mapping.
+
+    @sc one-custody-per-assembly
+    Every part, signal-bearing or not, must carry one stamp, and it must be the
+    custody ``version`` is declared under: a stale concealed part after a
+    reveal, a part under another blind or catalogue, a mock in data and
+    unblinded parts in a blinded file are all refused.
 
     Parameters
     ----------
@@ -108,10 +123,10 @@ def assemble_sacc(
     expected : sequence of str, optional
         Statistics that must be present, from the caller's config toggles. A
         typo'd input keyword would otherwise silently drop a statistic.
+    custody : sp_validation.custody.Custody
+        The custody ``version`` is declared under.
     xi_cov, pseudo_cl_cov
         Covariance sourcing — see the module docstring.
-    allow_unblinded : bool, optional
-        Passed to :func:`sacc_io.load` for every part; ``True`` only for mocks.
     """
     if expected is not None:
         unknown = [name for name in expected if name not in CANONICAL]
@@ -132,14 +147,12 @@ def assemble_sacc(
         path = part_paths.get(name)
         if path is None:
             continue
-        part = sacc_io.load(path, allow_unblinded=allow_unblinded)
-        parts.append(_attach_cov(part, name, xi_cov, pseudo_cl_cov))
+        parts.append(_attach_cov(sacc_io.load(path), name, xi_cov, pseudo_cl_cov))
     if not parts:
         raise ValueError(f"no parts found for {version}: {part_paths}")
-    # Through sacc_io.gather, the one terminal seam: it fails closed unless every
-    # blindable part shares one blind, and stamps that blind on the result.
-    s = sacc_io.gather(parts, assemble=assemble_analysis_sacc)
-    sacc_io.save(s, out_path, type=s.metadata["type"])
+    s = sacc_io.save(
+        assemble_analysis_sacc(parts), out_path, derived_from=parts, custody=custody
+    )
     print(f"Assembled {len(parts)} parts -> {out_path}")
     return s
 
@@ -156,10 +169,10 @@ def _from_snakemake(smk):
         version=p["version"],
         part_paths=part_paths,
         out_path=str(smk.output[0]),
+        custody=confirm(declared_custody(p["cat_config"], p["version"]), p["custody"]),
         expected=list(p["expected"]),
         xi_cov=getattr(inp, "xi_cov", None),
         pseudo_cl_cov=getattr(inp, "pseudo_cl_cov", None),
-        allow_unblinded=(p.get("type", "data") == "mock"),
     )
 
 
@@ -170,11 +183,9 @@ def _from_cli(argv=None):
     ap.add_argument("--version", required=True, help="Catalogue version")
     ap.add_argument("--out", required=True, help="Output {version}.sacc path")
     ap.add_argument(
-        "--type",
-        choices=("data", "mock"),
-        default="data",
-        help="Run type. 'mock' reads parts freely; 'data' fails closed on "
-        "unblinded parts (only concealed/blinded parts load).",
+        "--cat-config",
+        required=True,
+        help="cat_config.yaml declaring the catalogue's custody",
     )
     for name in CANONICAL:
         ap.add_argument(
@@ -190,9 +201,9 @@ def _from_cli(argv=None):
         version=a.version,
         part_paths=part_paths,
         out_path=a.out,
+        custody=declared_custody(a.cat_config, a.version),
         xi_cov=a.xi_cov,
         pseudo_cl_cov=a.pseudo_cl_cov,
-        allow_unblinded=(a.type == "mock"),
     )
 
 

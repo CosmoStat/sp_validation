@@ -55,11 +55,7 @@ class PSFSystematicsMixin:
     def rho_tau_to_sacc_part(
         self, version, out_dir, base, rho_stat_handler, tau_stat_handler
     ):
-        """Write the ρ/τ SACC part for one version.
-
-        ρ/τ carries no cosmological vector and is never blinded; on a data run
-        it is stamped concealed pass-through (values untouched) so the
-        assembly's load gate admits it.
+        """Write the ρ/τ SACC part for one version, under the version's custody.
 
         ρ_0…ρ_5 autos and τ_0/τ_2/τ_5 leakage from the handler tables. The
         ``CovTauTh`` theory covariance ``cov_tau_{base}_th.npy`` is passed as
@@ -82,9 +78,7 @@ class PSFSystematicsMixin:
             tau_cov_th=tau_cov_th,
         )
         out_path = os.path.join(out_dir, f"rho_tau_{base}.sacc")
-        sacc_io.save(
-            s, out_path, type=self.run_type, commitment=self.commitment_path(version)
-        )
+        sacc_io.save(s, out_path, custody=self.custody(version))
 
     @property
     def rho_stat_handler(self):

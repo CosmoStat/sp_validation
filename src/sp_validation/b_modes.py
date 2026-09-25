@@ -277,6 +277,7 @@ def pure_eb_covariance_mc(
     nz,
     cosmo,
     n_samples=1000,
+    rng=None,
 ):
     """Pure-E/B covariance by Monte Carlo through the same kernel as the modes.
 
@@ -284,7 +285,9 @@ def pure_eb_covariance_mc(
     around the theory mean for ``(z, nz)`` under ``cosmo``; each draw is binned
     down to the reporting grid and pushed through :func:`pure_eb_from_xi`. The
     covariance of the transformed draws is the result, so it depends on the
-    covariance model and the grids, never on the measured data vector.
+    covariance model and the grids, never on the measured data vector. ``rng``
+    (a ``numpy.random.Generator``) draws the realisations; fresh entropy when
+    ``None``.
 
     Returns ``(cov, eb_samples)`` — the covariance in ``_EB_KEYS`` order and
     the draws behind it.
@@ -309,7 +312,8 @@ def pure_eb_covariance_mc(
         theta=theta_int, z=z, nz=nz, backend="ccl", cosmo=cosmo
     ).values()
     mean_int = np.concatenate(xi_pm)
-    samples_int = np.random.multivariate_normal(mean_int, cov_int, size=n_samples)
+    rng = np.random.default_rng() if rng is None else rng
+    samples_int = rng.multivariate_normal(mean_int, cov_int, size=n_samples)
     samples_int_xip, samples_int_xim = (
         samples_int[:, :nbins_int],
         samples_int[:, nbins_int:],

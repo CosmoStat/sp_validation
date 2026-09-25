@@ -14,6 +14,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 import yaml
+from _synthetic import write_synthetic_catalogs
 
 from sp_validation.cosmo_val import CosmologyValidation
 
@@ -273,141 +274,6 @@ class TestCosmologyValidation:
     # shear_psf_leakage, cosmo_numba), i.e. they run in the container.
     # ------------------------------------------------------------------
 
-    @staticmethod
-    def _write_synthetic_catalogs(
-        tmp_path,
-        n_gal=2000,
-        n_star=800,
-        ra_range=(10.0, 14.0),
-        dec_range=(10.0, 14.0),
-        seed=1234,
-        coherent_shear=False,
-        with_psf=False,
-    ):
-        """Write small deterministic FITS catalogs + dndz, return a config dict.
-
-        Builds a synthetic shear catalog (RA/Dec/e1/e2/w), a PSF star catalog
-        with the columns the leakage/rho-tau seams read, and a cs_util-readable
-        dndz file. Returns ``(params, version)`` ready to hand to
-        ``CosmologyValidation``.
-
-        Parameters
-        ----------
-        coherent_shear : bool
-            If True, inject a smooth position-dependent shear pattern on top of
-            shape noise so that xi+/- is smooth (needed for the pure-E/B
-            integral to be numerically well-posed).
-        with_psf : bool
-            If True, add a ``psf`` config block (rho/tau / pseudo-Cl read it via
-            ``get_params_rho_tau``).
-        """
-        from astropy.table import Table
-
-        rng = np.random.default_rng(seed)
-        version = "TestCatalog"
-
-        cat_dir = tmp_path / "catalog"
-        cat_dir.mkdir()
-        nz_dir = tmp_path / "nz"
-        nz_dir.mkdir()
-        output_dir = tmp_path / "output"
-        output_dir.mkdir()
-
-        ra = rng.uniform(*ra_range, n_gal)
-        dec = rng.uniform(*dec_range, n_gal)
-        if coherent_shear:
-            # Smooth E-mode-like pattern so xi+/- is smooth, plus shape noise.
-            e1 = 0.02 * np.cos(np.radians(ra) * 40) + rng.normal(0, 0.05, n_gal)
-            e2 = 0.02 * np.sin(np.radians(dec) * 40) + rng.normal(0, 0.05, n_gal)
-        else:
-            e1 = rng.normal(0, 0.25, n_gal)
-            e2 = rng.normal(0, 0.25, n_gal)
-        w = rng.uniform(0.5, 1.0, n_gal)
-
-        shear_path = cat_dir / "shear.fits"
-        Table({"RA": ra, "Dec": dec, "e1": e1, "e2": e2, "w": w}).write(
-            shear_path, overwrite=True
-        )
-
-        star_path = cat_dir / "star.fits"
-        Table(
-            {
-                "RA": rng.uniform(*ra_range, n_star),
-                "Dec": rng.uniform(*dec_range, n_star),
-                "HSM_G1_PSF": rng.normal(0, 0.03, n_star),
-                "HSM_G2_PSF": rng.normal(0, 0.03, n_star),
-                "HSM_G1_STAR": rng.normal(0, 0.03, n_star),
-                "HSM_G2_STAR": rng.normal(0, 0.03, n_star),
-                "HSM_T_PSF": rng.uniform(0.4, 0.6, n_star),
-                "HSM_T_STAR": rng.uniform(0.4, 0.6, n_star),
-                "HSM_FLAG_PSF": np.zeros(n_star, dtype=int),
-                "HSM_FLAG_STAR": np.zeros(n_star, dtype=int),
-            }
-        ).write(star_path, overwrite=True)
-
-        # dndz in the commented-header format cs_util.read_dndz expects:
-        # column "z" holds bin edges (n+1), "dn_dz" the densities.
-        z_edges = np.linspace(0.05, 3.0, 31)
-        dndz = np.exp(-(((z_edges - 0.7) / 0.3) ** 2))
-        dndz_lines = ["# z dn_dz"] + [f"{zz} {nn}" for zz, nn in zip(z_edges, dndz)]
-        (nz_dir / "dndz_SP_A.txt").write_text("\n".join(dndz_lines) + "\n")
-
-        shear_cfg = {
-            "path": "shear.fits",
-            "redshift_path": str(nz_dir / "dndz_SP_A.txt"),
-            "w_col": "w",
-            "e1_col": "e1",
-            "e2_col": "e2",
-            "R": 1.0,
-            "e1_col_corrected": "e1",
-            "e2_col_corrected": "e2",
-        }
-        star_cfg = {
-            "path": "star.fits",
-            "ra_col": "RA",
-            "dec_col": "Dec",
-            "e1_col": "HSM_G1_PSF",
-            "e2_col": "HSM_G2_PSF",
-        }
-        version_cfg = {
-            "subdir": str(cat_dir),
-            "pipeline": "SP",
-            "shear": shear_cfg,
-            "star": star_cfg,
-        }
-        if with_psf:
-            version_cfg["psf"] = {
-                "path": "star.fits",
-                "hdu": 1,
-                "ra_col": "RA",
-                "dec_col": "Dec",
-                "e1_PSF_col": "HSM_G1_PSF",
-                "e2_PSF_col": "HSM_G2_PSF",
-                "e1_star_col": "HSM_G1_STAR",
-                "e2_star_col": "HSM_G2_STAR",
-                "PSF_size": "HSM_T_PSF",
-                "star_size": "HSM_T_STAR",
-                "PSF_flag": "HSM_FLAG_PSF",
-                "star_flag": "HSM_FLAG_STAR",
-            }
-
-        config_data = {
-            "nz": {
-                "subdir": str(nz_dir),
-                "dndz": {"blind": "A", "path": "dndz"},
-            },
-            "paths": {"output": str(output_dir)},
-            version: version_cfg,
-        }
-        config_path = tmp_path / "synthetic_config.yaml"
-        config_path.write_text(yaml.dump(config_data, sort_keys=False))
-
-        params = {
-            "catalog_config": str(config_path),
-            "output_dir": str(output_dir),
-        }
-        return params, version
-
     def test_calculate_2pcf_runs_on_synthetic_catalog(self, tmp_path):
         """calculate_2pcf wires catalog+config into treecorr GGCorrelation.
 
@@ -417,7 +283,7 @@ class TestCosmologyValidation:
         committed reference later for value-drift coverage).
         """
         pytest.importorskip("treecorr")
-        params, version = self._write_synthetic_catalogs(tmp_path)
+        params, version = write_synthetic_catalogs(tmp_path)
 
         nbins = 8
         cv = CosmologyValidation(
@@ -459,7 +325,7 @@ class TestCosmologyValidation:
         run_2pcf = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(run_2pcf)
 
-        params, version = self._write_synthetic_catalogs(tmp_path)
+        params, version = write_synthetic_catalogs(tmp_path)
         part = tmp_path / "part.sacc"
         gg = run_2pcf.run_2pcf(
             ver=version,
@@ -472,7 +338,7 @@ class TestCosmologyValidation:
             sacc_out=str(part),
         )
 
-        cov = sacc_io.load(str(part), allow_unblinded=True).covariance
+        cov = sacc_io.load(str(part)).covariance
         if npatch > 1:
             assert isinstance(cov, sacc.covariance.FullCovariance)
             np.testing.assert_array_equal(cov.dense, gg.cov)
@@ -491,7 +357,7 @@ class TestCosmologyValidation:
         """
         import treecorr
 
-        params, version = self._write_synthetic_catalogs(
+        params, version = write_synthetic_catalogs(
             tmp_path, n_gal=4000, coherent_shear=True
         )
         cv = CosmologyValidation(
@@ -527,7 +393,7 @@ class TestCosmologyValidation:
         tightened to allclose vs. a committed reference later).
         """
         pytest.importorskip("treecorr")
-        params, version = self._write_synthetic_catalogs(tmp_path)
+        params, version = write_synthetic_catalogs(tmp_path)
 
         nbins = 8
         cv = CosmologyValidation(
@@ -576,7 +442,7 @@ class TestCosmologyValidation:
         from sp_validation import b_modes
 
         # Coherent shear -> smooth xi+/-, so the pure-E/B integral is well-posed.
-        params, version = self._write_synthetic_catalogs(
+        params, version = write_synthetic_catalogs(
             tmp_path, n_gal=4000, coherent_shear=True
         )
 

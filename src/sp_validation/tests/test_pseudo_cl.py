@@ -150,6 +150,7 @@ def _write_synthetic_config(tmp_path):
             "star": {**psf_cfg},
             "psf": psf_cfg,
             "patch_number": 150,
+            "blinding": "mock",
         },
     }
     config_path = tmp_path / "config.yaml"
@@ -523,7 +524,7 @@ def test_calculate_pseudo_cl_catalog_end_to_end(cv, tmp_path):
     cv.calculate_pseudo_cl_catalog(ver, out_path)
 
     assert os.path.exists(out_path)
-    s = sacc_io.load(out_path, allow_unblinded=True)
+    s = sacc_io.load(out_path)
     ell, ee, bb, eb, window = sacc_io.get_pseudo_cl(s, SACC_BIN)
     assert window is not None  # the shared BandpowerWindow rides the part
 

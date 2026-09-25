@@ -1,140 +1,166 @@
-"""CAMB↔CCL theory cross-check (blinding PRD AC10–14).
+"""The blinding theory against an independent CAMB oracle (AC10–13).
 
-The blinding shift is a difference of CCL theory vectors; downstream
-inference runs CAMB (CosmoSIS). The shift only means what it is intended to
-mean if CCL and CAMB predict the same ξ± at a fixed cosmology on our θ grid.
-This module asserts that agreement between the two independent ξ± paths in
-:mod:`sp_validation.blinding_theory`:
+The blinding shift is a difference of CCL theory vectors; inference runs CAMB
+(CosmoSIS). The shift means what it is meant to only if CCL and CAMB predict the
+same ξ± at a fixed cosmology on our θ grid. This module compares
+:func:`sp_validation.blinding_theory.xi_ccl` (CCL's Boltzmann-CAMB HMCode2020
+P(k), projected by CCL's Limber + FFTLog) with an oracle written here: a direct
+pycamb run of the HMCode2020 ``P(k, z)`` at a σ8-matched ``A_s``, wrapped in a
+``ccl.Pk2D`` and projected by the same CCL machinery.
 
-- **Path A** (:func:`~sp_validation.blinding_theory.xi_ccl`): CCL-native — CCL's
-  Boltzmann-CAMB HMCode2020 P(k) route, projected by CCL Limber + FFTLog.
-- **Path B** (:func:`~sp_validation.blinding_theory.xi_camb`): an independent
-  pycamb run produces the HMCode2020 ``P(k, z)`` (σ8-matched ``A_s``),
-  wrapped in a ``ccl.Pk2D`` and projected through the same CCL machinery.
-
-Because both paths route their nonlinear P(k) through CAMB's HMCode2020 and
-both project through CCL, a common Limber+FFTLog bug cancels: this test
-validates the **P(k) recipe** and the **σ8/A_s amplitude convention**, not
-the projection. The one convention subtlety it settles: the fiducial fixes
-σ8 for CCL but A_s for CAMB; a nominal ``A_s = 2.1e-9`` leaves CAMB's σ8
-≈3% off target — enough to blow a ξ± comparison to ~9–10%.
+Both paths route P(k) through CAMB and project through CCL, so a shared
+projection bug cancels: the comparison validates the P(k) recipe and the σ8/A_s
+amplitude convention. The fiducial fixes σ8 for CCL but A_s for CAMB; a nominal
+``A_s = 2.1e-9`` leaves CAMB's σ8 ≈3% off target, enough to move ξ± by ~10%.
 """
 
+import dataclasses
 import pathlib
 import re
 
 import numpy as np
-import pytest
 
-from sp_validation import blinding_theory as cm
+from sp_validation import blinding_theory as bt
 
-# Tolerances (AC11/AC12). Observed floor on this fixture: see the printed
-# numbers in the slow tests — the tolerances sit above the floor with
-# headroom; version bumps move the floor and that is not a regression.
-XIP_RTOL = 0.005  # 0.5 %
-XIM_RTOL = 0.010  # 1.0 %
-# ξ− crosses zero on this grid: the relative assertion applies only where
-# |ξ−| exceeds an absolute floor set from the fixture's peak |ξ−|.
+XIP_RTOL = 0.005
+XIM_RTOL = 0.010
+# ξ− crosses zero on this grid: the relative bound applies only where |ξ−|
+# exceeds this fraction of its peak.
 XIM_FLOOR_FRAC = 0.05
 
+THETA_ARCMIN = np.geomspace(5.0, 250.0, 12)
+PK_ZMAX, PK_NZ = 3.0, 48
 
-# --------------------------------------------------------------------------- #
-# Deterministic fixture: one Gaussian source bin, 12-point θ grid
-# --------------------------------------------------------------------------- #
+
 def _gauss_nz(n=400):
     z = np.linspace(0.01, 3.0, n)
     nz = np.exp(-0.5 * ((z - 0.7) / 0.2) ** 2)
     return z, nz / np.trapezoid(nz, z)
 
 
-THETA_ARCMIN = np.geomspace(5.0, 250.0, 12)
+# --------------------------------------------------------------------------- #
+# The CAMB oracle
+# --------------------------------------------------------------------------- #
+def camb_params(config, As, *, nonlinear, kmax=20.0):
+    """``CAMBparams`` at ``config``'s background, every field fed from one source."""
+    import camb
 
-
-def _both_paths(config, **camb_kwargs):
-    z, nz = _gauss_nz()
-    xip_a, xim_a = cm.xi_ccl(
-        config.ccl_params(), config, (z, nz), (z, nz), THETA_ARCMIN
+    p = camb.CAMBparams()
+    p.set_cosmology(
+        H0=config.h * 100,
+        ombh2=config.Omega_b * config.h**2,
+        omch2=config.omega_c() * config.h**2,
+        mnu=config.m_nu,
+        num_massive_neutrinos=1,
+        neutrino_hierarchy=config.mass_split,
+        nnu=bt.NEFF,
+        TCMB=bt.T_CMB,
     )
-    xip_b, xim_b, As = cm.xi_camb(config, (z, nz), THETA_ARCMIN, **camb_kwargs)
-    return (xip_a, xim_a), (xip_b, xim_b), As
+    p.set_dark_energy(w=config.w0, wa=config.wa, dark_energy_model="ppf")
+    p.InitPower.set_params(As=As, ns=config.n_s)
+    p.set_matter_power(redshifts=list(np.linspace(0.0, PK_ZMAX, PK_NZ)), kmax=kmax)
+    if nonlinear:
+        p.NonLinear = camb.model.NonLinear_both
+        p.NonLinearModel.set_params(
+            halofit_version=config.halofit_version,
+            HMCode_logT_AGN=config.hmcode_logT_AGN,
+        )
+    else:
+        p.NonLinear = camb.model.NonLinear_none
+    return p
 
 
-def _assert_xi_agreement(a, b, label):
-    (xip_a, xim_a), (xip_b, xim_b) = a, b
-    assert np.all(xip_a > 0) and np.all(xip_b > 0)  # sensible cosmic shear
+def camb_sigma8(config, As):
+    import camb
+
+    return float(
+        camb.get_results(camb_params(config, As, nonlinear=False)).get_sigma8_0()
+    )
+
+
+def camb_As_for_sigma8(config, target, As_seed=2.1e-9):
+    """σ8² ∝ A_s exactly, so one evaluation and one rescale land on target."""
+    return As_seed * (target / camb_sigma8(config, As_seed)) ** 2
+
+
+def xi_camb(config, nz, theta_arcmin, *, n_ell=300, ell_max=60000, kmax=20.0, n_k=400):
+    """ξ± from a direct CAMB P(k), projected by CCL; returns ``(xip, xim, As)``."""
+    import camb
+    import pyccl as ccl
+
+    As = camb_As_for_sigma8(config, config.sigma8())
+    results = camb.get_results(camb_params(config, As, nonlinear=True, kmax=kmax))
+    # CCL's native units already: k in 1/Mpc, P in Mpc³.
+    interp = results.get_matter_power_interpolator(
+        nonlinear=True, hubble_units=False, k_hunit=False
+    )
+    k = np.geomspace(1e-4, kmax * config.h, n_k)
+    z = np.linspace(0.0, PK_ZMAX, PK_NZ)
+    a = 1.0 / (1.0 + z)
+    order = np.argsort(a)
+    pk2d = ccl.Pk2D(
+        a_arr=a[order],
+        lk_arr=np.log(k),
+        pk_arr=np.log(interp.P(z, k)[order]),
+        is_logp=True,
+    )
+    cosmo = bt.ccl_cosmology(config.ccl_params(), config)
+    lens = ccl.WeakLensingTracer(cosmo, dndz=nz)
+    ells = np.unique(np.geomspace(2, ell_max, n_ell).astype(int)).astype(float)
+    cl = ccl.angular_cl(cosmo, lens, lens, ells, p_of_k_a=pk2d)
+    theta_deg = np.asarray(theta_arcmin) / 60.0
+    xip = ccl.correlation(cosmo, ell=ells, C_ell=cl, theta=theta_deg, type="GG+")
+    xim = ccl.correlation(cosmo, ell=ells, C_ell=cl, theta=theta_deg, type="GG-")
+    return xip, xim, As
+
+
+# --------------------------------------------------------------------------- #
+# AC10–12
+# --------------------------------------------------------------------------- #
+def _assert_agreement(config, label):
+    nz = _gauss_nz()
+    xip_a, xim_a = bt.xi_ccl(config.ccl_params(), config, nz, nz, THETA_ARCMIN)
+    xip_b, xim_b, _ = xi_camb(config, nz, THETA_ARCMIN)
+    assert np.all(xip_a > 0) and np.all(xip_b > 0)
     rel_p = np.abs(xip_b - xip_a) / np.abs(xip_a)
-    assert rel_p.max() < XIP_RTOL, (
-        f"{label}: ξ+ max rel diff {rel_p.max():.3%} ≥ {XIP_RTOL:.1%}"
-    )
+    assert rel_p.max() < XIP_RTOL, f"{label}: ξ+ max rel diff {rel_p.max():.3%}"
     floor = XIM_FLOOR_FRAC * np.max(np.abs(xim_a))
     above = np.abs(xim_a) > floor
     rel_m = np.abs(xim_b - xim_a)[above] / np.abs(xim_a)[above]
-    assert rel_m.max() < XIM_RTOL, (
-        f"{label}: ξ− max rel diff {rel_m.max():.3%} ≥ {XIM_RTOL:.1%} (on |ξ−| > floor)"
-    )
-    # near the zero crossing: absolute agreement at the floor scale
-    abs_m = np.abs(xim_b - xim_a)[~above]
-    if len(abs_m):
-        assert abs_m.max() < XIM_RTOL * floor, (
-            f"{label}: ξ− absolute diff {abs_m.max():.3e} near zero crossing"
-        )
-    print(
-        f"\n{label}: ξ+ max rel {rel_p.max():.3%}; "
-        f"ξ− max rel {rel_m.max():.3%} (above floor, "
-        f"{above.sum()}/{len(above)} points)"
-    )
+    assert rel_m.max() < XIM_RTOL, f"{label}: ξ− max rel diff {rel_m.max():.3%}"
+    assert np.all(np.abs(xim_b - xim_a)[~above] < XIM_RTOL * floor), label
 
 
-# --------------------------------------------------------------------------- #
-# AC10: σ8/A_s reconciliation
-# --------------------------------------------------------------------------- #
-@pytest.mark.slow
 def test_ac10_sigma8_As_reconciliation():
-    """(a) nominal A_s leaves CAMB's σ8 >2% off target — the convention
-    offset is real; (b) the closed-form rescale lands on target to <1e-4."""
-    cfg = cm.TheoryConfig()
-    target = cfg.sigma8()
-
-    nominal = cm.camb_linear_sigma8(cfg, 2.1e-9)
-    offset = abs(nominal / target - 1)
-    print(f"\nAC10 nominal-A_s σ8 offset: {offset:.4f}")
-    assert offset > 0.02
-
-    As = cm.camb_As_for_sigma8(cfg, target)
-    matched = cm.camb_linear_sigma8(cfg, As)
-    print(f"AC10 σ8-matched residual: {abs(matched - target):.2e} (A_s={As:.4e})")
-    assert abs(matched - target) < 1e-4
+    """Nominal A_s misses σ8 by >2%; the closed-form rescale lands within 1e-4."""
+    cfg = bt.TheoryConfig()
+    assert abs(camb_sigma8(cfg, 2.1e-9) / cfg.sigma8() - 1) > 0.02
+    assert (
+        abs(camb_sigma8(cfg, camb_As_for_sigma8(cfg, cfg.sigma8())) - cfg.sigma8())
+        < 1e-4
+    )
 
 
-# --------------------------------------------------------------------------- #
-# AC11 + AC12: ξ± agreement at and off the fiducial
-# --------------------------------------------------------------------------- #
-@pytest.mark.slow
 def test_ac11_xi_agreement_at_fiducial():
-    cfg = cm.TheoryConfig()
-    a, b, _ = _both_paths(cfg)
-    _assert_xi_agreement(a, b, "AC11 fiducial")
+    _assert_agreement(bt.TheoryConfig(), "fiducial")
 
 
-@pytest.mark.slow
 def test_ac12_xi_agreement_off_fiducial():
-    """A representative in-envelope offset — the *shift* (a difference of two
-    theory vectors) must not inherit a stack-disagreement bias."""
-    cfg = cm.TheoryConfig.from_overrides({"S8": 0.80 + 0.075, "Omega_m": 0.30 - 0.05})
-    a, b, _ = _both_paths(cfg)
-    _assert_xi_agreement(a, b, "AC12 off-fiducial")
+    """An in-envelope point: the shift must not inherit a stack disagreement."""
+    cfg = dataclasses.replace(bt.TheoryConfig(), S8=0.80 + 0.075, Omega_m=0.30 - 0.05)
+    _assert_agreement(cfg, "off-fiducial")
 
 
 # --------------------------------------------------------------------------- #
-# AC13: halofit token pinned to the inference config (fast)
+# AC13: the nonlinear recipe is the inference config's
 # --------------------------------------------------------------------------- #
 def test_ac13_halofit_token_matches_inference_config():
-    """The blinding fiducial's CCL halofit token equals the CosmoSIS
-    inference config's ``halofit_version`` — asserted against the config
-    file itself. All three blinding backends share one recipe by
-    construction and would agree with each other while jointly diverging
-    from the inference stack, so this cannot be caught by the cross-backend
-    test and is asserted independently here."""
+    """The blinding recipe is the CosmoSIS pipeline's, read from its config file.
+
+    The CCL path and the CAMB oracle share the recipe by construction, so they
+    would agree while jointly diverging from inference; only this lineage check
+    catches that.
+    """
     ini = (
         pathlib.Path(__file__).resolve().parents[3]
         / "cosmo_inference"
@@ -144,32 +170,6 @@ def test_ac13_halofit_token_matches_inference_config():
     )
     match = re.search(r"^halofit_version\s*=\s*(\S+)", ini.read_text(), re.MULTILINE)
     assert match, f"no halofit_version in {ini}"
-    inference_token = match.group(1)
-    cfg = cm.TheoryConfig()
-    assert cfg.ccl_halofit_version == inference_token
-    # the two stack tokens denote ONE recipe; a divergence is a config bug
-    assert cfg.camb_halofit_version == cfg.ccl_halofit_version
-    # #280: the shipped Boltzmann backend is CAMB-through-CCL, matching the
-    # CosmoSIS+CAMB inference stack — one power-spectrum path. The cross-check
-    # tests above (AC10–12, 14) all run at this default configuration.
+    cfg = bt.TheoryConfig()
+    assert cfg.halofit_version == match.group(1)
     assert cfg.transfer_function == "boltzmann_camb"
-
-
-# --------------------------------------------------------------------------- #
-# AC14: fast smoke — broken wiring caught in the fast suite
-# --------------------------------------------------------------------------- #
-def test_ac14_crosscheck_smoke():
-    """Both paths run at coarse resolution: finite, positive,
-    few-percent-agreeing ξ+, and a σ8-matched A_s in a sane range."""
-    cfg = cm.TheoryConfig()
-    z, nz = _gauss_nz(n=150)
-    theta = np.geomspace(10.0, 100.0, 4)
-    xip_a, _ = cm.xi_ccl(cfg.ccl_params(), cfg, (z, nz), (z, nz), theta)
-    xip_b, _, As = cm.xi_camb(
-        cfg, (z, nz), theta, n_ell=120, ell_max=30000, kmax=10.0, n_k=200
-    )
-    assert np.all(np.isfinite(xip_a)) and np.all(np.isfinite(xip_b))
-    assert np.all(xip_a > 0) and np.all(xip_b > 0)
-    assert 1e-9 < As < 3e-9
-    rel = np.abs(xip_b - xip_a) / np.abs(xip_a)
-    assert rel.max() < 0.05, f"smoke ξ+ rel diff {rel.max():.3%} unexpectedly large"

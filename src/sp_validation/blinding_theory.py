@@ -1,72 +1,30 @@
-"""Blinding theory: fiducial configuration and the two ξ± theory paths.
+"""Blinding theory: the fiducial configuration and CCL's shear two-point prediction.
 
 :Name: blinding_theory.py
 
-:Description: The blinding backend's theory surface — the fiducial
-    configuration (:class:`TheoryConfig`) and two independent routes to the
-    tomographic shear two-point prediction.
+:Description: :class:`TheoryConfig` is the fiducial cosmology and model
+    recipe; :func:`xi_ccl` and :func:`cl_ee` are the tomographic shear ξ± and
+    Cℓ_EE between two bins' n(z). CCL builds the nonlinear P(k) through its
+    Boltzmann-CAMB HMCode2020 route and projects with its own Limber
+    (``angular_cl``) and FFTLog (``correlation``). ``test_camb_ccl_crosscheck``
+    compares this path with a direct CAMB run.
 
     The generic cosmology machinery here is destined for ``cs_util.cosmo``
     (cs_util#80).
 
-    Two independent routes to the shear two-point prediction:
-
-    - **CCL-native path** (:func:`xi_ccl`, :func:`cl_ee`): CCL builds the
-      nonlinear P(k) through its Boltzmann-CAMB HMCode2020 route
-      (``matter_power_spectrum='camb'`` + ``extra_parameters``) and projects
-      to Cℓ/ξ± via its own Limber (``angular_cl``) + FFTLog
-      (``correlation``). This is the recipe the blinding theory backends use.
-    - **Independent-CAMB path** (:func:`xi_camb`): a direct ``pycamb`` run
-      produces the HMCode2020 ``P(k, z)`` (σ8-matched via the closed-form
-      A_s rescale of :func:`camb_As_for_sigma8`), wrapped in a ``ccl.Pk2D``
-      and projected through the same CCL Limber + FFTLog machinery.
-
-    Because both paths route their nonlinear P(k) through CAMB's HMCode2020
-    and both project through CCL, a common Limber+FFTLog bug cancels between
-    them: the CAMB↔CCL cross-check test built on these two paths validates
-    the **P(k) recipe** and the **σ8/A_s amplitude convention**, not the
-    projection machinery.
-
-    This module imports only ``numpy`` at module level; CCL and CAMB are
-    imported inside the functions that need them, so importing
-    :class:`TheoryConfig` never drags in a theory backend.
+    Only ``numpy`` is imported at module level; CCL is imported inside the
+    functions that need it, so importing :class:`TheoryConfig` never drags in a
+    theory backend.
 """
 
 import dataclasses
 
 import numpy as np
 
-# Fixed constants of the fiducial — load-bearing for the CAMB↔CCL amplitude
-# match, so they are emitted explicitly to both stacks rather than left to
-# either stack's default. Not user-facing TheoryConfig fields.
+# Fixed constants of the fiducial, passed explicitly to CCL (and to the CAMB
+# oracle in the tests) rather than left to either stack's default.
 NEFF = 3.046
 T_CMB = 2.7255
-
-# Matter-power redshift grid shared by `make_camb_params` and `xi_camb`, so the
-# CAMB run and the Pk2D built from it sample the same redshifts.
-PK_ZMAX = 3.0
-PK_NZ = 48
-
-
-def coerce_fields(cls, overrides):
-    """Validate ``overrides`` against ``cls``'s fields, coercing floats.
-
-    Unknown keys raise. Every ``float``-declared field goes through
-    :func:`float`, so a YAML/CLI ``w0: -1`` (int) yields the same value — and
-    the same config digest — as the float default ``-1.0``. Digest stability
-    depends on this, so it is one helper rather than three copies.
-    """
-    by_name = {f.name: f for f in dataclasses.fields(cls)}
-    unknown = set(overrides) - set(by_name)
-    if unknown:
-        raise ValueError(
-            f"unknown {cls.__name__} fields {sorted(unknown)}; "
-            f"valid fields are {sorted(by_name)}"
-        )
-    return {
-        name: (float(v) if by_name[name].type in (float, "float") else v)
-        for name, v in overrides.items()
-    }
 
 
 # --------------------------------------------------------------------------- #
@@ -87,9 +45,8 @@ class TheoryConfig:
     converted to CCL's native ``sigma8``/``Omega_c`` by :meth:`sigma8` /
     :meth:`omega_c`.
 
-    One nonlinear recipe is named by two tokens (``ccl_halofit_version``,
-    ``camb_halofit_version``) because CCL and CAMB could name it differently;
-    each stack is fed its own so a rename cannot silently split the recipe.
+    ``halofit_version`` names the nonlinear recipe CAMB runs, whether CCL
+    calls it or CosmoSIS does.
     """
 
     # Cosmological parameters (blind axes S8, Omega_m + the rest).
@@ -111,9 +68,8 @@ class TheoryConfig:
     # deliberate cross-check tool rather than a production setting.
     transfer_function: str = "boltzmann_camb"
 
-    # CAMB HMCode2020 + baryonic feedback — see the class docstring.
-    ccl_halofit_version: str = "mead2020_feedback"
-    camb_halofit_version: str = "mead2020_feedback"
+    # CAMB HMCode2020 + baryonic feedback.
+    halofit_version: str = "mead2020_feedback"
     hmcode_logT_AGN: float = 7.5  # values_ia.ini logT_AGN central
 
     # Intrinsic alignments: NLA. The fiducial defaults IA OFF (ia_bias=0) —
@@ -145,14 +101,11 @@ class TheoryConfig:
         return self.Omega_m - self.Omega_b - omega_nu
 
     def ccl_params(self):
-        """The fiducial point as a plain CCL-native parameter mapping.
+        """This point as a plain CCL-native parameter mapping.
 
         Exactly the keys ``Omega_c, Omega_b, h, n_s, sigma8, m_nu,
-        mass_split, w0, wa, Neff, T_CMB`` and no others — no CCL default
-        rides along. ``Neff``/``T_CMB`` are the fixed module constants. This
-        mapping is what the Smokescreen fork receives as ``fiducial_params``
-        and what every ``theory_fn`` receives back (possibly with
-        ``sigma8``/``Omega_c`` overlaid by the hidden draw).
+        mass_split, w0, wa, Neff, T_CMB`` and no others, so no CCL default
+        rides along; ``Neff``/``T_CMB`` are the fixed module constants.
         """
         return {
             "Omega_c": self.omega_c(),
@@ -168,18 +121,13 @@ class TheoryConfig:
             "T_CMB": T_CMB,
         }
 
-    @classmethod
-    def from_overrides(cls, overrides):
-        """Build from a mapping of field overrides (fail loud on unknown keys)."""
-        return cls(**coerce_fields(cls, overrides))
-
 
 # --------------------------------------------------------------------------- #
-# CCL-native path: cosmology construction, Cℓ_EE, ξ±
+# CCL: cosmology construction, Cℓ_EE, ξ±
 # --------------------------------------------------------------------------- #
-# The two cosmologies of a blind (fiducial + hidden) are evaluated by three
-# theory backends over multiple blocks; caching the ccl.Cosmology per parameter
-# point avoids re-running the CAMB P(k) computation for every block.
+# The two cosmologies of a blind (fiducial and hidden) are evaluated for every
+# block of a SACC; caching the ccl.Cosmology per parameter point avoids
+# re-running the CAMB P(k) computation for each block.
 _COSMO_CACHE = {}
 
 
@@ -198,7 +146,7 @@ def ccl_cosmology(params, config):
     key = (
         tuple(sorted(params.items())),
         config.transfer_function,
-        config.ccl_halofit_version,
+        config.halofit_version,
         config.hmcode_logT_AGN,
     )
     if key not in _COSMO_CACHE:
@@ -207,7 +155,7 @@ def ccl_cosmology(params, config):
                 "matter_power_spectrum": "camb",
                 "extra_parameters": {
                     "camb": {
-                        "halofit_version": config.ccl_halofit_version,
+                        "halofit_version": config.halofit_version,
                         "HMCode_logT_AGN": config.hmcode_logT_AGN,
                     }
                 },
@@ -293,7 +241,7 @@ def cl_ee(params, config, nz_i, nz_j, ell):
 
 
 def xi_ccl(params, config, nz_i, nz_j, theta_arcmin, ell=None):
-    """CCL-native ξ± at ``theta_arcmin`` for one bin pair (Path A).
+    """ξ± at ``theta_arcmin`` for one bin pair.
 
     Cross Cℓ_EE on :func:`xi_ell_grid` (or ``ell``), then ``ccl.correlation``
     (FFTLog Hankel transform) at θ in degrees, ``type="GG+"`` / ``"GG-"``.
@@ -312,109 +260,3 @@ def xi_ccl(params, config, nz_i, nz_j, theta_arcmin, ell=None):
     xip = ccl.correlation(cosmo, ell=ell, C_ell=cl, theta=theta_deg, type="GG+")
     xim = ccl.correlation(cosmo, ell=ell, C_ell=cl, theta=theta_deg, type="GG-")
     return xip, xim
-
-
-# --------------------------------------------------------------------------- #
-# Independent-CAMB path: A_s reconciliation + P(k) → Pk2D → CCL projection
-# --------------------------------------------------------------------------- #
-def make_camb_params(config, As, *, nonlinear, zmax=PK_ZMAX, n_z=PK_NZ, kmax=20.0):
-    """A ``CAMBparams`` at ``config``'s background with amplitude ``As``.
-
-    Every :class:`TheoryConfig` field CCL sees is fed to CAMB from the same
-    source — ``w0``/``wa`` via ``set_dark_energy``, ``Neff``/``T_CMB`` as the
-    module constants, ``m_nu``/``mass_split`` through ``set_cosmology`` — so
-    the independent path differs from the CCL path only in who computes P(k),
-    never in an unmatched background parameter.
-    """
-    import camb
-
-    p = camb.CAMBparams()
-    p.set_cosmology(
-        H0=config.h * 100,
-        ombh2=config.Omega_b * config.h**2,
-        omch2=config.omega_c() * config.h**2,
-        mnu=config.m_nu,
-        num_massive_neutrinos=1,
-        neutrino_hierarchy=config.mass_split,
-        nnu=NEFF,
-        TCMB=T_CMB,
-    )
-    p.set_dark_energy(w=config.w0, wa=config.wa, dark_energy_model="ppf")
-    p.InitPower.set_params(As=As, ns=config.n_s)
-    p.set_matter_power(redshifts=list(np.linspace(0.0, zmax, n_z)), kmax=kmax)
-    if nonlinear:
-        p.NonLinear = camb.model.NonLinear_both
-        p.NonLinearModel.set_params(
-            halofit_version=config.camb_halofit_version,
-            HMCode_logT_AGN=config.hmcode_logT_AGN,
-        )
-    else:
-        p.NonLinear = camb.model.NonLinear_none
-    return p
-
-
-def camb_linear_sigma8(config, As, **kwargs):
-    """CAMB's linear σ8(z=0) at amplitude ``As``."""
-    import camb
-
-    results = camb.get_results(make_camb_params(config, As, nonlinear=False, **kwargs))
-    return float(results.get_sigma8_0())
-
-
-def camb_As_for_sigma8(config, sigma8_target, As_seed=2.1e-9, **kwargs):
-    """The CAMB ``A_s`` whose linear σ8 equals ``sigma8_target``.
-
-    Closed-form: linear σ8² ∝ A_s exactly, so one CAMB linear-σ8 evaluation
-    at ``As_seed`` and one rescale ``As_seed · (σ8_target/σ8_seed)²`` land on
-    the target — no iteration. This settles the convention subtlety that our
-    fiducial fixes σ8 for CCL but A_s for CAMB: a nominal ``A_s = 2.1e-9``
-    leaves CAMB's σ8 ≈3% off target, enough to blow a ξ± comparison to
-    ~9–10%.
-    """
-    sigma8_seed = camb_linear_sigma8(config, As_seed, **kwargs)
-    return As_seed * (sigma8_target / sigma8_seed) ** 2
-
-
-def xi_camb(config, nz, theta_arcmin, *, n_ell=300, ell_max=60000, kmax=20.0, n_k=400):
-    """Independent-CAMB ξ± for one bin (Path B): CAMB P(k) → Pk2D → CCL.
-
-    A direct pycamb run produces the HMCode2020 nonlinear ``P(k, z)`` at a
-    σ8-matched ``A_s`` (:func:`camb_As_for_sigma8`), wrapped in a ``Pk2D`` and
-    projected by CCL's Limber + FFTLog with a bare tracer (IA off — this path
-    exists for the cross-check). ``hubble_units=False, k_hunit=False`` already
-    returns CCL's native units (k in 1/Mpc, P in Mpc³), so applying an
-    ``·h``/``/h³`` conversion here would double-count an h³ amplitude error.
-
-    Returns
-    -------
-    (np.ndarray, np.ndarray, float)
-        ``(xip, xim, As)`` — the σ8-matched amplitude is returned for
-        assertion by the cross-check test.
-    """
-    import camb
-    import pyccl as ccl
-
-    sigma8 = config.sigma8()
-    As = camb_As_for_sigma8(config, sigma8, kmax=kmax)
-    results = camb.get_results(make_camb_params(config, As, nonlinear=True, kmax=kmax))
-    interp = results.get_matter_power_interpolator(
-        nonlinear=True, hubble_units=False, k_hunit=False
-    )
-    k = np.geomspace(1e-4, kmax * config.h, n_k)  # 1/Mpc
-    z = np.linspace(0.0, PK_ZMAX, PK_NZ)  # the grid make_camb_params computed
-    pk = interp.P(z, k)  # (n_z, n_k), Mpc^3
-    a = 1.0 / (1.0 + z)
-    order = np.argsort(a)  # Pk2D wants ascending scale factor
-    pk2d = ccl.Pk2D(
-        a_arr=a[order], lk_arr=np.log(k), pk_arr=np.log(pk[order]), is_logp=True
-    )
-
-    cosmo = ccl_cosmology(config.ccl_params(), config)
-    z_nz, nz_vals = nz
-    lens = ccl.WeakLensingTracer(cosmo, dndz=(np.asarray(z_nz), np.asarray(nz_vals)))
-    ells = np.unique(np.geomspace(2, ell_max, n_ell).astype(int)).astype(float)
-    cl = ccl.angular_cl(cosmo, lens, lens, ells, p_of_k_a=pk2d)
-    theta_deg = np.asarray(theta_arcmin) / 60.0
-    xip = ccl.correlation(cosmo, ell=ells, C_ell=cl, theta=theta_deg, type="GG+")
-    xim = ccl.correlation(cosmo, ell=ells, C_ell=cl, theta=theta_deg, type="GG-")
-    return xip, xim, As

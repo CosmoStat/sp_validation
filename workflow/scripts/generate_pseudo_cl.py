@@ -24,8 +24,8 @@ import argparse
 import json
 import os
 
-from sp_validation import sacc_io
 from sp_validation.cosmo_val import CosmologyValidation
+from sp_validation.custody import confirm
 
 
 def generate_pseudo_cl(
@@ -39,6 +39,7 @@ def generate_pseudo_cl(
     binning: str = "linear",
     nbins: int = None,
     power: float = 0.5,
+    custody: str = None,
 ):
     """Generate a pseudo-Cl data vector, born as a SACC part at ``out_path``.
 
@@ -48,7 +49,7 @@ def generate_pseudo_cl(
         Catalog version (e.g., "SP_v1.4.6_leak_corr")
     out_path : str
         Exact destination the SACC part is born at — its final (possibly tagged)
-        name. Skip-if-exists keys on it, so no two rules share a basename.
+        name.
     cat_config : str
         Path to catalog configuration YAML
     nside : int
@@ -66,6 +67,9 @@ def generate_pseudo_cl(
         Number of ell bins (required)
     power : float
         Power for powspace binning (0.5 = sqrt spacing)
+    custody : str, optional
+        The custody token the launch resolved for ``version``; the part is not
+        written under any other.
 
     Returns
     -------
@@ -129,16 +133,15 @@ def generate_pseudo_cl(
         cv_kwargs["power"] = power
 
     cv = CosmologyValidation(**cv_kwargs)
+    if custody is not None:
+        confirm(cv.custody(version), custody)
 
     # Pseudo-Cls only (no covariance), born directly at the final out_path.
     cv.calculate_pseudo_cl(out_path=out_path)
 
-    if os.path.exists(out_path):
-        # Readback of the part just written — a legitimate pre-blind consumer.
-        s = sacc_io.load(out_path, allow_unblinded=True)
-        ell = sacc_io.get_pseudo_cl(s, (0, 0))[0]
-        print(f"Generated pseudo-Cl with {len(ell)} ell bins")
-        print(f"ell range: [{ell.min():.1f}, {ell.max():.1f}]")
+    ell = cv.pseudo_cls[version]["pseudo_cl"]["ELL"]
+    print(f"Generated pseudo-Cl with {len(ell)} ell bins")
+    print(f"ell range: [{ell.min():.1f}, {ell.max():.1f}]")
     return out_path
 
 
@@ -155,6 +158,7 @@ def _from_snakemake(smk):
         binning=p["binning"],
         nbins=int(p["nbins"]),
         power=float(p.get("power", 0.5)),
+        custody=p["custody"],
     )
 
 

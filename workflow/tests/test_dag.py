@@ -7,7 +7,16 @@ from pathlib import Path
 
 import pytest
 import yaml
-from conftest import HOST_PYTHON, REPO, VERSIONS, fake_image, on_candide, parse_jobs
+from conftest import (
+    HOST_PYTHON,
+    REPO,
+    STALE,
+    UNCOVERED,
+    VERSIONS,
+    fake_image,
+    on_candide,
+    parse_jobs,
+)
 
 
 def test_assemble_resolves(toy):
@@ -206,6 +215,75 @@ def test_image_sims_checks_parity_at_launch(toy, tmp_path):
     )
     assert result.returncode != 0, result.stdout
     assert "uv tool install --force --python 3.13 snakemake==" in result.stdout
+
+
+def _custody_lines(output):
+    return [line for line in output.splitlines() if line.startswith("[custody]")]
+
+
+def test_a_catalogue_without_a_blind_stops_the_launch(toy):
+    """A blinded catalogue with no blind fails at parse, naming the one command."""
+    result = toy.snakemake(
+        "-n", "assemble_sacc_all", config=[f'versions=["{UNCOVERED}"]']
+    )
+    assert result.returncode != 0, result.stdout
+    assert "python -m sp_validation.blinding init" in result.stdout
+    assert "share" in result.stdout
+    assert "rule assemble_sacc" not in result.stdout
+
+
+def test_no_config_line_unblinds_a_catalogue(toy, tmp_path):
+    """Custody is read from the checkout's cat_config, never from the merged config."""
+    override = tmp_path / "override.yaml"
+    override.write_text(yaml.safe_dump({VERSIONS[0]: {"blinding": "unblinded"}}))
+    result = toy.snakemake("-n", "assemble_sacc_all", "--configfile", str(override))
+    assert result.returncode == 0, result.stdout
+    assert f"[custody] {VERSIONS[0]} (+ {VERSIONS[1]}): blinded under toy" in (
+        _custody_lines(result.stdout)
+    )
+
+
+def test_a_catalogue_and_its_variant_share_one_custody(toy):
+    result = toy.snakemake("-n", "assemble_sacc_all")
+    assert result.returncode == 0, result.stdout
+    assert _custody_lines(result.stdout) == [
+        f"[custody] {VERSIONS[0]} (+ {VERSIONS[1]}): blinded under toy"
+    ]
+
+
+def test_no_rule_draws_or_touches_a_blind(toy):
+    """Even a forced run schedules nothing that reads or writes the registry."""
+    result = toy.snakemake("-F", "-n", "all")
+    assert result.returncode == 0, result.stdout
+    jobs = parse_jobs(result.stdout)
+    registry = (toy.root / "cosmo_val" / "blinds").resolve()
+    assert jobs
+    assert not [j.rule for j in jobs if "blind" in j.rule]
+    touched = [
+        f
+        for j in jobs
+        for f in j.input + j.output
+        if (toy.rundir / f).resolve().is_relative_to(registry)
+    ]
+    assert not touched, touched
+
+
+def test_the_campaign_type_switch_is_refused(toy, tmp_path):
+    """A config carrying cosmo_val.type stops the launch with the pointer."""
+    config = dict(toy.config, cosmo_val=dict(toy.config["cosmo_val"], type="mock"))
+    path = tmp_path / "config.yaml"
+    path.write_text(yaml.safe_dump(config))
+    result = toy.snakemake("-n", "assemble_sacc_all", "--configfile", str(path))
+    assert result.returncode != 0, result.stdout
+    assert "custody is declared per catalogue in cosmo_val/cat_config.yaml" in (
+        result.stdout
+    )
+
+
+def test_unblinding_a_concealed_catalogue_needs_the_reveal(toy):
+    result = toy.snakemake("-n", "assemble_sacc_all", config=[f'versions=["{STALE}"]'])
+    assert result.returncode != 0, result.stdout
+    assert "blinding reveal stale" in result.stdout
 
 
 def _real_dry_run(paper, targets):

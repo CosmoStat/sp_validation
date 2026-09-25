@@ -9,21 +9,12 @@ import functools
 import importlib.util
 import json
 import os
-import re
 import sys
 from pathlib import Path
 
-from snakemake.io import temp
-
-# The running checkout. Anchored on this module's own location, not
-# workflow.basedir — under `module` composition basedir reflects the composing
-# paper, not the running checkout.
+# The checkout this workflow was launched from: workflow/common.py -> <repo>.
 REPO_ROOT = Path(__file__).resolve().parents[1]
 REPO_SRC = REPO_ROOT / "src"
-# For rules that shell out to a script directly rather than through Snakemake's
-# `script:` directive.
-WORKFLOW_SCRIPTS = str(REPO_ROOT / "workflow" / "scripts")
-REPO_SCRIPTS = str(REPO_ROOT / "scripts")
 
 
 def _load_checkout_module(name):
@@ -53,10 +44,8 @@ image_revision = _container.image_revision
 image_runtime = _container.image_runtime
 resolve_image = _container.resolve_image
 
-# The blinding file-name conventions, shared with ``sp_validation.blinding``.
-_blinding_paths = _load_checkout_module("blinding_paths")
-init_paths = _blinding_paths.init_paths
-part_paths = _blinding_paths.part_paths
+# Catalogue custody, resolved as container jobs resolve it.
+_custody = _load_checkout_module("custody")
 
 # Every job inherits this launch's environment (the slurm executor submits with
 # --export=ALL), and the Snakemake each job step starts keeps its source cache
@@ -78,11 +67,13 @@ COSMO_INFERENCE = Path(
     )
 )
 # The catalogue config of the launched checkout: the one file both the host
-# (CATALOG_CONFIG, loaded in configure) and every job read catalogues from.
+# (CATALOG_CONFIG, loaded in configure) and every job read catalogues from, and
+# the blind registry beside it.
 CAT_CONFIG = str(REPO_ROOT / "cosmo_val" / "cat_config.yaml")
-# "blind" is the glass-mock A/B/C realisation convention, NOT Smokescreen
-# blinding (a separate axis: the concealed=True SACC stamp). The name is baked
-# into on-disk filenames we do not own (e.g. nz_{version}_{A|B|C}.txt).
+REGISTRY = _custody.registry_of(CAT_CONFIG)
+# "blind" is the n(z) A/B/C realisation convention, not Smokescreen blinding
+# (custody, above). The name is baked into on-disk filenames we do not own
+# (e.g. nz_{version}_{A|B|C}.txt).
 BLINDS = ["A", "B", "C"]
 BLOCK_PAIRS = [("++", "1"), ("--", "2"), ("+-", "3")]
 
@@ -99,10 +90,6 @@ WILDCARD_CONSTRAINTS = {
     "version": r"SP_v[\d.]+(_w_iv)?(_ecut\d+)?(_leak_corr)?",
     "blind": r"[ABC]",
     "nbins": r"\d+",
-    # Constrained so a producer's ξ± output pattern cannot greedily absorb the
-    # "_blinded" suffix into npatch (which would make it ambiguous with the
-    # blind_part rule's {stem}_blinded output). npatch is always an integer.
-    "npatch": r"\d+",
     "min_sep": r"[0-9.]+",
     "max_sep": r"[0-9.]+",
     "gaussian": r"(g|ng)",
@@ -117,11 +104,6 @@ FIDUCIAL = None
 DEFAULT_MASK_SUFFIX = ""
 CATALOG_CONFIG = None
 PLANCK18 = None
-# Run type gates Smokescreen blind-at-birth (see the blind custody section
-# below): "data" blinds the three blindable parts and binds ξ-derived consumers
-# to the blinded siblings; "mock" bypasses blinding entirely. Set from
-# config["cosmo_val"]["type"] in configure(); "data" is the production default.
-RUN_TYPE = "data"
 
 
 def inject_checkout_pythonpath(workflow_config):
@@ -207,6 +189,7 @@ def warn_if_image_stale():
 def check_host_parity(image):
     """Stop the launch unless this Snakemake matches the image's Python and Snakemake.
 
+    @sc host-image-parity
     A ``script:`` job appends the host's ``sys.path`` -- standard library
     included -- to its own, as the fallback that lets it unpickle the host's
     ``snakemake`` object. So the image and the host Snakemake must share a
@@ -244,7 +227,7 @@ def check_host_parity(image):
 
 def configure(workflow_config):
     """Install config-derived values after Snakemake has loaded configfiles."""
-    global CATALOG_CONFIG, DEFAULT_MASK_SUFFIX, FIDUCIAL, PLANCK18, RUN_TYPE
+    global CATALOG_CONFIG, DEFAULT_MASK_SUFFIX, FIDUCIAL, PLANCK18
     from snakemake.common.configfile import load_configfile
 
     inject_checkout_pythonpath(workflow_config)
@@ -255,9 +238,49 @@ def configure(workflow_config):
     DEFAULT_MASK_SUFFIX = (
         "_masked" if workflow_config["covariance"].get("default_masked", False) else ""
     )
-    RUN_TYPE = workflow_config.get("cosmo_val", {}).get("type", "data")
+    announce_custody(workflow_config)
     with open(COSMOLOGY_PARAMS) as f:
         PLANCK18 = json.load(f)
+
+
+def announce_custody(workflow_config):
+    """Print each run catalogue's custody; stop the launch if one cannot run.
+
+    Resolves every version the config names, so a blinded catalogue without a
+    blind fails here, with the command to run, before any job is scheduled.
+    """
+    from snakemake.exceptions import WorkflowError
+
+    if "type" in workflow_config.get("cosmo_val", {}):
+        raise WorkflowError(
+            "cosmo_val.type is not a setting: custody is declared per catalogue "
+            "in cosmo_val/cat_config.yaml. Remove it from the config."
+        )
+    versions = [
+        *workflow_config.get("versions", []),
+        *(FIDUCIAL.get(k) for k in ("version", "mock_version") if FIDUCIAL.get(k)),
+    ]
+    try:
+        lines = _custody.summary(CATALOG_CONFIG, versions, registry=REGISTRY)
+    except _custody.CustodyError as err:
+        raise WorkflowError(str(err)) from None
+    _print_once(tuple(lines))
+
+
+@functools.cache
+def _print_once(lines):
+    """Print ``lines`` once per launch, however many Snakefiles configure."""
+    for line in lines:
+        print(line, file=sys.stderr)
+
+
+def custody_token(version):
+    """The custody token of ``version``: a producer's ``params`` trigger.
+
+    A producer carrying it re-runs when its catalogue's custody changes, and its
+    job refuses to run under any other custody.
+    """
+    return _custody.custody_of(CATALOG_CONFIG, version, registry=REGISTRY).token
 
 
 def fiducial_binning_suffix(fiducial=None):
@@ -355,12 +378,11 @@ def covariance_path(
 
 
 def base_version(version):
-    """Strip the derived-catalogue suffixes to the base catalogue version.
+    """The base catalogue of ``version``: its entry, then its ``base:`` links.
 
-    The `_leak_corr` / `_ecut{N}` variants share their parent's n(z) and
-    `cov_th` survey parameters, so lookups keyed on either must strip both.
+    Variants share their base's n(z) and plotting style.
     """
-    return re.sub(r"_ecut\d+", "", re.sub(r"_leak_corr$", "", version))
+    return _custody.base_catalogue(CATALOG_CONFIG, version)
 
 
 def build_redshift_path(version, blind):
@@ -445,130 +467,18 @@ def grid_of(grids, binning):
 
 def pseudo_cl_tag(config):
     """Fiducial harmonic-binning tag stamped into pseudo-Cl filenames."""
-    return f"blind={config['harmonic']['fiducial']['blind']}_{pseudo_cl_binning_tag(config)}"
-
-
-def pseudo_cl_binning_tag(config):
-    """The `{binning}_nbins={n}` half of the tag — the binning alone."""
     fiducial = config["harmonic"]["fiducial"]
-    return f"{fiducial['binning']}_nbins={fiducial['nbins']}"
-
-
-def pseudo_cl_analysis_stem(config, version):
-    """Stem of the analysis pseudo-Cℓ part for a version.
-
-    Its own name (and its own producing rule, twopoint.smk), distinct from the
-    generic `pseudo_cl` variants the bmodes and mock workflows request: only
-    this part is blindable, so only it can be temp()'d on a data run. Single
-    definition shared by the producer, the assembler (cosmo_val.smk) and the
-    blindable-stem regex (blinding.smk).
-
-    Carries the binning but no `blind=` field: the A/B/C blind is the legacy
-    n(z) vocabulary (#312), not this part's concealment.
-    """
-    return f"pseudo_cl_analysis_{version}_{pseudo_cl_binning_tag(config)}"
+    return f"blind={fiducial['blind']}_{fiducial['binning']}_nbins={fiducial['nbins']}"
 
 
 def get_shear_catalog(wildcards):
     """Resolve shear catalog path from config for a given version."""
-    cat_config = CATALOG_CONFIG[wildcards.version.replace("_leak_corr", "")]
+    cat_config = CATALOG_CONFIG[_custody.entry_of(wildcards.version)]
     shear_path = cat_config["shear"]["path"]
     if shear_path.startswith("/"):
         return shear_path
     subdir = cat_config.get("subdir", "")
     return str(Path(subdir) / shear_path)
-
-
-# ---------------------------------------------------------------------------
-# Smokescreen blind-at-birth custody
-# ---------------------------------------------------------------------------
-# Distinct from the glass-mock A/B/C `blind` wildcard above: this is Smokescreen
-# concealment (see sp_validation.blinding). RUN_TYPE is the single switch: a
-# `data` run binds every ξ-derived consumer to the *_blinded parts, pulling the
-# blind_part → blind_init subgraph into the DAG; a `mock` run binds the
-# plaintext parts and the subgraph never appears.
-
-
-def run_type():
-    """The campaign's run type, ``"data"`` or ``"mock"``.
-
-    Every part writer stamps this as the SACC ``type`` metadata, which is what
-    ``blinding.assert_consistent_blind`` reads at assembly. A function
-    rather than the ``RUN_TYPE`` global because ``from common import *`` binds
-    names before ``configure()`` runs, so only a call reads the configured
-    value.
-    """
-    return RUN_TYPE
-
-
-def is_data_run():
-    """True when blinding is active (production data runs); False for mocks."""
-    return run_type() == "data"
-
-
-def blind_root():
-    """Root holding one blind-init directory per version, or None on mock runs.
-
-    What `CosmologyValidation(blind_root=...)` takes, so its part writers can
-    resolve each version's commitment.json themselves.
-    """
-    return str(COSMO_VAL / "blind") if is_data_run() else None
-
-
-def blind_state_dir(version):
-    """Per-version blind-init custody directory (commitment + encrypted seed)."""
-    return str(COSMO_VAL / "blind" / version)
-
-
-def blind_state_paths(version):
-    """The fixed custody-state files blind_init writes for a version."""
-    return init_paths(blind_state_dir(version))
-
-
-def commitment_input(version):
-    """Input mapping binding a version's commitment.json, on data runs only.
-
-    A part writer stamps its output concealed from that file (sacc_io.save's
-    `commitment=`), which is what lets a born-blinded or blind-irrelevant part
-    clear the fail-closed load gate at assembly.
-    """
-    if not is_data_run():
-        return {}
-    return {"commitment": blind_state_paths(version)["commitment"]}
-
-
-def blinded_path(part_path):
-    """The *_blinded sibling blind_part writes beside a plaintext part."""
-    return part_paths(part_path)["blinded"]
-
-
-def version_of(stem):
-    """Catalogue version embedded in a blindable part's stem.
-
-    blind_part needs it to locate the version's blind state.
-    """
-    m = re.search(WILDCARD_CONSTRAINTS["version"], stem)
-    if m is None:
-        raise ValueError(f"no catalogue version found in part stem {stem!r}")
-    return m.group(0)
-
-
-def blindable_part(part_path):
-    """On-disk path a run persists for one blindable part.
-
-    Data run -> the blinded sibling (binding it pulls blind_part + blind_init
-    into the DAG); mock run -> the plaintext part.
-    """
-    return blinded_path(part_path) if is_data_run() else str(part_path)
-
-
-def maybe_temp(part_path):
-    """temp() a producer's blindable plaintext part on data runs.
-
-    Its only consumer there is blind_part, which escrows the true vector before
-    Snakemake removes the file, so no plaintext blindable part persists.
-    """
-    return temp(str(part_path)) if is_data_run() else str(part_path)
 
 
 # ---------------------------------------------------------------------------
@@ -647,9 +557,5 @@ def cv_init_params(config):
         versions=config["versions"],
         catalog_config=CAT_CONFIG,
         output_dir=str(COSMO_VAL),
-        # Custody state the cv's part writers need: the SACC `type` they stamp,
-        # and the blind whose commitment born-blinded parts are stamped under.
-        run_type=run_type(),
-        blind_root=blind_root(),
         **{key: cv[key] for key in CV_INIT_KEYS},
     )

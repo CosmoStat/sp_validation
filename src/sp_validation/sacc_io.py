@@ -91,6 +91,7 @@ import numpy as np
 import sacc
 from astropy.io import fits
 
+from . import custody as _custody
 from .statistics import cov_from_one_covariance
 
 PSF_TRACER = "psf_stars"
@@ -761,8 +762,8 @@ def merge(saccs):
     block-diagonal is out of scope here; see ``assemble_covariance``).
 
     Metadata must be consistent: keys present in several inputs must carry
-    equal values (a ``type: data`` file cannot merge with a ``type: mock``
-    file), and the union lands on the result. This deliberately replaces the
+    equal values (files under two custody stamps cannot merge), and the union
+    lands on the result. This deliberately replaces the
     library's clash behaviour, which mangles clashing keys by appending
     labels.
 
@@ -942,78 +943,141 @@ def update_statistic(s, sub):
         s.data[idx[0]].value = point.value
 
 
-def save(s, path, *, type, commitment=None):
-    """Write ``s`` to ``path`` (FITS), overwriting any existing file.
+# --------------------------------------------------------------------------- #
+# The file door: every SACC is born sealed, derived with one stamp, or refused
+# --------------------------------------------------------------------------- #
+# Signal: the shear data types a cosmology shift reaches.
+SIGNAL_PREFIX = "galaxy_shear_"
+# The signal rows a blind conceals.
+SHIFTABLE = (XI_PLUS, XI_MINUS, CL_EE)
+# Signal rows a pure E-mode shift leaves unchanged.
+UNSHIFTED = (CL_BB, CL_EB)
 
-    Parameters
-    ----------
-    s : sacc.Sacc
-        Data set to write; its metadata is stamped in place.
-    type : {'data', 'mock'}
-        Provenance of the underlying catalogue, stored as the required
-        ``type`` metadata tag (PRD #241 §4, "Mocks vs data"). The caller —
-        the pipeline computing the data vector — knows whether its input
-        catalogue is a mock; there is deliberately no default. ``load``
-        refuses ``type='data'`` files that are not blinded.
-    commitment : str, optional
-        Path to the version's ``commitment.json``. When given, the file is
-        stamped concealed under that blind
-        (:func:`sp_validation.blinding.stamp_concealed_passthrough`, values
-        untouched) before writing — the seam every born-blinded or
-        blind-irrelevant part uses to clear the fail-closed load gate.
+
+def _stamped(s):
+    return any(key in s.metadata for key in _custody.STAMP_KEYS)
+
+
+def _mint(s, stamp):
+    for key in _custody.STAMP_KEYS:
+        s.metadata.pop(key, None)
+    s.metadata.update(stamp)
+
+
+def seal(s, custody):
+    """A stamped copy of ``s``, concealed first when the catalogue is blinded.
+
+    @sc born-sealed
+    A catalogue-born SACC leaves memory only through here. Under a blinded
+    custody every ξ± and Cℓ_EE row is shifted on a copy before the stamp is
+    minted; a SACC with no signal is stamped without opening the blind; any
+    other signal (COSEBIs, pure-E/B) is a derived statistic, refused here and
+    saved with ``derived_from``. An already-stamped SACC is re-written only as
+    a derivation.
     """
-    if type not in ("data", "mock"):
-        raise ValueError(f"type must be 'data' or 'mock'; got {type!r}")
-    if s.metadata.get("type", type) != type:
+    if _stamped(s):
         raise ValueError(
-            f"Sacc metadata already carries type={s.metadata['type']!r}; "
-            f"refusing to re-stamp as {type!r}"
+            "this SACC is already stamped; a loaded or sealed SACC is re-written "
+            "only as a derivation (save(..., derived_from=[...]))"
         )
-    s.metadata["type"] = type
-    if commitment is not None:
+    types = {dp.data_type for dp in s.data}
+    signal = {t for t in types if t.startswith(SIGNAL_PREFIX)}
+    if custody.status == "blinded" and signal - set(SHIFTABLE) - set(UNSHIFTED):
+        raise ValueError(
+            f"a blinded catalogue's {sorted(signal - set(SHIFTABLE))} rows are "
+            "derived statistics: save them with derived_from=[their input parts]"
+        )
+    if custody.status == "blinded" and signal & set(SHIFTABLE):
         from . import blinding
 
-        blinding.stamp_concealed_passthrough(s, commitment)
-    s.save_fits(path, overwrite=True)
+        out = blinding.conceal(s, blinding.open_blind(custody))
+    else:
+        out = s.copy()
+    _mint(out, custody.stamp)
+    return out
 
 
-def load(path, *, allow_unblinded=False):
-    """Load a Sacc from ``path`` (FITS), failing closed on unblinded data.
+def _row_key(dp):
+    tags = tuple(sorted((k, v) for k, v in dp.tags.items() if k != "window"))
+    return (dp.data_type, tuple(dp.tracers), float(dp.value), tags)
 
-    Every sacc_io file carries a ``type: data|mock`` metadata tag (stamped by
-    ``save``); blinded files are additionally stamped ``concealed=True`` by
-    Smokescreen. A ``type='data'`` file without that stamp is real, unblinded
-    data, and loading it raises — skipping the blind can never silently
-    expose the measured vector (PRD #241 §4). Mocks load freely, blinded or
-    not.
 
-    Parameters
-    ----------
-    path : str
-        File to load.
-    allow_unblinded : bool, optional
-        Escape hatch for the two legitimate consumers of unblinded data:
-        the blinding step itself (which must read the true vector to conceal
-        it) and the unblinding/verification tooling. Nothing else — no
-        analysis, plotting or inference code — may pass ``True``.
-
-    Returns
-    -------
-    sacc.Sacc
-        The loaded data set.
-    """
-    s = sacc.Sacc.load_fits(path)
-    if (
-        s.metadata["type"] == "data"
-        and not s.metadata.get("concealed", False)
-        and not allow_unblinded
-    ):
+def _derive(s, parts, custody):
+    """A copy of ``s`` under its inputs' one stamp (and ``custody``'s, if given)."""
+    if not parts:
+        raise ValueError("a derivation needs its input parts")
+    stamps = [_custody.read_stamp(p.metadata) for p in parts]
+    if len({tuple(sorted(st.stamp.items())) for st in stamps}) > 1:
         raise ValueError(
-            f"{path} holds real data (type='data') without the "
-            "concealed=True blinding stamp — refusing to load an unblinded "
-            "data vector. Only the blinding/unblinding tooling may pass "
-            "allow_unblinded=True."
+            "input parts carry different custody stamps: "
+            + "; ".join(f"part {i}: {st.token}" for i, st in enumerate(stamps))
         )
+    stamp = stamps[0]
+    if custody is not None and custody.stamp != stamp.stamp:
+        raise ValueError(
+            f"parts are stamped {stamp.token}, but {custody.catalogue} is "
+            f"declared {custody.token}"
+        )
+    inputs = {_row_key(dp) for p in parts for dp in p.data if dp.data_type in SHIFTABLE}
+    stray = [
+        i
+        for i, dp in enumerate(s.data)
+        if dp.data_type in SHIFTABLE and _row_key(dp) not in inputs
+    ]
+    if stray:
+        raise ValueError(
+            f"{len(stray)} ξ±/Cℓ_EE rows of a derivation are not copies of its "
+            "inputs' rows; a catalogue's shiftable signal is born only through "
+            "save(custody=)"
+        )
+    out = s.copy()
+    _mint(out, stamp.stamp)
+    return out
+
+
+def save(s, path, *, custody=None, derived_from=None):
+    """Write ``s`` to ``path`` (FITS) through the one door; return what was written.
+
+    @sc one-door
+    The only writer of a SACC file, and with :func:`seal` the only place a
+    custody stamp is minted:
+
+    - ``save(s, path, custody=c)``: a birth, sealed by :func:`seal`;
+    - ``save(s, path, derived_from=parts)``: a derivation, stamped with its
+      inputs' one stamp;
+    - ``save(s, path, derived_from=parts, custody=c)``: an assembly, a
+      derivation whose stamp must also be ``c``'s.
+
+    @sc derived-inherit
+    A derivation's inputs must share one stamp, and each of its ξ±/Cℓ_EE rows
+    must be a copy of an input row (type, tracers, value, tags; windows by
+    index), so plaintext cannot be saved under a concealed stamp.
+    """
+    if derived_from is not None:
+        out = _derive(s, list(derived_from), custody)
+    elif custody is not None:
+        out = seal(s, custody)
+    else:
+        raise ValueError(
+            "save needs custody= (a birth) or derived_from= (a derivation); "
+            "a SACC is never written unstamped"
+        )
+    out.save_fits(str(path), overwrite=True)
+    return out
+
+
+def load(path):
+    """Load the SACC at ``path``, refusing a file without a valid custody stamp.
+
+    @sc stamped-or-refused
+    Every file ``save`` wrote carries one of the three stamps; anything else was
+    not born through the door and is refused, with no escape hatch.
+    """
+    s = sacc.Sacc.load_fits(str(path))
+    try:
+        _custody.read_stamp(s.metadata)
+    except _custody.CustodyError as err:
+        raise _custody.CustodyError(f"{path}: {err}") from None
     return s
 
 
@@ -1549,42 +1613,3 @@ def covariance_blocks(cov_list, selectors, *, gaussian=True):
     return [
         (selectors, cov_from_one_covariance(np.asarray(cov_list), gaussian=gaussian))
     ]
-
-
-# --------------------------------------------------------------------------- #
-# Terminal assembly — gather() and its blind-custody call site.
-# --------------------------------------------------------------------------- #
-def gather(parts, metadata=None, assemble=None):
-    """Assemble standalone part SACCs into the one-file ``{version}.sacc``.
-
-    The terminal seam: every path that combines parts into the one-file
-    product goes through here, because this is where the one thing an
-    assembler cannot know about is enforced — blind custody.
-    :func:`sp_validation.blinding.assert_consistent_blind` runs before the
-    assembly and its returned shared stamp is written onto the result. The
-    assembler is passed *in* rather than wrapping this guard, which is what
-    keeps the guard un-bypassable.
-
-    Parameters
-    ----------
-    parts : sequence of sacc.Sacc
-        The part SACCs, in the assembly (covariance) order.
-    metadata : dict, optional
-        Extra key/value pairs to store on the assembled file's metadata.
-    assemble : callable, optional
-        ``assemble(parts) -> sacc.Sacc``. Defaults to :func:`merge`. Bind any
-        further arguments (n(z), metadata) into the callable.
-
-    Returns
-    -------
-    sacc.Sacc
-        The assembled file.
-    """
-    from . import blinding
-
-    parts = list(parts)
-    stamp = blinding.assert_consistent_blind(parts)
-    s = (assemble or merge)(parts)
-    for key, value in {**(metadata or {}), **(stamp or {})}.items():
-        s.metadata[key] = value
-    return s

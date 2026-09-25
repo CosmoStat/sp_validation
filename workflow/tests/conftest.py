@@ -11,15 +11,20 @@ parse with the standard library and Snakemake alone -- the condition a host
 Snakemake is in. The ``candide`` tests need candide itself; CI deselects them.
 
 The ``toy`` fixture is a disposable checkout: copies of ``workflow/`` and
-``papers/cosmo_val/``, this checkout's ``src/`` symlinked in, a one-catalogue
-``cosmo_val/cat_config.yaml``, a touched catalogue file, the processed CosmoCov
+``papers/cosmo_val/``, this checkout's ``src/`` symlinked in, a
+``cosmo_val/cat_config.yaml`` declaring one catalogue per custody state over a
+touched catalogue file, a blind registry of hand-written records (the host
+never decrypts, so no record needs a real seed), the processed CosmoCov
 covariances already in place (their inputs live on candide), and both output
 roots in tmp. Its runs use a fake image whose Python and Snakemake match the
 running ones, so the launch-time parity check passes without apptainer.
 """
 
+import copy
 import dataclasses
+import hashlib
 import importlib.util
+import json
 import os
 import re
 import shutil
@@ -33,8 +38,12 @@ import yaml
 
 REPO = Path(__file__).resolve().parents[2]
 
-# The toy catalogue and its leakage-corrected variant.
+# The toy catalogue and its leakage-corrected variant: blinded under `toy`.
 VERSIONS = ("SP_v0.1", "SP_v0.1_leak_corr")
+# Declared unblinded, and covered by the blind `stale`, which is not revealed.
+STALE = "SP_v0.5"
+# Declares no custody, and no blind covers it.
+UNCOVERED = "SP_v0.4"
 
 HOST_PYTHON = ".".join(str(v) for v in sys.version_info[:3])
 
@@ -121,16 +130,20 @@ class Toy:
     common: object
     covariances: dict  # (version, "g" | "ng") -> the processed CosmoCov file
 
-    def snakemake(self, *args, container=None, cwd=None, env=None, timeout=300):
+    def snakemake(
+        self, *args, container=None, config=(), cwd=None, env=None, timeout=300
+    ):
         """Run the host Snakemake in the toy's paper directory, or in ``cwd``.
 
         ``container`` overrides the image (default: the matching fake one;
-        ``False`` leaves the choice to the launch). ``env`` replaces the toy's
-        environment.
+        ``False`` leaves the choice to the launch). ``config`` adds
+        ``KEY=VALUE`` overrides. ``env`` replaces the toy's environment.
         """
         cmd = [sys.executable, "-m", "snakemake", "--cores", "1", *args]
         if container is not False:
-            cmd += ["--config", f"container={container or self.image}"]
+            config = (f"container={container or self.image}", *config)
+        if config:
+            cmd += ["--config", *config]
         return subprocess.run(
             cmd,
             cwd=cwd or self.rundir,
@@ -160,7 +173,32 @@ def _cat_config(catalogue):
             "e2_col_corrected": "e2_leak_corrected",
         },
     }
-    return {VERSIONS[0]: entry, "paths": {"output": "./output"}}
+    return {
+        VERSIONS[0]: entry,
+        "SP_v0.2": dict(copy.deepcopy(entry), blinding="unblinded"),
+        "SP_v0.3": dict(copy.deepcopy(entry), blinding="mock"),
+        UNCOVERED: copy.deepcopy(entry),
+        STALE: dict(copy.deepcopy(entry), blinding="unblinded"),
+        "paths": {"output": "./output"},
+    }
+
+
+def _registry(root):
+    """Blind records as ``blinding init`` commits them, minus the ciphertext."""
+    for name, bases in (("toy", [VERSIONS[0]]), ("stale", [STALE])):
+        record = root / "cosmo_val" / "blinds" / name
+        record.mkdir(parents=True)
+        (record / "commitment.json").write_text(
+            json.dumps(
+                {
+                    "blind": name,
+                    "seed_commitment": hashlib.sha256(name.encode()).hexdigest(),
+                    "config_digest": hashlib.sha256(b"config").hexdigest(),
+                    "draw_scheme": 2,
+                }
+            )
+        )
+        (record / "bases").write_text("".join(f"{b}\n" for b in bases))
 
 
 @pytest.fixture(scope="session")
@@ -180,6 +218,7 @@ def toy(tmp_path_factory):
     (root / "cosmo_val" / "cat_config.yaml").write_text(
         yaml.safe_dump(_cat_config(catalogue))
     )
+    _registry(root)
 
     rundir = root / "papers" / "cosmo_val"
     config_path = rundir / "config" / "config.yaml"

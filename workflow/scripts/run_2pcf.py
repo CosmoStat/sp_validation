@@ -16,9 +16,10 @@ The measurement is binning-agnostic: the reporting and the fine integration
 grids are the same compute with different ``--min-sep/--max-sep/--nbins``.
 ``CosmologyValidation.calculate_2pcf`` writes the ``.txt`` dump (a raw
 byproduct); the ξ± data product is born as SACC here, a *part* named by its
-binning and tagged with its ``--grid``. The part carries the covariance the
-measurement estimated: the dense jackknife covariance when it had patches, the
-shot-noise ``varxip``/``varxim`` diagonal when it had none.
+binning and tagged with its ``--grid``, sealed under the catalogue's custody.
+The part carries the covariance the measurement estimated: the dense jackknife
+covariance when it had patches, the shot-noise ``varxip``/``varxim`` diagonal
+when it had none.
 
 ``output_dir`` is passed explicitly so lc can point each run at its own
 ``{output}`` tree.
@@ -32,6 +33,7 @@ import numpy as np
 from sp_validation import sacc_io
 from sp_validation.cosmo_val import CosmologyValidation
 from sp_validation.cosmo_val.sacc_writers import xi_to_sacc
+from sp_validation.custody import confirm
 
 
 def run_2pcf(
@@ -44,7 +46,7 @@ def run_2pcf(
     output_dir,
     sacc_out=None,
     grid="reporting",
-    run_type="data",
+    custody=None,
 ):
     """Measure ξ±(θ) for ``ver`` and write its born-as-SACC part.
 
@@ -55,8 +57,9 @@ def run_2pcf(
     ``cat_config['paths']['output']`` so the ``.txt`` byproduct lands where lc
     expects. ``sacc_out`` is the exact destination for the SACC part (the
     Snakemake-declared output); it defaults to a binning-derived name under
-    the resolved output directory for the CLI path. ``run_type`` (``"data"`` or
-    ``"mock"``) is stamped as the part's SACC ``type``.
+    the resolved output directory for the CLI path. ``custody`` is the custody
+    token the launch resolved for ``ver``; the part is not written under any
+    other.
 
     Returns
     -------
@@ -70,6 +73,9 @@ def run_2pcf(
         # so the SACC provenance metadata stamps the npatch actually measured
         npatch=npatch,
     )
+    declared = cv.custody(ver)
+    if custody is not None:
+        confirm(declared, custody)
     gg = cv.calculate_2pcf(
         ver=ver,
         npatch=npatch,
@@ -97,7 +103,7 @@ def run_2pcf(
         output_dir or cv.cc["paths"]["output"],
         f"{ver}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc",
     )
-    sacc_io.save(s, out_path, type=run_type)
+    sacc_io.save(s, out_path, custody=declared)
     print(f"Wrote {grid} ξ± SACC part: {out_path}")
     return gg
 
@@ -116,7 +122,7 @@ def _from_snakemake(smk):
         # The SACC part goes exactly where the rule declares it; the .txt
         # byproduct still lands under the resolved output dir.
         sacc_out=smk.output["sacc"],
-        run_type=p["type"],
+        custody=p["custody"],
     )
 
 
@@ -146,12 +152,6 @@ def _from_cli(argv=None):
     ap.add_argument(
         "--grid", default="reporting", help="SACC grid tag for the measured points"
     )
-    ap.add_argument(
-        "--run-type",
-        default="data",
-        choices=("data", "mock"),
-        help="Campaign run type stamped as the part's SACC `type`",
-    )
     a = ap.parse_args(argv)
     run_2pcf(
         ver=a.ver,
@@ -162,7 +162,6 @@ def _from_cli(argv=None):
         cat_config=a.cat_config,
         output_dir=a.out,
         grid=a.grid,
-        run_type=a.run_type,
     )
 
 

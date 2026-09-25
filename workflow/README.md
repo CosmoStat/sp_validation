@@ -25,6 +25,50 @@ Runs stay modular, not monolithic: a paper or run composes these rules with
 Snakemake's `module` directive under its own config and an output `prefix`, so
 each namespaces cleanly under `results/<name>/`.
 
+## Custody: which catalogues are blinded
+
+Every catalogue in `cosmo_val/cat_config.yaml` declares its custody on its base
+entry, `blinding: blinded | unblinded | mock`; an entry that declares none is
+blinded. Variants (`_leak_corr`, `_seed<N>`, and entries naming their parent
+with `base:`) share their base's custody and blind. A launch prints one
+`[custody]` line per catalogue it runs; no `--config` or config file changes a
+declaration.
+
+For a blinded catalogue, every ξ± and pseudo-Cℓ_EE value is shifted by a hidden
+cosmology before it is first written. COSEBIs and pure-E/B computed from the
+shifted ξ± carry the blind with them; B-modes stay usable. Every SACC file
+records the custody it was born under, and assembly refuses parts under any
+other.
+
+A blinded catalogue needs a blind, drawn once, by a person. The launch stops
+with this command when none covers it:
+
+```bash
+APPTAINERENV_PYTHONPATH=$PWD/src spv-container exec python -m sp_validation.blinding \
+    init <blind> <catalogue> --cat-config cosmo_val/cat_config.yaml
+```
+
+then commit `cosmo_val/blinds/<blind>/`. No rule draws or rewrites a blind, so
+`-F`, `--forcerun` or a fresh output tree reuse it, and every collaborator's run
+of the catalogue uses the same one. A re-processing of a catalogue whose blind
+is still concealed shares it: `… blinding share <blind> <catalogue>
+--cat-config …`.
+
+Revealing re-measures; nothing subtracts a shift:
+
+1. `… blinding reveal <blind> --root <COSMO_VAL> --cat-config …` publishes the
+   seed (`revealed.json`) and moves every file concealed under the blind to
+   `<COSMO_VAL>/revealed/<blind>/`;
+2. one reviewed commit adds `revealed.json` and declares `blinding: unblinded`
+   on the blind's catalogues;
+3. the pipeline re-measures the true products;
+4. `… blinding audit <blind> --archive <COSMO_VAL>/revealed/<blind> --true-root
+   <COSMO_VAL> --cat-config …` checks blinded − true = shift(seed) on every
+   archived file.
+
+`… blinding verify <file> --cat-config …` checks a file's stamp against the
+registry, without the seed.
+
 ## Running on the cluster — the candide profile
 
 `profiles/candide/config.yaml` is the committed SLURM profile: it hands

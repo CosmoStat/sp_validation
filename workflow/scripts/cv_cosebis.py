@@ -3,10 +3,8 @@
 A consumer of the integration-grid ξ± part and the CosmoCov ξ± covariance on
 the same grid — nothing here touches a catalogue. The covariance goes through
 the same linear kernel as the modes to give the COSEBIs covariance; it is
-analytic, so no Hartlap debiasing applies.
-
-On a data run the part it reads is the blinded one, so these COSEBIs are born
-blinded and the output is stamped under the same commitment.
+analytic, so no Hartlap debiasing applies. The COSEBIs part is a derivation of
+the ξ± part and carries its custody.
 """
 
 import numpy as np
@@ -65,19 +63,7 @@ plot_cosebis_scale_cut_heatmap(
 
 save_cosebis_results(results, snakemake.output["npz"], fiducial_scale_cut)
 
-# The part inherits the ξ± part's provenance; `type` and the blind stamp are
-# re-applied on save, from the run type and the version's commitment.
-metadata = {
-    k: v
-    for k, v in part.metadata.items()
-    if k not in ("type", "concealed", "blind_commitment", "blind_config_digest")
-}
-s = cosebis_to_sacc({0: sacc_io.get_nz(part, 0)}, metadata, fiducial, fiducial_key)
-sacc_io.save(
-    s,
-    snakemake.output["sacc"],
-    type=p["type"],
-    commitment=snakemake.input.get("commitment", None),
-)
+s = cosebis_to_sacc({0: sacc_io.get_nz(part, 0)}, part.metadata, fiducial, fiducial_key)
+sacc_io.save(s, snakemake.output["sacc"], derived_from=[part])
 
 verify_outputs(snakemake)
