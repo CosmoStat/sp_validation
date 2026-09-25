@@ -302,10 +302,10 @@ def get_shear_catalog(wildcards):
 # Sentinel directory for pure-plot leaf rules (no natural data-product output).
 CV_SENTINELS = COSMO_VAL / "snakemake_sentinels"
 
-# Working directory in which `CosmologyValidation` must be instantiated: it
-# reads `./cat_config.yaml` and writes to `./output` by default. Resolved to
-# the live (non-worktree) checkout so rules find the catalog config and share
-# the output tree with interactive runs.
+# Working directory in which `CosmologyValidation` is instantiated: its
+# catalogue config comes explicitly from CAT_CONFIG, and it writes to
+# `./output` unless COSMO_VAL is set. Resolved to the live (non-worktree)
+# checkout so rules share the output tree with interactive runs.
 CV_RUNDIR = "/n17data/cdaley/unions/code/sp_validation/cosmo_val"
 
 
@@ -324,31 +324,52 @@ def cv_basename(version, fiducial=None):
     )
 
 
+# CosmologyValidation constructor kwargs read from config["cosmo_val"]. Every
+# keyword with a default is either here or explicitly exempted in
+# src/sp_validation/tests/test_cv_init_params.py, so no default applies silently.
+CV_INIT_KEYS = (
+    "rho_tau_method",
+    "cov_estimate_method",
+    "compute_cov_rho",
+    "n_cov",
+    "theta_min",
+    "theta_max",
+    "nbins",
+    "var_method",
+    "npatch",
+    "quantile",
+    "theta_min_plot",
+    "theta_max_plot",
+    "ylim_alpha",
+    "ylim_xi_sys_ratio",
+    "nside",
+    "nside_mask",
+    "binning",
+    "power",
+    "n_ell_bins",
+    "ell_step",
+    "pol_factor",
+    "cell_method",
+    "noise_bias_method",
+    "fiducial_input_inka",
+    "nrandom_cell",
+    "cell_seed",
+    "path_onecovariance",
+    "cosmo_params",
+)
+
+
 def cv_init_params(config, version_list=None):
     """Assemble the CosmologyValidation(...) constructor kwargs from config.
 
     Centralizes the run-specific instantiation so every cosmo_val rule script
-    builds an identical `cv`. `version_list` overrides config["versions"] (used
-    by per-version rules that pass a single version).
+    builds an identical `cv`. The catalogue config is always CAT_CONFIG, never
+    the constructor's cwd-relative default. `version_list` overrides
+    config["versions"] (used by per-version rules that pass a single version).
     """
     cv = config["cosmo_val"]
-    params = dict(
+    return dict(
         versions=version_list if version_list is not None else config["versions"],
-        npatch=cv["npatch"],
-        theta_min=cv["theta_min"],
-        theta_max=cv["theta_max"],
-        nbins=cv["nbins"],
-        theta_min_plot=cv["theta_min_plot"],
-        theta_max_plot=cv["theta_max_plot"],
-        ylim_alpha=cv["ylim_alpha"],
-        nrandom_cell=cv["nrandom_cell"],
-        cell_method=cv["cell_method"],
-        nside_mask=cv["nside_mask"],
+        catalog_config=CAT_CONFIG,
+        **{key: cv[key] for key in CV_INIT_KEYS},
     )
-    if cv.get("path_onecovariance"):
-        params["path_onecovariance"] = cv["path_onecovariance"]
-    if cv.get("rho_tau_method"):
-        params["rho_tau_method"] = cv["rho_tau_method"]
-    if cv.get("cosmo_params"):
-        params["cosmo_params"] = cv["cosmo_params"]
-    return params

@@ -30,6 +30,22 @@ cosmo_val:
   nrandom_cell: 100
   cell_method: catalog
   nside_mask: 8192
+  cov_estimate_method: th
+  compute_cov_rho: true
+  n_cov: 100
+  var_method: jackknife
+  quantile: 0.1587
+  ylim_xi_sys_ratio: [-0.02, 0.5]
+  fiducial_input_inka: coupled
+  # Pseudo-Cl map resolution, ell binning and noise/randoms settings
+  nside: 1024
+  binning: powspace
+  power: 0.5
+  n_ell_bins: 32
+  ell_step: 10
+  pol_factor: true
+  noise_bias_method: analytic
+  cell_seed: 8192
   path_onecovariance: "/home/guerrini/OneCovariance/"
   rho_tau_method: lsq
 
