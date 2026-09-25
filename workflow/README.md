@@ -93,6 +93,11 @@ This is the default because the alternative is incoherent: Snakemake's
 rule executes new script code against an old `import sp_validation` — the two
 halves of one commit, split.
 
+The catalogue config is the launched checkout's too: `cosmo_val/cat_config.yaml`,
+read by the host and handed to every job. Every declared output lies under
+`COSMO_VAL` or `COSMO_INFERENCE` (environment variables, defaulting to the
+shared trees on candide) or the run directory's `results/`.
+
 **Caveat:** `rerun-triggers: code` watches rule bodies and `script:` files, not
 `src/`. Editing a module under `src/` does not by itself mark outputs stale —
 force with `-F` or `--forcerun <rule>`.
@@ -126,11 +131,20 @@ already uses the plain form; keep new paths the same.
 `snakemake` is a thin host-side tool, pinned once per machine:
 
 ```bash
-uv tool install snakemake==9.23.1 --with snakemake-executor-plugin-slurm
+uv tool install --python 3.12 snakemake==9.23.1 --with snakemake-executor-plugin-slurm
 ```
 
-(match the version to `snakemake` in this repo's `uv.lock`). Run every
-`snakemake` command directly on the host — do not `apptainer shell` first.
+The Python minor and the version must match the image's (the image's Python
+and the `snakemake` in this repo's `uv.lock`): a `script:` job appends the
+host's `sys.path` — standard library included — to its own so that it can
+unpickle the host's `snakemake` object, so a host on another Python loads
+modules the image lacks from the host's stdlib, and another Snakemake writes a
+pickle the job cannot read. Every launch checks this (`common.check_host_parity`)
+and stops with the reinstall command on a mismatch; an image it cannot read,
+such as a registry tag, is named in one line and passes.
+
+Run every `snakemake` command directly on the host — do not `apptainer shell`
+first.
 Snakemake itself never touches the science stack; it only reads rule
 definitions and submits jobs. Each job carries its own `apptainer exec`
 wrapping from the profile (see above), so the container is where the science
@@ -267,11 +281,18 @@ For the image-sims workflow, set `image_sims: {sif: ...}` in your run config.
 Either way the image has to sit under one of the profile's bind mounts to be
 visible.
 
-One trap to know: the `script:` directive bind-mounts the host orchestrator's
-`snakemake` into the job and *appends* it to `sys.path`, so a `snakemake`
-importable inside the image wins the lookup. If `script:` rules start failing
-with `ModuleNotFoundError: No module named 'snakemake.iocontainers'` or similar,
-an in-image snakemake older than the host's is the first thing to check.
+### Checking the workflow itself
+
+`workflow/tests/` checks DAG properties through the host launcher, on a toy
+checkout and — on candide — on the real papers:
+
+```bash
+uv run --isolated --no-project --python 3.12 --with snakemake==9.23.1 \
+    --with snakemake-executor-plugin-slurm --with pytest --with numpy \
+    pytest workflow/tests
+```
+
+CI runs the same suite with `-m "not candide"`.
 
 ### `snakemake` in `script:` files
 

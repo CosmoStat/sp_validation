@@ -20,8 +20,8 @@ binning and tagged with its ``--grid``. The part carries the covariance its
 grid configures (``--cov``): the dense jackknife estimate from the patches, the
 TreeCorr ``varxip``/``varxim`` diagonal, or none.
 
-``output_dir`` is passed explicitly (rather than via the ``COSMO_VAL`` env hook)
-so lc can point each run at its own ``{output}`` tree.
+``output_dir`` is passed explicitly so lc can point each run at its own
+``{output}`` tree.
 """
 
 import argparse

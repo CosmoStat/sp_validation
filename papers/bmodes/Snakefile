@@ -2,7 +2,6 @@
 # compute workflow at ../../workflow/.
 
 configfile: "config/config.yaml"
-configfile: "/n17data/cdaley/unions/code/sp_validation/cosmo_val/cat_config.yaml"
 
 envvars:
     "PYTHONUNBUFFERED",

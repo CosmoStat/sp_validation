@@ -62,6 +62,10 @@ default-resources:
   cpus_per_task: 12
   slurm_extra: "'--exclude=n17,n09,n36'"
 
+# How many jobs may be queued or running at once. Snakemake requires a bound
+# for any remote executor and refuses a real run without one.
+jobs: 100
+
 # Retry a job once on transient node failure, and keep the SLURM logs of
 # successful jobs (candide debugging).
 retries: 1

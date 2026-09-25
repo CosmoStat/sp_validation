@@ -1,0 +1,231 @@
+"""Host-side harness: the workflow as a person launches it.
+
+These tests run under the host launcher, never inside the image::
+
+    uv run --isolated --no-project --python 3.12 --with snakemake==9.23.1 \\
+        --with pytest --with numpy pytest workflow/tests
+
+``sp_validation`` is absent from that environment, so every Snakefile has to
+parse with the standard library and Snakemake alone -- the condition a host
+Snakemake is in. The ``candide`` tests drive the candide profile and so also
+need ``--with snakemake-executor-plugin-slurm``; CI deselects them.
+
+The ``toy`` fixture is a disposable checkout: copies of ``workflow/`` and
+``papers/cosmo_val/``, this checkout's ``src/`` symlinked in, a one-catalogue
+``cosmo_val/cat_config.yaml``, a touched catalogue file, the processed CosmoCov
+covariances already in place (their inputs live on candide), and both output
+roots in tmp. Its runs use a fake image whose Python and Snakemake match the
+running ones, so the launch-time parity check passes without apptainer.
+"""
+
+import dataclasses
+import importlib.util
+import os
+import re
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+import snakemake
+import yaml
+
+REPO = Path(__file__).resolve().parents[2]
+
+# The toy catalogue and its leakage-corrected variant.
+VERSIONS = ("SP_v0.1", "SP_v0.1_leak_corr")
+
+HOST_PYTHON = ".".join(str(v) for v in sys.version_info[:3])
+
+
+def fake_image(root, python=HOST_PYTHON, snakemake_version=snakemake.__version__):
+    """A sandbox-shaped directory carrying only what the parity check reads."""
+    venv = Path(root) / "app" / ".venv"
+    minor = ".".join(python.split(".")[:2])
+    site = venv / "lib" / f"python{minor}" / "site-packages"
+    (site / f"snakemake-{snakemake_version}.dist-info").mkdir(parents=True)
+    (venv / "pyvenv.cfg").write_text(
+        f"home = /usr/local/bin\nimplementation = CPython\nversion_info = {python}\n"
+    )
+    return Path(root)
+
+
+@dataclasses.dataclass
+class Job:
+    rule: str
+    input: list
+    output: list
+    wildcards: dict
+
+
+_RULE = re.compile(r"^(?:local)?rule (\w+):$")
+_FIELD = re.compile(r"^    (\w+): (.*)$")
+
+
+def parse_jobs(text):
+    """The jobs a ``snakemake -n`` listing schedules."""
+    jobs, fields = [], None
+    for line in text.splitlines():
+        if match := _RULE.match(line):
+            fields = {"rule": match[1]}
+            jobs.append(fields)
+        elif fields is not None and (match := _FIELD.match(line)):
+            fields[match[1]] = match[2]
+        else:
+            fields = None
+    return [
+        Job(
+            rule=f["rule"],
+            input=f["input"].split(", ") if "input" in f else [],
+            output=f["output"].split(", ") if "output" in f else [],
+            wildcards=dict(
+                pair.split("=", 1)
+                for pair in f.get("wildcards", "").split(", ")
+                if pair
+            ),
+        )
+        for f in jobs
+    ]
+
+
+def _load_module(path, name, env):
+    """Import a workflow module by path under ``env`` (it reads env at import)."""
+    saved = os.environ.copy()
+    os.environ.update(env)
+    try:
+        spec = importlib.util.spec_from_file_location(name, path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+    finally:
+        os.environ.clear()
+        os.environ.update(saved)
+    return module
+
+
+@dataclasses.dataclass
+class Toy:
+    root: Path
+    rundir: Path
+    cosmo_val: Path
+    cosmo_inference: Path
+    image: Path
+    env: dict
+    config: dict
+    common: object
+
+    def snakemake(self, *args, container=None, timeout=300):
+        """Run the host Snakemake in the toy's paper directory.
+
+        ``container`` overrides the image (default: the matching fake one).
+        """
+        cmd = [sys.executable, "-m", "snakemake", "--cores", "1", *args]
+        cmd += ["--config", f"container={container or self.image}"]
+        return subprocess.run(
+            cmd,
+            cwd=self.rundir,
+            env=self.env,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            timeout=timeout,
+            check=False,
+        )
+
+
+def _cat_config(catalogue):
+    entry = {
+        "subdir": str(catalogue.parent),
+        "pipeline": "SP",
+        "colour": "orange",
+        "marker": "^",
+        "cov_th": {"A": 100.0, "n_e": 5.0, "sigma_e": 0.3},
+        "shear": {
+            "path": str(catalogue),
+            "redshift_path": str(catalogue.parent / "nz_SP_v0.1_A.txt"),
+            "w_col": "w",
+            "e1_col": "e1",
+            "e2_col": "e2",
+            "e1_col_corrected": "e1_leak_corrected",
+            "e2_col_corrected": "e2_leak_corrected",
+        },
+    }
+    return {VERSIONS[0]: entry, "paths": {"output": "./output"}}
+
+
+@pytest.fixture(scope="session")
+def toy(tmp_path_factory):
+    root = tmp_path_factory.mktemp("toy")
+    skip = shutil.ignore_patterns(".snakemake", "__pycache__", "tests")
+    shutil.copytree(REPO / "workflow", root / "workflow", ignore=skip)
+    shutil.copytree(
+        REPO / "papers" / "cosmo_val", root / "papers" / "cosmo_val", ignore=skip
+    )
+    (root / "src").symlink_to(REPO / "src")
+
+    catalogue = root / "data" / "toy_shear.fits"
+    catalogue.parent.mkdir()
+    catalogue.touch()
+    (root / "cosmo_val").mkdir()
+    (root / "cosmo_val" / "cat_config.yaml").write_text(
+        yaml.safe_dump(_cat_config(catalogue))
+    )
+
+    rundir = root / "papers" / "cosmo_val"
+    config_path = rundir / "config" / "config.yaml"
+    config = yaml.safe_load(config_path.read_text())
+    config["versions"] = list(VERSIONS)
+    config["fiducial"]["version"] = VERSIONS[1]
+    config["fiducial"]["mock_version"] = VERSIONS[0]
+    config_path.write_text(yaml.safe_dump(config, sort_keys=False))
+
+    env = {
+        k: v
+        for k, v in os.environ.items()
+        if k not in ("SNAKEMAKE_PROFILE", "APPTAINERENV_PYTHONPATH")
+    }
+    env.update(
+        COSMO_VAL=str(root / "out" / "cosmo_val"),
+        COSMO_INFERENCE=str(root / "out" / "cosmo_inference"),
+        XDG_CACHE_HOME=str(root / "cache"),
+        TMPDIR=str(tmp_path_factory.getbasetemp()),
+        PYTHONUNBUFFERED="1",
+        PYTHONNOUSERSITE="1",
+    )
+    common = _load_module(root / "workflow" / "common.py", "toy_common", env)
+
+    # The processed CosmoCov covariances the cosmo_val rules read, in place.
+    grids = common.xi_grids(config, config["fiducial"])
+    mask = "_masked" if config["covariance"].get("default_masked") else ""
+    for version in VERSIONS:
+        for gaussian, grid in (("ng", grids["reporting"]), ("g", grids["integration"])):
+            path = Path(
+                common.covariance_path(
+                    version,
+                    config["fiducial"]["blind"],
+                    gaussian,
+                    grid["min_sep"],
+                    grid["max_sep"],
+                    grid["nbins"],
+                    mask,
+                )
+            )
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.touch()
+
+    return Toy(
+        root=root,
+        rundir=rundir,
+        cosmo_val=Path(env["COSMO_VAL"]),
+        cosmo_inference=Path(env["COSMO_INFERENCE"]),
+        image=fake_image(root / "image"),
+        env=env,
+        config=config,
+        common=common,
+    )
+
+
+on_candide = pytest.mark.skipif(
+    not Path("/n17data/cdaley/unions").exists() or shutil.which("apptainer") is None,
+    reason="needs candide: /n17data and apptainer",
+)

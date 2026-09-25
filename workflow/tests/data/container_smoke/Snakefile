@@ -1,4 +1,4 @@
-# Standalone workflow exercised by src/sp_validation/tests/test_container_smoke.py.
+# Standalone workflow exercised by workflow/tests/test_container_smoke.py.
 #
 # The module-level `container:` below mirrors what every real workflow does
 # (workflow/Snakefile) -- Snakemake has no way to take a default image from a

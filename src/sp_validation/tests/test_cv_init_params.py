@@ -17,7 +17,6 @@ from sp_validation.cosmo_val import CosmologyValidation
 REPO = Path(__file__).resolve().parents[3]
 
 EXEMPT = {
-    "output_dir": "rules set the output tree via the run directory / COSMO_VAL",
     "blind": "None keeps the n(z) blind declared in the catalogue config",
 }
 

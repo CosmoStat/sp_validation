@@ -28,15 +28,11 @@ def _unbuffer_streams():
 def make_cv(snakemake):
     """Build a CosmologyValidation from a rule's ``snakemake.params``.
 
-    ``params["cv_init"]`` is the kwargs dict assembled by common.cv_init_params.
-    The catalogue config path arrives explicitly in ``cv_init``; the object is
-    created with the run directory as cwd so it writes under ``output/``
-    exactly as interactive runs do.
+    ``params["cv_init"]`` is the kwargs dict assembled by common.cv_init_params,
+    which names the catalogue config and the output directory explicitly.
     """
     from sp_validation.cosmo_val import CosmologyValidation
 
-    rundir = snakemake.params["rundir"]
-    os.chdir(rundir)
     return CosmologyValidation(**dict(snakemake.params["cv_init"]))
 
 

@@ -4,9 +4,9 @@
 def get_cat_params(version):
     """Extract covariance parameters (area, n_e, sigma_e) from catalog config."""
     base_version = version.replace("_leak_corr", "")
-    if base_version not in config:
+    if base_version not in CATALOG_CONFIG:
         raise KeyError(f"Catalog configuration not found for {base_version}")
-    cov_th = config[base_version]["cov_th"]
+    cov_th = CATALOG_CONFIG[base_version]["cov_th"]
     return cov_th["A"], cov_th["n_e"], cov_th["sigma_e"]
 
 

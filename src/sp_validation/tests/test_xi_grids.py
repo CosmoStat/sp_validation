@@ -34,12 +34,7 @@ CONFIG = {
         "nbins": 20,
         "npatch": 100,
         "integration": {"min_sep": 0.08, "max_sep": 300, "nbins": 1000},
-        "cosebis": {
-            "min_sep_int": 0.9,
-            "max_sep_int": 300,
-            "nbins_int": 1000,
-            "npatch": 100,
-        },
+        "cosebis": {"nmodes": 20, "scale_cuts": [[12, 83]]},
     }
 }
 FIDUCIAL = {
@@ -61,15 +56,11 @@ def test_tag_is_built_from_canonical_values():
     for a path the producer never writes.
     """
     grids = common.xi_grids(CONFIG, FIDUCIAL)
-    assert common.grid_binning(grids["integration"]).endswith(
-        "minsep=0.08_maxsep=300.0_nbins=1000_npatch=1"
-    )
-    assert (
-        common.grid_binning(grids["cosebis"])
-        == "minsep=0.9_maxsep=300.0_nbins=1000_npatch=100"
-    )
     # Counts stay integers, so no "nbins=1000.0" creeps into a name.
-    assert "nbins=1000_" in common.grid_binning(grids["cosebis"])
+    assert (
+        common.grid_binning(grids["integration"])
+        == "minsep=0.08_maxsep=300.0_nbins=1000_npatch=1"
+    )
 
 
 def test_grid_lookup_round_trips_through_the_tag():
@@ -86,19 +77,34 @@ def test_grid_lookup_round_trips_through_the_tag():
         assert common.grid_of(grids, {k: str(v) for k, v in binning.items()}) == name
 
 
+def test_one_integration_grid():
+    """COSEBIs and pure-E/B share the integration grid; there is no third."""
+    assert set(common.xi_grids(CONFIG, FIDUCIAL)) == {"reporting", "integration"}
+
+
 def test_covariance_mode_follows_the_patches():
-    """Patched grids get a jackknife block, unpatched ones none."""
+    """Patched grids get a jackknife block, unpatched ones the diagonal.
+
+    Every part then carries variances: at npatch=1 TreeCorr's var_method is
+    "shot", and its diagonal is the estimate it has.
+    """
     grids = common.xi_grids(CONFIG, FIDUCIAL)
     assert grids["reporting"]["cov"] == "jackknife"
-    assert grids["cosebis"]["cov"] == "jackknife"
-    assert grids["integration"]["cov"] == "none"
+    assert grids["integration"]["cov"] == "diagonal"
 
 
-def test_unnamed_binning_is_a_reporting_measurement():
-    """The paper's convergence-check binning belongs to no named grid."""
+@pytest.mark.parametrize("npatch, cov", [(1, "diagonal"), (50, "jackknife")])
+def test_unnamed_binning_is_a_reporting_measurement(npatch, cov):
+    """The paper's convergence-check binning belongs to no named grid.
+
+    It is tagged as a reporting measurement, and its covariance follows its own
+    patches rather than the reporting grid's.
+    """
     grids = common.xi_grids(CONFIG, FIDUCIAL)
-    stray = {"min_sep": 1.0, "max_sep": 250.0, "nbins": 10000, "npatch": 1}
+    stray = {"min_sep": 1.0, "max_sep": 250.0, "nbins": 10000, "npatch": npatch}
     assert common.grid_of(grids, stray) == "reporting"
+    assert common.grid_cov(grids, stray) == cov
+    assert common.grid_cov(grids, {k: str(v) for k, v in stray.items()}) == cov
 
 
 def test_workflow_without_cosmo_val_falls_back_to_fiducial():
@@ -106,4 +112,3 @@ def test_workflow_without_cosmo_val_falls_back_to_fiducial():
     grids = common.xi_grids({}, FIDUCIAL)
     assert grids["reporting"]["npatch"] == 1
     assert grids["integration"]["min_sep"] == 0.5
-    assert "cosebis" not in grids

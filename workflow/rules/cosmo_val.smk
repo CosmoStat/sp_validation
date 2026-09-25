@@ -6,14 +6,14 @@
 # each diagnostic is a rule, and the rules are linked by the SACC parts and
 # products they write under COSMO_VAL (= cosmo_val/output):
 #
-#   catalogue ──→ xi (one job per grid: reporting, integration, cosebis)
-#                   │
-#                   ├─ reporting part ──┬─→ pure_eb (part, npz, figures)
-#                   ├─ integration part ┘        │
-#                   ├─ cosebis part ─────→ cosebis (part, npz, figures)
+#   catalogue ──→ xi (one job per grid: reporting, integration)
+#                   ├─ reporting part ──────→ pure_eb (part, npz, figures)
+#                   ├─ integration part ─┬──→ pure_eb
+#                   │                    └──→ cosebis (part, npz, figures)
 #                   └─ reporting .txt ──→ 2pcf plot, ratio_xi_sys_xi
+#   CosmoCov ξ±, integration grid ──→ pure_eb, cosebis (their covariances)
 #   catalogue ──→ pseudo_cl (part) ──┬─→ pseudo-Cl figures
-#   CosmoCov ──→ covariance ─────────┤
+#   CosmoCov ξ±, reporting grid ─────┤
 #   rho/tau (part + FITS) ───────────┼─→ summarize_bmodes (reads the products)
 #                                    └─→ assemble_sacc ──→ {version}.sacc
 #
@@ -73,7 +73,7 @@ def cv_tau_stats(version):
 
 def _pure_eb_stub(version):
     """Shared stem of the pure-E/B diagnostic products (npz + figures)."""
-    eb = CV["integration"]
+    eb = XI_GRIDS["integration"]
     return str(
         COSMO_VAL
         / (
@@ -101,39 +101,44 @@ def cv_pure_eb_figures(version):
     }
 
 
-def cv_xi_cov_integration(version):
-    """CosmoCov gaussian ξ± covariance on the integration grid.
-
-    The covariance model the pure-E/B Monte Carlo draws from; gaussian because
-    the draws only need the scatter a Gaussian field would give.
-    """
-    integ = CV["integration"]
+def _grid_cov(version, grid, gaussian):
+    """CosmoCov-processed ξ± covariance on a named grid's own binning."""
+    binning = XI_GRIDS[grid]
     return covariance_path(
         version,
         FIDUCIAL["blind"],
-        gaussian="g",
-        min_sep=integ["min_sep"],
-        max_sep=integ["max_sep"],
-        nbins=integ["nbins"],
+        gaussian=gaussian,
+        min_sep=binning["min_sep"],
+        max_sep=binning["max_sep"],
+        nbins=binning["nbins"],
         mask_suffix=DEFAULT_MASK_SUFFIX,
     )
+
+
+def cv_xi_cov_integration(version):
+    """CosmoCov gaussian ξ± covariance on the integration grid.
+
+    The one analytic covariance both B-mode statistics take: the pure-E/B Monte
+    Carlo draws from it and COSEBIs carry it through their kernel. Gaussian
+    because B-modes only need the scatter a Gaussian field would give.
+    """
+    return _grid_cov(version, "integration", "g")
 
 
 def _cosebis_stub(version):
     """Shared stem of the COSEBIs diagnostic products (npz + figures).
 
-    varmethod names where the covariance came from, and these products are the
-    propagated one — which also keeps them clear of the paths plot_cosebis
-    builds for its own byproducts, so nothing overwrites a declared output.
+    Named by the grid, where the covariance came from (varmethod), the mode
+    count and the fiducial scale cut.
     """
-    cb = CV["cosebis"]
+    integ = XI_GRIDS["integration"]
     fsc = CV["fiducial_scale_cut"]
     return str(
         COSMO_VAL
         / (
-            f"{version}_cosebis_minsep={cb['min_sep_int']}"
-            f"_maxsep={cb['max_sep_int']}_nbins={cb['nbins_int']}"
-            f"_npatch={cb['npatch']}_varmethod=propagated_nmodes={cb['nmodes']}"
+            f"{version}_cosebis_minsep={integ['min_sep']}"
+            f"_maxsep={integ['max_sep']}_nbins={integ['nbins']}"
+            f"_varmethod=analytic_nmodes={CV['cosebis']['nmodes']}"
             f"_scalecut={fsc[0]}-{fsc[1]}"
         )
     )
@@ -168,16 +173,8 @@ def cv_pseudo_cl_cov(version):
 
 
 def cv_xi_cov(version):
-    """CosmoCov-processed ξ± covariance, on the reporting grid's own binning."""
-    return covariance_path(
-        version,
-        FIDUCIAL["blind"],
-        gaussian="ng",
-        min_sep=CV["theta_min"],
-        max_sep=CV["theta_max"],
-        nbins=CV["nbins"],
-        mask_suffix=DEFAULT_MASK_SUFFIX,
-    )
+    """CosmoCov ξ± covariance on the reporting grid, the terminal file's."""
+    return _grid_cov(version, "reporting", "ng")
 
 
 def cv_cosebis_sacc(version):
@@ -207,13 +204,9 @@ def cv_analysis_sacc(version):
     return str(COSMO_VAL / f"{version}.sacc")
 
 
-# Common params block shared by every cosmo_val rule: the cv constructor kwargs
-# plus the run directory the object must be instantiated in.
+# Common params block shared by every cosmo_val rule: the cv constructor kwargs.
 def cv_params(version_list=None):
-    return dict(
-        cv_init=cv_init_params(config, version_list=version_list),
-        rundir=CV_RUNDIR,
-    )
+    return dict(cv_init=cv_init_params(config, version_list=version_list))
 
 
 # ---------------------------------------------------------------------------
@@ -393,7 +386,6 @@ rule cv_plot_pseudo_cl:
         # Style is per catalogue, so the derived variants take their parent's.
         markers=[CATALOG_CONFIG[base_version(v)]["marker"] for v in CV_VERSIONS],
         colours=[CATALOG_CONFIG[base_version(v)]["colour"] for v in CV_VERSIONS],
-        rundir=CV_RUNDIR,
     resources:
         mem_mb=8000,
         runtime=20,
@@ -427,7 +419,6 @@ rule cv_pure_eb:
         n_samples=CV.get("n_mc_samples", 1000),
         cosmo_params=CV["cosmo_params"],
         fiducial_scale_cut=CV["fiducial_scale_cut"],
-        rundir=CV_RUNDIR,
     threads: 24
     resources:
         mem_mb=40000,
@@ -437,26 +428,26 @@ rule cv_pure_eb:
 
 
 rule cv_cosebis:
-    """COSEBIs E/B decomposition for one version, from its ξ± part.
+    """COSEBIs E/B decomposition for one version, from its integration-grid part.
 
-    Values, covariance and PTEs all come from the part: the COSEBIs covariance
-    is the part's ξ± covariance through the same kernel as the modes.
+    The modes come from the part; the covariance is the CosmoCov ξ± covariance
+    on the same grid through the same kernel as the modes.
     """
     input:
-        xi=lambda w: cv_xi_sacc(w.version, "cosebis"),
+        xi=lambda w: cv_xi_sacc(w.version, "integration"),
+        cov=lambda w: cv_xi_cov_integration(w.version),
     output:
         npz=cv_cosebis_npz("{version}"),
         sacc=cv_cosebis_sacc("{version}"),
         **cv_cosebis_figures("{version}"),
     params:
         version="{version}",
-        min_sep=CV["cosebis"]["min_sep_int"],
-        max_sep=CV["cosebis"]["max_sep_int"],
-        nbins=CV["cosebis"]["nbins_int"],
+        min_sep=XI_GRIDS["integration"]["min_sep"],
+        max_sep=XI_GRIDS["integration"]["max_sep"],
+        nbins=XI_GRIDS["integration"]["nbins"],
         nmodes=CV["cosebis"]["nmodes"],
         scale_cuts=CV["cosebis"]["scale_cuts"],
         fiducial_scale_cut=CV["fiducial_scale_cut"],
-        rundir=CV_RUNDIR,
     threads: 24
     resources:
         mem_mb=48000,
@@ -487,7 +478,6 @@ rule cv_summarize_bmodes:
         max_sep=CV["theta_max"],
         nbins=CV["nbins"],
         include_pseudo_cl=CV.get("include_pseudo_cl", False),
-        rundir=CV_RUNDIR,
     resources:
         mem_mb=8000,
         runtime=20,

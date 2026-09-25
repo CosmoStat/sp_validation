@@ -15,7 +15,7 @@ written to the output YAML:
     container -- proves /home is bound and usable, not just readable).
 
 Driven by the co-located Snakefile; the assertions on the output YAML live in
-src/sp_validation/tests/test_container_smoke.py (marked ``slow``, cluster only).
+workflow/tests/test_container_smoke.py (candide only).
 """
 
 import os
@@ -51,11 +51,11 @@ numeric_info = {
 }
 
 # --- provenance: what commit is actually running in the container ---------
-# src/sp_validation/tests/data/container_smoke/ -> repo root, five levels up.
+# workflow/tests/data/container_smoke/ -> repo root, four levels up.
 # (This is the checkout the Snakefile came from, which is what we want to
 # report; the editable install may well resolve to a *different* checkout.)
 repo_dir = os.path.abspath(
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), *([os.pardir] * 5))
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), *([os.pardir] * 4))
 )
 try:
     commit = subprocess.run(
