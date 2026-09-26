@@ -222,11 +222,12 @@ def _custody_lines(output):
 
 
 def test_a_catalogue_without_a_blind_stops_the_launch(toy):
-    """A blinded catalogue with no blind fails at parse, naming the one command."""
+    """A blinded catalogue with no blind fails at parse: pull, then draw or share."""
     result = toy.snakemake(
         "-n", "assemble_sacc_all", config=[f'versions=["{UNCOVERED}"]']
     )
     assert result.returncode != 0, result.stdout
+    assert "git pull first" in result.stdout
     assert "python -m sp_validation.blinding init" in result.stdout
     assert "share" in result.stdout
     assert "rule assemble_sacc" not in result.stdout

@@ -123,10 +123,11 @@ def _recorded_config(name, record):
     unset = sorted(fields - set(theory)) + ["envelope"] * ("envelope" not in record)
     if foreign or unset:
         raise _custody.CustodyError(
-            f"blind {name} was drawn under a config this code cannot reproduce: "
-            f"the record names {foreign}, which this code lacks, and lacks "
-            f"{unset}, which have no value in blinding.NEUTRAL. Open it with the "
-            "code it was drawn under, or give each new field its neutral value."
+            f"blind {name} was drawn under a config this code cannot reproduce. "
+            f"Fields the record names and this code lacks: {foreign or 'none'}. "
+            "Fields this code has and the record lacks, with no value in "
+            f"blinding.NEUTRAL: {unset or 'none'}. Open the blind with the code "
+            "it was drawn under, or give each new field its neutral value."
         )
     return BlindingConfig(
         envelope={k: float(v) for k, v in envelope.items()},
