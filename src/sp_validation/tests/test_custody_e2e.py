@@ -31,7 +31,7 @@ SCRIPTS = REPO / "workflow" / "scripts"
 
 GRIDS = {
     "reporting": {"min_sep": 5.0, "max_sep": 60.0, "nbins": 6, "npatch": 1},
-    "integration": {"min_sep": 1.0, "max_sep": 150.0, "nbins": 120, "npatch": 1},
+    "integration": {"min_sep": 1.0, "max_sep": 150.0, "nbins": 300, "npatch": 1},
 }
 SCALE_CUT = [12.0, 60.0]
 PARTS = ("xi_reporting", "pseudo_cl", "cosebis", "pure_eb", "rho_tau")
@@ -112,13 +112,23 @@ def _rho_tau_handlers():
 
 
 def _covariances(root):
-    """CosmoCov-format ξ± covariances on both grids, and a NaMaster Cℓ FITS."""
+    """ξ± shape-noise covariances on both grids, and a NaMaster Cℓ FITS.
+
+    The ξ± covariances are the diagonal shape noise of the synthetic catalogue
+    (its density and per-component dispersion), in CosmoCov's text format.
+    """
     from astropy.io import fits
 
+    from sp_validation.b_modes import log_bin_edges
+
+    density, sigma_e, area = 20000 / (4.0 * 60) ** 2, 0.05, (4.0 * 60) ** 2
     paths = {}
     for grid, b in GRIDS.items():
+        left, right = log_bin_edges(b["min_sep"], b["max_sep"], b["nbins"])
+        pairs = np.pi * area * density**2 * (right**2 - left**2) / 2.0
+        var = 2.0 * sigma_e**4 / pairs
         paths[grid] = root / f"cov_{grid}.txt"
-        np.savetxt(paths[grid], np.diag(np.full(2 * b["nbins"], 1e-10)))
+        np.savetxt(paths[grid], np.diag(np.concatenate([var, var])))
     nbp = len(_namaster_part_inputs()[0])
     paths["pseudo_cl"] = root / "pseudo_cl_cov.fits"
     fits.HDUList(
@@ -276,6 +286,8 @@ def toy(tmp_path, monkeypatch):
         json.dumps({"theory": {"transfer_function": "eisenstein_hu"}})
     )
     cat_config = Path(params["catalog_config"])
+    # A fixed seed, so every run conceals under the same hidden point.
+    monkeypatch.setattr(bd.secrets, "token_hex", lambda n: "e2e-seed")
     bd.main(
         [
             "init",
@@ -416,6 +428,7 @@ def test_a_blinded_catalogue_from_birth_to_audit(toy, monkeypatch):
     assert all(s == true.stamp for s in stamps(out).values())
 
     report = bd.audit("toy", archive=archive, true_root=out, cat_config=toy.cat_config)
+    print(json.dumps(report, indent=1, default=str))
     assert report["ok"], json.dumps(report, indent=1, default=str)
     assert set(report["parts"]) == set(born)
     assert (

@@ -366,15 +366,26 @@ def _shape_noise_variance(left, right):
     return 2.0 * sigma_e**4 / pairs
 
 
-def test_shift_leaks_no_b_modes(blinds):
-    """|ΔBₙ|/σ(Bₙ) and |Δξ_B|/σ stay below 1e-2 on the production grids.
+@pytest.mark.parametrize("ds8", [0.075, -0.075])
+@pytest.mark.parametrize("dom", [0.1, -0.1])
+def test_shift_leaks_no_b_modes(ds8, dom):
+    """B-modes a shift at the envelope's edge induces are numerical, and small.
 
-    Single-bin n(z), the 0.08–300′ 1000-bin integration grid and the 1–250′
-    20-bin reporting grid; σ is shape noise at UNIONS depth. The shift is a pure
-    E-mode theory difference, so the B-modes it induces are numerical only.
+    At each corner of the (S8, Ωm) envelope, on the production grids (the
+    0.08–300′ 1000-bin integration grid, the 1–250′ 20-bin reporting grid),
+    single-bin n(z), σ from shape noise at UNIONS depth: |ΔBₙ|/σ(Bₙ) ≤ 1e-2 on
+    [12, 83]′ (observed ≤ 1e-4) and |Δξ_B|/σ ≤ 2e-2 (observed ≤ 1.0e-2, pure ξ−_B
+    at θ ≈ 2′, the estimator's own E→B leakage).
     """
     from sp_validation import b_modes
 
+    config = bd.BlindingConfig(theory=TheoryConfig(transfer_function="eisenstein_hu"))
+    fid = config.theory
+    hidden = dataclasses.replace(
+        fid,
+        S8=fid.S8 + np.sign(ds8) * config.envelope["S8"],
+        Omega_m=fid.Omega_m + np.sign(dom) * config.envelope["Omega_m"],
+    )
     grids = {
         "integration": b_modes.log_bin_edges(0.08, 300.0, 1000),
         "reporting": b_modes.log_bin_edges(1.0, 250.0, 20),
@@ -384,7 +395,9 @@ def test_shift_leaks_no_b_modes(blinds):
     for grid, (left, right) in grids.items():
         theta[grid] = np.sqrt(left * right)
         sio.add_xi(s, (0, 0), theta[grid], *_xi_template(theta[grid]), grid=grid)
-    shift = np.asarray(sio.seal(s, blinds["TOY"]).mean) - np.asarray(s.mean)
+    shift = np.zeros(len(s.mean))
+    for block, factor in bd.factors(s, fid, hidden):
+        shift[block.rows] = factor
 
     def delta(grid):
         return tuple(
@@ -419,7 +432,7 @@ def test_shift_leaks_no_b_modes(blinds):
     for key in ("xip_B", "xim_B"):
         finite = np.isfinite(modes[key])
         assert finite.sum() > 10
-        assert np.max(np.abs(modes[key][finite]) / sigma[finite]) <= 1e-2, key
+        assert np.max(np.abs(modes[key][finite]) / sigma[finite]) <= 2e-2, key
 
 
 # --------------------------------------------------------------------------- #

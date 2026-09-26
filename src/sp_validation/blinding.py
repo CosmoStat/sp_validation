@@ -477,6 +477,16 @@ def reveal(name, *, root, cat_config):
 # A re-measurement repeats a measurement to float noise (TreeCorr's threaded
 # sums reorder); the audit compares its numbers to this relative tolerance.
 _REMEASURED = 1e-10
+# How far, in σ, a derived B-mode may move under a blind. COSEBIs B-modes move
+# by ~1e-4σ. Pure-mode ξ_B carries the estimator's own E→B leakage of the
+# shift: up to 1e-2σ on the production grids at the envelope's edge
+# (test_blinding), several times more on coarse grids. A derivation from mixed
+# inputs moves B by ~1σ.
+_B_SIGMA = {
+    sacc_io.COSEBI_BB: 1e-2,
+    sacc_io.PURE_TYPES["xip_B"]: 1e-1,
+    sacc_io.PURE_TYPES["xim_B"]: 1e-1,
+}
 
 
 def _same(x, y):
@@ -538,27 +548,25 @@ def _audit_part(blinded, true, fiducial, hidden, tolerance):
         problems.append(f"blinded − true ≠ shift(seed): residual {residual:.2e}")
 
     sigma = None if cov_t is None else np.sqrt(np.diag(cov_t))
-    e_shift = {}
+    derived = (sacc_io.COSEBI_EE, sacc_io.COSEBI_BB, *sacc_io.PURE_TYPES.values())
+    moved = {}
     for i, dp in enumerate(true.data):
+        kind = dp.data_type
         if shifted[i]:
             continue
-        kind = dp.data_type
-        b_mode = kind in (
-            sacc_io.COSEBI_BB,
-            *[sacc_io.PURE_TYPES[k] for k in ("xip_B", "xim_B")],
-        )
-        e_mode = kind in (sacc_io.COSEBI_EE, *sacc_io.PURE_TYPES.values())
-        if b_mode:
-            if sigma is None or abs(delta[i]) > 1e-2 * sigma[i]:
-                problems.append(f"B row {i} ({kind}) moved by {delta[i]:.3e}")
-        elif e_mode:
-            if sigma is not None:
-                e_shift[kind] = max(e_shift.get(kind, 0.0), abs(delta[i]) / sigma[i])
+        if kind in derived:
+            if sigma is None:
+                problems.append(f"row {i} ({kind}) has no σ to judge its shift by")
+            elif np.isfinite(delta[i]):
+                moved[kind] = max(moved.get(kind, 0.0), abs(delta[i]) / sigma[i])
         elif abs(delta[i]) > 1e-8 * max(abs(dp.value), 1e-300):
             problems.append(
                 f"row {i} ({kind}) moved, but the blind leaves it unshifted"
             )
-    return problems, {"residual": residual, "e_shift_over_sigma": e_shift}
+    for kind, bound in _B_SIGMA.items():
+        if moved.get(kind, 0.0) > bound:
+            problems.append(f"{kind} moved by {moved[kind]:.2e}σ under the blind")
+    return problems, {"residual": residual, "shift_over_sigma": moved}
 
 
 def audit(name, *, archive, true_root, cat_config, out=None):
@@ -571,8 +579,9 @@ def audit(name, *, archive, true_root, cat_config, out=None):
     noise), and blinded − true must equal the seed's shift on every ξ± and
     Cℓ_EE block to 1e-6 of the block's largest shift (1e-3 when the theory
     stack differs from the one the blind was drawn with); COSEBIs and pure-E/B
-    B rows may move by at most 1e-2 σ, and rows the blind leaves unshifted not
-    at all.
+    B rows may move by at most ``_B_SIGMA``, and rows the blind leaves
+    unshifted not at all. Each part reports the largest shift of each derived
+    statistic, in σ.
     """
     registry = _custody.registry_of(cat_config)
     record, commitment = _read_record(registry, name)
