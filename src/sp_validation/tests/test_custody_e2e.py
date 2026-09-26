@@ -206,6 +206,24 @@ def run_chain(cat_config, version, out, cov, *, grid_parts=None):
             "fiducial_scale_cut": SCALE_CUT,
         },
     )
+    pure_eb(version, pure_eb_outputs(version, out), xi, cov)
+    assemble(cat_config, version, out, paths, cov, token)
+    return paths
+
+
+def pure_eb_outputs(version, out):
+    return {
+        "npz": str(out / f"{version}_pure_eb.npz"),
+        "sacc": str(out / f"{version}_pure_eb.sacc"),
+        "figure_integration_vs_reporting": str(out / f"{version}_eb_ivr.png"),
+        "figure_xis": str(out / f"{version}_eb_xis.png"),
+        "figure_ptes": str(out / f"{version}_eb_ptes.png"),
+        "figure_covariance": str(out / f"{version}_eb_cov.png"),
+    }
+
+
+def pure_eb(version, output, xi, cov):
+    """Rule cv_pure_eb for ``version`` from the ξ± parts ``xi`` (by grid)."""
     rep = GRIDS["reporting"]
     run_rule(
         "cv_pure_eb.py",
@@ -214,14 +232,7 @@ def run_chain(cat_config, version, out, cov, *, grid_parts=None):
             "xi_integration": str(xi["integration"]),
             "cov_integration": str(cov["integration"]),
         },
-        output={
-            "npz": str(out / f"{version}_pure_eb.npz"),
-            "sacc": str(paths["pure_eb"]),
-            "figure_integration_vs_reporting": str(out / f"{version}_eb_ivr.png"),
-            "figure_xis": str(out / f"{version}_eb_xis.png"),
-            "figure_ptes": str(out / f"{version}_eb_ptes.png"),
-            "figure_covariance": str(out / f"{version}_eb_cov.png"),
-        },
+        output=output,
         params={
             "version": version,
             "min_sep": rep["min_sep"],
@@ -233,8 +244,6 @@ def run_chain(cat_config, version, out, cov, *, grid_parts=None):
             "fiducial_scale_cut": SCALE_CUT,
         },
     )
-    assemble(cat_config, version, out, paths, cov, token)
-    return paths
 
 
 def assemble(cat_config, version, out, paths, cov, token):
@@ -358,6 +367,21 @@ def test_a_blinded_catalogue_from_birth_to_audit(toy, monkeypatch):
             toy.cov,
             blinded.token,
         )
+    # Pure-E/B from parts under two custodies writes nothing at all.
+    mixed = pure_eb_outputs("TOY", toy.root / "mixed")
+    (toy.root / "mixed").mkdir()
+    with pytest.raises(ValueError, match="stamps"):
+        pure_eb(
+            "TOY",
+            mixed,
+            {
+                "reporting": open_parts["reporting"],
+                "integration": out / "TOY_xi_integration.sacc",
+            },
+            toy.cov,
+        )
+    assert not list((toy.root / "mixed").iterdir())
+
     plain = sio.load(open_parts["reporting"])
     for key in cu.STAMP_KEYS:
         plain.metadata.pop(key, None)
