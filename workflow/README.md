@@ -145,7 +145,9 @@ halves of one commit, split.
 The catalogue config is the launched checkout's too: `cosmo_val/cat_config.yaml`,
 read by the host and handed to every job. The `papers/cosmo_val` suite writes
 only under `COSMO_VAL` or `COSMO_INFERENCE` (environment variables, defaulting
-to the shared trees on candide) or the run directory's `results/`. Other rules
+to the production checkout's trees on candide) or the run directory's
+`results/`. A launch from any other checkout must set `COSMO_VAL`, so its
+products never land in production's tree by default. Other rules
 write elsewhere: masks under the run directory's `output/masks/`,
 `papers/bmodes`' figures and macros under its run directory's `docs/`, the
 image sims under their `grids_base`.

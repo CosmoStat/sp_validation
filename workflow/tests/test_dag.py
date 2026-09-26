@@ -280,6 +280,14 @@ def test_the_campaign_type_switch_is_refused(toy, tmp_path):
     )
 
 
+def test_another_checkout_names_its_output_tree(toy):
+    """A checkout other than production's must set COSMO_VAL to launch."""
+    env = {k: v for k, v in toy.env.items() if k != "COSMO_VAL"}
+    result = toy.snakemake("-n", "assemble_sacc_all", env=env)
+    assert result.returncode != 0, result.stdout
+    assert "COSMO_VAL=<dir>" in result.stdout
+
+
 def test_unblinding_a_concealed_catalogue_needs_the_reveal(toy):
     result = toy.snakemake("-n", "assemble_sacc_all", config=[f'versions=["{STALE}"]'])
     assert result.returncode != 0, result.stdout
@@ -288,6 +296,10 @@ def test_unblinding_a_concealed_catalogue_needs_the_reveal(toy):
 
 def _real_dry_run(paper, targets):
     env = {k: v for k, v in os.environ.items() if k != "SNAKEMAKE_PROFILE"}
+    # Against the production output tree, whichever checkout runs the tests.
+    env.setdefault(
+        "COSMO_VAL", "/n17data/cdaley/unions/code/sp_validation/cosmo_val/output"
+    )
     env.update(PYTHONUNBUFFERED="1", PYTHONNOUSERSITE="1")
     return subprocess.run(
         [

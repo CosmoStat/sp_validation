@@ -55,16 +55,12 @@ os.environ.pop("XDG_CACHE_HOME", None)
 
 
 # Output roots are env-overridable so a reproduction run can write into a
-# fresh tree without clobbering (or silently reusing) prior products.
-COSMO_VAL = Path(
-    os.environ.get(
-        "COSMO_VAL", "/n17data/cdaley/unions/code/sp_validation/cosmo_val/output"
-    )
-)
+# fresh tree without clobbering (or silently reusing) prior products. They
+# default to the production checkout's trees on candide.
+PRODUCTION = Path("/n17data/cdaley/unions/code/sp_validation")
+COSMO_VAL = Path(os.environ.get("COSMO_VAL", PRODUCTION / "cosmo_val" / "output"))
 COSMO_INFERENCE = Path(
-    os.environ.get(
-        "COSMO_INFERENCE", "/n17data/cdaley/unions/code/sp_validation/cosmo_inference"
-    )
+    os.environ.get("COSMO_INFERENCE", PRODUCTION / "cosmo_inference")
 )
 # The catalogue config of the launched checkout: the one file both the host
 # (CATALOG_CONFIG, loaded in configure) and every job read catalogues from, and
@@ -225,11 +221,31 @@ def check_host_parity(image):
     )
 
 
+def check_output_root():
+    """Stop another checkout's launch from writing into the production outputs.
+
+    Custody is the launched checkout's, so a checkout other than
+    :data:`PRODUCTION` names its ``COSMO_VAL``: parts concealed under its
+    blinds, or re-measured under its declarations, never land in production's
+    tree unless asked to.
+    """
+    from snakemake.exceptions import WorkflowError
+
+    if "COSMO_VAL" in os.environ or PRODUCTION.resolve() == REPO_ROOT:
+        return
+    raise WorkflowError(
+        f"this checkout ({REPO_ROOT}) is not {PRODUCTION}, whose output tree "
+        f"COSMO_VAL defaults to. Name the tree to write into: COSMO_VAL=<dir> "
+        f"snakemake … (COSMO_VAL={COSMO_VAL} to write into production's)."
+    )
+
+
 def configure(workflow_config):
     """Install config-derived values after Snakemake has loaded configfiles."""
     global CATALOG_CONFIG, DEFAULT_MASK_SUFFIX, FIDUCIAL, PLANCK18
     from snakemake.common.configfile import load_configfile
 
+    check_output_root()
     inject_checkout_pythonpath(workflow_config)
     warn_if_image_stale()
     check_host_parity(resolve_container(workflow_config.get("container")))
