@@ -71,15 +71,6 @@ def run_rule(script, *, input=None, output=None, params=None):
     )
 
 
-def declared(cat_config, version):
-    """The custody a host Snakemake resolves for ``version``."""
-    return cu.custody_of(
-        yaml.safe_load(Path(cat_config).read_text()),
-        version,
-        registry=cu.registry_of(cat_config),
-    )
-
-
 def _namaster_part_inputs():
     """``(ell_eff, cl_all, workspace)`` on an nside-32 full-sky workspace."""
     import healpy as hp
@@ -144,7 +135,7 @@ def _covariances(root):
 def run_chain(cat_config, version, out, cov, *, grid_parts=None):
     """The cosmo_val chain for one version, into ``out``; returns the part paths."""
     out.mkdir(parents=True, exist_ok=True)
-    token = declared(cat_config, version).token
+    token = bd.declared_custody(cat_config, version).token
     xi = {}
     for grid, b in GRIDS.items():
         xi[grid] = out / f"{version}_xi_{grid}.sacc"
@@ -316,7 +307,7 @@ def toy(tmp_path, monkeypatch):
 
 def test_a_blinded_catalogue_from_birth_to_audit(toy, monkeypatch):
     out = toy.root / "cosmo_val"
-    blinded = declared(toy.cat_config, "TOY")
+    blinded = bd.declared_custody(toy.cat_config, "TOY")
     assert blinded.status == "blinded"
 
     # --- a blinded run -------------------------------------------------------
@@ -443,7 +434,7 @@ def test_a_blinded_catalogue_from_birth_to_audit(toy, monkeypatch):
     config = yaml.safe_load(toy.cat_config.read_text())
     config["TOY"]["blinding"] = "unblinded"
     toy.cat_config.write_text(yaml.safe_dump(config, sort_keys=False))
-    true = declared(toy.cat_config, "TOY")
+    true = bd.declared_custody(toy.cat_config, "TOY")
     assert true.token == "unblinded:TOY"
 
     for version in ("TOY", "TOY_leak_corr"):
@@ -475,7 +466,37 @@ def test_a_mock_never_opens_a_blind(toy, monkeypatch):
     monkeypatch.setattr(bd, "open_blind", refuse)
     out = toy.root / "mock"
     run_chain(toy.cat_config, "TOY_MOCK", out, toy.cov)
-    mock = declared(toy.cat_config, "TOY_MOCK")
+    mock = bd.declared_custody(toy.cat_config, "TOY_MOCK")
     found = stamps(out)
     assert len(found) == 2 + len(PARTS)
     assert all(s == mock.stamp for s in found.values()), found
+
+
+@pytest.mark.parametrize(
+    "script", ["run_2pcf.py", "run_rho_tau.py", "assemble_sacc.py"]
+)
+def test_a_job_refuses_a_custody_changed_since_the_launch(toy, script):
+    """TOY's launch resolved it unblinded; declared blinded by the time the job
+    runs, the job refuses before it measures or writes anything."""
+    out = toy.root / "stale"
+    outputs = {
+        "sacc": out / "part.sacc",
+        "rho_stats": out / "rho.fits",
+        "tau_stats": out / "tau.fits",
+        "rho_tau": out / "rho_tau.sacc",
+    }
+    out.mkdir()
+    with pytest.raises(cu.CustodyError, match="changed since the launch"):
+        run_rule(
+            script,
+            output={k: str(v) for k, v in outputs.items()},
+            params={
+                "ver": "TOY",
+                "version": "TOY",
+                **GRIDS["reporting"],
+                "cat_config": str(toy.cat_config),
+                "output_dir": str(out),
+                "custody": "unblinded:TOY",
+            },
+        )
+    assert not list(out.iterdir())

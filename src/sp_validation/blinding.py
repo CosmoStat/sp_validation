@@ -11,17 +11,12 @@
     concealed ξ± are concealed with it; the shift is pure E-mode, so B-mode null
     tests stay valid.
 
-    A blind is drawn once, by a person, with ``python -m sp_validation.blinding
-    init``, into the registry beside the catalogue config
-    (``cosmo_val/blinds/<blind>/``): the public ``commitment.json`` (the seed's
-    commitment and the full :class:`BlindingConfig`), the seed as Fernet
-    ciphertext (``seed.fernet``), its ``key``, and the ``bases`` it covers. The
-    seed exists on disk only inside the ciphertext; the encryption keeps anyone
-    from reading it by accident. ``share`` adds a catalogue to a blind;
-    ``reveal`` publishes the seed and moves the concealed files aside;
-    ``audit`` proves blinded − true = shift(seed) once the true files are
-    re-measured; ``verify`` checks a file's stamp against its catalogue's
-    custody, seedless.
+    The commands of ``python -m sp_validation.blinding`` are the only writers
+    of the blind registry (``cosmo_val/blinds/CONTRACTS``): ``init`` draws a
+    blind, once, by a person; ``share`` adds a catalogue to it; ``reveal``
+    publishes its seed and moves the concealed files aside. ``audit`` checks
+    the re-measured true files against that archive, and ``verify`` checks a
+    file's stamp against its catalogue's custody, seedless.
 """
 
 import argparse
@@ -66,16 +61,6 @@ class BlindingConfig:
         """The config as plain data: every field, numbers as floats."""
         return _canonical(self)
 
-    @classmethod
-    def from_record(cls, record):
-        """The config a partial record names; fields it omits take their defaults."""
-        fields = {}
-        if "envelope" in record:
-            fields["envelope"] = {k: float(v) for k, v in record["envelope"].items()}
-        if "theory" in record:
-            fields["theory"] = TheoryConfig(**record["theory"])
-        return cls(**fields)
-
     def digest(self):
         """sha256 of the canonical record; int and float literals agree."""
         return record_digest(self.record())
@@ -109,11 +94,11 @@ NEUTRAL = {}
 
 
 def _recorded_config(name, record):
-    """The config blind ``name`` was drawn under, from its stored record.
+    """The :class:`BlindingConfig` of blind ``name``, from its config record.
 
-    Refuses, naming the fields, a record whose shift this code cannot
-    reproduce: one naming a field the code lacks, or lacking a code field that
-    has no value in :data:`NEUTRAL`.
+    The one reader of the record format. Refuses, naming the fields, a record
+    whose shift this code cannot reproduce: one naming a field the code lacks,
+    or lacking a code field that has no value in :data:`NEUTRAL`.
     """
     fields = {f.name for f in dataclasses.fields(TheoryConfig)}
     theory = {**NEUTRAL, **record.get("theory", {})}
@@ -123,11 +108,11 @@ def _recorded_config(name, record):
     unset = sorted(fields - set(theory)) + ["envelope"] * ("envelope" not in record)
     if foreign or unset:
         raise _custody.CustodyError(
-            f"blind {name} was drawn under a config this code cannot reproduce. "
-            f"Fields the record names and this code lacks: {foreign or 'none'}. "
-            "Fields this code has and the record lacks, with no value in "
-            f"blinding.NEUTRAL: {unset or 'none'}. Open the blind with the code "
-            "it was drawn under, or give each new field its neutral value."
+            f"blind {name}'s config does not fit this code. Fields the record "
+            f"names and this code lacks: {foreign or 'none'}. Fields this code "
+            "has and the record lacks, with no value in blinding.NEUTRAL: "
+            f"{unset or 'none'}. A drawn blind opens under the code it was "
+            "drawn with, or once each new field has its neutral value."
         )
     return BlindingConfig(
         envelope={k: float(v) for k, v in envelope.items()},
@@ -172,6 +157,12 @@ class Blind:
     hidden: TheoryConfig
 
 
+def _blind(name, seed, record):
+    """Blind ``name`` from its seed and config record, as it is opened."""
+    config = _recorded_config(name, record)
+    return Blind(name, seed, config, hidden_theory(seed, config))
+
+
 @functools.cache
 def _open(registry, name):
     from cryptography.fernet import Fernet, InvalidToken
@@ -212,9 +203,7 @@ def _open(registry, name):
             f"blind {name} was drawn under draw scheme {c['draw_scheme']}; this "
             f"install's smokescreen draws under {draw_scheme()}"
         )
-    config = _recorded_config(name, c["config"])
-    seed = payload["seed"]
-    return Blind(name, seed, config, hidden_theory(seed, config))
+    return _blind(name, payload["seed"], c["config"])
 
 
 def open_blind(custody):
@@ -355,6 +344,14 @@ def _catalogues(cat_config):
     return yaml.safe_load(Path(cat_config).read_text())
 
 
+def declared_custody(cat_config, version):
+    """The custody ``version`` is declared under in the catalogue config at
+    ``cat_config``, with the blind registry beside it."""
+    return _custody.custody_of(
+        _catalogues(cat_config), version, registry=_custody.registry_of(cat_config)
+    )
+
+
 def _theory_stack():
     from importlib.metadata import PackageNotFoundError, version
 
@@ -384,11 +381,28 @@ def _declared_blinded(catalogues, registry, base):
         raise _custody.CustodyError(f"{base} is already covered by blind {covering[0]}")
 
 
+def _conceal_one_row(name, seed, record):
+    """Open blind ``name`` from its seed and config record and conceal one ξ±
+    row under it, as every blinded birth does; raise if it cannot."""
+    blind = _blind(name, seed, record)
+    z = np.linspace(0.0, 2.0, 101)
+    s = sacc_io.new_sacc({0: (z, np.exp(-0.5 * ((z - 0.7) / 0.2) ** 2))})
+    sacc_io.add_xi(s, (0, 0), [10.0], [0.0], [0.0], grid="probe")
+    try:
+        factors(s, blind.config.theory, blind.hidden)
+    except Exception as err:
+        raise _custody.CustodyError(
+            f"no row conceals under blind {name}'s config: {type(err).__name__}: {err}"
+        ) from err
+
+
 def init(name, bases, *, cat_config, config=None):
     """Draw blind ``name`` for ``bases`` and write its record; return its directory.
 
     The one place a seed is drawn. Existing state is refused, never replaced,
-    and the seed is held in memory and written only as ciphertext.
+    and the seed is held in memory and written only as ciphertext. The record
+    is opened and conceals a row before anything is written, so every blind
+    on disk is one its jobs can conceal under.
     """
     from cryptography.fernet import Fernet
 
@@ -427,6 +441,7 @@ def init(name, bases, *, cat_config, config=None):
         "theory_stack": _theory_stack(),
         "created": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
+    _conceal_one_row(name, seed, commitment["config"])
 
     staging.mkdir(parents=True)
     (staging / "commitment.json").write_text(json.dumps(commitment, indent=2) + "\n")
@@ -482,20 +497,30 @@ def reveal(name, *, root, cat_config):
     blind = _open(registry, name)
     record = _custody.records(registry)[name]
     revealed = registry / name / "revealed.json"
+    if record.revealed is not None and record.revealed != blind.seed:
+        raise _custody.CustodyError(f"{revealed} records another seed")
+    archive = Path(root) / "revealed" / name
+    concealed = list(_parts_under(root, record.commitment["seed_commitment"], archive))
+    # Publishing cannot be undone, and a reveal that archived nothing leaves
+    # the concealed products unauditable: an empty (mistyped, or unbound in
+    # the container) root is refused first. A re-run finds its archive.
+    if not concealed and not any(archive.rglob("*.sacc")):
+        raise _custody.CustodyError(
+            f"nothing concealed under blind {name} in {root}; check --root (and "
+            "that the container binds it). The seed stays unpublished."
+        )
     if record.revealed is None:
         fd = os.open(revealed, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o444)
         with os.fdopen(fd, "w") as f:
             json.dump({"seed": blind.seed}, f)
-    elif record.revealed != blind.seed:
-        raise _custody.CustodyError(f"{revealed} records another seed")
-    archive = Path(root) / "revealed" / name
-    moved = 0
-    for path in _parts_under(root, record.commitment["seed_commitment"], archive):
+    for path in concealed:
         target = archive / path.relative_to(root)
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(path, target)
-        moved += 1
-    print(f"[blinding] published the seed of {name}; moved {moved} files to {archive}")
+    print(
+        f"[blinding] published the seed of {name}; moved {len(concealed)} files "
+        f"to {archive}"
+    )
     print(
         f"[blinding] commit {revealed} and declare `blinding: unblinded` on "
         f"{', '.join(record.bases)}, then re-run"
@@ -549,12 +574,30 @@ def _same_covariance(a, b):
     return a.shape == b.shape and np.allclose(a, b, rtol=0.0, atol=_REMEASURED * scale)
 
 
+def _signal(s):
+    """``s``'s signal rows and their covariance, or None if it has none."""
+    keep = np.array([sacc_io.is_signal(dp.data_type) for dp in s.data], bool)
+    if not keep.any():
+        return None
+    out = s.copy()
+    out.keep_indices(keep)
+    return out
+
+
 def _audit_part(blinded, true, fiducial, hidden, tolerance):
-    """Problems with one archived part against its re-measured twin."""
+    """Problems with one archived part against its re-measured twin.
+
+    Only signal rows are compared: ρ/τ carries none, and a re-run does not
+    reproduce it (TreeCorr draws its jackknife patches afresh), so a part
+    without signal is judged by its stamp alone.
+    """
     stamp, true_stamp = (_custody.read_stamp(x.metadata) for x in (blinded, true))
-    if true_stamp.token != f"unblinded:{stamp.catalogue}":
+    if (true_stamp.status, true_stamp.catalogue) != ("unblinded", stamp.catalogue):
         return [f"the live file is stamped {true_stamp.token}"], None
-    if not _rows_match(blinded, true):
+    blinded, true = _signal(blinded), _signal(true)
+    if blinded is None and true is None:
+        return [], {"signal_rows": 0}
+    if blinded is None or true is None or not _rows_match(blinded, true):
         return ["rows, tags or tracers differ"], None
     problems = []
     if set(blinded.tracers) != set(true.tracers):
@@ -599,13 +642,14 @@ def audit(name, *, archive, true_root, cat_config, out=None):
 
     The published seed must be the committed one. For each archived file, the
     live file at the same relative path must be stamped unblinded for the same
-    catalogue, with the same rows, tags, tracers, covariance and patch centres
-    (numbers to a re-measurement's float noise), and blinded − true must equal
-    the seed's shift on every ξ± and Cℓ_EE block to 1e-6 of the block's
-    largest shift (1e-3 when the theory stack differs from the one the blind
-    was drawn with); a derived statistic's B rows may move by at most
-    :data:`B_SIGMA`, and rows the blind leaves unshifted not at all. Each part
-    reports the largest shift of each derived statistic, in σ.
+    catalogue. Its signal rows must match the archived ones in tags, tracers,
+    covariance and patch centres (numbers to a re-measurement's float noise),
+    and blinded − true must equal the seed's shift on every ξ± and Cℓ_EE block
+    to 1e-6 of the block's largest shift (1e-3 when the theory stack differs
+    from the one the blind was drawn with); Cℓ_BB and Cℓ_EB may not move, and
+    a derived statistic's B rows by at most :data:`B_SIGMA`. A derived
+    statistic's E rows are reported, in σ, not proven: the archive does not
+    record which ξ± parts, through which kernel, they came from.
     """
     registry = _custody.registry_of(cat_config)
     report = {"blind": name, "ok": False, "problems": [], "parts": {}}
@@ -647,10 +691,10 @@ def audit(name, *, archive, true_root, cat_config, out=None):
             blinded, sacc_io.load(live), fiducial, hidden, tolerance
         )
         report["parts"][relative] = {"problems": problems, **(numbers or {})}
-    report["ok"] = (
-        bool(report["parts"])
-        and not report["problems"]
-        and not any(part["problems"] for part in report["parts"].values())
+    if not report["parts"]:
+        report["problems"].append("the archive holds no parts")
+    report["ok"] = not report["problems"] and not any(
+        part["problems"] for part in report["parts"].values()
     )
     return _write_report(report, out)
 
@@ -665,11 +709,7 @@ def verify(path, *, cat_config):
     """Problems with a file's stamp against its catalogue's custody (seedless)."""
     stamp = _custody.read_stamp(sacc_io.load(path).metadata)
     try:
-        declared = _custody.custody_of(
-            _catalogues(cat_config),
-            stamp.catalogue,
-            registry=_custody.registry_of(cat_config),
-        )
+        declared = declared_custody(cat_config, stamp.catalogue)
     except _custody.CustodyError as err:
         return [str(err)]
     problems = []
@@ -703,7 +743,9 @@ def main(argv=None):
             sub.add_argument(name, nargs="+" if plus else None)
         sub.add_argument("--cat-config", required=True)
     commands.choices["init"].add_argument(
-        "--config", help="JSON record of BlindingConfig fields (defaults otherwise)"
+        "--config",
+        help="JSON of BlindingConfig fields over the defaults: an `envelope` "
+        "replaces the default one; `theory` fields replace theirs",
     )
     commands.choices["reveal"].add_argument("--root", required=True)
     commands.choices["audit"].add_argument("--archive", required=True)
@@ -712,11 +754,12 @@ def main(argv=None):
     a = parser.parse_args(argv)
 
     if a.command == "init":
-        config = (
-            BlindingConfig.from_record(json.loads(Path(a.config).read_text()))
-            if a.config
-            else None
-        )
+        config = None
+        if a.config:
+            given = json.loads(Path(a.config).read_text())
+            default = BlindingConfig().record()
+            theory = {**default["theory"], **given.get("theory", {})}
+            config = _recorded_config(a.blind, {**default, **given, "theory": theory})
         init(a.blind, a.bases, cat_config=a.cat_config, config=config)
     elif a.command == "share":
         share(a.blind, a.base, cat_config=a.cat_config)

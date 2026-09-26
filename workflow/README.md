@@ -63,8 +63,10 @@ Revealing re-measures; nothing subtracts a shift:
    on the blind's catalogues;
 3. the pipeline re-measures the true products;
 4. `… blinding audit <blind> --archive <COSMO_VAL>/revealed/<blind> --true-root
-   <COSMO_VAL> --cat-config …` checks blinded − true = shift(seed) on every
-   archived file.
+   <COSMO_VAL> --cat-config …` checks blinded − true = shift(seed) on every ξ±
+   and Cℓ_EE row of every archived file, and bounds the derived B-modes (their
+   E-mode shifts are reported). ρ/τ is judged by its stamp: it carries no
+   signal, and a re-run does not reproduce it.
 
 `… blinding verify <file> --cat-config …` checks a file's stamp against the
 registry, without the seed.

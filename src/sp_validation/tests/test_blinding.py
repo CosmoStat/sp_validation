@@ -61,10 +61,15 @@ def _init(root, blind, *bases):
 
 
 def _custody(root, version):
+    return bd.declared_custody(root / "cat_config.yaml", version)
+
+
+def _declare(root, **entries):
+    """Set catalogue entries of ``root``'s catalogue config."""
     path = root / "cat_config.yaml"
-    return cu.custody_of(
-        yaml.safe_load(path.read_text()), version, registry=cu.registry_of(path)
-    )
+    config = yaml.safe_load(path.read_text())
+    config.update(entries)
+    path.write_text(yaml.safe_dump(config))
 
 
 @pytest.fixture(scope="module")
@@ -617,7 +622,7 @@ def test_the_digest_ignores_int_versus_float():
         theory=TheoryConfig(w0=-1, wa=0, ia_bias=0),
     )
     assert a.digest() == b.digest()
-    assert bd.BlindingConfig.from_record(json.loads(json.dumps(a.record()))) == a
+    assert bd._recorded_config("toy", json.loads(json.dumps(a.record()))) == a
 
 
 def test_the_commitment_is_the_forks():
@@ -701,6 +706,59 @@ def test_the_record_is_read_only(fresh):
         )
 
 
+@pytest.mark.parametrize(
+    "config, named",
+    [
+        ({"envelope": {"S8": 0.075, "Omega_M": 0.1}}, "Omega_M"),
+        ({"theory": {"transfer_function": "eisenstein_hu", "Omega_M": 0.3}}, "Omega_M"),
+        ({"theory": {"transfer_function": "eisenstein-hu"}}, "eisenstein-hu"),
+    ],
+    ids=["envelope_key", "theory_key", "unbuildable"],
+)
+def test_init_refuses_a_config_no_blind_conceals_under(tmp_path, config, named):
+    """A config whose blind could not conceal a row is refused before any
+    record exists, so the base stays free for a blind drawn under a good one."""
+    _cat_config(tmp_path)
+    (tmp_path / "bad.json").write_text(json.dumps(config))
+    args = ["init", "toy", "TOY", "--cat-config", str(tmp_path / "cat_config.yaml")]
+    with pytest.raises(cu.CustodyError, match=named):
+        bd.main([*args, "--config", str(tmp_path / "bad.json")])
+    assert not (tmp_path / "blinds").exists() or not any(
+        (tmp_path / "blinds").iterdir()
+    )
+    _init(tmp_path, "toy", "TOY")
+
+
+def test_share_adds_a_base_to_a_concealed_blind(fresh):
+    _declare(fresh, TOY_V={"base": "TOY"}, LATER={})
+    cat_config = str(fresh / "cat_config.yaml")
+    for base, refusal in {
+        "TOY": "already covered",
+        "TOY_V": "variant",
+        "TOY_leak_corr": "variant",
+        "TOY_OPEN": "blinded first",
+        "TOY_MOCK": "blinded first",
+    }.items():
+        with pytest.raises(cu.CustodyError, match=refusal):
+            bd.share("toy", base, cat_config=cat_config)
+    with pytest.raises(cu.CustodyError, match="no blind"):
+        _custody(fresh, "OTHER")
+
+    assert bd.main(["share", "toy", "OTHER", "--cat-config", cat_config]) == 0
+    toy, other = _custody(fresh, "TOY"), _custody(fresh, "OTHER")
+    assert (other.status, other.blind, other.commitment) == (
+        "blinded",
+        "toy",
+        toy.commitment,
+    )
+
+    (fresh / "blinds" / "toy" / "revealed.json").write_text(
+        json.dumps({"seed": bd.open_blind(toy).seed})
+    )
+    with pytest.raises(cu.CustodyError, match="revealed"):
+        bd.share("toy", "LATER", cat_config=cat_config)
+
+
 # --------------------------------------------------------------------------- #
 # I10: an opened blind is the one committed
 # --------------------------------------------------------------------------- #
@@ -754,10 +812,13 @@ def _init_storing(root, edit):
     """Draw blind toy for TOY (seed ``toy-seed``), its config stored as ``edit``
     makes it: the record a code with another TheoryConfig schema writes."""
     record = bd.BlindingConfig.record
+    config = bd.BlindingConfig(theory=TheoryConfig(**FAST["theory"]))
     with pytest.MonkeyPatch.context() as m:
         m.setattr(bd.BlindingConfig, "record", lambda self: edit(record(self)))
         m.setattr(bd.secrets, "token_hex", lambda n: "toy-seed")
-        _init(root, "toy", "TOY")
+        # That code's init opened the record under its own schema.
+        m.setattr(bd, "_conceal_one_row", lambda name, seed, record: None)
+        bd.init("toy", ["TOY"], cat_config=root / "cat_config.yaml", config=config)
 
 
 def test_a_record_lacking_a_field_opens_to_the_shift_it_was_drawn_with(
@@ -803,10 +864,57 @@ def test_the_committed_blind_opens_under_this_code():
     strand every live blind; this record turns that red.
     """
     blind = bd._open(DATA / "blinds", "committed")
-    assert blind.config == bd.BlindingConfig()
     assert (blind.hidden.S8, blind.hidden.Omega_m) == pytest.approx(
         COMMITTED_POINT, rel=1e-12
     )
+
+
+def test_a_blind_drawn_under_another_draw_scheme_is_refused(tmp_path, monkeypatch):
+    """Its seed and record agree, but this install's fork draws differently:
+    opening it is refused, and a file stamped under it fails ``verify``."""
+    _cat_config(tmp_path)
+    installed = bd.draw_scheme()
+    with monkeypatch.context() as m:
+        m.setattr(bd, "draw_scheme", lambda: installed + 1)
+        _init(tmp_path, "toy", "TOY")
+    custody = _custody(tmp_path, "TOY")
+    with pytest.raises(cu.CustodyError, match="draw scheme"):
+        bd.open_blind(custody)
+    part = tmp_path / "rho_tau.sacc"
+    sio.save(rho_sacc(), part, custody=custody)  # no signal: the blind stays shut
+    assert bd.verify(part, cat_config=tmp_path / "cat_config.yaml") == [
+        "this install draws under another scheme"
+    ]
+
+
+# --------------------------------------------------------------------------- #
+# verify: a file's stamp against its catalogue's custody, seedless
+# --------------------------------------------------------------------------- #
+def _verify(root, path, capsys):
+    code = bd.main(["verify", str(path), "--cat-config", str(root / "cat_config.yaml")])
+    return code, capsys.readouterr().out
+
+
+def test_verify_names_what_disagrees_with_the_declaration(fresh, capsys):
+    part = fresh / "part.sacc"
+    sio.save(two_bin_sacc(cl=False), part, custody=_custody(fresh, "TOY"))
+    assert _verify(fresh, part, capsys)[0] == 0
+
+    forged = fresh / "forged.sacc"
+    _write(
+        forged,
+        two_bin_sacc(cl=False),
+        {**_custody(fresh, "TOY").stamp, "blinding_commitment": "0" * 64},
+    )
+    code, out = _verify(fresh, forged, capsys)
+    assert code == 1 and "['blinding_commitment']" in out
+
+    (fresh / "blinds" / "toy" / "revealed.json").write_text(
+        json.dumps({"seed": bd.open_blind(_custody(fresh, "TOY")).seed})
+    )
+    _declare(fresh, TOY={"blinding": "unblinded"})
+    code, out = _verify(fresh, part, capsys)
+    assert code == 1 and "'blinding'" in out and "unblinded:TOY" in out
 
 
 # --------------------------------------------------------------------------- #
@@ -852,6 +960,42 @@ def _problems(report):
     ]
 
 
+def test_reveal_refuses_a_root_holding_nothing_concealed(fresh):
+    """A mistyped or unbound ``--root`` is refused before the seed is published;
+    a reveal interrupted after its first move runs again."""
+    root = fresh / "output"
+    part = root / "sub" / "part.sacc"
+    part.parent.mkdir(parents=True)
+    sio.save(two_bin_sacc(cl=False), part, custody=_custody(fresh, "TOY"))
+    revealed = fresh / "blinds" / "toy" / "revealed.json"
+    cat_config = fresh / "cat_config.yaml"
+    (fresh / "empty").mkdir()
+    for wrong in (fresh / "outptu", fresh / "empty"):
+        with pytest.raises(cu.CustodyError, match="nothing concealed"):
+            bd.reveal("toy", root=wrong, cat_config=cat_config)
+        assert not revealed.exists()
+
+    archive = bd.reveal("toy", root=root, cat_config=cat_config)
+    assert revealed.exists() and (archive / "sub" / "part.sacc").exists()
+    assert bd.reveal("toy", root=root, cat_config=cat_config) == archive
+    with pytest.raises(cu.CustodyError, match="nothing concealed"):
+        bd.reveal("toy", root=fresh / "empty", cat_config=cat_config)
+
+
+def test_the_audit_of_an_empty_archive_says_so(fresh):
+    (fresh / "blinds" / "toy" / "revealed.json").write_text(
+        json.dumps({"seed": bd.open_blind(_custody(fresh, "TOY")).seed})
+    )
+    (fresh / "archive").mkdir()
+    report = bd.audit(
+        "toy",
+        archive=fresh / "archive",
+        true_root=fresh,
+        cat_config=fresh / "cat_config.yaml",
+    )
+    assert not report["ok"] and report["problems"] == ["the archive holds no parts"]
+
+
 def test_the_audit_passes_on_a_true_reveal(fresh):
     s = two_bin_sacc(rho=True)
     report = _audit(fresh, _concealed(fresh, s), s)
@@ -889,7 +1033,30 @@ def test_the_audit_fails_on_a_mixed_file(fresh, times):
     assert any("≠ shift(seed)" in problem for problem in _problems(report))
 
 
-@pytest.mark.parametrize("kind", [sio.CL_BB, sio.RHO_PLUS.format(k=0)])
+@pytest.mark.parametrize(
+    "make", [rho_sacc, two_bin_sacc], ids=["alone", "beside_signal"]
+)
+def test_the_audit_passes_rho_tau_remeasured_at_run_noise(fresh, make):
+    """ρ/τ carries no signal, and a re-run does not reproduce it (TreeCorr's
+    k-means patches move θ by ~1e-3 and the values by O(1)): its part is
+    judged by its stamp, and beside signal rows only the signal is compared."""
+    true = make(rho=True) if make is two_bin_sacc else make()
+    if true.covariance is None:
+        true.add_covariance(np.full(len(true.mean), 1e-14))
+    archived = _concealed(fresh, true)
+    rerun = true.copy()
+    rho = [i for i, dp in enumerate(true.data) if not sio.is_signal(dp.data_type)]
+    cov = np.array(true.covariance.dense)
+    for i in rho:
+        rerun.data[i].value = 1.5 * true.data[i].value + 1e-7
+        rerun.data[i].tags["theta"] *= 1 + 1.7e-3
+        cov[i, i] *= 1.036
+    rerun.add_covariance(cov, overwrite=True)
+    report = _audit(fresh, archived, rerun)
+    assert report["ok"], report
+
+
+@pytest.mark.parametrize("kind", [sio.CL_BB, sio.CL_EB])
 def test_the_audit_fails_when_an_unshifted_row_moved(fresh, kind):
     s = two_bin_sacc(rho=True)
     archived = _concealed(fresh, s)

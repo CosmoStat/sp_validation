@@ -916,15 +916,18 @@ SHIFTABLE = (XI_PLUS, XI_MINUS, CL_EE)
 UNSHIFTED = (CL_BB, CL_EB)
 
 
+def is_signal(data_type):
+    """Whether ``data_type`` carries cosmological signal."""
+    return data_type.startswith(SIGNAL_PREFIX)
+
+
 def is_derived(data_type):
     """Whether ``data_type`` is a derived statistic (COSEBIs, pure-E/B, …).
 
     Signal the blind neither conceals nor leaves unchanged: it moves only
     through the shiftable rows it is computed from.
     """
-    return data_type.startswith(SIGNAL_PREFIX) and data_type not in (
-        SHIFTABLE + UNSHIFTED
-    )
+    return is_signal(data_type) and data_type not in SHIFTABLE + UNSHIFTED
 
 
 def _stamped(s):

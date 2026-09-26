@@ -14,14 +14,13 @@ matching what the B-mode PTE reads today.
 """
 
 import argparse
-from pathlib import Path
 
 import numpy as np
-import yaml
 
 from sp_validation import sacc_io
+from sp_validation.blinding import declared_custody
 from sp_validation.cosmo_val.sacc_writers import assemble_analysis_sacc
-from sp_validation.custody import confirm, custody_of, registry_of
+from sp_validation.custody import confirm
 
 # NaMaster iNKA covariance FITS: per-spectrum HDU names, in SACC insertion order.
 _CL_HDUS = ("COVAR_EE_EE", "COVAR_BB_BB", "COVAR_EB_EB")
@@ -87,12 +86,6 @@ def _attach_cov(part, name, xi_cov, pseudo_cl_cov):
         )
     part.add_covariance(block, overwrite=True)
     return part
-
-
-def declared_custody(cat_config, version):
-    """The custody ``version`` is declared under in ``cat_config``."""
-    catalogues = yaml.safe_load(Path(cat_config).read_text())
-    return custody_of(catalogues, version, registry=registry_of(cat_config))
 
 
 def assemble_sacc(
