@@ -2,12 +2,7 @@
 
 The custody of every catalogue version (:func:`custody_of`), the stamp a SACC
 born under it carries, and the reader of the blind registry beside the
-catalogue config (``cosmo_val/blinds/<blind>/``: ``commitment.json``, the
-``bases`` it covers, and ``revealed.json`` once its seed is published), which
-only ``python -m sp_validation.blinding`` writes.
-
-Standard library only: the host Snakemake loads this file by path, and
-container jobs import it, so both resolve custody from the same declaration.
+catalogue config (``cosmo_val/blinds/CONTRACTS``).
 """
 
 import hashlib

@@ -4,9 +4,7 @@ Writes the ρ/τ FITS tables and the version's ρ/τ SACC part, sealed under the
 catalogue's custody.
 """
 
-from pathlib import Path
-
-from cv_runner import _unbuffer_streams
+from cv_runner import _unbuffer_streams, verify_outputs
 
 from sp_validation.cosmo_val import CosmologyValidation
 from sp_validation.custody import confirm
@@ -25,11 +23,4 @@ cv = CosmologyValidation(
 )
 confirm(cv.custody(params["ver"]), params["custody"])
 cv.calculate_rho_tau_stats()
-
-outputs = snakemake.output  # noqa: F821
-for label in ("rho_stats", "tau_stats", "rho_tau"):
-    target = Path(outputs[label])
-    if not target.exists():
-        raise FileNotFoundError(
-            f"Expected {label} file not found after CosmologyValidation run: {target}"
-        )
+verify_outputs(snakemake)  # noqa: F821

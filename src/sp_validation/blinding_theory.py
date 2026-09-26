@@ -36,9 +36,8 @@ class TheoryConfig:
     Every field is a deliberate, configurable choice. The defaults mirror the
     ``cosmo_inference`` CosmoSIS fiducial (the ``SP_v1.4.6.3_A_cell`` pipeline
     + ``values_ia.ini`` central values), so the CCL theory computed here and
-    the CAMB theory CosmoSIS computes agree to the level the CAMB↔CCL
-    cross-check test asserts. Adopting a different named group fiducial is a
-    change to these *values*, not to any code.
+    the CAMB theory CosmoSIS computes agree. Adopting a different named group
+    fiducial is a change to these *values*, not to any code.
 
     Cosmology is parametrised by the blind axes ``S8`` and ``Omega_m`` and
     converted to CCL's native ``sigma8``/``Omega_c`` by :meth:`sigma8` /

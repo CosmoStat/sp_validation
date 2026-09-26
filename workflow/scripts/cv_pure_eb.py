@@ -3,12 +3,11 @@
 A consumer of the two ξ± parts plus one covariance file — nothing here touches
 a catalogue. The modes come from the reporting and integration parts through
 the pipeline kernel; the covariance is Monte Carlo through that same kernel,
-drawn from the CosmoCov integration-grid ξ± covariance around a theory mean, so
-it depends on the covariance model and the grids rather than on the measured
-vector. A jackknife of the transformed modes would need per-patch realisations,
-which are never persisted. The Monte Carlo draws are seeded, so the
-covariance is a function of the covariance model and the grids alone. The
-pure-E/B part is a derivation of the two ξ± parts and carries their custody.
+seeded draws from the CosmoCov integration-grid ξ± covariance around a theory
+mean, so it is a function of the covariance model and the grids alone, never
+of the measured vector. A jackknife of the transformed modes would need
+per-patch realisations, which are never persisted. The pure-E/B part is a
+derivation of the two ξ± parts and carries their custody.
 """
 
 import numpy as np
