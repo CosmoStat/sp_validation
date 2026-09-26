@@ -20,7 +20,8 @@
     from reading it by accident. ``share`` adds a catalogue to a blind;
     ``reveal`` publishes the seed and moves the concealed files aside;
     ``audit`` proves blinded − true = shift(seed) once the true files are
-    re-measured; ``verify`` checks a file's stamp against the record, seedless.
+    re-measured; ``verify`` checks a file's stamp against its catalogue's
+    custody, seedless.
 """
 
 import argparse
@@ -67,7 +68,7 @@ class BlindingConfig:
 
     @classmethod
     def from_record(cls, record):
-        """The config a record describes; fields it omits take their defaults."""
+        """The config a partial record names; fields it omits take their defaults."""
         fields = {}
         if "envelope" in record:
             fields["envelope"] = {k: float(v) for k, v in record["envelope"].items()}
@@ -77,8 +78,13 @@ class BlindingConfig:
 
     def digest(self):
         """sha256 of the canonical record; int and float literals agree."""
-        text = json.dumps(self.record(), sort_keys=True, separators=(",", ":"))
-        return hashlib.sha256(text.encode("utf-8")).hexdigest()
+        return record_digest(self.record())
+
+
+def record_digest(record):
+    """sha256 of a config record's canonical JSON, whatever the code's schema."""
+    text = json.dumps(record, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 def _canonical(value):
@@ -94,6 +100,38 @@ def _canonical(value):
     if isinstance(value, (int, float, np.integer, np.floating)):
         return float(value)
     raise TypeError(f"cannot serialise {value!r} into a blind's record")
+
+
+# A blind's record opens under this code only if it names every TheoryConfig
+# field, or omits one listed here with the value under which that field changes
+# no shift: a record drawn without it then reproduces its shift.
+NEUTRAL = {}
+
+
+def _recorded_config(name, record):
+    """The config blind ``name`` was drawn under, from its stored record.
+
+    Refuses, naming the fields, a record whose shift this code cannot
+    reproduce: one naming a field the code lacks, or lacking a code field that
+    has no value in :data:`NEUTRAL`.
+    """
+    fields = {f.name for f in dataclasses.fields(TheoryConfig)}
+    theory = {**NEUTRAL, **record.get("theory", {})}
+    envelope = record.get("envelope", {})
+    foreign = sorted(set(record) - {"envelope", "theory"})
+    foreign += sorted((set(theory) | set(envelope)) - fields)
+    unset = sorted(fields - set(theory)) + ["envelope"] * ("envelope" not in record)
+    if foreign or unset:
+        raise _custody.CustodyError(
+            f"blind {name} was drawn under a config this code cannot reproduce: "
+            f"the record names {foreign}, which this code lacks, and lacks "
+            f"{unset}, which have no value in blinding.NEUTRAL. Open it with the "
+            "code it was drawn under, or give each new field its neutral value."
+        )
+    return BlindingConfig(
+        envelope={k: float(v) for k, v in envelope.items()},
+        theory=TheoryConfig(**theory),
+    )
 
 
 def draw_scheme():
@@ -133,54 +171,47 @@ class Blind:
     hidden: TheoryConfig
 
 
-def _read_record(registry, name):
-    record = Path(registry) / name
-    try:
-        commitment = json.loads((record / "commitment.json").read_text())
-    except (OSError, ValueError) as err:
-        raise _custody.CustodyError(
-            f"blind {name}: no readable record: {err}"
-        ) from None
-    return record, commitment
-
-
 @functools.cache
 def _open(registry, name):
     from cryptography.fernet import Fernet, InvalidToken
 
-    record, commitment = _read_record(registry, name)
+    record = _custody.records(registry).get(name)
+    if record is None:
+        raise _custody.CustodyError(f"no blind {name} in {registry}")
+    c = record.commitment
     try:
-        key = (record / "key").read_bytes()
-        payload = json.loads(Fernet(key).decrypt((record / "seed.fernet").read_bytes()))
+        key = (registry / name / "key").read_bytes()
+        ciphertext = (registry / name / "seed.fernet").read_bytes()
+        payload = json.loads(Fernet(key).decrypt(ciphertext))
     except (OSError, ValueError, InvalidToken) as err:
         raise _custody.CustodyError(
-            f"blind {name}: the seed does not decrypt with its key ({type(err).__name__})"
+            f"blind {name}: the seed does not decrypt with its key "
+            f"({type(err).__name__})"
         ) from None
-    config = BlindingConfig.from_record(commitment["config"])
-    checks = {
-        "blind name": (payload["blind"], commitment["blind"], name),
+    for what, values in {
+        "blind name": (payload["blind"], c["blind"], name),
         "config digest": (
             payload["config_digest"],
-            commitment["config_digest"],
-            config.digest(),
+            c["config_digest"],
+            record_digest(c["config"]),
         ),
-        "draw scheme": (
-            payload["draw_scheme"],
-            commitment["draw_scheme"],
-            draw_scheme(),
-        ),
+        "draw scheme": (payload["draw_scheme"], c["draw_scheme"]),
         "seed commitment": (
             _custody.seed_commitment(payload["seed"]),
-            commitment["seed_commitment"],
+            c["seed_commitment"],
         ),
-    }
-    for what, values in checks.items():
+    }.items():
         if len(set(values)) != 1:
             raise _custody.CustodyError(
-                f"blind {name}: the {what} disagrees between the sealed seed, the "
-                "record and this install; the record was edited or the install "
-                "draws differently"
+                f"blind {name}: the {what} disagrees between the sealed seed and "
+                "the record; the record was edited"
             )
+    if c["draw_scheme"] != draw_scheme():
+        raise _custody.CustodyError(
+            f"blind {name} was drawn under draw scheme {c['draw_scheme']}; this "
+            f"install's smokescreen draws under {draw_scheme()}"
+        )
+    config = _recorded_config(name, c["config"])
     seed = payload["seed"]
     return Blind(name, seed, config, hidden_theory(seed, config))
 
@@ -355,10 +386,8 @@ def _declared_blinded(catalogues, registry, base):
 def init(name, bases, *, cat_config, config=None):
     """Draw blind ``name`` for ``bases`` and write its record; return its directory.
 
-    @sc blind-drawn-once
     The one place a seed is drawn. Existing state is refused, never replaced,
-    so no second draw exists for a catalogue unless a committed record is
-    deleted. The seed is held in memory and written only as ciphertext.
+    and the seed is held in memory and written only as ciphertext.
     """
     from cryptography.fernet import Fernet
 
@@ -449,19 +478,18 @@ def reveal(name, *, root, cat_config):
     mixes shifted and true signal.
     """
     registry = _custody.registry_of(cat_config)
-    record, commitment = _read_record(registry, name)
     blind = _open(registry, name)
-    revealed = record / "revealed.json"
-    if revealed.exists():
-        if json.loads(revealed.read_text())["seed"] != blind.seed:
-            raise _custody.CustodyError(f"{revealed} records another seed")
-    else:
+    record = _custody.records(registry)[name]
+    revealed = registry / name / "revealed.json"
+    if record.revealed is None:
         fd = os.open(revealed, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o444)
         with os.fdopen(fd, "w") as f:
             json.dump({"seed": blind.seed}, f)
+    elif record.revealed != blind.seed:
+        raise _custody.CustodyError(f"{revealed} records another seed")
     archive = Path(root) / "revealed" / name
     moved = 0
-    for path in _parts_under(root, commitment["seed_commitment"], archive):
+    for path in _parts_under(root, record.commitment["seed_commitment"], archive):
         target = archive / path.relative_to(root)
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(path, target)
@@ -469,7 +497,7 @@ def reveal(name, *, root, cat_config):
     print(f"[blinding] published the seed of {name}; moved {moved} files to {archive}")
     print(
         f"[blinding] commit {revealed} and declare `blinding: unblinded` on "
-        f"{', '.join(_custody.records(registry)[name].bases)}, then re-run"
+        f"{', '.join(record.bases)}, then re-run"
     )
     return archive
 
@@ -477,13 +505,13 @@ def reveal(name, *, root, cat_config):
 # A re-measurement repeats a measurement to float noise (TreeCorr's threaded
 # sums reorder); the audit compares its numbers to this relative tolerance.
 _REMEASURED = 1e-10
-# How far, in σ, a derived B-mode may move under a blind. COSEBIs B-modes move
-# by ~1e-4σ. Pure-mode ξ_B carries the estimator's own E→B leakage of the
-# shift: up to 1e-2σ on the production grids at the envelope's edge
-# (test_blinding), several times more on coarse grids. A derivation from mixed
-# inputs moves B by ~1σ.
-_B_SIGMA = {
-    sacc_io.COSEBI_BB: 1e-2,
+# How far, in σ, a derived B-mode may move under a blind: 10× what a shift at
+# the envelope's corners induces on the production grids, with shape-noise σ at
+# UNIONS depth. There COSEBIs B (20 modes, [12, 83]′) move by ≤ 6e-3σ, and
+# pure-mode ξ_B by ≤ 1e-2σ (ξ−_B at θ ≈ 2′: the estimator's own E→B leakage of
+# the shift). A derivation from mixed inputs moves B by ~1σ.
+B_SIGMA = {
+    sacc_io.COSEBI_BB: 5e-2,
     sacc_io.PURE_TYPES["xip_B"]: 1e-1,
     sacc_io.PURE_TYPES["xim_B"]: 1e-1,
 }
@@ -525,45 +553,41 @@ def _audit_part(blinded, true, fiducial, hidden, tolerance):
     stamp, true_stamp = (_custody.read_stamp(x.metadata) for x in (blinded, true))
     if true_stamp.token != f"unblinded:{stamp.catalogue}":
         return [f"the live file is stamped {true_stamp.token}"], None
-    problems = []
     if not _rows_match(blinded, true):
-        problems.append("rows, tags or tracers differ")
-        return problems, None
+        return ["rows, tags or tracers differ"], None
+    problems = []
     if set(blinded.tracers) != set(true.tracers):
         problems.append("tracers differ")
-    cov_b, cov_t = _covariance(blinded), _covariance(true)
-    if not _same_covariance(cov_b, cov_t):
+    cov = _covariance(true)
+    if not _same_covariance(_covariance(blinded), cov):
         problems.append("covariances differ")
     centres = [x.metadata.get("patch_centers_sha256") for x in (blinded, true)]
     if centres[0] != centres[1]:
         problems.append(f"patch centres differ: {centres}")
 
-    delta = np.asarray(blinded.mean) - np.asarray(true.mean)
-    residual, shifted = 0.0, np.zeros(len(delta), bool)
+    values = np.asarray(true.mean)
+    delta = np.asarray(blinded.mean) - values
+    residual, rest = 0.0, np.ones(len(delta), bool)
     for block, factor in factors(true, fiducial, hidden):
         scale = np.max(np.abs(factor))
         residual = max(residual, np.max(np.abs(delta[block.rows] - factor)) / scale)
-        shifted[block.rows] = True
+        rest[block.rows] = False
     if residual > tolerance:
         problems.append(f"blinded − true ≠ shift(seed): residual {residual:.2e}")
 
-    sigma = None if cov_t is None else np.sqrt(np.diag(cov_t))
-    derived = (sacc_io.COSEBI_EE, sacc_io.COSEBI_BB, *sacc_io.PURE_TYPES.values())
+    kinds = np.array([dp.data_type for dp in true.data])
     moved = {}
-    for i, dp in enumerate(true.data):
-        kind = dp.data_type
-        if shifted[i]:
-            continue
-        if kind in derived:
-            if sigma is None:
-                problems.append(f"row {i} ({kind}) has no σ to judge its shift by")
-            elif np.isfinite(delta[i]):
-                moved[kind] = max(moved.get(kind, 0.0), abs(delta[i]) / sigma[i])
-        elif abs(delta[i]) > 1e-8 * max(abs(dp.value), 1e-300):
-            problems.append(
-                f"row {i} ({kind}) moved, but the blind leaves it unshifted"
-            )
-    for kind, bound in _B_SIGMA.items():
+    for kind in dict.fromkeys(kinds[rest]):
+        rows = rest & (kinds == kind)
+        if not sacc_io.is_derived(kind):
+            if np.max(np.abs(delta[rows])) > _REMEASURED * np.max(np.abs(values[rows])):
+                problems.append(f"{kind} moved, but the blind leaves it unshifted")
+        elif cov is None:
+            problems.append(f"{kind} has no σ to judge its shift by")
+        else:
+            ratio = np.abs(delta[rows]) / np.sqrt(np.diag(cov)[rows])
+            moved[kind] = float(np.max(ratio[np.isfinite(ratio)], initial=0.0))
+    for kind, bound in B_SIGMA.items():
         if moved.get(kind, 0.0) > bound:
             problems.append(f"{kind} moved by {moved[kind]:.2e}σ under the blind")
     return problems, {"residual": residual, "shift_over_sigma": moved}
@@ -572,42 +596,39 @@ def _audit_part(blinded, true, fiducial, hidden, tolerance):
 def audit(name, *, archive, true_root, cat_config, out=None):
     """Check every archived file of blind ``name`` against its re-measured twin.
 
-    Needs no key: the seed is the published one, checked against the
-    commitment. For each archived file, the live file at the same relative path
-    must be stamped unblinded for the same catalogue, with the same rows, tags,
-    tracers, covariance and patch centres (numbers to a re-measurement's float
-    noise), and blinded − true must equal the seed's shift on every ξ± and
-    Cℓ_EE block to 1e-6 of the block's largest shift (1e-3 when the theory
-    stack differs from the one the blind was drawn with); COSEBIs and pure-E/B
-    B rows may move by at most ``_B_SIGMA``, and rows the blind leaves
-    unshifted not at all. Each part reports the largest shift of each derived
-    statistic, in σ.
+    The published seed must be the committed one. For each archived file, the
+    live file at the same relative path must be stamped unblinded for the same
+    catalogue, with the same rows, tags, tracers, covariance and patch centres
+    (numbers to a re-measurement's float noise), and blinded − true must equal
+    the seed's shift on every ξ± and Cℓ_EE block to 1e-6 of the block's
+    largest shift (1e-3 when the theory stack differs from the one the blind
+    was drawn with); a derived statistic's B rows may move by at most
+    :data:`B_SIGMA`, and rows the blind leaves unshifted not at all. Each part
+    reports the largest shift of each derived statistic, in σ.
     """
     registry = _custody.registry_of(cat_config)
-    record, commitment = _read_record(registry, name)
     report = {"blind": name, "ok": False, "problems": [], "parts": {}}
-    revealed = record / "revealed.json"
-    seed = json.loads(revealed.read_text())["seed"] if revealed.exists() else None
-    if seed is None or _custody.seed_commitment(seed) != commitment["seed_commitment"]:
-        report["problems"].append("the published seed does not match the commitment")
+    try:
+        blind = _open(registry, name)
+    except _custody.CustodyError as err:
+        report["problems"].append(str(err))
         return _write_report(report, out)
-    config = BlindingConfig.from_record(commitment["config"])
-    if config.digest() != commitment["config_digest"]:
-        report["problems"].append("the recorded config does not match its digest")
-    if int(commitment["draw_scheme"]) != draw_scheme():
-        report["problems"].append("this install draws under another scheme")
+    record = _custody.records(registry)[name]
+    if record.revealed != blind.seed:
+        report["problems"].append("the published seed is not the committed one")
+        return _write_report(report, out)
     stack = _theory_stack()
     tolerance = 1e-6
-    if stack != commitment.get("theory_stack"):
+    if stack != record.commitment.get("theory_stack"):
         tolerance = 1e-3
         report["theory_stack"] = {
-            "record": commitment.get("theory_stack"),
+            "record": record.commitment.get("theory_stack"),
             "now": stack,
         }
-    hidden = hidden_theory(seed, config)
+    fiducial, hidden = blind.config.theory, blind.hidden
     report["shift"] = {
-        key: getattr(hidden, key) - getattr(config.theory, key)
-        for key in config.envelope
+        key: getattr(hidden, key) - getattr(fiducial, key)
+        for key in blind.config.envelope
     }
     archive, true_root = Path(archive), Path(true_root)
     for path in sorted(archive.rglob("*.sacc")):
@@ -618,11 +639,11 @@ def audit(name, *, archive, true_root, cat_config, out=None):
             continue
         blinded = sacc_io.load(path)
         stamp = _custody.read_stamp(blinded.metadata)
-        if stamp.commitment != commitment["seed_commitment"]:
+        if stamp.commitment != record.commitment["seed_commitment"]:
             report["parts"][relative] = {"problems": ["not concealed under this blind"]}
             continue
         problems, numbers = _audit_part(
-            blinded, sacc_io.load(live), config.theory, hidden, tolerance
+            blinded, sacc_io.load(live), fiducial, hidden, tolerance
         )
         report["parts"][relative] = {"problems": problems, **(numbers or {})}
     report["ok"] = (
@@ -640,34 +661,26 @@ def _write_report(report, out):
 
 
 def verify(path, *, cat_config):
-    """Problems with a file's stamp against the registry and declaration (seedless)."""
+    """Problems with a file's stamp against its catalogue's custody (seedless)."""
     stamp = _custody.read_stamp(sacc_io.load(path).metadata)
-    registry = _custody.registry_of(cat_config)
-    problems = []
-    if stamp.status == "blinded":
-        record = _custody.records(registry).get(stamp.blind)
-        if record is None:
-            return [f"no blind {stamp.blind} in {registry}"]
-        c = record.commitment
-        for what, stamped, recorded in (
-            ("seed commitment", stamp.commitment, c["seed_commitment"]),
-            ("config digest", stamp.config_digest, c["config_digest"]),
-            ("draw scheme", stamp.draw_scheme, int(c["draw_scheme"])),
-        ):
-            if stamped != recorded:
-                problems.append(f"the {what} differs from the record")
-        if stamp.draw_scheme != draw_scheme():
-            problems.append("this install draws under another scheme")
-        if stamp.catalogue not in record.bases:
-            problems.append(f"blind {record.name} does not cover {stamp.catalogue}")
     try:
         declared = _custody.custody_of(
-            _catalogues(cat_config), stamp.catalogue, registry=registry
+            _catalogues(cat_config),
+            stamp.catalogue,
+            registry=_custody.registry_of(cat_config),
         )
-        if declared.stamp != stamp.stamp:
-            problems.append(f"{stamp.catalogue} is declared {declared.token}")
     except _custody.CustodyError as err:
-        problems.append(str(err))
+        return [str(err)]
+    problems = []
+    keys = {**stamp.stamp, **declared.stamp}
+    differ = sorted(k for k in keys if stamp.stamp.get(k) != declared.stamp.get(k))
+    if differ:
+        problems.append(
+            f"the stamp's {differ} differ from {stamp.catalogue}'s custody, "
+            f"{declared.token}"
+        )
+    if stamp.status == "blinded" and stamp.draw_scheme != draw_scheme():
+        problems.append("this install draws under another scheme")
     return problems
 
 

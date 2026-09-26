@@ -11,6 +11,7 @@ import dataclasses
 import json
 import os
 import stat
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -22,6 +23,9 @@ from sp_validation import sacc_io as sio
 from sp_validation.blinding_theory import TheoryConfig
 
 FAST = {"theory": {"transfer_function": "eisenstein_hu"}}
+DATA = Path(__file__).parent / "data"
+# The hidden (S8, Ωm) of the blind committed under DATA/blinds/committed.
+COMMITTED_POINT = (0.8374952413635888, 0.32730573347638175)
 
 
 # --------------------------------------------------------------------------- #
@@ -369,13 +373,12 @@ def _shape_noise_variance(left, right):
 @pytest.mark.parametrize("ds8", [0.075, -0.075])
 @pytest.mark.parametrize("dom", [0.1, -0.1])
 def test_shift_leaks_no_b_modes(ds8, dom):
-    """B-modes a shift at the envelope's edge induces are numerical, and small.
+    """B-modes a shift at the envelope's edge induces stay within the audit's bound.
 
     At each corner of the (S8, Ωm) envelope, on the production grids (the
     0.08–300′ 1000-bin integration grid, the 1–250′ 20-bin reporting grid),
-    single-bin n(z), σ from shape noise at UNIONS depth: |ΔBₙ|/σ(Bₙ) ≤ 1e-2 on
-    [12, 83]′ (observed ≤ 1e-4) and |Δξ_B|/σ ≤ 2e-2 (observed ≤ 1.0e-2, pure ξ−_B
-    at θ ≈ 2′, the estimator's own E→B leakage).
+    single-bin n(z), σ from shape noise at UNIONS depth: the 20 COSEBIs B-modes
+    on [12, 83]′ and pure-mode ξ_B move by at most ``blinding.B_SIGMA``.
     """
     from sp_validation import b_modes
 
@@ -412,12 +415,12 @@ def test_shift_leaks_no_b_modes(ds8, dom):
         np.diag(np.concatenate([var, var])),
         left,
         right,
-        nmodes=5,
+        nmodes=20,
         scale_cuts=[(12.0, 83.0)],
     ).values()
-    sigma_b = np.sqrt(np.diag(result["cov"])[5:])
+    sigma_b = np.sqrt(np.diag(result["cov"])[20:])
     assert np.max(np.abs(result["En"])) > 1e2 * np.max(np.abs(result["Bn"]))
-    assert np.max(np.abs(result["Bn"]) / sigma_b) <= 1e-2
+    assert np.max(np.abs(result["Bn"]) / sigma_b) <= bd.B_SIGMA[sio.COSEBI_BB]
 
     rep_left, rep_right = grids["reporting"]
     modes = b_modes.pure_eb_from_xi(
@@ -432,7 +435,8 @@ def test_shift_leaks_no_b_modes(ds8, dom):
     for key in ("xip_B", "xim_B"):
         finite = np.isfinite(modes[key])
         assert finite.sum() > 10
-        assert np.max(np.abs(modes[key][finite]) / sigma[finite]) <= 2e-2, key
+        bound = bd.B_SIGMA[sio.PURE_TYPES[key]]
+        assert np.max(np.abs(modes[key][finite]) / sigma[finite]) <= bound, key
 
 
 # --------------------------------------------------------------------------- #
@@ -730,7 +734,7 @@ def test_open_blind_refuses_a_tampered_record(fresh, tamper):
 
         def edit(r):
             r["config"]["envelope"]["S8"] = 0.3
-            r["config_digest"] = bd.BlindingConfig.from_record(r["config"]).digest()
+            r["config_digest"] = bd.record_digest(r["config"])
 
         _edit(commitment, edit)
     elif tamper == "scheme":
@@ -746,28 +750,94 @@ def test_open_blind_refuses_a_tampered_record(fresh, tamper):
         bd.open_blind(_custody(fresh, "TOY"))
 
 
+def _init_storing(root, edit):
+    """Draw blind toy for TOY (seed ``toy-seed``), its config stored as ``edit``
+    makes it: the record a code with another TheoryConfig schema writes."""
+    record = bd.BlindingConfig.record
+    with pytest.MonkeyPatch.context() as m:
+        m.setattr(bd.BlindingConfig, "record", lambda self: edit(record(self)))
+        m.setattr(bd.secrets, "token_hex", lambda n: "toy-seed")
+        _init(root, "toy", "TOY")
+
+
+def test_a_record_lacking_a_field_opens_to_the_shift_it_was_drawn_with(
+    tmp_path, blinds, monkeypatch
+):
+    """A record that predates a TheoryConfig field opens once the field's
+    neutral value is declared, and conceals exactly as the blind that names it;
+    until then it is refused by the field's name, never as an edited record."""
+    _cat_config(tmp_path)
+
+    def without_alphaz(record):
+        del record["theory"]["ia_alphaz"]
+        return record
+
+    _init_storing(tmp_path, without_alphaz)
+    custody = _custody(tmp_path, "TOY")
+    with pytest.raises(cu.CustodyError, match="ia_alphaz") as refused:
+        bd.open_blind(custody)
+    assert "edited" not in str(refused.value)
+
+    monkeypatch.setattr(bd, "NEUTRAL", {"ia_alphaz": 0.0})
+    s = two_bin_sacc(cl=False)
+    assert np.array_equal(
+        np.asarray(sio.seal(s, custody).mean),
+        np.asarray(sio.seal(s, blinds["TOY"]).mean),
+    )
+
+
+def test_a_record_naming_a_field_this_code_lacks_is_refused_by_name(tmp_path):
+    _cat_config(tmp_path)
+    _init_storing(
+        tmp_path, lambda r: {**r, "theory": {**r["theory"], "baryon_boost": 0.0}}
+    )
+    with pytest.raises(cu.CustodyError, match="baryon_boost") as refused:
+        bd.open_blind(_custody(tmp_path, "TOY"))
+    assert "edited" not in str(refused.value)
+
+
+def test_the_committed_blind_opens_under_this_code():
+    """``tests/data/blinds/committed`` opens to the point it was drawn at.
+
+    A TheoryConfig field added without its value in ``blinding.NEUTRAL`` would
+    strand every live blind; this record turns that red.
+    """
+    blind = bd._open(DATA / "blinds", "committed")
+    assert blind.config == bd.BlindingConfig()
+    assert (blind.hidden.S8, blind.hidden.Omega_m) == pytest.approx(
+        COMMITTED_POINT, rel=1e-12
+    )
+
+
 # --------------------------------------------------------------------------- #
 # I11: the audit proves blinded − true = shift(seed)
 # --------------------------------------------------------------------------- #
-def _reveal_pair(root, *, patch_centers=("a", "a")):
-    """A concealed part in an archive and its true twin at the same path."""
+def _concealed(root, s):
+    """``s`` sealed under blind toy, before its seed is published."""
+    return sio.seal(s, _custody(root, "TOY"))
+
+
+def _write(path, s, stamp):
+    """``s`` on disk under ``stamp`` as given, as the door would never write it."""
+    s = s.copy()
+    s.metadata.update(stamp)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    s.save_fits(str(path), overwrite=True)
+
+
+def _audit(root, archived, live, *, centres=("a", "a"), seed=None):
+    """Publish toy's seed (or ``seed``), archive ``archived`` under toy's stamp
+    with ``live`` as its re-measured twin, and audit the pair."""
     blinded = _custody(root, "TOY")
-    seed = bd.open_blind(blinded).seed
+    seed = seed or bd.open_blind(blinded).seed
     (root / "blinds" / "toy" / "revealed.json").write_text(json.dumps({"seed": seed}))
-    true = cu.Custody("unblinded", "TOY")
-    s = two_bin_sacc()
-    for tree, custody, centers in (
-        ("archive", blinded, patch_centers[0]),
-        ("live", true, patch_centers[1]),
+    for tree, s, stamp, centre in (
+        ("archive", archived, blinded.stamp, centres[0]),
+        ("live", live, cu.Custody("unblinded", "TOY").stamp, centres[1]),
     ):
-        part = s.copy()
-        part.metadata["patch_centers_sha256"] = centers
-        (root / tree / "sub").mkdir(parents=True)
-        sio.save(part, root / tree / "sub" / "part.sacc", custody=custody)
-    return seed
-
-
-def _audit(root):
+        s = s.copy()
+        s.metadata["patch_centers_sha256"] = centre
+        _write(root / tree / "sub" / "part.sacc", s, stamp)
     return bd.audit(
         "toy",
         archive=root / "archive",
@@ -776,9 +846,15 @@ def _audit(root):
     )
 
 
+def _problems(report):
+    return report["problems"] + [
+        problem for part in report["parts"].values() for problem in part["problems"]
+    ]
+
+
 def test_the_audit_passes_on_a_true_reveal(fresh):
-    _reveal_pair(fresh)
-    report = _audit(fresh)
+    s = two_bin_sacc(rho=True)
+    report = _audit(fresh, _concealed(fresh, s), s)
     assert report["ok"], report
     ((path, part),) = report["parts"].items()
     assert path == "sub/part.sacc" and part["residual"] <= 1e-6
@@ -788,11 +864,63 @@ def test_the_audit_passes_on_a_true_reveal(fresh):
 
 
 def test_the_audit_fails_on_a_wrong_seed(fresh):
-    _reveal_pair(fresh)
-    (fresh / "blinds" / "toy" / "revealed.json").write_text(json.dumps({"seed": "x"}))
-    assert not _audit(fresh)["ok"]
+    s = two_bin_sacc()
+    report = _audit(fresh, _concealed(fresh, s), s, seed="not-the-seed")
+    assert not report["ok"] and "published seed" in _problems(report)[0]
 
 
 def test_the_audit_fails_on_other_patch_centres(fresh):
-    _reveal_pair(fresh, patch_centers=("a", "b"))
-    assert not _audit(fresh)["ok"]
+    s = two_bin_sacc()
+    report = _audit(fresh, _concealed(fresh, s), s, centres=("a", "b"))
+    assert not report["ok"] and "patch centres" in _problems(report)[0]
+
+
+@pytest.mark.parametrize("times", [0, 2], ids=["left_true", "shifted_twice"])
+def test_the_audit_fails_on_a_mixed_file(fresh, times):
+    """One ξ± pair under the blinded stamp carries 0× or 2× the shift."""
+    s = two_bin_sacc(rho=True)
+    archived = _concealed(fresh, s)
+    for i in _rows(s, sio.XI_PLUS, sio.XI_MINUS):
+        if s.data[i].tracers == sio._pair((1, 1)):
+            shift = archived.data[i].value - s.data[i].value
+            archived.data[i].value = s.data[i].value + times * shift
+    report = _audit(fresh, archived, s)
+    assert not report["ok"]
+    assert any("≠ shift(seed)" in problem for problem in _problems(report))
+
+
+@pytest.mark.parametrize("kind", [sio.CL_BB, sio.RHO_PLUS.format(k=0)])
+def test_the_audit_fails_when_an_unshifted_row_moved(fresh, kind):
+    s = two_bin_sacc(rho=True)
+    archived = _concealed(fresh, s)
+    i = _rows(s, kind)[-1]
+    archived.data[i].value += 1e-6 * abs(s.data[i].value)
+    report = _audit(fresh, archived, s)
+    assert not report["ok"]
+    assert _problems(report) == [f"{kind} moved, but the blind leaves it unshifted"]
+
+
+@pytest.mark.parametrize(
+    "e_kind, b_kind",
+    [
+        (sio.COSEBI_EE, sio.COSEBI_BB),
+        (sio.PURE_TYPES["xim_E"], sio.PURE_TYPES["xim_B"]),
+    ],
+    ids=["cosebis", "pure_eb"],
+)
+@pytest.mark.parametrize("b_sigma", [0.0, 1.0])
+def test_the_audit_bounds_derived_b_modes(fresh, e_kind, b_kind, b_sigma):
+    """A derived part's E rows move with the blind; its B rows by ≤ ``B_SIGMA``."""
+    true = cosebis_sacc() if e_kind == sio.COSEBI_EE else pure_eb_sacc()
+    true.add_covariance(np.full(len(true.mean), 0.01))
+    archived = true.copy()
+    for i in _rows(true, e_kind):
+        archived.data[i].value += 0.3
+    for i in _rows(true, b_kind):
+        archived.data[i].value += b_sigma * 0.1
+    report = _audit(fresh, archived, true)
+    assert report["ok"] == (b_sigma == 0.0), report
+    (part,) = report["parts"].values()
+    assert part["shift_over_sigma"][e_kind] == pytest.approx(3.0)
+    if b_sigma:
+        assert _problems(report) == [f"{b_kind} moved by 1.00e+00σ under the blind"]

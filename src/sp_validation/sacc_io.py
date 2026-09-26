@@ -954,6 +954,17 @@ SHIFTABLE = (XI_PLUS, XI_MINUS, CL_EE)
 UNSHIFTED = (CL_BB, CL_EB)
 
 
+def is_derived(data_type):
+    """Whether ``data_type`` is a derived statistic (COSEBIs, pure-E/B, …).
+
+    Signal the blind neither conceals nor leaves unchanged: it moves only
+    through the shiftable rows it is computed from.
+    """
+    return data_type.startswith(SIGNAL_PREFIX) and data_type not in (
+        SHIFTABLE + UNSHIFTED
+    )
+
+
 def _stamped(s):
     return any(key in s.metadata for key in _custody.STAMP_KEYS)
 
@@ -981,14 +992,13 @@ def seal(s, custody):
             "only as a derivation (save(..., derived_from=[...]))"
         )
     types = {dp.data_type for dp in s.data}
-    signal = {t for t in types if t.startswith(SIGNAL_PREFIX)}
-    derived = signal - set(SHIFTABLE) - set(UNSHIFTED)
+    derived = {t for t in types if is_derived(t)}
     if custody.status == "blinded" and derived:
         raise ValueError(
             f"a blinded catalogue's {sorted(derived)} rows are derived "
             "statistics: save them with derived_from=[their input parts]"
         )
-    if custody.status == "blinded" and signal & set(SHIFTABLE):
+    if custody.status == "blinded" and types & set(SHIFTABLE):
         from . import blinding
 
         out = blinding.conceal(s, blinding.open_blind(custody))
