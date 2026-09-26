@@ -762,9 +762,8 @@ def merge(saccs):
     block-diagonal is out of scope here; see ``assemble_covariance``).
 
     Metadata must be consistent: keys present in several inputs must carry
-    equal values (files under two custody stamps cannot merge), and the union
-    lands on the result. This deliberately replaces the
-    library's clash behaviour, which mangles clashing keys by appending
+    equal values, and the union lands on the result. This deliberately replaces
+    the library's clash behaviour, which mangles clashing keys by appending
     labels.
 
     Grid consistency follows tagging semantics: the ``grid`` tag declares
@@ -904,43 +903,6 @@ def _check_grid_consistency(s, angle):
                         f"ell grid under grid tag {tag!r}; harmonize upstream "
                         f"— groups {key_a!r} and {key_b!r}"
                     )
-
-
-def update_statistic(s, sub):
-    """Overwrite the values of ``s``'s points that match ``sub``'s, in place.
-
-    The merge-back half of the extract → conceal → merge blinding flow
-    (PRD #241 §4): each point of ``sub`` is matched to exactly one point of
-    ``s`` by ``(data_type, tracers, tags)``, and that point's *value* is
-    replaced. Nothing else changes — insertion order, tags, windows and the
-    covariance are untouched (blinding shifts the mean only), so ``sub``'s
-    own covariance (e.g. the sub-block ``extract`` attaches) is deliberately
-    not consulted. A ``sub`` point with no match, or with several, raises
-    ``ValueError``.
-
-    Parameters
-    ----------
-    s : sacc.Sacc
-        Target, mutated in place.
-    sub : sacc.Sacc
-        The replacement block, e.g. ``extract(s, ...)`` after concealment.
-    """
-    claimed = set()
-    for point in sub.data:
-        idx = s.indices(point.data_type, point.tracers, **point.tags)
-        if len(idx) != 1:
-            raise ValueError(
-                f"update_statistic: {len(idx)} points in the target match "
-                f"({point.data_type}, {point.tracers}, {point.tags}) — need "
-                "exactly one"
-            )
-        if idx[0] in claimed:
-            raise ValueError(
-                f"update_statistic: two sub points match the same target "
-                f"point ({point.data_type}, {point.tracers}, {point.tags})"
-            )
-        claimed.add(idx[0])
-        s.data[idx[0]].value = point.value
 
 
 # --------------------------------------------------------------------------- #

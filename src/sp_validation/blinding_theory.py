@@ -6,8 +6,7 @@
     recipe; :func:`xi_ccl` and :func:`cl_ee` are the tomographic shear ξ± and
     Cℓ_EE between two bins' n(z). CCL builds the nonlinear P(k) through its
     Boltzmann-CAMB HMCode2020 route and projects with its own Limber
-    (``angular_cl``) and FFTLog (``correlation``). ``test_camb_ccl_crosscheck``
-    compares this path with a direct CAMB run.
+    (``angular_cl``) and FFTLog (``correlation``).
 
     The generic cosmology machinery here is destined for ``cs_util.cosmo``
     (cs_util#80).
@@ -21,8 +20,8 @@ import dataclasses
 
 import numpy as np
 
-# Fixed constants of the fiducial, passed explicitly to CCL (and to the CAMB
-# oracle in the tests) rather than left to either stack's default.
+# Fixed constants of the fiducial, passed explicitly to CCL rather than left to
+# its default.
 NEFF = 3.046
 T_CMB = 2.7255
 

@@ -619,7 +619,7 @@ def test_tomographic_xi_covariance_one_contiguous_block():
 # --------------------------------------------------------------------------- #
 # 13. merge(): per-statistic files combine into one; shared tracers stored
 #     once; covariance block-diagonal (all-or-none); metadata union with
-#     loud conflicts. update_statistic(): value-only merge-back.
+#     loud conflicts.
 # --------------------------------------------------------------------------- #
 def _xi_sacc(metadata=None):
     s = sio.new_sacc({0: _nz(0)}, metadata=metadata)
@@ -706,46 +706,6 @@ def test_merge_conflicting_metadata_fails():
     s_co = _cosebi_sacc({"survey": "KiDS"})
     with pytest.raises(ValueError, match="conflicting metadata"):
         sio.merge([s_xi, s_co])
-
-
-def test_update_statistic_values_only():
-    s = _multi_statistic_sacc()
-    tr = ("source_0", "source_0")
-    xi, cl, co = _xi_block(s, tr), _cl_block(s, tr), _cosebi_block(s, tr)
-    cov = [(xi, _spd(len(xi), 1)), (cl, _spd(len(cl), 2)), (co, _spd(len(co), 3))]
-    sio.assemble_covariance(s, cov)
-    dense_before = s.covariance.dense.copy()
-    mean_before = s.mean.copy()
-
-    # extract -> shift (a stand-in for conceal) -> merge back
-    sub = sio.extract(s, data_type=sio.XI_PLUS, tracers=tr)
-    for point in sub.data:
-        point.value += 1e-4
-    sio.update_statistic(s, sub)
-
-    idx_p = s.indices(sio.XI_PLUS, tr)
-    assert np.allclose(s.mean[idx_p], mean_before[idx_p] + 1e-4)
-    untouched = np.setdiff1d(np.arange(len(s.mean)), idx_p)
-    assert np.array_equal(s.mean[untouched], mean_before[untouched])
-    # covariance and insertion order untouched
-    assert np.array_equal(s.covariance.dense, dense_before)
-
-
-def test_update_statistic_requires_unique_match():
-    s = _xi_sacc()
-    sub = sio.extract(s, data_type=sio.XI_PLUS, tracers=("source_0", "source_0"))
-    missing = sub.copy()
-    missing.data[0].tags["theta"] = 999.0  # matches nothing in s
-    with pytest.raises(ValueError, match="0 points"):
-        sio.update_statistic(s, missing)
-
-
-def test_update_statistic_rejects_duplicate_sub_points():
-    s = _xi_sacc()
-    sub = sio.extract(s, data_type=sio.XI_PLUS, tracers=("source_0", "source_0"))
-    sub.data[1].tags = dict(sub.data[0].tags)  # two sub points -> one target
-    with pytest.raises(ValueError, match="same target"):
-        sio.update_statistic(s, sub)
 
 
 def test_merge_rejects_divergent_shared_tracer():

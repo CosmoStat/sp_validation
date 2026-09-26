@@ -1,15 +1,10 @@
 """Custody: whether a catalogue's signal is blinded, unblinded or a mock.
 
-Custody is declared once per *base* catalogue, as ``blinding:`` on its entry in
-``cosmo_val/cat_config.yaml``; an entry that declares nothing is blinded, so a
-new catalogue fails closed. Variants share their base's custody and blind:
-``_leak_corr`` and ``_seed<N>`` versions, and entries that name their parent
-with ``base:``.
-
-A blinded base must be covered by exactly one blind in the registry beside the
+The custody of every catalogue version (:func:`custody_of`), the stamp a SACC
+born under it carries, and the reader of the blind registry beside the
 catalogue config (``cosmo_val/blinds/<blind>/``: ``commitment.json``, the
-``bases`` it covers, and ``revealed.json`` once its seed is published). The
-registry is written only by ``python -m sp_validation.blinding``.
+``bases`` it covers, and ``revealed.json`` once its seed is published), which
+only ``python -m sp_validation.blinding`` writes.
 
 Standard library only: the host Snakemake loads this file by path, and
 container jobs import it, so both resolve custody from the same declaration.
@@ -180,12 +175,14 @@ def _no_blind(version, base, declared, registry):
     repo = registry.parent.parent
     cat_config = registry.parent / "cat_config.yaml"
     return (
-        f"{version} is blinded ({why}) and no blind covers it.\n"
-        "Draw one, once:\n"
+        f"{version} is blinded ({why}) and no blind covers it in this checkout.\n"
+        "git pull first: its blind may already be drawn and committed. Never "
+        "draw a second one.\n"
+        "Only the custodian draws a blind, once:\n"
         f"  APPTAINERENV_PYTHONPATH={repo}/src spv-container exec "
         f"python -m sp_validation.blinding init <name> {base} "
         f"--cat-config {cat_config}\n"
-        "then commit cosmo_val/blinds/<name>/.\n"
+        "then commits cosmo_val/blinds/<name>/.\n"
         "Re-processing a catalogue whose blind is still concealed? Share it "
         f"instead: python -m sp_validation.blinding share <blind> {base} "
         f"--cat-config {cat_config}\n"
@@ -198,10 +195,13 @@ def custody_of(catalogues, version, *, registry):
     """The custody of ``version``, from its base's declaration and the registry.
 
     @sc custody-is-declared
-    Custody is read only here, from the parsed catalogue config and the blind
+    Custody is declared once per *base* catalogue, as ``blinding:`` on its
+    entry in ``cosmo_val/cat_config.yaml``, and read only here, with the blind
     registry; no workflow config, environment variable or call argument can
-    change it. An entry declaring nothing is blinded, and variants share their
-    base's custody and blind.
+    change it. An entry declaring nothing is blinded, so a new catalogue fails
+    closed. Variants share their base's custody and blind: ``_leak_corr`` and
+    ``_seed<N>`` versions, and entries naming their parent with ``base:``. A
+    blinded base is covered by exactly one blind.
 
     Raises
     ------
