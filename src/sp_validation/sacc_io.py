@@ -982,10 +982,11 @@ def seal(s, custody):
         )
     types = {dp.data_type for dp in s.data}
     signal = {t for t in types if t.startswith(SIGNAL_PREFIX)}
-    if custody.status == "blinded" and signal - set(SHIFTABLE) - set(UNSHIFTED):
+    derived = signal - set(SHIFTABLE) - set(UNSHIFTED)
+    if custody.status == "blinded" and derived:
         raise ValueError(
-            f"a blinded catalogue's {sorted(signal - set(SHIFTABLE))} rows are "
-            "derived statistics: save them with derived_from=[their input parts]"
+            f"a blinded catalogue's {sorted(derived)} rows are derived "
+            "statistics: save them with derived_from=[their input parts]"
         )
     if custody.status == "blinded" and signal & set(SHIFTABLE):
         from . import blinding

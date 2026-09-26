@@ -26,7 +26,8 @@ STATUSES = ("blinded", "unblinded", "mock")
 # Top-level keys of the catalogue config that are not catalogues.
 NOT_CATALOGUES = ("nz", "paths")
 
-# The Smokescreen fork's commitment prefix; test_blinding pins it to the fork's.
+# smokescreen.COMMITMENT_DOMAIN, spelt here so this module needs only the
+# standard library.
 COMMITMENT_DOMAIN = b"smokescreen-seed-commitment-v1|"
 
 # The stamp every SACC carries: the custody it was born under.
