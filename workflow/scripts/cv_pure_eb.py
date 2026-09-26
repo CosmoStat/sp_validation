@@ -59,6 +59,13 @@ cov, eb_samples = pure_eb_covariance_mc(
     n_samples=p["n_samples"],
     rng=np.random.default_rng(0),
 )
+# Written first, so parts under two custodies are refused before any product
+# of them exists.
+sacc_io.save(
+    pure_eb_to_sacc({0: (z, nz)}, reporting.metadata, theta, modes, covariance=cov),
+    snakemake.output["sacc"],
+    derived_from=[reporting, integration],
+)
 
 variances = reporting.covariance.dense.diagonal()
 results = {
@@ -101,14 +108,5 @@ plot_eb_covariance_matrix(
 )
 
 save_pure_eb_results(results, snakemake.output["npz"])
-
-s = pure_eb_to_sacc(
-    {0: (z, nz)},
-    reporting.metadata,
-    theta,
-    {key: results[key] for key in sacc_io.PURE_KEYS},
-    covariance=cov,
-)
-sacc_io.save(s, snakemake.output["sacc"], derived_from=[reporting, integration])
 
 verify_outputs(snakemake)

@@ -227,7 +227,8 @@ def run_chain(cat_config, version, out, cov, *, grid_parts=None):
             "min_sep": rep["min_sep"],
             "max_sep": rep["max_sep"],
             "nbins": rep["nbins"],
-            "n_samples": 10,
+            # Enough draws for a full-rank 12 × 12 combined ξ±_B covariance.
+            "n_samples": 40,
             "cosmo_params": {"transfer_function": "eisenstein_hu"},
             "fiducial_scale_cut": SCALE_CUT,
         },
@@ -369,14 +370,12 @@ def test_a_blinded_catalogue_from_birth_to_audit(toy, monkeypatch):
     assert not (out / "laundered.sacc").exists()
 
     # --- an interrupted birth leaves no part ---------------------------------
-    from sp_validation.cosmo_val import sacc_writers
-
-    def after_compute(*args, **kwargs):
-        raise RuntimeError("interrupted after the measurement")
+    def interrupted(*args, **kwargs):
+        raise RuntimeError("interrupted while sealing")
 
     with monkeypatch.context() as m:
-        m.setattr(sacc_writers, "xi_to_sacc", after_compute)
-        with pytest.raises(RuntimeError):
+        m.setattr(bd, "conceal", interrupted)
+        with pytest.raises(RuntimeError, match="while sealing"):
             run_chain(
                 toy.cat_config,
                 "TOY",
