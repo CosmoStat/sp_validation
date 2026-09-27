@@ -15,9 +15,10 @@ The ``toy`` fixture is a disposable checkout: copies of ``workflow/`` and
 ``cosmo_val/cat_config.yaml`` declaring one catalogue per custody state over a
 touched catalogue file, a blind registry of hand-written records (the host
 never decrypts, so no record needs a real seed), the processed CosmoCov
-covariances already in place (their inputs live on candide), and both output
-roots in tmp. Its runs use a fake image whose Python and Snakemake match the
-running ones, so the launch-time parity check passes without apptainer.
+covariances already in place (their inputs live on candide), the toy
+catalogue's patch centres, and both output roots in tmp. Its runs use a fake
+image whose Python and Snakemake match the running ones, so the launch-time
+parity check passes without apptainer.
 """
 
 import copy
@@ -265,6 +266,14 @@ def toy(tmp_path_factory):
             )
             path.parent.mkdir(parents=True, exist_ok=True)
             path.touch()
+
+    # The toy catalogue's patch centres, drawn by hand, in both output roots a
+    # launch may name.
+    npatch = grids["reporting"]["npatch"]
+    for cosmo_val in (Path(env["COSMO_VAL"]), root / "cosmo_val" / "output"):
+        centres = cosmo_val / "patches" / f"{VERSIONS[0]}_npatch={npatch}.dat"
+        centres.parent.mkdir(parents=True)
+        centres.touch()
 
     return Toy(
         root=root,

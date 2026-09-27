@@ -114,7 +114,6 @@ COSMOLOGY_PARAMS = "results/cosmology/planck18.json"
 # silent failures. Apply with: wildcard_constraints: **WILDCARD_CONSTRAINTS
 WILDCARD_CONSTRAINTS = {
     "version": r"SP_v[\d.]+(_w_iv)?(_ecut\d+)?(_leak_corr)?",
-    "catalogue": r"SP_v[\d.]+(_w_iv)?(_ecut\d+)?",
     "blind": r"[ABC]",
     "nbins": r"\d+",
     "min_sep": r"[0-9.]+",
@@ -418,6 +417,30 @@ def patches_path(version, npatch):
     """
     name = f"{base_version(version)}_npatch={int(npatch)}.dat"
     return str(COSMO_VAL / "patches" / name)
+
+
+def patches_input(version, npatch):
+    """Rule xi's centres input for ``version`` with ``npatch``; none unpatched.
+
+    No rule draws centres (``patch-centres-are-inputs``), so a missing file
+    stops the launch with the command that draws it.
+    """
+    if int(npatch) <= 1:
+        return []
+    path = patches_path(version, npatch)
+    if os.path.exists(path):
+        return path
+    from snakemake.exceptions import WorkflowError
+
+    base = base_version(version)
+    raise WorkflowError(
+        f"{version} splits at {base}'s jackknife patch centres, {path}, which do "
+        "not exist; no rule draws them. Draw them once, on a compute node:\n"
+        f"  APPTAINERENV_PYTHONPATH={REPO_SRC} spv-container exec python -m "
+        f"sp_validation.cosmo_val.patch_centers {base} {int(npatch)} "
+        f"--cat-config {CAT_CONFIG} --output-dir {COSMO_VAL}\n"
+        f"or copy {base}'s centres from the output tree whose ξ± yours should match."
+    )
 
 
 def build_redshift_path(version, blind):

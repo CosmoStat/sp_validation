@@ -3,12 +3,12 @@
 A synthetic catalogue is declared three ways (``TOY`` blinded, ``TOY_OPEN``
 unblinded, ``TOY_MOCK`` mock). A blind is drawn for ``TOY`` with ``blinding
 init``; the rule scripts run as Snakemake runs them (``runpy`` with a
-``snakemake`` object) for ``TOY`` and ``TOY_leak_corr``: the patch centres, both
-ξ± grids, the ξ± figures, a two-bin writer, pseudo-Cℓ on an nside-32 NaMaster
-workspace, ρ/τ, COSEBIs, pure-E/B and assembly. The blind is then revealed, the
-declaration flipped, the chain re-run, and the audit must prove blinded − true =
-shift(seed) on every part the reveal archived. Neither the blinded run's files
-nor its figures may hold a true ξ± value.
+``snakemake`` object) for ``TOY`` and ``TOY_leak_corr``, on patch centres drawn
+by their command: both ξ± grids, the ξ± figures, a two-bin writer, pseudo-Cℓ on
+an nside-32 NaMaster workspace, ρ/τ, COSEBIs, pure-E/B and assembly. The blind
+is then revealed, the declaration flipped, the chain re-run, and the audit must
+prove blinded − true = shift(seed) on every part the reveal archived. Neither
+the blinded run's files nor its figures may hold a true ξ± value.
 """
 
 import json
@@ -27,6 +27,7 @@ from sp_validation import blinding as bd
 from sp_validation import custody as cu
 from sp_validation import sacc_io as sio
 from sp_validation.cosmo_val import CosmologyValidation
+from sp_validation.cosmo_val.patch_centers import main as draw_patch_centers
 
 REPO = Path(__file__).resolve().parents[3]
 SCRIPTS = REPO / "workflow" / "scripts"
@@ -135,19 +136,19 @@ def _covariances(root):
 
 
 def patch_centres(cat_config, version, out, npatch):
-    """Rule xi_patches for ``version``'s base catalogue, unless its file exists."""
+    """``version``'s base catalogue's centres, drawn by their command if absent."""
     base = cu.base_catalogue(yaml.safe_load(Path(cat_config).read_text()), version)
     centres = out / "patches" / f"{base}_npatch={npatch}.dat"
     if not centres.exists():
-        run_rule(
-            "xi_patches.py",
-            output={"patches": str(centres)},
-            params={
-                "catalogue": base,
-                "npatch": npatch,
-                "cat_config": str(cat_config),
-                "output_dir": str(out),
-            },
+        draw_patch_centers(
+            [
+                base,
+                str(npatch),
+                "--cat-config",
+                str(cat_config),
+                "--output-dir",
+                str(out),
+            ]
         )
     return centres
 

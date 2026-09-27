@@ -4,14 +4,16 @@ The launch is the README's with the machine-independent default profile: the
 host Snakemake, the image `spv-container` manages, jobs on this node. A toy
 checkout under your home directory (which the profile binds) carries copies of
 workflow/, papers/cosmo_val/ and src/, and one synthetic catalogue declared
-unblinded. Its reporting parts and their figure are made; then the catalogue is
-declared blinded, a blind is drawn for it, and the same launch re-measures the
-parts concealed. The jobs run under a matplotlibrc asking for a LaTeX package
-no image has, as a user's own may.
+unblinded. The first launch stops for want of its patch centres and names the
+command that draws them; after it has run, its reporting parts and their figure
+are made; then the catalogue is declared blinded, a blind is drawn for it, and
+the same launch re-measures the parts concealed. The jobs run under a
+matplotlibrc asking for a LaTeX package no image has, as a user's own may.
 """
 
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -151,11 +153,21 @@ def test_xi_before_and_after_its_catalogue_is_blinded():
             check=False,
         )
 
+    # No centres: the launch names the command that draws them, which works.
+    result = launch()
+    assert result.returncode != 0, result.stdout
+    (command,) = [
+        line.split("spv-container exec ", 1)[1]
+        for line in result.stdout.splitlines()
+        if "sp_validation.cosmo_val.patch_centers" in line
+    ]
+    _in_image(image, root, *shlex.split(command))
+    assert (out / "patches" / "SP_v0.1_npatch=4.dat").is_file()
+
     # Declared unblinded: parts stamped unblinded, and their figure drawn.
     result = launch()
     assert result.returncode == 0, result.stdout
     assert [s["blinding"] for s in _stamps(image, root, parts)] == ["unblinded"] * 2
-    assert (out / "patches" / "SP_v0.1_npatch=4.dat").is_file()
     assert (out / "xi_p.png").is_file()
 
     # Declared blinded, and its blind drawn: the parts' params changed.

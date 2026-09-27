@@ -99,9 +99,10 @@ def test_xi_leaves_a_measurement_only_as_a_part(toy):
         }, job.input
 
 
-def test_patch_centres_are_an_input_shared_by_variants(toy):
-    """Every patched ξ± job splits at its base catalogue's centres, drawn once."""
-    result = toy.snakemake("-n", "assemble_sacc_all")
+def test_patch_centres_are_an_input_no_rule_draws(toy):
+    """Every patched ξ± job splits at its base catalogue's centres, and even a
+    forced run writes none: a re-draw cannot be reproduced."""
+    result = toy.snakemake("-F", "-n", "assemble_sacc_all")
     assert result.returncode == 0, result.stdout
     jobs = parse_jobs(result.stdout)
     npatch = toy.common.xi_grids(toy.config, toy.config["fiducial"])["reporting"][
@@ -110,7 +111,6 @@ def test_patch_centres_are_an_input_shared_by_variants(toy):
     assert npatch > 1
     centres = str(toy.cosmo_val / "patches" / f"{VERSIONS[0]}_npatch={npatch}.dat")
 
-    assert [j.output for j in jobs if j.rule == "xi_patches"] == [[centres]]
     xi = [j for j in jobs if j.rule == "xi"]
     assert {j.wildcards["version"] for j in xi} == set(VERSIONS)
     for job in xi:
@@ -118,6 +118,26 @@ def test_patch_centres_are_an_input_shared_by_variants(toy):
         assert [f for f in job.input if "/patches/" in f] == (
             [centres] if patched else []
         ), job
+    drawn = [f for j in jobs for f in j.output if "/patches/" in f]
+    assert not drawn, drawn
+
+
+def test_a_tree_without_centres_stops_the_launch(toy, tmp_path):
+    """A launch into a tree without the centres names the command that draws
+    them, for the base catalogue."""
+    npatch = toy.common.xi_grids(toy.config, toy.config["fiducial"])["reporting"][
+        "npatch"
+    ]
+    result = toy.snakemake(
+        "-n", "assemble_sacc_all", env={**toy.env, "COSMO_VAL": str(tmp_path)}
+    )
+    plain = toy.common._plain
+    assert result.returncode != 0, result.stdout
+    assert (
+        f"python -m sp_validation.cosmo_val.patch_centers {VERSIONS[0]} {npatch} "
+        f"--cat-config {plain(toy.root / 'cosmo_val' / 'cat_config.yaml')} "
+        f"--output-dir {plain(tmp_path)}"
+    ) in result.stdout, result.stdout
 
 
 @pytest.mark.parametrize("named", [True, False], ids=["named", "unnamed"])
@@ -177,8 +197,8 @@ def test_output_roots_take_the_plain_spelling(toy):
         tree / "inference",
     )
     grids = toy.common.xi_grids(toy.config, toy.config["fiducial"])
-    reporting = toy.common.grid_binning(grids["reporting"])
-    target = tree / "val" / f"{VERSIONS[0]}_xi_{reporting}.sacc"
+    integration = toy.common.grid_binning(grids["integration"])
+    target = tree / "val" / f"{VERSIONS[0]}_xi_{integration}.sacc"
     result = toy.snakemake("-n", str(target), env=env)
     assert result.returncode == 0, result.stdout
     declared = [f for j in parse_jobs(result.stdout) for f in j.input + j.output]
@@ -377,9 +397,26 @@ def test_unblinding_a_concealed_catalogue_needs_the_reveal(toy):
     assert "blinding reveal stale" in result.stdout
 
 
-def _real_dry_run(paper, targets):
+def _stand_in_centres(paper, cosmo_val):
+    """Touch the centres ``paper``'s patched ξ± grids read; a dry-run reads none."""
+    common = _load_module(
+        REPO / "workflow" / "common.py", f"{paper}_common", {"COSMO_VAL": cosmo_val}
+    )
+    common.CATALOG_CONFIG = yaml.safe_load(Path(common.CAT_CONFIG).read_text())
+    config = yaml.safe_load(
+        (REPO / "papers" / paper / "config" / "config.yaml").read_text()
+    )
+    for grid in common.xi_grids(config, config["fiducial"]).values():
+        for version in config["versions"] if grid["npatch"] > 1 else ():
+            centres = Path(common.patches_path(version, grid["npatch"]))
+            centres.parent.mkdir(parents=True, exist_ok=True)
+            centres.touch()
+
+
+def _real_dry_run(paper, targets, cosmo_val):
     env = {k: v for k, v in os.environ.items() if k != "SNAKEMAKE_PROFILE"}
-    env.update(PYTHONUNBUFFERED="1", PYTHONNOUSERSITE="1")
+    env.update(PYTHONUNBUFFERED="1", PYTHONNOUSERSITE="1", COSMO_VAL=cosmo_val)
+    _stand_in_centres(paper, cosmo_val)
     return subprocess.run(
         [
             sys.executable,
@@ -410,13 +447,14 @@ def _real_dry_run(paper, targets):
     ],
     ids=["cosmo_val", "bmodes"],
 )
-def test_papers_resolve_on_candide(paper, targets):
+def test_papers_resolve_on_candide(paper, targets, tmp_path):
     """The real paper DAGs resolve against the real catalogues and your image.
 
     The e-cut catalogue reads its parent's catalogue entry. Your image (the SIF
-    or sandbox `spv-container` manages) is read, so parity was checked.
+    or sandbox `spv-container` manages) is read, so parity was checked. The
+    products land in a tree of their own, holding stand-in patch centres.
     """
-    result = _real_dry_run(paper, targets)
+    result = _real_dry_run(paper, targets, str(tmp_path))
     assert result.returncode == 0, result.stdout
     assert "parity unchecked" not in result.stdout, (
         "no local image was read; run `spv-container pull`\n" + result.stdout

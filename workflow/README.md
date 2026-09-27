@@ -165,10 +165,20 @@ mkdir -p <tree>/data
 ln -s /n17data/cdaley/unions/code/sp_validation/cosmo_inference/data/mask <tree>/data/
 ```
 
-Jackknife patch centres are drawn once per base catalogue, by rule
-`xi_patches` into `COSMO_VAL/patches/`, and every patched ξ± measurement of the
-catalogue and its variants splits at them (in a notebook:
-`CosmologyValidation.write_patch_centers`).
+Jackknife patch centres are drawn once per base catalogue into
+`COSMO_VAL/patches/`, and every patched ξ± measurement of the catalogue and its
+variants splits at them. TreeCorr's k-means cannot be reproduced, so no rule
+draws them: `-F` re-measures on the same centres, and a launch that needs
+centres its tree lacks stops with the command that draws them, to run once on a
+compute node:
+
+```bash
+APPTAINERENV_PYTHONPATH=$PWD/src spv-container exec python -m sp_validation.cosmo_val.patch_centers \
+    <catalogue> <npatch> --cat-config cosmo_val/cat_config.yaml --output-dir <COSMO_VAL>
+```
+
+Or copy the file from the tree whose ξ± yours should match. The command never
+replaces a file; to re-draw, delete it on purpose.
 
 Jobs draw their figures with matplotlib's defaults: `common.py` points each
 job's `MATPLOTLIBRC` at `workflow/matplotlibrc`, so your own matplotlibrc

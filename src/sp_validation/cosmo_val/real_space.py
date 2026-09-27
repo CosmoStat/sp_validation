@@ -42,10 +42,12 @@ class RealSpaceMixin:
 
         @sc patch-centres-are-inputs
         With patches, the catalogue splits at persisted centres, one file per
-        base catalogue (:meth:`patch_centers_path`, written by
-        :meth:`write_patch_centers`), never at centres drawn here: the
-        full-sample ξ± depends on the patch layout, and TreeCorr's k-means on
-        the machine. The part names the file by its sha256.
+        base catalogue (:meth:`patch_centers_path`), never at centres drawn
+        here: the full-sample ξ± depends on the patch layout, and TreeCorr's
+        k-means cannot be reproduced. So the centres are drawn once, by hand
+        (``python -m sp_validation.cosmo_val.patch_centers``, which never
+        replaces a file), and never by a workflow rule, which a forced or
+        re-triggered run would re-draw. The part names the file by its sha256.
 
         Parameters:
             ver (str): The catalogue version to measure.
@@ -132,10 +134,13 @@ class RealSpaceMixin:
             return None
         path = path or self.patch_centers_path(ver, npatch)
         if not os.path.exists(path):
+            base = base_catalogue(self._declared, ver)
             raise FileNotFoundError(
-                f"{ver} has no patch centres at {path}; write them once with "
-                f"write_patch_centers({base_catalogue(self._declared, ver)!r}, "
-                f"{npatch}) (rule xi_patches)"
+                f"{ver} splits at {base}'s patch centres, and {path} does not "
+                "exist. Draw them once: python -m "
+                f"sp_validation.cosmo_val.patch_centers {base} {npatch} "
+                f"--cat-config {os.path.abspath(self.catalog_config_path)} "
+                f"--output-dir {self._output_path()}"
             )
         return path
 
@@ -143,8 +148,8 @@ class RealSpaceMixin:
         """Draw ``npatch`` jackknife patch centres for a base catalogue, once.
 
         TreeCorr's k-means over the catalogue's positions and weights, written
-        to ``path`` (default :meth:`patch_centers_path`); every measurement of
-        the catalogue and its variants splits at them.
+        to ``path`` (default :meth:`patch_centers_path`). An existing file is
+        never replaced.
         """
         base = base_catalogue(self._declared, catalogue)
         if base != catalogue:
@@ -153,6 +158,11 @@ class RealSpaceMixin:
                 f"{catalogue}; write them from {base}"
             )
         path = path or self.patch_centers_path(catalogue, npatch)
+        if os.path.exists(path):
+            raise FileExistsError(
+                f"{path} exists: {catalogue}'s patch centres are drawn once, and "
+                "its patched ξ± split at them. Delete the file to draw new ones."
+            )
         # A Catalog's k-means runs on TreeCorr's process-wide thread count.
         treecorr.set_omp_threads(self.treecorr_config["num_threads"])
         with self.results[catalogue].temporarily_read_data():

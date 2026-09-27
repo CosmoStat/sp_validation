@@ -17,7 +17,7 @@ grids are the same compute with different ``--min-sep/--max-sep/--nbins``. The
 ξ± is born as a SACC part, named by its binning, tagged with its ``--grid`` and
 sealed under the catalogue's custody by ``CosmologyValidation.calculate_2pcf``;
 nothing else is written. With patches, the measurement splits at the base
-catalogue's persisted centres (rule xi_patches).
+catalogue's persisted centres (``python -m sp_validation.cosmo_val.patch_centers``).
 
 ``output_dir`` is passed explicitly so lc can point each run at its own
 ``{output}`` tree.

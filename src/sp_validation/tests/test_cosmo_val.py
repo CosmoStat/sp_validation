@@ -390,22 +390,34 @@ class TestCosmologyValidation:
 
     def test_a_patched_measurement_splits_at_the_persisted_centres(self, tmp_path):
         """[patch-centres-are-inputs] With patches, calculate_2pcf splits at the
-        base catalogue's centres file and names it in the part; without the
-        file it refuses rather than drawing centres of its own."""
+        base catalogue's centres file and names it in the part. Without the
+        file it refuses, naming the command that draws it, which works from an
+        object holding only a variant and never replaces the file."""
         import hashlib
+        import shlex
 
-        params, version = write_synthetic_catalogs(tmp_path)
+        from sp_validation.cosmo_val import patch_centers
+
+        params, base = write_synthetic_catalogs(tmp_path)
+        version = f"{base}_leak_corr"
         cv = CosmologyValidation(versions=[version], npatch=4, **params)
-        with pytest.raises(FileNotFoundError, match="write_patch_centers"):
+        with pytest.raises(FileNotFoundError) as refused:
             cv.calculate_2pcf(version)
+        command = "python -m sp_validation.cosmo_val.patch_centers "
+        assert command in str(refused.value), refused.value
+        argv = shlex.split(str(refused.value).split(command, 1)[1])
 
+        patch_centers.main(argv)
         centres = Path(cv.patch_centers_path(version, 4))
-        cv.write_patch_centers(version, 4)
+        drawn = centres.read_bytes()
+        with pytest.raises(FileExistsError):
+            patch_centers.main(argv)
+        assert centres.read_bytes() == drawn
+
         part = cv.calculate_2pcf(version)
         assert part.metadata["npatch"] == 4
         assert (
-            part.metadata["patch_centers_sha256"]
-            == hashlib.sha256(centres.read_bytes()).hexdigest()
+            part.metadata["patch_centers_sha256"] == hashlib.sha256(drawn).hexdigest()
         )
 
     def test_calculate_scale_dependent_leakage_runs_on_synthetic_catalog(
