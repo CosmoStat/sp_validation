@@ -122,16 +122,16 @@ def inject_checkout_pythonpath(workflow_config):
 
 
 def resolve_container(override=None):
-    """Return the image every rule should run in.
+    """Return the image every rule should run in, stopping the launch on a mismatch.
 
     ``override`` wins if set (a ``docker://`` tag, a ``.sif`` path or a sandbox
     directory -- Snakemake's ``container:`` accepts all three); otherwise
     ``resolve_image()``, so jobs run what interactive ``spv-container`` work
-    runs.
+    runs. The image returned has passed ``check_host_parity``.
     """
-    if override:
-        return str(override)
-    return resolve_image()[0]
+    image = str(override) if override else resolve_image()[0]
+    check_host_parity(image)
+    return image
 
 
 def warn_if_image_stale():
@@ -215,7 +215,6 @@ def configure(workflow_config):
 
     inject_checkout_pythonpath(workflow_config)
     warn_if_image_stale()
-    check_host_parity(resolve_container(workflow_config.get("container")))
     CATALOG_CONFIG = load_configfile(CAT_CONFIG)
     FIDUCIAL = workflow_config["fiducial"]
     DEFAULT_MASK_SUFFIX = (
