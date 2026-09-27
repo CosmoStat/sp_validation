@@ -600,8 +600,6 @@ def _audit_part(blinded, true, fiducial, hidden, tolerance):
     if blinded is None or true is None or not _rows_match(blinded, true):
         return ["rows, tags or tracers differ"], None
     problems = []
-    if set(blinded.tracers) != set(true.tracers):
-        problems.append("tracers differ")
     cov = _covariance(true)
     if not _same_covariance(_covariance(blinded), cov):
         problems.append("covariances differ")

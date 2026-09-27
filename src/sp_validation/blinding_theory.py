@@ -169,17 +169,13 @@ def ccl_cosmology(params, config):
     return _COSMO_CACHE[key]
 
 
-def xi_ell_grid():
-    """The ℓ grid the ξ± Hankel projection integrates over.
-
-    Integers 2…49, then 200 log-spaced multipoles up to 6·10⁴ — dense enough
-    at low ℓ (where ξ± at large θ lives) and wide enough for the small-θ
-    tail. ``ccl.correlation`` interpolates C(ℓ) internally, so this fixes the
-    resolution of every ξ± this module produces.
-    """
-    return np.unique(
-        np.concatenate([np.arange(2, 50), np.geomspace(50, 6e4, 200)]).astype(float)
-    )
+# The ℓ grid the ξ± Hankel projection integrates over: integers 2…49, then 200
+# log-spaced multipoles up to 6·10⁴ — dense enough at low ℓ (where ξ± at large θ
+# lives) and wide enough for the small-θ tail. ``ccl.correlation`` interpolates
+# C(ℓ) internally, so this fixes the resolution of every ξ± this module produces.
+XI_ELL = np.unique(
+    np.concatenate([np.arange(2, 50), np.geomspace(50, 6e4, 200)]).astype(float)
+)
 
 
 # Tracers are rebuilt for every pair of every block at both cosmologies of a
@@ -238,11 +234,11 @@ def cl_ee(params, config, nz_i, nz_j, ell):
     return ccl.angular_cl(cosmo, tracer_i, tracer_j, np.asarray(ell, dtype=float))
 
 
-def xi_ccl(params, config, nz_i, nz_j, theta_arcmin, ell=None):
+def xi_ccl(params, config, nz_i, nz_j, theta_arcmin):
     """ξ± at ``theta_arcmin`` for one bin pair.
 
-    Cross Cℓ_EE on :func:`xi_ell_grid` (or ``ell``), then ``ccl.correlation``
-    (FFTLog Hankel transform) at θ in degrees, ``type="GG+"`` / ``"GG-"``.
+    Cross Cℓ_EE on :data:`XI_ELL`, then ``ccl.correlation`` (FFTLog Hankel
+    transform) at θ in degrees, ``type="GG+"`` / ``"GG-"``.
 
     Returns
     -------
@@ -251,10 +247,9 @@ def xi_ccl(params, config, nz_i, nz_j, theta_arcmin, ell=None):
     """
     import pyccl as ccl
 
-    ell = xi_ell_grid() if ell is None else np.asarray(ell, dtype=float)
     cosmo = ccl_cosmology(params, config)
-    cl = cl_ee(params, config, nz_i, nz_j, ell)
+    cl = cl_ee(params, config, nz_i, nz_j, XI_ELL)
     theta_deg = np.asarray(theta_arcmin) / 60.0
-    xip = ccl.correlation(cosmo, ell=ell, C_ell=cl, theta=theta_deg, type="GG+")
-    xim = ccl.correlation(cosmo, ell=ell, C_ell=cl, theta=theta_deg, type="GG-")
+    xip = ccl.correlation(cosmo, ell=XI_ELL, C_ell=cl, theta=theta_deg, type="GG+")
+    xim = ccl.correlation(cosmo, ell=XI_ELL, C_ell=cl, theta=theta_deg, type="GG-")
     return xip, xim
