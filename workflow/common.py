@@ -41,12 +41,11 @@ os.environ.pop("XDG_CACHE_HOME", None)
 
 
 # Output roots are env-overridable so a reproduction run can write into a
-# fresh tree without clobbering (or silently reusing) prior products.
-COSMO_VAL = Path(
-    os.environ.get(
-        "COSMO_VAL", "/n17data/cdaley/unions/code/sp_validation/cosmo_val/output"
-    )
-)
+# fresh tree without clobbering (or silently reusing) prior products. COSMO_VAL
+# defaults to the launched checkout's own (gitignored) cosmo_val/output, so a
+# launch writes into another checkout's products only when it names that tree;
+# COSMO_INFERENCE defaults to the shared tree on candide.
+COSMO_VAL = Path(os.environ.get("COSMO_VAL", REPO_ROOT / "cosmo_val" / "output"))
 COSMO_INFERENCE = Path(
     os.environ.get(
         "COSMO_INFERENCE", "/n17data/cdaley/unions/code/sp_validation/cosmo_inference"

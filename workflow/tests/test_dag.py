@@ -69,13 +69,19 @@ def test_one_integration_grid(toy):
         assert {part, covariance} <= by_rule["cv_pure_eb"], by_rule["cv_pure_eb"]
 
 
-def test_outputs_stay_in_the_output_roots(toy):
-    """Nothing the suite declares lands outside the configured output roots."""
-    result = toy.snakemake("-n", "all")
+@pytest.mark.parametrize("named", [True, False], ids=["named", "unnamed"])
+def test_outputs_stay_in_the_output_roots(toy, named):
+    """Nothing the suite declares lands outside the configured output roots.
+
+    A launch that names no COSMO_VAL writes into its own checkout's
+    cosmo_val/output.
+    """
+    env = toy.env if named else {k: v for k, v in toy.env.items() if k != "COSMO_VAL"}
+    cosmo_val = toy.cosmo_val if named else toy.root / "cosmo_val" / "output"
+    result = toy.snakemake("-n", "all", env=env)
     assert result.returncode == 0, result.stdout
     roots = [
-        r.resolve()
-        for r in (toy.cosmo_val, toy.cosmo_inference, toy.rundir / "results")
+        r.resolve() for r in (cosmo_val, toy.cosmo_inference, toy.rundir / "results")
     ]
     outputs = [Path(o) for j in parse_jobs(result.stdout) for o in j.output]
     assert outputs, result.stdout
