@@ -180,8 +180,11 @@ directory. `/automnt/nXXdataN` works only from a node that does *not* own that
 disk. On the owning node the disk is mounted directly at `/nXXdataN` and there
 is no `/automnt/nXXdataN` entry at all, so a job that lands there dies about one
 second after the allocation starts, before any log file is written. This is why
-`n17` is in the profile's exclude list. Every canonical path in `common.py`
-already uses the plain form; keep new paths the same.
+`n17` is in the profile's exclude list. `common.py` spells the launched
+checkout, `COSMO_VAL` and `COSMO_INFERENCE` in the plain form whatever spelling
+it is given (a symlink, a relative path, `/automnt`), and Snakemake matches a
+target by its path string, so name file targets in the plain form too; keep new
+paths the same.
 
 ### Run Snakemake from the host, never from inside the container
 

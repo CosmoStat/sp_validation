@@ -13,6 +13,7 @@ from conftest import (
     STALE,
     UNCOVERED,
     VERSIONS,
+    _load_module,
     fake_image,
     on_candide,
     parse_jobs,
@@ -102,16 +103,45 @@ def test_outputs_stay_in_the_output_roots(toy, named):
     assert not strays, strays
 
 
-def test_every_spelling_of_an_output_root_declares_the_same_paths(toy, tmp_path):
-    """Snakemake keys its params and code triggers by path string, so a
-    symlinked spelling of COSMO_VAL declares the tree's resolved paths."""
-    link = tmp_path / "cosmo_val_link"
-    link.symlink_to(toy.cosmo_val, target_is_directory=True)
-    result = toy.snakemake("-n", "all", env={**toy.env, "COSMO_VAL": str(link)})
+@pytest.mark.parametrize("root", ["COSMO_VAL", "COSMO_INFERENCE"])
+def test_every_spelling_of_an_output_root_declares_the_same_paths(toy, tmp_path, root):
+    """Snakemake keys its persistence records by path string, so a symlinked
+    spelling of an output root declares the tree's resolved paths."""
+    tree = Path(toy.env[root]).resolve()
+    link = tmp_path / "link"
+    link.symlink_to(tree, target_is_directory=True)
+    result = toy.snakemake("-n", "all", env={**toy.env, root: str(link)})
     assert result.returncode == 0, result.stdout
-    outputs = [o for j in parse_jobs(result.stdout) for o in j.output]
-    assert any(o.startswith(str(toy.cosmo_val.resolve())) for o in outputs), outputs
-    assert not [o for o in outputs if o.startswith(str(link))], outputs
+    declared = [f for j in parse_jobs(result.stdout) for f in j.input + j.output]
+    assert any(f.startswith(f"{tree}/") for f in declared), declared
+    assert not [f for f in declared if f.startswith(f"{link}/")], declared
+
+
+@pytest.mark.candide
+@on_candide
+def test_output_roots_take_the_plain_spelling(toy):
+    """A root on a candide disk is declared under /nXXdataN, the one spelling
+    every node has, however the launch spells it: a file target named there
+    resolves, and no declared path lies under /automnt."""
+    tree = Path("/n17data/cdaley/unions/.spv-dag-toy")  # a dry-run creates nothing
+    env = {
+        **toy.env,
+        "COSMO_VAL": f"/automnt{tree}/val",
+        "COSMO_INFERENCE": f"/automnt{tree}/inference",
+    }
+    common = _load_module(toy.root / "workflow" / "common.py", "plain_common", env)
+    assert (common.COSMO_VAL, common.COSMO_INFERENCE) == (
+        tree / "val",
+        tree / "inference",
+    )
+    grids = toy.common.xi_grids(toy.config, toy.config["fiducial"])
+    reporting = toy.common.grid_binning(grids["reporting"])
+    target = tree / "val" / f"{VERSIONS[0]}_xi_{reporting}.sacc"
+    result = toy.snakemake("-n", str(target), env=env)
+    assert result.returncode == 0, result.stdout
+    declared = [f for j in parse_jobs(result.stdout) for f in j.input + j.output]
+    assert str(target) in declared, declared
+    assert not [f for f in declared if f.startswith("/automnt/")], declared
 
 
 @pytest.mark.parametrize(
