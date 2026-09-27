@@ -9,7 +9,7 @@
 # Usage:
 #   run_pure_eb_semianalytic.sh --version SP_v1.4.6.3_leak_corr --blind A \
 #     --cat-config <cat_config.yaml> \
-#     --xi-reporting <xi 20-bin .txt> --xi-integration <xi 1000-bin .txt> \
+#     --xi-reporting <xi 20-bin part .sacc> --xi-integration <xi 1000-bin part .sacc> \
 #     --cov-integration <cov ..._processed.txt> \
 #     --out <output_dir> [--n-chunks 20] [--n-samples 2000] [--nproc 16]
 set -euo pipefail

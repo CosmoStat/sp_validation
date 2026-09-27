@@ -40,8 +40,8 @@ mkdir -p "$OUT"
 VERSIONS=$(sweep_versions "$CONFIG")
 
 for ver in $VERSIONS; do
-  xirep="$XISWEEP/${ver}_xi_minsep=1.0_maxsep=250.0_nbins=20_npatch=1.txt"
-  xiint="$XISWEEP/${ver}_xi_minsep=0.5_maxsep=300.0_nbins=1000_npatch=1.txt"
+  xirep="$XISWEEP/${ver}_xi_minsep=1.0_maxsep=250.0_nbins=20_npatch=1.sacc"
+  xiint="$XISWEEP/${ver}_xi_minsep=0.5_maxsep=300.0_nbins=1000_npatch=1.sacc"
   covbase="covariance_${ver}_${BLIND}_g_minsep=0.5_maxsep=300.0_nbins=1000_masked"
   covint="$COVSWEEP/$covbase/${covbase}_processed.txt"
   for f in "$xirep" "$xiint" "$covint"; do
