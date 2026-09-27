@@ -14,8 +14,8 @@ in parallel or looped in one process.
         --chunk-id 0 --n-chunks 20 --n-samples 2000 \
         --version SP_v1.4.6.3_leak_corr --blind A \
         --cat-config /path/cosmo_val/cat_config.yaml \
-        --xi-reporting  <xi 20-bin .txt> \
-        --xi-integration <xi 1000-bin .txt> \
+        --xi-reporting  <xi 20-bin part .sacc> \
+        --xi-integration <xi 1000-bin part .sacc> \
         --cov-integration <cov ..._processed.txt> \
         --min-sep 1.0 --max-sep 250.0 --nbins 20 \
         --min-sep-int 0.5 --max-sep-int 300.0 --nbins-int 1000 \
@@ -28,6 +28,8 @@ import os
 import numpy as np
 import tqdm
 from scipy import sparse
+
+from sp_validation import sacc_io
 
 
 def _build_cosmology(cosmo_params):
@@ -44,16 +46,13 @@ def _build_cosmology(cosmo_params):
 
 
 def _load_xi(path, min_sep, max_sep, nbins):
-    """Load ξ± from a TreeCorr text dump and recompute the log bin edges."""
-    data = np.loadtxt(path, comments="#", max_rows=nbins)
-    meanr = data[:, 1]
-    xip = data[:, 3]
-    xim = data[:, 4]
+    """Load ξ± from its SACC part and recompute the log bin edges."""
+    gg = sacc_io.xi_correlation(sacc_io.load(path))
     bin_edges = np.logspace(np.log10(min_sep), np.log10(max_sep), nbins + 1)
     return {
-        "meanr": meanr,
-        "xip": xip,
-        "xim": xim,
+        "meanr": gg.meanr,
+        "xip": gg.xip,
+        "xim": gg.xim,
         "left_edges": bin_edges[:-1],
         "right_edges": bin_edges[1:],
     }

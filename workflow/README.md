@@ -38,7 +38,10 @@ For a blinded catalogue, every ξ± and pseudo-Cℓ_EE value is shifted by a hid
 cosmology before it is first written. COSEBIs and pure-E/B computed from the
 shifted ξ± carry the blind with them; B-modes stay usable. Every SACC file
 records the custody it was born under, and assembly refuses parts under any
-other.
+other. ξ± leaves `CosmologyValidation.calculate_2pcf` only as its sealed part
+(no text dump), so the ξ± figures and notebooks draw what the part holds; the
+jackknife `calculate_pure_eb` and the aperture mass, which need TreeCorr's own
+measurement, refuse a blinded catalogue.
 
 A blinded catalogue needs a blind, drawn once, by a person. The launch stops
 with this command when none covers it:
@@ -161,6 +164,15 @@ chain then runs there:
 mkdir -p <tree>/data
 ln -s /n17data/cdaley/unions/code/sp_validation/cosmo_inference/data/mask <tree>/data/
 ```
+
+Jackknife patch centres are drawn once per base catalogue, by rule
+`xi_patches` into `COSMO_VAL/patches/`, and every patched ξ± measurement of the
+catalogue and its variants splits at them (in a notebook:
+`CosmologyValidation.write_patch_centers`).
+
+Jobs draw their figures with matplotlib's defaults: `common.py` points each
+job's `MATPLOTLIBRC` at `workflow/matplotlibrc`, so your own matplotlibrc
+shapes your interactive work in the container but never a rule's figure.
 
 Other rules write elsewhere: masks under the run directory's `output/masks/`,
 `papers/bmodes`' figures and macros under its run directory's `docs/`, the

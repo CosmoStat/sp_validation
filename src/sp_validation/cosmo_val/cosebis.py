@@ -7,9 +7,11 @@ Mixin providing COSEBIs calculation and plotting for the
 
 import numpy as np
 
+from .. import sacc_io
 from ..b_modes import (
     calculate_cosebis,
     find_conservative_scale_cut_key,
+    log_bin_edges,
     plot_cosebis_covariance_matrix,
     plot_cosebis_modes,
     plot_cosebis_scale_cut_heatmap,
@@ -88,18 +90,21 @@ class CosebisMixin:
         """
         self.print_start(f"Computing {version} COSEBIs")
 
-        # Set up parameters with defaults
-        npatch = npatch or self.npatch
-
-        # Always use integration binning for COSEBIs calculation (fine binning)
-        treecorr_config = self._binning(min_sep_int, max_sep_int, nbins_int)
-
-        # Calculate single fine-binned correlation function for COSEBIs
+        # Calculate single fine-binned correlation function for COSEBIs, as the
+        # sealed part: on a blinded catalogue the COSEBIs are concealed with it.
         print(
             f"Computing fine-binned 2PCF with {nbins_int} bins from {min_sep_int} to "
             f"{max_sep_int} arcmin"
         )
-        gg = self.calculate_2pcf(version, npatch=npatch, **treecorr_config)
+        part = self.calculate_2pcf(
+            version,
+            grid="integration",
+            npatch=npatch,
+            min_sep=min_sep_int,
+            max_sep=max_sep_int,
+            nbins=nbins_int,
+        )
+        gg = sacc_io.xi_correlation(part)
 
         if scale_cuts is not None:
             # Explicit scale cuts provided
@@ -263,15 +268,10 @@ class CosebisMixin:
 
         # Generate scale cut heatmap if we have multiple scale cuts
         if multiple_scale_cuts and len(results) > 1:
-            # Create temporary gg object with correct binning for mapping
-            treecorr_config_temp = self._binning(min_sep, max_sep, nbins)
-            gg_temp = self.calculate_2pcf(
-                version, npatch=npatch, **treecorr_config_temp
-            )
-
+            binning = self._binning(min_sep, max_sep, nbins)
             plot_cosebis_scale_cut_heatmap(
                 results,
-                (gg_temp.left_edges, gg_temp.right_edges),
+                log_bin_edges(binning["min_sep"], binning["max_sep"], binning["nbins"]),
                 version,
                 out_stub + "_scalecut_ptes.png",
                 fiducial_scale_cut=fiducial_scale_cut,

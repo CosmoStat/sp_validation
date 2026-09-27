@@ -14,7 +14,7 @@ from ..b_modes import (
     _get_pte_from_scale_cut,
     find_conservative_scale_cut_key,
 )
-from ..custody import custody_of, registry_of
+from ..custody import CustodyError, base_catalogue, custody_of, registry_of
 from ..statistics import chi2_and_pte
 from ..version import __version__
 from .catalog_characterization import CatalogCharacterizationMixin
@@ -318,6 +318,9 @@ class CosmologyValidation(
             # thread count (max(3, ceil(log2 n))) and ξ± depends on the machine.
             # 6 is what TreeCorr derives on candide's 48- and 64-CPU nodes.
             "min_top": 6,
+            # The CPUs this process may use; TreeCorr's own default is the
+            # node's count, whatever share of it the job holds.
+            "num_threads": len(os.sched_getaffinity(0)),
         }
 
         self.catalog_config_path = Path(catalog_config)
@@ -406,6 +409,8 @@ class CosmologyValidation(
         # B-mode results storage for summarize_bmodes()
         self._pure_eb_results = {}
         self._cosebis_results = {}
+        # The sealed ξ± parts calculate_2pcf returned, by (version, grid).
+        self.xi_parts = {}
 
     def _output_path(self, *parts):
         """Absolute path under the catalog config's output directory.
@@ -533,6 +538,25 @@ class CosmologyValidation(
             self._declared, version, registry=registry_of(self.catalog_config_path)
         )
 
+    def patch_centers_path(self, version, npatch):
+        """The jackknife patch centres ``version`` is measured on with ``npatch``.
+
+        One file per base catalogue, under the output directory's ``patches/``:
+        a catalogue and its variants split at the same centres.
+        """
+        base = base_catalogue(self._declared, version)
+        return self._output_path("patches", f"{base}_npatch={int(npatch)}.dat")
+
+    def _refuse_if_blinded(self, version, what):
+        """Refuse ``what``, which reads ``version``'s ξ± in plaintext, if blinded."""
+        custody = self.custody(version)
+        if custody.status == "blinded":
+            raise CustodyError(
+                f"{what} works from {version}'s measured ξ± itself, and "
+                f"{custody.catalogue} is blinded; derive it from the concealed "
+                "part calculate_2pcf returns"
+            )
+
     def basename(self, version, treecorr_config=None, npatch=None):
         cfg = treecorr_config or self.treecorr_config
         patches = npatch or self.npatch
@@ -580,8 +604,7 @@ class CosmologyValidation(
         Applies additive-bias subtraction and the multiplicative response:
         ``g = (e − c) / R``. For DES the response is the catalog-averaged
         per-component ``R11``/``R22`` (column names in the config); for every
-        other version it is the scalar ``R`` from the config. Used identically
-        by :meth:`calculate_2pcf` and :meth:`calculate_aperture_mass_dispersion`.
+        other version it is the scalar ``R`` from the config.
 
         Must be called inside a ``self.results[ver].temporarily_read_data()``
         context, since it reads ``dat_shear`` columns.

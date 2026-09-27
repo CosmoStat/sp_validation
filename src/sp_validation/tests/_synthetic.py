@@ -94,6 +94,9 @@ def write_synthetic_catalogs(
     entry = {
         "subdir": str(cat_dir),
         "pipeline": "SP",
+        "colour": "orange",
+        "ls": "-",
+        "marker": "o",
         "shear": {
             "path": "shear.fits",
             "redshift_path": str(nz_dir / "dndz_SP_A.txt"),

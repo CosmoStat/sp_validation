@@ -2,9 +2,9 @@
 
 Loops the [non-fiducial version list](sweep_versions.nonfiducial_versions) and
 runs the same ``run_2pcf.run_2pcf`` compute the fiducial two_point recipes call,
-once per version, writing every version's ξ± text dump into one lc ``{output}``
+once per version, writing every version's ξ± SACC part into one lc ``{output}``
 dir under run_2pcf's native, already-canonical name
-``{ver}_xi_minsep={min}_maxsep={max}_nbins={nbins}_npatch={npatch}.txt`` — the
+``{ver}_xi_minsep={min}_maxsep={max}_nbins={nbins}_npatch={npatch}.sacc`` — the
 exact pattern ``cosebis_version_comparison._xi_integration`` reconstructs.
 
 Both grids are produced per version: the 1000-bin integration grid feeds

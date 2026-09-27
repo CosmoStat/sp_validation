@@ -7,21 +7,21 @@
 # products they write under COSMO_VAL (= cosmo_val/output):
 #
 #   catalogue ──→ xi (one job per grid: reporting, integration)
-#                   ├─ reporting part ──────→ pure_eb (part, npz, figures)
-#                   ├─ integration part ─┬──→ pure_eb
-#                   │                    └──→ cosebis (part, npz, figures)
-#                   └─ reporting .txt ──→ 2pcf plot, ratio_xi_sys_xi
+#                   ├─ reporting part ───┬──→ pure_eb (part, npz, figures)
+#                   │                    └──→ 2pcf plot, ratio_xi_sys_xi
+#                   └─ integration part ─┬──→ pure_eb
+#                                        └──→ cosebis (part, npz, figures)
 #   CosmoCov ξ±, integration grid ──→ pure_eb, cosebis (their covariances)
 #   catalogue ──→ pseudo_cl (part) ──┬─→ pseudo-Cl figures
 #   CosmoCov ξ±, reporting grid ─────┤
 #   rho/tau (part + FITS) ───────────┼─→ summarize_bmodes (reads the products)
 #                                    └─→ assemble_sacc ──→ {version}.sacc
 #
-# The B-mode rules are ingests: pure_eb, cosebis, the pseudo-Cl figures and the
-# summary all work from the parts and the covariance inputs, never from a
-# catalogue, so a blinded part keeps everything downstream blinded. The
-# analytic covariances (CosmoCov ξ±, NaMaster pseudo-Cℓ) are what assembly puts
-# in the terminal file, replacing the estimates a part was born with.
+# The B-mode rules and the ξ± figures are ingests: they work from the parts and
+# the covariance inputs, never from a catalogue, so a blinded part keeps
+# everything downstream blinded. The analytic covariances (CosmoCov ξ±,
+# NaMaster pseudo-Cℓ) are what assembly puts in the terminal file, replacing
+# the estimates a part was born with.
 #
 # Methods that only emit figures, or whose figure paths derive from internal
 # handler state (rho/tau plots, rho_tau_fits, objectwise leakage, 2pcf
@@ -48,15 +48,6 @@ CV_BINNING = (
     f"minsep={CV['theta_min']}_maxsep={CV['theta_max']}"
     f"_nbins={CV['nbins']}_npatch={CV['npatch']}"
 )
-
-
-def cv_xi_txt(version):
-    """Path to the 2pcf data vector calculate_2pcf writes for a version.
-
-    Mirrors the out_fname f-string in cosmo_val.calculate_2pcf:
-    {ver}_xi_minsep=..._maxsep=..._nbins=..._npatch=...txt
-    """
-    return str(COSMO_VAL / f"{version}_xi_{xi_binning('reporting')}.txt")
 
 
 def cv_rho_stats(version):
@@ -211,12 +202,11 @@ CV_INIT = cv_init_params(config)
 # ---------------------------------------------------------------------------
 # PSF diagnostics: rho/tau statistics and the PSF-error fit
 # ---------------------------------------------------------------------------
-# The rho/tau FITS and the xi data vector are produced by the generic compute
-# rules `rho_tau_stats` and `xi` already defined in workflow/rules/twopoint.smk
-# (same filename convention, same CosmologyValidation methods). The cosmo_val
-# suite consumes those outputs rather than re-declaring colliding rules. The
-# helper paths cv_rho_stats / cv_tau_stats / cv_xi_txt resolve to exactly the
-# files those rules write, so requesting them triggers the existing compute.
+# The rho/tau FITS and the ξ± parts are produced by the generic compute rules
+# `rho_tau_stats` and `xi` in workflow/rules/twopoint.smk. The cosmo_val suite
+# consumes those outputs rather than re-declaring colliding rules: the helper
+# paths cv_rho_stats / cv_tau_stats / cv_xi_sacc resolve to exactly the files
+# those rules write, so requesting them triggers the existing compute.
 
 
 rule cv_plot_rho_stats:
@@ -330,9 +320,9 @@ rule cv_additive_bias:
 
 
 rule cv_plot_2pcf:
-    """n_pairs / xi± overlay across versions."""
+    """n_pairs / xi± overlay across versions, from the reporting parts."""
     input:
-        xi=[cv_xi_txt(v) for v in CV_VERSIONS],
+        xi=[cv_xi_sacc(v, "reporting") for v in CV_VERSIONS],
     output:
         sentinel=str(CV_SENTINELS / "plot_2pcf.done"),
     params:
@@ -346,7 +336,7 @@ rule cv_plot_2pcf:
 rule cv_ratio_xi_sys_xi:
     """Ratio of PSF systematics (xi_psf_sys) to the cosmic-shear signal (xi+)."""
     input:
-        xi=[cv_xi_txt(v) for v in CV_VERSIONS],
+        xi=[cv_xi_sacc(v, "reporting") for v in CV_VERSIONS],
         rho=[cv_rho_stats(v) for v in CV_VERSIONS],
         tau=[cv_tau_stats(v) for v in CV_VERSIONS],
     output:

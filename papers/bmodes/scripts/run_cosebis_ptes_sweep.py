@@ -43,7 +43,7 @@ from sweep_versions import nonfiducial_versions  # noqa: E402
 
 def _xi_integration(xi_sweep_dir, ver):
     return os.path.join(
-        xi_sweep_dir, f"{ver}_xi_minsep=0.5_maxsep=300.0_nbins=1000_npatch=1.txt"
+        xi_sweep_dir, f"{ver}_xi_minsep=0.5_maxsep=300.0_nbins=1000_npatch=1.sacc"
     )
 
 
@@ -62,7 +62,7 @@ def _from_cli(argv=None):
     ap.add_argument(
         "--xi-sweep-dir",
         required=True,
-        help="xi_sweep output dir with per-version 1000-bin integration xi_pm .txt",
+        help="xi_sweep output dir with per-version 1000-bin integration ξ± parts",
     )
     ap.add_argument(
         "--cov-sweep-dir",

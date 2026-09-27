@@ -1,6 +1,7 @@
 """DAG properties, checked through the host launcher (see conftest.py)."""
 
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -77,6 +78,46 @@ def test_one_integration_grid(toy):
         covariance = str(toy.covariances[version, "g"])
         assert by_rule["cv_cosebis"] == {part, covariance}, by_rule["cv_cosebis"]
         assert {part, covariance} <= by_rule["cv_pure_eb"], by_rule["cv_pure_eb"]
+
+
+def test_xi_leaves_a_measurement_only_as_a_part(toy):
+    """No job reads or writes a ξ± text dump; the ξ± figures draw the parts."""
+    result = toy.snakemake("-n", "all")
+    assert result.returncode == 0, result.stdout
+    jobs = parse_jobs(result.stdout)
+    dumps = [
+        f for j in jobs for f in j.input + j.output if re.search(r"_xi_.*\.txt$", f)
+    ]
+    assert not dumps, dumps
+
+    grids = toy.common.xi_grids(toy.config, toy.config["fiducial"])
+    reporting = toy.common.grid_binning(grids["reporting"])
+    for rule in ("cv_plot_2pcf", "cv_ratio_xi_sys_xi"):
+        (job,) = [j for j in jobs if j.rule == rule]
+        assert {Path(f).name for f in job.input if "_xi_" in Path(f).name} == {
+            f"{v}_xi_{reporting}.sacc" for v in VERSIONS
+        }, job.input
+
+
+def test_patch_centres_are_an_input_shared_by_variants(toy):
+    """Every patched ξ± job splits at its base catalogue's centres, drawn once."""
+    result = toy.snakemake("-n", "assemble_sacc_all")
+    assert result.returncode == 0, result.stdout
+    jobs = parse_jobs(result.stdout)
+    npatch = toy.common.xi_grids(toy.config, toy.config["fiducial"])["reporting"][
+        "npatch"
+    ]
+    assert npatch > 1
+    centres = str(toy.cosmo_val / "patches" / f"{VERSIONS[0]}_npatch={npatch}.dat")
+
+    assert [j.output for j in jobs if j.rule == "xi_patches"] == [[centres]]
+    xi = [j for j in jobs if j.rule == "xi"]
+    assert {j.wildcards["version"] for j in xi} == set(VERSIONS)
+    for job in xi:
+        patched = int(job.wildcards["npatch"]) > 1
+        assert [f for f in job.input if "/patches/" in f] == (
+            [centres] if patched else []
+        ), job
 
 
 @pytest.mark.parametrize("named", [True, False], ids=["named", "unnamed"])

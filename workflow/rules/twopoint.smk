@@ -14,15 +14,16 @@ def xi_binning(grid):
 
 
 rule xi:
-    """TreeCorr ξ±(θ) for one version on one angular grid.
+    """TreeCorr ξ±(θ) for one version on one angular grid, as its sealed SACC part.
 
     One rule for every grid: outputs are named by their binning, so a request
-    binds the wildcards and the grid label resolves from them.
+    binds the wildcards and the grid label resolves from them. With patches,
+    the measurement splits at the base catalogue's persisted centres.
     """
     input:
-        catalog=get_shear_catalog,
+        catalog=lambda w: shear_catalog(w.version),
+        patches=lambda w: patches_path(w.version, w.npatch) if int(w.npatch) > 1 else [],
     output:
-        txt=str(COSMO_VAL / "{version}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.txt"),
         sacc=str(COSMO_VAL / "{version}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc"),
     threads: 24
     params:
@@ -43,6 +44,29 @@ rule xi:
         runtime=lambda w: 600 if int(w.nbins) > 100 else 360,
     script:
         "../scripts/run_2pcf.py"
+
+
+rule xi_patches:
+    """Jackknife patch centres of one base catalogue, drawn once for its variants.
+
+    TreeCorr's k-means over the catalogue's positions and weights; they carry no
+    shear, so no custody.
+    """
+    input:
+        catalog=lambda w: shear_catalog(w.catalogue),
+    output:
+        patches=str(COSMO_VAL / "patches" / "{catalogue}_npatch={npatch}.dat"),
+    threads: 12
+    params:
+        catalogue="{catalogue}",
+        npatch="{npatch}",
+        cat_config=CAT_CONFIG,
+        output_dir=str(COSMO_VAL),
+    resources:
+        mem_mb=30000,
+        runtime=120,
+    script:
+        "../scripts/xi_patches.py"
 
 
 rule rho_tau_stats:

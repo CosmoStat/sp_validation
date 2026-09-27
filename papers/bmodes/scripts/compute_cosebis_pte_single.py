@@ -15,9 +15,9 @@ import time
 from pathlib import Path
 
 import numpy as np
-import treecorr
 from plotting_utils import compute_chi2_pte
 
+from sp_validation import sacc_io
 from sp_validation.b_modes import calculate_cosebis
 
 
@@ -90,14 +90,7 @@ def main(config, xi_integration, cov_integration, out_dir, version=None, blind=N
     blind = blind if blind is not None else fid["blind"]
     nmodes = int(fid["nmodes"])  # 20 for full computation
 
-    min_sep_int = fid["min_sep_int"]
-    max_sep_int = fid["max_sep_int"]
-    nbins_int = fid["nbins_int"]
-
-    gg = treecorr.GGCorrelation(
-        min_sep=min_sep_int, max_sep=max_sep_int, nbins=nbins_int, sep_units="arcmin"
-    )
-    gg.read(xi_integration)
+    gg = sacc_io.xi_correlation(sacc_io.load(xi_integration))
 
     # Reporting theta grid (nbins+1 = 21 edges): geomspace(1', 250', 21)
     theta_grid = np.geomspace(fid["min_sep"], fid["max_sep"], fid["nbins"] + 1)
@@ -185,7 +178,7 @@ def _from_cli(argv=None):
     ap.add_argument(
         "--xi-integration",
         required=True,
-        help="Fiducial 1000-bin integration-grid TreeCorr xi_pm .txt dump",
+        help="Fiducial 1000-bin integration-grid ξ± SACC part",
     )
     ap.add_argument(
         "--cov-integration",

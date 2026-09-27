@@ -2,7 +2,7 @@
 
 Cheap sanity check of the profile-driven container path -- same executor
 (slurm), same software-deployment-method (apptainer), same apptainer-args
-binds, same container image every real rule uses.  Four things it proves, each
+binds, same container image every real rule uses.  What it proves, each
 written to the output YAML:
 
   * the job really ran inside the image (``APPTAINER_CONTAINER``, set by
@@ -12,7 +12,8 @@ written to the output YAML:
   * the numeric stack works (numpy eigh on a small fixed matrix).
     ``OMP_NUM_THREADS`` is recorded but not asserted -- see the assertions;
   * which commit of this checkout is running (git rev-parse from inside the
-    container -- proves /home is bound and usable, not just readable).
+    container -- proves /home is bound and usable, not just readable);
+  * which matplotlibrc the job's figures would read.
 
 Driven by the co-located Snakefile; the assertions on the output YAML live in
 workflow/tests/test_container_smoke.py (candide only).
@@ -66,6 +67,9 @@ try:
 except (subprocess.CalledProcessError, FileNotFoundError) as exc:
     commit = f"unavailable ({exc})"
 
+# --- the matplotlibrc a figure rule would read -----------------------------
+import matplotlib  # noqa: E402
+
 provenance = {
     "repo_dir": repo_dir,
     "commit": commit,
@@ -80,6 +84,7 @@ with open(snakemake.output[0], "w") as f:
             "sp_validation": sp_validation_info,
             "numeric": numeric_info,
             "provenance": provenance,
+            "matplotlibrc": matplotlib.matplotlib_fname(),
         },
         f,
         sort_keys=False,

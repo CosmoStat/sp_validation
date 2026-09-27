@@ -70,6 +70,13 @@ _custody = _load_checkout_module("custody")
 # Without it, jobs use the home directory's cache, which every node mounts.
 os.environ.pop("XDG_CACHE_HOME", None)
 
+# Jobs draw their figures with matplotlib's defaults, whoever launches them.
+# Apptainer binds $HOME, so a job would otherwise read the launching user's
+# ~/.config/matplotlib/matplotlibrc, and a LaTeX preamble there that the image
+# cannot typeset stops every figure rule. MATPLOTLIBRC outranks that file, and
+# APPTAINERENV_ carries it past --cleanenv.
+os.environ["APPTAINERENV_MATPLOTLIBRC"] = str(REPO_ROOT / "workflow/matplotlibrc")
+
 
 # Output roots are env-overridable so a reproduction run can write into a
 # fresh tree without clobbering (or silently reusing) prior products. COSMO_VAL
@@ -107,6 +114,7 @@ COSMOLOGY_PARAMS = "results/cosmology/planck18.json"
 # silent failures. Apply with: wildcard_constraints: **WILDCARD_CONSTRAINTS
 WILDCARD_CONSTRAINTS = {
     "version": r"SP_v[\d.]+(_w_iv)?(_ecut\d+)?(_leak_corr)?",
+    "catalogue": r"SP_v[\d.]+(_w_iv)?(_ecut\d+)?",
     "blind": r"[ABC]",
     "nbins": r"\d+",
     "min_sep": r"[0-9.]+",
@@ -403,6 +411,15 @@ def base_version(version):
     return _custody.base_catalogue(CATALOG_CONFIG, version)
 
 
+def patches_path(version, npatch):
+    """The jackknife patch centres ``version`` is measured on with ``npatch``.
+
+    One file per base catalogue, so a catalogue and its variants split alike.
+    """
+    name = f"{base_version(version)}_npatch={int(npatch)}.dat"
+    return str(COSMO_VAL / "patches" / name)
+
+
 def build_redshift_path(version, blind):
     """Construct n(z) filepath for given catalog version and blind."""
     base = base_version(version)
@@ -489,9 +506,9 @@ def pseudo_cl_tag(config):
     return f"blind={fiducial['blind']}_{fiducial['binning']}_nbins={fiducial['nbins']}"
 
 
-def get_shear_catalog(wildcards):
-    """Resolve shear catalog path from config for a given version."""
-    cat_config = CATALOG_CONFIG[_custody.entry_of(wildcards.version)]
+def shear_catalog(version):
+    """The shear catalogue file of ``version``, from its catalogue entry."""
+    cat_config = CATALOG_CONFIG[_custody.entry_of(version)]
     shear_path = cat_config["shear"]["path"]
     if shear_path.startswith("/"):
         return shear_path

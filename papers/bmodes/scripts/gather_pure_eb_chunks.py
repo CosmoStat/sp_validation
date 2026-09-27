@@ -9,8 +9,8 @@ pure-mode plot / PTE.
 
     python gather_pure_eb_chunks.py \
         --version SP_v1.4.6.3_leak_corr --blind A \
-        --xi-reporting  <xi 20-bin .txt> \
-        --xi-integration <xi 1000-bin .txt> \
+        --xi-reporting  <xi 20-bin part .sacc> \
+        --xi-integration <xi 1000-bin part .sacc> \
         --chunks-dir <dir with pure_eb_chunk_*.npz> \
         --min-sep 1.0 --max-sep 250.0 --nbins 20 \
         --min-sep-int 0.5 --max-sep-int 300.0 --nbins-int 1000 \
@@ -23,11 +23,13 @@ import os
 
 import numpy as np
 
+from sp_validation import sacc_io
 
-def _load_xi(path, nbins):
-    """Load ξ± from a TreeCorr text dump."""
-    data = np.loadtxt(path, comments="#", max_rows=nbins)
-    return {"meanr": data[:, 1], "xip": data[:, 3], "xim": data[:, 4]}
+
+def _load_xi(path):
+    """Load ξ± from its SACC part."""
+    gg = sacc_io.xi_correlation(sacc_io.load(path))
+    return {"meanr": gg.meanr, "xip": gg.xip, "xim": gg.xim}
 
 
 def gather(
@@ -46,8 +48,8 @@ def gather(
 
     print(f"Gathering pure E/B for blind {blind}")
 
-    gg = _load_xi(xi_reporting, nbins)
-    gg_int = _load_xi(xi_integration, nbins_int)
+    gg = _load_xi(xi_reporting)
+    gg_int = _load_xi(xi_integration)
 
     eb_results = get_pure_EB_modes(
         theta=gg["meanr"],

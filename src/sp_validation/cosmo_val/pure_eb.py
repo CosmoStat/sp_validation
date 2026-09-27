@@ -66,8 +66,7 @@ class PureEBMixin:
         cov_path_int : str, optional
             Path to the covariance matrix for the reporting binning. Replaces the
             treecorr covariance matrix if provided, meaning that var_method has no
-            effect on the results although it is still passed to
-            CosmologyValidation.calculate_2pcf.
+            effect on the results.
         cosmo_cov : pyccl.Cosmology, optional
             Cosmology object to use for theoretical xi+/xi- predictions in the
             semi-analytical covariance calculation. Defaults to self.cosmo if not
@@ -100,21 +99,26 @@ class PureEBMixin:
 
         Notes
         -----
-        - A shared patch file is used for the reporting and integration binning,
-          and is created if it does not exist.
+        - Both binnings are measured on the version's persisted patch centres
+          (:meth:`patch_centers_path`). The jackknife works from TreeCorr's own
+          measurement, so a blinded catalogue is refused.
         """
         self.print_start(f"Computing {version} pure E/B")
+        self._refuse_if_blinded(version, "The jackknife pure-E/B")
 
-        # Set up parameters with defaults
-        npatch = npatch or self.npatch
-
-        # Create TreeCorr configurations
-        treecorr_config = self._binning(min_sep, max_sep, nbins)
-        treecorr_config_int = self._binning(min_sep_int, max_sep_int, nbins_int)
-
-        # Calculate correlation functions
-        gg = self.calculate_2pcf(version, npatch=npatch, **treecorr_config)
-        gg_int = self.calculate_2pcf(version, npatch=npatch, **treecorr_config_int)
+        npatch = int(npatch or self.npatch)
+        centres = self._patch_centers(version, npatch)
+        gg = self._measure_xi(
+            version, npatch, centres, min_sep=min_sep, max_sep=max_sep, nbins=nbins
+        )
+        gg_int = self._measure_xi(
+            version,
+            npatch,
+            centres,
+            min_sep=min_sep_int,
+            max_sep=max_sep_int,
+            nbins=nbins_int,
+        )
 
         # Get redshift distribution if using analytic covariance
         z_dist = (

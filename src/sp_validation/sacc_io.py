@@ -85,7 +85,9 @@ Optionality: a file's contents are flexible about which components of
               itself is not a dependency.
 """
 
+import functools
 import os
+import types
 
 import numpy as np
 import sacc
@@ -579,6 +581,71 @@ def _get_pm(s, dtype_p, dtype_m, tracers, **tags):
 def get_xi(s, bins, *, grid):
     """Return ``(theta, xip, xim)`` for one tracer pair and grid."""
     return _get_pm(s, XI_PLUS, XI_MINUS, _pair(bins), grid=grid)
+
+
+class _XiView(types.SimpleNamespace):
+    """What :func:`xi_correlation` returns; ``cov`` is sliced out when first read."""
+
+    @functools.cached_property
+    def cov(self):
+        return (
+            None if self._covariance is None else self._covariance.get_block(self._rows)
+        )
+
+
+def xi_correlation(s, bins=(0, 0), grid=None):
+    """One ξ± series of ``s``, shaped like the TreeCorr ``GGCorrelation`` it came from.
+
+    Carries ``meanr``, ``rnom``, ``xip``, ``xim``, ``varxip``, ``varxim``,
+    ``cov``, ``npairs``, ``weight``, ``left_edges``, ``right_edges`` and
+    ``npatch1``, so code written against a measurement reads a part unchanged.
+    ``grid`` may be left out when the pair's ξ± lies on one grid. The edges are
+    the log-binning edges about the nominal centres (``theta_nom``), and ``cov``
+    is the series' block of the part's covariance.
+    """
+    tracers = _pair(bins)
+    if grid is None:
+        grids = {s.data[i].tags.get("grid") for i in _indices(s, XI_PLUS, tracers)}
+        if len(grids) > 1:
+            raise ValueError(
+                f"ξ± of {tracers} lies on grids {sorted(grids)}; pass grid="
+            )
+        (grid,) = grids
+    tags = {} if grid is None else {"grid": grid}
+    plus, minus = (_indices(s, t, tracers, **tags) for t in (XI_PLUS, XI_MINUS))
+    rows = np.concatenate([plus, minus])
+
+    def tag(name):
+        values = [s.data[i].tags.get(name) for i in plus]
+        return None if None in values else np.array(values, float)
+
+    covariance = s.covariance
+    if covariance is None:
+        variances = np.full(len(rows), np.nan)
+    elif isinstance(covariance, sacc.covariance.DiagonalCovariance):
+        variances = np.asarray(covariance.diag)[rows]
+    else:
+        variances = np.diagonal(covariance.dense)[rows]
+    rnom = tag("theta_nom")
+    edges = (None, None)
+    if rnom is not None and len(rnom) > 1:
+        half_bin = np.log(rnom[-1] / rnom[0]) / (len(rnom) - 1) / 2
+        edges = (rnom * np.exp(-half_bin), rnom * np.exp(half_bin))
+    return _XiView(
+        meanr=tag("theta"),
+        rnom=rnom,
+        xip=s.mean[plus],
+        xim=s.mean[minus],
+        varxip=variances[: len(plus)],
+        varxim=variances[len(plus) :],
+        npairs=tag("npairs"),
+        weight=tag("weight"),
+        left_edges=edges[0],
+        right_edges=edges[1],
+        npatch1=int(s.metadata.get("npatch", 1)),
+        _covariance=covariance,
+        _rows=rows,
+    )
 
 
 def get_pseudo_cl(s, bins):

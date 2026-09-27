@@ -18,12 +18,12 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-import treecorr
 import yaml
 from astropy.io import fits
 from plotting_utils import PAPER_MPLSTYLE
 from pseudo_cl_io import load_pseudo_cl_data
 
+from sp_validation import sacc_io
 from sp_validation.b_modes import calculate_cosebis
 
 plt.style.use(PAPER_MPLSTYLE)
@@ -83,10 +83,7 @@ def load_cosebis_diagonals(
     Returns E_n and B_n covariance diagonals.
     """
     # Load fine-binned 2PCF (need the binning info for COSEBIS calculation)
-    gg = treecorr.GGCorrelation(
-        min_sep=min_sep_int, max_sep=max_sep_int, nbins=nbins_int, sep_units="arcmin"
-    )
-    gg.read(xi_integration_path)
+    gg = sacc_io.xi_correlation(sacc_io.load(xi_integration_path))
 
     # Compute COSEBIS with this blind's covariance
     results = calculate_cosebis(
@@ -711,7 +708,7 @@ def _from_cli(argv=None):
     xi_integration_path = os.path.join(
         a.cosmo_val_dir,
         f"{version}_xi_minsep={min_sep_int}_maxsep={max_sep_int}"
-        f"_nbins={nbins_int}_npatch={npatch}.txt",
+        f"_nbins={nbins_int}_npatch={npatch}.sacc",
     )
     pseudo_cl_path = os.path.join(
         a.cosmo_val_dir, f"pseudo_cl_{version}_blind=A_powspace_nbins=32.sacc"

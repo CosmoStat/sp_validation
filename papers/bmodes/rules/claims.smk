@@ -78,18 +78,18 @@ def _reporting_cov_path(version, blind):
 
 
 def _xi_reporting_path(version):
-    """Path to reporting-scale 2PCF file."""
+    """Path to the reporting-scale ξ± part."""
     return (
         f"{COSMO_VAL_OUTPUT}/{version}_xi_minsep={FIDUCIAL['min_sep']}"
-        f"_maxsep={FIDUCIAL['max_sep']}_nbins={FIDUCIAL['nbins']}_npatch={FIDUCIAL['npatch']}.txt"
+        f"_maxsep={FIDUCIAL['max_sep']}_nbins={FIDUCIAL['nbins']}_npatch={FIDUCIAL['npatch']}.sacc"
     )
 
 
 def _xi_integration_path(version):
-    """Path to fine-binned 2PCF integration file. Unpatched: values only, no covariance."""
+    """Path to the fine-binned ξ± integration part (unpatched)."""
     return (
         f"{COSMO_VAL_OUTPUT}/{version}_xi_minsep={FIDUCIAL['min_sep_int']}"
-        f"_maxsep={FIDUCIAL['max_sep_int']}_nbins={FIDUCIAL['nbins_int']}_npatch=1.txt"
+        f"_maxsep={FIDUCIAL['max_sep_int']}_nbins={FIDUCIAL['nbins_int']}_npatch=1.sacc"
     )
 
 
@@ -202,7 +202,7 @@ rule cosebis_binning_comparison:
         xi_1k=_xi_integration_path(FIDUCIAL_VERSION),
         xi_10k=(
             f"{COSMO_VAL_OUTPUT}/{FIDUCIAL_VERSION}_xi_minsep={FIDUCIAL['min_sep_int']}"
-            f"_maxsep={FIDUCIAL['max_sep_int']}_nbins=10000_npatch={FIDUCIAL['npatch']}.txt"
+            f"_maxsep={FIDUCIAL['max_sep_int']}_nbins=10000_npatch={FIDUCIAL['npatch']}.sacc"
         ),
         cov_1k=_cov_integration_path(FIDUCIAL_VERSION, "A"),
     output:

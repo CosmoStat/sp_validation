@@ -6,6 +6,7 @@ the cosmic-shear signal, and the aperture-mass dispersion ⟨M_ap²⟩ measureme
 and plots. It depends on TreeCorr.
 """
 
+import hashlib
 import os
 
 import matplotlib.pyplot as plt
@@ -14,109 +15,176 @@ import numpy as np
 import treecorr
 from cs_util import plots as cs_plots
 
+from .. import sacc_io
+from ..custody import base_catalogue
+from .sacc_writers import xi_to_sacc
+
 
 class RealSpaceMixin:
-    def calculate_2pcf(self, ver, npatch=None, **treecorr_config):
-        """
-        Calculate the two-point correlation function (2PCF) ξ± for a given catalog
-        version with TreeCorr.
+    def calculate_2pcf(
+        self,
+        ver,
+        *,
+        grid="reporting",
+        npatch=None,
+        patch_centers=None,
+        out=None,
+        **treecorr_config,
+    ):
+        """ξ± of ``ver`` on one binning, as its SACC part sealed under its custody.
 
-        By default the class instance's `npatch` and `treecorr_config` entries are
-        used to
-        initialize the TreeCorr Catalog and GGCorrelation objects, but may be
-        overridden
-        by passing keyword arguments.
+        @sc signal-leaves-sealed
+        A catalogue's ξ± leaves this object only as a part sealed under the
+        catalogue's custody (:func:`sp_validation.sacc_io.seal`): concealed
+        when it is blinded, before it is returned, cached or written. The
+        blind is opened first, so a blind that cannot open fails before
+        TreeCorr runs.
+
+        @sc patch-centres-are-inputs
+        With patches, the catalogue splits at persisted centres, one file per
+        base catalogue (:meth:`patch_centers_path`, written by
+        :meth:`write_patch_centers`), never at centres drawn here: the
+        full-sample ξ± depends on the patch layout, and TreeCorr's k-means on
+        the machine. The part names the file by its sha256.
 
         Parameters:
-            ver (str): The catalog version to process.
-
-            npatch (int, optional): The number of patches to use for the calculation.
-            Defaults to the instance's `npatch` attribute.
-
-            **treecorr_config: Additional TreeCorr configuration parameters that will
-            override the instance's default `treecorr_config`. For example, `min_sep=1`.
+            ver (str): The catalogue version to measure.
+            grid (str): The grid tag the part's points carry.
+            npatch (int, optional): Jackknife patches; the instance's
+                ``npatch`` by default. With patches the part carries the
+                jackknife covariance, without them the shot-noise diagonal.
+            patch_centers (str, optional): The centres file; by default
+                :meth:`patch_centers_path`.
+            out (str, optional): Where to write the part as well.
+            **treecorr_config: Overrides of the instance's ``treecorr_config``,
+                e.g. ``min_sep=1``.
 
         Returns:
-            treecorr.GGCorrelation: The TreeCorr GGCorrelation object containing the
-            computed 2PCF results.
-
-        Notes:
-            - If the output file for the given configuration already exists, the
-              calculation is skipped, and the results are loaded from the file.
-            - If a patch file for the given configuration does not exist, it is
-              created during the process.
-            - The ``.txt`` TreeCorr dump is the only raw byproduct written here.
+            sacc.Sacc: The sealed part, also kept in ``self.xi_parts[ver, grid]``.
         """
-
         self.print_magenta(f"Computing {ver} ξ±")
+        npatch = int(npatch or self.npatch)
+        custody = self.custody(ver)
+        if custody.status == "blinded":
+            from .. import blinding
 
-        npatch = npatch or self.npatch
-        treecorr_config = {
-            **self._binning(**treecorr_config),
-            "var_method": "jackknife" if int(npatch) > 1 else "shot",
-        }
+            blinding.open_blind(custody)
 
-        gg = treecorr.GGCorrelation(treecorr_config)
+        metadata = {**self.sacc_metadata(ver), "npatch": npatch}
+        patch_centers = self._patch_centers(ver, npatch, patch_centers)
+        if patch_centers is not None:
+            with open(patch_centers, "rb") as f:
+                metadata["patch_centers_sha256"] = hashlib.sha256(f.read()).hexdigest()
+        gg = self._measure_xi(ver, npatch, patch_centers, **treecorr_config)
 
-        # If the output file already exists, skip the calculation
-        out_fname = self._output_path(
-            f"{ver}_xi_minsep={treecorr_config['min_sep']}_maxsep={treecorr_config['max_sep']}_nbins={treecorr_config['nbins']}_npatch={npatch}.txt"
+        jackknife = npatch > 1
+        s = xi_to_sacc(
+            self.sacc_nz(ver),
+            metadata,
+            gg.meanr,
+            gg.xip,
+            gg.xim,
+            grid=grid,
+            theta_nom=gg.rnom,
+            npairs=gg.npairs,
+            weight=gg.weight,
+            covariance=gg.cov if jackknife else None,
+            variances=None if jackknife else np.concatenate([gg.varxip, gg.varxim]),
         )
-
-        if os.path.exists(out_fname):
-            self.print_done(f"Skipping 2PCF calculation, {out_fname} exists")
-            gg.read(out_fname)
-
-        else:
-            # Load data and create a catalog
-            with self.results[ver].temporarily_read_data():
-                g1, g2 = self._calibrated_g(ver)
-                w = self._read_shear_cols(ver, "w_col")
-
-                # Use patch file if it exists
-                patch_file = self._output_path(f"{ver}_patches_npatch={npatch}.dat")
-
-                cat_gal = treecorr.Catalog(
-                    ra=self.results[ver].dat_shear["RA"],
-                    dec=self.results[ver].dat_shear["Dec"],
-                    g1=g1,
-                    g2=g2,
-                    w=w,
-                    ra_units=self.treecorr_config["ra_units"],
-                    dec_units=self.treecorr_config["dec_units"],
-                    npatch=npatch,
-                    patch_centers=patch_file if os.path.exists(patch_file) else None,
-                )
-
-                # If no patch file exists, save the current patches
-                if not os.path.exists(patch_file):
-                    cat_gal.write_patch_centers(patch_file)
-
-            # Process the catalog & write the correlation functions
-            gg.process(cat_gal)
-            # Columns only. The covariance matrix lives in the SACC part; a
-            # per-patch ξ± realisation is an unblinded data vector nothing reads;
-            # and TreeCorr cannot read back a text file carrying the matrix
-            # without the per-patch results.
-            gg.write(out_fname, write_patch_results=False, write_cov=False)
-
-        # Add correlation object to class
-        if not hasattr(self, "cat_ggs"):
-            self.cat_ggs = {}
-        self.cat_ggs[ver] = gg
-
+        part = (
+            sacc_io.save(s, out, custody=custody) if out else sacc_io.seal(s, custody)
+        )
+        self.xi_parts[ver, grid] = part
         self.print_done("Done 2PCF")
+        return part
 
+    def _measure_xi(self, ver, npatch, patch_centers=None, **treecorr_config):
+        """TreeCorr's ξ± of ``ver``, in plaintext: for this object's use only.
+
+        Jackknife variances with patches, shot noise without. With patches and
+        no ``patch_centers``, TreeCorr draws its own centres.
+        """
+        gg = treecorr.GGCorrelation(
+            {
+                **self._binning(**treecorr_config),
+                "var_method": "jackknife" if npatch > 1 else "shot",
+            }
+        )
+        with self.results[ver].temporarily_read_data():
+            g1, g2 = self._calibrated_g(ver)
+            catalogue = treecorr.Catalog(
+                ra=self.results[ver].dat_shear["RA"],
+                dec=self.results[ver].dat_shear["Dec"],
+                g1=g1,
+                g2=g2,
+                w=self._read_shear_cols(ver, "w_col"),
+                ra_units=self.treecorr_config["ra_units"],
+                dec_units=self.treecorr_config["dec_units"],
+                npatch=npatch,
+                patch_centers=patch_centers,
+            )
+        gg.process(catalogue)
         return gg
 
+    def _patch_centers(self, ver, npatch, path=None):
+        """The existing centres file ``ver`` splits at, or None without patches."""
+        if npatch <= 1:
+            return None
+        path = path or self.patch_centers_path(ver, npatch)
+        if not os.path.exists(path):
+            raise FileNotFoundError(
+                f"{ver} has no patch centres at {path}; write them once with "
+                f"write_patch_centers({base_catalogue(self._declared, ver)!r}, "
+                f"{npatch}) (rule xi_patches)"
+            )
+        return path
+
+    def write_patch_centers(self, catalogue, npatch, path=None):
+        """Draw ``npatch`` jackknife patch centres for a base catalogue, once.
+
+        TreeCorr's k-means over the catalogue's positions and weights, written
+        to ``path`` (default :meth:`patch_centers_path`); every measurement of
+        the catalogue and its variants splits at them.
+        """
+        base = base_catalogue(self._declared, catalogue)
+        if base != catalogue:
+            raise ValueError(
+                f"patch centres belong to {base}, the base catalogue of "
+                f"{catalogue}; write them from {base}"
+            )
+        path = path or self.patch_centers_path(catalogue, npatch)
+        # A Catalog's k-means runs on TreeCorr's process-wide thread count.
+        treecorr.set_omp_threads(self.treecorr_config["num_threads"])
+        with self.results[catalogue].temporarily_read_data():
+            positions = treecorr.Catalog(
+                ra=self.results[catalogue].dat_shear["RA"],
+                dec=self.results[catalogue].dat_shear["Dec"],
+                w=self._read_shear_cols(catalogue, "w_col"),
+                ra_units=self.treecorr_config["ra_units"],
+                dec_units=self.treecorr_config["dec_units"],
+                npatch=int(npatch),
+            )
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        positions.write_patch_centers(path)
+        return path
+
+    def _reporting_xi(self, ver):
+        """``ver``'s reporting-grid ξ±, from its part, measured if not yet held."""
+        part = self.xi_parts.get((ver, "reporting"))
+        if part is None:
+            part = self.calculate_2pcf(ver)
+        return sacc_io.xi_correlation(part)
+
     def plot_2pcf(self):
+        """The reporting-grid ξ± of every version, drawn from their parts."""
+        xi = {ver: self._reporting_xi(ver) for ver in self.versions}
+
         # Plot of n_pairs
         plt.subplots(ncols=1, nrows=1)
         for ver in self.versions:
-            self.calculate_2pcf(ver)
             plt.plot(
-                self.cat_ggs[ver].meanr,
-                self.cat_ggs[ver].npairs,
+                xi[ver].meanr,
+                xi[ver].npairs,
                 label=ver,
                 ls=self.cc[ver]["ls"],
                 color=self.cc[ver]["colour"],
@@ -133,9 +201,9 @@ class RealSpaceMixin:
         plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
         for idx, ver in enumerate(self.versions):
             plt.errorbar(
-                self.cat_ggs[ver].meanr * cs_plots.dx(idx, fx=1.05, nx=len(ver)),
-                self.cat_ggs[ver].xip,
-                yerr=np.sqrt(self.cat_ggs[ver].varxip),
+                xi[ver].meanr * cs_plots.dx(idx, fx=1.05, nx=len(ver)),
+                xi[ver].xip,
+                yerr=np.sqrt(xi[ver].varxip),
                 label=ver,
                 ls=self.cc[ver]["ls"],
                 color=self.cc[ver]["colour"],
@@ -156,9 +224,9 @@ class RealSpaceMixin:
         plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
         for idx, ver in enumerate(self.versions):
             plt.errorbar(
-                self.cat_ggs[ver].meanr * cs_plots.dx(idx, fx=1.05, nx=len(ver)),
-                self.cat_ggs[ver].xim,
-                yerr=np.sqrt(self.cat_ggs[ver].varxim),
+                xi[ver].meanr * cs_plots.dx(idx, fx=1.05, nx=len(ver)),
+                xi[ver].xim,
+                yerr=np.sqrt(xi[ver].varxim),
                 label=ver,
                 ls=self.cc[ver]["ls"],
                 color=self.cc[ver]["colour"],
@@ -179,9 +247,9 @@ class RealSpaceMixin:
         plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
         for idx, ver in enumerate(self.versions):
             plt.errorbar(
-                self.cat_ggs[ver].meanr,
-                self.cat_ggs[ver].xip * self.cat_ggs[ver].meanr,
-                yerr=np.sqrt(self.cat_ggs[ver].varxip) * self.cat_ggs[ver].meanr,
+                xi[ver].meanr,
+                xi[ver].xip * xi[ver].meanr,
+                yerr=np.sqrt(xi[ver].varxip) * xi[ver].meanr,
                 label=ver,
                 ls=self.cc[ver]["ls"],
                 color=self.cc[ver]["colour"],
@@ -201,9 +269,9 @@ class RealSpaceMixin:
         plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
         for idx, ver in enumerate(self.versions):
             plt.errorbar(
-                self.cat_ggs[ver].meanr * cs_plots.dx(idx, len(ver)),
-                self.cat_ggs[ver].xim * self.cat_ggs[ver].meanr,
-                yerr=np.sqrt(self.cat_ggs[ver].varxim) * self.cat_ggs[ver].meanr,
+                xi[ver].meanr * cs_plots.dx(idx, len(ver)),
+                xi[ver].xim * xi[ver].meanr,
+                yerr=np.sqrt(xi[ver].varxim) * xi[ver].meanr,
                 label=ver,
                 ls=self.cc[ver]["ls"],
                 color=self.cc[ver]["colour"],
@@ -225,15 +293,15 @@ class RealSpaceMixin:
             for idx, ver in enumerate(self.versions):
                 plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
                 plt.errorbar(
-                    self.cat_ggs[ver].meanr * cs_plots.dx(idx, len(ver)),
-                    self.cat_ggs[ver].xip,
-                    yerr=np.sqrt(self.cat_ggs[ver].varxim),
+                    xi[ver].meanr * cs_plots.dx(idx, len(ver)),
+                    xi[ver].xip,
+                    yerr=np.sqrt(xi[ver].varxim),
                     label=r"$\xi_+$",
                     ls="solid",
                     color="green",
                 )
                 plt.errorbar(
-                    self.cat_ggs[ver].meanr * cs_plots.dx(idx, len(ver)),
+                    xi[ver].meanr * cs_plots.dx(idx, len(ver)),
                     self.xi_psf_sys[ver]["mean"],
                     yerr=np.sqrt(self.xi_psf_sys[ver]["var"]),
                     label=r"$\xi^{\rm psf}_{+, {\rm sys}}$",
@@ -241,11 +309,9 @@ class RealSpaceMixin:
                     color="red",
                 )
                 plt.errorbar(
-                    self.cat_ggs[ver].meanr * cs_plots.dx(idx, len(ver)),
-                    self.cat_ggs[ver].xip + self.xi_psf_sys[ver]["mean"],
-                    yerr=np.sqrt(
-                        self.cat_ggs[ver].varxip + self.xi_psf_sys[ver]["var"]
-                    ),
+                    xi[ver].meanr * cs_plots.dx(idx, len(ver)),
+                    xi[ver].xip + self.xi_psf_sys[ver]["mean"],
+                    yerr=np.sqrt(xi[ver].varxip + self.xi_psf_sys[ver]["var"]),
                     label=r"$\xi_+ + \xi^{\rm psf}_{+, {\rm sys}}$",
                     ls="dashdot",
                     color="magenta",
@@ -265,13 +331,11 @@ class RealSpaceMixin:
                 self.print_done(f"xi_plus_xi_psf_sys {ver} plot saved to {out_path}")
 
     def plot_ratio_xi_sys_xi(self, threshold=0.1, offset=0.02):
-
         plt.subplots(ncols=1, nrows=1, figsize=(10, 7))
 
         for idx, ver in enumerate(self.versions):
-            self.calculate_2pcf(ver)
             xi_psf_sys = self.xi_psf_sys[ver]
-            gg = self.cat_ggs[ver]
+            gg = self._reporting_xi(ver)
 
             ratio = xi_psf_sys["mean"] / gg.xip
             ratio_err = np.sqrt(
@@ -333,36 +397,12 @@ class RealSpaceMixin:
         theta_map = np.geomspace(theta_min * 5, theta_max / 2, nbins_map)
         self._map2["theta_map"] = theta_map
 
-        treecorr_config = self._binning(theta_min, theta_max, nbins)
-
         for ver in self.versions:
             self.print_magenta(ver)
-
-            gg = treecorr.GGCorrelation(treecorr_config)
-
-            out_fname = self._output_path(f"xi_for_map2_{ver}.txt")
-            if os.path.exists(out_fname):
-                self.print_green(f"Skipping xi for Map2, {out_fname} exists")
-                gg.read(out_fname)
-            else:
-                with self.results[ver].temporarily_read_data():
-                    g1, g2 = self._calibrated_g(ver)
-                    cat_gal = treecorr.Catalog(
-                        ra=self.results[ver].dat_shear["RA"],
-                        dec=self.results[ver].dat_shear["Dec"],
-                        g1=g1,
-                        g2=g2,
-                        w=self._read_shear_cols(ver, "w_col"),
-                        ra_units=self.treecorr_config["ra_units"],
-                        dec_units=self.treecorr_config["dec_units"],
-                        npatch=npatch,
-                    )
-
-                    gg.process(cat_gal)
-                    gg.write(out_fname)
-                    del cat_gal
-                    del g1
-                    del g2
+            self._refuse_if_blinded(ver, "The aperture-mass dispersion")
+            gg = self._measure_xi(
+                ver, npatch, min_sep=theta_min, max_sep=theta_max, nbins=nbins
+            )
 
             mapsq, mapsq_im, mxsq, mxsq_im, varmapsq = gg.calculateMapSq(
                 R=theta_map,

@@ -83,6 +83,12 @@ def test_container_smoke():
         module_file
     )
 
+    # Figures read the workflow's matplotlibrc, never the user's.
+    assert (
+        Path(report["matplotlibrc"]).resolve()
+        == (REPO / "workflow/matplotlibrc").resolve()
+    ), report["matplotlibrc"]
+
     # The numeric stack agrees with the same computation run here.
     np.testing.assert_allclose(
         report["numeric"]["eigenvalues"],

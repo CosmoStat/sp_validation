@@ -253,7 +253,12 @@ def _toy_checkout(tmp_path):
 
 
 def test_host_and_job_resolve_the_same_custody(tmp_path):
-    """`common.custody_token(v)` equals `CosmologyValidation.custody(v).token`."""
+    """The host and a job agree on each version's custody and patch centres.
+
+    `common.custody_token(v)` equals `CosmologyValidation.custody(v).token`, and
+    the centres the xi rule declares are the file the job splits at, one per
+    base catalogue.
+    """
     from sp_validation.cosmo_val import CosmologyValidation
 
     root = _toy_checkout(tmp_path)
@@ -268,8 +273,12 @@ def test_host_and_job_resolve_the_same_custody(tmp_path):
     cv = CosmologyValidation(
         versions=versions,
         catalog_config=common.CAT_CONFIG,
-        output_dir=str(tmp_path / "out"),
+        output_dir=str(common.COSMO_VAL),
     )
     for version in versions:
         assert common.custody_token(version) == cv.custody(version).token, version
+        assert common.patches_path(version, 100) == cv.patch_centers_path(
+            version, 100
+        ), version
     assert common.custody_token("TOY").startswith("blinded:TOY:toy:")
+    assert len({common.patches_path(v, 100) for v in versions}) == 3

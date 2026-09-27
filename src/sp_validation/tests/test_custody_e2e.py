@@ -3,15 +3,17 @@
 A synthetic catalogue is declared three ways (``TOY`` blinded, ``TOY_OPEN``
 unblinded, ``TOY_MOCK`` mock). A blind is drawn for ``TOY`` with ``blinding
 init``; the rule scripts run as Snakemake runs them (``runpy`` with a
-``snakemake`` object) for ``TOY`` and ``TOY_leak_corr``: both ξ± grids, a
-two-bin writer, pseudo-Cℓ on an nside-32 NaMaster workspace, ρ/τ, COSEBIs,
-pure-E/B and assembly. The blind is then revealed, the declaration flipped, the
-chain re-run, and the audit must prove blinded − true = shift(seed) on every
-part the reveal archived.
+``snakemake`` object) for ``TOY`` and ``TOY_leak_corr``: the patch centres, both
+ξ± grids, the ξ± figures, a two-bin writer, pseudo-Cℓ on an nside-32 NaMaster
+workspace, ρ/τ, COSEBIs, pure-E/B and assembly. The blind is then revealed, the
+declaration flipped, the chain re-run, and the audit must prove blinded − true =
+shift(seed) on every part the reveal archived. Neither the blinded run's files
+nor its figures may hold a true ξ± value.
 """
 
 import json
 import os
+import re
 import runpy
 import types
 from pathlib import Path
@@ -30,7 +32,7 @@ REPO = Path(__file__).resolve().parents[3]
 SCRIPTS = REPO / "workflow" / "scripts"
 
 GRIDS = {
-    "reporting": {"min_sep": 5.0, "max_sep": 60.0, "nbins": 6, "npatch": 1},
+    "reporting": {"min_sep": 5.0, "max_sep": 60.0, "nbins": 6, "npatch": 4},
     "integration": {"min_sep": 1.0, "max_sep": 150.0, "nbins": 300, "npatch": 1},
 }
 SCALE_CUT = [12.0, 60.0]
@@ -132,6 +134,24 @@ def _covariances(root):
     return paths
 
 
+def patch_centres(cat_config, version, out, npatch):
+    """Rule xi_patches for ``version``'s base catalogue, unless its file exists."""
+    base = cu.base_catalogue(yaml.safe_load(Path(cat_config).read_text()), version)
+    centres = out / "patches" / f"{base}_npatch={npatch}.dat"
+    if not centres.exists():
+        run_rule(
+            "xi_patches.py",
+            output={"patches": str(centres)},
+            params={
+                "catalogue": base,
+                "npatch": npatch,
+                "cat_config": str(cat_config),
+                "output_dir": str(out),
+            },
+        )
+    return centres
+
+
 def run_chain(cat_config, version, out, cov, *, grid_parts=None):
     """The cosmo_val chain for one version, into ``out``; returns the part paths."""
     out.mkdir(parents=True, exist_ok=True)
@@ -139,16 +159,15 @@ def run_chain(cat_config, version, out, cov, *, grid_parts=None):
     xi = {}
     for grid, b in GRIDS.items():
         xi[grid] = out / f"{version}_xi_{grid}.sacc"
-        binning = (
-            f"minsep={b['min_sep']}_maxsep={b['max_sep']}_nbins={b['nbins']}"
-            f"_npatch={b['npatch']}"
+        patches = (
+            {"patches": str(patch_centres(cat_config, version, out, b["npatch"]))}
+            if b["npatch"] > 1
+            else {}
         )
         run_rule(
             "run_2pcf.py",
-            output={
-                "txt": str(out / f"{version}_xi_{binning}.txt"),
-                "sacc": str(xi[grid]),
-            },
+            input=patches,
+            output={"sacc": str(xi[grid])},
             params={
                 "ver": version,
                 **b,
@@ -255,6 +274,73 @@ def assemble(cat_config, version, out, paths, cov, token):
     )
 
 
+def plot_2pcf(cat_config, out, xi):
+    """Rule cv_plot_2pcf over the reporting parts ``xi`` ({version: path})."""
+    run_rule(
+        "cv_plot_2pcf.py",
+        input={"xi": [str(path) for path in xi.values()]},
+        output={"sentinel": str(out / "plot_2pcf.done")},
+        params={
+            "cv_init": {
+                "versions": list(xi),
+                "catalog_config": str(cat_config),
+                "output_dir": str(out),
+            }
+        },
+    )
+
+
+def recording_figures(monkeypatch):
+    """Record every array a figure draws; returns the list it fills."""
+    import matplotlib.axes
+
+    drawn = []
+    for name in ("plot", "errorbar"):
+
+        def draw(self, *args, _draw=getattr(matplotlib.axes.Axes, name), **kwargs):
+            drawn.extend(np.asarray(a, float) for a in args if np.ndim(a) == 1)
+            return _draw(self, *args, **kwargs)
+
+        monkeypatch.setattr(matplotlib.axes.Axes, name, draw)
+    return drawn
+
+
+def _near(x, values, rtol):
+    """Whether any finite, nonzero ``x`` lies within ``rtol`` of a sorted ``values``."""
+    keep = np.isfinite(x) & (x != 0)
+    x, rtol = x[keep], np.broadcast_to(rtol, keep.shape)[keep]
+    i = np.clip(np.searchsorted(values, x), 1, len(values) - 1)
+    gap = np.minimum(np.abs(x - values[i - 1]), np.abs(x - values[i]))
+    return bool(np.any(gap <= rtol * np.abs(x)))
+
+
+def plaintext(blobs, values):
+    """Where the bytes of ``blobs`` ({name: bytes}) hold any of ``values``.
+
+    A value is found as a float64 of either byte order at any offset, to the
+    float noise of a re-measurement, or as a number written in exponent
+    notation, to half a unit of its last digit.
+    """
+    values = np.sort(np.asarray(values, float))
+    found = []
+    for name, blob in blobs.items():
+        for order in "<>":
+            for offset in range(8):
+                count = (len(blob) - offset) // 8
+                if count > 0 and _near(
+                    np.frombuffer(blob, f"{order}f8", count, offset), values, 1e-9
+                ):
+                    found.append(f"{name}: float64 {order} at offset {offset}")
+        tokens = re.findall(rb"(-?\d\.(\d+)e[-+]\d+)", blob)
+        if tokens and _near(
+            np.array([float(t) for t, _ in tokens]),
+            values,
+            np.array([0.51 * 10.0 ** -len(digits) for _, digits in tokens]),
+        ):
+            found.append(f"{name}: as text")
+    return found
+
+
 def stamps(root):
     """``{relative path: stamp}`` of every SACC under ``root``."""
     return {
@@ -311,8 +397,16 @@ def test_a_blinded_catalogue_from_birth_to_audit(toy, monkeypatch):
     assert blinded.status == "blinded"
 
     # --- a blinded run -------------------------------------------------------
-    for version in ("TOY", "TOY_leak_corr"):
+    versions = ("TOY", "TOY_leak_corr")
+    for version in versions:
         run_chain(toy.cat_config, version, out, toy.cov)
+    with monkeypatch.context() as m:
+        drawn = recording_figures(m)
+        plot_2pcf(
+            toy.cat_config, out, {v: out / f"{v}_xi_reporting.sacc" for v in versions}
+        )
+    concealed = sio.xi_correlation(sio.load(out / "TOY_xi_reporting.sacc"))
+    assert any(np.array_equal(a, concealed.xip) for a in drawn)  # drawn from the part
     born = stamps(out)
     assert len(born) == 2 * (2 + len(PARTS)), sorted(born)
     assert all(s == blinded.stamp for s in born.values()), born  # one commitment
@@ -419,6 +513,11 @@ def test_a_blinded_catalogue_from_birth_to_audit(toy, monkeypatch):
 
     # --- the reveal: archive, flip the declaration, re-measure, audit --------
     (out / "two_bin.sacc").unlink()
+    blinded_run = {
+        str(p.relative_to(toy.root)): p.read_bytes()
+        for p in out.rglob("*")
+        if p.is_file()
+    }
     assert (
         bd.main(
             ["reveal", "toy", "--root", str(out), "--cat-config", str(toy.cat_config)]
@@ -457,6 +556,19 @@ def test_a_blinded_catalogue_from_birth_to_audit(toy, monkeypatch):
         "toy", archive=archive, true_root=out, cat_config=toy.cat_config
     )["ok"]
     revealed.write_text(published)
+
+    # --- no true ξ± value was ever written or drawn by the blinded run -------
+    true_xi = np.concatenate(
+        [
+            np.concatenate([gg.xip, gg.xim])
+            for v in versions
+            for grid in GRIDS
+            for gg in [sio.xi_correlation(sio.load(out / f"{v}_xi_{grid}.sacc"))]
+        ]
+    )
+    figures = {"figures": np.concatenate(drawn).tobytes()}
+    assert not plaintext({**blinded_run, **figures}, true_xi)
+    assert not list(toy.root.rglob("*_xi_*.txt"))
 
 
 def test_a_mock_never_opens_a_blind(toy, monkeypatch):

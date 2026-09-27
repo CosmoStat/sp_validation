@@ -10,14 +10,12 @@ Reference: Asgari et al. 2017 — ≥10,000 bins for E_7 at 0.5% accuracy.
 
 import argparse
 import json
-import types
 from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-import treecorr
 from cosmo_numba.B_modes.cosebis import COSEBIS
 from plotting_utils import (
     FIG_WIDTH_SINGLE,
@@ -25,41 +23,10 @@ from plotting_utils import (
     compute_chi2_pte,
 )
 
+from sp_validation import sacc_io
 from sp_validation.b_modes import calculate_cosebis, scale_cut_to_bins
 
 plt.style.use(PAPER_MPLSTYLE)
-
-
-def _load_gg(xi_path, min_sep, max_sep, nbins, columns_only=False):
-    """Load a TreeCorr GGCorrelation from a text file.
-
-    If columns_only=True, read only the per-bin columns (meanr, xip, xim)
-    and skip the patch covariance. This avoids loading a 20000x20000
-    covariance matrix for high-nbins files.
-    """
-    gg = treecorr.GGCorrelation(
-        min_sep=min_sep,
-        max_sep=max_sep,
-        nbins=nbins,
-        sep_units="arcmin",
-    )
-    if columns_only:
-        # TreeCorr ASCII: ## comment, # col_names, then data rows.
-        # Read only per-bin columns, skip the huge patch covariance.
-        # cols: r_nom meanr meanlogr xip xim xip_im xim_im sigma_xip sigma_xim weight npairs
-        data = np.loadtxt(xi_path, max_rows=nbins)
-        # Compute bin edges from log-spaced binning (matching TreeCorr)
-        bin_edges = np.exp(np.linspace(np.log(min_sep), np.log(max_sep), nbins + 1))
-        return types.SimpleNamespace(
-            meanr=data[:, 1],
-            xip=data[:, 3],
-            xim=data[:, 4],
-            left_edges=bin_edges[:-1],
-            right_edges=bin_edges[1:],
-        )
-    else:
-        gg.read(xi_path)
-    return gg
 
 
 def _compute_Bn_only(gg, nmodes, scale_cut):
@@ -95,19 +62,14 @@ def main(config, xi_1k_path, xi_10k_path, cov_1k_path, out_dir):
     )
     scale_cuts = {"fiducial": fiducial_scale_cut, "full": full_scale_cut}
 
-    # Integration parameters
-    min_sep_int = float(config["fiducial"]["min_sep_int"])
-    max_sep_int = float(config["fiducial"]["max_sep_int"])
     nbins_1k = int(config["fiducial"]["nbins_int"])
     nbins_10k = 10_000
 
     # Load both ξ± grids
     print("Loading 1,000-bin ξ±...")
-    gg_1k = _load_gg(xi_1k_path, min_sep_int, max_sep_int, nbins_1k)
+    gg_1k = sacc_io.xi_correlation(sacc_io.load(xi_1k_path))
     print("Loading 10,000-bin ξ±...")
-    gg_10k = _load_gg(
-        xi_10k_path, min_sep_int, max_sep_int, nbins_10k, columns_only=True
-    )
+    gg_10k = sacc_io.xi_correlation(sacc_io.load(xi_10k_path))
 
     # Compute COSEBIS from 1,000-bin ξ± (with covariance for PTE baseline)
     print("\nComputing COSEBIS from 1,000-bin ξ±...")
@@ -297,12 +259,12 @@ def _from_cli(argv=None):
     ap.add_argument(
         "--xi-1k",
         required=True,
-        help="Fiducial 1000-bin integration-grid TreeCorr xi_pm .txt",
+        help="Fiducial 1000-bin integration-grid ξ± SACC part",
     )
     ap.add_argument(
         "--xi-10k",
         required=True,
-        help="Fiducial 10000-bin integration-grid TreeCorr xi_pm .txt",
+        help="Fiducial 10000-bin integration-grid ξ± SACC part",
     )
     ap.add_argument(
         "--cov-1k",
