@@ -250,6 +250,19 @@ def test_launch_reads_the_image_under_home(toy, tmp_path):
     assert "uv tool install --force --python 3.13 snakemake==" in result.stdout
 
 
+def _apptainer_stub(tmp_path):
+    """A PATH entry that answers where apptainer is not installed.
+
+    The candide profile deploys with apptainer, whose version Snakemake reads
+    even when it runs no job.
+    """
+    apptainer = tmp_path / "bin" / "apptainer"
+    apptainer.parent.mkdir()
+    apptainer.write_text("#!/bin/sh\necho apptainer version 1.3.4\n")
+    apptainer.chmod(0o755)
+    return apptainer.parent
+
+
 def test_a_job_needs_no_launch_cache(toy, tmp_path):
     """A job starts on a node where the launch's XDG cache cannot exist.
 
@@ -260,12 +273,6 @@ def test_a_job_needs_no_launch_cache(toy, tmp_path):
     """
     blocker = tmp_path / "a-file"
     blocker.touch()
-    # The profile deploys with apptainer, whose version Snakemake reads even in
-    # a dry-run; this stub answers where apptainer is not installed.
-    apptainer = tmp_path / "bin" / "apptainer"
-    apptainer.parent.mkdir()
-    apptainer.write_text("#!/bin/sh\necho apptainer version 1.3.4\n")
-    apptainer.chmod(0o755)
     candide = toy.root / "workflow" / "profiles" / "candide"
     result = toy.snakemake(
         "-n",
@@ -275,7 +282,7 @@ def test_a_job_needs_no_launch_cache(toy, tmp_path):
         env=toy.env
         | {
             "XDG_CACHE_HOME": str(blocker / "cache"),
-            "PATH": f"{apptainer.parent}{os.pathsep}{toy.env['PATH']}",
+            "PATH": f"{_apptainer_stub(tmp_path)}{os.pathsep}{toy.env['PATH']}",
         },
     )
     assert result.returncode == 0, result.stdout
@@ -297,6 +304,45 @@ def test_a_job_needs_no_launch_cache(toy, tmp_path):
     )
     assert result.returncode == 0, result.stdout
     assert (tmp_path / "env.txt").read_text() == ""
+
+
+def test_the_candide_profile_bounds_its_jobs(tmp_path):
+    """A real launch through the candide profile needs no --jobs.
+
+    Snakemake refuses a real run on a remote executor without a job bound. The
+    target is up to date, so the launch submits nothing and runs on any host;
+    the same launch through the profile stripped of its bound shows the refusal.
+    """
+    (tmp_path / "Snakefile").write_text(
+        'rule done:\n    output: "done.txt"\n    shell: "touch {output}"\n'
+    )
+    (tmp_path / "done.txt").touch()
+    env = {k: v for k, v in os.environ.items() if k != "SNAKEMAKE_PROFILE"}
+    env["PATH"] = f"{_apptainer_stub(tmp_path)}{os.pathsep}{env['PATH']}"
+    candide = REPO / "workflow" / "profiles" / "candide"
+    unbounded = tmp_path / "unbounded"
+    unbounded.mkdir()
+    profile = yaml.safe_load((candide / "config.yaml").read_text())
+    profile.pop("jobs", None)
+    (unbounded / "config.yaml").write_text(yaml.safe_dump(profile))
+
+    def launch(profile_dir):
+        return subprocess.run(
+            [sys.executable, "-m", "snakemake", "--profile", str(profile_dir)],
+            cwd=tmp_path,
+            env=env,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            timeout=300,
+            check=False,
+        )
+
+    result = launch(candide)
+    assert result.returncode == 0, result.stdout
+    assert "Nothing to be done" in result.stdout, result.stdout
+    refused = launch(unbounded)
+    assert refused.returncode != 0 and "--jobs" in refused.stdout, refused.stdout
 
 
 def test_image_sims_checks_parity_at_launch(toy, tmp_path):

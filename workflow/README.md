@@ -388,7 +388,9 @@ uv run --isolated --no-project --python 3.12 --with snakemake==9.23.1 \
     pytest workflow/tests
 ```
 
-CI runs the same suite with `-m "not candide"`.
+CI runs the same suite with `-m "not candide"`. `test_container_smoke`
+submits one real SLURM job through the candide profile, so it runs only where
+`sbatch` exists — a candide login node — and skips on compute nodes.
 
 ### `snakemake` in `script:` files
 
