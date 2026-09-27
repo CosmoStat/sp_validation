@@ -348,6 +348,25 @@ class TestCosmologyValidation:
                 cov.diag, np.concatenate([gg.varxip, gg.varxim])
             )
 
+    def test_a_patched_xi_dump_reads_back(self, tmp_path):
+        """calculate_2pcf reads back the text dump a patched measurement wrote.
+
+        The ξ± figure rules re-enter calculate_2pcf on the reporting grid, which
+        has patches, and are handed the dump rule xi wrote (to its precision).
+        """
+        params, version = write_synthetic_catalogs(tmp_path)
+        binning = dict(npatch=4, min_sep=5.0, max_sep=100.0, nbins=6)
+        measured = CosmologyValidation(versions=[version], **params).calculate_2pcf(
+            version, **binning
+        )
+        read = CosmologyValidation(versions=[version], **params).calculate_2pcf(
+            version, **binning
+        )
+        for column in ("meanr", "npairs", "xip", "xim", "varxip", "varxim"):
+            np.testing.assert_allclose(
+                getattr(read, column), getattr(measured, column), rtol=1e-4
+            )
+
     def test_calculate_2pcf_does_not_depend_on_thread_count(self, tmp_path):
         """calculate_2pcf's ξ± is the same on 4 and on 48 TreeCorr threads.
 

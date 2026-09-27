@@ -55,12 +55,15 @@ os.environ.pop("XDG_CACHE_HOME", None)
 
 
 # Output roots are env-overridable so a reproduction run can write into a
-# fresh tree without clobbering (or silently reusing) prior products. They
-# default to the production checkout's trees on candide.
-PRODUCTION = Path("/n17data/cdaley/unions/code/sp_validation")
-COSMO_VAL = Path(os.environ.get("COSMO_VAL", PRODUCTION / "cosmo_val" / "output"))
+# fresh tree without clobbering (or silently reusing) prior products. COSMO_VAL
+# defaults to the launched checkout's own (gitignored) cosmo_val/output, so a
+# launch writes into another checkout's products only when it names that tree;
+# COSMO_INFERENCE defaults to the shared tree on candide.
+COSMO_VAL = Path(os.environ.get("COSMO_VAL", REPO_ROOT / "cosmo_val" / "output"))
 COSMO_INFERENCE = Path(
-    os.environ.get("COSMO_INFERENCE", PRODUCTION / "cosmo_inference")
+    os.environ.get(
+        "COSMO_INFERENCE", "/n17data/cdaley/unions/code/sp_validation/cosmo_inference"
+    )
 )
 # The catalogue config of the launched checkout: the one file both the host
 # (CATALOG_CONFIG, loaded in configure) and every job read catalogues from, and
@@ -134,16 +137,16 @@ def inject_checkout_pythonpath(workflow_config):
 
 
 def resolve_container(override=None):
-    """Return the image every rule should run in.
+    """Return the image every rule should run in, stopping the launch on a mismatch.
 
     ``override`` wins if set (a ``docker://`` tag, a ``.sif`` path or a sandbox
     directory -- Snakemake's ``container:`` accepts all three); otherwise
     ``resolve_image()``, so jobs run what interactive ``spv-container`` work
-    runs.
+    runs. The image returned has passed ``check_host_parity``.
     """
-    if override:
-        return str(override)
-    return resolve_image()[0]
+    image = str(override) if override else resolve_image()[0]
+    check_host_parity(image)
+    return image
 
 
 def warn_if_image_stale():
@@ -221,34 +224,13 @@ def check_host_parity(image):
     )
 
 
-def check_output_root():
-    """Stop another checkout's launch from writing into the production outputs.
-
-    Custody is the launched checkout's, so a checkout other than
-    :data:`PRODUCTION` names its ``COSMO_VAL``: parts concealed under its
-    blinds, or re-measured under its declarations, never land in production's
-    tree unless asked to.
-    """
-    from snakemake.exceptions import WorkflowError
-
-    if "COSMO_VAL" in os.environ or PRODUCTION.resolve() == REPO_ROOT:
-        return
-    raise WorkflowError(
-        f"this checkout ({REPO_ROOT}) is not {PRODUCTION}, whose output tree "
-        f"COSMO_VAL defaults to. Name the tree to write into: COSMO_VAL=<dir> "
-        f"snakemake … (COSMO_VAL={COSMO_VAL} to write into production's)."
-    )
-
-
 def configure(workflow_config):
     """Install config-derived values after Snakemake has loaded configfiles."""
     global CATALOG_CONFIG, DEFAULT_MASK_SUFFIX, FIDUCIAL, PLANCK18
     from snakemake.common.configfile import load_configfile
 
-    check_output_root()
     inject_checkout_pythonpath(workflow_config)
     warn_if_image_stale()
-    check_host_parity(resolve_container(workflow_config.get("container")))
     CATALOG_CONFIG = load_configfile(CAT_CONFIG)
     FIDUCIAL = workflow_config["fiducial"]
     DEFAULT_MASK_SUFFIX = (

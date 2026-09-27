@@ -94,13 +94,11 @@ class RealSpaceMixin:
 
             # Process the catalog & write the correlation functions
             gg.process(cat_gal)
-            # Never write_patch_results: a per-patch ξ± realisation is an
-            # unblinded data vector, and nothing downstream reads one — the
-            # covariance a consumer needs is the matrix, which the SACC part
-            # carries. The .txt keeps the matrix only where there are patches to
-            # estimate it from; at npatch=1 var_method is "shot" and it would add
-            # nothing over the varxip/varxim columns.
-            gg.write(out_fname, write_patch_results=False, write_cov=int(npatch) > 1)
+            # Columns only. The covariance matrix lives in the SACC part; a
+            # per-patch ξ± realisation is an unblinded data vector nothing reads;
+            # and TreeCorr cannot read back a text file carrying the matrix
+            # without the per-patch results.
+            gg.write(out_fname, write_patch_results=False, write_cov=False)
 
         # Add correlation object to class
         if not hasattr(self, "cat_ggs"):
