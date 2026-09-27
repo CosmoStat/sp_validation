@@ -71,6 +71,21 @@ def test_undeclared_catalogue_without_a_blind_fails_with_the_command(tmp_path):
     assert "share" in message
 
 
+def test_the_printed_commands_name_the_config_as_it_was_given(tmp_path):
+    """The operator pastes these commands, so they keep the launch's spelling
+    of the checkout: on candide the plain /nXXdataN, never the /automnt path it
+    resolves to."""
+    (tmp_path / "real" / "cosmo_val").mkdir(parents=True)
+    checkout = tmp_path / "checkout"
+    checkout.symlink_to(tmp_path / "real", target_is_directory=True)
+    registry = cu.registry_of(checkout / "cosmo_val" / "cat_config.yaml")
+    with pytest.raises(cu.CustodyError) as err:
+        cu.custody_of(_catalogues(SP_v9=None), "SP_v9", registry=registry)
+    message = str(err.value)
+    assert f"APPTAINERENV_PYTHONPATH={checkout}/src " in message
+    assert f"--cat-config {checkout}/cosmo_val/cat_config.yaml" in message
+
+
 def test_declared_blinded_without_a_blind_fails(tmp_path):
     cats = _catalogues(SP_v9="blinded")
     with pytest.raises(cu.CustodyError, match="no blind covers it"):

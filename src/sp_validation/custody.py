@@ -80,8 +80,8 @@ def seed_commitment(seed):
 
 
 def registry_of(cat_config):
-    """The blind registry beside a catalogue config."""
-    return Path(cat_config).resolve().parent / "blinds"
+    """The blind registry beside a catalogue config, spelled as the config is."""
+    return Path(cat_config).absolute().parent / "blinds"
 
 
 def entry_of(version):
