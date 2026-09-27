@@ -4,8 +4,9 @@ The executor, the apptainer deployment method, the bind mounts and the job
 bound come from that profile, launched as the README launches a target; the
 test Snakefile composes workflow/ as the entry Snakefiles do, so the job runs
 the image that launch resolves (your SIF or sandbox) in the environment that
-launch hands its jobs. That contract is what's under test, so it runs only on a
-candide submit host.
+launch hands its jobs. That contract is what's under test, so it runs only where
+``sbatch`` exists: a candide login node. Compute nodes have none, so in a job
+step on an allocation it skips.
 
 The job writes a YAML report (see data/container_smoke/container_smoke.py); the
 assertions below check what it reports.
@@ -36,7 +37,9 @@ def _reference_eigenvalues() -> np.ndarray:
 
 @pytest.mark.candide
 @on_candide
-@pytest.mark.skipif(shutil.which("sbatch") is None, reason="needs a SLURM submit host")
+@pytest.mark.skipif(
+    shutil.which("sbatch") is None, reason="submits a SLURM job: run on a login node"
+)
 def test_container_smoke():
     assert container.resolve_image()[1] != "tag", (
         "no local image; run `spv-container pull`"
