@@ -87,6 +87,7 @@ Optionality: a file's contents are flexible about which components of
 
 import functools
 import os
+import re
 import types
 
 import numpy as np
@@ -975,26 +976,44 @@ def _check_grid_consistency(s, angle):
 # --------------------------------------------------------------------------- #
 # The file door: every SACC is born sealed, derived with one stamp, or refused
 # --------------------------------------------------------------------------- #
-# Signal: the shear data types a cosmology shift reaches.
-SIGNAL_PREFIX = "galaxy_shear_"
-# The signal rows a blind conceals.
+# The blinding rule of each data type a blinded catalogue's SACC may hold. A
+# data type with none is refused under a blind, so a new statistic fails closed.
+# Signal the blind shifts:
 SHIFTABLE = (XI_PLUS, XI_MINUS, CL_EE)
-# Signal rows a pure E-mode shift leaves unchanged.
+# signal a pure E-mode shift leaves unchanged:
 UNSHIFTED = (CL_BB, CL_EB)
+# signal derived from ξ±, which moves only through the rows it is computed from:
+DERIVED = (COSEBI_EE, COSEBI_BB, *PURE_TYPES.values())
+SIGNAL = SHIFTABLE + UNSHIFTED + DERIVED
+# and no signal: the PSF's ρ and the galaxy–PSF τ statistics.
+_SIGNAL_FREE = re.compile(
+    "|".join(t.format(k=r"\d+") for t in (RHO_PLUS, RHO_MINUS, TAU_PLUS, TAU_MINUS))
+)
 
 
 def is_signal(data_type):
     """Whether ``data_type`` carries cosmological signal."""
-    return data_type.startswith(SIGNAL_PREFIX)
+    return data_type in SIGNAL
 
 
 def is_derived(data_type):
-    """Whether ``data_type`` is a derived statistic (COSEBIs, pure-E/B, …).
+    """Whether ``data_type`` is a derived statistic (COSEBIs, pure-E/B)."""
+    return data_type in DERIVED
 
-    Signal the blind neither conceals nor leaves unchanged: it moves only
-    through the shiftable rows it is computed from.
-    """
-    return is_signal(data_type) and data_type not in SHIFTABLE + UNSHIFTED
+
+def _refuse_unruled(s):
+    """Refuse rows of a data type with no blinding rule (under a blind)."""
+    unruled = sorted(
+        t
+        for t in {dp.data_type for dp in s.data}
+        if not is_signal(t) and not _SIGNAL_FREE.fullmatch(t)
+    )
+    if unruled:
+        raise ValueError(
+            f"{unruled}: no blinding rule for these data types, so a blinded "
+            "catalogue's SACC cannot hold them; give a new statistic its rule in "
+            "sacc_io (and its shift in blinding) first"
+        )
 
 
 def _stamped(s):
@@ -1013,16 +1032,18 @@ def seal(s, custody):
     @sc born-sealed
     A catalogue-born SACC leaves memory only through here. Under a blinded
     custody every ξ± and Cℓ_EE row is shifted on a copy before the stamp is
-    minted; a SACC with no signal is stamped without opening the blind; any
-    other signal (COSEBIs, pure-E/B) is a derived statistic, refused here and
-    saved with ``derived_from``. An already-stamped SACC is re-written only as
-    a derivation.
+    minted; a SACC with no signal (ρ/τ) is stamped without opening the blind; a
+    derived statistic (COSEBIs, pure-E/B) is refused here and saved with
+    ``derived_from``; a data type with no blinding rule is refused. An
+    already-stamped SACC is re-written only as a derivation.
     """
     if _stamped(s):
         raise ValueError(
             "this SACC is already stamped; a loaded or sealed SACC is re-written "
             "only as a derivation (save(..., derived_from=[...]))"
         )
+    if custody.status == "blinded":
+        _refuse_unruled(s)
     types = {dp.data_type for dp in s.data}
     derived = {t for t in types if is_derived(t)}
     if custody.status == "blinded" and derived:
@@ -1061,6 +1082,8 @@ def _derive(s, parts, custody):
             f"parts are stamped {stamp.token}, but {custody.catalogue} is "
             f"declared {custody.token}"
         )
+    if stamp.status == "blinded":
+        _refuse_unruled(s)
     inputs = {_row_key(dp) for p in parts for dp in p.data if dp.data_type in SHIFTABLE}
     stray = [
         i
@@ -1094,7 +1117,8 @@ def save(s, path, *, custody=None, derived_from=None):
     @sc derived-inherit
     A derivation's inputs must share one stamp, and each of its ξ±/Cℓ_EE rows
     must be a copy of an input row (type, tracers, value, tags; windows by
-    index), so plaintext cannot be saved under a concealed stamp.
+    index), so plaintext cannot be saved under a concealed stamp; under a
+    blinded stamp every data type needs a blinding rule, as at birth.
     """
     if derived_from is not None:
         out = _derive(s, list(derived_from), custody)

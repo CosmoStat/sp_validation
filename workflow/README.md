@@ -38,7 +38,9 @@ For a blinded catalogue, every ξ± and pseudo-Cℓ_EE value is shifted by a hid
 cosmology before it is first written. COSEBIs and pure-E/B computed from the
 shifted ξ± carry the blind with them; B-modes stay usable. Every SACC file
 records the custody it was born under, and assembly refuses parts under any
-other. ξ± leaves `CosmologyValidation.calculate_2pcf` only as its sealed part
+other. Under a blind a SACC holds only data types with a blinding rule
+(`sacc_io.SIGNAL` and ρ/τ), so a new statistic is refused until it has one. ξ±
+leaves `CosmologyValidation.calculate_2pcf` only as its sealed part
 (no text dump), so the ξ± figures and notebooks draw what the part holds; the
 jackknife `calculate_pure_eb` and the aperture mass, which need TreeCorr's own
 measurement, refuse a blinded catalogue.

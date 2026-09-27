@@ -484,6 +484,52 @@ def test_a_blinded_birth_without_signal_never_opens_the_blind(blinds, monkeypatc
     assert cu.read_stamp(sealed.metadata).stamp == blinds["TOY"].stamp
 
 
+# Data types no blind has a rule for, galaxy–galaxy lensing and CMB κ × shear,
+# with the tag SACC requires of each.
+UNRULED = {
+    "galaxy_shearDensity_xi_t": "theta",
+    "cmbGalaxy_convergenceShear_cl_e": "ell",
+}
+
+
+def _with_unruled(s, data_type):
+    for x in (5.0, 20.0, 80.0):
+        s.add_data_point(
+            data_type, ("source_0", "source_0"), 1e-5, **{UNRULED[data_type]: x}
+        )
+    return s
+
+
+@pytest.mark.parametrize("data_type", UNRULED)
+def test_a_data_type_without_a_blinding_rule_is_refused_under_a_blind(
+    blinds, tmp_path, data_type
+):
+    """Under a blind, a data type is born or derived only with a blinding rule.
+
+    Unblinded and mock SACCs are stamped whatever they hold.
+    """
+    for version in ("TOY_OPEN", "TOY_MOCK"):
+        s = _with_unruled(two_bin_sacc(cl=False, covariance=False), data_type)
+        assert np.array_equal(
+            np.asarray(sio.seal(s, blinds[version]).mean), np.asarray(s.mean)
+        )
+    with pytest.raises(ValueError, match="no blinding rule"):
+        sio.seal(
+            _with_unruled(two_bin_sacc(cl=False, covariance=False), data_type),
+            blinds["TOY"],
+        )
+    xi = sio.seal(two_bin_sacc(cl=False, covariance=False), blinds["TOY"])
+    for custody in (None, blinds["TOY"]):
+        with pytest.raises(ValueError, match="no blinding rule"):
+            sio.save(
+                _with_unruled(xi.copy(), data_type),
+                tmp_path / "x.sacc",
+                derived_from=[xi],
+                custody=custody,
+            )
+    assert not list(tmp_path.iterdir())
+
+
 def test_a_stamped_sacc_is_not_born_again(blinds, tmp_path):
     sealed = sio.seal(two_bin_sacc(cl=False), blinds["TOY_OPEN"])
     with pytest.raises(ValueError, match="already stamped"):
