@@ -117,13 +117,14 @@ def test_every_spelling_of_an_output_root_declares_the_same_paths(toy, tmp_path,
     assert not [f for f in declared if f.startswith(f"{link}/")], declared
 
 
-@pytest.mark.candide
-@on_candide
 def test_output_roots_take_the_plain_spelling(toy):
-    """A root on a candide disk is declared under /nXXdataN, the one spelling
-    every node has, however the launch spells it: a file target named there
-    resolves, and no declared path lies under /automnt."""
-    tree = Path("/n17data/cdaley/unions/.spv-dag-toy")  # a dry-run creates nothing
+    """A root given as /automnt/<disk>/... is declared as /<disk>/..., the one
+    spelling every node has, on any host: a job step re-derives the launch's
+    paths on its own node, and the node that owns a disk has neither
+    /automnt/<disk> nor a /<disk> link to it, like the disk no host has here.
+    A file target named in the plain spelling resolves, and no declared path
+    lies under /automnt."""
+    tree = Path("/n00data0/spv-dag-toy")  # a dry-run creates nothing
     env = {
         **toy.env,
         "COSMO_VAL": f"/automnt{tree}/val",

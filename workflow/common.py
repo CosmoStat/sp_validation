@@ -19,14 +19,13 @@ def _plain(path):
     A data disk is mounted at ``/nXXdataN`` on the node that owns it and
     reached from every other node through ``/nXXdataN -> /automnt/nXXdataN``;
     the owning node has no ``/automnt/nXXdataN``. A resolved path under
-    ``/automnt/<disk>`` is therefore spelled back under ``/<disk>`` when that
-    link exists here.
+    ``/automnt/<disk>`` is therefore spelled back under ``/<disk>``, whatever
+    the host: a job step re-derives its paths on its own node, and must
+    derive the launch's.
     """
     path = Path(path).resolve()
     if len(path.parts) > 2 and path.parts[1] == "automnt":
-        disk = Path("/", path.parts[2])
-        if disk.resolve() == Path(*path.parts[:3]):
-            return disk.joinpath(*path.parts[3:])
+        return Path("/", *path.parts[2:])
     return path
 
 

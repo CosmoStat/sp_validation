@@ -165,8 +165,7 @@ To reproduce a run from the image alone, opt out:
 snakemake --profile workflow/profiles/candide --config checkout_pythonpath=false <target>
 ```
 
-Either way the checkout has to sit under one of the profile's bind mounts to be
-visible inside the job.
+Either way the checkout has to sit on a disk the jobs see (next section).
 
 Most of the time this default is all you need. Reach for a different *image*
 only when the dependency stack changed — a new package, a lockfile bump — not
@@ -184,7 +183,11 @@ second after the allocation starts, before any log file is written. This is why
 checkout, `COSMO_VAL` and `COSMO_INFERENCE` in the plain form whatever spelling
 it is given (a symlink, a relative path, `/automnt`), and Snakemake matches a
 target by its path string, so name file targets in the plain form too; keep new
-paths the same.
+paths the same. A job sees a plain path only on a disk the profile binds by
+name — `/home`, `/n17data`, `/n23data1`, `/n09data` (the `/automnt` bind does
+not serve it) — so the checkout and both output roots sit on one of those. To
+work on another disk, add it to both bind lists: the candide profile's
+`apptainer-args` and `container.DEFAULT_BINDS`.
 
 ### Run Snakemake from the host, never from inside the container
 
