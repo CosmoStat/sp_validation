@@ -1,15 +1,18 @@
 # Standalone workflow exercised by workflow/tests/test_container_smoke.py.
 #
 # It composes workflow/ as every entry Snakefile does: common's launch-time
-# setup, the image a launch resolves. The executor, the apptainer deployment and
-# the binds come from the driving profile (workflow/profiles/candide). See
-# container_smoke.py for what the job checks.
+# setup, this checkout's src/ on the job's PYTHONPATH, the image a launch
+# resolves. The executor, the apptainer deployment and the binds come from the
+# driving profile (workflow/profiles/candide). See container_smoke.py for what
+# the job checks.
 
 import os
 import sys
 
 sys.path.insert(0, os.path.realpath(os.path.join(str(workflow.basedir), "../../..")))
 import common
+
+common.inject_checkout_pythonpath(config)
 
 
 container: common.resolve_container(config.get("container"))

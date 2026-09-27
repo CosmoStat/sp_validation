@@ -7,8 +7,8 @@ written to the output YAML:
 
   * the job really ran inside the image (``APPTAINER_CONTAINER``, set by
     apptainer itself -- without it the rest could all pass on the bare host);
-  * the editable ``sp_validation`` install resolves on the container's
-    PYTHONPATH (import provenance: file + version, not just import success);
+  * which ``sp_validation`` the job imports (file + version, not just import
+    success);
   * the numeric stack works (numpy eigh on a small fixed matrix).
     ``OMP_NUM_THREADS`` is recorded but not asserted -- see the assertions;
   * which commit of this checkout is running (git rev-parse from inside the
@@ -30,7 +30,7 @@ container_info = {
     "apptainer_container": os.environ.get("APPTAINER_CONTAINER", "unset"),
 }
 
-# --- editable install resolves inside the container ------------------------
+# --- the sp_validation the job imports -------------------------------------
 import sp_validation  # noqa: E402
 
 sp_validation_info = {
@@ -51,9 +51,8 @@ numeric_info = {
 }
 
 # --- provenance: what commit is actually running in the container ---------
-# workflow/tests/data/container_smoke/ -> repo root, four levels up.
-# (This is the checkout the Snakefile came from, which is what we want to
-# report; the editable install may well resolve to a *different* checkout.)
+# workflow/tests/data/container_smoke/ -> repo root, four levels up: the
+# checkout the Snakefile came from.
 repo_dir = os.path.abspath(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), *([os.pardir] * 4))
 )

@@ -77,15 +77,11 @@ def test_container_smoke():
     # something: apptainer sets APPTAINER_CONTAINER in every process it starts.
     assert report["container"]["apptainer_container"] != "unset", report["container"]
 
-    # The install must resolve to an editable src/ checkout, not a site-packages
-    # copy. It need not be *this* checkout: the container's editable install
-    # points at the shared /n17data working tree, while the Snakefile under test
-    # is read from wherever the test runs.
-    module_file = Path(report["sp_validation"]["file"])
-    assert module_file.parts[-3:] == ("src", "sp_validation", "__init__.py"), (
+    # The job imports the launched checkout's sp_validation, not the image's.
+    module_file = Path(report["sp_validation"]["file"]).resolve()
+    assert module_file == (REPO / "src/sp_validation/__init__.py").resolve(), (
         module_file
     )
-    assert "site-packages" not in module_file.parts, module_file
 
     # The numeric stack agrees with the same computation run here.
     np.testing.assert_allclose(
