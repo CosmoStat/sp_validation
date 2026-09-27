@@ -696,6 +696,9 @@ def test_init_refuses_existing_state(fresh):
         _init(fresh, "again", "TOY")
     with pytest.raises(cu.CustodyError, match="blinded first"):
         _init(fresh, "open", "TOY_OPEN")
+    (fresh / "blinds" / ".later.tmp").mkdir()
+    with pytest.raises(cu.CustodyError, match=r"\.later\.tmp exists"):
+        _init(fresh, "later", "OTHER")
 
 
 def test_the_record_is_read_only(fresh):
@@ -776,7 +779,7 @@ def test_open_blind_verifies_the_record(fresh):
 
 @pytest.mark.parametrize(
     "tamper",
-    ["wrong_key", "config", "config_and_digest", "scheme", "name"],
+    ["wrong_key", "config", "config_and_digest", "scheme", "name", "custody"],
 )
 def test_open_blind_refuses_a_tampered_record(fresh, tamper):
     from cryptography.fernet import Fernet
@@ -804,8 +807,11 @@ def test_open_blind_refuses_a_tampered_record(fresh, tamper):
             lambda r: r.update(blind="toy2"),
         )
         (fresh / "blinds" / "toy2" / "bases").write_text("TOY\n")
+    custody = _custody(fresh, "TOY")
+    if tamper == "custody":
+        custody = dataclasses.replace(custody, commitment="0" * 64)
     with pytest.raises(cu.CustodyError):
-        bd.open_blind(_custody(fresh, "TOY"))
+        bd.open_blind(custody)
 
 
 def _init_storing(root, edit):
@@ -933,15 +939,17 @@ def _write(path, s, stamp):
     s.save_fits(str(path), overwrite=True)
 
 
-def _audit(root, archived, live, *, centres=("a", "a"), seed=None):
-    """Publish toy's seed (or ``seed``), archive ``archived`` under toy's stamp
-    with ``live`` as its re-measured twin, and audit the pair."""
+def _audit(root, archived, live, *, centres=("a", "a"), seed=None, stamps=None):
+    """Publish toy's seed (or ``seed``), archive ``archived`` with ``live`` as its
+    re-measured twin, stamped as ``stamps`` (toy's and TOY unblinded), and audit
+    the pair."""
     blinded = _custody(root, "TOY")
     seed = seed or bd.open_blind(blinded).seed
     (root / "blinds" / "toy" / "revealed.json").write_text(json.dumps({"seed": seed}))
+    stamps = stamps or (blinded.stamp, cu.Custody("unblinded", "TOY").stamp)
     for tree, s, stamp, centre in (
-        ("archive", archived, blinded.stamp, centres[0]),
-        ("live", live, cu.Custody("unblinded", "TOY").stamp, centres[1]),
+        ("archive", archived, stamps[0], centres[0]),
+        ("live", live, stamps[1], centres[1]),
     ):
         s = s.copy()
         s.metadata["patch_centers_sha256"] = centre
@@ -982,6 +990,18 @@ def test_reveal_refuses_a_root_holding_nothing_concealed(fresh):
         bd.reveal("toy", root=fresh / "empty", cat_config=cat_config)
 
 
+def test_reveal_refuses_a_record_publishing_another_seed(fresh):
+    root = fresh / "output"
+    part = root / "part.sacc"
+    part.parent.mkdir()
+    sio.save(two_bin_sacc(cl=False), part, custody=_custody(fresh, "TOY"))
+    revealed = fresh / "blinds" / "toy" / "revealed.json"
+    revealed.write_text(json.dumps({"seed": "0" * 32}))
+    with pytest.raises(cu.CustodyError, match="another seed"):
+        bd.reveal("toy", root=root, cat_config=fresh / "cat_config.yaml")
+    assert part.exists()
+
+
 def test_the_audit_of_an_empty_archive_says_so(fresh):
     (fresh / "blinds" / "toy" / "revealed.json").write_text(
         json.dumps({"seed": bd.open_blind(_custody(fresh, "TOY")).seed})
@@ -1019,9 +1039,40 @@ def test_the_audit_fails_on_other_patch_centres(fresh):
     assert not report["ok"] and "patch centres" in _problems(report)[0]
 
 
-@pytest.mark.parametrize("times", [0, 2], ids=["left_true", "shifted_twice"])
+SPOILT_PAIRS = {
+    "covariance": "covariances differ",
+    "rows": "rows, tags or tracers differ",
+    "live_mock": "the live file is stamped mock:TOY",
+    "live_other_catalogue": "the live file is stamped unblinded:OTHER",
+    "archive_other_blind": "not concealed under this blind",
+}
+
+
+@pytest.mark.parametrize("spoilt", SPOILT_PAIRS)
+def test_the_audit_names_a_pair_that_is_not_concealed_and_true(fresh, spoilt):
+    """An archived part is audited only under this blind, against the same
+    catalogue re-measured unblinded with the same rows and covariance."""
+    s = two_bin_sacc()
+    live = two_bin_sacc(cl=False) if spoilt == "rows" else s.copy()
+    if spoilt == "covariance":
+        live.add_covariance(1.01 * np.asarray(s.covariance.dense), overwrite=True)
+    archived_stamp = _custody(fresh, "TOY").stamp
+    if spoilt == "archive_other_blind":
+        archived_stamp = {**archived_stamp, "blinding_commitment": "0" * 64}
+    live_custody = {
+        "live_mock": cu.Custody("mock", "TOY"),
+        "live_other_catalogue": cu.Custody("unblinded", "OTHER"),
+    }.get(spoilt, cu.Custody("unblinded", "TOY"))
+    stamps = (archived_stamp, live_custody.stamp)
+    report = _audit(fresh, _concealed(fresh, s), live, stamps=stamps)
+    assert not report["ok"] and _problems(report) == [SPOILT_PAIRS[spoilt]]
+
+
+@pytest.mark.parametrize(
+    "times", [0, 2, 1 + 1e-4], ids=["left_true", "shifted_twice", "off_by_1e-4"]
+)
 def test_the_audit_fails_on_a_mixed_file(fresh, times):
-    """One ξ± pair under the blinded stamp carries 0× or 2× the shift."""
+    """One ξ± pair under the blinded stamp carries 0×, 2× or 1.0001× the shift."""
     s = two_bin_sacc(rho=True)
     archived = _concealed(fresh, s)
     for i in _rows(s, sio.XI_PLUS, sio.XI_MINUS):
