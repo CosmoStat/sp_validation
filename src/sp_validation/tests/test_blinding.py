@@ -37,6 +37,7 @@ def _cat_config(root):
         "TOY": {},
         "OTHER": {},
         "TOY_OPEN": {"blinding": "unblinded"},
+        "OTHER_OPEN": {"blinding": "unblinded"},
         "TOY_MOCK": {"blinding": "mock"},
         "paths": {"output": str(root / "output")},
     }
@@ -74,7 +75,7 @@ def _declare(root, **entries):
 
 @pytest.fixture(scope="module")
 def blinds(tmp_path_factory):
-    """Blinds `toy` (TOY) and `other` (OTHER), and the four custodies.
+    """Blinds `toy` (TOY) and `other` (OTHER), and the five custodies.
 
     Their seeds are fixed, so every run tests the same hidden points.
     """
@@ -84,7 +85,8 @@ def blinds(tmp_path_factory):
         for blind, base in (("toy", "TOY"), ("other", "OTHER")):
             m.setattr(bd.secrets, "token_hex", lambda n, b=blind: f"{b}-seed")
             _init(root, blind, base)
-    return {v: _custody(root, v) for v in ("TOY", "OTHER", "TOY_OPEN", "TOY_MOCK")}
+    versions = ("TOY", "OTHER", "TOY_OPEN", "OTHER_OPEN", "TOY_MOCK")
+    return {v: _custody(root, v) for v in versions}
 
 
 @pytest.fixture
@@ -540,11 +542,24 @@ def test_a_derivation_inherits_its_inputs_stamp(blinds, tmp_path):
     assert cu.read_stamp(written.metadata).stamp == blinds["TOY"].stamp
 
 
-def test_inputs_under_two_stamps_are_refused(blinds, tmp_path):
-    a = sio.seal(two_bin_sacc(cl=False), blinds["TOY_OPEN"])
-    b = sio.seal(two_bin_sacc(cl=False), blinds["TOY_MOCK"])
+@pytest.mark.parametrize(
+    "first, second",
+    [
+        ("TOY_OPEN", "TOY_MOCK"),  # two statuses
+        ("TOY", "OTHER"),  # two blinds
+        ("TOY_OPEN", "OTHER_OPEN"),  # two unblinded catalogues
+    ],
+)
+def test_inputs_under_two_stamps_are_refused(blinds, tmp_path, first, second):
+    a = sio.seal(two_bin_sacc(cl=False), blinds[first])
+    b = sio.seal(two_bin_sacc(cl=False), blinds[second])
     with pytest.raises(ValueError, match="stamps"):
         sio.save(cosebis_sacc(), tmp_path / "c.sacc", derived_from=[a, b])
+    with pytest.raises(ValueError, match="stamps"):
+        sio.save(
+            a.copy(), tmp_path / "a.sacc", derived_from=[a, b], custody=blinds[first]
+        )
+    assert not list(tmp_path.iterdir())
 
 
 def test_plaintext_cannot_be_laundered_under_a_concealed_stamp(blinds, tmp_path):
