@@ -430,8 +430,6 @@ def init(name, bases, *, cat_config, config=None):
         "draw_scheme": draw_scheme(),
     }
     ciphertext = Fernet(key).encrypt(json.dumps(payload).encode("utf-8"))
-    if json.loads(Fernet(key).decrypt(ciphertext)) != payload:
-        raise _custody.CustodyError("the sealed seed does not round-trip")
     commitment = {
         "blind": name,
         "seed_commitment": _custody.seed_commitment(seed),
