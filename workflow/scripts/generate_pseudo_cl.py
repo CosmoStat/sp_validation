@@ -68,8 +68,8 @@ def generate_pseudo_cl(
     power : float
         Power for powspace binning (0.5 = sqrt spacing)
     custody : str, optional
-        The custody token the launch resolved for ``version``; the part is not
-        written under any other.
+        The custody token Snakemake resolved for ``version`` (the rule's
+        ``params.custody``); the part is not written under any other.
 
     Returns
     -------

@@ -475,9 +475,9 @@ def test_a_mock_never_opens_a_blind(toy, monkeypatch):
 @pytest.mark.parametrize(
     "script", ["run_2pcf.py", "run_rho_tau.py", "assemble_sacc.py"]
 )
-def test_a_job_refuses_a_custody_changed_since_the_launch(toy, script):
-    """TOY's launch resolved it unblinded; declared blinded by the time the job
-    runs, the job refuses before it measures or writes anything."""
+def test_a_job_refuses_a_custody_other_than_its_params(toy, script):
+    """Snakemake resolved TOY unblinded; declared blinded when the job resolves
+    it, the job refuses before it measures or writes anything."""
     out = toy.root / "stale"
     outputs = {
         "sacc": out / "part.sacc",
@@ -486,7 +486,7 @@ def test_a_job_refuses_a_custody_changed_since_the_launch(toy, script):
         "rho_tau": out / "rho_tau.sacc",
     }
     out.mkdir()
-    with pytest.raises(cu.CustodyError, match="changed since the launch"):
+    with pytest.raises(cu.CustodyError, match="differs between the job"):
         run_rule(
             script,
             output={k: str(v) for k, v in outputs.items()},

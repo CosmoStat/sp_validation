@@ -58,8 +58,8 @@ def run_2pcf(
     expects. ``sacc_out`` is the exact destination for the SACC part (the
     Snakemake-declared output); it defaults to a binning-derived name under
     the resolved output directory for the CLI path. ``custody`` is the custody
-    token the launch resolved for ``ver``; the part is not written under any
-    other.
+    token Snakemake resolved for ``ver`` (the rule's ``params.custody``); the
+    part is not written under any other.
 
     Returns
     -------

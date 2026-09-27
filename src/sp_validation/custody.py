@@ -311,10 +311,16 @@ def read_stamp(metadata):
 
 
 def confirm(custody, token):
-    """``custody``, if its token is the one the launch resolved; else raise."""
+    """``custody``, if its token is the job's ``params.custody``; else raise.
+
+    ``token`` is resolved by the Snakemake process that runs the job: the
+    launch under a local executor, the job step at job start under slurm. The
+    job's own resolution, in the container, must agree with it.
+    """
     if custody.token != token:
         raise CustodyError(
-            f"custody of {custody.catalogue} changed since the launch: the job "
-            f"resolves {custody.token}, the launch resolved {token}"
+            f"custody of {custody.catalogue} differs between the job and its "
+            f"Snakemake: the job resolves {custody.token}, Snakemake resolved "
+            f"{token}; launch again"
         )
     return custody
