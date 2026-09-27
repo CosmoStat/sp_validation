@@ -102,6 +102,18 @@ def test_outputs_stay_in_the_output_roots(toy, named):
     assert not strays, strays
 
 
+def test_every_spelling_of_an_output_root_declares_the_same_paths(toy, tmp_path):
+    """Snakemake keys its params and code triggers by path string, so a
+    symlinked spelling of COSMO_VAL declares the tree's resolved paths."""
+    link = tmp_path / "cosmo_val_link"
+    link.symlink_to(toy.cosmo_val, target_is_directory=True)
+    result = toy.snakemake("-n", "all", env={**toy.env, "COSMO_VAL": str(link)})
+    assert result.returncode == 0, result.stdout
+    outputs = [o for j in parse_jobs(result.stdout) for o in j.output]
+    assert any(o.startswith(str(toy.cosmo_val.resolve())) for o in outputs), outputs
+    assert not [o for o in outputs if o.startswith(str(link))], outputs
+
+
 @pytest.mark.parametrize(
     "python, snakemake_version",
     [("3.13.1", None), (None, "9.0.0")],
