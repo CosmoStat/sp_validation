@@ -295,10 +295,6 @@ def test_unblinding_a_concealed_catalogue_needs_the_reveal(toy):
 
 def _real_dry_run(paper, targets):
     env = {k: v for k, v in os.environ.items() if k != "SNAKEMAKE_PROFILE"}
-    # Against the production output tree, whichever checkout runs the tests.
-    env.setdefault(
-        "COSMO_VAL", "/n17data/cdaley/unions/code/sp_validation/cosmo_val/output"
-    )
     env.update(PYTHONUNBUFFERED="1", PYTHONNOUSERSITE="1")
     return subprocess.run(
         [

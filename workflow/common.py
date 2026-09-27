@@ -58,13 +58,18 @@ os.environ.pop("XDG_CACHE_HOME", None)
 # fresh tree without clobbering (or silently reusing) prior products. COSMO_VAL
 # defaults to the launched checkout's own (gitignored) cosmo_val/output, so a
 # launch writes into another checkout's products only when it names that tree;
-# COSMO_INFERENCE defaults to the shared tree on candide.
-COSMO_VAL = Path(os.environ.get("COSMO_VAL", REPO_ROOT / "cosmo_val" / "output"))
+# COSMO_INFERENCE defaults to the shared tree on candide. Both are resolved:
+# Snakemake keys its persistence records (the params and code triggers) by path
+# string, so every spelling of one tree (/n17data -> /automnt/n17data) must
+# declare the same paths.
+COSMO_VAL = Path(
+    os.environ.get("COSMO_VAL", REPO_ROOT / "cosmo_val" / "output")
+).resolve()
 COSMO_INFERENCE = Path(
     os.environ.get(
         "COSMO_INFERENCE", "/n17data/cdaley/unions/code/sp_validation/cosmo_inference"
     )
-)
+).resolve()
 # The catalogue config of the launched checkout: the one file both the host
 # (CATALOG_CONFIG, loaded in configure) and every job read catalogues from, and
 # the blind registry beside it.
