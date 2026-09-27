@@ -150,8 +150,19 @@ only under `COSMO_VAL` or `COSMO_INFERENCE` or the run directory's `results/`.
 Both are environment variables: `COSMO_VAL` defaults to the launched
 checkout's own `cosmo_val/output`, so writing into another checkout's products
 means naming its tree (`COSMO_VAL=<that checkout>/cosmo_val/output`);
-`COSMO_INFERENCE` defaults to the shared tree on candide. Other rules write
-elsewhere: masks under the run directory's `output/masks/`,
+`COSMO_INFERENCE` defaults to the shared tree on candide,
+`/n17data/cdaley/unions/code/sp_validation/cosmo_inference`, which holds the
+CosmoCov covariances and only its owner can write. Anyone else launches with
+`COSMO_INFERENCE=<tree>` of their own, holding a link to the shared tree's
+`data/mask/` (the one input the covariance rules take from it); the CosmoCov
+chain then runs there:
+
+```bash
+mkdir -p <tree>/data
+ln -s /n17data/cdaley/unions/code/sp_validation/cosmo_inference/data/mask <tree>/data/
+```
+
+Other rules write elsewhere: masks under the run directory's `output/masks/`,
 `papers/bmodes`' figures and macros under its run directory's `docs/`, the
 image sims under their `grids_base`.
 
