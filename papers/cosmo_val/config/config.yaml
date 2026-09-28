@@ -94,7 +94,6 @@ cosmo_val:
 # ---------------------------------------------------------------------------
 fiducial:
   version: SP_v1.4.6.3_leak_corr
-  blind: A
   npatch: 1
   min_sep: 1.0
   max_sep: 250.0
@@ -124,7 +123,6 @@ cl:
 # stamps into the filename, reconstructed by the inference consumer.
 harmonic:
   fiducial:
-    blind: A
     binning: powspace
     nbins: 32
 

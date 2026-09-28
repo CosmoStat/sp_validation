@@ -97,7 +97,6 @@ def _grid_cov(version, grid, gaussian):
     binning = XI_GRIDS[grid]
     return covariance_path(
         version,
-        FIDUCIAL["blind"],
         gaussian=gaussian,
         min_sep=binning["min_sep"],
         max_sep=binning["max_sep"],

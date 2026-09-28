@@ -5,10 +5,10 @@ pure-E/B ``semianalytic.npz`` (data vectors + MC covariance), evaluates the
 ξ_+^B / ξ_-^B / joint ξ_tot^B χ² PTE matrices over the scale-cut grid via
 ``sp_validation.b_modes.calculate_eb_statistics`` (Hartlap-corrected inverse
 MC covariance, debiased by the draw count), and writes the PTE matrices to
-``{out}/{version}_{blind}_pure_eb_ptes.npz``.
+``{out}/{version}_pure_eb_ptes.npz``.
 
     python calculate_pure_eb_ptes.py \
-        --version SP_v1.4.6.3_leak_corr --blind A \
+        --version SP_v1.4.6.3_leak_corr \
         --pure-eb-data <..._pure_eb_semianalytic.npz> \
         --n-samples 2000 --out <output_dir>
 """
@@ -23,7 +23,6 @@ from sp_validation.b_modes import calculate_eb_statistics
 
 def calculate_ptes(
     version,
-    blind,
     pure_eb_data,
     n_samples,
     output_dir,
@@ -57,7 +56,7 @@ def calculate_ptes(
     }
 
     os.makedirs(output_dir, exist_ok=True)
-    out_path = os.path.join(output_dir, f"{version}_{blind}_pure_eb_ptes.npz")
+    out_path = os.path.join(output_dir, f"{version}_pure_eb_ptes.npz")
     np.savez(out_path, **output_data)
     print(f"Saved PTE matrices to {out_path}")
     return out_path
@@ -66,14 +65,12 @@ def calculate_ptes(
 def _from_cli(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--version", required=True)
-    ap.add_argument("--blind", default="A")
     ap.add_argument("--pure-eb-data", required=True, help="Gathered semianalytic .npz")
     ap.add_argument("--n-samples", type=int, default=2000)
     ap.add_argument("--out", required=True, help="Output directory (lc {output})")
     a = ap.parse_args(argv)
     calculate_ptes(
         version=a.version,
-        blind=a.blind,
         pure_eb_data=a.pure_eb_data,
         n_samples=a.n_samples,
         output_dir=a.out,

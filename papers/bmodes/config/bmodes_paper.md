@@ -86,7 +86,7 @@ Note: Per-version PTEs come from `config_space_pte_matrices`, not `pure_eb_data_
 
 ### Blind Handling
 
-PTEs report the **minimum across blinds** (`pte_joint_min`) as the conservative estimate. This ensures reported values remain valid regardless of which blind is eventually unblinded. The fiducial blind `config["fiducial"]["blind"]` determines covariance matrix selection.
+PTEs report the **minimum across blinds** (`pte_joint_min`) as the conservative estimate. This ensures reported values remain valid regardless of which blind is eventually unblinded. Covariances use each version's catalogue-entry n(z).
 
 ## Macros and Tables
 

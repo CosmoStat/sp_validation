@@ -10,9 +10,9 @@ Harmonic-space B-mode PTEs are consistent with noise at fiducial multipole range
 
 Fiducial scale cuts from `cl.fiducial_ell_min` and `cl.fiducial_ell_max`. Full B-mode test range spans all multipole bins present in the input pseudo-Cℓ file.
 
-## Blind Handling
+## n(z)
 
-Uses fiducial blind from `config["fiducial"]["blind"]`. The C_ℓ^BB data vector is identical across blinds; covariances vary with blind via n(z)-dependent theoretical predictions.
+Each version's covariance uses its catalogue entry's n(z) (`shear.redshift_path` in `cat_config.yaml`).
 
 ## Config References
 

@@ -8,9 +8,9 @@ Plotting: [1D Plots](1d_plots.md)
 
 COSEBIS B-modes at fiducial version (`fiducial.version`) are consistent with zero across the full angular range and at fiducial scale cuts.
 
-## Blind Handling
+## n(z)
 
-Uses fiducial blind from `config["fiducial"]["blind"]`. COSEBIS B_n data vectors are identical across blinds; covariances vary with blind via n(z)-dependent theoretical predictions. Statistical evidence (PTEs) is in [Config-Space PTE Matrices](config_space_pte_matrices.md).
+Each version's covariance uses its catalogue entry's n(z) (`shear.redshift_path` in `cat_config.yaml`). Statistical evidence (PTEs) is in [Config-Space PTE Matrices](config_space_pte_matrices.md).
 
 ## Config References
 

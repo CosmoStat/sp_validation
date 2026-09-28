@@ -9,7 +9,7 @@ sweep call is bit-identical to the fiducial call save for those. Per version the
 driver reads that version's 1000-bin integration ξ_± from the xi_sweep output dir
 and its Gaussian integration covariance from the cov_sweep output dir (both by
 absolute path — lc does not wire cross-output deps, so run xi_sweep + cov_sweep
-first), emitting the canonical ``cosebis_ptes_{ver}_{blind}.npz`` — the same
+first), emitting the canonical ``cosebis_ptes_{ver}.npz`` — the same
 gathered layout the fiducial single-output writes, which
 config_space_pte_matrices.py adapts via ``_cosebis_matrix_from_npz`` — into
 ``--out``. Serial over versions (~25 min/version, 206 pairs).
@@ -18,7 +18,7 @@ config_space_pte_matrices.py adapts via ``_cosebis_matrix_from_npz`` — into
         --config .../config.yaml \
         --xi-sweep-dir <two_point/.../xi_sweep> \
         --cov-sweep-dir <covariance/.../cov_sweep> \
-        --out <dir> [--blind A] [--versions v1 v2 ...]
+        --out <dir> [--versions v1 v2 ...]
 """
 
 import argparse
@@ -47,8 +47,8 @@ def _xi_integration(xi_sweep_dir, ver):
     )
 
 
-def _cov_integration(cov_sweep_dir, ver, blind):
-    base = f"covariance_{ver}_{blind}_g_minsep=0.5_maxsep=300.0_nbins=1000_masked"
+def _cov_integration(cov_sweep_dir, ver):
+    base = f"covariance_{ver}_g_minsep=0.5_maxsep=300.0_nbins=1000_masked"
     return os.path.join(cov_sweep_dir, base, f"{base}_processed.txt")
 
 
@@ -70,7 +70,6 @@ def _from_cli(argv=None):
         help="cov_sweep output dir with per-version {base}/{base}_processed.txt cov",
     )
     ap.add_argument("--out", required=True, help="Sweep output directory (lc {output})")
-    ap.add_argument("--blind", default="A", help="Blind tag (paper: A)")
     ap.add_argument("--versions", nargs="*", default=None, help="Explicit version keys")
     a = ap.parse_args(argv)
 
@@ -81,15 +80,15 @@ def _from_cli(argv=None):
 
     for ver in versions:
         xi_int = _xi_integration(a.xi_sweep_dir, ver)
-        cov_int = _cov_integration(a.cov_sweep_dir, ver, a.blind)
+        cov_int = _cov_integration(a.cov_sweep_dir, ver)
         for f in (xi_int, cov_int):
             if not os.path.isfile(f):
                 raise FileNotFoundError(f"MISSING upstream input for {ver}: {f}")
         print(f"[cosebis_ptes_sweep] {ver}", flush=True)
-        compute_cosebis_pte(config, xi_int, cov_int, a.out, version=ver, blind=a.blind)
+        compute_cosebis_pte(config, xi_int, cov_int, a.out, version=ver)
         print(
             f"[cosebis_ptes_sweep] {ver} -> "
-            f"{os.path.join(a.out, f'cosebis_ptes_{ver}_{a.blind}.npz')}",
+            f"{os.path.join(a.out, f'cosebis_ptes_{ver}.npz')}",
             flush=True,
         )
     print(f"[cosebis_ptes_sweep] done -> {a.out}", flush=True)

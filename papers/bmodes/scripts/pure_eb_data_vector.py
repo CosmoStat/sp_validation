@@ -2,12 +2,12 @@
 
 Fiducial catalog only: pure E/B/ambiguous decomposition of ξ± with B-modes
 consistent with zero at the fiducial scale cuts. Writes evidence.json with PTE
-values including the joint B-mode test (fiducial blind, config.fiducial.blind).
+values including the joint B-mode test.
 
 CLI:
     python pure_eb_data_vector.py \
         --config config.yaml \
-        --pure-eb-data <version>_<blind>_pure_eb_semianalytic.npz \
+        --pure-eb-data <version>_pure_eb_semianalytic.npz \
         --reporting-cov <cov_reporting_ng>/covariance_processed.txt \
         --out <output_dir> [--specs spec.md ...]
 """
@@ -218,7 +218,6 @@ def _create_pure_eb_figure(
 
 
 def main(config, pure_eb_path, cov_path, out_dir, specs=()):
-    blind = config["fiducial"]["blind"]
     version = config["fiducial"]["version"]
     fiducial_xip_scale_cut = tuple(config["fiducial"]["fiducial_xip_scale_cut"])
     fiducial_xim_scale_cut = tuple(config["fiducial"]["fiducial_xim_scale_cut"])
@@ -292,7 +291,7 @@ def main(config, pure_eb_path, cov_path, out_dir, specs=()):
     )
 
     print(
-        f"Blind {blind} PTEs (fiducial): xi+^B={pte_xip_fid:.3f}, xi-^B={pte_xim_fid:.3f}, joint={pte_joint_fid:.3f}"
+        f"PTEs (fiducial): xi+^B={pte_xip_fid:.3f}, xi-^B={pte_xim_fid:.3f}, joint={pte_joint_fid:.3f}"
     )
 
     # Write evidence.json (based on leak-corrected fiducial data only)
@@ -319,7 +318,6 @@ def main(config, pure_eb_path, cov_path, out_dir, specs=()):
                 "dof_joint_B": int(dof_joint_full),
             },
             "version": version,
-            "blind": blind,
         },
         "output": {"figure": "figure.png"},
     }
@@ -342,7 +340,7 @@ def _from_cli(argv=None):
     ap.add_argument(
         "--pure-eb-data",
         required=True,
-        help="Fiducial <version>_<blind>_pure_eb_semianalytic.npz "
+        help="Fiducial <version>_pure_eb_semianalytic.npz "
         "(decomposed ξ± + 6-block MC covariance)",
     )
     ap.add_argument(

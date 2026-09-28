@@ -797,12 +797,11 @@ def _versions_all_for_plots(config):
     return leak_corr + uncorrected
 
 
-def _cov_integration_path(cov_dir, version, blind, min_sep, max_sep, nbins):
+def _cov_integration_path(cov_dir, version, min_sep, max_sep, nbins):
     """Reproduce common.covariance_path for the Gaussian integration-grid,
     masked covariance (suffix _processed.txt)."""
     base = (
-        f"covariance_{version}_{blind}_g"
-        f"_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_masked"
+        f"covariance_{version}_g_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_masked"
     )
     return os.path.join(cov_dir, base, f"{base}_processed.txt")
 
@@ -856,9 +855,6 @@ def _from_cli(argv=None):
         "--covariance-dir",
         required=True,
         help="COSMO_INFERENCE data/covariance dir (Gaussian integration covariances)",
-    )
-    ap.add_argument(
-        "--blind", default="A", help="Blind for pseudo-Cl / covariance (paper: A)"
     )
     ap.add_argument("--out", required=True, help="Output directory (lc {output})")
     ap.add_argument(
@@ -928,7 +924,7 @@ def _from_cli(argv=None):
             if is_fiducial and a.fiducial_pseudo_cl_path
             else os.path.join(
                 a.cosmo_val_dir,
-                f"pseudo_cl_{ver}_blind={a.blind}_powspace_nbins={cosebis_nbins}.sacc",
+                f"pseudo_cl_{ver}_powspace_nbins={cosebis_nbins}.sacc",
             )
         )
         # 96-bin pseudo-Cl covariance is intentionally NOT lc-repointed: lc did not
@@ -937,7 +933,7 @@ def _from_cli(argv=None):
         # version.
         inputs[f"pseudo_cl_cov_{ver}"] = os.path.join(
             a.cosmo_val_dir,
-            f"pseudo_cl_cov_{ver}_blind={a.blind}_powspace_nbins={cosebis_nbins}.fits",
+            f"pseudo_cl_cov_{ver}_powspace_nbins={cosebis_nbins}.fits",
         )
         inputs[f"xi_{ver}"] = (
             a.fiducial_xi_path
@@ -952,7 +948,7 @@ def _from_cli(argv=None):
             a.fiducial_cov_path
             if is_fiducial and a.fiducial_cov_path
             else _cov_integration_path(
-                a.covariance_dir, ver, a.blind, min_sep_int, max_sep_int, nbins_int
+                a.covariance_dir, ver, min_sep_int, max_sep_int, nbins_int
             )
         )
 

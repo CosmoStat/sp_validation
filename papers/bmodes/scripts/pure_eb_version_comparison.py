@@ -242,8 +242,8 @@ def _create_version_comparison_figure(
     return fig
 
 
-def _pure_eb_npz(results_dir, ver, blind):
-    return f"{results_dir}/{ver}_{blind}_pure_eb_semianalytic.npz"
+def _pure_eb_npz(results_dir, ver):
+    return f"{results_dir}/{ver}_pure_eb_semianalytic.npz"
 
 
 def main(
@@ -258,7 +258,6 @@ def main(
     version_labels = plotting_config["version_labels"]
     # Leak-corrected, non-ecut versions (matches VERSIONS_LEAK_CORR in claims.smk)
     versions = [v for v in config["versions"] if "_leak_corr" in v and "_ecut" not in v]
-    blind = config["fiducial"]["blind"]
 
     # Fiducial version whose NPZ may be overridden with an explicit lc path
     fiducial_version = fiducial_version or config["fiducial"]["version"]
@@ -268,7 +267,7 @@ def main(
     data_paths = [
         fiducial_pure_eb_data
         if v == fiducial_version and fiducial_pure_eb_data
-        else _pure_eb_npz(results_dir, v, blind)
+        else _pure_eb_npz(results_dir, v)
         for v in versions
     ]
 
@@ -476,8 +475,7 @@ def _from_cli(argv=None):
     ap.add_argument(
         "--results-dir",
         required=True,
-        help="Directory holding per-version "
-        "<version>_<blind>_pure_eb_semianalytic.npz files",
+        help="Directory holding per-version <version>_pure_eb_semianalytic.npz files",
     )
     ap.add_argument("--out", required=True, help="Output directory (lc {output})")
     ap.add_argument(
