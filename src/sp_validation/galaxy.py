@@ -129,25 +129,24 @@ def mask_cut(dd, mask_columns=None):
         if values.dtype == bool:
             flagged = values
         else:
-            # ShapePipe's writer emits the MASK_n* columns as float64 {0, 1}
-            # rather than bool (being fixed upstream), so decide on the value
-            # rather than on truthiness: a bare astype(bool) would silently
-            # read NaN as True, i.e. masked. Threshold at 0.5 so an integer,
-            # a float and a bool column all behave identically.
+            # ShapePipe's writer can emit the MASK_n* columns as float64
+            # {0, 1} rather than bool, so decide on the value (threshold at
+            # 0.5, so integer, float and bool columns behave identically),
+            # and count NaNs rather than let them pass unremarked.
             values = values.astype(float)
             undefined = np.isnan(values)
             n_undefined += int(undefined.sum())
-            flagged = np.where(undefined, False, values > 0.5)
+            flagged = undefined | (values > 0.5)
         masked |= flagged
 
     if n_undefined:
         # NaN means the masking stage recorded no verdict for this object.
-        # Treat it as un-masked (keep the object) so an incomplete mask
-        # column cannot silently delete sky, but say so loudly: a nonzero
-        # count here means the input product is defective.
+        # Treat it as masked, as the config-driven cuts (``kind: equal,
+        # value: False``) do, and say so: a nonzero count means the input
+        # product is defective.
         warnings.warn(
             f"{n_undefined} NaN value(s) in mask column(s) {columns};"
-            + " treated as not masked. The mask columns of a complete"
+            + " treated as masked. The mask columns of a complete"
             + " ShapePipe product hold only 0 and 1.",
             RuntimeWarning,
             stacklevel=2,

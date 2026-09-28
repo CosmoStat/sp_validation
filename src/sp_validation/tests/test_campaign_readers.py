@@ -10,6 +10,7 @@ import numpy.testing as npt
 
 from sp_validation import catalog, galaxy
 from sp_validation.catalog_builders import JointCat
+from sp_validation.masks import Mask
 
 GAL_DTYPE = np.dtype(
     [
@@ -378,14 +379,12 @@ class TestMaskCut(unittest.TestCase):
                 err_msg=f"mask column dtype {dtype}",
             )
 
-    def test_nan_mask_value_is_not_masked_and_warns(self):
-        """Test that a NaN mask value keeps the object, loudly.
+    def test_nan_mask_value_is_masked_and_warns(self):
+        """Test that a NaN mask value drops the object, loudly.
 
-        A bare astype(bool) reads NaN as True, i.e. masked, so an
-        incomplete mask column would silently delete sky. NaN means the
-        masking stage recorded no verdict, so keep the object and warn:
-        a nonzero count means the input product is defective. The real
-        smk-g7 catalogue carries no NaNs, so this is defensive.
+        NaN means the masking stage recorded no verdict. mask_cut drops the
+        object, as the config-driven cut ``kind: equal, value: False`` does,
+        and warns: a nonzero count means the input product is defective.
         """
         dat = np.zeros(3, dtype=[(col, "f8") for col in galaxy.DEFAULT_MASK_COLUMNS])
         dat["MASK_n4"][0] = np.nan
@@ -394,9 +393,11 @@ class TestMaskCut(unittest.TestCase):
         with self.assertWarns(RuntimeWarning) as ctx:
             keep = galaxy.mask_cut(dat)
 
-        # row 0 NaN -> kept, row 1 masked, row 2 clean -> kept
-        npt.assert_array_equal(keep, np.array([True, False, True]))
+        # row 0 NaN -> masked, row 1 masked, row 2 clean -> kept
+        npt.assert_array_equal(keep, np.array([False, False, True]))
         self.assertIn("NaN", str(ctx.warning))
+        config_keep = Mask("MASK_n4", "stars", kind="equal", value=False, dat=dat)._mask
+        npt.assert_array_equal(config_keep, keep)
 
     def test_no_warning_when_no_nan(self):
         dat = np.zeros(2, dtype=[(col, "f8") for col in galaxy.DEFAULT_MASK_COLUMNS])
