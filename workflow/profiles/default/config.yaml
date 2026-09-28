@@ -23,6 +23,7 @@ latency-wait: 60
 # --- end mirrored -----------------------------------------------------------
 
 # `--cleanenv` so a job's environment is the image's, not your shell's.
-# Apptainer mounts $HOME and the working directory; add `--bind` for any other
+# Snakemake runs each job with `--home <working directory>`, so apptainer mounts
+# that directory and not your home: bind /home, and add `--bind` for any other
 # disk your inputs, outputs or checkout live on.
-apptainer-args: "--cleanenv"
+apptainer-args: "--cleanenv --bind /home"
