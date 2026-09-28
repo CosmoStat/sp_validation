@@ -318,3 +318,15 @@ def test_the_audit_proves_the_shift(tmp_path, seed):
         cat_config=root / "cat_config.yaml",
     )
     assert report["ok"] == (seed == "committed"), report
+
+
+@pytest.mark.parametrize("S8, Omega_m", [(0.80, 0.30), (0.725, 0.20), (0.875, 0.40)])
+def test_ccl_total_matter_is_the_blind_axis(S8, Omega_m):
+    """CCL's Ωm and S8 at a point's parameters are the point's own."""
+    ccl = pytest.importorskip("pyccl")
+    from sp_validation.blinding_theory import TheoryConfig
+
+    point = TheoryConfig(S8=S8, Omega_m=Omega_m)
+    cosmo = ccl.Cosmology(**point.ccl_params())
+    assert cosmo["Omega_m"] == pytest.approx(Omega_m, rel=1e-12)
+    assert cosmo["sigma8"] * np.sqrt(cosmo["Omega_m"] / 0.3) == pytest.approx(S8)

@@ -91,12 +91,14 @@ class TheoryConfig:
     def omega_c(self):
         """CCL cold-dark-matter density ``Omega_c = Omega_m − Omega_b − Ω_ν``.
 
-        The neutrino density ``Ω_ν h² = Σm_ν / 93.14 eV`` is subtracted so
-        the *total* matter density is exactly ``Omega_m`` (CCL treats massive
-        neutrinos as a separate species, not part of ``Omega_c``).
+        ``Ω_ν`` is CCL's own massive-neutrino density for this ``m_nu``,
+        ``mass_split``, ``h``, ``Neff`` and ``T_CMB`` (independent of
+        ``Omega_c``), so CCL's total ``Omega_m`` is exactly ``Omega_m``.
         """
-        omega_nu = self.m_nu / (93.14 * self.h**2)
-        return self.Omega_m - self.Omega_b - omega_nu
+        import pyccl as ccl
+
+        trial = ccl.Cosmology(**self._ccl_params(self.Omega_m - self.Omega_b))
+        return self.Omega_m - self.Omega_b - trial["Omega_nu_mass"]
 
     def ccl_params(self):
         """This point as a plain CCL-native parameter mapping.
@@ -105,8 +107,11 @@ class TheoryConfig:
         mass_split, w0, wa, Neff, T_CMB`` and no others, so no CCL default
         rides along; ``Neff``/``T_CMB`` are the fixed module constants.
         """
+        return self._ccl_params(self.omega_c())
+
+    def _ccl_params(self, omega_c):
         return {
-            "Omega_c": self.omega_c(),
+            "Omega_c": omega_c,
             "Omega_b": self.Omega_b,
             "h": self.h,
             "n_s": self.n_s,
