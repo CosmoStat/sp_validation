@@ -153,6 +153,11 @@
 <p>This module contains pure E/B mode decomposition, COSEBIs analysis,
 and semi-analytical covariance calculations extracted from CosmologyValidation.</p>
 <dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.b_modes._eb_vector">
+<span class="sig-name descname"><span class="pre">_eb_vector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">modes</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/b_modes.html#_eb_vector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.b_modes._eb_vector" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.b_modes._eb_vector'">¶</a></dt>
+<dd><p>Pure-E/B modes concatenated in <code class="docutils literal notranslate"><span class="pre">_EB_KEYS</span></code> order, the covariance layout.</p>
+</dd></dl>
+<dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.b_modes.find_conservative_scale_cut_key">
 <span class="sig-name descname"><span class="pre">find_conservative_scale_cut_key</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">results</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requested_scale_cut</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/b_modes.html#find_conservative_scale_cut_key"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.b_modes.find_conservative_scale_cut_key" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.b_modes.find_conservative_scale_cut_key'">¶</a></dt>
 <dd><p>Find scale cut key that conservatively fits within requested range.</p>
@@ -253,8 +258,7 @@ z_dist[:, 0] = z, z_dist[:, 1] = n(z)</p></li>
 <dt class="sig sig-object py" id="sp_validation.b_modes.pure_eb_from_xi">
 <span class="sig-name descname"><span class="pre">pure_eb_from_xi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">theta_report</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xip_report</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xim_report</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theta_int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xip_int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xim_int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tmin</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tmax</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/b_modes.html#pure_eb_from_xi"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.b_modes.pure_eb_from_xi" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.b_modes.pure_eb_from_xi'">¶</a></dt>
 <dd><p>Pure-E/B correlation functions from ξ± arrays through the pipeline kernel.</p>
-<p>The values-only seam of <a class="reference internal" href="#sp_validation.b_modes.calculate_pure_eb_correlation" title="sp_validation.b_modes.calculate_pure_eb_correlation"><code class="xref py py-func docutils literal notranslate"><span class="pre">calculate_pure_eb_correlation()</span></code></a>, for callers
-holding ξ± arrays rather than TreeCorr correlations.</p>
+<p>The one place this module calls cosmo_numba’s Schneider (2022) transform.</p>
 <p><code class="docutils literal notranslate"><span class="pre">tmin</span></code>/<code class="docutils literal notranslate"><span class="pre">tmax</span></code> are the reporting correlation’s TreeCorr <em>bin edges</em>
 (<code class="docutils literal notranslate"><span class="pre">gg.left_edges[0]</span></code> / <code class="docutils literal notranslate"><span class="pre">gg.right_edges[-1]</span></code>). The reporting grid must be a
 strict sub-range of the integration grid: a reporting point on the
@@ -274,7 +278,7 @@ integration boundary has no interior support and comes back NaN.</p>
 <dd><p>Pure-E/B covariance by Monte Carlo through the same kernel as the modes.</p>
 <p>ξ± draws come from <code class="docutils literal notranslate"><span class="pre">cov_int</span></code>, a ξ± covariance on the integration grid,
 around the theory mean for <code class="docutils literal notranslate"><span class="pre">(z,</span> <span class="pre">nz)</span></code> under <code class="docutils literal notranslate"><span class="pre">cosmo</span></code>; each draw is binned
-down to the reporting grid and pushed through <code class="docutils literal notranslate"><span class="pre">get_pure_EB_modes</span></code>. The
+down to the reporting grid and pushed through <a class="reference internal" href="#sp_validation.b_modes.pure_eb_from_xi" title="sp_validation.b_modes.pure_eb_from_xi"><code class="xref py py-func docutils literal notranslate"><span class="pre">pure_eb_from_xi()</span></code></a>. The
 covariance of the transformed draws is the result, so it depends on the
 covariance model and the grids, never on the measured data vector.</p>
 <p>Returns <code class="docutils literal notranslate"><span class="pre">(cov,</span> <span class="pre">eb_samples)</span></code> — the covariance in <code class="docutils literal notranslate"><span class="pre">_EB_KEYS</span></code> order and
@@ -522,6 +526,7 @@ If None and results has multiple scale cuts, saves all.</p></li>
 </div></div><aside class="hidden text-sm xl:block" id="right-sidebar">
 <div class="sticky top-16 -mt-10 max-h-[calc(100vh-5rem)] h-full overflow-y-auto pt-6 space-y-2"><p class="font-medium">On this page</p>
 <ul>
+<li><a :data-current="activeSection === '#sp_validation.b_modes._eb_vector'" class="reference internal" href="#sp_validation.b_modes._eb_vector"><code class="docutils literal notranslate"><span class="pre">_eb_vector()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.b_modes.find_conservative_scale_cut_key'" class="reference internal" href="#sp_validation.b_modes.find_conservative_scale_cut_key"><code class="docutils literal notranslate"><span class="pre">find_conservative_scale_cut_key()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.b_modes.scale_cut_to_bins'" class="reference internal" href="#sp_validation.b_modes.scale_cut_to_bins"><code class="docutils literal notranslate"><span class="pre">scale_cut_to_bins()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.b_modes.bins_from_edges'" class="reference internal" href="#sp_validation.b_modes.bins_from_edges"><code class="docutils literal notranslate"><span class="pre">bins_from_edges()</span></code></a></li>
