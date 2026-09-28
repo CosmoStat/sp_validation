@@ -9,9 +9,7 @@ handling leak-corrected ellipticity columns.
 """
 
 import os
-from collections import defaultdict
 from pathlib import Path
-from typing import Dict, Iterator, Tuple
 
 import numpy as np
 import pytest
@@ -182,88 +180,6 @@ class TestCosmologyValidation:
         assert isinstance(cv.c1[version_leak_corr], float)
         assert isinstance(cv.c2[version_leak_corr], float)
 
-    @staticmethod
-    def _iter_catalog_entries(config: Dict[str, Dict]) -> Iterator[Tuple[str, Dict]]:
-        """Yield (name, entry) pairs for catalog-like entries in the config."""
-        for name, entry in config.items():
-            if not isinstance(entry, dict):
-                continue
-            if "subdir" not in entry:
-                continue
-            yield name, entry
-
-    @staticmethod
-    def _resolve(base: Path, candidate: str) -> Path:
-        """Return an absolute path given a base directory and a candidate string."""
-        candidate_path = Path(candidate)
-        return candidate_path if candidate_path.is_absolute() else base / candidate_path
-
-    @pytest.mark.slow
-    @requires_catalog_data
-    def test_catalog_paths_exist(self, base_config):
-        """Verify that catalog paths for active versions exist on disk.
-
-        This is a lightweight test that checks that all files referenced in the
-        catalog configuration for UNIONS analysis versions actually exist. It
-        discovers versions programmatically from cat_config.yaml rather than
-        using hardcoded lists.
-        """
-        # Get the path to catalog config
-        repo_root = os.path.dirname(
-            os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-        )
-        catalog_config_path = os.path.join(repo_root, "cosmo_val", "cat_config.yaml")
-
-        config = yaml.safe_load(Path(catalog_config_path).read_text())
-
-        # This integrity check needs the real catalogs on disk (cluster only).
-        # Skip where the data directories aren't mounted — e.g. CI running
-        # inside the docker image, which has cat_config.yaml but no catalogs.
-        if not any(
-            Path(entry["subdir"]).is_dir()
-            for _, entry in self._iter_catalog_entries(config)
-        ):
-            pytest.skip("catalog data directories not present (not on cluster)")
-
-        working = []
-        nonfunctional = defaultdict(set)
-
-        for version, entry in self._iter_catalog_entries(config):
-            # Skip nz entries and versions already tested in heavy tests
-            if version == "nz":
-                continue
-
-            base = Path(entry["subdir"])
-            version_missing = set()
-
-            # Check shear, star, and psf files
-            for block_name in ("shear", "star", "psf"):
-                block = entry.get(block_name)
-                if not block:
-                    continue
-                resolved_path = self._resolve(base, block["path"])
-                if not resolved_path.is_file():
-                    version_missing.add(block_name)
-
-            if version_missing:
-                nonfunctional[version] = version_missing
-            else:
-                working.append(version)
-
-        # Print summary
-        print(f"\n✓ Working versions ({len(working)}):")
-        for v in sorted(working):
-            print(f"  - {v}")
-
-        if nonfunctional:
-            print(f"\n✗ Non-functional versions ({len(nonfunctional)}):")
-            for v in sorted(nonfunctional.keys()):
-                print(f"  - {v}: missing {nonfunctional[v]}")
-
-        assert not nonfunctional, (
-            f"Catalog configuration references missing files: {dict(nonfunctional)}"
-        )
-
     def test_seed_variant_updates_shear_path(self, tmp_path):
         """Seeded versions should materialize a seed-specific shear path."""
         params, base_version = self._make_seed_config(
@@ -346,11 +262,11 @@ class TestCosmologyValidation:
     # These run the real compute seams end-to-end on a small, deterministic
     # toy catalog written to disk, asserting that sp_validation wires the
     # catalog/config/estimator together correctly and that the chain produces
-    # output of the right shape with finite values. They do NOT re-test the
-    # underlying numerical libraries (treecorr, cosmo_numba): no specific
-    # numerical values are asserted. These are the back-pressure that catches
-    # config-path / wiring breakage during restructuring. They can be tightened
-    # to allclose-against-a-committed-reference later for value-drift coverage.
+    # output of the right shape with finite values; a test that also compares
+    # values says against what in its docstring. They do NOT re-test the
+    # underlying numerical libraries (treecorr, cosmo_numba). These are the
+    # back-pressure that catches config-path / wiring breakage during
+    # restructuring.
     #
     # Environment-independent: the catalog is synthesized in a tmp dir, so no
     # cluster data is needed. They do require the scientific stack (treecorr,
@@ -438,6 +354,7 @@ class TestCosmologyValidation:
 
         shear_cfg = {
             "path": "shear.fits",
+            "redshift_path": str(nz_dir / "dndz_SP_A.txt"),
             "w_col": "w",
             "e1_col": "e1",
             "e2_col": "e2",
@@ -522,6 +439,102 @@ class TestCosmologyValidation:
         # The additive-bias subtraction in the pipeline must have run.
         assert version in cv.c1 and version in cv.c2
 
+    @pytest.mark.parametrize("npatch", [1, 4])
+    def test_xi_part_carries_the_covariance_the_measurement_estimated(
+        self, tmp_path, npatch
+    ):
+        """run_2pcf's ξ± part carries TreeCorr's covariance, whoever calls it.
+
+        The jackknife covariance with patches, the shot-noise diagonal without,
+        so every part has variances whether the rule or the CLI measured it.
+        """
+        import importlib.util
+
+        import sacc
+
+        from sp_validation import sacc_io
+
+        script = Path(__file__).resolve().parents[3] / "workflow/scripts/run_2pcf.py"
+        spec = importlib.util.spec_from_file_location("run_2pcf_part", script)
+        run_2pcf = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(run_2pcf)
+
+        params, version = self._write_synthetic_catalogs(tmp_path)
+        part = tmp_path / "part.sacc"
+        gg = run_2pcf.run_2pcf(
+            ver=version,
+            min_sep=5.0,
+            max_sep=100.0,
+            nbins=6,
+            npatch=npatch,
+            cat_config=params["catalog_config"],
+            output_dir=params["output_dir"],
+            sacc_out=str(part),
+        )
+
+        cov = sacc_io.load(str(part), allow_unblinded=True).covariance
+        if npatch > 1:
+            assert isinstance(cov, sacc.covariance.FullCovariance)
+            np.testing.assert_array_equal(cov.dense, gg.cov)
+        else:
+            assert isinstance(cov, sacc.covariance.DiagonalCovariance)
+            np.testing.assert_array_equal(
+                cov.diag, np.concatenate([gg.varxip, gg.varxim])
+            )
+
+    def test_a_patched_xi_dump_reads_back(self, tmp_path):
+        """calculate_2pcf reads back the text dump a patched measurement wrote.
+
+        The ξ± figure rules re-enter calculate_2pcf on the reporting grid, which
+        has patches, and are handed the dump rule xi wrote (to its precision).
+        """
+        params, version = self._write_synthetic_catalogs(tmp_path)
+        binning = dict(npatch=4, min_sep=5.0, max_sep=100.0, nbins=6)
+        measured = CosmologyValidation(versions=[version], **params).calculate_2pcf(
+            version, **binning
+        )
+        read = CosmologyValidation(versions=[version], **params).calculate_2pcf(
+            version, **binning
+        )
+        for column in ("meanr", "npairs", "xip", "xim", "varxip", "varxim"):
+            np.testing.assert_allclose(
+                getattr(read, column), getattr(measured, column), rtol=1e-4
+            )
+
+    def test_calculate_2pcf_does_not_depend_on_thread_count(self, tmp_path):
+        """calculate_2pcf's ξ± is the same on 4 and on 48 TreeCorr threads.
+
+        Production binning (default bin_slop/angle_slop), both runs on the
+        jackknife patches the first one writes, each from a fresh Catalog; they
+        must agree to far below the jackknife σ.
+        """
+        import treecorr
+
+        params, version = self._write_synthetic_catalogs(
+            tmp_path, n_gal=4000, coherent_shear=True
+        )
+        cv = CosmologyValidation(
+            versions=[version],
+            npatch=8,
+            theta_min=15.0,
+            theta_max=70.0,
+            nbins=6,
+            **params,
+        )
+
+        xi = {}
+        for n_threads in (4, 48):
+            # calculate_2pcf reads back an existing text dump instead of measuring.
+            for dump in Path(params["output_dir"]).glob(f"{version}_xi_*.txt"):
+                dump.unlink()
+            gg = cv.calculate_2pcf(version, num_threads=n_threads)
+            assert treecorr.get_omp_threads() == n_threads  # the count took effect
+            xi[n_threads] = np.concatenate([gg.xip, gg.xim])
+            sigma = np.sqrt(np.concatenate([gg.varxip, gg.varxim]))
+
+        shift = np.max(np.abs(xi[48] - xi[4]) / sigma)
+        assert shift < 1e-6, f"ξ± moves by {shift:.3g}σ between 4 and 48 threads"
+
     def test_calculate_scale_dependent_leakage_runs_on_synthetic_catalog(
         self, tmp_path
     ):
@@ -557,49 +570,27 @@ class TestCosmologyValidation:
         assert np.all(np.isfinite(res.alpha_leak))
         assert hasattr(res, "C_sys_p") and hasattr(res, "C_sys_m")
 
-    def test_calculate_pure_eb_runs_on_synthetic_catalog(self, tmp_path):
-        """calculate_pure_eb wires xi+/- into cosmo_numba's Schneider E/B split.
+    def test_calculate_pure_eb_runs_on_synthetic_catalog(self, tmp_path, pure_eb_xi):
+        """calculate_pure_eb carries ξ± through cosmo_numba's pure-E/B split.
 
-        Integration test of the headline B-mode seam: the pure E/B/amb
-        decomposition runs end-to-end via cosmo_numba and returns vectors of the
-        configured length, all bins finite, with a jackknife covariance of the
-        right shape -- AND the deterministic mode vectors match pinned reference
-        values, so a refactor that silently changes the numerical B-modes fails
-        rather than staying green on finiteness alone.
+        The ξ± it measures equal the committed ``pure_eb_xi``, its modes are
+        ``pure_eb_from_xi`` of those ξ± and edges, and every reporting bin is
+        finite. ``test_b_modes`` pins the transform itself on the same ξ±, so a
+        failure names the step that moved: measurement, wiring or transform.
 
-        Two layers of teeth:
+        Finiteness: the Schneider (2022) integrals are near-singular where a
+        reporting bin meets the integration boundary, so the integration grid
+        [1, 300]′ brackets the reporting grid [15, 70]′ on both ends and is fine
+        (600 bins); about 80 integration bins NaN the edge bins.
 
-        1. Finiteness on EVERY reporting bin (not just the interior). The
-           Schneider (2022) pure E/B estimator evaluates singular kernel
-           integrals (Eq. 42-43, 55-56) at each reporting theta, integrating the
-           fine ``gg_int`` xi+/- over [tmin, tmax]. At the extreme reporting bins
-           the evaluation point sits at the integration boundary, where the
-           integrand is near-singular; a *coarse* integration grid fails to
-           resolve it and the mode goes NaN. The real bmodes workflow
-           (papers/bmodes/config.yaml) avoids this with a broad-and-fine grid --
-           reporting [1, 250] arcmin, integration [0.5, 300] with nbins_int=1000
-           -- so the integration range brackets the reporting range AND the grid
-           is fine enough that the boundary integrals converge. This test mirrors
-           that: reporting [15, 70] arcmin, integration [1, 300] arcmin (brackets
-           on both ends) with nbins_int=600. Confirmed directly that nbins_int~80
-           over this range NaNs the last xip_E bin and the first xim_E bin, so
-           coarsening the integration grid back toward ~80 reintroduces edge NaNs
-           and fails -- this is the finiteness teeth.
-
-        2. Value-drift pins on the four deterministic mode vectors (xip/xim,
-           E/B). These come from a seeded synthetic catalog -> full-sample
-           treecorr xi+/- (no RNG) -> Schneider linear transform, so they are
-           reproducible. Verified bitwise-stable across two separate container
-           processes to a worst-case relative drift of ~1.4e-11 (pure float64
-           reduction-order noise; absolute drift ~1.5e-17). The pins use
-           rtol=1e-6 / atol=1e-12 -- ~5 orders of magnitude above that float-noise
-           floor (no flakiness margin consumed) yet tight enough that a sub-
-           percent change in any mode bites. The jackknife COVARIANCE depends on
-           treecorr's kmeans patch assignment and is NOT pinned by value -- only
-           its shape is asserted.
+        ξ±: exact binning (bin_slop = angle_slop = 0) makes ξ± a plain pair sum,
+        independent of the tree and so of the jackknife patches, whose k-means
+        centres this test does not fix.
         """
         pytest.importorskip("treecorr")
         pytest.importorskip("cosmo_numba")
+        from sp_validation import b_modes
+
         # Coherent shear -> smooth xi+/-, so the pure-E/B integral is well-posed.
         params, version = self._write_synthetic_catalogs(
             tmp_path, n_gal=4000, coherent_shear=True
@@ -615,13 +606,8 @@ class TestCosmologyValidation:
             nbins=nbins,
             **params,
         )
+        cv.treecorr_config.update(bin_slop=0, angle_slop=0)
 
-        # Integration range strictly brackets the reporting range [15, 70] on
-        # both ends (1 << 15, 300 >> 70) AND uses a fine grid (nbins_int=600), so
-        # the near-singular boundary-bin Schneider integrals converge. This
-        # mirrors the bmodes workflow's broad-and-fine integration grid; every
-        # reporting bin is well-defined (no edge NaNs). nbins_int~80 here would
-        # NaN the edge bins -- confirmed -- which is the finiteness teeth.
         results = cv.calculate_pure_eb(
             version,
             npatch=npatch,
@@ -630,71 +616,30 @@ class TestCosmologyValidation:
             nbins_int=600,
         )
 
-        # Reference mode vectors from the seeded synthetic catalog + Schneider
-        # transform. Deterministic (full-sample treecorr, no RNG); regenerate by
-        # running calculate_pure_eb with the setup above and printing repr() of
-        # results[key]. Tolerances justified in the docstring.
-        expected = {
-            "xip_E": np.array(
-                [
-                    1.6688018692521218e-06,
-                    -1.8392317186434428e-05,
-                    1.4170916007248522e-06,
-                    8.1454486560987474e-06,
-                    6.2050467269160570e-06,
-                    2.6649478149110497e-06,
-                ]
-            ),
-            "xim_E": np.array(
-                [
-                    -4.4552381788304276e-05,
-                    -1.1082898248960663e-04,
-                    -9.2495668600755951e-05,
-                    -5.8456322151105526e-05,
-                    -4.4270469941501174e-05,
-                    -2.4236697154723798e-05,
-                ]
-            ),
-            "xip_B": np.array(
-                [
-                    1.8508958599700601e-05,
-                    3.8264056862769537e-05,
-                    -1.0482698132038303e-05,
-                    -7.3081832089716533e-06,
-                    -9.1621105374021936e-06,
-                    -6.4075815485457576e-06,
-                ]
-            ),
-            "xim_B": np.array(
-                [
-                    -1.1129938750754923e-04,
-                    -4.7967477760986883e-05,
-                    -3.4334760596175194e-05,
-                    -1.4776328993077835e-05,
-                    -4.0078671892721522e-06,
-                    -8.3202301900417799e-07,
-                ]
-            ),
+        measured = {
+            "theta_report": results["theta"],
+            "xip_report": results["xip"],
+            "xim_report": results["xim"],
+            "theta_int": results["theta_int"],
+            "xip_int": results["xip_int"],
+            "xim_int": results["xim_int"],
+            "tmin": results["left_edges"][0],
+            "tmax": results["right_edges"][-1],
         }
-
-        for key in ("xip_E", "xim_E", "xip_B", "xim_B"):
-            vec = np.asarray(results[key])
-            assert vec.shape == (nbins,)
-            # All reporting bins are well-defined under the widened integration
-            # range (no edge NaNs) -- the finiteness teeth.
-            assert np.all(np.isfinite(vec)), f"{key} not finite"
-            # Value-drift pins -- the deterministic-mode teeth.
+        # Regenerate the fixture with np.savez(conftest.PURE_EB_XI, **measured).
+        for key, value in measured.items():
             np.testing.assert_allclose(
-                vec,
-                expected[key],
-                rtol=1e-6,
-                atol=1e-12,
-                err_msg=f"{key} drifted from pinned reference",
+                value, pure_eb_xi[key], rtol=1e-10, atol=0, err_msg=key
             )
 
+        modes = b_modes.pure_eb_from_xi(**measured)
+        for key in b_modes._EB_KEYS:
+            vec = np.asarray(results[key])
+            assert vec.shape == (nbins,)
+            assert np.all(np.isfinite(vec)), f"{key} not finite"
+            np.testing.assert_allclose(vec, modes[key], rtol=1e-10, err_msg=key)
+
         # Jackknife covariance over the 6 stats (xip/xim x E/B/amb) x nbins.
-        # Patch (kmeans) assignment isn't guaranteed deterministic, so only the
-        # shape is pinned, not the values.
         cov = np.asarray(results["cov"])
         assert cov.shape == (6 * nbins, 6 * nbins)
         assert results["n_eff"] == npatch

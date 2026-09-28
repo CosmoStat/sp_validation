@@ -914,7 +914,6 @@ SP_v1.4.11.3:
     e2_star_col: HSM_G2_STAR
   shear:
     R: 1.0
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     path: v1.4.11.3/unions_shapepipe_cut_struc_2024_v1.4.11.3.fits
     redshift_path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
     w_col: w_des
@@ -960,7 +959,6 @@ SP_v1.4.12.3:
     e2_star_col: E2_STAR_HSM
   shear:
     R: 1.0
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     path: v1.4.12.3/unions_shapepipe_cut_struc_2024_v1.4.12.3.fits
     redshift_path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
     w_col: w_des
@@ -1006,7 +1004,6 @@ SP_v1.4.13.3:
     e2_star_col: E2_STAR_HSM
   shear:
     R: 1.0
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     path: v1.4.13.3/unions_shapepipe_cut_struc_2024_v1.4.13.3.fits
     redshift_path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
     w_col: w_des
@@ -1072,7 +1069,6 @@ SP_v1.4.6.3_uncal:
   subdir: /n17data/UNIONS/WL/v1.4.x
   shear:
     path: v1.4.6.3/unions_shapepipe_cut_struc_2024_v1.4.6.3.fits
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     ra_col: RA
     dec_col: Dec
     e1_col: e1_uncal
@@ -1088,7 +1084,6 @@ SP_v1.4.6.3_uncal_w_iv:
   subdir: /n17data/UNIONS/WL/v1.4.x
   shear:
     path: v1.4.6.3/unions_shapepipe_cut_struc_2024_v1.4.6.3.fits
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     ra_col: RA
     dec_col: Dec
     e1_col: e1_uncal
@@ -1104,7 +1099,6 @@ SP_v1.4.6.3_uncal_w_1:
   subdir: /n17data/UNIONS/WL/v1.4.x
   shear:
     path: v1.4.6.3/unions_shapepipe_cut_struc_2024_v1.4.6.3.fits
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     ra_col: RA
     dec_col: Dec
     e1_col: e1_uncal
@@ -1160,88 +1154,6 @@ SP_v1.4.8_uncal:
     path: unions_shapepipe_psf_2024_v1.4.a.fits
     hdu: 1
   patch_number: 100
-SP_v1.4_LFmask_8k:
-  subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/SP_LFmask
-  pipeline: SP
-  colour: black
-  getdist_colour: 0.0, 0.5, 1.0
-  ls: solid
-  marker: d
-  cov_th:
-    A: 2137.7977618140676
-    n_e: 7.976462506484096
-    n_psf: 0.5434016250405327
-    sigma_e: 0.31509572849714534
-  psf:
-    PSF_flag: HSM_FLAG_PSF
-    PSF_size: HSM_T_PSF
-    star_flag: HSM_FLAG_STAR
-    star_size: HSM_T_STAR
-    hdu: 1
-    path: unions_shapepipe_psf_conv_2022_v1.4.0_mtheli8k.fits
-    ra_col: RA
-    dec_col: Dec
-    e1_PSF_col: HSM_G1_PSF
-    e1_star_col: HSM_G1_STAR
-    e2_PSF_col: HSM_G2_PSF
-    e2_star_col: HSM_G2_STAR
-    label: SP_LFmask_psf
-  shear:
-    R: 1.0
-    path: unions_shapepipe_extended_2022_v1.4.0_mtheli8k.fits
-    w_col: w
-    e1_col: e1
-    e1_PSF_col: e1_PSF
-    e2_col: e2
-    e2_PSF_col: e2_PSF
-  star:
-    ra_col: RA
-    dec_col: Dec
-    e1_col: e1
-    e2_col: e2
-    path: unions_shapepipe_star_2022_v1.4.0_mtheli8k.fits
-  patch_number: 150
-SP_v1.4_LFmask_8k_noalpha:
-  subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/SP_LFmask
-  pipeline: SP
-  colour: brown
-  getdist_colour: 0.0, 0.5, 1.0
-  ls: solid
-  marker: d
-  cov_th:
-    A: 2137.7977618140676
-    n_e: 7.976462506484096
-    n_psf: 0.5434016250405327
-    sigma_e: 0.31509572849714534
-  psf:
-    PSF_flag: HSM_FLAG_PSF
-    PSF_size: HSM_T_PSF
-    star_flag: HSM_FLAG_STAR
-    star_size: HSM_T_STAR
-    hdu: 1
-    path: unions_shapepipe_psf_conv_2022_v1.4.0_mtheli8k.fits
-    ra_col: RA
-    dec_col: Dec
-    e1_PSF_col: HSM_G1_PSF
-    e1_star_col: HSM_G1_STAR
-    e2_PSF_col: HSM_G2_PSF
-    e2_star_col: HSM_G2_STAR
-    label: SP_LFmask_psf
-  shear:
-    R: 1.0
-    path: unions_shapepipe_extended_rmalpha_2022_v1.4.0_mtheli8k.fits
-    w_col: w
-    e1_col: e1_cor
-    e1_PSF_col: e1_PSF
-    e2_col: e2_cor
-    e2_PSF_col: e2_PSF
-  star:
-    ra_col: RA
-    dec_col: Dec
-    e1_col: e1
-    e2_col: e2
-    path: unions_shapepipe_star_2022_v1.4.0_mtheli8k.fits
-  patch_number: 150
 nz:
   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/nz
   dndz:
