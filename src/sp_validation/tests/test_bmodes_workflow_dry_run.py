@@ -67,7 +67,7 @@ def _dry_run(workflow_dir, targets, *extra_snakemake_args):
 @requires_candide_data
 def test_bmodes_workflow_dry_runs():
     """The paper B-mode workflow must still parse and dry-run cleanly."""
-    result = _dry_run(_repo_root() / "papers/bmodes", ["all_tapestry"])
+    result = _dry_run(_repo_root() / "papers/bmodes", ["paper"])
     assert result.returncode == 0, result.stdout
 
 
