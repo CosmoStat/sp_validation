@@ -12,7 +12,7 @@ in parallel or looped in one process.
 
     python precompute_pure_eb_chunk.py \
         --chunk-id 0 --n-chunks 20 --n-samples 2000 \
-        --version SP_v1.4.6.3_leak_corr --blind A \
+        --version SP_v1.4.6.3_leak_corr \
         --cat-config /path/cosmo_val/cat_config.yaml \
         --xi-reporting  <xi 20-bin .txt> \
         --xi-integration <xi 1000-bin .txt> \
@@ -64,7 +64,6 @@ def compute_chunk(
     n_chunks,
     n_samples_total,
     version,
-    blind,
     cat_config,
     xi_reporting,
     xi_integration,
@@ -105,10 +104,8 @@ def compute_chunk(
         catalog_config=cat_config,
         output_dir=output_dir,
     )
-    cv.blind = blind
     z, nz = cv.get_redshift(version)
     z_dist = np.column_stack([z, nz])
-    print(f"Using n(z) for blind {blind}")
 
     cosmo_cov = _build_cosmology(cosmo_params)
 
@@ -176,7 +173,6 @@ def _from_cli(argv=None):
     ap.add_argument("--n-chunks", type=int, default=20)
     ap.add_argument("--n-samples", type=int, default=2000)
     ap.add_argument("--version", required=True)
-    ap.add_argument("--blind", default="A")
     ap.add_argument("--cat-config", required=True)
     ap.add_argument("--xi-reporting", required=True)
     ap.add_argument("--xi-integration", required=True)
@@ -195,7 +191,6 @@ def _from_cli(argv=None):
         n_chunks=a.n_chunks,
         n_samples_total=a.n_samples,
         version=a.version,
-        blind=a.blind,
         cat_config=a.cat_config,
         xi_reporting=a.xi_reporting,
         xi_integration=a.xi_integration,

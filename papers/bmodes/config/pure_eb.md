@@ -28,9 +28,9 @@ Uses semi-analytical covariance propagation through the decomposition.
 ## Data Products
 
 Precomputed decomposition stored in:
-`results/paper_plots/intermediate/{version}_{blind}_pure_eb_semianalytic.npz`
+`results/paper_plots/intermediate/{version}_pure_eb_semianalytic.npz`
 
-Uses fiducial blind (A) from config. Each NPZ contains:
+Each NPZ contains:
 - `theta`: Angular bins
 - `xip_E`, `xim_E`: Pure E-mode components
 - `xip_B`, `xim_B`: Pure B-mode components

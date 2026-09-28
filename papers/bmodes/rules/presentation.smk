@@ -113,9 +113,7 @@ rule presentation_s8_with_unions:
 rule presentation_blind_nz_plot:
     """Plot all three blinded n(z) curves for Moriond presentation."""
     input:
-        nz_A=lambda w: build_redshift_path(FIDUCIAL["version"], "A"),
-        nz_B=lambda w: build_redshift_path(FIDUCIAL["version"], "B"),
-        nz_C=lambda w: build_redshift_path(FIDUCIAL["version"], "C"),
+        **{f"nz_{label}": redshift_path(ver) for label, ver in NZ_REALISATIONS.items()},
     output:
         f"{TALK_DIR}/images/blind_nz_ABC.png",
     script:
@@ -146,7 +144,7 @@ rule presentation_pte_cosebis:
     """COSEBIS B_n PTE heatmap for Moriond talk (single panel, talk-sized)."""
     input:
         pte_files=[
-            f"{TAPESTRY_DIR}/cosebis_pte_matrix/pte_values/{FIDUCIAL['version']}/{FIDUCIAL['blind']}/pte_{i:03d}_{j:03d}.json"
+            f"{TAPESTRY_DIR}/cosebis_pte_matrix/pte_values/{FIDUCIAL['version']}/pte_{i:03d}_{j:03d}.json"
             for i, j in PTE_SCALE_CUT_PAIRS
         ],
     output:

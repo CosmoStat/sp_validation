@@ -40,17 +40,18 @@ Extracted from catalog config (`cat_config.yaml`) per version:
 ## File Naming
 
 ```
-covariance_{version}_{blind}_{gaussian}_minsep={min}_maxsep={max}_nbins={n}{mask_suffix}_processed.txt
+covariance_{version}_{gaussian}_minsep={min}_maxsep={max}_nbins={n}{mask_suffix}_processed.txt
 ```
 
 - `version`: SP_v1.4.6_leak_corr, etc.
-- `blind`: A, B, or C
 - `gaussian`: g (Gaussian-only) or ng (non-Gaussian)
 - `mask_suffix`: empty or `_masked`
 
-## Blind Handling
+## n(z)
 
-B-mode claims use the fiducial blind from `config["fiducial"]["blind"]`. Covariances are computed for the fiducial blind only.
+A version's covariance uses its catalogue entry's n(z) (`shear.redshift_path` in
+`cat_config.yaml`). Choosing another n(z) realisation means choosing another
+catalogue entry (e.g. `SP_v1.4.6.3_B`).
 
 ## Covariance Usage Policy
 
@@ -58,7 +59,7 @@ Official results use specific covariance sources for consistency and correctness
 
 | Quantity | Source | Gaussian | Binning | Notes |
 |----------|--------|----------|---------|-------|
-| Total ξ± errors | CosmoCov | ng | 20-bin (reporting) | Per-blind, masked |
+| Total ξ± errors | CosmoCov | ng | 20-bin (reporting) | Masked |
 | Pure E/B mode errors | MC propagation | g | 1000→20 bin | Conservative: underestimates uncertainty |
 | COSEBIS errors | MC propagation | g | 1000→scales | Per scale cut |
 
@@ -76,10 +77,9 @@ only spatially-structured cuts (no galaxy selection cuts):
 | Standard footprint | 2894 deg² | v1.4.5, v1.4.6, v1.4.11.3 (and ecut variants) |
 | Star-halo footprint | 2517 deg² | v1.4.8 |
 
-Each version gets its own covariance from its own survey properties (A, n_e, sigma_e).
-`resolve_covariance_version()` is the identity function — no cross-version covariance sharing.
-`MASK_CLS_FILES` (covariance.smk) maps to two mask power spectrum files based on whether
-the version is in `STARHALO_VERSIONS`.
+Each version gets its own covariance from its own catalogue entry's survey properties
+(`cov_th`: A, n_e, sigma_e). `MASK_CLS_FILES` (covariance.smk) maps to two mask power
+spectrum files based on whether the version's base catalogue is in `STARHALO_CATALOGUES`.
 
 ## Related Specs
 

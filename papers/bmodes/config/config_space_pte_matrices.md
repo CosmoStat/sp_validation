@@ -10,9 +10,9 @@ Fiducial angular scale cuts are justified by PTE heatmaps across all (theta_min,
 
 Scale cuts from `fiducial.fiducial_xip_scale_cut` and `fiducial.fiducial_xim_scale_cut`. COSEBIS uses the same unified range.
 
-## Blind Handling
+## n(z)
 
-Uses fiducial blind from `config["fiducial"]["blind"]`. Data vectors (ξ+^B, ξ-^B, COSEBIS B_n) are identical across blinds; covariances vary with blind via n(z)-dependent theoretical predictions.
+Each version's covariance uses its catalogue entry's n(z) (`shear.redshift_path` in `cat_config.yaml`).
 
 ## Config References
 

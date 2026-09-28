@@ -28,7 +28,6 @@ Block-wise condition numbers for the 120×120 pure E/B covariance (6 blocks of 2
 | Parameter | Config Key |
 |-----------|------------|
 | Version | `fiducial.version` |
-| Blind | `fiducial.blind` |
 | Integration bins | `fiducial.nbins_int` |
 | Reporting bins | `fiducial.nbins` |
 

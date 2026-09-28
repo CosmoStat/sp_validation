@@ -216,7 +216,6 @@ def toy(tmp_path_factory):
             path = covariances[version, gaussian] = Path(
                 common.covariance_path(
                     version,
-                    config["fiducial"]["blind"],
                     gaussian,
                     grid["min_sep"],
                     grid["max_sep"],

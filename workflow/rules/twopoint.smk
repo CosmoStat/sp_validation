@@ -68,7 +68,6 @@ rule rho_tau_stats:
 
 
 # Pseudo-Cl generation for harmonic-space data vectors and COSEBIS validation.
-BASE_VERSIONS = [v.replace("_leak_corr", "") for v in config["versions"]]
 
 wildcard_constraints:
     binning="linear|logspace|powspace",
@@ -77,12 +76,9 @@ wildcard_constraints:
 rule pseudo_cl:
     """Generate pseudo-Cl data vector (born as SACC) with configurable binning."""
     output:
-        pseudo_cl=str(COSMO_VAL / "pseudo_cl_{version}_blind={blind}_{binning}_nbins={nbins}.sacc"),
-    wildcard_constraints:
-        blind="[ABC]",
+        pseudo_cl=str(COSMO_VAL / "pseudo_cl_{version}_{binning}_nbins={nbins}.sacc"),
     params:
         version="{version}",
-        blind="{blind}",
         cat_config=CAT_CONFIG,
         nside=1024,
         npatch=1,
@@ -101,12 +97,9 @@ rule pseudo_cl:
 rule pseudo_cl_cov:
     """Generate pseudo-Cl covariance with configurable binning."""
     output:
-        pseudo_cl_cov=str(COSMO_VAL / "pseudo_cl_cov_{version}_blind={blind}_{binning}_nbins={nbins}.fits"),
-    wildcard_constraints:
-        blind="[ABC]",
+        pseudo_cl_cov=str(COSMO_VAL / "pseudo_cl_cov_{version}_{binning}_nbins={nbins}.fits"),
     params:
         version="{version}",
-        blind="{blind}",
         cat_config=CAT_CONFIG,
         nside=1024,
         npatch=1,
@@ -129,7 +122,7 @@ rule pseudo_cl_all:
     """Generate pseudo-Cls for all versions."""
     input:
         expand(
-            str(COSMO_VAL / "pseudo_cl_{version}_blind=A_powspace_nbins=32.sacc"),
+            str(COSMO_VAL / "pseudo_cl_{version}_powspace_nbins=32.sacc"),
             version=PSEUDO_CL_VERSIONS,
         ),
 
@@ -138,7 +131,7 @@ rule pseudo_cl_cov_all:
     """Generate pseudo-Cl covariances for all versions."""
     input:
         expand(
-            str(COSMO_VAL / "pseudo_cl_cov_{version}_blind=A_powspace_nbins=32.fits"),
+            str(COSMO_VAL / "pseudo_cl_cov_{version}_powspace_nbins=32.fits"),
             version=PSEUDO_CL_VERSIONS,
         ),
 
@@ -147,7 +140,6 @@ rule pseudo_cl_fine_all:
     """Generate fine pseudo-Cls for COSEBIS."""
     input:
         expand(
-            str(COSMO_VAL / "pseudo_cl_{version}_blind={blind}_linear_nbins=2040.sacc"),
+            str(COSMO_VAL / "pseudo_cl_{version}_linear_nbins=2040.sacc"),
             version=config["versions"],
-            blind=BLINDS,
         ),

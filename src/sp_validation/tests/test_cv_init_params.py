@@ -16,9 +16,7 @@ from sp_validation.cosmo_val import CosmologyValidation
 
 REPO = Path(__file__).resolve().parents[3]
 
-EXEMPT = {
-    "blind": "None keeps the n(z) blind declared in the catalogue config",
-}
+EXEMPT = {}
 
 
 def _load_common():

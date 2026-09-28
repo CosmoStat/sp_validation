@@ -597,7 +597,7 @@ def test_calculate_pseudo_cl_out_path_born_at_declared_name(cv):
     untagged native name — so the tagged and diagnostic rules stay disjoint."""
     ver = cv._test_version
     cv._pseudo_cls = {}
-    tagged = cv._output_path(f"pseudo_cl_{ver}_blind=A_powspace_nbins=32.sacc")
+    tagged = cv._output_path(f"pseudo_cl_{ver}_powspace_nbins=32.sacc")
     native = cv._output_path(f"pseudo_cl_{ver}.sacc")
 
     cv.calculate_pseudo_cl(out_path=tagged)

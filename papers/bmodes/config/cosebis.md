@@ -33,9 +33,9 @@ Compare across catalog versions from `config.versions`:
 - Fiducial: `fiducial.version`
 - All versions tested for consistency
 
-## Blind Handling
+## n(z)
 
-Uses fiducial blind from `config["fiducial"]["blind"]`. COSEBIS B_n data vectors are identical across blinds; covariances vary with blind via n(z)-dependent theoretical predictions.
+Each version's covariance uses its catalogue entry's n(z) (`shear.redshift_path` in `cat_config.yaml`).
 
 ## Analysis Decisions
 

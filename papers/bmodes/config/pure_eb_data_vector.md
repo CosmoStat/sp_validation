@@ -20,7 +20,7 @@ B-mode signals in UNIONS cosmic shear are consistent with zero at fiducial scale
 
 ## Evidence
 
-PTE values for B-mode null tests at two scale ranges, using fiducial blind (A):
+PTE values for B-mode null tests at two scale ranges:
 
 1. **Fiducial scale cuts**: Angular range used for cosmological inference
 2. **Full theta range**: All measured angular bins (no cuts)

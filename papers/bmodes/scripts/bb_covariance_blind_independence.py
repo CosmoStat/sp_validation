@@ -1,8 +1,10 @@
 """
 BB Covariance Blind Independence Claim
 
-Tests whether BB covariances are blind-independent (as expected for null signals)
-while EE covariances vary across blinds (due to sample variance from cosmological signal).
+Tests whether BB covariances are independent of the A/B/C n(z) realisation (as
+expected for null signals) while EE covariances vary across realisations (due to
+sample variance from cosmological signal). Each realisation is a catalogue entry
+of its own (config fiducial.nz_realisations), identical but for its n(z).
 
 Compares:
 - Pure E/B: cov(xi+^B), cov(xi-^B) vs cov(xi+^E), cov(xi-^E)
@@ -29,7 +31,8 @@ from sp_validation.b_modes import calculate_cosebis
 plt.style.use(PAPER_MPLSTYLE)
 
 
-BLINDS = ["A", "B", "C"]
+# n(z) realisation labels: the keys of config fiducial.nz_realisations.
+NZ_LABELS = ["A", "B", "C"]
 
 
 def load_pure_eb_diagonals(path):
@@ -402,21 +405,21 @@ def main(
     """Run the BB-covariance blind-independence cross-check.
 
     ``pure_eb_paths`` / ``harmonic_paths`` / ``cov_integration_paths`` are dicts
-    keyed by blind (A/B/C). All paths are absolute; the per-blind mock-version
+    keyed by n(z) realisation (A/B/C). All paths are absolute; the per-realisation
     covariances are read directly, so the check is self-contained.
     """
     version = config["fiducial"]["mock_version"]
 
     # Load pure E/B covariances for all blinds
     pure_eb_data = {}
-    for blind in BLINDS:
+    for blind in NZ_LABELS:
         pure_eb_data[blind] = load_pure_eb_diagonals(pure_eb_paths[blind])
 
     theta = pure_eb_data["A"]["theta"]
 
     # Load harmonic covariances for all blinds
     harmonic_data = {}
-    for blind in BLINDS:
+    for blind in NZ_LABELS:
         harmonic_data[blind] = load_harmonic_diagonals(harmonic_paths[blind])
 
     # Integration binning parameters from config
@@ -425,7 +428,7 @@ def main(
     nbins_int = config["fiducial"]["nbins_int"]
 
     cosebis_data = {}
-    for blind in BLINDS:
+    for blind in NZ_LABELS:
         cosebis_data[blind] = load_cosebis_diagonals(
             xi_integration_path,
             cov_integration_paths[blind],
@@ -620,9 +623,9 @@ def main(
 
 def _from_snakemake(smk):
     config = smk.config
-    pure_eb_paths = {b: smk.input[f"pure_eb_{b}"] for b in BLINDS}
-    harmonic_paths = {b: smk.input[f"harmonic_{b}"] for b in BLINDS}
-    cov_integration_paths = {b: smk.input[f"cov_integration_{b}"] for b in BLINDS}
+    pure_eb_paths = {b: smk.input[f"pure_eb_{b}"] for b in NZ_LABELS}
+    harmonic_paths = {b: smk.input[f"harmonic_{b}"] for b in NZ_LABELS}
+    cov_integration_paths = {b: smk.input[f"cov_integration_{b}"] for b in NZ_LABELS}
     main(
         config=config,
         pure_eb_paths=pure_eb_paths,
@@ -638,12 +641,11 @@ def _from_snakemake(smk):
     )
 
 
-def _cov_integration_path(cov_dir, version, blind, min_sep, max_sep, nbins):
+def _cov_integration_path(cov_dir, version, min_sep, max_sep, nbins):
     """Reproduce common.covariance_path for the Gaussian integration-grid,
     masked covariance (suffix _processed.txt)."""
     base = (
-        f"covariance_{version}_{blind}_g"
-        f"_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_masked"
+        f"covariance_{version}_g_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_masked"
     )
     return os.path.join(cov_dir, base, f"{base}_processed.txt")
 
@@ -661,7 +663,7 @@ def _from_cli(argv=None):
     ap.add_argument(
         "--pure-eb-dir",
         required=True,
-        help="Dir with {version}_{blind}_pure_eb_semianalytic.npz",
+        help="Dir with {version}_pure_eb_semianalytic.npz per n(z) realisation",
     )
     ap.add_argument(
         "--cosmo-val-dir",
@@ -691,22 +693,20 @@ def _from_cli(argv=None):
     )
     npatch = fid["npatch"]
 
+    realisations = fid["nz_realisations"]
     pure_eb_paths = {
-        b: os.path.join(a.pure_eb_dir, f"{version}_{b}_pure_eb_semianalytic.npz")
-        for b in BLINDS
+        b: os.path.join(a.pure_eb_dir, f"{ver}_pure_eb_semianalytic.npz")
+        for b, ver in realisations.items()
     }
     harmonic_paths = {
-        b: os.path.join(
-            a.cosmo_val_dir,
-            f"pseudo_cl_cov_{version}_blind={b}_powspace_nbins=32.fits",
-        )
-        for b in BLINDS
+        b: os.path.join(a.cosmo_val_dir, f"pseudo_cl_cov_{ver}_powspace_nbins=32.fits")
+        for b, ver in realisations.items()
     }
     cov_integration_paths = {
         b: _cov_integration_path(
-            a.covariance_dir, version, b, min_sep_int, max_sep_int, nbins_int
+            a.covariance_dir, ver, min_sep_int, max_sep_int, nbins_int
         )
-        for b in BLINDS
+        for b, ver in realisations.items()
     }
     xi_integration_path = os.path.join(
         a.cosmo_val_dir,
@@ -714,7 +714,7 @@ def _from_cli(argv=None):
         f"_nbins={nbins_int}_npatch={npatch}.txt",
     )
     pseudo_cl_path = os.path.join(
-        a.cosmo_val_dir, f"pseudo_cl_{version}_blind=A_powspace_nbins=32.sacc"
+        a.cosmo_val_dir, f"pseudo_cl_{version}_powspace_nbins=32.sacc"
     )
 
     out_dir = Path(a.out)
