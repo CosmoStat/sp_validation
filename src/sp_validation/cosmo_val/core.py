@@ -13,13 +13,7 @@ from ..b_modes import (
     _get_pte_from_scale_cut,
     find_conservative_scale_cut_key,
 )
-from ..custody import (
-    CustodyError,
-    base_catalogue,
-    custody_of,
-    registry_of,
-    seed_path,
-)
+from ..custody import base_catalogue, custody_of, registry_of, seed_path
 from ..statistics import chi2_and_pte
 from ..version import __version__
 from .catalog_characterization import CatalogCharacterizationMixin
@@ -474,16 +468,6 @@ class CosmologyValidation(
         """
         base = base_catalogue(self._declared, version)
         return self._output_path("patches", f"{base}_npatch={int(npatch)}.dat")
-
-    def _refuse_if_blinded(self, version, what):
-        """Refuse ``what``, which reads ``version``'s ξ± in plaintext, if blinded."""
-        custody = self.custody(version)
-        if custody.status == "blinded":
-            raise CustodyError(
-                f"{what} works from {version}'s measured ξ± itself, and "
-                f"{custody.catalogue} is blinded; derive it from the concealed "
-                "part calculate_2pcf returns"
-            )
 
     def basename(self, version, treecorr_config=None, npatch=None):
         cfg = treecorr_config or self.treecorr_config

@@ -352,8 +352,10 @@ class TestCosmologyValidation:
 
         The ξ± it measures equal the committed ``pure_eb_xi``, its modes are
         ``pure_eb_from_xi`` of those ξ± and edges, and every reporting bin is
-        finite. The jackknife covariance runs the transform once per
-        realisation.
+        finite. Its jackknife covariance, the integration part's pushed
+        through the kernel, matches TreeCorr's jackknife of the modes in each
+        statistic's total variance, loosely: on this sparse toy ξ± the kernel's
+        ξ− quadrature is additive to only ~30%.
 
         Finiteness: the Schneider (2022) integrals are near-singular where a
         reporting bin meets the integration boundary, so the integration grid
@@ -386,11 +388,19 @@ class TestCosmologyValidation:
         cv.treecorr_config.update(bin_slop=0, angle_slop=0)
         cv.write_patch_centers(version, npatch)
 
+        import treecorr
+
         kernel, kernel_calls = b_modes.pure_eb_from_xi, []
         monkeypatch.setattr(
             b_modes,
             "pure_eb_from_xi",
-            lambda **kw: kernel_calls.append(kw) or kernel(**kw),
+            lambda *a, **kw: kernel_calls.append(kw) or kernel(*a, **kw),
+        )
+        process, correlations = treecorr.GGCorrelation.process, []
+        monkeypatch.setattr(
+            treecorr.GGCorrelation,
+            "process",
+            lambda gg, *a, **kw: correlations.append(gg) or process(gg, *a, **kw),
         )
         results = cv.calculate_pure_eb(
             version,
@@ -399,8 +409,8 @@ class TestCosmologyValidation:
             max_sep_int=300.0,
             nbins_int=600,
         )
-        # The modes, then TreeCorr's jackknife: one sizing call and one per patch.
-        assert len(kernel_calls) <= npatch + 2, f"{len(kernel_calls)} transforms"
+        # The modes, the measured ξ±, and one per jackknife eigenvector (< npatch).
+        assert len(kernel_calls) <= npatch + 1, f"{len(kernel_calls)} transforms"
 
         measured = {
             "theta_report": results["theta"],
@@ -425,9 +435,34 @@ class TestCosmologyValidation:
             assert np.all(np.isfinite(vec)), f"{key} not finite"
             np.testing.assert_allclose(vec, modes[key], rtol=1e-10, err_msg=key)
 
-        # Jackknife covariance over the 6 stats (xip/xim x E/B/amb) x nbins.
+        # TreeCorr's jackknife of the modes, from the two measurements.
+        def modes_of(pair):
+            gg, gg_int = pair
+            return b_modes._eb_vector(
+                kernel(
+                    gg.meanr,
+                    gg.xip,
+                    gg.xim,
+                    gg_int.meanr,
+                    gg_int.xip,
+                    gg_int.xim,
+                    gg.left_edges[0],
+                    gg.right_edges[-1],
+                )
+            )
+
+        reference = treecorr.estimate_multi_cov(
+            correlations, "jackknife", func=modes_of, cross_patch_weight="match"
+        )
         cov = np.asarray(results["cov"])
-        assert cov.shape == (6 * nbins, 6 * nbins)
+        assert cov.shape == reference.shape == (6 * nbins, 6 * nbins)
+
+        def block_variances(c):
+            return np.diag(c).reshape(6, nbins).sum(axis=1)
+
+        np.testing.assert_allclose(
+            block_variances(cov), block_variances(reference), rtol=0.4
+        )
         assert results["n_eff"] == npatch
 
 
@@ -486,26 +521,3 @@ def test_a_blinded_catalogues_xi_leaves_concealed(blinded_and_twin):
     )
     assert blinded.metadata["blinding"] == "blinded"
     assert cv.xi_parts["TOY", "reporting"] is blinded
-
-
-@pytest.mark.parametrize(
-    "measure",
-    [
-        lambda cv: cv.calculate_pure_eb("TOY", npatch=1),
-        lambda cv: cv.calculate_aperture_mass_dispersion(npatch=1),
-    ],
-    ids=["jackknife-pure-eb", "aperture-mass"],
-)
-def test_plaintext_measurements_refuse_a_blinded_catalogue(
-    blinded_and_twin, measure, monkeypatch
-):
-    """The jackknife pure-E/B and the aperture mass work from TreeCorr's ξ±
-    itself, so on a blinded catalogue they refuse before measuring anything."""
-    from sp_validation.custody import CustodyError
-
-    def measured(*args, **kwargs):
-        raise AssertionError("measured a blinded catalogue's ξ± in plaintext")
-
-    monkeypatch.setattr(CosmologyValidation, "_measure_xi", measured)
-    with pytest.raises(CustodyError, match="TOY is blinded"):
-        measure(blinded_and_twin)

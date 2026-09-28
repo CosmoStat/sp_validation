@@ -77,9 +77,28 @@ class RealSpaceMixin:
         if patch_centers is not None:
             with open(patch_centers, "rb") as f:
                 metadata["patch_centers_sha256"] = hashlib.sha256(f.read()).hexdigest()
-        gg = self._measure_xi(ver, npatch, patch_centers, **treecorr_config)
-
         jackknife = npatch > 1
+        gg = treecorr.GGCorrelation(
+            {
+                **self._binning(**treecorr_config),
+                "var_method": "jackknife" if jackknife else "shot",
+            }
+        )
+        with self.results[ver].temporarily_read_data():
+            g1, g2 = self._calibrated_g(ver)
+            catalogue = treecorr.Catalog(
+                ra=self.results[ver].dat_shear["RA"],
+                dec=self.results[ver].dat_shear["Dec"],
+                g1=g1,
+                g2=g2,
+                w=self._read_shear_cols(ver, "w_col"),
+                ra_units=self.treecorr_config["ra_units"],
+                dec_units=self.treecorr_config["dec_units"],
+                npatch=npatch,
+                patch_centers=patch_centers,
+            )
+        gg.process(catalogue)
+
         s = xi_to_sacc(
             self.sacc_nz(ver),
             metadata,
@@ -99,34 +118,6 @@ class RealSpaceMixin:
         self.xi_parts[ver, grid] = part
         self.print_done("Done 2PCF")
         return part
-
-    def _measure_xi(self, ver, npatch, patch_centers=None, **treecorr_config):
-        """TreeCorr's ξ± of ``ver``, in plaintext: for this object's use only.
-
-        Jackknife variances with patches, shot noise without. With patches and
-        no ``patch_centers``, TreeCorr draws its own centres.
-        """
-        gg = treecorr.GGCorrelation(
-            {
-                **self._binning(**treecorr_config),
-                "var_method": "jackknife" if npatch > 1 else "shot",
-            }
-        )
-        with self.results[ver].temporarily_read_data():
-            g1, g2 = self._calibrated_g(ver)
-            catalogue = treecorr.Catalog(
-                ra=self.results[ver].dat_shear["RA"],
-                dec=self.results[ver].dat_shear["Dec"],
-                g1=g1,
-                g2=g2,
-                w=self._read_shear_cols(ver, "w_col"),
-                ra_units=self.treecorr_config["ra_units"],
-                dec_units=self.treecorr_config["dec_units"],
-                npatch=npatch,
-                patch_centers=patch_centers,
-            )
-        gg.process(catalogue)
-        return gg
 
     def _patch_centers(self, ver, npatch, path=None):
         """The existing centres file ``ver`` splits at, or None without patches."""
@@ -399,37 +390,39 @@ class RealSpaceMixin:
         print(f"Ratio of xi_psf_sys to xi plot saved to {out_path}")
 
     def calculate_aperture_mass_dispersion(
-        self, theta_min=0.3, theta_max=200, nbins=500, nbins_map=15, npatch=25
+        self, theta_min=0.3, theta_max=200, nbins=500, nbins_map=15, npatch=None
     ):
+        """⟨M_ap²⟩ and ⟨M_×²⟩ of every version, from its sealed ξ± part.
+
+        Both are linear in ξ± (TreeCorr's ``calculateMapSq`` sum, Schneider et
+        al. 2002 filter), so they and their jackknife covariance T·C·Tᵀ come
+        from the part on a fine grid: concealed on a blinded catalogue, whose
+        shift, the same in every patch, leaves C unchanged.
+        """
         self.print_start("Computing aperture-mass dispersion")
 
-        self._map2 = {}
         theta_map = np.geomspace(theta_min * 5, theta_max / 2, nbins_map)
-        self._map2["theta_map"] = theta_map
-
+        self._map2 = {"theta_map": theta_map}
+        bin_size = np.log(theta_max / theta_min) / nbins
         for ver in self.versions:
             self.print_magenta(ver)
-            self._refuse_if_blinded(ver, "The aperture-mass dispersion")
-            gg = self._measure_xi(
-                ver, npatch, min_sep=theta_min, max_sep=theta_max, nbins=nbins
+            part = self.calculate_2pcf(
+                ver,
+                grid="aperture_mass",
+                npatch=npatch,
+                min_sep=theta_min,
+                max_sep=theta_max,
+                nbins=nbins,
             )
-
-            mapsq, mapsq_im, mxsq, mxsq_im, varmapsq = gg.calculateMapSq(
-                R=theta_map,
-                m2_uform="Schneider",
-            )
-            out_fname_map2 = self._output_path(f"map2_{ver}.txt")
-            if os.path.exists(out_fname_map2):
-                self.print_green(f"Skipping Map2, {out_fname_map2} exists")
-            else:
-                print(f"Writing Map2 to output file {out_fname_map2} ")
-                gg.writeMapSq(out_fname_map2, R=theta_map, m2_uform="Schneider")
+            gg = sacc_io.xi_correlation(part)
+            transform = _map2_transform(theta_map, gg.meanr, bin_size)
+            mapsq, mxsq = np.split(transform @ np.concatenate([gg.xip, gg.xim]), 2)
+            variances = np.split(np.diag(transform @ gg.cov @ transform.T), 2)
             self._map2[ver] = {
                 "mapsq": mapsq,
-                "mapsq_im": mapsq_im,
                 "mxsq": mxsq,
-                "mxsq_im": mxsq_im,
-                "varmapsq": varmapsq,
+                "varmapsq": variances[0],
+                "varmxsq": variances[1],
             }
 
         self.print_done("Done aperture-mass dispersion")
@@ -441,10 +434,10 @@ class RealSpaceMixin:
         return self._map2
 
     def plot_aperture_mass_dispersion(self):
-        for mode in ["mapsq", "mapsq_im", "mxsq", "mxsq_im"]:
+        for mode in ["mapsq", "mxsq"]:
             x = [self.map2["theta_map"] for ver in self.versions]
             y = [self.map2[ver][mode] for ver in self.versions]
-            yerr = [np.sqrt(self.map2[ver]["varmapsq"]) for ver in self.versions]
+            yerr = [np.sqrt(self.map2[ver][f"var{mode}"]) for ver in self.versions]
             labels = list(self.versions)
             colors = [self.cc[ver]["colour"] for ver in self.versions]
             linestyles = [self.cc[ver]["ls"] for ver in self.versions]
@@ -473,10 +466,10 @@ class RealSpaceMixin:
             cs_plots.show()
             self.print_done(f"linear-scale {mode} plot saved to {out_path}")
 
-        for mode in ["mapsq", "mapsq_im", "mxsq", "mxsq_im"]:
+        for mode in ["mapsq", "mxsq"]:
             x = [self.map2["theta_map"] for ver in self.versions]
             y = [np.abs(self.map2[ver][mode]) for ver in self.versions]
-            yerr = [np.sqrt(self.map2[ver]["varmapsq"]) for ver in self.versions]
+            yerr = [np.sqrt(self.map2[ver][f"var{mode}"]) for ver in self.versions]
             xlabel = r"$\theta$ [arcmin]"
             ylabel = "dispersion"
             title = f"Aperture-mass dispersion mode {mode}"
@@ -501,3 +494,23 @@ class RealSpaceMixin:
             cs_plots.savefig(out_path, close_fig=False)
             cs_plots.show()
             self.print_done(f"log-scale {mode} plot saved to {out_path}")
+
+
+def _map2_transform(radii, theta, bin_size):
+    """The matrix taking [ξ+, ξ−] on a log grid to [⟨M_ap²⟩, ⟨M_×²⟩] at ``radii``.
+
+    TreeCorr's ``calculateMapSq`` sum with the Schneider et al. (2002) filter:
+    ⟨M_ap²⟩, ⟨M_×²⟩ = Σ s² (T+ ξ+ ± T− ξ−) dlnθ / 2, s = θ/R, T± zero for s ≥ 2.
+    """
+    s = np.minimum(np.outer(1.0 / radii, theta), 2.0)
+    ssq = s * s
+    tp = 12.0 / (5.0 * np.pi) * (2.0 - 15.0 * ssq) * np.arccos(s / 2.0)
+    tp += (
+        s
+        * np.sqrt(4.0 - ssq)
+        * (120.0 + ssq * (2320.0 + ssq * (-754.0 + ssq * (132.0 - 9.0 * ssq))))
+        / (100.0 * np.pi)
+    )
+    tm = 3.0 / (70.0 * np.pi) * s * ssq * (4.0 - ssq) ** 3.5
+    tp, tm = (x * ssq * 0.5 * bin_size for x in (tp, tm))
+    return np.block([[tp, tm], [tp, -tm]])

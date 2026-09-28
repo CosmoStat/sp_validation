@@ -11,7 +11,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 import tqdm
-import treecorr
 from cs_util.cosmo import get_theo_xi
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from scipy import sparse, stats
@@ -128,24 +127,22 @@ def correlation_from_covariance(covariance):
 def calculate_pure_eb_correlation(
     gg,
     gg_int,
-    var_method="jackknife",
     cov_path_int=None,
     cosmo_cov=None,
     n_samples=1000,
     z_dist=None,
 ):
     """
-    Calculate pure E/B modes from correlation function objects.
+    Calculate pure E/B modes from ξ± on the reporting and integration grids.
 
     Parameters
     ----------
-    gg : treecorr.GGCorrelation
-        Correlation function for reporting binning (coarser binning for final results)
-    gg_int : treecorr.GGCorrelation
-        Correlation function for integration binning (fine binning for numerical
-        integration)
-    var_method : str, optional
-        Variance method ("jackknife" or "bootstrap")
+    gg : sacc_io.xi_correlation view
+        ξ± on the reporting binning (coarser binning for final results)
+    gg_int : sacc_io.xi_correlation view
+        ξ± on the integration binning (fine binning for numerical integration);
+        without ``cov_path_int``, its jackknife covariance is propagated
+        (:func:`pure_eb_covariance_from_xi`)
     cov_path_int : str, optional
         Path to integration covariance matrix for semi-analytical calculation
     cosmo_cov : pyccl.Cosmology, optional
@@ -161,22 +158,6 @@ def calculate_pure_eb_correlation(
     dict
         Dictionary containing pure E/B mode results and covariance
     """
-    # Calculate min_sep and max_sep from gg object
-    min_sep, max_sep = gg.left_edges[0], gg.right_edges[-1]
-
-    def pure_EB(corrs):
-        gg, gg_int = corrs
-        return pure_eb_from_xi(
-            theta_report=gg.meanr,
-            xip_report=gg.xip,
-            xim_report=gg.xim,
-            theta_int=gg_int.meanr,
-            xip_int=gg_int.xip,
-            xim_int=gg_int.xim,
-            tmin=min_sep,
-            tmax=max_sep,
-        )
-
     # The results dict is self-describing: the grids it was measured on travel
     # with the modes, so every consumer downstream works from values alone.
     results = {
@@ -190,9 +171,20 @@ def calculate_pure_eb_correlation(
         "theta_int": gg_int.meanr,
         "xip_int": gg_int.xip,
         "xim_int": gg_int.xim,
-        "n_eff": n_samples if cov_path_int is not None else gg.npatch1,
+        "n_eff": n_samples if cov_path_int is not None else gg_int.npatch1,
     }
-    results.update(pure_EB([gg, gg_int]))
+    results.update(
+        pure_eb_from_xi(
+            gg.meanr,
+            gg.xip,
+            gg.xim,
+            gg_int.meanr,
+            gg_int.xip,
+            gg_int.xim,
+            gg.left_edges[0],
+            gg.right_edges[-1],
+        )
+    )
 
     if cov_path_int is not None:
         if z_dist is None or cosmo_cov is None:
@@ -212,12 +204,14 @@ def calculate_pure_eb_correlation(
         )
         results.update({"cov": cov, "eb_samples": eb_samples})
     else:
-        # Use existing treecorr covariance estimation
-        results["cov"] = treecorr.estimate_multi_cov(
-            [gg, gg_int],
-            var_method,
-            func=lambda x: _eb_vector(pure_EB(x)),
-            cross_patch_weight="match" if var_method == "jackknife" else None,
+        results["cov"] = pure_eb_covariance_from_xi(
+            theta=gg.meanr,
+            left_edges=gg.left_edges,
+            right_edges=gg.right_edges,
+            theta_int=gg_int.meanr,
+            xi_int=np.concatenate([gg_int.xip, gg_int.xim]),
+            weight_int=gg_int.weight,
+            cov_int=gg_int.cov,
         )
 
     # Validate covariance matrix
@@ -294,18 +288,7 @@ def pure_eb_covariance_mc(
     """
     theta, theta_int = np.asarray(theta), np.asarray(theta_int)
     nbins_int = len(theta_int)
-
-    # Each reporting bin averages the integration bins that fall inside it.
-    reporting_bin_edges = np.concatenate([left_edges, [right_edges[-1]]])
-    bin_indices = np.digitize(theta_int, reporting_bin_edges) - 1
-    valid_mask = (bin_indices >= 0) & (bin_indices < len(theta))
-    row_indices, col_indices = (bin_indices[valid_mask], np.where(valid_mask)[0])
-    binning_matrix = sparse.csr_matrix(
-        (np.ones(len(row_indices)), (row_indices, col_indices)),
-        shape=(len(theta), nbins_int),
-    )
-    row_sums = np.array(binning_matrix.sum(axis=1)).flatten()
-    binning_matrix = sparse.diags(1 / row_sums) @ binning_matrix
+    binning_matrix = _reporting_binning(left_edges, right_edges, theta_int)
 
     # One n(z) gives one tracer pair: get_theo_xi's single (xi+, xi-) entry.
     (xi_pm,) = get_theo_xi(
@@ -338,6 +321,64 @@ def pure_eb_covariance_mc(
         [eb_draw(i) for i in tqdm.tqdm(range(n_samples), desc="MC samples")]
     )
     return np.cov(eb_samples.T), eb_samples
+
+
+def _reporting_binning(left_edges, right_edges, theta_int, weight_int=None):
+    """The matrix averaging integration-grid ξ± into each reporting bin.
+
+    Each reporting bin averages the integration bins whose centres fall inside
+    it, weighted by ``weight_int`` (their pair weights: TreeCorr's estimate on
+    the reporting bin), or uniformly.
+    """
+    edges = np.concatenate([left_edges, [right_edges[-1]]])
+    rows = np.digitize(theta_int, edges) - 1
+    inside = (rows >= 0) & (rows < len(left_edges))
+    weight = np.ones(len(theta_int)) if weight_int is None else np.asarray(weight_int)
+    matrix = sparse.csr_matrix(
+        (weight[inside], (rows[inside], np.flatnonzero(inside))),
+        shape=(len(left_edges), len(theta_int)),
+    )
+    return sparse.diags(1 / np.asarray(matrix.sum(axis=1)).ravel()) @ matrix
+
+
+def pure_eb_covariance_from_xi(
+    *, theta, left_edges, right_edges, theta_int, xi_int, weight_int, cov_int
+):
+    """Pure-E/B covariance T·C·Tᵀ from the integration-grid ξ± covariance C.
+
+    The modes are linear in ξ±, and the reporting ξ± is the pair-weighted
+    average of the integration ξ± inside each reporting bin, so T is the
+    kernel composed with that average. Each column u of a factor C = Σ u uᵀ
+    is pushed through as K(ξ + u) − K(ξ), about the measured ``xi_int``
+    ([ξ+, ξ−]), as a jackknife pushes each patch's ξ±: the kernel's
+    quadrature is accurate on a ξ± shaped like a measurement, not on a bare
+    fluctuation. A jackknife C has rank below its patch count, which bounds
+    the kernel calls.
+    """
+    values, vectors = np.linalg.eigh(np.asarray(cov_int))
+    keep = values > values.max() * len(values) * np.finfo(float).eps
+    factor = vectors[:, keep] * np.sqrt(values[keep])
+    binning = _reporting_binning(left_edges, right_edges, theta_int, weight_int)
+    nbins_int = len(theta_int)
+
+    def transformed(xi):
+        xip_int, xim_int = xi[:nbins_int], xi[nbins_int:]
+        modes = pure_eb_from_xi(
+            theta_report=theta,
+            xip_report=binning @ xip_int,
+            xim_report=binning @ xim_int,
+            theta_int=theta_int,
+            xip_int=xip_int,
+            xim_int=xim_int,
+            tmin=left_edges[0],
+            tmax=right_edges[-1],
+        )
+        return _eb_vector(modes)
+
+    xi_int = np.asarray(xi_int)
+    centre = transformed(xi_int)
+    columns = np.column_stack([transformed(xi_int + u) - centre for u in factor.T])
+    return columns @ columns.T
 
 
 def calculate_cosebis(gg, nmodes=10, scale_cuts=None, cov_path=None):

@@ -7,6 +7,7 @@ correlation functions (xi+/xi- pure-mode decomposition) for catalog versions.
 
 import numpy as np
 
+from .. import sacc_io
 from ..b_modes import (
     calculate_eb_statistics,
     calculate_pure_eb_correlation,
@@ -29,7 +30,6 @@ class PureEBMixin:
         max_sep_int=300,
         nbins_int=1000,
         npatch=256,
-        var_method="jackknife",
         cov_path_int=None,
         cosmo_cov=None,
         n_samples=1000,
@@ -59,14 +59,12 @@ class PureEBMixin:
         nbins_int : int, optional
             Number of bins for the integration binning. Defaults to 1000.
         npatch : int, optional
-            Number of patches for the jackknife or bootstrap resampling. Defaults to
-            the value in self.npatch if not provided.
-        var_method : str, optional
-            Variance estimation method. Defaults to "jackknife".
+            Number of jackknife patches. Defaults to the value in self.npatch if
+            not provided.
         cov_path_int : str, optional
-            Path to the covariance matrix for the reporting binning. Replaces the
-            treecorr covariance matrix if provided, meaning that var_method has no
-            effect on the results.
+            Path to the integration-grid ξ± covariance. When given, the
+            covariance is Monte Carlo through the kernel from it, instead of the
+            jackknife.
         cosmo_cov : pyccl.Cosmology, optional
             Cosmology object to use for theoretical xi+/xi- predictions in the
             semi-analytical covariance calculation. Defaults to self.cosmo if not
@@ -99,25 +97,30 @@ class PureEBMixin:
 
         Notes
         -----
-        - Both binnings are measured on the version's persisted patch centres
-          (:meth:`patch_centers_path`). The jackknife works from TreeCorr's own
-          measurement, so a blinded catalogue is refused.
+        - Both binnings are the version's sealed ξ± parts
+          (:meth:`calculate_2pcf`), split at its persisted patch centres, so a
+          blinded catalogue's modes are concealed. The jackknife covariance is
+          the integration part's, pushed through the kernel
+          (:func:`~sp_validation.b_modes.pure_eb_covariance_from_xi`): the
+          shift, the same in every patch, leaves it unchanged.
         """
         self.print_start(f"Computing {version} pure E/B")
-        self._refuse_if_blinded(version, "The jackknife pure-E/B")
 
-        npatch = int(npatch or self.npatch)
-        centres = self._patch_centers(version, npatch)
-        gg = self._measure_xi(
-            version, npatch, centres, min_sep=min_sep, max_sep=max_sep, nbins=nbins
-        )
-        gg_int = self._measure_xi(
-            version,
-            npatch,
-            centres,
-            min_sep=min_sep_int,
-            max_sep=max_sep_int,
-            nbins=nbins_int,
+        gg, gg_int = (
+            sacc_io.xi_correlation(
+                self.calculate_2pcf(
+                    version,
+                    grid=grid,
+                    npatch=npatch,
+                    min_sep=lo,
+                    max_sep=hi,
+                    nbins=n,
+                )
+            )
+            for grid, lo, hi, n in (
+                ("reporting", min_sep, max_sep, nbins),
+                ("integration", min_sep_int, max_sep_int, nbins_int),
+            )
         )
 
         # Get redshift distribution if using analytic covariance
@@ -131,7 +134,6 @@ class PureEBMixin:
         results = calculate_pure_eb_correlation(
             gg=gg,
             gg_int=gg_int,
-            var_method=var_method,
             cov_path_int=cov_path_int,
             cosmo_cov=cosmo_cov,
             n_samples=n_samples,
@@ -270,7 +272,6 @@ class PureEBMixin:
                 max_sep_int=max_sep_int,
                 nbins_int=nbins_int,
                 npatch=npatch,
-                var_method=var_method,
                 cov_path_int=cov_path_int,
                 cosmo_cov=cosmo_cov,
                 n_samples=n_samples,
