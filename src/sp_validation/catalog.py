@@ -439,6 +439,13 @@ def write_shape_catalog(
 
     Write catalogue with galaxy shapes = shear estimates.
 
+    @sc [label:convention] metacal-flag-width
+    The data and image-simulation parameter files supply FITS ``J`` (int32)
+    for metacal bitmasks, so all ngmix flag bits (0-15; ``ZERO_DOF`` = 2**15
+    overflows a signed 16-bit ``I``) survive FITS/HDF5 output; ``JointCat``
+    never narrows integers.
+    The number of failed metacal types is a count in [0, 5], not a bitmask.
+
     Parameters
     ----------
     output_path : str
