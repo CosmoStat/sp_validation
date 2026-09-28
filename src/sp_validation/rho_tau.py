@@ -6,7 +6,9 @@ import numpy as np
 from shear_psf_leakage.rho_tau_cov import CovTauTh
 from shear_psf_leakage.rho_tau_stat import RhoStat, TauStat
 
-# SquareRootScale now lives in sp_validation.plots; re-exported here so that
+from sp_validation.grammar import read_catalogue
+
+# SquareRootScale lives in sp_validation.plots; re-exported here so that
 # `from sp_validation.rho_tau import SquareRootScale` keeps working.
 from sp_validation.plots import SquareRootScale  # noqa: F401
 
@@ -14,6 +16,27 @@ from sp_validation.plots import SquareRootScale  # noqa: F401
 def _extract_xip(correlations):
     """Return flattened array of xip values from a list of correlations."""
     return np.array([corr.xip for corr in correlations]).flatten()
+
+
+class _CatalogueLoader:
+    """Read a version's PSF and shear catalogues on first use, once each.
+
+    Both are read through ``sp_validation.grammar.read_catalogue``, so a
+    ShapePipe v1 catalogue presents the v2 column names the configs declare.
+    """
+
+    def __init__(self, info):
+        self._info = info
+        self._cache = {}
+
+    def __call__(self, block):
+        if block not in self._cache:
+            entry = self._info[block]
+            hdu = entry.get("hdu")
+            self._cache[block] = read_catalogue(
+                entry["path"], hdu=1 if hdu is None else hdu
+            )
+        return self._cache[block]
 
 
 def get_params_rho_tau(cat, survey="other"):
@@ -148,6 +171,8 @@ def get_rho_tau(
         output=outdir, treecorr_config=treecorr_config, verbose=True
     )
 
+    load = _CatalogueLoader(config[version])
+
     rho_stats_exists = rho_path.exists()
     cov_exists = True if not cov_rho else cov_rho_path.exists()
     need_compute = (not rho_stats_exists) or (not cov_exists)
@@ -158,14 +183,7 @@ def get_rho_tau(
         mask = version != "DES"
 
         rho_stat_handler.build_cat_to_compute_rho(
-            config[version]["psf"]["path"],
-            catalog_id=catalog_id,
-            mask=mask,
-            hdu=(
-                config[version]["psf"]["hdu"]
-                if config[version]["psf"]["hdu"] is not None
-                else 1
-            ),
+            load("psf"), catalog_id=catalog_id, mask=mask
         )
 
         rho_stat_handler.compute_rho_stats(
@@ -200,23 +218,12 @@ def get_rho_tau(
         # Build the different catalogs if necessary
         if f"psf_{version}" not in tau_stat_handler.catalogs.catalogs_dict.keys():
             tau_stat_handler.build_cat_to_compute_tau(
-                config[version]["psf"]["path"],
-                cat_type="psf",
-                catalog_id=version,
-                mask=mask,
-                hdu=(
-                    config[version]["psf"]["hdu"]
-                    if config[version]["psf"]["hdu"] is not None
-                    else 1
-                ),
+                load("psf"), cat_type="psf", catalog_id=version, mask=mask
             )
 
         # Build the catalog of galaxies. PSF was computed above
         tau_stat_handler.build_cat_to_compute_tau(
-            config[version]["shear"]["path"],
-            cat_type="gal",
-            catalog_id=version,
-            mask=mask,
+            load("shear"), cat_type="gal", catalog_id=version, mask=mask
         )
 
         # function to extract the tau_+
@@ -246,10 +253,6 @@ def get_theory_cov(
     n_e = info["cov_th"]["n_e"]
     n_psf = info["cov_th"]["n_psf"]
 
-    path_gal = info["shear"]["path"]
-    path_psf = info["psf"]["path"]
-    hdu_psf = info["psf"]["hdu"]
-
     target_cov = Path(outdir) / f"cov_tau_{base}_th.npy"
 
     if target_cov.exists():
@@ -259,10 +262,11 @@ def get_theory_cov(
     print("Computing the covariance matrix for the version: ", version)
     start_time = time.time()
 
+    load = _CatalogueLoader(info)
     cov_tau_th = CovTauTh(
-        path_gal=path_gal,
-        path_psf=path_psf,
-        hdu_psf=hdu_psf,
+        path_gal=load("shear"),
+        path_psf=load("psf"),
+        hdu_psf=None,
         treecorr_config=treecorr_config,
         A=A,
         n_e=n_e,
@@ -338,6 +342,7 @@ def get_jackknife_cov(
 
     tau_stat_handler.catalogs.set_params(params, outdir)
 
+    load = _CatalogueLoader(config[version])
     for i in range(ncov):
         tau_chunk = outdir + f"/cov_tau_{version}{i}.npy"
         rho_chunk = outdir + f"/cov_rho_{version}{i}.npy"
@@ -349,10 +354,7 @@ def get_jackknife_cov(
             if f"psf_{version}{i}" not in rho_stat_handler.catalogs.catalogs_dict:
                 # Build catalogues
                 rho_stat_handler.build_cat_to_compute_rho(
-                    config[version]["psf"]["path"],
-                    catalog_id=version + str(i),
-                    mask=False,
-                    hdu=config[version]["psf"]["hdu"],
+                    load("psf"), catalog_id=version + str(i), mask=False
                 )
 
                 tau_stat_handler.catalogs.catalogs_dict = (
@@ -361,7 +363,7 @@ def get_jackknife_cov(
 
                 # Build the catalog of galaxies. PSF was computed above
                 tau_stat_handler.build_cat_to_compute_tau(
-                    config[version]["shear"]["path"],
+                    load("shear"),
                     cat_type="gal",
                     catalog_id=version + str(i),
                     mask=False,

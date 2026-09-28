@@ -43,6 +43,7 @@ is the container (full scientific stack pre-built). For a local dev environment:
 - `cosmo_val.py`: Cosmology validation routines
 - `cosmology.py`: Cosmological calculations and theory
 - `galaxy.py`: Galaxy-specific processing
+- `grammar.py`: ShapePipe v1 -> v2 column-grammar adapter (`adapt`, `read_catalogue`)
 - `io.py`: Input/output utilities
 - `plots.py`: Plotting functions
 - `rho_tau.py`: Rho and tau statistics calculations

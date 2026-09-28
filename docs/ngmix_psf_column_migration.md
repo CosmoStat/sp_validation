@@ -1,23 +1,21 @@
 # ShapePipe-v2 column-grammar migration (shapepipe → sp_validation)
 
-**Status:** code-complete on `migrate/ngmix-psf-column-names` (draft PR
-[#201](https://github.com/CosmoStat/sp_validation/pull/201)). Every shape-column
-read in the live package, configs, calibration scripts, paper figures, and
-notebooks uses the ShapePipe-v2 grammar; the σ→T units change and the
-`spread_model` removal are in; the dead `galsim` estimator path is removed; and
-the suite is green against synthetic catalogues carrying the new columns.
-
-**No code work is left waiting on a regenerated catalogue.** The one *value*
-change — `*_PSF_ORIG` now holds a true original-PSF fit (shapepipe#749) rather
-than the reconvolved-kernel alias the old columns silently held — is a straight
-column rename at the code level and is already in place; the code does not care
-that the numbers moved. All a v2 catalogue enables is a *look-at-the-numbers*
-sanity check (do the α-leakage / size-ratio cuts still behave), which is analysis,
-not code, and does not gate the PR. **The real merge gate is cutover timing:**
-merging this branch makes `develop` *require* v2 columns and stop reading today's
-catalogues, so #201 should land together with — or just after —
-[shapepipe#761](https://github.com/CosmoStat/shapepipe/pull/761)→#741 and the
-first v2 catalogue.
+sp_validation reads the ShapePipe-v2 column grammar everywhere: live package,
+configs, calibration scripts, paper figures and notebooks. Catalogues written in
+the v1 grammar (every release up to v1.6.x) are read through
+`sp_validation.grammar` (wired into the ρ/τ path, `rho_tau.py`, and the GLASS
+leakage script): `adapt(table)` (or `read_catalogue(path, hdu)` for a
+FITS file) presents a v1 table under the v2 names and units below, as a lazy
+column view over a numpy array, FITS_rec or h5py dataset, and returns v2 or
+grammar-neutral tables unchanged. `detect_generation` tells the grammars apart
+from column names, and `v2_names` maps a header's names without reading data.
+The adapter maps by *name*, so a v1 `*_PSFo` column is presented as
+`*_PSF_ORIG` holding the v1 (reconvolved-alias) values; downstream code never
+branches on the generation. The tables below (Old = v1, New = v2) are the rule
+table in `grammar.RULES`. The adapter also presents the comprehensive HDF5's
+`data_ext` mask flags (`1_Faint_star_halos`, …, `2048_z2`) as `MASK_n{b}`, and
+passes `IMAFLAGS_ISO` through unmapped: its v1 bits (2 halo, 4 border,
+16 Messier, 32 NGC, 128 spike) are not the v2 `MASK_n{b}` of the same value.
 
 shapepipe#761 turns the shape-measurement output into **one column grammar for
 the whole catalogue**: every estimator names its outputs
