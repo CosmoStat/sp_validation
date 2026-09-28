@@ -510,12 +510,12 @@ def _make_version_comparison_figure(
     return fig
 
 
-def main(config, inputs, scale_cut, output_dir, paper_figure_name=None, spec_path=None):
+def main(config, inputs, scale_cut, output_dir, paper_figure_name=None):
     """Harmonic-vs-config COSEBI cross-check for one angular range.
 
     ``inputs`` is a dict mirroring ``snakemake.input``: per-version keys
     ``pseudo_cl_{ver}`` / ``pseudo_cl_cov_{ver}`` / ``xi_{ver}`` / ``cov_{ver}``
-    (all absolute paths) plus ``specs``. All artifacts land under ``output_dir``;
+    (all absolute paths). All artifacts land under ``output_dir``;
     ``paper_figure_name`` (when set) is the combined 2×2 paper PDF filename.
     """
     nmodes = int(config["fiducial"]["nmodes"])
@@ -765,9 +765,6 @@ def main(config, inputs, scale_cut, output_dir, paper_figure_name=None, spec_pat
 
     # --- Evidence ---
     evidence = {
-        "spec_id": "harmonic_config_cosebis_comparison",
-        "spec_path": spec_path
-        or "papers/bmodes/config/harmonic_config_cosebis_comparison.md",
         "generated": datetime.now().isoformat(),
         "evidence": {
             "nmodes": nmodes,
@@ -817,7 +814,7 @@ def _cov_integration_path(cov_dir, version, min_sep, max_sep, nbins):
 
 
 def _angular_ranges(config):
-    """Reproduce claims.smk _COSEBIS_ANGULAR_RANGES."""
+    """Reproduce figures.smk _COSEBIS_ANGULAR_RANGES."""
     return {
         "full": (
             float(config["cosebis"]["theta_min"]),
@@ -838,7 +835,6 @@ def _from_snakemake(smk):
             if "paper_figure" in smk.output.keys()
             else None
         ),
-        spec_path=smk.input["specs"][0],
     )
 
 
@@ -925,7 +921,7 @@ def _from_cli(argv=None):
     npatch = fid["npatch"]
 
     versions = _versions_all_for_plots(config)
-    inputs = {"specs": ["papers/bmodes/config/harmonic_config_cosebis_comparison.md"]}
+    inputs = {}
     for ver in versions:
         is_fiducial = ver == a.fiducial_version
 
@@ -970,7 +966,6 @@ def _from_cli(argv=None):
         scale_cut=scale_cut,
         output_dir=a.out,
         paper_figure_name=f"harmonic_config_cosebis_{a.angular_range}.pdf",
-        spec_path=inputs["specs"][0],
     )
 
 

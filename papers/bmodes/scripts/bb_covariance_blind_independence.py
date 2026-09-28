@@ -529,8 +529,6 @@ def main(
 
     # Build evidence
     evidence = {
-        "spec_id": "bb_covariance_blind_independence",
-        "spec_path": "workflow/config/bb_covariance_blind_independence.md",
         "depends_on": ["covariance", "pure_eb", "cosebis", "pseudo_cl"],
         "generated": datetime.now().isoformat(),
         "evidence": {

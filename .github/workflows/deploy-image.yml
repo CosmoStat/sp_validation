@@ -26,7 +26,7 @@ jobs:
         run: >-
           uv run --isolated --no-project --python 3.12
           --with snakemake --with snakemake-executor-plugin-slurm
-          --with pytest --with numpy
+          --with pytest
           pytest workflow/tests -m "not candide"
 
   build-and-push-image:

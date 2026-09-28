@@ -158,7 +158,7 @@ def _create_cl_figure(
 
 # ---------------------------------------------------------------------------
 # Canonical per-version file paths (COSMO_VAL results tree). The DAG read these
-# via _pseudo_cl_path() in claims.smk; the CLI reconstructs them from --results-dir
+# via _pseudo_cl_path() in figures.smk; the CLI reconstructs them from --results-dir
 # so the version sweep is self-contained (lc produces only the fiducial version).
 # ---------------------------------------------------------------------------
 def _pseudo_cl(results_dir, ver, nbins=32):
@@ -287,7 +287,6 @@ def main(
     )
 
     evidence_data = {
-        "spec_id": "cl_data_vector",
         "generated": datetime.now().isoformat(),
         "evidence": {
             # Full range PTEs

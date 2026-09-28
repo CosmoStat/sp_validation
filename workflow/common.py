@@ -5,7 +5,6 @@ module imports only the standard library and snakemake, and loads the
 stdlib-only project modules it needs by file path.
 """
 
-import functools
 import importlib.util
 import json
 import os
@@ -30,7 +29,6 @@ _container.__loader__.exec_module(_container)
 
 compare_revision = _container.compare_revision
 image_revision = _container.image_revision
-image_python = _container.image_python
 resolve_image = _container.resolve_image
 
 # Every job inherits this launch's environment (the slurm executor submits with
@@ -38,13 +36,6 @@ resolve_image = _container.resolve_image
 # under XDG_CACHE_HOME, which a login shell may point at node-local storage.
 # Without it, jobs use the home directory's cache, which every node mounts.
 os.environ.pop("XDG_CACHE_HOME", None)
-
-# Jobs draw their figures with matplotlib's defaults, whoever launches them.
-# Apptainer binds $HOME, so a job would otherwise read the launching user's
-# ~/.config/matplotlib/matplotlibrc, and a LaTeX preamble there that the image
-# cannot typeset stops every figure rule. MATPLOTLIBRC outranks that file, and
-# APPTAINERENV_ carries it past --cleanenv.
-os.environ["APPTAINERENV_MATPLOTLIBRC"] = str(REPO_ROOT / "workflow/matplotlibrc")
 
 
 # Output roots are env-overridable so a reproduction run can write into a
@@ -123,16 +114,14 @@ def inject_checkout_pythonpath(workflow_config):
 
 
 def resolve_container(override=None):
-    """Return the image every rule should run in, stopping the launch on a mismatch.
+    """Return the image every rule should run in.
 
     ``override`` wins if set (a ``docker://`` tag, a ``.sif`` path or a sandbox
     directory -- Snakemake's ``container:`` accepts all three); otherwise
     ``resolve_image()``, so jobs run what interactive ``spv-container`` work
-    runs. The image returned has passed ``check_host_python``.
+    runs.
     """
-    image = str(override) if override else resolve_image()[0]
-    check_host_python(image)
-    return image
+    return str(override) if override else resolve_image()[0]
 
 
 def warn_if_image_stale():
@@ -168,38 +157,6 @@ def warn_if_image_stale():
             "`spv-container pull`.",
             file=sys.stderr,
         )
-
-
-@functools.cache
-def check_host_python(image):
-    """Stop the launch unless this Snakemake runs on the image's Python minor.
-
-    A ``script:`` job unpickles the host's ``snakemake`` object by appending the
-    host's ``sys.path`` to its own; the image carries no snakemake, so the host's
-    package and its compiled dependencies load into the image's interpreter.
-
-    An image that cannot be read (a registry tag, no apptainer) is named in one
-    line and passes.
-    """
-    from snakemake.exceptions import WorkflowError
-
-    python = image_python(image)
-    if python is None:
-        print(
-            f"[container] cannot read the Python of {image}; host/image Python "
-            "unchecked.",
-            file=sys.stderr,
-        )
-        return
-    host = ".".join(str(v) for v in sys.version_info[:2])
-    if python == host:
-        return
-    raise WorkflowError(
-        f"host Snakemake runs on Python {host}, the image {image} on Python "
-        f"{python}.\nReinstall the host Snakemake on the image's Python:\n"
-        f"  uv tool install --force --python {python} snakemake "
-        "--with snakemake-executor-plugin-slurm"
-    )
 
 
 def configure(workflow_config):
@@ -362,8 +319,7 @@ def grid_of(grids, binning):
     """Name of the grid a binning belongs to, compared numerically.
 
     A "300" wildcard matches a 300.0 grid value. Binnings matching no named
-    grid (e.g. papers/bmodes' nbins=10000 convergence check) are reporting-style
-    measurements.
+    grid are reporting-style measurements.
     """
     key = tuple(float(binning[k]) for k in XI_KEYS)
     for name, grid in grids.items():

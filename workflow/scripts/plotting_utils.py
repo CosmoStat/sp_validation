@@ -1,4 +1,4 @@
-"""Shared plotting utilities for claims scripts."""
+"""Shared plotting utilities for the paper figure scripts."""
 
 from pathlib import Path
 

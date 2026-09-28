@@ -1,4 +1,4 @@
-"""Pure E/B covariance structure claim.
+"""Pure E/B covariance structure figure.
 
 Validates covariance matrix for B-mode tests by analyzing block structure:
 - 6 blocks: E+, E-, B+, B-, amb+, amb-
@@ -77,7 +77,7 @@ def _cov_to_corr(covariance):
     return correlation
 
 
-def main(config, pure_eb_path, out_dir, specs=()):
+def main(config, pure_eb_path, out_dir):
     version = config["fiducial"]["version"]
 
     # Load precomputed pure E/B data
@@ -176,8 +176,6 @@ def main(config, pure_eb_path, out_dir, specs=()):
 
     # Write evidence.json
     evidence_data = {
-        "spec_id": "pure_eb_covariance",
-        **({"spec_path": specs[0]} if specs else {}),
         "generated": datetime.now().isoformat(),
         "evidence": {
             "condition_number": condition_number,
@@ -232,16 +230,10 @@ def _from_cli(argv=None):
         "(provides the 6-block cov_pure_eb)",
     )
     ap.add_argument("--out", required=True, help="Output directory (lc {output})")
-    ap.add_argument(
-        "--specs",
-        nargs="*",
-        default=[],
-        help="Optional spec markdown paths recorded in evidence.json for provenance",
-    )
     a = ap.parse_args(argv)
     with open(a.config) as f:
         config = yaml.safe_load(f)
-    main(config, a.pure_eb_data, a.out, specs=a.specs)
+    main(config, a.pure_eb_data, a.out)
 
 
 if __name__ == "__main__":

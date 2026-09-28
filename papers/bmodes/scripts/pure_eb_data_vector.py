@@ -1,4 +1,4 @@
-"""Pure E/B data vector claim (paper Figure 1).
+"""Pure E/B data vector figure (paper Figure 1).
 
 Fiducial catalog only: pure E/B/ambiguous decomposition of ξ± with B-modes
 consistent with zero at the fiducial scale cuts. Writes evidence.json with PTE
@@ -9,7 +9,7 @@ CLI:
         --config config.yaml \
         --pure-eb-data <version>_pure_eb_semianalytic.npz \
         --reporting-cov <cov_reporting_ng>/covariance_processed.txt \
-        --out <output_dir> [--specs spec.md ...]
+        --out <output_dir>
 """
 
 import argparse
@@ -217,7 +217,7 @@ def _create_pure_eb_figure(
     return fig
 
 
-def main(config, pure_eb_path, cov_path, out_dir, specs=()):
+def main(config, pure_eb_path, cov_path, out_dir):
     version = config["fiducial"]["version"]
     fiducial_xip_scale_cut = tuple(config["fiducial"]["fiducial_xip_scale_cut"])
     fiducial_xim_scale_cut = tuple(config["fiducial"]["fiducial_xim_scale_cut"])
@@ -296,8 +296,6 @@ def main(config, pure_eb_path, cov_path, out_dir, specs=()):
 
     # Write evidence.json (based on leak-corrected fiducial data only)
     evidence_data = {
-        "spec_id": "pure_eb_data_vector",
-        **({"spec_path": specs[0]} if specs else {}),
         "generated": datetime.now().isoformat(),
         "evidence": {
             "fiducial": {
@@ -350,16 +348,10 @@ def _from_cli(argv=None):
         "(covariance_processed.txt) for the total ξ± error bars",
     )
     ap.add_argument("--out", required=True, help="Output directory (lc {output})")
-    ap.add_argument(
-        "--specs",
-        nargs="*",
-        default=[],
-        help="Optional spec markdown paths recorded in evidence.json for provenance",
-    )
     a = ap.parse_args(argv)
     with open(a.config) as f:
         config = yaml.safe_load(f)
-    main(config, a.pure_eb_data, a.reporting_cov, a.out, specs=a.specs)
+    main(config, a.pure_eb_data, a.reporting_cov, a.out)
 
 
 if __name__ == "__main__":

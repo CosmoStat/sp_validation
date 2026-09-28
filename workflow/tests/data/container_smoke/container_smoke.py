@@ -11,11 +11,8 @@ written to the output YAML:
     success);
   * which ``snakemake`` package unpickled the injected ``snakemake`` object
     (file + version);
-  * the numeric stack works (numpy eigh on a small fixed matrix).
-    ``OMP_NUM_THREADS`` is recorded but not asserted -- see the assertions;
   * which commit of this checkout is running (git rev-parse from inside the
-    container -- proves /home is bound and usable, not just readable);
-  * which matplotlibrc the job's figures would read.
+    container -- proves /home is bound and usable, not just readable).
 
 Driven by the co-located Snakefile; the assertions on the output YAML live in
 workflow/tests/test_container_smoke.py (candide only).
@@ -26,7 +23,6 @@ import platform
 import subprocess
 import sys
 
-import numpy as np
 import yaml
 
 # --- the job is actually inside the image ---------------------------------
@@ -50,18 +46,6 @@ snakemake_info = {
     "file": snakemake_package.__file__,
 }
 
-# --- numeric stack + threading -----------------------------------------
-rng = np.random.default_rng(seed=42)
-a = rng.standard_normal((8, 8))
-symmetric = a + a.T
-eigenvalues = np.linalg.eigh(symmetric)[0]
-
-numeric_info = {
-    "numpy_version": np.__version__,
-    "eigenvalues": [float(v) for v in eigenvalues],
-    "omp_num_threads": os.environ.get("OMP_NUM_THREADS", "unset"),
-}
-
 # --- provenance: what commit is actually running in the container ---------
 # workflow/tests/data/container_smoke/ -> repo root, four levels up: the
 # checkout the Snakefile came from.
@@ -78,9 +62,6 @@ try:
 except (subprocess.CalledProcessError, FileNotFoundError) as exc:
     commit = f"unavailable ({exc})"
 
-# --- the matplotlibrc a figure rule would read -----------------------------
-import matplotlib  # noqa: E402
-
 provenance = {
     "repo_dir": repo_dir,
     "commit": commit,
@@ -94,9 +75,7 @@ with open(snakemake.output[0], "w") as f:
             "container": container_info,
             "sp_validation": sp_validation_info,
             "snakemake": snakemake_info,
-            "numeric": numeric_info,
             "provenance": provenance,
-            "matplotlibrc": matplotlib.matplotlib_fname(),
         },
         f,
         sort_keys=False,
