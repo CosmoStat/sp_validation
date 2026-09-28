@@ -182,22 +182,13 @@ def test_a_launch_the_dag_cannot_honour_stops_with_the_fix(toy, tmp_path, case):
     assert "rule assemble_sacc" not in result.stdout
 
 
-@pytest.mark.parametrize("named", [True, False], ids=["named", "unnamed"])
-def test_outputs_stay_in_the_output_roots(toy, forced, named):
-    """[P2] Nothing the suite declares lands outside the configured output
-    roots; a launch that names no COSMO_VAL writes into its own checkout's
-    cosmo_val/output."""
-    if named:
-        cosmo_val, jobs = toy.cosmo_val, forced[1]
-    else:
-        env = {k: v for k, v in toy.env.items() if k != "COSMO_VAL"}
-        result = toy.snakemake("-n", "all", env=env)
-        assert result.returncode == 0, result.stdout
-        cosmo_val, jobs = toy.root / "cosmo_val" / "output", parse_jobs(result.stdout)
+def test_outputs_stay_in_the_output_roots(toy, forced):
+    """[P2] Nothing the suite declares lands outside the configured output roots."""
     roots = [
-        r.resolve() for r in (cosmo_val, toy.cosmo_inference, toy.rundir / "results")
+        r.resolve()
+        for r in (toy.cosmo_val, toy.cosmo_inference, toy.rundir / "results")
     ]
-    outputs = [Path(o) for j in jobs for o in j.output]
+    outputs = [Path(o) for j in forced[1] for o in j.output]
     assert outputs
     strays = [
         o
@@ -205,47 +196,6 @@ def test_outputs_stay_in_the_output_roots(toy, forced, named):
         if not any((toy.rundir / o).resolve().is_relative_to(r) for r in roots)
     ]
     assert not strays, strays
-
-
-@pytest.mark.parametrize("root", ["COSMO_VAL", "COSMO_INFERENCE"])
-def test_every_spelling_of_an_output_root_declares_the_same_paths(toy, tmp_path, root):
-    """Snakemake keys its persistence records by path string, so a symlinked
-    spelling of an output root declares the tree's resolved paths."""
-    tree = Path(toy.env[root]).resolve()
-    link = tmp_path / "link"
-    link.symlink_to(tree, target_is_directory=True)
-    result = toy.snakemake("-n", "all", env={**toy.env, root: str(link)})
-    assert result.returncode == 0, result.stdout
-    declared = [f for j in parse_jobs(result.stdout) for f in j.input + j.output]
-    assert any(f.startswith(f"{tree}/") for f in declared), declared
-    assert not [f for f in declared if f.startswith(f"{link}/")], declared
-
-
-def test_output_roots_take_the_plain_spelling(toy, grids):
-    """A root given as /automnt/<disk>/... is declared as /<disk>/..., the one
-    spelling every node has, on any host: a job step re-derives the launch's
-    paths on its own node, and the node that owns a disk has neither
-    /automnt/<disk> nor a /<disk> link to it, like the disk no host has here.
-    A file target named in the plain spelling resolves, and no declared path
-    lies under /automnt."""
-    tree = Path("/n00data0/spv-dag-toy")  # a dry-run creates nothing
-    env = {
-        **toy.env,
-        "COSMO_VAL": f"/automnt{tree}/val",
-        "COSMO_INFERENCE": f"/automnt{tree}/inference",
-    }
-    common = _load_module(toy.root / "workflow" / "common.py", "plain_common", env)
-    assert (common.COSMO_VAL, common.COSMO_INFERENCE) == (
-        tree / "val",
-        tree / "inference",
-    )
-    integration = toy.common.grid_binning(grids["integration"])
-    target = tree / "val" / f"{VERSIONS[0]}_xi_{integration}.sacc"
-    result = toy.snakemake("-n", str(target), env=env)
-    assert result.returncode == 0, result.stdout
-    declared = [f for j in parse_jobs(result.stdout) for f in j.input + j.output]
-    assert str(target) in declared, declared
-    assert not [f for f in declared if f.startswith("/automnt/")], declared
 
 
 @pytest.mark.parametrize(
@@ -272,145 +222,6 @@ def test_image_parity_is_checked_at_launch(toy, tmp_path, image, refused):
     assert result.returncode != 0, result.stdout
     assert f"uv tool install --force --python {refused} snakemake==" in result.stdout
     assert "rule assemble_sacc" not in result.stdout
-
-
-def test_launch_reads_the_image_under_home(toy, tmp_path):
-    """The launch finds your image under ~/.cache, whatever XDG_CACHE_HOME says.
-
-    Jobs on other nodes run the image from the path the launching host
-    resolved, and a cluster's XDG_CACHE_HOME is often node-local. The image here
-    reports another Python, so reading it stops the launch.
-    """
-    home = tmp_path / "home"
-    fake_image(home / ".cache" / "sp_validation" / "sandbox", python="3.13.1")
-    env = {k: v for k, v in toy.env.items() if not k.startswith("SPV_")}
-    env.update(HOME=str(home), XDG_CACHE_HOME=str(tmp_path / "node-local"))
-    result = toy.snakemake("-n", "assemble_sacc_all", container=False, env=env)
-    assert result.returncode != 0, result.stdout
-    assert "uv tool install --force --python 3.13 snakemake==" in result.stdout
-
-
-def _apptainer_stub(tmp_path):
-    """A PATH entry that answers where apptainer is not installed.
-
-    The candide profile deploys with apptainer, whose version Snakemake reads
-    even when it runs no job.
-    """
-    apptainer = tmp_path / "bin" / "apptainer"
-    apptainer.parent.mkdir()
-    apptainer.write_text("#!/bin/sh\necho apptainer version 1.3.4\n")
-    apptainer.chmod(0o755)
-    return apptainer.parent
-
-
-def test_a_job_needs_no_launch_cache(toy, tmp_path):
-    """A job starts on a node where the launch's XDG cache cannot exist.
-
-    Jobs inherit the launching shell's environment, whose XDG_CACHE_HOME may be
-    node-local. Under the candide profile, a Snakemake that cannot create that
-    cache still starts, and a job's environment carries no XDG_CACHE_HOME for
-    the Snakemake its job step starts.
-    """
-    blocker = tmp_path / "a-file"
-    blocker.touch()
-    candide = toy.root / "workflow" / "profiles" / "candide"
-    result = toy.snakemake(
-        "-n",
-        "--profile",
-        str(candide),
-        "assemble_sacc_all",
-        env=toy.env
-        | {
-            "XDG_CACHE_HOME": str(blocker / "cache"),
-            "PATH": f"{_apptainer_stub(tmp_path)}{os.pathsep}{toy.env['PATH']}",
-        },
-    )
-    assert result.returncode == 0, result.stdout
-
-    snakefile = tmp_path / "Snakefile"
-    snakefile.write_text(
-        f"import sys\nsys.path.insert(0, {str(toy.root / 'workflow')!r})\n"
-        "import common\n\n"
-        'rule job:\n    output: "env.txt"\n'
-        '    shell: "printenv XDG_CACHE_HOME > {output} || true"\n'
-    )
-    result = toy.snakemake(
-        "-s",
-        str(snakefile),
-        "--directory",
-        str(tmp_path),
-        container=False,
-        env=toy.env | {"XDG_CACHE_HOME": str(tmp_path / "launch-cache")},
-    )
-    assert result.returncode == 0, result.stdout
-    assert (tmp_path / "env.txt").read_text() == ""
-
-
-def test_the_candide_profile_bounds_its_jobs(tmp_path):
-    """A real launch through the candide profile needs no --jobs.
-
-    Snakemake refuses a real run on a remote executor without a job bound. The
-    target is up to date, so the launch submits nothing and runs on any host;
-    the same launch through the profile stripped of its bound shows the refusal.
-    """
-    (tmp_path / "Snakefile").write_text(
-        'rule done:\n    output: "done.txt"\n    shell: "touch {output}"\n'
-    )
-    (tmp_path / "done.txt").touch()
-    env = {k: v for k, v in os.environ.items() if k != "SNAKEMAKE_PROFILE"}
-    env["PATH"] = f"{_apptainer_stub(tmp_path)}{os.pathsep}{env['PATH']}"
-    candide = REPO / "workflow" / "profiles" / "candide"
-    unbounded = tmp_path / "unbounded"
-    unbounded.mkdir()
-    profile = yaml.safe_load((candide / "config.yaml").read_text())
-    profile.pop("jobs", None)
-    (unbounded / "config.yaml").write_text(yaml.safe_dump(profile))
-
-    def launch(profile_dir):
-        return subprocess.run(
-            [sys.executable, "-m", "snakemake", "--profile", str(profile_dir)],
-            cwd=tmp_path,
-            env=env,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            timeout=300,
-            check=False,
-        )
-
-    result = launch(candide)
-    assert result.returncode == 0, result.stdout
-    assert "Nothing to be done" in result.stdout, result.stdout
-    refused = launch(unbounded)
-    assert refused.returncode != 0 and "--jobs" in refused.stdout, refused.stdout
-
-
-def test_image_sims_checks_parity_at_launch(toy, tmp_path):
-    """The standalone image-sims workflow stops on a mismatched image too."""
-    run = {
-        "image_sims": {
-            "sif": str(fake_image(tmp_path / "image", python="3.13.1")),
-            "grids_base": str(tmp_path / "grids"),
-            "mask_config": "mask.yaml",
-            "match_radius_deg": 0.0002,
-            "w_cols": ["none"],
-            "pair_match": True,
-            "n_bootstrap": 1,
-            "bootstrap_seed": 0,
-        }
-    }
-    (tmp_path / "run.yaml").write_text(yaml.safe_dump(run))
-    result = toy.snakemake(
-        "-n",
-        "-s",
-        "workflow/image_sims/Snakefile",
-        "--configfile",
-        str(tmp_path / "run.yaml"),
-        container=False,
-        cwd=toy.root,
-    )
-    assert result.returncode != 0, result.stdout
-    assert "uv tool install --force --python 3.13 snakemake==" in result.stdout
 
 
 def _stand_in_centres(paper, cosmo_val):

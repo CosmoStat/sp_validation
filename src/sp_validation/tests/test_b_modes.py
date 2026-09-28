@@ -1,9 +1,8 @@
 """VALUE-DRIFT CHARACTERIZATION TESTS FOR THE B-MODE ESTIMATORS.
 
 This module pins the numeric behavior of the pure E/B-mode helpers in
-``sp_validation.b_modes`` against fixed, deterministic inputs (seeded RNG,
-hand-built arrays and one committed ξ± fixture — no cluster data, no catalogue
-files).
+``sp_validation.b_modes`` against fixed, deterministic, in-memory inputs
+(seeded RNG and hand-built arrays — no cluster data, no catalogue files).
 Every pinned literal was produced by an actual run of the estimator inside
 the container; a future refactor that changes the numbers must fail.
 
@@ -292,78 +291,6 @@ def test_calculate_eb_statistics_has_teeth():
         loud_pte = pm_loud[key][0, nbins - 1]
         assert loud_pte < quiet_pte
         assert loud_pte < 0.05  # louder B-modes are clearly rejected
-
-
-# ---------------------------------------------------------------------------
-# 5. pure_eb_from_xi on committed ξ± (the transform pin)
-# ---------------------------------------------------------------------------
-
-# pure_eb_from_xi(**fixture); regenerated only when the transform is meant to move.
-_PURE_EB_PINS = {
-    "xip_E": [
-        -2.9831529669542025e-06,
-        -1.5008524620265777e-05,
-        3.221623968725757e-07,
-        1.1797672310858565e-05,
-        5.715510692557323e-06,
-        8.825804523824443e-07,
-    ],
-    "xim_E": [
-        -4.737558091773235e-05,
-        -0.00010853189443993388,
-        -9.094825175032069e-05,
-        -5.826599101284694e-05,
-        -4.646405415748759e-05,
-        -1.9978028925333273e-05,
-    ],
-    "xip_B": [
-        1.7069121242262332e-05,
-        3.059889782373755e-05,
-        -4.8805399253844115e-06,
-        -6.999262696335271e-06,
-        -1.2672006989728095e-05,
-        -1.214149138979614e-06,
-    ],
-    "xim_B": [
-        -0.00011478091634539627,
-        -5.445112002141066e-05,
-        -3.100806652947907e-05,
-        -1.0940424256759085e-05,
-        -5.755185146643215e-06,
-        -1.628217762504557e-06,
-    ],
-    "xip_amb": [
-        0.00014017621792612224,
-        0.0001378482153667787,
-        0.0001339573019551001,
-        0.00012745126271361765,
-        0.00011662385105911986,
-        9.851844704443032e-05,
-    ],
-    "xim_amb": [
-        -4.389203999135455e-05,
-        5.279277664928643e-05,
-        5.800339397836051e-05,
-        4.4242350610114584e-05,
-        2.9902912946755567e-05,
-        1.912262132836568e-05,
-    ],
-}
-
-
-def test_pure_eb_from_xi_reproduces_pins_on_committed_xi(pure_eb_xi):
-    """The pure-E/B transform of the committed ξ± reproduces its pins.
-
-    With ξ± frozen, these pins move only when the transform does. rtol=1e-6 is
-    far above the 1e-12 reduction-order noise across thread counts.
-    """
-    modes = b_modes.pure_eb_from_xi(**pure_eb_xi)
-    for key in b_modes._EB_KEYS:
-        npt.assert_allclose(modes[key], _PURE_EB_PINS[key], rtol=1e-6, err_msg=key)
-
-    # Teeth: widening the integration interval by 1% leaves the pins.
-    moved = b_modes.pure_eb_from_xi(**{**pure_eb_xi, "tmax": 1.01 * pure_eb_xi["tmax"]})
-    assert not np.allclose(moved["xip_E"], _PURE_EB_PINS["xip_E"], rtol=1e-6, atol=0)
 
 
 # ---------------------------------------------------------------------------

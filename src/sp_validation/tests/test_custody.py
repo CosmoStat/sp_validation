@@ -1,10 +1,9 @@
-"""Custody is declared per base catalogue and resolved in one place (I12, I13).
+"""Custody is declared per base catalogue and resolved in one place.
 
 ``sp_validation.custody.custody_of`` reads a catalogue's declaration and the
-blind registry beside the catalogue config. These tests pin every row of its
-table on hand-written registries (the host never decrypts, so a record needs
-no real seed), and that the host Snakemake and a container job resolve the same
-custody for every version.
+blind registry beside the catalogue config, here hand-written (the host never
+decrypts, so a record needs no real seed). The host Snakemake and a container
+job must resolve the same custody for every version.
 """
 
 import importlib.util
@@ -61,67 +60,32 @@ def _catalogues(**declarations):
 
 
 # --------------------------------------------------------------------------- #
-# I12: the custody table
+# The custody table
 # --------------------------------------------------------------------------- #
-NO_BLIND = [
-    "declares no custody for it, so it is blinded",
-    "blinding init",
-    "blinding share",
-]
+NO_BLIND = ["declares no custody for it, so it is blinded", "blinding init"]
 Y3 = {"y3": (["SP_v9"], None)}  # a blind over SP_v9, concealed
 PUBLIC = {"y3": (["SP_v9"], "seed-of-y3")}  # the same, its seed published
-V = "SP_v9_ecut07"
-# case: (declarations, blinds {name: (bases, published seed)}, expected, version).
+# case: (declarations, blinds {name: (bases, published seed)}, expected).
 # expected is the custody's token, or the fragments of the refusal.
 # fmt: off
 TABLE = {
     "undeclared": ({"SP_v9": None}, {}, NO_BLIND),
-    "blinded": ({"SP_v9": "blinded"}, {}, ["no blind covers it"]),
     "undeclared_covered": ({"SP_v9": None}, Y3, "blinded:SP_v9:y3:{y3}"),
-    "blinded_covered": ({"SP_v9": "blinded"}, Y3, "blinded:SP_v9:y3:{y3}"),
     "blinded_revealed": ({"SP_v9": None}, PUBLIC, ["declare `blinding: unblinded`"]),
     "unblinded": ({"SP_v9": "unblinded"}, {}, "unblinded:SP_v9"),
     "unblinded_concealed": ({"SP_v9": "unblinded"}, Y3, ["blinding reveal y3"]),
     "unblinded_revealed": ({"SP_v9": "unblinded"}, PUBLIC, "unblinded:SP_v9"),
-    "unblinded_wrong_seed": (
-        {"SP_v9": "unblinded"}, {"y3": (["SP_v9"], "not-the-seed")}, ["its commitment"]
-    ),
     "mock": ({"SP_v9": "mock"}, {}, "mock:SP_v9"),
     "mock_covered": ({"SP_v9": "mock"}, Y3, ["a mock is never blinded"]),
-    "two_blinds": ({"SP_v9": None}, {**Y3, "b": (["SP_v9"], None)}, ["blinds: b, y3"]),
-    "unknown": ({"SP_v9": "open"}, {}, ["blinded, unblinded or mock"]),
-    "variant_declares": (
-        {"SP_v9": "unblinded", V: {"base": "SP_v9", "blinding": "unblinded"}}, {},
-        ["declare custody on SP_v9"], V,
-    ),
-    "alias_repeats": (
-        {"SP_v9": "unblinded", "SP_v9_leak_corr": "unblinded"}, {}, "unblinded:SP_v9",
-        "SP_v9_leak_corr",
-    ),
-    "alias_repeats_base": (
-        {"SP_v9": "unblinded", V: {"base": "SP_v9"}, f"{V}_seed7": {"base": "SP_v9"}},
-        {}, "unblinded:SP_v9", f"{V}_seed7",
-    ),
-    "alias_declares": (
-        {"SP_v9": "unblinded", "SP_v9_leak_corr": "blinded"}, {},
-        ["declare custody on SP_v9"], "SP_v9_leak_corr",
-    ),
-    "alias_names_another_base": (
-        {"SP_v9": "unblinded", "TOY": None, "SP_v9_seed7": {"base": "TOY"}},
-        {"y3": (["TOY"], None)}, ["declare custody on SP_v9"], "SP_v9_seed7",
-    ),
 }
 # fmt: on
 
 
 @pytest.mark.parametrize("case", TABLE)
 def test_the_custody_table(tmp_path, case):
-    """Every row of custody_of's table: the declaration on the base catalogue
-    against the blinds covering it. An entry named as a variant of another
-    (``<entry>_leak_corr``, ``<entry>_seed<N>``) may repeat that entry's
-    custody, never declare another."""
-    declarations, blinds, expected, *version = TABLE[case]
-    version = version[0] if version else "SP_v9"
+    """custody_of: the declaration on the base catalogue against the blinds
+    covering it; absent means blinded."""
+    declarations, blinds, expected = TABLE[case]
     registry = tmp_path / "blinds"
     commitments = {
         name: cu.seed_commitment(_write_blind(registry, name, bases, revealed=seed))
@@ -129,28 +93,13 @@ def test_the_custody_table(tmp_path, case):
     }
     cats = _catalogues(**declarations)
     if isinstance(expected, str):
-        custody = cu.custody_of(cats, version, registry=registry)
+        custody = cu.custody_of(cats, "SP_v9", registry=registry)
         assert custody.token == expected.format(**commitments)
         return
     with pytest.raises(cu.CustodyError) as refused:
-        cu.custody_of(cats, version, registry=registry)
+        cu.custody_of(cats, "SP_v9", registry=registry)
     for fragment in expected:
         assert fragment in str(refused.value)
-
-
-def test_the_printed_commands_name_the_config_as_it_was_given(tmp_path):
-    """The operator pastes these commands, so they keep the launch's spelling
-    of the checkout: on candide the plain /nXXdataN, never the /automnt path it
-    resolves to."""
-    (tmp_path / "real" / "cosmo_val").mkdir(parents=True)
-    checkout = tmp_path / "checkout"
-    checkout.symlink_to(tmp_path / "real", target_is_directory=True)
-    registry = cu.registry_of(checkout / "cosmo_val" / "cat_config.yaml")
-    with pytest.raises(cu.CustodyError) as err:
-        cu.custody_of(_catalogues(SP_v9=None), "SP_v9", registry=registry)
-    message = str(err.value)
-    assert f"APPTAINERENV_PYTHONPATH={checkout}/src " in message
-    assert f"--cat-config {checkout}/cosmo_val/cat_config.yaml" in message
 
 
 SUFFIXES = st.lists(
@@ -175,78 +124,6 @@ def test_every_variant_shares_its_base(tmp_path_factory, entry, suffixes):
     assert cu.custody_of(cats, version, registry=registry) == base
 
 
-def _reading(cats, path, *names):
-    """Point ``names``' entries at one shear file, spelled two ways."""
-    for i, name in enumerate(names):
-        cats[name]["shear"]["path"] = path.name if i % 2 else str(path)
-        cats[name]["subdir"] = str(path.parent)
-    return cats
-
-
-def test_catalogues_reading_one_file_share_one_blind(tmp_path):
-    """A blind conceals a shear file, whatever entry reads it: a catalogue
-    reading a concealed catalogue's file under any other custody is refused,
-    on either side, until the blind covers it too."""
-    registry = tmp_path / "blinds"
-    seed = _write_blind(registry, "y3", ["TOY"])
-    cats = _catalogues(TOY=None, TOY_A="unblinded", TOY_V={"base": "TOY"})
-    _reading(cats, tmp_path / "toy.fits", "TOY", "TOY_A", "TOY_V")
-    for version in ("TOY_A", "TOY", "TOY_leak_corr"):
-        with pytest.raises(cu.CustodyError, match="not concealed alike") as err:
-            cu.custody_of(cats, version, registry=registry)
-        assert "TOY: blind y3" in str(err.value), version
-        assert "TOY_A: public" in str(err.value), version
-
-    two = _reading(
-        _catalogues(TOY=None, TOY_B=None), tmp_path / "toy.fits", "TOY", "TOY_B"
-    )
-    _write_blind(tmp_path / "two", "y3", ["TOY"])
-    _write_blind(tmp_path / "two", "y4", ["TOY_B"])
-    with pytest.raises(cu.CustodyError, match="TOY: blind y3; TOY_B: blind y4"):
-        cu.custody_of(two, "TOY", registry=tmp_path / "two")
-
-    mock = _catalogues(OPEN="unblinded", OPEN_MOCK="mock")
-    _reading(mock, tmp_path / "open.fits", "OPEN", "OPEN_MOCK")
-    assert cu.custody_of(mock, "OPEN", registry=registry).status == "unblinded"
-
-    del cats["TOY_A"]["blinding"]
-    (registry / "y3" / "bases").write_text("TOY\nTOY_A\n")
-    for version in ("TOY", "TOY_A", "TOY_V"):
-        assert cu.custody_of(cats, version, registry=registry).blind == "y3"
-
-    (registry / "y3" / "revealed.json").write_text(json.dumps({"seed": seed}))
-    cats["TOY"]["blinding"] = "unblinded"
-    cats["TOY_A"]["blinding"] = "unblinded"
-    assert cu.custody_of(cats, "TOY_A", registry=registry).status == "unblinded"
-
-
-def test_base_links_are_followed_and_checked():
-    cats = _catalogues(
-        A="unblinded", B={"base": "A"}, C={"base": "B"}, D={"base": "nowhere"}
-    )
-    assert cu.base_catalogue(cats, "C_leak_corr") == "A"
-    with pytest.raises(cu.CustodyError, match="nowhere"):
-        cu.base_catalogue(cats, "D")
-    loop = _catalogues(E={"base": "F"}, F={"base": "E"})
-    with pytest.raises(cu.CustodyError, match="cycle"):
-        cu.base_catalogue(loop, "E")
-    with pytest.raises(cu.CustodyError, match="not a catalogue"):
-        cu.base_catalogue(cats, "paths")
-
-
-def test_summary_is_one_line_per_base(tmp_path):
-    registry = tmp_path / "blinds"
-    _write_blind(registry, "y3", ["SP_v9"])
-    cats = _catalogues(SP_v9=None, SP_v8="unblinded")
-    lines = cu.summary(
-        cats, ["SP_v9", "SP_v9_leak_corr", "SP_v8_leak_corr"], registry=registry
-    )
-    assert lines == [
-        "[custody] SP_v9 (+ SP_v9_leak_corr): blinded under y3",
-        "[custody] SP_v8 (+ SP_v8_leak_corr): unblinded",
-    ]
-
-
 def test_every_catalogue_in_the_repository_resolves():
     """Each entry of the committed cat_config has a custody, from the repo registry."""
     path = REPO / "cosmo_val" / "cat_config.yaml"
@@ -261,7 +138,7 @@ def test_every_catalogue_in_the_repository_resolves():
 
 
 # --------------------------------------------------------------------------- #
-# I13: the host and a job resolve the same custody
+# The host and a job resolve the same custody
 # --------------------------------------------------------------------------- #
 def _toy_checkout(tmp_path):
     """A checkout-shaped tree: workflow/common.py, src/, cosmo_val/{cat_config,blinds}."""

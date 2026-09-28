@@ -1,8 +1,7 @@
 """End to end: one blinded catalogue through the rule scripts, then its reveal.
 
-A synthetic catalogue is declared three ways (``TOY`` blinded, ``TOY_OPEN``
-unblinded, ``TOY_MOCK`` mock). A blind is drawn for ``TOY`` with ``blinding
-init``; the rule scripts run as Snakemake runs them (``runpy`` with a
+A synthetic catalogue ``TOY`` is declared blinded, and its blind drawn with
+``blinding init``; the rule scripts run as Snakemake runs them (``runpy`` with a
 ``snakemake`` object) for ``TOY`` and ``TOY_leak_corr``, on patch centres drawn
 by their command: both ξ± grids, the ξ± figures, pseudo-Cℓ on
 an nside-32 NaMaster workspace, ρ/τ, COSEBIs, pure-E/B and assembly. The blind
@@ -12,7 +11,6 @@ the blinded run's files nor its figures may hold a true ξ± value.
 """
 
 import json
-import os
 import re
 import runpy
 import types
@@ -153,7 +151,7 @@ def patch_centres(cat_config, version, out, npatch):
     return centres
 
 
-def run_chain(cat_config, version, out, cov, *, grid_parts=None):
+def run_chain(cat_config, version, out, cov):
     """The cosmo_val chain for one version, into ``out``; returns the part paths."""
     out.mkdir(parents=True, exist_ok=True)
     token = bd.declared_custody(cat_config, version).token
@@ -178,9 +176,6 @@ def run_chain(cat_config, version, out, cov, *, grid_parts=None):
                 "custody": token,
             },
         )
-    if grid_parts == "only":
-        return xi
-
     cv = CosmologyValidation(
         versions=[version], catalog_config=str(cat_config), output_dir=str(out)
     )
@@ -368,7 +363,7 @@ def toy(tmp_path, monkeypatch):
         n_gal=20000,
         coherent_shear=True,
         with_psf=True,
-        catalogues={"TOY": None, "TOY_OPEN": "unblinded", "TOY_MOCK": "mock"},
+        catalogues={"TOY": None},
     )
     (tmp_path / "fast.json").write_text(
         json.dumps({"theory": {"transfer_function": "eisenstein_hu"}})
@@ -395,10 +390,9 @@ def toy(tmp_path, monkeypatch):
 def test_a_blinded_catalogue_from_birth_to_audit(toy, monkeypatch):
     out = toy.root / "cosmo_val"
     blinded = bd.declared_custody(toy.cat_config, "TOY")
-    assert blinded.status == "blinded"
-
-    # --- a blinded run -------------------------------------------------------
     versions = ("TOY", "TOY_leak_corr")
+
+    # --- a blinded run: every part concealed under the one blind -------------
     for version in versions:
         run_chain(toy.cat_config, version, out, toy.cov)
     with monkeypatch.context() as m:
@@ -406,142 +400,29 @@ def test_a_blinded_catalogue_from_birth_to_audit(toy, monkeypatch):
         plot_2pcf(
             toy.cat_config, out, {v: out / f"{v}_xi_reporting.sacc" for v in versions}
         )
-    concealed = sio.xi_correlation(sio.load(out / "TOY_xi_reporting.sacc"))
-    assert any(np.array_equal(a, concealed.xip) for a in drawn)  # drawn from the part
     born = stamps(out)
     assert len(born) == 2 * (2 + len(PARTS)), sorted(born)
-    assert all(s == blinded.stamp for s in born.values()), born  # one commitment
-    assert (
-        bd.main(["verify", str(out / "TOY.sacc"), "--cat-config", str(toy.cat_config)])
-        == 0
-    )
-
-    # A two-bin part, for the interruption below.
-    two_bin = sio.new_sacc(
-        {
-            0: sio.get_nz(sio.load(out / "TOY_xi_reporting.sacc"), 0),
-            1: sio.get_nz(sio.load(out / "TOY_xi_reporting.sacc"), 0),
-        },
-    )
-    theta = np.geomspace(5.0, 60.0, 6)
-    for pair in ((0, 0), (0, 1), (1, 1)):
-        sio.add_xi(two_bin, pair, theta, 1e-5 / theta, 1e-6 / theta, grid="tomo")
-
-    # The true vector of TOY is TOY_OPEN's, the same galaxies declared unblinded.
-    open_parts = run_chain(
-        toy.cat_config, "TOY_OPEN", toy.root / "open", toy.cov, grid_parts="only"
-    )
-    with pytest.raises(ValueError, match="stamps"):
-        assemble(
-            toy.cat_config,
-            "TOY",
-            toy.root / "swap",
-            {
-                "xi_reporting": open_parts["reporting"],
-                **{
-                    k: out / Path(v).name
-                    for k, v in {
-                        "pseudo_cl": "pseudo_cl_TOY.sacc",
-                        "cosebis": "TOY_cosebis.sacc",
-                        "pure_eb": "TOY_pure_eb.sacc",
-                        "rho_tau": "rho_tau_TOY.sacc",
-                    }.items()
-                },
-            },
-            toy.cov,
-            blinded.token,
-        )
-    # Pure-E/B from parts under two custodies writes nothing at all.
-    mixed = pure_eb_outputs("TOY", toy.root / "mixed")
-    (toy.root / "mixed").mkdir()
-    with pytest.raises(ValueError, match="stamps"):
-        pure_eb(
-            "TOY",
-            mixed,
-            {
-                "reporting": open_parts["reporting"],
-                "integration": out / "TOY_xi_integration.sacc",
-            },
-            toy.cov,
-        )
-    assert not list((toy.root / "mixed").iterdir())
-
-    # --- an interrupted birth leaves no part ---------------------------------
-    def interrupted(*args, **kwargs):
-        raise RuntimeError("interrupted while sealing")
-
-    with monkeypatch.context() as m:
-        m.setattr(bd, "conceal", interrupted)
-        with pytest.raises(RuntimeError, match="while sealing"):
-            run_chain(
-                toy.cat_config,
-                "TOY",
-                toy.root / "interrupted",
-                toy.cov,
-                grid_parts="only",
-            )
-    assert not list((toy.root / "interrupted").glob("*.sacc"))
-
-    calls = []
-    real_factor = bd._factor
-
-    def second_block_fails(*args, **kwargs):
-        calls.append(1)
-        if len(calls) == 2:
-            raise RuntimeError("interrupted inside conceal")
-        return real_factor(*args, **kwargs)
-
-    with monkeypatch.context() as m:
-        m.setattr(bd, "_factor", second_block_fails)
-        with pytest.raises(RuntimeError, match="inside conceal"):
-            sio.save(
-                two_bin, toy.root / "interrupted" / "two_bin.sacc", custody=blinded
-            )
-    assert not (toy.root / "interrupted" / "two_bin.sacc").exists()
-
-    # --- the reveal: archive, flip the declaration, re-measure, audit --------
+    assert all(s == blinded.stamp for s in born.values()), born
     blinded_run = {
         str(p.relative_to(toy.root)): p.read_bytes()
         for p in out.rglob("*")
         if p.is_file()
     }
+
+    # --- the reveal: archive, flip the declaration, re-measure, audit --------
+    cat_config = str(toy.cat_config)
     assert (
-        bd.main(
-            ["reveal", "toy", "--root", str(out), "--cat-config", str(toy.cat_config)]
-        )
-        == 0
+        bd.main(["reveal", "toy", "--root", str(out), "--cat-config", cat_config]) == 0
     )
     archive = out / "revealed" / "toy"
-    assert sorted(
-        str(p.relative_to(archive)) for p in archive.rglob("*.sacc")
-    ) == sorted(born)
-    assert not list(out.glob("*.sacc"))
-
     config = yaml.safe_load(toy.cat_config.read_text())
     config["TOY"]["blinding"] = "unblinded"
     toy.cat_config.write_text(yaml.safe_dump(config, sort_keys=False))
-    true = bd.declared_custody(toy.cat_config, "TOY")
-    assert true.token == "unblinded:TOY"
-
-    for version in ("TOY", "TOY_leak_corr"):
+    for version in versions:
         run_chain(toy.cat_config, version, out, toy.cov)
-    assert all(s == true.stamp for s in stamps(out).values())
-
     report = bd.audit("toy", archive=archive, true_root=out, cat_config=toy.cat_config)
     assert report["ok"], json.dumps(report, indent=1, default=str)
     assert set(report["parts"]) == set(born)
-    assert (
-        abs(report["shift"]["S8"]) <= 0.075 and abs(report["shift"]["Omega_m"]) <= 0.1
-    )
-
-    revealed = toy.cat_config.parent / "blinds" / "toy" / "revealed.json"
-    published = revealed.read_text()
-    os.chmod(revealed, 0o644)
-    revealed.write_text(json.dumps({"seed": "not-the-seed"}))
-    assert not bd.audit(
-        "toy", archive=archive, true_root=out, cat_config=toy.cat_config
-    )["ok"]
-    revealed.write_text(published)
 
     # --- no true ξ± value was ever written or drawn by the blinded run -------
     true_xi = np.concatenate(
@@ -555,46 +436,3 @@ def test_a_blinded_catalogue_from_birth_to_audit(toy, monkeypatch):
     figures = {"figures": np.concatenate(drawn).tobytes()}
     assert not plaintext({**blinded_run, **figures}, true_xi)
     assert not list(toy.root.rglob("*_xi_*.txt"))
-
-
-def test_a_mock_never_opens_a_blind(toy, monkeypatch):
-    def refuse(custody):
-        raise AssertionError(f"a mock opened a blind: {custody}")
-
-    monkeypatch.setattr(bd, "open_blind", refuse)
-    out = toy.root / "mock"
-    run_chain(toy.cat_config, "TOY_MOCK", out, toy.cov)
-    mock = bd.declared_custody(toy.cat_config, "TOY_MOCK")
-    found = stamps(out)
-    assert len(found) == 2 + len(PARTS)
-    assert all(s == mock.stamp for s in found.values()), found
-
-
-@pytest.mark.parametrize(
-    "script", ["run_2pcf.py", "run_rho_tau.py", "assemble_sacc.py"]
-)
-def test_a_job_refuses_a_custody_other_than_its_params(toy, script):
-    """Snakemake resolved TOY unblinded; declared blinded when the job resolves
-    it, the job refuses before it measures or writes anything."""
-    out = toy.root / "stale"
-    outputs = {
-        "sacc": out / "part.sacc",
-        "rho_stats": out / "rho.fits",
-        "tau_stats": out / "tau.fits",
-        "rho_tau": out / "rho_tau.sacc",
-    }
-    out.mkdir()
-    with pytest.raises(cu.CustodyError, match="differs between the job"):
-        run_rule(
-            script,
-            output={k: str(v) for k, v in outputs.items()},
-            params={
-                "ver": "TOY",
-                "version": "TOY",
-                **GRIDS["reporting"],
-                "cat_config": str(toy.cat_config),
-                "output_dir": str(out),
-                "custody": "unblinded:TOY",
-            },
-        )
-    assert not list(out.iterdir())

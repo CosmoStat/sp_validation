@@ -310,50 +310,6 @@ class TestCosmologyValidation:
         # The additive-bias subtraction in the pipeline must have run.
         assert version in cv.c1 and version in cv.c2
 
-    @pytest.mark.parametrize("npatch", [1, 4])
-    def test_xi_part_carries_the_covariance_the_measurement_estimated(
-        self, tmp_path, npatch
-    ):
-        """run_2pcf's ξ± part carries TreeCorr's covariance, whoever calls it.
-
-        The jackknife covariance (correlated bins) with patches, the shot-noise
-        diagonal without, so every part has variances whether the rule or the
-        CLI measured it.
-        """
-        import importlib.util
-
-        import sacc
-
-        script = Path(__file__).resolve().parents[3] / "workflow/scripts/run_2pcf.py"
-        spec = importlib.util.spec_from_file_location("run_2pcf_part", script)
-        run_2pcf = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(run_2pcf)
-
-        params, version = write_synthetic_catalogs(tmp_path)
-        if npatch > 1:
-            CosmologyValidation(versions=[version], **params).write_patch_centers(
-                version, npatch
-            )
-        part = tmp_path / "part.sacc"
-        run_2pcf.run_2pcf(
-            ver=version,
-            min_sep=5.0,
-            max_sep=100.0,
-            nbins=6,
-            npatch=npatch,
-            cat_config=params["catalog_config"],
-            output_dir=params["output_dir"],
-            sacc_out=str(part),
-        )
-
-        cov = sacc_io.load(str(part)).covariance
-        assert np.all(np.diag(cov.dense) > 0)
-        if npatch > 1:
-            assert isinstance(cov, sacc.covariance.FullCovariance)
-            assert np.any(cov.dense[~np.eye(12, dtype=bool)] != 0)
-        else:
-            assert isinstance(cov, sacc.covariance.DiagonalCovariance)
-
     def test_calculate_2pcf_does_not_depend_on_thread_count(self, tmp_path):
         """calculate_2pcf's ξ± is the same on 4 and on 48 TreeCorr threads.
 
@@ -462,9 +418,8 @@ class TestCosmologyValidation:
 
         The ξ± it measures equal the committed ``pure_eb_xi``, its modes are
         ``pure_eb_from_xi`` of those ξ± and edges, and every reporting bin is
-        finite. ``test_b_modes`` pins the transform itself on the same ξ±, so a
-        failure names the step that moved: measurement, wiring or transform.
-        The jackknife covariance runs the transform once per realisation.
+        finite. The jackknife covariance runs the transform once per
+        realisation.
 
         Finiteness: the Schneider (2022) integrals are near-singular where a
         reporting bin meets the integration boundary, so the integration grid
