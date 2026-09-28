@@ -366,7 +366,7 @@ def main(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Per-version pseudo-Cl / covariance files (canonical COSMO_VAL tree, blind A).
-    # Mirrors _pseudo_cl_path(ver) / _pseudo_cl_cov_path(ver, blind) in claims.smk.
+    # Mirrors _pseudo_cl_path(ver) / _pseudo_cl_cov_path(ver, blind) in figures.smk.
     # Fiducial-provenance repoint: when --fiducial-version matches and an explicit
     # lc override path is set, read that path instead of the reconstructed pattern
     # (lc files lack the blind=/powspace_nbins= tokens, distinguished by directory).
@@ -491,7 +491,6 @@ def main(
 
     # Build evidence
     evidence_data = {
-        "spec_id": "harmonic_space_pte_matrices",
         "generated": datetime.now().isoformat(),
         "evidence": {
             "blind": fiducial_blind,

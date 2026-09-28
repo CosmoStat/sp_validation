@@ -1,5 +1,5 @@
 # Development image with more bells and whistles
-FROM ghcr.io/cosmostat/shapepipe:im_sims
+FROM ghcr.io/cosmostat/shapepipe:develop
 
 # liblapack-dev: cosmosis's MultiNest links -llapack, and the base image ships
 # only the runtime liblapack.so.3 (no dev symlink). The gsl/cfitsio/fftw3 dev

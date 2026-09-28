@@ -279,15 +279,15 @@ def _real_dry_run(paper, targets):
     "paper, targets",
     [
         ("cosmo_val", ["assemble_sacc_all"]),
-        ("bmodes", ["all_tapestry", "results/ecut/SP_v1.4.6_ecut07.fits"]),
+        ("bmodes", ["paper"]),
     ],
     ids=["cosmo_val", "bmodes"],
 )
 def test_papers_resolve_on_candide(paper, targets):
     """The real paper DAGs resolve against the real catalogues and your image.
 
-    The e-cut catalogue reads its parent's catalogue entry. Your image (the SIF
-    or sandbox `spv-container` manages) is read, so its Python was checked.
+    Your image (the SIF or sandbox `spv-container` manages) is read, so its
+    Python was checked.
     """
     result = _real_dry_run(paper, targets)
     assert result.returncode == 0, result.stdout

@@ -1,4 +1,4 @@
-"""Pure E/B version comparison claim.
+"""Pure E/B version comparison figure.
 
 Visualizes total and B-mode correlation functions across catalog versions.
 Top row: xi_total +/- (same style as data vector plot)
@@ -250,13 +250,12 @@ def main(
     config,
     results_dir,
     out_dir,
-    specs=(),
     fiducial_version=None,
     fiducial_pure_eb_data=None,
 ):
     plotting_config = config["plotting"]
     version_labels = plotting_config["version_labels"]
-    # Leak-corrected, non-ecut versions (matches VERSIONS_LEAK_CORR in claims.smk)
+    # Leak-corrected versions (matches VERSIONS_LEAK_CORR in figures.smk)
     versions = [v for v in config["versions"] if "_leak_corr" in v and "_ecut" not in v]
     blind = config["fiducial"]["blind"]
 
@@ -448,8 +447,6 @@ def main(
             evidence_versions[f"{v}_{key}"] = int(val) if "dof" in key else float(val)
 
     evidence_data = {
-        "spec_id": "pure_eb_version_comparison",
-        **({"spec_path": specs[0]} if specs else {}),
         "generated": datetime.now().isoformat(),
         "evidence": {
             "scale_cuts": {k: list(v) for k, v in scale_cuts.items()},
@@ -481,12 +478,6 @@ def _from_cli(argv=None):
     )
     ap.add_argument("--out", required=True, help="Output directory (lc {output})")
     ap.add_argument(
-        "--specs",
-        nargs="*",
-        default=[],
-        help="Optional spec markdown paths recorded in evidence.json for provenance",
-    )
-    ap.add_argument(
         "--fiducial-version",
         default=None,
         help="Version whose NPZ may be overridden by --fiducial-pure-eb-data "
@@ -505,7 +496,6 @@ def _from_cli(argv=None):
         config,
         a.results_dir,
         a.out,
-        specs=a.specs,
         fiducial_version=a.fiducial_version,
         fiducial_pure_eb_data=a.fiducial_pure_eb_data,
     )
