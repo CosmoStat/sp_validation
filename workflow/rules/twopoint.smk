@@ -62,6 +62,7 @@ rule rho_tau_stats:
     resources:
         mem_mb=30000,
         disk_mb=20000,
+        runtime=360,
     script:
         "../scripts/run_rho_tau.py"
 
