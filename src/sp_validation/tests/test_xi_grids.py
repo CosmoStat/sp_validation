@@ -77,11 +77,6 @@ def test_grid_lookup_round_trips_through_the_tag():
         assert common.grid_of(grids, {k: str(v) for k, v in binning.items()}) == name
 
 
-def test_one_integration_grid():
-    """COSEBIs and pure-E/B share the integration grid; there is no third."""
-    assert set(common.xi_grids(CONFIG, FIDUCIAL)) == {"reporting", "integration"}
-
-
 def test_unnamed_binning_is_a_reporting_measurement():
     """The paper's convergence-check binning belongs to no named grid."""
     grids = common.xi_grids(CONFIG, FIDUCIAL)

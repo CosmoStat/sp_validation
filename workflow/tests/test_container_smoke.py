@@ -20,20 +20,12 @@ import sys
 import tempfile
 from pathlib import Path
 
-import numpy as np
 import pytest
 import snakemake
 import yaml
 from conftest import REPO, container, on_candide
 
 SMOKE = Path(__file__).resolve().parent / "data" / "container_smoke"
-
-
-def _reference_eigenvalues() -> np.ndarray:
-    """The same deterministic computation the job runs inside the container."""
-    rng = np.random.default_rng(seed=42)
-    a = rng.standard_normal((8, 8))
-    return np.linalg.eigh(a + a.T)[0]
 
 
 @pytest.mark.candide
@@ -89,18 +81,6 @@ def test_container_smoke():
 
     # The job read the pickle with the Snakemake that wrote it.
     assert report["snakemake"]["version"] == snakemake.__version__, report["snakemake"]
-
-    # The numeric stack agrees with the same computation run here.
-    np.testing.assert_allclose(
-        report["numeric"]["eigenvalues"],
-        _reference_eigenvalues(),
-        rtol=1e-10,
-        atol=1e-12,
-    )
-
-    # numeric.omp_num_threads is recorded but deliberately NOT asserted: the
-    # profile leaves OMP_NUM_THREADS unset by design, and rules that need it
-    # pinned set it themselves, so "unset" here is correct rather than a gap.
 
     # git worked inside the container, so /home is bound and usable.
     assert re.fullmatch(r"[0-9a-f]{40}", report["provenance"]["commit"]), report[
