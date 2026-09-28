@@ -230,20 +230,20 @@ work on another disk, add it to both bind lists: the candide profile's
 
 ### Run Snakemake from the host, never from inside the container
 
-`snakemake` is a thin host-side tool, pinned once per machine:
+`snakemake` is a thin host-side tool, installed once per machine on the
+image's Python:
 
 ```bash
-uv tool install --python 3.12 snakemake==9.23.1 --with snakemake-executor-plugin-slurm
+uv tool install --python 3.12 snakemake --with snakemake-executor-plugin-slurm
 ```
 
-The Python minor and the version must match the image's (the image's Python
-and the `snakemake` in this repo's `uv.lock`): a `script:` job appends the
-host's `sys.path` — standard library included — to its own so that it can
-unpickle the host's `snakemake` object, so a host on another Python loads
-modules the image lacks from the host's stdlib, and another Snakemake writes a
-pickle the job cannot read. Every launch checks this (`common.check_host_parity`)
-and stops with the reinstall command on a mismatch; an image it cannot read,
-such as a registry tag, is named in one line and passes.
+Any Snakemake version works; the Python minor must be the image's. A `script:`
+job appends the host's `sys.path` to its own and unpickles the host's
+`snakemake` object with the host's own package (the image carries none), so
+that package and its compiled dependencies load into the image's interpreter.
+Every launch checks the minor (`common.check_host_python`) and stops with the
+reinstall command on a mismatch; an image it cannot read, such as a registry
+tag, is named in one line and passes.
 
 Run every `snakemake` command directly on the host — do not `apptainer shell`
 first.
@@ -252,11 +252,6 @@ definitions and submits jobs. Each job carries its own `apptainer exec`
 wrapping from the profile (see above), so the container is where the science
 code runs, not where the orchestrator runs — one container per job, never a
 nested one.
-
-Check for a stray `~/.local/bin/snakemake` (any host-side `pip install --user
-snakemake` leaves one): Apptainer passes your `PATH` and mounts your `$HOME` by
-default, so it can silently shadow the one `uv tool install` set up. `which
-snakemake` should resolve under `uv tool dir`, not `~/.local/bin`.
 
 ### The container image — one per person
 
@@ -389,7 +384,7 @@ visible.
 checkout and — on candide — on the real papers:
 
 ```bash
-uv run --isolated --no-project --python 3.12 --with snakemake==9.23.1 \
+uv run --isolated --no-project --python 3.12 --with snakemake \
     --with snakemake-executor-plugin-slurm --with pytest --with numpy \
     pytest workflow/tests
 ```

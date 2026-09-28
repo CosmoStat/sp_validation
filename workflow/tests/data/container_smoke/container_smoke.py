@@ -9,6 +9,8 @@ written to the output YAML:
     apptainer itself -- without it the rest could all pass on the bare host);
   * which ``sp_validation`` the job imports (file + version, not just import
     success);
+  * which ``snakemake`` package unpickled the injected ``snakemake`` object
+    (file + version);
   * the numeric stack works (numpy eigh on a small fixed matrix).
     ``OMP_NUM_THREADS`` is recorded but not asserted -- see the assertions;
   * which commit of this checkout is running (git rev-parse from inside the
@@ -22,6 +24,7 @@ workflow/tests/test_container_smoke.py (candide only).
 import os
 import platform
 import subprocess
+import sys
 
 import numpy as np
 import yaml
@@ -37,6 +40,14 @@ import sp_validation  # noqa: E402
 sp_validation_info = {
     "version": getattr(sp_validation, "__version__", "unknown"),
     "file": sp_validation.__file__,
+}
+
+# --- the snakemake package the preamble unpickled with ---------------------
+# Read from sys.modules: importing it here would rebind the injected global.
+snakemake_package = sys.modules["snakemake"]
+snakemake_info = {
+    "version": snakemake_package.__version__,
+    "file": snakemake_package.__file__,
 }
 
 # --- numeric stack + threading -----------------------------------------
@@ -82,6 +93,7 @@ with open(snakemake.output[0], "w") as f:
         {
             "container": container_info,
             "sp_validation": sp_validation_info,
+            "snakemake": snakemake_info,
             "numeric": numeric_info,
             "provenance": provenance,
             "matplotlibrc": matplotlib.matplotlib_fname(),
