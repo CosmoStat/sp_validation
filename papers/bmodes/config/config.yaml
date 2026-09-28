@@ -28,7 +28,7 @@ fiducial:
   mock_version: SP_v1.4.6.3
 
   # The mock version's catalogue under each n(z) realisation: entries identical
-  # but for shear.redshift_path, compared by bb_covariance_blind_independence.
+  # but for shear.redshift_path, compared by bb_covariance_nz_independence.
   nz_realisations:
     A: SP_v1.4.6.3_A_leak_corr
     B: SP_v1.4.6.3_B_leak_corr

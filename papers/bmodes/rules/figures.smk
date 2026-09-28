@@ -32,7 +32,7 @@ FIDUCIAL_VERSION = FIDUCIAL["version"]
 MOCK_VERSION = f"{FIDUCIAL['mock_version']}_leak_corr"
 
 # Catalogues identical to the mock version but for their n(z) realisation,
-# keyed by realisation label: bb_covariance_blind_independence compares them.
+# keyed by realisation label: bb_covariance_nz_independence compares them.
 NZ_REALISATIONS = FIDUCIAL["nz_realisations"]
 
 # Filter versions for different analysis types
@@ -421,7 +421,7 @@ rule harmonic_space_pte_matrices:
     Appendix: N-panel composite for all versions from config.versions
 
     n(z)-realisation independence of the BB covariance is validated in
-    bb_covariance_blind_independence.
+    bb_covariance_nz_independence.
     """
     input:
         # Harmonic PTE matrices for both corrected and uncorrected versions
@@ -439,12 +439,13 @@ rule harmonic_space_pte_matrices:
         "../scripts/harmonic_space_pte_matrices.py"
 
 
-rule bb_covariance_blind_independence:
+rule bb_covariance_nz_independence:
     """Test BB covariance independence of the n(z) realisation vs EE variation.
 
-    BB covariances should be stable across the A/B/C n(z) realisations (null
+    BB covariances should be stable across the n(z) realisations (null
     signal → no sample variance). EE covariances should vary (~10%) due to
-    sample variance from cosmological signal.
+    sample variance from cosmological signal. The first realisation is the
+    reference each of the others is compared against.
 
     Covers all three analysis spaces: Pure E/B, COSEBIS, and harmonic (pseudo-Cl).
 
@@ -469,10 +470,10 @@ rule bb_covariance_blind_independence:
         theta_min=config["cosebis"]["theta_min"],
         theta_max=config["cosebis"]["theta_max"],
     output:
-        evidence=f"{TAPESTRY_DIR}/bb_covariance_blind_independence/evidence.json",
-        figure=f"{TAPESTRY_DIR}/bb_covariance_blind_independence/figure.png",
+        evidence=f"{TAPESTRY_DIR}/bb_covariance_nz_independence/evidence.json",
+        figure=f"{TAPESTRY_DIR}/bb_covariance_nz_independence/figure.png",
     script:
-        "../scripts/bb_covariance_blind_independence.py"
+        "../scripts/bb_covariance_nz_independence.py"
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -539,4 +540,4 @@ rule cosebis_filter_overlay:
 # Local Rules Declaration
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-localrules: cl_data_vector, cl_version_comparison, pure_eb_covariance, pure_eb_data_vector, pure_eb_version_comparison, cosebis_version_comparison, cosebis_data_vector, config_space_pte_matrices, harmonic_space_pte_matrices, bb_covariance_blind_independence, harmonic_config_cosebis_comparison, cosebis_filter_overlay
+localrules: cl_data_vector, cl_version_comparison, pure_eb_covariance, pure_eb_data_vector, pure_eb_version_comparison, cosebis_version_comparison, cosebis_data_vector, config_space_pte_matrices, harmonic_space_pte_matrices, bb_covariance_nz_independence, harmonic_config_cosebis_comparison, cosebis_filter_overlay

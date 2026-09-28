@@ -14,7 +14,7 @@ FIGURE_RULES = [
     "cl_version_comparison",
     "config_space_pte_matrices",
     "harmonic_space_pte_matrices",
-    "bb_covariance_blind_independence",
+    "bb_covariance_nz_independence",
     "cosebis_filter_overlay",
 ]
 
