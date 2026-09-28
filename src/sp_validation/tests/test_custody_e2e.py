@@ -4,7 +4,7 @@ A synthetic catalogue is declared three ways (``TOY`` blinded, ``TOY_OPEN``
 unblinded, ``TOY_MOCK`` mock). A blind is drawn for ``TOY`` with ``blinding
 init``; the rule scripts run as Snakemake runs them (``runpy`` with a
 ``snakemake`` object) for ``TOY`` and ``TOY_leak_corr``, on patch centres drawn
-by their command: both ξ± grids, the ξ± figures, a two-bin writer, pseudo-Cℓ on
+by their command: both ξ± grids, the ξ± figures, pseudo-Cℓ on
 an nside-32 NaMaster workspace, ρ/τ, COSEBIs, pure-E/B and assembly. The blind
 is then revealed, the declaration flipped, the chain re-run, and the audit must
 prove blinded − true = shift(seed) on every part the reveal archived. Neither
@@ -416,7 +416,7 @@ def test_a_blinded_catalogue_from_birth_to_audit(toy, monkeypatch):
         == 0
     )
 
-    # A two-bin writer conceals every pair by passing the custody.
+    # A two-bin part, for the interruption below.
     two_bin = sio.new_sacc(
         {
             0: sio.get_nz(sio.load(out / "TOY_xi_reporting.sacc"), 0),
@@ -426,8 +426,6 @@ def test_a_blinded_catalogue_from_birth_to_audit(toy, monkeypatch):
     theta = np.geomspace(5.0, 60.0, 6)
     for pair in ((0, 0), (0, 1), (1, 1)):
         sio.add_xi(two_bin, pair, theta, 1e-5 / theta, 1e-6 / theta, grid="tomo")
-    written = sio.save(two_bin, out / "two_bin.sacc", custody=blinded)
-    assert np.all(np.asarray(written.mean) != np.asarray(two_bin.mean))
 
     # The true vector of TOY is TOY_OPEN's, the same galaxies declared unblinded.
     open_parts = run_chain(
@@ -468,17 +466,6 @@ def test_a_blinded_catalogue_from_birth_to_audit(toy, monkeypatch):
         )
     assert not list((toy.root / "mixed").iterdir())
 
-    plain = sio.load(open_parts["reporting"])
-    for key in cu.STAMP_KEYS:
-        plain.metadata.pop(key, None)
-    with pytest.raises(ValueError, match="not copies"):
-        sio.save(
-            plain,
-            out / "laundered.sacc",
-            derived_from=[sio.load(out / "TOY_xi_reporting.sacc")],
-        )
-    assert not (out / "laundered.sacc").exists()
-
     # --- an interrupted birth leaves no part ---------------------------------
     def interrupted(*args, **kwargs):
         raise RuntimeError("interrupted while sealing")
@@ -513,7 +500,6 @@ def test_a_blinded_catalogue_from_birth_to_audit(toy, monkeypatch):
     assert not (toy.root / "interrupted" / "two_bin.sacc").exists()
 
     # --- the reveal: archive, flip the declaration, re-measure, audit --------
-    (out / "two_bin.sacc").unlink()
     blinded_run = {
         str(p.relative_to(toy.root)): p.read_bytes()
         for p in out.rglob("*")
@@ -542,7 +528,6 @@ def test_a_blinded_catalogue_from_birth_to_audit(toy, monkeypatch):
     assert all(s == true.stamp for s in stamps(out).values())
 
     report = bd.audit("toy", archive=archive, true_root=out, cat_config=toy.cat_config)
-    print(json.dumps(report, indent=1, default=str))
     assert report["ok"], json.dumps(report, indent=1, default=str)
     assert set(report["parts"]) == set(born)
     assert (

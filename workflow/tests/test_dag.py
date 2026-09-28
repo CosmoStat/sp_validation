@@ -21,21 +21,31 @@ from conftest import (
 )
 
 
-def test_assemble_resolves(toy):
-    """Each terminal file gathers every part and the analytic covariances.
-
-    The ξ± block takes the CosmoCov covariance on the reporting grid, and the
-    harmonic block is the part on the fiducial harmonic binning with the
-    NaMaster covariance of that same binning.
-    """
-    result = toy.snakemake("-n", "assemble_sacc_all")
+@pytest.fixture(scope="module")
+def forced(toy):
+    """``snakemake -F -n all`` on the toy: its output and every job it schedules."""
+    result = toy.snakemake("-F", "-n", "all")
     assert result.returncode == 0, result.stdout
-    jobs = [j for j in parse_jobs(result.stdout) if j.rule == "assemble_sacc"]
-    grids = toy.common.xi_grids(toy.config, toy.config["fiducial"])
+    return result.stdout, parse_jobs(result.stdout)
+
+
+@pytest.fixture(scope="module")
+def grids(toy):
+    return toy.common.xi_grids(toy.config, toy.config["fiducial"])
+
+
+def test_assembly_gathers_every_part_and_its_covariances(toy, forced, grids):
+    """[P1] Each terminal file gathers every part and the analytic covariances:
+    ξ± and ρ/τ on the reporting grid with CosmoCov's covariance there, the
+    pseudo-Cℓ part and NaMaster covariance on one harmonic binning, and
+    COSEBIs and pure-E/B, which read the one integration-grid part and its
+    CosmoCov covariance."""
+    jobs = forced[1]
     reporting = toy.common.grid_binning(grids["reporting"])
     harmonic = toy.common.pseudo_cl_tag(toy.config)
-    assert sorted(j.wildcards["version"] for j in jobs) == sorted(VERSIONS)
-    for job in jobs:
+    assembled = [j for j in jobs if j.rule == "assemble_sacc"]
+    assert sorted(j.wildcards["version"] for j in assembled) == sorted(VERSIONS)
+    for job in assembled:
         version = job.wildcards["version"]
         assert [Path(o).name for o in job.output] == [f"{version}.sacc"]
         assert {Path(f).name for f in job.input} == {
@@ -48,49 +58,30 @@ def test_assemble_resolves(toy):
             f"rho_tau_{version}_{reporting}.sacc",
         }, job.input
 
-
-def test_one_integration_grid(toy):
-    """ξ± is measured on two grids, and both B-mode statistics share one.
-
-    COSEBIs and pure-E/B read the same integration-grid part and the same
-    CosmoCov covariance on that grid; no other binning is measured.
-    """
-    result = toy.snakemake("-n", "assemble_sacc_all")
-    assert result.returncode == 0, result.stdout
-    jobs = parse_jobs(result.stdout)
-    grids = toy.common.xi_grids(toy.config, toy.config["fiducial"])
-
-    measured = {
+    measured = [
         (j.wildcards["version"], toy.common.grid_of(grids, j.wildcards))
         for j in jobs
         if j.rule == "xi"
-    }
-    assert len([j for j in jobs if j.rule == "xi"]) == len(measured), result.stdout
-    assert measured == {(v, g) for v in VERSIONS for g in grids}, measured
-    assert set(grids) == {"reporting", "integration"}
-
-    tag = toy.common.grid_binning(grids["integration"])
+    ]
+    assert sorted(measured) == sorted((v, g) for v in VERSIONS for g in grids)
+    integration = toy.common.grid_binning(grids["integration"])
     for version in VERSIONS:
         by_rule = {
             j.rule: set(j.input) for j in jobs if j.wildcards.get("version") == version
         }
-        part = str(toy.cosmo_val / f"{version}_xi_{tag}.sacc")
-        covariance = str(toy.covariances[version, "g"])
-        assert by_rule["cv_cosebis"] == {part, covariance}, by_rule["cv_cosebis"]
-        assert {part, covariance} <= by_rule["cv_pure_eb"], by_rule["cv_pure_eb"]
+        part = str(toy.cosmo_val / f"{version}_xi_{integration}.sacc")
+        pair = {part, str(toy.covariances[version, "g"])}
+        assert by_rule["cv_cosebis"] == pair, by_rule["cv_cosebis"]
+        assert pair <= by_rule["cv_pure_eb"], by_rule["cv_pure_eb"]
 
 
-def test_xi_leaves_a_measurement_only_as_a_part(toy):
-    """No job reads or writes a ξ± text dump; the ξ± figures draw the parts."""
-    result = toy.snakemake("-n", "all")
-    assert result.returncode == 0, result.stdout
-    jobs = parse_jobs(result.stdout)
+def test_xi_leaves_a_measurement_only_as_a_part(toy, forced, grids):
+    """[P12] No job reads or writes a ξ± text dump; the ξ± figures draw the parts."""
+    jobs = forced[1]
     dumps = [
         f for j in jobs for f in j.input + j.output if re.search(r"_xi_.*\.txt$", f)
     ]
     assert not dumps, dumps
-
-    grids = toy.common.xi_grids(toy.config, toy.config["fiducial"])
     reporting = toy.common.grid_binning(grids["reporting"])
     for rule in ("cv_plot_2pcf", "cv_ratio_xi_sys_xi"):
         (job,) = [j for j in jobs if j.rule == rule]
@@ -99,21 +90,14 @@ def test_xi_leaves_a_measurement_only_as_a_part(toy):
         }, job.input
 
 
-def test_patch_centres_are_an_input_no_rule_draws(toy):
-    """Every patched ξ± job splits at its base catalogue's centres, and even a
-    forced run writes none: a re-draw cannot be reproduced."""
-    result = toy.snakemake("-F", "-n", "assemble_sacc_all")
-    assert result.returncode == 0, result.stdout
-    jobs = parse_jobs(result.stdout)
-    npatch = toy.common.xi_grids(toy.config, toy.config["fiducial"])["reporting"][
-        "npatch"
-    ]
+def test_patch_centres_are_an_input_no_rule_draws(toy, forced, grids):
+    """[P13] Every patched ξ± job, the variant's too, splits at its base
+    catalogue's centres, and even a forced run writes none."""
+    jobs = forced[1]
+    npatch = grids["reporting"]["npatch"]
     assert npatch > 1
     centres = str(toy.cosmo_val / "patches" / f"{VERSIONS[0]}_npatch={npatch}.dat")
-
-    xi = [j for j in jobs if j.rule == "xi"]
-    assert {j.wildcards["version"] for j in xi} == set(VERSIONS)
-    for job in xi:
+    for job in [j for j in jobs if j.rule == "xi"]:
         patched = int(job.wildcards["npatch"]) > 1
         assert [f for f in job.input if "/patches/" in f] == (
             [centres] if patched else []
@@ -122,40 +106,99 @@ def test_patch_centres_are_an_input_no_rule_draws(toy):
     assert not drawn, drawn
 
 
-def test_a_tree_without_centres_stops_the_launch(toy, tmp_path):
-    """A launch into a tree without the centres names the command that draws
-    them, for the base catalogue."""
+def test_custody_is_the_checkouts_and_no_rule_touches_a_blind(toy, forced, tmp_path):
+    """[P9, P10, P8] A catalogue and its variant share one custody line; even a
+    forced run schedules nothing that reads or writes the registry; and a
+    config file declaring the catalogue unblinded changes nothing."""
+    output, jobs = forced
+    line = f"[custody] {VERSIONS[0]} (+ {VERSIONS[1]}): blinded under toy"
+    assert [x for x in output.splitlines() if x.startswith("[custody]")] == [line]
+    registry = (toy.root / "cosmo_val" / "blinds").resolve()
+    assert not [j.rule for j in jobs if "blind" in j.rule]
+    touched = [
+        f
+        for j in jobs
+        for f in j.input + j.output
+        if (toy.rundir / f).resolve().is_relative_to(registry)
+    ]
+    assert not touched, touched
+
+    override = tmp_path / "override.yaml"
+    override.write_text(yaml.safe_dump({VERSIONS[0]: {"blinding": "unblinded"}}))
+    result = toy.snakemake("-n", "assemble_sacc_all", "--configfile", str(override))
+    assert result.returncode == 0, result.stdout
+    assert line in result.stdout
+
+
+def _launch_refusals(toy, tmp_path):
+    """Launches the DAG cannot honour: ``(args, Toy.snakemake kwargs, message)``."""
+    campaign = tmp_path / "campaign.yaml"
+    config = dict(toy.config, cosmo_val=dict(toy.config["cosmo_val"], type="mock"))
+    campaign.write_text(yaml.safe_dump(config))
     npatch = toy.common.xi_grids(toy.config, toy.config["fiducial"])["reporting"][
         "npatch"
     ]
-    result = toy.snakemake(
-        "-n", "assemble_sacc_all", env={**toy.env, "COSMO_VAL": str(tmp_path)}
-    )
     plain = toy.common._plain
+    return {
+        # [P6] a blinded catalogue no blind covers: pull, then draw or share
+        "no_blind": (
+            [],
+            dict(config=[f'versions=["{UNCOVERED}"]']),
+            ["git pull first", "python -m sp_validation.blinding init", "share"],
+        ),
+        # [P11] unblinded under a concealed blind, and the removed campaign switch
+        "unrevealed": (
+            [],
+            dict(config=[f'versions=["{STALE}"]']),
+            ["blinding reveal stale"],
+        ),
+        "campaign_type": (
+            ["--configfile", str(campaign)],
+            {},
+            ["custody is declared per catalogue in cosmo_val/cat_config.yaml"],
+        ),
+        # a tree without its patch centres: the command that draws them
+        "no_centres": (
+            [],
+            dict(env={**toy.env, "COSMO_VAL": str(tmp_path)}),
+            [
+                f"python -m sp_validation.cosmo_val.patch_centers {VERSIONS[0]} {npatch} "
+                f"--cat-config {plain(toy.root / 'cosmo_val' / 'cat_config.yaml')} "
+                f"--output-dir {plain(tmp_path)}"
+            ],
+        ),
+    }
+
+
+@pytest.mark.parametrize(
+    "case", ["no_blind", "unrevealed", "campaign_type", "no_centres"]
+)
+def test_a_launch_the_dag_cannot_honour_stops_with_the_fix(toy, tmp_path, case):
+    args, launch, message = _launch_refusals(toy, tmp_path)[case]
+    result = toy.snakemake("-n", "assemble_sacc_all", *args, **launch)
     assert result.returncode != 0, result.stdout
-    assert (
-        f"python -m sp_validation.cosmo_val.patch_centers {VERSIONS[0]} {npatch} "
-        f"--cat-config {plain(toy.root / 'cosmo_val' / 'cat_config.yaml')} "
-        f"--output-dir {plain(tmp_path)}"
-    ) in result.stdout, result.stdout
+    for fragment in message:
+        assert fragment in result.stdout, result.stdout
+    assert "rule assemble_sacc" not in result.stdout
 
 
 @pytest.mark.parametrize("named", [True, False], ids=["named", "unnamed"])
-def test_outputs_stay_in_the_output_roots(toy, named):
-    """Nothing the suite declares lands outside the configured output roots.
-
-    A launch that names no COSMO_VAL writes into its own checkout's
-    cosmo_val/output.
-    """
-    env = toy.env if named else {k: v for k, v in toy.env.items() if k != "COSMO_VAL"}
-    cosmo_val = toy.cosmo_val if named else toy.root / "cosmo_val" / "output"
-    result = toy.snakemake("-n", "all", env=env)
-    assert result.returncode == 0, result.stdout
+def test_outputs_stay_in_the_output_roots(toy, forced, named):
+    """[P2] Nothing the suite declares lands outside the configured output
+    roots; a launch that names no COSMO_VAL writes into its own checkout's
+    cosmo_val/output."""
+    if named:
+        cosmo_val, jobs = toy.cosmo_val, forced[1]
+    else:
+        env = {k: v for k, v in toy.env.items() if k != "COSMO_VAL"}
+        result = toy.snakemake("-n", "all", env=env)
+        assert result.returncode == 0, result.stdout
+        cosmo_val, jobs = toy.root / "cosmo_val" / "output", parse_jobs(result.stdout)
     roots = [
         r.resolve() for r in (cosmo_val, toy.cosmo_inference, toy.rundir / "results")
     ]
-    outputs = [Path(o) for j in parse_jobs(result.stdout) for o in j.output]
-    assert outputs, result.stdout
+    outputs = [Path(o) for j in jobs for o in j.output]
+    assert outputs
     strays = [
         o
         for o in outputs
@@ -178,7 +221,7 @@ def test_every_spelling_of_an_output_root_declares_the_same_paths(toy, tmp_path,
     assert not [f for f in declared if f.startswith(f"{link}/")], declared
 
 
-def test_output_roots_take_the_plain_spelling(toy):
+def test_output_roots_take_the_plain_spelling(toy, grids):
     """A root given as /automnt/<disk>/... is declared as /<disk>/..., the one
     spelling every node has, on any host: a job step re-derives the launch's
     paths on its own node, and the node that owns a disk has neither
@@ -196,7 +239,6 @@ def test_output_roots_take_the_plain_spelling(toy):
         tree / "val",
         tree / "inference",
     )
-    grids = toy.common.xi_grids(toy.config, toy.config["fiducial"])
     integration = toy.common.grid_binning(grids["integration"])
     target = tree / "val" / f"{VERSIONS[0]}_xi_{integration}.sacc"
     result = toy.snakemake("-n", str(target), env=env)
@@ -207,31 +249,29 @@ def test_output_roots_take_the_plain_spelling(toy):
 
 
 @pytest.mark.parametrize(
-    "python, snakemake_version",
-    [("3.13.1", None), (None, "9.0.0")],
-    ids=["python-minor", "snakemake"],
+    "image, refused",
+    [
+        (dict(python="3.13.1"), "3.13"),
+        (dict(snakemake_version="9.0.0"), HOST_PYTHON.rsplit(".", 1)[0]),
+        ("docker://example.org/image:tag", None),
+    ],
+    ids=["python-minor", "snakemake", "registry-tag"],
 )
-def test_image_parity_is_checked_at_launch(toy, tmp_path, python, snakemake_version):
-    """An image whose Python minor or Snakemake differs stops the launch."""
-    image = fake_image(
-        tmp_path / "image",
-        **({"python": python} if python else {}),
-        **({"snakemake_version": snakemake_version} if snakemake_version else {}),
-    )
+def test_image_parity_is_checked_at_launch(toy, tmp_path, image, refused):
+    """[P3] An image whose Python minor or Snakemake differs stops the launch
+    with the reinstall line; a registry tag cannot be inspected, and the
+    launch says so and goes on."""
+    if isinstance(image, dict):
+        image = fake_image(tmp_path / "image", **image)
     result = toy.snakemake("-n", "assemble_sacc_all", container=image)
+    if refused is None:
+        assert result.returncode == 0 and "parity unchecked" in result.stdout, (
+            result.stdout
+        )
+        return
     assert result.returncode != 0, result.stdout
-    minor = ".".join((python or HOST_PYTHON).split(".")[:2])
-    assert f"uv tool install --force --python {minor} snakemake==" in result.stdout
+    assert f"uv tool install --force --python {refused} snakemake==" in result.stdout
     assert "rule assemble_sacc" not in result.stdout
-
-
-def test_unreadable_image_is_named_not_fatal(toy):
-    """A registry tag cannot be inspected; the launch says so and goes on."""
-    result = toy.snakemake(
-        "-n", "assemble_sacc_all", container="docker://example.org/image:tag"
-    )
-    assert result.returncode == 0, result.stdout
-    assert "parity unchecked" in result.stdout
 
 
 def test_launch_reads_the_image_under_home(toy, tmp_path):
@@ -371,76 +411,6 @@ def test_image_sims_checks_parity_at_launch(toy, tmp_path):
     )
     assert result.returncode != 0, result.stdout
     assert "uv tool install --force --python 3.13 snakemake==" in result.stdout
-
-
-def _custody_lines(output):
-    return [line for line in output.splitlines() if line.startswith("[custody]")]
-
-
-def test_a_catalogue_without_a_blind_stops_the_launch(toy):
-    """A blinded catalogue with no blind fails at parse: pull, then draw or share."""
-    result = toy.snakemake(
-        "-n", "assemble_sacc_all", config=[f'versions=["{UNCOVERED}"]']
-    )
-    assert result.returncode != 0, result.stdout
-    assert "git pull first" in result.stdout
-    assert "python -m sp_validation.blinding init" in result.stdout
-    assert "share" in result.stdout
-    assert "rule assemble_sacc" not in result.stdout
-
-
-def test_no_config_line_unblinds_a_catalogue(toy, tmp_path):
-    """Custody is read from the checkout's cat_config, never from the merged config."""
-    override = tmp_path / "override.yaml"
-    override.write_text(yaml.safe_dump({VERSIONS[0]: {"blinding": "unblinded"}}))
-    result = toy.snakemake("-n", "assemble_sacc_all", "--configfile", str(override))
-    assert result.returncode == 0, result.stdout
-    assert f"[custody] {VERSIONS[0]} (+ {VERSIONS[1]}): blinded under toy" in (
-        _custody_lines(result.stdout)
-    )
-
-
-def test_a_catalogue_and_its_variant_share_one_custody(toy):
-    result = toy.snakemake("-n", "assemble_sacc_all")
-    assert result.returncode == 0, result.stdout
-    assert _custody_lines(result.stdout) == [
-        f"[custody] {VERSIONS[0]} (+ {VERSIONS[1]}): blinded under toy"
-    ]
-
-
-def test_no_rule_draws_or_touches_a_blind(toy):
-    """Even a forced run schedules nothing that reads or writes the registry."""
-    result = toy.snakemake("-F", "-n", "all")
-    assert result.returncode == 0, result.stdout
-    jobs = parse_jobs(result.stdout)
-    registry = (toy.root / "cosmo_val" / "blinds").resolve()
-    assert jobs
-    assert not [j.rule for j in jobs if "blind" in j.rule]
-    touched = [
-        f
-        for j in jobs
-        for f in j.input + j.output
-        if (toy.rundir / f).resolve().is_relative_to(registry)
-    ]
-    assert not touched, touched
-
-
-def test_the_campaign_type_switch_is_refused(toy, tmp_path):
-    """A config carrying cosmo_val.type stops the launch with the pointer."""
-    config = dict(toy.config, cosmo_val=dict(toy.config["cosmo_val"], type="mock"))
-    path = tmp_path / "config.yaml"
-    path.write_text(yaml.safe_dump(config))
-    result = toy.snakemake("-n", "assemble_sacc_all", "--configfile", str(path))
-    assert result.returncode != 0, result.stdout
-    assert "custody is declared per catalogue in cosmo_val/cat_config.yaml" in (
-        result.stdout
-    )
-
-
-def test_unblinding_a_concealed_catalogue_needs_the_reveal(toy):
-    result = toy.snakemake("-n", "assemble_sacc_all", config=[f'versions=["{STALE}"]'])
-    assert result.returncode != 0, result.stdout
-    assert "blinding reveal stale" in result.stdout
 
 
 def _stand_in_centres(paper, cosmo_val):
