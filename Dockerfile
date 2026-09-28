@@ -72,9 +72,8 @@ WORKDIR /sp_validation
 # our lock — instead of pruning them. Copy the lock + manifest first so this
 # layer caches independently of source edits. Extras: test (CI unit suite),
 # glass (GLASS map-level mock — pulls glass.ext.camb + the cosmology wrapper),
-# workflow (Snakemake + mpi4py runners). cs_util 0.2.2 (with cs_util.size) and a
-# numba-safe numpy 2.4.6 come straight from the lock, so the old ad-hoc snakemake
-# and cs_util `--upgrade` layers are gone.
+# workflow (mpi4py, CosmoSIS and the other rule-script runners). cs_util and a
+# numba-safe numpy come straight from the lock.
 COPY pyproject.toml uv.lock /sp_validation/
 
 # cosmosis builds MPI-enabled polychord/multinest only when MPIFC is set: its
@@ -87,6 +86,14 @@ ENV MPIFC=/opt/ompi/bin/mpif90
 
 RUN uv sync --frozen --inexact --no-install-project \
     --extra test --extra glass --extra workflow
+
+# No snakemake in the image. A `script:` job unpickles the host Snakemake's
+# `snakemake` object with whichever snakemake it imports first, and the image's
+# site-packages precede the host's; with none here, the job reads the pickle with
+# the package that wrote it, so the host may run any Snakemake. The base image's
+# jupyter extra brings one, which `--inexact` keeps.
+RUN uv pip freeze | grep -io '^snakemake[a-z0-9_-]*' | xargs -r uv pip uninstall \
+    && ! /app/.venv/bin/python -c "import snakemake" 2>/dev/null
 
 # The CosmoSIS Standard Library: the module files (camb interface, projection,
 # 2pt likelihood, ...) the cosmo_inference pipelines name. The `workflow` extra

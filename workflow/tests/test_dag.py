@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 import yaml
-from conftest import HOST_PYTHON, REPO, VERSIONS, fake_image, on_candide, parse_jobs
+from conftest import REPO, VERSIONS, fake_image, on_candide, parse_jobs
 
 
 def test_assemble_resolves(toy):
@@ -93,22 +93,12 @@ def test_outputs_stay_in_the_output_roots(toy, named):
     assert not strays, strays
 
 
-@pytest.mark.parametrize(
-    "python, snakemake_version",
-    [("3.13.1", None), (None, "9.0.0")],
-    ids=["python-minor", "snakemake"],
-)
-def test_image_parity_is_checked_at_launch(toy, tmp_path, python, snakemake_version):
-    """An image whose Python minor or Snakemake differs stops the launch."""
-    image = fake_image(
-        tmp_path / "image",
-        **({"python": python} if python else {}),
-        **({"snakemake_version": snakemake_version} if snakemake_version else {}),
-    )
+def test_image_python_is_checked_at_launch(toy, tmp_path):
+    """An image on another Python minor stops the launch."""
+    image = fake_image(tmp_path / "image", python="3.13.1")
     result = toy.snakemake("-n", "assemble_sacc_all", container=image)
     assert result.returncode != 0, result.stdout
-    minor = ".".join((python or HOST_PYTHON).split(".")[:2])
-    assert f"uv tool install --force --python {minor} snakemake==" in result.stdout
+    assert "uv tool install --force --python 3.13 snakemake " in result.stdout
     assert "rule assemble_sacc" not in result.stdout
 
 
@@ -118,7 +108,7 @@ def test_unreadable_image_is_named_not_fatal(toy):
         "-n", "assemble_sacc_all", container="docker://example.org/image:tag"
     )
     assert result.returncode == 0, result.stdout
-    assert "parity unchecked" in result.stdout
+    assert "Python unchecked" in result.stdout
 
 
 def test_launch_reads_the_image_under_home(toy, tmp_path):
@@ -134,7 +124,7 @@ def test_launch_reads_the_image_under_home(toy, tmp_path):
     env.update(HOME=str(home), XDG_CACHE_HOME=str(tmp_path / "node-local"))
     result = toy.snakemake("-n", "assemble_sacc_all", container=False, env=env)
     assert result.returncode != 0, result.stdout
-    assert "uv tool install --force --python 3.13 snakemake==" in result.stdout
+    assert "uv tool install --force --python 3.13 snakemake " in result.stdout
 
 
 def _apptainer_stub(tmp_path):
@@ -232,7 +222,7 @@ def test_the_candide_profile_bounds_its_jobs(tmp_path):
     assert refused.returncode != 0 and "--jobs" in refused.stdout, refused.stdout
 
 
-def test_image_sims_checks_parity_at_launch(toy, tmp_path):
+def test_image_sims_checks_python_at_launch(toy, tmp_path):
     """The standalone image-sims workflow stops on a mismatched image too."""
     run = {
         "image_sims": {
@@ -257,7 +247,7 @@ def test_image_sims_checks_parity_at_launch(toy, tmp_path):
         cwd=toy.root,
     )
     assert result.returncode != 0, result.stdout
-    assert "uv tool install --force --python 3.13 snakemake==" in result.stdout
+    assert "uv tool install --force --python 3.13 snakemake " in result.stdout
 
 
 def _real_dry_run(paper, targets):
@@ -297,10 +287,10 @@ def test_papers_resolve_on_candide(paper, targets):
     """The real paper DAGs resolve against the real catalogues and your image.
 
     The e-cut catalogue reads its parent's catalogue entry. Your image (the SIF
-    or sandbox `spv-container` manages) is read, so parity was checked.
+    or sandbox `spv-container` manages) is read, so its Python was checked.
     """
     result = _real_dry_run(paper, targets)
     assert result.returncode == 0, result.stdout
-    assert "parity unchecked" not in result.stdout, (
+    assert "Python unchecked" not in result.stdout, (
         "no local image was read; run `spv-container pull`\n" + result.stdout
     )
