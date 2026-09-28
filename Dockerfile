@@ -26,6 +26,8 @@ RUN apt-get update -y --quiet --fix-missing && \
     rm -rf /var/lib/apt/lists/*
 
 # TinyTeX pinned to a TeX Live year (frozen tlnet-final mirror); bump both once a year.
+# The packages serve matplotlib's usetex figures; sfmath gives them sans-serif
+# maths (`\usepackage[cm]{sfmath}`).
 ENV TEXLIVE_YEAR=2025 \
     TINYTEX_VERSION=2026.02 \
     TINYTEX_DIR=/opt \
@@ -46,6 +48,7 @@ RUN set -eux; \
         amsmath \
         amsfonts \
         geometry \
+        sfmath \
         xcolor; \
     tlmgr path add; \
     latex --version >/dev/null; dvipng --version >/dev/null
