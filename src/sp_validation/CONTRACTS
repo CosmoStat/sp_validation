@@ -1,4 +1,0 @@
-@sc container-is-stdlib
-The image model is loaded by path by the host Snakemake and runs as the
-spv-container CLI before any image exists.
-only: sp_validation.container may import stdlib

@@ -126,46 +126,6 @@ def image_revision(sif):
     return image_labels(sif).get("org.opencontainers.image.revision")
 
 
-# The image's virtual environment, as the Dockerfile lays it out.
-IMAGE_VENV = "/app/.venv"
-
-
-def image_python(image):
-    """Return the Python minor (``"3.12"``) of an image's venv, or ``None``.
-
-    Read from the venv's ``pyvenv.cfg``: through ``apptainer exec`` for a SIF,
-    straight off disk for a sandbox. ``None`` when the image cannot be read -- a
-    registry tag, a missing ``apptainer``, a venv laid out differently.
-    """
-    image = str(image)
-    cfg_path = Path(IMAGE_VENV) / "pyvenv.cfg"
-    if Path(image).is_dir():
-        try:
-            cfg = (Path(image) / cfg_path.relative_to("/")).read_text()
-        except OSError:
-            return None
-    elif Path(image).is_file() and shutil.which("apptainer") is not None:
-        try:
-            out = subprocess.run(
-                ["apptainer", "exec", "--cleanenv", image, "cat", str(cfg_path)],
-                capture_output=True,
-                text=True,
-                timeout=120,
-            )
-        except (OSError, subprocess.SubprocessError):
-            return None
-        if out.returncode != 0:
-            return None
-        cfg = out.stdout
-    else:
-        return None
-    for line in cfg.splitlines():
-        key, sep, value = line.partition("=")
-        if sep and key.strip() == "version_info":
-            return ".".join(value.strip().split(".")[:2])
-    return None
-
-
 def _require_apptainer():
     """Exit unless ``apptainer`` is on PATH."""
     if shutil.which("apptainer") is None:

@@ -98,16 +98,10 @@ This is the default because the alternative is incoherent: Snakemake's
 rule executes new script code against an old `import sp_validation` — the two
 halves of one commit, split.
 
-The catalogue config is the launched checkout's too: `cosmo_val/cat_config.yaml`,
-read by the host and handed to every job. The `papers/cosmo_val` suite writes
-only under `COSMO_VAL` or `COSMO_INFERENCE` or the run directory's `results/`.
-Both are environment variables: `COSMO_VAL` defaults to the launched
-checkout's own `cosmo_val/output`, so writing into another checkout's products
-means naming its tree (`COSMO_VAL=<that checkout>/cosmo_val/output`);
-`COSMO_INFERENCE` defaults to the shared tree on candide. Other rules write
-elsewhere: masks under the run directory's `output/masks/`,
-`papers/bmodes`' figures and macros under its run directory's `docs/`, the
-image sims under their `grids_base`.
+The catalogue config is the launched checkout's `cosmo_val/cat_config.yaml`.
+`COSMO_VAL` defaults to the launched checkout's `cosmo_val/output`, so writing
+into another checkout's products means naming it; `COSMO_INFERENCE` defaults to
+the shared candide tree.
 
 **Caveat:** `rerun-triggers: code` watches rule bodies and `script:` files, not
 `src/`. Editing a module under `src/` does not by itself mark outputs stale —
@@ -146,13 +140,9 @@ image's Python:
 uv tool install --python 3.12 snakemake --with snakemake-executor-plugin-slurm
 ```
 
-Any Snakemake version works; the Python minor must be the image's. A `script:`
-job appends the host's `sys.path` to its own and unpickles the host's
-`snakemake` object with the host's own package (the image carries none), so
-that package and its compiled dependencies load into the image's interpreter.
-Every launch checks the minor (`common.check_host_python`) and stops with the
-reinstall command on a mismatch; an image it cannot read, such as a registry
-tag, is named in one line and passes.
+Any Snakemake version works, but it must run on the image's Python (3.12): a
+`script:` job loads the host's `snakemake` package into the image's interpreter,
+since the image carries none.
 
 Run every `snakemake` command directly on the host — do not `apptainer shell`
 first.
@@ -201,7 +191,7 @@ job either gets the whole old image or the whole new one; jobs already running
 hold the old file open and finish against it unharmed.
 
 ```bash
-salloc -p comp -c 4 --time=01:00:00 --exclude=n17,n09,n36 --no-shell   # note the job id
+salloc -p comp -c 4 --time=01:00:00 --exclude=n17,n36 --no-shell   # note the job id
 srun --jobid=<id> spv-container pull
 scancel <id>
 ```
@@ -294,7 +284,7 @@ checkout and — on candide — on the real papers:
 
 ```bash
 uv run --isolated --no-project --python 3.12 --with snakemake \
-    --with snakemake-executor-plugin-slurm --with pytest --with numpy \
+    --with snakemake-executor-plugin-slurm --with pytest \
     pytest workflow/tests
 ```
 

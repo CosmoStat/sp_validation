@@ -3,8 +3,7 @@
 These tests run under the host launcher, never inside the image::
 
     uv run --isolated --no-project --python 3.12 --with snakemake \\
-        --with snakemake-executor-plugin-slurm --with pytest --with numpy \\
-        pytest workflow/tests
+        --with snakemake-executor-plugin-slurm --with pytest pytest workflow/tests
 
 ``sp_validation`` is absent from that environment, so every Snakefile has to
 parse with the standard library and Snakemake alone -- the condition a host
@@ -14,8 +13,7 @@ The ``toy`` fixture is a disposable checkout: copies of ``workflow/`` and
 ``papers/cosmo_val/``, this checkout's ``src/`` symlinked in, a one-catalogue
 ``cosmo_val/cat_config.yaml``, a touched catalogue file, the processed CosmoCov
 covariances already in place (their inputs live on candide), and both output
-roots in tmp. Its runs use a fake image whose Python matches the running one,
-so the launch-time Python check passes without apptainer.
+roots in tmp.
 """
 
 import dataclasses
@@ -34,18 +32,6 @@ REPO = Path(__file__).resolve().parents[2]
 
 # The toy catalogue and its leakage-corrected variant.
 VERSIONS = ("SP_v0.1", "SP_v0.1_leak_corr")
-
-HOST_PYTHON = ".".join(str(v) for v in sys.version_info[:3])
-
-
-def fake_image(root, python=HOST_PYTHON):
-    """A sandbox-shaped directory carrying only what the Python check reads."""
-    venv = Path(root) / "app" / ".venv"
-    venv.mkdir(parents=True)
-    (venv / "pyvenv.cfg").write_text(
-        f"home = /usr/local/bin\nimplementation = CPython\nversion_info = {python}\n"
-    )
-    return Path(root)
 
 
 @dataclasses.dataclass
@@ -112,24 +98,18 @@ class Toy:
     rundir: Path
     cosmo_val: Path
     cosmo_inference: Path
-    image: Path
     env: dict
     config: dict
     common: object
     covariances: dict  # (version, "g" | "ng") -> the processed CosmoCov file
 
-    def snakemake(self, *args, container=None, cwd=None, env=None, timeout=300):
+    def snakemake(self, *args, cwd=None, env=None, timeout=300):
         """Run the host Snakemake in the toy's paper directory, or in ``cwd``.
 
-        ``container`` overrides the image (default: the matching fake one;
-        ``False`` leaves the choice to the launch). ``env`` replaces the toy's
-        environment.
+        ``env`` replaces the toy's environment.
         """
-        cmd = [sys.executable, "-m", "snakemake", "--cores", "1", *args]
-        if container is not False:
-            cmd += ["--config", f"container={container or self.image}"]
         return subprocess.run(
-            cmd,
+            [sys.executable, "-m", "snakemake", "--cores", "1", *args],
             cwd=cwd or self.rundir,
             env=env or self.env,
             text=True,
@@ -195,7 +175,7 @@ def toy(tmp_path_factory):
         COSMO_VAL=str(root / "out" / "cosmo_val"),
         COSMO_INFERENCE=str(root / "out" / "cosmo_inference"),
         XDG_CACHE_HOME=str(root / "cache"),
-        # No local image: each launch runs the image its test names.
+        # No local image: launches resolve the registry tag.
         SPV_CONTAINER=str(root / "cache" / "absent.sif"),
         SPV_SANDBOX=str(root / "cache" / "absent-sandbox"),
         TMPDIR=str(tmp_path_factory.getbasetemp()),
@@ -229,7 +209,6 @@ def toy(tmp_path_factory):
         rundir=rundir,
         cosmo_val=Path(env["COSMO_VAL"]),
         cosmo_inference=Path(env["COSMO_INFERENCE"]),
-        image=fake_image(root / "image"),
         env=env,
         config=config,
         common=common,
