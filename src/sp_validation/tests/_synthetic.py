@@ -4,7 +4,8 @@ The glue tests run the real compute seams on it: a shear catalogue
 (RA/Dec/e1/e2/w), a PSF star catalogue with the columns the leakage and ρ/τ
 seams read, a cs_util-readable dndz, and a ``cat_config.yaml`` beside a
 ``blinds/`` registry directory, as in the repository layout. Every catalogue
-entry in the config describes the same files and declares its own custody.
+entry in the config reads its own copy of the same galaxies and declares its
+own custody.
 """
 
 import copy
@@ -35,9 +36,10 @@ def write_synthetic_catalogs(
         Add a ``psf`` block (ρ/τ and pseudo-Cℓ read it via
         ``get_params_rho_tau``).
     catalogues : dict, optional
-        ``{version: declaration}``, one catalogue entry each over the same
-        files. A declaration is a ``blinding`` value, or ``None`` for an entry
-        that declares none. Defaults to one mock, ``TestCatalog``.
+        ``{version: declaration}``, one catalogue entry each, reading its own
+        copy of the shear catalogue (catalogues reading one file share one
+        custody). A declaration is a ``blinding`` value, or ``None`` for an
+        entry that declares none. Defaults to one mock, ``TestCatalog``.
 
     Returns
     -------
@@ -65,9 +67,7 @@ def write_synthetic_catalogs(
         e1 = rng.normal(0, 0.25, n_gal)
         e2 = rng.normal(0, 0.25, n_gal)
     w = rng.uniform(0.5, 1.0, n_gal)
-    Table({"RA": ra, "Dec": dec, "e1": e1, "e2": e2, "w": w}).write(
-        cat_dir / "shear.fits", overwrite=True
-    )
+    shear = Table({"RA": ra, "Dec": dec, "e1": e1, "e2": e2, "w": w})
 
     Table(
         {
@@ -98,7 +98,6 @@ def write_synthetic_catalogs(
         "ls": "-",
         "marker": "o",
         "shear": {
-            "path": "shear.fits",
             "redshift_path": str(nz_dir / "dndz_SP_A.txt"),
             "w_col": "w",
             "e1_col": "e1",
@@ -137,6 +136,8 @@ def write_synthetic_catalogs(
     }
     for version, declaration in catalogues.items():
         config[version] = copy.deepcopy(entry)
+        config[version]["shear"]["path"] = f"shear_{version}.fits"
+        shear.write(cat_dir / f"shear_{version}.fits", overwrite=True)
         if declaration is not None:
             config[version]["blinding"] = declaration
     config_path = tmp_path / "cat_config.yaml"

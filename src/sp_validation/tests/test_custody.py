@@ -182,10 +182,78 @@ def test_variants_share_their_base(tmp_path):
         "SP_v9_leak_corr",
         "SP_v9_seed00042",
         "SP_v9_seed00042_leak_corr",
+        "SP_v9_leak_corr_seed00042",
         "SP_v9_ecut07",
         "SP_v9_ecut07_leak_corr",
     ):
         assert cu.custody_of(cats, version, registry=registry) == base, version
+
+
+def test_an_entry_named_as_a_variant_shares_its_parents_custody(tmp_path):
+    """An entry named `<entry>_leak_corr` or `<entry>_seed<N>` resolves through
+    that entry, as the variant it is named for does. It may repeat the entry's
+    `blinding` or `base`, as the copies `overwrite_config` writes do, but a
+    declaration of its own is refused, never ignored."""
+    registry = tmp_path / "blinds"
+    _write_blind(registry, "y3", ["TOY"])
+    cats = _catalogues(PARENT="unblinded", TOY=None, EC={"base": "PARENT"})
+    copies = dict(
+        cats, PARENT_leak_corr=dict(cats["PARENT"]), EC_seed7=dict(cats["EC"])
+    )
+    for version in ("PARENT_leak_corr", "EC_seed7"):
+        custody = cu.custody_of(copies, version, registry=registry)
+        assert custody.token == "unblinded:PARENT", version
+    for alias, claim in {
+        "PARENT_leak_corr": {"blinding": "blinded"},
+        "PARENT_seed7": {"base": "TOY"},
+    }.items():
+        with pytest.raises(cu.CustodyError, match="declare custody on PARENT"):
+            cu.custody_of({**cats, alias: claim}, alias, registry=registry)
+
+
+def _reading(cats, path, *names):
+    """Point ``names``' entries at one shear file, spelled two ways."""
+    for i, name in enumerate(names):
+        cats[name]["shear"]["path"] = path.name if i % 2 else str(path)
+        cats[name]["subdir"] = str(path.parent)
+    return cats
+
+
+def test_catalogues_reading_one_file_share_one_blind(tmp_path):
+    """A blind conceals a shear file, whatever entry reads it: a catalogue
+    reading a concealed catalogue's file under any other custody is refused,
+    on either side, until the blind covers it too."""
+    registry = tmp_path / "blinds"
+    seed = _write_blind(registry, "y3", ["TOY"])
+    cats = _catalogues(TOY=None, TOY_A="unblinded", TOY_V={"base": "TOY"})
+    _reading(cats, tmp_path / "toy.fits", "TOY", "TOY_A", "TOY_V")
+    for version in ("TOY_A", "TOY", "TOY_leak_corr"):
+        with pytest.raises(cu.CustodyError, match="not concealed alike") as err:
+            cu.custody_of(cats, version, registry=registry)
+        assert "TOY: blind y3" in str(err.value), version
+        assert "TOY_A: public" in str(err.value), version
+
+    two = _reading(
+        _catalogues(TOY=None, TOY_B=None), tmp_path / "toy.fits", "TOY", "TOY_B"
+    )
+    _write_blind(tmp_path / "two", "y3", ["TOY"])
+    _write_blind(tmp_path / "two", "y4", ["TOY_B"])
+    with pytest.raises(cu.CustodyError, match="TOY: blind y3; TOY_B: blind y4"):
+        cu.custody_of(two, "TOY", registry=tmp_path / "two")
+
+    mock = _catalogues(OPEN="unblinded", OPEN_MOCK="mock")
+    _reading(mock, tmp_path / "open.fits", "OPEN", "OPEN_MOCK")
+    assert cu.custody_of(mock, "OPEN", registry=registry).status == "unblinded"
+
+    del cats["TOY_A"]["blinding"]
+    (registry / "y3" / "bases").write_text("TOY\nTOY_A\n")
+    for version in ("TOY", "TOY_A", "TOY_V"):
+        assert cu.custody_of(cats, version, registry=registry).blind == "y3"
+
+    (registry / "y3" / "revealed.json").write_text(json.dumps({"seed": seed}))
+    cats["TOY"]["blinding"] = "unblinded"
+    cats["TOY_A"]["blinding"] = "unblinded"
+    assert cu.custody_of(cats, "TOY_A", registry=registry).status == "unblinded"
 
 
 def test_base_links_are_followed_and_checked():

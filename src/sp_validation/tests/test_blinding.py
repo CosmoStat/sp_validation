@@ -823,6 +823,32 @@ def test_share_adds_a_base_to_a_concealed_blind(fresh):
         bd.share("toy", "LATER", cat_config=cat_config)
 
 
+def test_a_blind_is_drawn_for_every_catalogue_reading_its_file(tmp_path):
+    """init and share refuse a catalogue whose shear file another catalogue
+    reads under another custody, before anything is written; drawn for both,
+    the blind conceals both."""
+    _cat_config(tmp_path)
+    toy, later = ({"shear": {"path": str(tmp_path / f)}} for f in ("a.fits", "b.fits"))
+    _declare(
+        tmp_path,
+        TOY=toy,
+        TOY_TWIN={**toy, "blinding": "unblinded"},
+        LATER=later,
+        LATER_TWIN={**later, "blinding": "unblinded"},
+    )
+    with pytest.raises(cu.CustodyError, match="TOY_TWIN"):
+        _init(tmp_path, "toy", "TOY")
+    assert not (tmp_path / "blinds").exists()
+
+    _declare(tmp_path, TOY_TWIN=toy)
+    _init(tmp_path, "toy", "TOY", "TOY_TWIN")
+    assert _custody(tmp_path, "TOY_TWIN").blind == "toy"
+    with pytest.raises(cu.CustodyError, match="LATER_TWIN"):
+        bd.share("toy", "LATER", cat_config=str(tmp_path / "cat_config.yaml"))
+    bases = (tmp_path / "blinds" / "toy" / "bases").read_text().split()
+    assert bases == ["TOY", "TOY_TWIN"]
+
+
 # --------------------------------------------------------------------------- #
 # I10: an opened blind is the one committed
 # --------------------------------------------------------------------------- #

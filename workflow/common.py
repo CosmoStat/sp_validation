@@ -531,12 +531,7 @@ def pseudo_cl_tag(config):
 
 def shear_catalog(version):
     """The shear catalogue file of ``version``, from its catalogue entry."""
-    cat_config = CATALOG_CONFIG[_custody.entry_of(version)]
-    shear_path = cat_config["shear"]["path"]
-    if shear_path.startswith("/"):
-        return shear_path
-    subdir = cat_config.get("subdir", "")
-    return str(Path(subdir) / shear_path)
+    return _custody.shear_file(CATALOG_CONFIG, version)
 
 
 # ---------------------------------------------------------------------------

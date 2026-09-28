@@ -7,6 +7,7 @@ catalogue config (``cosmo_val/blinds/CONTRACTS``).
 
 import hashlib
 import json
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -84,20 +85,55 @@ def registry_of(cat_config):
     return Path(cat_config).absolute().parent / "blinds"
 
 
-def entry_of(version):
-    """The catalogue-config entry describing ``version``'s data.
-
-    Strips the variants CosmologyValidation materialises from an entry:
-    ``_leak_corr``, then ``_seed<N>``.
-    """
-    if version.endswith(_LEAK_SUFFIX):
-        version = version[: -len(_LEAK_SUFFIX)]
-    return _SEED_SUFFIX.sub("", version)
+def _variant_chain(version):
+    """``version``, then each name stripping a trailing ``_leak_corr`` or
+    ``_seed<N>`` leaves: the variants CosmologyValidation materialises from an
+    entry, in any order."""
+    chain = [version]
+    while True:
+        name = chain[-1]
+        if name.endswith(_LEAK_SUFFIX):
+            stripped = name[: -len(_LEAK_SUFFIX)]
+        else:
+            stripped = _SEED_SUFFIX.sub("", name)
+        if stripped in ("", name):
+            return chain
+        chain.append(stripped)
 
 
 def base_catalogue(catalogues, version):
-    """The base catalogue of ``version``: its entry, then its ``base:`` links."""
-    name, seen = entry_of(version), []
+    """The base catalogue of ``version``: the entry it is a variant of, or its
+    own, then that entry's ``base:`` links.
+
+    A config entry named as a variant of another (``<entry>_leak_corr``,
+    ``<entry>_seed<N>``) shares that entry's custody, as the variant it is
+    named for would; it may repeat that entry's ``blinding`` or ``base``, never
+    declare another.
+    """
+    chain = _variant_chain(version)
+    base = _follow_base(catalogues, chain[-1], version)
+    for alias in chain[:-1]:
+        entry = catalogues.get(alias)
+        if not isinstance(entry, dict):
+            continue
+        status = declaration(catalogues, base) or "blinded"
+        if "base" in entry and _follow_base(catalogues, entry["base"], alias) != base:
+            claim = f"base: {entry['base']}"
+        elif entry.get("blinding", status) != status:
+            claim = f"blinding: {entry['blinding']}"
+        else:
+            continue
+        raise CustodyError(
+            f"{alias} is a variant of {chain[-1]}, so it shares the custody of "
+            f"{base} ({status}), but declares {claim}; declare custody on {base}, "
+            f"or rename {alias} to make it a catalogue of its own"
+        )
+    return base
+
+
+def _follow_base(catalogues, name, version):
+    """The entry the ``base:`` links from ``name`` end at."""
+    seen = []
     while True:
         if name in NOT_CATALOGUES:
             raise CustodyError(f"{name} is not a catalogue")
@@ -161,6 +197,65 @@ def records(registry):
     return found
 
 
+def _reads(entry):
+    """The shear catalogue file a catalogue entry reads, if it names one."""
+    shear = entry.get("shear") if isinstance(entry, dict) else None
+    if not isinstance(shear, dict) or "path" not in shear:
+        return None
+    return os.path.normpath(os.path.join(str(entry.get("subdir", "")), shear["path"]))
+
+
+def shear_file(catalogues, version):
+    """The shear catalogue file ``version`` reads: that of the first entry of
+    its variant chain the config holds, as CosmologyValidation reads it."""
+    chain = _variant_chain(version)
+    return _reads(catalogues[next((n for n in chain if n in catalogues), chain[-1])])
+
+
+def _concealer(catalogues, recs, base):
+    """What conceals ``base``'s data: the unrevealed blind covering it; ``""``
+    when it is declared blinded and none does; ``None`` when it is public."""
+    covering = sorted(
+        r.name for r in recs.values() if base in r.bases and not r.revealed
+    )
+    if covering:
+        return ", ".join(covering)
+    return None if declaration(catalogues, base) in ("unblinded", "mock") else ""
+
+
+def refuse_twins(catalogues, recs, version):
+    """Refuse when a catalogue reading ``version``'s shear file is concealed
+    otherwise than ``version`` is, under the blind records ``recs``.
+
+    A blind conceals data, not a name: every catalogue reading one shear file
+    is concealed under one blind, or none is.
+    """
+    base = base_catalogue(catalogues, version)
+    here = shear_file(catalogues, version)
+    readers = {
+        name: base_catalogue(catalogues, name)
+        for name, entry in catalogues.items()
+        if here is not None and name not in NOT_CATALOGUES and _reads(entry) == here
+    }
+    hiding = {
+        b: _concealer(catalogues, recs, b)
+        for b in dict.fromkeys([base, *readers.values()])
+    }
+    twins = [name for name, b in readers.items() if hiding[b] != hiding[base]]
+    if twins:
+        states = "; ".join(
+            f"{b}: {'public' if c is None else f'blind {c}' if c else 'no blind yet'}"
+            for b, c in hiding.items()
+        )
+        raise CustodyError(
+            f"{version} and {', '.join(twins)} read one shear file, {here}, but are "
+            f"not concealed alike ({states}). Catalogues reading one file share "
+            "one blind: declare them blinded and draw it for them together "
+            "(blinding init) or share it (blinding share), or make them variants "
+            "of one base with `base:`"
+        )
+
+
 def _no_blind(version, base, declared, registry):
     why = (
         "declared blinded"
@@ -196,7 +291,8 @@ def custody_of(catalogues, version, *, registry):
     change it. An entry declaring nothing is blinded, so a new catalogue fails
     closed. Variants share their base's custody and blind: ``_leak_corr`` and
     ``_seed<N>`` versions, and entries naming their parent with ``base:``. A
-    blinded base is covered by exactly one blind.
+    blinded base is covered by exactly one blind, which also conceals every
+    catalogue reading its shear file (:func:`refuse_twins`).
 
     Raises
     ------
@@ -204,12 +300,15 @@ def custody_of(catalogues, version, *, registry):
         With the one thing to do, when the declaration and the registry
         disagree: a blinded catalogue with no blind, a revealed blind still
         declared blinded, an unblinded catalogue under a concealed blind, a
-        mock under a blind, or two blinds over one catalogue.
+        mock under a blind, two blinds over one catalogue, or catalogues
+        reading one shear file concealed otherwise.
     """
     registry = Path(registry)
     base = base_catalogue(catalogues, version)
     declared = declaration(catalogues, base)
-    covering = [r for r in records(registry).values() if base in r.bases]
+    recs = records(registry)
+    refuse_twins(catalogues, recs, version)
+    covering = [r for r in recs.values() if base in r.bases]
     if len(covering) > 1:
         names = ", ".join(r.name for r in covering)
         raise CustodyError(f"{base} is covered by several blinds: {names}")

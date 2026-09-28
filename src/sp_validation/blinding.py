@@ -364,21 +364,31 @@ def _theory_stack():
     return stack
 
 
-def _declared_blinded(catalogues, registry, base):
-    """Refuse a base ``init`` or ``share`` cannot give a blind."""
-    if _custody.base_catalogue(catalogues, base) != base:
-        raise _custody.CustodyError(
-            f"{base} is a variant of {_custody.base_catalogue(catalogues, base)}; "
-            "a blind covers base catalogues"
-        )
-    declared = _custody.declaration(catalogues, base)
-    if declared in ("unblinded", "mock"):
-        raise _custody.CustodyError(
-            f"{base} is declared {declared}; declare it blinded first"
-        )
-    covering = [r.name for r in _custody.records(registry).values() if base in r.bases]
-    if covering:
-        raise _custody.CustodyError(f"{base} is already covered by blind {covering[0]}")
+def _may_cover(catalogues, recs, name, bases):
+    """Refuse ``bases`` blind ``name`` cannot cover: a variant, a catalogue
+    declared unblinded or mock or covered already, or one whose shear file
+    another catalogue would go on reading otherwise concealed."""
+    for base in bases:
+        if _custody.base_catalogue(catalogues, base) != base:
+            raise _custody.CustodyError(
+                f"{base} is a variant of "
+                f"{_custody.base_catalogue(catalogues, base)}; a blind covers base "
+                "catalogues"
+            )
+        declared = _custody.declaration(catalogues, base)
+        if declared in ("unblinded", "mock"):
+            raise _custody.CustodyError(
+                f"{base} is declared {declared}; declare it blinded first"
+            )
+        covering = [r.name for r in recs.values() if base in r.bases]
+        if covering:
+            raise _custody.CustodyError(
+                f"{base} is already covered by blind {covering[0]}"
+            )
+    covered = recs[name].bases if name in recs else ()
+    after = {**recs, name: _custody.Record(name, {}, (*covered, *bases), None)}
+    for base in bases:
+        _custody.refuse_twins(catalogues, after, base)
 
 
 def _conceal_one_row(name, seed, record):
@@ -418,8 +428,7 @@ def init(name, bases, *, cat_config, config=None):
                 f"{path} exists; a blind is drawn once (delete a staging "
                 "directory an interrupted init left)"
             )
-    for base in bases:
-        _declared_blinded(catalogues, registry, base)
+    _may_cover(catalogues, _custody.records(registry), name, bases)
 
     seed = secrets.token_hex(16)
     key = Fernet.generate_key()
@@ -462,7 +471,7 @@ def share(name, base, *, cat_config):
         raise _custody.CustodyError(f"no blind {name} in {registry}")
     if records[name].revealed is not None:
         raise _custody.CustodyError(f"blind {name} is revealed; draw a new one")
-    _declared_blinded(_catalogues(cat_config), registry, base)
+    _may_cover(_catalogues(cat_config), records, name, [base])
     with open(registry / name / "bases", "a") as f:
         f.write(f"{base}\n")
     print(f"[blinding] {base} shares blind {name}; commit {registry / name / 'bases'}")

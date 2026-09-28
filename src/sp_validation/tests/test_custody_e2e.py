@@ -429,7 +429,7 @@ def test_a_blinded_catalogue_from_birth_to_audit(toy, monkeypatch):
     written = sio.save(two_bin, out / "two_bin.sacc", custody=blinded)
     assert np.all(np.asarray(written.mean) != np.asarray(two_bin.mean))
 
-    # The true vector of TOY is TOY_OPEN's, the same files declared unblinded.
+    # The true vector of TOY is TOY_OPEN's, the same galaxies declared unblinded.
     open_parts = run_chain(
         toy.cat_config, "TOY_OPEN", toy.root / "open", toy.cov, grid_parts="only"
     )

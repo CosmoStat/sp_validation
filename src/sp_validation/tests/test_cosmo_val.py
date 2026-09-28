@@ -547,7 +547,7 @@ class TestCosmologyValidation:
 # --------------------------------------------------------------------------- #
 @pytest.fixture
 def blinded_and_twin(tmp_path):
-    """TOY, blinded under `toy`, and TOY_OPEN: the same files, unblinded."""
+    """TOY, blinded under `toy`, and TOY_OPEN: the same galaxies, unblinded."""
     import json
 
     from sp_validation import blinding

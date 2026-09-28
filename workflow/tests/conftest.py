@@ -12,8 +12,8 @@ Snakemake is in. The ``candide`` tests need candide itself; CI deselects them.
 
 The ``toy`` fixture is a disposable checkout: copies of ``workflow/`` and
 ``papers/cosmo_val/``, this checkout's ``src/`` symlinked in, a
-``cosmo_val/cat_config.yaml`` declaring one catalogue per custody state over a
-touched catalogue file, a blind registry of hand-written records (the host
+``cosmo_val/cat_config.yaml`` declaring one catalogue per custody state, each
+over its own touched catalogue file, a blind registry of hand-written records (the host
 never decrypts, so no record needs a real seed), the processed CosmoCov
 covariances already in place (their inputs live on candide), the toy
 catalogue's patch centres, and both output roots in tmp. Its runs use a fake
@@ -21,7 +21,6 @@ image whose Python and Snakemake match the running ones, so the launch-time
 parity check passes without apptainer.
 """
 
-import copy
 import dataclasses
 import hashlib
 import importlib.util
@@ -157,29 +156,36 @@ class Toy:
         )
 
 
-def _cat_config(catalogue):
-    entry = {
-        "subdir": str(catalogue.parent),
-        "pipeline": "SP",
-        "colour": "orange",
-        "marker": "^",
-        "cov_th": {"A": 100.0, "n_e": 5.0, "sigma_e": 0.3},
-        "shear": {
-            "path": str(catalogue),
-            "redshift_path": str(catalogue.parent / "nz_SP_v0.1_A.txt"),
-            "w_col": "w",
-            "e1_col": "e1",
-            "e2_col": "e2",
-            "e1_col_corrected": "e1_leak_corrected",
-            "e2_col_corrected": "e2_leak_corrected",
-        },
-    }
+def _cat_config(data):
+    """One catalogue per custody state, each reading its own touched file."""
+
+    def entry(name, **declaration):
+        catalogue = data / f"{name}.fits"
+        catalogue.touch()
+        return {
+            "subdir": str(data),
+            "pipeline": "SP",
+            "colour": "orange",
+            "marker": "^",
+            "cov_th": {"A": 100.0, "n_e": 5.0, "sigma_e": 0.3},
+            "shear": {
+                "path": str(catalogue),
+                "redshift_path": str(data / "nz_SP_v0.1_A.txt"),
+                "w_col": "w",
+                "e1_col": "e1",
+                "e2_col": "e2",
+                "e1_col_corrected": "e1_leak_corrected",
+                "e2_col_corrected": "e2_leak_corrected",
+            },
+            **declaration,
+        }
+
     return {
-        VERSIONS[0]: entry,
-        "SP_v0.2": dict(copy.deepcopy(entry), blinding="unblinded"),
-        "SP_v0.3": dict(copy.deepcopy(entry), blinding="mock"),
-        UNCOVERED: copy.deepcopy(entry),
-        STALE: dict(copy.deepcopy(entry), blinding="unblinded"),
+        VERSIONS[0]: entry(VERSIONS[0]),
+        "SP_v0.2": entry("SP_v0.2", blinding="unblinded"),
+        "SP_v0.3": entry("SP_v0.3", blinding="mock"),
+        UNCOVERED: entry(UNCOVERED),
+        STALE: entry(STALE, blinding="unblinded"),
         "paths": {"output": "./output"},
     }
 
@@ -212,12 +218,10 @@ def toy(tmp_path_factory):
     )
     (root / "src").symlink_to(REPO / "src")
 
-    catalogue = root / "data" / "toy_shear.fits"
-    catalogue.parent.mkdir()
-    catalogue.touch()
+    (root / "data").mkdir()
     (root / "cosmo_val").mkdir()
     (root / "cosmo_val" / "cat_config.yaml").write_text(
-        yaml.safe_dump(_cat_config(catalogue))
+        yaml.safe_dump(_cat_config(root / "data"))
     )
     _registry(root)
 

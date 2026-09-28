@@ -30,7 +30,11 @@ each namespaces cleanly under `results/<name>/`.
 Every catalogue in `cosmo_val/cat_config.yaml` declares its custody on its base
 entry, `blinding: blinded | unblinded | mock`; an entry that declares none is
 blinded. Variants (`_leak_corr`, `_seed<N>`, and entries naming their parent
-with `base:`) share their base's custody and blind. A launch prints one
+with `base:`) share their base's custody and blind; an entry named like a
+variant is one, and may repeat its parent's `blinding` or `base`, never declare
+another. A blind conceals data, not a name: catalogues reading one shear file
+are concealed under one blind or none, so a blind is drawn (or shared) for all
+of them. A launch prints one
 `[custody]` line per catalogue it runs; no `--config` or config file changes a
 declaration.
 
