@@ -437,26 +437,19 @@ class JointCat(BaseCat):
             output dtype
 
         """
-        # Specify columns for which original (high-precision) format
-        # needs to be kept and not reduced to lower precision
-        cols_keep_dtype = [
-            "RA",
-            "Dec",
-            "FLAGS",
-            "IMAFLAGS_ISO",
-            "NUMBER",
-        ]
         if dtype_in.kind == "U":
             # Transform unicode to string of equal length
             return np.dtype(f"S{dtype_in.itemsize // 4}")
 
-        if self._params["reduce_mem"] == False:
-            return dtype_in
-        elif name not in cols_keep_dtype:
-            if dtype_in.kind == "f" and dtype_in.itemsize == 8:
-                return np.float32
-            if dtype_in.kind == "i" and dtype_in.itemsize == 4:
-                return np.int8
+        # reduce_mem narrows float64 to float32, except coordinates. Integer
+        # columns (bitmasks, IDs, counts) are never narrowed.
+        if (
+            self._params["reduce_mem"]
+            and dtype_in.kind == "f"
+            and dtype_in.itemsize == 8
+            and name not in ("RA", "Dec")
+        ):
+            return np.dtype(np.float32)
 
         return dtype_in
 
