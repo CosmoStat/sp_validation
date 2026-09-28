@@ -275,7 +275,12 @@ def refuse_twins(catalogues, recs, version):
     is concealed under one blind, or none is.
     """
     base = base_catalogue(catalogues, version)
-    here = shear_file(catalogues, version)
+    try:
+        here = shear_file(catalogues, version)
+    except CustodyError:
+        # A seed file its entry cannot name, so no entry reads it: whatever
+        # would read it (rule xi, CosmologyValidation) refuses it there.
+        here = None
     readers = {
         name: base_catalogue(catalogues, name)
         for name, entry in catalogues.items()
