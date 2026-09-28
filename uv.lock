@@ -691,7 +691,7 @@ wheels = [
 [[package]]
 name = "cs-util"
 version = "0.2.2"
-source = { git = "https://github.com/CosmoStat/cs_util.git?rev=develop#bedcdbf50ac57fc4d0b72a62b251373cd1807824" }
+source = { git = "https://github.com/CosmoStat/cs_util.git?rev=develop#a52280fbb4bc1daa3f217a77954ba43c0860738b" }
 dependencies = [
     { name = "astropy" },
     { name = "camb" },
@@ -3951,7 +3951,7 @@ requires-dist = [
     { name = "regions" },
     { name = "reproject" },
     { name = "ruff", marker = "extra == 'test'" },
-    { name = "sacc", specifier = ">=0.12" },
+    { name = "sacc", specifier = ">=2.4,<3" },
     { name = "scipy", specifier = "<1.19" },
     { name = "seaborn" },
     { name = "shear-psf-leakage", git = "https://github.com/CosmoStat/shear_psf_leakage.git?rev=develop" },

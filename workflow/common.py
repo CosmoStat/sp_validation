@@ -363,8 +363,7 @@ def grid_of(grids, binning):
     """Name of the grid a binning belongs to, compared numerically.
 
     A "300" wildcard matches a 300.0 grid value. Binnings matching no named
-    grid (e.g. papers/bmodes' nbins=10000 convergence check) are reporting-style
-    measurements.
+    grid are reporting-style measurements.
     """
     key = tuple(float(binning[k]) for k in XI_KEYS)
     for name, grid in grids.items():
