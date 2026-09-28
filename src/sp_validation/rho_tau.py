@@ -180,11 +180,7 @@ def get_rho_tau(
     if need_compute:
         rho_stat_handler.catalogs.set_params(params, outdir)
 
-        mask = version != "DES"
-
-        rho_stat_handler.build_cat_to_compute_rho(
-            load("psf"), catalog_id=catalog_id, mask=mask
-        )
+        rho_stat_handler.build_cat_to_compute_rho(load("psf"), catalog_id=catalog_id)
 
         rho_stat_handler.compute_rho_stats(
             catalog_id,
@@ -213,17 +209,15 @@ def get_rho_tau(
     else:
         tau_stat_handler.catalogs.set_params(params, outdir)
 
-        mask = version != "DES"
-
         # Build the different catalogs if necessary
         if f"psf_{version}" not in tau_stat_handler.catalogs.catalogs_dict.keys():
             tau_stat_handler.build_cat_to_compute_tau(
-                load("psf"), cat_type="psf", catalog_id=version, mask=mask
+                load("psf"), cat_type="psf", catalog_id=version
             )
 
         # Build the catalog of galaxies. PSF was computed above
         tau_stat_handler.build_cat_to_compute_tau(
-            load("shear"), cat_type="gal", catalog_id=version, mask=mask
+            load("shear"), cat_type="gal", catalog_id=version
         )
 
         # function to extract the tau_+
@@ -354,7 +348,7 @@ def get_jackknife_cov(
             if f"psf_{version}{i}" not in rho_stat_handler.catalogs.catalogs_dict:
                 # Build catalogues
                 rho_stat_handler.build_cat_to_compute_rho(
-                    load("psf"), catalog_id=version + str(i), mask=False
+                    load("psf"), catalog_id=version + str(i)
                 )
 
                 tau_stat_handler.catalogs.catalogs_dict = (
@@ -366,7 +360,6 @@ def get_jackknife_cov(
                     load("shear"),
                     cat_type="gal",
                     catalog_id=version + str(i),
-                    mask=False,
                 )
 
             else:
