@@ -118,7 +118,7 @@ class PureEBMixin:
                 )
             )
             for grid, lo, hi, n in (
-                ("reporting", min_sep, max_sep, nbins),
+                ("pure_eb_reporting", min_sep, max_sep, nbins),
                 ("integration", min_sep_int, max_sep_int, nbins_int),
             )
         )
