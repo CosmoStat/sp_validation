@@ -665,513 +665,520 @@
 </span><span id="line-439">
 </span><span id="line-440"><span class="sd">    Write catalogue with galaxy shapes = shear estimates.</span>
 </span><span id="line-441">
-</span><span id="line-442"><span class="sd">    Parameters</span>
-</span><span id="line-443"><span class="sd">    ----------</span>
-</span><span id="line-444"><span class="sd">    output_path : str</span>
-</span><span id="line-445"><span class="sd">        output file path</span>
-</span><span id="line-446"><span class="sd">    ra, dec : arrays(ngal) of float</span>
-</span><span id="line-447"><span class="sd">        coordinates in deg</span>
-</span><span id="line-448"><span class="sd">    w : np.ndarray</span>
-</span><span id="line-449"><span class="sd">        inverse-variance weights</span>
-</span><span id="line-450"><span class="sd">    mag : array(ngal) of float, optional</span>
-</span><span id="line-451"><span class="sd">        magnitude, signal-to-noise ratio</span>
-</span><span id="line-452"><span class="sd">    snr : array(ngal) of float, optional</span>
-</span><span id="line-453"><span class="sd">        signal-to-noise ratio, default is `None`</span>
-</span><span id="line-454"><span class="sd">    g : np.ndarray, optional</span>
-</span><span id="line-455"><span class="sd">        calibrated reduced shear estimate components, corrected for</span>
-</span><span id="line-456"><span class="sd">        multiplicative and additive bias, g = R^-1 g_uncal - c;</span>
-</span><span id="line-457"><span class="sd">        expected type is arrays(2, ngal) of float;</span>
-</span><span id="line-458"><span class="sd">        default is ``None`` (no calibrated shears written)</span>
-</span><span id="line-459"><span class="sd">    g1_uncal, g2_uncal : np.ndarray, optional</span>
-</span><span id="line-460"><span class="sd">        uncalibrated shear estimates;</span>
-</span><span id="line-461"><span class="sd">        expected types are arrays(ngal) of float</span>
-</span><span id="line-462"><span class="sd">        default is ``None`` (no uncalibrated shears written)</span>
-</span><span id="line-463"><span class="sd">    R_g11, R_g22, R_g12, R_g21 : np.ndarray, optional</span>
-</span><span id="line-464"><span class="sd">        shear response matrix elements per galaxy;</span>
-</span><span id="line-465"><span class="sd">        expected format is arrays(ngal) of float;</span>
-</span><span id="line-466"><span class="sd">         default is ``None``</span>
-</span><span id="line-467"><span class="sd">    R : 2x2 matrix of float, optional</span>
-</span><span id="line-468"><span class="sd">        Mean full response matrix, default is ``None``</span>
-</span><span id="line-469"><span class="sd">    R_shear : 2x2 matrix of float, optional</span>
-</span><span id="line-470"><span class="sd">        Mean shear response matrix, default is ``None``</span>
-</span><span id="line-471"><span class="sd">    R_select : 2x2 matrix of float, optional</span>
-</span><span id="line-472"><span class="sd">        Global selection response matrix, default is ``None``</span>
-</span><span id="line-473"><span class="sd">    c : array(2) of float, optional, default is ``None``</span>
-</span><span id="line-474"><span class="sd">        additive shear bias</span>
-</span><span id="line-475"><span class="sd">    c_err : array(2) of float, optional, default is ``None``</span>
-</span><span id="line-476"><span class="sd">        error of c</span>
-</span><span id="line-477"><span class="sd">    alpha_leakage : float, optional</span>
-</span><span id="line-478"><span class="sd">        Mean scale-dependent PSF leakage, default is ``None``</span>
-</span><span id="line-479"><span class="sd">    sigma_epsilon: float, optional</span>
-</span><span id="line-480"><span class="sd">        shape noise, default is ``None``</span>
-</span><span id="line-481"><span class="sd">    w_type : str, optional</span>
-</span><span id="line-482"><span class="sd">        weight type, allowed are &quot;iv&quot; (default), &quot;des&quot;</span>
-</span><span id="line-483"><span class="sd">    add_cols : dict, optional, default is ``None``</span>
-</span><span id="line-484"><span class="sd">        data for n additional columns to add</span>
-</span><span id="line-485"><span class="sd">    add_cols_format : dict, optional</span>
-</span><span id="line-486"><span class="sd">        format for n additional columns to add, default is ``None``, for which</span>
-</span><span id="line-487"><span class="sd">        ``float`` format is used</span>
-</span><span id="line-488"><span class="sd">    add_header : fits.header.Header, optional</span>
-</span><span id="line-489"><span class="sd">        additional header information; default is ``None``</span>
-</span><span id="line-490">
-</span><span id="line-491"><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="line-492">    <span class="n">col_info_arr</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="line-493">
-</span><span id="line-494">    <span class="c1"># Principal columns: coordinates and weights</span>
-</span><span id="line-495">    <span class="n">col_info_arr</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-</span><span id="line-496">        <span class="p">(</span>
-</span><span id="line-497">            <span class="n">fits</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;RA&quot;</span><span class="p">,</span> <span class="n">array</span><span class="o">=</span><span class="n">ra</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;D&quot;</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;deg&quot;</span><span class="p">),</span>
-</span><span id="line-498">            <span class="s2">&quot;Right Ascension&quot;</span><span class="p">,</span>
-</span><span id="line-499">        <span class="p">)</span>
-</span><span id="line-500">    <span class="p">)</span>
-</span><span id="line-501">    <span class="n">col_info_arr</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-</span><span id="line-502">        <span class="p">(</span>
-</span><span id="line-503">            <span class="n">fits</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;Dec&quot;</span><span class="p">,</span> <span class="n">array</span><span class="o">=</span><span class="n">dec</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;D&quot;</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;deg&quot;</span><span class="p">),</span>
-</span><span id="line-504">            <span class="s2">&quot;Declination&quot;</span><span class="p">,</span>
-</span><span id="line-505">        <span class="p">)</span>
-</span><span id="line-506">    <span class="p">)</span>
-</span><span id="line-507">    <span class="k">if</span> <span class="n">w_type</span> <span class="o">==</span> <span class="s2">&quot;iv&quot;</span><span class="p">:</span>
-</span><span id="line-508">        <span class="n">descr</span> <span class="o">=</span> <span class="s2">&quot;Inverse-variance weight&quot;</span>
-</span><span id="line-509">    <span class="k">elif</span> <span class="n">w_type</span> <span class="o">==</span> <span class="s2">&quot;des&quot;</span><span class="p">:</span>
-</span><span id="line-510">        <span class="n">descr</span> <span class="o">=</span> <span class="s2">&quot;DES-like weight&quot;</span>
-</span><span id="line-511">    <span class="k">else</span><span class="p">:</span>
-</span><span id="line-512">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid weight type </span><span class="si">{</span><span class="n">w_type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</span><span id="line-513">
-</span><span id="line-514">    <span class="n">name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;w_</span><span class="si">{</span><span class="n">w_type</span><span class="si">}</span><span class="s2">&quot;</span>
-</span><span id="line-515">    <span class="n">col_info_arr</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">fits</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">array</span><span class="o">=</span><span class="n">w</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;D&quot;</span><span class="p">),</span> <span class="n">descr</span><span class="p">))</span>
-</span><span id="line-516">
-</span><span id="line-517">    <span class="c1"># Additional columns</span>
-</span><span id="line-518">    <span class="c1">## Magnitude</span>
-</span><span id="line-519">    <span class="k">if</span> <span class="n">mag</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-520">        <span class="n">col_info_arr</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-</span><span id="line-521">            <span class="p">(</span>
-</span><span id="line-522">                <span class="n">fits</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;mag&quot;</span><span class="p">,</span> <span class="n">array</span><span class="o">=</span><span class="n">mag</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;D&quot;</span><span class="p">),</span>
-</span><span id="line-523">                <span class="s2">&quot;MAG_AUTO magnitude&quot;</span><span class="p">,</span>
-</span><span id="line-524">            <span class="p">)</span>
-</span><span id="line-525">        <span class="p">)</span>
-</span><span id="line-526">    <span class="c1">## Calibrated shear estimates</span>
-</span><span id="line-527">    <span class="k">if</span> <span class="n">g</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-528">        <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
-</span><span id="line-529">            <span class="n">col_info_arr</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-</span><span id="line-530">                <span class="p">(</span>
-</span><span id="line-531">                    <span class="n">fits</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;e</span><span class="si">{</span><span class="n">idx</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">array</span><span class="o">=</span><span class="n">g</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;D&quot;</span><span class="p">),</span>
-</span><span id="line-532">                    <span class="sa">f</span><span class="s2">&quot;Calibrated reduced shear estimate comp </span><span class="si">{</span><span class="n">idx</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-</span><span id="line-533">                <span class="p">)</span>
-</span><span id="line-534">            <span class="p">)</span>
-</span><span id="line-535">    <span class="c1"># Signal-to-noise ratio</span>
-</span><span id="line-536">    <span class="k">if</span> <span class="n">snr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-537">        <span class="n">col_info_arr</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-</span><span id="line-538">            <span class="p">(</span>
-</span><span id="line-539">                <span class="n">fits</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;snr&quot;</span><span class="p">,</span> <span class="n">array</span><span class="o">=</span><span class="n">snr</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;D&quot;</span><span class="p">),</span>
-</span><span id="line-540">                <span class="s2">&quot;Signal-to-noise ratio&quot;</span><span class="p">,</span>
+</span><span id="line-442"><span class="sd">    @sc [label:convention] metacal-flag-width</span>
+</span><span id="line-443"><span class="sd">    The data and image-simulation parameter files supply FITS ``J`` (int32)</span>
+</span><span id="line-444"><span class="sd">    for metacal bitmasks, so all ngmix flag bits (0-15; ``ZERO_DOF`` = 2**15</span>
+</span><span id="line-445"><span class="sd">    overflows a signed 16-bit ``I``) survive FITS/HDF5 output; ``JointCat``</span>
+</span><span id="line-446"><span class="sd">    never narrows integers.</span>
+</span><span id="line-447"><span class="sd">    The number of failed metacal types is a count in [0, 5], not a bitmask.</span>
+</span><span id="line-448">
+</span><span id="line-449"><span class="sd">    Parameters</span>
+</span><span id="line-450"><span class="sd">    ----------</span>
+</span><span id="line-451"><span class="sd">    output_path : str</span>
+</span><span id="line-452"><span class="sd">        output file path</span>
+</span><span id="line-453"><span class="sd">    ra, dec : arrays(ngal) of float</span>
+</span><span id="line-454"><span class="sd">        coordinates in deg</span>
+</span><span id="line-455"><span class="sd">    w : np.ndarray</span>
+</span><span id="line-456"><span class="sd">        inverse-variance weights</span>
+</span><span id="line-457"><span class="sd">    mag : array(ngal) of float, optional</span>
+</span><span id="line-458"><span class="sd">        magnitude, signal-to-noise ratio</span>
+</span><span id="line-459"><span class="sd">    snr : array(ngal) of float, optional</span>
+</span><span id="line-460"><span class="sd">        signal-to-noise ratio, default is `None`</span>
+</span><span id="line-461"><span class="sd">    g : np.ndarray, optional</span>
+</span><span id="line-462"><span class="sd">        calibrated reduced shear estimate components, corrected for</span>
+</span><span id="line-463"><span class="sd">        multiplicative and additive bias, g = R^-1 g_uncal - c;</span>
+</span><span id="line-464"><span class="sd">        expected type is arrays(2, ngal) of float;</span>
+</span><span id="line-465"><span class="sd">        default is ``None`` (no calibrated shears written)</span>
+</span><span id="line-466"><span class="sd">    g1_uncal, g2_uncal : np.ndarray, optional</span>
+</span><span id="line-467"><span class="sd">        uncalibrated shear estimates;</span>
+</span><span id="line-468"><span class="sd">        expected types are arrays(ngal) of float</span>
+</span><span id="line-469"><span class="sd">        default is ``None`` (no uncalibrated shears written)</span>
+</span><span id="line-470"><span class="sd">    R_g11, R_g22, R_g12, R_g21 : np.ndarray, optional</span>
+</span><span id="line-471"><span class="sd">        shear response matrix elements per galaxy;</span>
+</span><span id="line-472"><span class="sd">        expected format is arrays(ngal) of float;</span>
+</span><span id="line-473"><span class="sd">         default is ``None``</span>
+</span><span id="line-474"><span class="sd">    R : 2x2 matrix of float, optional</span>
+</span><span id="line-475"><span class="sd">        Mean full response matrix, default is ``None``</span>
+</span><span id="line-476"><span class="sd">    R_shear : 2x2 matrix of float, optional</span>
+</span><span id="line-477"><span class="sd">        Mean shear response matrix, default is ``None``</span>
+</span><span id="line-478"><span class="sd">    R_select : 2x2 matrix of float, optional</span>
+</span><span id="line-479"><span class="sd">        Global selection response matrix, default is ``None``</span>
+</span><span id="line-480"><span class="sd">    c : array(2) of float, optional, default is ``None``</span>
+</span><span id="line-481"><span class="sd">        additive shear bias</span>
+</span><span id="line-482"><span class="sd">    c_err : array(2) of float, optional, default is ``None``</span>
+</span><span id="line-483"><span class="sd">        error of c</span>
+</span><span id="line-484"><span class="sd">    alpha_leakage : float, optional</span>
+</span><span id="line-485"><span class="sd">        Mean scale-dependent PSF leakage, default is ``None``</span>
+</span><span id="line-486"><span class="sd">    sigma_epsilon: float, optional</span>
+</span><span id="line-487"><span class="sd">        shape noise, default is ``None``</span>
+</span><span id="line-488"><span class="sd">    w_type : str, optional</span>
+</span><span id="line-489"><span class="sd">        weight type, allowed are &quot;iv&quot; (default), &quot;des&quot;</span>
+</span><span id="line-490"><span class="sd">    add_cols : dict, optional, default is ``None``</span>
+</span><span id="line-491"><span class="sd">        data for n additional columns to add</span>
+</span><span id="line-492"><span class="sd">    add_cols_format : dict, optional</span>
+</span><span id="line-493"><span class="sd">        format for n additional columns to add, default is ``None``, for which</span>
+</span><span id="line-494"><span class="sd">        ``float`` format is used</span>
+</span><span id="line-495"><span class="sd">    add_header : fits.header.Header, optional</span>
+</span><span id="line-496"><span class="sd">        additional header information; default is ``None``</span>
+</span><span id="line-497">
+</span><span id="line-498"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-499">    <span class="n">col_info_arr</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="line-500">
+</span><span id="line-501">    <span class="c1"># Principal columns: coordinates and weights</span>
+</span><span id="line-502">    <span class="n">col_info_arr</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span id="line-503">        <span class="p">(</span>
+</span><span id="line-504">            <span class="n">fits</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;RA&quot;</span><span class="p">,</span> <span class="n">array</span><span class="o">=</span><span class="n">ra</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;D&quot;</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;deg&quot;</span><span class="p">),</span>
+</span><span id="line-505">            <span class="s2">&quot;Right Ascension&quot;</span><span class="p">,</span>
+</span><span id="line-506">        <span class="p">)</span>
+</span><span id="line-507">    <span class="p">)</span>
+</span><span id="line-508">    <span class="n">col_info_arr</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span id="line-509">        <span class="p">(</span>
+</span><span id="line-510">            <span class="n">fits</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;Dec&quot;</span><span class="p">,</span> <span class="n">array</span><span class="o">=</span><span class="n">dec</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;D&quot;</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;deg&quot;</span><span class="p">),</span>
+</span><span id="line-511">            <span class="s2">&quot;Declination&quot;</span><span class="p">,</span>
+</span><span id="line-512">        <span class="p">)</span>
+</span><span id="line-513">    <span class="p">)</span>
+</span><span id="line-514">    <span class="k">if</span> <span class="n">w_type</span> <span class="o">==</span> <span class="s2">&quot;iv&quot;</span><span class="p">:</span>
+</span><span id="line-515">        <span class="n">descr</span> <span class="o">=</span> <span class="s2">&quot;Inverse-variance weight&quot;</span>
+</span><span id="line-516">    <span class="k">elif</span> <span class="n">w_type</span> <span class="o">==</span> <span class="s2">&quot;des&quot;</span><span class="p">:</span>
+</span><span id="line-517">        <span class="n">descr</span> <span class="o">=</span> <span class="s2">&quot;DES-like weight&quot;</span>
+</span><span id="line-518">    <span class="k">else</span><span class="p">:</span>
+</span><span id="line-519">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid weight type </span><span class="si">{</span><span class="n">w_type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="line-520">
+</span><span id="line-521">    <span class="n">name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;w_</span><span class="si">{</span><span class="n">w_type</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="line-522">    <span class="n">col_info_arr</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">fits</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">array</span><span class="o">=</span><span class="n">w</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;D&quot;</span><span class="p">),</span> <span class="n">descr</span><span class="p">))</span>
+</span><span id="line-523">
+</span><span id="line-524">    <span class="c1"># Additional columns</span>
+</span><span id="line-525">    <span class="c1">## Magnitude</span>
+</span><span id="line-526">    <span class="k">if</span> <span class="n">mag</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-527">        <span class="n">col_info_arr</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span id="line-528">            <span class="p">(</span>
+</span><span id="line-529">                <span class="n">fits</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;mag&quot;</span><span class="p">,</span> <span class="n">array</span><span class="o">=</span><span class="n">mag</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;D&quot;</span><span class="p">),</span>
+</span><span id="line-530">                <span class="s2">&quot;MAG_AUTO magnitude&quot;</span><span class="p">,</span>
+</span><span id="line-531">            <span class="p">)</span>
+</span><span id="line-532">        <span class="p">)</span>
+</span><span id="line-533">    <span class="c1">## Calibrated shear estimates</span>
+</span><span id="line-534">    <span class="k">if</span> <span class="n">g</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-535">        <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
+</span><span id="line-536">            <span class="n">col_info_arr</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span id="line-537">                <span class="p">(</span>
+</span><span id="line-538">                    <span class="n">fits</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;e</span><span class="si">{</span><span class="n">idx</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">array</span><span class="o">=</span><span class="n">g</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;D&quot;</span><span class="p">),</span>
+</span><span id="line-539">                    <span class="sa">f</span><span class="s2">&quot;Calibrated reduced shear estimate comp </span><span class="si">{</span><span class="n">idx</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+</span><span id="line-540">                <span class="p">)</span>
 </span><span id="line-541">            <span class="p">)</span>
-</span><span id="line-542">        <span class="p">)</span>
-</span><span id="line-543">    <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">descr</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
-</span><span id="line-544">        <span class="p">[</span><span class="n">g1_uncal</span><span class="p">,</span> <span class="n">g2_uncal</span><span class="p">,</span> <span class="n">R_g11</span><span class="p">,</span> <span class="n">R_g22</span><span class="p">,</span> <span class="n">R_g12</span><span class="p">,</span> <span class="n">R_g21</span><span class="p">],</span>
-</span><span id="line-545">        <span class="p">[</span><span class="s2">&quot;e1_uncal&quot;</span><span class="p">,</span> <span class="s2">&quot;e2_uncal&quot;</span><span class="p">,</span> <span class="s2">&quot;R_g11&quot;</span><span class="p">,</span> <span class="s2">&quot;R_g22&quot;</span><span class="p">,</span> <span class="s2">&quot;R_g12&quot;</span><span class="p">,</span> <span class="s2">&quot;R_g21&quot;</span><span class="p">],</span>
-</span><span id="line-546">        <span class="p">[</span>
-</span><span id="line-547">            <span class="s2">&quot;Uncalibrated shear comp 1&quot;</span><span class="p">,</span>
-</span><span id="line-548">            <span class="s2">&quot;Uncalibrated shear comp 2&quot;</span><span class="p">,</span>
-</span><span id="line-549">            <span class="s2">&quot;Shear response matrix comp 1 1&quot;</span><span class="p">,</span>
-</span><span id="line-550">            <span class="s2">&quot;Shear response matrix comp 2 2&quot;</span><span class="p">,</span>
-</span><span id="line-551">            <span class="s2">&quot;Shear response matrix comp 1 2&quot;</span><span class="p">,</span>
-</span><span id="line-552">            <span class="s2">&quot;Shear response matrix comp 2 1&quot;</span><span class="p">,</span>
-</span><span id="line-553">        <span class="p">],</span>
-</span><span id="line-554">    <span class="p">):</span>
-</span><span id="line-555">        <span class="k">if</span> <span class="n">x</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-556">            <span class="n">col_info_arr</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">fits</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">array</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;D&quot;</span><span class="p">),</span> <span class="n">descr</span><span class="p">))</span>
-</span><span id="line-557">
-</span><span id="line-558">    <span class="k">if</span> <span class="n">add_cols</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-559">        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">add_cols</span><span class="p">):</span>
-</span><span id="line-560">            <span class="k">if</span> <span class="n">add_cols_format</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">add_cols_format</span><span class="p">:</span>
-</span><span id="line-561">                <span class="n">my_format</span> <span class="o">=</span> <span class="n">add_cols_format</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
-</span><span id="line-562">            <span class="k">else</span><span class="p">:</span>
-</span><span id="line-563">                <span class="n">shape</span> <span class="o">=</span> <span class="n">add_cols</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span>
-</span><span id="line-564">                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-</span><span id="line-565">                    <span class="n">my_format</span> <span class="o">=</span> <span class="s2">&quot;D&quot;</span>
-</span><span id="line-566">                <span class="k">else</span><span class="p">:</span>
-</span><span id="line-567">                    <span class="n">my_format</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">D&quot;</span>
-</span><span id="line-568">            <span class="n">col_info_arr</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-</span><span id="line-569">                <span class="p">(</span>
-</span><span id="line-570">                    <span class="n">fits</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">array</span><span class="o">=</span><span class="n">add_cols</span><span class="p">[</span><span class="n">name</span><span class="p">],</span> <span class="nb">format</span><span class="o">=</span><span class="n">my_format</span><span class="p">),</span>
-</span><span id="line-571">                    <span class="n">name</span><span class="p">,</span>
-</span><span id="line-572">                <span class="p">)</span>
-</span><span id="line-573">            <span class="p">)</span>
-</span><span id="line-574">
-</span><span id="line-575">    <span class="n">ext</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">output_path</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
-</span><span id="line-576">
-</span><span id="line-577">    <span class="k">if</span> <span class="n">ext</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;.hdf5&quot;</span><span class="p">,</span> <span class="s2">&quot;.hdf&quot;</span><span class="p">,</span> <span class="s2">&quot;.h5&quot;</span><span class="p">):</span>
-</span><span id="line-578">        <span class="c1"># Build flat list of (name, 1d-array) pairs, splitting 2D columns</span>
-</span><span id="line-579">        <span class="n">fields</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="line-580">        <span class="k">for</span> <span class="n">col</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">col_info_arr</span><span class="p">:</span>
-</span><span id="line-581">            <span class="n">arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">col</span><span class="o">.</span><span class="n">array</span><span class="p">)</span>
-</span><span id="line-582">            <span class="k">if</span> <span class="n">arr</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
-</span><span id="line-583">                <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">arr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
-</span><span id="line-584">                    <span class="n">fields</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">col</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">arr</span><span class="p">[:,</span> <span class="n">idx</span><span class="p">]))</span>
-</span><span id="line-585">            <span class="k">else</span><span class="p">:</span>
-</span><span id="line-586">                <span class="n">fields</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">col</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">arr</span><span class="p">))</span>
-</span><span id="line-587">
-</span><span id="line-588">        <span class="c1"># Build structured numpy array and write as single &quot;data&quot; dataset</span>
-</span><span id="line-589">        <span class="n">dtype</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">([(</span><span class="n">name</span><span class="p">,</span> <span class="n">arr</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">arr</span> <span class="ow">in</span> <span class="n">fields</span><span class="p">])</span>
-</span><span id="line-590">        <span class="n">structured</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">fields</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
-</span><span id="line-591">        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">arr</span> <span class="ow">in</span> <span class="n">fields</span><span class="p">:</span>
-</span><span id="line-592">            <span class="n">structured</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">arr</span>
-</span><span id="line-593">
-</span><span id="line-594">        <span class="k">with</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-</span><span id="line-595">            <span class="n">f</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">structured</span><span class="p">)</span>
-</span><span id="line-596">            <span class="k">if</span> <span class="n">add_header</span><span class="p">:</span>
-</span><span id="line-597">                <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">add_header</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-</span><span id="line-598">                    <span class="n">f</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
-</span><span id="line-599">            <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="n">v</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">R_shear</span><span class="p">,</span> <span class="n">R_select</span><span class="p">,</span> <span class="n">c</span><span class="p">)):</span>
-</span><span id="line-600">                <span class="n">f</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;R&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">R</span>
-</span><span id="line-601">                <span class="n">f</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;R_shear&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">R_shear</span>
-</span><span id="line-602">                <span class="n">f</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;R_select&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">R_select</span>
-</span><span id="line-603">                <span class="n">f</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;c&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">c</span>
-</span><span id="line-604">            <span class="k">if</span> <span class="n">c_err</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-605">                <span class="n">f</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;c1_err&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">c_err</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-</span><span id="line-606">                <span class="n">f</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;c2_err&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">c_err</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-</span><span id="line-607">            <span class="k">if</span> <span class="n">sigma_epsilon</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-608">                <span class="n">f</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;sig_eps&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sigma_epsilon</span>
-</span><span id="line-609">            <span class="k">if</span> <span class="n">alpha_leakage</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-610">                <span class="n">f</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;alpha&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">alpha_leakage</span>
-</span><span id="line-611">
-</span><span id="line-612">    <span class="k">else</span><span class="p">:</span>
-</span><span id="line-613">        <span class="c1"># Write columns to FITS file</span>
-</span><span id="line-614">        <span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">col</span> <span class="k">for</span> <span class="n">col</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">col_info_arr</span><span class="p">]</span>
-</span><span id="line-615">        <span class="n">table_hdu</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">BinTableHDU</span><span class="o">.</span><span class="n">from_columns</span><span class="p">(</span><span class="n">cols</span><span class="p">)</span>
-</span><span id="line-616">
-</span><span id="line-617">        <span class="c1"># Add human-readable descriptions</span>
-</span><span id="line-618">        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">col_info</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">col_info_arr</span><span class="p">):</span>
-</span><span id="line-619">            <span class="n">table_hdu</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;TTYPE</span><span class="si">{</span><span class="n">idx</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
-</span><span id="line-620">                <span class="n">col_info</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
-</span><span id="line-621">                <span class="n">col_info</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
-</span><span id="line-622">            <span class="p">)</span>
+</span><span id="line-542">    <span class="c1"># Signal-to-noise ratio</span>
+</span><span id="line-543">    <span class="k">if</span> <span class="n">snr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-544">        <span class="n">col_info_arr</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span id="line-545">            <span class="p">(</span>
+</span><span id="line-546">                <span class="n">fits</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;snr&quot;</span><span class="p">,</span> <span class="n">array</span><span class="o">=</span><span class="n">snr</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;D&quot;</span><span class="p">),</span>
+</span><span id="line-547">                <span class="s2">&quot;Signal-to-noise ratio&quot;</span><span class="p">,</span>
+</span><span id="line-548">            <span class="p">)</span>
+</span><span id="line-549">        <span class="p">)</span>
+</span><span id="line-550">    <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">descr</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+</span><span id="line-551">        <span class="p">[</span><span class="n">g1_uncal</span><span class="p">,</span> <span class="n">g2_uncal</span><span class="p">,</span> <span class="n">R_g11</span><span class="p">,</span> <span class="n">R_g22</span><span class="p">,</span> <span class="n">R_g12</span><span class="p">,</span> <span class="n">R_g21</span><span class="p">],</span>
+</span><span id="line-552">        <span class="p">[</span><span class="s2">&quot;e1_uncal&quot;</span><span class="p">,</span> <span class="s2">&quot;e2_uncal&quot;</span><span class="p">,</span> <span class="s2">&quot;R_g11&quot;</span><span class="p">,</span> <span class="s2">&quot;R_g22&quot;</span><span class="p">,</span> <span class="s2">&quot;R_g12&quot;</span><span class="p">,</span> <span class="s2">&quot;R_g21&quot;</span><span class="p">],</span>
+</span><span id="line-553">        <span class="p">[</span>
+</span><span id="line-554">            <span class="s2">&quot;Uncalibrated shear comp 1&quot;</span><span class="p">,</span>
+</span><span id="line-555">            <span class="s2">&quot;Uncalibrated shear comp 2&quot;</span><span class="p">,</span>
+</span><span id="line-556">            <span class="s2">&quot;Shear response matrix comp 1 1&quot;</span><span class="p">,</span>
+</span><span id="line-557">            <span class="s2">&quot;Shear response matrix comp 2 2&quot;</span><span class="p">,</span>
+</span><span id="line-558">            <span class="s2">&quot;Shear response matrix comp 1 2&quot;</span><span class="p">,</span>
+</span><span id="line-559">            <span class="s2">&quot;Shear response matrix comp 2 1&quot;</span><span class="p">,</span>
+</span><span id="line-560">        <span class="p">],</span>
+</span><span id="line-561">    <span class="p">):</span>
+</span><span id="line-562">        <span class="k">if</span> <span class="n">x</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-563">            <span class="n">col_info_arr</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">fits</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">array</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;D&quot;</span><span class="p">),</span> <span class="n">descr</span><span class="p">))</span>
+</span><span id="line-564">
+</span><span id="line-565">    <span class="k">if</span> <span class="n">add_cols</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-566">        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">add_cols</span><span class="p">):</span>
+</span><span id="line-567">            <span class="k">if</span> <span class="n">add_cols_format</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">add_cols_format</span><span class="p">:</span>
+</span><span id="line-568">                <span class="n">my_format</span> <span class="o">=</span> <span class="n">add_cols_format</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+</span><span id="line-569">            <span class="k">else</span><span class="p">:</span>
+</span><span id="line-570">                <span class="n">shape</span> <span class="o">=</span> <span class="n">add_cols</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span>
+</span><span id="line-571">                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+</span><span id="line-572">                    <span class="n">my_format</span> <span class="o">=</span> <span class="s2">&quot;D&quot;</span>
+</span><span id="line-573">                <span class="k">else</span><span class="p">:</span>
+</span><span id="line-574">                    <span class="n">my_format</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">D&quot;</span>
+</span><span id="line-575">            <span class="n">col_info_arr</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span id="line-576">                <span class="p">(</span>
+</span><span id="line-577">                    <span class="n">fits</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">array</span><span class="o">=</span><span class="n">add_cols</span><span class="p">[</span><span class="n">name</span><span class="p">],</span> <span class="nb">format</span><span class="o">=</span><span class="n">my_format</span><span class="p">),</span>
+</span><span id="line-578">                    <span class="n">name</span><span class="p">,</span>
+</span><span id="line-579">                <span class="p">)</span>
+</span><span id="line-580">            <span class="p">)</span>
+</span><span id="line-581">
+</span><span id="line-582">    <span class="n">ext</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">output_path</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+</span><span id="line-583">
+</span><span id="line-584">    <span class="k">if</span> <span class="n">ext</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;.hdf5&quot;</span><span class="p">,</span> <span class="s2">&quot;.hdf&quot;</span><span class="p">,</span> <span class="s2">&quot;.h5&quot;</span><span class="p">):</span>
+</span><span id="line-585">        <span class="c1"># Build flat list of (name, 1d-array) pairs, splitting 2D columns</span>
+</span><span id="line-586">        <span class="n">fields</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="line-587">        <span class="k">for</span> <span class="n">col</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">col_info_arr</span><span class="p">:</span>
+</span><span id="line-588">            <span class="n">arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">col</span><span class="o">.</span><span class="n">array</span><span class="p">)</span>
+</span><span id="line-589">            <span class="k">if</span> <span class="n">arr</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+</span><span id="line-590">                <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">arr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
+</span><span id="line-591">                    <span class="n">fields</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">col</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">arr</span><span class="p">[:,</span> <span class="n">idx</span><span class="p">]))</span>
+</span><span id="line-592">            <span class="k">else</span><span class="p">:</span>
+</span><span id="line-593">                <span class="n">fields</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">col</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">arr</span><span class="p">))</span>
+</span><span id="line-594">
+</span><span id="line-595">        <span class="c1"># Build structured numpy array and write as single &quot;data&quot; dataset</span>
+</span><span id="line-596">        <span class="n">dtype</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">([(</span><span class="n">name</span><span class="p">,</span> <span class="n">arr</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">arr</span> <span class="ow">in</span> <span class="n">fields</span><span class="p">])</span>
+</span><span id="line-597">        <span class="n">structured</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">fields</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+</span><span id="line-598">        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">arr</span> <span class="ow">in</span> <span class="n">fields</span><span class="p">:</span>
+</span><span id="line-599">            <span class="n">structured</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">arr</span>
+</span><span id="line-600">
+</span><span id="line-601">        <span class="k">with</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+</span><span id="line-602">            <span class="n">f</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">structured</span><span class="p">)</span>
+</span><span id="line-603">            <span class="k">if</span> <span class="n">add_header</span><span class="p">:</span>
+</span><span id="line-604">                <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">add_header</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="line-605">                    <span class="n">f</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+</span><span id="line-606">            <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="n">v</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">R_shear</span><span class="p">,</span> <span class="n">R_select</span><span class="p">,</span> <span class="n">c</span><span class="p">)):</span>
+</span><span id="line-607">                <span class="n">f</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;R&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">R</span>
+</span><span id="line-608">                <span class="n">f</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;R_shear&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">R_shear</span>
+</span><span id="line-609">                <span class="n">f</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;R_select&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">R_select</span>
+</span><span id="line-610">                <span class="n">f</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;c&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">c</span>
+</span><span id="line-611">            <span class="k">if</span> <span class="n">c_err</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-612">                <span class="n">f</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;c1_err&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">c_err</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</span><span id="line-613">                <span class="n">f</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;c2_err&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">c_err</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+</span><span id="line-614">            <span class="k">if</span> <span class="n">sigma_epsilon</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-615">                <span class="n">f</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;sig_eps&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sigma_epsilon</span>
+</span><span id="line-616">            <span class="k">if</span> <span class="n">alpha_leakage</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-617">                <span class="n">f</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;alpha&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">alpha_leakage</span>
+</span><span id="line-618">
+</span><span id="line-619">    <span class="k">else</span><span class="p">:</span>
+</span><span id="line-620">        <span class="c1"># Write columns to FITS file</span>
+</span><span id="line-621">        <span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">col</span> <span class="k">for</span> <span class="n">col</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">col_info_arr</span><span class="p">]</span>
+</span><span id="line-622">        <span class="n">table_hdu</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">BinTableHDU</span><span class="o">.</span><span class="n">from_columns</span><span class="p">(</span><span class="n">cols</span><span class="p">)</span>
 </span><span id="line-623">
-</span><span id="line-624">        <span class="c1"># Primary HDU with information in header</span>
-</span><span id="line-625">        <span class="n">primary_header</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">Header</span><span class="p">()</span>
-</span><span id="line-626">
-</span><span id="line-627">        <span class="k">if</span> <span class="n">add_header</span><span class="p">:</span>
-</span><span id="line-628">            <span class="n">primary_header</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">add_header</span><span class="p">)</span>
-</span><span id="line-629">
-</span><span id="line-630">        <span class="n">primary_header</span> <span class="o">=</span> <span class="n">cat</span><span class="o">.</span><span class="n">write_header_info_sp</span><span class="p">(</span>
-</span><span id="line-631">            <span class="n">primary_header</span><span class="p">,</span>
-</span><span id="line-632">            <span class="n">software_name</span><span class="o">=</span><span class="s2">&quot;sp_validation&quot;</span><span class="p">,</span>
-</span><span id="line-633">            <span class="n">software_version</span><span class="o">=</span><span class="n">__version__</span><span class="p">,</span>
-</span><span id="line-634">            <span class="n">author</span><span class="o">=</span><span class="n">getpass</span><span class="o">.</span><span class="n">getuser</span><span class="p">(),</span>
-</span><span id="line-635">        <span class="p">)</span>
+</span><span id="line-624">        <span class="c1"># Add human-readable descriptions</span>
+</span><span id="line-625">        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">col_info</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">col_info_arr</span><span class="p">):</span>
+</span><span id="line-626">            <span class="n">table_hdu</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;TTYPE</span><span class="si">{</span><span class="n">idx</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="line-627">                <span class="n">col_info</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+</span><span id="line-628">                <span class="n">col_info</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+</span><span id="line-629">            <span class="p">)</span>
+</span><span id="line-630">
+</span><span id="line-631">        <span class="c1"># Primary HDU with information in header</span>
+</span><span id="line-632">        <span class="n">primary_header</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">Header</span><span class="p">()</span>
+</span><span id="line-633">
+</span><span id="line-634">        <span class="k">if</span> <span class="n">add_header</span><span class="p">:</span>
+</span><span id="line-635">            <span class="n">primary_header</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">add_header</span><span class="p">)</span>
 </span><span id="line-636">
-</span><span id="line-637">        <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="n">v</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">R_shear</span><span class="p">,</span> <span class="n">R_select</span><span class="p">,</span> <span class="n">c</span><span class="p">)):</span>
-</span><span id="line-638">            <span class="n">cat</span><span class="o">.</span><span class="n">add_shear_bias_to_header</span><span class="p">(</span><span class="n">primary_header</span><span class="p">,</span> <span class="n">R</span><span class="p">,</span> <span class="n">R_shear</span><span class="p">,</span> <span class="n">R_select</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span>
-</span><span id="line-639">        <span class="k">if</span> <span class="n">c_err</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-640">            <span class="n">primary_header</span><span class="p">[</span><span class="s2">&quot;c1_err&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">c_err</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s2">&quot;Standard deviation of c_1&quot;</span><span class="p">)</span>
-</span><span id="line-641">            <span class="n">primary_header</span><span class="p">[</span><span class="s2">&quot;c2_err&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">c_err</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s2">&quot;Standard deviation of c_2&quot;</span><span class="p">)</span>
-</span><span id="line-642">
-</span><span id="line-643">        <span class="n">primary_header</span><span class="p">[</span><span class="s2">&quot;w&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;DES weight&quot;</span>
-</span><span id="line-644">
-</span><span id="line-645">        <span class="k">if</span> <span class="n">sigma_epsilon</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-646">            <span class="n">primary_header</span><span class="p">[</span><span class="s2">&quot;sig_eps&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">sigma_epsilon</span><span class="p">,</span> <span class="s2">&quot;Shape noise RMS&quot;</span><span class="p">)</span>
-</span><span id="line-647">
-</span><span id="line-648">        <span class="k">if</span> <span class="n">alpha_leakage</span><span class="p">:</span>
-</span><span id="line-649">            <span class="n">primary_header</span><span class="p">[</span><span class="s2">&quot;alpha&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
-</span><span id="line-650">                <span class="n">alpha_leakage</span><span class="p">,</span>
-</span><span id="line-651">                <span class="s2">&quot;Mean scale-dependent PSF leakage&quot;</span><span class="p">,</span>
-</span><span id="line-652">            <span class="p">)</span>
-</span><span id="line-653">
-</span><span id="line-654">        <span class="n">primary_hdu</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">(</span><span class="n">header</span><span class="o">=</span><span class="n">primary_header</span><span class="p">)</span>
-</span><span id="line-655">
-</span><span id="line-656">        <span class="c1"># Final file</span>
-</span><span id="line-657">        <span class="n">hdu_list</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">HDUList</span><span class="p">([</span><span class="n">primary_hdu</span><span class="p">,</span> <span class="n">table_hdu</span><span class="p">])</span>
-</span><span id="line-658">
-</span><span id="line-659">        <span class="n">hdu_list</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
-
+</span><span id="line-637">        <span class="n">primary_header</span> <span class="o">=</span> <span class="n">cat</span><span class="o">.</span><span class="n">write_header_info_sp</span><span class="p">(</span>
+</span><span id="line-638">            <span class="n">primary_header</span><span class="p">,</span>
+</span><span id="line-639">            <span class="n">software_name</span><span class="o">=</span><span class="s2">&quot;sp_validation&quot;</span><span class="p">,</span>
+</span><span id="line-640">            <span class="n">software_version</span><span class="o">=</span><span class="n">__version__</span><span class="p">,</span>
+</span><span id="line-641">            <span class="n">author</span><span class="o">=</span><span class="n">getpass</span><span class="o">.</span><span class="n">getuser</span><span class="p">(),</span>
+</span><span id="line-642">        <span class="p">)</span>
+</span><span id="line-643">
+</span><span id="line-644">        <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="n">v</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">R_shear</span><span class="p">,</span> <span class="n">R_select</span><span class="p">,</span> <span class="n">c</span><span class="p">)):</span>
+</span><span id="line-645">            <span class="n">cat</span><span class="o">.</span><span class="n">add_shear_bias_to_header</span><span class="p">(</span><span class="n">primary_header</span><span class="p">,</span> <span class="n">R</span><span class="p">,</span> <span class="n">R_shear</span><span class="p">,</span> <span class="n">R_select</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span>
+</span><span id="line-646">        <span class="k">if</span> <span class="n">c_err</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-647">            <span class="n">primary_header</span><span class="p">[</span><span class="s2">&quot;c1_err&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">c_err</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s2">&quot;Standard deviation of c_1&quot;</span><span class="p">)</span>
+</span><span id="line-648">            <span class="n">primary_header</span><span class="p">[</span><span class="s2">&quot;c2_err&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">c_err</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s2">&quot;Standard deviation of c_2&quot;</span><span class="p">)</span>
+</span><span id="line-649">
+</span><span id="line-650">        <span class="n">primary_header</span><span class="p">[</span><span class="s2">&quot;w&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;DES weight&quot;</span>
+</span><span id="line-651">
+</span><span id="line-652">        <span class="k">if</span> <span class="n">sigma_epsilon</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-653">            <span class="n">primary_header</span><span class="p">[</span><span class="s2">&quot;sig_eps&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">sigma_epsilon</span><span class="p">,</span> <span class="s2">&quot;Shape noise RMS&quot;</span><span class="p">)</span>
+</span><span id="line-654">
+</span><span id="line-655">        <span class="k">if</span> <span class="n">alpha_leakage</span><span class="p">:</span>
+</span><span id="line-656">            <span class="n">primary_header</span><span class="p">[</span><span class="s2">&quot;alpha&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="line-657">                <span class="n">alpha_leakage</span><span class="p">,</span>
+</span><span id="line-658">                <span class="s2">&quot;Mean scale-dependent PSF leakage&quot;</span><span class="p">,</span>
+</span><span id="line-659">            <span class="p">)</span>
 </span><span id="line-660">
-</span><span id="line-661">
+</span><span id="line-661">        <span class="n">primary_hdu</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">(</span><span class="n">header</span><span class="o">=</span><span class="n">primary_header</span><span class="p">)</span>
+</span><span id="line-662">
+</span><span id="line-663">        <span class="c1"># Final file</span>
+</span><span id="line-664">        <span class="n">hdu_list</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">HDUList</span><span class="p">([</span><span class="n">primary_hdu</span><span class="p">,</span> <span class="n">table_hdu</span><span class="p">])</span>
+</span><span id="line-665">
+</span><span id="line-666">        <span class="n">hdu_list</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+</span><span id="line-667">
+</span><span id="line-668">
 <div class="viewcode-block" id="write_galaxy_cat">
 <a class="viewcode-back" href="../../sp_validation.catalog.html#sp_validation.catalog.write_galaxy_cat">[docs]</a>
-</span><span id="line-662"><span class="k">def</span><span class="w"> </span><span class="nf">write_galaxy_cat</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">tile_id</span><span class="p">):</span>
-</span><span id="line-663"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Write Galaxy Cat.</span>
-</span><span id="line-664">
-</span><span id="line-665"><span class="sd">    Write catalogue with  position information only, no shapes. E.g.</span>
-</span><span id="line-666"><span class="sd">    random object catalogue.</span>
-</span><span id="line-667">
-</span><span id="line-668"><span class="sd">    Parameters</span>
-</span><span id="line-669"><span class="sd">    ----------</span>
-</span><span id="line-670"><span class="sd">    output_path : string</span>
-</span><span id="line-671"><span class="sd">        output file path</span>
-</span><span id="line-672"><span class="sd">    ra, dec : arrays(ngal) of float</span>
-</span><span id="line-673"><span class="sd">        coordinates in deg</span>
-</span><span id="line-674"><span class="sd">    tile_id : array(ngal) of float</span>
-</span><span id="line-675"><span class="sd">        tile ID of objects</span>
-</span><span id="line-676"><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="line-677">    <span class="n">c_ra</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;ra&quot;</span><span class="p">,</span> <span class="n">array</span><span class="o">=</span><span class="n">ra</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;E&quot;</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;deg&quot;</span><span class="p">)</span>
-</span><span id="line-678">    <span class="n">c_dec</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;dec&quot;</span><span class="p">,</span> <span class="n">array</span><span class="o">=</span><span class="n">dec</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;E&quot;</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;deg&quot;</span><span class="p">)</span>
-</span><span id="line-679">    <span class="n">c_id</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;tile_id&quot;</span><span class="p">,</span> <span class="n">array</span><span class="o">=</span><span class="n">tile_id</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;E&quot;</span><span class="p">)</span>
-</span><span id="line-680">    <span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">c_ra</span><span class="p">,</span> <span class="n">c_dec</span><span class="p">,</span> <span class="n">c_id</span><span class="p">]</span>
-</span><span id="line-681">
-</span><span id="line-682">    <span class="n">cat</span><span class="o">.</span><span class="n">write_fits_BinTable_file</span><span class="p">(</span><span class="n">cols</span><span class="p">,</span> <span class="n">output_path</span><span class="p">)</span></div>
+</span><span id="line-669"><span class="k">def</span><span class="w"> </span><span class="nf">write_galaxy_cat</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">tile_id</span><span class="p">):</span>
+</span><span id="line-670"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Write Galaxy Cat.</span>
+</span><span id="line-671">
+</span><span id="line-672"><span class="sd">    Write catalogue with  position information only, no shapes. E.g.</span>
+</span><span id="line-673"><span class="sd">    random object catalogue.</span>
+</span><span id="line-674">
+</span><span id="line-675"><span class="sd">    Parameters</span>
+</span><span id="line-676"><span class="sd">    ----------</span>
+</span><span id="line-677"><span class="sd">    output_path : string</span>
+</span><span id="line-678"><span class="sd">        output file path</span>
+</span><span id="line-679"><span class="sd">    ra, dec : arrays(ngal) of float</span>
+</span><span id="line-680"><span class="sd">        coordinates in deg</span>
+</span><span id="line-681"><span class="sd">    tile_id : array(ngal) of float</span>
+</span><span id="line-682"><span class="sd">        tile ID of objects</span>
+</span><span id="line-683"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-684">    <span class="n">c_ra</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;ra&quot;</span><span class="p">,</span> <span class="n">array</span><span class="o">=</span><span class="n">ra</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;E&quot;</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;deg&quot;</span><span class="p">)</span>
+</span><span id="line-685">    <span class="n">c_dec</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;dec&quot;</span><span class="p">,</span> <span class="n">array</span><span class="o">=</span><span class="n">dec</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;E&quot;</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;deg&quot;</span><span class="p">)</span>
+</span><span id="line-686">    <span class="n">c_id</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;tile_id&quot;</span><span class="p">,</span> <span class="n">array</span><span class="o">=</span><span class="n">tile_id</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;E&quot;</span><span class="p">)</span>
+</span><span id="line-687">    <span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">c_ra</span><span class="p">,</span> <span class="n">c_dec</span><span class="p">,</span> <span class="n">c_id</span><span class="p">]</span>
+</span><span id="line-688">
+</span><span id="line-689">    <span class="n">cat</span><span class="o">.</span><span class="n">write_fits_BinTable_file</span><span class="p">(</span><span class="n">cols</span><span class="p">,</span> <span class="n">output_path</span><span class="p">)</span></div>
 
-</span><span id="line-683">
-</span><span id="line-684">
+</span><span id="line-690">
+</span><span id="line-691">
 <div class="viewcode-block" id="write_PSF_cat">
 <a class="viewcode-back" href="../../sp_validation.catalog.html#sp_validation.catalog.write_PSF_cat">[docs]</a>
-</span><span id="line-685"><span class="k">def</span><span class="w"> </span><span class="nf">write_PSF_cat</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">e1</span><span class="p">,</span> <span class="n">e2</span><span class="p">):</span>
-</span><span id="line-686"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Write PSF Cat.</span>
-</span><span id="line-687">
-</span><span id="line-688"><span class="sd">    Write PSF catalogue to file.</span>
-</span><span id="line-689">
-</span><span id="line-690"><span class="sd">    Parameters</span>
-</span><span id="line-691"><span class="sd">    ----------</span>
-</span><span id="line-692"><span class="sd">    output_path : string</span>
-</span><span id="line-693"><span class="sd">        output file path</span>
-</span><span id="line-694"><span class="sd">    ra, dec : list of float</span>
-</span><span id="line-695"><span class="sd">        coordinates in deg</span>
-</span><span id="line-696"><span class="sd">    e1 : list of float</span>
-</span><span id="line-697"><span class="sd">        first ellipticity  component</span>
-</span><span id="line-698"><span class="sd">    e2 : list of float</span>
-</span><span id="line-699"><span class="sd">        second ellipticity  component</span>
-</span><span id="line-700"><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="line-701">    <span class="n">c_ra</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;RA&quot;</span><span class="p">,</span> <span class="n">array</span><span class="o">=</span><span class="n">ra</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;D&quot;</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;deg&quot;</span><span class="p">)</span>
-</span><span id="line-702">    <span class="n">c_dec</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;Dec&quot;</span><span class="p">,</span> <span class="n">array</span><span class="o">=</span><span class="n">dec</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;D&quot;</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;deg&quot;</span><span class="p">)</span>
-</span><span id="line-703">    <span class="n">c_e1</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;e1&quot;</span><span class="p">,</span> <span class="n">array</span><span class="o">=</span><span class="n">e1</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;D&quot;</span><span class="p">)</span>
-</span><span id="line-704">    <span class="n">c_e2</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;e2&quot;</span><span class="p">,</span> <span class="n">array</span><span class="o">=</span><span class="n">e2</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;D&quot;</span><span class="p">)</span>
-</span><span id="line-705">    <span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">c_ra</span><span class="p">,</span> <span class="n">c_dec</span><span class="p">,</span> <span class="n">c_e1</span><span class="p">,</span> <span class="n">c_e2</span><span class="p">]</span>
-</span><span id="line-706">
-</span><span id="line-707">    <span class="n">cat</span><span class="o">.</span><span class="n">write_fits_BinTable_file</span><span class="p">(</span><span class="n">cols</span><span class="p">,</span> <span class="n">output_path</span><span class="p">)</span></div>
+</span><span id="line-692"><span class="k">def</span><span class="w"> </span><span class="nf">write_PSF_cat</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">e1</span><span class="p">,</span> <span class="n">e2</span><span class="p">):</span>
+</span><span id="line-693"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Write PSF Cat.</span>
+</span><span id="line-694">
+</span><span id="line-695"><span class="sd">    Write PSF catalogue to file.</span>
+</span><span id="line-696">
+</span><span id="line-697"><span class="sd">    Parameters</span>
+</span><span id="line-698"><span class="sd">    ----------</span>
+</span><span id="line-699"><span class="sd">    output_path : string</span>
+</span><span id="line-700"><span class="sd">        output file path</span>
+</span><span id="line-701"><span class="sd">    ra, dec : list of float</span>
+</span><span id="line-702"><span class="sd">        coordinates in deg</span>
+</span><span id="line-703"><span class="sd">    e1 : list of float</span>
+</span><span id="line-704"><span class="sd">        first ellipticity  component</span>
+</span><span id="line-705"><span class="sd">    e2 : list of float</span>
+</span><span id="line-706"><span class="sd">        second ellipticity  component</span>
+</span><span id="line-707"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-708">    <span class="n">c_ra</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;RA&quot;</span><span class="p">,</span> <span class="n">array</span><span class="o">=</span><span class="n">ra</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;D&quot;</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;deg&quot;</span><span class="p">)</span>
+</span><span id="line-709">    <span class="n">c_dec</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;Dec&quot;</span><span class="p">,</span> <span class="n">array</span><span class="o">=</span><span class="n">dec</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;D&quot;</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;deg&quot;</span><span class="p">)</span>
+</span><span id="line-710">    <span class="n">c_e1</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;e1&quot;</span><span class="p">,</span> <span class="n">array</span><span class="o">=</span><span class="n">e1</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;D&quot;</span><span class="p">)</span>
+</span><span id="line-711">    <span class="n">c_e2</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;e2&quot;</span><span class="p">,</span> <span class="n">array</span><span class="o">=</span><span class="n">e2</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;D&quot;</span><span class="p">)</span>
+</span><span id="line-712">    <span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">c_ra</span><span class="p">,</span> <span class="n">c_dec</span><span class="p">,</span> <span class="n">c_e1</span><span class="p">,</span> <span class="n">c_e2</span><span class="p">]</span>
+</span><span id="line-713">
+</span><span id="line-714">    <span class="n">cat</span><span class="o">.</span><span class="n">write_fits_BinTable_file</span><span class="p">(</span><span class="n">cols</span><span class="p">,</span> <span class="n">output_path</span><span class="p">)</span></div>
 
-</span><span id="line-708">
-</span><span id="line-709">
+</span><span id="line-715">
+</span><span id="line-716">
 <div class="viewcode-block" id="read_param_file">
 <a class="viewcode-back" href="../../sp_validation.catalog.html#sp_validation.catalog.read_param_file">[docs]</a>
-</span><span id="line-710"><span class="k">def</span><span class="w"> </span><span class="nf">read_param_file</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-</span><span id="line-711"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Read Param File.</span>
-</span><span id="line-712"><span class="sd">    MKDEBUG TODO: Move to cs_util. Also used in sp/create_final_cat.</span>
-</span><span id="line-713">
-</span><span id="line-714"><span class="sd">    Return parameter list read from file.</span>
-</span><span id="line-715">
-</span><span id="line-716"><span class="sd">    Parameters</span>
-</span><span id="line-717"><span class="sd">    ----------</span>
-</span><span id="line-718"><span class="sd">    path: str</span>
-</span><span id="line-719"><span class="sd">        input file name</span>
-</span><span id="line-720"><span class="sd">    verbose: bool, optional, default=False</span>
-</span><span id="line-721"><span class="sd">        verbose output if True</span>
+</span><span id="line-717"><span class="k">def</span><span class="w"> </span><span class="nf">read_param_file</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+</span><span id="line-718"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Read Param File.</span>
+</span><span id="line-719"><span class="sd">    MKDEBUG TODO: Move to cs_util. Also used in sp/create_final_cat.</span>
+</span><span id="line-720">
+</span><span id="line-721"><span class="sd">    Return parameter list read from file.</span>
 </span><span id="line-722">
-</span><span id="line-723"><span class="sd">    Returns</span>
-</span><span id="line-724"><span class="sd">    -------</span>
-</span><span id="line-725"><span class="sd">    list of str</span>
-</span><span id="line-726"><span class="sd">        parameter names</span>
-</span><span id="line-727">
-</span><span id="line-728"><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="line-729">    <span class="n">param_list</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="line-730">
-</span><span id="line-731">    <span class="k">if</span> <span class="n">path</span><span class="p">:</span>
-</span><span id="line-732">        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
-</span><span id="line-733">            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Reading parameter file: </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="line-723"><span class="sd">    Parameters</span>
+</span><span id="line-724"><span class="sd">    ----------</span>
+</span><span id="line-725"><span class="sd">    path: str</span>
+</span><span id="line-726"><span class="sd">        input file name</span>
+</span><span id="line-727"><span class="sd">    verbose: bool, optional, default=False</span>
+</span><span id="line-728"><span class="sd">        verbose output if True</span>
+</span><span id="line-729">
+</span><span id="line-730"><span class="sd">    Returns</span>
+</span><span id="line-731"><span class="sd">    -------</span>
+</span><span id="line-732"><span class="sd">    list of str</span>
+</span><span id="line-733"><span class="sd">        parameter names</span>
 </span><span id="line-734">
-</span><span id="line-735">        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-</span><span id="line-736">            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">f</span><span class="p">:</span>
-</span><span id="line-737">                <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;#&quot;</span><span class="p">):</span>
-</span><span id="line-738">                    <span class="k">continue</span>
-</span><span id="line-739">                <span class="n">entry</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span>
-</span><span id="line-740">                <span class="k">if</span> <span class="ow">not</span> <span class="n">entry</span> <span class="ow">or</span> <span class="n">entry</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
-</span><span id="line-741">                    <span class="k">continue</span>
-</span><span id="line-742">                <span class="n">param_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
-</span><span id="line-743">
-</span><span id="line-744">    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
-</span><span id="line-745">        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">param_list</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-</span><span id="line-746">            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Read </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">param_list</span><span class="p">)</span><span class="si">}</span><span class="s2"> columns&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
-</span><span id="line-747">        <span class="k">else</span><span class="p">:</span>
-</span><span id="line-748">            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No parameters read&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
-</span><span id="line-749">        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot; into merged catalogue&quot;</span><span class="p">)</span>
+</span><span id="line-735"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-736">    <span class="n">param_list</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="line-737">
+</span><span id="line-738">    <span class="k">if</span> <span class="n">path</span><span class="p">:</span>
+</span><span id="line-739">        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+</span><span id="line-740">            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Reading parameter file: </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="line-741">
+</span><span id="line-742">        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+</span><span id="line-743">            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">f</span><span class="p">:</span>
+</span><span id="line-744">                <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;#&quot;</span><span class="p">):</span>
+</span><span id="line-745">                    <span class="k">continue</span>
+</span><span id="line-746">                <span class="n">entry</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span>
+</span><span id="line-747">                <span class="k">if</span> <span class="ow">not</span> <span class="n">entry</span> <span class="ow">or</span> <span class="n">entry</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
+</span><span id="line-748">                    <span class="k">continue</span>
+</span><span id="line-749">                <span class="n">param_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
 </span><span id="line-750">
-</span><span id="line-751">    <span class="n">param_list_unique</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">param_list</span><span class="p">))</span>
-</span><span id="line-752">
-</span><span id="line-753">    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
-</span><span id="line-754">        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">param_list</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">param_list_unique</span><span class="p">)</span>
-</span><span id="line-755">        <span class="k">if</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
-</span><span id="line-756">            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Removed </span><span class="si">{n}</span><span class="s2"> duplicate entries&quot;</span><span class="p">)</span>
+</span><span id="line-751">    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+</span><span id="line-752">        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">param_list</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="line-753">            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Read </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">param_list</span><span class="p">)</span><span class="si">}</span><span class="s2"> columns&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+</span><span id="line-754">        <span class="k">else</span><span class="p">:</span>
+</span><span id="line-755">            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No parameters read&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+</span><span id="line-756">        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot; into merged catalogue&quot;</span><span class="p">)</span>
 </span><span id="line-757">
-</span><span id="line-758">    <span class="k">return</span> <span class="n">param_list_unique</span></div>
-
+</span><span id="line-758">    <span class="n">param_list_unique</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">param_list</span><span class="p">))</span>
 </span><span id="line-759">
-</span><span id="line-760">
+</span><span id="line-760">    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+</span><span id="line-761">        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">param_list</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">param_list_unique</span><span class="p">)</span>
+</span><span id="line-762">        <span class="k">if</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+</span><span id="line-763">            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Removed </span><span class="si">{n}</span><span class="s2"> duplicate entries&quot;</span><span class="p">)</span>
+</span><span id="line-764">
+</span><span id="line-765">    <span class="k">return</span> <span class="n">param_list_unique</span></div>
+
+</span><span id="line-766">
+</span><span id="line-767">
 <div class="viewcode-block" id="read_hdf5_file">
 <a class="viewcode-back" href="../../sp_validation.catalog.html#sp_validation.catalog.read_hdf5_file">[docs]</a>
-</span><span id="line-761"><span class="k">def</span><span class="w"> </span><span class="nf">read_hdf5_file</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">stats_file</span><span class="p">,</span> <span class="n">check_only</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">param_path</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-</span><span id="line-762"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Read HDF5 File.</span>
-</span><span id="line-763">
-</span><span id="line-764"><span class="sd">    Read hdf5 file and return contained data.</span>
-</span><span id="line-765">
-</span><span id="line-766"><span class="sd">    Parameters</span>
-</span><span id="line-767"><span class="sd">    ----------</span>
-</span><span id="line-768"><span class="sd">    file_path : str</span>
-</span><span id="line-769"><span class="sd">        input file path</span>
-</span><span id="line-770"><span class="sd">    name : str</span>
-</span><span id="line-771"><span class="sd">        patch name</span>
-</span><span id="line-772"><span class="sd">    stats_file : file handler</span>
-</span><span id="line-773"><span class="sd">        summary statistics output file handler</span>
-</span><span id="line-774"><span class="sd">    check_only : bool, optional</span>
-</span><span id="line-775"><span class="sd">        If True only check, not return data</span>
-</span><span id="line-776">
-</span><span id="line-777"><span class="sd">    Returns</span>
-</span><span id="line-778"><span class="sd">    -------</span>
-</span><span id="line-779"><span class="sd">    dict</span>
-</span><span id="line-780"><span class="sd">        data</span>
-</span><span id="line-781">
-</span><span id="line-782"><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="line-783">    <span class="n">param_list</span> <span class="o">=</span> <span class="n">read_param_file</span><span class="p">(</span><span class="n">param_path</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">if</span> <span class="n">param_path</span> <span class="k">else</span> <span class="kc">None</span>
-</span><span id="line-784">
-</span><span id="line-785">    <span class="k">with</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">hdf5_file</span><span class="p">:</span>
-</span><span id="line-786">        <span class="c1"># Find patch group in hierarchical structure</span>
-</span><span id="line-787">        <span class="k">if</span> <span class="sa">f</span><span class="s2">&quot;patches/</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">hdf5_file</span><span class="p">:</span>
-</span><span id="line-788">            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Entry patches/</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> not found in file </span><span class="si">{</span><span class="n">file_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</span><span id="line-789">        <span class="n">patch_group</span> <span class="o">=</span> <span class="n">hdf5_file</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;patches/</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span>
-</span><span id="line-790">
-</span><span id="line-791">        <span class="c1"># Get size of data array</span>
-</span><span id="line-792">        <span class="n">num_rows</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">patch_group</span><span class="p">[</span><span class="n">ID</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">ID</span> <span class="ow">in</span> <span class="n">patch_group</span><span class="p">)</span>
-</span><span id="line-793">        <span class="c1"># num_cols = patch_group[next(iter(patch_group))].shape[1]</span>
-</span><span id="line-794">        <span class="n">num_cols</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">param_list</span><span class="p">)</span>
-</span><span id="line-795">
-</span><span id="line-796">        <span class="nb">print</span><span class="p">(</span>
-</span><span id="line-797">            <span class="sa">f</span><span class="s2">&quot;Estimating </span><span class="si">{</span><span class="n">num_cols</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">num_rows</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">8</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">1024</span><span class="o">**</span><span class="mi">3</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">&quot;</span>
-</span><span id="line-798">            <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot; Gb memory for the (</span><span class="si">{</span><span class="n">num_cols</span><span class="si">}</span><span class="s2"> x </span><span class="si">{</span><span class="n">num_rows</span><span class="si">}</span><span class="s2">) data array ...&quot;</span>
-</span><span id="line-799">        <span class="p">)</span>
-</span><span id="line-800">        <span class="c1"># data_comb = np.memmap(output_file, dtype=patch_group[next(iter(patch_group))].dtype,</span>
-</span><span id="line-801">        <span class="c1">#              mode=&quot;w+&quot;, shape=(num_rows, num_cols))</span>
+</span><span id="line-768"><span class="k">def</span><span class="w"> </span><span class="nf">read_hdf5_file</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">stats_file</span><span class="p">,</span> <span class="n">check_only</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">param_path</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+</span><span id="line-769"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Read HDF5 File.</span>
+</span><span id="line-770">
+</span><span id="line-771"><span class="sd">    Read hdf5 file and return contained data.</span>
+</span><span id="line-772">
+</span><span id="line-773"><span class="sd">    Parameters</span>
+</span><span id="line-774"><span class="sd">    ----------</span>
+</span><span id="line-775"><span class="sd">    file_path : str</span>
+</span><span id="line-776"><span class="sd">        input file path</span>
+</span><span id="line-777"><span class="sd">    name : str</span>
+</span><span id="line-778"><span class="sd">        patch name</span>
+</span><span id="line-779"><span class="sd">    stats_file : file handler</span>
+</span><span id="line-780"><span class="sd">        summary statistics output file handler</span>
+</span><span id="line-781"><span class="sd">    check_only : bool, optional</span>
+</span><span id="line-782"><span class="sd">        If True only check, not return data</span>
+</span><span id="line-783">
+</span><span id="line-784"><span class="sd">    Returns</span>
+</span><span id="line-785"><span class="sd">    -------</span>
+</span><span id="line-786"><span class="sd">    dict</span>
+</span><span id="line-787"><span class="sd">        data</span>
+</span><span id="line-788">
+</span><span id="line-789"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-790">    <span class="n">param_list</span> <span class="o">=</span> <span class="n">read_param_file</span><span class="p">(</span><span class="n">param_path</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">if</span> <span class="n">param_path</span> <span class="k">else</span> <span class="kc">None</span>
+</span><span id="line-791">
+</span><span id="line-792">    <span class="k">with</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">hdf5_file</span><span class="p">:</span>
+</span><span id="line-793">        <span class="c1"># Find patch group in hierarchical structure</span>
+</span><span id="line-794">        <span class="k">if</span> <span class="sa">f</span><span class="s2">&quot;patches/</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">hdf5_file</span><span class="p">:</span>
+</span><span id="line-795">            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Entry patches/</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> not found in file </span><span class="si">{</span><span class="n">file_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="line-796">        <span class="n">patch_group</span> <span class="o">=</span> <span class="n">hdf5_file</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;patches/</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span>
+</span><span id="line-797">
+</span><span id="line-798">        <span class="c1"># Get size of data array</span>
+</span><span id="line-799">        <span class="n">num_rows</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">patch_group</span><span class="p">[</span><span class="n">ID</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">ID</span> <span class="ow">in</span> <span class="n">patch_group</span><span class="p">)</span>
+</span><span id="line-800">        <span class="c1"># num_cols = patch_group[next(iter(patch_group))].shape[1]</span>
+</span><span id="line-801">        <span class="n">num_cols</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">param_list</span><span class="p">)</span>
 </span><span id="line-802">
-</span><span id="line-803">        <span class="n">data_list</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="line-804">        <span class="n">ID_pbl</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
-</span><span id="line-805">        <span class="k">for</span> <span class="n">ID</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="o">.</span><span class="n">tqdm</span><span class="p">(</span><span class="n">patch_group</span><span class="p">):</span>
-</span><span id="line-806">            <span class="c1"># Get data for this ID from file</span>
-</span><span id="line-807">            <span class="n">data</span> <span class="o">=</span> <span class="n">patch_group</span><span class="p">[</span><span class="n">ID</span><span class="p">][()]</span>
-</span><span id="line-808">
-</span><span id="line-809">            <span class="c1"># Restrict to parameter list if given</span>
-</span><span id="line-810">            <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">param_list</span><span class="p">]</span> <span class="k">if</span> <span class="n">param_list</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">data</span>
-</span><span id="line-811">
-</span><span id="line-812">            <span class="k">if</span> <span class="ow">not</span> <span class="n">check_only</span><span class="p">:</span>
-</span><span id="line-813">                <span class="c1"># Add new to existing data</span>
-</span><span id="line-814">                <span class="n">data_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+</span><span id="line-803">        <span class="nb">print</span><span class="p">(</span>
+</span><span id="line-804">            <span class="sa">f</span><span class="s2">&quot;Estimating </span><span class="si">{</span><span class="n">num_cols</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">num_rows</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">8</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">1024</span><span class="o">**</span><span class="mi">3</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="line-805">            <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot; Gb memory for the (</span><span class="si">{</span><span class="n">num_cols</span><span class="si">}</span><span class="s2"> x </span><span class="si">{</span><span class="n">num_rows</span><span class="si">}</span><span class="s2">) data array ...&quot;</span>
+</span><span id="line-806">        <span class="p">)</span>
+</span><span id="line-807">        <span class="c1"># data_comb = np.memmap(output_file, dtype=patch_group[next(iter(patch_group))].dtype,</span>
+</span><span id="line-808">        <span class="c1">#              mode=&quot;w+&quot;, shape=(num_rows, num_cols))</span>
+</span><span id="line-809">
+</span><span id="line-810">        <span class="n">data_list</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="line-811">        <span class="n">ID_pbl</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+</span><span id="line-812">        <span class="k">for</span> <span class="n">ID</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="o">.</span><span class="n">tqdm</span><span class="p">(</span><span class="n">patch_group</span><span class="p">):</span>
+</span><span id="line-813">            <span class="c1"># Get data for this ID from file</span>
+</span><span id="line-814">            <span class="n">data</span> <span class="o">=</span> <span class="n">patch_group</span><span class="p">[</span><span class="n">ID</span><span class="p">][()]</span>
 </span><span id="line-815">
-</span><span id="line-816">        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Combine tile catalogues&quot;</span><span class="p">)</span>
-</span><span id="line-817">        <span class="n">data_comb</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">data_list</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-</span><span id="line-818">        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Done&quot;</span><span class="p">)</span>
-</span><span id="line-819">
-</span><span id="line-820">    <span class="c1"># Print problematic tile IDs</span>
-</span><span id="line-821">    <span class="k">for</span> <span class="n">ID</span> <span class="ow">in</span> <span class="n">ID_pbl</span><span class="p">:</span>
-</span><span id="line-822">        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Tile IDs with missing keys:&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">stats_file</span><span class="p">)</span>
-</span><span id="line-823">        <span class="nb">print</span><span class="p">(</span><span class="n">ID</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">stats_file</span><span class="p">)</span>
-</span><span id="line-824">
-</span><span id="line-825">    <span class="k">return</span> <span class="n">data_comb</span></div>
-
+</span><span id="line-816">            <span class="c1"># Restrict to parameter list if given</span>
+</span><span id="line-817">            <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">param_list</span><span class="p">]</span> <span class="k">if</span> <span class="n">param_list</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">data</span>
+</span><span id="line-818">
+</span><span id="line-819">            <span class="k">if</span> <span class="ow">not</span> <span class="n">check_only</span><span class="p">:</span>
+</span><span id="line-820">                <span class="c1"># Add new to existing data</span>
+</span><span id="line-821">                <span class="n">data_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+</span><span id="line-822">
+</span><span id="line-823">        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Combine tile catalogues&quot;</span><span class="p">)</span>
+</span><span id="line-824">        <span class="n">data_comb</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">data_list</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</span><span id="line-825">        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Done&quot;</span><span class="p">)</span>
 </span><span id="line-826">
-</span><span id="line-827">
+</span><span id="line-827">    <span class="c1"># Print problematic tile IDs</span>
+</span><span id="line-828">    <span class="k">for</span> <span class="n">ID</span> <span class="ow">in</span> <span class="n">ID_pbl</span><span class="p">:</span>
+</span><span id="line-829">        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Tile IDs with missing keys:&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">stats_file</span><span class="p">)</span>
+</span><span id="line-830">        <span class="nb">print</span><span class="p">(</span><span class="n">ID</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">stats_file</span><span class="p">)</span>
+</span><span id="line-831">
+</span><span id="line-832">    <span class="k">return</span> <span class="n">data_comb</span></div>
+
+</span><span id="line-833">
+</span><span id="line-834">
 <div class="viewcode-block" id="get_maked_col">
 <a class="viewcode-back" href="../../sp_validation.catalog.html#sp_validation.catalog.get_maked_col">[docs]</a>
-</span><span id="line-828"><span class="k">def</span><span class="w"> </span><span class="nf">get_maked_col</span><span class="p">(</span><span class="n">dat</span><span class="p">,</span> <span class="n">col</span><span class="p">,</span> <span class="n">mask</span><span class="p">):</span>
-</span><span id="line-829"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Get Masked Col.</span>
-</span><span id="line-830">
-</span><span id="line-831"><span class="sd">    Retrieve a specific column from the data with a mask.</span>
-</span><span id="line-832">
-</span><span id="line-833"><span class="sd">    Parameters</span>
-</span><span id="line-834"><span class="sd">    ----------</span>
-</span><span id="line-835"><span class="sd">    dat: dict</span>
-</span><span id="line-836"><span class="sd">        Input data</span>
-</span><span id="line-837"><span class="sd">    col: str</span>
-</span><span id="line-838"><span class="sd">        Key of the column to be returned</span>
-</span><span id="line-839"><span class="sd">    mask: array-like</span>
-</span><span id="line-840"><span class="sd">        Boolean mask used for selection</span>
-</span><span id="line-841">
-</span><span id="line-842"><span class="sd">    Returns</span>
-</span><span id="line-843"><span class="sd">    -------</span>
-</span><span id="line-844"><span class="sd">    array-like</span>
-</span><span id="line-845"><span class="sd">        Requested column from the data, filtered by the mask.</span>
-</span><span id="line-846">
-</span><span id="line-847"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-835"><span class="k">def</span><span class="w"> </span><span class="nf">get_maked_col</span><span class="p">(</span><span class="n">dat</span><span class="p">,</span> <span class="n">col</span><span class="p">,</span> <span class="n">mask</span><span class="p">):</span>
+</span><span id="line-836"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Get Masked Col.</span>
+</span><span id="line-837">
+</span><span id="line-838"><span class="sd">    Retrieve a specific column from the data with a mask.</span>
+</span><span id="line-839">
+</span><span id="line-840"><span class="sd">    Parameters</span>
+</span><span id="line-841"><span class="sd">    ----------</span>
+</span><span id="line-842"><span class="sd">    dat: dict</span>
+</span><span id="line-843"><span class="sd">        Input data</span>
+</span><span id="line-844"><span class="sd">    col: str</span>
+</span><span id="line-845"><span class="sd">        Key of the column to be returned</span>
+</span><span id="line-846"><span class="sd">    mask: array-like</span>
+</span><span id="line-847"><span class="sd">        Boolean mask used for selection</span>
 </span><span id="line-848">
-</span><span id="line-849">    <span class="k">return</span> <span class="n">dat</span><span class="p">[</span><span class="n">col</span><span class="p">][</span><span class="n">mask</span><span class="p">]</span></div>
+</span><span id="line-849"><span class="sd">    Returns</span>
+</span><span id="line-850"><span class="sd">    -------</span>
+</span><span id="line-851"><span class="sd">    array-like</span>
+</span><span id="line-852"><span class="sd">        Requested column from the data, filtered by the mask.</span>
+</span><span id="line-853">
+</span><span id="line-854"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-855">
+</span><span id="line-856">    <span class="k">return</span> <span class="n">dat</span><span class="p">[</span><span class="n">col</span><span class="p">][</span><span class="n">mask</span><span class="p">]</span></div>
 
-</span><span id="line-850">
-</span><span id="line-851">
+</span><span id="line-857">
+</span><span id="line-858">
 <div class="viewcode-block" id="get_col">
 <a class="viewcode-back" href="../../sp_validation.catalog.html#sp_validation.catalog.get_col">[docs]</a>
-</span><span id="line-852"><span class="k">def</span><span class="w"> </span><span class="nf">get_col</span><span class="p">(</span><span class="n">dat</span><span class="p">,</span> <span class="n">col</span><span class="p">,</span> <span class="n">m_sel</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">m_flg</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-</span><span id="line-853"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Get Col.</span>
-</span><span id="line-854">
-</span><span id="line-855"><span class="sd">    Retrieve a specific column from the data with optional selection and flag masks.</span>
-</span><span id="line-856">
-</span><span id="line-857"><span class="sd">    Parameters</span>
-</span><span id="line-858"><span class="sd">    ----------</span>
-</span><span id="line-859"><span class="sd">    dat: dict</span>
-</span><span id="line-860"><span class="sd">        Input data</span>
-</span><span id="line-861"><span class="sd">    col: str</span>
-</span><span id="line-862"><span class="sd">        Key of the column to be returned</span>
-</span><span id="line-863"><span class="sd">    m_sel: array-like, optional</span>
-</span><span id="line-864"><span class="sd">        Boolean mask used for selection. If specified, m_flg must also be specified;</span>
-</span><span id="line-865"><span class="sd">        default is ``None``</span>
-</span><span id="line-866"><span class="sd">    m_flg: array-like, optional</span>
-</span><span id="line-867"><span class="sd">        Boolean mask used as a flag. If specified, m_sel must also be specified.</span>
-</span><span id="line-868"><span class="sd">        default is ``None``</span>
-</span><span id="line-869">
-</span><span id="line-870"><span class="sd">    Returns</span>
-</span><span id="line-871"><span class="sd">    -------</span>
-</span><span id="line-872"><span class="sd">    array-like</span>
-</span><span id="line-873"><span class="sd">        Requested column from the data, optionally filtered by the selection and flag masks.</span>
-</span><span id="line-874">
-</span><span id="line-875"><span class="sd">    See Also</span>
-</span><span id="line-876"><span class="sd">    --------</span>
-</span><span id="line-877"><span class="sd">        get_maked_col : More efficient if masks have been combined beforehand.</span>
-</span><span id="line-878">
-</span><span id="line-879"><span class="sd">    Raises</span>
-</span><span id="line-880"><span class="sd">    ------</span>
-</span><span id="line-881"><span class="sd">    ValueError</span>
-</span><span id="line-882"><span class="sd">        If only one of m_sel or m_flg is specified without the other.</span>
-</span><span id="line-883"><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="line-884">
-</span><span id="line-885">    <span class="k">if</span> <span class="nb">bool</span><span class="p">(</span><span class="n">m_sel</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">m_flg</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">):</span>
-</span><span id="line-886">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Specify both or none of selection and flag masks&quot;</span><span class="p">)</span>
-</span><span id="line-887">
-</span><span id="line-888">    <span class="k">if</span> <span class="n">m_sel</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">m_flg</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-889">        <span class="k">return</span> <span class="n">dat</span><span class="p">[</span><span class="n">col</span><span class="p">][:]</span>
-</span><span id="line-890">    <span class="k">else</span><span class="p">:</span>
-</span><span id="line-891">        <span class="k">return</span> <span class="n">dat</span><span class="p">[</span><span class="n">col</span><span class="p">][</span><span class="n">m_sel</span><span class="p">][</span><span class="n">m_flg</span><span class="p">]</span></div>
-
-</span><span id="line-892">        <span class="c1"># The following does not work</span>
-</span><span id="line-893">        <span class="c1"># return get_maked_col(dat, col, mask_combined)</span>
+</span><span id="line-859"><span class="k">def</span><span class="w"> </span><span class="nf">get_col</span><span class="p">(</span><span class="n">dat</span><span class="p">,</span> <span class="n">col</span><span class="p">,</span> <span class="n">m_sel</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">m_flg</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+</span><span id="line-860"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Get Col.</span>
+</span><span id="line-861">
+</span><span id="line-862"><span class="sd">    Retrieve a specific column from the data with optional selection and flag masks.</span>
+</span><span id="line-863">
+</span><span id="line-864"><span class="sd">    Parameters</span>
+</span><span id="line-865"><span class="sd">    ----------</span>
+</span><span id="line-866"><span class="sd">    dat: dict</span>
+</span><span id="line-867"><span class="sd">        Input data</span>
+</span><span id="line-868"><span class="sd">    col: str</span>
+</span><span id="line-869"><span class="sd">        Key of the column to be returned</span>
+</span><span id="line-870"><span class="sd">    m_sel: array-like, optional</span>
+</span><span id="line-871"><span class="sd">        Boolean mask used for selection. If specified, m_flg must also be specified;</span>
+</span><span id="line-872"><span class="sd">        default is ``None``</span>
+</span><span id="line-873"><span class="sd">    m_flg: array-like, optional</span>
+</span><span id="line-874"><span class="sd">        Boolean mask used as a flag. If specified, m_sel must also be specified.</span>
+</span><span id="line-875"><span class="sd">        default is ``None``</span>
+</span><span id="line-876">
+</span><span id="line-877"><span class="sd">    Returns</span>
+</span><span id="line-878"><span class="sd">    -------</span>
+</span><span id="line-879"><span class="sd">    array-like</span>
+</span><span id="line-880"><span class="sd">        Requested column from the data, optionally filtered by the selection and flag masks.</span>
+</span><span id="line-881">
+</span><span id="line-882"><span class="sd">    See Also</span>
+</span><span id="line-883"><span class="sd">    --------</span>
+</span><span id="line-884"><span class="sd">        get_maked_col : More efficient if masks have been combined beforehand.</span>
+</span><span id="line-885">
+</span><span id="line-886"><span class="sd">    Raises</span>
+</span><span id="line-887"><span class="sd">    ------</span>
+</span><span id="line-888"><span class="sd">    ValueError</span>
+</span><span id="line-889"><span class="sd">        If only one of m_sel or m_flg is specified without the other.</span>
+</span><span id="line-890"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-891">
+</span><span id="line-892">    <span class="k">if</span> <span class="nb">bool</span><span class="p">(</span><span class="n">m_sel</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">m_flg</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">):</span>
+</span><span id="line-893">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Specify both or none of selection and flag masks&quot;</span><span class="p">)</span>
 </span><span id="line-894">
-</span><span id="line-895">
+</span><span id="line-895">    <span class="k">if</span> <span class="n">m_sel</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">m_flg</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-896">        <span class="k">return</span> <span class="n">dat</span><span class="p">[</span><span class="n">col</span><span class="p">][:]</span>
+</span><span id="line-897">    <span class="k">else</span><span class="p">:</span>
+</span><span id="line-898">        <span class="k">return</span> <span class="n">dat</span><span class="p">[</span><span class="n">col</span><span class="p">][</span><span class="n">m_sel</span><span class="p">][</span><span class="n">m_flg</span><span class="p">]</span></div>
+
+</span><span id="line-899">        <span class="c1"># The following does not work</span>
+</span><span id="line-900">        <span class="c1"># return get_maked_col(dat, col, mask_combined)</span>
+</span><span id="line-901">
+</span><span id="line-902">
 <div class="viewcode-block" id="get_snr">
 <a class="viewcode-back" href="../../sp_validation.catalog.html#sp_validation.catalog.get_snr">[docs]</a>
-</span><span id="line-896"><span class="k">def</span><span class="w"> </span><span class="nf">get_snr</span><span class="p">(</span><span class="n">sh</span><span class="p">,</span> <span class="n">dat</span><span class="p">,</span> <span class="n">m_sel</span><span class="p">,</span> <span class="n">m_flg</span><span class="p">):</span>
-</span><span id="line-897"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Get SNR.</span>
-</span><span id="line-898">
-</span><span id="line-899"><span class="sd">    Return signal-to-noise ratio.</span>
-</span><span id="line-900">
-</span><span id="line-901"><span class="sd">    Parameters</span>
-</span><span id="line-902"><span class="sd">    ----------</span>
-</span><span id="line-903"><span class="sd">    sh: str</span>
-</span><span id="line-904"><span class="sd">        shape method identified, e.g. &quot;ngmix&quot;</span>
-</span><span id="line-905"><span class="sd">    dat: dict</span>
-</span><span id="line-906"><span class="sd">        Input data</span>
-</span><span id="line-907"><span class="sd">    m_sel: array-like, optional</span>
-</span><span id="line-908"><span class="sd">        Boolean mask used for selection. If specified, m_flg must also be specified;</span>
-</span><span id="line-909"><span class="sd">        default is ``None``</span>
-</span><span id="line-910"><span class="sd">    m_flg: array-like, optional</span>
-</span><span id="line-911"><span class="sd">        Boolean mask used as a flag. If specified, m_sel must also be specified.</span>
-</span><span id="line-912"><span class="sd">        default is ``None``</span>
-</span><span id="line-913">
-</span><span id="line-914"><span class="sd">    Returns</span>
-</span><span id="line-915"><span class="sd">    -------</span>
-</span><span id="line-916"><span class="sd">    array-like</span>
-</span><span id="line-917"><span class="sd">        signal-to-noise ratios</span>
-</span><span id="line-918">
-</span><span id="line-919"><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="line-920">    <span class="k">if</span> <span class="n">sh</span> <span class="o">==</span> <span class="s2">&quot;ngmix&quot;</span><span class="p">:</span>
-</span><span id="line-921">        <span class="n">my_snr</span> <span class="o">=</span> <span class="n">get_col</span><span class="p">(</span><span class="n">dat</span><span class="p">,</span> <span class="s2">&quot;NGMIX_FLUX_NOSHEAR&quot;</span><span class="p">,</span> <span class="n">m_sel</span><span class="p">,</span> <span class="n">m_flg</span><span class="p">)</span> <span class="o">/</span> <span class="n">get_col</span><span class="p">(</span>
-</span><span id="line-922">            <span class="n">dat</span><span class="p">,</span> <span class="s2">&quot;NGMIX_FLUX_ERR_NOSHEAR&quot;</span><span class="p">,</span> <span class="n">m_sel</span><span class="p">,</span> <span class="n">m_flg</span>
-</span><span id="line-923">        <span class="p">)</span>
-</span><span id="line-924">    <span class="k">else</span><span class="p">:</span>
-</span><span id="line-925">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported shape method &#39;</span><span class="si">{</span><span class="n">sh</span><span class="si">}</span><span class="s2">&#39;; only &#39;ngmix&#39; is supported&quot;</span><span class="p">)</span>
-</span><span id="line-926">
-</span><span id="line-927">    <span class="k">return</span> <span class="n">my_snr</span></div>
+</span><span id="line-903"><span class="k">def</span><span class="w"> </span><span class="nf">get_snr</span><span class="p">(</span><span class="n">sh</span><span class="p">,</span> <span class="n">dat</span><span class="p">,</span> <span class="n">m_sel</span><span class="p">,</span> <span class="n">m_flg</span><span class="p">):</span>
+</span><span id="line-904"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Get SNR.</span>
+</span><span id="line-905">
+</span><span id="line-906"><span class="sd">    Return signal-to-noise ratio.</span>
+</span><span id="line-907">
+</span><span id="line-908"><span class="sd">    Parameters</span>
+</span><span id="line-909"><span class="sd">    ----------</span>
+</span><span id="line-910"><span class="sd">    sh: str</span>
+</span><span id="line-911"><span class="sd">        shape method identified, e.g. &quot;ngmix&quot;</span>
+</span><span id="line-912"><span class="sd">    dat: dict</span>
+</span><span id="line-913"><span class="sd">        Input data</span>
+</span><span id="line-914"><span class="sd">    m_sel: array-like, optional</span>
+</span><span id="line-915"><span class="sd">        Boolean mask used for selection. If specified, m_flg must also be specified;</span>
+</span><span id="line-916"><span class="sd">        default is ``None``</span>
+</span><span id="line-917"><span class="sd">    m_flg: array-like, optional</span>
+</span><span id="line-918"><span class="sd">        Boolean mask used as a flag. If specified, m_sel must also be specified.</span>
+</span><span id="line-919"><span class="sd">        default is ``None``</span>
+</span><span id="line-920">
+</span><span id="line-921"><span class="sd">    Returns</span>
+</span><span id="line-922"><span class="sd">    -------</span>
+</span><span id="line-923"><span class="sd">    array-like</span>
+</span><span id="line-924"><span class="sd">        signal-to-noise ratios</span>
+</span><span id="line-925">
+</span><span id="line-926"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-927">    <span class="k">if</span> <span class="n">sh</span> <span class="o">==</span> <span class="s2">&quot;ngmix&quot;</span><span class="p">:</span>
+</span><span id="line-928">        <span class="n">my_snr</span> <span class="o">=</span> <span class="n">get_col</span><span class="p">(</span><span class="n">dat</span><span class="p">,</span> <span class="s2">&quot;NGMIX_FLUX_NOSHEAR&quot;</span><span class="p">,</span> <span class="n">m_sel</span><span class="p">,</span> <span class="n">m_flg</span><span class="p">)</span> <span class="o">/</span> <span class="n">get_col</span><span class="p">(</span>
+</span><span id="line-929">            <span class="n">dat</span><span class="p">,</span> <span class="s2">&quot;NGMIX_FLUX_ERR_NOSHEAR&quot;</span><span class="p">,</span> <span class="n">m_sel</span><span class="p">,</span> <span class="n">m_flg</span>
+</span><span id="line-930">        <span class="p">)</span>
+</span><span id="line-931">    <span class="k">else</span><span class="p">:</span>
+</span><span id="line-932">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported shape method &#39;</span><span class="si">{</span><span class="n">sh</span><span class="si">}</span><span class="s2">&#39;; only &#39;ngmix&#39; is supported&quot;</span><span class="p">)</span>
+</span><span id="line-933">
+</span><span id="line-934">    <span class="k">return</span> <span class="n">my_snr</span></div>
 
 </span></code></pre></div>
     </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
