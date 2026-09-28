@@ -21,7 +21,7 @@ characterizes the mock at two depths:
    CAMB params unchanged. When a GLASS-capable image lands, promote this to a
    committed-map ``np.allclose`` check against a reference ``.npy``.
 
-The reference was generated in the production container (CAMB 1.6.5); the
+The reference was generated in the production container (CAMB 2.0.4); the
 tolerance below absorbs cross-version CAMB float drift while still catching a
 genuine config change, which moves these numbers by parts in 10⁰–10⁻³.
 """
@@ -53,6 +53,21 @@ REF_CONFIG = GlassMockConfig(nside=16)
 # while a real config change moves these by >>1e-3.
 RTOL = 1e-6
 ATOL = 0.0
+
+
+@pytest.fixture(autouse=True)
+def _camb_default_accuracy():
+    """Run each test at CAMB's default ``AccuracyTarget``, then restore it.
+
+    ``camb.config.AccuracyTarget`` is process-global, and pyccl's CAMB transfer
+    path sets it to 0 whenever it runs, which moves the rescaled ``As`` by
+    ~1e-4. The reference is built at CAMB's default (1), as a standalone mock
+    run sees it.
+    """
+    previous = camb.config.AccuracyTarget
+    camb.config.AccuracyTarget = 1
+    yield
+    camb.config.AccuracyTarget = previous
 
 
 def _camb_pk(pars, config):
