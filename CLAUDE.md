@@ -71,7 +71,7 @@ Main configuration in `scripts/calibration/params.py` with parameters:
 - `campaign`: Campaign name (the ShapePipe tile list); names the input products
 - `data_dir`: Input data directory
 - `galaxy_cat_path`: Galaxy catalogue path (.fits/.hdf5)
-- `star_cat_path`: Star catalogue path (.hdf5, or legacy .fits)
+- `star_cat_path`: Star catalogue path (.hdf5, or a v1 .fits)
 
 ### Key Dependencies
 - astropy, numpy, scipy for core calculations

@@ -786,7 +786,7 @@ def find_dataset_group(hdf5_file):
     This makes the reader independent of how deeply the products nest that
     group: it walks down as long as the current node holds exactly one
     sub-group, and stops as soon as the members are datasets. It therefore
-    reads both the legacy ``patches/<campaign>/<tile-ID>`` layout (the
+    reads both the nested ``patches/<campaign>/<tile-ID>`` layout (the
     "patches" key is a ShapePipe-side compatibility shim, not a concept) and
     a flat ``tiles/<tile-ID>`` or ``exposures/<exp>`` layout.
 

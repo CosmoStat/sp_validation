@@ -35,8 +35,7 @@ from sp_validation import io
 #: columns, presented under these names by ``sp_validation.grammar``.
 #:
 #: Reason bits making up the r-band default bitmask: n1/n2 star halos
-#: (which of the two is faint and which bright is unconfirmed for the
-#: Aug-2026 products), n4 stars, n8 manual galaxy mask, n64 (an
+#: (which of the two is faint and which bright is not documented), n4 stars, n8 manual galaxy mask, n64 (an
 #: undocumented reason bit), n1024 MaxiMask.
 #:
 #: Per-band coverage flags: n16 (u), n32 (g), n128 (i), n256 (z). There is

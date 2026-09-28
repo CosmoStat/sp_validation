@@ -56,8 +56,8 @@ param_list_path = f"{data_dir}/cfis/final_cat.param"
 ### Star and PSF catalog name; optional, set to `None` if not required
 star_cat_path = f"{data_dir}/full_starcat_{campaign}.hdf5"
 
-# HDU number of star and PSF catalogue; only used for the legacy FITS star
-# catalogue (a path ending in .fits), ignored for the v2 HDF5 product
+# HDU number of star and PSF catalogue; only used for a FITS star catalogue
+# (a path ending in .fits), ignored for the HDF5 product
 hdu_star_cat = 1
 
 ### External mask; optional, set to `None` if not required

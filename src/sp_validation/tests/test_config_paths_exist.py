@@ -187,8 +187,17 @@ def _candidate_paths() -> list[tuple[Path, str, Path]]:
     candidates = []
     for config_path in _config_files():
         iterator = _iter_ini_paths if config_path.suffix == ".ini" else _iter_yaml_paths
+        calibration = config_path.parent == root / "config/calibration"
         for source, key, value, base_dir in iterator(config_path):
             expanded = Path(value).expanduser()
+            if (
+                calibration
+                and key == "params.input_path"
+                and not expanded.is_absolute()
+            ):
+                # A calibration config runs as config_mask.yaml in its run
+                # directory; a relative input_path names a file there.
+                continue
             if expanded.is_absolute():
                 resolved = expanded
             elif base_dir is not None:

@@ -36,9 +36,9 @@ def make_galaxy_data(n_obj, offset=0):
 
 
 def write_campaign(path, layout, tiles):
-    """Write a campaign hdf5 file in the legacy or flat layout."""
+    """Write a campaign hdf5 file in the nested or flat layout."""
     with h5py.File(path, "w") as f:
-        if layout == "legacy":
+        if layout == "nested":
             group = f.create_group("patches").create_group("CAMPAIGN")
         else:
             group = f.create_group("tiles")
@@ -65,9 +65,9 @@ class TestCampaignReader(unittest.TestCase):
         """Expected concatenation: datasets in sorted-key order."""
         return np.concatenate([self._tiles[key] for key in sorted(self._tiles)])
 
-    def test_legacy_layout(self):
+    def test_nested_layout(self):
         path = self._dir / "final_cat_CAMPAIGN.hdf5"
-        write_campaign(path, "legacy", self._tiles)
+        write_campaign(path, "nested", self._tiles)
 
         dat = catalog.read_campaign_catalogue(path, verbose=False)
 
@@ -84,13 +84,13 @@ class TestCampaignReader(unittest.TestCase):
         npt.assert_array_equal(dat["RA"], self._expected()["RA"])
 
     def test_layouts_agree(self):
-        legacy = self._dir / "legacy.hdf5"
+        nested = self._dir / "nested.hdf5"
         flat = self._dir / "flat.hdf5"
-        write_campaign(legacy, "legacy", self._tiles)
+        write_campaign(nested, "nested", self._tiles)
         write_campaign(flat, "flat", self._tiles)
 
         npt.assert_array_equal(
-            catalog.read_campaign_catalogue(legacy, verbose=False),
+            catalog.read_campaign_catalogue(nested, verbose=False),
             catalog.read_campaign_catalogue(flat, verbose=False),
         )
 
@@ -200,7 +200,7 @@ class TestCampaignReader(unittest.TestCase):
     def test_iter_campaign_tiles(self):
         """The streaming reader yields one restricted tile at a time."""
         path = self._dir / "final_cat_CAMPAIGN.hdf5"
-        write_campaign(path, "legacy", self._tiles)
+        write_campaign(path, "nested", self._tiles)
 
         tiles = list(
             catalog.iter_campaign_tiles(str(path), param_list=["RA"], verbose=False)
@@ -362,8 +362,8 @@ class TestMaskCut(unittest.TestCase):
     def test_float_and_int_mask_columns(self):
         """Test that float and int mask columns cut like bool ones.
 
-        ShapePipe's writer emits the real MASK_n* columns as float64
-        {0.0, 1.0} rather than bool (being fixed upstream), so the cut
+        ShapePipe's writer can emit the MASK_n* columns as float64
+        {0.0, 1.0} rather than bool, so the cut
         must decide on the value, not on the dtype.
         """
         for dtype in ("f8", "i4"):
@@ -417,7 +417,7 @@ class TestCampaignMerge(unittest.TestCase):
         self._dir = Path(self._tmp.name)
 
         self._paths = []
-        for name, layout, n_obj in (("W3", "legacy", 3), ("SGC", "flat", 2)):
+        for name, layout, n_obj in (("W3", "nested", 3), ("SGC", "flat", 2)):
             path = self._dir / f"final_cat_{name}.hdf5"
             write_campaign(path, layout, {"000.000": make_galaxy_data(n_obj)})
             self._paths.append(str(path))

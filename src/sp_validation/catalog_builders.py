@@ -982,8 +982,6 @@ class ApplyHspMasks(BaseCat):
         ----------
         hd5file : h5py.File
             input HDF5 file
-        campaigns : list, optional
-            input campaign names, list of str, default is ``None``
 
         """
         super().write_hdf5_header(hd5file)

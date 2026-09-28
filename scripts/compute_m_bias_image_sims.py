@@ -60,7 +60,8 @@ def get_n_tiles(grids_dir, num):
     """Detect number of tiles from final_cat HDF5 files.
 
     Layout-agnostic: uses ``sp_validation.catalog.find_dataset_group``, so it
-    works on both the legacy nested and the flat per-tile HDF5 layouts.
+    works on both the nested ``patches/<campaign>/<tile-ID>`` and the flat
+    per-tile HDF5 layouts.
     """
     import h5py
 

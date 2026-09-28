@@ -219,8 +219,8 @@ def print_all(
 def get_area(fname):
     """Return the unmasked area in deg^2 read from an area.txt file.
 
-    Accepts both the v2 wording ("campaign") and the legacy one ("patch"),
-    so results computed before the campaign rename can still be combined.
+    Accepts both the "campaign" and the "patch" wording of the area line,
+    so area files of either wording combine.
     Raises rather than returning a placeholder: a wrong area silently
     rescales every density.
     """
