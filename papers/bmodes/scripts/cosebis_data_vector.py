@@ -1,4 +1,4 @@
-"""COSEBIs data vector claim.
+"""COSEBIs data vector figure.
 
 Single-panel figure showing B-mode COSEBIS for each catalog version.
 Overplots fiducial and full angular range scale cuts.
@@ -197,7 +197,6 @@ def main(config, xi_integration, cov_integration, out_dir):
     plt.close(fig)
 
     evidence_data = {
-        "spec_id": "cosebis_data_vector",
         "generated": datetime.now().isoformat(),
         "evidence": {
             "version": version,

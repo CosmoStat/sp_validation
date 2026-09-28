@@ -7,8 +7,7 @@ workflow/, papers/cosmo_val/ and src/, and one synthetic catalogue declared
 unblinded. The first launch stops for want of its patch centres and names the
 command that draws them; after it has run, its reporting parts and their figure
 are made; then the catalogue is declared blinded, a blind is drawn for it, and
-the same launch re-measures the parts concealed. The jobs run under a
-matplotlibrc asking for a LaTeX package no image has, as a user's own may.
+the same launch re-measures the parts concealed.
 """
 
 import json
@@ -89,14 +88,6 @@ def _toy_checkout(root, image):
     config["fiducial"]["mock_version"] = VERSIONS[0]
     config["cosmo_val"].update(REPORTING)
     config_path.write_text(yaml.safe_dump(config, sort_keys=False))
-
-    # A user's matplotlibrc typesetting with a package the image lacks.
-    rc = root / "xdg" / "matplotlib" / "matplotlibrc"
-    rc.parent.mkdir(parents=True)
-    rc.write_text(
-        "text.usetex: True\n"
-        "text.latex.preamble: \\usepackage{spvalidationabsentpackage}\n"
-    )
     (root / "fast.json").write_text(
         json.dumps({"theory": {"transfer_function": "eisenstein_hu"}})
     )
@@ -123,7 +114,6 @@ def test_xi_before_and_after_its_catalogue_is_blinded():
         COSMO_VAL=str(out),
         COSMO_INFERENCE=str(root / "inference"),
         XDG_CACHE_HOME=str(root / "cache"),
-        APPTAINERENV_XDG_CONFIG_HOME=str(root / "xdg"),
         PYTHONNOUSERSITE="1",
         PYTHONUNBUFFERED="1",
     )

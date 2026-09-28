@@ -2,7 +2,11 @@
 
 The custody of every catalogue version (:func:`custody_of`), the stamp a SACC
 born under it carries, and the reader of the blind registry beside the
-catalogue config (``cosmo_val/blinds/CONTRACTS``).
+catalogue config (``cosmo_val/blinds/``; its writer is
+:mod:`sp_validation.blinding`).
+
+The host Snakemake loads this module by path, with no sp_validation installed,
+so it imports nothing but the standard library.
 """
 
 import hashlib

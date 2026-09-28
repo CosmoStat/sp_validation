@@ -1,14 +1,14 @@
-# workflow/rules/claims.smk
 """
-Claims — testable assertions that produce evidence.
-Claims depend on methods (for technique definitions) and compute outputs (for data).
+Paper figures. Each rule plots from compute-workflow outputs and writes an
+evidence.json of summary statistics (PTEs, chi2) that paper.smk turns into
+LaTeX macros and tables.
 """
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Configuration
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-# CONFIG_DIR, TAPESTRY_DIR, PAPER_FIGURES_DIR, FIDUCIAL, PLANCK18 defined in Snakefile
+# TAPESTRY_DIR, PAPER_FIGURES_DIR, FIDUCIAL, PLANCK18 defined in Snakefile
 # COSMO_VAL, COSMO_INFERENCE, covariance_path() defined in Snakefile
 COSMO_VAL_OUTPUT = str(COSMO_VAL)  # String version for f-string interpolation
 
@@ -32,12 +32,12 @@ FIDUCIAL_VERSION = FIDUCIAL["version"]
 MOCK_VERSION = f"{FIDUCIAL['mock_version']}_leak_corr"
 
 # Catalogues identical to the mock version but for their n(z) realisation,
-# keyed by realisation label: bb_covariance_blind_independence compares them.
+# keyed by realisation label: bb_covariance_nz_independence compares them.
 NZ_REALISATIONS = FIDUCIAL["nz_realisations"]
 
 # Filter versions for different analysis types
 # Pure E/B and PTEs only apply to leak-corrected versions
-VERSIONS_LEAK_CORR = [v for v in config["versions"] if "_leak_corr" in v and "_ecut" not in v]
+VERSIONS_LEAK_CORR = [v for v in config["versions"] if "_leak_corr" in v]
 
 # Uncorrected counterparts (bare catalog, no leakage correction)
 VERSIONS_UNCORRECTED = [v.replace("_leak_corr", "") for v in VERSIONS_LEAK_CORR]
@@ -56,7 +56,7 @@ def _extract_version_number(version_string):
     return match.group(1) if match else version_string
 
 
-def _per_version_figure_outputs(claim_dir):
+def _per_version_figure_outputs(fig_dir):
     """Generate output dict for 9 per-version figures.
 
     Returns dict mapping output keys to paths for all 9 figures:
@@ -64,11 +64,11 @@ def _per_version_figure_outputs(claim_dir):
     - figure_v{X.Y.Z}.png for each leak-corrected version
     - figure_v{X.Y.Z}_uncorrected.png for each uncorrected version
     """
-    outputs = {"figure": f"{claim_dir}/figure.png"}
+    outputs = {"figure": f"{fig_dir}/figure.png"}
     for ver_lc in sorted(VERSION_LABELS.keys(), key=lambda v: -len(v)):
         ver_num = _extract_version_number(ver_lc)
-        outputs[f"figure_{ver_num.replace('.', '_')}"] = f"{claim_dir}/figure_{ver_num}.png"
-        outputs[f"figure_{ver_num.replace('.', '_')}_uncorrected"] = f"{claim_dir}/figure_{ver_num}_uncorrected.png"
+        outputs[f"figure_{ver_num.replace('.', '_')}"] = f"{fig_dir}/figure_{ver_num}.png"
+        outputs[f"figure_{ver_num.replace('.', '_')}_uncorrected"] = f"{fig_dir}/figure_{ver_num}_uncorrected.png"
     return outputs
 
 
@@ -131,7 +131,7 @@ def _pseudo_cl_cov_path(version, nbins=32):
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# COSEBIS Claims
+# COSEBIS
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 rule cosebis_version_comparison:
@@ -140,12 +140,6 @@ rule cosebis_version_comparison:
     Plotting only - statistical PTEs are in cosebis_pte_matrix.
     """
     input:
-        specs=[
-            f"{CONFIG_DIR}/cosebis_version_comparison.md",
-            f"{CONFIG_DIR}/cosebis.md",
-            f"{CONFIG_DIR}/1d_plots.md",
-        ],
-        config=f"{CONFIG_DIR}/config.yaml",
         # COSEBIs only for leak-corrected versions
         xi_integration=[_xi_integration_path(ver) for ver in VERSIONS_LEAK_CORR],
         cov_integration=[_cov_integration_path(ver) for ver in VERSIONS_LEAK_CORR],
@@ -172,12 +166,6 @@ rule cosebis_data_vector:
     - figure_v{X.Y.Z}_uncorrected.png: each version, uncorrected, with title
     """
     input:
-        specs=[
-            f"{CONFIG_DIR}/cosebis_data_vector.md",
-            f"{CONFIG_DIR}/cosebis.md",
-            f"{CONFIG_DIR}/1d_plots.md",
-        ],
-        config=f"{CONFIG_DIR}/config.yaml",
         # Per-version inputs: xi_{version} and cov_{version} for all versions
         **{f"xi_{ver}": _xi_integration_path(ver) for ver in VERSIONS_ALL_FOR_PLOTS},
         **{f"cov_{ver}": _cov_integration_path(ver) for ver in VERSIONS_ALL_FOR_PLOTS},
@@ -191,32 +179,8 @@ rule cosebis_data_vector:
         "../scripts/cosebis_data_vector.py"
 
 
-rule cosebis_binning_comparison:
-    """COSEBIS angular binning convergence: 1,000 vs 10,000 ξ± bins.
-
-    Tests whether the numerical integration of T±n(θ) × ξ±(θ) is converged
-    at 1,000 bins by comparing B_n values and PTEs against 10,000-bin results.
-    Uses the 1,000-bin COSEBIS covariance for both (integration-independent
-    if converged). Ref: Asgari et al. 2017.
-    """
-    input:
-        xi_1k=_xi_integration_path(FIDUCIAL_VERSION),
-        xi_10k=(
-            f"{COSMO_VAL_OUTPUT}/{FIDUCIAL_VERSION}_xi_minsep={FIDUCIAL['min_sep_int']}"
-            f"_maxsep={FIDUCIAL['max_sep_int']}_nbins=10000_npatch={FIDUCIAL['npatch']}.sacc"
-        ),
-        cov_1k=_cov_integration_path(FIDUCIAL_VERSION),
-    output:
-        evidence=f"{TAPESTRY_DIR}/cosebis_binning_comparison/evidence.json",
-        figure=f"{TAPESTRY_DIR}/cosebis_binning_comparison/figure.png",
-    resources:
-        mem_mb=8000,
-    script:
-        "../scripts/cosebis_binning_comparison.py"
-
-
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# Pure E/B Claims
+# Pure E/B
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 # Number of parallel chunks for MC covariance estimation
@@ -274,12 +238,6 @@ rule pure_eb_data_vector:
     - figure_v{X.Y.Z}_uncorrected.png: each version, uncorrected, with title
     """
     input:
-        specs=[
-            f"{CONFIG_DIR}/pure_eb_data_vector.md",
-            f"{CONFIG_DIR}/pure_eb.md",
-            f"{CONFIG_DIR}/1d_plots.md",
-        ],
-        config=f"{CONFIG_DIR}/config.yaml",
         # Per-version inputs: pure_eb_{version} and cov_{version} for all versions
         **{f"pure_eb_{ver}": f"results/paper_plots/intermediate/{ver}_pure_eb_semianalytic.npz"
            for ver in VERSIONS_ALL_FOR_PLOTS},
@@ -299,12 +257,6 @@ rule pure_eb_version_comparison:
     Uses E-mode errors from pure_eb covariance as proxy for total xi (E dominates).
     """
     input:
-        specs=[
-            f"{CONFIG_DIR}/pure_eb_version_comparison.md",
-            f"{CONFIG_DIR}/pure_eb.md",
-            f"{CONFIG_DIR}/1d_plots.md",
-        ],
-        config=f"{CONFIG_DIR}/config.yaml",
         # Pure E/B only for leak-corrected versions
         pure_eb_data=[
             f"results/paper_plots/intermediate/{ver}_pure_eb_semianalytic.npz"
@@ -330,13 +282,6 @@ rule pure_eb_covariance:
     - Correlation structure across 6 blocks (E+/E-/B+/B-/amb+/amb-)
     """
     input:
-        specs=[
-            f"{CONFIG_DIR}/pure_eb_covariance.md",
-            f"{CONFIG_DIR}/pure_eb.md",
-            f"{CONFIG_DIR}/covariance.md",
-            f"{CONFIG_DIR}/2d_plots.md",
-        ],
-        config=f"{CONFIG_DIR}/config.yaml",
         pure_eb_data=f"results/paper_plots/intermediate/{FIDUCIAL_VERSION}_pure_eb_semianalytic.npz",
     output:
         evidence=f"{TAPESTRY_DIR}/pure_eb_covariance/evidence.json",
@@ -366,7 +311,7 @@ rule calculate_pure_eb_ptes:
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# Harmonic-Space Claims (Cl)
+# Harmonic space (Cl)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 rule cl_data_vector:
@@ -378,11 +323,6 @@ rule cl_data_vector:
     - figure_v{X.Y.Z}_uncorrected.png: each version, uncorrected, with title
     """
     input:
-        specs=[
-            f"{CONFIG_DIR}/cl_data_vector.md",
-            f"{CONFIG_DIR}/cl.md",
-        ],
-        config=f"{CONFIG_DIR}/config.yaml",
         # Per-version inputs: pseudo_cl_{version} and pseudo_cl_cov_{version} for all versions
         **{f"pseudo_cl_{ver}": _pseudo_cl_path(ver) for ver in VERSIONS_ALL_FOR_PLOTS},
         **{f"pseudo_cl_cov_{ver}": _pseudo_cl_cov_path(ver) for ver in VERSIONS_ALL_FOR_PLOTS},
@@ -400,12 +340,6 @@ rule cl_data_vector:
 rule cl_version_comparison:
     """C_ell^BB version comparison across catalog versions."""
     input:
-        specs=[
-            f"{CONFIG_DIR}/cl_version_comparison.md",
-            f"{CONFIG_DIR}/cl.md",
-            f"{CONFIG_DIR}/cl_data_vector.md",
-        ],
-        config=f"{CONFIG_DIR}/config.yaml",
         cl_data_vector_evidence=rules.cl_data_vector.output.evidence,
         # Cl version comparison only for leak-corrected versions
         pseudo_cl=[_pseudo_cl_path(ver) for ver in VERSIONS_LEAK_CORR],
@@ -458,14 +392,6 @@ rule config_space_pte_matrices:
     Appendix: 3x3 composite for all versions (3 rows x 3 statistics)
     """
     input:
-        specs=[
-            f"{CONFIG_DIR}/config_space_pte_matrices.md",
-            f"{CONFIG_DIR}/pure_eb.md",
-            f"{CONFIG_DIR}/cosebis.md",
-            f"{CONFIG_DIR}/2d_plots.md",
-        ],
-        config=f"{CONFIG_DIR}/config.yaml",
-        # Claim dependencies
         pure_eb_data_vector=f"{TAPESTRY_DIR}/pure_eb_data_vector/evidence.json",
         cosebis_data_vector=f"{TAPESTRY_DIR}/cosebis_data_vector/evidence.json",
         # Pure E/B and COSEBIs PTEs for both corrected and uncorrected versions
@@ -495,15 +421,9 @@ rule harmonic_space_pte_matrices:
     Appendix: N-panel composite for all versions from config.versions
 
     n(z)-realisation independence of the BB covariance is validated in
-    bb_covariance_blind_independence.
+    bb_covariance_nz_independence.
     """
     input:
-        specs=[
-            f"{CONFIG_DIR}/harmonic_space_pte_matrices.md",
-            f"{CONFIG_DIR}/cl.md",
-            f"{CONFIG_DIR}/2d_plots.md",
-        ],
-        config=f"{CONFIG_DIR}/config.yaml",
         # Harmonic PTE matrices for both corrected and uncorrected versions
         pseudo_cl=[_pseudo_cl_path(ver) for ver in VERSIONS_CONFIG_SPACE_PTES],
         pseudo_cl_cov=[_pseudo_cl_cov_path(ver) for ver in VERSIONS_CONFIG_SPACE_PTES],
@@ -519,12 +439,13 @@ rule harmonic_space_pte_matrices:
         "../scripts/harmonic_space_pte_matrices.py"
 
 
-rule bb_covariance_blind_independence:
+rule bb_covariance_nz_independence:
     """Test BB covariance independence of the n(z) realisation vs EE variation.
 
-    BB covariances should be stable across the A/B/C n(z) realisations (null
+    BB covariances should be stable across the n(z) realisations (null
     signal → no sample variance). EE covariances should vary (~10%) due to
-    sample variance from cosmological signal.
+    sample variance from cosmological signal. The first realisation is the
+    reference each of the others is compared against.
 
     Covers all three analysis spaces: Pure E/B, COSEBIS, and harmonic (pseudo-Cl).
 
@@ -533,14 +454,6 @@ rule bb_covariance_blind_independence:
     version.
     """
     input:
-        specs=[
-            f"{CONFIG_DIR}/bb_covariance_blind_independence.md",
-            f"{CONFIG_DIR}/covariance.md",
-            f"{CONFIG_DIR}/pure_eb.md",
-            f"{CONFIG_DIR}/cosebis.md",
-            f"{CONFIG_DIR}/cl.md",
-        ],
-        config=f"{CONFIG_DIR}/config.yaml",
         # Per-realisation MC-propagated pure E/B covariances
         **{f"pure_eb_{label}": f"results/paper_plots/intermediate/{ver}_pure_eb_semianalytic.npz"
            for label, ver in NZ_REALISATIONS.items()},
@@ -557,10 +470,10 @@ rule bb_covariance_blind_independence:
         theta_min=config["cosebis"]["theta_min"],
         theta_max=config["cosebis"]["theta_max"],
     output:
-        evidence=f"{TAPESTRY_DIR}/bb_covariance_blind_independence/evidence.json",
-        figure=f"{TAPESTRY_DIR}/bb_covariance_blind_independence/figure.png",
+        evidence=f"{TAPESTRY_DIR}/bb_covariance_nz_independence/evidence.json",
+        figure=f"{TAPESTRY_DIR}/bb_covariance_nz_independence/figure.png",
     script:
-        "../scripts/bb_covariance_blind_independence.py"
+        "../scripts/bb_covariance_nz_independence.py"
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -588,12 +501,6 @@ rule harmonic_config_cosebis_comparison:
     wildcard_constraints:
         angular_range="full|fiducial",
     input:
-        specs=[
-            f"{CONFIG_DIR}/harmonic_config_cosebis_comparison.md",
-            f"{CONFIG_DIR}/cosebis.md",
-            f"{CONFIG_DIR}/cl.md",
-        ],
-        config=f"{CONFIG_DIR}/config.yaml",
         **{f"pseudo_cl_{ver}": _pseudo_cl_path(ver, nbins=_COSEBIS_NBINS) for ver in VERSIONS_ALL_FOR_PLOTS},
         **{f"pseudo_cl_cov_{ver}": _pseudo_cl_cov_path(ver, nbins=_COSEBIS_NBINS) for ver in VERSIONS_ALL_FOR_PLOTS},
         **{f"xi_{ver}": _xi_integration_path(ver) for ver in VERSIONS_ALL_FOR_PLOTS},
@@ -620,12 +527,6 @@ rule cosebis_filter_overlay:
     Shows why coarse bandpowers underresolve higher COSEBIS modes.
     """
     input:
-        specs=[
-            f"{CONFIG_DIR}/cosebis_filter_overlay.md",
-            f"{CONFIG_DIR}/cosebis.md",
-            f"{CONFIG_DIR}/cl.md",
-        ],
-        config=f"{CONFIG_DIR}/config.yaml",
         pseudo_cl=_pseudo_cl_path(FIDUCIAL_VERSION),
         pseudo_cl_cov=_pseudo_cl_cov_path(FIDUCIAL_VERSION),
     output:
@@ -639,4 +540,4 @@ rule cosebis_filter_overlay:
 # Local Rules Declaration
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-localrules: cl_data_vector, cl_version_comparison, pure_eb_covariance, pure_eb_data_vector, pure_eb_version_comparison, cosebis_version_comparison, cosebis_data_vector, config_space_pte_matrices, harmonic_space_pte_matrices, bb_covariance_blind_independence, harmonic_config_cosebis_comparison, cosebis_filter_overlay
+localrules: cl_data_vector, cl_version_comparison, pure_eb_covariance, pure_eb_data_vector, pure_eb_version_comparison, cosebis_version_comparison, cosebis_data_vector, config_space_pte_matrices, harmonic_space_pte_matrices, bb_covariance_nz_independence, harmonic_config_cosebis_comparison, cosebis_filter_overlay

@@ -42,24 +42,20 @@ apptainer-args: >-
 #   * ``slurm_account``: the slurm executor's guess fails on candide (its
 #     ``sacct`` call errors) and warns on every launch.
 #
-#   * The excludes are the flaky nodes: n17 (mount issues), n09 (no internet),
-#     n36.
+#   * The excludes are the flaky nodes: n17 (mount issues), n36.
 default-resources:
   slurm_account: "cusers"
   slurm_partition: "comp,pscomp"
   runtime: "60m"
   cpus_per_task: 12
-  slurm_extra: "'--exclude=n17,n09,n36'"
+  slurm_extra: "'--exclude=n17,n36'"
 
 # Snakemake refuses a real run on a remote executor without a job bound.
 jobs: 100
 
-# Every usage but source-cache. Jobs inherit the launching shell's environment
-# (--export=ALL), and a login shell may point XDG_CACHE_HOME at node-local
-# /scratch, which some nodes lack; with the cache shared, each job is handed the
-# launch's cache path under it. common.py drops XDG_CACHE_HOME for the Snakemake
-# each job step starts, which the slurm-jobstep executor forces onto a shared
-# cache regardless.
+# Jobs inherit the launch env; leaving out source-cache keeps them from being
+# handed the launch's (possibly node-local) cache path. common.py drops
+# XDG_CACHE_HOME for the jobstep's own Snakemake.
 shared-fs-usage:
   - persistence
   - input-output

@@ -1,4 +1,0 @@
-@sc host-importable
-The host Snakemake imports workflow.common with no sp_validation installed;
-common loads the stdlib-only project modules it needs by file path.
-only: workflow.common may import stdlib, snakemake, snakemake.*

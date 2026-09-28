@@ -83,7 +83,7 @@ def main(
 
     plotting_config = config["plotting"]
     version_labels = plotting_config["version_labels"]
-    # Leak-corrected, non-ecut versions (matches VERSIONS_LEAK_CORR in claims.smk)
+    # Leak-corrected versions (matches VERSIONS_LEAK_CORR in figures.smk)
     versions = [v for v in config["versions"] if "_leak_corr" in v and "_ecut" not in v]
 
     # Which version gets the fiducial reference line in boxes
@@ -345,7 +345,6 @@ def main(
         evidence_versions[f"{v}_dof_eb_cut"] = int(data["dof_eb_cut"])
 
     evidence_data = {
-        "spec_id": "cl_version_comparison",
         "generated": datetime.now().isoformat(),
         "evidence": {
             "versions": evidence_versions,

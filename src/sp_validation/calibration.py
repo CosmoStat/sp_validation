@@ -697,7 +697,9 @@ class metacal:
     data :
         input galaxy catalogue
     mask : array of bool
-        mask according to galaxy selection, e.g. spread_model
+        pre-selection mask, e.g. flag, magnitude and footprint cuts; the
+        size-based galaxy selection (``rel_size_min`` < T/Tpsf <
+        ``rel_size_max``) is applied here
     masking_type : string, optional, default='gal'
         masking type, one in 'gal', 'gal_mom', 'star'
     step : float, optional, default=0.01

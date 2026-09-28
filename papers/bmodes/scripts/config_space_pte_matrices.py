@@ -785,7 +785,6 @@ def main(
     pure_eb_pte_files,
     cosebis_pte_files,
     output_dir,
-    spec_path=None,
     fiducial_overrides=None,
 ):
     # Both corrected and uncorrected versions (exclude ecut variants)
@@ -960,8 +959,6 @@ def main(
 
     # Build evidence
     evidence_data = {
-        "spec_id": "config_space_pte_matrices",
-        "spec_path": spec_path or "papers/bmodes/config/config_space_pte_matrices.md",
         "generated": datetime.now().isoformat(),
         "evidence": {
             "versions": {},
@@ -1012,7 +1009,7 @@ def main(
 
 
 def _versions_config_space(config):
-    """Reproduce VERSIONS_CONFIG_SPACE_PTES from the Snakemake claims.smk:
+    """Reproduce VERSIONS_CONFIG_SPACE_PTES from the Snakemake figures.smk:
     leak-corrected (non-ecut) versions plus their uncorrected counterparts."""
     leak_corr = [
         v for v in config["versions"] if "_leak_corr" in v and "_ecut" not in v
@@ -1028,13 +1025,11 @@ def _from_snakemake(smk):
     else:
         pure_eb_pte_files = list(pure_eb_pte_files)
     cosebis_pte_files = list(smk.input["cosebis_pte_files"])
-    spec_paths = smk.input["specs"]
     main(
         config=smk.config,
         pure_eb_pte_files=pure_eb_pte_files,
         cosebis_pte_files=cosebis_pte_files,
         output_dir=Path(smk.output["evidence"]).parent,
-        spec_path=spec_paths[0],
     )
 
 

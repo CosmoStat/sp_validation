@@ -1,5 +1,5 @@
 # Development image with more bells and whistles
-FROM ghcr.io/cosmostat/shapepipe:im_sims
+FROM ghcr.io/cosmostat/shapepipe:develop
 
 # liblapack-dev: cosmosis's MultiNest links -llapack, and the base image ships
 # only the runtime liblapack.so.3 (no dev symlink). The gsl/cfitsio/fftw3 dev
@@ -86,14 +86,6 @@ ENV MPIFC=/opt/ompi/bin/mpif90
 
 RUN uv sync --frozen --inexact --no-install-project \
     --extra test --extra glass --extra workflow
-
-# No snakemake in the image. A `script:` job unpickles the host Snakemake's
-# `snakemake` object with whichever snakemake it imports first, and the image's
-# site-packages precede the host's; with none here, the job reads the pickle with
-# the package that wrote it, so the host may run any Snakemake. The base image's
-# jupyter extra brings one, which `--inexact` keeps.
-RUN uv pip freeze | grep -io '^snakemake[a-z0-9_-]*' | xargs -r uv pip uninstall \
-    && ! /app/.venv/bin/python -c "import snakemake" 2>/dev/null
 
 # The CosmoSIS Standard Library: the module files (camb interface, projection,
 # 2pt likelihood, ...) the cosmo_inference pipelines name. The `workflow` extra

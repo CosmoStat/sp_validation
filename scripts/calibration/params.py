@@ -143,7 +143,6 @@ for key in (
     "NUMBER",
     "IMAFLAGS_ISO",
     "FLAGS",
-    "NGMIX_MCAL_FLAGS",
     "NGMIX_MCAL_TYPES_FAIL",
     "N_EPOCH",
     "NGMIX_N_EPOCH",
@@ -152,6 +151,8 @@ for key in (
 
 add_cols_pre_cal_format["TILE_ID"] = "A7"
 add_cols_pre_cal_format["NUMBER"] = "J"
+# Metacal bitmasks hold ngmix flag bits 0-15; bit 15 overflows signed 16-bit I.
+add_cols_pre_cal_format["NGMIX_MCAL_FLAGS"] = "J"
 
 # Create key names for metacal information
 prefix = "NGMIX"
@@ -162,7 +163,7 @@ for center in centers:
         add_cols_pre_cal.append(f"{prefix}_{center}_{suffix}")
 
 for suffix in suffixes:
-    add_cols_pre_cal_format[f"FLAGS_{suffix}"] = "I"
+    add_cols_pre_cal_format[f"{prefix}_FLAGS_{suffix}"] = "J"
 
 
 # Catalog parameters

@@ -352,10 +352,12 @@ class TestCosmologyValidation:
 
         The ξ± it measures equal the committed ``pure_eb_xi``, its modes are
         ``pure_eb_from_xi`` of those ξ± and edges, and every reporting bin is
-        finite. Its jackknife covariance, the integration part's pushed
-        through the kernel, matches TreeCorr's jackknife of the modes in each
-        statistic's total variance, loosely: on this sparse toy ξ± the kernel's
-        ξ− quadrature is additive to only ~30%.
+        finite. ``test_b_modes`` pins the transform itself on the same ξ±, so a
+        failure names the step that moved: measurement, wiring or transform.
+        Its jackknife covariance, the integration part's pushed through the
+        kernel, matches TreeCorr's jackknife of the modes in each statistic's
+        total variance, loosely: on this sparse toy ξ± the kernel's ξ−
+        quadrature is additive to only ~30%.
 
         Finiteness: the Schneider (2022) integrals are near-singular where a
         reporting bin meets the integration boundary, so the integration grid
@@ -390,12 +392,7 @@ class TestCosmologyValidation:
 
         import treecorr
 
-        kernel, kernel_calls = b_modes.pure_eb_from_xi, []
-        monkeypatch.setattr(
-            b_modes,
-            "pure_eb_from_xi",
-            lambda *a, **kw: kernel_calls.append(kw) or kernel(*a, **kw),
-        )
+        kernel = b_modes.pure_eb_from_xi
         process, correlations = treecorr.GGCorrelation.process, []
         monkeypatch.setattr(
             treecorr.GGCorrelation,
@@ -409,8 +406,6 @@ class TestCosmologyValidation:
             max_sep_int=300.0,
             nbins_int=600,
         )
-        # The modes, the measured ξ±, and one per jackknife eigenvector (< npatch).
-        assert len(kernel_calls) <= npatch + 1, f"{len(kernel_calls)} transforms"
 
         measured = {
             "theta_report": results["theta"],

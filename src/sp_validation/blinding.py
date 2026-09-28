@@ -12,10 +12,16 @@
     tests stay valid.
 
     The commands of ``python -m sp_validation.blinding`` are the only writers
-    of the blind registry (``cosmo_val/blinds/CONTRACTS``): ``init`` draws a
-    blind, once, by a person; ``share`` adds a catalogue to it; ``reveal``
-    publishes its seed and moves the concealed files aside. ``audit`` checks
-    the re-measured true files against that archive, and ``verify`` checks a
+    of the blind registry, ``cosmo_val/blinds/<blind>/``, which is committed to
+    git and which no Snakemake rule reads, writes or draws, so no run can
+    re-draw a blind and every checkout resolves the same one. ``init`` draws a
+    blind, once, by a person, writing read-only ``commitment.json`` (the public
+    record: the seed's commitment, the BlindingConfig and its digest, the draw
+    scheme and the theory stack), ``seed.fernet`` (the seed, encrypted) and
+    ``key``, and ``bases``, the base catalogues it covers; ``share`` appends a
+    catalogue to ``bases``; ``reveal`` writes ``revealed.json`` (the published
+    seed) once and moves the concealed files aside. ``audit`` checks the
+    re-measured true files against that archive, and ``verify`` checks a
     file's stamp against its catalogue's custody, seedless.
 """
 

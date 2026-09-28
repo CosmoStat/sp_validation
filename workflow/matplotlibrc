@@ -1,2 +1,0 @@
-# The matplotlibrc every workflow job reads (common.py names it): empty, so a
-# job's figures take matplotlib's defaults.

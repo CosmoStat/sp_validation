@@ -1,4 +1,4 @@
-"""COSEBIS version comparison claim.
+"""COSEBIS version comparison figure.
 
 Visualizes B-mode COSEBIS across catalog versions.
 Produces figures at fiducial scale cut and full range.
@@ -165,7 +165,7 @@ def main(
     fiducial_xi_path=None,
     fiducial_cov_path=None,
 ):
-    # Leak-corrected, non-ecut versions (matches VERSIONS_LEAK_CORR in claims.smk)
+    # Leak-corrected versions (matches VERSIONS_LEAK_CORR in figures.smk)
     versions = [v for v in config["versions"] if "_leak_corr" in v and "_ecut" not in v]
     nmodes = config["fiducial"]["nmodes"]
     plotting_config = config["plotting"]
@@ -331,7 +331,6 @@ def main(
             evidence_versions[f"{version}_{key}"] = val
 
     evidence_data = {
-        "spec_id": "cosebis_version_comparison",
         "generated": datetime.now().isoformat(),
         "evidence": {
             "scale_cuts": scale_cuts,
