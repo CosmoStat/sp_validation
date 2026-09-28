@@ -280,7 +280,7 @@ def test_get_rho_tau_identical_for_v1_and_v2_psf_catalogues(tmp_path):
 # -- mask-bit columns: a rule family of their own ---------------------------
 
 
-def _legacy_mask_table(n=N, extra=()):
+def _data_ext_mask_table(n=N, extra=()):
     """A data_ext-style table of {b}_{label} flags, and its MASK_n{b} twin."""
     rng = np.random.default_rng(7)
     old = {
@@ -312,9 +312,9 @@ def test_mask_column_rejects_unknown_bit():
         grammar.mask_column(4096)
 
 
-def test_legacy_mask_flags_rename_without_a_generation():
+def test_data_ext_mask_flags_rename_without_a_generation():
     """data_ext mask names are renamed whatever the ShapePipe generation."""
-    old, new = _legacy_mask_table(extra=("npoint3",))
+    old, new = _data_ext_mask_table(extra=("npoint3",))
     assert detect_generation(old.dtype.names) is None
     view = adapt(old)
     assert isinstance(view, V2View)
@@ -332,14 +332,14 @@ def test_legacy_mask_flags_rename_without_a_generation():
 
 
 def test_new_mask_names_pass_through_and_both_names_conflict():
-    old, new = _legacy_mask_table()
+    old, new = _data_ext_mask_table()
     assert adapt(new) is new
     with pytest.raises(ValueError, match="two names"):
         adapt(old, new[["MASK_n4"]].copy())
 
 
 def test_join_requires_equal_lengths_and_disjoint_names():
-    old, new = _legacy_mask_table()
+    old, new = _data_ext_mask_table()
     with pytest.raises(ValueError, match="lengths"):
         adapt(new, old[:10])
     with pytest.raises(ValueError, match="more than one table"):
@@ -377,7 +377,7 @@ def test_empty_list_selects_an_empty_view(v1_and_v2):
 
 def test_boolean_selection_holds_only_the_selected_rows():
     """A mask becomes the selected indices, never a full-length index array."""
-    old, _ = _legacy_mask_table(n=1000)
+    old, _ = _data_ext_mask_table(n=1000)
     view = adapt(old)
     mask = np.zeros(1000, dtype=bool)
     mask[[3, 500, 998]] = True
@@ -389,28 +389,67 @@ def test_boolean_selection_holds_only_the_selected_rows():
     np.testing.assert_array_equal(sub["MASK_n4"], old["4_Stars"][[500]])
 
 
-def test_h5py_reads_only_the_selected_window(tmp_path, monkeypatch):
-    """Row selections read the window spanning them, not the whole column."""
-    old, _ = _legacy_mask_table(n=1000)
+def _h5py_mask_table(tmp_path, n=1000):
+    old, new = _data_ext_mask_table(n=n, extra=("npoint3",))
     with h5py.File(tmp_path / "ext.hdf5", "w") as handle:
         handle.create_dataset("data_ext", data=old)
-    reads = []
-    original = grammar._read_window
+    return old, new
 
-    def spy(table, name, start, stop):
-        reads.append((start, stop))
-        return original(table, name, start, stop)
 
-    monkeypatch.setattr(grammar, "_read_window", spy)
+@pytest.mark.parametrize("block_rows", [1, 7, 10_000])
+def test_h5py_selection_reads_each_dataset_once(tmp_path, monkeypatch, block_rows):
+    """Selecting rows of an on-disk view reads every column in one pass."""
+    old, new = _h5py_mask_table(tmp_path)
+    monkeypatch.setattr(grammar, "BLOCK_BYTES", block_rows * old.dtype.itemsize)
+    takes = []
+    original = grammar._take
+
+    def spy(table, rows, fields=None):
+        takes.append(fields)
+        return original(table, rows, fields)
+
+    monkeypatch.setattr(grammar, "_take", spy)
+    rng = np.random.default_rng(3)
+    mask = rng.random(1000) < 0.3
+    mask[400:700] = False
+    index = np.array([998, 3, 500, 500, 2, 250])
     with h5py.File(tmp_path / "ext.hdf5", "r") as handle:
         view = adapt(handle["data_ext"])
-        mask = np.zeros(1000, dtype=bool)
-        mask[[200, 250, 300]] = True
-        got = view[mask]["MASK_n8"]
-        np.testing.assert_array_equal(got, old["8_Manual"][[200, 250, 300]])
-        assert reads[-1] == (200, 301)
-        view[10:20:3]["MASK_n1"]
-        assert reads[-1] == (10, 20)
+        for key in (mask, index, slice(10, 20, 3), slice(None, None, -7)):
+            takes.clear()
+            sub = view[key]
+            assert takes == [None]
+            assert not sub._on_disk
+            for name in new.dtype.names:
+                np.testing.assert_array_equal(sub[name], new[key][name], err_msg=name)
+        takes.clear()
+        got = view[mask].to_structured(["MASK_n8", "npoint3"])
+        np.testing.assert_array_equal(got["MASK_n8"], new["MASK_n8"][mask])
+
+        # Materialising named columns reads only their fields, in one pass.
+        takes.clear()
+        got = view.to_structured(["MASK_n8", "npoint3", "MASK_n1"])
+        assert takes == [["8_Manual", "npoint3", "1_Faint_star_halos"]]
+        np.testing.assert_array_equal(got["MASK_n1"], new["MASK_n1"])
+
+
+@pytest.mark.parametrize("key", [(), Ellipsis])
+def test_empty_tuple_and_ellipsis_select_every_row(tmp_path, key):
+    old, new = _h5py_mask_table(tmp_path)
+    with h5py.File(tmp_path / "ext.hdf5", "r") as handle:
+        for view in (adapt(old), adapt(handle["data_ext"])):
+            everything = view[key]
+            assert len(everything) == len(new)
+            np.testing.assert_array_equal(everything["MASK_n4"], new["MASK_n4"])
+            with pytest.raises(IndexError, match="tuple"):
+                view[(0, 1)]
+
+
+def test_dtype_is_computed_once():
+    old, _ = _data_ext_mask_table()
+    view = adapt(old)
+    assert view.dtype is view.dtype
+    assert view[3:9].dtype is view.dtype
 
 
 def test_v1_no_shear_reconv_psf_reads_the_1P_kernel():
