@@ -47,7 +47,7 @@ def _catalogues(**declarations):
     for name, declaration in declarations.items():
         entries[name] = {
             "shear": {
-                "path": f"{name}.fits",
+                "path": f"{name}_seed00001.fits",
                 "e1_col_corrected": "e1_corrected",
                 "e2_col_corrected": "e2_corrected",
             }

@@ -9,7 +9,7 @@ import hashlib
 import json
 import os
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 STATUSES = ("blinded", "unblinded", "mock")
@@ -50,7 +50,8 @@ class Custody:
     commitment: str | None = None
     config_digest: str | None = None
     draw_scheme: int | None = None
-    registry: Path | None = None
+    # Where the blind is opened from; two custodies are equal whatever it is.
+    registry: Path | None = field(default=None, compare=False)
 
     @property
     def token(self):
@@ -178,23 +179,32 @@ class Record:
     revealed: str | None
 
 
+def read_record(path):
+    """The public record of the blind stored at directory ``path``.
+
+    The one reader of a blind's public files; its sealed seed is
+    ``blinding``'s to open.
+    """
+    path = Path(path)
+    try:
+        commitment = json.loads((path / "commitment.json").read_text())
+        bases = tuple((path / "bases").read_text().split())
+    except (OSError, ValueError) as err:
+        raise CustodyError(f"blind record {path} is incomplete: {err}") from None
+    revealed = path / "revealed.json"
+    seed = json.loads(revealed.read_text())["seed"] if revealed.exists() else None
+    return Record(path.name, commitment, bases, seed)
+
+
 def records(registry):
     """Every blind in the registry, by name."""
-    found = {}
     if registry is None or not Path(registry).is_dir():
-        return found
-    for path in sorted(Path(registry).iterdir()):
-        if not path.is_dir() or path.name.startswith("."):
-            continue
-        try:
-            commitment = json.loads((path / "commitment.json").read_text())
-            bases = tuple((path / "bases").read_text().split())
-        except (OSError, ValueError) as err:
-            raise CustodyError(f"blind record {path} is incomplete: {err}") from None
-        revealed = path / "revealed.json"
-        seed = json.loads(revealed.read_text())["seed"] if revealed.exists() else None
-        found[path.name] = Record(path.name, commitment, bases, seed)
-    return found
+        return {}
+    return {
+        path.name: read_record(path)
+        for path in sorted(Path(registry).iterdir())
+        if path.is_dir() and not path.name.startswith(".")
+    }
 
 
 def _reads(entry):
@@ -205,11 +215,45 @@ def _reads(entry):
     return os.path.normpath(os.path.join(str(entry.get("subdir", "")), shear["path"]))
 
 
+def entry_name(catalogues, version):
+    """The catalogue-config entry describing ``version``: its own, or that of
+    the first name its variant chain reaches."""
+    for name in _variant_chain(version):
+        if name in catalogues and name not in NOT_CATALOGUES:
+            return name
+    raise CustodyError(f"no catalogue {version} in the catalogue config")
+
+
+def seed_path(shear, seed):
+    """The shear path of seed label ``seed``, from an entry's ``shear`` block.
+
+    Its ``path_template`` formatted with ``seed`` (an int) and ``seed_label``;
+    without one, its ``path`` with the digits after its last ``seed`` replaced.
+    """
+    if shear.get("path_template"):
+        return shear["path_template"].format(seed=int(seed), seed_label=seed)
+    path = shear.get("path", "")
+    match = re.match(r"(.*seed\D?)\d+", path)
+    if match is None:
+        raise CustodyError(
+            f"shear path {path!r} has no path_template and no seed<digits> to "
+            "put a seed in"
+        )
+    return match.group(1) + seed + path[match.end() :]
+
+
 def shear_file(catalogues, version):
-    """The shear catalogue file ``version`` reads: that of the first entry of
-    its variant chain the config holds, as CosmologyValidation reads it."""
+    """The shear catalogue file ``version`` reads, as CosmologyValidation reads
+    it: its entry's, with the seed of a ``_seed<N>`` variant rendered in."""
     chain = _variant_chain(version)
-    return _reads(catalogues[next((n for n in chain if n in catalogues), chain[-1])])
+    name = entry_name(catalogues, version)
+    entry = catalogues[name]
+    seeds = [_SEED_SUFFIX.search(n) for n in chain[: chain.index(name)]]
+    seeds = [m.group()[len("_seed") :] for m in seeds if m]
+    if seeds:
+        shear = {**entry["shear"], "path": seed_path(entry["shear"], seeds[0])}
+        entry = {**entry, "shear": shear}
+    return _reads(entry)
 
 
 def _concealer(catalogues, recs, base):
@@ -381,7 +425,7 @@ def read_stamp(metadata):
     """The custody a SACC's stamp records; a missing or malformed stamp raises.
 
     The result carries no registry: it is what the file says, to compare with
-    what a catalogue is declared under (``.stamp`` or ``.token``).
+    what a catalogue is declared under (``==``).
     """
     status = metadata.get("blinding")
     if status not in STATUSES:

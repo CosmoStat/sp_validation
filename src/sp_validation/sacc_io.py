@@ -991,22 +991,12 @@ _SIGNAL_FREE = re.compile(
 )
 
 
-def is_signal(data_type):
-    """Whether ``data_type`` carries cosmological signal."""
-    return data_type in SIGNAL
-
-
-def is_derived(data_type):
-    """Whether ``data_type`` is a derived statistic (COSEBIs, pure-E/B)."""
-    return data_type in DERIVED
-
-
 def _refuse_unruled(s):
     """Refuse rows of a data type with no blinding rule (under a blind)."""
     unruled = sorted(
         t
         for t in {dp.data_type for dp in s.data}
-        if not is_signal(t) and not _SIGNAL_FREE.fullmatch(t)
+        if t not in SIGNAL and not _SIGNAL_FREE.fullmatch(t)
     )
     if unruled:
         raise ValueError(
@@ -1045,7 +1035,7 @@ def seal(s, custody):
     if custody.status == "blinded":
         _refuse_unruled(s)
     types = {dp.data_type for dp in s.data}
-    derived = {t for t in types if is_derived(t)}
+    derived = types & set(DERIVED)
     if custody.status == "blinded" and derived:
         raise ValueError(
             f"a blinded catalogue's {sorted(derived)} rows are derived "
@@ -1071,13 +1061,13 @@ def _derive(s, parts, custody):
     if not parts:
         raise ValueError("a derivation needs its input parts")
     stamps = [_custody.read_stamp(p.metadata) for p in parts]
-    if len({tuple(sorted(st.stamp.items())) for st in stamps}) > 1:
+    stamp = stamps[0]
+    if any(st != stamp for st in stamps):
         raise ValueError(
             "input parts carry different custody stamps: "
             + "; ".join(f"part {i}: {st.token}" for i, st in enumerate(stamps))
         )
-    stamp = stamps[0]
-    if custody is not None and custody.stamp != stamp.stamp:
+    if custody is not None and custody != stamp:
         raise ValueError(
             f"parts are stamped {stamp.token}, but {custody.catalogue} is "
             f"declared {custody.token}"
