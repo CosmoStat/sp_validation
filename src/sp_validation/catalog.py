@@ -874,24 +874,49 @@ def group_dtype(tables, param_list=None):
 
     Parameters
     ----------
-    tables : list
-        per-tile tables (h5py Datasets, or their ``grammar.adapt`` views)
+    tables : list or dict
+        per-tile tables (h5py Datasets, or their ``grammar.adapt`` views),
+        optionally keyed by dataset name for error messages
     param_list : list of str, optional
-        columns to keep; default is ``None`` (keep all)
+        columns to keep; default is ``None`` (all columns of the first table)
 
     Returns
     -------
     numpy.dtype
         structured output dtype
 
+    Raises
+    ------
+    KeyError
+        if a table lacks one of the columns, naming the tables that do
+
     """
-    names = param_list if param_list is not None else list(tables[0].dtype.names)
+    if not hasattr(tables, "items"):
+        tables = dict(enumerate(tables))
+    dtypes = {key: table.dtype for key, table in tables.items()}
+    first = next(iter(dtypes.values()))
+    names = param_list if param_list is not None else list(first.names)
+
+    missing = {
+        key: [name for name in names if name not in dtype.names]
+        for key, dtype in dtypes.items()
+    }
+    missing = {key: cols for key, cols in missing.items() if cols}
+    if missing:
+        key, cols = next(iter(missing.items()))
+        raise KeyError(
+            f"{len(missing)} of {len(tables)} tables lack columns"
+            + f" {'requested' if param_list is not None else 'of the first table'},"
+            + f" e.g. table {key!r} lacks {cols}; tables lacking some:"
+            + f" {list(missing)[:20]}. Pass a param_list without them."
+        )
+    dtypes = list(dtypes.values())
 
     fields = []
     for name in names:
-        promoted = tables[0].dtype[name]
-        for table in tables[1:]:
-            promoted = promote_dtypes(promoted, table.dtype[name])
+        promoted = dtypes[0][name]
+        for dtype in dtypes[1:]:
+            promoted = promote_dtypes(promoted, dtype[name])
         fields.append((name, promoted))
 
     return np.dtype(fields)
@@ -967,7 +992,7 @@ def concatenate_datasets(
     """
     tables = _unit_tables(group, file_path, param_list=param_list)
     keys = list(tables)
-    dtype_out = group_dtype(list(tables.values()), param_list=param_list)
+    dtype_out = group_dtype(tables, param_list=param_list)
 
     if key_column is not None:
         if key_column in (dtype_out.names or ()):
@@ -1076,8 +1101,8 @@ def campaign_shape(file_path, param_list=None):
     with h5py.File(file_path, "r") as hdf5_file:
         group = find_dataset_group(hdf5_file)
         check_n_units(hdf5_file, group, file_path)
-        tables = list(_unit_tables(group, file_path, param_list=param_list).values())
-        n_rows = sum(len(table) for table in tables)
+        tables = _unit_tables(group, file_path, param_list=param_list)
+        n_rows = sum(len(table) for table in tables.values())
         dtype_out = group_dtype(tables, param_list=param_list)
 
     return n_rows, dtype_out

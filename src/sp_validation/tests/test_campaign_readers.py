@@ -514,3 +514,13 @@ class TestCampaignMerge(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestGroupDtype(unittest.TestCase):
+    def test_missing_column_names_the_tables_lacking_it(self):
+        full = np.zeros(2, dtype=[("RA", "f8"), ("SPREAD_MODEL", "f4")])
+        tiles = {"t0": full, "t1": full[["RA"]], "t2": full}
+        with self.assertRaisesRegex(KeyError, r"1 of 3 tables.*'t1'.*SPREAD_MODEL"):
+            catalog.group_dtype(tiles)
+        dtype = catalog.group_dtype(tiles, param_list=["RA"])
+        self.assertEqual(dtype.names, ("RA",))
