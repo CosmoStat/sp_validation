@@ -1,10 +1,10 @@
-"""Generate LaTeX macros from claim evidence.
+"""Generate LaTeX macros and PTE tables from the figure rules' evidence.json.
 
-Reads evidence.json files and produces:
+Produces:
 - claims_macros.tex: LaTeX macro definitions for paper values
 - pte_table_results.tex: PTE results table for main text
 - pte_table_appendix.tex: PTE table for appendix
-- evidence.json: Dashboard dependency tracking
+- evidence.json (CLI only): which inputs the tables were built from
 """
 
 import json
@@ -78,17 +78,16 @@ def generate_macros(
 ):
     """Generate LaTeX macros from evidence files.
 
-    Macro names are kept simple. The spec (bmodes_paper.md)
-    determines which values go into the paper. Fiducial version from config.
+    Macro names are kept simple. Fiducial version from config.
 
     ``config_pte_path`` / ``harmonic_pte_path`` override the
-    ``claims_dir/<spec_id>/evidence.json`` location for the two PTE-matrix
+    ``claims_dir/<rule>/evidence.json`` location for the two PTE-matrix
     evidence files (used by the CLI form, where each lc output lands at its own
     absolute results path rather than under a shared tapestry tree). When
-    ``None`` the original ``claims_dir``-relative layout is used.
+    ``None`` the ``claims_dir``-relative layout is used.
     """
     macros = []
-    macros.append("% Auto-generated from claim evidence")
+    macros.append("% Auto-generated from figure evidence.json summaries")
     macros.append("% Regenerate: snakemake paper_macros")
     macros.append("% See workflow/config/bmodes_paper.md for paper choices")
     macros.append("")
@@ -138,7 +137,7 @@ def generate_macros(
         with open(eb_path) as f:
             eb_ev = json.load(f).get("evidence", {})
 
-        macros.append("% pure_eb_data_vector (min across blinds per spec)")
+        macros.append("% pure_eb_data_vector (min across blinds)")
 
         # Fiducial PTEs - use pte_joint_min (conservative across blinds)
         eb_fid = eb_ev.get("fiducial", {})
@@ -592,14 +591,11 @@ def generate_pte_tables(
 
 
 def generate_evidence(
-    spec_id: str,
-    spec_path: str,
     depends_on: list[str],
     claims_dir: Path,
     output_path: Path,
 ):
-    """Generate evidence.json for dashboard dependency tracking."""
-    # Collect summary from dependent claims
+    """Record which evidence files the tables were built from."""
     summary = {}
     for dep in depends_on:
         dep_evidence = claims_dir / dep / "evidence.json"
@@ -614,8 +610,6 @@ def generate_evidence(
             summary[dep] = {"has_evidence": False}
 
     evidence = {
-        "spec_id": spec_id,
-        "spec_path": spec_path,
         "depends_on": depends_on,
         "generated": datetime.now().isoformat(),
         "evidence": {
@@ -640,38 +634,17 @@ def _from_snakemake(smk):
     versions = config["versions"]
     version_labels = config["plotting"]["version_labels"]
 
-    # Separate macro file from PTE tables and evidence
-    # Only claims_macros.tex gets macro content; PTE tables generated separately
     macro_file = [Path(p) for p in smk.output if p.endswith("claims_macros.tex")]
-    evidence_outputs = [Path(p) for p in smk.output if p.endswith("evidence.json")]
 
     print(f"Generating macros from {tapestry_dir}")
     generate_macros(tapestry_dir, macro_file, fiducial_version)
 
-    # Generate PTE tables (separate files, not macro content)
-    if macro_file:
+    # The B-modes paper rule also writes the two PTE tables beside its macros
+    if len(smk.output) > 1:
         paper_dir = macro_file[0].parent
         print(f"Generating PTE tables to {paper_dir}")
         generate_pte_tables(
             tapestry_dir, paper_dir, fiducial_version, versions, version_labels, config
-        )
-
-    # Generate evidence.json if requested
-    # Dependencies derived from snakemake inputs (rules.X.output declarations)
-    rule_inputs = smk.input.keys()
-    input_deps = [
-        k for k in rule_inputs if k.endswith("_evidence") or k == "covariance_evidence"
-    ]
-    depends_on = [d.replace("_evidence", "") for d in input_deps]
-
-    for evidence_path in evidence_outputs:
-        spec_id = evidence_path.parent.name  # e.g., xi_cosmology_paper
-        generate_evidence(
-            spec_id=spec_id,
-            spec_path=f"workflow/config/{spec_id}.md",
-            depends_on=depends_on,
-            claims_dir=tapestry_dir,
-            output_path=evidence_path,
         )
 
 
@@ -701,7 +674,7 @@ def _from_cli(argv=None):
         "--claims-dir",
         default=None,
         help=(
-            "Optional tapestry-style dir holding <spec_id>/evidence.json for the "
+            "Optional tapestry-style dir holding <rule>/evidence.json for the "
             "extra claims_macros.tex macros (cosebis/pure_eb/harmonic_config); "
             "the two PTE tables need only the two --*-evidence paths above."
         ),
@@ -746,8 +719,6 @@ def _from_cli(argv=None):
     )
 
     generate_evidence(
-        spec_id="pte_summary_evidence",
-        spec_path="analyses/null_tests/astra.yaml#pte_summary_evidence",
         depends_on=["config_space_pte_matrices", "harmonic_space_pte_matrices"],
         claims_dir=claims_dir,
         output_path=out_dir / "evidence.json",

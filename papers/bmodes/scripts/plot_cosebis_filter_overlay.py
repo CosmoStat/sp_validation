@@ -183,13 +183,7 @@ def main():
     make_figure(ell_32, bb, sigma_bb, ell_dense, Wn_full, Wn_fid, output_figure)
 
     # --- Evidence ---
-    spec_paths = snakemake.input.specs  # noqa: F821
-    depends_on = [Path(p).stem for p in spec_paths[1:]]
-
     evidence = {
-        "id": Path(spec_paths[0]).stem,
-        "kind": "claim",
-        "depends_on": depends_on,
         "generated": datetime.now().isoformat(),
         "evidence": {
             "nmodes_shown": nmodes,

@@ -23,7 +23,7 @@ from sp_validation.b_modes import calculate_cosebis
 
 def _pte_scale_cut_pairs():
     """(i_min, i_max) index pairs for the PTE matrix, excluding the polynomial-
-    root-unstable subsets. Mirrors _pte_scale_cut_pairs() in claims.smk."""
+    root-unstable subsets. Mirrors _pte_scale_cut_pairs() in figures.smk."""
     unstable = {(9, 10), (10, 11), (11, 12), (13, 14)}
     return [
         (i, j) for i in range(20) for j in range(i + 1, 21) if (i, j) not in unstable
