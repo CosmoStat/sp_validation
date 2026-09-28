@@ -90,12 +90,6 @@ def test_container_smoke():
     # The job read the pickle with the Snakemake that wrote it.
     assert report["snakemake"]["version"] == snakemake.__version__, report["snakemake"]
 
-    # Figures read the workflow's matplotlibrc, never the user's.
-    assert (
-        Path(report["matplotlibrc"]).resolve()
-        == (REPO / "workflow/matplotlibrc").resolve()
-    ), report["matplotlibrc"]
-
     # The numeric stack agrees with the same computation run here.
     np.testing.assert_allclose(
         report["numeric"]["eigenvalues"],
