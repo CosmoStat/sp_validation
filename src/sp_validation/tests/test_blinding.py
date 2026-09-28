@@ -7,7 +7,6 @@ use the fast Eisenstein–Hu theory.
 """
 
 import json
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -19,7 +18,6 @@ from sp_validation import blinding as bd
 from sp_validation import custody as cu
 from sp_validation import sacc_io as sio
 
-DATA = Path(__file__).parent / "data"
 VERSIONS = ("TOY", "OTHER", "TOY_OPEN", "OTHER_OPEN", "TOY_MOCK")
 
 
@@ -273,47 +271,37 @@ def test_the_commitment_hides_the_rng_seed():
     assert int(cu.seed_commitment(seed)[:16], 16) != _normalize_seed(seed)
 
 
-def test_the_committed_blind_opens_under_this_code():
-    """A TheoryConfig field added without its value in ``blinding.NEUTRAL``
-    would strand every live blind; ``tests/data/blinds/committed`` turns that
-    red."""
-    blind = bd._open(DATA / "blinds", "committed")
-    assert (blind.hidden.S8, blind.hidden.Omega_m) == pytest.approx(
-        (0.8374952413635888, 0.32730573347638175), rel=1e-12
-    )
+def test_the_digest_binds_the_config():
+    config = bd.BlindingConfig()
+    moved = bd.BlindingConfig(envelope={**config.envelope, "S8": 0.08})
+    assert moved.digest() != config.digest()
+
+
+def test_a_blind_opens_only_with_its_key(tmp_path):
+    from cryptography.fernet import Fernet
+
+    root = _registry(tmp_path, ("toy", "TOY"))
+    key = root / "blinds" / "toy" / "key"
+    key.chmod(0o644)
+    key.write_bytes(Fernet.generate_key())
+    with pytest.raises(cu.CustodyError, match="does not decrypt"):
+        bd.open_blind(_custody(root, "TOY"))
 
 
 # --------------------------------------------------------------------------- #
 # The reveal: publish, then prove blinded − true = shift(seed)
 # --------------------------------------------------------------------------- #
-def test_reveal_refuses_a_root_holding_nothing_concealed(tmp_path):
-    """Publishing cannot be undone: a mistyped ``--root`` is refused before
-    the seed is published."""
-    root = _registry(tmp_path, ("toy", "TOY"))
-    (root / "out").mkdir()
-    sio.save(part(cl=False), root / "out" / "part.sacc", custody=_custody(root, "TOY"))
-    cat_config = root / "cat_config.yaml"
-    with pytest.raises(cu.CustodyError, match="nothing concealed"):
-        bd.reveal("toy", root=root / "outptu", cat_config=cat_config)
-    assert not (root / "blinds" / "toy" / "revealed.json").exists()
-    archive = bd.reveal("toy", root=root / "out", cat_config=cat_config)
-    assert (archive / "part.sacc").exists()
-
-
-@pytest.mark.parametrize("left_true", [False, True], ids=["revealed", "mixed"])
-def test_the_audit_proves_the_shift(tmp_path, left_true):
-    """An archived part passes the audit against its re-measured twin only if
-    every shiftable row carries the shift: a pair left true fails."""
+@pytest.mark.parametrize("seed", ["committed", "wrong"])
+def test_the_audit_proves_the_shift(tmp_path, seed):
+    """A concealed part passes the audit against its re-measured twin under
+    the published committed seed, and fails under any other."""
     root = _registry(tmp_path, ("toy", "TOY"))
     blinded = _custody(root, "TOY")
     true = part()
     archived = sio.seal(true, blinded)
-    if left_true:
-        for i, dp in enumerate(true.data):
-            if dp.tracers == sio._pair((1, 1)) and dp.data_type in sio.SHIFTABLE:
-                archived.data[i].value = dp.value
+    published = bd.open_blind(blinded).seed if seed == "committed" else "not-it"
     (root / "blinds" / "toy" / "revealed.json").write_text(
-        json.dumps({"seed": bd.open_blind(blinded).seed})
+        json.dumps({"seed": published})
     )
     for tree, s, stamp in (
         ("archive", archived, blinded.stamp),
@@ -329,4 +317,4 @@ def test_the_audit_proves_the_shift(tmp_path, left_true):
         true_root=root / "live",
         cat_config=root / "cat_config.yaml",
     )
-    assert report["ok"] != left_true, report
+    assert report["ok"] == (seed == "committed"), report

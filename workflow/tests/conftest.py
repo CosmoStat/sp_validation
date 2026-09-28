@@ -11,14 +11,10 @@ parse with the standard library and Snakemake alone -- the condition a host
 Snakemake is in. The ``candide`` tests need candide itself; CI deselects them.
 
 The ``toy`` fixture is a disposable checkout: copies of ``workflow/`` and
-``papers/cosmo_val/``, this checkout's ``src/`` symlinked in, a
-``cosmo_val/cat_config.yaml`` declaring one catalogue per custody state, each
-over its own touched catalogue file, a blind registry of hand-written records (the host
-never decrypts, so no record needs a real seed), the processed CosmoCov
-covariances already in place (their inputs live on candide), the toy
-catalogue's patch centres, and both output roots in tmp. Its runs use a fake
-image whose Python and Snakemake match the running ones, so the launch-time
-parity check passes without apptainer.
+``papers/cosmo_val/``, ``src/`` symlinked in, one catalogue per custody state,
+hand-written blind records (the host never decrypts), stand-ins for the
+CosmoCov covariances and patch centres, and a fake image matching the host's
+Python and Snakemake.
 """
 
 import dataclasses
@@ -128,7 +124,6 @@ class Toy:
     env: dict
     config: dict
     common: object
-    covariances: dict  # (version, "g" | "ng") -> the processed CosmoCov file
 
     def snakemake(
         self, *args, container=None, config=(), cwd=None, env=None, timeout=300
@@ -254,10 +249,9 @@ def toy(tmp_path_factory):
     # The processed CosmoCov covariances the cosmo_val rules read, in place.
     grids = common.xi_grids(config, config["fiducial"])
     mask = "_masked" if config["covariance"].get("default_masked") else ""
-    covariances = {}
     for version in VERSIONS:
         for gaussian, grid in (("ng", grids["reporting"]), ("g", grids["integration"])):
-            path = covariances[version, gaussian] = Path(
+            path = Path(
                 common.covariance_path(
                     version,
                     config["fiducial"]["blind"],
@@ -288,7 +282,6 @@ def toy(tmp_path_factory):
         env=env,
         config=config,
         common=common,
-        covariances=covariances,
     )
 
 

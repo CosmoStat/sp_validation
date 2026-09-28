@@ -124,6 +124,22 @@ def test_every_variant_shares_its_base(tmp_path_factory, entry, suffixes):
     assert cu.custody_of(cats, version, registry=registry) == base
 
 
+def test_catalogues_reading_one_file_share_one_blind(tmp_path):
+    """A blind conceals a shear file, whatever entry reads it: an entry
+    reading a concealed catalogue's file under another custody is refused
+    until the blind covers it too."""
+    registry = tmp_path / "blinds"
+    _write_blind(registry, "y3", ["TOY"])
+    cats = _catalogues(TOY=None, TWIN="unblinded")
+    cats["TWIN"]["shear"]["path"] = cats["TOY"]["shear"]["path"]
+    for version in ("TOY", "TWIN"):
+        with pytest.raises(cu.CustodyError, match="not concealed alike"):
+            cu.custody_of(cats, version, registry=registry)
+    del cats["TWIN"]["blinding"]
+    (registry / "y3" / "bases").write_text("TOY\nTWIN\n")
+    assert cu.custody_of(cats, "TWIN", registry=registry).blind == "y3"
+
+
 def test_every_catalogue_in_the_repository_resolves():
     """Each entry of the committed cat_config has a custody, from the repo registry."""
     path = REPO / "cosmo_val" / "cat_config.yaml"

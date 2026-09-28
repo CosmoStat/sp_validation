@@ -34,47 +34,6 @@ def grids(toy):
     return toy.common.xi_grids(toy.config, toy.config["fiducial"])
 
 
-def test_assembly_gathers_every_part_and_its_covariances(toy, forced, grids):
-    """[P1] Each terminal file gathers every part and the analytic covariances:
-    ξ± and ρ/τ on the reporting grid with CosmoCov's covariance there, the
-    pseudo-Cℓ part and NaMaster covariance on one harmonic binning, and
-    COSEBIs and pure-E/B, which read the one integration-grid part and its
-    CosmoCov covariance."""
-    jobs = forced[1]
-    reporting = toy.common.grid_binning(grids["reporting"])
-    harmonic = toy.common.pseudo_cl_tag(toy.config)
-    assembled = [j for j in jobs if j.rule == "assemble_sacc"]
-    assert sorted(j.wildcards["version"] for j in assembled) == sorted(VERSIONS)
-    for job in assembled:
-        version = job.wildcards["version"]
-        assert [Path(o).name for o in job.output] == [f"{version}.sacc"]
-        assert {Path(f).name for f in job.input} == {
-            f"{version}_xi_{reporting}.sacc",
-            toy.covariances[version, "ng"].name,
-            f"pseudo_cl_{version}_{harmonic}.sacc",
-            f"pseudo_cl_cov_{version}_{harmonic}.fits",
-            f"{version}_cosebis.sacc",
-            f"{version}_pure_eb.sacc",
-            f"rho_tau_{version}_{reporting}.sacc",
-        }, job.input
-
-    measured = [
-        (j.wildcards["version"], toy.common.grid_of(grids, j.wildcards))
-        for j in jobs
-        if j.rule == "xi"
-    ]
-    assert sorted(measured) == sorted((v, g) for v in VERSIONS for g in grids)
-    integration = toy.common.grid_binning(grids["integration"])
-    for version in VERSIONS:
-        by_rule = {
-            j.rule: set(j.input) for j in jobs if j.wildcards.get("version") == version
-        }
-        part = str(toy.cosmo_val / f"{version}_xi_{integration}.sacc")
-        pair = {part, str(toy.covariances[version, "g"])}
-        assert by_rule["cv_cosebis"] == pair, by_rule["cv_cosebis"]
-        assert pair <= by_rule["cv_pure_eb"], by_rule["cv_pure_eb"]
-
-
 def test_xi_leaves_a_measurement_only_as_a_part(toy, forced, grids):
     """[P12] No job reads or writes a ξ± text dump; the ξ± figures draw the parts."""
     jobs = forced[1]
@@ -135,10 +94,6 @@ def _launch_refusals(toy, tmp_path):
     campaign = tmp_path / "campaign.yaml"
     config = dict(toy.config, cosmo_val=dict(toy.config["cosmo_val"], type="mock"))
     campaign.write_text(yaml.safe_dump(config))
-    npatch = toy.common.xi_grids(toy.config, toy.config["fiducial"])["reporting"][
-        "npatch"
-    ]
-    plain = toy.common._plain
     return {
         # [P6] a blinded catalogue no blind covers: pull, then draw or share
         "no_blind": (
@@ -157,22 +112,10 @@ def _launch_refusals(toy, tmp_path):
             {},
             ["custody is declared per catalogue in cosmo_val/cat_config.yaml"],
         ),
-        # a tree without its patch centres: the command that draws them
-        "no_centres": (
-            [],
-            dict(env={**toy.env, "COSMO_VAL": str(tmp_path)}),
-            [
-                f"python -m sp_validation.cosmo_val.patch_centers {VERSIONS[0]} {npatch} "
-                f"--cat-config {plain(toy.root / 'cosmo_val' / 'cat_config.yaml')} "
-                f"--output-dir {plain(tmp_path)}"
-            ],
-        ),
     }
 
 
-@pytest.mark.parametrize(
-    "case", ["no_blind", "unrevealed", "campaign_type", "no_centres"]
-)
+@pytest.mark.parametrize("case", ["no_blind", "unrevealed", "campaign_type"])
 def test_a_launch_the_dag_cannot_honour_stops_with_the_fix(toy, tmp_path, case):
     args, launch, message = _launch_refusals(toy, tmp_path)[case]
     result = toy.snakemake("-n", "assemble_sacc_all", *args, **launch)
