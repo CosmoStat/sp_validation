@@ -151,8 +151,8 @@ for key in (
 
 add_cols_pre_cal_format["TILE_ID"] = "A7"
 add_cols_pre_cal_format["NUMBER"] = "J"
-# Metacal bitmasks need bit 30 and native fitter bits, including after merging.
-add_cols_pre_cal_format["NGMIX_MCAL_FLAGS"] = "K"
+# Metacal bitmasks: ShapePipe sets bit 30 for no measurement, so they need 32 bits.
+add_cols_pre_cal_format["NGMIX_MCAL_FLAGS"] = "J"
 
 # Create key names for metacal information
 prefix = "NGMIX"
@@ -163,7 +163,7 @@ for center in centers:
         add_cols_pre_cal.append(f"{prefix}_{center}_{suffix}")
 
 for suffix in suffixes:
-    add_cols_pre_cal_format[f"{prefix}_FLAGS_{suffix}"] = "K"
+    add_cols_pre_cal_format[f"{prefix}_FLAGS_{suffix}"] = "J"
 
 
 # Catalog parameters
