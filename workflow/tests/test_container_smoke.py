@@ -22,6 +22,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+import snakemake
 import yaml
 from conftest import REPO, container, on_candide
 
@@ -85,6 +86,9 @@ def test_container_smoke():
     assert module_file == (REPO / "src/sp_validation/__init__.py").resolve(), (
         module_file
     )
+
+    # The job read the pickle with the Snakemake that wrote it.
+    assert report["snakemake"]["version"] == snakemake.__version__, report["snakemake"]
 
     # The numeric stack agrees with the same computation run here.
     np.testing.assert_allclose(

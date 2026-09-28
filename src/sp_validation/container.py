@@ -130,37 +130,24 @@ def image_revision(sif):
 IMAGE_VENV = "/app/.venv"
 
 
-def image_runtime(image):
-    """Return ``(python_minor, snakemake_version)`` of an image, or ``None``.
+def image_python(image):
+    """Return the Python minor (``"3.12"``) of an image's venv, or ``None``.
 
-    Read from the venv's ``pyvenv.cfg`` and its ``snakemake-*.dist-info``
-    directory: through ``apptainer exec`` for a SIF, straight off disk for a
-    sandbox. ``None`` when the image cannot be read -- a registry tag, a missing
-    ``apptainer``, a venv laid out differently. ``snakemake_version`` is
-    ``None`` when the image carries no snakemake.
+    Read from the venv's ``pyvenv.cfg``: through ``apptainer exec`` for a SIF,
+    straight off disk for a sandbox. ``None`` when the image cannot be read -- a
+    registry tag, a missing ``apptainer``, a venv laid out differently.
     """
     image = str(image)
-    venv = IMAGE_VENV.lstrip("/")
+    cfg_path = Path(IMAGE_VENV) / "pyvenv.cfg"
     if Path(image).is_dir():
-        root = Path(image) / venv
         try:
-            cfg = (root / "pyvenv.cfg").read_text()
+            cfg = (Path(image) / cfg_path.relative_to("/")).read_text()
         except OSError:
             return None
-        listing = [p.name for p in root.glob("lib/python*/site-packages/*")]
     elif Path(image).is_file() and shutil.which("apptainer") is not None:
         try:
             out = subprocess.run(
-                [
-                    "apptainer",
-                    "exec",
-                    "--cleanenv",
-                    image,
-                    "sh",
-                    "-c",
-                    f"cat {IMAGE_VENV}/pyvenv.cfg && "
-                    f"ls {IMAGE_VENV}/lib/python*/site-packages",
-                ],
+                ["apptainer", "exec", "--cleanenv", image, "cat", str(cfg_path)],
                 capture_output=True,
                 text=True,
                 timeout=120,
@@ -169,23 +156,14 @@ def image_runtime(image):
             return None
         if out.returncode != 0:
             return None
-        cfg, listing = out.stdout, out.stdout.split()
+        cfg = out.stdout
     else:
         return None
-    fields = {}
     for line in cfg.splitlines():
         key, sep, value = line.partition("=")
-        if sep:
-            fields[key.strip()] = value.strip()
-    version = fields.get("version_info")
-    if version is None:
-        return None
-    snakemake = [
-        name[len("snakemake-") : -len(".dist-info")]
-        for name in listing
-        if name.startswith("snakemake-") and name.endswith(".dist-info")
-    ]
-    return ".".join(version.split(".")[:2]), (snakemake[0] if snakemake else None)
+        if sep and key.strip() == "version_info":
+            return ".".join(value.strip().split(".")[:2])
+    return None
 
 
 def _require_apptainer():

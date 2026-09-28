@@ -2,7 +2,7 @@
 
 These tests run under the host launcher, never inside the image::
 
-    uv run --isolated --no-project --python 3.12 --with snakemake==9.23.1 \\
+    uv run --isolated --no-project --python 3.12 --with snakemake \\
         --with snakemake-executor-plugin-slurm --with pytest --with numpy \\
         pytest workflow/tests
 
@@ -14,8 +14,8 @@ The ``toy`` fixture is a disposable checkout: copies of ``workflow/`` and
 ``papers/cosmo_val/``, this checkout's ``src/`` symlinked in, a one-catalogue
 ``cosmo_val/cat_config.yaml``, a touched catalogue file, the processed CosmoCov
 covariances already in place (their inputs live on candide), and both output
-roots in tmp. Its runs use a fake image whose Python and Snakemake match the
-running ones, so the launch-time parity check passes without apptainer.
+roots in tmp. Its runs use a fake image whose Python matches the running one,
+so the launch-time Python check passes without apptainer.
 """
 
 import dataclasses
@@ -28,7 +28,6 @@ import sys
 from pathlib import Path
 
 import pytest
-import snakemake
 import yaml
 
 REPO = Path(__file__).resolve().parents[2]
@@ -39,12 +38,10 @@ VERSIONS = ("SP_v0.1", "SP_v0.1_leak_corr")
 HOST_PYTHON = ".".join(str(v) for v in sys.version_info[:3])
 
 
-def fake_image(root, python=HOST_PYTHON, snakemake_version=snakemake.__version__):
-    """A sandbox-shaped directory carrying only what the parity check reads."""
+def fake_image(root, python=HOST_PYTHON):
+    """A sandbox-shaped directory carrying only what the Python check reads."""
     venv = Path(root) / "app" / ".venv"
-    minor = ".".join(python.split(".")[:2])
-    site = venv / "lib" / f"python{minor}" / "site-packages"
-    (site / f"snakemake-{snakemake_version}.dist-info").mkdir(parents=True)
+    venv.mkdir(parents=True)
     (venv / "pyvenv.cfg").write_text(
         f"home = /usr/local/bin\nimplementation = CPython\nversion_info = {python}\n"
     )

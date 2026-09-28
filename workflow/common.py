@@ -30,7 +30,7 @@ _container.__loader__.exec_module(_container)
 
 compare_revision = _container.compare_revision
 image_revision = _container.image_revision
-image_runtime = _container.image_runtime
+image_python = _container.image_python
 resolve_image = _container.resolve_image
 
 # Every job inherits this launch's environment (the slurm executor submits with
@@ -121,10 +121,10 @@ def resolve_container(override=None):
     ``override`` wins if set (a ``docker://`` tag, a ``.sif`` path or a sandbox
     directory -- Snakemake's ``container:`` accepts all three); otherwise
     ``resolve_image()``, so jobs run what interactive ``spv-container`` work
-    runs. The image returned has passed ``check_host_parity``.
+    runs. The image returned has passed ``check_host_python``.
     """
     image = str(override) if override else resolve_image()[0]
-    check_host_parity(image)
+    check_host_python(image)
     return image
 
 
@@ -164,40 +164,33 @@ def warn_if_image_stale():
 
 
 @functools.cache
-def check_host_parity(image):
-    """Stop the launch unless this Snakemake matches the image's Python and Snakemake.
+def check_host_python(image):
+    """Stop the launch unless this Snakemake runs on the image's Python minor.
 
-    A ``script:`` job appends the host's ``sys.path`` -- standard library
-    included -- to its own, as the fallback that lets it unpickle the host's
-    ``snakemake`` object. So the image and the host Snakemake must share a
-    Python minor (else a module the image lacks loads from the host's stdlib)
-    and a Snakemake version (else the pickle does not match its reader).
+    A ``script:`` job unpickles the host's ``snakemake`` object by appending the
+    host's ``sys.path`` to its own; the image carries no snakemake, so the host's
+    package and its compiled dependencies load into the image's interpreter.
 
     An image that cannot be read (a registry tag, no apptainer) is named in one
     line and passes.
     """
-    import snakemake
     from snakemake.exceptions import WorkflowError
 
-    runtime = image_runtime(image)
-    if runtime is None:
+    python = image_python(image)
+    if python is None:
         print(
-            f"[container] cannot read the Python of {image}; host/image parity "
+            f"[container] cannot read the Python of {image}; host/image Python "
             "unchecked.",
             file=sys.stderr,
         )
         return
-    python, image_snakemake = runtime
-    host_python = ".".join(str(v) for v in sys.version_info[:2])
-    host = (host_python, snakemake.__version__)
-    if (python, image_snakemake or snakemake.__version__) == host:
+    host = ".".join(str(v) for v in sys.version_info[:2])
+    if python == host:
         return
     raise WorkflowError(
-        f"host Snakemake {snakemake.__version__} on Python {host_python} does not "
-        f"match the image {image} (Snakemake {image_snakemake}, Python {python}).\n"
-        "Reinstall the host Snakemake to match:\n"
-        f"  uv tool install --force --python {python} "
-        f"snakemake=={image_snakemake or snakemake.__version__} "
+        f"host Snakemake runs on Python {host}, the image {image} on Python "
+        f"{python}.\nReinstall the host Snakemake on the image's Python:\n"
+        f"  uv tool install --force --python {python} snakemake "
         "--with snakemake-executor-plugin-slurm"
     )
 
