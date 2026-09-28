@@ -192,9 +192,6 @@ do_selection_calibration = False
 gal_mag_bright = 15
 gal_mag_faint = 30
 
-### Spread-model
-do_spread_model = False
-
 ### SExtractor flags to keep in addition to FLAGS=0
 ### (bit-coded; list of powers of 2);
 ### Empty list if no flags
