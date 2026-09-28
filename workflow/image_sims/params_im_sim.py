@@ -156,7 +156,7 @@ for key in (
 
 add_cols_pre_cal_format["TILE_ID"] = "A7"
 add_cols_pre_cal_format["NUMBER"] = "J"
-# Metacal bitmasks: ShapePipe sets bit 30 for no measurement, so they need 32 bits.
+# Metacal bitmasks hold ngmix flag bits 0-15; bit 15 overflows signed 16-bit I.
 add_cols_pre_cal_format["NGMIX_MCAL_FLAGS"] = "J"
 
 # Create key names for metacal information

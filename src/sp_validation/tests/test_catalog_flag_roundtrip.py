@@ -24,25 +24,26 @@ ROOT = Path(__file__).resolve().parents[3]
 def test_metacal_flags_roundtrip(tmp_path, params_path, extension, reduce_mem):
     """Contract metacal-flag-width: neither output nor merging loses flag bits.
 
-    Bit 30 marks an absent measurement; bit 3 alongside it must also survive.
-    Float64 inputs match ShapePipe's final catalogue. Bit 30 needs int32:
-    int16 or int8 storage drops it, and a float32 downcast drops bit 3.
+    Values are ngmix flag bits: none, LM_FUNC_NOTFINITE (2**12), ZERO_DOF
+    (2**15), and every bit 0-15 at once. Float64 inputs match ShapePipe's final
+    catalogue. Bit 15 overflows signed int16, and int8 wraps everything above
+    127, so the columns must stay int32.
     """
     with np.printoptions():
         params = runpy.run_path(str(ROOT / params_path))
-    flags = np.array([0, 2**30, 2**30 | 8], dtype=np.float64)
+    flags = np.array([0, 2**12, 2**15, 2**15 | 2**12 | 8, 2**16 - 1], dtype=np.float64)
     bit_columns = ["NGMIX_MCAL_FLAGS"] + [
         f"NGMIX_FLAGS_{suffix}" for suffix in ("NOSHEAR", "1P", "1M", "2P", "2M")
     ]
     columns = {name: flags for name in bit_columns}
-    columns["NGMIX_MCAL_TYPES_FAIL"] = np.array([0, 5, 1])
+    columns["NGMIX_MCAL_TYPES_FAIL"] = np.array([0, 1, 5, 2, 5])
     assert set(columns) <= set(params["add_cols_pre_cal"])
     path = tmp_path / f"comprehensive{extension}"
     write_shape_catalog(
         str(path),
-        np.zeros(3),
-        np.zeros(3),
-        np.ones(3),
+        np.zeros(5),
+        np.zeros(5),
+        np.ones(5),
         add_cols=columns,
         add_cols_format=params["add_cols_pre_cal_format"],
     )
