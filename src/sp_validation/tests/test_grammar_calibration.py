@@ -67,6 +67,9 @@ def _twins():
         }
         for key, values in columns.items():
             v1[f"NGMIX_{key}_{shear}"] = v2[f"NGMIX_{key}_{shear}"] = values
+    # v1's no-shear reconvolved-PSF size is wrong; the reader uses the 1P kernel.
+    v2["NGMIX_T_PSF_RECONV_NOSHEAR"] = v1["NGMIX_Tpsf_1P"]
+    v1["NGMIX_Tpsf_NOSHEAR"] = 1.02 * v1["NGMIX_Tpsf_1P"]
     psf = rng.normal(0, 0.02, (2, N))
     psf[:, rng.random(N) < 0.02] = -10
     for i in (0, 1):

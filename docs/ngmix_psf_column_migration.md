@@ -13,13 +13,15 @@ grammar-neutral tables unchanged. `detect_generation` tells the grammars apart
 from column names, and `v2_names` maps a header's names without reading data.
 The adapter maps by *name*, so a v1 `*_PSFo` column is presented as
 `*_PSF_ORIG` holding the v1 (reconvolved-alias) values; downstream code never
-branches on the generation. The tables below (Old = v1, New = v2) are the rule
-table in `grammar.V1_RULES`.
+branches on the generation. The one exception is a documented v1 defect, which
+the adapter corrects rather than renames: `NGMIX_T_PSF_RECONV_NOSHEAR` is read
+from `NGMIX_Tpsf_1P` (see the reconvolved-PSF table). The tables below
+(Old = v1, New = v2) are the rule table in `grammar.V1_RULES`.
 
 Mask columns follow a separate rule family, applied whatever the generation.
 The UNIONS healsparse mask product is one bitmask; ShapePipe v2 and
 `catalog_builders.ApplyHspMasks` both write bit `b` as the boolean `MASK_n{b}`,
-and comprehensive HDF5 files written before that name carry it in `data_ext` as
+and the `data_ext` dataset of a v1 comprehensive HDF5 carries it as
 `{b}_{label}` (`grammar.MASK_LABELS`), which the adapter renames:
 
 | bit | old `data_ext` name | meaning |
@@ -86,7 +88,22 @@ column is also carried through `params.add_cols_pre_cal` and every
 
 | Old | New | Note |
 |---|---|---|
-| `NGMIX_Tpsf_{shear}` | `NGMIX_T_PSF_RECONV_{shear}` | same value (the `T/Tpsf` size-ratio cut) |
+| `NGMIX_Tpsf_{shear}` | `NGMIX_T_PSF_RECONV_{shear}` | same value (the `T/Tpsf` size-ratio cut), for `{shear}` ≠ `NOSHEAR` |
+| `NGMIX_Tpsf_1P`, else `NGMIX_Tpsf_NOSHEAR` | `NGMIX_T_PSF_RECONV_NOSHEAR` | **v1 defect corrected** (below) |
+
+ShapePipe v1 wrote a wrong `NGMIX_Tpsf_NOSHEAR`: in the v1.4, v1.5 and v1.6
+comprehensive catalogues it differs by ~2% for nearly every object from the
+reconvolution kernel metacal applied, which the sheared types'
+`NGMIX_Tpsf_{1P,1M,2P,2M}` record (they agree to ~1e-5). The v1.4.6.3 release
+used the `1P` value in its metacal size cut and wrote it as
+`NGMIX_Tpsf_NOSHEAR` (keeping the raw one as `NGMIX_Tpsf_NOSHEAR_orig`), so the
+adapter reads `NGMIX_Tpsf_1P` whenever a v1 table has it and falls back to
+`NGMIX_Tpsf_NOSHEAR` for a cut catalogue such as v1.4.6.3's, whose no-shear
+column already holds the `1P` value. The release's `w_des` and PSF-leakage
+binning used the raw size, so a calibration through the adapter reproduces the
+release's selection and per-object columns but not those two bit for bit.
+ShapePipe v2 reuses one reconvolved PSF across metacal types and needs no
+correction.
 
 ### ngmix — original PSF (value change — shapepipe#749 fix — *not a code blocker*)
 

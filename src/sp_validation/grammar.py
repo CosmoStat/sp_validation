@@ -22,7 +22,8 @@ apply:
     into ``NGMIX_G{1,2}[_ERR|_PSF_ORIG]_{shear}``;
   - ``NGMIX_T_PSFo_{shear}``, ``NGMIX_Tpsf_{shear}`` and ``NGMIX_MOM_FAIL``
     become ``NGMIX_T_PSF_ORIG_{shear}``, ``NGMIX_T_PSF_RECONV_{shear}`` and
-    ``NGMIX_MCAL_TYPES_FAIL``.
+    ``NGMIX_MCAL_TYPES_FAIL``, except that ``NGMIX_T_PSF_RECONV_NOSHEAR`` is
+    read from ``NGMIX_Tpsf_1P`` when the table has it (see below).
 
 - The UNIONS mask-bit columns, applied to any table: ``{b}_{label}``
   (``1_Faint_star_halos``, ``4_Stars``, ``2048_z2``, ...), the names under
@@ -40,9 +41,20 @@ The mapping is by *name*, deliberately, including where the v1 values mean
 something different from their v2 namesakes: v1 ``NGMIX_*_PSFo_*`` hold the
 reconvolved-PSF alias rather than a fit to the original PSF, and
 ``NGMIX_MOM_FAIL`` counts moments-guess failures rather than failed metacal
-types. Reproducing a v1 calibration needs exactly the v1 values under the names
-the code reads, so the view presents them unchanged. Every other column passes
-through under its own name; source names that have a v2 equivalent are hidden.
+types. Those values are presented unchanged.
+
+One v1 value is corrected rather than renamed. ShapePipe v1 wrote a wrong
+no-shear reconvolved-PSF size: ``NGMIX_Tpsf_NOSHEAR`` differs by ~2% for
+nearly every object from the reconvolution kernel metacal applied, which the
+sheared types' ``NGMIX_Tpsf_{1P,1M,2P,2M}`` record (they agree to ~1e-5).
+The v1.4.6.3 release cut on and wrote the ``1P`` value, so
+``NGMIX_T_PSF_RECONV_NOSHEAR`` reads ``NGMIX_Tpsf_1P`` whenever the table has
+it, and ``NGMIX_Tpsf_NOSHEAR`` otherwise (a cut catalogue such as v1.4.6.3's,
+whose no-shear column already holds the ``1P`` value). ShapePipe v2 reuses one
+reconvolved PSF across metacal types, so its columns need no correction.
+
+Every other column passes through under its own name; source names that have a
+v2 equivalent are hidden.
 
 ``adapt`` also joins row-aligned tables into one view, as the comprehensive
 HDF5 splits one catalogue over its ``data`` and ``data_ext`` datasets.
@@ -98,17 +110,21 @@ class Rule:
     ``kind`` is ``"rename"`` (same values), ``"sigma_to_T"`` (T = 2 sigma^2)
     or ``"component"`` (element ``arg`` of a 2-vector, stored either as one
     vector column ``source`` or as the flattened ``{source}_{arg}``).
+    ``fallback`` names a column read instead when ``source`` is absent.
     """
 
     v2: str
     source: str
     kind: str = "rename"
     arg: int | None = None
+    fallback: str | None = None
 
     def sources(self):
-        """Return the source names this rule can read from."""
+        """Return the source names this rule can read from, in preference order."""
         if self.kind == "component":
             return (self.source, f"{self.source}_{self.arg}")
+        if self.fallback is not None:
+            return (self.source, self.fallback)
         return (self.source,)
 
     def apply(self, column):
@@ -145,10 +161,18 @@ def _v1_rules():
                     i,
                 ),
             ]
-        rules += [
-            Rule(f"NGMIX_T_PSF_ORIG_{shear}", f"NGMIX_T_PSFo_{shear}"),
-            Rule(f"NGMIX_T_PSF_RECONV_{shear}", f"NGMIX_Tpsf_{shear}"),
-        ]
+        rules.append(Rule(f"NGMIX_T_PSF_ORIG_{shear}", f"NGMIX_T_PSFo_{shear}"))
+        if shear == "NOSHEAR":
+            # v1 wrote a wrong no-shear size; see the module docstring.
+            rules.append(
+                Rule(
+                    "NGMIX_T_PSF_RECONV_NOSHEAR",
+                    "NGMIX_Tpsf_1P",
+                    fallback="NGMIX_Tpsf_NOSHEAR",
+                )
+            )
+        else:
+            rules.append(Rule(f"NGMIX_T_PSF_RECONV_{shear}", f"NGMIX_Tpsf_{shear}"))
     rules.append(Rule("NGMIX_MCAL_TYPES_FAIL", "NGMIX_MOM_FAIL"))
     return tuple(rules)
 
@@ -206,24 +230,31 @@ def _resolve(names):
     rules = MASK_RULES
     if detect_generation(names) == "v1":
         rules = V1_RULES + MASK_RULES
-    present = set(names)
+    position = {name: i for i, name in enumerate(names)}
     derived = {}
-    by_source = {}
+    consumed = set()
+    by_anchor = {}
     for rule in rules:
-        source = next((s for s in rule.sources() if s in present), None)
-        if source is None:
+        sources = [s for s in rule.sources() if s in position]
+        if not sources:
             continue
-        if rule.v2 in present:
+        if rule.v2 in position:
             raise ValueError(
-                f"catalogue carries both {source!r} and {rule.v2!r},"
+                f"catalogue carries both {sources[0]!r} and {rule.v2!r},"
                 + " two names for the same column"
             )
-        derived[rule.v2] = (rule, source)
-        by_source.setdefault(source, []).append(rule.v2)
+        derived[rule.v2] = (rule, sources[0])
+        consumed.update(sources)
+        # Presented where the first of its sources sits in the table.
+        anchor = min(sources, key=position.get)
+        by_anchor.setdefault(anchor, []).append(rule.v2)
 
     presented = []
     for name in names:
-        presented += by_source.get(name, [name])
+        if name in by_anchor:
+            presented += by_anchor[name]
+        elif name not in consumed:
+            presented.append(name)
     return tuple(presented), derived
 
 

@@ -83,6 +83,9 @@ def _twins(vector_ell=True):
         T_orig, T_reconv = rng.uniform(0.3, 0.8, (2, N))
         v2[f"NGMIX_T_PSF_ORIG_{shear}"] = v1[f"NGMIX_T_PSFo_{shear}"] = T_orig
         v2[f"NGMIX_T_PSF_RECONV_{shear}"] = v1[f"NGMIX_Tpsf_{shear}"] = T_reconv
+    # v1's no-shear reconvolved-PSF size is wrong; the view reads the 1P kernel.
+    v1["NGMIX_Tpsf_NOSHEAR"] = 1.02 * v1["NGMIX_Tpsf_1P"]
+    v2["NGMIX_T_PSF_RECONV_NOSHEAR"] = v1["NGMIX_Tpsf_1P"]
     fail = rng.integers(0, 2, N).astype(np.int16)
     v2["NGMIX_MCAL_TYPES_FAIL"] = v1["NGMIX_MOM_FAIL"] = fail
     v1["IMAFLAGS_ISO"] = rng.integers(0, 256, N).astype(np.int16)
@@ -408,3 +411,32 @@ def test_h5py_reads_only_the_selected_window(tmp_path, monkeypatch):
         assert reads[-1] == (200, 301)
         view[10:20:3]["MASK_n1"]
         assert reads[-1] == (10, 20)
+
+
+def test_v1_no_shear_reconv_psf_reads_the_1P_kernel():
+    """v1 NGMIX_Tpsf_NOSHEAR is wrong: RECONV_NOSHEAR reads Tpsf_1P when present."""
+    names = [f"NGMIX_Tpsf_{shear}" for shear in SHEARS]
+    table = np.zeros(4, dtype=[(name, "f8") for name in names])
+    for i, name in enumerate(names):
+        table[name] = 0.5 + i
+    view = adapt(table)
+    np.testing.assert_array_equal(
+        view["NGMIX_T_PSF_RECONV_NOSHEAR"], table["NGMIX_Tpsf_1P"]
+    )
+    np.testing.assert_array_equal(view["NGMIX_T_PSF_RECONV_1P"], table["NGMIX_Tpsf_1P"])
+    assert "NGMIX_Tpsf_NOSHEAR" not in view
+    assert view.names[0] == "NGMIX_T_PSF_RECONV_NOSHEAR"
+    assert sorted(view.names) == sorted(
+        f"NGMIX_T_PSF_RECONV_{shear}" for shear in SHEARS
+    )
+
+    # A v1 cut catalogue carries only the (already corrected) no-shear size.
+    cut = np.zeros(
+        3, dtype=[("NGMIX_Tpsf_NOSHEAR", "f8"), ("NGMIX_Tpsf_NOSHEAR_orig", "f8")]
+    )
+    cut["NGMIX_Tpsf_NOSHEAR"], cut["NGMIX_Tpsf_NOSHEAR_orig"] = 0.4, 0.41
+    view = adapt(cut)
+    assert view.names == ("NGMIX_T_PSF_RECONV_NOSHEAR", "NGMIX_Tpsf_NOSHEAR_orig")
+    np.testing.assert_array_equal(
+        view["NGMIX_T_PSF_RECONV_NOSHEAR"], cut["NGMIX_Tpsf_NOSHEAR"]
+    )
