@@ -2,9 +2,11 @@
 
 sp_validation reads the ShapePipe-v2 column grammar everywhere: live package,
 configs, calibration scripts, paper figures and notebooks. Catalogues written in
-the v1 grammar (every release up to v1.6.x) are read through
-`sp_validation.grammar` (wired into the ρ/τ path, `rho_tau.py`, and the GLASS
-leakage script): `adapt(table)` (or `read_catalogue(path, hdu)` for a
+the v1 grammar (every release up to v1.6.x) are presented in the v2 grammar at the
+read boundary by `sp_validation.grammar`: the campaign and star readers
+(`catalog.read_campaign_catalogue`, `read_star_catalogue`, the `JointCat` merge),
+`CalibrateCat.read_cat`, the ρ/τ path (`rho_tau.py`) and the theory-covariance
+script all read through it. `adapt(table)` (or `read_catalogue(path, hdu)` for a
 FITS file) presents a v1 table under the v2 names and units below, as a lazy
 column view over a numpy array, FITS_rec or h5py dataset, and returns v2 or
 grammar-neutral tables unchanged. `detect_generation` tells the grammars apart
@@ -12,10 +14,29 @@ from column names, and `v2_names` maps a header's names without reading data.
 The adapter maps by *name*, so a v1 `*_PSFo` column is presented as
 `*_PSF_ORIG` holding the v1 (reconvolved-alias) values; downstream code never
 branches on the generation. The tables below (Old = v1, New = v2) are the rule
-table in `grammar.RULES`. The adapter also presents the comprehensive HDF5's
-`data_ext` mask flags (`1_Faint_star_halos`, …, `2048_z2`) as `MASK_n{b}`, and
-passes `IMAFLAGS_ISO` through unmapped: its v1 bits (2 halo, 4 border,
-16 Messier, 32 NGC, 128 spike) are not the v2 `MASK_n{b}` of the same value.
+table in `grammar.V1_RULES`.
+
+Mask columns follow a separate rule family, applied whatever the generation.
+The UNIONS healsparse mask product is one bitmask; ShapePipe v2 and
+`catalog_builders.ApplyHspMasks` both write bit `b` as the boolean `MASK_n{b}`,
+and comprehensive HDF5 files written before that name carry it in `data_ext` as
+`{b}_{label}` (`grammar.MASK_LABELS`), which the adapter renames:
+
+| bit | old `data_ext` name | meaning |
+|---|---|---|
+| 1, 2 | `1_Faint_star_halos`, `2_Bright_star_halos` | star halos |
+| 4 | `4_Stars` | star mask |
+| 8 | `8_Manual` | manual mask (large galaxies) |
+| 16–256 | `16_u`, `32_g`, `64_r`, `128_i`, `256_z` | per-band coverage |
+| 512 | `512_Tile_RA_DEC_cut` | outside the tile's unique region |
+| 1024 | `1024_Maximask` | MaxiMask |
+| 2048 | `2048_z2` | no Pan-STARRS z2 |
+
+`adapt(data, data_ext)` joins the two datasets of a comprehensive HDF5 into one
+table, so a v1 comprehensive catalogue and a v2 catalogue take the same mask
+configuration and the same `galaxy.mask_cut`. `IMAFLAGS_ISO` passes through
+unmapped: its v1 bits (2 halo, 4 border, 16 Messier, 32 NGC, 128 spike) are not
+the `MASK_n{b}` of the same value.
 
 shapepipe#761 turns the shape-measurement output into **one column grammar for
 the whole catalogue**: every estimator names its outputs
@@ -74,7 +95,7 @@ reconvolved-kernel alias the old `ELL_PSFo`/`T_PSFo` columns silently held. The
 rename is a straight column rename in sp_validation and is correct as-is — the
 code does not care that the numbers moved. The only thing a regenerated catalogue
 buys is a *look-at-the-numbers* check that the α-leakage / size-ratio cuts still
-behave; that is analysis, not code, and it does not gate this PR (see Status).
+behave; that is analysis, not code, and it gates nothing in the code.
 
 | Old | New |
 |---|---|
@@ -166,7 +187,7 @@ outside `scratch/` instantiates `metacal(prefix="GALSIM")` or calls
 `col_1p = f"{prefix}_T_PSF_RECONV_1P"` read in `metacal._read_data` never matched
 the galsim producer output (`GALSIM_T_PSF_*`, not `..._T_PSF_RECONV_*`). Carrying
 an untestable, already-broken path onto the new grammar is a worse end state than
-deleting it, so this branch **removes** it:
+deleting it, so sp_validation has none. Absent by design:
 
 - `calibration.metacal._read_data_galsim`, the `prefix == "GALSIM"` dispatch
   branch (now `else: raise` — unknown prefixes fail loudly), and the two galsim
@@ -189,8 +210,8 @@ grammar, and add coverage — not the dead stub that was removed.
   "Adopt ShapePipe-v2 HSM column grammar, retire square_size") is the sibling
   consumer migration. It lands on the same HSM grammar
   (`HSM_G1/G2_{PSF,STAR}`, `HSM_T_*`, `HSM_FLAG_*`) and removed the `square_size`
-  parameter from `build_cat_to_compute_{rho,tau}` and `CovTauTh`; this PR drops the
-  matching argument, so the two land together (see "`square_size` is retired").
+  parameter from `build_cat_to_compute_{rho,tau}` and `CovTauTh`; sp_validation
+  passes no such argument (see "`square_size` is retired").
 - **shapepipe#761** (producer) still renames the `GALSIM_*` family onto the grammar
   for columns nothing can create. If the goal is to simplify the grammar,
   retiring that serialization is a producer-side follow-up worth raising there.

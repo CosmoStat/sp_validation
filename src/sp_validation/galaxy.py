@@ -29,8 +29,10 @@ from tqdm import tqdm
 # required square root: FWHM = 2.35482 sqrt(T / 2)
 from sp_validation import io
 
-#: All mask columns written by ShapePipe v2 (bool, ``True`` = masked).
-#: They replace the single IMAFLAGS_ISO bitmask of ShapePipe v1.
+#: All mask columns written by ShapePipe v2 (bool, ``True`` = masked), one per
+#: bit of the UNIONS healsparse mask product (``grammar.MASK_LABELS``; v2 does
+#: not write n512). Post-processed v1 comprehensive catalogues carry the same
+#: columns, presented under these names by ``sp_validation.grammar``.
 #:
 #: Reason bits making up the r-band default bitmask: n1/n2 star halos
 #: (which of the two is faint and which bright is unconfirmed for the
@@ -114,9 +116,10 @@ def mask_cut(dd, mask_columns=None):
         raise KeyError(
             f"Mask column(s) {missing} not found in catalogue."
             + " ShapePipe v2 catalogues carry the boolean columns"
-            + f" {list(MASK_COLUMNS)}; ShapePipe v1 catalogues carry"
-            + " IMAFLAGS_ISO instead and are not supported."
-            + f" Available columns: {sorted(available)}"
+            + f" {list(MASK_COLUMNS)}, as do comprehensive catalogues whose"
+            + " data_ext holds the healsparse mask bits (read through"
+            + " sp_validation.grammar). Available columns:"
+            + f" {sorted(available)}"
         )
 
     masked = np.zeros(len(dd[columns[0]]), dtype=bool)

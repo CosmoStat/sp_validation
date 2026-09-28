@@ -305,7 +305,6 @@ def plot_binned_one(
     xlabel=None,
     ylabel=None,
 ):
-
     # Note: transpose R slice to match (y, x) shape required by pcolormesh
     pcm = ax.pcolormesh(
         bin_edges_x, bin_edges_y, quantity, vmin=vmin, vmax=vmax, shading="auto"
@@ -332,7 +331,6 @@ def plot_binned(
     xlabel=None,
     ylabel=None,
 ):
-
     len_shape = len(quantities[key].shape)
 
     fig_size = 2 * len_shape
@@ -478,9 +476,8 @@ def sky_plots(dat, masks, labels, zoom_ra, zoom_dec):
     # No mask
     plot_area_mask(ra, dec, zoom)
 
-    # SExtractor and SP flags. ShapePipe v2 splits the single IMAFLAGS_ISO
-    # mask into per-reason MASK_n<bit> columns, so combine whichever of them
-    # the mask config declared.
+    # SExtractor and SP flags: whichever mask columns the config declared
+    # (the MASK_n<bit> columns, and the v1 configs' IMAFLAGS_ISO).
     m_flags = masks[labels["FLAGS"]]._mask
     for col in ("IMAFLAGS_ISO",) + tuple(MASK_COLUMNS):
         if col in labels:
@@ -491,8 +488,7 @@ def sky_plots(dat, masks, labels, zoom_ra, zoom_dec):
     m_over = masks[labels["overlap"]]._mask & m_flags
     plot_area_mask(ra, dec, zoom, mask=m_over)
 
-    # Coverage mask
-    # Rough pointing coverage; v2 encodes coverage in the MASK_n* columns
+    # Rough pointing coverage, where the catalogue carries it
     m_point = m_over
     if "npoint3" in labels:
         m_point = masks[labels["npoint3"]]._mask & m_over
@@ -500,9 +496,8 @@ def sky_plots(dat, masks, labels, zoom_ra, zoom_dec):
 
     # Maximask
     m_maxi = m_point
-    for maxi_key in ("1024_Maximask", "MASK_n1024"):
-        if maxi_key in labels:
-            m_maxi = masks[labels[maxi_key]]._mask & m_point
+    if "MASK_n1024" in labels:
+        m_maxi = masks[labels["MASK_n1024"]]._mask & m_point
     plot_area_mask(ra, dec, zoom, mask=m_maxi)
 
     # Combined mask over all supplied masks (was passed in by the caller before
@@ -514,12 +509,8 @@ def sky_plots(dat, masks, labels, zoom_ra, zoom_dec):
     m_comb = mask_combined._mask
     plot_area_mask(ra, dec, zoom, mask=m_comb)
 
-    m_man = m_maxi & masks[labels["8_Manual"]]._mask
+    m_man = m_maxi & masks[labels["MASK_n8"]]._mask
     plot_area_mask(ra, dec, zoom, mask=m_man)
 
-    m_halos = (
-        m_maxi
-        & masks[labels["1_Faint_star_halos"]]._mask
-        & masks[labels["2_Bright_star_halos"]]._mask
-    )
+    m_halos = m_maxi & masks[labels["MASK_n1"]]._mask & masks[labels["MASK_n2"]]._mask
     plot_area_mask(ra, dec, zoom, mask=m_halos)

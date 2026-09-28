@@ -4,9 +4,10 @@ import numpy as np
 import yaml
 from shear_psf_leakage.rho_tau_cov import CovTauTh
 
+from sp_validation.grammar import read_catalogue
+
 
 def get_params_rho_tau(cat, survey="other"):
-
     # Set parameters
     params = {}
     # TODO to yaml file
@@ -86,9 +87,9 @@ if __name__ == "__main__":
         print("Computing the covariance matrix for the version: ", ver)
         start_time = time.time()
         cov_tau_th = CovTauTh(
-            path_gal=path_gal,
-            path_psf=path_psf,
-            hdu_psf=hdu_psf,
+            path_gal=read_catalogue(path_gal, hdu=info["shear"].get("hdu") or 1),
+            path_psf=read_catalogue(path_psf, hdu=hdu_psf),
+            hdu_psf=None,
             treecorr_config=TreeCorrConfig_xi,
             A=A,
             n_e=n_e,

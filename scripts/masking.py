@@ -7,6 +7,7 @@ import healpy as hp
 import numpy as np
 import yaml
 
+from sp_validation.grammar import adapt
 from sp_validation.masks import apply_condition
 
 # -------------------------
@@ -28,39 +29,28 @@ SPATIAL_CUTS = {
     "MASK_n1024",
     "MASK_n2048",
     "N_EPOCH",
-    "4_Stars",
-    "8_Manual",
-    "64_r",
-    "1024_Maximask",
     "npoint3",
-    "1_Faint_star_halos",
-    "2_Bright_star_halos",
 }
 
 # -------------------------
 # Masking logic
 
 
-def apply_masks(data, data_ext, mask_config, footprint_only=False):
+def apply_masks(data, mask_config, footprint_only=False):
     """
     Construct a boolean mask selecting galaxies that satisfy all
     masking criteria defined in the YAML configuration file.
 
     Parameters
     ----------
-    data : numpy.ndarray or structured array
-        Slice of the HDF5 "data" group containing per-object
-        measurements (e.g. FLAGS, mag, NGMIX quantities).
-
-    data_ext : numpy.ndarray or structured array
-        Slice of the HDF5 "data_ext" group containing external or
-        post-processing flags (e.g. star masks, footprint flags).
+    data : numpy.ndarray, structured array or grammar.V2View
+        Slice of the catalogue in the v2 column grammar: the HDF5 "data"
+        and "data_ext" datasets joined by ``grammar.adapt``.
 
     mask_config : dict
         Dictionary parsed from the YAML mask configuration file.
         Expected structure:
             - mask_config["dat"]     : list of cuts applied to `data`
-            - mask_config["dat_ext"] : list of cuts applied to `data_ext`
             - mask_config["metacal"] : derived-quantity parameters
               (e.g. relative size limits)
 
@@ -82,7 +72,6 @@ def apply_masks(data, data_ext, mask_config, footprint_only=False):
     # Initialize mask
     mask = np.ones(len(data), dtype=bool)
 
-    # --- dat group ---
     for cut in mask_config.get("dat", []):
         col = cut["col_name"]
         if footprint_only and col not in SPATIAL_CUTS:
@@ -91,16 +80,6 @@ def apply_masks(data, data_ext, mask_config, footprint_only=False):
         value = cut["value"]
 
         mask &= apply_condition(data[col], kind, value)
-
-    # --- dat_ext group ---
-    for cut in mask_config.get("dat_ext", []):
-        col = cut["col_name"]
-        if footprint_only and col not in SPATIAL_CUTS:
-            continue
-        kind = cut["kind"]
-        value = cut["value"]
-
-        mask &= apply_condition(data_ext[col], kind, value)
 
     # --- metacal relative size (skip for footprint-only) ---
     if not footprint_only:
@@ -155,10 +134,10 @@ def process_chunk(args):
 
     start, stop, filename, nside, mask_config, footprint_only = args
     with h5py.File(filename, "r") as f:
-        data = f["data"][start:stop]
-        data_ext = f["data_ext"][start:stop]
+        parts = [f[name][start:stop] for name in ("data", "data_ext") if name in f]
+    data = adapt(*parts)
 
-    mask = apply_masks(data, data_ext, mask_config, footprint_only=footprint_only)
+    mask = apply_masks(data, mask_config, footprint_only=footprint_only)
 
     ra = data["RA"][mask]
     dec = data["Dec"][mask]

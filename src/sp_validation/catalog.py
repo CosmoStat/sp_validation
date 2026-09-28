@@ -23,7 +23,7 @@ from astropy import units as u
 from astropy.io import fits
 from cs_util import cat
 
-from sp_validation import format, io
+from sp_validation import format, grammar, io
 from sp_validation.version import __version__
 
 
@@ -853,14 +853,14 @@ def promote_dtypes(dtype_a, dtype_b):
     return np.promote_types(dtype_a, dtype_b)
 
 
-def group_dtype(group, keys, param_list=None):
+def group_dtype(tables, param_list=None):
     """Group Dtype.
 
-    Build the structured output dtype of a group of per-tile datasets,
-    promoting each column across *every* dataset. A campaign that was
+    Build the structured output dtype of a group of per-tile tables,
+    promoting each column across *every* table. A campaign that was
     partially reprocessed can carry e.g. ``S7`` tile IDs in one tile and
     ``S12`` in another, or ``f4`` next to ``f8``; taking the dtype of the
-    first dataset alone would silently truncate the others.
+    first table alone would silently truncate the others.
 
     Note that ShapePipe currently writes ``TILE_ID`` as ``f8`` (the tile
     ``183.307`` arrives as the float ``183.307``), not as a string, so the
@@ -874,10 +874,8 @@ def group_dtype(group, keys, param_list=None):
 
     Parameters
     ----------
-    group : h5py.Group
-        group whose members are structured datasets
-    keys : list of str
-        dataset names to consider
+    tables : list
+        per-tile tables (h5py Datasets, or their ``grammar.adapt`` views)
     param_list : list of str, optional
         columns to keep; default is ``None`` (keep all)
 
@@ -887,16 +885,32 @@ def group_dtype(group, keys, param_list=None):
         structured output dtype
 
     """
-    names = param_list if param_list is not None else list(group[keys[0]].dtype.names)
+    names = param_list if param_list is not None else list(tables[0].dtype.names)
 
     fields = []
     for name in names:
-        promoted = group[keys[0]].dtype[name]
-        for key in keys[1:]:
-            promoted = promote_dtypes(promoted, group[key].dtype[name])
+        promoted = tables[0].dtype[name]
+        for table in tables[1:]:
+            promoted = promote_dtypes(promoted, table.dtype[name])
         fields.append((name, promoted))
 
     return np.dtype(fields)
+
+
+def _unit_tables(group, file_path, param_list=None):
+    """Return {dataset name: v2-grammar table} for the datasets of ``group``.
+
+    Each dataset is presented through ``grammar.adapt`` without reading it,
+    and validated to carry every column of ``param_list``, not only the first.
+    """
+    keys = sorted(group)
+    if not keys:
+        raise ValueError(f"No datasets found in catalogue {file_path}")
+    tables = {key: grammar.adapt(group[key]) for key in keys}
+    if param_list is not None:
+        for key, table in tables.items():
+            _check_columns(table.dtype, param_list, file_path, key)
+    return tables
 
 
 def _check_columns(dtype, param_list, file_path, dataset_key=None):
@@ -915,8 +929,9 @@ def concatenate_datasets(
 ):
     """Concatenate Datasets.
 
-    Concatenate every dataset of an HDF5 group into one structured array,
-    optionally restricted to a list of columns.
+    Concatenate every dataset of an HDF5 group into one structured array in
+    the v2 column grammar (each dataset passes through ``grammar.adapt``),
+    optionally restricted to a list of v2-grammar columns.
 
     The output array is preallocated and filled slice by slice, so peak
     memory is the output catalogue plus one tile, not the full-width
@@ -950,17 +965,9 @@ def concatenate_datasets(
         collides with an existing column
 
     """
-    keys = sorted(group)
-    if not keys:
-        raise ValueError(f"No datasets found in catalogue {file_path}")
-
-    # Validate every dataset up front: a column may be missing from any tile,
-    # not only the first one.
-    for key in keys:
-        if param_list is not None:
-            _check_columns(group[key].dtype, param_list, file_path, key)
-
-    dtype_out = group_dtype(group, keys, param_list=param_list)
+    tables = _unit_tables(group, file_path, param_list=param_list)
+    keys = list(tables)
+    dtype_out = group_dtype(list(tables.values()), param_list=param_list)
 
     if key_column is not None:
         if key_column in (dtype_out.names or ()):
@@ -981,7 +988,7 @@ def concatenate_datasets(
         key_values = {key: int(match.group()) for key, match in matches.items()}
         dtype_out = np.dtype(dtype_out.descr + [(key_column, "i8")])
 
-    n_rows = sum(group[key].shape[0] for key in keys)
+    n_rows = sum(len(table) for table in tables.values())
     if verbose:
         print(
             f"Reading {len(keys)} datasets,"
@@ -992,7 +999,7 @@ def concatenate_datasets(
     data_out = np.empty(n_rows, dtype=dtype_out)
     start = 0
     for key in tqdm.tqdm(keys, disable=not verbose):
-        data = group[key][()]
+        data = grammar.adapt(group[key][()])
         end = start + len(data)
         for name in dtype_out.names:
             if key_column is not None and name == key_column:
@@ -1069,14 +1076,9 @@ def campaign_shape(file_path, param_list=None):
     with h5py.File(file_path, "r") as hdf5_file:
         group = find_dataset_group(hdf5_file)
         check_n_units(hdf5_file, group, file_path)
-        keys = sorted(group)
-        if not keys:
-            raise ValueError(f"No datasets found in catalogue {file_path}")
-        n_rows = sum(group[key].shape[0] for key in keys)
-        if param_list is not None:
-            for key in keys:
-                _check_columns(group[key].dtype, param_list, file_path, key)
-        dtype_out = group_dtype(group, keys, param_list=param_list)
+        tables = list(_unit_tables(group, file_path, param_list=param_list).values())
+        n_rows = sum(len(table) for table in tables)
+        dtype_out = group_dtype(tables, param_list=param_list)
 
     return n_rows, dtype_out
 
@@ -1106,15 +1108,9 @@ def iter_campaign_tiles(file_path, param_list=None, verbose=True):
     with h5py.File(file_path, "r") as hdf5_file:
         group = find_dataset_group(hdf5_file)
         check_n_units(hdf5_file, group, file_path)
-        keys = sorted(group)
-        if not keys:
-            raise ValueError(f"No datasets found in catalogue {file_path}")
-        for key in keys:
-            if param_list is not None:
-                _check_columns(group[key].dtype, param_list, file_path, key)
+        keys = list(_unit_tables(group, file_path, param_list=param_list))
         for key in tqdm.tqdm(keys, disable=not verbose):
-            data = group[key][()]
-            yield data if param_list is None else data[param_list]
+            yield grammar.materialise(group[key][()], param_list)
 
 
 def read_campaign_catalogue(
@@ -1126,7 +1122,9 @@ def read_campaign_catalogue(
     """Read Campaign Catalogue.
 
     Read a campaign galaxy catalogue (``final_cat_<campaign>.hdf5``) and
-    return its per-tile datasets concatenated into one structured array.
+    return its per-tile datasets concatenated into one structured array, in
+    the v2 column grammar (``sp_validation.grammar``), whichever ShapePipe
+    generation wrote it. ``param_list`` names v2-grammar columns.
 
     Parameters
     ----------
@@ -1160,8 +1158,9 @@ def read_star_catalogue(file_path, hdu=1, verbose=True):
     """Read Star Catalogue.
 
     Read a campaign star/PSF catalogue. Reads the ShapePipe v2
-    ``full_starcat_<campaign>.hdf5`` (one dataset per exposure), or a legacy
-    FITS star catalogue when ``file_path`` ends in ``.fits``.
+    ``full_starcat_<campaign>.hdf5`` (one dataset per exposure), or a FITS
+    star catalogue when ``file_path`` ends in ``.fits``, presenting either in
+    the v2 column grammar (``sp_validation.grammar``).
 
     The HDF5 path adds an ``EXPID`` column carrying the exposure number each
     star came from. The datasets are named by that number and concatenating
@@ -1189,7 +1188,7 @@ def read_star_catalogue(file_path, hdu=1, verbose=True):
 
     """
     if str(file_path).endswith(".fits"):
-        return fits.getdata(file_path, hdu)
+        return grammar.materialise(fits.getdata(file_path, hdu))
 
     with h5py.File(file_path, "r") as hdf5_file:
         group = find_dataset_group(hdf5_file)

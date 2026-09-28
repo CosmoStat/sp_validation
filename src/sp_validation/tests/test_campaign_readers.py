@@ -352,8 +352,8 @@ class TestMaskCut(unittest.TestCase):
             galaxy.mask_cut(self._dat, ["MASK_n16"])
         self.assertIn("MASK_n16", str(ctx.exception))
 
-    def test_v1_catalogue_raises(self):
-        dat = np.zeros(3, dtype=[("IMAFLAGS_ISO", "i2")])
+    def test_catalogue_without_mask_columns_raises(self):
+        dat = np.zeros(3, dtype=[("FLAGS", "i2")])
 
         with self.assertRaises(KeyError):
             galaxy.mask_cut(dat)

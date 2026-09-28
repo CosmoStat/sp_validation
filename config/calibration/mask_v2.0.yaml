@@ -33,7 +33,7 @@ params:
   verbose: True
 
 # Masks
-## Using columns in 'dat' group (ShapePipe flags)
+## Cuts on catalogue columns, in the v2 grammar (sp_validation.grammar)
 dat:
   # SExtractor flags: keep 0 (clean), 1 (neighbours), 2 (deblended); drop
   # 3 (both) and above. Same as the image-sims config, so data and sims
@@ -95,7 +95,7 @@ dat:
   # external post-processing catalogue. ShapePipe v2 emits no such column and
   # no MASK_n* bit encodes it, so that cut has no v2 counterpart; add it back
   # here if an external pointing-coverage map is ever joined onto the
-  # catalogue (it would belong in the 'dat_ext' group below).
+  # catalogue.
 
   # Number of epochs
   - col_name: N_EPOCH
@@ -140,11 +140,6 @@ dat:
     label: "bad PSF ellipticity comp 2"
     kind: not_equal
     value: -10
-
-## Using columns in 'dat_ext' group (post-processing flags)
-## ShapePipe v2 carries the imaging masks in the 'dat' group above, so this
-## group is empty unless external masks are added.
-dat_ext: []
 
 # Metacal parameters
 metacal:

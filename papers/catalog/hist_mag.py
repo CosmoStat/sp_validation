@@ -53,15 +53,14 @@ def get_data(obj, test_only=False):
 
     """
     # Get data. Set load_into_memory to False for very large files
-    dat, dat_ext = obj.read_cat(load_into_memory=False)
+    dat = obj.read_cat(load_into_memory=False)
 
     if test_only:
         n_max = 1_000_000
         print(f"MKDEBUG testing only first {n_max} objects")
         dat = dat[:n_max]
-        dat_ext = dat_ext[:n_max]
 
-    return dat, dat_ext
+    return dat
 
 
 def read_hist_data(hist_data_path):
@@ -219,7 +218,6 @@ def plot_all_hists(
     ax=None,
     out_path=None,
 ):
-
     if ax is None:
         plt.figure()
         fig, (ax) = plt.subplots(1, 1, figsize=(figsize, figsize))
@@ -266,24 +264,23 @@ if os.path.exists(hist_data_path):
     print(f"Histogram data file {hist_data_path} found.")
     print("Reading and plotting.")
 
-    dat = dat_ext = None
+    dat = None
     hist_data = read_hist_data(hist_data_path)
 
 else:
     print(f"Histogram data file {hist_data_path} not found.")
     print("Reading UNIONS cat and computing.")
 
-    dat, dat_ext = get_data(obj, test_only=test_only)
+    dat = get_data(obj, test_only=test_only)
     hist_data = None
 
 
 # %%
 # Masking
-# Get all masks, with or without dat, dat_ext
+# Get all masks, with or without dat
 masks, labels = sp_joint.get_masks_from_config(
     config,
     dat,
-    dat_ext,
     verbose=obj._params["verbose"],
 )
 
@@ -291,7 +288,7 @@ masks, labels = sp_joint.get_masks_from_config(
 # Combine mask according to scenario
 # List of basic masks to apply to all cases
 
-masks_labels_basic = ["overlap", "mag", "64_r"]
+masks_labels_basic = ["overlap", "mag", "MASK_n64"]
 col_names = ["basic masks"]
 
 if scenario == 0:
@@ -302,9 +299,9 @@ if scenario == 0:
             "NGMIX_MCAL_TYPES_FAIL",
             "NGMIX_G1_PSF_ORIG_NOSHEAR",
             "NGMIX_G2_PSF_ORIG_NOSHEAR",
-            "4_Stars",
-            "8_Manual",
-            "1024_Maximask",
+            "MASK_n4",
+            "MASK_n8",
+            "MASK_n1024",
         ]
     )
 
@@ -318,9 +315,9 @@ elif scenario == 1:
             "NGMIX_MCAL_TYPES_FAIL",
             "NGMIX_G1_PSF_ORIG_NOSHEAR",
             "NGMIX_G2_PSF_ORIG_NOSHEAR",
-            "4_Stars",
-            "8_Manual",
-            "1024_Maximask",
+            "MASK_n4",
+            "MASK_n8",
+            "MASK_n1024",
             "N_EPOCH",
             "npoint3",
             "metacal",
@@ -408,7 +405,6 @@ mask_tmp = sp_joint.Mask(
 
 # %%
 def get_info_for_metacal_masking(dat, mask, prefix="NGMIX", name_shear="NOSHEAR"):
-
     res = {}
 
     res["flag"] = dat[mask][f"{prefix}_FLAGS_{name_shear}"]

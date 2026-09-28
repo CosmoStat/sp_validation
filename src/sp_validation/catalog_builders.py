@@ -31,7 +31,7 @@ from sp_validation.masks import (
     print_mask_stats,
 )
 
-from . import calibration, format
+from . import calibration, format, grammar
 from . import catalog as sp_cat
 
 # Names re-exported for external code that resolves them off this module.
@@ -598,22 +598,6 @@ class JointCat(BaseCat):
 class ApplyHspMasks(BaseCat):
     """Apply Hsp Masks."""
 
-    # Labels of bit-coded structural masks
-    _labels_struct = {
-        1: "Faint_star_halos",
-        2: "Bright_star_halos",
-        4: "Stars",
-        8: "Manual",
-        16: "u",
-        32: "g",
-        64: "r",
-        128: "i",
-        256: "z",
-        512: "Tile_RA_DEC_cut",
-        1024: "Maximask",
-        2048: "z2",
-    }
-
     def __init__(self):
         # Set default parameters
         self.params_default()
@@ -635,13 +619,14 @@ class ApplyHspMasks(BaseCat):
             label
 
         """
-        return cls._labels_struct[bit]
+        return grammar.MASK_LABELS[bit]
 
     @classmethod
     def get_mask_col_name(cls, bit):
         """Get Mask Col Name.
 
-        Return column name of mask corresponding to input bit.
+        Return column name of mask corresponding to input bit: ``MASK_n{bit}``,
+        the name ShapePipe v2 gives the same bit.
 
         Parameters
         ----------
@@ -654,7 +639,7 @@ class ApplyHspMasks(BaseCat):
             column name
 
         """
-        return f"{bit}_{cls.get_label_struct(bit)}"
+        return grammar.mask_column(bit)
 
     def params_default(self):
         """Params Default.
@@ -1054,7 +1039,11 @@ class CalibrateCat(BaseCat):
     def read_cat(self, load_into_memory=False):
         """Read Cat.
 
-        Read input HDF5 catalogue.
+        Read the input comprehensive catalogue as one table in the v2 column
+        grammar (``sp_validation.grammar``). An HDF5 catalogue's ``data`` and,
+        when present, ``data_ext`` datasets are joined column-wise, so mask
+        columns read the same whether they sit in ``data`` (ShapePipe v2) or
+        in ``data_ext`` (post-processed v1).
 
         Parameters
         ----------
@@ -1064,44 +1053,30 @@ class CalibrateCat(BaseCat):
 
         Returns
         -------
-        list
-            Catalogue data
-        list_ext
-            Extended catalogue data if exists in input file
+        numpy.ndarray or grammar.V2View
+            catalogue data
 
         """
         fpath = self._params["input_path"]
         verbose = self._params["verbose"]
 
         # Image-simulation path: a single per-run comprehensive catalogue in
-        # FITS, not the joined multi-campaign HDF5 the data path builds. Read the
-        # FITS table directly into memory; there is no separate data_ext group.
+        # FITS, not the joined multi-campaign HDF5 the data path builds.
         extension = os.path.splitext(fpath)[1]
         if extension == ".fits":
             if verbose:
                 print(f"Reading FITS file {fpath}, HDU 1...")
-            dat = fits.getdata(fpath, 1)
-            dat_ext = None
+            dat = grammar.materialise(fits.getdata(fpath, 1))
+        else:
             if verbose:
-                print(
-                    f"Found {len(dat)} (~{format.millify(len(dat))}) objects"
-                    + " in catalogue"
-                )
-            return dat, dat_ext
-
-        if verbose:
-            print(f"Reading HDF5 file {fpath}...")
-
-        self._hd5file = h5py.File(fpath, "r")
-        try:
-            dat = self._hd5file["data"]
+                print(f"Reading HDF5 file {fpath}...")
+            self._hd5file = h5py.File(fpath, "r")
+            parts = [self._hd5file["data"]]
             if "data_ext" in self._hd5file:
-                dat_ext = self._hd5file["data_ext"]
-            else:
-                dat_ext = None
-        except:
-            print(f"Error while reading file {fpath}")
-            raise
+                parts.append(self._hd5file["data_ext"])
+            dat = grammar.adapt(*parts)
+            if load_into_memory:
+                dat = grammar.materialise(dat)
 
         if verbose:
             print(
@@ -1109,16 +1084,9 @@ class CalibrateCat(BaseCat):
                 + " in catalogue"
             )
 
-        if load_into_memory:
-            if dat_ext:
-                return dat[()], dat_ext[()]
-            else:
-                return dat[()]
-        else:
-            return dat, dat_ext
+        return dat
 
     def add_params_to_FITS_header(self, header, cm=None):
-
         header_new = fits.Header()
 
         # General information
@@ -1168,7 +1136,6 @@ class ReadCat:
         }
 
     def run(self):
-
         pass
 
 
