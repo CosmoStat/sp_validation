@@ -220,3 +220,88 @@ def test_configured_paths_exist_on_candide():
         f"{len(missing)} missing configured paths out of {len(candidates)} checked:\n"
         + "\n".join(missing[:25])
     )
+
+
+# Columns each cat_config block declares for the rho/tau path. The psf block's
+# are read from the PSF file (``rho_tau.get_params_rho_tau``); the shear
+# block's are every ``*_col`` key, with the RA/Dec defaults rho/tau assumes.
+PSF_COLUMN_KEYS = (
+    "ra_col",
+    "dec_col",
+    "e1_PSF_col",
+    "e2_PSF_col",
+    "e1_star_col",
+    "e2_star_col",
+    "PSF_size",
+    "star_size",
+    "PSF_flag",
+    "star_flag",
+)
+SHEAR_COLUMN_DEFAULTS = {"ra_col": "RA", "dec_col": "Dec"}
+
+# Entries whose declared columns are known not to exist in their files, with
+# why. The test fails if one of these starts passing, so the entry is dropped
+# here once its config or data is fixed.
+KNOWN_COLUMN_GAPS = {
+    ("SP_axel_v0.0", "shear"): "file carries no PSF-shape columns",
+    ("SP_v1.3", "psf"): "2022 star file stores T_{PSF,STAR}_HSM, in neither"
+    " ShapePipe grammar and of unconfirmed convention",
+    ("SP_v1.4.6_glass_mock", "shear"): "GLASS mock carries no PSF-shape columns",
+    ("SP_v1.4.6.3_uncal_w_1", "shear"): "w_col 'one' names no column",
+}
+
+
+def _declared_columns(block, kind):
+    if kind == "psf":
+        return {key: block[key] for key in PSF_COLUMN_KEYS if key in block}
+    declared = {key: val for key, val in block.items() if key.endswith("_col")}
+    return SHEAR_COLUMN_DEFAULTS | declared
+
+
+def test_cat_config_columns_exist_on_candide():
+    """Every cat_config psf/shear column is among those its file presents.
+
+    Reads only FITS headers, through ``grammar.read_column_names``, so a v1
+    file is checked against the v2 names it presents to the rho/tau path.
+    Entries whose file is absent are left to the path guard above.
+    """
+    if not _on_candide():
+        pytest.skip("Candide-local column guard skipped: no /automnt/n17data/cdaley")
+
+    from sp_validation.grammar import read_column_names
+
+    with (_repo_root() / "cosmo_val/cat_config.yaml").open() as handle:
+        config = yaml.safe_load(handle)
+
+    checked, missing = 0, {}
+    for version, entry in config.items():
+        if not isinstance(entry, dict) or "subdir" not in entry:
+            continue
+        for kind in ("psf", "shear"):
+            block = entry.get(kind) or {}
+            if "path" not in block:
+                continue
+            path = Path(block["path"])
+            if not path.is_absolute():
+                path = Path(entry["subdir"]) / path
+            if not path.exists():
+                continue
+            hdu = block.get("hdu") or 1
+            present = set(read_column_names(path, hdu=hdu))
+            absent = {
+                key: col
+                for key, col in _declared_columns(block, kind).items()
+                if col not in present
+            }
+            checked += 1
+            if absent:
+                missing[(version, kind)] = f"{path}: {absent}"
+
+    assert checked, "no cat_config catalogue found to check"
+    unexpected = {k: v for k, v in missing.items() if k not in KNOWN_COLUMN_GAPS}
+    healed = sorted(set(KNOWN_COLUMN_GAPS) - set(missing))
+    assert not unexpected, "declared columns absent from their files:\n" + "\n".join(
+        f"{version}.{kind} -> {detail}"
+        for (version, kind), detail in unexpected.items()
+    )
+    assert not healed, f"known column gaps now pass; drop them: {healed}"
