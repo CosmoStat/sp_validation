@@ -1191,9 +1191,9 @@ SP_v1.4.8_uncal:
   patch_number: 100
 nz:
   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/nz
+  # The n(z) of the PSF-leakage theory, by pipeline.
   dndz:
-    blind: A
-    path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz
+    path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_{pipeline}_A.txt
 paths:
   output: ./output
 SP_v1.6.6:

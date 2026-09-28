@@ -131,7 +131,7 @@ def write_synthetic_catalogs(
         }
 
     config = {
-        "nz": {"subdir": str(nz_dir), "dndz": {"blind": "A", "path": "dndz"}},
+        "nz": {"subdir": str(nz_dir), "dndz": {"path": "dndz_{pipeline}_A.txt"}},
         "paths": {"output": str(output_dir)},
     }
     for version, declaration in catalogues.items():
