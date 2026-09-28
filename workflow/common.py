@@ -52,10 +52,6 @@ COSMO_INFERENCE = Path(
 # The catalogue config of the launched checkout: the one file both the host
 # (CATALOG_CONFIG, loaded in configure) and every job read catalogues from.
 CAT_CONFIG = str(REPO_ROOT / "cosmo_val" / "cat_config.yaml")
-# "blind" is the glass-mock A/B/C realisation convention, NOT Smokescreen
-# blinding (a separate axis: the concealed=True SACC stamp). The name is baked
-# into on-disk filenames we do not own (e.g. nz_{version}_{A|B|C}.txt).
-BLINDS = ["A", "B", "C"]
 BLOCK_PAIRS = [("++", "1"), ("--", "2"), ("+-", "3")]
 
 # Fiducial cosmology: Planck 2018 (astropy Planck18, Table 2 + BAO)
@@ -68,8 +64,7 @@ COSMOLOGY_PARAMS = "results/cosmology/planck18.json"
 # Patterns must match all expected values; overly restrictive patterns cause
 # silent failures. Apply with: wildcard_constraints: **WILDCARD_CONSTRAINTS
 WILDCARD_CONSTRAINTS = {
-    "version": r"SP_v[\d.]+(_w_iv)?(_ecut\d+)?(_leak_corr)?",
-    "blind": r"[ABC]",
+    "version": r"SP_v[\d.]+(_[ABC])?(_w_iv)?(_ecut\d+)?(_leak_corr)?",
     "nbins": r"\d+",
     "min_sep": r"[0-9.]+",
     "max_sep": r"[0-9.]+",
@@ -189,20 +184,13 @@ def fiducial_binning_suffix(fiducial=None):
     )
 
 
-def resolve_covariance_version(version):
-    """Map version to its covariance version."""
-    return version
-
-
 def covariance_base(
     version,
-    blind,
     gaussian="ng",
     min_sep=None,
     max_sep=None,
     nbins=None,
     mask_suffix=None,
-    resolve_version=True,
     fiducial=None,
     default_mask_suffix=None,
 ):
@@ -218,78 +206,52 @@ def covariance_base(
             DEFAULT_MASK_SUFFIX if default_mask_suffix is None else default_mask_suffix
         )
     )
-    cov_version = resolve_covariance_version(version) if resolve_version else version
     return (
-        f"covariance_{cov_version}_{blind}_{gaussian}"
+        f"covariance_{version}_{gaussian}"
         f"_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}"
     )
 
 
 def covariance_dir(
-    version,
-    blind,
-    gaussian="ng",
-    min_sep=None,
-    max_sep=None,
-    nbins=None,
-    mask_suffix=None,
-    resolve_version=True,
+    version, gaussian="ng", min_sep=None, max_sep=None, nbins=None, mask_suffix=None
 ):
     """Construct covariance directory path."""
-    base = covariance_base(
-        version,
-        blind,
-        gaussian,
-        min_sep,
-        max_sep,
-        nbins,
-        mask_suffix,
-        resolve_version=resolve_version,
-    )
+    base = covariance_base(version, gaussian, min_sep, max_sep, nbins, mask_suffix)
     return str(COSMO_INFERENCE / f"data/covariance/{base}")
 
 
 def covariance_path(
     version,
-    blind,
     gaussian="ng",
     min_sep=None,
     max_sep=None,
     nbins=None,
     mask_suffix=None,
     suffix="_processed.txt",
-    resolve_version=True,
 ):
     """Construct covariance file path."""
-    base = covariance_base(
-        version,
-        blind,
-        gaussian,
-        min_sep,
-        max_sep,
-        nbins,
-        mask_suffix,
-        resolve_version=resolve_version,
-    )
+    base = covariance_base(version, gaussian, min_sep, max_sep, nbins, mask_suffix)
     return str(COSMO_INFERENCE / f"data/covariance/{base}/{base}{suffix}")
 
 
 def base_version(version):
-    """Strip the derived-catalogue suffixes to the base catalogue version.
-
-    The `_leak_corr` / `_ecut{N}` variants share their parent's n(z) and
-    `cov_th` survey parameters, so lookups keyed on either must strip both.
-    """
+    """Strip the `_leak_corr` / `_ecut{N}` suffixes to the base catalogue
+    version, whose footprint and plotting style its variants share."""
     return re.sub(r"_ecut\d+", "", re.sub(r"_leak_corr$", "", version))
 
 
-def build_redshift_path(version, blind):
-    """Construct n(z) filepath for given catalog version and blind."""
-    base = base_version(version)
-    if "v1.4.11" in base:
-        base = "SP_v1.4.6"
-    version_dir = base.replace("SP_", "")
-    return f"/n17data/sguerrini/UNIONS/WL/nz/{version_dir}/nz_{base}_{blind}.txt"
+def catalogue_entry(version):
+    """The catalogue-config entry describing ``version`` (its own, or the one
+    its ``_leak_corr`` variant derives from)."""
+    if version in CATALOG_CONFIG:
+        return CATALOG_CONFIG[version]
+    return CATALOG_CONFIG[re.sub(r"_leak_corr$", "", version)]
+
+
+def redshift_path(version):
+    """The n(z) file of ``version``: its catalogue entry's ``shear.redshift_path``,
+    as written (as ``CosmologyValidation.get_redshift`` reads it)."""
+    return catalogue_entry(version)["shear"]["redshift_path"]
 
 
 # ---------------------------------------------------------------------------
@@ -365,7 +327,7 @@ def grid_of(grids, binning):
 def pseudo_cl_tag(config):
     """Fiducial harmonic-binning tag stamped into pseudo-Cl filenames."""
     fiducial = config["harmonic"]["fiducial"]
-    return f"blind={fiducial['blind']}_{fiducial['binning']}_nbins={fiducial['nbins']}"
+    return f"{fiducial['binning']}_nbins={fiducial['nbins']}"
 
 
 def get_shear_catalog(wildcards):

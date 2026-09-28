@@ -20,13 +20,19 @@ nbins_int: [100, 200, 300, 500]
 # fiducial parameters
 fiducial:
   version: SP_v1.4.6.3_leak_corr
-  blind: A
   npatch: 1
   min_sep: 1.0
   max_sep: 250.0
   nbins: 20
 
   mock_version: SP_v1.4.6.3
+
+  # The mock version's catalogue under each n(z) realisation: entries identical
+  # but for shear.redshift_path, compared by bb_covariance_nz_independence.
+  nz_realisations:
+    A: SP_v1.4.6.3_A_leak_corr
+    B: SP_v1.4.6.3_B_leak_corr
+    C: SP_v1.4.6.3_C_leak_corr
 
   min_sep_int: 0.5
   max_sep_int: 300.0
@@ -76,10 +82,9 @@ cl:
 
 # Harmonic pseudo-Cl fiducial binning — the tag the producer (twopoint.smk
 # pseudo_cl / pseudo_cl_cov) stamps into the filename, which the inference
-# consumer reconstructs to request the exact file. Canonical: A / powspace / 32.
+# consumer reconstructs to request the exact file. Canonical: powspace / 32.
 harmonic:
   fiducial:
-    blind: A
     binning: powspace
     nbins: 32
 

@@ -73,7 +73,7 @@ class TestCosmologyValidation:
         config_data = {
             "nz": {
                 "subdir": str(nz_dir),
-                "dndz": {"blind": "A", "path": "dndz.txt"},
+                "dndz": {"path": "dndz.txt"},
             },
             "paths": {"output": str(output_dir)},
             base_version: {
@@ -394,7 +394,7 @@ class TestCosmologyValidation:
         config_data = {
             "nz": {
                 "subdir": str(nz_dir),
-                "dndz": {"blind": "A", "path": "dndz"},
+                "dndz": {"path": "dndz_{pipeline}_A.txt"},
             },
             "paths": {"output": str(output_dir)},
             version: version_cfg,

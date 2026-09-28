@@ -1,7 +1,6 @@
 # %%
 import copy
 import os
-import re
 from pathlib import Path
 
 import colorama
@@ -256,7 +255,6 @@ class CosmologyValidation(
         cell_seed=8192,
         path_onecovariance=None,
         cosmo_params=None,
-        blind=None,
     ):
         self.rho_tau_method = rho_tau_method
         self.cov_estimate_method = cov_estimate_method
@@ -285,7 +283,6 @@ class CosmologyValidation(
         self.fiducial_input_inka = fiducial_input_inka
         self.nside_mask = nside_mask
         self.path_onecovariance = path_onecovariance
-        self.blind = blind
 
         assert self.cell_method in ["map", "catalog"], (
             "cell_method must be 'map' or 'catalog'"
@@ -443,20 +440,8 @@ class CosmologyValidation(
             Redshift values
         nz : ndarray
             n(z) probability density
-
-        Notes
-        -----
-        If self.blind is set, the redshift path is modified to use the
-        specified blind (A, B, or C) by replacing the blind suffix in the
-        configured path.
         """
-        redshift_path = self.cc[version]["shear"]["redshift_path"]
-
-        # Override blind if specified
-        if self.blind is not None:
-            redshift_path = re.sub(r"_[ABC]\.txt$", f"_{self.blind}.txt", redshift_path)
-
-        return np.loadtxt(redshift_path, unpack=True)
+        return np.loadtxt(self.cc[version]["shear"]["redshift_path"], unpack=True)
 
     def _write_catalog_config(self):
         with self.catalog_config_path.open("w") as file:

@@ -3,8 +3,6 @@
 Produces:
 - Results: single-panel fiducial Cl^BB PTE matrix
 - Appendix: N-panel composite for all versions from config.versions
-
-Uses fiducial blind covariance only (blind independence validated elsewhere).
 """
 
 import argparse
@@ -31,14 +29,12 @@ from pseudo_cl_io import load_pseudo_cl_data
 plt.style.use(PAPER_MPLSTYLE)
 
 
-def _pseudo_cl(results_dir, ver, blind="A", nbins=32):
-    return f"{results_dir}/pseudo_cl_{ver}_blind={blind}_powspace_nbins={nbins}.sacc"
+def _pseudo_cl(results_dir, ver, nbins=32):
+    return f"{results_dir}/pseudo_cl_{ver}_powspace_nbins={nbins}.sacc"
 
 
-def _pseudo_cl_cov(results_dir, ver, blind="A", nbins=32):
-    return (
-        f"{results_dir}/pseudo_cl_cov_{ver}_blind={blind}_powspace_nbins={nbins}.fits"
-    )
+def _pseudo_cl_cov(results_dir, ver, nbins=32):
+    return f"{results_dir}/pseudo_cl_cov_{ver}_powspace_nbins={nbins}.fits"
 
 
 def compute_pte_matrix(
@@ -355,7 +351,6 @@ def main(
 ):
     versions = [v for v in config["versions"] if "_ecut" not in v]
     fiducial_version = config["fiducial"]["version"]
-    fiducial_blind = config["fiducial"]["blind"]
 
     # Fiducial ell cuts from config
     fiducial_ell_min = config["cl"]["fiducial_ell_min"]
@@ -365,16 +360,16 @@ def main(
     output_dir = Path(out_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Per-version pseudo-Cl / covariance files (canonical COSMO_VAL tree, blind A).
-    # Mirrors _pseudo_cl_path(ver) / _pseudo_cl_cov_path(ver, blind) in figures.smk.
+    # Per-version pseudo-Cl / covariance files (canonical COSMO_VAL tree).
+    # Mirrors _pseudo_cl_path(ver) / _pseudo_cl_cov_path(ver) in figures.smk.
     # Fiducial-provenance repoint: when --fiducial-version matches and an explicit
     # lc override path is set, read that path instead of the reconstructed pattern
-    # (lc files lack the blind=/powspace_nbins= tokens, distinguished by directory).
+    # (lc files lack the powspace_nbins= token, distinguished by directory).
     version_to_cl = {
         ver: (
             fiducial_pseudo_cl_path
             if ver == fiducial_version_override and fiducial_pseudo_cl_path is not None
-            else _pseudo_cl(results_dir, ver, blind=fiducial_blind)
+            else _pseudo_cl(results_dir, ver)
         )
         for ver in versions
     }
@@ -383,18 +378,18 @@ def main(
             fiducial_pseudo_cl_cov_path
             if ver == fiducial_version_override
             and fiducial_pseudo_cl_cov_path is not None
-            else _pseudo_cl_cov(results_dir, ver, blind=fiducial_blind)
+            else _pseudo_cl_cov(results_dir, ver)
         )
         for ver in versions
     }
 
-    # Compute PTE matrices for all versions using fiducial blind
+    # Compute PTE matrices for all versions
     all_stats = {}
     all_matrices = {}
     all_ells = {}
 
     for version in versions:
-        print(f"\n--- Processing {version} (blind={fiducial_blind}) ---")
+        print(f"\n--- Processing {version} ---")
 
         if version not in version_to_cl:
             print(f"  WARNING: No pseudo-Cl file found for {version}, skipping")
@@ -425,14 +420,13 @@ def main(
     npz_payload = {
         "versions": np.array(list(all_matrices.keys())),
         "fiducial_version": fiducial_version,
-        "fiducial_blind": fiducial_blind,
         "fiducial_ell_min": fiducial_ell_min,
         "fiducial_ell_max": fiducial_ell_max,
     }
     for version in all_matrices:
         npz_payload[f"{version}__pte_matrix"] = all_matrices[version]
         npz_payload[f"{version}__ell"] = all_ells[version]
-    npz_path = output_dir / f"cl_pte_matrices_{fiducial_blind}.npz"
+    npz_path = output_dir / "cl_pte_matrices.npz"
     np.savez(npz_path, **npz_payload)
     print(f"Saved PTE matrices to {npz_path}")
 
@@ -493,7 +487,6 @@ def main(
     evidence_data = {
         "generated": datetime.now().isoformat(),
         "evidence": {
-            "blind": fiducial_blind,
             "versions": {},
         },
         "output": {

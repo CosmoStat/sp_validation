@@ -161,14 +161,12 @@ def _create_cl_figure(
 # via _pseudo_cl_path() in figures.smk; the CLI reconstructs them from --results-dir
 # so the version sweep is self-contained (lc produces only the fiducial version).
 # ---------------------------------------------------------------------------
-def _pseudo_cl(results_dir, ver, blind="A", nbins=32):
-    return f"{results_dir}/pseudo_cl_{ver}_blind={blind}_powspace_nbins={nbins}.sacc"
+def _pseudo_cl(results_dir, ver, nbins=32):
+    return f"{results_dir}/pseudo_cl_{ver}_powspace_nbins={nbins}.sacc"
 
 
-def _pseudo_cl_cov(results_dir, ver, blind="A", nbins=32):
-    return (
-        f"{results_dir}/pseudo_cl_cov_{ver}_blind={blind}_powspace_nbins={nbins}.fits"
-    )
+def _pseudo_cl_cov(results_dir, ver, nbins=32):
+    return f"{results_dir}/pseudo_cl_cov_{ver}_powspace_nbins={nbins}.fits"
 
 
 def _resolve_pseudo_cl_paths(
@@ -177,7 +175,6 @@ def _resolve_pseudo_cl_paths(
     fiducial_version=None,
     fiducial_pseudo_cl_path=None,
     fiducial_pseudo_cl_cov_path=None,
-    blind="A",
     nbins=32,
 ):
     """Resolve the pseudo-Cl and covariance paths for one version in the sweep.
@@ -194,8 +191,8 @@ def _resolve_pseudo_cl_paths(
     ):
         return fiducial_pseudo_cl_path, fiducial_pseudo_cl_cov_path
     return (
-        _pseudo_cl(results_dir, ver, blind, nbins),
-        _pseudo_cl_cov(results_dir, ver, blind, nbins),
+        _pseudo_cl(results_dir, ver, nbins),
+        _pseudo_cl_cov(results_dir, ver, nbins),
     )
 
 
