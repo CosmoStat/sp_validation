@@ -29,6 +29,7 @@ from cs_util.plots import FootprintPlotter
 
 from sp_validation import catalog_builders as sp_joint
 from sp_validation.grammar import MASK_LABELS
+from sp_validation.masks import catalogue_cuts
 from sp_validation.plots import hsp_map_logical_or
 
 # -
@@ -54,7 +55,7 @@ all_masks_bits = {obj.get_mask_col_name(bit): bit for bit in MASK_LABELS}
 bits = 0
 auxiliary_masks = []
 auxiliary_labels = []
-for mask_params in config["dat"]:
+for mask_params in catalogue_cuts(config):
     # Check bit-coded masks
     if mask_params["col_name"] in all_masks_bits:
         bits = bits | all_masks_bits[mask_params["col_name"]]

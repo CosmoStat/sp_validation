@@ -301,10 +301,34 @@ def print_mask_stats(num_obj, masks, mask_combined):
     mask_combined.print_stats(num_obj)
 
 
+def catalogue_cuts(config):
+    """Return the catalogue cuts of a mask config: its ``dat`` list.
+
+    Every cut names a column of the one v2-grammar table
+    ``CalibrateCat.read_cat`` returns, mask columns included.
+
+    Raises
+    ------
+    ValueError
+        if the config also has a ``dat_ext`` list, whose cuts would otherwise
+        be silently dropped
+    """
+    if "dat_ext" in config:
+        names = [cut.get("col_name") for cut in config["dat_ext"] or []]
+        raise ValueError(
+            f"mask config has a 'dat_ext' cut list {names}, which is not read:"
+            + " move its entries into 'dat', renaming the mask columns"
+            + " {b}_{label} to MASK_n{b} (e.g. 4_Stars -> MASK_n4;"
+            + " see sp_validation.grammar.MASK_LABELS)"
+        )
+    return config.get("dat") or []
+
+
 def get_masks_from_config(config, dat, masks_to_apply=None, verbose=False):
     """Get Masks From Config.
 
-    Return the masks of the config's ``dat`` cut list, evaluated on ``dat``.
+    Return the masks of the config's ``dat`` cut list (``catalogue_cuts``),
+    evaluated on ``dat``.
 
     Parameters
     ----------
@@ -332,7 +356,7 @@ def get_masks_from_config(config, dat, masks_to_apply=None, verbose=False):
     # Dict to associate labels with index in mask list
     labels = {}
 
-    for mask_params in config.get("dat", []):
+    for mask_params in catalogue_cuts(config):
         if masks_to_apply is not None and mask_params["col_name"] not in masks_to_apply:
             if verbose:
                 print(f"Skipping mask {mask_params['col_name']}")

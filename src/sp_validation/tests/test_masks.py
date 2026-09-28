@@ -9,11 +9,19 @@ against ``Mask.apply()`` itself.
 
 """
 
+import importlib.util
+from pathlib import Path
+
 import numpy as np
 import numpy.testing as npt
 import pytest
 
-from sp_validation.masks import Mask, apply_condition
+from sp_validation.masks import (
+    Mask,
+    apply_condition,
+    catalogue_cuts,
+    get_masks_from_config,
+)
 
 pytestmark = pytest.mark.fast
 
@@ -34,12 +42,10 @@ _ARRAY = np.array([1, 2, 3, 4, 5])
     ],
 )
 def test_apply_condition_kinds(kind, value, expected):
-
     npt.assert_array_equal(apply_condition(_ARRAY, kind, value), expected)
 
 
 def test_smaller_equal_alias_matches_less_equal():
-
     npt.assert_array_equal(
         apply_condition(_ARRAY, "smaller_equal", 3),
         apply_condition(_ARRAY, "less_equal", 3),
@@ -47,13 +53,11 @@ def test_smaller_equal_alias_matches_less_equal():
 
 
 def test_unknown_kind_raises():
-
     with pytest.raises(ValueError):
         apply_condition(_ARRAY, "not_a_real_kind", 3)
 
 
 def test_mask_apply_matches_apply_condition():
-
     dat = np.array([(1,), (2,), (3,), (4,), (5,)], dtype=[("col", "i8")])
 
     my_mask = Mask("col", "test_mask", kind="greater_equal", value=3, dat=dat)
@@ -64,7 +68,6 @@ def test_mask_apply_matches_apply_condition():
 
 
 def test_not_equal_2bands_is_two_column_or():
-
     # Keep an object if EITHER band column differs from the sentinel
     dat = np.array(
         [(-99, -99), (-99, 20.0), (21.0, -99), (21.0, 20.0)],
@@ -84,16 +87,42 @@ def test_not_equal_2bands_is_two_column_or():
 
 
 def test_not_equal_2bands_requires_col_name2():
-
     with pytest.raises(ValueError, match="col_name2"):
         Mask("mag_z", "zband", kind="not_equal_2bands", value=-99)
 
 
 def test_not_equal_2bands_descr_names_both_columns():
-
     my_mask = Mask(
         "mag_z", "zband", kind="not_equal_2bands", value=-99, col_name2="mag_z2"
     )
     my_mask.create_descr()
 
     assert my_mask._descr == "!=-99 in mag_z or mag_z2"
+
+
+def test_dat_ext_cut_list_is_refused_not_dropped():
+    """A config's ``dat_ext`` cuts would be silently ignored; refuse them."""
+    config = {
+        "dat": [{"col_name": "FLAGS", "label": "SE", "kind": "equal", "value": 0}],
+        "dat_ext": [{"col_name": "4_Stars", "kind": "equal", "value": False}],
+    }
+    dat = np.zeros(3, dtype=[("FLAGS", "i2"), ("MASK_n4", "?")])
+    with pytest.raises(ValueError, match="dat_ext.*4_Stars.*MASK_n4"):
+        get_masks_from_config(config, dat)
+    del config["dat_ext"]
+    assert catalogue_cuts(config) == config["dat"]
+    masks, _ = get_masks_from_config(config, dat)
+    assert len(masks) == 1
+
+
+def test_masking_script_refuses_dat_ext():
+    spec = importlib.util.spec_from_file_location(
+        "masking_script", Path(__file__).resolve().parents[3] / "scripts/masking.py"
+    )
+    masking = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(masking)
+    config = {"dat": [], "dat_ext": [{"col_name": "8_Manual"}]}
+    dat = np.zeros(3, dtype=[("MASK_n8", "?")])
+    with pytest.raises(ValueError, match="dat_ext"):
+        masking.apply_masks(dat, config, footprint_only=True)
+    assert "IMAFLAGS_ISO" in masking.SPATIAL_CUTS

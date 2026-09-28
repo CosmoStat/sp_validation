@@ -8,7 +8,7 @@ import numpy as np
 import yaml
 
 from sp_validation.grammar import adapt
-from sp_validation.masks import apply_condition
+from sp_validation.masks import apply_condition, catalogue_cuts
 
 # -------------------------
 # Spatially-structured cuts: these define the survey footprint.
@@ -17,6 +17,7 @@ from sp_validation.masks import apply_condition
 # the footprint definition.
 SPATIAL_CUTS = {
     "overlap",
+    "IMAFLAGS_ISO",
     "MASK_n1",
     "MASK_n2",
     "MASK_n4",
@@ -72,7 +73,7 @@ def apply_masks(data, mask_config, footprint_only=False):
     # Initialize mask
     mask = np.ones(len(data), dtype=bool)
 
-    for cut in mask_config.get("dat", []):
+    for cut in catalogue_cuts(mask_config):
         col = cut["col_name"]
         if footprint_only and col not in SPATIAL_CUTS:
             continue
