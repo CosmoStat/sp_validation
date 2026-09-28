@@ -130,27 +130,26 @@ def generate_macros(
 
         macros.append("")
 
-    # Pure E/B data vector - use min across blinds (cache for reuse below)
+    # Pure E/B data vector
     eb_path = claims_dir / "pure_eb_data_vector" / "evidence.json"
-    eb_fid = {}  # cached for PTE variation section
     if eb_path.exists():
         with open(eb_path) as f:
             eb_ev = json.load(f).get("evidence", {})
 
-        macros.append("% pure_eb_data_vector (min across blinds)")
+        macros.append("% pure_eb_data_vector")
 
-        # Fiducial PTEs - use pte_joint_min (conservative across blinds)
+        # Fiducial PTEs
         eb_fid = eb_ev.get("fiducial", {})
-        if "pte_joint_min" in eb_fid:
+        if "pte_joint" in eb_fid:
             macros.append(
-                f"\\newcommand{{\\ebfiducialPte}}{{{_format_value(eb_fid['pte_joint_min'])}}}"
+                f"\\newcommand{{\\ebfiducialPte}}{{{_format_value(eb_fid['pte_joint'])}}}"
             )
 
         # Full range PTEs
         full = eb_ev.get("full", {})
-        if "pte_joint_min" in full:
+        if "pte_joint" in full:
             macros.append(
-                f"\\newcommand{{\\ebfullPte}}{{{_format_value(full['pte_joint_min'])}}}"
+                f"\\newcommand{{\\ebfullPte}}{{{_format_value(full['pte_joint'])}}}"
             )
 
         # Scale cuts from fiducial
@@ -195,50 +194,6 @@ def generate_macros(
             macros.append(f"\\newcommand{{\\ebcovNbins}}{{\\num{{{ev['n_bins']}}}}}")
 
         macros.append("")
-
-    # Covariance blind consistency
-    cov_path = claims_dir / "covariance_blind_consistency" / "evidence.json"
-    if cov_path.exists():
-        with open(cov_path) as f:
-            data = json.load(f)
-        ev = data.get("evidence", {})
-
-        macros.append("% covariance_blind_consistency")
-
-        # Max deviations across blinds
-        xip = ev.get("xip", {})
-        xim = ev.get("xim", {})
-        xip_max = max(
-            xip.get("B_to_A", {}).get("max_dev", 0),
-            xip.get("C_to_A", {}).get("max_dev", 0),
-        )
-        xim_max = max(
-            xim.get("B_to_A", {}).get("max_dev", 0),
-            xim.get("C_to_A", {}).get("max_dev", 0),
-        )
-        macros.append(
-            f"\\newcommand{{\\covXipMaxDev}}{{{_format_value(xip_max * 100)}\\%}}"
-        )
-        macros.append(
-            f"\\newcommand{{\\covXimMaxDev}}{{{_format_value(xim_max * 100)}\\%}}"
-        )
-
-        macros.append("")
-
-    # PTE variation across blinds (reuse eb_fid cached above)
-    if eb_fid:
-        joint_ptes = [
-            eb_fid.get(f"pte_joint_{b}")
-            for b in ["A", "B", "C"]
-            if f"pte_joint_{b}" in eb_fid
-        ]
-        if joint_ptes:
-            macros.append("% PTE variation across blinds (fiducial scale cuts)")
-            joint_delta = max(joint_ptes) - min(joint_ptes)
-            macros.append(
-                f"\\newcommand{{\\ebJointPteDelta}}{{{_format_value(joint_delta)}}}"
-            )
-            macros.append("")
 
     # Config-space PTE matrices - generate table
     if config_pte_path is None:
