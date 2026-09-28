@@ -39,6 +39,13 @@ resolve_image = _container.resolve_image
 # Without it, jobs use the home directory's cache, which every node mounts.
 os.environ.pop("XDG_CACHE_HOME", None)
 
+# Jobs draw their figures with matplotlib's defaults, whoever launches them.
+# Apptainer binds $HOME, so a job would otherwise read the launching user's
+# ~/.config/matplotlib/matplotlibrc, and a LaTeX preamble there that the image
+# cannot typeset stops every figure rule. MATPLOTLIBRC outranks that file, and
+# APPTAINERENV_ carries it past --cleanenv.
+os.environ["APPTAINERENV_MATPLOTLIBRC"] = str(REPO_ROOT / "workflow/matplotlibrc")
+
 
 # Output roots are env-overridable so a reproduction run can write into a
 # fresh tree without clobbering (or silently reusing) prior products. COSMO_VAL
