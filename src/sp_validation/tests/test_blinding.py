@@ -11,11 +11,14 @@ import dataclasses
 import json
 import os
 import stat
+import string
 from pathlib import Path
 
 import numpy as np
 import pytest
 import yaml
+from hypothesis import assume, example, given, settings
+from hypothesis import strategies as st
 
 from sp_validation import blinding as bd
 from sp_validation import custody as cu
@@ -26,13 +29,15 @@ FAST = {"theory": {"transfer_function": "eisenstein_hu"}}
 DATA = Path(__file__).parent / "data"
 # The hidden (S8, Ωm) of the blind committed under DATA/blinds/committed.
 COMMITTED_POINT = (0.8374952413635888, 0.32730573347638175)
+VERSIONS = ("TOY", "OTHER", "TOY_OPEN", "OTHER_OPEN", "TOY_MOCK")
 
 
 # --------------------------------------------------------------------------- #
-# A registry with real blinds, and custody under them
+# Registries with real blinds, and custody under them
 # --------------------------------------------------------------------------- #
-def _cat_config(root):
-    """A catalogue config declaring one catalogue per custody state."""
+def _registry(root, *blinds):
+    """A catalogue config declaring one catalogue per custody state, and
+    ``blinds`` ((name, base) pairs) drawn for it, each from a fixed seed."""
     entries = {
         "TOY": {},
         "OTHER": {},
@@ -41,23 +46,20 @@ def _cat_config(root):
         "TOY_MOCK": {"blinding": "mock"},
         "paths": {"output": str(root / "output")},
     }
-    path = root / "cat_config.yaml"
-    path.write_text(yaml.safe_dump(entries))
+    (root / "cat_config.yaml").write_text(yaml.safe_dump(entries))
     (root / "fast.json").write_text(json.dumps(FAST))
-    return path
+    with pytest.MonkeyPatch.context() as m:
+        for blind, base in blinds:
+            m.setattr(bd.secrets, "token_hex", lambda n, b=blind: f"{b}-seed")
+            _init(root, blind, base)
+    return root
 
 
 def _init(root, blind, *bases):
+    cat_config, config = root / "cat_config.yaml", root / "fast.json"
     bd.main(
-        [
-            "init",
-            blind,
-            *bases,
-            "--cat-config",
-            str(root / "cat_config.yaml"),
-            "--config",
-            str(root / "fast.json"),
-        ]
+        ["init", blind, *bases, "--cat-config", str(cat_config)]
+        + ["--config", str(config)]
     )
 
 
@@ -68,33 +70,22 @@ def _custody(root, version):
 def _declare(root, **entries):
     """Set catalogue entries of ``root``'s catalogue config."""
     path = root / "cat_config.yaml"
-    config = yaml.safe_load(path.read_text())
-    config.update(entries)
-    path.write_text(yaml.safe_dump(config))
+    path.write_text(yaml.safe_dump({**yaml.safe_load(path.read_text()), **entries}))
 
 
 @pytest.fixture(scope="module")
 def blinds(tmp_path_factory):
-    """Blinds `toy` (TOY) and `other` (OTHER), and the five custodies.
-
-    Their seeds are fixed, so every run tests the same hidden points.
-    """
-    root = tmp_path_factory.mktemp("registry")
-    _cat_config(root)
-    with pytest.MonkeyPatch.context() as m:
-        for blind, base in (("toy", "TOY"), ("other", "OTHER")):
-            m.setattr(bd.secrets, "token_hex", lambda n, b=blind: f"{b}-seed")
-            _init(root, blind, base)
-    versions = ("TOY", "OTHER", "TOY_OPEN", "OTHER_OPEN", "TOY_MOCK")
-    return {v: _custody(root, v) for v in versions}
+    """The five custodies: TOY under blind `toy`, OTHER under `other`."""
+    root = _registry(
+        tmp_path_factory.mktemp("registry"), ("toy", "TOY"), ("other", "OTHER")
+    )
+    return {v: _custody(root, v) for v in VERSIONS}
 
 
 @pytest.fixture
 def fresh(tmp_path):
     """A registry of its own, for tests that edit or reveal a blind."""
-    _cat_config(tmp_path)
-    _init(tmp_path, "toy", "TOY")
-    return tmp_path
+    return _registry(tmp_path, ("toy", "TOY"))
 
 
 # --------------------------------------------------------------------------- #
@@ -110,12 +101,18 @@ NZ2 = {0: _gauss_nz(0.5, 0.15), 1: _gauss_nz(0.9, 0.2)}
 PAIRS = ((0, 0), (0, 1), (1, 1))
 # The ξ± tags a part may carry; blocks never depend on them (None: no tag).
 XI_TAGS = ("reporting", "integration", "cosebis", "mystery", None)
+# Data types no blind has a rule for, galaxy–galaxy lensing and CMB κ × shear,
+# with the tag SACC requires of each.
+UNRULED = {
+    "galaxy_shearDensity_xi_t": "theta",
+    "cmbGalaxy_convergenceShear_cl_e": "ell",
+}
 
 
 def _xi_template(theta, k=0):
-    xip = 1e-4 * (1 + 0.1 * k) * (theta / 10.0) ** -0.6
-    xim = 0.5e-4 * (1 + 0.1 * k) * (theta / 10.0) ** -0.9
-    return xip, xim
+    return 1e-4 * (1 + 0.1 * k) * (theta / 10.0) ** -0.6, 0.5e-4 * (1 + 0.1 * k) * (
+        theta / 10.0
+    ) ** -0.9
 
 
 def _add_xi_rows(s, pair, theta, tag, k=0):
@@ -123,17 +120,15 @@ def _add_xi_rows(s, pair, theta, tag, k=0):
     if tag is not None:
         sio.add_xi(s, pair, theta, xip, xim, grid=tag)
         return
-    tracers = sio._pair(pair)
     for dtype, values in ((sio.XI_PLUS, xip), (sio.XI_MINUS, xim)):
         for th, v in zip(theta, values):
-            s.add_data_point(dtype, tracers, float(v), theta=float(th))
+            s.add_data_point(dtype, sio._pair(pair), float(v), theta=float(th))
 
 
 def _add_cl_rows(s, pair, k=0):
     ell_eff = np.array([30.0, 80.0, 150.0, 280.0, 450.0])
     w_ell = np.arange(2, 501).astype(float)
     w_mat = np.exp(-0.5 * ((w_ell[:, None] - ell_eff[None, :]) / 40.0) ** 2)
-    w_mat /= w_mat.sum(axis=0)
     ee = 1e-8 * (1 + 0.1 * k) * (ell_eff / 100.0) ** -1.2
     sio.add_pseudo_cl(
         s,
@@ -143,7 +138,7 @@ def _add_cl_rows(s, pair, k=0):
         0.01 * ee,
         0.02 * ee,
         window_ells=w_ell,
-        window_weights=w_mat,
+        window_weights=w_mat / w_mat.sum(axis=0),
     )
 
 
@@ -153,16 +148,38 @@ def _add_rho_rows(s):
     sio.add_tau(s, (0,), 0, theta, np.arange(6) * 3e-7, np.arange(6) * 4e-7)
 
 
-def two_bin_sacc(*, xi_tags=XI_TAGS, cl=True, rho=False, covariance=True):
-    """ξ± on every tag in ``xi_tags`` and pseudo-Cℓ, over pairs (0,0), (0,1), (1,1)."""
+def two_bin_sacc(
+    *,
+    pairs=PAIRS,
+    xi_tags=XI_TAGS,
+    cl=True,
+    rho=False,
+    derived=(),
+    unruled=None,
+    covariance=True,
+):
+    """A catalogue's part: ξ± under each of ``xi_tags`` and pseudo-Cℓ (EE, BB,
+    EB) over ``pairs`` of two bins, and optionally ρ/τ, COSEBIs and pure-E/B
+    rows and rows of a data type without a blinding rule."""
     s = sio.new_sacc(NZ2, metadata={"catalogue_version": "TOY"})
-    for k, pair in enumerate(PAIRS):
+    for pair in pairs:
+        k = PAIRS.index(pair)
         for n, tag in enumerate(xi_tags):
             _add_xi_rows(s, pair, np.geomspace(2.0, 200.0, 6) * (1 + 0.013 * n), tag, k)
         if cl:
             _add_cl_rows(s, pair, k)
     if rho:
         _add_rho_rows(s)
+    if "cosebis" in derived:
+        sio.add_cosebis(s, (0, 0), np.arange(1, 6) * 1e-10, (12.0, 83.0), Bn=np.ones(5))
+    if "pure_eb" in derived:
+        theta = np.geomspace(2.0, 200.0, 4)
+        sio.add_pure_eb(s, (0, 0), theta, **{k: np.ones(4) for k in sio.PURE_KEYS})
+    if unruled is not None:
+        for x in (5.0, 20.0, 80.0):
+            s.add_data_point(
+                unruled, ("source_0", "source_0"), 1e-5, **{UNRULED[unruled]: x}
+            )
     if covariance:
         rng = np.random.default_rng(3)
         s.add_covariance(
@@ -171,41 +188,36 @@ def two_bin_sacc(*, xi_tags=XI_TAGS, cl=True, rho=False, covariance=True):
     return s
 
 
-def cosebis_sacc():
-    s = sio.new_sacc({0: NZ2[0]}, metadata={"catalogue_version": "TOY"})
-    sio.add_cosebis(s, (0, 0), np.arange(1, 6) * 1e-10, (12.0, 83.0), Bn=np.ones(5))
-    return s
-
-
-def pure_eb_sacc():
-    s = sio.new_sacc({0: NZ2[0]}, metadata={"catalogue_version": "TOY"})
-    theta = np.geomspace(2.0, 200.0, 4)
-    sio.add_pure_eb(s, (0, 0), theta, **{k: np.ones(4) for k in sio.PURE_KEYS})
-    return s
+def derived_sacc(kind):
+    """A COSEBIs or pure-E/B part alone, as its rule writes it."""
+    return two_bin_sacc(pairs=((0, 0),), xi_tags=(), cl=False, derived=(kind,))
 
 
 def rho_sacc():
-    s = sio.new_sacc({0: NZ2[0]}, metadata={"catalogue_version": "TOY"})
-    _add_rho_rows(s)
-    return s
+    return two_bin_sacc(pairs=(), rho=True)
 
 
 def _rows(s, *types):
-    return np.array([i for i, dp in enumerate(s.data) if dp.data_type in types])
+    return np.array([i for i, dp in enumerate(s.data) if dp.data_type in types], int)
+
+
+def _values(s):
+    return np.asarray(s.mean)
 
 
 # --------------------------------------------------------------------------- #
 # An independent CCL reference for the shift
 # --------------------------------------------------------------------------- #
-def _reference_params(seed):
-    """The hidden and fiducial CCL points, drawn with the fork directly."""
+def _reference_cosmologies(seed):
+    """The hidden and fiducial CCL cosmologies, the draw made by the fork directly."""
+    import pyccl as ccl
     from smokescreen.param_shifts import draw_param_shifts
 
     shift = draw_param_shifts({"S8": 0.075, "Omega_m": 0.1}, seed)
 
-    def ccl_point(s8, om):
+    def cosmology(s8, om):
         h, ob, mnu = 0.70, 0.0469, 0.06
-        return dict(
+        return ccl.Cosmology(
             Omega_c=om - ob - mnu / (93.14 * h**2),
             Omega_b=ob,
             h=h,
@@ -217,40 +229,27 @@ def _reference_params(seed):
             wa=0.0,
             Neff=3.046,
             T_CMB=2.7255,
+            transfer_function="eisenstein_hu",
+            matter_power_spectrum="halofit",
         )
 
-    return (
-        ccl_point(0.80 + shift["S8"], 0.30 + shift["Omega_m"]),
-        ccl_point(0.80, 0.30),
-    )
+    return cosmology(0.80 + shift["S8"], 0.30 + shift["Omega_m"]), cosmology(0.80, 0.30)
 
 
 def reference_shift(s, seed):
     """t(hidden) − t(fiducial) on every ξ± and Cℓ_EE row of ``s``, from scratch."""
     import pyccl as ccl
 
-    hidden, fiducial = _reference_params(seed)
-    ell = np.unique(
-        np.concatenate([np.arange(2, 50), np.geomspace(50, 6e4, 200)]).astype(float)
-    )
-
-    def cosmo(p):
-        return ccl.Cosmology(
-            **p, transfer_function="eisenstein_hu", matter_power_spectrum="halofit"
-        )
-
-    def spectra(p, tracers, ells):
-        c = cosmo(p)
-        a, b = (s.tracers[t] for t in tracers)
-        return c, ccl.angular_cl(
-            c,
-            ccl.WeakLensingTracer(c, dndz=(a.z, a.nz)),
-            ccl.WeakLensingTracer(c, dndz=(b.z, b.nz)),
-            ells,
-        )
-
+    cosmologies = _reference_cosmologies(seed)
+    ell = np.unique(np.concatenate([np.arange(2, 50), np.geomspace(50, 6e4, 200)]))
     out = np.full(len(s.mean), np.nan)
     for tracers in {dp.tracers for dp in s.data if dp.data_type in sio.SHIFTABLE}:
+        a, b = (s.tracers[t] for t in tracers)
+
+        def cl(c, ells):
+            lens = [ccl.WeakLensingTracer(c, dndz=(t.z, t.nz)) for t in (a, b)]
+            return ccl.angular_cl(c, *lens, ells)
+
         for dtype, kind in ((sio.XI_PLUS, "GG+"), (sio.XI_MINUS, "GG-")):
             rows = [
                 i
@@ -258,68 +257,71 @@ def reference_shift(s, seed):
                 if (dp.data_type, dp.tracers) == (dtype, tracers)
             ]
             theta = np.array([s.data[i].tags["theta"] for i in rows]) / 60.0
-            xi = []
-            for p in (hidden, fiducial):
-                c, cl = spectra(p, tracers, ell)
-                xi.append(ccl.correlation(c, ell=ell, C_ell=cl, theta=theta, type=kind))
-            out[rows] = xi[0] - xi[1]
-        rows = [
-            i
-            for i, dp in enumerate(s.data)
-            if (dp.data_type, dp.tracers) == (sio.CL_EE, tracers)
-        ]
-        for i in rows:
-            window = s.data[i].tags["window"]
-            ells = np.asarray(window.values, float)
-            w = np.asarray(window.weight, float)[:, s.data[i].tags["window_ind"]]
-            out[i] = w @ (
-                spectra(hidden, tracers, ells)[1] - spectra(fiducial, tracers, ells)[1]
+            hidden, fiducial = (
+                ccl.correlation(c, ell=ell, C_ell=cl(c, ell), theta=theta, type=kind)
+                for c in cosmologies
             )
+            out[rows] = hidden - fiducial
+        for i, dp in enumerate(s.data):
+            if (dp.data_type, dp.tracers) == (sio.CL_EE, tracers):
+                window = dp.tags["window"]
+                ells = np.asarray(window.values, float)
+                w = np.asarray(window.weight, float)[:, dp.tags["window_ind"]]
+                out[i] = w @ (cl(cosmologies[0], ells) - cl(cosmologies[1], ells))
     return out
 
 
 # --------------------------------------------------------------------------- #
-# I1: the shift lands on every ξ± and Cℓ_EE row, from the content
+# I1, I2, I5: seal is the seal table; a blinded seal shifts exactly the
+# shiftable rows, by the theory difference, and nothing else
 # --------------------------------------------------------------------------- #
-def test_shift_is_the_theory_difference_on_every_shiftable_row(blinds):
-    """seal(s) − s equals an independent CCL reference on every ξ± and Cℓ_EE row.
+PARTS = st.fixed_dictionaries(
+    {
+        "pairs": st.lists(st.sampled_from(PAIRS), min_size=1, max_size=3, unique=True),
+        "xi_tags": st.lists(st.sampled_from(XI_TAGS), max_size=3, unique=True),
+        "cl": st.booleans(),
+        "rho": st.booleans(),
+        "derived": st.sampled_from([(), ("cosebis",), ("pure_eb",)]),
+        "unruled": st.sampled_from([None, *UNRULED]),
+    }
+).filter(lambda p: p["xi_tags"] or p["cl"] or p["rho"] or p["derived"] or p["unruled"])
+EVERY_SHIFTABLE_ROW = dict(
+    pairs=PAIRS, xi_tags=XI_TAGS, cl=True, rho=True, derived=(), unruled=None
+)
 
-    Two bins, all three pairs; ξ± rows under every tag and none, so blocks are
-    discovered from the data types and tracers, never from grid names.
+
+@settings(max_examples=6, deadline=None)
+@given(content=PARTS, version=st.sampled_from(["TOY", "TOY_OPEN", "TOY_MOCK"]))
+@example(content=EVERY_SHIFTABLE_ROW, version="TOY")
+@example(content={**EVERY_SHIFTABLE_ROW, "xi_tags": [], "cl": False}, version="TOY")
+def test_seal_is_the_seal_table(blinds, content, version):
+    """Under a blind, a birth with derived or unruled rows is refused; any
+    other has ``seal(s) − s`` equal to an independent CCL reference at (fid,
+    hidden) on every ξ± and Cℓ_EE row, within 1e-8 of each block's largest
+    shift, and every other value, tag, tracer and the covariance bitwise kept.
+    Unblinded and mock births keep every value. The blind opens only to shift
+    rows, and the input is never stamped in place.
+
+    Blocks come from the data types and tracers: ξ± under every tag and none,
+    over the two bins' three pairs, whatever subset a part holds.
     """
-    s = two_bin_sacc()
-    sealed = sio.seal(s, blinds["TOY"])
-    shift = np.asarray(sealed.mean) - np.asarray(s.mean)
-    expected = reference_shift(s, bd.open_blind(blinds["TOY"]).seed)
+    s, custody = two_bin_sacc(**content), blinds[version]
+    blinded = custody.status == "blinded"
+    opened, open_blind = [], bd.open_blind
+    with pytest.MonkeyPatch.context() as m:
+        m.setattr(bd, "open_blind", lambda c: opened.append(c) or open_blind(c))
+        if blinded and (content["derived"] or content["unruled"]):
+            with pytest.raises(ValueError, match="derived_from|no blinding rule"):
+                sio.seal(s, custody)
+            return
+        sealed = sio.seal(s, custody)
 
-    rows = _rows(s, sio.XI_PLUS, sio.XI_MINUS, sio.CL_EE)
-    assert len(rows) and np.all(np.isfinite(expected[rows]))
-    for pair in PAIRS:
-        tracers = sio._pair(pair)
-        for types in ((sio.XI_PLUS, sio.XI_MINUS), (sio.CL_EE,)):
-            block = [
-                i
-                for i in rows
-                if s.data[i].tracers == tracers and s.data[i].data_type in types
-            ]
-            scale = np.max(np.abs(expected[block]))
-            gap = np.max(np.abs(shift[block] - expected[block]))
-            assert scale > 0 and gap <= 1e-8 * scale, (pair, types, gap / scale)
-
-
-# --------------------------------------------------------------------------- #
-# I2: nothing else moves
-# --------------------------------------------------------------------------- #
-def test_only_shiftable_values_move(blinds):
-    """BB, EB and ρ/τ values, every tag, tracer, row and the covariance are bitwise kept."""
-    s = two_bin_sacc(rho=True)
-    sealed = sio.seal(s, blinds["TOY"])
-    moved = _rows(s, sio.XI_PLUS, sio.XI_MINUS, sio.CL_EE)
+    assert "blinding" not in s.metadata
+    assert cu.read_stamp(sealed.metadata).stamp == custody.stamp
+    moved = _rows(s, *sio.SHIFTABLE) if blinded else np.array([], int)
+    assert bool(opened) == bool(len(moved))
     kept = np.setdiff1d(np.arange(len(s.mean)), moved)
-    assert len(kept) and np.array_equal(
-        np.asarray(sealed.mean)[kept], np.asarray(s.mean)[kept]
-    )
-    assert np.all(np.asarray(sealed.mean)[moved] != np.asarray(s.mean)[moved])
+    assert np.array_equal(_values(sealed)[kept], _values(s)[kept])
     assert np.array_equal(sealed.covariance.dense, s.covariance.dense)
     for a, b in zip(s.data, sealed.data):
         assert (a.data_type, a.tracers) == (b.data_type, b.tracers)
@@ -329,15 +331,22 @@ def test_only_shiftable_values_move(blinds):
     for name, tracer in s.tracers.items():
         if hasattr(tracer, "nz"):
             assert np.array_equal(sealed.tracers[name].nz, tracer.nz)
+    if not len(moved):
+        return
 
-
-def test_derived_statistics_keep_their_values(blinds, tmp_path):
-    """COSEBIs and pure-E/B written as derivations carry their values unchanged."""
-    xi = sio.seal(two_bin_sacc(cl=False), blinds["TOY"])
-    for s in (cosebis_sacc(), pure_eb_sacc()):
-        path = tmp_path / "derived.sacc"
-        sio.save(s, path, derived_from=[xi])
-        assert np.array_equal(np.asarray(sio.load(path).mean), np.asarray(s.mean))
+    shift = _values(sealed) - _values(s)
+    expected = reference_shift(s, open_blind(custody).seed)
+    for pair in content["pairs"]:
+        for types in ((sio.XI_PLUS, sio.XI_MINUS), (sio.CL_EE,)):
+            block = [
+                i
+                for i in moved
+                if s.data[i].tracers == sio._pair(pair) and s.data[i].data_type in types
+            ]
+            if block:
+                scale = np.max(np.abs(expected[block]))
+                gap = np.max(np.abs(shift[block] - expected[block]))
+                assert scale > 0 and gap <= 1e-8 * scale, (pair, types, gap / scale)
 
 
 # --------------------------------------------------------------------------- #
@@ -352,9 +361,8 @@ def test_hidden_point_is_uniform_in_the_s8_om_box():
     s8 = np.array([h.S8 for h in hidden])
     om = np.array([h.Omega_m for h in hidden])
 
-    assert np.all(np.abs(s8 - fid.S8) <= 0.075) and np.all(
-        np.abs(om - fid.Omega_m) <= 0.1
-    )
+    assert np.all(np.abs(s8 - fid.S8) <= 0.075)
+    assert np.all(np.abs(om - fid.Omega_m) <= 0.1)
     assert stats.kstest((s8 - fid.S8 + 0.075) / 0.15, "uniform").pvalue > 1e-3
     assert stats.kstest((om - fid.Omega_m + 0.1) / 0.2, "uniform").pvalue > 1e-3
     for h in hidden[:50]:
@@ -447,90 +455,12 @@ def test_shift_leaks_no_b_modes(ds8, dom):
 
 
 # --------------------------------------------------------------------------- #
-# I5: the seal table
+# I6: the gates
 # --------------------------------------------------------------------------- #
-@pytest.mark.parametrize("version", ["TOY_OPEN", "TOY_MOCK"])
-def test_unblinded_and_mock_births_are_stamped_untouched(blinds, version):
-    s = two_bin_sacc(rho=True)
-    sealed = sio.seal(s, blinds[version])
-    assert np.array_equal(np.asarray(sealed.mean), np.asarray(s.mean))
-    assert cu.read_stamp(sealed.metadata).stamp == blinds[version].stamp
-    assert "blinding" not in s.metadata  # the input is not stamped in place
-
-
-def test_a_blinded_birth_is_concealed_and_stamped(blinds):
-    s = two_bin_sacc(cl=False)
-    sealed = sio.seal(s, blinds["TOY"])
-    assert not np.array_equal(np.asarray(sealed.mean), np.asarray(s.mean))
-    assert cu.read_stamp(sealed.metadata).stamp == blinds["TOY"].stamp
-
-
-@pytest.mark.parametrize(
-    "make", [cosebis_sacc, pure_eb_sacc], ids=["cosebis", "pure_eb"]
-)
-def test_a_blinded_birth_of_a_derived_statistic_is_refused(blinds, make):
-    with pytest.raises(ValueError, match="derived_from"):
-        sio.seal(make(), blinds["TOY"])
-
-
-def test_a_blinded_birth_without_signal_never_opens_the_blind(blinds, monkeypatch):
-    def refuse(custody):
-        raise AssertionError("ρ/τ opened the blind")
-
-    monkeypatch.setattr(bd, "open_blind", refuse)
-    s = rho_sacc()
-    sealed = sio.seal(s, blinds["TOY"])
-    assert np.array_equal(np.asarray(sealed.mean), np.asarray(s.mean))
-    assert cu.read_stamp(sealed.metadata).stamp == blinds["TOY"].stamp
-
-
-# Data types no blind has a rule for, galaxy–galaxy lensing and CMB κ × shear,
-# with the tag SACC requires of each.
-UNRULED = {
-    "galaxy_shearDensity_xi_t": "theta",
-    "cmbGalaxy_convergenceShear_cl_e": "ell",
-}
-
-
-def _with_unruled(s, data_type):
-    for x in (5.0, 20.0, 80.0):
-        s.add_data_point(
-            data_type, ("source_0", "source_0"), 1e-5, **{UNRULED[data_type]: x}
-        )
-    return s
-
-
-@pytest.mark.parametrize("data_type", UNRULED)
-def test_a_data_type_without_a_blinding_rule_is_refused_under_a_blind(
-    blinds, tmp_path, data_type
-):
-    """Under a blind, a data type is born or derived only with a blinding rule.
-
-    Unblinded and mock SACCs are stamped whatever they hold.
-    """
-    for version in ("TOY_OPEN", "TOY_MOCK"):
-        s = _with_unruled(two_bin_sacc(cl=False, covariance=False), data_type)
-        assert np.array_equal(
-            np.asarray(sio.seal(s, blinds[version]).mean), np.asarray(s.mean)
-        )
-    with pytest.raises(ValueError, match="no blinding rule"):
-        sio.seal(
-            _with_unruled(two_bin_sacc(cl=False, covariance=False), data_type),
-            blinds["TOY"],
-        )
-    xi = sio.seal(two_bin_sacc(cl=False, covariance=False), blinds["TOY"])
-    for custody in (None, blinds["TOY"]):
-        with pytest.raises(ValueError, match="no blinding rule"):
-            sio.save(
-                _with_unruled(xi.copy(), data_type),
-                tmp_path / "x.sacc",
-                derived_from=[xi],
-                custody=custody,
-            )
-    assert not list(tmp_path.iterdir())
-
-
-def test_a_stamped_sacc_is_not_born_again(blinds, tmp_path):
+def test_nothing_is_written_unstamped_or_stamped_twice(blinds, tmp_path):
+    with pytest.raises(ValueError, match="custody"):
+        sio.save(two_bin_sacc(), tmp_path / "x.sacc")
+    assert not (tmp_path / "x.sacc").exists()
     sealed = sio.seal(two_bin_sacc(cl=False), blinds["TOY_OPEN"])
     with pytest.raises(ValueError, match="already stamped"):
         sio.seal(sealed, blinds["TOY"])
@@ -540,113 +470,107 @@ def test_a_stamped_sacc_is_not_born_again(blinds, tmp_path):
         sio.save(sio.load(path), path, custody=blinds["TOY_OPEN"])
 
 
-# --------------------------------------------------------------------------- #
-# I6: the gates
-# --------------------------------------------------------------------------- #
-def test_save_needs_a_custody_or_inputs(tmp_path):
-    with pytest.raises(ValueError, match="custody"):
-        sio.save(two_bin_sacc(), tmp_path / "x.sacc")
-    assert not (tmp_path / "x.sacc").exists()
-
-
-def _raw(tmp_path, name, **metadata):
-    s = two_bin_sacc(cl=False)
-    s.metadata.update(metadata)
-    path = tmp_path / f"{name}.sacc"
-    s.save_fits(str(path), overwrite=True)
-    return path
-
-
-def test_load_refuses_unstamped_and_malformed_files(blinds, tmp_path):
-    stamp = blinds["TOY"].stamp
-    for name, metadata in {
-        "unstamped": {},
-        "unknown": {**stamp, "blinding": "open"},
-        "no_catalogue": {"blinding": "unblinded"},
-        "no_commitment": {k: v for k, v in stamp.items() if k != "blinding_commitment"},
-        "mixed": {**blinds["TOY_OPEN"].stamp, "blinding_blind": "toy"},
-    }.items():
-        with pytest.raises(ValueError, match="stamp"):
-            sio.load(_raw(tmp_path, name, **metadata))
-
-
-@pytest.mark.parametrize("version", ["TOY", "TOY_OPEN", "TOY_MOCK"])
-def test_every_custody_loads(blinds, tmp_path, version):
-    path = tmp_path / "part.sacc"
-    written = sio.save(two_bin_sacc(), path, custody=blinds[version])
-    loaded = sio.load(path)
-    assert cu.read_stamp(loaded.metadata).stamp == blinds[version].stamp
-    assert np.array_equal(np.asarray(loaded.mean), np.asarray(written.mean))
-
-
-# --------------------------------------------------------------------------- #
-# I7: derivations inherit one stamp; assembly equals the declaration
-# --------------------------------------------------------------------------- #
-def test_a_derivation_inherits_its_inputs_stamp(blinds, tmp_path):
-    xi = sio.seal(two_bin_sacc(cl=False), blinds["TOY"])
-    written = sio.save(cosebis_sacc(), tmp_path / "c.sacc", derived_from=[xi, xi])
-    assert cu.read_stamp(written.metadata).stamp == blinds["TOY"].stamp
-
-
-@pytest.mark.parametrize(
-    "first, second",
-    [
-        ("TOY_OPEN", "TOY_MOCK"),  # two statuses
-        ("TOY", "OTHER"),  # two blinds
-        ("TOY_OPEN", "OTHER_OPEN"),  # two unblinded catalogues
-    ],
+@settings(max_examples=20, deadline=None)
+@given(
+    version=st.sampled_from(["TOY", "TOY_OPEN", "TOY_MOCK"]),
+    spoil=st.sampled_from([None, "drop", "add", "status"]),
+    data=st.data(),
 )
-def test_inputs_under_two_stamps_are_refused(blinds, tmp_path, first, second):
-    a = sio.seal(two_bin_sacc(cl=False), blinds[first])
-    b = sio.seal(two_bin_sacc(cl=False), blinds[second])
-    with pytest.raises(ValueError, match="stamps"):
-        sio.save(cosebis_sacc(), tmp_path / "c.sacc", derived_from=[a, b])
-    with pytest.raises(ValueError, match="stamps"):
-        sio.save(
-            a.copy(), tmp_path / "a.sacc", derived_from=[a, b], custody=blinds[first]
-        )
-    assert not list(tmp_path.iterdir())
-
-
-def test_plaintext_cannot_be_laundered_under_a_concealed_stamp(blinds, tmp_path):
-    """A derivation's ξ± and Cℓ_EE rows must be copies of its inputs' rows."""
-    plain = two_bin_sacc()
-    concealed = sio.seal(plain, blinds["TOY"])
-    with pytest.raises(ValueError, match="not copies"):
-        sio.save(plain, tmp_path / "x.sacc", derived_from=[concealed])
-    assert not (tmp_path / "x.sacc").exists()
-    sio.save(concealed.copy(), tmp_path / "y.sacc", derived_from=[concealed])
-
-
-@pytest.mark.parametrize(
-    "parts_under, declared",
-    [
-        ("TOY", "TOY_OPEN"),  # a stale concealed part after a reveal
-        ("OTHER", "TOY"),  # another blind and catalogue
-        ("TOY_MOCK", "TOY_OPEN"),  # a mock inside data
-        ("TOY_OPEN", "TOY"),  # unblinded inside blinded
-    ],
-)
-def test_assembly_refuses_parts_under_another_custody(
-    blinds, tmp_path, parts_under, declared
+def test_load_opens_exactly_the_stamps_the_door_mints(
+    blinds, tmp_path_factory, version, spoil, data
 ):
-    part = sio.seal(two_bin_sacc(cl=False), blinds[parts_under])
-    with pytest.raises(ValueError, match="declared"):
-        sio.save(
-            part.copy(),
-            tmp_path / "a.sacc",
-            derived_from=[part],
-            custody=blinds[declared],
-        )
-    assert not (tmp_path / "a.sacc").exists()
+    """A file stamped as ``save`` stamps it loads with that stamp; one missing
+    a stamp key, carrying a blind's keys under another status, or naming an
+    unknown status is refused."""
+    stamp = dict(blinds[version].stamp)
+    assume(not (spoil == "add" and version == "TOY"))
+    if spoil == "drop":
+        del stamp[data.draw(st.sampled_from(sorted(stamp)))]
+    elif spoil == "add":
+        key = data.draw(st.sampled_from(cu.STAMP_KEYS[2:]))
+        stamp[key] = blinds["TOY"].stamp[key]
+    elif spoil == "status":
+        status = st.text(string.ascii_letters, min_size=1, max_size=8)
+        stamp["blinding"] = data.draw(status.filter(lambda t: t not in cu.STATUSES))
+    path = tmp_path_factory.mktemp("raw") / "part.sacc"
+    _write(path, two_bin_sacc(cl=False), stamp)
+    if spoil is None:
+        assert cu.read_stamp(sio.load(path).metadata).stamp == stamp
+    else:
+        with pytest.raises(ValueError, match="stamp"):
+            sio.load(path)
 
 
-def test_assembly_under_the_declaration(blinds, tmp_path):
-    part = sio.seal(two_bin_sacc(cl=False), blinds["TOY"])
-    written = sio.save(
-        part.copy(), tmp_path / "a.sacc", derived_from=[part], custody=blinds["TOY"]
+# --------------------------------------------------------------------------- #
+# I7: a derivation carries its inputs' one stamp; an assembly its declaration
+# --------------------------------------------------------------------------- #
+@pytest.fixture(scope="module")
+def parts(blinds):
+    """A ξ± part born under each custody."""
+    return {
+        v: sio.seal(two_bin_sacc(xi_tags=("reporting",), cl=False), blinds[v])
+        for v in VERSIONS
+    }
+
+
+DERIVATIONS = ("copy", "cosebis", "pure_eb", "plaintext", "unruled")
+
+
+@settings(max_examples=25, deadline=None)
+@given(
+    inputs=st.lists(st.sampled_from(VERSIONS), min_size=1, max_size=3),
+    declared=st.sampled_from([None, *VERSIONS]),
+    content=st.sampled_from(DERIVATIONS),
+)
+@example(inputs=["TOY"], declared=None, content="plaintext")  # laundering
+@example(inputs=["TOY"], declared="TOY_OPEN", content="copy")  # stale after a reveal
+@example(inputs=["OTHER"], declared="TOY", content="copy")  # another blind
+@example(inputs=["TOY_MOCK"], declared="TOY_OPEN", content="copy")  # mock into data
+@example(inputs=["TOY_OPEN"], declared="TOY", content="copy")  # unblinded into blinded
+@example(inputs=["TOY_OPEN", "TOY_MOCK"], declared=None, content="cosebis")
+@example(inputs=["TOY", "OTHER"], declared=None, content="cosebis")
+@example(inputs=["TOY_OPEN", "OTHER_OPEN"], declared=None, content="cosebis")
+@example(inputs=["TOY"], declared=None, content="unruled")
+@example(inputs=["TOY", "TOY"], declared="TOY", content="copy")  # an assembly
+@example(inputs=["TOY_OPEN"], declared="TOY_OPEN", content="plaintext")
+@example(inputs=["TOY_MOCK"], declared=None, content="pure_eb")
+def test_a_derivation_carries_its_inputs_one_stamp(
+    blinds, parts, tmp_path_factory, inputs, declared, content
+):
+    """``save(s, derived_from=inputs, custody=declared)`` writes ``s``'s values
+    under the inputs' stamp exactly when the inputs share one stamp, it is the
+    declared custody's (if any), and, under a blind, every ξ± row of ``s`` is a
+    copy of an input row and every data type has a blinding rule. Otherwise
+    nothing is written."""
+    first = parts[inputs[0]]
+    s = {
+        "copy": lambda: first.copy(),
+        "cosebis": lambda: derived_sacc("cosebis"),
+        "pure_eb": lambda: derived_sacc("pure_eb"),
+        "plaintext": lambda: two_bin_sacc(xi_tags=("reporting",), cl=False),
+        "unruled": lambda: two_bin_sacc(
+            xi_tags=(), cl=False, unruled=next(iter(UNRULED))
+        ),
+    }[content]()
+    stamp = blinds[inputs[0]].stamp
+    blinded = stamp["blinding"] == "blinded"
+    allowed = (
+        all(blinds[v].stamp == stamp for v in inputs)
+        and (declared is None or blinds[declared].stamp == stamp)
+        and not (blinded and content in ("plaintext", "unruled"))
     )
-    assert cu.read_stamp(written.metadata).stamp == blinds["TOY"].stamp
+    path = tmp_path_factory.mktemp("derived") / "d.sacc"
+    custody = blinds[declared] if declared else None
+    derive = [parts[v] for v in inputs]
+    if not allowed:
+        with pytest.raises(ValueError):
+            sio.save(s, path, derived_from=derive, custody=custody)
+        assert not path.exists()
+        return
+    sio.save(s, path, derived_from=derive, custody=custody)
+    loaded = sio.load(path)
+    assert cu.read_stamp(loaded.metadata).stamp == stamp
+    assert np.array_equal(_values(loaded), _values(s))
 
 
 # --------------------------------------------------------------------------- #
@@ -669,85 +593,65 @@ def _variants(config):
         )
 
 
-def test_the_digest_changes_with_every_field():
+def test_the_digest_changes_with_every_field_and_no_literal():
     config = bd.BlindingConfig()
     digests = [v.digest() for v in _variants(config)]
     assert len(digests) == len(set(digests)) and config.digest() not in digests
     assert len(digests) > len(dataclasses.fields(TheoryConfig))
 
-
-def test_the_digest_ignores_int_versus_float():
-    a = bd.BlindingConfig(envelope={"S8": 0.075, "Omega_m": 0.1})
-    b = bd.BlindingConfig(
-        envelope={"S8": 0.075, "Omega_m": 0.1},
-        theory=TheoryConfig(w0=-1, wa=0, ia_bias=0),
-    )
-    assert a.digest() == b.digest()
-    assert bd._recorded_config("toy", json.loads(json.dumps(a.record()))) == a
+    ints = bd.BlindingConfig(theory=TheoryConfig(w0=-1, wa=0, ia_bias=0))
+    assert ints.digest() == config.digest()
+    assert bd._recorded_config("toy", json.loads(json.dumps(config.record()))) == config
 
 
-def test_the_commitment_is_the_forks():
+@settings(max_examples=50)
+@given(seed=st.text(min_size=1))
+@example(seed="my_secret_seed")
+def test_the_commitment_is_the_forks_and_hides_its_rng_seed(seed):
+    """The fork seeds its RNG from the undomained sha256 of the seed; the
+    domain prefix keeps the commitment from publishing that RNG seed in its
+    first 16 hex characters, from which anyone could redraw the hidden point."""
     import smokescreen
-
-    assert cu.COMMITMENT_DOMAIN == smokescreen.COMMITMENT_DOMAIN
-    for seed in ("the-secret", "2112"):
-        assert cu.seed_commitment(seed) == smokescreen.seed_commitment(seed)
-
-
-def test_the_commitment_does_not_embed_the_rng_seed():
-    """The fork seeds its RNG from the undomained sha256 of the seed.
-
-    A commitment over the bare seed would publish that RNG seed in its first
-    16 hex characters, and with the public config anyone could redraw the
-    hidden cosmology; the domain prefix breaks that identity.
-    """
-    import secrets
-
     from smokescreen.param_shifts import _normalize_seed
 
-    for seed in ("my_secret_seed", "the-secret", secrets.token_hex(16)):
-        assert int(cu.seed_commitment(seed)[:16], 16) != _normalize_seed(seed)
+    assert cu.COMMITMENT_DOMAIN == smokescreen.COMMITMENT_DOMAIN
+    assert cu.seed_commitment(seed) == smokescreen.seed_commitment(seed)
+    assert int(cu.seed_commitment(seed)[:16], 16) != _normalize_seed(seed)
 
 
 # --------------------------------------------------------------------------- #
-# I9: the seed never touches disk
+# I9 and blind-drawn-once: init draws once, and the seed never touches disk
 # --------------------------------------------------------------------------- #
 SEED = "5eed" * 8
 
 
-def _files_containing(root, needle):
-    return [
-        p for p in root.rglob("*") if p.is_file() and needle.encode() in p.read_bytes()
-    ]
-
-
 @pytest.mark.parametrize("fault", [None, "after_key", "encrypt"])
 def test_init_never_writes_the_seed(tmp_path, monkeypatch, fault):
-    """A normal init, or one interrupted anywhere, leaves no file holding the seed."""
+    """A normal init, or one interrupted anywhere, leaves no file holding the
+    seed; a completed record is read-only."""
     from cryptography import fernet
 
-    _cat_config(tmp_path)
+    _registry(tmp_path)
     monkeypatch.setattr(bd.secrets, "token_hex", lambda n: SEED)
     if fault == "after_key":
-
-        def replace(src, dst):
-            raise OSError("interrupted after the key was written")
-
-        monkeypatch.setattr(bd.os, "replace", replace)
+        monkeypatch.setattr(bd.os, "replace", lambda src, dst: 1 / 0)
     elif fault == "encrypt":
-
-        def encrypt(self, data):
-            raise RuntimeError("interrupted while encrypting")
-
-        monkeypatch.setattr(fernet.Fernet, "encrypt", encrypt)
+        monkeypatch.setattr(fernet.Fernet, "encrypt", lambda self, data: 1 / 0)
 
     if fault is None:
         _init(tmp_path, "toy", "TOY")
-        assert (tmp_path / "blinds" / "toy" / "key").exists()
+        for name in ("commitment.json", "seed.fernet", "key"):
+            mode = os.stat(tmp_path / "blinds" / "toy" / name).st_mode
+            assert not mode & (stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH)
     else:
-        with pytest.raises((OSError, RuntimeError)):
+        with pytest.raises(ZeroDivisionError):
             _init(tmp_path, "toy", "TOY")
-    assert _files_containing(tmp_path, SEED) == []
+    hits = [
+        p
+        for p in tmp_path.rglob("*")
+        if p.is_file() and SEED.encode() in p.read_bytes()
+    ]
+    assert hits == []
 
 
 def test_init_refuses_existing_state(fresh):
@@ -762,14 +666,6 @@ def test_init_refuses_existing_state(fresh):
         _init(fresh, "later", "OTHER")
 
 
-def test_the_record_is_read_only(fresh):
-    record = fresh / "blinds" / "toy"
-    for name in ("commitment.json", "seed.fernet", "key"):
-        assert not os.stat(record / name).st_mode & (
-            stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH
-        )
-
-
 @pytest.mark.parametrize(
     "config, named",
     [
@@ -780,16 +676,14 @@ def test_the_record_is_read_only(fresh):
     ids=["envelope_key", "theory_key", "unbuildable"],
 )
 def test_init_refuses_a_config_no_blind_conceals_under(tmp_path, config, named):
-    """A config whose blind could not conceal a row is refused before any
-    record exists, so the base stays free for a blind drawn under a good one."""
-    _cat_config(tmp_path)
+    """Refused before any record exists, so the base stays free for a blind
+    drawn under a good config."""
+    _registry(tmp_path)
     (tmp_path / "bad.json").write_text(json.dumps(config))
     args = ["init", "toy", "TOY", "--cat-config", str(tmp_path / "cat_config.yaml")]
     with pytest.raises(cu.CustodyError, match=named):
         bd.main([*args, "--config", str(tmp_path / "bad.json")])
-    assert not (tmp_path / "blinds").exists() or not any(
-        (tmp_path / "blinds").iterdir()
-    )
+    assert not any((tmp_path / "blinds").glob("*"))
     _init(tmp_path, "toy", "TOY")
 
 
@@ -805,20 +699,12 @@ def test_share_adds_a_base_to_a_concealed_blind(fresh):
     }.items():
         with pytest.raises(cu.CustodyError, match=refusal):
             bd.share("toy", base, cat_config=cat_config)
-    with pytest.raises(cu.CustodyError, match="no blind"):
-        _custody(fresh, "OTHER")
 
     assert bd.main(["share", "toy", "OTHER", "--cat-config", cat_config]) == 0
     toy, other = _custody(fresh, "TOY"), _custody(fresh, "OTHER")
-    assert (other.status, other.blind, other.commitment) == (
-        "blinded",
-        "toy",
-        toy.commitment,
-    )
+    assert (other.blind, other.commitment) == ("toy", toy.commitment)
 
-    (fresh / "blinds" / "toy" / "revealed.json").write_text(
-        json.dumps({"seed": bd.open_blind(toy).seed})
-    )
+    _publish(fresh, bd.open_blind(toy).seed)
     with pytest.raises(cu.CustodyError, match="revealed"):
         bd.share("toy", "LATER", cat_config=cat_config)
 
@@ -826,8 +712,8 @@ def test_share_adds_a_base_to_a_concealed_blind(fresh):
 def test_a_blind_is_drawn_for_every_catalogue_reading_its_file(tmp_path):
     """init and share refuse a catalogue whose shear file another catalogue
     reads under another custody, before anything is written; drawn for both,
-    the blind conceals both."""
-    _cat_config(tmp_path)
+    the blind covers both."""
+    _registry(tmp_path)
     toy, later = ({"shear": {"path": str(tmp_path / f)}} for f in ("a.fits", "b.fits"))
     _declare(
         tmp_path,
@@ -842,7 +728,6 @@ def test_a_blind_is_drawn_for_every_catalogue_reading_its_file(tmp_path):
 
     _declare(tmp_path, TOY_TWIN=toy)
     _init(tmp_path, "toy", "TOY", "TOY_TWIN")
-    assert _custody(tmp_path, "TOY_TWIN").blind == "toy"
     with pytest.raises(cu.CustodyError, match="LATER_TWIN"):
         bd.share("toy", "LATER", cat_config=str(tmp_path / "cat_config.yaml"))
     bases = (tmp_path / "blinds" / "toy" / "bases").read_text().split()
@@ -852,48 +737,79 @@ def test_a_blind_is_drawn_for_every_catalogue_reading_its_file(tmp_path):
 # --------------------------------------------------------------------------- #
 # I10: an opened blind is the one committed
 # --------------------------------------------------------------------------- #
-def _edit(path, edit):
-    os.chmod(path, 0o644)
-    record = json.loads(path.read_text())
-    edit(record)
-    path.write_text(json.dumps(record))
+@pytest.fixture(scope="module")
+def tamperable(tmp_path_factory):
+    """Blind `toy`'s record, restored after each edit, and TOY's custody."""
+    root = _registry(tmp_path_factory.mktemp("tamperable"), ("toy", "TOY"))
+    return root / "blinds" / "toy" / "commitment.json", _custody(root, "TOY")
 
 
-def test_open_blind_verifies_the_record(fresh):
-    blind = bd.open_blind(_custody(fresh, "TOY"))
-    assert blind.name == "toy" and blind.seed not in repr(blind)
+def _leaves(record, path=()):
+    for key, value in record.items():
+        if isinstance(value, dict):
+            yield from _leaves(value, (*path, key))
+        else:
+            yield (*path, key)
 
 
-@pytest.mark.parametrize(
-    "tamper",
-    ["wrong_key", "config", "config_and_digest", "scheme", "name", "custody"],
+# The fields of a blind's record the sealed seed binds: its name, commitment,
+# draw scheme, config digest and every field of its config.
+BOUND = sorted(
+    [("blind",), ("seed_commitment",), ("config_digest",), ("draw_scheme",)]
+    + [("config", *leaf) for leaf in _leaves(bd.BlindingConfig().record())]
 )
-def test_open_blind_refuses_a_tampered_record(fresh, tamper):
+
+
+def _edited(value):
+    if isinstance(value, bool):
+        return not value
+    return value + ("x" if isinstance(value, str) else 1)
+
+
+@settings(max_examples=15, deadline=None)
+@given(leaf=st.sampled_from(BOUND), redigest=st.booleans())
+@example(leaf=("config", "envelope", "S8"), redigest=True)
+@example(leaf=("config", "theory", "transfer_function"), redigest=False)
+def test_open_blind_refuses_any_edit_of_the_record(tamperable, leaf, redigest):
+    """Edit any field the sealed seed binds, a config field with its digest
+    recomputed or not: opening the blind is refused."""
+    path, custody = tamperable
+    original = path.read_bytes()
+    record = json.loads(original)
+    *parents, key = leaf
+    node = record
+    for parent in parents:
+        node = node[parent]
+    node[key] = _edited(node[key])
+    if redigest and leaf != ("config_digest",):
+        record["config_digest"] = bd.record_digest(record["config"])
+    os.chmod(path, 0o644)
+    try:
+        path.write_text(json.dumps(record))
+        bd._open.cache_clear()
+        with pytest.raises(cu.CustodyError):
+            bd.open_blind(custody)
+    finally:
+        path.write_bytes(original)
+        bd._open.cache_clear()
+    assert bd.open_blind(custody).seed not in repr(bd.open_blind(custody))
+
+
+@pytest.mark.parametrize("tamper", ["wrong_key", "renamed", "custody"])
+def test_open_blind_refuses_another_key_name_or_commitment(fresh, tamper):
     from cryptography.fernet import Fernet
 
     record = fresh / "blinds" / "toy"
-    commitment = record / "commitment.json"
     if tamper == "wrong_key":
         os.chmod(record / "key", 0o644)
         (record / "key").write_bytes(Fernet.generate_key())
-    elif tamper == "config":
-        _edit(commitment, lambda r: r["config"]["envelope"].update(S8=0.3))
-    elif tamper == "config_and_digest":
-
-        def edit(r):
-            r["config"]["envelope"]["S8"] = 0.3
-            r["config_digest"] = bd.record_digest(r["config"])
-
-        _edit(commitment, edit)
-    elif tamper == "scheme":
-        _edit(commitment, lambda r: r.update(draw_scheme=r["draw_scheme"] + 1))
-    elif tamper == "name":
-        os.rename(record, fresh / "blinds" / "toy2")
-        _edit(
-            fresh / "blinds" / "toy2" / "commitment.json",
-            lambda r: r.update(blind="toy2"),
+    elif tamper == "renamed":
+        os.rename(record, record.with_name("toy2"))
+        commitment = record.with_name("toy2") / "commitment.json"
+        os.chmod(commitment, 0o644)
+        commitment.write_text(
+            json.dumps({**json.loads(commitment.read_text()), "blind": "toy2"})
         )
-        (fresh / "blinds" / "toy2" / "bases").write_text("TOY\n")
     custody = _custody(fresh, "TOY")
     if tamper == "custody":
         custody = dataclasses.replace(custody, commitment="0" * 64)
@@ -914,40 +830,41 @@ def _init_storing(root, edit):
         bd.init("toy", ["TOY"], cat_config=root / "cat_config.yaml", config=config)
 
 
-def test_a_record_lacking_a_field_opens_to_the_shift_it_was_drawn_with(
-    tmp_path, blinds, monkeypatch
+@pytest.mark.parametrize(
+    "edit, field",
+    [
+        (
+            lambda r: {
+                **r,
+                "theory": {k: v for k, v in r["theory"].items() if k != "ia_alphaz"},
+            },
+            "ia_alphaz",
+        ),
+        (
+            lambda r: {**r, "theory": {**r["theory"], "baryon_boost": 0.0}},
+            "baryon_boost",
+        ),
+    ],
+    ids=["lacks_a_field", "names_a_foreign_field"],
+)
+def test_a_record_of_another_schema_is_refused_by_the_field(
+    tmp_path, blinds, monkeypatch, edit, field
 ):
-    """A record that predates a TheoryConfig field opens once the field's
-    neutral value is declared, and conceals exactly as the blind that names it;
-    until then it is refused by the field's name, never as an edited record."""
-    _cat_config(tmp_path)
-
-    def without_alphaz(record):
-        del record["theory"]["ia_alphaz"]
-        return record
-
-    _init_storing(tmp_path, without_alphaz)
+    """A record lacking a TheoryConfig field, or naming one this code lacks,
+    is refused by the field's name, never as an edited record. Once a lacking
+    field's neutral value is declared, it conceals as the blind that names it."""
+    _registry(tmp_path)
+    _init_storing(tmp_path, edit)
     custody = _custody(tmp_path, "TOY")
-    with pytest.raises(cu.CustodyError, match="ia_alphaz") as refused:
+    with pytest.raises(cu.CustodyError, match=field) as refused:
         bd.open_blind(custody)
     assert "edited" not in str(refused.value)
-
-    monkeypatch.setattr(bd, "NEUTRAL", {"ia_alphaz": 0.0})
-    s = two_bin_sacc(cl=False)
-    assert np.array_equal(
-        np.asarray(sio.seal(s, custody).mean),
-        np.asarray(sio.seal(s, blinds["TOY"]).mean),
-    )
-
-
-def test_a_record_naming_a_field_this_code_lacks_is_refused_by_name(tmp_path):
-    _cat_config(tmp_path)
-    _init_storing(
-        tmp_path, lambda r: {**r, "theory": {**r["theory"], "baryon_boost": 0.0}}
-    )
-    with pytest.raises(cu.CustodyError, match="baryon_boost") as refused:
-        bd.open_blind(_custody(tmp_path, "TOY"))
-    assert "edited" not in str(refused.value)
+    if field == "ia_alphaz":
+        monkeypatch.setattr(bd, "NEUTRAL", {"ia_alphaz": 0.0})
+        s = two_bin_sacc(cl=False)
+        assert np.array_equal(
+            _values(sio.seal(s, custody)), _values(sio.seal(s, blinds["TOY"]))
+        )
 
 
 def test_the_committed_blind_opens_under_this_code():
@@ -965,7 +882,7 @@ def test_the_committed_blind_opens_under_this_code():
 def test_a_blind_drawn_under_another_draw_scheme_is_refused(tmp_path, monkeypatch):
     """Its seed and record agree, but this install's fork draws differently:
     opening it is refused, and a file stamped under it fails ``verify``."""
-    _cat_config(tmp_path)
+    _registry(tmp_path)
     installed = bd.draw_scheme()
     with monkeypatch.context() as m:
         m.setattr(bd, "draw_scheme", lambda: installed + 1)
@@ -983,41 +900,35 @@ def test_a_blind_drawn_under_another_draw_scheme_is_refused(tmp_path, monkeypatc
 # --------------------------------------------------------------------------- #
 # verify: a file's stamp against its catalogue's custody, seedless
 # --------------------------------------------------------------------------- #
-def _verify(root, path, capsys):
-    code = bd.main(["verify", str(path), "--cat-config", str(root / "cat_config.yaml")])
-    return code, capsys.readouterr().out
-
-
 def test_verify_names_what_disagrees_with_the_declaration(fresh, capsys):
-    part = fresh / "part.sacc"
-    sio.save(two_bin_sacc(cl=False), part, custody=_custody(fresh, "TOY"))
-    assert _verify(fresh, part, capsys)[0] == 0
+    def verify(path):
+        code = bd.main(
+            ["verify", str(path), "--cat-config", str(fresh / "cat_config.yaml")]
+        )
+        return code, capsys.readouterr().out
 
-    forged = fresh / "forged.sacc"
+    part, forged = fresh / "part.sacc", fresh / "forged.sacc"
+    custody = _custody(fresh, "TOY")
+    sio.save(two_bin_sacc(cl=False), part, custody=custody)
+    assert verify(part)[0] == 0
+
     _write(
         forged,
         two_bin_sacc(cl=False),
-        {**_custody(fresh, "TOY").stamp, "blinding_commitment": "0" * 64},
+        {**custody.stamp, "blinding_commitment": "0" * 64},
     )
-    code, out = _verify(fresh, forged, capsys)
+    code, out = verify(forged)
     assert code == 1 and "['blinding_commitment']" in out
 
-    (fresh / "blinds" / "toy" / "revealed.json").write_text(
-        json.dumps({"seed": bd.open_blind(_custody(fresh, "TOY")).seed})
-    )
+    _publish(fresh, bd.open_blind(custody).seed)
     _declare(fresh, TOY={"blinding": "unblinded"})
-    code, out = _verify(fresh, part, capsys)
+    code, out = verify(part)
     assert code == 1 and "'blinding'" in out and "unblinded:TOY" in out
 
 
 # --------------------------------------------------------------------------- #
-# I11: the audit proves blinded − true = shift(seed)
+# I11: reveal publishes and archives; the audit proves blinded − true = shift(seed)
 # --------------------------------------------------------------------------- #
-def _concealed(root, s):
-    """``s`` sealed under blind toy, before its seed is published."""
-    return sio.seal(s, _custody(root, "TOY"))
-
-
 def _write(path, s, stamp):
     """``s`` on disk under ``stamp`` as given, as the door would never write it."""
     s = s.copy()
@@ -1026,33 +937,8 @@ def _write(path, s, stamp):
     s.save_fits(str(path), overwrite=True)
 
 
-def _audit(root, archived, live, *, centres=("a", "a"), seed=None, stamps=None):
-    """Publish toy's seed (or ``seed``), archive ``archived`` with ``live`` as its
-    re-measured twin, stamped as ``stamps`` (toy's and TOY unblinded), and audit
-    the pair."""
-    blinded = _custody(root, "TOY")
-    seed = seed or bd.open_blind(blinded).seed
+def _publish(root, seed):
     (root / "blinds" / "toy" / "revealed.json").write_text(json.dumps({"seed": seed}))
-    stamps = stamps or (blinded.stamp, cu.Custody("unblinded", "TOY").stamp)
-    for tree, s, stamp, centre in (
-        ("archive", archived, stamps[0], centres[0]),
-        ("live", live, stamps[1], centres[1]),
-    ):
-        s = s.copy()
-        s.metadata["patch_centers_sha256"] = centre
-        _write(root / tree / "sub" / "part.sacc", s, stamp)
-    return bd.audit(
-        "toy",
-        archive=root / "archive",
-        true_root=root / "live",
-        cat_config=root / "cat_config.yaml",
-    )
-
-
-def _problems(report):
-    return report["problems"] + [
-        problem for part in report["parts"].values() for problem in part["problems"]
-    ]
 
 
 def test_reveal_refuses_a_root_holding_nothing_concealed(fresh):
@@ -1078,130 +964,178 @@ def test_reveal_refuses_a_root_holding_nothing_concealed(fresh):
 
 
 def test_reveal_refuses_a_record_publishing_another_seed(fresh):
-    root = fresh / "output"
-    part = root / "part.sacc"
+    part = fresh / "output" / "part.sacc"
     part.parent.mkdir()
     sio.save(two_bin_sacc(cl=False), part, custody=_custody(fresh, "TOY"))
-    revealed = fresh / "blinds" / "toy" / "revealed.json"
-    revealed.write_text(json.dumps({"seed": "0" * 32}))
+    _publish(fresh, "0" * 32)
     with pytest.raises(cu.CustodyError, match="another seed"):
-        bd.reveal("toy", root=root, cat_config=fresh / "cat_config.yaml")
+        bd.reveal("toy", root=part.parent, cat_config=fresh / "cat_config.yaml")
     assert part.exists()
 
 
-def test_the_audit_of_an_empty_archive_says_so(fresh):
-    (fresh / "blinds" / "toy" / "revealed.json").write_text(
-        json.dumps({"seed": bd.open_blind(_custody(fresh, "TOY")).seed})
+@pytest.fixture(scope="module")
+def revealed(tmp_path_factory):
+    """A registry whose blind `toy` has published its seed, TOY's custody
+    before the reveal, ``AUDITED`` sealed under it, and ``audit(archived,
+    live)``, which archives ``archived`` beside ``live`` as its re-measured
+    twin and audits the pair."""
+    root = _registry(tmp_path_factory.mktemp("revealed"), ("toy", "TOY"))
+    blinded = _custody(root, "TOY")
+    _publish(root, bd.open_blind(blinded).seed)
+    true = cu.Custody("unblinded", "TOY")
+
+    def audit(
+        archived, live, *, stamps=(blinded.stamp, true.stamp), centres=("a", "a")
+    ):
+        for tree, s, stamp, centre in zip(
+            ("archive", "live"), (archived, live), stamps, centres
+        ):
+            s = s.copy()
+            s.metadata["patch_centers_sha256"] = centre
+            _write(root / tree / "sub" / "part.sacc", s, stamp)
+        return bd.audit(
+            "toy",
+            archive=root / "archive",
+            true_root=root / "live",
+            cat_config=root / "cat_config.yaml",
+        )
+
+    fields = ["root", "blinded", "sealed", "audit"]
+    return dataclasses.make_dataclass("Revealed", fields)(
+        root, blinded, sio.seal(AUDITED, blinded), audit
     )
-    (fresh / "archive").mkdir()
-    report = bd.audit(
-        "toy",
-        archive=fresh / "archive",
-        true_root=fresh,
-        cat_config=fresh / "cat_config.yaml",
+
+
+def _problems(report):
+    return report["problems"] + [
+        p for part in report["parts"].values() for p in part["problems"]
+    ]
+
+
+AUDITED = two_bin_sacc(xi_tags=("reporting",), rho=True)
+BLOCKS = [
+    (types, sio._pair(pair))
+    for pair in PAIRS
+    for types in ((sio.XI_PLUS, sio.XI_MINUS), (sio.CL_EE,))
+]
+
+
+@settings(max_examples=4, deadline=None)
+@given(
+    times=st.lists(
+        st.sampled_from([1.0, 0.0, 2.0, 1 + 1e-4, -1.0]), min_size=6, max_size=6
     )
-    assert not report["ok"] and report["problems"] == ["the archive holds no parts"]
+)
+@example(times=[1.0] * 6)
+@example(times=[1.0] * 5 + [0.0])  # one block left true
+@example(times=[1.0] * 3 + [2.0] + [1.0] * 2)  # one block shifted twice
+@example(times=[1 + 1e-4] + [1.0] * 5)
+def test_the_audit_accepts_exactly_the_shift(revealed, times):
+    """An archived part whose ξ± and Cℓ_EE blocks carry ``times`` × the blind's
+    shift passes the audit exactly when every block carries it once."""
+    true = AUDITED
+    shift = _values(revealed.sealed) - _values(true)
+    archived = true.copy()
+    for k, (types, tracers) in zip(times, BLOCKS):
+        for i, dp in enumerate(true.data):
+            if dp.data_type in types and dp.tracers == tracers:
+                archived.data[i].value = dp.value + k * shift[i]
+    report = revealed.audit(archived, true)
+    assert report["ok"] == all(k == 1.0 for k in times), report
+    if report["ok"]:
+        (part,) = report["parts"].values()
+        assert part["residual"] <= 1e-6
+        assert (
+            abs(report["shift"]["S8"]) <= 0.075
+            and abs(report["shift"]["Omega_m"]) <= 0.1
+        )
+    else:
+        assert any("≠ shift(seed)" in problem for problem in _problems(report))
 
 
-def test_the_audit_passes_on_a_true_reveal(fresh):
-    s = two_bin_sacc(rho=True)
-    report = _audit(fresh, _concealed(fresh, s), s)
-    assert report["ok"], report
-    ((path, part),) = report["parts"].items()
-    assert path == "sub/part.sacc" and part["residual"] <= 1e-6
-    assert (
-        abs(report["shift"]["S8"]) <= 0.075 and abs(report["shift"]["Omega_m"]) <= 0.1
-    )
-
-
-def test_the_audit_fails_on_a_wrong_seed(fresh):
-    s = two_bin_sacc()
-    report = _audit(fresh, _concealed(fresh, s), s, seed="not-the-seed")
-    assert not report["ok"] and "published seed" in _problems(report)[0]
-
-
-def test_the_audit_fails_on_other_patch_centres(fresh):
-    s = two_bin_sacc()
-    report = _audit(fresh, _concealed(fresh, s), s, centres=("a", "b"))
-    assert not report["ok"] and "patch centres" in _problems(report)[0]
-
-
-SPOILT_PAIRS = {
+SPOILT = {
     "covariance": "covariances differ",
     "rows": "rows, tags or tracers differ",
     "live_mock": "the live file is stamped mock:TOY",
     "live_other_catalogue": "the live file is stamped unblinded:OTHER",
     "archive_other_blind": "not concealed under this blind",
+    "patch_centres": "patch centres differ: ['a', 'b']",
+    "wrong_seed": "the published seed is not the committed one",
 }
 
 
-@pytest.mark.parametrize("spoilt", SPOILT_PAIRS)
-def test_the_audit_names_a_pair_that_is_not_concealed_and_true(fresh, spoilt):
-    """An archived part is audited only under this blind, against the same
-    catalogue re-measured unblinded with the same rows and covariance."""
-    s = two_bin_sacc()
-    live = two_bin_sacc(cl=False) if spoilt == "rows" else s.copy()
+@pytest.mark.parametrize("spoilt", SPOILT)
+def test_the_audit_names_a_pair_that_is_not_concealed_and_true(revealed, spoilt):
+    """An archived part is audited only under the published committed seed,
+    against the same catalogue re-measured unblinded with the same rows,
+    covariance and patch centres."""
+    true = AUDITED
+    live = (
+        two_bin_sacc(xi_tags=("reporting",), cl=False)
+        if spoilt == "rows"
+        else true.copy()
+    )
     if spoilt == "covariance":
-        live.add_covariance(1.01 * np.asarray(s.covariance.dense), overwrite=True)
-    archived_stamp = _custody(fresh, "TOY").stamp
+        live.add_covariance(1.01 * np.asarray(true.covariance.dense), overwrite=True)
+    archived_stamp = revealed.blinded.stamp
     if spoilt == "archive_other_blind":
         archived_stamp = {**archived_stamp, "blinding_commitment": "0" * 64}
     live_custody = {
         "live_mock": cu.Custody("mock", "TOY"),
         "live_other_catalogue": cu.Custody("unblinded", "OTHER"),
     }.get(spoilt, cu.Custody("unblinded", "TOY"))
-    stamps = (archived_stamp, live_custody.stamp)
-    report = _audit(fresh, _concealed(fresh, s), live, stamps=stamps)
-    assert not report["ok"] and _problems(report) == [SPOILT_PAIRS[spoilt]]
+    published = revealed.root / "blinds" / "toy" / "revealed.json"
+    seed = published.read_text()
+    try:
+        if spoilt == "wrong_seed":
+            _publish(revealed.root, "not-the-seed")
+        report = revealed.audit(
+            revealed.sealed,
+            live,
+            stamps=(archived_stamp, live_custody.stamp),
+            centres=("a", "b" if spoilt == "patch_centres" else "a"),
+        )
+    finally:
+        published.write_text(seed)
+    assert not report["ok"] and _problems(report) == [SPOILT[spoilt]]
 
 
-@pytest.mark.parametrize(
-    "times", [0, 2, 1 + 1e-4], ids=["left_true", "shifted_twice", "off_by_1e-4"]
-)
-def test_the_audit_fails_on_a_mixed_file(fresh, times):
-    """One ξ± pair under the blinded stamp carries 0×, 2× or 1.0001× the shift."""
-    s = two_bin_sacc(rho=True)
-    archived = _concealed(fresh, s)
-    for i in _rows(s, sio.XI_PLUS, sio.XI_MINUS):
-        if s.data[i].tracers == sio._pair((1, 1)):
-            shift = archived.data[i].value - s.data[i].value
-            archived.data[i].value = s.data[i].value + times * shift
-    report = _audit(fresh, archived, s)
-    assert not report["ok"]
-    assert any("≠ shift(seed)" in problem for problem in _problems(report))
+def test_the_audit_of_an_empty_archive_says_so(revealed, tmp_path):
+    report = bd.audit(
+        "toy",
+        archive=tmp_path,
+        true_root=tmp_path,
+        cat_config=revealed.root / "cat_config.yaml",
+    )
+    assert not report["ok"] and report["problems"] == ["the archive holds no parts"]
 
 
-@pytest.mark.parametrize(
-    "make", [rho_sacc, two_bin_sacc], ids=["alone", "beside_signal"]
-)
-def test_the_audit_passes_rho_tau_remeasured_at_run_noise(fresh, make):
+@pytest.mark.parametrize("beside_signal", [False, True], ids=["alone", "beside_signal"])
+def test_the_audit_passes_rho_tau_remeasured_at_run_noise(revealed, beside_signal):
     """ρ/τ carries no signal, and a re-run does not reproduce it (TreeCorr's
     k-means patches move θ by ~1e-3 and the values by O(1)): its part is
     judged by its stamp, and beside signal rows only the signal is compared."""
-    true = make(rho=True) if make is two_bin_sacc else make()
-    if true.covariance is None:
-        true.add_covariance(np.full(len(true.mean), 1e-14))
-    archived = _concealed(fresh, true)
+    true = AUDITED if beside_signal else rho_sacc()
     rerun = true.copy()
-    rho = [i for i, dp in enumerate(true.data) if not sio.is_signal(dp.data_type)]
     cov = np.array(true.covariance.dense)
-    for i in rho:
-        rerun.data[i].value = 1.5 * true.data[i].value + 1e-7
-        rerun.data[i].tags["theta"] *= 1 + 1.7e-3
-        cov[i, i] *= 1.036
+    for i, dp in enumerate(true.data):
+        if not sio.is_signal(dp.data_type):
+            rerun.data[i].value = 1.5 * dp.value + 1e-7
+            rerun.data[i].tags["theta"] *= 1 + 1.7e-3
+            cov[i, i] *= 1.036
     rerun.add_covariance(cov, overwrite=True)
-    report = _audit(fresh, archived, rerun)
+    archived = revealed.sealed if beside_signal else sio.seal(true, revealed.blinded)
+    report = revealed.audit(archived, rerun)
     assert report["ok"], report
 
 
 @pytest.mark.parametrize("kind", [sio.CL_BB, sio.CL_EB])
-def test_the_audit_fails_when_an_unshifted_row_moved(fresh, kind):
-    s = two_bin_sacc(rho=True)
-    archived = _concealed(fresh, s)
-    i = _rows(s, kind)[-1]
-    archived.data[i].value += 1e-6 * abs(s.data[i].value)
-    report = _audit(fresh, archived, s)
-    assert not report["ok"]
+def test_the_audit_fails_when_an_unshifted_row_moved(revealed, kind):
+    true = AUDITED
+    archived = revealed.sealed.copy()
+    i = _rows(true, kind)[-1]
+    archived.data[i].value += 1e-6 * abs(true.data[i].value)
+    report = revealed.audit(archived, true)
     assert _problems(report) == [f"{kind} moved, but the blind leaves it unshifted"]
 
 
@@ -1214,16 +1148,16 @@ def test_the_audit_fails_when_an_unshifted_row_moved(fresh, kind):
     ids=["cosebis", "pure_eb"],
 )
 @pytest.mark.parametrize("b_sigma", [0.0, 1.0])
-def test_the_audit_bounds_derived_b_modes(fresh, e_kind, b_kind, b_sigma):
+def test_the_audit_bounds_derived_b_modes(revealed, e_kind, b_kind, b_sigma):
     """A derived part's E rows move with the blind; its B rows by ≤ ``B_SIGMA``."""
-    true = cosebis_sacc() if e_kind == sio.COSEBI_EE else pure_eb_sacc()
-    true.add_covariance(np.full(len(true.mean), 0.01))
+    true = derived_sacc("cosebis" if e_kind == sio.COSEBI_EE else "pure_eb")
+    true.add_covariance(np.full(len(true.mean), 0.01), overwrite=True)
     archived = true.copy()
     for i in _rows(true, e_kind):
         archived.data[i].value += 0.3
     for i in _rows(true, b_kind):
         archived.data[i].value += b_sigma * 0.1
-    report = _audit(fresh, archived, true)
+    report = revealed.audit(archived, true)
     assert report["ok"] == (b_sigma == 0.0), report
     (part,) = report["parts"].values()
     assert part["shift_over_sigma"][e_kind] == pytest.approx(3.0)

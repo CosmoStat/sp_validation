@@ -13,6 +13,8 @@ from pathlib import Path
 
 import pytest
 import yaml
+from hypothesis import example, given, settings
+from hypothesis import strategies as st
 
 from sp_validation import custody as cu
 
@@ -61,14 +63,79 @@ def _catalogues(**declarations):
 # --------------------------------------------------------------------------- #
 # I12: the custody table
 # --------------------------------------------------------------------------- #
-def test_undeclared_catalogue_without_a_blind_fails_with_the_command(tmp_path):
-    cats = _catalogues(SP_v9=None)
-    with pytest.raises(cu.CustodyError) as err:
-        cu.custody_of(cats, "SP_v9", registry=tmp_path / "blinds")
-    message = str(err.value)
-    assert "declares no custody for it, so it is blinded" in message
-    assert "python -m sp_validation.blinding init" in message
-    assert "share" in message
+NO_BLIND = [
+    "declares no custody for it, so it is blinded",
+    "blinding init",
+    "blinding share",
+]
+Y3 = {"y3": (["SP_v9"], None)}  # a blind over SP_v9, concealed
+PUBLIC = {"y3": (["SP_v9"], "seed-of-y3")}  # the same, its seed published
+V = "SP_v9_ecut07"
+# case: (declarations, blinds {name: (bases, published seed)}, expected, version).
+# expected is the custody's token, or the fragments of the refusal.
+# fmt: off
+TABLE = {
+    "undeclared": ({"SP_v9": None}, {}, NO_BLIND),
+    "blinded": ({"SP_v9": "blinded"}, {}, ["no blind covers it"]),
+    "undeclared_covered": ({"SP_v9": None}, Y3, "blinded:SP_v9:y3:{y3}"),
+    "blinded_covered": ({"SP_v9": "blinded"}, Y3, "blinded:SP_v9:y3:{y3}"),
+    "blinded_revealed": ({"SP_v9": None}, PUBLIC, ["declare `blinding: unblinded`"]),
+    "unblinded": ({"SP_v9": "unblinded"}, {}, "unblinded:SP_v9"),
+    "unblinded_concealed": ({"SP_v9": "unblinded"}, Y3, ["blinding reveal y3"]),
+    "unblinded_revealed": ({"SP_v9": "unblinded"}, PUBLIC, "unblinded:SP_v9"),
+    "unblinded_wrong_seed": (
+        {"SP_v9": "unblinded"}, {"y3": (["SP_v9"], "not-the-seed")}, ["its commitment"]
+    ),
+    "mock": ({"SP_v9": "mock"}, {}, "mock:SP_v9"),
+    "mock_covered": ({"SP_v9": "mock"}, Y3, ["a mock is never blinded"]),
+    "two_blinds": ({"SP_v9": None}, {**Y3, "b": (["SP_v9"], None)}, ["blinds: b, y3"]),
+    "unknown": ({"SP_v9": "open"}, {}, ["blinded, unblinded or mock"]),
+    "variant_declares": (
+        {"SP_v9": "unblinded", V: {"base": "SP_v9", "blinding": "unblinded"}}, {},
+        ["declare custody on SP_v9"], V,
+    ),
+    "alias_repeats": (
+        {"SP_v9": "unblinded", "SP_v9_leak_corr": "unblinded"}, {}, "unblinded:SP_v9",
+        "SP_v9_leak_corr",
+    ),
+    "alias_repeats_base": (
+        {"SP_v9": "unblinded", V: {"base": "SP_v9"}, f"{V}_seed7": {"base": "SP_v9"}},
+        {}, "unblinded:SP_v9", f"{V}_seed7",
+    ),
+    "alias_declares": (
+        {"SP_v9": "unblinded", "SP_v9_leak_corr": "blinded"}, {},
+        ["declare custody on SP_v9"], "SP_v9_leak_corr",
+    ),
+    "alias_names_another_base": (
+        {"SP_v9": "unblinded", "TOY": None, "SP_v9_seed7": {"base": "TOY"}},
+        {"y3": (["TOY"], None)}, ["declare custody on SP_v9"], "SP_v9_seed7",
+    ),
+}
+# fmt: on
+
+
+@pytest.mark.parametrize("case", TABLE)
+def test_the_custody_table(tmp_path, case):
+    """Every row of custody_of's table: the declaration on the base catalogue
+    against the blinds covering it. An entry named as a variant of another
+    (``<entry>_leak_corr``, ``<entry>_seed<N>``) may repeat that entry's
+    custody, never declare another."""
+    declarations, blinds, expected, *version = TABLE[case]
+    version = version[0] if version else "SP_v9"
+    registry = tmp_path / "blinds"
+    commitments = {
+        name: cu.seed_commitment(_write_blind(registry, name, bases, revealed=seed))
+        for name, (bases, seed) in blinds.items()
+    }
+    cats = _catalogues(**declarations)
+    if isinstance(expected, str):
+        custody = cu.custody_of(cats, version, registry=registry)
+        assert custody.token == expected.format(**commitments)
+        return
+    with pytest.raises(cu.CustodyError) as refused:
+        cu.custody_of(cats, version, registry=registry)
+    for fragment in expected:
+        assert fragment in str(refused.value)
 
 
 def test_the_printed_commands_name_the_config_as_it_was_given(tmp_path):
@@ -86,129 +153,26 @@ def test_the_printed_commands_name_the_config_as_it_was_given(tmp_path):
     assert f"--cat-config {checkout}/cosmo_val/cat_config.yaml" in message
 
 
-def test_declared_blinded_without_a_blind_fails(tmp_path):
-    cats = _catalogues(SP_v9="blinded")
-    with pytest.raises(cu.CustodyError, match="no blind covers it"):
-        cu.custody_of(cats, "SP_v9", registry=tmp_path / "blinds")
+SUFFIXES = st.lists(
+    st.one_of(st.just("_leak_corr"), st.integers(0, 99999).map("_seed{:05d}".format)),
+    max_size=3,
+)
 
 
-@pytest.mark.parametrize("declaration", [None, "blinded"])
-def test_blinded_under_the_covering_blind(tmp_path, declaration):
-    registry = tmp_path / "blinds"
-    seed = _write_blind(registry, "y3", ["SP_v9"])
-    c = cu.custody_of(_catalogues(SP_v9=declaration), "SP_v9", registry=registry)
-    assert c.status == "blinded" and c.catalogue == "SP_v9" and c.blind == "y3"
-    assert c.commitment == cu.seed_commitment(seed)
-    assert c.token == f"blinded:SP_v9:y3:{c.commitment}"
-    assert c.stamp["blinding"] == "blinded"
-    assert c.stamp["blinding_commitment"] == c.commitment
-
-
-def test_blinded_under_a_revealed_blind_fails(tmp_path):
-    registry = tmp_path / "blinds"
-    seed = _write_blind(registry, "y3", ["SP_v9"])
-    (registry / "y3" / "revealed.json").write_text(json.dumps({"seed": seed}))
-    with pytest.raises(cu.CustodyError, match="declare `blinding: unblinded`"):
-        cu.custody_of(_catalogues(SP_v9=None), "SP_v9", registry=registry)
-
-
-def test_unblinded_without_a_blind(tmp_path):
-    c = cu.custody_of(
-        _catalogues(SP_v9="unblinded"), "SP_v9", registry=tmp_path / "blinds"
-    )
-    assert (c.status, c.token) == ("unblinded", "unblinded:SP_v9")
-    assert c.stamp == {"blinding": "unblinded", "blinding_catalogue": "SP_v9"}
-
-
-def test_unblinding_a_concealed_catalogue_is_the_reveal(tmp_path):
-    registry = tmp_path / "blinds"
-    _write_blind(registry, "y3", ["SP_v9"])
-    with pytest.raises(cu.CustodyError, match="blinding reveal y3"):
-        cu.custody_of(_catalogues(SP_v9="unblinded"), "SP_v9", registry=registry)
-
-
-def test_unblinded_after_a_reveal_whose_seed_matches(tmp_path):
-    registry = tmp_path / "blinds"
-    seed = _write_blind(registry, "y3", ["SP_v9"])
-    (registry / "y3" / "revealed.json").write_text(json.dumps({"seed": seed}))
-    c = cu.custody_of(_catalogues(SP_v9="unblinded"), "SP_v9", registry=registry)
-    assert c.token == "unblinded:SP_v9"
-
-
-def test_a_published_seed_that_misses_the_commitment_fails(tmp_path):
-    registry = tmp_path / "blinds"
-    _write_blind(registry, "y3", ["SP_v9"], revealed="not-the-seed")
-    with pytest.raises(cu.CustodyError, match="commitment"):
-        cu.custody_of(_catalogues(SP_v9="unblinded"), "SP_v9", registry=registry)
-
-
-def test_mock(tmp_path):
-    registry = tmp_path / "blinds"
-    c = cu.custody_of(_catalogues(SP_v9="mock"), "SP_v9", registry=registry)
-    assert (c.status, c.token) == ("mock", "mock:SP_v9")
-    _write_blind(registry, "y3", ["SP_v9"])
-    with pytest.raises(cu.CustodyError, match="mock"):
-        cu.custody_of(_catalogues(SP_v9="mock"), "SP_v9", registry=registry)
-
-
-def test_two_covering_blinds_fail(tmp_path):
-    registry = tmp_path / "blinds"
-    _write_blind(registry, "a", ["SP_v9"])
-    _write_blind(registry, "b", ["SP_v9"])
-    with pytest.raises(cu.CustodyError, match="a, b"):
-        cu.custody_of(_catalogues(SP_v9=None), "SP_v9", registry=registry)
-
-
-def test_a_variant_entry_may_not_declare_custody(tmp_path):
-    cats = _catalogues(
-        SP_v9="unblinded", SP_v9_ecut07={"base": "SP_v9", "blinding": "unblinded"}
-    )
-    with pytest.raises(cu.CustodyError, match="declare custody on SP_v9"):
-        cu.custody_of(cats, "SP_v9_ecut07", registry=tmp_path / "blinds")
-
-
-def test_an_unknown_declaration_fails(tmp_path):
-    with pytest.raises(cu.CustodyError, match="blinded, unblinded or mock"):
-        cu.custody_of(_catalogues(SP_v9="open"), "SP_v9", registry=tmp_path / "blinds")
-
-
-def test_variants_share_their_base(tmp_path):
-    """`_leak_corr`, `_seed<N>` and `base:` entries resolve to the base."""
-    registry = tmp_path / "blinds"
+@settings(max_examples=30, deadline=None)
+@given(entry=st.sampled_from(["SP_v9", "SP_v9_ecut07"]), suffixes=SUFFIXES)
+@example(entry="SP_v9", suffixes=["_leak_corr"])
+@example(entry="SP_v9_ecut07", suffixes=["_seed00042", "_leak_corr"])
+def test_every_variant_shares_its_base(tmp_path_factory, entry, suffixes):
+    """``_leak_corr`` and ``_seed<N>`` versions, in any order, of a catalogue
+    or of an entry naming its parent with ``base:``, resolve to the base's
+    custody and blind."""
+    registry = tmp_path_factory.mktemp("variants") / "blinds"
     _write_blind(registry, "y3", ["SP_v9"])
     cats = _catalogues(SP_v9=None, SP_v9_ecut07={"base": "SP_v9"})
+    version = entry + "".join(suffixes)
     base = cu.custody_of(cats, "SP_v9", registry=registry)
-    for version in (
-        "SP_v9_leak_corr",
-        "SP_v9_seed00042",
-        "SP_v9_seed00042_leak_corr",
-        "SP_v9_leak_corr_seed00042",
-        "SP_v9_ecut07",
-        "SP_v9_ecut07_leak_corr",
-    ):
-        assert cu.custody_of(cats, version, registry=registry) == base, version
-
-
-def test_an_entry_named_as_a_variant_shares_its_parents_custody(tmp_path):
-    """An entry named `<entry>_leak_corr` or `<entry>_seed<N>` resolves through
-    that entry, as the variant it is named for does. It may repeat the entry's
-    `blinding` or `base`, as the copies `overwrite_config` writes do, but a
-    declaration of its own is refused, never ignored."""
-    registry = tmp_path / "blinds"
-    _write_blind(registry, "y3", ["TOY"])
-    cats = _catalogues(PARENT="unblinded", TOY=None, EC={"base": "PARENT"})
-    copies = dict(
-        cats, PARENT_leak_corr=dict(cats["PARENT"]), EC_seed7=dict(cats["EC"])
-    )
-    for version in ("PARENT_leak_corr", "EC_seed7"):
-        custody = cu.custody_of(copies, version, registry=registry)
-        assert custody.token == "unblinded:PARENT", version
-    for alias, claim in {
-        "PARENT_leak_corr": {"blinding": "blinded"},
-        "PARENT_seed7": {"base": "TOY"},
-    }.items():
-        with pytest.raises(cu.CustodyError, match="declare custody on PARENT"):
-            cu.custody_of({**cats, alias: claim}, alias, registry=registry)
+    assert cu.custody_of(cats, version, registry=registry) == base
 
 
 def _reading(cats, path, *names):

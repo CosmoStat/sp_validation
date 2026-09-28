@@ -127,6 +127,7 @@ environments = ["sys_platform == 'linux'"]
 
 [project.optional-dependencies]
 test = [
+    "hypothesis",
     "pytest",
     "pytest-cov",
     "ruff"
