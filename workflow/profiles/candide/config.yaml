@@ -20,8 +20,10 @@ software-deployment-method: apptainer
 rerun-triggers: ["mtime", "params", "input", "code"]
 
 # Give an appearing output file a moment on networked filesystems before
-# Snakemake calls a job failed for a missing output.
-latency-wait: 5
+# Snakemake calls a job failed for a missing output. A job's write can take
+# more than 5 s to show on the launching host (candide's /home does); a
+# shorter wait reads a finished job as failed and re-runs it.
+latency-wait: 60
 # --- end GENERIC ------------------------------------------------------------
 
 # No ``apptainer-prefix``: the entry Snakefiles resolve ``container:`` to this
