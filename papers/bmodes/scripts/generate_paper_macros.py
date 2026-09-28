@@ -92,44 +92,6 @@ def generate_macros(
     macros.append("% See workflow/config/bmodes_paper.md for paper choices")
     macros.append("")
 
-    # COSEBIS version comparison - extract fiducial version, n=6
-    cosebis_path = claims_dir / "cosebis_version_comparison" / "evidence.json"
-    if cosebis_path.exists():
-        with open(cosebis_path) as f:
-            cosebis_ev = json.load(f).get("evidence", {})
-
-        macros.append(f"% cosebis ({fiducial_version}, n=6)")
-
-        # Fiducial scale cut - use pte_6_min (conservative across blinds)
-        fiducial = cosebis_ev.get("fiducial", {})
-        fid_versions = fiducial.get("versions", {})
-        fid_data = fid_versions.get(fiducial_version, {})
-        if "pte_6_min" in fid_data:
-            macros.append(
-                f"\\newcommand{{\\cosebisfiducialPte}}{{{_format_value(fid_data['pte_6_min'])}}}"
-            )
-
-        # Full range
-        full = cosebis_ev.get("full", {})
-        full_versions = full.get("versions", {})
-        full_data = full_versions.get(fiducial_version, {})
-        if "pte_6_min" in full_data:
-            macros.append(
-                f"\\newcommand{{\\cosebisfullPte}}{{{_format_value(full_data['pte_6_min'])}}}"
-            )
-
-        # Scale cuts from fiducial
-        if "scale_cut_arcmin" in fiducial:
-            cuts = fiducial["scale_cut_arcmin"]
-            macros.append(
-                f"\\newcommand{{\\cosebisthetaMin}}{{{_format_value(cuts[0])}}}"
-            )
-            macros.append(
-                f"\\newcommand{{\\cosebisthetaMax}}{{{_format_value(cuts[1])}}}"
-            )
-
-        macros.append("")
-
     # Pure E/B data vector
     eb_path = claims_dir / "pure_eb_data_vector" / "evidence.json"
     if eb_path.exists():
@@ -630,7 +592,7 @@ def _from_cli(argv=None):
         default=None,
         help=(
             "Optional tapestry-style dir holding <rule>/evidence.json for the "
-            "extra claims_macros.tex macros (cosebis/pure_eb/harmonic_config); "
+            "extra claims_macros.tex macros (pure_eb/harmonic_config); "
             "the two PTE tables need only the two --*-evidence paths above."
         ),
     )
