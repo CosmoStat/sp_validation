@@ -3584,28 +3584,22 @@ wheels = [
 [[package]]
 name = "shear-psf-leakage"
 version = "0.2.1"
-source = { git = "https://github.com/CosmoStat/shear_psf_leakage.git?rev=develop#0b3c17523b77760c9259be15ba5bbba99d575d0a" }
+source = { git = "https://github.com/CosmoStat/shear_psf_leakage.git?rev=develop#00e38c421a3a3a16b26934f4c8cf5c388567f406" }
 dependencies = [
     { name = "camb" },
     { name = "cs-util" },
     { name = "emcee" },
     { name = "getdist" },
     { name = "gsl" },
-    { name = "jupyter" },
-    { name = "jupyter-server" },
-    { name = "jupyterlab" },
-    { name = "jupytext" },
     { name = "lenspack" },
     { name = "lmfit" },
     { name = "matplotlib" },
-    { name = "notebook" },
     { name = "pandas" },
     { name = "pyccl" },
     { name = "pyyaml" },
     { name = "scipy" },
     { name = "stats" },
     { name = "swig" },
-    { name = "tornado" },
     { name = "tqdm" },
     { name = "treecorr" },
     { name = "uncertainties" },
