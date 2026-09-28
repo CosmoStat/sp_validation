@@ -932,482 +932,484 @@
 </span><span id="line-697"><span class="sd">    data :</span>
 </span><span id="line-698"><span class="sd">        input galaxy catalogue</span>
 </span><span id="line-699"><span class="sd">    mask : array of bool</span>
-</span><span id="line-700"><span class="sd">        mask according to galaxy selection, e.g. spread_model</span>
-</span><span id="line-701"><span class="sd">    masking_type : string, optional, default=&#39;gal&#39;</span>
-</span><span id="line-702"><span class="sd">        masking type, one in &#39;gal&#39;, &#39;gal_mom&#39;, &#39;star&#39;</span>
-</span><span id="line-703"><span class="sd">    step : float, optional, default=0.01</span>
-</span><span id="line-704"><span class="sd">        step h in finite differences</span>
-</span><span id="line-705"><span class="sd">    prefix : string, optional, default=&#39;NGMIX&#39;</span>
-</span><span id="line-706"><span class="sd">        to specify columns in input catalogue</span>
-</span><span id="line-707"><span class="sd">    snr_min : float, optional, default=10</span>
-</span><span id="line-708"><span class="sd">        signal-to-noise minimum</span>
-</span><span id="line-709"><span class="sd">    snr_max; float, optional, default=500</span>
-</span><span id="line-710"><span class="sd">        signal-to-noise maximum</span>
-</span><span id="line-711"><span class="sd">    rel_size_min : float, optional, default=0.5</span>
-</span><span id="line-712"><span class="sd">        relative size minimum</span>
-</span><span id="line-713"><span class="sd">    rel_size_max : float, optional, default=3.0</span>
-</span><span id="line-714"><span class="sd">        relative size maximum</span>
-</span><span id="line-715"><span class="sd">    size_corr_ell : bool, optional, default=True</span>
-</span><span id="line-716"><span class="sd">    global_R_weight : str, optional,</span>
-</span><span id="line-717"><span class="sd">        weight column name for global response matrix; default is ``None``</span>
-</span><span id="line-718"><span class="sd">        (unweighted mean)</span>
-</span><span id="line-719"><span class="sd">    sigma_eps : float, optional</span>
-</span><span id="line-720"><span class="sd">        ellipticity dispersion (one component) for computation</span>
-</span><span id="line-721"><span class="sd">        of weights; default is 0.34</span>
-</span><span id="line-722"><span class="sd">    verbose : bool, optional, default=False</span>
-</span><span id="line-723"><span class="sd">        verbose output if True</span>
-</span><span id="line-724">
-</span><span id="line-725"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-700"><span class="sd">        pre-selection mask, e.g. flag, magnitude and footprint cuts; the</span>
+</span><span id="line-701"><span class="sd">        size-based galaxy selection (``rel_size_min`` &lt; T/Tpsf &lt;</span>
+</span><span id="line-702"><span class="sd">        ``rel_size_max``) is applied here</span>
+</span><span id="line-703"><span class="sd">    masking_type : string, optional, default=&#39;gal&#39;</span>
+</span><span id="line-704"><span class="sd">        masking type, one in &#39;gal&#39;, &#39;gal_mom&#39;, &#39;star&#39;</span>
+</span><span id="line-705"><span class="sd">    step : float, optional, default=0.01</span>
+</span><span id="line-706"><span class="sd">        step h in finite differences</span>
+</span><span id="line-707"><span class="sd">    prefix : string, optional, default=&#39;NGMIX&#39;</span>
+</span><span id="line-708"><span class="sd">        to specify columns in input catalogue</span>
+</span><span id="line-709"><span class="sd">    snr_min : float, optional, default=10</span>
+</span><span id="line-710"><span class="sd">        signal-to-noise minimum</span>
+</span><span id="line-711"><span class="sd">    snr_max; float, optional, default=500</span>
+</span><span id="line-712"><span class="sd">        signal-to-noise maximum</span>
+</span><span id="line-713"><span class="sd">    rel_size_min : float, optional, default=0.5</span>
+</span><span id="line-714"><span class="sd">        relative size minimum</span>
+</span><span id="line-715"><span class="sd">    rel_size_max : float, optional, default=3.0</span>
+</span><span id="line-716"><span class="sd">        relative size maximum</span>
+</span><span id="line-717"><span class="sd">    size_corr_ell : bool, optional, default=True</span>
+</span><span id="line-718"><span class="sd">    global_R_weight : str, optional,</span>
+</span><span id="line-719"><span class="sd">        weight column name for global response matrix; default is ``None``</span>
+</span><span id="line-720"><span class="sd">        (unweighted mean)</span>
+</span><span id="line-721"><span class="sd">    sigma_eps : float, optional</span>
+</span><span id="line-722"><span class="sd">        ellipticity dispersion (one component) for computation</span>
+</span><span id="line-723"><span class="sd">        of weights; default is 0.34</span>
+</span><span id="line-724"><span class="sd">    verbose : bool, optional, default=False</span>
+</span><span id="line-725"><span class="sd">        verbose output if True</span>
 </span><span id="line-726">
-</span><span id="line-727">    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-</span><span id="line-728">        <span class="bp">self</span><span class="p">,</span>
-</span><span id="line-729">        <span class="n">data</span><span class="p">,</span>
-</span><span id="line-730">        <span class="n">mask</span><span class="p">,</span>
-</span><span id="line-731">        <span class="n">masking_type</span><span class="o">=</span><span class="s2">&quot;gal&quot;</span><span class="p">,</span>
-</span><span id="line-732">        <span class="n">step</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span>
-</span><span id="line-733">        <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;NGMIX&quot;</span><span class="p">,</span>
-</span><span id="line-734">        <span class="n">snr_min</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
-</span><span id="line-735">        <span class="n">snr_max</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span>
-</span><span id="line-736">        <span class="n">rel_size_min</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
-</span><span id="line-737">        <span class="n">rel_size_max</span><span class="o">=</span><span class="mf">3.0</span><span class="p">,</span>
-</span><span id="line-738">        <span class="n">size_corr_ell</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-</span><span id="line-739">        <span class="n">global_R_weight</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-</span><span id="line-740">        <span class="n">sigma_eps</span><span class="o">=</span><span class="mf">0.34</span><span class="p">,</span>
-</span><span id="line-741">        <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-</span><span id="line-742">    <span class="p">):</span>
-</span><span id="line-743">
-</span><span id="line-744">        <span class="bp">self</span><span class="o">.</span><span class="n">_masking_type</span> <span class="o">=</span> <span class="n">masking_type</span>
-</span><span id="line-745">        <span class="bp">self</span><span class="o">.</span><span class="n">_step</span> <span class="o">=</span> <span class="n">step</span>
-</span><span id="line-746">
-</span><span id="line-747">        <span class="c1"># Cuts</span>
-</span><span id="line-748">        <span class="bp">self</span><span class="o">.</span><span class="n">_snr_min</span> <span class="o">=</span> <span class="n">snr_min</span>
-</span><span id="line-749">        <span class="bp">self</span><span class="o">.</span><span class="n">_snr_max</span> <span class="o">=</span> <span class="n">snr_max</span>
-</span><span id="line-750">        <span class="bp">self</span><span class="o">.</span><span class="n">_rel_size_min</span> <span class="o">=</span> <span class="n">rel_size_min</span>
-</span><span id="line-751">        <span class="bp">self</span><span class="o">.</span><span class="n">_rel_size_max</span> <span class="o">=</span> <span class="n">rel_size_max</span>
-</span><span id="line-752">        <span class="bp">self</span><span class="o">.</span><span class="n">_size_corr_ell</span> <span class="o">=</span> <span class="n">size_corr_ell</span>
-</span><span id="line-753">        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
-</span><span id="line-754">            <span class="nb">print</span><span class="p">(</span>
-</span><span id="line-755">                <span class="sa">f</span><span class="s2">&quot;Metacal cuts: </span><span class="si">{</span><span class="n">snr_min</span><span class="si">}</span><span class="s2">&lt;snr&lt;</span><span class="si">{</span><span class="n">snr_max</span><span class="si">}</span><span class="s2">, &quot;</span>
-</span><span id="line-756">                <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;rel_size_min=</span><span class="si">{</span><span class="n">rel_size_min</span><span class="si">}</span><span class="s2">, &quot;</span>
-</span><span id="line-757">                <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;rel_size_max=</span><span class="si">{</span><span class="n">rel_size_max</span><span class="si">}</span><span class="s2">, &quot;</span>
-</span><span id="line-758">                <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;size_corr_ell=</span><span class="si">{</span><span class="n">size_corr_ell</span><span class="si">}</span><span class="s2">&quot;</span>
-</span><span id="line-759">            <span class="p">)</span>
-</span><span id="line-760">
-</span><span id="line-761">        <span class="bp">self</span><span class="o">.</span><span class="n">_global_R_weight</span> <span class="o">=</span> <span class="n">global_R_weight</span>
+</span><span id="line-727"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-728">
+</span><span id="line-729">    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+</span><span id="line-730">        <span class="bp">self</span><span class="p">,</span>
+</span><span id="line-731">        <span class="n">data</span><span class="p">,</span>
+</span><span id="line-732">        <span class="n">mask</span><span class="p">,</span>
+</span><span id="line-733">        <span class="n">masking_type</span><span class="o">=</span><span class="s2">&quot;gal&quot;</span><span class="p">,</span>
+</span><span id="line-734">        <span class="n">step</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span>
+</span><span id="line-735">        <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;NGMIX&quot;</span><span class="p">,</span>
+</span><span id="line-736">        <span class="n">snr_min</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+</span><span id="line-737">        <span class="n">snr_max</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span>
+</span><span id="line-738">        <span class="n">rel_size_min</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+</span><span id="line-739">        <span class="n">rel_size_max</span><span class="o">=</span><span class="mf">3.0</span><span class="p">,</span>
+</span><span id="line-740">        <span class="n">size_corr_ell</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="line-741">        <span class="n">global_R_weight</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-742">        <span class="n">sigma_eps</span><span class="o">=</span><span class="mf">0.34</span><span class="p">,</span>
+</span><span id="line-743">        <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+</span><span id="line-744">    <span class="p">):</span>
+</span><span id="line-745">
+</span><span id="line-746">        <span class="bp">self</span><span class="o">.</span><span class="n">_masking_type</span> <span class="o">=</span> <span class="n">masking_type</span>
+</span><span id="line-747">        <span class="bp">self</span><span class="o">.</span><span class="n">_step</span> <span class="o">=</span> <span class="n">step</span>
+</span><span id="line-748">
+</span><span id="line-749">        <span class="c1"># Cuts</span>
+</span><span id="line-750">        <span class="bp">self</span><span class="o">.</span><span class="n">_snr_min</span> <span class="o">=</span> <span class="n">snr_min</span>
+</span><span id="line-751">        <span class="bp">self</span><span class="o">.</span><span class="n">_snr_max</span> <span class="o">=</span> <span class="n">snr_max</span>
+</span><span id="line-752">        <span class="bp">self</span><span class="o">.</span><span class="n">_rel_size_min</span> <span class="o">=</span> <span class="n">rel_size_min</span>
+</span><span id="line-753">        <span class="bp">self</span><span class="o">.</span><span class="n">_rel_size_max</span> <span class="o">=</span> <span class="n">rel_size_max</span>
+</span><span id="line-754">        <span class="bp">self</span><span class="o">.</span><span class="n">_size_corr_ell</span> <span class="o">=</span> <span class="n">size_corr_ell</span>
+</span><span id="line-755">        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+</span><span id="line-756">            <span class="nb">print</span><span class="p">(</span>
+</span><span id="line-757">                <span class="sa">f</span><span class="s2">&quot;Metacal cuts: </span><span class="si">{</span><span class="n">snr_min</span><span class="si">}</span><span class="s2">&lt;snr&lt;</span><span class="si">{</span><span class="n">snr_max</span><span class="si">}</span><span class="s2">, &quot;</span>
+</span><span id="line-758">                <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;rel_size_min=</span><span class="si">{</span><span class="n">rel_size_min</span><span class="si">}</span><span class="s2">, &quot;</span>
+</span><span id="line-759">                <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;rel_size_max=</span><span class="si">{</span><span class="n">rel_size_max</span><span class="si">}</span><span class="s2">, &quot;</span>
+</span><span id="line-760">                <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;size_corr_ell=</span><span class="si">{</span><span class="n">size_corr_ell</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="line-761">            <span class="p">)</span>
 </span><span id="line-762">
-</span><span id="line-763">        <span class="bp">self</span><span class="o">.</span><span class="n">_sigma_eps</span> <span class="o">=</span> <span class="n">sigma_eps</span>
+</span><span id="line-763">        <span class="bp">self</span><span class="o">.</span><span class="n">_global_R_weight</span> <span class="o">=</span> <span class="n">global_R_weight</span>
 </span><span id="line-764">
-</span><span id="line-765">        <span class="bp">self</span><span class="o">.</span><span class="n">_verbose</span> <span class="o">=</span> <span class="n">verbose</span>
+</span><span id="line-765">        <span class="bp">self</span><span class="o">.</span><span class="n">_sigma_eps</span> <span class="o">=</span> <span class="n">sigma_eps</span>
 </span><span id="line-766">
-</span><span id="line-767">        <span class="bp">self</span><span class="o">.</span><span class="n">_prefix</span> <span class="o">=</span> <span class="n">prefix</span>
+</span><span id="line-767">        <span class="bp">self</span><span class="o">.</span><span class="n">_verbose</span> <span class="o">=</span> <span class="n">verbose</span>
 </span><span id="line-768">
-</span><span id="line-769">        <span class="bp">self</span><span class="o">.</span><span class="n">_read_data</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">mask</span><span class="p">)</span>
-</span><span id="line-770">        <span class="bp">self</span><span class="o">.</span><span class="n">_compute_calibration</span><span class="p">()</span>
-</span><span id="line-771">
+</span><span id="line-769">        <span class="bp">self</span><span class="o">.</span><span class="n">_prefix</span> <span class="o">=</span> <span class="n">prefix</span>
+</span><span id="line-770">
+</span><span id="line-771">        <span class="bp">self</span><span class="o">.</span><span class="n">_read_data</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">mask</span><span class="p">)</span>
+</span><span id="line-772">        <span class="bp">self</span><span class="o">.</span><span class="n">_compute_calibration</span><span class="p">()</span>
+</span><span id="line-773">
 <div class="viewcode-block" id="metacal._read_data">
 <a class="viewcode-back" href="../../sp_validation.calibration.html#sp_validation.calibration.metacal._read_data">[docs]</a>
-</span><span id="line-772">    <span class="k">def</span><span class="w"> </span><span class="nf">_read_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">mask</span><span class="p">):</span>
-</span><span id="line-773"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Read Data.</span>
-</span><span id="line-774">
-</span><span id="line-775"><span class="sd">        Read relevant data columns.</span>
-</span><span id="line-776"><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="line-777">        <span class="n">m1</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="line-778">        <span class="n">p1</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="line-779">        <span class="n">m2</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="line-780">        <span class="n">p2</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="line-781">        <span class="n">ns</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="line-782">
-</span><span id="line-783">        <span class="n">masked_data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
-</span><span id="line-784">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prefix</span> <span class="o">==</span> <span class="s2">&quot;NGMIX&quot;</span><span class="p">:</span>
-</span><span id="line-785">            <span class="n">m1</span><span class="p">,</span> <span class="n">p1</span><span class="p">,</span> <span class="n">m2</span><span class="p">,</span> <span class="n">p2</span><span class="p">,</span> <span class="n">ns</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_data_ngmix</span><span class="p">(</span>
-</span><span id="line-786">                <span class="n">masked_data</span><span class="p">,</span>
-</span><span id="line-787">                <span class="n">m1</span><span class="p">,</span>
-</span><span id="line-788">                <span class="n">p1</span><span class="p">,</span>
-</span><span id="line-789">                <span class="n">m2</span><span class="p">,</span>
-</span><span id="line-790">                <span class="n">p2</span><span class="p">,</span>
-</span><span id="line-791">                <span class="n">ns</span><span class="p">,</span>
-</span><span id="line-792">            <span class="p">)</span>
-</span><span id="line-793">        <span class="k">else</span><span class="p">:</span>
-</span><span id="line-794">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-</span><span id="line-795">                <span class="sa">f</span><span class="s2">&quot;Unsupported shape prefix &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_prefix</span><span class="si">}</span><span class="s2">&#39;; only &#39;NGMIX&#39; is supported&quot;</span>
-</span><span id="line-796">            <span class="p">)</span>
-</span><span id="line-797">
-</span><span id="line-798">        <span class="bp">self</span><span class="o">.</span><span class="n">m1</span> <span class="o">=</span> <span class="n">m1</span>
-</span><span id="line-799">        <span class="bp">self</span><span class="o">.</span><span class="n">p1</span> <span class="o">=</span> <span class="n">p1</span>
-</span><span id="line-800">        <span class="bp">self</span><span class="o">.</span><span class="n">m2</span> <span class="o">=</span> <span class="n">m2</span>
-</span><span id="line-801">        <span class="bp">self</span><span class="o">.</span><span class="n">p2</span> <span class="o">=</span> <span class="n">p2</span>
-</span><span id="line-802">        <span class="bp">self</span><span class="o">.</span><span class="n">ns</span> <span class="o">=</span> <span class="n">ns</span></div>
+</span><span id="line-774">    <span class="k">def</span><span class="w"> </span><span class="nf">_read_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">mask</span><span class="p">):</span>
+</span><span id="line-775"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Read Data.</span>
+</span><span id="line-776">
+</span><span id="line-777"><span class="sd">        Read relevant data columns.</span>
+</span><span id="line-778"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-779">        <span class="n">m1</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-780">        <span class="n">p1</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-781">        <span class="n">m2</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-782">        <span class="n">p2</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-783">        <span class="n">ns</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-784">
+</span><span id="line-785">        <span class="n">masked_data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+</span><span id="line-786">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prefix</span> <span class="o">==</span> <span class="s2">&quot;NGMIX&quot;</span><span class="p">:</span>
+</span><span id="line-787">            <span class="n">m1</span><span class="p">,</span> <span class="n">p1</span><span class="p">,</span> <span class="n">m2</span><span class="p">,</span> <span class="n">p2</span><span class="p">,</span> <span class="n">ns</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_data_ngmix</span><span class="p">(</span>
+</span><span id="line-788">                <span class="n">masked_data</span><span class="p">,</span>
+</span><span id="line-789">                <span class="n">m1</span><span class="p">,</span>
+</span><span id="line-790">                <span class="n">p1</span><span class="p">,</span>
+</span><span id="line-791">                <span class="n">m2</span><span class="p">,</span>
+</span><span id="line-792">                <span class="n">p2</span><span class="p">,</span>
+</span><span id="line-793">                <span class="n">ns</span><span class="p">,</span>
+</span><span id="line-794">            <span class="p">)</span>
+</span><span id="line-795">        <span class="k">else</span><span class="p">:</span>
+</span><span id="line-796">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-797">                <span class="sa">f</span><span class="s2">&quot;Unsupported shape prefix &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_prefix</span><span class="si">}</span><span class="s2">&#39;; only &#39;NGMIX&#39; is supported&quot;</span>
+</span><span id="line-798">            <span class="p">)</span>
+</span><span id="line-799">
+</span><span id="line-800">        <span class="bp">self</span><span class="o">.</span><span class="n">m1</span> <span class="o">=</span> <span class="n">m1</span>
+</span><span id="line-801">        <span class="bp">self</span><span class="o">.</span><span class="n">p1</span> <span class="o">=</span> <span class="n">p1</span>
+</span><span id="line-802">        <span class="bp">self</span><span class="o">.</span><span class="n">m2</span> <span class="o">=</span> <span class="n">m2</span>
+</span><span id="line-803">        <span class="bp">self</span><span class="o">.</span><span class="n">p2</span> <span class="o">=</span> <span class="n">p2</span>
+</span><span id="line-804">        <span class="bp">self</span><span class="o">.</span><span class="n">ns</span> <span class="o">=</span> <span class="n">ns</span></div>
 
-</span><span id="line-803">
+</span><span id="line-805">
 <div class="viewcode-block" id="metacal._read_data_ngmix">
 <a class="viewcode-back" href="../../sp_validation.calibration.html#sp_validation.calibration.metacal._read_data_ngmix">[docs]</a>
-</span><span id="line-804">    <span class="k">def</span><span class="w"> </span><span class="nf">_read_data_ngmix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">masked_data</span><span class="p">,</span> <span class="n">m1</span><span class="p">,</span> <span class="n">p1</span><span class="p">,</span> <span class="n">m2</span><span class="p">,</span> <span class="n">p2</span><span class="p">,</span> <span class="n">ns</span><span class="p">):</span>
-</span><span id="line-805"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Read Data Ngmix.</span>
-</span><span id="line-806">
-</span><span id="line-807"><span class="sd">        Read data from ngmix catalogue.</span>
+</span><span id="line-806">    <span class="k">def</span><span class="w"> </span><span class="nf">_read_data_ngmix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">masked_data</span><span class="p">,</span> <span class="n">m1</span><span class="p">,</span> <span class="n">p1</span><span class="p">,</span> <span class="n">m2</span><span class="p">,</span> <span class="n">p2</span><span class="p">,</span> <span class="n">ns</span><span class="p">):</span>
+</span><span id="line-807"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Read Data Ngmix.</span>
 </span><span id="line-808">
-</span><span id="line-809"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-809"><span class="sd">        Read data from ngmix catalogue.</span>
 </span><span id="line-810">
-</span><span id="line-811">        <span class="k">for</span> <span class="n">name_shear</span><span class="p">,</span> <span class="n">dict_tmp</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
-</span><span id="line-812">            <span class="p">[</span><span class="s2">&quot;1M&quot;</span><span class="p">,</span> <span class="s2">&quot;1P&quot;</span><span class="p">,</span> <span class="s2">&quot;2M&quot;</span><span class="p">,</span> <span class="s2">&quot;2P&quot;</span><span class="p">,</span> <span class="s2">&quot;NOSHEAR&quot;</span><span class="p">],</span> <span class="p">[</span><span class="n">m1</span><span class="p">,</span> <span class="n">p1</span><span class="p">,</span> <span class="n">m2</span><span class="p">,</span> <span class="n">p2</span><span class="p">,</span> <span class="n">ns</span><span class="p">]</span>
-</span><span id="line-813">        <span class="p">):</span>
-</span><span id="line-814">            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_verbose</span><span class="p">:</span>
-</span><span id="line-815">                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Extracting </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name_shear</span><span class="p">))</span>
-</span><span id="line-816">
-</span><span id="line-817">            <span class="n">dict_tmp</span><span class="p">[</span><span class="s2">&quot;flag&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">masked_data</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_prefix</span><span class="si">}</span><span class="s2">_FLAGS_</span><span class="si">{</span><span class="n">name_shear</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span>
+</span><span id="line-811"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-812">
+</span><span id="line-813">        <span class="k">for</span> <span class="n">name_shear</span><span class="p">,</span> <span class="n">dict_tmp</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+</span><span id="line-814">            <span class="p">[</span><span class="s2">&quot;1M&quot;</span><span class="p">,</span> <span class="s2">&quot;1P&quot;</span><span class="p">,</span> <span class="s2">&quot;2M&quot;</span><span class="p">,</span> <span class="s2">&quot;2P&quot;</span><span class="p">,</span> <span class="s2">&quot;NOSHEAR&quot;</span><span class="p">],</span> <span class="p">[</span><span class="n">m1</span><span class="p">,</span> <span class="n">p1</span><span class="p">,</span> <span class="n">m2</span><span class="p">,</span> <span class="n">p2</span><span class="p">,</span> <span class="n">ns</span><span class="p">]</span>
+</span><span id="line-815">        <span class="p">):</span>
+</span><span id="line-816">            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_verbose</span><span class="p">:</span>
+</span><span id="line-817">                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Extracting </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name_shear</span><span class="p">))</span>
 </span><span id="line-818">
-</span><span id="line-819">            <span class="c1"># Ellipticity in named scalar components (ShapePipe-v2 grammar)</span>
-</span><span id="line-820">            <span class="k">for</span> <span class="n">comp</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
-</span><span id="line-821">                <span class="n">dict_tmp</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;g</span><span class="si">{</span><span class="n">comp</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">masked_data</span><span class="p">[</span>
-</span><span id="line-822">                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_prefix</span><span class="si">}</span><span class="s2">_G</span><span class="si">{</span><span class="n">comp</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">name_shear</span><span class="si">}</span><span class="s2">&quot;</span>
-</span><span id="line-823">                <span class="p">]</span>
-</span><span id="line-824">
-</span><span id="line-825">            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;flux&quot;</span><span class="p">,</span> <span class="s2">&quot;flux_err&quot;</span><span class="p">,</span> <span class="s2">&quot;T&quot;</span><span class="p">,</span> <span class="s2">&quot;T_err&quot;</span><span class="p">):</span>
-</span><span id="line-826">                <span class="n">dict_tmp</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">masked_data</span><span class="p">[</span>
-</span><span id="line-827">                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_prefix</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">key</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">name_shear</span><span class="si">}</span><span class="s2">&quot;</span>
-</span><span id="line-828">                <span class="p">]</span>
-</span><span id="line-829">
-</span><span id="line-830">            <span class="n">dict_tmp</span><span class="p">[</span><span class="s2">&quot;Tpsf&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">masked_data</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_prefix</span><span class="si">}</span><span class="s2">_T_PSF_RECONV_</span><span class="si">{</span><span class="n">name_shear</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span>
+</span><span id="line-819">            <span class="n">dict_tmp</span><span class="p">[</span><span class="s2">&quot;flag&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">masked_data</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_prefix</span><span class="si">}</span><span class="s2">_FLAGS_</span><span class="si">{</span><span class="n">name_shear</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span>
+</span><span id="line-820">
+</span><span id="line-821">            <span class="c1"># Ellipticity in named scalar components (ShapePipe-v2 grammar)</span>
+</span><span id="line-822">            <span class="k">for</span> <span class="n">comp</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
+</span><span id="line-823">                <span class="n">dict_tmp</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;g</span><span class="si">{</span><span class="n">comp</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">masked_data</span><span class="p">[</span>
+</span><span id="line-824">                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_prefix</span><span class="si">}</span><span class="s2">_G</span><span class="si">{</span><span class="n">comp</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">name_shear</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="line-825">                <span class="p">]</span>
+</span><span id="line-826">
+</span><span id="line-827">            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;flux&quot;</span><span class="p">,</span> <span class="s2">&quot;flux_err&quot;</span><span class="p">,</span> <span class="s2">&quot;T&quot;</span><span class="p">,</span> <span class="s2">&quot;T_err&quot;</span><span class="p">):</span>
+</span><span id="line-828">                <span class="n">dict_tmp</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">masked_data</span><span class="p">[</span>
+</span><span id="line-829">                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_prefix</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">key</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">name_shear</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="line-830">                <span class="p">]</span>
 </span><span id="line-831">
-</span><span id="line-832">        <span class="n">ns</span><span class="p">[</span><span class="s2">&quot;C11&quot;</span><span class="p">],</span> <span class="n">ns</span><span class="p">[</span><span class="s2">&quot;C22&quot;</span><span class="p">],</span> <span class="n">ns</span><span class="p">[</span><span class="s2">&quot;w&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_variance_ivweights</span><span class="p">(</span>
-</span><span id="line-833">            <span class="n">masked_data</span><span class="p">,</span>
-</span><span id="line-834">            <span class="bp">self</span><span class="o">.</span><span class="n">_sigma_eps</span><span class="p">,</span>
-</span><span id="line-835">            <span class="bp">self</span><span class="o">.</span><span class="n">_prefix</span><span class="p">,</span>
-</span><span id="line-836">            <span class="n">mask</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-</span><span id="line-837">        <span class="p">)</span>
-</span><span id="line-838">
-</span><span id="line-839">        <span class="bp">self</span><span class="o">.</span><span class="n">_n_input</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">masked_data</span><span class="p">)</span>
-</span><span id="line-840">        <span class="bp">self</span><span class="o">.</span><span class="n">_n_after_gal_mask</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">dict_tmp</span><span class="p">[</span><span class="s2">&quot;flag&quot;</span><span class="p">])</span>
-</span><span id="line-841">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_verbose</span><span class="p">:</span>
-</span><span id="line-842">            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of objects on metacal input = </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_input</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</span><span id="line-843">            <span class="nb">print</span><span class="p">(</span>
-</span><span id="line-844">                <span class="s2">&quot;Number of objects after galaxy selection masking =&quot;</span>
-</span><span id="line-845">                <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_after_gal_mask</span><span class="si">}</span><span class="s2">&quot;</span>
-</span><span id="line-846">            <span class="p">)</span>
-</span><span id="line-847">
-</span><span id="line-848">        <span class="k">return</span> <span class="n">m1</span><span class="p">,</span> <span class="n">p1</span><span class="p">,</span> <span class="n">m2</span><span class="p">,</span> <span class="n">p2</span><span class="p">,</span> <span class="n">ns</span></div>
-
+</span><span id="line-832">            <span class="n">dict_tmp</span><span class="p">[</span><span class="s2">&quot;Tpsf&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">masked_data</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_prefix</span><span class="si">}</span><span class="s2">_T_PSF_RECONV_</span><span class="si">{</span><span class="n">name_shear</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span>
+</span><span id="line-833">
+</span><span id="line-834">        <span class="n">ns</span><span class="p">[</span><span class="s2">&quot;C11&quot;</span><span class="p">],</span> <span class="n">ns</span><span class="p">[</span><span class="s2">&quot;C22&quot;</span><span class="p">],</span> <span class="n">ns</span><span class="p">[</span><span class="s2">&quot;w&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_variance_ivweights</span><span class="p">(</span>
+</span><span id="line-835">            <span class="n">masked_data</span><span class="p">,</span>
+</span><span id="line-836">            <span class="bp">self</span><span class="o">.</span><span class="n">_sigma_eps</span><span class="p">,</span>
+</span><span id="line-837">            <span class="bp">self</span><span class="o">.</span><span class="n">_prefix</span><span class="p">,</span>
+</span><span id="line-838">            <span class="n">mask</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-839">        <span class="p">)</span>
+</span><span id="line-840">
+</span><span id="line-841">        <span class="bp">self</span><span class="o">.</span><span class="n">_n_input</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">masked_data</span><span class="p">)</span>
+</span><span id="line-842">        <span class="bp">self</span><span class="o">.</span><span class="n">_n_after_gal_mask</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">dict_tmp</span><span class="p">[</span><span class="s2">&quot;flag&quot;</span><span class="p">])</span>
+</span><span id="line-843">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_verbose</span><span class="p">:</span>
+</span><span id="line-844">            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of objects on metacal input = </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_input</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="line-845">            <span class="nb">print</span><span class="p">(</span>
+</span><span id="line-846">                <span class="s2">&quot;Number of objects after galaxy selection masking =&quot;</span>
+</span><span id="line-847">                <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_after_gal_mask</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="line-848">            <span class="p">)</span>
 </span><span id="line-849">
+</span><span id="line-850">        <span class="k">return</span> <span class="n">m1</span><span class="p">,</span> <span class="n">p1</span><span class="p">,</span> <span class="n">m2</span><span class="p">,</span> <span class="n">p2</span><span class="p">,</span> <span class="n">ns</span></div>
+
+</span><span id="line-851">
 <div class="viewcode-block" id="metacal.get_variance_ivweights">
 <a class="viewcode-back" href="../../sp_validation.calibration.html#sp_validation.calibration.metacal.get_variance_ivweights">[docs]</a>
-</span><span id="line-850">    <span class="nd">@staticmethod</span>
-</span><span id="line-851">    <span class="k">def</span><span class="w"> </span><span class="nf">get_variance_ivweights</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">sigma_eps</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;NGMIX&quot;</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-</span><span id="line-852"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Get Variance IVWEIGHTS.</span>
-</span><span id="line-853">
-</span><span id="line-854"><span class="sd">        Compute variance and inverse-variance weights.</span>
+</span><span id="line-852">    <span class="nd">@staticmethod</span>
+</span><span id="line-853">    <span class="k">def</span><span class="w"> </span><span class="nf">get_variance_ivweights</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">sigma_eps</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;NGMIX&quot;</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+</span><span id="line-854"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Get Variance IVWEIGHTS.</span>
 </span><span id="line-855">
-</span><span id="line-856"><span class="sd">        Parameters</span>
-</span><span id="line-857"><span class="sd">        ----------</span>
-</span><span id="line-858"><span class="sd">        data : numpy.ndarray</span>
-</span><span id="line-859"><span class="sd">            input data</span>
-</span><span id="line-860"><span class="sd">        sigma_eps : float</span>
-</span><span id="line-861"><span class="sd">            ellipticity dispersion</span>
-</span><span id="line-862"><span class="sd">        prefix : str, optional</span>
-</span><span id="line-863"><span class="sd">            shape measurement identifier; default is &quot;NGMIX&quot;</span>
-</span><span id="line-864"><span class="sd">        mask : list, optional</span>
-</span><span id="line-865"><span class="sd">            indicates valid objects with ``True`` values; default is ``None`` = use all objects</span>
-</span><span id="line-866"><span class="sd">            type has to be bool</span>
-</span><span id="line-867">
-</span><span id="line-868"><span class="sd">        Returns</span>
-</span><span id="line-869"><span class="sd">        -------</span>
-</span><span id="line-870"><span class="sd">        float</span>
-</span><span id="line-871"><span class="sd">            variance first component</span>
+</span><span id="line-856"><span class="sd">        Compute variance and inverse-variance weights.</span>
+</span><span id="line-857">
+</span><span id="line-858"><span class="sd">        Parameters</span>
+</span><span id="line-859"><span class="sd">        ----------</span>
+</span><span id="line-860"><span class="sd">        data : numpy.ndarray</span>
+</span><span id="line-861"><span class="sd">            input data</span>
+</span><span id="line-862"><span class="sd">        sigma_eps : float</span>
+</span><span id="line-863"><span class="sd">            ellipticity dispersion</span>
+</span><span id="line-864"><span class="sd">        prefix : str, optional</span>
+</span><span id="line-865"><span class="sd">            shape measurement identifier; default is &quot;NGMIX&quot;</span>
+</span><span id="line-866"><span class="sd">        mask : list, optional</span>
+</span><span id="line-867"><span class="sd">            indicates valid objects with ``True`` values; default is ``None`` = use all objects</span>
+</span><span id="line-868"><span class="sd">            type has to be bool</span>
+</span><span id="line-869">
+</span><span id="line-870"><span class="sd">        Returns</span>
+</span><span id="line-871"><span class="sd">        -------</span>
 </span><span id="line-872"><span class="sd">        float</span>
-</span><span id="line-873"><span class="sd">            variance second component</span>
+</span><span id="line-873"><span class="sd">            variance first component</span>
 </span><span id="line-874"><span class="sd">        float</span>
-</span><span id="line-875"><span class="sd">            weight</span>
-</span><span id="line-876">
-</span><span id="line-877"><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="line-878">        <span class="n">C11</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_G1_ERR_NOSHEAR&quot;</span><span class="p">]</span>
-</span><span id="line-879">        <span class="n">C22</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_G2_ERR_NOSHEAR&quot;</span><span class="p">]</span>
-</span><span id="line-880">        <span class="k">if</span> <span class="n">mask</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-881">            <span class="n">C11</span> <span class="o">=</span> <span class="n">C11</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
-</span><span id="line-882">            <span class="n">C22</span> <span class="o">=</span> <span class="n">C22</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
-</span><span id="line-883">
-</span><span id="line-884">        <span class="n">iv_w</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">sigma_eps</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">C11</span> <span class="o">+</span> <span class="n">C22</span><span class="p">)</span>
+</span><span id="line-875"><span class="sd">            variance second component</span>
+</span><span id="line-876"><span class="sd">        float</span>
+</span><span id="line-877"><span class="sd">            weight</span>
+</span><span id="line-878">
+</span><span id="line-879"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-880">        <span class="n">C11</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_G1_ERR_NOSHEAR&quot;</span><span class="p">]</span>
+</span><span id="line-881">        <span class="n">C22</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_G2_ERR_NOSHEAR&quot;</span><span class="p">]</span>
+</span><span id="line-882">        <span class="k">if</span> <span class="n">mask</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-883">            <span class="n">C11</span> <span class="o">=</span> <span class="n">C11</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+</span><span id="line-884">            <span class="n">C22</span> <span class="o">=</span> <span class="n">C22</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
 </span><span id="line-885">
-</span><span id="line-886">        <span class="k">return</span> <span class="n">C11</span><span class="p">,</span> <span class="n">C22</span><span class="p">,</span> <span class="n">iv_w</span></div>
-
+</span><span id="line-886">        <span class="n">iv_w</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">sigma_eps</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">C11</span> <span class="o">+</span> <span class="n">C22</span><span class="p">)</span>
 </span><span id="line-887">
+</span><span id="line-888">        <span class="k">return</span> <span class="n">C11</span><span class="p">,</span> <span class="n">C22</span><span class="p">,</span> <span class="n">iv_w</span></div>
+
+</span><span id="line-889">
 <div class="viewcode-block" id="metacal._compute_calibration">
 <a class="viewcode-back" href="../../sp_validation.calibration.html#sp_validation.calibration.metacal._compute_calibration">[docs]</a>
-</span><span id="line-888">    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_calibration</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-</span><span id="line-889"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute Calibration.</span>
-</span><span id="line-890">
-</span><span id="line-891"><span class="sd">        Perform masking and compute calibration.</span>
-</span><span id="line-892"><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="line-893">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_masking_type</span> <span class="o">==</span> <span class="s2">&quot;gal&quot;</span><span class="p">:</span>
-</span><span id="line-894">            <span class="bp">self</span><span class="o">.</span><span class="n">_masking_gal</span><span class="p">()</span>
-</span><span id="line-895">        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_masking_type</span> <span class="o">==</span> <span class="s2">&quot;galmom&quot;</span><span class="p">:</span>
-</span><span id="line-896">            <span class="bp">self</span><span class="o">.</span><span class="n">_masking_gal_mom</span><span class="p">()</span>
-</span><span id="line-897">        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_masking_type</span> <span class="o">==</span> <span class="s2">&quot;star&quot;</span><span class="p">:</span>
-</span><span id="line-898">            <span class="bp">self</span><span class="o">.</span><span class="n">_masking_star</span><span class="p">()</span>
-</span><span id="line-899">        <span class="k">else</span><span class="p">:</span>
-</span><span id="line-900">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid masking type &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_masking_type</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
-</span><span id="line-901">
-</span><span id="line-902">        <span class="bp">self</span><span class="o">.</span><span class="n">_shear_response</span><span class="p">()</span>
-</span><span id="line-903">        <span class="bp">self</span><span class="o">.</span><span class="n">_selection_response</span><span class="p">()</span>
-</span><span id="line-904">        <span class="bp">self</span><span class="o">.</span><span class="n">_total_response</span><span class="p">()</span></div>
+</span><span id="line-890">    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_calibration</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="line-891"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute Calibration.</span>
+</span><span id="line-892">
+</span><span id="line-893"><span class="sd">        Perform masking and compute calibration.</span>
+</span><span id="line-894"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-895">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_masking_type</span> <span class="o">==</span> <span class="s2">&quot;gal&quot;</span><span class="p">:</span>
+</span><span id="line-896">            <span class="bp">self</span><span class="o">.</span><span class="n">_masking_gal</span><span class="p">()</span>
+</span><span id="line-897">        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_masking_type</span> <span class="o">==</span> <span class="s2">&quot;galmom&quot;</span><span class="p">:</span>
+</span><span id="line-898">            <span class="bp">self</span><span class="o">.</span><span class="n">_masking_gal_mom</span><span class="p">()</span>
+</span><span id="line-899">        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_masking_type</span> <span class="o">==</span> <span class="s2">&quot;star&quot;</span><span class="p">:</span>
+</span><span id="line-900">            <span class="bp">self</span><span class="o">.</span><span class="n">_masking_star</span><span class="p">()</span>
+</span><span id="line-901">        <span class="k">else</span><span class="p">:</span>
+</span><span id="line-902">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid masking type &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_masking_type</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+</span><span id="line-903">
+</span><span id="line-904">        <span class="bp">self</span><span class="o">.</span><span class="n">_shear_response</span><span class="p">()</span>
+</span><span id="line-905">        <span class="bp">self</span><span class="o">.</span><span class="n">_selection_response</span><span class="p">()</span>
+</span><span id="line-906">        <span class="bp">self</span><span class="o">.</span><span class="n">_total_response</span><span class="p">()</span></div>
 
-</span><span id="line-905">        <span class="c1"># self._shear_response_std(stat_operator=lambda x:</span>
-</span><span id="line-906">        <span class="c1"># jackknif_weighted_average(x, np.ones_like(x)))</span>
-</span><span id="line-907">
+</span><span id="line-907">        <span class="c1"># self._shear_response_std(stat_operator=lambda x:</span>
+</span><span id="line-908">        <span class="c1"># jackknif_weighted_average(x, np.ones_like(x)))</span>
+</span><span id="line-909">
 <div class="viewcode-block" id="metacal.add_cuts">
 <a class="viewcode-back" href="../../sp_validation.calibration.html#sp_validation.calibration.metacal.add_cuts">[docs]</a>
-</span><span id="line-908">    <span class="k">def</span><span class="w"> </span><span class="nf">add_cuts</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">snr_min</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">snr_max</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span> <span class="n">rel_size_min</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">rel_size_max</span><span class="o">=</span><span class="mf">3.0</span><span class="p">):</span>
-</span><span id="line-909"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Add Cuts.</span>
-</span><span id="line-910">
-</span><span id="line-911"><span class="sd">        Apply additional cuts to metacal galaxy catalogue.</span>
-</span><span id="line-912"><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="line-913">        <span class="k">if</span> <span class="p">(</span>
-</span><span id="line-914">            <span class="n">snr_min</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_snr_min</span>
-</span><span id="line-915">            <span class="ow">or</span> <span class="n">snr_max</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_snr_max</span>
-</span><span id="line-916">            <span class="ow">or</span> <span class="n">rel_size_min</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rel_size_min</span>
-</span><span id="line-917">            <span class="ow">or</span> <span class="n">rel_size_max</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rel_size_max</span>
-</span><span id="line-918">        <span class="p">):</span>
-</span><span id="line-919">            <span class="nb">print</span><span class="p">(</span>
-</span><span id="line-920">                <span class="s2">&quot;At least on cut is less stringend than existing one, &quot;</span> <span class="o">+</span> <span class="s2">&quot;skipping...&quot;</span>
-</span><span id="line-921">            <span class="p">)</span>
-</span><span id="line-922">            <span class="k">return</span>
-</span><span id="line-923">
-</span><span id="line-924">        <span class="bp">self</span><span class="o">.</span><span class="n">_snr_min</span> <span class="o">=</span> <span class="n">snr_min</span>
-</span><span id="line-925">        <span class="bp">self</span><span class="o">.</span><span class="n">_snr_max</span> <span class="o">=</span> <span class="n">snr_max</span>
-</span><span id="line-926">        <span class="bp">self</span><span class="o">.</span><span class="n">_rel_size_min</span> <span class="o">=</span> <span class="n">rel_size_min</span>
-</span><span id="line-927">        <span class="bp">self</span><span class="o">.</span><span class="n">_rel_size_max</span> <span class="o">=</span> <span class="n">rel_size_max</span>
-</span><span id="line-928">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_verbose</span><span class="p">:</span>
-</span><span id="line-929">            <span class="nb">print</span><span class="p">(</span>
-</span><span id="line-930">                <span class="sa">f</span><span class="s2">&quot;Metacal new cuts: </span><span class="si">{</span><span class="n">snr_min</span><span class="si">}</span><span class="s2">&lt;snr&lt;</span><span class="si">{</span><span class="n">snr_max</span><span class="si">}</span><span class="s2">, &quot;</span>
-</span><span id="line-931">                <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;rel_size_min=</span><span class="si">{</span><span class="n">rel_size_min</span><span class="si">}</span><span class="s2">&quot;</span>
-</span><span id="line-932">            <span class="p">)</span>
-</span><span id="line-933">
-</span><span id="line-934">        <span class="bp">self</span><span class="o">.</span><span class="n">_compute_calibration</span><span class="p">()</span></div>
-
+</span><span id="line-910">    <span class="k">def</span><span class="w"> </span><span class="nf">add_cuts</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">snr_min</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">snr_max</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span> <span class="n">rel_size_min</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">rel_size_max</span><span class="o">=</span><span class="mf">3.0</span><span class="p">):</span>
+</span><span id="line-911"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Add Cuts.</span>
+</span><span id="line-912">
+</span><span id="line-913"><span class="sd">        Apply additional cuts to metacal galaxy catalogue.</span>
+</span><span id="line-914"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-915">        <span class="k">if</span> <span class="p">(</span>
+</span><span id="line-916">            <span class="n">snr_min</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_snr_min</span>
+</span><span id="line-917">            <span class="ow">or</span> <span class="n">snr_max</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_snr_max</span>
+</span><span id="line-918">            <span class="ow">or</span> <span class="n">rel_size_min</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rel_size_min</span>
+</span><span id="line-919">            <span class="ow">or</span> <span class="n">rel_size_max</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rel_size_max</span>
+</span><span id="line-920">        <span class="p">):</span>
+</span><span id="line-921">            <span class="nb">print</span><span class="p">(</span>
+</span><span id="line-922">                <span class="s2">&quot;At least on cut is less stringend than existing one, &quot;</span> <span class="o">+</span> <span class="s2">&quot;skipping...&quot;</span>
+</span><span id="line-923">            <span class="p">)</span>
+</span><span id="line-924">            <span class="k">return</span>
+</span><span id="line-925">
+</span><span id="line-926">        <span class="bp">self</span><span class="o">.</span><span class="n">_snr_min</span> <span class="o">=</span> <span class="n">snr_min</span>
+</span><span id="line-927">        <span class="bp">self</span><span class="o">.</span><span class="n">_snr_max</span> <span class="o">=</span> <span class="n">snr_max</span>
+</span><span id="line-928">        <span class="bp">self</span><span class="o">.</span><span class="n">_rel_size_min</span> <span class="o">=</span> <span class="n">rel_size_min</span>
+</span><span id="line-929">        <span class="bp">self</span><span class="o">.</span><span class="n">_rel_size_max</span> <span class="o">=</span> <span class="n">rel_size_max</span>
+</span><span id="line-930">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_verbose</span><span class="p">:</span>
+</span><span id="line-931">            <span class="nb">print</span><span class="p">(</span>
+</span><span id="line-932">                <span class="sa">f</span><span class="s2">&quot;Metacal new cuts: </span><span class="si">{</span><span class="n">snr_min</span><span class="si">}</span><span class="s2">&lt;snr&lt;</span><span class="si">{</span><span class="n">snr_max</span><span class="si">}</span><span class="s2">, &quot;</span>
+</span><span id="line-933">                <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;rel_size_min=</span><span class="si">{</span><span class="n">rel_size_min</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="line-934">            <span class="p">)</span>
 </span><span id="line-935">
+</span><span id="line-936">        <span class="bp">self</span><span class="o">.</span><span class="n">_compute_calibration</span><span class="p">()</span></div>
+
+</span><span id="line-937">
 <div class="viewcode-block" id="metacal._masking_gal">
 <a class="viewcode-back" href="../../sp_validation.calibration.html#sp_validation.calibration.metacal._masking_gal">[docs]</a>
-</span><span id="line-936">    <span class="k">def</span><span class="w"> </span><span class="nf">_masking_gal</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-</span><span id="line-937"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Masking Gal.</span>
-</span><span id="line-938">
-</span><span id="line-939"><span class="sd">        Mask metacal catalogue, i.e. apply cuts.</span>
-</span><span id="line-940"><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="line-941">        <span class="bp">self</span><span class="o">.</span><span class="n">mask_dict</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="line-942">        <span class="k">for</span> <span class="n">data</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
-</span><span id="line-943">            <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">ns</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">m1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">p1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">m2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">p2</span><span class="p">],</span>
-</span><span id="line-944">            <span class="p">[</span><span class="s2">&quot;ns&quot;</span><span class="p">,</span> <span class="s2">&quot;m1&quot;</span><span class="p">,</span> <span class="s2">&quot;p1&quot;</span><span class="p">,</span> <span class="s2">&quot;m2&quot;</span><span class="p">,</span> <span class="s2">&quot;p2&quot;</span><span class="p">],</span>
-</span><span id="line-945">        <span class="p">):</span>
-</span><span id="line-946">            <span class="n">Tr_tmp</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;T&quot;</span><span class="p">]</span>
-</span><span id="line-947">            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_size_corr_ell</span><span class="p">:</span>
-</span><span id="line-948">                <span class="n">Tr_tmp</span> <span class="o">*=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;g2&quot;</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span>
-</span><span id="line-949">                    <span class="mi">1</span> <span class="o">+</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;g2&quot;</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
-</span><span id="line-950">                <span class="p">)</span>
-</span><span id="line-951">            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;snr_sextractor&quot;</span><span class="p">):</span>
-</span><span id="line-952">                <span class="n">snr_flux</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">snr_sextractor</span>
-</span><span id="line-953">            <span class="k">else</span><span class="p">:</span>
-</span><span id="line-954">                <span class="n">snr_flux</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;flux&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;flux_err&quot;</span><span class="p">]</span>
-</span><span id="line-955">
-</span><span id="line-956">            <span class="n">Tpsf</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;Tpsf&quot;</span><span class="p">]</span>
+</span><span id="line-938">    <span class="k">def</span><span class="w"> </span><span class="nf">_masking_gal</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="line-939"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Masking Gal.</span>
+</span><span id="line-940">
+</span><span id="line-941"><span class="sd">        Mask metacal catalogue, i.e. apply cuts.</span>
+</span><span id="line-942"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-943">        <span class="bp">self</span><span class="o">.</span><span class="n">mask_dict</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-944">        <span class="k">for</span> <span class="n">data</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+</span><span id="line-945">            <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">ns</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">m1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">p1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">m2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">p2</span><span class="p">],</span>
+</span><span id="line-946">            <span class="p">[</span><span class="s2">&quot;ns&quot;</span><span class="p">,</span> <span class="s2">&quot;m1&quot;</span><span class="p">,</span> <span class="s2">&quot;p1&quot;</span><span class="p">,</span> <span class="s2">&quot;m2&quot;</span><span class="p">,</span> <span class="s2">&quot;p2&quot;</span><span class="p">],</span>
+</span><span id="line-947">        <span class="p">):</span>
+</span><span id="line-948">            <span class="n">Tr_tmp</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;T&quot;</span><span class="p">]</span>
+</span><span id="line-949">            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_size_corr_ell</span><span class="p">:</span>
+</span><span id="line-950">                <span class="n">Tr_tmp</span> <span class="o">*=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;g2&quot;</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span>
+</span><span id="line-951">                    <span class="mi">1</span> <span class="o">+</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;g2&quot;</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+</span><span id="line-952">                <span class="p">)</span>
+</span><span id="line-953">            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;snr_sextractor&quot;</span><span class="p">):</span>
+</span><span id="line-954">                <span class="n">snr_flux</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">snr_sextractor</span>
+</span><span id="line-955">            <span class="k">else</span><span class="p">:</span>
+</span><span id="line-956">                <span class="n">snr_flux</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;flux&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;flux_err&quot;</span><span class="p">]</span>
 </span><span id="line-957">
-</span><span id="line-958">            <span class="n">mask_tmp</span> <span class="o">=</span> <span class="p">(</span>
-</span><span id="line-959">                <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;flag&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
-</span><span id="line-960">                <span class="o">&amp;</span> <span class="p">(</span><span class="n">Tr_tmp</span> <span class="o">/</span> <span class="n">Tpsf</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rel_size_min</span><span class="p">)</span>
-</span><span id="line-961">                <span class="o">&amp;</span> <span class="p">(</span><span class="n">Tr_tmp</span> <span class="o">/</span> <span class="n">Tpsf</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rel_size_max</span><span class="p">)</span>
-</span><span id="line-962">                <span class="o">&amp;</span> <span class="p">(</span><span class="n">snr_flux</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_snr_min</span><span class="p">)</span>
-</span><span id="line-963">                <span class="o">&amp;</span> <span class="p">(</span><span class="n">snr_flux</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_snr_max</span><span class="p">)</span>
-</span><span id="line-964">            <span class="p">)</span>
-</span><span id="line-965">
-</span><span id="line-966">            <span class="c1"># Take care of rotated version</span>
-</span><span id="line-967">            <span class="n">ind_masked</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">mask_tmp</span> <span class="o">==</span> <span class="kc">True</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
-</span><span id="line-968">
-</span><span id="line-969">            <span class="bp">self</span><span class="o">.</span><span class="n">mask_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">ind_masked</span></div>
-
+</span><span id="line-958">            <span class="n">Tpsf</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;Tpsf&quot;</span><span class="p">]</span>
+</span><span id="line-959">
+</span><span id="line-960">            <span class="n">mask_tmp</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="line-961">                <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;flag&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+</span><span id="line-962">                <span class="o">&amp;</span> <span class="p">(</span><span class="n">Tr_tmp</span> <span class="o">/</span> <span class="n">Tpsf</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rel_size_min</span><span class="p">)</span>
+</span><span id="line-963">                <span class="o">&amp;</span> <span class="p">(</span><span class="n">Tr_tmp</span> <span class="o">/</span> <span class="n">Tpsf</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rel_size_max</span><span class="p">)</span>
+</span><span id="line-964">                <span class="o">&amp;</span> <span class="p">(</span><span class="n">snr_flux</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_snr_min</span><span class="p">)</span>
+</span><span id="line-965">                <span class="o">&amp;</span> <span class="p">(</span><span class="n">snr_flux</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_snr_max</span><span class="p">)</span>
+</span><span id="line-966">            <span class="p">)</span>
+</span><span id="line-967">
+</span><span id="line-968">            <span class="c1"># Take care of rotated version</span>
+</span><span id="line-969">            <span class="n">ind_masked</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">mask_tmp</span> <span class="o">==</span> <span class="kc">True</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
 </span><span id="line-970">
+</span><span id="line-971">            <span class="bp">self</span><span class="o">.</span><span class="n">mask_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">ind_masked</span></div>
+
+</span><span id="line-972">
 <div class="viewcode-block" id="metacal._masking_gal_mom">
 <a class="viewcode-back" href="../../sp_validation.calibration.html#sp_validation.calibration.metacal._masking_gal_mom">[docs]</a>
-</span><span id="line-971">    <span class="k">def</span><span class="w"> </span><span class="nf">_masking_gal_mom</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-</span><span id="line-972"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Add docstring.</span>
-</span><span id="line-973">
-</span><span id="line-974"><span class="sd">        ...</span>
+</span><span id="line-973">    <span class="k">def</span><span class="w"> </span><span class="nf">_masking_gal_mom</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="line-974"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Add docstring.</span>
 </span><span id="line-975">
-</span><span id="line-976"><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="line-977">        <span class="bp">self</span><span class="o">.</span><span class="n">mask_dict</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="line-978">        <span class="k">for</span> <span class="n">data</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
-</span><span id="line-979">            <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">ns</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">m1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">p1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">m2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">p2</span><span class="p">],</span>
-</span><span id="line-980">            <span class="p">[</span><span class="s2">&quot;ns&quot;</span><span class="p">,</span> <span class="s2">&quot;m1&quot;</span><span class="p">,</span> <span class="s2">&quot;p1&quot;</span><span class="p">,</span> <span class="s2">&quot;m2&quot;</span><span class="p">,</span> <span class="s2">&quot;p2&quot;</span><span class="p">],</span>
-</span><span id="line-981">        <span class="p">):</span>
-</span><span id="line-982">            <span class="n">Tr_tmp</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;T&quot;</span><span class="p">]</span>
-</span><span id="line-983">            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_size_corr_ell</span><span class="p">:</span>
-</span><span id="line-984">                <span class="n">Tr_tmp</span> <span class="o">*=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;g2&quot;</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span>
-</span><span id="line-985">                    <span class="mi">1</span> <span class="o">+</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;g2&quot;</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
-</span><span id="line-986">                <span class="p">)</span>
-</span><span id="line-987">
-</span><span id="line-988">            <span class="n">mask_tmp</span> <span class="o">=</span> <span class="p">(</span>
-</span><span id="line-989">                <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;flag&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
-</span><span id="line-990">                <span class="o">&amp;</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;Tpsf&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;T&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rel_size_min</span><span class="p">)</span>
-</span><span id="line-991">                <span class="o">&amp;</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;s2n&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_snr_min</span><span class="p">)</span>
-</span><span id="line-992">                <span class="o">&amp;</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;s2n&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_snr_max</span><span class="p">)</span>
-</span><span id="line-993">                <span class="o">&amp;</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">10</span><span class="p">)</span>
-</span><span id="line-994">                <span class="o">&amp;</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span>
-</span><span id="line-995">            <span class="p">)</span>
-</span><span id="line-996">
-</span><span id="line-997">            <span class="c1"># Take care of rotated version</span>
-</span><span id="line-998">            <span class="n">ind_masked</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">mask_tmp</span> <span class="o">==</span> <span class="kc">True</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
-</span><span id="line-999">
-</span><span id="line-1000">            <span class="bp">self</span><span class="o">.</span><span class="n">mask_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">ind_masked</span></div>
-
+</span><span id="line-976"><span class="sd">        ...</span>
+</span><span id="line-977">
+</span><span id="line-978"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-979">        <span class="bp">self</span><span class="o">.</span><span class="n">mask_dict</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-980">        <span class="k">for</span> <span class="n">data</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+</span><span id="line-981">            <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">ns</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">m1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">p1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">m2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">p2</span><span class="p">],</span>
+</span><span id="line-982">            <span class="p">[</span><span class="s2">&quot;ns&quot;</span><span class="p">,</span> <span class="s2">&quot;m1&quot;</span><span class="p">,</span> <span class="s2">&quot;p1&quot;</span><span class="p">,</span> <span class="s2">&quot;m2&quot;</span><span class="p">,</span> <span class="s2">&quot;p2&quot;</span><span class="p">],</span>
+</span><span id="line-983">        <span class="p">):</span>
+</span><span id="line-984">            <span class="n">Tr_tmp</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;T&quot;</span><span class="p">]</span>
+</span><span id="line-985">            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_size_corr_ell</span><span class="p">:</span>
+</span><span id="line-986">                <span class="n">Tr_tmp</span> <span class="o">*=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;g2&quot;</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span>
+</span><span id="line-987">                    <span class="mi">1</span> <span class="o">+</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;g2&quot;</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+</span><span id="line-988">                <span class="p">)</span>
+</span><span id="line-989">
+</span><span id="line-990">            <span class="n">mask_tmp</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="line-991">                <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;flag&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+</span><span id="line-992">                <span class="o">&amp;</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;Tpsf&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;T&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rel_size_min</span><span class="p">)</span>
+</span><span id="line-993">                <span class="o">&amp;</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;s2n&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_snr_min</span><span class="p">)</span>
+</span><span id="line-994">                <span class="o">&amp;</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;s2n&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_snr_max</span><span class="p">)</span>
+</span><span id="line-995">                <span class="o">&amp;</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">10</span><span class="p">)</span>
+</span><span id="line-996">                <span class="o">&amp;</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span>
+</span><span id="line-997">            <span class="p">)</span>
+</span><span id="line-998">
+</span><span id="line-999">            <span class="c1"># Take care of rotated version</span>
+</span><span id="line-1000">            <span class="n">ind_masked</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">mask_tmp</span> <span class="o">==</span> <span class="kc">True</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
 </span><span id="line-1001">
+</span><span id="line-1002">            <span class="bp">self</span><span class="o">.</span><span class="n">mask_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">ind_masked</span></div>
+
+</span><span id="line-1003">
 <div class="viewcode-block" id="metacal._masking_star">
 <a class="viewcode-back" href="../../sp_validation.calibration.html#sp_validation.calibration.metacal._masking_star">[docs]</a>
-</span><span id="line-1002">    <span class="k">def</span><span class="w"> </span><span class="nf">_masking_star</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-</span><span id="line-1003"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Add docstring.</span>
-</span><span id="line-1004">
-</span><span id="line-1005"><span class="sd">        ...</span>
+</span><span id="line-1004">    <span class="k">def</span><span class="w"> </span><span class="nf">_masking_star</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="line-1005"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Add docstring.</span>
 </span><span id="line-1006">
-</span><span id="line-1007"><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="line-1008">        <span class="bp">self</span><span class="o">.</span><span class="n">mask_dict</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="line-1009">        <span class="k">for</span> <span class="n">data</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
-</span><span id="line-1010">            <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">ns</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">m1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">p1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">m2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">p2</span><span class="p">],</span>
-</span><span id="line-1011">            <span class="p">[</span><span class="s2">&quot;ns&quot;</span><span class="p">,</span> <span class="s2">&quot;m1&quot;</span><span class="p">,</span> <span class="s2">&quot;p1&quot;</span><span class="p">,</span> <span class="s2">&quot;m2&quot;</span><span class="p">,</span> <span class="s2">&quot;p2&quot;</span><span class="p">],</span>
-</span><span id="line-1012">        <span class="p">):</span>
-</span><span id="line-1013">            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;snr_sextractor&quot;</span><span class="p">):</span>
-</span><span id="line-1014">                <span class="n">snr_flux</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">snr_sextractor</span>
-</span><span id="line-1015">            <span class="k">else</span><span class="p">:</span>
-</span><span id="line-1016">                <span class="n">snr_flux</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;flux&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;flux_err&quot;</span><span class="p">]</span>
-</span><span id="line-1017">            <span class="n">mask_tmp</span> <span class="o">=</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;flag&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">snr_flux</span> <span class="o">&gt;</span> <span class="mi">10</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">snr_flux</span> <span class="o">&lt;</span> <span class="mi">500</span><span class="p">)</span>
-</span><span id="line-1018">
-</span><span id="line-1019">            <span class="c1"># Take care of rotated version</span>
-</span><span id="line-1020">            <span class="n">ind_masked</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">mask_tmp</span> <span class="o">==</span> <span class="kc">True</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
-</span><span id="line-1021">
-</span><span id="line-1022">            <span class="bp">self</span><span class="o">.</span><span class="n">mask_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">ind_masked</span></div>
-
+</span><span id="line-1007"><span class="sd">        ...</span>
+</span><span id="line-1008">
+</span><span id="line-1009"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-1010">        <span class="bp">self</span><span class="o">.</span><span class="n">mask_dict</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-1011">        <span class="k">for</span> <span class="n">data</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+</span><span id="line-1012">            <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">ns</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">m1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">p1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">m2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">p2</span><span class="p">],</span>
+</span><span id="line-1013">            <span class="p">[</span><span class="s2">&quot;ns&quot;</span><span class="p">,</span> <span class="s2">&quot;m1&quot;</span><span class="p">,</span> <span class="s2">&quot;p1&quot;</span><span class="p">,</span> <span class="s2">&quot;m2&quot;</span><span class="p">,</span> <span class="s2">&quot;p2&quot;</span><span class="p">],</span>
+</span><span id="line-1014">        <span class="p">):</span>
+</span><span id="line-1015">            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;snr_sextractor&quot;</span><span class="p">):</span>
+</span><span id="line-1016">                <span class="n">snr_flux</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">snr_sextractor</span>
+</span><span id="line-1017">            <span class="k">else</span><span class="p">:</span>
+</span><span id="line-1018">                <span class="n">snr_flux</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;flux&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;flux_err&quot;</span><span class="p">]</span>
+</span><span id="line-1019">            <span class="n">mask_tmp</span> <span class="o">=</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;flag&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">snr_flux</span> <span class="o">&gt;</span> <span class="mi">10</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">snr_flux</span> <span class="o">&lt;</span> <span class="mi">500</span><span class="p">)</span>
+</span><span id="line-1020">
+</span><span id="line-1021">            <span class="c1"># Take care of rotated version</span>
+</span><span id="line-1022">            <span class="n">ind_masked</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">mask_tmp</span> <span class="o">==</span> <span class="kc">True</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
 </span><span id="line-1023">
+</span><span id="line-1024">            <span class="bp">self</span><span class="o">.</span><span class="n">mask_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">ind_masked</span></div>
+
+</span><span id="line-1025">
 <div class="viewcode-block" id="metacal._shear_response">
 <a class="viewcode-back" href="../../sp_validation.calibration.html#sp_validation.calibration.metacal._shear_response">[docs]</a>
-</span><span id="line-1024">    <span class="k">def</span><span class="w"> </span><span class="nf">_shear_response</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-</span><span id="line-1025"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Shear Response.</span>
-</span><span id="line-1026">
-</span><span id="line-1027"><span class="sd">        Compute shear response matrix</span>
-</span><span id="line-1028"><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="line-1029">        <span class="n">ma</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mask_dict</span><span class="p">[</span><span class="s2">&quot;ns&quot;</span><span class="p">]</span>
-</span><span id="line-1030">        <span class="n">h2</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_step</span>
-</span><span id="line-1031">
-</span><span id="line-1032">        <span class="bp">self</span><span class="o">.</span><span class="n">R11</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">p1</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">][</span><span class="n">ma</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">m1</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">][</span><span class="n">ma</span><span class="p">])</span> <span class="o">/</span> <span class="n">h2</span>
-</span><span id="line-1033">        <span class="bp">self</span><span class="o">.</span><span class="n">R22</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">p2</span><span class="p">[</span><span class="s2">&quot;g2&quot;</span><span class="p">][</span><span class="n">ma</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">m2</span><span class="p">[</span><span class="s2">&quot;g2&quot;</span><span class="p">][</span><span class="n">ma</span><span class="p">])</span> <span class="o">/</span> <span class="n">h2</span>
-</span><span id="line-1034">        <span class="bp">self</span><span class="o">.</span><span class="n">R12</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">p2</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">][</span><span class="n">ma</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">m2</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">][</span><span class="n">ma</span><span class="p">])</span> <span class="o">/</span> <span class="n">h2</span>
-</span><span id="line-1035">        <span class="bp">self</span><span class="o">.</span><span class="n">R21</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">p1</span><span class="p">[</span><span class="s2">&quot;g2&quot;</span><span class="p">][</span><span class="n">ma</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">m1</span><span class="p">[</span><span class="s2">&quot;g2&quot;</span><span class="p">][</span><span class="n">ma</span><span class="p">])</span> <span class="o">/</span> <span class="n">h2</span>
-</span><span id="line-1036">
-</span><span id="line-1037">        <span class="bp">self</span><span class="o">.</span><span class="n">R_shear</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="bp">self</span><span class="o">.</span><span class="n">R11</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">R12</span><span class="p">],</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">R21</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">R22</span><span class="p">]])</span></div>
-
+</span><span id="line-1026">    <span class="k">def</span><span class="w"> </span><span class="nf">_shear_response</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="line-1027"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Shear Response.</span>
+</span><span id="line-1028">
+</span><span id="line-1029"><span class="sd">        Compute shear response matrix</span>
+</span><span id="line-1030"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-1031">        <span class="n">ma</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mask_dict</span><span class="p">[</span><span class="s2">&quot;ns&quot;</span><span class="p">]</span>
+</span><span id="line-1032">        <span class="n">h2</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_step</span>
+</span><span id="line-1033">
+</span><span id="line-1034">        <span class="bp">self</span><span class="o">.</span><span class="n">R11</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">p1</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">][</span><span class="n">ma</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">m1</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">][</span><span class="n">ma</span><span class="p">])</span> <span class="o">/</span> <span class="n">h2</span>
+</span><span id="line-1035">        <span class="bp">self</span><span class="o">.</span><span class="n">R22</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">p2</span><span class="p">[</span><span class="s2">&quot;g2&quot;</span><span class="p">][</span><span class="n">ma</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">m2</span><span class="p">[</span><span class="s2">&quot;g2&quot;</span><span class="p">][</span><span class="n">ma</span><span class="p">])</span> <span class="o">/</span> <span class="n">h2</span>
+</span><span id="line-1036">        <span class="bp">self</span><span class="o">.</span><span class="n">R12</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">p2</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">][</span><span class="n">ma</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">m2</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">][</span><span class="n">ma</span><span class="p">])</span> <span class="o">/</span> <span class="n">h2</span>
+</span><span id="line-1037">        <span class="bp">self</span><span class="o">.</span><span class="n">R21</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">p1</span><span class="p">[</span><span class="s2">&quot;g2&quot;</span><span class="p">][</span><span class="n">ma</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">m1</span><span class="p">[</span><span class="s2">&quot;g2&quot;</span><span class="p">][</span><span class="n">ma</span><span class="p">])</span> <span class="o">/</span> <span class="n">h2</span>
 </span><span id="line-1038">
+</span><span id="line-1039">        <span class="bp">self</span><span class="o">.</span><span class="n">R_shear</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="bp">self</span><span class="o">.</span><span class="n">R11</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">R12</span><span class="p">],</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">R21</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">R22</span><span class="p">]])</span></div>
+
+</span><span id="line-1040">
 <div class="viewcode-block" id="metacal._shear_response_std">
 <a class="viewcode-back" href="../../sp_validation.calibration.html#sp_validation.calibration.metacal._shear_response_std">[docs]</a>
-</span><span id="line-1039">    <span class="k">def</span><span class="w"> </span><span class="nf">_shear_response_std</span><span class="p">(</span>
-</span><span id="line-1040">        <span class="bp">self</span><span class="p">,</span> <span class="n">stat_operator</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">jackknif_weighted_average2</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
-</span><span id="line-1041">    <span class="p">):</span>
-</span><span id="line-1042"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Shear Response Std.</span>
-</span><span id="line-1043">
-</span><span id="line-1044"><span class="sd">        Standard deviation of shear response</span>
-</span><span id="line-1045"><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="line-1046">        <span class="n">ma</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mask_dict</span><span class="p">[</span><span class="s2">&quot;ns&quot;</span><span class="p">]</span>
-</span><span id="line-1047">        <span class="n">h2</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_step</span>
-</span><span id="line-1048">
-</span><span id="line-1049">        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ns</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">][</span><span class="n">ma</span><span class="p">])</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-</span><span id="line-1050">            <span class="bp">self</span><span class="o">.</span><span class="n">R_shear_std</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">],</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">]])</span>
-</span><span id="line-1051">        <span class="k">else</span><span class="p">:</span>
-</span><span id="line-1052">            <span class="bp">self</span><span class="o">.</span><span class="n">R11_stds</span> <span class="o">=</span> <span class="n">stat_operator</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">p1</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">][</span><span class="n">ma</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">m1</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">][</span><span class="n">ma</span><span class="p">])</span> <span class="o">/</span> <span class="n">h2</span><span class="p">)[</span>
-</span><span id="line-1053">                <span class="mi">1</span>
-</span><span id="line-1054">            <span class="p">]</span>
-</span><span id="line-1055">            <span class="bp">self</span><span class="o">.</span><span class="n">R22_stds</span> <span class="o">=</span> <span class="n">stat_operator</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">p2</span><span class="p">[</span><span class="s2">&quot;g2&quot;</span><span class="p">][</span><span class="n">ma</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">m2</span><span class="p">[</span><span class="s2">&quot;g2&quot;</span><span class="p">][</span><span class="n">ma</span><span class="p">])</span> <span class="o">/</span> <span class="n">h2</span><span class="p">)[</span>
-</span><span id="line-1056">                <span class="mi">1</span>
-</span><span id="line-1057">            <span class="p">]</span>
-</span><span id="line-1058">            <span class="bp">self</span><span class="o">.</span><span class="n">R12_stds</span> <span class="o">=</span> <span class="n">stat_operator</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">p2</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">][</span><span class="n">ma</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">m2</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">][</span><span class="n">ma</span><span class="p">])</span> <span class="o">/</span> <span class="n">h2</span><span class="p">)[</span>
-</span><span id="line-1059">                <span class="mi">1</span>
-</span><span id="line-1060">            <span class="p">]</span>
-</span><span id="line-1061">            <span class="bp">self</span><span class="o">.</span><span class="n">R21_stds</span> <span class="o">=</span> <span class="n">stat_operator</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">p1</span><span class="p">[</span><span class="s2">&quot;g2&quot;</span><span class="p">][</span><span class="n">ma</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">m1</span><span class="p">[</span><span class="s2">&quot;g2&quot;</span><span class="p">][</span><span class="n">ma</span><span class="p">])</span> <span class="o">/</span> <span class="n">h2</span><span class="p">)[</span>
-</span><span id="line-1062">                <span class="mi">1</span>
-</span><span id="line-1063">            <span class="p">]</span>
-</span><span id="line-1064">
-</span><span id="line-1065">            <span class="bp">self</span><span class="o">.</span><span class="n">R_shear_std</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
-</span><span id="line-1066">                <span class="p">[[</span><span class="bp">self</span><span class="o">.</span><span class="n">R11_stds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">R12_stds</span><span class="p">],</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">R21_stds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">R22_stds</span><span class="p">]]</span>
-</span><span id="line-1067">            <span class="p">)</span></div>
+</span><span id="line-1041">    <span class="k">def</span><span class="w"> </span><span class="nf">_shear_response_std</span><span class="p">(</span>
+</span><span id="line-1042">        <span class="bp">self</span><span class="p">,</span> <span class="n">stat_operator</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">jackknif_weighted_average2</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+</span><span id="line-1043">    <span class="p">):</span>
+</span><span id="line-1044"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Shear Response Std.</span>
+</span><span id="line-1045">
+</span><span id="line-1046"><span class="sd">        Standard deviation of shear response</span>
+</span><span id="line-1047"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-1048">        <span class="n">ma</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mask_dict</span><span class="p">[</span><span class="s2">&quot;ns&quot;</span><span class="p">]</span>
+</span><span id="line-1049">        <span class="n">h2</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_step</span>
+</span><span id="line-1050">
+</span><span id="line-1051">        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ns</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">][</span><span class="n">ma</span><span class="p">])</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="line-1052">            <span class="bp">self</span><span class="o">.</span><span class="n">R_shear_std</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">],</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">]])</span>
+</span><span id="line-1053">        <span class="k">else</span><span class="p">:</span>
+</span><span id="line-1054">            <span class="bp">self</span><span class="o">.</span><span class="n">R11_stds</span> <span class="o">=</span> <span class="n">stat_operator</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">p1</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">][</span><span class="n">ma</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">m1</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">][</span><span class="n">ma</span><span class="p">])</span> <span class="o">/</span> <span class="n">h2</span><span class="p">)[</span>
+</span><span id="line-1055">                <span class="mi">1</span>
+</span><span id="line-1056">            <span class="p">]</span>
+</span><span id="line-1057">            <span class="bp">self</span><span class="o">.</span><span class="n">R22_stds</span> <span class="o">=</span> <span class="n">stat_operator</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">p2</span><span class="p">[</span><span class="s2">&quot;g2&quot;</span><span class="p">][</span><span class="n">ma</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">m2</span><span class="p">[</span><span class="s2">&quot;g2&quot;</span><span class="p">][</span><span class="n">ma</span><span class="p">])</span> <span class="o">/</span> <span class="n">h2</span><span class="p">)[</span>
+</span><span id="line-1058">                <span class="mi">1</span>
+</span><span id="line-1059">            <span class="p">]</span>
+</span><span id="line-1060">            <span class="bp">self</span><span class="o">.</span><span class="n">R12_stds</span> <span class="o">=</span> <span class="n">stat_operator</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">p2</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">][</span><span class="n">ma</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">m2</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">][</span><span class="n">ma</span><span class="p">])</span> <span class="o">/</span> <span class="n">h2</span><span class="p">)[</span>
+</span><span id="line-1061">                <span class="mi">1</span>
+</span><span id="line-1062">            <span class="p">]</span>
+</span><span id="line-1063">            <span class="bp">self</span><span class="o">.</span><span class="n">R21_stds</span> <span class="o">=</span> <span class="n">stat_operator</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">p1</span><span class="p">[</span><span class="s2">&quot;g2&quot;</span><span class="p">][</span><span class="n">ma</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">m1</span><span class="p">[</span><span class="s2">&quot;g2&quot;</span><span class="p">][</span><span class="n">ma</span><span class="p">])</span> <span class="o">/</span> <span class="n">h2</span><span class="p">)[</span>
+</span><span id="line-1064">                <span class="mi">1</span>
+</span><span id="line-1065">            <span class="p">]</span>
+</span><span id="line-1066">
+</span><span id="line-1067">            <span class="bp">self</span><span class="o">.</span><span class="n">R_shear_std</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+</span><span id="line-1068">                <span class="p">[[</span><span class="bp">self</span><span class="o">.</span><span class="n">R11_stds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">R12_stds</span><span class="p">],</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">R21_stds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">R22_stds</span><span class="p">]]</span>
+</span><span id="line-1069">            <span class="p">)</span></div>
 
-</span><span id="line-1068">
+</span><span id="line-1070">
 <div class="viewcode-block" id="metacal._selection_response">
 <a class="viewcode-back" href="../../sp_validation.calibration.html#sp_validation.calibration.metacal._selection_response">[docs]</a>
-</span><span id="line-1069">    <span class="k">def</span><span class="w"> </span><span class="nf">_selection_response</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-</span><span id="line-1070"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Add docstring.</span>
-</span><span id="line-1071">
-</span><span id="line-1072"><span class="sd">        ...</span>
+</span><span id="line-1071">    <span class="k">def</span><span class="w"> </span><span class="nf">_selection_response</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="line-1072"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Add docstring.</span>
 </span><span id="line-1073">
-</span><span id="line-1074"><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="line-1075">        <span class="n">ma_p1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mask_dict</span><span class="p">[</span><span class="s2">&quot;p1&quot;</span><span class="p">]</span>
-</span><span id="line-1076">        <span class="n">ma_m1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mask_dict</span><span class="p">[</span><span class="s2">&quot;m1&quot;</span><span class="p">]</span>
-</span><span id="line-1077">        <span class="n">ma_p2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mask_dict</span><span class="p">[</span><span class="s2">&quot;p2&quot;</span><span class="p">]</span>
-</span><span id="line-1078">        <span class="n">ma_m2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mask_dict</span><span class="p">[</span><span class="s2">&quot;m2&quot;</span><span class="p">]</span>
-</span><span id="line-1079">        <span class="n">h2</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_step</span>
-</span><span id="line-1080">
-</span><span id="line-1081">        <span class="bp">self</span><span class="o">.</span><span class="n">R11_s</span> <span class="o">=</span> <span class="p">(</span>
-</span><span id="line-1082">            <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ns</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">][</span><span class="n">ma_p1</span><span class="p">])</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ns</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">][</span><span class="n">ma_m1</span><span class="p">])</span>
-</span><span id="line-1083">        <span class="p">)</span> <span class="o">/</span> <span class="n">h2</span>
-</span><span id="line-1084">        <span class="bp">self</span><span class="o">.</span><span class="n">R22_s</span> <span class="o">=</span> <span class="p">(</span>
-</span><span id="line-1085">            <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ns</span><span class="p">[</span><span class="s2">&quot;g2&quot;</span><span class="p">][</span><span class="n">ma_p2</span><span class="p">])</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ns</span><span class="p">[</span><span class="s2">&quot;g2&quot;</span><span class="p">][</span><span class="n">ma_m2</span><span class="p">])</span>
-</span><span id="line-1086">        <span class="p">)</span> <span class="o">/</span> <span class="n">h2</span>
-</span><span id="line-1087">        <span class="bp">self</span><span class="o">.</span><span class="n">R12_s</span> <span class="o">=</span> <span class="p">(</span>
-</span><span id="line-1088">            <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ns</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">][</span><span class="n">ma_p2</span><span class="p">])</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ns</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">][</span><span class="n">ma_m2</span><span class="p">])</span>
-</span><span id="line-1089">        <span class="p">)</span> <span class="o">/</span> <span class="n">h2</span>
-</span><span id="line-1090">        <span class="bp">self</span><span class="o">.</span><span class="n">R21_s</span> <span class="o">=</span> <span class="p">(</span>
-</span><span id="line-1091">            <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ns</span><span class="p">[</span><span class="s2">&quot;g2&quot;</span><span class="p">][</span><span class="n">ma_p1</span><span class="p">])</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ns</span><span class="p">[</span><span class="s2">&quot;g2&quot;</span><span class="p">][</span><span class="n">ma_m1</span><span class="p">])</span>
-</span><span id="line-1092">        <span class="p">)</span> <span class="o">/</span> <span class="n">h2</span>
-</span><span id="line-1093">
-</span><span id="line-1094">        <span class="bp">self</span><span class="o">.</span><span class="n">R_selection</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
-</span><span id="line-1095">            <span class="p">[[</span><span class="bp">self</span><span class="o">.</span><span class="n">R11_s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">R12_s</span><span class="p">],</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">R21_s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">R22_s</span><span class="p">]]</span>
-</span><span id="line-1096">        <span class="p">)</span></div>
+</span><span id="line-1074"><span class="sd">        ...</span>
+</span><span id="line-1075">
+</span><span id="line-1076"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-1077">        <span class="n">ma_p1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mask_dict</span><span class="p">[</span><span class="s2">&quot;p1&quot;</span><span class="p">]</span>
+</span><span id="line-1078">        <span class="n">ma_m1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mask_dict</span><span class="p">[</span><span class="s2">&quot;m1&quot;</span><span class="p">]</span>
+</span><span id="line-1079">        <span class="n">ma_p2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mask_dict</span><span class="p">[</span><span class="s2">&quot;p2&quot;</span><span class="p">]</span>
+</span><span id="line-1080">        <span class="n">ma_m2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mask_dict</span><span class="p">[</span><span class="s2">&quot;m2&quot;</span><span class="p">]</span>
+</span><span id="line-1081">        <span class="n">h2</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_step</span>
+</span><span id="line-1082">
+</span><span id="line-1083">        <span class="bp">self</span><span class="o">.</span><span class="n">R11_s</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="line-1084">            <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ns</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">][</span><span class="n">ma_p1</span><span class="p">])</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ns</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">][</span><span class="n">ma_m1</span><span class="p">])</span>
+</span><span id="line-1085">        <span class="p">)</span> <span class="o">/</span> <span class="n">h2</span>
+</span><span id="line-1086">        <span class="bp">self</span><span class="o">.</span><span class="n">R22_s</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="line-1087">            <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ns</span><span class="p">[</span><span class="s2">&quot;g2&quot;</span><span class="p">][</span><span class="n">ma_p2</span><span class="p">])</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ns</span><span class="p">[</span><span class="s2">&quot;g2&quot;</span><span class="p">][</span><span class="n">ma_m2</span><span class="p">])</span>
+</span><span id="line-1088">        <span class="p">)</span> <span class="o">/</span> <span class="n">h2</span>
+</span><span id="line-1089">        <span class="bp">self</span><span class="o">.</span><span class="n">R12_s</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="line-1090">            <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ns</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">][</span><span class="n">ma_p2</span><span class="p">])</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ns</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">][</span><span class="n">ma_m2</span><span class="p">])</span>
+</span><span id="line-1091">        <span class="p">)</span> <span class="o">/</span> <span class="n">h2</span>
+</span><span id="line-1092">        <span class="bp">self</span><span class="o">.</span><span class="n">R21_s</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="line-1093">            <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ns</span><span class="p">[</span><span class="s2">&quot;g2&quot;</span><span class="p">][</span><span class="n">ma_p1</span><span class="p">])</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ns</span><span class="p">[</span><span class="s2">&quot;g2&quot;</span><span class="p">][</span><span class="n">ma_m1</span><span class="p">])</span>
+</span><span id="line-1094">        <span class="p">)</span> <span class="o">/</span> <span class="n">h2</span>
+</span><span id="line-1095">
+</span><span id="line-1096">        <span class="bp">self</span><span class="o">.</span><span class="n">R_selection</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+</span><span id="line-1097">            <span class="p">[[</span><span class="bp">self</span><span class="o">.</span><span class="n">R11_s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">R12_s</span><span class="p">],</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">R21_s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">R22_s</span><span class="p">]]</span>
+</span><span id="line-1098">        <span class="p">)</span></div>
 
-</span><span id="line-1097">
+</span><span id="line-1099">
 <div class="viewcode-block" id="metacal._total_response">
 <a class="viewcode-back" href="../../sp_validation.calibration.html#sp_validation.calibration.metacal._total_response">[docs]</a>
-</span><span id="line-1098">    <span class="k">def</span><span class="w"> </span><span class="nf">_total_response</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-</span><span id="line-1099"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Add docstring.</span>
-</span><span id="line-1100">
-</span><span id="line-1101"><span class="sd">        ...</span>
+</span><span id="line-1100">    <span class="k">def</span><span class="w"> </span><span class="nf">_total_response</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="line-1101"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Add docstring.</span>
 </span><span id="line-1102">
-</span><span id="line-1103"><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="line-1104">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_global_R_weight</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_global_R_weight</span> <span class="o">==</span> <span class="s2">&quot;None&quot;</span><span class="p">:</span>
-</span><span id="line-1105">            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Computing unweighted response&quot;</span><span class="p">)</span>
-</span><span id="line-1106">            <span class="bp">self</span><span class="o">.</span><span class="n">R_shear_global</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">R_shear</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
-</span><span id="line-1107">        <span class="k">else</span><span class="p">:</span>
-</span><span id="line-1108">            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Computing response weighted by&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_global_R_weight</span><span class="p">)</span>
-</span><span id="line-1109">            <span class="c1"># Get weights of masked no-shear objects</span>
-</span><span id="line-1110">            <span class="n">weights</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ns</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_global_R_weight</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">mask_dict</span><span class="p">[</span><span class="s2">&quot;ns&quot;</span><span class="p">]]</span>
-</span><span id="line-1111">            <span class="bp">self</span><span class="o">.</span><span class="n">R_shear_global</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">R_shear</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">)</span>
-</span><span id="line-1112">
-</span><span id="line-1113">        <span class="bp">self</span><span class="o">.</span><span class="n">R</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">R_shear_global</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">R_selection</span></div>
+</span><span id="line-1103"><span class="sd">        ...</span>
+</span><span id="line-1104">
+</span><span id="line-1105"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-1106">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_global_R_weight</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_global_R_weight</span> <span class="o">==</span> <span class="s2">&quot;None&quot;</span><span class="p">:</span>
+</span><span id="line-1107">            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Computing unweighted response&quot;</span><span class="p">)</span>
+</span><span id="line-1108">            <span class="bp">self</span><span class="o">.</span><span class="n">R_shear_global</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">R_shear</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+</span><span id="line-1109">        <span class="k">else</span><span class="p">:</span>
+</span><span id="line-1110">            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Computing response weighted by&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_global_R_weight</span><span class="p">)</span>
+</span><span id="line-1111">            <span class="c1"># Get weights of masked no-shear objects</span>
+</span><span id="line-1112">            <span class="n">weights</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ns</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_global_R_weight</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">mask_dict</span><span class="p">[</span><span class="s2">&quot;ns&quot;</span><span class="p">]]</span>
+</span><span id="line-1113">            <span class="bp">self</span><span class="o">.</span><span class="n">R_shear_global</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">R_shear</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">)</span>
+</span><span id="line-1114">
+</span><span id="line-1115">        <span class="bp">self</span><span class="o">.</span><span class="n">R</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">R_shear_global</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">R_selection</span></div>
 </div>
 
-</span><span id="line-1114">
-</span><span id="line-1115">
+</span><span id="line-1116">
+</span><span id="line-1117">
 <div class="viewcode-block" id="mask_gal_size">
 <a class="viewcode-back" href="../../sp_validation.calibration.html#sp_validation.calibration.mask_gal_size">[docs]</a>
-</span><span id="line-1116"><span class="k">def</span><span class="w"> </span><span class="nf">mask_gal_size</span><span class="p">(</span>
-</span><span id="line-1117">    <span class="n">T</span><span class="p">,</span> <span class="n">Tpsf</span><span class="p">,</span> <span class="n">rel_size_min</span><span class="p">,</span> <span class="n">rel_size_max</span><span class="p">,</span> <span class="n">size_corr_ell</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">g1</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">g2</span><span class="o">=</span><span class="kc">None</span>
-</span><span id="line-1118"><span class="p">):</span>
-</span><span id="line-1119">
-</span><span id="line-1120">    <span class="n">Tr_tmp</span> <span class="o">=</span> <span class="n">T</span>
-</span><span id="line-1121">    <span class="k">if</span> <span class="n">size_corr_ell</span><span class="p">:</span>
-</span><span id="line-1122">        <span class="n">Tr_tmp</span> <span class="o">*=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">g1</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">g2</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">g1</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">g2</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
-</span><span id="line-1123">
-</span><span id="line-1124">    <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">Tr_tmp</span> <span class="o">/</span> <span class="n">Tpsf</span> <span class="o">&gt;</span> <span class="n">rel_size_min</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">Tr_tmp</span> <span class="o">/</span> <span class="n">Tpsf</span> <span class="o">&lt;</span> <span class="n">rel_size_max</span><span class="p">)</span>
+</span><span id="line-1118"><span class="k">def</span><span class="w"> </span><span class="nf">mask_gal_size</span><span class="p">(</span>
+</span><span id="line-1119">    <span class="n">T</span><span class="p">,</span> <span class="n">Tpsf</span><span class="p">,</span> <span class="n">rel_size_min</span><span class="p">,</span> <span class="n">rel_size_max</span><span class="p">,</span> <span class="n">size_corr_ell</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">g1</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">g2</span><span class="o">=</span><span class="kc">None</span>
+</span><span id="line-1120"><span class="p">):</span>
+</span><span id="line-1121">
+</span><span id="line-1122">    <span class="n">Tr_tmp</span> <span class="o">=</span> <span class="n">T</span>
+</span><span id="line-1123">    <span class="k">if</span> <span class="n">size_corr_ell</span><span class="p">:</span>
+</span><span id="line-1124">        <span class="n">Tr_tmp</span> <span class="o">*=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">g1</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">g2</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">g1</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">g2</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
 </span><span id="line-1125">
-</span><span id="line-1126">    <span class="k">return</span> <span class="n">mask</span></div>
-
+</span><span id="line-1126">    <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">Tr_tmp</span> <span class="o">/</span> <span class="n">Tpsf</span> <span class="o">&gt;</span> <span class="n">rel_size_min</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">Tr_tmp</span> <span class="o">/</span> <span class="n">Tpsf</span> <span class="o">&lt;</span> <span class="n">rel_size_max</span><span class="p">)</span>
 </span><span id="line-1127">
-</span><span id="line-1128">
+</span><span id="line-1128">    <span class="k">return</span> <span class="n">mask</span></div>
+
+</span><span id="line-1129">
+</span><span id="line-1130">
 <div class="viewcode-block" id="mask_gal_SNR">
 <a class="viewcode-back" href="../../sp_validation.calibration.html#sp_validation.calibration.mask_gal_SNR">[docs]</a>
-</span><span id="line-1129"><span class="k">def</span><span class="w"> </span><span class="nf">mask_gal_SNR</span><span class="p">(</span><span class="n">SNR</span><span class="p">,</span> <span class="n">snr_min</span><span class="p">,</span> <span class="n">snr_max</span><span class="p">):</span>
-</span><span id="line-1130">
-</span><span id="line-1131">    <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">SNR</span> <span class="o">&gt;</span> <span class="n">snr_min</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">SNR</span> <span class="o">&lt;</span> <span class="n">snr_max</span><span class="p">)</span>
+</span><span id="line-1131"><span class="k">def</span><span class="w"> </span><span class="nf">mask_gal_SNR</span><span class="p">(</span><span class="n">SNR</span><span class="p">,</span> <span class="n">snr_min</span><span class="p">,</span> <span class="n">snr_max</span><span class="p">):</span>
 </span><span id="line-1132">
-</span><span id="line-1133">    <span class="k">return</span> <span class="n">mask</span></div>
+</span><span id="line-1133">    <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">SNR</span> <span class="o">&gt;</span> <span class="n">snr_min</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">SNR</span> <span class="o">&lt;</span> <span class="n">snr_max</span><span class="p">)</span>
+</span><span id="line-1134">
+</span><span id="line-1135">    <span class="k">return</span> <span class="n">mask</span></div>
 
 </span></code></pre></div>
     </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">

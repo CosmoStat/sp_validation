@@ -379,7 +379,9 @@ per object for the second component.</p></li>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>data</strong> – input galaxy catalogue</p></li>
-<li><p><strong>mask</strong> (<em>array</em><em> of </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – mask according to galaxy selection, e.g. spread_model</p></li>
+<li><p><strong>mask</strong> (<em>array</em><em> of </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – pre-selection mask, e.g. flag, magnitude and footprint cuts; the
+size-based galaxy selection (<code class="docutils literal notranslate"><span class="pre">rel_size_min</span></code> &lt; T/Tpsf &lt;
+<code class="docutils literal notranslate"><span class="pre">rel_size_max</span></code>) is applied here</p></li>
 <li><p><strong>masking_type</strong> (<em>string</em><em>, </em><em>optional</em><em>, </em><em>default='gal'</em>) – masking type, one in ‘gal’, ‘gal_mom’, ‘star’</p></li>
 <li><p><strong>step</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em><em>, </em><em>default=0.01</em>) – step h in finite differences</p></li>
 <li><p><strong>prefix</strong> (<em>string</em><em>, </em><em>optional</em><em>, </em><em>default='NGMIX'</em>) – to specify columns in input catalogue</p></li>
