@@ -70,6 +70,10 @@ source cache off the shared filesystem), so a login shell that points it at
 `/scratch` is fine; keep any other path you export on a shared disk. Per-rule
 `mem_mb` / `runtime` stay on the rules.
 
+Jobs draw their figures with matplotlib's defaults: `common.py` points each
+job's `MATPLOTLIBRC` at `workflow/matplotlibrc`, so your own matplotlibrc
+shapes your interactive work in the container but never a rule's figure.
+
 ### Off candide — the default profile
 
 Candide is where the analysis runs, so the candide profile is the one to reach
