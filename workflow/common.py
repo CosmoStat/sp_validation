@@ -235,11 +235,8 @@ def covariance_path(
 
 
 def base_version(version):
-    """Strip the derived-catalogue suffixes to the base catalogue version.
-
-    The `_leak_corr` / `_ecut{N}` variants share their parent's n(z) and
-    `cov_th` survey parameters, so lookups keyed on either must strip both.
-    """
+    """Strip the `_leak_corr` / `_ecut{N}` suffixes to the base catalogue
+    version, whose footprint and plotting style its variants share."""
     return re.sub(r"_ecut\d+", "", re.sub(r"_leak_corr$", "", version))
 
 
@@ -253,9 +250,8 @@ def catalogue_entry(version):
 
 def redshift_path(version):
     """The n(z) file of ``version``: its catalogue entry's ``shear.redshift_path``,
-    relative to the entry's ``subdir`` unless absolute."""
-    entry = catalogue_entry(version)
-    return os.path.join(entry.get("subdir", ""), entry["shear"]["redshift_path"])
+    as written (as ``CosmologyValidation.get_redshift`` reads it)."""
+    return catalogue_entry(version)["shear"]["redshift_path"]
 
 
 # ---------------------------------------------------------------------------
