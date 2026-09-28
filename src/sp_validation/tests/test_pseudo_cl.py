@@ -141,7 +141,7 @@ def _write_synthetic_config(tmp_path):
         "star_flag": "w",
     }
     config_data = {
-        "nz": {"subdir": str(nz_dir), "dndz": {"blind": "A", "path": "dndz"}},
+        "nz": {"subdir": str(nz_dir), "dndz": {"path": "dndz_{pipeline}_A.txt"}},
         "paths": {"output": str(output_dir)},
         version: {
             "subdir": str(cat_dir),
