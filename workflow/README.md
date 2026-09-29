@@ -126,15 +126,7 @@ halves of one commit, split.
 The catalogue config is the launched checkout's `cosmo_val/cat_config.yaml`.
 `COSMO_VAL` defaults to the launched checkout's `cosmo_val/output`, so writing
 into another checkout's products means naming it; `COSMO_INFERENCE` defaults to
-the shared candide tree, which holds the CosmoCov covariances and only its owner
-can write. Anyone else launches with `COSMO_INFERENCE=<tree>` of their own,
-holding a link to the shared tree's `data/mask/` (the one input the covariance
-rules take from it); the CosmoCov chain then runs there:
-
-```bash
-mkdir -p <tree>/data
-ln -s /n17data/cdaley/unions/code/sp_validation/cosmo_inference/data/mask <tree>/data/
-```
+the shared candide tree.
 
 **Caveat:** `rerun-triggers: code` watches rule bodies and `script:` files, not
 `src/`. Editing a module under `src/` does not by itself mark outputs stale —
