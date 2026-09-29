@@ -82,7 +82,7 @@ Main configuration in `scripts/calibration/params.py` with parameters:
 
 ## Blinded catalogues
 Each `cosmo_val/cat_config.yaml` entry declares `blind: none`, `mock` or a blind's name.
-- For an entry with `blind: <name>`, measure signal (ξ±, Cℓ, γt, COSEBIs, M_ap, maps) only through `CosmologyValidation` or the workflow, never from the file directly.
+- For an entry with `blind: <name>`, signal (ξ±, Cℓ, COSEBIs, M_ap, maps, any cosmological statistic) leaves the function that measures it only sealed: compute it and `sacc_io.save(..., custody=)` it in that function and return the sealed part, as `CosmologyValidation` and the workflow do. Never measure it from the file and keep the raw values.
 - Never set `blind: none` to get a run through.
 - Never print, paste or commit a `.blind.json`.
 

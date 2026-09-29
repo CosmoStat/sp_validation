@@ -87,7 +87,6 @@ Optionality: a file's contents are flexible about which components of
 
 import functools
 import os
-import re
 import types
 
 import numpy as np
@@ -107,8 +106,6 @@ CL_BB = "galaxy_shear_cl_bb"
 CL_EB = "galaxy_shear_cl_eb"
 COSEBI_EE = "galaxy_shear_cosebi_ee"
 COSEBI_BB = "galaxy_shear_cosebi_bb"
-GAMMA_T = "galaxy_shearDensity_xi_t"
-GAMMA_X = "galaxy_shearDensity_xi_x"
 
 # Custom data-type strings (all parse under sacc.parse_data_type_name).
 PURE_TYPES = {
@@ -162,13 +159,7 @@ def new_sacc(nz, metadata=None):
     items = nz.items() if isinstance(nz, dict) else enumerate(nz)
     s = sacc.Sacc()
     for i, (z, nz_i) in items:
-        s.add_tracer(
-            "NZ",
-            source_name(i),
-            np.asarray(z),
-            np.asarray(nz_i),
-            quantity="galaxy_shear",
-        )
+        s.add_tracer("NZ", source_name(i), np.asarray(z), np.asarray(nz_i))
     # The PSF star sample sits alongside the source bins because a Sacc has a
     # single tracer namespace — every data point references tracers from one
     # flat list. This is bookkeeping, not physics: psf_stars is a Misc tracer
@@ -423,28 +414,6 @@ def add_pure_eb(
         arr = values[key]
         if arr is not None:
             _add_theta_series(s, PURE_TYPES[key], tracers, theta, arr, grid=grid)
-
-
-def add_lens(s, name, nz=None, *, quantity="galaxy_density", bias=None):
-    """Add a γt lens sample: galaxies with their ``(z, n(z))`` and linear
-    ``bias``, or, as a tracer without either, ``quantity="stars"`` or
-    ``"randoms"``."""
-    if nz is None:
-        s.add_tracer("Misc", name, quantity=quantity)
-    else:
-        metadata = {} if bias is None else {"bias": float(bias)}
-        s.add_tracer(
-            "NZ", name, *map(np.asarray, nz), quantity=quantity, metadata=metadata
-        )
-
-
-def add_gamma_t(s, source_bin, lens, theta, gamma_t, gamma_x=None, **tags):
-    """Add γt (and optionally γ×) of source bin ``source_bin`` around ``lens``."""
-    _check_ascending("theta", theta)
-    tracers = (source_name(source_bin), lens)
-    _add_theta_series(s, GAMMA_T, tracers, theta, gamma_t, **tags)
-    if gamma_x is not None:
-        _add_theta_series(s, GAMMA_X, tracers, theta, gamma_x, **tags)
 
 
 def add_rho(s, k, theta, rho_p, rho_m, *, grid="reporting"):
@@ -1006,52 +975,8 @@ def _check_grid_consistency(s, angle):
 # --------------------------------------------------------------------------- #
 # The file door: every SACC is born sealed, derived with one stamp, or refused
 # --------------------------------------------------------------------------- #
-# The blinding rule of each data type a blinded catalogue's SACC may hold. A
-# data type with none is refused under a blind, so a new statistic fails closed.
-# Signal the blind shifts, each by its theory in sp_validation.theory.THEORY:
-SHIFTABLE = (XI_PLUS, XI_MINUS, CL_EE, GAMMA_T)
-# signal a pure E-mode shift leaves unchanged:
-UNSHIFTED = (CL_BB, CL_EB, GAMMA_X)
-# signal derived from ξ±, which moves only through the rows it is computed from:
-DERIVED = (COSEBI_EE, COSEBI_BB, *PURE_TYPES.values())
-SIGNAL = SHIFTABLE + UNSHIFTED + DERIVED
-# and no signal: the PSF's ρ and the galaxy–PSF τ statistics.
-_SIGNAL_FREE = re.compile(
-    "|".join(t.format(k=r"\d+") for t in (RHO_PLUS, RHO_MINUS, TAU_PLUS, TAU_MINUS))
-)
-# γt around a lens tracer of one of these quantities is a null test, not signal.
-NULL_LENSES = ("stars", "randoms")
-
-
-def shiftable(s):
-    """Indices of the rows of ``s`` a blind shifts."""
-    return np.array(
-        [
-            i
-            for i, dp in enumerate(s.data)
-            if dp.data_type in SHIFTABLE
-            and not any(s.tracers[t].quantity in NULL_LENSES for t in dp.tracers)
-        ],
-        dtype=int,
-    )
-
-
-def _refuse_unruled(s):
-    """Refuse rows of a data type with no blinding rule (under a blind)."""
-    unruled = sorted(
-        t
-        for t in {dp.data_type for dp in s.data}
-        if t not in SIGNAL and not _SIGNAL_FREE.fullmatch(t)
-    )
-    if unruled:
-        raise ValueError(
-            f"{unruled}: no blinding rule for these data types, so a blinded "
-            "catalogue's SACC cannot hold them. Signal is SHIFTABLE in sacc_io, "
-            "with a function in sp_validation.theory.THEORY; UNSHIFTED is only for "
-            "signal that a pure E-mode shift leaves unchanged"
-        )
-
-
+# Which rows a blind shifts, leaves or refuses is sp_validation.blinding's
+# table of standard estimators, imported only when a file is sealed or derived.
 def _stamped(s):
     return _custody.STAMP_KEY in s.metadata
 
@@ -1060,37 +985,43 @@ def _mint(s, custody):
     s.metadata[_custody.STAMP_KEY] = custody.token
 
 
-def seal(s, custody):
+def seal(s, custody, theory=None):
     """A stamped copy of ``s``, concealed first when the catalogue is blinded.
 
     @sc born-sealed
     A catalogue-born SACC leaves memory only through here. Under a blinded
-    custody every :func:`shiftable` row (ξ±, Cℓ_EE, γt) is shifted on a copy
+    custody every shiftable row (:func:`sp_validation.blinding.shiftable`:
+    ξ±, Cℓ_EE, and each type ``theory`` gives a function) is shifted on a copy
     before the stamp is minted; a SACC with none is stamped without opening
     the blind; a derived statistic (COSEBIs, pure-E/B) is refused here and
-    saved with ``derived_from``; a data type with no blinding rule is refused.
-    An already-stamped SACC is re-written only as a derivation.
+    saved with ``derived_from``; any other type is refused. An already-stamped
+    SACC is re-written only as a derivation.
     """
     if _stamped(s):
         raise ValueError(
             "this SACC is already stamped; a loaded or sealed SACC is re-written "
             "only as a derivation (save(..., derived_from=[...]))"
         )
-    if custody.blinded:
-        _refuse_unruled(s)
-    types = {dp.data_type for dp in s.data}
-    derived = types & set(DERIVED)
-    if custody.blinded and derived:
-        raise ValueError(
-            f"a blinded catalogue's {sorted(derived)} rows are derived "
-            "statistics: save them with derived_from=[their input parts]"
-        )
-    if custody.blinded and len(shiftable(s)):
+    if not custody.blinded:
+        out = s.copy()
+    else:
         from . import blinding
 
-        out = blinding.conceal(s, blinding.open_blind(custody))
-    else:
-        out = s.copy()
+        blinding.refuse_unruled(s, theory)
+        derived = {
+            dp.data_type
+            for dp in s.data
+            if blinding.rule(dp.data_type) == blinding.DERIVED
+        }
+        if derived:
+            raise ValueError(
+                f"a blinded catalogue's {sorted(derived)} rows are derived "
+                "statistics: save them with derived_from=[their input parts]"
+            )
+        if len(blinding.shiftable(s, theory)):
+            out = blinding.conceal(s, blinding.open_blind(custody), theory)
+        else:
+            out = s.copy()
     _mint(out, custody)
     return out
 
@@ -1102,6 +1033,8 @@ def _row_key(dp):
 
 def _derive(s, parts, custody):
     """A copy of ``s`` under its inputs' one stamp (and ``custody``'s, if given)."""
+    from . import blinding
+
     if not parts:
         raise ValueError("a derivation needs its input parts")
     stamps = [_custody.read_stamp(p.metadata) for p in parts]
@@ -1116,22 +1049,30 @@ def _derive(s, parts, custody):
             f"parts are stamped {stamp.token}, but the catalogue is declared "
             f"{custody.token}"
         )
-    if stamp.blinded:
-        _refuse_unruled(s)
-    inputs = {_row_key(p.data[i]) for p in parts for i in shiftable(p)}
-    stray = [i for i in shiftable(s) if _row_key(s.data[i]) not in inputs]
+
+    def born(x):
+        """Rows only a birth makes: shiftable ones, and under a blind custom types."""
+        rules = [blinding.rule(dp.data_type) for dp in x.data]
+        return [
+            i
+            for i, r in enumerate(rules)
+            if callable(r) or (stamp.blinded and r is None)
+        ]
+
+    inputs = {_row_key(p.data[i]) for p in parts for i in born(p)}
+    stray = [i for i in born(s) if _row_key(s.data[i]) not in inputs]
     if stray:
         raise ValueError(
-            f"{len(stray)} shiftable rows of a derivation are not copies of its "
-            "inputs' rows; a catalogue's shiftable signal is born only through "
-            "save(custody=)"
+            f"{len(stray)} rows of a derivation are not copies of its inputs' "
+            "rows, but only a birth makes them (shiftable signal, and under a "
+            "blind any custom type): save them with custody="
         )
     out = s.copy()
     _mint(out, stamp)
     return out
 
 
-def save(s, path, *, custody=None, derived_from=None):
+def save(s, path, *, custody=None, derived_from=None, theory=None):
     """Write ``s`` to ``path`` (FITS) through the one door; return what was written.
 
     @sc one-door
@@ -1139,21 +1080,28 @@ def save(s, path, *, custody=None, derived_from=None):
     custody stamp is minted:
 
     - ``save(s, path, custody=c)``: a birth, sealed by :func:`seal`;
+      ``theory={data_type: f}`` shifts a type outside the standard estimators
+      under a blind (:mod:`sp_validation.blinding`);
     - ``save(s, path, derived_from=parts)``: a derivation, stamped with its
       inputs' one stamp;
     - ``save(s, path, derived_from=parts, custody=c)``: an assembly, a
       derivation whose stamp must also be ``c``'s.
 
+    A measurement computes its signal and saves (or seals) it in the same
+    function, returning the sealed part, so its raw signal never leaves it.
+
     @sc derived-inherit
     A derivation's inputs must share one stamp, and each of its shiftable rows
-    must be a copy of an input row (type, tracers, value, tags; windows by
-    index), so plaintext cannot be saved under a concealed stamp; under a
-    blinded stamp every data type needs a blinding rule, as at birth.
+    (under a blind, each row of a custom type too) must be a copy of an input
+    row (type, tracers, value, tags; windows by index), so plaintext cannot be
+    saved under a concealed stamp.
     """
     if derived_from is not None:
+        if theory is not None:
+            raise ValueError("theory= shifts a birth; a derivation inherits")
         out = _derive(s, list(derived_from), custody)
     elif custody is not None:
-        out = seal(s, custody)
+        out = seal(s, custody, theory)
     else:
         raise ValueError(
             "save needs custody= (a birth) or derived_from= (a derivation); "

@@ -1,13 +1,19 @@
 """The blind: a secret seed, drawn once, and the shift it conceals signal by.
 
+@sc standard-estimators
+:data:`STANDARD` names each estimator cosmo_val computes and its blinding
+rule, once. Any other data type is shifted when its birth passes a theory
+function, ``sacc_io.save(s, path, custody=c, theory={data_type: f})``, with
+``f(params, s, rows) -> values`` as in :mod:`sp_validation.theory`; without
+one it is refused under a blind.
+
 @sc blind-record
 A blind is one read-only file, ``<paths.blinds>/<name>.blind.json``, outside
 any git worktree: its seed (unencrypted: registry access is blind access), the
 envelope the hidden point is drawn in, the fiducial and the fork's draw scheme.
-Nothing here prints the seed or the hidden cosmology: :class:`Blind` holds a
-name and a path, :func:`_hidden` returns a mapping whose repr is
-``<hidden cosmology>``, and a theory failure at the hidden point is reported
-by exception type alone.
+:class:`Blind` holds a name and a path, never a hidden value; :func:`_hidden`
+returns a mapping whose repr is ``<hidden cosmology>``, and a theory failure at
+the hidden point is reported by exception type alone.
 
 @sc hidden-draw-uniform-s8-om
 The hidden point is the fiducial (:func:`sp_validation.theory.fiducial`) moved
@@ -28,15 +34,78 @@ import warnings
 from collections.abc import Mapping
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from types import MappingProxyType
 
 import numpy as np
 
 from . import custody as _custody
-from . import sacc_io
+from . import sacc_io as sio
 from . import theory as _theory
 
 ENVELOPE = {"S8": 0.075, "Omega_m": 0.1}
 SECRET = "secret: never print, paste or commit"
+
+# --------------------------------------------------------------------------- #
+# The standard estimators cosmo_val computes, and how a blind treats each
+# --------------------------------------------------------------------------- #
+UNSHIFTED = "unshifted"  # signal a pure E-mode shift leaves unchanged
+DERIVED = "derived"  # computed from ξ±, so shifted through the rows it reads
+SIGNAL_FREE = "signal-free"  # PSF diagnostics, no cosmological signal
+
+STANDARD = MappingProxyType(
+    {
+        # Shifted by t(hidden) − t(fiducial), t the default PyCCL theory.
+        sio.XI_PLUS: _theory.shear_xi,
+        sio.XI_MINUS: _theory.shear_xi,
+        sio.CL_EE: _theory.shear_cl,
+        sio.CL_BB: UNSHIFTED,
+        sio.CL_EB: UNSHIFTED,
+        sio.COSEBI_EE: DERIVED,
+        sio.COSEBI_BB: DERIVED,
+        **dict.fromkeys(sio.PURE_TYPES.values(), DERIVED),
+        **{
+            t.format(k=k): SIGNAL_FREE
+            for ts, ks in (
+                ((sio.RHO_PLUS, sio.RHO_MINUS), range(6)),
+                ((sio.TAU_PLUS, sio.TAU_MINUS), (0, 2, 5)),
+            )
+            for t in ts
+            for k in ks
+        },
+    }
+)
+
+
+def rule(data_type, theory=None):
+    """``data_type``'s rule: its theory function if a blind shifts it, else
+    :data:`UNSHIFTED`, :data:`DERIVED`, :data:`SIGNAL_FREE`, or None (refused
+    under a blind). ``theory`` gives functions for custom types and may
+    replace a standard one's."""
+    standard = STANDARD.get(data_type)
+    if theory and data_type in theory:
+        if standard is not None and not callable(standard):
+            raise ValueError(f"{data_type} is {standard} under a blind; no theory")
+        return theory[data_type]
+    return standard
+
+
+def shiftable(s, theory=None):
+    """Indices of the rows of ``s`` a blind shifts."""
+    rules = [rule(dp.data_type, theory) for dp in s.data]
+    return np.array([i for i, r in enumerate(rules) if callable(r)], dtype=int)
+
+
+def refuse_unruled(s, theory=None):
+    """Refuse rows of a data type with no blinding rule."""
+    unruled = sorted(
+        {dp.data_type for dp in s.data if rule(dp.data_type, theory) is None}
+    )
+    if unruled:
+        raise ValueError(
+            f"{unruled}: no blinding rule for these data types, so a blinded "
+            "catalogue's SACC cannot hold them; pass each a theory function, "
+            "save(..., theory={data_type: f})"
+        )
 
 
 class BlindingError(RuntimeError):
@@ -120,7 +189,7 @@ def _at_hidden(s, rows, theory, blind):
         quiet = io.StringIO()
         with warnings.catch_warnings(), redirect_stdout(quiet), redirect_stderr(quiet):
             warnings.simplefilter("ignore")
-            return _theory.predict(s, _hidden(blind), rows, theory)
+            return _theory.predict(s, _hidden(blind), theory, rows)
 
     try:
         return evaluate()
@@ -132,24 +201,18 @@ def _at_hidden(s, rows, theory, blind):
 
 
 def conceal(s, blind, theory=None):
-    """A copy of ``s`` with its shiftable rows moved by the blind's shift.
+    """A copy of ``s`` with its :func:`shiftable` rows moved by the blind's shift.
 
-    The shift is t(hidden) − t(fiducial), from ``theory`` (default
-    :data:`sp_validation.theory.THEORY`), evaluated at the fiducial first. A
-    shiftable type without a theory, and a data type and tracer pair the blind
-    leaves unmoved or moves to a non-finite value, are refused.
+    The shift is t(hidden) − t(fiducial), t each row's theory (:data:`STANDARD`,
+    or ``theory`` for a custom type), evaluated at the fiducial first. A data
+    type and tracer pair the blind leaves unmoved or moves to a non-finite
+    value is refused.
     """
-    theory = _theory.THEORY if theory is None else theory
-    rows = sacc_io.shiftable(s)
-    types = {s.data[i].data_type for i in rows}
-    if types - set(theory):
-        raise BlindingError(
-            f"no theory for the shiftable {sorted(types - set(theory))}; "
-            "give it a function in sp_validation.theory.THEORY"
-        )
+    rows = shiftable(s, theory)
+    functions = {s.data[i].data_type: rule(s.data[i].data_type, theory) for i in rows}
     fiducial = json.loads(blind.path.read_text())["fiducial"]
-    at_fiducial = _theory.predict(s, fiducial, rows, theory)
-    delta = _at_hidden(s, rows, theory, blind) - at_fiducial
+    at_fiducial = _theory.predict(s, fiducial, functions, rows)
+    delta = _at_hidden(s, rows, functions, blind) - at_fiducial
     groups = {}
     for n, i in enumerate(rows):
         groups.setdefault((s.data[i].data_type, s.data[i].tracers), []).append(n)

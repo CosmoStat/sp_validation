@@ -34,21 +34,27 @@ one blind (the repository config is authoritative), and a blinded catalogue is
 shown only beside mocks and its own blind, since any other overlay shows the
 shift. A launch prints one `[custody]` line per catalogue.
 
-Under a blind, ξ±, pseudo-Cℓ_EE and γt are shifted by t(hidden) − t(fiducial)
-before they are first written, t being the data type's theory in
-`sp_validation.theory.THEORY`; statistics derived from them carry the blind, and
-a data type with no blinding rule in `sacc_io` is refused. COSEBIs B_n move only
-by the transform's response to an E-mode shift; pure-E/B ξ_B is not additive on noisy ξ±
-and also moves in isolated bins (`test_blinding_bmodes`).
-Rule params carry the custody token, so a flip reruns what it touches.
+Under a blind, ξ± and pseudo-Cℓ_EE are shifted by t(hidden) − t(fiducial)
+before they are first written, t being the default PyCCL theory;
+`sp_validation.blinding.STANDARD` lists every standard estimator's rule once
+(Cℓ_BB/EB unshifted, COSEBIs and pure-E/B inheriting from ξ±, ρ/τ signal-free).
+Any other data type is shifted by a theory function its birth passes,
+`sacc_io.save(s, path, custody=c, theory={data_type: f})` with
+`f(params, s, rows) -> values`, and is refused under a blind without one.
+COSEBIs B_n move only by the transform's response to an E-mode shift; pure-E/B
+ξ_B is not additive on noisy ξ± and also moves in isolated bins
+(`test_blinding_bmodes`). Rule params carry the custody token, so a flip reruns
+what it touches.
+
+A measurement calculates, then saves: one function computes the signal, saves
+or seals it under the catalogue's custody, and returns the sealed part, so raw
+signal never leaves it (`CosmologyValidation.calculate_2pcf` is the pattern).
 
 A blind is one record, `<paths.blinds>/<name>.blind.json`, outside any git
 worktree; read access to it is access to the blind.
 `spv-container exec python -m sp_validation.blinding init <name>` draws one,
-once; `… show <name>` prints its public record. For an entry under a blind,
-measure signal only through `CosmologyValidation` or the workflow; never set
-`blind: none` to get a run through; never print, paste or commit a
-`.blind.json`.
+once; `… show <name>` prints its public record. Never set `blind: none` to get
+a run through; never print, paste or commit a `.blind.json`.
 
 ## Running on the cluster — the candide profile
 

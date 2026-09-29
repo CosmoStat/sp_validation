@@ -5,9 +5,9 @@ A theory is a function ``f(params, s, rows) -> values``: the prediction, at the
 parameter point ``params``, for rows ``rows`` of SACC ``s``, which share a data
 type's theory, a tracer pair and a bandpower window; values are aligned to
 ``rows``. ``params`` is a plain mapping with the keys of :func:`fiducial`,
-never a CCL object, so an emulator can stand in for CCL. :data:`THEORY` maps
-each data type to its default, and :func:`predict` takes any other mapping as
-``theory=``.
+never a CCL object, so an emulator can stand in for CCL. :func:`shear_xi` and
+:func:`shear_cl` are the defaults :data:`sp_validation.blinding.STANDARD`
+shifts ξ± and Cℓ_EE by.
 
 @sc theory-ccl-default
 The defaults build one ``pyccl.Cosmology`` per point through
@@ -19,13 +19,12 @@ pyccl and cs_util are imported only when a default theory runs.
 """
 
 import functools
-from types import MappingProxyType
 
 import numpy as np
 
-from .sacc_io import CL_EE, GAMMA_T, XI_MINUS, XI_PLUS
+from .sacc_io import XI_PLUS
 
-# Multipoles the ξ± and γt Hankel transforms integrate over: every ℓ below 50,
+# Multipoles the ξ± Hankel transform integrates over: every ℓ below 50,
 # then 200 log-spaced up to 6·10⁴.
 ELL = np.unique(np.concatenate([np.arange(2, 50), np.geomspace(50, 6e4, 200)]))
 _COSMOLOGY = ("S8", "Omega_m", "Omega_b", "h", "n_s", "m_nu", "w0", "wa", "logT_AGN")
@@ -99,17 +98,6 @@ def nz(s, name):
     return np.asarray(tracer.z, float), np.asarray(tracer.nz, float)
 
 
-def source_lens(s, rows):
-    """The source and lens tracers of γt-like rows, told apart by quantity."""
-    names = s.data[rows[0]].tracers
-    by = {s.tracers[n].quantity: n for n in names}
-    if len(names) != 2 or set(by) != {"galaxy_shear", "galaxy_density"}:
-        raise ValueError(
-            f"tracers {names} are not one galaxy_shear and one galaxy_density tracer"
-        )
-    return by["galaxy_shear"], by["galaxy_density"]
-
-
 def _lensing(cosmo, params, s, name):
     import pyccl as ccl
 
@@ -146,37 +134,13 @@ def shear_cl(params, s, rows):
     return np.asarray(window.weight).T @ cl
 
 
-def gamma_t(params, s, rows):
-    """γt of a source bin around a lens sample of the linear bias its tracer
-    carries (``sacc_io.add_lens(..., bias=)``)."""
-    import pyccl as ccl
-
-    source, lens = source_lens(s, rows)
-    b = (s.tracers[lens].metadata or {}).get("bias")
-    if b is None:
-        raise ValueError(f"lens tracer {lens} carries no linear bias")
-    cosmo = cosmology(params)
-    z, n = nz(s, lens)
-    bias = (z, np.full_like(z, float(b)))
-    counts = ccl.NumberCountsTracer(cosmo, has_rsd=False, dndz=(z, n), bias=bias)
-    cl = ccl.angular_cl(cosmo, counts, _lensing(cosmo, params, s, source), ELL)
-    theta = tag(s, rows, "theta") / 60.0
-    return ccl.correlation(cosmo, ell=ELL, C_ell=cl, theta=theta, type="NG")
-
-
-THEORY = MappingProxyType(
-    {XI_PLUS: shear_xi, XI_MINUS: shear_xi, CL_EE: shear_cl, GAMMA_T: gamma_t}
-)
-
-
-def predict(s, params, rows=None, theory=None):
+def predict(s, params, theory, rows=None):
     """The theory of ``rows`` (default: all) of ``s`` at ``params``.
 
-    Rows are grouped by theory function, tracer pair and bandpower window, one
-    call per group, so ξ+ and ξ− of a pair share their C_ℓ. ``theory`` maps
-    data type to function (default :data:`THEORY`); a row without one raises.
+    ``theory`` maps data type to function; a row without one raises. Rows are
+    grouped by function, tracer pair and bandpower window, one call per group,
+    so ξ+ and ξ− of a pair share their C_ℓ.
     """
-    theory = THEORY if theory is None else theory
     rows = np.arange(len(s.data)) if rows is None else np.asarray(rows, int)
     groups = {}
     for n, i in enumerate(rows):

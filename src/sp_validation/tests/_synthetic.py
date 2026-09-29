@@ -6,8 +6,9 @@ seams read, a cs_util-readable dndz, and a ``cat_config.yaml`` whose blind
 registry is ``blinds/`` beside it. Every catalogue entry in the config reads its
 own copy of the same galaxies and declares its own custody.
 
-``TOY_THEORY`` stands in for :data:`sp_validation.theory.THEORY`, so a blind
-shifts without running CAMB.
+``TOY_STANDARD`` is :data:`sp_validation.blinding.STANDARD` with the analytic
+``toy_theory`` in place of each default theory, so a blind shifts without
+running CAMB.
 """
 
 import copy
@@ -16,7 +17,7 @@ from types import MappingProxyType
 import numpy as np
 import yaml
 
-from sp_validation import sacc_io
+from sp_validation import blinding
 
 
 def toy_theory(params, s, rows):
@@ -25,7 +26,9 @@ def toy_theory(params, s, rows):
     return 1e-4 * params["S8"] ** 2 * params["Omega_m"] ** 0.3 * (x / 10.0) ** -0.8
 
 
-TOY_THEORY = MappingProxyType({t: toy_theory for t in sacc_io.SHIFTABLE})
+TOY_STANDARD = MappingProxyType(
+    {t: toy_theory if callable(r) else r for t, r in blinding.STANDARD.items()}
+)
 
 
 def write_synthetic_catalogs(

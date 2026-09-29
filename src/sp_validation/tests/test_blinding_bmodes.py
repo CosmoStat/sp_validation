@@ -51,7 +51,7 @@ def _fiducial_xi():
     s = sio.new_sacc({0: (z, np.exp(-(((z - 0.7) / 0.3) ** 2)))})
     for theta, grid in ((THETA, "reporting"), (THETA_INT, "integration")):
         sio.add_xi(s, (0, 0), theta, 0 * theta, 0 * theta, grid=grid, theta_nom=theta)
-    for dp, value in zip(s.data, theory.predict(s, theory.fiducial())):
+    for dp, value in zip(s.data, theory.predict(s, theory.fiducial(), bd.STANDARD)):
         dp.value = float(value)
     s.add_covariance(VARIANCE)
     return s
