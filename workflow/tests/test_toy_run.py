@@ -49,7 +49,7 @@ def _stamps(image, root, parts):
     script = (
         "import json, sys\n"
         "from sp_validation import custody, sacc_io\n"
-        "print(json.dumps([custody.read_stamp(sacc_io.load(p).metadata).stamp"
+        "print(json.dumps([custody.read_stamp(sacc_io.load(p).metadata).token"
         " for p in sys.argv[1:]]))"
     )
     return json.loads(_in_image(image, root, "python", "-c", script, *map(str, parts)))
@@ -143,8 +143,8 @@ def test_xi_parts_are_stamped_with_the_blinds_commitment():
     assert result.returncode == 0, result.stdout
 
     record = json.loads((root / "cosmo_val/blinds/toy.blind.json").read_text())
-    stamp = {"blind": "toy", "blind_commitment": custody.commitment(record)}
+    token = f"toy:{custody.commitment(record)}"
     parts = [out / f"{v}_xi_{BINNING}.sacc" for v in VERSIONS]
-    assert _stamps(image, root, parts) == [stamp] * len(parts)
+    assert _stamps(image, root, parts) == [token] * len(parts)
 
     shutil.rmtree(root)  # kept on failure, for post-mortem

@@ -536,7 +536,35 @@ def test_a_blinded_catalogues_xi_leaves_concealed(blinded_and_twin):
     np.testing.assert_allclose(
         blinded.mean - twin.mean, shift, rtol=1e-8, atol=1e-12 * np.abs(shift).max()
     )
-    assert blinded.metadata["blind"] == "toy"
+    assert blinded.metadata["custody"] == cv.custody("TOY").token
     assert cv.xi_parts["TOY", "reporting"] is blinded
     with pytest.raises(CustodyError, match="shows the blind's shift"):
         CosmologyValidation(versions=["TOY", "TOY_OPEN"], **grid)
+
+
+def test_map2_transform_is_treecorrs_calculate_map_sq():
+    """⟨M_ap²⟩, ⟨M_×²⟩ from the ξ± transform equal TreeCorr's own sum."""
+    import treecorr
+
+    from sp_validation.cosmo_val.real_space import _map2_transform
+
+    rng = np.random.default_rng(1)
+    n = 5000
+    cat = treecorr.Catalog(
+        ra=rng.uniform(0, 5, n),
+        dec=rng.uniform(0, 5, n),
+        g1=rng.normal(0, 0.3, n),
+        g2=rng.normal(0, 0.3, n),
+        ra_units="deg",
+        dec_units="deg",
+    )
+    gg = treecorr.GGCorrelation(
+        min_sep=0.5, max_sep=200, nbins=200, sep_units="arcmin", bin_slop=0
+    )
+    gg.process(cat)
+    radii = np.geomspace(1, 60, 8)
+    mapsq, _, mxsq, _, _ = gg.calculateMapSq(R=radii, m2_uform="Schneider")
+    ours = _map2_transform(radii, gg.meanr, gg.bin_size) @ np.r_[gg.xip, gg.xim]
+    treecorrs = np.r_[mapsq, mxsq]
+    atol = 1e-12 * np.max(np.abs(treecorrs))
+    np.testing.assert_allclose(ours, treecorrs, rtol=1e-12, atol=atol)

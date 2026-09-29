@@ -4,8 +4,10 @@ A blind shifts ξ± by one E-mode signal, so it moves COSEBIs B_n and pure-E/B
 ξ_B only by each transform's response to a pure E-mode vector. The input is the
 default theory's ξ± at the fiducial on the production reporting and integration
 grids, noise-free and with one seeded shape-noise draw, sealed under a blind
-whose hidden point is each corner of the envelope in turn. Every tolerance is
-the same ceiling: a tenth of a bin's standard deviation.
+whose hidden point is each corner of the envelope in turn. The transform's
+response to δ must stay under a tenth of a bin's standard deviation; pure-E/B's
+additivity, B(x + δ) − B(x) = B(δ), holds noise-free to its quadrature's floor,
+measured at ≤ 10⁻³σ and asserted at 10⁻²σ.
 """
 
 import numpy as np
@@ -22,6 +24,7 @@ COSEBIS_CUT, NMODES = (12.0, 83.0), 20
 # SP_v1.4.6.3's shape noise (its cov_th in cosmo_val/cat_config.yaml).
 AREA_DEG2, N_EFF, SIGMA_E = 2894.0, 4.96, 0.378
 CEILING = 0.1
+QUADRATURE_FLOOR = 0.01
 
 
 def _grid(lo, hi, n):
@@ -167,9 +170,11 @@ def test_cosebis_b_modes_move_only_by_the_transforms_response(shifts, cosebis, n
             "noisy",
             marks=pytest.mark.xfail(
                 strict=True,
-                reason="pure-eb-bmode-numerics: cosmo_numba's adaptive quadrature "
-                "does not converge on a noisy 1000-bin ξ±, so the kernel is not "
-                "additive there",
+                reason="pure-eb-bmode-numerics: on a noisy 1000-bin ξ± "
+                "cosmo_numba's adaptive quadrature is not additive: an E-mode δ "
+                "moves ξ_B by up to 0.4σ at the envelope's corners, unchanged by "
+                "tightening epsabs/epsrel from 1e-10 to 1e-13, so blinded and "
+                "unblinded pure-E/B alike carry this error",
             ),
         ),
     ],
@@ -178,13 +183,13 @@ def test_pure_eb_b_modes_move_only_by_the_transforms_response(
     shifts, sigma_pure_b, noise
 ):
     """ΔB = B(x + δ) − B(x) equals B(δ), the kernel's B response to a pure
-    E-mode δ, and both stay under the ceiling; δ's pure-B counterpart moves B
-    well past it."""
+    E-mode δ, to the quadrature's floor, and B(δ) stays under the ceiling;
+    δ's pure-B counterpart moves B well past it."""
     x, deltas = shifts[noise]
     before = _pure_b(x)
     for delta in deltas:
         moved = _pure_b(x + delta) - before
         response = _pure_b(delta)
-        assert np.max(np.abs(moved - response) / sigma_pure_b) < CEILING
+        assert np.max(np.abs(moved - response) / sigma_pure_b) < QUADRATURE_FLOOR
         assert np.max(np.abs(response) / sigma_pure_b) < CEILING
         assert np.max(np.abs(_pure_b(_as_b(delta))) / sigma_pure_b) > 10 * CEILING

@@ -132,8 +132,9 @@ class CosmologyValidation(
     cosmo_params : dict, optional
         Cosmological parameters to pass to get_cosmo(). If None, uses Planck 2018.
     custody : dict, optional
-        ``{version: custody token}`` (a workflow job's ``params.custody``),
-        replacing the catalogue config's declaration for those versions.
+        ``{version: custody token}`` (a workflow job's ``params.custody``):
+        the host's resolution of the catalogue config's declaration, whose
+        blind must match it.
 
     Attributes
     ----------
@@ -336,14 +337,7 @@ class CosmologyValidation(
             final_versions.append(ver)
 
         self.versions = final_versions
-        _custody.check_mix(
-            {
-                v: _custody.parse(self._tokens[v]).blind
-                if v in self._tokens
-                else _custody.declared(self._declared, v)
-                for v in self.versions
-            }
-        )
+        _custody.check_mix({v: self._blind(v) for v in self.versions})
 
         if output_dir is not None:
             cc["paths"]["output"] = output_dir
@@ -459,10 +453,24 @@ class CosmologyValidation(
             self._results_objectwise = self.init_results(objectwise=True)
         return self._results_objectwise
 
+    def _blind(self, version):
+        """The blind the catalogue config declares for ``version``; a given
+        token naming another is refused."""
+        blind = _custody.declared(self._declared, version)
+        if version in self._tokens:
+            given = _custody.parse(self._tokens[version]).blind
+            if given != blind:
+                raise _custody.CustodyError(
+                    f"{version} was given custody {given!r}, but the catalogue "
+                    f"config declares blind: {blind}"
+                )
+        return blind
+
     def custody(self, version):
         """The custody every SACC this object writes for ``version`` is sealed
-        under: the token it was given for ``version`` (a workflow job's
-        ``params.custody``), else the catalogue config's declaration."""
+        under: its given token (whose commitment ``open_blind`` checks against
+        the record), else the catalogue config's declaration."""
+        self._blind(version)
         if version in self._tokens:
             return _custody.parse(self._tokens[version], self._declared)
         return _custody.custody_of(self._declared, version)

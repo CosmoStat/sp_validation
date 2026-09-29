@@ -32,6 +32,34 @@ def grids(toy):
     return toy.common.xi_grids(toy.config, toy.config["fiducial"])
 
 
+def test_assemble_resolves(toy):
+    """Each terminal file gathers every part and the analytic covariances.
+
+    The ξ± block takes the CosmoCov covariance on the reporting grid, and the
+    harmonic block is the part on the fiducial harmonic binning with the
+    NaMaster covariance of that same binning.
+    """
+    result = toy.snakemake("-n", "assemble_sacc_all")
+    assert result.returncode == 0, result.stdout
+    jobs = [j for j in parse_jobs(result.stdout) if j.rule == "assemble_sacc"]
+    grids = toy.common.xi_grids(toy.config, toy.config["fiducial"])
+    reporting = toy.common.grid_binning(grids["reporting"])
+    harmonic = toy.common.pseudo_cl_tag(toy.config)
+    assert sorted(j.wildcards["version"] for j in jobs) == sorted(VERSIONS)
+    for job in jobs:
+        version = job.wildcards["version"]
+        assert [Path(o).name for o in job.output] == [f"{version}.sacc"]
+        assert {Path(f).name for f in job.input} == {
+            f"{version}_xi_{reporting}.sacc",
+            toy.covariances[version, "ng"].name,
+            f"pseudo_cl_{version}_{harmonic}.sacc",
+            f"pseudo_cl_cov_{version}_{harmonic}.fits",
+            f"{version}_cosebis.sacc",
+            f"{version}_pure_eb.sacc",
+            f"rho_tau_{version}_{reporting}.sacc",
+        }, job.input
+
+
 def test_xi_leaves_a_measurement_only_as_a_part(toy, forced, grids):
     """No job reads or writes a ξ± text dump; the ξ± figures draw the parts."""
     jobs = forced[1]
@@ -137,14 +165,22 @@ def test_a_launch_the_dag_cannot_honour_stops_with_the_fix(toy, case):
     assert "rule assemble_sacc" not in result.stdout
 
 
-def test_outputs_stay_in_the_output_roots(toy, forced):
-    """Nothing the suite declares lands outside the configured output roots."""
+@pytest.mark.parametrize("named", [True, False], ids=["named", "unnamed"])
+def test_outputs_stay_in_the_output_roots(toy, named):
+    """Nothing the suite declares lands outside the configured output roots.
+
+    A launch that names no COSMO_VAL writes into its own checkout's
+    cosmo_val/output.
+    """
+    env = toy.env if named else {k: v for k, v in toy.env.items() if k != "COSMO_VAL"}
+    cosmo_val = toy.cosmo_val if named else toy.root / "cosmo_val" / "output"
+    result = toy.snakemake("-n", "all", env=env)
+    assert result.returncode == 0, result.stdout
     roots = [
-        r.resolve()
-        for r in (toy.cosmo_val, toy.cosmo_inference, toy.rundir / "results")
+        r.resolve() for r in (cosmo_val, toy.cosmo_inference, toy.rundir / "results")
     ]
-    outputs = [Path(o) for j in forced[1] for o in j.output]
-    assert outputs
+    outputs = [Path(o) for j in parse_jobs(result.stdout) for o in j.output]
+    assert outputs, result.stdout
     strays = [
         o
         for o in outputs

@@ -175,6 +175,16 @@ def test_pseudo_cl_to_sacc_real_namaster(tmp_path):
     assert np.array_equal(ee, cl_all[0]) and np.array_equal(bb, cl_all[3])
     # window columns correspond to the bandpowers, one per ell_eff
     assert window.weight.shape[1] == len(ell_eff)
+    # a map-based spectrum's window carries the pixel window pw²(ℓ)
+    import healpy as hp
+
+    mapped = sw.pseudo_cl_to_sacc({0: _nz()}, META, ell_eff, cl_all, wsp, nside=nside)
+    pw2 = hp.pixwin(nside, lmax=len(window.values) - 1) ** 2
+    np.testing.assert_allclose(
+        mapped.get_bandpower_windows(mapped.indices(sio.CL_EE)).weight,
+        pw2[:, None] * window.weight,
+        rtol=1e-12,
+    )
 
 
 def test_cosebis_to_sacc(tmp_path):

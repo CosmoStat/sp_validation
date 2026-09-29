@@ -32,11 +32,7 @@ _COSMOLOGY = ("S8", "Omega_m", "Omega_b", "h", "n_s", "m_nu", "w0", "wa", "logT_
 
 
 def fiducial():
-    """cs_util's Planck 2018 point, with feedback, no IA and unit lens bias.
-
-    ``b_lens`` is the linear bias of every γt lens sample: the γt shift scales
-    as ``b_lens`` over the sample's true bias.
-    """
+    """cs_util's Planck 2018 point, with feedback and no IA."""
     from cs_util.cosmo import PLANCK18 as p
 
     return {
@@ -47,7 +43,6 @@ def fiducial():
         },
         "logT_AGN": 7.5,
         "A_IA": 0.0,
-        "b_lens": 1.0,
     }
 
 
@@ -61,7 +56,7 @@ def _cosmology(point):
     from cs_util.cosmo import get_cosmo
 
     p = dict(zip(_COSMOLOGY, point))
-    return get_cosmo(
+    cosmo = get_cosmo(
         Omega_m=p["Omega_m"],
         Omega_b=p["Omega_b"],
         h=p["h"],
@@ -79,6 +74,11 @@ def _cosmology(point):
             }
         },
     )
+    # CCL's Hankel transform extrapolates C_ℓ to ELL_MAX_CORR; its default
+    # (6·10⁴) rings in ξ− below a few arcmin.
+    cosmo.cosmo.spline_params.ELL_MAX_CORR = 10_000_000
+    cosmo.cosmo.spline_params.N_ELL_CORR = 5_000
+    return cosmo
 
 
 def tag(s, rows, name):
@@ -147,13 +147,17 @@ def shear_cl(params, s, rows):
 
 
 def gamma_t(params, s, rows):
-    """γt of a source bin around a lens sample of linear bias ``b_lens``."""
+    """γt of a source bin around a lens sample of the linear bias its tracer
+    carries (``sacc_io.add_lens(..., bias=)``)."""
     import pyccl as ccl
 
-    cosmo = cosmology(params)
     source, lens = source_lens(s, rows)
+    b = (s.tracers[lens].metadata or {}).get("bias")
+    if b is None:
+        raise ValueError(f"lens tracer {lens} carries no linear bias")
+    cosmo = cosmology(params)
     z, n = nz(s, lens)
-    bias = (z, np.full_like(z, params["b_lens"]))
+    bias = (z, np.full_like(z, float(b)))
     counts = ccl.NumberCountsTracer(cosmo, has_rsd=False, dndz=(z, n), bias=bias)
     cl = ccl.angular_cl(cosmo, counts, _lensing(cosmo, params, s, source), ELL)
     theta = tag(s, rows, "theta") / 60.0

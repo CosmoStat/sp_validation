@@ -11,7 +11,7 @@ hold a blinded catalogue only beside mocks and catalogues under the same blind.
 A blind is the record ``<paths.blinds>/<name>.blind.json``, drawn by
 :mod:`sp_validation.blinding`. Its commitment, the fork's
 ``seed_commitment`` of the whole canonical record, is public: it names the
-blind in custody tokens and SACC stamps.
+blind in custody tokens, and a SACC's stamp is its custody token.
 
 The host Snakemake loads this module by path, so it imports only the standard
 library (and PyYAML, which Snakemake carries, for the repository config).
@@ -30,7 +30,7 @@ NOT_CATALOGUES = ("nz", "paths")
 REPO_CAT_CONFIG = Path(__file__).parents[2] / "cosmo_val" / "cat_config.yaml"
 # smokescreen.COMMITMENT_DOMAIN, spelt here for the host; test_custody pins it.
 COMMITMENT_DOMAIN = b"smokescreen-seed-commitment-v1|"
-STAMP_KEYS = ("blind", "blind_commitment")
+STAMP_KEY = "custody"
 BLIND_NAME = re.compile(r"[a-z0-9][a-z0-9_.-]*")
 _SEED_SUFFIX = re.compile(r"_seed\d+$")
 _LEAK_SUFFIX = "_leak_corr"
@@ -56,13 +56,6 @@ class Custody:
     def token(self):
         """One string that changes whenever the custody does."""
         return f"{self.blind}:{self.commitment}" if self.blinded else self.blind
-
-    @property
-    def stamp(self):
-        """The metadata a SACC born under this custody carries."""
-        if self.blinded:
-            return {"blind": self.blind, "blind_commitment": self.commitment}
-        return {"blind": self.blind}
 
 
 def parse(token, catalogues=None):
@@ -265,17 +258,17 @@ def summary(catalogues, versions):
 
 
 def read_stamp(metadata):
-    """The custody a SACC's stamp records; a missing or malformed stamp raises."""
-    blind = metadata.get("blind")
-    if not isinstance(blind, str) or not BLIND_NAME.fullmatch(blind):
+    """The custody a SACC's stamp (its ``custody`` token) records; a missing or
+    malformed stamp raises."""
+    token = metadata.get(STAMP_KEY)
+    custody = parse(token) if isinstance(token, str) else None
+    if (
+        custody is None
+        or not BLIND_NAME.fullmatch(custody.blind)
+        or custody.blinded != (custody.commitment is not None)
+    ):
         raise CustodyError(
-            f"no valid custody stamp (blind={blind!r}): every SACC is born "
+            f"no valid custody stamp ({STAMP_KEY}={token!r}): every SACC is born "
             "through sacc_io.save"
-        )
-    custody = Custody(blind, metadata.get("blind_commitment"))
-    if custody.blinded != (custody.commitment is not None):
-        raise CustodyError(
-            f"malformed custody stamp: blind={blind}, "
-            f"blind_commitment={custody.commitment}"
         )
     return custody

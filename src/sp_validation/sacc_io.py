@@ -425,13 +425,17 @@ def add_pure_eb(
             _add_theta_series(s, PURE_TYPES[key], tracers, theta, arr, grid=grid)
 
 
-def add_lens(s, name, nz=None, *, quantity="galaxy_density"):
-    """Add a γt lens sample: galaxies with their ``(z, n(z))``, or, as a
-    tracer without one, ``quantity="stars"`` or ``"randoms"``."""
+def add_lens(s, name, nz=None, *, quantity="galaxy_density", bias=None):
+    """Add a γt lens sample: galaxies with their ``(z, n(z))`` and linear
+    ``bias``, or, as a tracer without either, ``quantity="stars"`` or
+    ``"randoms"``."""
     if nz is None:
         s.add_tracer("Misc", name, quantity=quantity)
     else:
-        s.add_tracer("NZ", name, *map(np.asarray, nz), quantity=quantity)
+        metadata = {} if bias is None else {"bias": float(bias)}
+        s.add_tracer(
+            "NZ", name, *map(np.asarray, nz), quantity=quantity, metadata=metadata
+        )
 
 
 def add_gamma_t(s, source_bin, lens, theta, gamma_t, gamma_x=None, **tags):
@@ -1049,13 +1053,11 @@ def _refuse_unruled(s):
 
 
 def _stamped(s):
-    return any(key in s.metadata for key in _custody.STAMP_KEYS)
+    return _custody.STAMP_KEY in s.metadata
 
 
-def _mint(s, stamp):
-    for key in _custody.STAMP_KEYS:
-        s.metadata.pop(key, None)
-    s.metadata.update(stamp)
+def _mint(s, custody):
+    s.metadata[_custody.STAMP_KEY] = custody.token
 
 
 def seal(s, custody):
@@ -1089,7 +1091,7 @@ def seal(s, custody):
         out = blinding.conceal(s, blinding.open_blind(custody))
     else:
         out = s.copy()
-    _mint(out, custody.stamp)
+    _mint(out, custody)
     return out
 
 
@@ -1125,7 +1127,7 @@ def _derive(s, parts, custody):
             "save(custody=)"
         )
     out = s.copy()
-    _mint(out, stamp.stamp)
+    _mint(out, stamp)
     return out
 
 
@@ -1368,10 +1370,12 @@ def sacc_to_twopoint_fits(
     Raises
     ------
     ValueError
-        If the SACC has no ξ points; if ``n_bins != 1`` or the SACC's ξ tracer
+        If the SACC carries no custody stamp (it was not born through
+        :func:`save`); if it has no ξ points; if ``n_bins != 1`` or its ξ tracer
         pairs are anything other than exactly ``{(source_0, source_0)}`` (the
         single-bin contract); or if exactly one of the ρ/τ sidecars is supplied.
     """
+    _custody.read_stamp(s.metadata)
     if (rho_stats_hdu is None) != (tau_stats_hdu is None):
         raise ValueError(
             "rho_stats_hdu and tau_stats_hdu must be supplied together "

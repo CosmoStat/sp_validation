@@ -600,7 +600,9 @@ class PseudoClMixin:
         cl_shear = cl_shear - cl_noise
 
         self.print_cyan("Saving pseudo-Cl's...")
-        sealed = self.pseudo_cl_to_sacc_part(ver, out_path, ell_eff, cl_shear, wsp)
+        sealed = self.pseudo_cl_to_sacc_part(
+            ver, out_path, ell_eff, cl_shear, wsp, nside=nside
+        )
         self._pseudo_cls[ver]["pseudo_cl"] = _spectra(sealed)
 
     def calculate_pseudo_cl_catalog(self, ver, out_path):
@@ -704,13 +706,16 @@ class PseudoClMixin:
         """
         return apply_random_rotation(e1, e2, rng)
 
-    def pseudo_cl_to_sacc_part(self, version, out_path, ell_eff, cl_all, wsp):
+    def pseudo_cl_to_sacc_part(
+        self, version, out_path, ell_eff, cl_all, wsp, nside=None
+    ):
         """Write the pseudo-Cl SACC part (EE/BB/EB + shared bandpower window).
 
         ``cl_all`` is NaMaster's decoupled ``(4, nbp)`` array (EE, EB, BE, BB);
-        the writer takes the shared bandpower window from ``wsp``. No covariance
-        is attached here. Returns the part as sealed under the version's
-        custody.
+        the writer takes the shared bandpower window from ``wsp``, with the
+        pixel window of maps at ``nside`` for a map-based spectrum. No
+        covariance is attached here. Returns the part as sealed under the
+        version's custody.
         """
         s = pseudo_cl_to_sacc(
             self.sacc_nz(version),
@@ -718,6 +723,7 @@ class PseudoClMixin:
             ell_eff,
             cl_all,
             wsp,
+            nside=nside,
         )
         return sacc_io.save(s, out_path, custody=self.custody(version))
 

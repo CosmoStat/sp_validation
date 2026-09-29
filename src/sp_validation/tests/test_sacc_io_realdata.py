@@ -29,6 +29,7 @@ import pytest
 from astropy.io import fits
 
 from sp_validation import sacc_io
+from sp_validation.custody import Custody
 
 _DATA = Path("/automnt/n17data/cdaley/unions/code/sp_validation/cosmo_inference/data")
 _REAL_FILES = {
@@ -123,6 +124,7 @@ def _sacc_from_2pt_fits(hdul):
     for key in ("t0m", "t2m"):
         full[np.ix_(idx[key], idx[key])] = np.eye(n)
     s.add_covariance(full)
+    s = sacc_io.seal(s, Custody("mock"))
 
     tau_sidecar = fits.BinTableHDU.from_columns(
         fits.ColDefs(

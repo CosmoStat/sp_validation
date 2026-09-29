@@ -37,6 +37,9 @@ import pytest
 from astropy.io import fits
 
 from sp_validation import sacc_io
+from sp_validation.custody import Custody
+
+MOCK = Custody("mock")
 
 _SCRIPT = (
     Path(__file__).resolve().parents[3]
@@ -262,7 +265,7 @@ def _sacc(inp, *, cl=False, rho_tau=False):
             idx = s.indices(dtype, (SOURCE, PSF))
             full[np.ix_(idx, idx)] = np.eye(N_ANG)
     s.add_covariance(full)
-    return s
+    return sacc_io.seal(s, MOCK)
 
 
 def _sidecar_hdus(tmp_path, inp):
@@ -450,6 +453,7 @@ def test_integration_grid_points_ignored(tmp_path):
     full[np.ix_(xi_int_all, xi_int_all)] = _spd(2 * N_ANG, 43)
 
     s_aug.add_covariance(full)
+    s_aug = sacc_io.seal(s_aug, MOCK)
 
     out_aug = tmp_path / "aug.fits"
     sacc_io.sacc_to_twopoint_fits(
@@ -488,6 +492,7 @@ def test_tomographic_sacc_raises(tmp_path):
     for pair in [(0, 0), (0, 1), (1, 1)]:
         sacc_io.add_xi(s, pair, inp["theta"], inp["xip"], inp["xim"], grid="reporting")
     s.add_covariance(np.eye(len(s.mean)))
+    s = sacc_io.seal(s, MOCK)
 
     with pytest.raises(ValueError, match="single-bin only"):
         sacc_io.sacc_to_twopoint_fits(s, str(tmp_path / "x.fits"), n_bins=2)
@@ -511,6 +516,7 @@ def test_sacc_without_xi_raises(tmp_path):
         window_weights=np.random.default_rng(9).uniform(0, 1, (100, N_ELL)),
     )
     s.add_covariance(np.eye(len(s.mean)))
+    s = sacc_io.seal(s, MOCK)
 
     with pytest.raises(ValueError, match="nothing to convert"):
         sacc_io.sacc_to_twopoint_fits(s, str(tmp_path / "x.fits"))
@@ -577,3 +583,12 @@ def test_covmat_blocks_exact_gather_encoded_cov(tmp_path):
         np.testing.assert_array_equal(
             hdul["COVMAT_CELL"].data, encoded[np.ix_(cell_idx, cell_idx)]
         )
+
+
+def test_an_unstamped_sacc_is_refused(tmp_path):
+    """Only a SACC born through the door (stamped) is converted."""
+    s = _sacc(_inputs(seed=50))
+    del s.metadata["custody"]
+    with pytest.raises(ValueError, match="custody stamp"):
+        sacc_io.sacc_to_twopoint_fits(s, str(tmp_path / "x.fits"))
+    assert not (tmp_path / "x.fits").exists()

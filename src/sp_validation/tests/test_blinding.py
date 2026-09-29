@@ -15,15 +15,13 @@ import traceback
 import numpy as np
 import pytest
 from _synthetic import TOY_THEORY
-from hypothesis import example, given, settings
-from hypothesis import strategies as st
 
 from sp_validation import blinding as bd
 from sp_validation import custody as cu
 from sp_validation import sacc_io as sio
 from sp_validation import theory
 
-VERSIONS = ("TOY", "OTHER", "TOY_OPEN", "OTHER_OPEN", "TOY_MOCK")
+VERSIONS = ("TOY", "OTHER", "TOY_OPEN", "TOY_MOCK")
 DEFAULTS = theory.THEORY
 
 
@@ -40,7 +38,6 @@ def _catalogues(root):
         "TOY": "toy",
         "OTHER": "other",
         "TOY_OPEN": "none",
-        "OTHER_OPEN": "none",
         "TOY_MOCK": "mock",
     }
     config = {"paths": {"blinds": str(root / "blinds")}}
@@ -51,7 +48,7 @@ def _catalogues(root):
 
 @pytest.fixture(scope="module")
 def blinds(tmp_path_factory):
-    """The five custodies: TOY under blind `toy`, OTHER under `other`."""
+    """The four custodies: TOY under blind `toy`, OTHER under `other`."""
     cats = _catalogues(tmp_path_factory.mktemp("registry"))
     for name in ("toy", "other"):
         bd.init(name, cats)
@@ -105,8 +102,10 @@ def part(
     if rho:
         sio.add_rho(s, 0, theta, np.arange(1, 7) * 1e-7, np.arange(1, 7) * 2e-7)
     for quantity in gt:
-        nz = _nz(0.3) if quantity == "galaxy_density" else None
-        sio.add_lens(s, quantity, nz, quantity=quantity)
+        if quantity == "galaxy_density":
+            sio.add_lens(s, quantity, _nz(0.3), quantity=quantity, bias=1.5)
+        else:
+            sio.add_lens(s, quantity, quantity=quantity)
         sio.add_gamma_t(s, 1, quantity, theta, 1e-4 * (theta / 10) ** -0.7, 0 * theta)
     if derived == "cosebis":
         sio.add_cosebis(s, (0, 0), np.arange(1, 6) * 1e-10, (12.0, 83.0), Bn=np.ones(5))
@@ -126,53 +125,42 @@ def _values(s):
 
 
 # --------------------------------------------------------------------------- #
-# Born sealed: a blind shifts exactly the ξ± and Cℓ_EE rows, and nothing else
+# Born sealed: a blind shifts exactly the ξ±, Cℓ_EE and γt rows, nothing else
 # --------------------------------------------------------------------------- #
-PARTS = st.fixed_dictionaries(
-    {
-        "xi_tags": st.lists(
-            st.sampled_from(["reporting", "integration", "cosebis", None]),
-            max_size=2,
-            unique=True,
-        ),
-        "cl": st.booleans(),
-        "rho": st.booleans(),
-        "gt": st.lists(
-            st.sampled_from(["galaxy_density", "stars", "randoms"]), unique=True
-        ),
-        "derived": st.sampled_from([None, "cosebis", "pure_eb"]),
-        "unruled": st.booleans(),
-    }
-).filter(lambda p: p["xi_tags"] or p["cl"] or p["rho"])
-
-
-@settings(max_examples=10, deadline=None)
-@given(content=PARTS, version=st.sampled_from(["TOY", "TOY_OPEN", "TOY_MOCK"]))
-@example(
-    content=dict(
-        xi_tags=["mystery", None],
-        cl=True,
-        rho=True,
-        gt=["galaxy_density", "stars"],
-        derived=None,
-        unruled=False,
-    ),
-    version="TOY",
+EVERYTHING = dict(
+    xi_tags=("reporting", "mystery", None),
+    rho=True,
+    gt=("galaxy_density", "stars", "randoms"),
 )
-def test_seal_shifts_only_the_signal_it_has_a_rule_for(blinds, content, version):
+
+
+@pytest.mark.parametrize(
+    "content, version, refused",
+    [
+        (EVERYTHING, "TOY", False),
+        (EVERYTHING, "TOY_OPEN", False),
+        (EVERYTHING, "TOY_MOCK", False),
+        (dict(derived="cosebis"), "TOY", True),
+        (dict(derived="pure_eb"), "TOY", True),
+        (dict(unruled=True), "TOY", True),
+        (dict(derived="pure_eb", unruled=True), "TOY_OPEN", False),
+    ],
+)
+def test_seal_shifts_only_the_signal_it_has_a_rule_for(
+    blinds, content, version, refused
+):
     """Under a blind every ξ±, Cℓ_EE and galaxy-lens γt row moves, whatever
     its grid tag, and every other value (γ×, γt around stars or randoms) and
-    the covariance stay bitwise; a birth carrying
-    derived rows or a type with no blinding rule is refused. Unblinded and
-    mock births keep their values. Each is stamped with its custody."""
+    the covariance stay bitwise; a blinded birth carrying derived rows or a
+    type with no blinding rule is refused. Unblinded and mock births keep
+    their values. Each is stamped with its custody."""
     s, custody = part(**content), blinds[version]
-    blinded = custody.blinded
-    if blinded and (content["derived"] or content["unruled"]):
+    if refused:
         with pytest.raises(ValueError, match="derived_from|no blinding rule"):
             sio.seal(s, custody)
         return
     sealed = sio.seal(s, custody)
-    assert cu.read_stamp(sealed.metadata).stamp == custody.stamp
+    assert cu.read_stamp(sealed.metadata) == custody
     shiftable = np.array(
         [
             dp.data_type in sio.SHIFTABLE and not {"stars", "randoms"} & {*dp.tracers}
@@ -180,7 +168,7 @@ def test_seal_shifts_only_the_signal_it_has_a_rule_for(blinds, content, version)
         ]
     )
     moved = _values(sealed) != _values(s)
-    assert np.array_equal(moved, shiftable & blinded)
+    assert np.array_equal(moved, shiftable & custody.blinded)
     assert np.array_equal(sealed.covariance.dense, s.covariance.dense)
 
 
@@ -204,19 +192,22 @@ def parts(blinds):
     return {v: sio.seal(part(cl=False), blinds[v]) for v in VERSIONS}
 
 
-@settings(max_examples=25, deadline=None)
-@given(
-    inputs=st.lists(st.sampled_from(VERSIONS), min_size=1, max_size=3),
-    declared=st.sampled_from([None, *VERSIONS]),
-    content=st.sampled_from(["copy", "cosebis", "plaintext"]),
+@pytest.mark.parametrize(
+    "inputs, declared, content, allowed",
+    [
+        (["TOY"], None, "copy", True),
+        (["TOY"], None, "cosebis", True),
+        (["TOY_OPEN"], None, "plaintext", True),
+        (["TOY", "TOY"], "TOY", "copy", True),  # an assembly
+        (["TOY"], None, "plaintext", False),  # laundering
+        (["OTHER"], "TOY", "copy", False),  # another blind
+        (["TOY_OPEN"], "TOY", "copy", False),  # unblinded into blinded
+        (["TOY", "OTHER"], None, "cosebis", False),  # mixed stamps
+        (["TOY_MOCK", "TOY_OPEN"], None, "copy", False),  # mixed stamps
+    ],
 )
-@example(inputs=["TOY"], declared=None, content="plaintext")  # laundering
-@example(inputs=["TOY", "TOY"], declared="TOY", content="copy")  # an assembly
-@example(inputs=["OTHER"], declared="TOY", content="copy")  # another blind
-@example(inputs=["TOY_OPEN"], declared="TOY", content="copy")  # unblinded into blinded
-@example(inputs=["TOY", "OTHER"], declared=None, content="cosebis")
 def test_a_derivation_carries_its_inputs_one_stamp(
-    blinds, parts, tmp_path_factory, inputs, declared, content
+    blinds, parts, tmp_path, inputs, declared, content, allowed
 ):
     """``save(s, derived_from=inputs, custody=declared)`` writes ``s`` under
     the inputs' stamp exactly when they share one, it is the declared
@@ -227,13 +218,7 @@ def test_a_derivation_carries_its_inputs_one_stamp(
         "cosebis": lambda: part(xi_tags=(), cl=False, derived="cosebis"),
         "plaintext": lambda: part(cl=False),
     }[content]()
-    stamp = blinds[inputs[0]].stamp
-    allowed = (
-        all(blinds[v].stamp == stamp for v in inputs)
-        and (declared is None or blinds[declared].stamp == stamp)
-        and not (blinds[inputs[0]].blinded and content == "plaintext")
-    )
-    path = tmp_path_factory.mktemp("derived") / "d.sacc"
+    path = tmp_path / "d.sacc"
     kwargs = dict(
         derived_from=[parts[v] for v in inputs],
         custody=blinds[declared] if declared else None,
@@ -245,7 +230,7 @@ def test_a_derivation_carries_its_inputs_one_stamp(
         return
     sio.save(s, path, **kwargs)
     loaded = sio.load(path)
-    assert cu.read_stamp(loaded.metadata).stamp == stamp
+    assert cu.read_stamp(loaded.metadata) == blinds[inputs[0]]
     assert np.array_equal(_values(loaded), _values(s))
 
 
@@ -334,6 +319,14 @@ def test_conceal_refuses_a_shift_it_cannot_make(blinds):
     flat = {**TOY_THEORY, sio.GAMMA_T: lambda params, s, rows: np.ones(len(rows))}
     with pytest.raises(bd.BlindingError, match="unmoved"):
         bd.conceal(s, blind, theory=flat)
+
+
+def test_gamma_t_needs_its_lens_samples_bias():
+    s = sio.new_sacc({0: _nz(0.5)})
+    sio.add_lens(s, "lens", _nz(0.3))
+    sio.add_gamma_t(s, 0, "lens", np.geomspace(2.0, 200.0, 4), np.ones(4))
+    with pytest.raises(ValueError, match="no linear bias"):
+        DEFAULTS[sio.GAMMA_T](theory.fiducial(), s, s.indices(sio.GAMMA_T))
 
 
 @pytest.mark.slow

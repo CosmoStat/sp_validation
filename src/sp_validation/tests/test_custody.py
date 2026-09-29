@@ -4,7 +4,6 @@ Blind records are hand-written here: the host never draws, so a record needs
 no real seed.
 """
 
-import importlib.util
 import json
 from pathlib import Path
 
@@ -137,39 +136,28 @@ def test_every_catalogue_in_the_repository_resolves():
     assert blinds and set(blinds.values()) <= {cu.NONE, cu.MOCK}, blinds
 
 
-def test_host_and_job_resolve_the_same_custody(tmp_path):
-    """`common.custody_token(v)` is what a job's CosmologyValidation seals under."""
+def test_a_token_is_the_custody_it_names_and_must_match_the_declaration(tmp_path):
+    """A job seals under its token's custody, which is the declared one; a
+    token naming another blind is refused."""
     from sp_validation.cosmo_val import CosmologyValidation
 
-    (tmp_path / "workflow").mkdir()
-    (tmp_path / "workflow" / "common.py").write_text(
-        (REPO / "workflow" / "common.py").read_text()
-    )
-    (tmp_path / "src").symlink_to(REPO / "src")
-    (tmp_path / "cosmo_val").mkdir()
     cats = _catalogues(tmp_path, TOY="toy", TOY_OPEN="none", TOY_MOCK="mock")
     _record(tmp_path, "toy")
-    (tmp_path / "cosmo_val" / "cat_config.yaml").write_text(yaml.safe_dump(cats))
-    spec = importlib.util.spec_from_file_location(
-        "toy_common", tmp_path / "workflow" / "common.py"
-    )
-    common = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(common)
-    common.CATALOG_CONFIG = yaml.safe_load(Path(common.CAT_CONFIG).read_text())
+    config = tmp_path / "cat_config.yaml"
+    config.write_text(yaml.safe_dump(cats))
 
-    for version in ("TOY", "TOY_leak_corr", "TOY_OPEN", "TOY_MOCK"):
-        token = common.custody_token(version)
-        job = CosmologyValidation(
+    def job(version, token):
+        return CosmologyValidation(
             versions=[version],
-            catalog_config=common.CAT_CONFIG,
+            catalog_config=str(config),
             output_dir=str(tmp_path / "out"),
             custody={version: token},
         )
-        interactive = CosmologyValidation(
-            versions=[version],
-            catalog_config=common.CAT_CONFIG,
-            output_dir=str(tmp_path / "out"),
-        )
-        assert job.custody(version) == interactive.custody(version), version
-        assert job.custody(version).token == token
-    assert common.custody_token("TOY").startswith("toy:")
+
+    for version in ("TOY", "TOY_OPEN", "TOY_MOCK"):
+        custody = cu.custody_of(cats, version)
+        assert cu.parse(custody.token, cats) == custody
+        assert job(version, custody.token).custody(version) == custody
+    for token in ("none", "mock", "other:" + "0" * 64):
+        with pytest.raises(cu.CustodyError, match="declares blind: toy"):
+            job("TOY", token)
