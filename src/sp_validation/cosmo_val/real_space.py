@@ -43,8 +43,9 @@ class RealSpaceMixin:
         Notes:
             - If the output file for the given configuration already exists, the
               calculation is skipped, and the results are loaded from the file.
-            - If a patch file for the given configuration does not exist, it is
-              created during the process.
+            - Jackknife patches come from a k-means seeded with a fixed
+              generator, so they are a pure function of the catalogue's
+              positions and weights, the same on every run and thread count.
             - The ``.txt`` TreeCorr dump is the only raw byproduct written here.
         """
 
@@ -73,9 +74,6 @@ class RealSpaceMixin:
                 g1, g2 = self._calibrated_g(ver)
                 w = self._read_shear_cols(ver, "w_col")
 
-                # Use patch file if it exists
-                patch_file = self._output_path(f"{ver}_patches_npatch={npatch}.dat")
-
                 cat_gal = treecorr.Catalog(
                     ra=self.results[ver].dat_shear["RA"],
                     dec=self.results[ver].dat_shear["Dec"],
@@ -85,12 +83,8 @@ class RealSpaceMixin:
                     ra_units=self.treecorr_config["ra_units"],
                     dec_units=self.treecorr_config["dec_units"],
                     npatch=npatch,
-                    patch_centers=patch_file if os.path.exists(patch_file) else None,
+                    rng=np.random.default_rng(0),
                 )
-
-                # If no patch file exists, save the current patches
-                if not os.path.exists(patch_file):
-                    cat_gal.write_patch_centers(patch_file)
 
             # Process the catalog & write the correlation functions
             gg.process(cat_gal)
@@ -356,6 +350,7 @@ class RealSpaceMixin:
                         ra_units=self.treecorr_config["ra_units"],
                         dec_units=self.treecorr_config["dec_units"],
                         npatch=npatch,
+                        rng=np.random.default_rng(0),
                     )
 
                     gg.process(cat_gal)

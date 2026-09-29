@@ -501,39 +501,44 @@ class TestCosmologyValidation:
                 getattr(read, column), getattr(measured, column), rtol=1e-4
             )
 
-    def test_calculate_2pcf_does_not_depend_on_thread_count(self, tmp_path):
-        """calculate_2pcf's ξ± is the same on 4 and on 48 TreeCorr threads.
+    def test_calculate_2pcf_is_reproducible_across_runs_and_threads(self, tmp_path):
+        """Two fresh output trees on 4 and 16 threads measure the same ξ±.
 
-        Production binning (default bin_slop/angle_slop), both runs on the
-        jackknife patches the first one writes, each from a fresh Catalog; they
-        must agree to far below the jackknife σ.
+        calculate_2pcf draws its jackknife patches by seeded k-means, so each
+        run splits the catalogue alike: the per-patch-pair counts, ξ± and its
+        jackknife variance agree. The footprint is wide enough that unseeded
+        draws land on different patches.
         """
         import treecorr
 
-        params, version = self._write_synthetic_catalogs(
-            tmp_path, n_gal=4000, coherent_shear=True
-        )
-        cv = CosmologyValidation(
-            versions=[version],
-            npatch=8,
-            theta_min=15.0,
-            theta_max=70.0,
-            nbins=6,
-            **params,
-        )
-
-        xi = {}
-        for n_threads in (4, 48):
-            # calculate_2pcf reads back an existing text dump instead of measuring.
-            for dump in Path(params["output_dir"]).glob(f"{version}_xi_*.txt"):
-                dump.unlink()
-            gg = cv.calculate_2pcf(version, num_threads=n_threads)
+        xi, var, counts = {}, {}, {}
+        for tree, n_threads in (("a", 4), ("b", 16)):
+            (tmp_path / tree).mkdir()
+            params, version = self._write_synthetic_catalogs(
+                tmp_path / tree,
+                n_gal=4000,
+                ra_range=(0.0, 60.0),
+                dec_range=(-10.0, 30.0),
+                coherent_shear=True,
+            )
+            gg = CosmologyValidation(
+                versions=[version],
+                npatch=10,
+                theta_min=15.0,
+                theta_max=70.0,
+                nbins=6,
+                **params,
+            ).calculate_2pcf(version, num_threads=n_threads)
             assert treecorr.get_omp_threads() == n_threads  # the count took effect
-            xi[n_threads] = np.concatenate([gg.xip, gg.xim])
-            sigma = np.sqrt(np.concatenate([gg.varxip, gg.varxim]))
+            xi[tree] = np.concatenate([gg.xip, gg.xim])
+            var[tree] = np.concatenate([gg.varxip, gg.varxim])
+            counts[tree] = {k: r.npairs for k, r in gg.results.items()}
 
-        shift = np.max(np.abs(xi[48] - xi[4]) / sigma)
-        assert shift < 1e-6, f"ξ± moves by {shift:.3g}σ between 4 and 48 threads"
+        assert counts["a"].keys() == counts["b"].keys()
+        for k in counts["a"]:
+            np.testing.assert_array_equal(counts["a"][k], counts["b"][k])
+        assert np.max(np.abs(xi["a"] - xi["b"]) / np.sqrt(var["a"])) < 1e-6
+        np.testing.assert_allclose(var["a"], var["b"], rtol=1e-6)
 
     def test_calculate_scale_dependent_leakage_runs_on_synthetic_catalog(
         self, tmp_path
