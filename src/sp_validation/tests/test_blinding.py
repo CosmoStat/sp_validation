@@ -8,6 +8,7 @@ analytic ``TOY_THEORY``; one slow test runs the CCL defaults.
 
 import dataclasses
 import json
+import logging
 import stat
 import traceback
 
@@ -289,28 +290,29 @@ def _hidden_failure(blind):
     return "".join(trace.format())
 
 
-def test_the_hidden_cosmology_never_shows(tmp_path, capfd):
-    """Neither the seed nor the hidden S8, Ωm or σ8 reaches a repr, the
-    terminal or a traceback's locals."""
+def test_the_hidden_cosmology_never_shows(tmp_path, capfd, caplog, recwarn):
+    """Neither the seed nor the hidden S8, Ωm, σ8 or Ω_c reaches a repr, the
+    terminal, a log, a warning or a traceback's locals."""
+    caplog.set_level(logging.DEBUG)
     cats = _catalogues(tmp_path)
     blind = bd.init("toy", cats)
     record = json.loads(blind.path.read_text())
     hidden = bd._hidden(blind)
     sigma8 = hidden["S8"] / np.sqrt(hidden["Omega_m"] / 0.3)
+    omega_c = theory.cosmology(hidden)["Omega_c"]
     needles = [record["seed"], record["seed"][:16]] + [
         form(x)
-        for x in (hidden["S8"], hidden["Omega_m"], sigma8)
+        for x in (hidden["S8"], hidden["Omega_m"], sigma8, omega_c)
         for form in (repr, "{:.4g}".format, "{:.6g}".format)
     ]
     bd.show("toy", cats)
     sio.seal(part(cl=False), cu.custody_of(cats, "TOY"))
     failure = _hidden_failure(blind)
     haystacks = [
-        repr(blind),
-        repr(hidden),
-        str(hidden),
-        f"{hidden}",
+        *(form(x) for x in (blind, hidden) for form in (repr, str, "{}".format)),
         "".join(capfd.readouterr()),
+        caplog.text,
+        "".join(str(w.message) for w in recwarn),
         failure,
     ]
     for i, haystack in enumerate(haystacks):

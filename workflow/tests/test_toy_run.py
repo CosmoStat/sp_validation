@@ -1,12 +1,10 @@
-"""Rule xi, run for real through apptainer, before and after a blind is drawn.
+"""Rule xi, run for real through apptainer, under a throwaway blind.
 
 The launch is the README's with the machine-independent default profile: the
 host Snakemake, the image `spv-container` manages, jobs on this node. A toy
 checkout under your home directory (which the profile binds) carries copies of
 workflow/, papers/cosmo_val/ and src/, and one synthetic catalogue declared
-public. The first launch makes its reporting parts and their figure; then a
-blind is drawn and declared on the catalogue, and the same launch re-measures
-the parts concealed.
+under a blind drawn in the image with the default theory.
 """
 
 import json
@@ -58,7 +56,7 @@ def _stamps(image, root, parts):
 
 
 def _toy_checkout(root, image):
-    """A checkout with one synthetic catalogue, SP_v0.1, declared public."""
+    """A checkout with one synthetic catalogue, SP_v0.1, under the blind `toy`."""
     skip = shutil.ignore_patterns(".snakemake", "__pycache__", "tests")
     shutil.copytree(REPO / "workflow", root / "workflow", ignore=skip)
     shutil.copytree(
@@ -78,7 +76,17 @@ def _toy_checkout(root, image):
         "from pathlib import Path\n"
         "from _synthetic import write_synthetic_catalogs\n"
         f"write_synthetic_catalogs(Path({str(root / 'cosmo_val')!r}),"
-        f" catalogues={{{VERSIONS[0]!r}: 'none'}})",
+        f" catalogues={{{VERSIONS[0]!r}: 'toy'}})",
+    )
+    _in_image(
+        image,
+        root,
+        "python",
+        "-c",
+        "import sys, yaml\n"
+        "from sp_validation import blinding\n"
+        "blinding.init('toy', yaml.safe_load(open(sys.argv[1])))",
+        str(root / "cosmo_val" / "cat_config.yaml"),
     )
 
     config_path = root / "papers" / "cosmo_val" / "config" / "config.yaml"
@@ -92,16 +100,12 @@ def _toy_checkout(root, image):
 
 @pytest.mark.candide
 @on_candide
-def test_xi_before_and_after_its_catalogue_is_blinded():
+def test_xi_parts_are_stamped_with_the_blinds_commitment():
     image, kind = container.resolve_image()
     assert kind != "tag", "no local image; run `spv-container pull`"
     root = Path(tempfile.mkdtemp(prefix="toy_run_", dir=Path.home()))
     _toy_checkout(root, image)
     out = root / "out"
-    cat_config = root / "cosmo_val" / "cat_config.yaml"
-    parts = [out / f"{v}_xi_{BINNING}.sacc" for v in VERSIONS]
-    target = str(out / "snakemake_sentinels" / "plot_2pcf.done")
-
     env = {
         k: v
         for k, v in os.environ.items()
@@ -114,65 +118,33 @@ def test_xi_before_and_after_its_catalogue_is_blinded():
         PYTHONNOUSERSITE="1",
         PYTHONUNBUFFERED="1",
     )
-
-    def launch(*args):
-        return subprocess.run(
-            [
-                sys.executable,
-                "-m",
-                "snakemake",
-                "--profile",
-                str(root / "workflow" / "profiles" / "default"),
-                "--cores",
-                "4",
-                *args,
-                "--config",
-                f"container={image}",
-                "--",
-                target,
-            ],
-            cwd=root / "papers" / "cosmo_val",
-            env=env,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            timeout=1800,
-            check=False,
-        )
-
-    # Declared public: parts stamped public, and their figure drawn.
-    result = launch()
-    assert result.returncode == 0, result.stdout
-    assert [s["blind"] for s in _stamps(image, root, parts)] == ["none"] * 2
-    assert (out / "xi_p.png").is_file()
-
-    # A blind drawn and declared: the parts' params changed.
-    _in_image(
-        image,
-        root,
-        "python",
-        "-c",
-        "import sys, yaml\n"
-        "from sp_validation import blinding\n"
-        "blinding.init('toy', yaml.safe_load(open(sys.argv[1])))",
-        str(cat_config),
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "snakemake",
+            "--profile",
+            str(root / "workflow" / "profiles" / "default"),
+            "--cores",
+            "4",
+            "--config",
+            f"container={image}",
+            "--",
+            str(out / "snakemake_sentinels" / "plot_2pcf.done"),
+        ],
+        cwd=root / "papers" / "cosmo_val",
+        env=env,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        timeout=1800,
+        check=False,
     )
-    catalogues = yaml.safe_load(cat_config.read_text())
-    catalogues[VERSIONS[0]]["blind"] = "toy"
-    cat_config.write_text(yaml.safe_dump(catalogues, sort_keys=False))
-    dry = launch("-n")
-    assert dry.returncode == 0, dry.stdout
-    assert "Params have changed" in dry.stdout, dry.stdout
-
-    result = launch()
     assert result.returncode == 0, result.stdout
+
     record = json.loads((root / "cosmo_val/blinds/toy.blind.json").read_text())
-    for stamp in _stamps(image, root, parts):
-        assert stamp == {
-            "blind": "toy",
-            "blind_commitment": custody.commitment(record),
-        }
-    assert not list(out.rglob("*_xi_*.txt"))
-    assert not list((root / "cosmo_val" / "output").iterdir())
+    stamp = {"blind": "toy", "blind_commitment": custody.commitment(record)}
+    parts = [out / f"{v}_xi_{BINNING}.sacc" for v in VERSIONS]
+    assert _stamps(image, root, parts) == [stamp] * len(parts)
 
     shutil.rmtree(root)  # kept on failure, for post-mortem

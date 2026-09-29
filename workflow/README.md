@@ -27,32 +27,25 @@ each namespaces cleanly under `results/<name>/`.
 
 ## Custody: which catalogues are blinded
 
-Every entry of `cosmo_val/cat_config.yaml` declares `blind: none` (public),
-`blind: mock`, or the name of the blind its signal is concealed under; an entry
-without one is refused. `_leak_corr` and `_seed<N>` versions take their entry's.
-Entries reading one shear file declare one blind, and the repository config is
-authoritative for the files it names. A run may show a blinded catalogue only
-beside mocks and catalogues under the same blind, since overlaying it with any
-other version shows the shift. A launch prints one `[custody]` line per
-catalogue.
+Every entry of `cosmo_val/cat_config.yaml` declares `blind: none`, `blind: mock`
+or the name of a blind; an entry without one is refused, and `_leak_corr` and
+`_seed<N>` versions take their entry's. Entries reading one shear file declare
+one blind (the repository config is authoritative), and a blinded catalogue is
+shown only beside mocks and its own blind, since any other overlay shows the
+shift. A launch prints one `[custody]` line per catalogue.
 
-Under a blind, every ξ±, pseudo-Cℓ_EE and γt value is shifted by t(hidden) −
-t(fiducial) before it is first written, t being that data type's theory in
-`sp_validation.theory.THEORY` (CCL through `cs_util.cosmo.get_cosmo` by
-default); COSEBIs and pure-E/B computed from the shifted ξ± carry the blind, and
-B-modes stay usable. A new statistic is refused under a blind until it has a
-rule in `sacc_io` and, if shifted, a theory. Every SACC records the
-custody it was born under, and rule params carry the custody token, so a flip
-reruns what it touches.
+Under a blind, ξ±, pseudo-Cℓ_EE and γt are shifted by t(hidden) − t(fiducial)
+before they are first written, t being the data type's theory in
+`sp_validation.theory.THEORY`; statistics derived from them carry the blind, and
+a data type with no blinding rule in `sacc_io` is refused. COSEBIs B_n move only
+by the transform's response to an E-mode shift; pure-E/B ξ_B also moves where
+cosmo_numba's quadrature does not converge on noisy ξ± (`test_blinding_bmodes`).
+Rule params carry the custody token, so a flip reruns what it touches.
 
 A blind is one record, `<paths.blinds>/<name>.blind.json`, outside any git
-worktree; read access to it is access to the blind. Draw one, once:
-
-```bash
-spv-container exec python -m sp_validation.blinding init <name>
-```
-
-`… blinding show <name>` prints its public record. For an entry under a blind,
+worktree; read access to it is access to the blind.
+`spv-container exec python -m sp_validation.blinding init <name>` draws one,
+once; `… show <name>` prints its public record. For an entry under a blind,
 measure signal only through `CosmologyValidation` or the workflow; never set
 `blind: none` to get a run through; never print, paste or commit a
 `.blind.json`.

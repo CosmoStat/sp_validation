@@ -33,7 +33,7 @@ def grids(toy):
 
 
 def test_xi_leaves_a_measurement_only_as_a_part(toy, forced, grids):
-    """[P12] No job reads or writes a ξ± text dump; the ξ± figures draw the parts."""
+    """No job reads or writes a ξ± text dump; the ξ± figures draw the parts."""
     jobs = forced[1]
     dumps = [
         f for j in jobs for f in j.input + j.output if re.search(r"_xi_.*\.txt$", f)
@@ -62,7 +62,7 @@ def test_one_integration_grid(toy, forced, grids):
 
 
 def test_custody_is_the_checkouts_and_no_rule_touches_a_blind(toy, forced, tmp_path):
-    """[P9, P10, P8] A catalogue and its variant share one custody line; even a
+    """A catalogue and its variant share one custody line; even a
     forced run schedules nothing that reads or writes the registry; and a
     config file declaring the catalogue public changes nothing."""
     output, jobs = forced
@@ -85,8 +85,40 @@ def test_custody_is_the_checkouts_and_no_rule_touches_a_blind(toy, forced, tmp_p
     assert line in result.stdout
 
 
+def test_a_custody_flip_reruns_the_catalogues_parts(toy, grids, tmp_path):
+    """A part's params carry its catalogue's custody token, so declaring
+    the catalogue public reruns the part and nothing else does."""
+    env = toy.env | {"COSMO_VAL": str(tmp_path / "cosmo_val")}
+    reporting = toy.common.grid_binning(grids["reporting"])
+    part = tmp_path / "cosmo_val" / f"{VERSIONS[0]}_xi_{reporting}.sacc"
+    # Records the job's params; the output itself must exist to be touched.
+    touched = toy.snakemake("--touch", str(part), env=env)
+    assert touched.returncode == 0, touched.stdout
+    part.parent.mkdir(exist_ok=True)
+    part.touch()
+
+    def scheduled():
+        result = toy.snakemake("-n", str(part), env=env)
+        assert result.returncode == 0, result.stdout
+        return [j.rule for j in parse_jobs(result.stdout)], result.stdout
+
+    rules, output = scheduled()
+    assert rules == [], output
+    cat_config = toy.root / "cosmo_val" / "cat_config.yaml"
+    declared = cat_config.read_text()
+    flipped = yaml.safe_load(declared)
+    flipped[VERSIONS[0]]["blind"] = "none"
+    cat_config.write_text(yaml.safe_dump(flipped))
+    try:
+        rules, output = scheduled()
+    finally:
+        cat_config.write_text(declared)
+    assert rules == ["xi"], output
+    assert "params have changed" in output.lower(), output
+
+
 LAUNCH_REFUSALS = {
-    # [P6] a blind the registry does not hold, an entry declaring none, and a
+    # A blind the registry does not hold, an entry declaring none, and a
     # blinded catalogue overlaid with a public one
     "no_blind": ([UNCOVERED], [f"{UNCOVERED} is blinded under gone", "init gone"]),
     "undeclared": ([UNDECLARED], ["declares no `blind:`"]),
@@ -106,7 +138,7 @@ def test_a_launch_the_dag_cannot_honour_stops_with_the_fix(toy, case):
 
 
 def test_outputs_stay_in_the_output_roots(toy, forced):
-    """[P2] Nothing the suite declares lands outside the configured output roots."""
+    """Nothing the suite declares lands outside the configured output roots."""
     roots = [
         r.resolve()
         for r in (toy.cosmo_val, toy.cosmo_inference, toy.rundir / "results")
