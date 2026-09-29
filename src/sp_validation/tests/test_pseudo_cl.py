@@ -150,7 +150,7 @@ def _write_synthetic_config(tmp_path):
             "star": {**psf_cfg},
             "psf": psf_cfg,
             "patch_number": 150,
-            "blinding": "mock",
+            "blind": "mock",
         },
     }
     config_path = tmp_path / "config.yaml"

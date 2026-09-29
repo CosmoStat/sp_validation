@@ -79,6 +79,7 @@ class TestCosmologyValidation:
             },
             "paths": {"output": str(output_dir)},
             base_version: {
+                "blind": "none",
                 "subdir": str(base_dir),
                 "pipeline": "SP",
                 "shear": {
@@ -498,47 +499,40 @@ class TestCosmologyValidation:
 # --------------------------------------------------------------------------- #
 @pytest.fixture
 def blinded_and_twin(tmp_path):
-    """TOY, blinded under `toy`, and TOY_OPEN: the same galaxies, unblinded."""
-    import json
+    """TOY, blinded under `toy`, and TOY_OPEN: the same galaxies, public."""
+    import dataclasses
+
+    import yaml
 
     from sp_validation import blinding
+    from sp_validation.blinding_theory import TheoryConfig
 
     params, _ = write_synthetic_catalogs(
         tmp_path,
         n_gal=4000,
         coherent_shear=True,
-        catalogues={"TOY": None, "TOY_OPEN": "unblinded"},
+        catalogues={"TOY": "toy", "TOY_OPEN": "none"},
     )
-    fast = tmp_path / "fast.json"
-    fast.write_text(json.dumps({"theory": {"transfer_function": "eisenstein_hu"}}))
-    blinding.main(
-        [
-            "init",
-            "toy",
-            "TOY",
-            "--cat-config",
-            params["catalog_config"],
-            "--config",
-            str(fast),
-        ]
-    )
-    return CosmologyValidation(
-        versions=["TOY", "TOY_OPEN"],
-        npatch=1,
-        theta_min=5.0,
-        theta_max=60.0,
-        nbins=6,
-        **params,
+    fast = TheoryConfig(transfer_function="eisenstein_hu")
+    catalogues = yaml.safe_load(open(params["catalog_config"]))
+    blinding.init("toy", catalogues, fiducial=dataclasses.asdict(fast))
+    grid = dict(npatch=1, theta_min=5.0, theta_max=60.0, nbins=6, **params)
+    return (
+        CosmologyValidation(versions=["TOY"], **grid),
+        CosmologyValidation(versions=["TOY_OPEN"], **grid),
+        grid,
     )
 
 
 def test_a_blinded_catalogues_xi_leaves_concealed(blinded_and_twin):
     """[signal-leaves-sealed] calculate_2pcf returns, and caches, a blinded
-    catalogue's ξ± shifted from its unblinded twin's by exactly the blind's shift."""
+    catalogue's ξ± shifted from its public twin's by exactly the blind's shift;
+    and the two are never held together."""
     from sp_validation import blinding
+    from sp_validation.custody import CustodyError
 
-    cv = blinded_and_twin
-    blinded, twin = (cv.calculate_2pcf(v) for v in ("TOY", "TOY_OPEN"))
+    cv, cv_open, grid = blinded_and_twin
+    blinded, twin = cv.calculate_2pcf("TOY"), cv_open.calculate_2pcf("TOY_OPEN")
     shift = blinding.conceal(twin, blinding.open_blind(cv.custody("TOY"))).mean
     shift = shift - twin.mean
 
@@ -546,5 +540,7 @@ def test_a_blinded_catalogues_xi_leaves_concealed(blinded_and_twin):
     np.testing.assert_allclose(
         blinded.mean - twin.mean, shift, rtol=1e-8, atol=1e-12 * np.abs(shift).max()
     )
-    assert blinded.metadata["blinding"] == "blinded"
+    assert blinded.metadata["blind"] == "toy"
     assert cv.xi_parts["TOY", "reporting"] is blinded
+    with pytest.raises(CustodyError, match="shows the blind's shift"):
+        CosmologyValidation(versions=["TOY", "TOY_OPEN"], **grid)

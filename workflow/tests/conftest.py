@@ -11,13 +11,12 @@ Snakemake is in. The ``candide`` tests need candide itself; CI deselects them.
 
 The ``toy`` fixture is a disposable checkout: copies of ``workflow/`` and
 ``papers/cosmo_val/``, this checkout's ``src/`` symlinked in, one catalogue per
-custody state, hand-written blind records (the host never decrypts), stand-ins
+custody state, a hand-written blind record (the host never draws), stand-ins
 for the processed CosmoCov covariances (their inputs live on candide), and both
 output roots in tmp.
 """
 
 import dataclasses
-import hashlib
 import importlib.util
 import json
 import os
@@ -34,10 +33,11 @@ REPO = Path(__file__).resolve().parents[2]
 
 # The toy catalogue and its leakage-corrected variant: blinded under `toy`.
 VERSIONS = ("SP_v0.1", "SP_v0.1_leak_corr")
-# Declared unblinded, and covered by the blind `stale`, which is not revealed.
-STALE = "SP_v0.5"
-# Declares no custody, and no blind covers it.
+PUBLIC = "SP_v0.2"
+# Declared under the blind `gone`, which the registry does not hold.
 UNCOVERED = "SP_v0.4"
+# Declares no blind.
+UNDECLARED = "SP_v0.5"
 
 
 @dataclasses.dataclass
@@ -130,7 +130,7 @@ class Toy:
         )
 
 
-def _cat_config(data):
+def _cat_config(data, registry):
     """One catalogue per custody state, each reading its own touched file."""
 
     def entry(name, **declaration):
@@ -155,31 +155,20 @@ def _cat_config(data):
         }
 
     return {
-        VERSIONS[0]: entry(VERSIONS[0]),
-        "SP_v0.2": entry("SP_v0.2", blinding="unblinded"),
-        "SP_v0.3": entry("SP_v0.3", blinding="mock"),
-        UNCOVERED: entry(UNCOVERED),
-        STALE: entry(STALE, blinding="unblinded"),
-        "paths": {"output": "./output"},
+        VERSIONS[0]: entry(VERSIONS[0], blind="toy"),
+        PUBLIC: entry(PUBLIC, blind="none"),
+        "SP_v0.3": entry("SP_v0.3", blind="mock"),
+        UNCOVERED: entry(UNCOVERED, blind="gone"),
+        UNDECLARED: entry(UNDECLARED),
+        "paths": {"output": "./output", "blinds": str(registry)},
     }
 
 
-def _registry(root):
-    """Blind records as ``blinding init`` commits them, minus the ciphertext."""
-    for name, bases in (("toy", [VERSIONS[0]]), ("stale", [STALE])):
-        record = root / "cosmo_val" / "blinds" / name
-        record.mkdir(parents=True)
-        (record / "commitment.json").write_text(
-            json.dumps(
-                {
-                    "blind": name,
-                    "seed_commitment": hashlib.sha256(name.encode()).hexdigest(),
-                    "config_digest": hashlib.sha256(b"config").hexdigest(),
-                    "draw_scheme": 2,
-                }
-            )
-        )
-        (record / "bases").write_text("".join(f"{b}\n" for b in bases))
+def _registry(registry):
+    """The blind `toy`, as ``blinding init`` writes it but for a stand-in seed."""
+    registry.mkdir()
+    record = {"seed": "toy-seed", "envelope": {"S8": 0.075}, "draw_scheme": 2}
+    (registry / "toy.blind.json").write_text(json.dumps(record))
 
 
 @pytest.fixture(scope="session")
@@ -195,9 +184,9 @@ def toy(tmp_path_factory):
     (root / "data").mkdir()
     (root / "cosmo_val").mkdir()
     (root / "cosmo_val" / "cat_config.yaml").write_text(
-        yaml.safe_dump(_cat_config(root / "data"))
+        yaml.safe_dump(_cat_config(root / "data", root / "blinds"))
     )
-    _registry(root)
+    _registry(root / "blinds")
 
     rundir = root / "papers" / "cosmo_val"
     config_path = rundir / "config" / "config.yaml"

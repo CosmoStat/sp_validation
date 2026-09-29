@@ -25,7 +25,6 @@ import json
 import os
 
 from sp_validation.cosmo_val import CosmologyValidation
-from sp_validation.custody import confirm
 
 
 def generate_pseudo_cl(
@@ -66,7 +65,7 @@ def generate_pseudo_cl(
         Power for powspace binning (0.5 = sqrt spacing)
     custody : str, optional
         The custody token Snakemake resolved for ``version`` (the rule's
-        ``params.custody``); the part is not written under any other.
+        ``params.custody``), which the part is sealed under.
 
     Returns
     -------
@@ -120,6 +119,7 @@ def generate_pseudo_cl(
         theta_min=1.0,
         theta_max=250.0,
         nbins=20,
+        custody=None if custody is None else {version: custody},
     )
     if binning == "linear":
         cv_kwargs["ell_step"] = ell_step
@@ -128,8 +128,6 @@ def generate_pseudo_cl(
         cv_kwargs["power"] = power
 
     cv = CosmologyValidation(**cv_kwargs)
-    if custody is not None:
-        confirm(cv.custody(version), custody)
 
     # Pseudo-Cls only (no covariance), born directly at the final out_path.
     cv.calculate_pseudo_cl(out_path=out_path)

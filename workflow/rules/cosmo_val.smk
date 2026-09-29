@@ -508,7 +508,6 @@ rule assemble_sacc:
         sacc=cv_analysis_sacc("{version}"),
     params:
         version="{version}",
-        cat_config=CAT_CONFIG,
         custody=lambda w: custody_token(w.version),
         # The statistics this rule wired, so a typo'd input keyword cannot
         # silently drop one.

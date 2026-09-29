@@ -28,11 +28,6 @@ dependencies = [
     "camb>=1.6",
     "clmm",
     "colorama",
-    # Blinding closure (core, no extra): cryptography + sacc here, plus the
-    # Smokescreen fork pin below; pyccl (the theory backend) is already core.
-    # cryptography and sacc are declared explicitly so the core runtime
-    # closure is self-documenting and independent of fork-metadata drift.
-    "cryptography",
     # Track cs_util's develop branch directly (git dependency) rather than a
     # PyPI pin: the two repos are iterating together heavily and cs_util
     # releases are infrequent. This PR's cosmology repoint needs get_cosmo /

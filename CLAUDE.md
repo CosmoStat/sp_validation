@@ -79,6 +79,12 @@ Main configuration in `scripts/calibration/params.py` with parameters:
 - emcee for MCMC sampling
 - pyccl for cosmological calculations
 
+## Blinded catalogues
+Each `cosmo_val/cat_config.yaml` entry declares `blind: none`, `mock` or a blind's name.
+- For an entry with `blind: <name>`, measure signal (ξ±, Cℓ, γt, COSEBIs, M_ap, maps) only through `CosmologyValidation` or the workflow, never from the file directly.
+- Never set `blind: none` to get a run through.
+- Never print, paste or commit a `.blind.json`.
+
 ## Container Usage
 Nothing is hand-built. CI publishes `ghcr.io/cosmostat/sp_validation:<branch>` on
 every push, and each person keeps their own copy at

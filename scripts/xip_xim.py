@@ -15,6 +15,8 @@ import treecorr
 from astropy.io import fits
 from cs_util import logging
 
+from sp_validation.custody import MOCK, NONE, of_file
+
 
 def params_default():
 
@@ -120,6 +122,13 @@ def main(argv=None):
 
     # Save calling command
     logging.log_command(argv)
+
+    blinds = of_file(params["input_path"]) - {NONE, MOCK}
+    if blinds:
+        raise SystemExit(
+            f"{params['input_path']} is blinded under {', '.join(sorted(blinds))}: "
+            "measure its signal through CosmologyValidation or the workflow"
+        )
 
     # Open input catalogue
     if params["verbose"]:

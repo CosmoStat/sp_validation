@@ -25,7 +25,6 @@ import argparse
 import os
 
 from sp_validation.cosmo_val import CosmologyValidation
-from sp_validation.custody import confirm
 
 
 def run_2pcf(
@@ -50,7 +49,7 @@ def run_2pcf(
     the part (the Snakemake-declared output); it defaults to a binning-derived
     name under the resolved output directory for the CLI path. ``custody`` is
     the custody token Snakemake resolved for ``ver`` (the rule's
-    ``params.custody``); the part is not written under any other.
+    ``params.custody``), which the part is sealed under.
 
     Returns
     -------
@@ -58,10 +57,11 @@ def run_2pcf(
         The part as written.
     """
     cv = CosmologyValidation(
-        versions=[ver], catalog_config=cat_config, output_dir=output_dir
+        versions=[ver],
+        catalog_config=cat_config,
+        output_dir=output_dir,
+        custody=None if custody is None else {ver: custody},
     )
-    if custody is not None:
-        confirm(cv.custody(ver), custody)
     out_path = sacc_out or os.path.join(
         output_dir or cv.cc["paths"]["output"],
         f"{ver}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc",

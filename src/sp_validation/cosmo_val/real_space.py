@@ -58,7 +58,7 @@ class RealSpaceMixin:
         self.print_magenta(f"Computing {ver} ξ±")
         npatch = int(npatch or self.npatch)
         custody = self.custody(ver)
-        if custody.status == "blinded":
+        if custody.blinded:
             from .. import blinding
 
             blinding.open_blind(custody)

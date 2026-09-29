@@ -27,58 +27,32 @@ each namespaces cleanly under `results/<name>/`.
 
 ## Custody: which catalogues are blinded
 
-Every catalogue in `cosmo_val/cat_config.yaml` declares its custody on its base
-entry, `blinding: blinded | unblinded | mock`; an entry that declares none is
-blinded. Variants (`_leak_corr`, `_seed<N>`, and entries naming their parent
-with `base:`) share their base's custody and blind; an entry named like a
-variant is one, and may repeat its parent's `blinding` or `base`, never declare
-another. A blind conceals data, not a name: catalogues reading one shear file
-are concealed under one blind or none, so a blind is drawn (or shared) for all
-of them. A launch prints one
-`[custody]` line per catalogue it runs; no `--config` or config file changes a
-declaration.
+Every entry of `cosmo_val/cat_config.yaml` declares `blind: none` (public),
+`blind: mock`, or the name of the blind its signal is concealed under; an entry
+without one is refused. `_leak_corr` and `_seed<N>` versions take their entry's.
+Entries reading one shear file declare one blind, and the repository config is
+authoritative for the files it names. A run may show a blinded catalogue only
+beside mocks and catalogues under the same blind, since overlaying it with any
+other version shows the shift. A launch prints one `[custody]` line per
+catalogue.
 
-For a blinded catalogue, every ξ± and pseudo-Cℓ_EE value is shifted by a hidden
-cosmology before it is first written. COSEBIs and pure-E/B computed from the
-shifted ξ± carry the blind with them; B-modes stay usable. Every SACC file
-records the custody it was born under, and assembly refuses parts under any
-other. Under a blind a SACC holds only data types with a blinding rule
-(`sacc_io.SIGNAL` and ρ/τ), so a new statistic is refused until it has one. ξ±
-leaves `CosmologyValidation.calculate_2pcf` only as its sealed part
-(no text dump), so the ξ± figures and notebooks draw what the part holds; the
-jackknife `calculate_pure_eb` and the aperture mass, which need TreeCorr's own
-measurement, refuse a blinded catalogue.
+Under a blind, every ξ± and pseudo-Cℓ_EE value is shifted by t(hidden) −
+t(fiducial) before it is first written; COSEBIs and pure-E/B computed from the
+shifted ξ± carry the blind, and B-modes stay usable. Every SACC records the
+custody it was born under, and rule params carry the custody token, so a flip
+reruns what it touches.
 
-A blinded catalogue needs a blind, drawn once, by a person. The launch stops
-with this command when none covers it:
+A blind is one record, `<paths.blinds>/<name>.blind.json`, outside any git
+worktree; read access to it is access to the blind. Draw one, once:
 
 ```bash
-APPTAINERENV_PYTHONPATH=$PWD/src spv-container exec python -m sp_validation.blinding \
-    init <blind> <catalogue> --cat-config cosmo_val/cat_config.yaml
+spv-container exec python -m sp_validation.blinding init <name>
 ```
 
-then commit `cosmo_val/blinds/<blind>/`. No rule draws or rewrites a blind, so
-`-F`, `--forcerun` or a fresh output tree reuse it, and every collaborator's run
-of the catalogue uses the same one. A re-processing of a catalogue whose blind
-is still concealed shares it: `… blinding share <blind> <catalogue>
---cat-config …`.
-
-Revealing re-measures; nothing subtracts a shift:
-
-1. `… blinding reveal <blind> --root <COSMO_VAL> --cat-config …` publishes the
-   seed (`revealed.json`) and moves every file concealed under the blind to
-   `<COSMO_VAL>/revealed/<blind>/`;
-2. one reviewed commit adds `revealed.json` and declares `blinding: unblinded`
-   on the blind's catalogues;
-3. the pipeline re-measures the true products;
-4. `… blinding audit <blind> --archive <COSMO_VAL>/revealed/<blind> --true-root
-   <COSMO_VAL> --cat-config …` checks blinded − true = shift(seed) on every ξ±
-   and Cℓ_EE row of every archived file, and bounds the derived B-modes (their
-   E-mode shifts are reported). ρ/τ is judged by its stamp: it carries no
-   signal, and a re-run does not reproduce it.
-
-`… blinding verify <file> --cat-config …` checks a file's stamp against the
-registry, without the seed.
+`… blinding show <name>` prints its public record. For an entry under a blind,
+measure signal only through `CosmologyValidation` or the workflow; never set
+`blind: none` to get a run through; never print, paste or commit a
+`.blind.json`.
 
 ## Running on the cluster — the candide profile
 

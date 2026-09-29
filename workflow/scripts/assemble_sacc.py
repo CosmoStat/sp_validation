@@ -16,11 +16,11 @@ matching what the B-mode PTE reads today.
 import argparse
 
 import numpy as np
+import yaml
 
+from sp_validation import custody as _custody
 from sp_validation import sacc_io
-from sp_validation.blinding import declared_custody
 from sp_validation.cosmo_val.sacc_writers import assemble_analysis_sacc
-from sp_validation.custody import confirm
 
 # NaMaster iNKA covariance FITS: per-spectrum HDU names, in SACC insertion order.
 _CL_HDUS = ("COVAR_EE_EE", "COVAR_BB_BB", "COVAR_EB_EB")
@@ -101,10 +101,9 @@ def assemble_sacc(
     """Assemble ``{version}.sacc`` from the per-statistic ``part_paths`` mapping.
 
     @sc one-custody-per-assembly
-    Every part, signal-bearing or not, must carry one stamp, and it must be the
-    custody ``version`` is declared under: a stale concealed part after a
-    reveal, a part under another blind or catalogue, a mock in data and
-    unblinded parts in a blinded file are all refused.
+    Every part, signal-bearing or not, must carry one stamp, and it must be
+    ``custody``: a stale part after a custody flip, a part under another blind,
+    a mock in data and public parts in a blinded file are all refused.
 
     Parameters
     ----------
@@ -117,7 +116,7 @@ def assemble_sacc(
         Statistics that must be present, from the caller's config toggles. A
         typo'd input keyword would otherwise silently drop a statistic.
     custody : sp_validation.custody.Custody
-        The custody ``version`` is declared under.
+        The custody ``version`` runs under.
     xi_cov, pseudo_cl_cov
         Covariance sourcing — see the module docstring.
     """
@@ -162,7 +161,7 @@ def _from_snakemake(smk):
         version=p["version"],
         part_paths=part_paths,
         out_path=str(smk.output[0]),
-        custody=confirm(declared_custody(p["cat_config"], p["version"]), p["custody"]),
+        custody=_custody.parse(p["custody"]),
         expected=list(p["expected"]),
         xi_cov=getattr(inp, "xi_cov", None),
         pseudo_cl_cov=getattr(inp, "pseudo_cl_cov", None),
@@ -194,7 +193,7 @@ def _from_cli(argv=None):
         version=a.version,
         part_paths=part_paths,
         out_path=a.out,
-        custody=declared_custody(a.cat_config, a.version),
+        custody=_custody.custody_of(yaml.safe_load(open(a.cat_config)), a.version),
         xi_cov=a.xi_cov,
         pseudo_cl_cov=a.pseudo_cl_cov,
     )

@@ -1032,16 +1032,16 @@ def seal(s, custody):
             "this SACC is already stamped; a loaded or sealed SACC is re-written "
             "only as a derivation (save(..., derived_from=[...]))"
         )
-    if custody.status == "blinded":
+    if custody.blinded:
         _refuse_unruled(s)
     types = {dp.data_type for dp in s.data}
     derived = types & set(DERIVED)
-    if custody.status == "blinded" and derived:
+    if custody.blinded and derived:
         raise ValueError(
             f"a blinded catalogue's {sorted(derived)} rows are derived "
             "statistics: save them with derived_from=[their input parts]"
         )
-    if custody.status == "blinded" and types & set(SHIFTABLE):
+    if custody.blinded and types & set(SHIFTABLE):
         from . import blinding
 
         out = blinding.conceal(s, blinding.open_blind(custody))
@@ -1069,10 +1069,10 @@ def _derive(s, parts, custody):
         )
     if custody is not None and custody != stamp:
         raise ValueError(
-            f"parts are stamped {stamp.token}, but {custody.catalogue} is "
-            f"declared {custody.token}"
+            f"parts are stamped {stamp.token}, but the catalogue is declared "
+            f"{custody.token}"
         )
-    if stamp.status == "blinded":
+    if stamp.blinded:
         _refuse_unruled(s)
     inputs = {_row_key(dp) for p in parts for dp in p.data if dp.data_type in SHIFTABLE}
     stray = [
@@ -1127,7 +1127,7 @@ def load(path):
     """Load the SACC at ``path``, refusing a file without a valid custody stamp.
 
     @sc stamped-or-refused
-    Every file ``save`` wrote carries one of the three stamps; anything else was
+    Every file ``save`` wrote carries a custody stamp; anything else was
     not born through the door and is refused, with no escape hatch.
     """
     s = sacc.Sacc.load_fits(str(path))

@@ -63,7 +63,7 @@ def _cosebi_block(s, tr):
 # --------------------------------------------------------------------------- #
 # 1. Per-writer round-trip (arrays / tags / windows / NZ bitwise)
 # --------------------------------------------------------------------------- #
-MOCK = Custody("mock", "vTEST")
+MOCK = Custody("mock")
 
 
 def _roundtrip(s, tmp_path, name="rt"):

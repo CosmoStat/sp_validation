@@ -4,9 +4,9 @@ The launch is the README's with the machine-independent default profile: the
 host Snakemake, the image `spv-container` manages, jobs on this node. A toy
 checkout under your home directory (which the profile binds) carries copies of
 workflow/, papers/cosmo_val/ and src/, and one synthetic catalogue declared
-unblinded. The first launch makes its reporting parts and their figure; then
-the catalogue is declared blinded, a blind is drawn for it, and the same launch
-re-measures the parts concealed.
+public. The first launch makes its reporting parts and their figure; then a
+blind is drawn and declared on the catalogue, and the same launch re-measures
+the parts concealed.
 """
 
 import json
@@ -19,7 +19,9 @@ from pathlib import Path
 
 import pytest
 import yaml
-from conftest import REPO, container, on_candide
+from conftest import REPO, _load_module, container, on_candide
+
+custody = _load_module(REPO / "src" / "sp_validation" / "custody.py", "custody", {})
 
 VERSIONS = ("SP_v0.1", "SP_v0.1_leak_corr")
 REPORTING = {"theta_min": 5.0, "theta_max": 60.0, "nbins": 6, "npatch": 4}
@@ -56,7 +58,7 @@ def _stamps(image, root, parts):
 
 
 def _toy_checkout(root, image):
-    """A checkout with one synthetic catalogue, SP_v0.1, declared unblinded."""
+    """A checkout with one synthetic catalogue, SP_v0.1, declared public."""
     skip = shutil.ignore_patterns(".snakemake", "__pycache__", "tests")
     shutil.copytree(REPO / "workflow", root / "workflow", ignore=skip)
     shutil.copytree(
@@ -76,7 +78,7 @@ def _toy_checkout(root, image):
         "from pathlib import Path\n"
         "from _synthetic import write_synthetic_catalogs\n"
         f"write_synthetic_catalogs(Path({str(root / 'cosmo_val')!r}),"
-        f" catalogues={{{VERSIONS[0]!r}: 'unblinded'}})",
+        f" catalogues={{{VERSIONS[0]!r}: 'none'}})",
     )
 
     config_path = root / "papers" / "cosmo_val" / "config" / "config.yaml"
@@ -86,9 +88,6 @@ def _toy_checkout(root, image):
     config["fiducial"]["mock_version"] = VERSIONS[0]
     config["cosmo_val"].update(REPORTING)
     config_path.write_text(yaml.safe_dump(config, sort_keys=False))
-    (root / "fast.json").write_text(
-        json.dumps({"theory": {"transfer_function": "eisenstein_hu"}})
-    )
 
 
 @pytest.mark.candide
@@ -141,40 +140,41 @@ def test_xi_before_and_after_its_catalogue_is_blinded():
             check=False,
         )
 
-    # Declared unblinded: parts stamped unblinded, and their figure drawn.
+    # Declared public: parts stamped public, and their figure drawn.
     result = launch()
     assert result.returncode == 0, result.stdout
-    assert [s["blinding"] for s in _stamps(image, root, parts)] == ["unblinded"] * 2
+    assert [s["blind"] for s in _stamps(image, root, parts)] == ["none"] * 2
     assert (out / "xi_p.png").is_file()
 
-    # Declared blinded, and its blind drawn: the parts' params changed.
-    catalogues = yaml.safe_load(cat_config.read_text())
-    catalogues[VERSIONS[0]]["blinding"] = "blinded"
-    cat_config.write_text(yaml.safe_dump(catalogues, sort_keys=False))
+    # A blind drawn and declared: the parts' params changed.
     _in_image(
         image,
         root,
         "python",
-        "-m",
-        "sp_validation.blinding",
-        "init",
-        "toy",
-        VERSIONS[0],
-        "--cat-config",
+        "-c",
+        "import dataclasses, sys, yaml\n"
+        "from sp_validation import blinding\n"
+        "from sp_validation.blinding_theory import TheoryConfig\n"
+        "fast = TheoryConfig(transfer_function='eisenstein_hu')\n"
+        "blinding.init('toy', yaml.safe_load(open(sys.argv[1])),"
+        " fiducial=dataclasses.asdict(fast))",
         str(cat_config),
-        "--config",
-        str(root / "fast.json"),
     )
+    catalogues = yaml.safe_load(cat_config.read_text())
+    catalogues[VERSIONS[0]]["blind"] = "toy"
+    cat_config.write_text(yaml.safe_dump(catalogues, sort_keys=False))
     dry = launch("-n")
     assert dry.returncode == 0, dry.stdout
     assert "Params have changed" in dry.stdout, dry.stdout
 
     result = launch()
     assert result.returncode == 0, result.stdout
-    record = json.loads((root / "cosmo_val/blinds/toy/commitment.json").read_text())
+    record = json.loads((root / "cosmo_val/blinds/toy.blind.json").read_text())
     for stamp in _stamps(image, root, parts):
-        assert stamp["blinding"] == "blinded", stamp
-        assert stamp["blinding_commitment"] == record["seed_commitment"], stamp
+        assert stamp == {
+            "blind": "toy",
+            "blind_commitment": custody.commitment(record),
+        }
     assert not list(out.rglob("*_xi_*.txt"))
     assert not list((root / "cosmo_val" / "output").iterdir())
 

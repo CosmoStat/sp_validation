@@ -1,14 +1,14 @@
-"""End to end: one blinded catalogue through its rule scripts, then its reveal.
+"""End to end: one blinded catalogue through its rule scripts, then unblinded.
 
-A synthetic catalogue ``TOY`` is declared blinded and its blind drawn with
-``blinding init``. The ξ± and assembly rule scripts run as Snakemake runs them
-(``runpy`` with a ``snakemake`` object); the assembled file verifies against
-the declaration, and no file of the blinded run holds a true ξ± value. The
-blind is then revealed, the declaration flipped, the chain re-run, and the
-audit proves blinded − true = shift(seed).
+A synthetic catalogue ``TOY`` is declared under a blind drawn with ``blinding
+init``. The ξ± and assembly rule scripts run as Snakemake runs them (``runpy``
+with a ``snakemake`` object), and no file of the blinded run holds a true ξ±
+value. The declaration is then flipped to ``blind: none`` and the chain re-run
+into a fresh tree: blinded − true is the blind's shift, and nothing but the
+mean moved.
 """
 
-import json
+import dataclasses
 import re
 import runpy
 import types
@@ -21,6 +21,7 @@ from _synthetic import write_synthetic_catalogs
 from sp_validation import blinding as bd
 from sp_validation import custody as cu
 from sp_validation import sacc_io as sio
+from sp_validation.blinding_theory import TheoryConfig
 
 SCRIPTS = Path(__file__).resolve().parents[3] / "workflow" / "scripts"
 GRID = {"min_sep": 5.0, "max_sep": 60.0, "nbins": 6, "npatch": 1}
@@ -56,7 +57,7 @@ def run_rule(script, **fields):
 def run_chain(cat_config, out, cov):
     """Rules xi and assemble_sacc for TOY into ``out``."""
     out.mkdir(exist_ok=True)
-    token = bd.declared_custody(cat_config, "TOY").token
+    token = cu.custody_of(yaml.safe_load(cat_config.read_text()), "TOY").token
     common = {"cat_config": str(cat_config), "custody": token}
     xi = out / "TOY_xi_reporting.sacc"
     run_rule(
@@ -70,7 +71,7 @@ def run_chain(cat_config, out, cov):
         "assemble_sacc.py",
         input={"xi_reporting": str(xi), "xi_cov": str(cov)},
         output={"sacc": str(out / "TOY.sacc")},
-        params={"version": "TOY", "expected": ["xi_reporting"]} | common,
+        params={"version": "TOY", "expected": ["xi_reporting"], "custody": token},
     )
 
 
@@ -102,48 +103,51 @@ def plaintext(blobs, values):
     return found
 
 
-def test_a_blinded_catalogue_from_birth_to_audit(tmp_path, monkeypatch):
+def test_a_blinded_catalogue_from_birth_to_unblinding(tmp_path, monkeypatch):
     monkeypatch.syspath_prepend(str(SCRIPTS))
     import cv_runner
 
     # Rule jobs line-buffer their own streams; under pytest they are captured.
     monkeypatch.setattr(cv_runner, "_unbuffer_streams", lambda: None)
     params, _ = write_synthetic_catalogs(
-        tmp_path, n_gal=20000, coherent_shear=True, catalogues={"TOY": None}
+        tmp_path, n_gal=20000, coherent_shear=True, catalogues={"TOY": "toy"}
     )
     cat_config = Path(params["catalog_config"])
-    fast = tmp_path / "fast.json"
-    fast.write_text(json.dumps({"theory": {"transfer_function": "eisenstein_hu"}}))
-    monkeypatch.setattr(bd.secrets, "token_hex", lambda n: "e2e-seed")
-    bd.main(
-        ["init", "toy", "TOY", "--cat-config", str(cat_config), "--config", str(fast)]
-    )
+    config = yaml.safe_load(cat_config.read_text())
+    fast = TheoryConfig(transfer_function="eisenstein_hu")
+    blind = bd.init("toy", config, fiducial=dataclasses.asdict(fast))
     cov = tmp_path / "cov.txt"
     np.savetxt(cov, np.diag(np.full(2 * GRID["nbins"], 1e-10)))
-    out = tmp_path / "cosmo_val"
 
     # --- the blinded run -----------------------------------------------------
-    run_chain(cat_config, out, cov)
-    blinded = bd.declared_custody(cat_config, "TOY")
-    for part in out.glob("*.sacc"):
-        assert cu.read_stamp(sio.load(part).metadata).stamp == blinded.stamp
-    verify = ["verify", str(out / "TOY.sacc"), "--cat-config", str(cat_config)]
-    assert bd.main(verify) == 0
-    blinded_run = {str(p): p.read_bytes() for p in out.rglob("*") if p.is_file()}
+    blinded_out = tmp_path / "blinded"
+    run_chain(cat_config, blinded_out, cov)
+    custody = cu.custody_of(config, "TOY")
+    for part in blinded_out.glob("*.sacc"):
+        assert cu.read_stamp(sio.load(part).metadata) == custody
+    blinded_run = {
+        str(p): p.read_bytes() for p in blinded_out.rglob("*") if p.is_file()
+    }
 
-    # --- the reveal: archive, flip the declaration, re-measure, audit --------
-    reveal = ["reveal", "toy", "--root", str(out), "--cat-config", str(cat_config)]
-    assert bd.main(reveal) == 0
-    config = yaml.safe_load(cat_config.read_text())
-    config["TOY"]["blinding"] = "unblinded"
+    # --- flip to public, re-measure into a fresh tree ------------------------
+    config["TOY"]["blind"] = "none"
     cat_config.write_text(yaml.safe_dump(config, sort_keys=False))
-    run_chain(cat_config, out, cov)
-    archive = out / "revealed" / "toy"
-    report = bd.audit("toy", archive=archive, true_root=out, cat_config=cat_config)
-    assert report["ok"], json.dumps(report, indent=1, default=str)
-    assert len(report["parts"]) == 2
+    true_out = tmp_path / "true"
+    run_chain(cat_config, true_out, cov)
+
+    for name in ("TOY_xi_reporting.sacc", "TOY.sacc"):
+        blinded, true = (sio.load(out / name) for out in (blinded_out, true_out))
+        assert cu.read_stamp(true.metadata) == cu.Custody("none")
+        shift = bd.conceal(true, blind).mean - true.mean
+        assert np.all(shift != 0)
+        np.testing.assert_allclose(
+            blinded.mean - true.mean, shift, rtol=1e-8, atol=1e-12 * np.abs(shift).max()
+        )
+        np.testing.assert_allclose(
+            blinded.covariance.dense, true.covariance.dense, rtol=1e-10
+        )
 
     # --- no true ξ± value was written by the blinded run ---------------------
-    gg = sio.xi_correlation(sio.load(out / "TOY_xi_reporting.sacc"))
+    gg = sio.xi_correlation(sio.load(true_out / "TOY_xi_reporting.sacc"))
     assert not plaintext(blinded_run, np.concatenate([gg.xip, gg.xim]))
     assert not list(tmp_path.rglob("*_xi_*.txt"))

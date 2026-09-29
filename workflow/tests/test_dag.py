@@ -9,9 +9,10 @@ from pathlib import Path
 import pytest
 import yaml
 from conftest import (
+    PUBLIC,
     REPO,
-    STALE,
     UNCOVERED,
+    UNDECLARED,
     VERSIONS,
     on_candide,
     parse_jobs,
@@ -63,11 +64,11 @@ def test_one_integration_grid(toy, forced, grids):
 def test_custody_is_the_checkouts_and_no_rule_touches_a_blind(toy, forced, tmp_path):
     """[P9, P10, P8] A catalogue and its variant share one custody line; even a
     forced run schedules nothing that reads or writes the registry; and a
-    config file declaring the catalogue unblinded changes nothing."""
+    config file declaring the catalogue public changes nothing."""
     output, jobs = forced
     line = f"[custody] {VERSIONS[0]} (+ {VERSIONS[1]}): blinded under toy"
-    assert [x for x in output.splitlines() if x.startswith("[custody]")] == [line]
-    registry = (toy.root / "cosmo_val" / "blinds").resolve()
+    assert {x for x in output.splitlines() if x.startswith("[custody]")} == {line}
+    registry = (toy.root / "blinds").resolve()
     assert not [j.rule for j in jobs if "blind" in j.rule]
     touched = [
         f
@@ -78,42 +79,26 @@ def test_custody_is_the_checkouts_and_no_rule_touches_a_blind(toy, forced, tmp_p
     assert not touched, touched
 
     override = tmp_path / "override.yaml"
-    override.write_text(yaml.safe_dump({VERSIONS[0]: {"blinding": "unblinded"}}))
+    override.write_text(yaml.safe_dump({VERSIONS[0]: {"blind": "none"}}))
     result = toy.snakemake("-n", "assemble_sacc_all", "--configfile", str(override))
     assert result.returncode == 0, result.stdout
     assert line in result.stdout
 
 
-def _launch_refusals(toy, tmp_path):
-    """Launches the DAG cannot honour: ``(args, Toy.snakemake kwargs, message)``."""
-    campaign = tmp_path / "campaign.yaml"
-    config = dict(toy.config, cosmo_val=dict(toy.config["cosmo_val"], type="mock"))
-    campaign.write_text(yaml.safe_dump(config))
-    return {
-        # [P6] a blinded catalogue no blind covers: pull, then draw or share
-        "no_blind": (
-            [],
-            dict(config=[f'versions=["{UNCOVERED}"]']),
-            ["git pull first", "python -m sp_validation.blinding init", "share"],
-        ),
-        # [P11] unblinded under a concealed blind, and the removed campaign switch
-        "unrevealed": (
-            [],
-            dict(config=[f'versions=["{STALE}"]']),
-            ["blinding reveal stale"],
-        ),
-        "campaign_type": (
-            ["--configfile", str(campaign)],
-            {},
-            ["custody is declared per catalogue in cosmo_val/cat_config.yaml"],
-        ),
-    }
+LAUNCH_REFUSALS = {
+    # [P6] a blind the registry does not hold, an entry declaring none, and a
+    # blinded catalogue overlaid with a public one
+    "no_blind": ([UNCOVERED], [f"{UNCOVERED} is blinded under gone", "init gone"]),
+    "undeclared": ([UNDECLARED], ["declares no `blind:`"]),
+    "mixed": ([VERSIONS[0], PUBLIC], ["shows the blind's shift"]),
+}
 
 
-@pytest.mark.parametrize("case", ["no_blind", "unrevealed", "campaign_type"])
-def test_a_launch_the_dag_cannot_honour_stops_with_the_fix(toy, tmp_path, case):
-    args, launch, message = _launch_refusals(toy, tmp_path)[case]
-    result = toy.snakemake("-n", "assemble_sacc_all", *args, **launch)
+@pytest.mark.parametrize("case", LAUNCH_REFUSALS)
+def test_a_launch_the_dag_cannot_honour_stops_with_the_fix(toy, case):
+    versions, message = LAUNCH_REFUSALS[case]
+    listed = ", ".join(f'"{v}"' for v in versions)
+    result = toy.snakemake("-n", "assemble_sacc_all", config=[f"versions=[{listed}]"])
     assert result.returncode != 0, result.stdout
     for fragment in message:
         assert fragment in result.stdout, result.stdout

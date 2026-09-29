@@ -52,7 +52,7 @@ def _theta(n=6):
 
 
 META = {"catalogue_version": "vSYNTH", "npatch": 1}
-MOCK = Custody("mock", "vSYNTH")
+MOCK = Custody("mock")
 
 
 def _xi_cov_txt(tmp_path, n=12, seed=21):

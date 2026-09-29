@@ -2,10 +2,9 @@
 
 The glue tests run the real compute seams on it: a shear catalogue
 (RA/Dec/e1/e2/w), a PSF star catalogue with the columns the leakage and ρ/τ
-seams read, a cs_util-readable dndz, and a ``cat_config.yaml`` beside a
-``blinds/`` registry directory, as in the repository layout. Every catalogue
-entry in the config reads its own copy of the same galaxies and declares its
-own custody.
+seams read, a cs_util-readable dndz, and a ``cat_config.yaml`` whose blind
+registry is ``blinds/`` beside it. Every catalogue entry in the config reads its
+own copy of the same galaxies and declares its own custody.
 """
 
 import copy
@@ -36,10 +35,10 @@ def write_synthetic_catalogs(
         Add a ``psf`` block (ρ/τ and pseudo-Cℓ read it via
         ``get_params_rho_tau``).
     catalogues : dict, optional
-        ``{version: declaration}``, one catalogue entry each, reading its own
-        copy of the shear catalogue (catalogues reading one file share one
-        custody). A declaration is a ``blinding`` value, or ``None`` for an
-        entry that declares none. Defaults to one mock, ``TestCatalog``.
+        ``{version: blind}``, one catalogue entry each, reading its own copy of
+        the shear catalogue. ``blind`` is the entry's ``blind:`` value, or
+        ``None`` for an entry that declares none. Defaults to one mock,
+        ``TestCatalog``.
 
     Returns
     -------
@@ -132,14 +131,14 @@ def write_synthetic_catalogs(
 
     config = {
         "nz": {"subdir": str(nz_dir), "dndz": {"path": "dndz_{pipeline}_A.txt"}},
-        "paths": {"output": str(output_dir)},
+        "paths": {"output": str(output_dir), "blinds": str(tmp_path / "blinds")},
     }
-    for version, declaration in catalogues.items():
+    for version, blind in catalogues.items():
         config[version] = copy.deepcopy(entry)
         config[version]["shear"]["path"] = f"shear_{version}.fits"
         shear.write(cat_dir / f"shear_{version}.fits", overwrite=True)
-        if declaration is not None:
-            config[version]["blinding"] = declaration
+        if blind is not None:
+            config[version]["blind"] = blind
     config_path = tmp_path / "cat_config.yaml"
     config_path.write_text(yaml.safe_dump(config, sort_keys=False))
 

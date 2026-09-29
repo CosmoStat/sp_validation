@@ -7,7 +7,6 @@ catalogue's custody.
 from cv_runner import _unbuffer_streams, verify_outputs
 
 from sp_validation.cosmo_val import CosmologyValidation
-from sp_validation.custody import confirm
 
 _unbuffer_streams()
 params = snakemake.params  # noqa: F821 — injected by Snakemake's script: directive
@@ -20,7 +19,7 @@ cv = CosmologyValidation(
     npatch=int(params["npatch"]),
     catalog_config=params["cat_config"],
     output_dir=params["output_dir"],
+    custody={params["ver"]: params["custody"]},
 )
-confirm(cv.custody(params["ver"]), params["custody"])
 cv.calculate_rho_tau_stats()
 verify_outputs(snakemake)  # noqa: F821

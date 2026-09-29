@@ -33,7 +33,7 @@ def _theta(n=6):
     return np.geomspace(1.0, 100.0, n)
 
 
-MOCK = Custody("mock", "vSYNTH")
+MOCK = Custody("mock")
 
 
 def _roundtrip(s, tmp_path, name):

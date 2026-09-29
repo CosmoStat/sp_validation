@@ -9,11 +9,11 @@ import yaml
 from cs_util.cosmo import get_cosmo
 from shear_psf_leakage import run_object, run_scale
 
+from .. import custody as _custody
 from ..b_modes import (
     _get_pte_from_scale_cut,
     find_conservative_scale_cut_key,
 )
-from ..custody import custody_of, registry_of, seed_path
 from ..statistics import chi2_and_pte
 from ..version import __version__
 from .catalog_characterization import CatalogCharacterizationMixin
@@ -131,6 +131,9 @@ class CosmologyValidation(
         noise debiasing, making those realizations reproducible run-to-run.
     cosmo_params : dict, optional
         Cosmological parameters to pass to get_cosmo(). If None, uses Planck 2018.
+    custody : dict, optional
+        ``{version: custody token}`` (a workflow job's ``params.custody``),
+        replacing the catalogue config's declaration for those versions.
 
     Attributes
     ----------
@@ -198,6 +201,7 @@ class CosmologyValidation(
         cell_seed=8192,
         path_onecovariance=None,
         cosmo_params=None,
+        custody=None,
     ):
         self.rho_tau_method = rho_tau_method
         self.cov_estimate_method = cov_estimate_method
@@ -264,6 +268,7 @@ class CosmologyValidation(
             self.cc = cc = yaml.load(file, Loader=yaml.FullLoader)
         # The catalogues as declared, before virtual versions are materialised.
         self._declared = copy.deepcopy(cc)
+        self._tokens = dict(custody or {})
 
         def resolve_paths_for_version(ver):
             """Resolve relative paths for a version using its subdir."""
@@ -315,7 +320,7 @@ class CosmologyValidation(
                 ensure_version_exists(seed_base)
                 if ver not in cc:
                     cc[ver] = copy.deepcopy(cc[seed_base])
-                    cc[ver]["shear"]["path"] = seed_path(
+                    cc[ver]["shear"]["path"] = _custody.seed_path(
                         cc[seed_base]["shear"], seed_label
                     )
                 resolve_paths_for_version(ver)
@@ -331,6 +336,14 @@ class CosmologyValidation(
             final_versions.append(ver)
 
         self.versions = final_versions
+        _custody.check_mix(
+            {
+                v: _custody.parse(self._tokens[v]).blind
+                if v in self._tokens
+                else _custody.declared(self._declared, v)
+                for v in self.versions
+            }
+        )
 
         if output_dir is not None:
             cc["paths"]["output"] = output_dir
@@ -447,15 +460,12 @@ class CosmologyValidation(
         return self._results_objectwise
 
     def custody(self, version):
-        """The custody ``version``'s catalogue is declared under.
-
-        Read from the catalogue config this object was built from and the blind
-        registry beside it (:func:`sp_validation.custody.custody_of`); every
-        SACC this object writes for ``version`` is sealed under it.
-        """
-        return custody_of(
-            self._declared, version, registry=registry_of(self.catalog_config_path)
-        )
+        """The custody every SACC this object writes for ``version`` is sealed
+        under: the token it was given for ``version`` (a workflow job's
+        ``params.custody``), else the catalogue config's declaration."""
+        if version in self._tokens:
+            return _custody.parse(self._tokens[version], self._declared)
+        return _custody.custody_of(self._declared, version)
 
     def basename(self, version, treecorr_config=None, npatch=None):
         cfg = treecorr_config or self.treecorr_config

@@ -1,66 +1,52 @@
 """The blind and the file door.
 
-A blind is drawn once (``blinding init``) into a registry beside a catalogue
-config; ``sacc_io.save`` is the only writer, and conceals a blinded
-catalogue's ξ± and Cℓ_EE rows in memory before the file exists. Blinds here
-use the fast Eisenstein–Hu theory.
+A blind is drawn once (``blinding init``) into a registry outside git;
+``sacc_io.save`` is the only writer, and conceals a blinded catalogue's ξ± and
+Cℓ_EE rows in memory before the file exists. Blinds here use the fast
+Eisenstein–Hu theory.
 """
 
+import dataclasses
 import json
+import stat
+import traceback
 
 import numpy as np
 import pytest
-import yaml
 from hypothesis import example, given, settings
 from hypothesis import strategies as st
 
 from sp_validation import blinding as bd
 from sp_validation import custody as cu
 from sp_validation import sacc_io as sio
+from sp_validation.blinding_theory import TheoryConfig
 
 VERSIONS = ("TOY", "OTHER", "TOY_OPEN", "OTHER_OPEN", "TOY_MOCK")
+FAST = dataclasses.asdict(TheoryConfig(transfer_function="eisenstein_hu"))
 
 
-def _registry(root, *blinds):
-    """A catalogue config declaring one catalogue per custody state, and
-    ``blinds`` ((name, base) pairs) drawn for it, each from a fixed seed."""
-    entries = {
-        "TOY": {},
-        "OTHER": {},
-        "TOY_OPEN": {"blinding": "unblinded"},
-        "OTHER_OPEN": {"blinding": "unblinded"},
-        "TOY_MOCK": {"blinding": "mock"},
+def _catalogues(root):
+    """A catalogue config declaring one catalogue per custody."""
+    blinds = {
+        "TOY": "toy",
+        "OTHER": "other",
+        "TOY_OPEN": "none",
+        "OTHER_OPEN": "none",
+        "TOY_MOCK": "mock",
     }
-    (root / "cat_config.yaml").write_text(yaml.safe_dump(entries))
-    (root / "fast.json").write_text(
-        json.dumps({"theory": {"transfer_function": "eisenstein_hu"}})
-    )
-    with pytest.MonkeyPatch.context() as m:
-        for blind, base in blinds:
-            m.setattr(bd.secrets, "token_hex", lambda n, b=blind: f"{b}-seed")
-            _init(root, blind, base)
-    return root
-
-
-def _init(root, blind, *bases):
-    cat_config, config = root / "cat_config.yaml", root / "fast.json"
-    bd.main(
-        ["init", blind, *bases, "--cat-config", str(cat_config)]
-        + ["--config", str(config)]
-    )
-
-
-def _custody(root, version):
-    return bd.declared_custody(root / "cat_config.yaml", version)
+    config = {"paths": {"blinds": str(root / "blinds")}}
+    for name, blind in blinds.items():
+        config[name] = {"shear": {"path": str(root / f"{name}.fits")}, "blind": blind}
+    return config
 
 
 @pytest.fixture(scope="module")
 def blinds(tmp_path_factory):
     """The five custodies: TOY under blind `toy`, OTHER under `other`."""
-    root = _registry(
-        tmp_path_factory.mktemp("registry"), ("toy", "TOY"), ("other", "OTHER")
-    )
-    return {v: _custody(root, v) for v in VERSIONS}
+    cats = _catalogues(tmp_path_factory.mktemp("registry"))
+    for name in ("toy", "other"):
+        bd.init(name, cats, fiducial=FAST)
+    return {v: cu.custody_of(cats, v) for v in VERSIONS}
 
 
 def _nz(z0):
@@ -149,7 +135,7 @@ def test_seal_shifts_only_the_signal_it_has_a_rule_for(blinds, content, version)
     derived rows or a type with no blinding rule is refused. Unblinded and
     mock births keep their values. Each is stamped with its custody."""
     s, custody = part(**content), blinds[version]
-    blinded = custody.status == "blinded"
+    blinded = custody.blinded
     if blinded and (content["derived"] or content["unruled"]):
         with pytest.raises(ValueError, match="derived_from|no blinding rule"):
             sio.seal(s, custody)
@@ -209,7 +195,7 @@ def test_a_derivation_carries_its_inputs_one_stamp(
     allowed = (
         all(blinds[v].stamp == stamp for v in inputs)
         and (declared is None or blinds[declared].stamp == stamp)
-        and not (stamp["blinding"] == "blinded" and content == "plaintext")
+        and not (blinds[inputs[0]].blinded and content == "plaintext")
     )
     path = tmp_path_factory.mktemp("derived") / "d.sacc"
     kwargs = dict(
@@ -228,105 +214,69 @@ def test_a_derivation_carries_its_inputs_one_stamp(
 
 
 # --------------------------------------------------------------------------- #
-# The blind: drawn once, its seed never on disk
+# The blind: drawn once, opened only under its commitment, never shown
 # --------------------------------------------------------------------------- #
-SEED = "5eed" * 8
+def test_a_blind_is_drawn_once_and_kept_private(tmp_path):
+    cats = _catalogues(tmp_path)
+    blind = bd.init("toy", cats, fiducial=FAST)
+    assert stat.S_IMODE(blind.path.stat().st_mode) == 0o440
+    assert stat.S_IMODE(blind.path.parent.stat().st_mode) == 0o700
+    with pytest.raises(cu.CustodyError, match="drawn once"):
+        bd.init("toy", cats, fiducial=FAST)
 
 
-@pytest.mark.parametrize("fault", [None, "after_key", "encrypt"])
-def test_init_never_writes_the_seed(tmp_path, monkeypatch, fault):
-    """A normal init, or one interrupted anywhere, leaves no file holding the
-    seed."""
-    from cryptography import fernet
-
-    _registry(tmp_path)
-    monkeypatch.setattr(bd.secrets, "token_hex", lambda n: SEED)
-    if fault == "after_key":
-        monkeypatch.setattr(bd.os, "replace", lambda src, dst: 1 / 0)
-    elif fault == "encrypt":
-        monkeypatch.setattr(fernet.Fernet, "encrypt", lambda self, data: 1 / 0)
-    if fault is None:
-        _init(tmp_path, "toy", "TOY")
-    else:
-        with pytest.raises(ZeroDivisionError):
-            _init(tmp_path, "toy", "TOY")
-    files = [p for p in tmp_path.rglob("*") if p.is_file()]
-    assert not [p for p in files if SEED.encode() in p.read_bytes()]
-
-
-def test_a_blind_is_drawn_once(tmp_path):
-    _registry(tmp_path, ("toy", "TOY"))
-    with pytest.raises(cu.CustodyError, match="exists"):
-        _init(tmp_path, "toy", "OTHER")
-    with pytest.raises(cu.CustodyError, match="already covered"):
-        _init(tmp_path, "again", "TOY")
-
-
-def test_the_commitment_hides_the_rng_seed():
-    """The fork seeds its RNG from the undomained sha256 of the seed; the
-    domain prefix keeps the public commitment from publishing it."""
-    from smokescreen.param_shifts import _normalize_seed
-
-    seed = "the-secret"
-    assert int(cu.seed_commitment(seed)[:16], 16) != _normalize_seed(seed)
-
-
-def test_the_digest_binds_the_config():
-    config = bd.BlindingConfig()
-    moved = bd.BlindingConfig(envelope={**config.envelope, "S8": 0.08})
-    assert moved.digest() != config.digest()
-
-
-def test_a_blind_opens_only_with_its_key(tmp_path):
-    from cryptography.fernet import Fernet
-
-    root = _registry(tmp_path, ("toy", "TOY"))
-    key = root / "blinds" / "toy" / "key"
-    key.chmod(0o644)
-    key.write_bytes(Fernet.generate_key())
-    with pytest.raises(cu.CustodyError, match="does not decrypt"):
-        bd.open_blind(_custody(root, "TOY"))
-
-
-# --------------------------------------------------------------------------- #
-# The reveal: publish, then prove blinded − true = shift(seed)
-# --------------------------------------------------------------------------- #
-@pytest.mark.parametrize("seed", ["committed", "wrong"])
-def test_the_audit_proves_the_shift(tmp_path, seed):
-    """A concealed part passes the audit against its re-measured twin under
-    the published committed seed, and fails under any other."""
-    root = _registry(tmp_path, ("toy", "TOY"))
-    blinded = _custody(root, "TOY")
-    true = part()
-    archived = sio.seal(true, blinded)
-    published = bd.open_blind(blinded).seed if seed == "committed" else "not-it"
-    (root / "blinds" / "toy" / "revealed.json").write_text(
-        json.dumps({"seed": published})
+def test_a_blind_opens_only_under_its_commitment(blinds, monkeypatch):
+    custody = blinds["TOY"]
+    assert bd.open_blind(custody) == bd.Blind(
+        "toy", custody.registry / "toy.blind.json"
     )
-    for tree, s, stamp in (
-        ("archive", archived, blinded.stamp),
-        ("live", true, cu.Custody("unblinded", "TOY").stamp),
-    ):
-        s = s.copy()
-        s.metadata.update(stamp)
-        (root / tree).mkdir()
-        s.save_fits(str(root / tree / "part.sacc"))
-    report = bd.audit(
-        "toy",
-        archive=root / "archive",
-        true_root=root / "live",
-        cat_config=root / "cat_config.yaml",
+    with pytest.raises(cu.CustodyError, match="launch again"):
+        bd.open_blind(dataclasses.replace(custody, commitment="0" * 64))
+    monkeypatch.setattr(bd, "draw_scheme", lambda: 99)
+    with pytest.raises(cu.CustodyError, match="draw scheme 2; .* under 99"):
+        bd.open_blind(custody)
+
+
+def _hidden_failure(blind, fiducial):
+    """The traceback, locals included, of a theory failing at the hidden point
+    with its parameters in its message."""
+
+    def failing(params, *args):
+        raise RuntimeError(f"cannot evaluate {params}")
+
+    with pytest.MonkeyPatch.context() as m:
+        m.setattr(bd, "xi_ccl", failing)
+        with pytest.raises(bd.BlindingError) as failure:
+            bd._at_hidden(bd._blocks(part(cl=False)), fiducial, blind)
+    trace = traceback.TracebackException.from_exception(
+        failure.value, capture_locals=True
     )
-    assert report["ok"] == (seed == "committed"), report
+    return "".join(trace.format())
 
 
-@pytest.mark.parametrize("S8, Omega_m", [(0.80, 0.30), (0.725, 0.20), (0.875, 0.40)])
-def test_ccl_total_matter_is_the_blind_axis(S8, Omega_m):
-    """CCL's Ωm and S8 at a point's parameters are the point's own."""
-    ccl = pytest.importorskip("pyccl")
-    from sp_validation.blinding_theory import TheoryConfig
-
-    point = TheoryConfig(S8=S8, Omega_m=Omega_m)
-    cosmo = ccl.Cosmology(**point.ccl_params())
-    assert cosmo["Omega_m"] == pytest.approx(Omega_m, rel=1e-12)
-    assert cosmo["sigma8"] * np.sqrt(cosmo["Omega_m"] / 0.3) == pytest.approx(S8)
+def test_the_hidden_cosmology_never_shows(tmp_path, capfd):
+    """Neither the seed nor the hidden S8, Ωm or σ8 reaches a repr, the
+    terminal or a traceback's locals."""
+    cats = _catalogues(tmp_path)
+    blind = bd.init("toy", cats, fiducial=FAST)
+    record = json.loads(blind.path.read_text())
+    hidden = bd._hidden(blind)
+    sigma8 = hidden["S8"] / np.sqrt(hidden["Omega_m"] / 0.3)
+    needles = [record["seed"], record["seed"][:16]] + [
+        form(x)
+        for x in (hidden["S8"], hidden["Omega_m"], sigma8)
+        for form in (repr, "{:.4g}".format, "{:.6g}".format)
+    ]
+    bd.show("toy", cats)
+    sio.seal(part(cl=False), cu.custody_of(cats, "TOY"))
+    haystacks = [
+        repr(blind),
+        repr(hidden),
+        str(hidden),
+        f"{hidden}",
+        "".join(capfd.readouterr()),
+        _hidden_failure(blind, TheoryConfig(**record["fiducial"])),
+    ]
+    for i, haystack in enumerate(haystacks):
+        # The message names the haystack only: a failure must not print a needle.
+        assert not any(n in haystack for n in needles), f"haystack {i} shows it"

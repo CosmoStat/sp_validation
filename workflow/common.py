@@ -5,10 +5,10 @@ module imports only the standard library and snakemake, and loads the
 stdlib-only project modules it needs by file path.
 """
 
-import functools
 import importlib.util
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -65,10 +65,8 @@ COSMO_INFERENCE = Path(
     )
 )
 # The catalogue config of the launched checkout: the one file both the host
-# (CATALOG_CONFIG, loaded in configure) and every job read catalogues from, and
-# the blind registry beside it.
+# (CATALOG_CONFIG, loaded in configure) and every job read catalogues from.
 CAT_CONFIG = str(REPO_ROOT / "cosmo_val" / "cat_config.yaml")
-REGISTRY = _custody.registry_of(CAT_CONFIG)
 BLOCK_PAIRS = [("++", "1"), ("--", "2"), ("+-", "3")]
 
 # Fiducial cosmology: Planck 2018 (astropy Planck18, Table 2 + BAO)
@@ -194,43 +192,27 @@ def configure(workflow_config):
 
 
 def announce_custody(workflow_config):
-    """Print each run catalogue's custody; stop the launch if one cannot run.
+    """Print each run catalogue's custody, or stop the launch with why it cannot run.
 
-    Resolves every version the config names, so a blinded catalogue without a
-    blind fails here, with the command to run, before any job is scheduled.
+    Every version the config names must resolve (a blinded one, to its blind),
+    and the overlaid ``versions`` must pass the mixing rule.
     """
     from snakemake.exceptions import WorkflowError
 
-    if "type" in workflow_config.get("cosmo_val", {}):
-        raise WorkflowError(
-            "cosmo_val.type is not a setting: custody is declared per catalogue "
-            "in cosmo_val/cat_config.yaml. Remove it from the config."
-        )
-    versions = [
-        *workflow_config.get("versions", []),
-        *(FIDUCIAL.get(k) for k in ("version", "mock_version") if FIDUCIAL.get(k)),
-    ]
+    versions = workflow_config.get("versions", [])
+    fiducial = [FIDUCIAL.get(k) for k in ("version", "mock_version")]
     try:
-        lines = _custody.summary(CATALOG_CONFIG, versions, registry=REGISTRY)
+        _custody.check_mix({v: _custody.declared(CATALOG_CONFIG, v) for v in versions})
+        lines = _custody.summary(CATALOG_CONFIG, [*versions, *filter(None, fiducial)])
     except _custody.CustodyError as err:
         raise WorkflowError(str(err)) from None
-    _print_once(tuple(lines))
-
-
-@functools.cache
-def _print_once(lines):
-    """Print ``lines`` once per launch, however many Snakefiles configure."""
-    for line in lines:
-        print(line, file=sys.stderr)
+    print("\n".join(lines), file=sys.stderr)
 
 
 def custody_token(version):
-    """The custody token of ``version``: a producer's ``params`` trigger.
-
-    A producer carrying it re-runs when its catalogue's custody changes, and its
-    job refuses to run under any other custody.
-    """
-    return _custody.custody_of(CATALOG_CONFIG, version, registry=REGISTRY).token
+    """``version``'s custody token: a producer's ``params.custody``, so a
+    custody change reruns it, and the custody its job seals under."""
+    return _custody.custody_of(CATALOG_CONFIG, version).token
 
 
 def fiducial_binning_suffix(fiducial=None):
@@ -293,11 +275,9 @@ def covariance_path(
 
 
 def base_version(version):
-    """The base catalogue of ``version``: its entry, then its ``base:`` links.
-
-    Variants share their base's footprint and plotting style.
-    """
-    return _custody.base_catalogue(CATALOG_CONFIG, version)
+    """Strip the `_leak_corr` / `_ecut{N}` suffixes to the base catalogue
+    version, whose footprint and plotting style its variants share."""
+    return re.sub(r"_ecut\d+", "", re.sub(r"_leak_corr$", "", version))
 
 
 def catalogue_entry(version):
