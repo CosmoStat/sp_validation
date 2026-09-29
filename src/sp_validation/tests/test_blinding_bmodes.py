@@ -171,8 +171,8 @@ def test_cosebis_b_modes_move_only_by_the_transforms_response(shifts, cosebis, n
             marks=pytest.mark.xfail(
                 strict=True,
                 reason="pure-eb-bmode-numerics: on a noisy 1000-bin ξ± "
-                "cosmo_numba's adaptive quadrature is not additive: an E-mode δ "
-                "moves ξ_B by up to 0.4σ at the envelope's corners, unchanged by "
+                "the pure-E/B transform is not additive: an E-mode δ moves ξ_B by "
+                "0.1-1.2σ in isolated bins across noise draws and corners, unchanged by "
                 "tightening epsabs/epsrel from 1e-10 to 1e-13, so blinded and "
                 "unblinded pure-E/B alike carry this error",
             ),

@@ -38,8 +38,8 @@ Under a blind, ξ±, pseudo-Cℓ_EE and γt are shifted by t(hidden) − t(fiduc
 before they are first written, t being the data type's theory in
 `sp_validation.theory.THEORY`; statistics derived from them carry the blind, and
 a data type with no blinding rule in `sacc_io` is refused. COSEBIs B_n move only
-by the transform's response to an E-mode shift; pure-E/B ξ_B also moves where
-cosmo_numba's quadrature does not converge on noisy ξ± (`test_blinding_bmodes`).
+by the transform's response to an E-mode shift; pure-E/B ξ_B is not additive on noisy ξ±
+and also moves in isolated bins (`test_blinding_bmodes`).
 Rule params carry the custody token, so a flip reruns what it touches.
 
 A blind is one record, `<paths.blinds>/<name>.blind.json`, outside any git
