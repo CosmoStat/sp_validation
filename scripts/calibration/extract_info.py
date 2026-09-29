@@ -570,19 +570,12 @@ x_range = (0, 200)
 n_bin = 500
 x_cut = gal_snr_min
 
-labels = []
 if shape == "ngmix":
     # Do not apply `mask_ns`, so use all galaxies
-    xs = [
-        dd["NGMIX_FLUX_NOSHEAR"][m_gal] / dd["NGMIX_FLUX_ERR_NOSHEAR"][m_gal],
-        dd["SNR_WIN"][m_gal],
-    ]
-    labels.append(["$F/\\sigma(F)$"])
-
+    xs = [dd["NGMIX_FLUX_NOSHEAR"][m_gal] / dd["NGMIX_FLUX_ERR_NOSHEAR"][m_gal]]
+    labels = ["$F/\\sigma(F)$"]
 else:
     raise ValueError(f"Unknown shape measurement method {shape}")
-
-labels.append("SExtractor SNR")
 
 title = "Galaxies"
 

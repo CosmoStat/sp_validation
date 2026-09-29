@@ -109,15 +109,7 @@ output_format = ".hdf5"
 ### Additional output columns
 add_cols = [
     "FLUX_RADIUS",
-    "FWHM_IMAGE",
-    "FWHM_WORLD",
     "MAGERR_AUTO",
-    "MAG_WIN",
-    "MAGERR_WIN",
-    "FLUX_AUTO",
-    "FLUXERR_AUTO",
-    "FLUX_APER",
-    "FLUXERR_APER",
     "NGMIX_T_NOSHEAR",
     "NGMIX_T_PSF_RECONV_NOSHEAR",
 ]
