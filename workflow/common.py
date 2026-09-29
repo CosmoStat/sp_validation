@@ -12,25 +12,8 @@ import os
 import sys
 from pathlib import Path
 
-
-def _plain(path):
-    """``path`` resolved, in the spelling every candide node can reach.
-
-    A data disk is mounted at ``/nXXdataN`` on the node that owns it and
-    reached from every other node through ``/nXXdataN -> /automnt/nXXdataN``;
-    the owning node has no ``/automnt/nXXdataN``. A resolved path under
-    ``/automnt/<disk>`` is therefore spelled back under ``/<disk>``, whatever
-    the host: a job step re-derives its paths on its own node, and must
-    derive the launch's.
-    """
-    path = Path(path).resolve()
-    if len(path.parts) > 2 and path.parts[1] == "automnt":
-        return Path("/", *path.parts[2:])
-    return path
-
-
 # The checkout this workflow was launched from: workflow/common.py -> <repo>.
-REPO_ROOT = _plain(__file__).parents[1]
+REPO_ROOT = Path(__file__).resolve().parent.parent
 REPO_SRC = REPO_ROOT / "src"
 
 
@@ -74,12 +57,9 @@ os.environ.pop("XDG_CACHE_HOME", None)
 # fresh tree without clobbering (or silently reusing) prior products. COSMO_VAL
 # defaults to the launched checkout's own (gitignored) cosmo_val/output, so a
 # launch writes into another checkout's products only when it names that tree;
-# COSMO_INFERENCE defaults to the shared tree on candide. Snakemake keys its
-# persistence records (params, input, code) and matches targets by path string,
-# so both roots are spelled plain whatever spelling a launch gives, and a file
-# target is named in that plain form.
-COSMO_VAL = _plain(os.environ.get("COSMO_VAL", REPO_ROOT / "cosmo_val" / "output"))
-COSMO_INFERENCE = _plain(
+# COSMO_INFERENCE defaults to the shared tree on candide.
+COSMO_VAL = Path(os.environ.get("COSMO_VAL", REPO_ROOT / "cosmo_val" / "output"))
+COSMO_INFERENCE = Path(
     os.environ.get(
         "COSMO_INFERENCE", "/n17data/cdaley/unions/code/sp_validation/cosmo_inference"
     )
@@ -318,39 +298,6 @@ def base_version(version):
     Variants share their base's footprint and plotting style.
     """
     return _custody.base_catalogue(CATALOG_CONFIG, version)
-
-
-def patches_path(version, npatch):
-    """The jackknife patch centres ``version`` is measured on with ``npatch``.
-
-    One file per base catalogue, so a catalogue and its variants split alike.
-    """
-    name = f"{base_version(version)}_npatch={int(npatch)}.dat"
-    return str(COSMO_VAL / "patches" / name)
-
-
-def patches_input(version, npatch):
-    """Rule xi's centres input for ``version`` with ``npatch``; none unpatched.
-
-    No rule draws centres (``patch-centres-are-inputs``), so a missing file
-    stops the launch with the command that draws it.
-    """
-    if int(npatch) <= 1:
-        return []
-    path = patches_path(version, npatch)
-    if os.path.exists(path):
-        return path
-    from snakemake.exceptions import WorkflowError
-
-    base = base_version(version)
-    raise WorkflowError(
-        f"{version} splits at {base}'s jackknife patch centres, {path}, which do "
-        "not exist; no rule draws them. Draw them once, on a compute node:\n"
-        f"  APPTAINERENV_PYTHONPATH={REPO_SRC} spv-container exec python -m "
-        f"sp_validation.cosmo_val.patch_centers {base} {int(npatch)} "
-        f"--cat-config {CAT_CONFIG} --output-dir {COSMO_VAL}\n"
-        f"or copy {base}'s centres from the output tree whose ξ± yours should match."
-    )
 
 
 def catalogue_entry(version):

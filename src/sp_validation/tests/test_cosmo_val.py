@@ -313,9 +313,9 @@ class TestCosmologyValidation:
     def test_calculate_2pcf_does_not_depend_on_thread_count(self, tmp_path):
         """calculate_2pcf's ξ± is the same on 4 and on 48 TreeCorr threads.
 
-        Production binning (default bin_slop/angle_slop), both runs on the same
-        persisted jackknife patches, each from a fresh Catalog; they must agree
-        to far below the jackknife σ.
+        Production binning (default bin_slop/angle_slop), both runs on the
+        jackknife patches the first one writes, each from a fresh Catalog; they
+        must agree to far below the jackknife σ.
         """
         import treecorr
 
@@ -330,7 +330,6 @@ class TestCosmologyValidation:
             nbins=6,
             **params,
         )
-        cv.write_patch_centers(version, 8)
 
         xi = {}
         for n_threads in (4, 48):
@@ -422,7 +421,6 @@ class TestCosmologyValidation:
             **params,
         )
         cv.treecorr_config.update(bin_slop=0, angle_slop=0)
-        cv.write_patch_centers(version, npatch)
 
         import treecorr
 

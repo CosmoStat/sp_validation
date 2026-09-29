@@ -98,7 +98,7 @@ class PureEBMixin:
         Notes
         -----
         - Both binnings are the version's sealed ξ± parts
-          (:meth:`calculate_2pcf`), split at its persisted patch centres, so a
+          (:meth:`calculate_2pcf`), split at the same patch centres, so a
           blinded catalogue's modes are concealed. The jackknife covariance is
           the integration part's, pushed through the kernel
           (:func:`~sp_validation.b_modes.pure_eb_covariance_from_xi`): the

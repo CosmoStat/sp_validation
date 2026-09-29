@@ -166,21 +166,6 @@ mkdir -p <tree>/data
 ln -s /n17data/cdaley/unions/code/sp_validation/cosmo_inference/data/mask <tree>/data/
 ```
 
-Jackknife patch centres are drawn once per base catalogue into
-`COSMO_VAL/patches/`, and every patched ξ± measurement of the catalogue and its
-variants splits at them. TreeCorr's k-means cannot be reproduced, so no rule
-draws them: `-F` re-measures on the same centres, and a launch that needs
-centres its tree lacks stops with the command that draws them, to run once on a
-compute node:
-
-```bash
-APPTAINERENV_PYTHONPATH=$PWD/src spv-container exec python -m sp_validation.cosmo_val.patch_centers \
-    <catalogue> <npatch> --cat-config cosmo_val/cat_config.yaml --output-dir <COSMO_VAL>
-```
-
-Or copy the file from the tree whose ξ± yours should match. The command never
-replaces a file; to re-draw, delete it on purpose.
-
 **Caveat:** `rerun-triggers: code` watches rule bodies and `script:` files, not
 `src/`. Editing a module under `src/` does not by itself mark outputs stale —
 force with `-F` or `--forcerun <rule>`.
@@ -191,7 +176,8 @@ To reproduce a run from the image alone, opt out:
 snakemake --profile workflow/profiles/candide --config checkout_pythonpath=false <target>
 ```
 
-Either way the checkout has to sit on a disk the jobs see (next section).
+Either way the checkout has to sit under one of the profile's bind mounts to be
+visible inside the job.
 
 Most of the time this default is all you need. Reach for a different *image*
 only when the dependency stack changed — a new package, a lockfile bump — not
@@ -205,15 +191,8 @@ directory. `/automnt/nXXdataN` works only from a node that does *not* own that
 disk. On the owning node the disk is mounted directly at `/nXXdataN` and there
 is no `/automnt/nXXdataN` entry at all, so a job that lands there dies about one
 second after the allocation starts, before any log file is written. This is why
-`n17` is in the profile's exclude list. `common.py` spells the launched
-checkout, `COSMO_VAL` and `COSMO_INFERENCE` in the plain form whatever spelling
-it is given (a symlink, a relative path, `/automnt`), and Snakemake matches a
-target by its path string, so name file targets in the plain form too; keep new
-paths the same. A job sees a plain path only on a disk the profile binds by
-name — `/home`, `/n17data`, `/n23data1`, `/n09data` (the `/automnt` bind does
-not serve it) — so the checkout and both output roots sit on one of those. To
-work on another disk, add it to both bind lists: the candide profile's
-`apptainer-args` and `container.DEFAULT_BINDS`.
+`n17` is in the profile's exclude list. Every canonical path in `common.py`
+already uses the plain form; keep new paths the same.
 
 ### Run Snakemake from the host, never from inside the container
 

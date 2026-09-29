@@ -13,7 +13,7 @@ from ..b_modes import (
     _get_pte_from_scale_cut,
     find_conservative_scale_cut_key,
 )
-from ..custody import base_catalogue, custody_of, registry_of, seed_path
+from ..custody import custody_of, registry_of, seed_path
 from ..statistics import chi2_and_pte
 from ..version import __version__
 from .catalog_characterization import CatalogCharacterizationMixin
@@ -257,9 +257,6 @@ class CosmologyValidation(
             # thread count (max(3, ceil(log2 n))) and ξ± depends on the machine.
             # 6 is what TreeCorr derives on candide's 48- and 64-CPU nodes.
             "min_top": 6,
-            # The CPUs this process may use; TreeCorr's own default is the
-            # node's count, whatever share of it the job holds.
-            "num_threads": len(os.sched_getaffinity(0)),
         }
 
         self.catalog_config_path = Path(catalog_config)
@@ -459,15 +456,6 @@ class CosmologyValidation(
         return custody_of(
             self._declared, version, registry=registry_of(self.catalog_config_path)
         )
-
-    def patch_centers_path(self, version, npatch):
-        """The jackknife patch centres ``version`` is measured on with ``npatch``.
-
-        One file per base catalogue, under the output directory's ``patches/``:
-        a catalogue and its variants split at the same centres.
-        """
-        base = base_catalogue(self._declared, version)
-        return self._output_path("patches", f"{base}_npatch={int(npatch)}.dat")
 
     def basename(self, version, treecorr_config=None, npatch=None):
         cfg = treecorr_config or self.treecorr_config

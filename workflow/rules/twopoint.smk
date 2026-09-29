@@ -17,13 +17,10 @@ rule xi:
     """TreeCorr ξ±(θ) for one version on one angular grid, as its sealed SACC part.
 
     One rule for every grid: outputs are named by their binning, so a request
-    binds the wildcards and the grid label resolves from them. With patches,
-    the measurement splits at the base catalogue's persisted centres, drawn by
-    hand (common.patches_input).
+    binds the wildcards and the grid label resolves from them.
     """
     input:
         catalog=lambda w: shear_catalog(w.version),
-        patches=lambda w: patches_input(w.version, w.npatch),
     output:
         sacc=str(COSMO_VAL / "{version}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc"),
     threads: 24

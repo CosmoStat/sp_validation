@@ -12,8 +12,8 @@ Snakemake is in. The ``candide`` tests need candide itself; CI deselects them.
 The ``toy`` fixture is a disposable checkout: copies of ``workflow/`` and
 ``papers/cosmo_val/``, this checkout's ``src/`` symlinked in, one catalogue per
 custody state, hand-written blind records (the host never decrypts), stand-ins
-for the processed CosmoCov covariances (their inputs live on candide) and the
-patch centres, and both output roots in tmp.
+for the processed CosmoCov covariances (their inputs live on candide), and both
+output roots in tmp.
 """
 
 import dataclasses
@@ -243,14 +243,6 @@ def toy(tmp_path_factory):
             )
             path.parent.mkdir(parents=True, exist_ok=True)
             path.touch()
-
-    # The toy catalogue's patch centres, drawn by hand, in both output roots a
-    # launch may name.
-    npatch = grids["reporting"]["npatch"]
-    for cosmo_val in (Path(env["COSMO_VAL"]), root / "cosmo_val" / "output"):
-        centres = cosmo_val / "patches" / f"{VERSIONS[0]}_npatch={npatch}.dat"
-        centres.parent.mkdir(parents=True)
-        centres.touch()
 
     return Toy(
         root=root,

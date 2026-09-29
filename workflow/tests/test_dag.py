@@ -13,7 +13,6 @@ from conftest import (
     STALE,
     UNCOVERED,
     VERSIONS,
-    _load_module,
     on_candide,
     parse_jobs,
 )
@@ -59,22 +58,6 @@ def test_one_integration_grid(toy, forced, grids):
         covariance = str(toy.covariances[version, "g"])
         assert by_rule["cv_cosebis"] == {part, covariance}, by_rule["cv_cosebis"]
         assert {part, covariance} <= by_rule["cv_pure_eb"], by_rule["cv_pure_eb"]
-
-
-def test_patch_centres_are_an_input_no_rule_draws(toy, forced, grids):
-    """[P13] Every patched ξ± job, the variant's too, splits at its base
-    catalogue's centres, and even a forced run writes none."""
-    jobs = forced[1]
-    npatch = grids["reporting"]["npatch"]
-    assert npatch > 1
-    centres = str(toy.cosmo_val / "patches" / f"{VERSIONS[0]}_npatch={npatch}.dat")
-    for job in [j for j in jobs if j.rule == "xi"]:
-        patched = int(job.wildcards["npatch"]) > 1
-        assert [f for f in job.input if "/patches/" in f] == (
-            [centres] if patched else []
-        ), job
-    drawn = [f for j in jobs for f in j.output if "/patches/" in f]
-    assert not drawn, drawn
 
 
 def test_custody_is_the_checkouts_and_no_rule_touches_a_blind(toy, forced, tmp_path):
@@ -208,26 +191,9 @@ def test_a_job_needs_no_launch_cache(toy, tmp_path):
     assert (tmp_path / "env.txt").read_text() == ""
 
 
-def _stand_in_centres(paper, cosmo_val):
-    """Touch the centres ``paper``'s patched ξ± grids read; a dry-run reads none."""
-    common = _load_module(
-        REPO / "workflow" / "common.py", f"{paper}_common", {"COSMO_VAL": cosmo_val}
-    )
-    common.CATALOG_CONFIG = yaml.safe_load(Path(common.CAT_CONFIG).read_text())
-    config = yaml.safe_load(
-        (REPO / "papers" / paper / "config" / "config.yaml").read_text()
-    )
-    for grid in common.xi_grids(config, config["fiducial"]).values():
-        for version in config["versions"] if grid["npatch"] > 1 else ():
-            centres = Path(common.patches_path(version, grid["npatch"]))
-            centres.parent.mkdir(parents=True, exist_ok=True)
-            centres.touch()
-
-
-def _real_dry_run(paper, targets, cosmo_val):
+def _real_dry_run(paper, targets):
     env = {k: v for k, v in os.environ.items() if k != "SNAKEMAKE_PROFILE"}
-    env.update(PYTHONUNBUFFERED="1", PYTHONNOUSERSITE="1", COSMO_VAL=cosmo_val)
-    _stand_in_centres(paper, cosmo_val)
+    env.update(PYTHONUNBUFFERED="1", PYTHONNOUSERSITE="1")
     return subprocess.run(
         [
             sys.executable,
@@ -258,10 +224,7 @@ def _real_dry_run(paper, targets, cosmo_val):
     ],
     ids=["cosmo_val", "bmodes"],
 )
-def test_papers_resolve_on_candide(paper, targets, tmp_path):
-    """The real paper DAGs resolve against the real catalogues and your image.
-
-    The products land in a tree of their own, holding stand-in patch centres.
-    """
-    result = _real_dry_run(paper, targets, str(tmp_path))
+def test_papers_resolve_on_candide(paper, targets):
+    """The real paper DAGs resolve against the real catalogues and your image."""
+    result = _real_dry_run(paper, targets)
     assert result.returncode == 0, result.stdout

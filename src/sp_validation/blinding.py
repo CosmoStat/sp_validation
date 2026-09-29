@@ -618,9 +618,6 @@ def _audit_part(blinded, true, fiducial, hidden, tolerance):
     cov = _covariance(true)
     if not _same_covariance(_covariance(blinded), cov):
         problems.append("covariances differ")
-    centres = [x.metadata.get("patch_centers_sha256") for x in (blinded, true)]
-    if centres[0] != centres[1]:
-        problems.append(f"patch centres differ: {centres}")
 
     values = np.asarray(true.mean)
     delta = np.asarray(blinded.mean) - values
@@ -656,7 +653,7 @@ def audit(name, *, archive, true_root, cat_config, out=None):
     The published seed must be the committed one. For each archived file, the
     live file at the same relative path must be stamped unblinded for the same
     catalogue. Its signal rows must match the archived ones in tags, tracers,
-    covariance and patch centres (numbers to a re-measurement's float noise),
+    covariance (numbers to a re-measurement's float noise),
     and blinded − true must equal the seed's shift on every ξ± and Cℓ_EE block
     to :data:`SHIFT_TOLERANCE` of the block's largest shift
     (:data:`SHIFT_TOLERANCE_OTHER_STACK` under another theory stack); Cℓ_BB and Cℓ_EB may not move, and

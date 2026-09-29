@@ -6,8 +6,8 @@ the cosmic-shear signal, and the aperture-mass dispersion ⟨M_ap²⟩ measureme
 and plots. It depends on TreeCorr.
 """
 
-import hashlib
 import os
+import uuid
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
@@ -16,7 +16,6 @@ import treecorr
 from cs_util import plots as cs_plots
 
 from .. import sacc_io
-from ..custody import base_catalogue
 from .sacc_writers import xi_to_sacc
 
 
@@ -27,7 +26,6 @@ class RealSpaceMixin:
         *,
         grid="reporting",
         npatch=None,
-        patch_centers=None,
         out=None,
         **treecorr_config,
     ):
@@ -40,14 +38,9 @@ class RealSpaceMixin:
         blind is opened first, so a blind that cannot open fails before
         TreeCorr runs.
 
-        @sc patch-centres-are-inputs
-        With patches, the catalogue splits at persisted centres, one file per
-        base catalogue (:meth:`patch_centers_path`), never at centres drawn
-        here: the full-sample ξ± depends on the patch layout, and TreeCorr's
-        k-means cannot be reproduced. So the centres are drawn once, by hand
-        (``python -m sp_validation.cosmo_val.patch_centers``, which never
-        replaces a file), and never by a workflow rule, which a forced or
-        re-triggered run would re-draw. The part names the file by its sha256.
+        With patches, the catalogue splits at the output tree's
+        ``{ver}_patches_npatch={npatch}.dat``, drawn by TreeCorr's k-means and
+        written there when missing.
 
         Parameters:
             ver (str): The catalogue version to measure.
@@ -55,8 +48,6 @@ class RealSpaceMixin:
             npatch (int, optional): Jackknife patches; the instance's
                 ``npatch`` by default. With patches the part carries the
                 jackknife covariance, without them the shot-noise diagonal.
-            patch_centers (str, optional): The centres file; by default
-                :meth:`patch_centers_path`.
             out (str, optional): Where to write the part as well.
             **treecorr_config: Overrides of the instance's ``treecorr_config``,
                 e.g. ``min_sep=1``.
@@ -73,11 +64,8 @@ class RealSpaceMixin:
             blinding.open_blind(custody)
 
         metadata = {**self.sacc_metadata(ver), "npatch": npatch}
-        patch_centers = self._patch_centers(ver, npatch, patch_centers)
-        if patch_centers is not None:
-            with open(patch_centers, "rb") as f:
-                metadata["patch_centers_sha256"] = hashlib.sha256(f.read()).hexdigest()
         jackknife = npatch > 1
+        patch_file = self._output_path(f"{ver}_patches_npatch={npatch}.dat")
         gg = treecorr.GGCorrelation(
             {
                 **self._binning(**treecorr_config),
@@ -95,8 +83,14 @@ class RealSpaceMixin:
                 ra_units=self.treecorr_config["ra_units"],
                 dec_units=self.treecorr_config["dec_units"],
                 npatch=npatch,
-                patch_centers=patch_centers,
+                patch_centers=patch_file if os.path.exists(patch_file) else None,
             )
+            # Through a temporary file, so a concurrent reader never sees a
+            # torn one.
+            if jackknife and not os.path.exists(patch_file):
+                tmp = f"{patch_file}.{uuid.uuid4().hex}.tmp"
+                catalogue.write_patch_centers(tmp)
+                os.replace(tmp, patch_file)
         gg.process(catalogue)
 
         s = xi_to_sacc(
@@ -118,56 +112,6 @@ class RealSpaceMixin:
         self.xi_parts[ver, grid] = part
         self.print_done("Done 2PCF")
         return part
-
-    def _patch_centers(self, ver, npatch, path=None):
-        """The existing centres file ``ver`` splits at, or None without patches."""
-        if npatch <= 1:
-            return None
-        path = path or self.patch_centers_path(ver, npatch)
-        if not os.path.exists(path):
-            base = base_catalogue(self._declared, ver)
-            raise FileNotFoundError(
-                f"{ver} splits at {base}'s patch centres, and {path} does not "
-                "exist. Draw them once: python -m "
-                f"sp_validation.cosmo_val.patch_centers {base} {npatch} "
-                f"--cat-config {os.path.abspath(self.catalog_config_path)} "
-                f"--output-dir {self._output_path()}"
-            )
-        return path
-
-    def write_patch_centers(self, catalogue, npatch, path=None):
-        """Draw ``npatch`` jackknife patch centres for a base catalogue, once.
-
-        TreeCorr's k-means over the catalogue's positions and weights, written
-        to ``path`` (default :meth:`patch_centers_path`). An existing file is
-        never replaced.
-        """
-        base = base_catalogue(self._declared, catalogue)
-        if base != catalogue:
-            raise ValueError(
-                f"patch centres belong to {base}, the base catalogue of "
-                f"{catalogue}; write them from {base}"
-            )
-        path = path or self.patch_centers_path(catalogue, npatch)
-        if os.path.exists(path):
-            raise FileExistsError(
-                f"{path} exists: {catalogue}'s patch centres are drawn once, and "
-                "its patched ξ± split at them. Delete the file to draw new ones."
-            )
-        # A Catalog's k-means runs on TreeCorr's process-wide thread count.
-        treecorr.set_omp_threads(self.treecorr_config["num_threads"])
-        with self.results[catalogue].temporarily_read_data():
-            positions = treecorr.Catalog(
-                ra=self.results[catalogue].dat_shear["RA"],
-                dec=self.results[catalogue].dat_shear["Dec"],
-                w=self._read_shear_cols(catalogue, "w_col"),
-                ra_units=self.treecorr_config["ra_units"],
-                dec_units=self.treecorr_config["dec_units"],
-                npatch=int(npatch),
-            )
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        positions.write_patch_centers(path)
-        return path
 
     def _reporting_xi(self, ver):
         """``ver``'s reporting-grid ξ±, from its part, measured if not yet held."""
