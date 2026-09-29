@@ -17,3 +17,13 @@ def pure_eb_xi():
     """
     with np.load(PURE_EB_XI) as npz:
         return {k: (v.item() if v.ndim == 0 else v) for k, v in npz.items()}
+
+
+@pytest.fixture
+def toy_theory(monkeypatch):
+    """Blinds shift by the analytic ``_synthetic.TOY_THEORY``."""
+    from _synthetic import TOY_THEORY
+
+    from sp_validation import theory
+
+    monkeypatch.setattr(theory, "THEORY", TOY_THEORY)

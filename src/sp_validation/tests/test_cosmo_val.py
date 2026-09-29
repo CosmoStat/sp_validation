@@ -498,14 +498,11 @@ class TestCosmologyValidation:
 # I14: a blinded catalogue's ξ± leaves CosmologyValidation only concealed
 # --------------------------------------------------------------------------- #
 @pytest.fixture
-def blinded_and_twin(tmp_path):
+def blinded_and_twin(tmp_path, toy_theory):
     """TOY, blinded under `toy`, and TOY_OPEN: the same galaxies, public."""
-    import dataclasses
-
     import yaml
 
     from sp_validation import blinding
-    from sp_validation.blinding_theory import TheoryConfig
 
     params, _ = write_synthetic_catalogs(
         tmp_path,
@@ -513,9 +510,8 @@ def blinded_and_twin(tmp_path):
         coherent_shear=True,
         catalogues={"TOY": "toy", "TOY_OPEN": "none"},
     )
-    fast = TheoryConfig(transfer_function="eisenstein_hu")
     catalogues = yaml.safe_load(open(params["catalog_config"]))
-    blinding.init("toy", catalogues, fiducial=dataclasses.asdict(fast))
+    blinding.init("toy", catalogues)
     grid = dict(npatch=1, theta_min=5.0, theta_max=60.0, nbins=6, **params)
     return (
         CosmologyValidation(versions=["TOY"], **grid),

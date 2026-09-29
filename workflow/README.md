@@ -36,9 +36,12 @@ beside mocks and catalogues under the same blind, since overlaying it with any
 other version shows the shift. A launch prints one `[custody]` line per
 catalogue.
 
-Under a blind, every ξ± and pseudo-Cℓ_EE value is shifted by t(hidden) −
-t(fiducial) before it is first written; COSEBIs and pure-E/B computed from the
-shifted ξ± carry the blind, and B-modes stay usable. Every SACC records the
+Under a blind, every ξ±, pseudo-Cℓ_EE and γt value is shifted by t(hidden) −
+t(fiducial) before it is first written, t being that data type's theory in
+`sp_validation.theory.THEORY` (CCL through `cs_util.cosmo.get_cosmo` by
+default); COSEBIs and pure-E/B computed from the shifted ξ± carry the blind, and
+B-modes stay usable. A new statistic is refused under a blind until it has a
+rule in `sacc_io` and, if shifted, a theory. Every SACC records the
 custody it was born under, and rule params carry the custody token, so a flip
 reruns what it touches.
 

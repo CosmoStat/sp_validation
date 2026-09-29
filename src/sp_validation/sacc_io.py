@@ -107,6 +107,8 @@ CL_BB = "galaxy_shear_cl_bb"
 CL_EB = "galaxy_shear_cl_eb"
 COSEBI_EE = "galaxy_shear_cosebi_ee"
 COSEBI_BB = "galaxy_shear_cosebi_bb"
+GAMMA_T = "galaxy_shearDensity_xi_t"
+GAMMA_X = "galaxy_shearDensity_xi_x"
 
 # Custom data-type strings (all parse under sacc.parse_data_type_name).
 PURE_TYPES = {
@@ -160,7 +162,13 @@ def new_sacc(nz, metadata=None):
     items = nz.items() if isinstance(nz, dict) else enumerate(nz)
     s = sacc.Sacc()
     for i, (z, nz_i) in items:
-        s.add_tracer("NZ", source_name(i), np.asarray(z), np.asarray(nz_i))
+        s.add_tracer(
+            "NZ",
+            source_name(i),
+            np.asarray(z),
+            np.asarray(nz_i),
+            quantity="galaxy_shear",
+        )
     # The PSF star sample sits alongside the source bins because a Sacc has a
     # single tracer namespace — every data point references tracers from one
     # flat list. This is bookkeeping, not physics: psf_stars is a Misc tracer
@@ -415,6 +423,24 @@ def add_pure_eb(
         arr = values[key]
         if arr is not None:
             _add_theta_series(s, PURE_TYPES[key], tracers, theta, arr, grid=grid)
+
+
+def add_lens(s, name, nz=None, *, quantity="galaxy_density"):
+    """Add a γt lens sample: galaxies with their ``(z, n(z))``, or, as a
+    tracer without one, ``quantity="stars"`` or ``"randoms"``."""
+    if nz is None:
+        s.add_tracer("Misc", name, quantity=quantity)
+    else:
+        s.add_tracer("NZ", name, *map(np.asarray, nz), quantity=quantity)
+
+
+def add_gamma_t(s, source_bin, lens, theta, gamma_t, gamma_x=None, **tags):
+    """Add γt (and optionally γ×) of source bin ``source_bin`` around ``lens``."""
+    _check_ascending("theta", theta)
+    tracers = (source_name(source_bin), lens)
+    _add_theta_series(s, GAMMA_T, tracers, theta, gamma_t, **tags)
+    if gamma_x is not None:
+        _add_theta_series(s, GAMMA_X, tracers, theta, gamma_x, **tags)
 
 
 def add_rho(s, k, theta, rho_p, rho_m, *, grid="reporting"):
@@ -978,10 +1004,10 @@ def _check_grid_consistency(s, angle):
 # --------------------------------------------------------------------------- #
 # The blinding rule of each data type a blinded catalogue's SACC may hold. A
 # data type with none is refused under a blind, so a new statistic fails closed.
-# Signal the blind shifts:
-SHIFTABLE = (XI_PLUS, XI_MINUS, CL_EE)
+# Signal the blind shifts, each by its theory in sp_validation.theory.THEORY:
+SHIFTABLE = (XI_PLUS, XI_MINUS, CL_EE, GAMMA_T)
 # signal a pure E-mode shift leaves unchanged:
-UNSHIFTED = (CL_BB, CL_EB)
+UNSHIFTED = (CL_BB, CL_EB, GAMMA_X)
 # signal derived from ξ±, which moves only through the rows it is computed from:
 DERIVED = (COSEBI_EE, COSEBI_BB, *PURE_TYPES.values())
 SIGNAL = SHIFTABLE + UNSHIFTED + DERIVED
@@ -989,6 +1015,21 @@ SIGNAL = SHIFTABLE + UNSHIFTED + DERIVED
 _SIGNAL_FREE = re.compile(
     "|".join(t.format(k=r"\d+") for t in (RHO_PLUS, RHO_MINUS, TAU_PLUS, TAU_MINUS))
 )
+# γt around a lens tracer of one of these quantities is a null test, not signal.
+NULL_LENSES = ("stars", "randoms")
+
+
+def shiftable(s):
+    """Indices of the rows of ``s`` a blind shifts."""
+    return np.array(
+        [
+            i
+            for i, dp in enumerate(s.data)
+            if dp.data_type in SHIFTABLE
+            and not any(s.tracers[t].quantity in NULL_LENSES for t in dp.tracers)
+        ],
+        dtype=int,
+    )
 
 
 def _refuse_unruled(s):
@@ -1001,8 +1042,9 @@ def _refuse_unruled(s):
     if unruled:
         raise ValueError(
             f"{unruled}: no blinding rule for these data types, so a blinded "
-            "catalogue's SACC cannot hold them; give a new statistic its rule in "
-            "sacc_io (and its shift in blinding) first"
+            "catalogue's SACC cannot hold them. Signal is SHIFTABLE in sacc_io, "
+            "with a function in sp_validation.theory.THEORY; UNSHIFTED is only for "
+            "signal that a pure E-mode shift leaves unchanged"
         )
 
 
@@ -1021,11 +1063,11 @@ def seal(s, custody):
 
     @sc born-sealed
     A catalogue-born SACC leaves memory only through here. Under a blinded
-    custody every ξ± and Cℓ_EE row is shifted on a copy before the stamp is
-    minted; a SACC with no signal (ρ/τ) is stamped without opening the blind; a
-    derived statistic (COSEBIs, pure-E/B) is refused here and saved with
-    ``derived_from``; a data type with no blinding rule is refused. An
-    already-stamped SACC is re-written only as a derivation.
+    custody every :func:`shiftable` row (ξ±, Cℓ_EE, γt) is shifted on a copy
+    before the stamp is minted; a SACC with none is stamped without opening
+    the blind; a derived statistic (COSEBIs, pure-E/B) is refused here and
+    saved with ``derived_from``; a data type with no blinding rule is refused.
+    An already-stamped SACC is re-written only as a derivation.
     """
     if _stamped(s):
         raise ValueError(
@@ -1041,7 +1083,7 @@ def seal(s, custody):
             f"a blinded catalogue's {sorted(derived)} rows are derived "
             "statistics: save them with derived_from=[their input parts]"
         )
-    if custody.blinded and types & set(SHIFTABLE):
+    if custody.blinded and len(shiftable(s)):
         from . import blinding
 
         out = blinding.conceal(s, blinding.open_blind(custody))
@@ -1074,15 +1116,11 @@ def _derive(s, parts, custody):
         )
     if stamp.blinded:
         _refuse_unruled(s)
-    inputs = {_row_key(dp) for p in parts for dp in p.data if dp.data_type in SHIFTABLE}
-    stray = [
-        i
-        for i, dp in enumerate(s.data)
-        if dp.data_type in SHIFTABLE and _row_key(dp) not in inputs
-    ]
+    inputs = {_row_key(p.data[i]) for p in parts for i in shiftable(p)}
+    stray = [i for i in shiftable(s) if _row_key(s.data[i]) not in inputs]
     if stray:
         raise ValueError(
-            f"{len(stray)} ξ±/Cℓ_EE rows of a derivation are not copies of its "
+            f"{len(stray)} shiftable rows of a derivation are not copies of its "
             "inputs' rows; a catalogue's shiftable signal is born only through "
             "save(custody=)"
         )
@@ -1105,7 +1143,7 @@ def save(s, path, *, custody=None, derived_from=None):
       derivation whose stamp must also be ``c``'s.
 
     @sc derived-inherit
-    A derivation's inputs must share one stamp, and each of its ξ±/Cℓ_EE rows
+    A derivation's inputs must share one stamp, and each of its shiftable rows
     must be a copy of an input row (type, tracers, value, tags; windows by
     index), so plaintext cannot be saved under a concealed stamp; under a
     blinded stamp every data type needs a blinding rule, as at birth.

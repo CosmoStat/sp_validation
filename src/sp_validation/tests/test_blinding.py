@@ -1,9 +1,9 @@
 """The blind and the file door.
 
 A blind is drawn once (``blinding init``) into a registry outside git;
-``sacc_io.save`` is the only writer, and conceals a blinded catalogue's ξ± and
-Cℓ_EE rows in memory before the file exists. Blinds here use the fast
-Eisenstein–Hu theory.
+``sacc_io.save`` is the only writer, and conceals a blinded catalogue's
+shiftable rows in memory before the file exists. Blinds here shift by the
+analytic ``TOY_THEORY``; one slow test runs the CCL defaults.
 """
 
 import dataclasses
@@ -13,16 +13,24 @@ import traceback
 
 import numpy as np
 import pytest
+from _synthetic import TOY_THEORY
 from hypothesis import example, given, settings
 from hypothesis import strategies as st
 
 from sp_validation import blinding as bd
 from sp_validation import custody as cu
 from sp_validation import sacc_io as sio
-from sp_validation.blinding_theory import TheoryConfig
+from sp_validation import theory
 
 VERSIONS = ("TOY", "OTHER", "TOY_OPEN", "OTHER_OPEN", "TOY_MOCK")
-FAST = dataclasses.asdict(TheoryConfig(transfer_function="eisenstein_hu"))
+DEFAULTS = theory.THEORY
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _toy_theory():
+    with pytest.MonkeyPatch.context() as m:
+        m.setattr(theory, "THEORY", TOY_THEORY)
+        yield
 
 
 def _catalogues(root):
@@ -45,7 +53,7 @@ def blinds(tmp_path_factory):
     """The five custodies: TOY under blind `toy`, OTHER under `other`."""
     cats = _catalogues(tmp_path_factory.mktemp("registry"))
     for name in ("toy", "other"):
-        bd.init(name, cats, fiducial=FAST)
+        bd.init(name, cats)
     return {v: cu.custody_of(cats, v) for v in VERSIONS}
 
 
@@ -54,10 +62,19 @@ def _nz(z0):
     return z, np.exp(-0.5 * ((z - z0) / 0.2) ** 2)
 
 
-def part(*, xi_tags=("reporting",), cl=True, rho=False, derived=None, unruled=False):
+def part(
+    *,
+    xi_tags=("reporting",),
+    cl=True,
+    rho=False,
+    gt=(),
+    derived=None,
+    unruled=False,
+):
     """A two-bin part: ξ± under each of ``xi_tags`` (None: no tag) and
     pseudo-Cℓ (EE, BB, EB) on pairs (0,0), (0,1), (1,1), and optionally ρ/τ,
-    a derived statistic's rows and rows of a type with no blinding rule."""
+    γt and γ× of bin 1 around each lens quantity in ``gt``, a derived
+    statistic's rows and rows of a type with no blinding rule."""
     s = sio.new_sacc({0: _nz(0.5), 1: _nz(0.9)})
     theta = np.geomspace(2.0, 200.0, 6)
     ell = np.array([30.0, 80.0, 150.0, 280.0, 450.0])
@@ -86,6 +103,10 @@ def part(*, xi_tags=("reporting",), cl=True, rho=False, derived=None, unruled=Fa
             )
     if rho:
         sio.add_rho(s, 0, theta, np.arange(1, 7) * 1e-7, np.arange(1, 7) * 2e-7)
+    for quantity in gt:
+        nz = _nz(0.3) if quantity == "galaxy_density" else None
+        sio.add_lens(s, quantity, nz, quantity=quantity)
+        sio.add_gamma_t(s, 1, quantity, theta, 1e-4 * (theta / 10) ** -0.7, 0 * theta)
     if derived == "cosebis":
         sio.add_cosebis(s, (0, 0), np.arange(1, 6) * 1e-10, (12.0, 83.0), Bn=np.ones(5))
     elif derived == "pure_eb":
@@ -93,7 +114,7 @@ def part(*, xi_tags=("reporting",), cl=True, rho=False, derived=None, unruled=Fa
     if unruled:
         for x in (5.0, 20.0, 80.0):
             s.add_data_point(
-                "galaxy_shearDensity_xi_t", ("source_0", "source_0"), 1e-5, theta=x
+                "galaxy_density_xi", ("source_0", "source_0"), 1.0, theta=x
             )
     s.add_covariance(np.abs(np.asarray(s.mean)) ** 2 + 1e-20)
     return s
@@ -115,6 +136,9 @@ PARTS = st.fixed_dictionaries(
         ),
         "cl": st.booleans(),
         "rho": st.booleans(),
+        "gt": st.lists(
+            st.sampled_from(["galaxy_density", "stars", "randoms"]), unique=True
+        ),
         "derived": st.sampled_from([None, "cosebis", "pure_eb"]),
         "unruled": st.booleans(),
     }
@@ -125,13 +149,19 @@ PARTS = st.fixed_dictionaries(
 @given(content=PARTS, version=st.sampled_from(["TOY", "TOY_OPEN", "TOY_MOCK"]))
 @example(
     content=dict(
-        xi_tags=["mystery", None], cl=True, rho=True, derived=None, unruled=False
+        xi_tags=["mystery", None],
+        cl=True,
+        rho=True,
+        gt=["galaxy_density", "stars"],
+        derived=None,
+        unruled=False,
     ),
     version="TOY",
 )
 def test_seal_shifts_only_the_signal_it_has_a_rule_for(blinds, content, version):
-    """Under a blind every ξ± and Cℓ_EE row moves, whatever its grid tag, and
-    every other value and the covariance stay bitwise; a birth carrying
+    """Under a blind every ξ±, Cℓ_EE and galaxy-lens γt row moves, whatever
+    its grid tag, and every other value (γ×, γt around stars or randoms) and
+    the covariance stay bitwise; a birth carrying
     derived rows or a type with no blinding rule is refused. Unblinded and
     mock births keep their values. Each is stamped with its custody."""
     s, custody = part(**content), blinds[version]
@@ -142,7 +172,12 @@ def test_seal_shifts_only_the_signal_it_has_a_rule_for(blinds, content, version)
         return
     sealed = sio.seal(s, custody)
     assert cu.read_stamp(sealed.metadata).stamp == custody.stamp
-    shiftable = np.array([dp.data_type in sio.SHIFTABLE for dp in s.data])
+    shiftable = np.array(
+        [
+            dp.data_type in sio.SHIFTABLE and not {"stars", "randoms"} & {*dp.tracers}
+            for dp in s.data
+        ]
+    )
     moved = _values(sealed) != _values(s)
     assert np.array_equal(moved, shiftable & blinded)
     assert np.array_equal(sealed.covariance.dense, s.covariance.dense)
@@ -218,11 +253,11 @@ def test_a_derivation_carries_its_inputs_one_stamp(
 # --------------------------------------------------------------------------- #
 def test_a_blind_is_drawn_once_and_kept_private(tmp_path):
     cats = _catalogues(tmp_path)
-    blind = bd.init("toy", cats, fiducial=FAST)
+    blind = bd.init("toy", cats)
     assert stat.S_IMODE(blind.path.stat().st_mode) == 0o440
     assert stat.S_IMODE(blind.path.parent.stat().st_mode) == 0o700
     with pytest.raises(cu.CustodyError, match="drawn once"):
-        bd.init("toy", cats, fiducial=FAST)
+        bd.init("toy", cats)
 
 
 def test_a_blind_opens_only_under_its_commitment(blinds, monkeypatch):
@@ -237,17 +272,17 @@ def test_a_blind_opens_only_under_its_commitment(blinds, monkeypatch):
         bd.open_blind(custody)
 
 
-def _hidden_failure(blind, fiducial):
+def _hidden_failure(blind):
     """The traceback, locals included, of a theory failing at the hidden point
-    with its parameters in its message."""
+    with its parameters in its message and on stdout."""
 
     def failing(params, *args):
-        raise RuntimeError(f"cannot evaluate {params}")
+        print(dict(params))
+        raise RuntimeError(f"cannot evaluate {dict(params)}")
 
-    with pytest.MonkeyPatch.context() as m:
-        m.setattr(bd, "xi_ccl", failing)
-        with pytest.raises(bd.BlindingError) as failure:
-            bd._at_hidden(bd._blocks(part(cl=False)), fiducial, blind)
+    s = part(cl=False)
+    with pytest.raises(bd.BlindingError) as failure:
+        bd._at_hidden(s, sio.shiftable(s), dict.fromkeys(sio.SHIFTABLE, failing), blind)
     trace = traceback.TracebackException.from_exception(
         failure.value, capture_locals=True
     )
@@ -258,7 +293,7 @@ def test_the_hidden_cosmology_never_shows(tmp_path, capfd):
     """Neither the seed nor the hidden S8, Ωm or σ8 reaches a repr, the
     terminal or a traceback's locals."""
     cats = _catalogues(tmp_path)
-    blind = bd.init("toy", cats, fiducial=FAST)
+    blind = bd.init("toy", cats)
     record = json.loads(blind.path.read_text())
     hidden = bd._hidden(blind)
     sigma8 = hidden["S8"] / np.sqrt(hidden["Omega_m"] / 0.3)
@@ -269,14 +304,55 @@ def test_the_hidden_cosmology_never_shows(tmp_path, capfd):
     ]
     bd.show("toy", cats)
     sio.seal(part(cl=False), cu.custody_of(cats, "TOY"))
+    failure = _hidden_failure(blind)
     haystacks = [
         repr(blind),
         repr(hidden),
         str(hidden),
         f"{hidden}",
         "".join(capfd.readouterr()),
-        _hidden_failure(blind, TheoryConfig(**record["fiducial"])),
+        failure,
     ]
     for i, haystack in enumerate(haystacks):
         # The message names the haystack only: a failure must not print a needle.
         assert not any(n in haystack for n in needles), f"haystack {i} shows it"
+
+
+# --------------------------------------------------------------------------- #
+# The shift: from each data type's theory, refused where it cannot be made
+# --------------------------------------------------------------------------- #
+def test_conceal_refuses_a_shift_it_cannot_make(blinds):
+    """A shiftable type without a theory, and a theory that ignores the
+    cosmology, are refused rather than stamped as blinded."""
+    blind = bd.open_blind(blinds["TOY"])
+    s = part(cl=False, gt=["galaxy_density"])
+    no_gt = {t: f for t, f in TOY_THEORY.items() if t != sio.GAMMA_T}
+    with pytest.raises(bd.BlindingError, match="no theory"):
+        bd.conceal(s, blind, theory=no_gt)
+    flat = {**TOY_THEORY, sio.GAMMA_T: lambda params, s, rows: np.ones(len(rows))}
+    with pytest.raises(bd.BlindingError, match="unmoved"):
+        bd.conceal(s, blind, theory=flat)
+
+
+@pytest.mark.slow
+def test_the_ccl_defaults_shift_with_s8(blinds, monkeypatch):
+    """The default theories, at a hidden point with S8 above the fiducial,
+    raise ξ+, Cℓ_EE and γt, and γt's shift does not depend on tracer order."""
+    fiducial = theory.fiducial()
+    monkeypatch.setattr(bd, "_hidden", lambda blind: {**fiducial, "S8": 0.9})
+    blind = bd.open_blind(blinds["TOY"])
+    s = part(gt=["galaxy_density"])
+    delta = bd.conceal(s, blind, theory=DEFAULTS).mean - s.mean
+    for data_type in (sio.XI_PLUS, sio.CL_EE, sio.GAMMA_T):
+        assert np.all(delta[s.indices(data_type)] > 0), data_type
+
+    swapped = s.copy()
+    for dp in swapped.data:
+        if dp.data_type == sio.GAMMA_T:
+            dp.tracers = dp.tracers[::-1]
+    rows = s.indices(sio.GAMMA_T)
+    np.testing.assert_allclose(
+        (bd.conceal(swapped, blind, theory=DEFAULTS).mean - s.mean)[rows],
+        delta[rows],
+        rtol=1e-10,
+    )

@@ -10,8 +10,9 @@ name and a path, :func:`_hidden` returns a mapping whose repr is
 by exception type alone.
 
 @sc hidden-draw-uniform-s8-om
-The hidden point is the fiducial moved by the fork's per-key draw from the
-seed, uniform within the envelope in S8 and Ωm.
+The hidden point is the fiducial (:func:`sp_validation.theory.fiducial`) moved
+by the fork's per-key draw from the seed, uniform within the envelope in S8 and
+Ωm.
 
 ``python -m sp_validation.blinding init <name>`` draws a blind; ``show <name>``
 prints its public record (everything but the seed).
@@ -19,18 +20,20 @@ prints its public record (everything but the seed).
 
 import argparse
 import dataclasses
+import io
 import json
 import os
 import secrets
 import warnings
 from collections.abc import Mapping
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
 import numpy as np
 
 from . import custody as _custody
 from . import sacc_io
-from .blinding_theory import TheoryConfig, cl_ee, xi_ccl
+from . import theory as _theory
 
 ENVELOPE = {"S8": 0.075, "Omega_m": 0.1}
 SECRET = "secret: never print, paste or commit"
@@ -106,53 +109,18 @@ def _hidden(blind):
     return _Hidden({k: v + shift[k] if k in shift else v for k, v in fiducial.items()})
 
 
-def _nz(s, name):
-    tracer = s.tracers[name]
-    if not hasattr(tracer, "nz"):
-        raise ValueError(f"shiftable rows name tracer {name}, which has no n(z)")
-    return np.asarray(tracer.z, float), np.asarray(tracer.nz, float)
+def _at_hidden(s, rows, theory, blind):
+    """The theory of ``rows`` at the hidden point; a failure names only its type.
 
-
-def _blocks(s):
-    """Each ξ± tracer pair and Cℓ_EE (pair, window): rows, and theory(params, config)."""
-    xi, cl = {}, {}
-    for i, dp in enumerate(s.data):
-        if dp.data_type in (sacc_io.XI_PLUS, sacc_io.XI_MINUS):
-            xi.setdefault(tuple(dp.tracers), []).append(i)
-        elif dp.data_type == sacc_io.CL_EE:
-            key = (tuple(dp.tracers), id(dp.tags.get("window")))
-            cl.setdefault(key, []).append(i)
-    blocks = []
-    for pair, rows in xi.items():
-        theta = np.array([s.data[i].tags["theta"] for i in rows], float)
-        grid, at = np.unique(theta, return_inverse=True)
-        plus = np.array([s.data[i].data_type == sacc_io.XI_PLUS for i in rows])
-        nzs = [_nz(s, t) for t in pair]
-
-        def theory(p, c, nzs=nzs, grid=grid, at=at, plus=plus):
-            xip, xim = xi_ccl(p, c, *nzs, grid)
-            return np.where(plus, np.asarray(xip)[at], np.asarray(xim)[at])
-
-        blocks.append((np.array(rows), theory))
-    for (pair, _), rows in cl.items():
-        window = s.get_bandpower_windows(rows)
-        nzs = [_nz(s, t) for t in pair]
-
-        def theory(p, c, nzs=nzs, w=window):
-            return np.asarray(w.weight).T @ cl_ee(p, c, *nzs, np.asarray(w.values))
-
-        blocks.append((np.array(rows), theory))
-    return blocks
-
-
-def _at_hidden(blocks, fiducial, blind):
-    """Each block's theory at the hidden point; a failure names only its type."""
+    Warnings and the theory's own prints are silenced, and the error is raised
+    outside the ``except``, so no context or frame carries the hidden point.
+    """
 
     def evaluate():
-        with warnings.catch_warnings():
+        quiet = io.StringIO()
+        with warnings.catch_warnings(), redirect_stdout(quiet), redirect_stderr(quiet):
             warnings.simplefilter("ignore")
-            point = dataclasses.replace(fiducial, **_hidden(blind))
-            return [theory(point.ccl_params(), fiducial) for _, theory in blocks]
+            return _theory.predict(s, _hidden(blind), rows, theory)
 
     try:
         return evaluate()
@@ -163,36 +131,41 @@ def _at_hidden(blocks, fiducial, blind):
     )
 
 
-def conceal(s, blind):
-    """A copy of ``s`` with every ξ± and Cℓ_EE row shifted by the blind.
+def conceal(s, blind, theory=None):
+    """A copy of ``s`` with its shiftable rows moved by the blind's shift.
 
-    The shift is t(hidden) − t(fiducial), evaluated at the fiducial first; a
-    block the blind leaves unmoved, or moves to a non-finite value, is refused.
+    The shift is t(hidden) − t(fiducial), from ``theory`` (default
+    :data:`sp_validation.theory.THEORY`), evaluated at the fiducial first. A
+    shiftable type without a theory, and a data type and tracer pair the blind
+    leaves unmoved or moves to a non-finite value, are refused.
     """
-    record = json.loads(blind.path.read_text())
-    fiducial = TheoryConfig(**record["fiducial"])
-    blocks = _blocks(s)
-    at_fiducial = [theory(fiducial.ccl_params(), fiducial) for _, theory in blocks]
-    out = s.copy()
-    for (rows, _), t_fid, t_hid in zip(
-        blocks, at_fiducial, _at_hidden(blocks, fiducial, blind)
-    ):
-        delta = np.asarray(t_hid, float) - np.asarray(t_fid, float)
-        if (
-            delta.shape != rows.shape
-            or not np.all(np.isfinite(delta))
-            or not delta.any()
-        ):
+    theory = _theory.THEORY if theory is None else theory
+    rows = sacc_io.shiftable(s)
+    types = {s.data[i].data_type for i in rows}
+    if types - set(theory):
+        raise BlindingError(
+            f"no theory for the shiftable {sorted(types - set(theory))}; "
+            "give it a function in sp_validation.theory.THEORY"
+        )
+    fiducial = json.loads(blind.path.read_text())["fiducial"]
+    at_fiducial = _theory.predict(s, fiducial, rows, theory)
+    delta = _at_hidden(s, rows, theory, blind) - at_fiducial
+    groups = {}
+    for n, i in enumerate(rows):
+        groups.setdefault((s.data[i].data_type, s.data[i].tracers), []).append(n)
+    for (data_type, pair), at in groups.items():
+        if not np.all(np.isfinite(delta[at])) or not delta[at].any():
             raise BlindingError(
-                f"blind {blind.name} leaves {len(rows)} shiftable rows unmoved or "
-                "non-finite; the theory must depend on the cosmology"
+                f"blind {blind.name} leaves {data_type} of {pair} unmoved or "
+                "non-finite; its theory must depend on the cosmology"
             )
-        for row, d in zip(rows, delta):
-            out.data[int(row)].value += float(d)
+    out = s.copy()
+    for row, d in zip(rows, delta):
+        out.data[int(row)].value += float(d)
     return out
 
 
-def init(name, catalogues, *, fiducial=None):
+def init(name, catalogues):
     """Draw blind ``name`` into the catalogue config's registry, once."""
     if not _custody.BLIND_NAME.fullmatch(name) or name in (
         _custody.NONE,
@@ -205,7 +178,7 @@ def init(name, catalogues, *, fiducial=None):
         "_": SECRET,
         "seed": secrets.token_hex(32),
         "envelope": ENVELOPE,
-        "fiducial": fiducial or dataclasses.asdict(TheoryConfig()),
+        "fiducial": _theory.fiducial(),
         "draw_scheme": draw_scheme(),
     }
     path = where / f"{name}.blind.json"

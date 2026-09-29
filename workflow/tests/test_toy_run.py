@@ -152,12 +152,9 @@ def test_xi_before_and_after_its_catalogue_is_blinded():
         root,
         "python",
         "-c",
-        "import dataclasses, sys, yaml\n"
+        "import sys, yaml\n"
         "from sp_validation import blinding\n"
-        "from sp_validation.blinding_theory import TheoryConfig\n"
-        "fast = TheoryConfig(transfer_function='eisenstein_hu')\n"
-        "blinding.init('toy', yaml.safe_load(open(sys.argv[1])),"
-        " fiducial=dataclasses.asdict(fast))",
+        "blinding.init('toy', yaml.safe_load(open(sys.argv[1])))",
         str(cat_config),
     )
     catalogues = yaml.safe_load(cat_config.read_text())

@@ -8,7 +8,6 @@ into a fresh tree: blinded − true is the blind's shift, and nothing but the
 mean moved.
 """
 
-import dataclasses
 import re
 import runpy
 import types
@@ -21,7 +20,6 @@ from _synthetic import write_synthetic_catalogs
 from sp_validation import blinding as bd
 from sp_validation import custody as cu
 from sp_validation import sacc_io as sio
-from sp_validation.blinding_theory import TheoryConfig
 
 SCRIPTS = Path(__file__).resolve().parents[3] / "workflow" / "scripts"
 GRID = {"min_sep": 5.0, "max_sep": 60.0, "nbins": 6, "npatch": 1}
@@ -103,7 +101,9 @@ def plaintext(blobs, values):
     return found
 
 
-def test_a_blinded_catalogue_from_birth_to_unblinding(tmp_path, monkeypatch):
+def test_a_blinded_catalogue_from_birth_to_unblinding(
+    tmp_path, monkeypatch, toy_theory
+):
     monkeypatch.syspath_prepend(str(SCRIPTS))
     import cv_runner
 
@@ -114,8 +114,7 @@ def test_a_blinded_catalogue_from_birth_to_unblinding(tmp_path, monkeypatch):
     )
     cat_config = Path(params["catalog_config"])
     config = yaml.safe_load(cat_config.read_text())
-    fast = TheoryConfig(transfer_function="eisenstein_hu")
-    blind = bd.init("toy", config, fiducial=dataclasses.asdict(fast))
+    blind = bd.init("toy", config)
     cov = tmp_path / "cov.txt"
     np.savetxt(cov, np.diag(np.full(2 * GRID["nbins"], 1e-10)))
 
