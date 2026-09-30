@@ -336,6 +336,32 @@ def test_data_ext_mask_flags_rename_without_a_generation():
     np.testing.assert_array_equal(joined["HSM_T_PSF"], v2["HSM_T_PSF"])
 
 
+def test_halo_masks_keep_faint_and_bright_selections_distinct():
+    """Producer halo names retain their bit identity through adaptation and cuts."""
+    from sp_validation.galaxy import mask_cut
+
+    # Fixed source names and distinct values avoid deriving the fixture from
+    # MASK_LABELS, which would hide a reversed faint/bright mapping.
+    source = _structured_n(
+        {
+            "1_Faint_star_halos": np.array([False, True, False, True]),
+            "2_Bright_star_halos": np.array([False, False, True, True]),
+        }
+    )
+    view = adapt(source)
+    np.testing.assert_array_equal(view["MASK_n1"], [False, True, False, True])
+    np.testing.assert_array_equal(view["MASK_n2"], [False, False, True, True])
+    np.testing.assert_array_equal(
+        mask_cut(view, ["MASK_n1"]), [True, False, True, False]
+    )
+    np.testing.assert_array_equal(
+        mask_cut(view, ["MASK_n2"]), [True, True, False, False]
+    )
+    np.testing.assert_array_equal(
+        mask_cut(view, ["MASK_n1", "MASK_n2"]), [True, False, False, False]
+    )
+
+
 def test_new_mask_names_pass_through_and_both_names_conflict():
     old, new = _data_ext_mask_table()
     assert adapt(new) is new

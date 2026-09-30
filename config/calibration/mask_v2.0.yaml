@@ -6,9 +6,9 @@
 #
 # Reason bits of the ShapePipe r-band default bitmask:
 #
-#   MASK_n1, MASK_n2  star halos (which is faint and which is bright is not
-#                     documented)
-#   MASK_n4           stars
+#   MASK_n1           faint star halos (bit 0; value 1)
+#   MASK_n2           bright star halos (bit 1; value 2)
+#   MASK_n4           star bodies (bit 2; value 4)
 #   MASK_n8           manual galaxy mask
 #   MASK_n64          r-band coverage
 #   MASK_n1024        MaxiMask
@@ -52,17 +52,16 @@ dat:
 
   # ShapePipe masks (boolean, True = masked)
   - col_name: MASK_n4
-    label: "stars"
+    label: "star bodies"
     kind: equal
     value: False
-  # n1/n2 are the two star-halo bits; the faint/bright assignment is not
-  # documented.
+  # Star-halo bits follow the UNIONS mask producer schema.
   - col_name: MASK_n1
-    label: "star halos (n1)"
+    label: "faint star halos"
     kind: equal
     value: False
   - col_name: MASK_n2
-    label: "star halos (n2)"
+    label: "bright star halos"
     kind: equal
     value: False
   - col_name: MASK_n8

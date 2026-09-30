@@ -34,9 +34,8 @@ from sp_validation import io
 #: not write n512). Post-processed v1 comprehensive catalogues carry the same
 #: columns, presented under these names by ``sp_validation.grammar``.
 #:
-#: The r-band default bitmask uses n1/n2 star halos, n4 stars, n8 manual
-#: galaxy mask, n64 r-band coverage, and n1024 MaxiMask. Which of n1/n2
-#: is faint or bright is unconfirmed for the Aug-2026 products.
+#: The r-band default bitmask uses n1 faint star halos, n2 bright star halos,
+#: n4 star bodies, n8 manual galaxy mask, n64 r-band coverage, and n1024 MaxiMask.
 #:
 #: Per-band coverage flags: n16 (u), n32 (g), n64 (r), n128 (i), n256
 #: (HSC z). n2048 is ``True`` where Pan-STARRS z-band (z2) coverage is absent.

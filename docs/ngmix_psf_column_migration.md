@@ -29,8 +29,9 @@ releases, while the labels remain documented here and in the config:
 
 | bit | old `data_ext` name | meaning |
 |---|---|---|
-| 1, 2 | `1_Faint_star_halos`, `2_Bright_star_halos` | star halos |
-| 4 | `4_Stars` | star mask |
+| 1 (bit 0) | `1_Faint_star_halos` | faint star halos (`MASK_n1`) |
+| 2 (bit 1) | `2_Bright_star_halos` | bright star halos (`MASK_n2`) |
+| 4 (bit 2) | `4_Stars` | star body mask (`MASK_n4`) |
 | 8 | `8_Manual` | manual mask (large galaxies) |
 | 16–256 | `16_u`, `32_g`, `64_r`, `128_i`, `256_z` | per-band coverage; `256_z` is the HSC z-band |
 | 512 | `512_Tile_RA_DEC_cut` | outside the tile's unique region |
