@@ -68,7 +68,7 @@ cosmo_val:
   cosebis:
     min_sep_int: 0.9
     max_sep_int: 300
-    nbins_int: 2000
+    nbins_int: 1000
     npatch: 100
     nmodes: 20
     scale_cuts: [

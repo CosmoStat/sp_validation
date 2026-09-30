@@ -43,11 +43,199 @@ class PseudoClMixin:
     @property
     def pseudo_cls_onecov(self):
         if not hasattr(self, "_pseudo_cls_onecov"):
-            self.calculate_pseudo_cl_onecovariance()
+            self.calculate_pseudo_cl_onecovariance(tomography=False)
+            if self.compute_tomography:
+                self.calculate_pseudo_cl_onecovariance(tomography=True)
         return self._pseudo_cls_onecov
 
     # ---------------- Pseudo-Cl calculation methods ---------------- #
-    # TODO: some cleaning to clearly separate DV, covariance, and utility functions.
+    def calculate_pseudo_cl(self, compute_tomography=True):
+        """
+        Compute the pseudo-Cl of a `CosmologyValidation` inputs with tomography.
+        """
+        out_dir = self._output_path("pseudo_cl")
+        os.makedirs(out_dir, exist_ok=True)
+
+        if compute_tomography:
+            self.print_start("Computing tomographic pseudo-Cl's")
+        else:
+            self.print_start("Computing non-tomographic pseudo-Cl's")
+
+        self._pseudo_cls = getattr(self, "_pseudo_cls", {})
+
+        for ver in self.versions:
+            self.print_magenta(ver)
+
+            if ver not in self.pseudo_cls.keys():
+                self._pseudo_cls[ver] = {}
+
+            if compute_tomography:
+                tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
+
+                if tomo_bin_ids is None or tomo_bin_pairs is None:
+                    raise ValueError(
+                        f"Version {ver} does not have tomography information."
+                    )
+
+            else:
+                tomo_bin_pairs = [("all", "all")]
+
+            # Loop on the different tomographic bin pairs
+            for bin_key1, bin_key2 in tomo_bin_pairs:
+                self.print_cyan(f"Tomo Bin Pair: ({bin_key1}, {bin_key2})")
+
+                if (
+                    f"tomo_bin_{bin_key1}_tomo_bin_{bin_key2}"
+                    not in self._pseudo_cls[ver].keys()
+                ):
+                    self._pseudo_cls[ver][
+                        f"tomo_bin_{bin_key1}_tomo_bin_{bin_key2}"
+                    ] = {}
+
+                out_path = self._output_path_pseudo_cl(
+                    ver, tomo_bin_pair=(bin_key1, bin_key2)
+                )
+                if os.path.exists(out_path) and not self.force_run:
+                    self.print_done(
+                        f"Skipping Pseudo-Cl's calculation, {out_path} exists"
+                    )
+                    cl_shear = fits.getdata(out_path)
+                    self._pseudo_cls[ver][f"tomo_bin_{bin_key1}_tomo_bin_{bin_key2}"][
+                        "pseudo_cl"
+                    ] = cl_shear
+                    continue
+
+                if self.cell_method == "map":
+                    self.calculate_pseudo_cl_map(
+                        ver, self.nside, out_path, bin_key1, bin_key2
+                    )
+                elif self.cell_method == "catalog":
+                    self.calculate_pseudo_cl_catalog(ver, out_path, bin_key1, bin_key2)
+                else:
+                    raise ValueError(f"Unknown cell method: {self.cell_method}")
+
+    def calculate_pseudo_cl_map(self, ver, nside, out_path, tomo_bin_a, tomo_bin_b):
+        assert (tomo_bin_a == "all" and tomo_bin_b == "all") or (
+            isinstance(tomo_bin_a, (int, np.integer))
+            and isinstance(tomo_bin_b, (int, np.integer))
+        ), "tomo_bin_a and tomo_bin_b must be either both 'all' or both integers."
+
+        params = get_params_rho_tau(self.cc[ver])
+
+        self.print_cyan(
+            f"Computing pseudo-Cl's for tomographic bins {tomo_bin_a} and {tomo_bin_b}..."
+        )
+
+        # Load data and create shear and noise maps
+        cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
+
+        # Get the tomographic bin
+        cat_gal_a = self._get_tomographic_bin(params, cat_gal, tomo_bin_a)
+        cat_gal_b = self._get_tomographic_bin(params, cat_gal, tomo_bin_b)
+
+        del cat_gal
+
+        self.print_cyan("Creating maps and computing Cl's...")
+        # Get the pixels and indices for the catalogs
+        unique_pix_a, idx_a, idx_rep_a = self.get_pixels(params, nside, cat_gal_a)
+        unique_pix_b, idx_b, idx_rep_b = self.get_pixels(params, nside, cat_gal_b)
+
+        # Create number density maps for each tomographic bin
+        n_gal_map_a = self.get_n_gal_map(
+            params,
+            nside,
+            cat_gal_a,
+            unique_pix=unique_pix_a,
+            idx=idx_a,
+            idx_rep=idx_rep_a,
+        )
+        n_gal_map_b = self.get_n_gal_map(
+            params,
+            nside,
+            cat_gal_b,
+            unique_pix=unique_pix_b,
+            idx=idx_b,
+            idx_rep=idx_rep_b,
+        )
+
+        # Create shear maps for each tomographic bin
+        shear_map_a_e1, shear_map_a_e2 = self.get_shear_map(
+            params,
+            nside,
+            cat_gal_a,
+            unique_pix=unique_pix_a,
+            idx=idx_a,
+            idx_rep=idx_rep_a,
+            n_gal_map=n_gal_map_a,
+        )
+        shear_map_a = shear_map_a_e1 + 1j * shear_map_a_e2
+        del shear_map_a_e1, shear_map_a_e2
+
+        shear_map_b_e1, shear_map_b_e2 = self.get_shear_map(
+            params,
+            nside,
+            cat_gal_b,
+            unique_pix=unique_pix_b,
+            idx=idx_b,
+            idx_rep=idx_rep_b,
+            n_gal_map=n_gal_map_b,
+        )
+        shear_map_b = shear_map_b_e1 + 1j * shear_map_b_e2
+        del shear_map_b_e1, shear_map_b_e2
+
+        # Compute the pseudo-Cl's
+        ell_eff, cl_shear, wsp = self.get_pseudo_cls_map(
+            shear_map_a, n_gal_map_a, shear_map_b=shear_map_b, mask_b=n_gal_map_b
+        )
+
+        # Remove the noise bias for auto-correlations.
+        if tomo_bin_a == tomo_bin_b:
+            # Compute the noise bias using noise_bias_method
+            cl_noise = self.get_noise_bias_from_gaussian_real(
+                params,
+                nside,
+                cat_gal_a,
+                unique_pix=unique_pix_a,
+                idx=idx_a,
+                idx_rep=idx_rep_a,
+                n_gal_map=n_gal_map_a,
+                wsp=wsp,
+            )
+
+            # Subtract the noise bias from the pseudo-Cl's
+            cl_shear = cl_shear - cl_noise
+
+        self.print_cyan("Saving pseudo-Cl's...")
+        self.save_pseudo_cl(ell_eff, cl_shear, out_path)
+
+        cl_shear = fits.getdata(out_path)
+        self._pseudo_cls[ver][f"tomo_bin_{tomo_bin_a}_tomo_bin_{tomo_bin_b}"][
+            "pseudo_cl"
+        ] = cl_shear
+
+    def calculate_pseudo_cl_catalog(self, ver, out_path, tomo_bin_a, tomo_bin_b):
+        assert (tomo_bin_a == "all" and tomo_bin_b == "all") or (
+            isinstance(tomo_bin_a, (int, np.integer))
+            and isinstance(tomo_bin_b, (int, np.integer))
+        ), "tomo_bin_a and tomo_bin_b must be either both 'all' or both integers."
+
+        params = get_params_rho_tau(self.cc[ver])
+
+        # Load data and create shear and noise maps
+        cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
+
+        ell_eff, cl_shear, wsp = self.get_pseudo_cls_catalog(
+            catalog=cat_gal, params=params, tomo_bin_a=tomo_bin_a, tomo_bin_b=tomo_bin_b
+        )
+
+        self.print_cyan("Saving pseudo-Cl's...")
+        self.save_pseudo_cl(ell_eff, cl_shear, out_path)
+
+        cl_shear = fits.getdata(out_path)
+        self._pseudo_cls[ver][f"tomo_bin_{tomo_bin_a}_tomo_bin_{tomo_bin_b}"][
+            "pseudo_cl"
+        ] = cl_shear
+
     def calculate_pseudo_cl_inka_cov(
         self, compute_tomography=True, load_all_block=False
     ):
@@ -71,6 +259,7 @@ class PseudoClMixin:
             out_path_merged = self._output_path_pseudo_cl_cov(
                 ver, "iNKA", tomography=compute_tomography
             )
+            tomo_str = "tomo" if compute_tomography else "non_tomo"
 
             if compute_tomography:
                 tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
@@ -87,7 +276,9 @@ class PseudoClMixin:
                 self.print_done(
                     f"Skipping Pseudo-Cl iNKA covariance calculation, {out_path_merged} exists"
                 )
-                self._pseudo_cls[ver]["cov_iNKA"] = fits.open(out_path_merged)
+                self._pseudo_cls[ver][f"cov_iNKA_{tomo_str}"] = fits.open(
+                    out_path_merged
+                )
 
                 if load_all_block:
                     self.print_done("Loading all the iNKA covariance blocks")
@@ -381,13 +572,13 @@ class PseudoClMixin:
                     ]
 
             # Merge the covariance blocks
-            self._pseudo_cls[ver]["cov_iNKA"] = self._merge_iNKA_covariance(
+            self._pseudo_cls[ver][f"cov_iNKA_{tomo_str}"] = self._merge_iNKA_covariance(
                 ver, tomography=compute_tomography
             )
             self.print_done(f"Done Pseudo-Cl covariance calculation for {ver}")
         self.print_done("Done Pseudo-Cl covariance")
 
-    def calculate_pseudo_cl_onecovariance(self):
+    def calculate_pseudo_cl_onecovariance(self, tomography=False):
         """
         Compute the pseudo-Cl covariance using OneCovariance.
         """
@@ -407,11 +598,14 @@ class PseudoClMixin:
         if not os.path.exists(template_config):
             raise ValueError(f"Template config file {template_config} does not exist")
 
-        self._pseudo_cls_onecov = {}
+        if not hasattr(self, "_pseudo_cls_onecov"):
+            self._pseudo_cls_onecov = {}
         for ver in self.versions:
             self.print_magenta(ver)
-
-            out_dir = self._output_path(f"pseudo_cl_cov_onecov_{ver}/")
+            self._pseudo_cls_onecov.setdefault(ver, {})
+            out_dir = self._output_path(
+                "pseudo_cl/", f"pseudo_cl_cov_onecov_{ver}_tomography_{tomography}"
+            )
             os.makedirs(out_dir, exist_ok=True)
 
             if (
@@ -421,7 +615,7 @@ class PseudoClMixin:
                 and not self.force_run
             ):
                 self.print_done(f"Skipping OneCovariance calculation, {out_dir} exists")
-                self._load_onecovariance_cov(out_dir, ver)
+                self._load_onecovariance_cov(out_dir, ver, tomography)
             else:
                 mask_path = self.cc[ver]["mask"]
                 if not os.path.exists(mask_path):
@@ -434,7 +628,9 @@ class PseudoClMixin:
                     self.cc[ver]["shear"]["redshift_path"]
                 )
 
-                config_path = os.path.join(out_dir, f"config_onecov_{ver}.ini")
+                config_path = os.path.join(
+                    out_dir, f"config_onecov_{ver}_tomography_{tomography}.ini"
+                )
 
                 self.print_cyan(
                     f"Modifying OneCovariance config file and saving it to {config_path}"
@@ -446,6 +642,7 @@ class PseudoClMixin:
                     mask_path,
                     redshift_distr_path,
                     ver,
+                    tomography,
                 )
 
                 self.print_cyan("Running OneCovariance...")
@@ -457,70 +654,11 @@ class PseudoClMixin:
                         f"OneCovariance command failed with return code {ret}"
                     )
                 self.print_cyan("OneCovariance completed successfully.")
-                self._load_onecovariance_cov(out_dir, ver)
+                self._load_onecovariance_cov(out_dir, ver, tomography)
 
         self.print_done("Done Pseudo-Cl covariance with OneCovariance")
 
-    def _modify_onecov_config(
-        self, template_config, config_path, out_dir, mask_path, redshift_distr_path, ver
-    ):
-        """
-        Modify OneCovariance configuration file with correct mask, redshift distribution,
-        and ellipticity dispersion parameters.
-
-        Parameters
-        ----------
-        template_config : str
-            Path to the template configuration file
-        config_path : str
-            Path where the modified configuration will be saved
-        mask_path : str
-            Path to the mask file
-        redshift_distr_path : str
-            Path to the redshift distribution file
-        """
-        config = configparser.ConfigParser()
-        # Load the template configuration
-        config.read(template_config)
-
-        # Update mask path
-        mask_base = os.path.basename(os.path.abspath(mask_path))
-        mask_folder = os.path.dirname(os.path.abspath(mask_path))
-        config["survey specs"]["mask_directory"] = mask_folder
-        config["survey specs"]["mask_file_lensing"] = mask_base
-        config["survey specs"]["survey_area_lensing_in_deg2"] = str(self.area[ver])
-        config["survey specs"]["ellipticity_dispersion"] = str(
-            self.ellipticity_dispersion[ver]
-        )
-        config["survey specs"]["n_eff_lensing"] = str(self.n_eff_gal[ver])
-
-        # Update redshift distribution path
-        redshift_distr_base = os.path.basename(os.path.abspath(redshift_distr_path))
-        redshift_distr_folder = os.path.dirname(os.path.abspath(redshift_distr_path))
-        config["redshift"]["z_directory"] = redshift_distr_folder
-        config["redshift"]["zlens_file"] = redshift_distr_base
-
-        # Update output directory
-        config["output settings"]["directory"] = out_dir
-
-        # Save the modified configuration
-        with open(config_path, "w") as f:
-            config.write(f)
-
-    def _load_onecovariance_cov(self, out_dir, ver):
-        self.print_cyan(f"Loading OneCovariance results from {out_dir}")
-        cov_one_cov = np.genfromtxt(
-            os.path.join(out_dir, "covariance_list_3x2pt_pure_Cell.dat")
-        )
-        gaussian_one_cov = cov_from_one_covariance(cov_one_cov, gaussian=True)
-        all_one_cov = cov_from_one_covariance(cov_one_cov, gaussian=False)
-
-        self._pseudo_cls_onecov[ver] = {
-            "gaussian_cov": gaussian_one_cov,
-            "all_cov": all_one_cov,
-        }
-
-    def calculate_pseudo_cl_g_ng_cov(self, gaussian_part="iNKA"):
+    def calculate_pseudo_cl_g_ng_cov(self, tomography=False, gaussian_part="iNKA"):
         assert gaussian_part in ["iNKA", "OneCovariance"], (
             "gaussian_part must be 'iNKA' or 'OneCovariance'"
         )
@@ -528,34 +666,40 @@ class PseudoClMixin:
             f"Gaussian and Non-Gaussian covariance of the Pseudo-Cl's using {gaussian_part} for the Gaussian part"
         )
 
-        self._pseudo_cls_cov_g_ng = {}
+        if not hasattr(self, "_pseudo_cls_cov_g_ng"):
+            self._pseudo_cls_cov_g_ng = {}
 
         for ver in self.versions:
             self.print_magenta(ver)
+            self._pseudo_cls_cov_g_ng.setdefault(ver, {})
+            key_to_use = "tomo" if tomography else "non_tomo"
             out_file = self._output_path(
-                f"pseudo_cl_cov_g_ng_{gaussian_part}_{ver}.fits"
+                "pseudo_cl",
+                f"pseudo_cl_cov_g_ng_{gaussian_part}_{ver}_tomography_{tomography}.fits",
             )
             if os.path.exists(out_file) and not self.force_run:
                 self.print_done(
                     f"Skipping Gaussian and Non-Gaussian covariance calculation, {out_file} exists"
                 )
                 cov_hdu = fits.open(out_file)
-                self._pseudo_cls_cov_g_ng[ver] = cov_hdu
+                self._pseudo_cls_cov_g_ng[ver][key_to_use] = cov_hdu
                 continue
             if gaussian_part == "iNKA":
-                gaussian_cov = self.pseudo_cls[ver]["cov"]["COVAR_EE_EE"].data
+                gaussian_cov = self.pseudo_cls[ver][f"cov_iNKA_{key_to_use}"][
+                    "COVAR_EE_EE"
+                ].data
                 non_gaussian_cov = (
-                    self.pseudo_cls_onecov[ver]["all_cov"]
-                    - self.pseudo_cls_onecov[ver]["gaussian_cov"]
+                    self.pseudo_cls_onecov[ver][key_to_use]["all_cov"]
+                    - self.pseudo_cls_onecov[ver][key_to_use]["gaussian_cov"]
                 )
                 full_cov = gaussian_cov + non_gaussian_cov
             elif gaussian_part == "OneCovariance":
-                gaussian_cov = self.pseudo_cls_onecov[ver]["gaussian_cov"]
+                gaussian_cov = self.pseudo_cls_onecov[ver][key_to_use]["gaussian_cov"]
                 non_gaussian_cov = (
-                    self.pseudo_cls_onecov[ver]["all_cov"]
-                    - self.pseudo_cls_onecov[ver]["gaussian_cov"]
+                    self.pseudo_cls_onecov[ver][key_to_use]["all_cov"]
+                    - self.pseudo_cls_onecov[ver][key_to_use]["gaussian_cov"]
                 )
-                full_cov = self.pseudo_cls_onecov[ver]["all_cov"]
+                full_cov = self.pseudo_cls_onecov[ver][key_to_use]["all_cov"]
             else:
                 raise ValueError(f"Unknown gaussian_part: {gaussian_part}")
             self.print_cyan("Saving Gaussian and Non-Gaussian covariance...")
@@ -564,197 +708,10 @@ class PseudoClMixin:
             hdu.append(fits.ImageHDU(non_gaussian_cov, name="COVAR_NON_GAUSSIAN"))
             hdu.append(fits.ImageHDU(full_cov, name="COVAR_FULL"))
             hdu.writeto(out_file, overwrite=True)
-            self._pseudo_cls_cov_g_ng[ver] = hdu
+            self._pseudo_cls_cov_g_ng[ver][key_to_use] = hdu
         self.print_done(
             f"Done Gaussian and Non-Gaussian covariance of the Pseudo-Cl's using {gaussian_part} for the Gaussian part"
         )
-
-    def calculate_pseudo_cl(self, compute_tomography=True):
-        """
-        Compute the pseudo-Cl of a `CosmologyValidation` inputs with tomography.
-        """
-        out_dir = self._output_path("pseudo_cl")
-        os.makedirs(out_dir, exist_ok=True)
-
-        if compute_tomography:
-            self.print_start("Computing tomographic pseudo-Cl's")
-        else:
-            self.print_start("Computing non-tomographic pseudo-Cl's")
-
-        self._pseudo_cls = getattr(self, "_pseudo_cls", {})
-
-        for ver in self.versions:
-            self.print_magenta(ver)
-
-            if ver not in self.pseudo_cls.keys():
-                self._pseudo_cls[ver] = {}
-
-            if compute_tomography:
-                tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
-
-                if tomo_bin_ids is None or tomo_bin_pairs is None:
-                    raise ValueError(
-                        f"Version {ver} does not have tomography information."
-                    )
-
-            else:
-                tomo_bin_pairs = [("all", "all")]
-
-            # Loop on the different tomographic bin pairs
-            for bin_key1, bin_key2 in tomo_bin_pairs:
-                self.print_cyan(f"Tomo Bin Pair: ({bin_key1}, {bin_key2})")
-
-                if (
-                    f"tomo_bin_{bin_key1}_tomo_bin_{bin_key2}"
-                    not in self._pseudo_cls[ver].keys()
-                ):
-                    self._pseudo_cls[ver][
-                        f"tomo_bin_{bin_key1}_tomo_bin_{bin_key2}"
-                    ] = {}
-
-                out_path = self._output_path_pseudo_cl(
-                    ver, tomo_bin_pair=(bin_key1, bin_key2)
-                )
-                if os.path.exists(out_path) and not self.force_run:
-                    self.print_done(
-                        f"Skipping Pseudo-Cl's calculation, {out_path} exists"
-                    )
-                    cl_shear = fits.getdata(out_path)
-                    self._pseudo_cls[ver][f"tomo_bin_{bin_key1}_tomo_bin_{bin_key2}"][
-                        "pseudo_cl"
-                    ] = cl_shear
-                    continue
-
-                if self.cell_method == "map":
-                    self.calculate_pseudo_cl_map(
-                        ver, self.nside, out_path, bin_key1, bin_key2
-                    )
-                elif self.cell_method == "catalog":
-                    self.calculate_pseudo_cl_catalog(ver, out_path, bin_key1, bin_key2)
-                else:
-                    raise ValueError(f"Unknown cell method: {self.cell_method}")
-
-    def calculate_pseudo_cl_map(self, ver, nside, out_path, tomo_bin_a, tomo_bin_b):
-        assert (tomo_bin_a == "all" and tomo_bin_b == "all") or (
-            isinstance(tomo_bin_a, (int, np.integer))
-            and isinstance(tomo_bin_b, (int, np.integer))
-        ), "tomo_bin_a and tomo_bin_b must be either both 'all' or both integers."
-
-        params = get_params_rho_tau(self.cc[ver])
-
-        self.print_cyan(
-            f"Computing pseudo-Cl's for tomographic bins {tomo_bin_a} and {tomo_bin_b}..."
-        )
-
-        # Load data and create shear and noise maps
-        cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
-
-        # Get the tomographic bin
-        cat_gal_a = self._get_tomographic_bin(params, cat_gal, tomo_bin_a)
-        cat_gal_b = self._get_tomographic_bin(params, cat_gal, tomo_bin_b)
-
-        del cat_gal
-
-        self.print_cyan("Creating maps and computing Cl's...")
-        # Get the pixels and indices for the catalogs
-        unique_pix_a, idx_a, idx_rep_a = self.get_pixels(params, nside, cat_gal_a)
-        unique_pix_b, idx_b, idx_rep_b = self.get_pixels(params, nside, cat_gal_b)
-
-        # Create number density maps for each tomographic bin
-        n_gal_map_a = self.get_n_gal_map(
-            params,
-            nside,
-            cat_gal_a,
-            unique_pix=unique_pix_a,
-            idx=idx_a,
-            idx_rep=idx_rep_a,
-        )
-        n_gal_map_b = self.get_n_gal_map(
-            params,
-            nside,
-            cat_gal_b,
-            unique_pix=unique_pix_b,
-            idx=idx_b,
-            idx_rep=idx_rep_b,
-        )
-
-        # Create shear maps for each tomographic bin
-        shear_map_a_e1, shear_map_a_e2 = self.get_shear_map(
-            params,
-            nside,
-            cat_gal_a,
-            unique_pix=unique_pix_a,
-            idx=idx_a,
-            idx_rep=idx_rep_a,
-            n_gal_map=n_gal_map_a,
-        )
-        shear_map_a = shear_map_a_e1 + 1j * shear_map_a_e2
-        del shear_map_a_e1, shear_map_a_e2
-
-        shear_map_b_e1, shear_map_b_e2 = self.get_shear_map(
-            params,
-            nside,
-            cat_gal_b,
-            unique_pix=unique_pix_b,
-            idx=idx_b,
-            idx_rep=idx_rep_b,
-            n_gal_map=n_gal_map_b,
-        )
-        shear_map_b = shear_map_b_e1 + 1j * shear_map_b_e2
-        del shear_map_b_e1, shear_map_b_e2
-
-        # Compute the pseudo-Cl's
-        ell_eff, cl_shear, wsp = self.get_pseudo_cls_map(
-            shear_map_a, n_gal_map_a, shear_map_b=shear_map_b, mask_b=n_gal_map_b
-        )
-
-        # Remove the noise bias for auto-correlations.
-        if tomo_bin_a == tomo_bin_b:
-            # Compute the noise bias using noise_bias_method
-            cl_noise = self.get_noise_bias_from_gaussian_real(
-                params,
-                nside,
-                cat_gal_a,
-                unique_pix=unique_pix_a,
-                idx=idx_a,
-                idx_rep=idx_rep_a,
-                n_gal_map=n_gal_map_a,
-                wsp=wsp,
-            )
-
-            # Subtract the noise bias from the pseudo-Cl's
-            cl_shear = cl_shear - cl_noise
-
-        self.print_cyan("Saving pseudo-Cl's...")
-        self.save_pseudo_cl(ell_eff, cl_shear, out_path)
-
-        cl_shear = fits.getdata(out_path)
-        self._pseudo_cls[ver][f"tomo_bin_{tomo_bin_a}_tomo_bin_{tomo_bin_b}"][
-            "pseudo_cl"
-        ] = cl_shear
-
-    def calculate_pseudo_cl_catalog(self, ver, out_path, tomo_bin_a, tomo_bin_b):
-        assert (tomo_bin_a == "all" and tomo_bin_b == "all") or (
-            isinstance(tomo_bin_a, (int, np.integer))
-            and isinstance(tomo_bin_b, (int, np.integer))
-        ), "tomo_bin_a and tomo_bin_b must be either both 'all' or both integers."
-
-        params = get_params_rho_tau(self.cc[ver])
-
-        # Load data and create shear and noise maps
-        cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
-
-        ell_eff, cl_shear, wsp = self.get_pseudo_cls_catalog(
-            catalog=cat_gal, params=params, tomo_bin_a=tomo_bin_a, tomo_bin_b=tomo_bin_b
-        )
-
-        self.print_cyan("Saving pseudo-Cl's...")
-        self.save_pseudo_cl(ell_eff, cl_shear, out_path)
-
-        cl_shear = fits.getdata(out_path)
-        self._pseudo_cls[ver][f"tomo_bin_{tomo_bin_a}_tomo_bin_{tomo_bin_b}"][
-            "pseudo_cl"
-        ] = cl_shear
 
     # ---------------- Utility functions for pseudo-Cl calculations ---------------- #
     def get_namaster_bin(self, lmin, lmax, b_lmax):
@@ -969,6 +926,156 @@ class PseudoClMixin:
             fiducial_cl = {"WallxWall": fiducial_cl["W1xW1"]}
 
         return fiducial_cl
+
+    def _modify_onecov_config(
+        self,
+        template_config,
+        config_path,
+        out_dir,
+        mask_path,
+        redshift_distr_path,
+        ver,
+        tomography,
+    ):
+        """
+        Modify OneCovariance configuration file with correct mask, redshift distribution,
+        and ellipticity dispersion parameters.
+
+        Parameters
+        ----------
+        template_config : str
+            Path to the template configuration file
+        config_path : str
+            Path where the modified configuration will be saved
+        mask_path : str
+            Path to the mask file
+        redshift_distr_path : str
+            Path to the redshift distribution file
+        ver : str
+            Version identifier for the current analysis
+        tomography : bool
+            Whether to compute tomography or not
+        """
+        config = configparser.ConfigParser()
+        # Load the template configuration
+        config.read(template_config)
+
+        # Update mask path
+        mask_base = os.path.basename(os.path.abspath(mask_path))
+        mask_folder = os.path.dirname(os.path.abspath(mask_path))
+        config["survey specs"]["mask_directory"] = mask_folder
+        config["survey specs"]["mask_file_lensing"] = mask_base
+        config["survey specs"]["survey_area_lensing_in_deg2"] = str(self.area[ver])
+
+        # Update ellipticity dispersion and effective number density
+        # Account for tomography if needed
+        if tomography:
+            tomo_bin_ids, _ = self._get_tomo_bins(ver)
+        else:
+            tomo_bin_ids = ["all"]
+        input_ellipticity_distribution = ", ".join(
+            str(self.ellipticity_dispersion[ver][f"tomo_bin_{bin_id}"])
+            for bin_id in tomo_bin_ids
+        )
+        input_n_eff_gal = ", ".join(
+            str(self.n_eff_gal[ver][f"tomo_bin_{bin_id}"]) for bin_id in tomo_bin_ids
+        )
+        config["survey specs"]["ellipticity_dispersion"] = (
+            input_ellipticity_distribution
+        )
+        config["survey specs"]["n_eff_lensing"] = input_n_eff_gal
+
+        # Handle the case where the redshift distribution file is tomographic
+        # Converts it to a non-tomographic distribution if needed
+        if not tomography:
+            # Load the redshift distribution
+            z, dndz = self.read_redshift_distribution(ver, is_tomography=True)
+            # Sum over tomographic bins to get the non-tomographic distribution
+            dndz_non_tomo = np.sum(dndz, axis=1)
+            # Save the non-tomographic distribution to a new file
+            non_tomo_redshift_distr_path = os.path.join(
+                out_dir, f"redshift_distribution_{ver}_non_tomo.txt"
+            )
+            np.savetxt(
+                non_tomo_redshift_distr_path,
+                np.column_stack((z, dndz_non_tomo)),
+                header="z dN/dz",
+            )
+            redshift_distr_path = non_tomo_redshift_distr_path
+
+        # Update redshift distribution path
+        redshift_distr_base = os.path.basename(os.path.abspath(redshift_distr_path))
+        redshift_distr_folder = os.path.dirname(os.path.abspath(redshift_distr_path))
+        config["redshift"]["z_directory"] = redshift_distr_folder
+        config["redshift"]["zlens_file"] = redshift_distr_base
+
+        self._update_onecov_cosmo_params(config, self.cosmo)
+
+        # Update output directory
+        config["output settings"]["directory"] = out_dir
+
+        # Save the modified configuration
+        with open(config_path, "w") as f:
+            config.write(f)
+
+    def _update_onecov_cosmo_params(self, config, cosmo):
+        """
+        Update the cosmological parameters in the OneCovariance configuration.
+
+        Parameters
+        ----------
+        config : configparser.ConfigParser
+            The configuration object to update.
+        cosmo
+            The cosmology object containing the parameters to set.
+        """
+        # Update cosmo params section
+        config["cosmo"]["h"] = str(cosmo["H0"] / 100.0)
+        config["cosmo"]["omega_m"] = str(cosmo["Omega_m"])
+        config["cosmo"]["omega_b"] = str(cosmo["Omega_b"])
+        config["cosmo"]["omega_de"] = str(cosmo["Omega_l"])
+        config["cosmo"]["sigma8"] = str(cosmo.sigma8())
+        config["cosmo"]["ns"] = str(cosmo["n_s"])
+        config["cosmo"]["w0"] = str(cosmo["w0"])
+        config["cosmo"]["wa"] = str(cosmo["wa"])
+        config["cosmo"]["neff"] = str(cosmo["Neff"])
+        config["cosmo"]["m_nu"] = str(
+            np.sum(
+                cosmo["m_nu"]
+            )  # cosmo["m_nu"] is an array of neutrino masses in eV. OneCovariance expects the sum of neutrino masses in eV.
+        )
+
+        # Update powspec evaluation section
+        cosmo_dict = cosmo.to_dict()
+
+        config["powspec evaluation"]["non_linear_model"] = str(
+            cosmo_dict.get("extra_parameters", {})
+            .get("camb", {})
+            .get("halofit_version", "mead2020_feedback")  # Default to mead2020 feedback
+        )  # TODO: check what would be the default if not provided as input to align with this
+        config["powspec evaluation"]["HMCode_logT_AGN"] = str(
+            cosmo_dict.get("extra_parameters", {})
+            .get("camb", {})
+            .get("HMCode_logT_AGN", 7.8)  # OneCovariance default
+        )
+
+    def _load_onecovariance_cov(self, out_dir, ver, tomography):
+        self.print_cyan(f"Loading OneCovariance results from {out_dir}")
+        cov_one_cov = np.genfromtxt(
+            os.path.join(out_dir, "covariance_list_3x2pt_pure_Cell.dat")
+        )
+        gaussian_one_cov = cov_from_one_covariance(cov_one_cov, gaussian=True)
+        all_one_cov = cov_from_one_covariance(cov_one_cov, gaussian=False)
+
+        key_to_update = "tomo" if tomography else "non_tomo"
+        self._pseudo_cls_onecov.setdefault(ver, {}).update(
+            {
+                key_to_update: {
+                    "gaussian_cov": gaussian_one_cov,
+                    "all_cov": all_one_cov,
+                }
+            }
+        )
 
     def _get_tomographic_bin(self, params, cat_gal, tomo_bin):
         """Extract tomographic bin from a given catalogue"""

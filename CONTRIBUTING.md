@@ -70,17 +70,26 @@ undefined names, unused variables, other judgement calls — is printed as a
 **warning** and never blocks the commit. Judgement-call lint stays out of your
 way locally; the gate below is where it's enforced.
 
-**`develop` is the gate.** On every push to `develop` and every PR into it, CI
-runs the full ruff policy. If it fails, the check goes **red and blocks the
-merge**, and the bot tells you what to fix where you already are:
+**`develop` is the gate — and on a PR it fixes for you.** On every push to
+`develop` and every PR into it, CI runs the full ruff policy.
 
-- **On a PR** → it posts (and keeps updating) a **comment on the PR** listing the
-  violations (also surfaced as annotations in the CI run). Push a fix and the
-  comment turns green.
+- **On a PR from a branch in this repo** → the gate doesn't just report, it
+  **fixes**: it runs `ruff format` + `ruff check --fix` and **pushes the result
+  back to your branch as the `github-actions` bot**, then re-checks. If that
+  cleaned everything, the PR comment goes green (`🤖 autofix pushed …, ruff is
+  clean`) and there's nothing to do — just `git pull` to pick up the commit. If
+  anything ruff *won't* safely fix survives (undefined names, unused variables,
+  other judgement calls), the check stays **red** and the comment lists **only
+  the residual** — the mechanical stuff is already handled. So you rarely touch
+  ruff by hand; when you do, it's the real judgement calls.
+- **On a PR from a fork** (where CI can't push to your branch) → it posts (and
+  keeps updating) a **comment on the PR** with the full violation list. Push a
+  fix and the comment turns green.
 - **On a direct push to `develop`** (no PR) → it opens (or updates) a single
   **lint-debt issue assigned to you**, which auto-closes when CI is green.
 
-So: warn while you work, clean before it lands.
+So: warn while you work, and for same-repo PRs the gate mostly cleans up after
+you before it lands.
 
 ## Commit hygiene (notebooks & large files)
 
