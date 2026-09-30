@@ -295,7 +295,7 @@ wheels = [
 
 [[package]]
 name = "camb"
-version = "1.6.6"
+version = "2.0.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
@@ -303,10 +303,10 @@ dependencies = [
     { name = "scipy" },
     { name = "sympy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6d/ad/f2e6446fbd94f7adc1474e1f4e40d2e7fa7e5e7143640cb8557d492f0a73/camb-1.6.6.tar.gz", hash = "sha256:9856202a5c05570256e52377b20431891c7b08b2e9c334e141fd08d2a085516f", size = 799344, upload-time = "2026-03-11T16:46:55.819Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/51/0b/856e8e329c088155509e3c1a999b02cd3f0333a31fc1fa37653455a4ec80/camb-2.0.4.tar.gz", hash = "sha256:2f1f5f3b3964a3746693dc88a54218dca4ea049a04726f8177664c11d2d2616e", size = 925860, upload-time = "2026-08-25T22:10:58.612Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c9/f6/9131f388386c50982b1b2992424deca857e7c019f4014dab0770de690a84/camb-1.6.6-py3-none-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:eded2dd7f19226ed4717535c07a029fc958b7c581549250da33a768e12c87b13", size = 1592029, upload-time = "2026-03-11T16:46:44.925Z" },
-    { url = "https://files.pythonhosted.org/packages/41/53/9d0b3cf1a2a07a882adac9565074ac6974fb8b031c31da438d407db22c89/camb-1.6.6-py3-none-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:bb8e0c85b3e33d78ca0676c84b0b60b54dfa72d4e520a805166cab0458e81094", size = 2258716, upload-time = "2026-03-11T16:46:46.458Z" },
+    { url = "https://files.pythonhosted.org/packages/35/00/2204636fd231679a9b1ee37a158eb23f273aa3a66a2a4fd81fb1f3514302/camb-2.0.4-py3-none-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:179b8a5496be4c80edf206824a3d211f38d496c0e06420aad754fd16f0bd4fe6", size = 1765545, upload-time = "2026-08-25T22:10:47.617Z" },
+    { url = "https://files.pythonhosted.org/packages/7d/4b/3a999a7a500d8a4aef4fa3e3efc94fb00e59cec5e3e0a61973f1cad5b69b/camb-2.0.4-py3-none-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:9b7e6558b2049757e96496b8a33461d8ff11acd79017cfbd00a573dbc8d1e366", size = 2393435, upload-time = "2026-08-25T22:10:49.166Z" },
 ]
 
 [[package]]
@@ -1067,15 +1067,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/1c/e8/b33784d6fc77fb5062a8a7854e43e1e618b87d5ddf610a88025e4de6226e/google_crc32c-1.8.0-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:89c17d53d75562edfff86679244830599ee0a48efc216200691de8b02ab6b2b8", size = 33694, upload-time = "2025-12-16T00:40:25.505Z" },
     { url = "https://files.pythonhosted.org/packages/56/15/c25671c7aad70f8179d858c55a6ae8404902abe0cdcf32a29d581792b491/google_crc32c-1.8.0-cp314-cp314-manylinux1_x86_64.manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_5_x86_64.whl", hash = "sha256:b0d1a7afc6e8e4635564ba8aa5c0548e3173e41b6384d7711a9123165f582de2", size = 33381, upload-time = "2025-12-16T00:40:26.268Z" },
     { url = "https://files.pythonhosted.org/packages/42/fa/f50f51260d7b0ef5d4898af122d8a7ec5a84e2984f676f746445f783705f/google_crc32c-1.8.0-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:8b3f68782f3cbd1bce027e48768293072813469af6a61a86f6bb4977a4380f21", size = 33734, upload-time = "2025-12-16T00:40:27.028Z" },
-]
-
-[[package]]
-name = "gsl"
-version = "0.0.3"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/01/36/a8a99ab67918beb6ee8722fb6c27512796a5ff8ed4c10036f787eef51569/gsl-0.0.3.tar.gz", hash = "sha256:85a6071e00a284510c963b97ab74ef8a3e7d1786c5f52dc2ff444cbb7d94ee3c", size = 44404, upload-time = "2018-05-30T09:02:51.203Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/ee/1e/14d4c4657bc7130b900c65033861ee0db508d2d9206f4223f5da7c855acc/gsl-0.0.3-py3-none-any.whl", hash = "sha256:081c77375bf65cb759a3e5129275b8806be18648452f50f7c420f40dac60529a", size = 39432, upload-time = "2018-05-30T09:02:49.93Z" },
 ]
 
 [[package]]
@@ -2824,7 +2815,7 @@ wheels = [
 
 [[package]]
 name = "pyccl"
-version = "3.3.4"
+version = "3.3.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
@@ -2832,11 +2823,11 @@ dependencies = [
     { name = "pyyaml" },
     { name = "scipy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/57/40/ff357d61a20c21420f1fe7417ca6d889be2e07a67b3564775aeaf6c3f366/pyccl-3.3.4.tar.gz", hash = "sha256:a9d22557354fd161df909e8f4f199e4f1c434c080fd6cddb2246609ddbd70e7c", size = 16783719, upload-time = "2026-05-14T16:26:27.327Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d5/76/dc091056f1af48e6cb56d651dac6eb8494dd2515547d9543c0ce5365b873/pyccl-3.3.6.tar.gz", hash = "sha256:fd6c0181381eb57345ec9b56bdcf9300c9a31a42014aa9c8ced95f31ace16795", size = 16790489, upload-time = "2026-07-28T09:29:17.738Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b7/80/1db2504f21eec9b481e1fe298b05deb96e108d06ddb1828494d16d32bf1c/pyccl-3.3.4-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:0229c863acea5c3fc6748dc7c40611dd529709c9d26e3679ebdbc467511ef993", size = 3707759, upload-time = "2026-05-14T16:26:16.779Z" },
-    { url = "https://files.pythonhosted.org/packages/1a/91/3000c5fc1ee8379636dc894946a3633baae74a3f1cce3c2d402e8991a0b5/pyccl-3.3.4-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:685d528a096251a2eb5d569e611b5a2e68cc3a4a0134734b16ac4e73a07e7f27", size = 3706950, upload-time = "2026-05-14T16:26:20.394Z" },
-    { url = "https://files.pythonhosted.org/packages/e5/66/803e8196149d8d8a75319b4f20268210b1e1b31b3158a1143ce99cacf953/pyccl-3.3.4-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:601b687b50b506f7f5775475d79fa55d221616a827a96ad5d6d68bf7a15de9b9", size = 3706955, upload-time = "2026-05-14T16:26:25.302Z" },
+    { url = "https://files.pythonhosted.org/packages/86/95/4183630d8e67133e5d066d388f3852580d4de8baa592506c28a80274e34c/pyccl-3.3.6-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:b0077f51318c2f3112682d37febc75b4334152a8c8338dff19b484cdd25cf9a7", size = 3708004, upload-time = "2026-07-28T09:29:10.256Z" },
+    { url = "https://files.pythonhosted.org/packages/af/86/df2caee376a298ceee5afd13c348371a2537d47aea30e5316d8fc6277004/pyccl-3.3.6-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:4a943004beee16b72f4c1464008904127831b760f5c1906ea430f9bc92601380", size = 3707324, upload-time = "2026-07-28T09:29:13.224Z" },
+    { url = "https://files.pythonhosted.org/packages/ee/48/4eab47c2615543aa8d4d80e689659e35547824216e318aa0541ade69efff/pyccl-3.3.6-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:6fa4f7e0fe17a90aea9fb981c586143ee41a846b2192f415bb995522adf26194", size = 3707307, upload-time = "2026-07-28T09:29:16.108Z" },
 ]
 
 [[package]]
@@ -3443,28 +3434,15 @@ wheels = [
 [[package]]
 name = "shear-psf-leakage"
 version = "0.2.1"
-source = { git = "https://github.com/CosmoStat/shear_psf_leakage.git?rev=develop#0b3c17523b77760c9259be15ba5bbba99d575d0a" }
+source = { git = "https://github.com/CosmoStat/shear_psf_leakage.git?rev=develop#649edf4ac36da86fa679193b3402174bf54042c7" }
 dependencies = [
-    { name = "camb" },
     { name = "cs-util" },
     { name = "emcee" },
     { name = "getdist" },
-    { name = "gsl" },
-    { name = "jupyter" },
-    { name = "jupyter-server" },
-    { name = "jupyterlab" },
-    { name = "jupytext" },
-    { name = "lenspack" },
     { name = "lmfit" },
     { name = "matplotlib" },
-    { name = "notebook" },
     { name = "pandas" },
-    { name = "pyccl" },
-    { name = "pyyaml" },
     { name = "scipy" },
-    { name = "stats" },
-    { name = "swig" },
-    { name = "tornado" },
     { name = "tqdm" },
     { name = "treecorr" },
     { name = "uncertainties" },
@@ -3625,7 +3603,7 @@ workflow = [
 requires-dist = [
     { name = "adjusttext" },
     { name = "astropy", specifier = ">=5.0" },
-    { name = "camb", specifier = ">=1.6" },
+    { name = "camb", specifier = ">=2.0" },
     { name = "clmm" },
     { name = "colorama" },
     { name = "cosmo-numba", git = "https://github.com/aguinot/cosmo-numba.git?rev=main" },
@@ -3658,7 +3636,7 @@ requires-dist = [
     { name = "opencv-python-headless" },
     { name = "pandas" },
     { name = "pyarrow" },
-    { name = "pyccl" },
+    { name = "pyccl", specifier = ">=3.3.5" },
     { name = "pymaster" },
     { name = "pytest", marker = "extra == 'test'" },
     { name = "pytest-cov", marker = "extra == 'test'" },
@@ -3667,7 +3645,7 @@ requires-dist = [
     { name = "reproject" },
     { name = "ruff", marker = "extra == 'test'" },
     { name = "sacc", specifier = ">=2.4,<3" },
-    { name = "scipy", specifier = "<1.19" },
+    { name = "scipy" },
     { name = "seaborn" },
     { name = "shear-psf-leakage", git = "https://github.com/CosmoStat/shear_psf_leakage.git?rev=develop" },
     { name = "skyproj" },
@@ -3805,12 +3783,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/28/e3/55dcc2cfbc3ca9c29
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f1/7b/ce1eafaf1a76852e2ec9b22edecf1daa58175c090266e9f6c64afcd81d91/stack_data-0.6.3-py3-none-any.whl", hash = "sha256:d5558e0c25a4cb0853cddad3d77da9891a08cb85dd9f9f91b9f8cd66e511e695", size = 24521, upload-time = "2023-09-30T13:58:03.53Z" },
 ]
-
-[[package]]
-name = "stats"
-version = "0.1.2a0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/87/43/f2d8d8e2660740ecca9c0fab85a07bc02da27d1fcc5071ee481082888720/stats-0.1.2a.tar.gz", hash = "sha256:854e59fa99f92ce8319c16149ef8e9939dba3e2237bbb0fb6a6094c60155bd4c", size = 127625, upload-time = "2010-12-31T09:02:15.131Z" }
 
 [[package]]
 name = "statsmodels"
