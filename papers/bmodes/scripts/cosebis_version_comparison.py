@@ -151,8 +151,8 @@ def _xi_integration(results_dir, ver):
     return f"{results_dir}/{ver}_xi_minsep=0.5_maxsep=300.0_nbins=1000_npatch=1.txt"
 
 
-def _cov_integration(cov_dir, ver, blind):
-    base = f"covariance_{ver}_{blind}_g_minsep=0.5_maxsep=300.0_nbins=1000_masked"
+def _cov_integration(cov_dir, ver):
+    base = f"covariance_{ver}_g_minsep=0.5_maxsep=300.0_nbins=1000_masked"
     return f"{cov_dir}/{base}/{base}_processed.txt"
 
 
@@ -170,7 +170,6 @@ def main(
     nmodes = config["fiducial"]["nmodes"]
     plotting_config = config["plotting"]
     version_labels = plotting_config["version_labels"]
-    blind = config["fiducial"]["blind"]
 
     # Fiducial version whose inputs may be overridden with explicit lc paths
     fiducial_version = fiducial_version or config["fiducial"]["version"]
@@ -186,7 +185,7 @@ def main(
     cov_paths_list = [
         fiducial_cov_path
         if v == fiducial_version and fiducial_cov_path
-        else _cov_integration(cov_dir, v, blind)
+        else _cov_integration(cov_dir, v)
         for v in versions
     ]
 

@@ -3,12 +3,12 @@
 CLI refactor of the former Snakemake ``script:`` gather rule. Reads the actual
 ξ± data vectors (reporting + integration grids), computes the pure E/B/ambiguous
 decomposition (Schneider 2022), stacks the per-chunk MC sample blocks, and
-forms the empirical 6-block covariance. Writes the per-(version, blind)
-``<version>_<blind>_pure_eb_semianalytic.npz`` consumed by every downstream
+forms the empirical 6-block covariance. Writes the per-version
+``<version>_pure_eb_semianalytic.npz`` consumed by every downstream
 pure-mode plot / PTE.
 
     python gather_pure_eb_chunks.py \
-        --version SP_v1.4.6.3_leak_corr --blind A \
+        --version SP_v1.4.6.3_leak_corr \
         --xi-reporting  <xi 20-bin .txt> \
         --xi-integration <xi 1000-bin .txt> \
         --chunks-dir <dir with pure_eb_chunk_*.npz> \
@@ -32,7 +32,6 @@ def _load_xi(path, nbins):
 
 def gather(
     version,
-    blind,
     xi_reporting,
     xi_integration,
     chunk_files,
@@ -44,7 +43,7 @@ def gather(
 ):
     from cosmo_numba.B_modes.schneider2022 import get_pure_EB_modes
 
-    print(f"Gathering pure E/B for blind {blind}")
+    print(f"Gathering pure E/B for {version}")
 
     gg = _load_xi(xi_reporting, nbins)
     gg_int = _load_xi(xi_integration, nbins_int)
@@ -88,7 +87,7 @@ def gather(
     }
 
     os.makedirs(output_dir, exist_ok=True)
-    out_path = os.path.join(output_dir, f"{version}_{blind}_pure_eb_semianalytic.npz")
+    out_path = os.path.join(output_dir, f"{version}_pure_eb_semianalytic.npz")
     np.savez(out_path, **package)
     print(f"Saved to {out_path}")
     return out_path
@@ -107,7 +106,6 @@ def _resolve_chunks(args):
 def _from_cli(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--version", required=True)
-    ap.add_argument("--blind", default="A")
     ap.add_argument("--xi-reporting", required=True)
     ap.add_argument("--xi-integration", required=True)
     ap.add_argument("--chunks-dir", help="Directory holding pure_eb_chunk_*.npz")
@@ -123,7 +121,6 @@ def _from_cli(argv=None):
     a = ap.parse_args(argv)
     gather(
         version=a.version,
-        blind=a.blind,
         xi_reporting=a.xi_reporting,
         xi_integration=a.xi_integration,
         chunk_files=_resolve_chunks(a),

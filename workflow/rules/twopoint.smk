@@ -13,16 +13,11 @@ def xi_binning(grid):
     return grid_binning(XI_GRIDS[grid])
 
 
-def xi_grid_of(wildcards):
-    """Grid label for the binning a job was requested with."""
-    return grid_of(XI_GRIDS, {key: getattr(wildcards, key) for key in XI_KEYS})
-
-
 rule xi:
     """TreeCorr ξ±(θ) for one version on one angular grid.
 
     One rule for every grid: outputs are named by their binning, so a request
-    binds the wildcards and `xi_grid_of` resolves the grid label from them.
+    binds the wildcards and the grid label resolves from them.
     """
     input:
         catalog=get_shear_catalog,
@@ -38,8 +33,7 @@ rule xi:
         npatch="{npatch}",
         cat_config=CAT_CONFIG,
         output_dir=str(COSMO_VAL),
-        grid=lambda w: xi_grid_of(w),
-        cov=lambda w: XI_GRIDS[xi_grid_of(w)]["cov"],
+        grid=lambda w: grid_of(XI_GRIDS, w),
     resources:
         # The fine integration grid needs more memory and wall time than the
         # ~20-bin reporting one; scale on nbins rather than splitting the rule.
@@ -68,12 +62,12 @@ rule rho_tau_stats:
     resources:
         mem_mb=30000,
         disk_mb=20000,
+        runtime=360,
     script:
         "../scripts/run_rho_tau.py"
 
 
 # Pseudo-Cl generation for harmonic-space data vectors and COSEBIS validation.
-BASE_VERSIONS = [v.replace("_leak_corr", "") for v in config["versions"]]
 
 wildcard_constraints:
     binning="linear|logspace|powspace",
@@ -82,12 +76,9 @@ wildcard_constraints:
 rule pseudo_cl:
     """Generate pseudo-Cl data vector (born as SACC) with configurable binning."""
     output:
-        pseudo_cl=str(COSMO_VAL / "pseudo_cl_{version}_blind={blind}_{binning}_nbins={nbins}.sacc"),
-    wildcard_constraints:
-        blind="[ABC]",
+        pseudo_cl=str(COSMO_VAL / "pseudo_cl_{version}_{binning}_nbins={nbins}.sacc"),
     params:
         version="{version}",
-        blind="{blind}",
         cat_config=CAT_CONFIG,
         nside=1024,
         npatch=1,
@@ -106,12 +97,9 @@ rule pseudo_cl:
 rule pseudo_cl_cov:
     """Generate pseudo-Cl covariance with configurable binning."""
     output:
-        pseudo_cl_cov=str(COSMO_VAL / "pseudo_cl_cov_{version}_blind={blind}_{binning}_nbins={nbins}.fits"),
-    wildcard_constraints:
-        blind="[ABC]",
+        pseudo_cl_cov=str(COSMO_VAL / "pseudo_cl_cov_{version}_{binning}_nbins={nbins}.fits"),
     params:
         version="{version}",
-        blind="{blind}",
         cat_config=CAT_CONFIG,
         nside=1024,
         npatch=1,
@@ -134,7 +122,7 @@ rule pseudo_cl_all:
     """Generate pseudo-Cls for all versions."""
     input:
         expand(
-            str(COSMO_VAL / "pseudo_cl_{version}_blind=A_powspace_nbins=32.sacc"),
+            str(COSMO_VAL / "pseudo_cl_{version}_powspace_nbins=32.sacc"),
             version=PSEUDO_CL_VERSIONS,
         ),
 
@@ -143,7 +131,7 @@ rule pseudo_cl_cov_all:
     """Generate pseudo-Cl covariances for all versions."""
     input:
         expand(
-            str(COSMO_VAL / "pseudo_cl_cov_{version}_blind=A_powspace_nbins=32.fits"),
+            str(COSMO_VAL / "pseudo_cl_cov_{version}_powspace_nbins=32.fits"),
             version=PSEUDO_CL_VERSIONS,
         ),
 
@@ -152,7 +140,6 @@ rule pseudo_cl_fine_all:
     """Generate fine pseudo-Cls for COSEBIS."""
     input:
         expand(
-            str(COSMO_VAL / "pseudo_cl_{version}_blind={blind}_linear_nbins=2040.sacc"),
+            str(COSMO_VAL / "pseudo_cl_{version}_linear_nbins=2040.sacc"),
             version=config["versions"],
-            blind=BLINDS,
         ),

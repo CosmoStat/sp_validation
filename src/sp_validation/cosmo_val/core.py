@@ -1,7 +1,6 @@
 # %%
 import copy
 import os
-import re
 from pathlib import Path
 
 import colorama
@@ -83,8 +82,7 @@ class CosmologyValidation(
         Path to catalog configuration YAML defining survey metadata, file paths,
         and analysis settings for each version.
     output_dir : str, optional
-        Override for output directory. If None, falls back to the COSMO_VAL
-        environment variable, then to the catalog config's paths.output.
+        Output directory. If None, the catalog config's paths.output.
     rho_tau_method : {'lsq', 'mcmc'}, default 'lsq'
         Fitting method for PSF leakage systematics parameters.
     cov_estimate_method : {'th', 'jk'}, default 'th'
@@ -257,7 +255,6 @@ class CosmologyValidation(
         cell_seed=8192,
         path_onecovariance=None,
         cosmo_params=None,
-        blind=None,
     ):
         self.rho_tau_method = rho_tau_method
         self.cov_estimate_method = cov_estimate_method
@@ -286,7 +283,6 @@ class CosmologyValidation(
         self.fiducial_input_inka = fiducial_input_inka
         self.nside_mask = nside_mask
         self.path_onecovariance = path_onecovariance
-        self.blind = blind
 
         assert self.cell_method in ["map", "catalog"], (
             "cell_method must be 'map' or 'catalog'"
@@ -313,6 +309,11 @@ class CosmologyValidation(
             "nbins": nbins,
             "var_method": var_method,
             "cross_patch_weight": "match" if var_method == "jackknife" else "simple",
+            # min_top sets the depth of TreeCorr's root cells, hence which pairs
+            # bin_slop approximates. Left unset, TreeCorr derives it from its
+            # thread count (max(3, ceil(log2 n))) and ξ± depends on the machine.
+            # 6 is what TreeCorr derives on candide's 48- and 64-CPU nodes.
+            "min_top": 6,
         }
 
         self.catalog_config_path = Path(catalog_config)
@@ -391,11 +392,6 @@ class CosmologyValidation(
 
         self.versions = final_versions
 
-        # Override output directory: explicit arg > COSMO_VAL env var >
-        # catalog config's paths.output. The env hook lets a reproduction
-        # run redirect every product to a fresh tree without touching the
-        # per-script call sites (mirrors workflow/common.py's COSMO_VAL).
-        output_dir = output_dir or os.environ.get("COSMO_VAL")
         if output_dir is not None:
             cc["paths"]["output"] = output_dir
 
@@ -444,20 +440,8 @@ class CosmologyValidation(
             Redshift values
         nz : ndarray
             n(z) probability density
-
-        Notes
-        -----
-        If self.blind is set, the redshift path is modified to use the
-        specified blind (A, B, or C) by replacing the blind suffix in the
-        configured path.
         """
-        redshift_path = self.cc[version]["shear"]["redshift_path"]
-
-        # Override blind if specified
-        if self.blind is not None:
-            redshift_path = re.sub(r"_[ABC]\.txt$", f"_{self.blind}.txt", redshift_path)
-
-        return np.loadtxt(redshift_path, unpack=True)
+        return np.loadtxt(self.cc[version]["shear"]["redshift_path"], unpack=True)
 
     def _write_catalog_config(self):
         with self.catalog_config_path.open("w") as file:

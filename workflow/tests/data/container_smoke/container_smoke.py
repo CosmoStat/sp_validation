@@ -2,27 +2,27 @@
 
 Cheap sanity check of the profile-driven container path -- same executor
 (slurm), same software-deployment-method (apptainer), same apptainer-args
-binds, same container image every real rule uses.  Four things it proves, each
+binds, same container image every real rule uses.  What it proves, each
 written to the output YAML:
 
   * the job really ran inside the image (``APPTAINER_CONTAINER``, set by
     apptainer itself -- without it the rest could all pass on the bare host);
-  * the editable ``sp_validation`` install resolves on the container's
-    PYTHONPATH (import provenance: file + version, not just import success);
-  * the numeric stack works (numpy eigh on a small fixed matrix).
-    ``OMP_NUM_THREADS`` is recorded but not asserted -- see the assertions;
+  * which ``sp_validation`` the job imports (file + version, not just import
+    success);
+  * which ``snakemake`` package unpickled the injected ``snakemake`` object
+    (file + version);
   * which commit of this checkout is running (git rev-parse from inside the
     container -- proves /home is bound and usable, not just readable).
 
 Driven by the co-located Snakefile; the assertions on the output YAML live in
-src/sp_validation/tests/test_container_smoke.py (marked ``slow``, cluster only).
+workflow/tests/test_container_smoke.py (candide only).
 """
 
 import os
 import platform
 import subprocess
+import sys
 
-import numpy as np
 import yaml
 
 # --- the job is actually inside the image ---------------------------------
@@ -30,7 +30,7 @@ container_info = {
     "apptainer_container": os.environ.get("APPTAINER_CONTAINER", "unset"),
 }
 
-# --- editable install resolves inside the container ------------------------
+# --- the sp_validation the job imports -------------------------------------
 import sp_validation  # noqa: E402
 
 sp_validation_info = {
@@ -38,24 +38,19 @@ sp_validation_info = {
     "file": sp_validation.__file__,
 }
 
-# --- numeric stack + threading -----------------------------------------
-rng = np.random.default_rng(seed=42)
-a = rng.standard_normal((8, 8))
-symmetric = a + a.T
-eigenvalues = np.linalg.eigh(symmetric)[0]
-
-numeric_info = {
-    "numpy_version": np.__version__,
-    "eigenvalues": [float(v) for v in eigenvalues],
-    "omp_num_threads": os.environ.get("OMP_NUM_THREADS", "unset"),
+# --- the snakemake package the preamble unpickled with ---------------------
+# Read from sys.modules: importing it here would rebind the injected global.
+snakemake_package = sys.modules["snakemake"]
+snakemake_info = {
+    "version": snakemake_package.__version__,
+    "file": snakemake_package.__file__,
 }
 
 # --- provenance: what commit is actually running in the container ---------
-# src/sp_validation/tests/data/container_smoke/ -> repo root, five levels up.
-# (This is the checkout the Snakefile came from, which is what we want to
-# report; the editable install may well resolve to a *different* checkout.)
+# workflow/tests/data/container_smoke/ -> repo root, four levels up: the
+# checkout the Snakefile came from.
 repo_dir = os.path.abspath(
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), *([os.pardir] * 5))
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), *([os.pardir] * 4))
 )
 try:
     commit = subprocess.run(
@@ -79,7 +74,7 @@ with open(snakemake.output[0], "w") as f:
         {
             "container": container_info,
             "sp_validation": sp_validation_info,
-            "numeric": numeric_info,
+            "snakemake": snakemake_info,
             "provenance": provenance,
         },
         f,

@@ -1,11 +1,12 @@
 """Rule cv_cosebis: COSEBIs E/B decomposition for one version.
 
-A consumer of the ξ± part alone — values, covariance, PTEs and figures all
-derive from it, so nothing here touches a catalogue. The part's ξ± covariance
-goes through the same linear kernel as the modes to give the COSEBIs
-covariance; its ``npatch`` metadata sets the Hartlap debiasing.
+A consumer of the integration-grid ξ± part and the CosmoCov ξ± covariance on
+the same grid — nothing here touches a catalogue. The covariance goes through
+the same linear kernel as the modes to give the COSEBIs covariance; it is
+analytic, so no Hartlap debiasing applies.
 """
 
+import numpy as np
 from cv_runner import _unbuffer_streams, verify_outputs
 
 from sp_validation import sacc_io
@@ -26,18 +27,17 @@ version = p["version"]
 fiducial_scale_cut = tuple(p["fiducial_scale_cut"])
 
 part = sacc_io.load(snakemake.input["xi"])
-theta, xip, xim = sacc_io.get_xi(part, (0, 0), grid="cosebis")
+theta, xip, xim = sacc_io.get_xi(part, (0, 0), grid="integration")
 edges = log_bin_edges(p["min_sep"], p["max_sep"], p["nbins"])
 
 results = cosebis_scan_from_xi(
     theta,
     xip,
     xim,
-    part.covariance.dense,
+    np.loadtxt(snakemake.input["cov"]),
     *edges,
     nmodes=p["nmodes"],
     scale_cuts=[tuple(sc) for sc in p["scale_cuts"]],
-    npatch=part.metadata["npatch"],
 )
 
 fiducial_key = find_conservative_scale_cut_key(results, fiducial_scale_cut)
@@ -50,7 +50,7 @@ plot_cosebis_modes(
     fiducial_scale_cut=fiducial_scale_cut,
 )
 plot_cosebis_covariance_matrix(
-    fiducial, version, "jackknife", snakemake.output["figure_covariance"]
+    fiducial, version, "analytic", snakemake.output["figure_covariance"]
 )
 plot_cosebis_scale_cut_heatmap(
     results,

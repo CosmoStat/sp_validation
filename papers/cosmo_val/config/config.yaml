@@ -74,18 +74,14 @@ cosmo_val:
         kmax: 20
         kmax_extrapolate: 500
 
-  # The fine ξ± grid the B-mode integrals run over.
+  # The fine ξ± grid both B-mode statistics (COSEBIs, pure-E/B) integrate over.
   integration:
     min_sep: 0.08
     max_sep: 300
     nbins: 1000
 
-  # COSEBIs decomposition (config space, fine integration binning)
+  # COSEBIs on the integration grid: mode count and the scale cuts scanned.
   cosebis:
-    min_sep_int: 0.9
-    max_sep_int: 300
-    nbins_int: 1000
-    npatch: 100
     nmodes: 20
     scale_cuts: [
       [1, 250], [2, 250], [5, 250], [10, 250],
@@ -98,7 +94,6 @@ cosmo_val:
 # ---------------------------------------------------------------------------
 fiducial:
   version: SP_v1.4.6.3_leak_corr
-  blind: A
   npatch: 1
   min_sep: 1.0
   max_sep: 250.0
@@ -128,7 +123,6 @@ cl:
 # stamps into the filename, reconstructed by the inference consumer.
 harmonic:
   fiducial:
-    blind: A
     binning: powspace
     nbins: 32
 

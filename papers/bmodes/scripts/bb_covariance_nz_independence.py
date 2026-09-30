@@ -1,8 +1,10 @@
 """
-BB Covariance Blind Independence Claim
+BB Covariance n(z) Independence Claim
 
-Tests whether BB covariances are blind-independent (as expected for null signals)
-while EE covariances vary across blinds (due to sample variance from cosmological signal).
+Tests whether BB covariances are independent of the n(z) realisation (as
+expected for null signals) while EE covariances vary across realisations (due to
+sample variance from cosmological signal). Each realisation is a catalogue entry
+of its own (config fiducial.nz_realisations), identical but for its n(z).
 
 Compares:
 - Pure E/B: cov(xi+^B), cov(xi-^B) vs cov(xi+^E), cov(xi-^E)
@@ -27,9 +29,6 @@ from pseudo_cl_io import load_pseudo_cl_data
 from sp_validation.b_modes import calculate_cosebis
 
 plt.style.use(PAPER_MPLSTYLE)
-
-
-BLINDS = ["A", "B", "C"]
 
 
 def load_pure_eb_diagonals(path):
@@ -88,7 +87,7 @@ def load_cosebis_diagonals(
     )
     gg.read(xi_integration_path)
 
-    # Compute COSEBIS with this blind's covariance
+    # Compute COSEBIS with this realisation's covariance
     results = calculate_cosebis(
         gg,
         nmodes=nmodes,
@@ -124,27 +123,32 @@ def compute_ratios(diag_ref, diag_test):
     }
 
 
+# Marker per compared realisation, and the multiplicative x-offset that keeps
+# their points from overlapping.
+MARKERS = ["s", "^", "v", "D", "o"]
+
+
 def make_figure(
     theta,
     ell_eff,
     pure_eb_results,
     harmonic_results,
     cosebis_results,
+    reference,
     output_path,
     n_samples=2000,
 ):
-    """Four-panel figure comparing BB vs EE stability across blinds.
+    """Four-panel figure comparing BB vs EE stability across n(z) realisations.
 
     Layout: 2x2
     - Top row: Pure E/B (xi+, xi-)
     - Bottom row: COSEBIS (B_n vs E_n), Harmonic (C_ell)
 
-    Color encoding: E-mode vs B-mode
-    Marker encoding: square = B/A, triangle = C/A (same for both E and B)
+    Color encodes E- vs B-mode; marker encodes the compared realisation, each
+    shown as its ratio to ``reference``.
     """
     fig, axes = plt.subplots(2, 2, figsize=(9, 7))
 
-    # Colors: E-mode vs B-mode
     color_E = "#E69F00"  # orange for E
     color_B = "#0072B2"  # blue for B
 
@@ -152,11 +156,9 @@ def make_figure(
     # σ(ratio) ≈ √(2/N) for ratio ≈ 1
     ratio_err = np.sqrt(2.0 / n_samples)
 
-    # Helper for ratio panels
-    def setup_ratio_panel(ax, ylabel_x, title, show_mc_band=False):
+    def setup_ratio_panel(ax, xlabel, title, show_mc_band=False):
         ax.axhline(1.0, color="gray", ls="-", lw=0.8, zorder=0)
         if show_mc_band:
-            # Show expected 1σ MC scatter band only
             ax.axhspan(
                 1 - ratio_err,
                 1 + ratio_err,
@@ -165,218 +167,87 @@ def make_figure(
                 label=rf"$\pm\sqrt{{2/N}}$ ($N={n_samples}$)",
             )
         ax.set_xscale("log")
-        ax.set_xlabel(ylabel_x)
+        ax.set_xlabel(xlabel)
         ax.set_title(title)
 
-    # --- Panel 1: xi+^B vs xi+^E ---
-    ax = axes[0, 0]
-    setup_ratio_panel(
-        ax,
-        r"$\theta$ [arcmin]",
-        r"$\xi_+$: covariance ratio across blinds",
-        show_mc_band=True,
-    )
+    def plot_ratios(ax, x, results, b_key, e_key, b_name, e_name, shift, b_err):
+        """B (with optional MC error bar) and E ratios for every realisation."""
+        for i, (label, res) in enumerate(results.items()):
+            xi = shift(x, i)
+            marker = MARKERS[i % len(MARKERS)]
+            pair = f"{label}/{reference}"
+            ax.errorbar(
+                xi,
+                res[b_key]["ratio"],
+                yerr=b_err,
+                fmt=marker,
+                color=color_B,
+                label=f"{b_name} {pair}",
+                markersize=5,
+                alpha=0.8,
+                capsize=0,
+            )
+            ax.plot(
+                xi,
+                res[e_key]["ratio"],
+                marker,
+                color=color_E,
+                label=f"{e_name} {pair}",
+                markersize=4,
+                alpha=0.6,
+            )
 
-    # B-mode (blue): square for B/A, triangle for C/A
-    ax.errorbar(
-        theta,
-        pure_eb_results["B"]["xip_B"]["ratio"],
-        yerr=ratio_err,
-        fmt="s",
-        color=color_B,
-        label=r"B-mode B/A",
-        markersize=5,
-        alpha=0.8,
-        capsize=0,
-    )
-    ax.errorbar(
-        theta * 1.03,
-        pure_eb_results["C"]["xip_B"]["ratio"],
-        yerr=ratio_err,
-        fmt="^",
-        color=color_B,
-        label=r"B-mode C/A",
-        markersize=5,
-        alpha=0.8,
-        capsize=0,
-    )
+    def log_shift(x, i):
+        return x * 1.03**i
 
-    # E-mode (orange): square for B/A, triangle for C/A
-    ax.plot(
-        theta,
-        pure_eb_results["B"]["xip_E"]["ratio"],
-        "s",
-        color=color_E,
-        label=r"E-mode B/A",
-        markersize=4,
-        alpha=0.6,
-    )
-    ax.plot(
-        theta * 1.03,
-        pure_eb_results["C"]["xip_E"]["ratio"],
-        "^",
-        color=color_E,
-        label=r"E-mode C/A",
-        markersize=4,
-        alpha=0.6,
-    )
+    def lin_shift(x, i):
+        return x + 0.15 * i
 
-    ax.set_ylabel("Diagonal ratio")
-    ax.legend(loc="upper right", fontsize=7, ncol=2)
-    ax.set_xlim(1, 300)
-    ax.set_ylim(0.85, 1.15)
-
-    # --- Panel 2: xi-^B vs xi-^E ---
-    ax = axes[0, 1]
-    setup_ratio_panel(
-        ax,
-        r"$\theta$ [arcmin]",
-        r"$\xi_-$: covariance ratio across blinds",
-        show_mc_band=True,
-    )
-
-    ax.errorbar(
-        theta,
-        pure_eb_results["B"]["xim_B"]["ratio"],
-        yerr=ratio_err,
-        fmt="s",
-        color=color_B,
-        label=r"B-mode B/A",
-        markersize=5,
-        alpha=0.8,
-        capsize=0,
-    )
-    ax.errorbar(
-        theta * 1.03,
-        pure_eb_results["C"]["xim_B"]["ratio"],
-        yerr=ratio_err,
-        fmt="^",
-        color=color_B,
-        label=r"B-mode C/A",
-        markersize=5,
-        alpha=0.8,
-        capsize=0,
-    )
-
-    ax.plot(
-        theta,
-        pure_eb_results["B"]["xim_E"]["ratio"],
-        "s",
-        color=color_E,
-        label=r"E-mode B/A",
-        markersize=4,
-        alpha=0.6,
-    )
-    ax.plot(
-        theta * 1.03,
-        pure_eb_results["C"]["xim_E"]["ratio"],
-        "^",
-        color=color_E,
-        label=r"E-mode C/A",
-        markersize=4,
-        alpha=0.6,
-    )
-
-    ax.legend(loc="upper right", fontsize=7, ncol=2)
-    ax.set_xlim(1, 300)
-    ax.set_ylim(0.85, 1.15)
+    # --- Panels 1–2: pure E/B xi± ---
+    for ax, comp, name in (
+        (axes[0, 0], "xip", r"\xi_+"),
+        (axes[0, 1], "xim", r"\xi_-"),
+    ):
+        setup_ratio_panel(
+            ax,
+            r"$\theta$ [arcmin]",
+            rf"${name}$: covariance ratio across n(z)",
+            show_mc_band=True,
+        )
+        plot_ratios(
+            ax,
+            theta,
+            pure_eb_results,
+            f"{comp}_B",
+            f"{comp}_E",
+            "B-mode",
+            "E-mode",
+            log_shift,
+            ratio_err,
+        )
+        ax.legend(loc="upper right", fontsize=7, ncol=2)
+        ax.set_xlim(1, 300)
+        ax.set_ylim(0.85, 1.15)
+    axes[0, 0].set_ylabel("Diagonal ratio")
 
     # --- Panel 3: COSEBIS B_n vs E_n ---
     ax = axes[1, 0]
-    nmodes = cosebis_results["B"]["nmodes"]
+    nmodes = next(iter(cosebis_results.values()))["nmodes"]
     n_arr = np.arange(1, nmodes + 1)
     ax.axhline(1.0, color="gray", ls="-", lw=0.8, zorder=0)
     ax.set_xlabel(r"Mode $n$")
-    ax.set_title(r"COSEBIS: covariance ratio across blinds")
-
-    # B-mode (blue): square for B/A, triangle for C/A
-    ax.plot(
-        n_arr,
-        cosebis_results["B"]["B"]["ratio"],
-        "s",
-        color=color_B,
-        label=r"B-mode B/A",
-        markersize=5,
-        alpha=0.8,
+    ax.set_title(r"COSEBIS: covariance ratio across n(z)")
+    plot_ratios(
+        ax, n_arr, cosebis_results, "B", "E", "B-mode", "E-mode", lin_shift, None
     )
-    ax.plot(
-        n_arr + 0.15,
-        cosebis_results["C"]["B"]["ratio"],
-        "^",
-        color=color_B,
-        label=r"B-mode C/A",
-        markersize=5,
-        alpha=0.8,
-    )
-
-    # E-mode (orange): square for B/A, triangle for C/A
-    ax.plot(
-        n_arr,
-        cosebis_results["B"]["E"]["ratio"],
-        "s",
-        color=color_E,
-        label=r"E-mode B/A",
-        markersize=4,
-        alpha=0.6,
-    )
-    ax.plot(
-        n_arr + 0.15,
-        cosebis_results["C"]["E"]["ratio"],
-        "^",
-        color=color_E,
-        label=r"E-mode C/A",
-        markersize=4,
-        alpha=0.6,
-    )
-
     ax.set_ylabel("Diagonal ratio")
     ax.legend(loc="upper right", fontsize=7, ncol=2)
     ax.set_ylim(0.85, 1.15)
 
     # --- Panel 4: C_ell^BB vs C_ell^EE ---
     ax = axes[1, 1]
-    setup_ratio_panel(ax, r"$\ell$", r"$C_\ell$: covariance ratio across blinds")
-
-    # B-mode (blue): square for B/A, triangle for C/A
-    ax.plot(
-        ell_eff,
-        harmonic_results["B"]["BB"]["ratio"],
-        "s",
-        color=color_B,
-        label=r"BB B/A",
-        markersize=5,
-        alpha=0.8,
-    )
-    ax.plot(
-        ell_eff * 1.03,
-        harmonic_results["C"]["BB"]["ratio"],
-        "^",
-        color=color_B,
-        label=r"BB C/A",
-        markersize=5,
-        alpha=0.8,
-    )
-
-    # E-mode (orange): square for B/A, triangle for C/A
-    ax.plot(
-        ell_eff,
-        harmonic_results["B"]["EE"]["ratio"],
-        "s",
-        color=color_E,
-        label=r"EE B/A",
-        markersize=4,
-        alpha=0.6,
-    )
-    ax.plot(
-        ell_eff * 1.03,
-        harmonic_results["C"]["EE"]["ratio"],
-        "^",
-        color=color_E,
-        label=r"EE C/A",
-        markersize=4,
-        alpha=0.6,
-    )
-
+    setup_ratio_panel(ax, r"$\ell$", r"$C_\ell$: covariance ratio across n(z)")
+    plot_ratios(ax, ell_eff, harmonic_results, "BB", "EE", "BB", "EE", log_shift, None)
     ax.set_ylabel("Diagonal ratio")
     ax.legend(loc="upper right", fontsize=7, ncol=2)
     ax.set_ylim(0.85, 1.15)
@@ -399,36 +270,36 @@ def main(
     figure_path,
     evidence_path,
 ):
-    """Run the BB-covariance blind-independence cross-check.
+    """Run the BB-covariance n(z)-independence cross-check.
 
     ``pure_eb_paths`` / ``harmonic_paths`` / ``cov_integration_paths`` are dicts
-    keyed by blind (A/B/C). All paths are absolute; the per-blind mock-version
-    covariances are read directly, so the check is self-contained.
+    keyed by n(z) realisation label, in the order of config
+    ``fiducial.nz_realisations``: the first label is the reference, every other
+    realisation is compared against it. All paths are absolute; the
+    per-realisation covariances are read directly, so the check is
+    self-contained.
     """
     version = config["fiducial"]["mock_version"]
+    reference, *compared = pure_eb_paths
 
-    # Load pure E/B covariances for all blinds
-    pure_eb_data = {}
-    for blind in BLINDS:
-        pure_eb_data[blind] = load_pure_eb_diagonals(pure_eb_paths[blind])
+    pure_eb_data = {
+        label: load_pure_eb_diagonals(path) for label, path in pure_eb_paths.items()
+    }
+    theta = pure_eb_data[reference]["theta"]
 
-    theta = pure_eb_data["A"]["theta"]
-
-    # Load harmonic covariances for all blinds
-    harmonic_data = {}
-    for blind in BLINDS:
-        harmonic_data[blind] = load_harmonic_diagonals(harmonic_paths[blind])
+    harmonic_data = {
+        label: load_harmonic_diagonals(path) for label, path in harmonic_paths.items()
+    }
 
     # Integration binning parameters from config
     min_sep_int = config["fiducial"]["min_sep_int"]
     max_sep_int = config["fiducial"]["max_sep_int"]
     nbins_int = config["fiducial"]["nbins_int"]
 
-    cosebis_data = {}
-    for blind in BLINDS:
-        cosebis_data[blind] = load_cosebis_diagonals(
+    cosebis_data = {
+        label: load_cosebis_diagonals(
             xi_integration_path,
-            cov_integration_paths[blind],
+            path,
             nmodes,
             theta_min,
             theta_max,
@@ -436,38 +307,29 @@ def main(
             max_sep_int,
             nbins_int,
         )
+        for label, path in cov_integration_paths.items()
+    }
 
-    # Read ell bin centers from the pseudo-Cl SACC part
+    # Ell bin centers from the pseudo-Cl SACC part
     ell_eff = load_pseudo_cl_data(pseudo_cl_path)["ELL"]
 
-    # Compute ratios relative to blind A
-    pure_eb_results = {}
-    for blind in ["B", "C"]:
-        pure_eb_results[blind] = {}
-        for mode in ["xip_E", "xim_E", "xip_B", "xim_B"]:
-            pure_eb_results[blind][mode] = compute_ratios(
-                pure_eb_data["A"][mode], pure_eb_data[blind][mode]
-            )
-
-    harmonic_results = {}
-    for blind in ["B", "C"]:
-        harmonic_results[blind] = {}
-        for mode in ["EE", "BB"]:
-            harmonic_results[blind][mode] = compute_ratios(
-                harmonic_data["A"][mode], harmonic_data[blind][mode]
-            )
-
-    cosebis_results = {}
-    for blind in ["B", "C"]:
-        cosebis_results[blind] = {
-            "nmodes": nmodes,
+    def ratios_to_reference(data, modes):
+        return {
+            label: {
+                mode: compute_ratios(data[reference][mode], data[label][mode])
+                for mode in modes
+            }
+            for label in compared
         }
-        for mode in ["E", "B"]:
-            cosebis_results[blind][mode] = compute_ratios(
-                cosebis_data["A"][mode], cosebis_data[blind][mode]
-            )
 
-    # Generate figure
+    pure_eb_results = ratios_to_reference(
+        pure_eb_data, ["xip_E", "xim_E", "xip_B", "xim_B"]
+    )
+    harmonic_results = ratios_to_reference(harmonic_data, ["EE", "BB"])
+    cosebis_results = ratios_to_reference(cosebis_data, ["E", "B"])
+    for res in cosebis_results.values():
+        res["nmodes"] = nmodes
+
     n_samples = config["covariance"]["n_samples"]
     make_figure(
         theta,
@@ -475,108 +337,72 @@ def main(
         pure_eb_results,
         harmonic_results,
         cosebis_results,
+        reference,
         figure_path,
         n_samples=n_samples,
     )
 
-    # Compute summary statistics
+    def max_dev(results, mode):
+        return max(res[mode]["max_dev"] for res in results.values())
+
     bb_max_devs = [
-        pure_eb_results["B"]["xip_B"]["max_dev"],
-        pure_eb_results["C"]["xip_B"]["max_dev"],
-        pure_eb_results["B"]["xim_B"]["max_dev"],
-        pure_eb_results["C"]["xim_B"]["max_dev"],
-        cosebis_results["B"]["B"]["max_dev"],
-        cosebis_results["C"]["B"]["max_dev"],
-        harmonic_results["B"]["BB"]["max_dev"],
-        harmonic_results["C"]["BB"]["max_dev"],
+        max_dev(pure_eb_results, "xip_B"),
+        max_dev(pure_eb_results, "xim_B"),
+        max_dev(cosebis_results, "B"),
+        max_dev(harmonic_results, "BB"),
     ]
     ee_max_devs = [
-        pure_eb_results["B"]["xip_E"]["max_dev"],
-        pure_eb_results["C"]["xip_E"]["max_dev"],
-        pure_eb_results["B"]["xim_E"]["max_dev"],
-        pure_eb_results["C"]["xim_E"]["max_dev"],
-        cosebis_results["B"]["E"]["max_dev"],
-        cosebis_results["C"]["E"]["max_dev"],
-        harmonic_results["B"]["EE"]["max_dev"],
-        harmonic_results["C"]["EE"]["max_dev"],
+        max_dev(pure_eb_results, "xip_E"),
+        max_dev(pure_eb_results, "xim_E"),
+        max_dev(cosebis_results, "E"),
+        max_dev(harmonic_results, "EE"),
     ]
 
-    # Pass criteria (updated: analytic vs MC methods show different behavior)
-    # COSEBIS uses analytic propagation (T @ Cov @ T.T) → blind-independent
-    # Pure E/B and Harmonic use MC sampling → inherit sampling noise
-    cosebis_bb_max = max(
-        cosebis_results["B"]["B"]["max_dev"],
-        cosebis_results["C"]["B"]["max_dev"],
-    )
-    cosebis_ee_max = max(
-        cosebis_results["B"]["E"]["max_dev"],
-        cosebis_results["C"]["E"]["max_dev"],
-    )
+    # Pass criteria: COSEBIS uses analytic propagation (T @ Cov @ T.T), so its
+    # B_n covariance is n(z)-independent; pure E/B and harmonic use MC sampling
+    # and inherit its noise.
+    cosebis_bb_max = max_dev(cosebis_results, "B")
+    cosebis_ee_max = max_dev(cosebis_results, "E")
 
-    # COSEBIS B_n should be blind-independent (<0.1%)
-    cosebis_bb_blind_independent = cosebis_bb_max < 0.001
+    # COSEBIS B_n should be n(z)-independent (<0.1%)
+    cosebis_bb_nz_independent = cosebis_bb_max < 0.001
     # E-modes should vary ~10% due to sample variance
     ee_varies_as_expected = 0.05 < cosebis_ee_max < 0.15
 
-    # Legacy summary (for backwards compatibility)
+    # Summary over all three spaces, MC methods included
     bb_max = max(bb_max_devs)
     ee_max = max(ee_max_devs)
     bb_closer_to_unity = bb_max < ee_max
     bb_within_2pct = bb_max < 0.02
 
-    # Build evidence
+    def by_pair(results, mode):
+        return {f"{label}_to_{reference}": res[mode] for label, res in results.items()}
+
     evidence = {
         "depends_on": ["covariance", "pure_eb", "cosebis", "pseudo_cl"],
         "generated": datetime.now().isoformat(),
         "evidence": {
+            "reference_realisation": reference,
             "pure_eb": {
-                "xip_B": {
-                    "B_to_A": pure_eb_results["B"]["xip_B"],
-                    "C_to_A": pure_eb_results["C"]["xip_B"],
-                },
-                "xim_B": {
-                    "B_to_A": pure_eb_results["B"]["xim_B"],
-                    "C_to_A": pure_eb_results["C"]["xim_B"],
-                },
-                "xip_E": {
-                    "B_to_A": pure_eb_results["B"]["xip_E"],
-                    "C_to_A": pure_eb_results["C"]["xip_E"],
-                },
-                "xim_E": {
-                    "B_to_A": pure_eb_results["B"]["xim_E"],
-                    "C_to_A": pure_eb_results["C"]["xim_E"],
-                },
+                mode: by_pair(pure_eb_results, mode)
+                for mode in ["xip_B", "xim_B", "xip_E", "xim_E"]
             },
             "harmonic": {
-                "BB": {
-                    "B_to_A": harmonic_results["B"]["BB"],
-                    "C_to_A": harmonic_results["C"]["BB"],
-                },
-                "EE": {
-                    "B_to_A": harmonic_results["B"]["EE"],
-                    "C_to_A": harmonic_results["C"]["EE"],
-                },
+                mode: by_pair(harmonic_results, mode) for mode in ["BB", "EE"]
             },
             "cosebis": {
-                "B": {
-                    "B_to_A": cosebis_results["B"]["B"],
-                    "C_to_A": cosebis_results["C"]["B"],
-                },
-                "E": {
-                    "B_to_A": cosebis_results["B"]["E"],
-                    "C_to_A": cosebis_results["C"]["E"],
-                },
+                **{mode: by_pair(cosebis_results, mode) for mode in ["B", "E"]},
                 "nmodes": nmodes,
                 "theta_min": theta_min,
                 "theta_max": theta_max,
             },
             "summary": {
-                # Primary pass criteria (revised)
+                # Primary pass criteria (COSEBIS, analytic)
                 "cosebis_bb_max_deviation": cosebis_bb_max,
                 "cosebis_ee_max_deviation": cosebis_ee_max,
-                "cosebis_bb_blind_independent": cosebis_bb_blind_independent,
+                "cosebis_bb_nz_independent": cosebis_bb_nz_independent,
                 "ee_varies_as_expected": ee_varies_as_expected,
-                # Legacy (for reference)
+                # All spaces, MC methods included
                 "bb_max_deviation": bb_max,
                 "ee_max_deviation": ee_max,
                 "bb_closer_to_unity": bb_closer_to_unity,
@@ -605,10 +431,10 @@ def main(
         json.dump(evidence, f, indent=2)
 
     # Print summary
-    print("\nBB Covariance Blind Independence Summary:")
+    print("\nBB Covariance n(z) Independence Summary:")
     print(f"  COSEBIS B_n max deviation: {cosebis_bb_max * 100:.6f}%")
     print(f"  COSEBIS E_n max deviation: {cosebis_ee_max * 100:.2f}%")
-    print(f"  COSEBIS B_n blind-independent (<0.1%): {cosebis_bb_blind_independent}")
+    print(f"  COSEBIS B_n n(z)-independent (<0.1%): {cosebis_bb_nz_independent}")
     print(f"  E-modes vary as expected (5-15%): {ee_varies_as_expected}")
     print("\n  Pure E/B + Harmonic (MC methods):")
     print(f"    BB max deviation: {bb_max * 100:.2f}%")
@@ -618,9 +444,10 @@ def main(
 
 def _from_snakemake(smk):
     config = smk.config
-    pure_eb_paths = {b: smk.input[f"pure_eb_{b}"] for b in BLINDS}
-    harmonic_paths = {b: smk.input[f"harmonic_{b}"] for b in BLINDS}
-    cov_integration_paths = {b: smk.input[f"cov_integration_{b}"] for b in BLINDS}
+    labels = list(config["fiducial"]["nz_realisations"])
+    pure_eb_paths = {b: smk.input[f"pure_eb_{b}"] for b in labels}
+    harmonic_paths = {b: smk.input[f"harmonic_{b}"] for b in labels}
+    cov_integration_paths = {b: smk.input[f"cov_integration_{b}"] for b in labels}
     main(
         config=config,
         pure_eb_paths=pure_eb_paths,
@@ -636,19 +463,18 @@ def _from_snakemake(smk):
     )
 
 
-def _cov_integration_path(cov_dir, version, blind, min_sep, max_sep, nbins):
+def _cov_integration_path(cov_dir, version, min_sep, max_sep, nbins):
     """Reproduce common.covariance_path for the Gaussian integration-grid,
     masked covariance (suffix _processed.txt)."""
     base = (
-        f"covariance_{version}_{blind}_g"
-        f"_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_masked"
+        f"covariance_{version}_g_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_masked"
     )
     return os.path.join(cov_dir, base, f"{base}_processed.txt")
 
 
 def _from_cli(argv=None):
     ap = argparse.ArgumentParser(
-        description="BB-covariance blind-independence cross-check (mock version)."
+        description="BB-covariance n(z)-independence cross-check (mock version)."
     )
     ap.add_argument("--config", required=True, help="Absolute path to config.yaml")
     ap.add_argument(
@@ -659,7 +485,7 @@ def _from_cli(argv=None):
     ap.add_argument(
         "--pure-eb-dir",
         required=True,
-        help="Dir with {version}_{blind}_pure_eb_semianalytic.npz",
+        help="Dir with {version}_pure_eb_semianalytic.npz per n(z) realisation",
     )
     ap.add_argument(
         "--cosmo-val-dir",
@@ -689,22 +515,20 @@ def _from_cli(argv=None):
     )
     npatch = fid["npatch"]
 
+    realisations = fid["nz_realisations"]
     pure_eb_paths = {
-        b: os.path.join(a.pure_eb_dir, f"{version}_{b}_pure_eb_semianalytic.npz")
-        for b in BLINDS
+        b: os.path.join(a.pure_eb_dir, f"{ver}_pure_eb_semianalytic.npz")
+        for b, ver in realisations.items()
     }
     harmonic_paths = {
-        b: os.path.join(
-            a.cosmo_val_dir,
-            f"pseudo_cl_cov_{version}_blind={b}_powspace_nbins=32.fits",
-        )
-        for b in BLINDS
+        b: os.path.join(a.cosmo_val_dir, f"pseudo_cl_cov_{ver}_powspace_nbins=32.fits")
+        for b, ver in realisations.items()
     }
     cov_integration_paths = {
         b: _cov_integration_path(
-            a.covariance_dir, version, b, min_sep_int, max_sep_int, nbins_int
+            a.covariance_dir, ver, min_sep_int, max_sep_int, nbins_int
         )
-        for b in BLINDS
+        for b, ver in realisations.items()
     }
     xi_integration_path = os.path.join(
         a.cosmo_val_dir,
@@ -712,7 +536,7 @@ def _from_cli(argv=None):
         f"_nbins={nbins_int}_npatch={npatch}.txt",
     )
     pseudo_cl_path = os.path.join(
-        a.cosmo_val_dir, f"pseudo_cl_{version}_blind=A_powspace_nbins=32.sacc"
+        a.cosmo_val_dir, f"pseudo_cl_{version}_powspace_nbins=32.sacc"
     )
 
     out_dir = Path(a.out)

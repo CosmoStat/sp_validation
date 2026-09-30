@@ -149,9 +149,9 @@ glass = [
 ]
 # Cosmo-inference workflow runners (workflow/scripts/*). Kept optional: the core
 # library resolves without them, but the container installs this extra so the
-# Snakemake workflow and cross-validation runners are available.
+# workflow's rule scripts and cross-validation runners are available. No
+# snakemake: a `script:` job must unpickle with the host's (workflow/README.md).
 workflow = [
-    "snakemake",
     # Optional MPI runners (the container ships OpenMPI at /opt/ompi, so mpi4py
     # builds against it).
     "mpi4py",

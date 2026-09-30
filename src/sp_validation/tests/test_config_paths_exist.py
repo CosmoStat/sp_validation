@@ -31,7 +31,6 @@ PATH_KEY_PARTS = (
 # files to stat. (The overlay's one real path, ``base:``, is deliberately not
 # listed, so it is still validated.)
 NON_PATH_KEYS = ("extra_output", "why", "replace", "with", "drop")
-PATH_PREFIX_KEYS = ("nz.dndz.path",)
 TEXT_SUFFIXES = (
     ".fits",
     ".fits.gz",
@@ -78,10 +77,6 @@ def _non_path_key(key: str) -> bool:
     return key.lower().endswith(NON_PATH_KEYS)
 
 
-def _path_prefix_key(key: str) -> bool:
-    return key.lower() in PATH_PREFIX_KEYS
-
-
 def _pathish_value(value: str) -> bool:
     if not value or any(part in value for part in SKIP_VALUE_PARTS):
         return False
@@ -108,11 +103,7 @@ def _walk_yaml(
             yield from _walk_yaml(child, trail + (str(index),), base_dir)
     elif isinstance(value, str):
         key = ".".join(trail)
-        if (
-            not _non_path_key(key)
-            and not _path_prefix_key(key)
-            and (_pathish_key(key) or _pathish_value(value))
-        ):
+        if not _non_path_key(key) and (_pathish_key(key) or _pathish_value(value)):
             yield key, value, base_dir
 
 
@@ -182,12 +173,31 @@ def _config_files() -> list[Path]:
     ]
 
 
+def _located_elsewhere(source: Path, key: str, value: str) -> bool:
+    """Whether a path-shaped value names nothing the config itself locates.
+
+    ``paths.output`` in the catalogue config is where cosmo_val writes, created
+    by the run. A calibration ``params.input_path`` with no directory is opened
+    relative to its consumer's run directory (the image-sim run, or the
+    catalogue directory ``scripts/masking.py`` prefixes).
+    """
+    if source.name == "cat_config.yaml":
+        return key == "paths.output"
+    return (
+        source.parent.name == "calibration"
+        and key == "params.input_path"
+        and "/" not in value
+    )
+
+
 def _candidate_paths() -> list[tuple[Path, str, Path]]:
     root = _repo_root()
     candidates = []
     for config_path in _config_files():
         iterator = _iter_ini_paths if config_path.suffix == ".ini" else _iter_yaml_paths
         for source, key, value, base_dir in iterator(config_path):
+            if _located_elsewhere(source, key, value):
+                continue
             expanded = Path(value).expanduser()
             if expanded.is_absolute():
                 resolved = expanded

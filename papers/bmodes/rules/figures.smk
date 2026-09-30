@@ -8,7 +8,7 @@ LaTeX macros and tables.
 # Configuration
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-# TAPESTRY_DIR, PAPER_FIGURES_DIR, BLINDS, FIDUCIAL, PLANCK18 defined in Snakefile
+# TAPESTRY_DIR, PAPER_FIGURES_DIR, FIDUCIAL, PLANCK18 defined in Snakefile
 # COSMO_VAL, COSMO_INFERENCE, covariance_path() defined in Snakefile
 COSMO_VAL_OUTPUT = str(COSMO_VAL)  # String version for f-string interpolation
 
@@ -30,6 +30,10 @@ VERSION_LABELS = config["plotting"].get("version_labels", {})
 # Shorthand for fiducial and mock version strings (used in path construction)
 FIDUCIAL_VERSION = FIDUCIAL["version"]
 MOCK_VERSION = f"{FIDUCIAL['mock_version']}_leak_corr"
+
+# Catalogues identical to the mock version but for their n(z) realisation,
+# keyed by realisation label: bb_covariance_nz_independence compares them.
+NZ_REALISATIONS = FIDUCIAL["nz_realisations"]
 
 # Filter versions for different analysis types
 # Pure E/B and PTEs only apply to leak-corrected versions
@@ -72,9 +76,9 @@ def _per_version_figure_outputs(fig_dir):
 # Path Helper Functions
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-def _reporting_cov_path(version, blind):
+def _reporting_cov_path(version):
     """Path to reporting-scale covariance (non-Gaussian, masked)."""
-    return covariance_path(version, blind, gaussian="ng")
+    return covariance_path(version, gaussian="ng")
 
 
 def _xi_reporting_path(version):
@@ -93,10 +97,10 @@ def _xi_integration_path(version):
     )
 
 
-def _cov_integration_path(version, blind):
+def _cov_integration_path(version):
     """Covariance path for integration bins (Gaussian, for COSEBIS PTE)."""
     return covariance_path(
-        version, blind, gaussian="g",
+        version, gaussian="g",
         min_sep=FIDUCIAL["min_sep_int"], max_sep=FIDUCIAL["max_sep_int"], nbins=FIDUCIAL["nbins_int"]
     )
 
@@ -116,17 +120,14 @@ def _pte_scale_cut_pairs():
 PTE_SCALE_CUT_PAIRS = _pte_scale_cut_pairs()
 
 
-def _pseudo_cl_path(version, blind="A", nbins=32):
-    """Return pseudo-Cl path for a catalog version.
-
-    All leak-corrected versions use consistent local naming with blind and binning.
-    """
-    return f"{COSMO_VAL_OUTPUT}/pseudo_cl_{version}_blind={blind}_powspace_nbins={nbins}.sacc"
+def _pseudo_cl_path(version, nbins=32):
+    """Return pseudo-Cl path for a catalog version."""
+    return f"{COSMO_VAL_OUTPUT}/pseudo_cl_{version}_powspace_nbins={nbins}.sacc"
 
 
-def _pseudo_cl_cov_path(version, blind="A", nbins=32):
+def _pseudo_cl_cov_path(version, nbins=32):
     """Return pseudo-Cl covariance path for a catalog version."""
-    return f"{COSMO_VAL_OUTPUT}/pseudo_cl_cov_{version}_blind={blind}_powspace_nbins={nbins}.fits"
+    return f"{COSMO_VAL_OUTPUT}/pseudo_cl_cov_{version}_powspace_nbins={nbins}.fits"
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -141,7 +142,7 @@ rule cosebis_version_comparison:
     input:
         # COSEBIs only for leak-corrected versions
         xi_integration=[_xi_integration_path(ver) for ver in VERSIONS_LEAK_CORR],
-        cov_integration=[_cov_integration_path(ver, "A") for ver in VERSIONS_LEAK_CORR],
+        cov_integration=[_cov_integration_path(ver) for ver in VERSIONS_LEAK_CORR],
     params:
         version_labels=VERSION_LABELS,
         versions=VERSIONS_LEAK_CORR,
@@ -167,7 +168,7 @@ rule cosebis_data_vector:
     input:
         # Per-version inputs: xi_{version} and cov_{version} for all versions
         **{f"xi_{ver}": _xi_integration_path(ver) for ver in VERSIONS_ALL_FOR_PLOTS},
-        **{f"cov_{ver}": _cov_integration_path(ver, "A") for ver in VERSIONS_ALL_FOR_PLOTS},
+        **{f"cov_{ver}": _cov_integration_path(ver) for ver in VERSIONS_ALL_FOR_PLOTS},
     params:
         cov_base_dir=str(COSMO_INFERENCE / "data/covariance"),
     output:
@@ -189,14 +190,13 @@ N_PURE_EB_CHUNKS = config["pure_eb"]["n_chunks"]
 rule precompute_pure_eb_chunk:
     """Compute a chunk of MC samples for pure E/B covariance (scatter)."""
     input:
-        cov_integration=lambda w: _cov_integration_path(w.version, w.blind),
+        cov_integration=lambda w: _cov_integration_path(w.version),
         xi_reporting=lambda w: _xi_reporting_path(w.version),
         xi_integration=lambda w: _xi_integration_path(w.version),
     output:
-        "results/paper_plots/intermediate/chunks/{version}_{blind}_pure_eb_chunk_{chunk_id}.npz",
+        "results/paper_plots/intermediate/chunks/{version}_pure_eb_chunk_{chunk_id}.npz",
     params:
         version="{version}",
-        blind="{blind}",
         chunk_id="{chunk_id}",
         n_chunks=N_PURE_EB_CHUNKS,
         n_samples=config["covariance"]["n_samples"],
@@ -210,18 +210,15 @@ rule precompute_pure_eb_chunk:
 
 rule precompute_pure_eb:
     """Gather MC sample chunks and compute final pure E/B covariance."""
-    wildcard_constraints:
-        version=r"[^_]+_v[\d.]+(_leak_corr)?",  # e.g. SP_v1.4.6.3, SP_v1.4.6.3_leak_corr
-        blind=r"[ABC]",
     input:
         chunks=expand(
-            "results/paper_plots/intermediate/chunks/{{version}}_{{blind}}_pure_eb_chunk_{chunk_id}.npz",
+            "results/paper_plots/intermediate/chunks/{{version}}_pure_eb_chunk_{chunk_id}.npz",
             chunk_id=range(N_PURE_EB_CHUNKS),
         ),
         xi_reporting=lambda w: _xi_reporting_path(w.version),
         xi_integration=lambda w: _xi_integration_path(w.version),
     output:
-        "results/paper_plots/intermediate/{version}_{blind}_pure_eb_semianalytic.npz",
+        "results/paper_plots/intermediate/{version}_pure_eb_semianalytic.npz",
     params:
         version="{version}",
         **FIDUCIAL_BINNING,
@@ -235,8 +232,6 @@ rule precompute_pure_eb:
 rule pure_eb_data_vector:
     """B-mode null test: Pure E/B data vector at fiducial scale cuts.
 
-    Uses fiducial blind only (FIDUCIAL["blind"]) for PTE calculation.
-
     Produces 9 figures:
     - figure.png: fiducial version, leak-corrected, no title (paper)
     - figure_v{X.Y.Z}.png: each version, leak-corrected, with title
@@ -244,10 +239,9 @@ rule pure_eb_data_vector:
     """
     input:
         # Per-version inputs: pure_eb_{version} and cov_{version} for all versions
-        **{f"pure_eb_{ver}": f"results/paper_plots/intermediate/{ver}_{FIDUCIAL['blind']}_pure_eb_semianalytic.npz"
+        **{f"pure_eb_{ver}": f"results/paper_plots/intermediate/{ver}_pure_eb_semianalytic.npz"
            for ver in VERSIONS_ALL_FOR_PLOTS},
-        **{f"cov_{ver}": _reporting_cov_path(ver, FIDUCIAL["blind"])
-           for ver in VERSIONS_ALL_FOR_PLOTS},
+        **{f"cov_{ver}": _reporting_cov_path(ver) for ver in VERSIONS_ALL_FOR_PLOTS},
     output:
         evidence=f"{TAPESTRY_DIR}/pure_eb_data_vector/evidence.json",
         paper_figure=f"{PAPER_FIGURES_DIR}/pure_eb_data_vector.pdf",
@@ -265,7 +259,7 @@ rule pure_eb_version_comparison:
     input:
         # Pure E/B only for leak-corrected versions
         pure_eb_data=[
-            f"results/paper_plots/intermediate/{ver}_A_pure_eb_semianalytic.npz"
+            f"results/paper_plots/intermediate/{ver}_pure_eb_semianalytic.npz"
             for ver in VERSIONS_LEAK_CORR
         ],
     params:
@@ -286,11 +280,9 @@ rule pure_eb_covariance:
     - E and B blocks are well-conditioned (~10^5)
     - Ambiguous blocks are ill-conditioned (~10^15, expected)
     - Correlation structure across 6 blocks (E+/E-/B+/B-/amb+/amb-)
-
-    Uses blind A covariance for visualization (structure is similar across blinds).
     """
     input:
-        pure_eb_data=f"results/paper_plots/intermediate/{FIDUCIAL_VERSION}_A_pure_eb_semianalytic.npz",
+        pure_eb_data=f"results/paper_plots/intermediate/{FIDUCIAL_VERSION}_pure_eb_semianalytic.npz",
     output:
         evidence=f"{TAPESTRY_DIR}/pure_eb_covariance/evidence.json",
         figure=f"{TAPESTRY_DIR}/pure_eb_covariance/figure.png",
@@ -302,17 +294,12 @@ rule pure_eb_covariance:
 rule calculate_pure_eb_ptes:
     """PTE matrices for pure E/B-mode scale-cut robustness.
 
-    Nothing here varies with the blind: the data vectors come from the blind-A
-    gather and the PTEs are Hartlap-debiased by the MC draw count, not by a
-    per-blind covariance. The wildcard survives as the filename slot the
-    consumer (config_space_pte_matrices) reads, and only blind A is ever built.
+    The PTEs are Hartlap-debiased by the MC draw count.
     """
     input:
-        pure_eb_data="results/paper_plots/intermediate/{version}_A_pure_eb_semianalytic.npz",
+        pure_eb_data="results/paper_plots/intermediate/{version}_pure_eb_semianalytic.npz",
     output:
-        "results/paper_plots/intermediate/{version}_{blind}_pure_eb_ptes.npz",
-    wildcard_constraints:
-        blind=r"[ABC]",
+        "results/paper_plots/intermediate/{version}_pure_eb_ptes.npz",
     params:
         version="{version}",
         n_samples=config["covariance"]["n_samples"],
@@ -375,18 +362,17 @@ rule cl_version_comparison:
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 rule compute_cosebis_pte:
-    """Scatter: Compute COSEBIS B-mode PTE for a single (version, blind, i_min, i_max) tuple."""
+    """Scatter: Compute COSEBIS B-mode PTE for a single (version, i_min, i_max) tuple."""
     input:
         xi_integration=lambda w: _xi_integration_path(w.version),
-        cov_integration=lambda w: _cov_integration_path(w.version, w.blind),
+        cov_integration=lambda w: _cov_integration_path(w.version),
     output:
-        pte_json=f"{TAPESTRY_DIR}/cosebis_pte_matrix/pte_values/{{version}}/{{blind}}/pte_{{i_min}}_{{i_max}}.json",
+        pte_json=f"{TAPESTRY_DIR}/cosebis_pte_matrix/pte_values/{{version}}/pte_{{i_min}}_{{i_max}}.json",
     params:
         nmodes=FIDUCIAL["nmodes"],
     wildcard_constraints:
         i_min=r"\d{3}",
         i_max=r"\d{3}",
-        blind=r"[ABC]",
     threads: 1
     resources:
         mem_mb=8000,
@@ -408,14 +394,13 @@ rule config_space_pte_matrices:
     input:
         pure_eb_data_vector=f"{TAPESTRY_DIR}/pure_eb_data_vector/evidence.json",
         cosebis_data_vector=f"{TAPESTRY_DIR}/cosebis_data_vector/evidence.json",
-        # Data inputs (fiducial blind only)
         # Pure E/B and COSEBIs PTEs for both corrected and uncorrected versions
         pure_eb_pte=[
-            f"results/paper_plots/intermediate/{ver}_{FIDUCIAL['blind']}_pure_eb_ptes.npz"
+            f"results/paper_plots/intermediate/{ver}_pure_eb_ptes.npz"
             for ver in VERSIONS_CONFIG_SPACE_PTES
         ],
         cosebis_pte_files=[
-            f"{TAPESTRY_DIR}/cosebis_pte_matrix/pte_values/{ver}/{FIDUCIAL['blind']}/pte_{i:03d}_{j:03d}.json"
+            f"{TAPESTRY_DIR}/cosebis_pte_matrix/pte_values/{ver}/pte_{i:03d}_{j:03d}.json"
             for ver in VERSIONS_CONFIG_SPACE_PTES
             for i, j in PTE_SCALE_CUT_PAIRS
         ],
@@ -435,15 +420,13 @@ rule harmonic_space_pte_matrices:
     Results: Single-panel Cl^BB PTE matrix for fiducial version
     Appendix: N-panel composite for all versions from config.versions
 
-    Uses fiducial blind covariance (blind independence validated in bb_covariance_blind_independence).
+    n(z)-realisation independence of the BB covariance is validated in
+    bb_covariance_nz_independence.
     """
     input:
         # Harmonic PTE matrices for both corrected and uncorrected versions
         pseudo_cl=[_pseudo_cl_path(ver) for ver in VERSIONS_CONFIG_SPACE_PTES],
-        pseudo_cl_cov=[
-            _pseudo_cl_cov_path(ver, blind=FIDUCIAL["blind"])
-            for ver in VERSIONS_CONFIG_SPACE_PTES
-        ],
+        pseudo_cl_cov=[_pseudo_cl_cov_path(ver) for ver in VERSIONS_CONFIG_SPACE_PTES],
     params:
         version_labels=VERSION_LABELS,
     output:
@@ -456,38 +439,41 @@ rule harmonic_space_pte_matrices:
         "../scripts/harmonic_space_pte_matrices.py"
 
 
-rule bb_covariance_blind_independence:
-    """Test BB covariance blind-independence vs EE variation.
+rule bb_covariance_nz_independence:
+    """Test BB covariance independence of the n(z) realisation vs EE variation.
 
-    BB covariances should be stable across blinds (null signal → no sample variance).
-    EE covariances should vary (~10%) due to sample variance from cosmological signal.
+    BB covariances should be stable across the n(z) realisations (null
+    signal → no sample variance). EE covariances should vary (~10%) due to
+    sample variance from cosmological signal. The first realisation is the
+    reference each of the others is compared against.
 
     Covers all three analysis spaces: Pure E/B, COSEBIS, and harmonic (pseudo-Cl).
 
-    Uses mock_version (v1.4.6) for per-blind covariances — blind independence is a
-    property of survey geometry, not catalog version. Avoids generating B/C covariances
-    for the fiducial version.
+    Compares NZ_REALISATIONS, catalogues identical to the mock version but for
+    their n(z): the independence is a property of survey geometry, not catalog
+    version.
     """
     input:
-        # Per-blind MC-propagated pure E/B covariances (using mock_version for all blinds)
-        **{f"pure_eb_{b}": f"results/paper_plots/intermediate/{MOCK_VERSION}_{b}_pure_eb_semianalytic.npz"
-           for b in BLINDS},
-        # COSEBIS: xi integration file (shared) + per-blind config-space covariances
+        # Per-realisation MC-propagated pure E/B covariances
+        **{f"pure_eb_{label}": f"results/paper_plots/intermediate/{ver}_pure_eb_semianalytic.npz"
+           for label, ver in NZ_REALISATIONS.items()},
+        # COSEBIS: xi integration file (shared) + per-realisation config-space covariances
         xi_integration=_xi_integration_path(MOCK_VERSION),
-        **{f"cov_integration_{b}": _cov_integration_path(MOCK_VERSION, b) for b in BLINDS},
-        # Per-blind harmonic covariances
-        **{f"harmonic_{b}": _pseudo_cl_cov_path(MOCK_VERSION, b) for b in BLINDS},
-        # Pseudo-Cl data vector (blind A only) for ell bin centers
-        pseudo_cl=_pseudo_cl_path(MOCK_VERSION, "A"),
+        **{f"cov_integration_{label}": _cov_integration_path(ver)
+           for label, ver in NZ_REALISATIONS.items()},
+        # Per-realisation harmonic covariances
+        **{f"harmonic_{label}": _pseudo_cl_cov_path(ver) for label, ver in NZ_REALISATIONS.items()},
+        # Pseudo-Cl data vector for ell bin centers
+        pseudo_cl=_pseudo_cl_path(MOCK_VERSION),
     params:
         nmodes=FIDUCIAL["nmodes"],
         theta_min=config["cosebis"]["theta_min"],
         theta_max=config["cosebis"]["theta_max"],
     output:
-        evidence=f"{TAPESTRY_DIR}/bb_covariance_blind_independence/evidence.json",
-        figure=f"{TAPESTRY_DIR}/bb_covariance_blind_independence/figure.png",
+        evidence=f"{TAPESTRY_DIR}/bb_covariance_nz_independence/evidence.json",
+        figure=f"{TAPESTRY_DIR}/bb_covariance_nz_independence/figure.png",
     script:
-        "../scripts/bb_covariance_blind_independence.py"
+        "../scripts/bb_covariance_nz_independence.py"
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -518,7 +504,7 @@ rule harmonic_config_cosebis_comparison:
         **{f"pseudo_cl_{ver}": _pseudo_cl_path(ver, nbins=_COSEBIS_NBINS) for ver in VERSIONS_ALL_FOR_PLOTS},
         **{f"pseudo_cl_cov_{ver}": _pseudo_cl_cov_path(ver, nbins=_COSEBIS_NBINS) for ver in VERSIONS_ALL_FOR_PLOTS},
         **{f"xi_{ver}": _xi_integration_path(ver) for ver in VERSIONS_ALL_FOR_PLOTS},
-        **{f"cov_{ver}": _cov_integration_path(ver, FIDUCIAL["blind"]) for ver in VERSIONS_ALL_FOR_PLOTS},
+        **{f"cov_{ver}": _cov_integration_path(ver) for ver in VERSIONS_ALL_FOR_PLOTS},
     params:
         scale_cut=lambda wildcards: _COSEBIS_ANGULAR_RANGES[wildcards.angular_range],
     output:
@@ -554,4 +540,4 @@ rule cosebis_filter_overlay:
 # Local Rules Declaration
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-localrules: cl_data_vector, cl_version_comparison, pure_eb_covariance, pure_eb_data_vector, pure_eb_version_comparison, cosebis_version_comparison, cosebis_data_vector, config_space_pte_matrices, harmonic_space_pte_matrices, bb_covariance_blind_independence, harmonic_config_cosebis_comparison, cosebis_filter_overlay
+localrules: cl_data_vector, cl_version_comparison, pure_eb_covariance, pure_eb_data_vector, pure_eb_version_comparison, cosebis_version_comparison, cosebis_data_vector, config_space_pte_matrices, harmonic_space_pte_matrices, bb_covariance_nz_independence, harmonic_config_cosebis_comparison, cosebis_filter_overlay
