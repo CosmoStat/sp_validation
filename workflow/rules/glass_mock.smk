@@ -118,11 +118,7 @@ rule mock_cosebis_bias_test:
             mock_id=GLASS_MOCK_IDS,
         ),
         xi_ref=f"{MOCK_RESULTS}/gg_glass_mock_00001_nbins=1000.fits",
-        cov=str(
-            COSMO_INFERENCE / "data/covariance"
-            / "covariance_SP_v1.4.6_leak_corr_A_g_minsep=0.5_maxsep=500.0_nbins=1000_masked"
-            / "covariance_SP_v1.4.6_leak_corr_A_g_minsep=0.5_maxsep=500.0_nbins=1000_masked_processed.txt"
-        ),
+        cov=covariance_path("SP_v1.4.6_leak_corr", "g", 0.5, 500.0, 1000, "_masked"),
     params:
         nmodes=config["fiducial"]["nmodes"],
         theta_min=config["cosebis"]["theta_min"],

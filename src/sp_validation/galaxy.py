@@ -34,13 +34,12 @@ from sp_validation import io
 #: not write n512). Post-processed v1 comprehensive catalogues carry the same
 #: columns, presented under these names by ``sp_validation.grammar``.
 #:
-#: Reason bits making up the r-band default bitmask: n1/n2 star halos
-#: (which of the two is faint and which bright is not documented), n4 stars, n8 manual galaxy mask, n64 (an
-#: undocumented reason bit), n1024 MaxiMask.
+#: The r-band default bitmask uses n1/n2 star halos, n4 stars, n8 manual
+#: galaxy mask, n64 r-band coverage, and n1024 MaxiMask. Which of n1/n2
+#: is faint or bright is unconfirmed for the Aug-2026 products.
 #:
-#: Per-band coverage flags: n16 (u), n32 (g), n128 (i), n256 (z). There is
-#: no r coverage flag because the catalogue is r-selected. n2048 is ``True``
-#: where Pan-STARRS z2 coverage is absent.
+#: Per-band coverage flags: n16 (u), n32 (g), n64 (r), n128 (i), n256
+#: (HSC z). n2048 is ``True`` where Pan-STARRS z-band (z2) coverage is absent.
 MASK_COLUMNS = (
     "MASK_n1",
     "MASK_n2",
@@ -56,9 +55,9 @@ MASK_COLUMNS = (
 )
 
 #: Mask columns OR'd together for the default galaxy selection. This set is
-#: exactly the reason bits of the ShapePipe r-band default bitmask: their OR
-#: reproduces ``mask_r``, the v1 r-band mask, on the P3 region. Deliberately
-#: not a blanket OR over MASK_COLUMNS: the per-band coverage flags
+#: the ShapePipe r-band default bitmask: their OR matches ``mask_r`` on covered
+#: P3 granules, with differences at footprint edges without map coverage.
+#: Deliberately not a blanket OR over MASK_COLUMNS: the other coverage flags
 #: (n16, n32, n128, n256) and n2048 would mask essentially the whole
 #: catalogue.
 DEFAULT_MASK_COLUMNS = (

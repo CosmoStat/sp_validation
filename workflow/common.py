@@ -1,4 +1,9 @@
-"""Shared helpers for the B-modes Snakemake workflow."""
+"""Shared helpers for every Snakefile that composes workflow/.
+
+Imported by the host Snakemake, where sp_validation is not installed: this
+module imports only the standard library and snakemake, and loads the
+stdlib-only project modules it needs by file path.
+"""
 
 import importlib.util
 import json
@@ -7,17 +12,13 @@ import re
 import sys
 from pathlib import Path
 
-# This checkout's importable source tree: workflow/common.py -> <repo>/src.
-REPO_SRC = Path(__file__).resolve().parent.parent / "src"
+# The checkout this workflow was launched from: workflow/common.py -> <repo>.
+REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_SRC = REPO_ROOT / "src"
 
 # The container model lives in the package (``sp_validation/container.py``).
 # Taken from *this checkout's* src/, so the workflow and the ``spv-container``
 # CLI can never disagree about which image to run.
-#
-# Loaded by file path rather than as ``sp_validation.container``: snakemake runs
-# on the host, where sp_validation is usually not installed, and importing the
-# package would drag in ``__init__`` -> ``version`` -> a metadata warning on
-# every launch. The module itself is stdlib-only, so this costs nothing.
 _container = importlib.util.module_from_spec(
     importlib.util.spec_from_file_location(
         "_spv_container", REPO_SRC / "sp_validation" / "container.py"
@@ -30,24 +31,27 @@ compare_revision = _container.compare_revision
 image_revision = _container.image_revision
 resolve_image = _container.resolve_image
 
+# Every job inherits this launch's environment (the slurm executor submits with
+# --export=ALL), and the Snakemake each job step starts keeps its source cache
+# under XDG_CACHE_HOME, which a login shell may point at node-local storage.
+# Without it, jobs use the home directory's cache, which every node mounts.
+os.environ.pop("XDG_CACHE_HOME", None)
+
 
 # Output roots are env-overridable so a reproduction run can write into a
-# fresh tree without clobbering (or silently reusing) prior products.
-COSMO_VAL = Path(
-    os.environ.get(
-        "COSMO_VAL", "/n17data/cdaley/unions/code/sp_validation/cosmo_val/output"
-    )
-)
+# fresh tree without clobbering (or silently reusing) prior products. COSMO_VAL
+# defaults to the launched checkout's own (gitignored) cosmo_val/output, so a
+# launch writes into another checkout's products only when it names that tree;
+# COSMO_INFERENCE defaults to the shared tree on candide.
+COSMO_VAL = Path(os.environ.get("COSMO_VAL", REPO_ROOT / "cosmo_val" / "output"))
 COSMO_INFERENCE = Path(
     os.environ.get(
         "COSMO_INFERENCE", "/n17data/cdaley/unions/code/sp_validation/cosmo_inference"
     )
 )
-CAT_CONFIG = "/n17data/cdaley/unions/code/sp_validation/cosmo_val/cat_config.yaml"
-# "blind" is the glass-mock A/B/C realisation convention, NOT Smokescreen
-# blinding (a separate axis: the concealed=True SACC stamp). The name is baked
-# into on-disk filenames we do not own (e.g. nz_{version}_{A|B|C}.txt).
-BLINDS = ["A", "B", "C"]
+# The catalogue config of the launched checkout: the one file both the host
+# (CATALOG_CONFIG, loaded in configure) and every job read catalogues from.
+CAT_CONFIG = str(REPO_ROOT / "cosmo_val" / "cat_config.yaml")
 BLOCK_PAIRS = [("++", "1"), ("--", "2"), ("+-", "3")]
 
 # Fiducial cosmology: Planck 2018 (astropy Planck18, Table 2 + BAO)
@@ -60,8 +64,7 @@ COSMOLOGY_PARAMS = "results/cosmology/planck18.json"
 # Patterns must match all expected values; overly restrictive patterns cause
 # silent failures. Apply with: wildcard_constraints: **WILDCARD_CONSTRAINTS
 WILDCARD_CONSTRAINTS = {
-    "version": r"SP_v[\d.]+(_w_iv)?(_ecut\d+)?(_leak_corr)?",
-    "blind": r"[ABC]",
+    "version": r"SP_v[\d.]+(_[ABC])?(_w_iv)?(_ecut\d+)?(_leak_corr)?",
     "nbins": r"\d+",
     "min_sep": r"[0-9.]+",
     "max_sep": r"[0-9.]+",
@@ -118,9 +121,7 @@ def resolve_container(override=None):
     ``resolve_image()``, so jobs run what interactive ``spv-container`` work
     runs.
     """
-    if override:
-        return str(override)
-    return resolve_image()[0]
+    return str(override) if override else resolve_image()[0]
 
 
 def warn_if_image_stale():
@@ -161,9 +162,11 @@ def warn_if_image_stale():
 def configure(workflow_config):
     """Install config-derived values after Snakemake has loaded configfiles."""
     global CATALOG_CONFIG, DEFAULT_MASK_SUFFIX, FIDUCIAL, PLANCK18
+    from snakemake.common.configfile import load_configfile
+
     inject_checkout_pythonpath(workflow_config)
     warn_if_image_stale()
-    CATALOG_CONFIG = workflow_config
+    CATALOG_CONFIG = load_configfile(CAT_CONFIG)
     FIDUCIAL = workflow_config["fiducial"]
     DEFAULT_MASK_SUFFIX = (
         "_masked" if workflow_config["covariance"].get("default_masked", False) else ""
@@ -181,20 +184,13 @@ def fiducial_binning_suffix(fiducial=None):
     )
 
 
-def resolve_covariance_version(version):
-    """Map version to its covariance version."""
-    return version
-
-
 def covariance_base(
     version,
-    blind,
     gaussian="ng",
     min_sep=None,
     max_sep=None,
     nbins=None,
     mask_suffix=None,
-    resolve_version=True,
     fiducial=None,
     default_mask_suffix=None,
 ):
@@ -210,94 +206,61 @@ def covariance_base(
             DEFAULT_MASK_SUFFIX if default_mask_suffix is None else default_mask_suffix
         )
     )
-    cov_version = resolve_covariance_version(version) if resolve_version else version
     return (
-        f"covariance_{cov_version}_{blind}_{gaussian}"
+        f"covariance_{version}_{gaussian}"
         f"_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}"
     )
 
 
 def covariance_dir(
-    version,
-    blind,
-    gaussian="ng",
-    min_sep=None,
-    max_sep=None,
-    nbins=None,
-    mask_suffix=None,
-    resolve_version=True,
+    version, gaussian="ng", min_sep=None, max_sep=None, nbins=None, mask_suffix=None
 ):
     """Construct covariance directory path."""
-    base = covariance_base(
-        version,
-        blind,
-        gaussian,
-        min_sep,
-        max_sep,
-        nbins,
-        mask_suffix,
-        resolve_version=resolve_version,
-    )
+    base = covariance_base(version, gaussian, min_sep, max_sep, nbins, mask_suffix)
     return str(COSMO_INFERENCE / f"data/covariance/{base}")
 
 
 def covariance_path(
     version,
-    blind,
     gaussian="ng",
     min_sep=None,
     max_sep=None,
     nbins=None,
     mask_suffix=None,
     suffix="_processed.txt",
-    resolve_version=True,
 ):
     """Construct covariance file path."""
-    base = covariance_base(
-        version,
-        blind,
-        gaussian,
-        min_sep,
-        max_sep,
-        nbins,
-        mask_suffix,
-        resolve_version=resolve_version,
-    )
+    base = covariance_base(version, gaussian, min_sep, max_sep, nbins, mask_suffix)
     return str(COSMO_INFERENCE / f"data/covariance/{base}/{base}{suffix}")
 
 
 def base_version(version):
-    """Strip the derived-catalogue suffixes to the base catalogue version.
-
-    The `_leak_corr` / `_ecut{N}` variants share their parent's n(z) and
-    `cov_th` survey parameters, so lookups keyed on either must strip both.
-    """
+    """Strip the `_leak_corr` / `_ecut{N}` suffixes to the base catalogue
+    version, whose footprint and plotting style its variants share."""
     return re.sub(r"_ecut\d+", "", re.sub(r"_leak_corr$", "", version))
 
 
-def build_redshift_path(version, blind):
-    """Construct n(z) filepath for given catalog version and blind."""
-    base = base_version(version)
-    if "v1.4.11" in base:
-        base = "SP_v1.4.6"
-    version_dir = base.replace("SP_", "")
-    return f"/n17data/sguerrini/UNIONS/WL/nz/{version_dir}/nz_{base}_{blind}.txt"
+def catalogue_entry(version):
+    """The catalogue-config entry describing ``version`` (its own, or the one
+    its ``_leak_corr`` variant derives from)."""
+    if version in CATALOG_CONFIG:
+        return CATALOG_CONFIG[version]
+    return CATALOG_CONFIG[re.sub(r"_leak_corr$", "", version)]
+
+
+def redshift_path(version):
+    """The n(z) file of ``version``: its catalogue entry's ``shear.redshift_path``,
+    as written (as ``CosmologyValidation.get_redshift`` reads it)."""
+    return catalogue_entry(version)["shear"]["redshift_path"]
 
 
 # ---------------------------------------------------------------------------
 # ξ± angular grids
 # ---------------------------------------------------------------------------
-# A grid is a binning plus how its covariance is estimated: (min_sep, max_sep,
-# nbins, npatch, cov). `reporting` is the analysis grid, `integration` the fine
-# one the B-mode integrals run over, `cosebis` the fine patched grid COSEBIs
-# propagates its covariance from. cov is "jackknife" (dense, from the patches),
-# "diagonal" (TreeCorr varxip/varxim) or "none".
-XI_KEYS = (
-    "min_sep",
-    "max_sep",
-    "nbins",
-    "npatch",
-)  # the binning; cov is not in the name
+# A grid is a binning: (min_sep, max_sep, nbins, npatch). `reporting` is the
+# analysis grid, `integration` the fine one both B-mode statistics (COSEBIs,
+# pure-E/B) integrate over.
+XI_KEYS = ("min_sep", "max_sep", "nbins", "npatch")
 
 
 def xi_grids(config, fiducial):
@@ -332,22 +295,11 @@ def xi_grids(config, fiducial):
         ),
     }
     grids["integration"].setdefault("npatch", 1)
-    cb = cv.get("cosebis")
-    if cb:
-        grids["cosebis"] = {
-            "min_sep": cb["min_sep_int"],
-            "max_sep": cb["max_sep_int"],
-            "nbins": cb["nbins_int"],
-            "npatch": cb["npatch"],
-        }
     for grid in grids.values():
         for key in ("min_sep", "max_sep"):
             grid[key] = float(grid[key])
         for key in ("nbins", "npatch"):
             grid[key] = int(grid[key])
-        # A jackknife estimate needs patches; at npatch=1 TreeCorr's var_method
-        # is "shot" and the diagonal is all it can offer.
-        grid.setdefault("cov", "jackknife" if grid["npatch"] > 1 else "none")
     return grids
 
 
@@ -375,7 +327,7 @@ def grid_of(grids, binning):
 def pseudo_cl_tag(config):
     """Fiducial harmonic-binning tag stamped into pseudo-Cl filenames."""
     fiducial = config["harmonic"]["fiducial"]
-    return f"blind={fiducial['blind']}_{fiducial['binning']}_nbins={fiducial['nbins']}"
+    return f"{fiducial['binning']}_nbins={fiducial['nbins']}"
 
 
 def get_shear_catalog(wildcards):
@@ -397,18 +349,9 @@ def get_shear_catalog(wildcards):
 # turns each diagnostic into a rule keyed on the real data products it writes
 # under COSMO_VAL. Where a method only emits a figure (no data product), the
 # rule declares a sentinel under CV_SENTINELS so the DAG stays trackable.
-#
-# COSMO_VAL is the cosmo_val/output directory (already defined above), the same
-# location every `cv.*` method writes to via `cc["paths"]["output"]`.
 
 # Sentinel directory for pure-plot leaf rules (no natural data-product output).
 CV_SENTINELS = COSMO_VAL / "snakemake_sentinels"
-
-# Working directory in which `CosmologyValidation` is instantiated: its
-# catalogue config comes explicitly from CAT_CONFIG, and it writes to
-# `./output` unless COSMO_VAL is set. Resolved to the live (non-worktree)
-# checkout so rules share the output tree with interactive runs.
-CV_RUNDIR = "/n17data/cdaley/unions/code/sp_validation/cosmo_val"
 
 
 def cv_basename(version, fiducial=None):
@@ -461,17 +404,17 @@ CV_INIT_KEYS = (
 )
 
 
-def cv_init_params(config, version_list=None):
+def cv_init_params(config):
     """Assemble the CosmologyValidation(...) constructor kwargs from config.
 
     Centralizes the run-specific instantiation so every cosmo_val rule script
-    builds an identical `cv`. The catalogue config is always CAT_CONFIG, never
-    the constructor's cwd-relative default. `version_list` overrides
-    config["versions"] (used by per-version rules that pass a single version).
+    builds an identical `cv`: catalogues from CAT_CONFIG and products under
+    COSMO_VAL, never the constructor's cwd-relative defaults.
     """
     cv = config["cosmo_val"]
     return dict(
-        versions=version_list if version_list is not None else config["versions"],
+        versions=config["versions"],
         catalog_config=CAT_CONFIG,
+        output_dir=str(COSMO_VAL),
         **{key: cv[key] for key in CV_INIT_KEYS},
     )

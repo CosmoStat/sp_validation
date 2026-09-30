@@ -19,6 +19,11 @@ from scipy import sparse, stats
 _EB_KEYS = ("xip_E", "xim_E", "xip_B", "xim_B", "xip_amb", "xim_amb")
 
 
+def _eb_vector(modes):
+    """Pure-E/B modes concatenated in ``_EB_KEYS`` order, the covariance layout."""
+    return np.concatenate([modes[k] for k in _EB_KEYS])
+
+
 def find_conservative_scale_cut_key(results, requested_scale_cut):
     """
     Find scale cut key that conservatively fits within requested range.
@@ -156,23 +161,20 @@ def calculate_pure_eb_correlation(
     dict
         Dictionary containing pure E/B mode results and covariance
     """
-    from cosmo_numba.B_modes.schneider2022 import get_pure_EB_modes
-
     # Calculate min_sep and max_sep from gg object
     min_sep, max_sep = gg.left_edges[0], gg.right_edges[-1]
 
     def pure_EB(corrs):
         gg, gg_int = corrs
-        return get_pure_EB_modes(
-            theta=gg.meanr,
-            xip=gg.xip,
-            xim=gg.xim,
+        return pure_eb_from_xi(
+            theta_report=gg.meanr,
+            xip_report=gg.xip,
+            xim_report=gg.xim,
             theta_int=gg_int.meanr,
             xip_int=gg_int.xip,
             xim_int=gg_int.xim,
             tmin=min_sep,
             tmax=max_sep,
-            parallel=True,
         )
 
     # The results dict is self-describing: the grids it was measured on travel
@@ -190,7 +192,7 @@ def calculate_pure_eb_correlation(
         "xim_int": gg_int.xim,
         "n_eff": n_samples if cov_path_int is not None else gg.npatch1,
     }
-    results.update(dict(zip(_EB_KEYS, pure_EB([gg, gg_int]))))
+    results.update(pure_EB([gg, gg_int]))
 
     if cov_path_int is not None:
         if z_dist is None or cosmo_cov is None:
@@ -214,7 +216,7 @@ def calculate_pure_eb_correlation(
         results["cov"] = treecorr.estimate_multi_cov(
             [gg, gg_int],
             var_method,
-            func=lambda x: np.hstack(pure_EB(x)),
+            func=lambda x: _eb_vector(pure_EB(x)),
             cross_patch_weight="match" if var_method == "jackknife" else None,
         )
 
@@ -236,8 +238,7 @@ def pure_eb_from_xi(
 ):
     """Pure-E/B correlation functions from ξ± arrays through the pipeline kernel.
 
-    The values-only seam of :func:`calculate_pure_eb_correlation`, for callers
-    holding ξ± arrays rather than TreeCorr correlations.
+    The one place this module calls cosmo_numba's Schneider (2022) transform.
 
     ``tmin``/``tmax`` are the reporting correlation's TreeCorr *bin edges*
     (``gg.left_edges[0]`` / ``gg.right_edges[-1]``). The reporting grid must be a
@@ -281,15 +282,13 @@ def pure_eb_covariance_mc(
 
     ξ± draws come from ``cov_int``, a ξ± covariance on the integration grid,
     around the theory mean for ``(z, nz)`` under ``cosmo``; each draw is binned
-    down to the reporting grid and pushed through ``get_pure_EB_modes``. The
+    down to the reporting grid and pushed through :func:`pure_eb_from_xi`. The
     covariance of the transformed draws is the result, so it depends on the
     covariance model and the grids, never on the measured data vector.
 
     Returns ``(cov, eb_samples)`` — the covariance in ``_EB_KEYS`` order and
     the draws behind it.
     """
-    from cosmo_numba.B_modes.schneider2022 import get_pure_EB_modes
-
     theta, theta_int = np.asarray(theta), np.asarray(theta_int)
     nbins_int = len(theta_int)
 
@@ -318,23 +317,21 @@ def pure_eb_covariance_mc(
     samples_rep_xip = (binning_matrix @ samples_int_xip.T).T
     samples_rep_xim = (binning_matrix @ samples_int_xim.T).T
 
+    def eb_draw(i):
+        modes = pure_eb_from_xi(
+            theta_report=theta,
+            xip_report=samples_rep_xip[i],
+            xim_report=samples_rep_xim[i],
+            theta_int=theta_int,
+            xip_int=samples_int_xip[i],
+            xim_int=samples_int_xim[i],
+            tmin=left_edges[0],
+            tmax=right_edges[-1],
+        )
+        return _eb_vector(modes)
+
     eb_samples = np.array(
-        [
-            np.concatenate(
-                get_pure_EB_modes(
-                    theta=theta,
-                    theta_int=theta_int,
-                    xip=samples_rep_xip[i],
-                    xim=samples_rep_xim[i],
-                    xip_int=samples_int_xip[i],
-                    xim_int=samples_int_xim[i],
-                    tmin=left_edges[0],
-                    tmax=right_edges[-1],
-                    parallel=True,
-                )
-            )
-            for i in tqdm.tqdm(range(n_samples), desc="MC samples")
-        ]
+        [eb_draw(i) for i in tqdm.tqdm(range(n_samples), desc="MC samples")]
     )
     return np.cov(eb_samples.T), eb_samples
 

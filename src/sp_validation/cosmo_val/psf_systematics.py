@@ -313,8 +313,8 @@ class PSFSystematicsMixin:
         # Set parameters
         params_in["input_path_shear"] = self.cc[ver]["shear"]["path"]
         params_in["input_path_PSF"] = self.cc[ver]["star"]["path"]
-        params_in["dndz_path"] = (
-            f"{self.cc['nz']['dndz']['path']}_{self.cc[ver]['pipeline']}_{self.cc['nz']['dndz']['blind']}.txt"
+        params_in["dndz_path"] = self.cc["nz"]["dndz"]["path"].format(
+            pipeline=self.cc[ver]["pipeline"]
         )
         params_in["output_dir"] = f"{self.cc['paths']['output']}/leakage_{ver}"
 

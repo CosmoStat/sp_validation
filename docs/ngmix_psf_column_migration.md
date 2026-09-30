@@ -19,20 +19,23 @@ from `NGMIX_Tpsf_1P` (see the reconvolved-PSF table). The tables below
 (Old = v1, New = v2) are the rule table in `grammar.V1_RULES`.
 
 Mask columns follow a separate rule family, applied whatever the generation.
-The UNIONS healsparse mask product is one bitmask; ShapePipe v2 and
-`catalog_builders.ApplyHspMasks` both write bit `b` as the boolean `MASK_n{b}`,
-and the `data_ext` dataset of a v1 comprehensive HDF5 carries it as
-`{b}_{label}` (`grammar.MASK_LABELS`), which the adapter renames:
+The UNIONS healsparse mask product is one bitmask. ShapePipe v2 writes bit `b`
+as the boolean `MASK_n{b}`, so the reader and
+`catalog_builders.ApplyHspMasks` use that producer name for both generations.
+The v1 `data_ext` dataset instead calls it `{b}_{label}`; the adapter uses
+`grammar.MASK_LABELS` to map that descriptive name to the same bit. Keeping
+the bit as the column identity makes one mask configuration work for both
+releases, while the labels remain documented here and in the config:
 
 | bit | old `data_ext` name | meaning |
 |---|---|---|
 | 1, 2 | `1_Faint_star_halos`, `2_Bright_star_halos` | star halos |
 | 4 | `4_Stars` | star mask |
 | 8 | `8_Manual` | manual mask (large galaxies) |
-| 16–256 | `16_u`, `32_g`, `64_r`, `128_i`, `256_z` | per-band coverage |
+| 16–256 | `16_u`, `32_g`, `64_r`, `128_i`, `256_z` | per-band coverage; `256_z` is the HSC z-band |
 | 512 | `512_Tile_RA_DEC_cut` | outside the tile's unique region |
 | 1024 | `1024_Maximask` | MaxiMask |
-| 2048 | `2048_z2` | no Pan-STARRS z2 |
+| 2048 | `2048_z2` | Pan-STARRS z-band (`z2`); true means no coverage |
 
 `adapt(data, data_ext)` joins the two datasets of a comprehensive HDF5 into one
 table, so a v1 comprehensive catalogue and a v2 catalogue take the same mask

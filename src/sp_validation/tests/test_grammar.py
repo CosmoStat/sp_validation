@@ -202,6 +202,11 @@ def test_read_catalogue_and_header_names(tmp_path):
     view = read_catalogue(path, hdu=1)
     _assert_same_columns(view, v2)
     assert read_column_names(path, hdu=1) == view.names
+    assert grammar.requires_adaptation(path, hdu=1)
+
+    v2_path = tmp_path / "v2.fits"
+    fits.BinTableHDU(v2).writeto(v2_path)
+    assert not grammar.requires_adaptation(v2_path, hdu=1)
 
 
 def test_psf_size_error_matches_between_grammars():

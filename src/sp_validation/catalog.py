@@ -432,8 +432,9 @@ def write_shape_catalog(
 
     @sc [label:convention] metacal-flag-width
     The data and image-simulation parameter files supply FITS ``J`` (int32)
-    for metacal bitmasks, so ShapePipe's no-measurement bit 30 and the ngmix
-    fitter bits survive FITS/HDF5 output; ``JointCat`` never narrows integers.
+    for metacal bitmasks, so ngmix flag bits (including ``ZERO_DOF`` = 2**15,
+    which overflows signed 16-bit ``I``) survive FITS/HDF5 output; ``JointCat``
+    never narrows integers.
     The number of failed metacal types is a count in [0, 5], not a bitmask.
 
     Parameters

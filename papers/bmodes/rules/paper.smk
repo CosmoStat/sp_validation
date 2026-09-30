@@ -14,7 +14,7 @@ FIGURE_RULES = [
     "cl_version_comparison",
     "config_space_pte_matrices",
     "harmonic_space_pte_matrices",
-    "bb_covariance_blind_independence",
+    "bb_covariance_nz_independence",
     "cosebis_filter_overlay",
 ]
 
@@ -26,12 +26,9 @@ localrules: xi_cosmology_paper_macros, paper_macros, paper
 
 rule xi_cosmology_paper_macros:
     """B-mode macros for the configuration-space cosmology paper (Goh et al.):
-    fiducial version, n=6 COSEBIS, joint pure-mode PTEs at full and fiducial
-    scales."""
+    joint pure-mode PTEs and scale cuts at full and fiducial scales."""
     input:
-        cosebis_evidence=rules.cosebis_version_comparison.output.evidence,
         pure_eb_evidence=rules.pure_eb_data_vector.output.evidence,
-        bb_blind_evidence=rules.bb_covariance_blind_independence.output.evidence,
     output:
         macros="docs/unions_release/unions_2d_shear_xi/claims_macros.tex",
     params:
@@ -43,7 +40,6 @@ rule xi_cosmology_paper_macros:
 rule paper_macros:
     """LaTeX macros and PTE tables for the B-modes paper (Daley et al.)."""
     input:
-        cosebis_evidence=rules.cosebis_version_comparison.output.evidence,
         pure_eb_evidence=rules.pure_eb_data_vector.output.evidence,
         pure_eb_covariance=rules.pure_eb_covariance.output.evidence,
         config_space_pte=rules.config_space_pte_matrices.output.evidence,

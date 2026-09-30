@@ -10,18 +10,19 @@
 #                     documented)
 #   MASK_n4           stars
 #   MASK_n8           manual galaxy mask
-#   MASK_n64          undocumented reason bit
+#   MASK_n64          r-band coverage
 #   MASK_n1024        MaxiMask
 #
 # Per-band coverage flags and Pan-STARRS:
 #
-#   MASK_n16, MASK_n32, MASK_n128, MASK_n256   u, g, i, z coverage (no r
-#                     flag: the catalogue is r-selected)
-#   MASK_n2048        no Pan-STARRS z2 coverage
+#   MASK_n16, MASK_n32, MASK_n64, MASK_n128, MASK_n256
+#                     u, g, r, i, HSC z-band coverage
+#   MASK_n2048        no Pan-STARRS z-band (z2) coverage
 #
 # The default selection (see sp_validation.galaxy.DEFAULT_MASK_COLUMNS) is
-# n1 + n2 + n4 + n8 + n64 + n1024, whose OR reproduces mask_r, the v1 r-band
-# mask, exactly on the P3 region. The coverage flags and n2048 are listed
+# n1 + n2 + n4 + n8 + n64 + n1024, whose OR matches mask_r, the r-band
+# mask, on covered P3 granules; footprint-edge granules without mask_r coverage
+# can differ. The other coverage flags and n2048 are listed
 # here but commented out, since ORing all of them masks essentially
 # everything.
 
@@ -73,14 +74,13 @@ dat:
     kind: equal
     value: False
 
-  # Undocumented reason bit of the r-band default bitmask. Required for the
-  # OR above to reproduce mask_r; it is not a coverage flag.
+  # r-band coverage. Required for the OR above to reproduce mask_r.
   - col_name: MASK_n64
-    label: "reason bit n64"
+    label: "r-band imaging"
     kind: equal
     value: False
 
-  # Per-band coverage flags and Pan-STARRS z2; enable as required.
+  # Other per-band coverage flags and Pan-STARRS z2; enable as required.
   # Cutting on all of them at once leaves essentially no objects.
   # - col_name: MASK_n16
   #   label: "u coverage"

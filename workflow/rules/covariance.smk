@@ -2,11 +2,8 @@
 
 
 def get_cat_params(version):
-    """Extract covariance parameters (area, n_e, sigma_e) from catalog config."""
-    base_version = version.replace("_leak_corr", "")
-    if base_version not in config:
-        raise KeyError(f"Catalog configuration not found for {base_version}")
-    cov_th = config[base_version]["cov_th"]
+    """Covariance parameters (area, n_e, sigma_e) of ``version``'s catalogue entry."""
+    cov_th = catalogue_entry(version)["cov_th"]
     return cov_th["A"], cov_th["n_e"], cov_th["sigma_e"]
 
 
@@ -20,16 +17,14 @@ MASK_CLS_FILES = {
     "footprint_starhalo": f"{MASK_CLS_BASE}/mask_cls_footprint_starhalo_nside_4096_norm.txt",
 }
 
-# v1.4.8 uses the star-halo footprint; all other versions use the standard footprint
-STARHALO_VERSIONS = {"v1.4.8"}
+# SP_v1.4.8 uses the star-halo footprint; every other catalogue the standard one.
+STARHALO_CATALOGUES = {"SP_v1.4.8"}
 
 
 def get_mask_cls_path(version):
     """Return absolute mask Cl path for the requested catalog version."""
-    version_dir = version.replace('_leak_corr', '').replace('SP_', '')
-    version_dir = re.sub(r'_ecut\d+', '', version_dir)
-    key = "footprint_starhalo" if version_dir in STARHALO_VERSIONS else "footprint"
-    return MASK_CLS_FILES[key]
+    starhalo = base_version(version) in STARHALO_CATALOGUES
+    return MASK_CLS_FILES["footprint_starhalo" if starhalo else "footprint"]
 
 
 rule cosmology_params:
@@ -59,14 +54,13 @@ with open('{output}', 'w') as f:
 
 rule covariance_ini:
     input:
-        nz_file=lambda w: build_redshift_path(w.version, w.blind),
+        nz_file=lambda w: redshift_path(w.version),
         mask=lambda w: [] if w.mask_suffix != "_masked" else [get_mask_cls_path(w.version)],
     output:
-        str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}.ini")
+        str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}/covariance_{version}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}.ini")
     params:
         outdir=lambda w: covariance_dir(
-            w.version, w.blind, w.gaussian, w.min_sep, w.max_sep, w.nbins, w.mask_suffix,
-            resolve_version=False
+            w.version, w.gaussian, w.min_sep, w.max_sep, w.nbins, w.mask_suffix
         ),
         ng_value=lambda wildcards: "1" if wildcards.gaussian == "ng" else "0",
         omega_m=PLANCK18["Omega_m"],
@@ -153,16 +147,15 @@ rule covariance_cosmocov:
     input:
         rules.covariance_ini.output,
     output:
-        str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}/cov_tmp_ssss_{block_pm}_cov_Ntheta{nbins}_Ntomo1_{block_i}")
+        str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}/cov_tmp_ssss_{block_pm}_cov_Ntheta{nbins}_Ntomo1_{block_i}")
     params:
         block_i="{block_i}",
         outdir=lambda w: covariance_dir(
-            w.version, w.blind, w.gaussian, w.min_sep, w.max_sep, w.nbins, w.mask_suffix,
-            resolve_version=False
+            w.version, w.gaussian, w.min_sep, w.max_sep, w.nbins, w.mask_suffix
         ),
         ini_path=lambda w: covariance_path(
-            w.version, w.blind, w.gaussian, w.min_sep, w.max_sep, w.nbins, w.mask_suffix,
-            suffix=".ini", resolve_version=False
+            w.version, w.gaussian, w.min_sep, w.max_sep, w.nbins, w.mask_suffix,
+            suffix=".ini"
         ),
         cosmocov=config["tools"]["cosmocov_executable"],
     container:
@@ -184,13 +177,13 @@ rule covariance_cosmocov:
 rule covariance_cat:
     input:
         cov_block=lambda w: [
-            f"{covariance_dir(w.version, w.blind, w.gaussian, w.min_sep, w.max_sep, w.nbins, w.mask_suffix, resolve_version=False)}"
+            f"{covariance_dir(w.version, w.gaussian, w.min_sep, w.max_sep, w.nbins, w.mask_suffix)}"
             f"/cov_tmp_ssss_{pm}_cov_Ntheta{w.nbins}_Ntomo1_{idx}"
             for pm, idx in BLOCK_PAIRS
         ],
     threads: 1
     output:
-        str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}.txt")
+        str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}/covariance_{version}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}.txt")
     shell:
         """
         cat {input} > {output}
@@ -243,24 +236,24 @@ rule generate_glass_mock_rhotau_samples:
 rule covariance_process:
     """Post-process a raw CosmoCov matrix into the analysis-ready form."""
     input:
-        str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}.txt")
+        str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}/covariance_{version}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}.txt")
     output:
-        matrix=str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}_processed.txt"),
-        gaussian=str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}_processed_g.txt"),
-        plot=str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}_processed_plot.pdf")
+        matrix=str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}/covariance_{version}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}_processed.txt"),
+        gaussian=str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}/covariance_{version}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}_processed_g.txt"),
+        plot=str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}/covariance_{version}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}_processed_plot.pdf")
     threads: 1
     script:
         "../scripts/cosmocov_process.py"
 
 
 def fiducial_covariance_outputs(mask_suffix=""):
-    """Return processed covariance files for fiducial version/blind."""
+    """Return processed covariance files for the fiducial version."""
     ng_path = covariance_path(
-        FIDUCIAL["version"], FIDUCIAL["blind"], "ng",
+        FIDUCIAL["version"], "ng",
         FIDUCIAL["min_sep"], FIDUCIAL["max_sep"], FIDUCIAL["nbins"], mask_suffix
     )
     g_path = covariance_path(
-        FIDUCIAL["version"], FIDUCIAL["blind"], "g",
+        FIDUCIAL["version"], "g",
         FIDUCIAL["min_sep_int"], FIDUCIAL["max_sep_int"], FIDUCIAL["nbins_int"], mask_suffix
     )
     return [ng_path, g_path]

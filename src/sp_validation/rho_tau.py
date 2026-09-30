@@ -1,11 +1,14 @@
 import os
 import time
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import numpy as np
+from astropy.io import fits
 from shear_psf_leakage.rho_tau_cov import CovTauTh
 from shear_psf_leakage.rho_tau_stat import RhoStat, TauStat
 
+from sp_validation import grammar
 from sp_validation.grammar import read_catalogue
 
 # SquareRootScale lives in sp_validation.plots; re-exported here so that
@@ -19,23 +22,92 @@ def _extract_xip(correlations):
 
 
 class _CatalogueLoader:
-    """Read a version's PSF and shear catalogues on first use, once each.
+    """Supply FITS paths to the file-based rho/tau readers.
 
-    Both are read through ``sp_validation.grammar.read_catalogue``, so a
-    ShapePipe v1 catalogue presents the v2 column names the configs declare.
+    Already-v2 HDU-1 catalogues pass through unchanged. Other tables are
+    materialized with only the configured columns into temporary FITS files,
+    because the rho/tau consumers read paths with ``fits.getdata``.
     """
 
-    def __init__(self, info):
+    def __init__(self, info, params):
         self._info = info
+        self._params = params
         self._cache = {}
+        self._temporary_directory = None
+
+    def __enter__(self):
+        if self._temporary_directory is not None:
+            raise RuntimeError("catalogue loader is already open")
+        self._temporary_directory = TemporaryDirectory(prefix="sp-validation-rho-tau-")
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self._temporary_directory.cleanup()
+        self._temporary_directory = None
+
+    def _columns(self, block):
+        if block == "psf":
+            keys = (
+                "ra_PSF_col",
+                "dec_PSF_col",
+                "e1_PSF_col",
+                "e2_PSF_col",
+                "e1_star_col",
+                "e2_star_col",
+                "PSF_size",
+                "star_size",
+                "PSF_flag",
+                "star_flag",
+            )
+        elif block == "shear":
+            keys = ("ra_col", "dec_col", "w_col", "e1_col", "e2_col")
+        else:
+            raise KeyError(f"unknown rho/tau catalogue block {block!r}")
+
+        columns = [self._params.get(key) for key in keys]
+        if block == "psf":
+            for psf_key, shear_key in (
+                ("ra_PSF_col", "ra_col"),
+                ("dec_PSF_col", "dec_col"),
+            ):
+                if self._params.get(psf_key) is None:
+                    columns.append(self._params.get(shear_key))
+            columns.extend(
+                self._params.get(key)
+                for key in (
+                    "M_4_1_psf_col",
+                    "M_4_2_psf_col",
+                    "M_4_1_star_col",
+                    "M_4_2_star_col",
+                )
+            )
+        else:
+            columns.extend(
+                value
+                for value in (self._params.get("R11"), self._params.get("R22"))
+                if isinstance(value, str)
+            )
+        return tuple(dict.fromkeys(name for name in columns if name is not None))
 
     def __call__(self, block):
         if block not in self._cache:
             entry = self._info[block]
-            hdu = entry.get("hdu")
-            self._cache[block] = read_catalogue(
-                entry["path"], hdu=1 if hdu is None else hdu
-            )
+            source = os.fspath(entry["path"])
+            hdu = 1 if entry.get("hdu") is None else entry["hdu"]
+
+            if hdu == 1 and not grammar.requires_adaptation(source, hdu=hdu):
+                self._cache[block] = source
+            else:
+                if self._temporary_directory is None:
+                    raise RuntimeError("use the catalogue loader inside a with block")
+                view = read_catalogue(source, hdu=hdu)
+                table = grammar.materialise(view, names=self._columns(block))
+                output = Path(self._temporary_directory.name) / f"{block}.fits"
+                with fits.HDUList(
+                    [fits.PrimaryHDU(), fits.BinTableHDU(data=table)]
+                ) as hdus:
+                    hdus.writeto(output)
+                self._cache[block] = os.fspath(output)
         return self._cache[block]
 
 
@@ -171,57 +243,59 @@ def get_rho_tau(
         output=outdir, treecorr_config=treecorr_config, verbose=True
     )
 
-    load = _CatalogueLoader(config[version])
+    with _CatalogueLoader(config[version], params) as load:
+        rho_stats_exists = rho_path.exists()
+        cov_exists = True if not cov_rho else cov_rho_path.exists()
+        need_compute = (not rho_stats_exists) or (not cov_exists)
 
-    rho_stats_exists = rho_path.exists()
-    cov_exists = True if not cov_rho else cov_rho_path.exists()
-    need_compute = (not rho_stats_exists) or (not cov_exists)
-
-    if need_compute:
-        rho_stat_handler.catalogs.set_params(params, outdir)
-
-        rho_stat_handler.build_cat_to_compute_rho(load("psf"), catalog_id=catalog_id)
-
-        rho_stat_handler.compute_rho_stats(
-            catalog_id,
-            rho_path.name,
-            save_cov=cov_rho,
-            func=_extract_xip if cov_rho else None,
-            var_method="jackknife" if cov_rho else None,
-        )
-        rho_stat_handler.load_rho_stats(rho_path.name)
-    else:
-        print(f"Skipping rho statistics computation, file {rho_path} already exists.")
-        rho_stat_handler.load_rho_stats(rho_path.name)
-
-    tau_path = outdir_path / f"tau_stats_{base}.fits"
-
-    tau_stat_handler = TauStat(
-        catalogs=rho_stat_handler.catalogs,
-        output=outdir,
-        treecorr_config=treecorr_config,
-        verbose=True,
-    )
-
-    if tau_path.exists():
-        print(f"Skipping tau statistics computation, file {tau_path} already exists.")
-        tau_stat_handler.load_tau_stats(tau_path.name)
-    else:
-        tau_stat_handler.catalogs.set_params(params, outdir)
-
-        # Build the different catalogs if necessary
-        if f"psf_{version}" not in tau_stat_handler.catalogs.catalogs_dict.keys():
-            tau_stat_handler.build_cat_to_compute_tau(
-                load("psf"), cat_type="psf", catalog_id=version
+        if need_compute:
+            rho_stat_handler.catalogs.set_params(params, outdir)
+            rho_stat_handler.build_cat_to_compute_rho(
+                load("psf"), catalog_id=catalog_id
             )
 
-        # Build the catalog of galaxies. PSF was computed above
-        tau_stat_handler.build_cat_to_compute_tau(
-            load("shear"), cat_type="gal", catalog_id=version
+            rho_stat_handler.compute_rho_stats(
+                catalog_id,
+                rho_path.name,
+                save_cov=cov_rho,
+                func=_extract_xip if cov_rho else None,
+                var_method="jackknife" if cov_rho else None,
+            )
+            rho_stat_handler.load_rho_stats(rho_path.name)
+        else:
+            print(
+                f"Skipping rho statistics computation, file {rho_path} already exists."
+            )
+            rho_stat_handler.load_rho_stats(rho_path.name)
+
+        tau_path = outdir_path / f"tau_stats_{base}.fits"
+        tau_stat_handler = TauStat(
+            catalogs=rho_stat_handler.catalogs,
+            output=outdir,
+            treecorr_config=treecorr_config,
+            verbose=True,
         )
 
-        # function to extract the tau_+
-        tau_stat_handler.compute_tau_stats(version, tau_path.name, var_method=None)
+        if tau_path.exists():
+            print(
+                f"Skipping tau statistics computation, file {tau_path} already exists."
+            )
+            tau_stat_handler.load_tau_stats(tau_path.name)
+        else:
+            tau_stat_handler.catalogs.set_params(params, outdir)
+
+            # Build the different catalogs if necessary
+            if f"psf_{version}" not in tau_stat_handler.catalogs.catalogs_dict:
+                tau_stat_handler.build_cat_to_compute_tau(
+                    load("psf"), cat_type="psf", catalog_id=version
+                )
+
+            # Build the catalog of galaxies. PSF was computed above
+            tau_stat_handler.build_cat_to_compute_tau(
+                load("shear"), cat_type="gal", catalog_id=version
+            )
+
+            tau_stat_handler.compute_tau_stats(version, tau_path.name, var_method=None)
 
     print(f"Time to compute rho and tau statistics: {time.time() - start_time:.2f} s")
     return rho_stat_handler, tau_stat_handler
@@ -256,27 +330,27 @@ def get_theory_cov(
     print("Computing the covariance matrix for the version: ", version)
     start_time = time.time()
 
-    load = _CatalogueLoader(info)
-    cov_tau_th = CovTauTh(
-        path_gal=load("shear"),
-        path_psf=load("psf"),
-        hdu_psf=None,
-        treecorr_config=treecorr_config,
-        A=A,
-        n_e=n_e,
-        n_psf=n_psf,
-        params=params,
-    )
+    with _CatalogueLoader(info, params) as load:
+        cov_tau_th = CovTauTh(
+            path_gal=load("shear"),
+            path_psf=load("psf"),
+            hdu_psf=1,
+            treecorr_config=treecorr_config,
+            A=A,
+            n_e=n_e,
+            n_psf=n_psf,
+            params=params,
+        )
 
-    elapsed = time.time() - start_time
-    print(f"--- Rho/tau statistics for covariance computed in {elapsed:.2f}s ---")
+        elapsed = time.time() - start_time
+        print(f"--- Rho/tau statistics for covariance computed in {elapsed:.2f}s ---")
 
-    cov = cov_tau_th.build_cov(nbin_ang=nbin_ang, nbin_rad=nbin_rad)
-    print(f"--- Covariance matrix assembled in {time.time() - start_time:.2f}s ---")
-    target_cov.parent.mkdir(parents=True, exist_ok=True)
-    np.save(target_cov, cov)
-    print("Saved covariance matrix of version: ", version)
-    del cov_tau_th
+        cov = cov_tau_th.build_cov(nbin_ang=nbin_ang, nbin_rad=nbin_rad)
+        print(f"--- Covariance matrix assembled in {time.time() - start_time:.2f}s ---")
+        target_cov.parent.mkdir(parents=True, exist_ok=True)
+        np.save(target_cov, cov)
+        print("Saved covariance matrix of version: ", version)
+        del cov_tau_th
     return
 
 
@@ -336,78 +410,78 @@ def get_jackknife_cov(
 
     tau_stat_handler.catalogs.set_params(params, outdir)
 
-    load = _CatalogueLoader(config[version])
-    for i in range(ncov):
-        tau_chunk = outdir + f"/cov_tau_{version}{i}.npy"
-        rho_chunk = outdir + f"/cov_rho_{version}{i}.npy"
-        if not (os.path.exists(tau_chunk) and os.path.exists(rho_chunk)):
-            print(
-                f"Computing rho-statistics for {version} (jackknife realisation {i + 1}/{ncov})"
-            )
-
-            if f"psf_{version}{i}" not in rho_stat_handler.catalogs.catalogs_dict:
-                # Build catalogues
-                rho_stat_handler.build_cat_to_compute_rho(
-                    load("psf"), catalog_id=version + str(i)
+    with _CatalogueLoader(config[version], params) as load:
+        for i in range(ncov):
+            tau_chunk = outdir + f"/cov_tau_{version}{i}.npy"
+            rho_chunk = outdir + f"/cov_rho_{version}{i}.npy"
+            if not (os.path.exists(tau_chunk) and os.path.exists(rho_chunk)):
+                print(
+                    f"Computing rho-statistics for {version} (jackknife realisation {i + 1}/{ncov})"
                 )
 
-                tau_stat_handler.catalogs.catalogs_dict = (
-                    rho_stat_handler.catalogs.catalogs_dict
-                )
-
-                # Build the catalog of galaxies. PSF was computed above
-                tau_stat_handler.build_cat_to_compute_tau(
-                    load("shear"),
-                    cat_type="gal",
-                    catalog_id=version + str(i),
-                )
-
-            else:
-                print(f"Computing the patch centers for patch {i + 1}/{ncov}")
-
-                npatch = rho_stat_handler.catalogs._params["patch_number"]
-                field = rho_stat_handler.catalogs.catalogs_dict[
-                    f"psf_{version}{i}"
-                ].getNField(max_top=int.bit_length(npatch) - 1, coords="spherical")
-                patch, centers = field.run_kmeans(npatch)
-
-                # Update the patch centers of the catalogs
-                for key, cat in rho_stat_handler.catalogs.catalogs_dict.items():
-                    cat._centers = centers
-                    field = cat.getNField(
-                        max_top=int.bit_length(npatch) - 1, coords="spherical"
+                if f"psf_{version}{i}" not in rho_stat_handler.catalogs.catalogs_dict:
+                    # Build catalogues
+                    rho_stat_handler.build_cat_to_compute_rho(
+                        load("psf"), catalog_id=version + str(i)
                     )
-                    cat._patch = field.kmeans_assign_patches(centers)
 
-            # Compute and save rho stats
-            rho_stat_handler.compute_rho_stats(
-                version + str(i),
-                rho_filename,
-                save_cov=True,
-                func=_extract_xip,
-                var_method="jackknife",
-            )
+                    tau_stat_handler.catalogs.catalogs_dict = (
+                        rho_stat_handler.catalogs.catalogs_dict
+                    )
 
-            # function to extract the tau_+
-            tau_stat_handler.compute_tau_stats(
-                version + str(i),
-                tau_filename,
-                save_cov=True,
-                func=_extract_xip,
-                var_method="jackknife",
-            )
+                    # Build the catalog of galaxies. PSF was computed above
+                    tau_stat_handler.build_cat_to_compute_tau(
+                        load("shear"),
+                        cat_type="gal",
+                        catalog_id=version + str(i),
+                    )
 
-            # Update the keys in the dictionaries
-            rho_dict = rho_stat_handler.catalogs.catalogs_dict
-            tau_dict = tau_stat_handler.catalogs.catalogs_dict
-            rho_dict[f"psf_{version}{i + 1}"] = rho_dict.pop(f"psf_{version}{i}")
-            rho_dict[f"psf_error_{version}{i + 1}"] = rho_dict.pop(
-                f"psf_error_{version}{i}"
-            )
-            rho_dict[f"psf_size_error_{version}{i + 1}"] = rho_dict.pop(
-                f"psf_size_error_{version}{i}"
-            )
-            tau_dict[f"gal_{version}{i + 1}"] = tau_dict.pop(f"gal_{version}{i}")
+                else:
+                    print(f"Computing the patch centers for patch {i + 1}/{ncov}")
+
+                    npatch = rho_stat_handler.catalogs._params["patch_number"]
+                    field = rho_stat_handler.catalogs.catalogs_dict[
+                        f"psf_{version}{i}"
+                    ].getNField(max_top=int.bit_length(npatch) - 1, coords="spherical")
+                    patch, centers = field.run_kmeans(npatch)
+
+                    # Update the patch centers of the catalogs
+                    for key, cat in rho_stat_handler.catalogs.catalogs_dict.items():
+                        cat._centers = centers
+                        field = cat.getNField(
+                            max_top=int.bit_length(npatch) - 1, coords="spherical"
+                        )
+                        cat._patch = field.kmeans_assign_patches(centers)
+
+                # Compute and save rho stats
+                rho_stat_handler.compute_rho_stats(
+                    version + str(i),
+                    rho_filename,
+                    save_cov=True,
+                    func=_extract_xip,
+                    var_method="jackknife",
+                )
+
+                # function to extract the tau_+
+                tau_stat_handler.compute_tau_stats(
+                    version + str(i),
+                    tau_filename,
+                    save_cov=True,
+                    func=_extract_xip,
+                    var_method="jackknife",
+                )
+
+                # Update the keys in the dictionaries
+                rho_dict = rho_stat_handler.catalogs.catalogs_dict
+                tau_dict = tau_stat_handler.catalogs.catalogs_dict
+                rho_dict[f"psf_{version}{i + 1}"] = rho_dict.pop(f"psf_{version}{i}")
+                rho_dict[f"psf_error_{version}{i + 1}"] = rho_dict.pop(
+                    f"psf_error_{version}{i}"
+                )
+                rho_dict[f"psf_size_error_{version}{i + 1}"] = rho_dict.pop(
+                    f"psf_size_error_{version}{i}"
+                )
+                tau_dict[f"gal_{version}{i + 1}"] = tau_dict.pop(f"gal_{version}{i}")
 
     cov_tau_loc = np.zeros_like(np.load(outdir + f"/cov_tau_{version}0.npy"))
     cov_rho_loc = np.zeros_like(np.load(outdir + f"/cov_rho_{version}0.npy"))

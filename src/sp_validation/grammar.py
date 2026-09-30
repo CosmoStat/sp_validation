@@ -564,6 +564,18 @@ def read_catalogue(path, hdu=1):
 
 def read_column_names(path, hdu=1):
     """Return the v2-grammar column names of a FITS HDU, reading only its header."""
+    return v2_names(_read_fits_column_names(path, hdu))
+
+
+def requires_adaptation(path, hdu=1):
+    """Return whether a FITS HDU has any columns that need grammar mapping.
+
+    The header-only check lets file-based consumers keep using an already-v2
+    catalogue without loading or rewriting its table data.
+    """
+    return bool(_resolve(_read_fits_column_names(path, hdu))[1])
+
+
+def _read_fits_column_names(path, hdu):
     header = fits.getheader(os.fspath(path), ext=hdu)
-    names = [header[f"TTYPE{i}"] for i in range(1, header["TFIELDS"] + 1)]
-    return v2_names(names)
+    return [header[f"TTYPE{i}"] for i in range(1, header["TFIELDS"] + 1)]
