@@ -21,7 +21,7 @@ characterizes the mock at two depths:
    CAMB params unchanged. When a GLASS-capable image lands, promote this to a
    committed-map ``np.allclose`` check against a reference ``.npy``.
 
-The reference was generated in the production container (CAMB 1.6.5); the
+The reference was generated in the production container (CAMB 2.0.4); the
 tolerance below absorbs cross-version CAMB float drift while still catching a
 genuine config change, which moves these numbers by parts in 10⁰–10⁻³.
 """
@@ -48,10 +48,10 @@ REFERENCE = Path(__file__).parent / "data" / "glass_mock_camb_reference.npz"
 # nside=16 keeps CAMB cheap; cosmology is config-default (UNIONS fiducial).
 REF_CONFIG = GlassMockConfig(nside=16)
 
-# Cross-version CAMB float tolerance. Scalars and P(k) reproduce to ~1e-12
-# within a version; 1e-6 relative leaves headroom for a CAMB point release
-# while a real config change moves these by >>1e-3.
-RTOL = 1e-6
+# Absorbs CAMB version drift and CAMB's process-global AccuracyTarget (which
+# pyccl sets to 0), each a few 1e-4, while a real config change moves these
+# by >=1e-3.
+RTOL = 5e-4
 ATOL = 0.0
 
 
