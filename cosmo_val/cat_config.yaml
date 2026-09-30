@@ -1272,7 +1272,7 @@ GLASS_mock_validation:
     n_e: 6.128201234871523
     n_psf: 0.752316232272063
     sigma_e: 0.379587601488189
-  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_footprint_nside_4096.fits
+  mask: /n09data/guerrini/glass_mock_test/mask_nside_1024.fits
   psf:
     PSF_flag: FLAG_PSF_HSM
     PSF_size: SIGMA_PSF_HSM
@@ -1303,5 +1303,5 @@ GLASS_mock_validation:
     dec_col: Dec
     e1_col: e1
     e2_col: e2
-    path: unions_shapepipe_star_2024_v1.6.a.fits
+    path: ../../../../n17data/UNIONS/WL/v1.6.x/unions_shapepipe_star_2024_v1.6.a.fits
 
