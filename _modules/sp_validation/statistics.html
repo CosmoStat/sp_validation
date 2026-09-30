@@ -198,14 +198,14 @@
 
     <div id="content" role="main">
       <h1>Source code for sp_validation.statistics</h1><div class="highlight"><pre>
-<span></span><code><span id="line-1"><span class="sd">&quot;&quot;&quot;STATISTICS.</span>
+<span></span><code><span id="line-1"><span class="sd">"""STATISTICS.</span>
 </span><span id="line-2">
 </span><span id="line-3"><span class="sd">:Name: statistics.py</span>
 </span><span id="line-4">
 </span><span id="line-5"><span class="sd">:Description: Cosmology-independent statistical helpers (jackknife resampling,</span>
 </span><span id="line-6"><span class="sd">              chi2/PTE, covariance&lt;-&gt;correlation, OneCovariance reshaping).</span>
 </span><span id="line-7"><span class="sd">              Extracted verbatim from the former basic.py.</span>
-</span><span id="line-8"><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="line-8"><span class="sd">"""</span>
 </span><span id="line-9">
 </span><span id="line-10"><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 </span><span id="line-11"><span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">stats</span>
@@ -219,16 +219,16 @@
 </span><span id="line-17">    <span class="n">remove_size</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
 </span><span id="line-18">    <span class="n">n_realization</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
 </span><span id="line-19"><span class="p">):</span>
-</span><span id="line-20"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Add docstring.</span>
+</span><span id="line-20"><span class="w">    </span><span class="sd">"""Add docstring.</span>
 </span><span id="line-21">
 </span><span id="line-22"><span class="sd">    ...</span>
 </span><span id="line-23">
-</span><span id="line-24"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-24"><span class="sd">    """</span>
 </span><span id="line-25">    <span class="n">samp_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
 </span><span id="line-26">    <span class="n">keep_size_pc</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">remove_size</span>
 </span><span id="line-27">
 </span><span id="line-28">    <span class="k">if</span> <span class="n">keep_size_pc</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
-</span><span id="line-29">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;remove size should be in [0, 1]&quot;</span><span class="p">)</span>
+</span><span id="line-29">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"remove size should be in [0, 1]"</span><span class="p">)</span>
 </span><span id="line-30">
 </span><span id="line-31">    <span class="n">subsamp_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">samp_size</span> <span class="o">*</span> <span class="n">keep_size_pc</span><span class="p">)</span>
 </span><span id="line-32">
@@ -254,7 +254,7 @@
 <div class="viewcode-block" id="corr_from_cov">
 <a class="viewcode-back" href="../../sp_validation.statistics.html#sp_validation.statistics.corr_from_cov">[docs]</a>
 </span><span id="line-51"><span class="k">def</span><span class="w"> </span><span class="nf">corr_from_cov</span><span class="p">(</span><span class="n">cov</span><span class="p">):</span>
-</span><span id="line-52"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Correlation matrix from a covariance matrix.</span>
+</span><span id="line-52"><span class="w">    </span><span class="sd">"""Correlation matrix from a covariance matrix.</span>
 </span><span id="line-53">
 </span><span id="line-54"><span class="sd">    Parameters</span>
 </span><span id="line-55"><span class="sd">    ----------</span>
@@ -266,7 +266,7 @@
 </span><span id="line-61"><span class="sd">    numpy.ndarray</span>
 </span><span id="line-62"><span class="sd">        Correlation matrix.</span>
 </span><span id="line-63">
-</span><span id="line-64"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-64"><span class="sd">    """</span>
 </span><span id="line-65">    <span class="n">std_dev</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">cov</span><span class="p">))</span>
 </span><span id="line-66">    <span class="k">return</span> <span class="n">cov</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">std_dev</span><span class="p">,</span> <span class="n">std_dev</span><span class="p">)</span></div>
 
@@ -275,7 +275,7 @@
 <div class="viewcode-block" id="chi2_and_pte">
 <a class="viewcode-back" href="../../sp_validation.statistics.html#sp_validation.statistics.chi2_and_pte">[docs]</a>
 </span><span id="line-69"><span class="k">def</span><span class="w"> </span><span class="nf">chi2_and_pte</span><span class="p">(</span><span class="n">data_vector</span><span class="p">,</span> <span class="n">cov</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-</span><span id="line-70"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Chi-squared, reduced chi-squared and PTE for a data vector.</span>
+</span><span id="line-70"><span class="w">    </span><span class="sd">"""Chi-squared, reduced chi-squared and PTE for a data vector.</span>
 </span><span id="line-71">
 </span><span id="line-72"><span class="sd">    The data vector is assumed to be zero-mean under the null hypothesis,</span>
 </span><span id="line-73"><span class="sd">    so ``chi2 = d^T C^-1 d``.</span>
@@ -294,7 +294,7 @@
 </span><span id="line-86"><span class="sd">    tuple</span>
 </span><span id="line-87"><span class="sd">        ``(chi2, reduced_chi2, pte)``.</span>
 </span><span id="line-88">
-</span><span id="line-89"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-89"><span class="sd">    """</span>
 </span><span id="line-90">    <span class="c1"># Solve the linear system rather than forming C^-1 explicitly (more stable,</span>
 </span><span id="line-91">    <span class="c1"># cheaper); use the survival function rather than 1 - cdf (avoids</span>
 </span><span id="line-92">    <span class="c1"># catastrophic cancellation in the high-chi2 / low-PTE tail).</span>
@@ -303,9 +303,9 @@
 </span><span id="line-95">    <span class="n">reduced_chi2</span> <span class="o">=</span> <span class="n">chi2</span> <span class="o">/</span> <span class="n">dof</span>
 </span><span id="line-96">    <span class="n">pte</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">chi2</span><span class="o">.</span><span class="n">sf</span><span class="p">(</span><span class="n">chi2</span><span class="p">,</span> <span class="n">dof</span><span class="p">)</span>
 </span><span id="line-97">    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
-</span><span id="line-98">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Chi2: </span><span class="si">{</span><span class="n">chi2</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</span><span id="line-99">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Reduced Chi2: </span><span class="si">{</span><span class="n">reduced_chi2</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</span><span id="line-100">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;PTE: </span><span class="si">{</span><span class="n">pte</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="line-98">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Chi2: </span><span class="si">{</span><span class="n">chi2</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="line-99">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Reduced Chi2: </span><span class="si">{</span><span class="n">reduced_chi2</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="line-100">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"PTE: </span><span class="si">{</span><span class="n">pte</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </span><span id="line-101">    <span class="k">return</span> <span class="n">chi2</span><span class="p">,</span> <span class="n">reduced_chi2</span><span class="p">,</span> <span class="n">pte</span></div>
 
 </span><span id="line-102">
@@ -313,7 +313,7 @@
 <div class="viewcode-block" id="cov_from_one_covariance">
 <a class="viewcode-back" href="../../sp_validation.statistics.html#sp_validation.statistics.cov_from_one_covariance">[docs]</a>
 </span><span id="line-104"><span class="k">def</span><span class="w"> </span><span class="nf">cov_from_one_covariance</span><span class="p">(</span><span class="n">cov_one_cov</span><span class="p">,</span> <span class="n">gaussian</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-</span><span id="line-105"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Reshape a OneCovariance ``covariance_list`` table into a matrix.</span>
+</span><span id="line-105"><span class="w">    </span><span class="sd">"""Reshape a OneCovariance ``covariance_list`` table into a matrix.</span>
 </span><span id="line-106">
 </span><span id="line-107"><span class="sd">    Parameters</span>
 </span><span id="line-108"><span class="sd">    ----------</span>
@@ -329,7 +329,7 @@
 </span><span id="line-118"><span class="sd">    numpy.ndarray</span>
 </span><span id="line-119"><span class="sd">        Square covariance matrix.</span>
 </span><span id="line-120">
-</span><span id="line-121"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-121"><span class="sd">    """</span>
 </span><span id="line-122">    <span class="n">n_bins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">cov_one_cov</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
 </span><span id="line-123">    <span class="n">cov</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_bins</span><span class="p">,</span> <span class="n">n_bins</span><span class="p">))</span>
 </span><span id="line-124">    <span class="n">index_value</span> <span class="o">=</span> <span class="mi">10</span> <span class="k">if</span> <span class="n">gaussian</span> <span class="k">else</span> <span class="mi">9</span>

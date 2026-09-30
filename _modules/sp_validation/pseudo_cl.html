@@ -198,7 +198,7 @@
 
     <div id="content" role="main">
       <h1>Source code for sp_validation.pseudo_cl</h1><div class="highlight"><pre>
-<span></span><code><span id="line-1"><span class="sd">&quot;&quot;&quot;Pseudo-Cl / harmonic-space estimator primitives for cosmology validation.</span>
+<span></span><code><span id="line-1"><span class="sd">"""Pseudo-Cl / harmonic-space estimator primitives for cosmology validation.</span>
 </span><span id="line-2">
 </span><span id="line-3"><span class="sd">Stateless shared primitives for the pseudo-Cl (harmonic-space) estimator,</span>
 </span><span id="line-4"><span class="sd">mirroring ``b_modes.py`` and ``rho_tau.py``: the orchestrator mixin in</span>
@@ -211,7 +211,7 @@
 </span><span id="line-11"><span class="sd">The harmonic geometry the estimators use is fixed by ``nside``: ``lmin = 8``,</span>
 </span><span id="line-12"><span class="sd">``lmax = 2 * nside``, ``b_lmax = lmax - 1``. ``pseudo_cl_geometry`` returns that</span>
 </span><span id="line-13"><span class="sd">triple so the binning and the fields stay in lockstep.</span>
-</span><span id="line-14"><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="line-14"><span class="sd">"""</span>
 </span><span id="line-15">
 </span><span id="line-16"><span class="kn">import</span><span class="w"> </span><span class="nn">healpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">hp</span>
 </span><span id="line-17"><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
@@ -224,11 +224,11 @@
 <div class="viewcode-block" id="pseudo_cl_geometry">
 <a class="viewcode-back" href="../../sp_validation.pseudo_cl.html#sp_validation.pseudo_cl.pseudo_cl_geometry">[docs]</a>
 </span><span id="line-24"><span class="k">def</span><span class="w"> </span><span class="nf">pseudo_cl_geometry</span><span class="p">(</span><span class="n">nside</span><span class="p">):</span>
-</span><span id="line-25"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``(lmin, lmax, b_lmax)`` for the pseudo-Cl estimator at ``nside``.</span>
+</span><span id="line-25"><span class="w">    </span><span class="sd">"""Return ``(lmin, lmax, b_lmax)`` for the pseudo-Cl estimator at ``nside``.</span>
 </span><span id="line-26">
 </span><span id="line-27"><span class="sd">    ``lmax = 2 * nside`` is the NaMaster band-power ceiling; ``b_lmax = lmax - 1``</span>
 </span><span id="line-28"><span class="sd">    is the field/binning ``lmax``. ``lmin`` is the fixed low-ell floor.</span>
-</span><span id="line-29"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-29"><span class="sd">    """</span>
 </span><span id="line-30">    <span class="n">lmax</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">nside</span>
 </span><span id="line-31">    <span class="k">return</span> <span class="n">LMIN</span><span class="p">,</span> <span class="n">lmax</span><span class="p">,</span> <span class="n">lmax</span> <span class="o">-</span> <span class="mi">1</span></div>
 
@@ -239,7 +239,7 @@
 </span><span id="line-34"><span class="k">def</span><span class="w"> </span><span class="nf">make_namaster_bin</span><span class="p">(</span>
 </span><span id="line-35">    <span class="n">lmin</span><span class="p">,</span> <span class="n">lmax</span><span class="p">,</span> <span class="n">b_lmax</span><span class="p">,</span> <span class="n">binning</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">ell_step</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">n_ell_bins</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="mf">0.5</span>
 </span><span id="line-36"><span class="p">):</span>
-</span><span id="line-37"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Build a NaMaster binning object for one of the supported schemes.</span>
+</span><span id="line-37"><span class="w">    </span><span class="sd">"""Build a NaMaster binning object for one of the supported schemes.</span>
 </span><span id="line-38">
 </span><span id="line-39"><span class="sd">    Parameters</span>
 </span><span id="line-40"><span class="sd">    ----------</span>
@@ -247,26 +247,26 @@
 </span><span id="line-42"><span class="sd">        Multipole range.</span>
 </span><span id="line-43"><span class="sd">    b_lmax : int</span>
 </span><span id="line-44"><span class="sd">        Maximum multipole for the ``NmtBin`` object.</span>
-</span><span id="line-45"><span class="sd">    binning : {&#39;linear&#39;, &#39;logspace&#39;, &#39;powspace&#39;}</span>
+</span><span id="line-45"><span class="sd">    binning : {'linear', 'logspace', 'powspace'}</span>
 </span><span id="line-46"><span class="sd">        Binning scheme.</span>
 </span><span id="line-47"><span class="sd">    ell_step : int, optional</span>
-</span><span id="line-48"><span class="sd">        Bin width in ell for ``&#39;linear&#39;`` binning.</span>
+</span><span id="line-48"><span class="sd">        Bin width in ell for ``'linear'`` binning.</span>
 </span><span id="line-49"><span class="sd">    n_ell_bins : int, optional</span>
-</span><span id="line-50"><span class="sd">        Number of ell bins for ``&#39;logspace&#39;`` / ``&#39;powspace&#39;`` binning.</span>
+</span><span id="line-50"><span class="sd">        Number of ell bins for ``'logspace'`` / ``'powspace'`` binning.</span>
 </span><span id="line-51"><span class="sd">    power : float, optional</span>
-</span><span id="line-52"><span class="sd">        Exponent for ``&#39;powspace&#39;`` binning.</span>
+</span><span id="line-52"><span class="sd">        Exponent for ``'powspace'`` binning.</span>
 </span><span id="line-53">
 </span><span id="line-54"><span class="sd">    Returns</span>
 </span><span id="line-55"><span class="sd">    -------</span>
 </span><span id="line-56"><span class="sd">    nmt.NmtBin</span>
-</span><span id="line-57"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-57"><span class="sd">    """</span>
 </span><span id="line-58">    <span class="n">ells</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">lmin</span><span class="p">,</span> <span class="n">lmax</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
 </span><span id="line-59">
-</span><span id="line-60">    <span class="k">if</span> <span class="n">binning</span> <span class="o">==</span> <span class="s2">&quot;linear&quot;</span><span class="p">:</span>
+</span><span id="line-60">    <span class="k">if</span> <span class="n">binning</span> <span class="o">==</span> <span class="s2">"linear"</span><span class="p">:</span>
 </span><span id="line-61">        <span class="n">bpws</span> <span class="o">=</span> <span class="p">(</span><span class="n">ells</span> <span class="o">-</span> <span class="n">lmin</span><span class="p">)</span> <span class="o">//</span> <span class="n">ell_step</span>
 </span><span id="line-62">        <span class="n">bpws</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">minimum</span><span class="p">(</span><span class="n">bpws</span><span class="p">,</span> <span class="n">bpws</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
 </span><span id="line-63">        <span class="n">b</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtBin</span><span class="p">(</span><span class="n">ells</span><span class="o">=</span><span class="n">ells</span><span class="p">,</span> <span class="n">bpws</span><span class="o">=</span><span class="n">bpws</span><span class="p">,</span> <span class="n">lmax</span><span class="o">=</span><span class="n">b_lmax</span><span class="p">)</span>
-</span><span id="line-64">    <span class="k">elif</span> <span class="n">binning</span> <span class="o">==</span> <span class="s2">&quot;logspace&quot;</span><span class="p">:</span>
+</span><span id="line-64">    <span class="k">elif</span> <span class="n">binning</span> <span class="o">==</span> <span class="s2">"logspace"</span><span class="p">:</span>
 </span><span id="line-65">        <span class="c1"># Start geomspace at ell_min_log (&gt;= lmin) to avoid</span>
 </span><span id="line-66">        <span class="c1"># sub-multipole bins at low ell that destabilize the MCM.</span>
 </span><span id="line-67">        <span class="c1"># All ell below ell_min_log go into bin 0 as padding.</span>
@@ -275,7 +275,7 @@
 </span><span id="line-70">        <span class="n">bpws</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="n">ells</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">),</span> <span class="n">bins_ell</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
 </span><span id="line-71">        <span class="n">bpws</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">bpws</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">n_ell_bins</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
 </span><span id="line-72">        <span class="n">b</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtBin</span><span class="p">(</span><span class="n">ells</span><span class="o">=</span><span class="n">ells</span><span class="p">,</span> <span class="n">bpws</span><span class="o">=</span><span class="n">bpws</span><span class="p">,</span> <span class="n">lmax</span><span class="o">=</span><span class="n">b_lmax</span><span class="p">)</span>
-</span><span id="line-73">    <span class="k">elif</span> <span class="n">binning</span> <span class="o">==</span> <span class="s2">&quot;powspace&quot;</span><span class="p">:</span>
+</span><span id="line-73">    <span class="k">elif</span> <span class="n">binning</span> <span class="o">==</span> <span class="s2">"powspace"</span><span class="p">:</span>
 </span><span id="line-74">        <span class="n">start</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">lmin</span><span class="p">,</span> <span class="n">power</span><span class="p">)</span>
 </span><span id="line-75">        <span class="n">end</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">lmax</span><span class="p">,</span> <span class="n">power</span><span class="p">)</span>
 </span><span id="line-76">        <span class="n">bins_ell</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">n_ell_bins</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">power</span><span class="p">)</span>
@@ -285,8 +285,8 @@
 </span><span id="line-80">        <span class="n">b</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtBin</span><span class="p">(</span><span class="n">ells</span><span class="o">=</span><span class="n">ells</span><span class="p">,</span> <span class="n">bpws</span><span class="o">=</span><span class="n">bpws</span><span class="p">,</span> <span class="n">lmax</span><span class="o">=</span><span class="n">b_lmax</span><span class="p">)</span>
 </span><span id="line-81">    <span class="k">else</span><span class="p">:</span>
 </span><span id="line-82">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-</span><span id="line-83">            <span class="sa">f</span><span class="s2">&quot;Unknown binning &#39;</span><span class="si">{</span><span class="n">binning</span><span class="si">}</span><span class="s2">&#39;. &quot;</span>
-</span><span id="line-84">            <span class="s2">&quot;Choose from &#39;linear&#39;, &#39;logspace&#39;, &#39;powspace&#39;.&quot;</span>
+</span><span id="line-83">            <span class="sa">f</span><span class="s2">"Unknown binning '</span><span class="si">{</span><span class="n">binning</span><span class="si">}</span><span class="s2">'. "</span>
+</span><span id="line-84">            <span class="s2">"Choose from 'linear', 'logspace', 'powspace'."</span>
 </span><span id="line-85">        <span class="p">)</span>
 </span><span id="line-86">
 </span><span id="line-87">    <span class="k">return</span> <span class="n">b</span></div>
@@ -296,7 +296,7 @@
 <div class="viewcode-block" id="get_n_gal_map">
 <a class="viewcode-back" href="../../sp_validation.pseudo_cl.html#sp_validation.pseudo_cl.get_n_gal_map">[docs]</a>
 </span><span id="line-90"><span class="k">def</span><span class="w"> </span><span class="nf">get_n_gal_map</span><span class="p">(</span><span class="n">nside</span><span class="p">,</span> <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-</span><span id="line-91"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Weighted galaxy number-density HEALPix map plus pixel bookkeeping.</span>
+</span><span id="line-91"><span class="w">    </span><span class="sd">"""Weighted galaxy number-density HEALPix map plus pixel bookkeeping.</span>
 </span><span id="line-92">
 </span><span id="line-93"><span class="sd">    Bins ``(ra, dec)`` (degrees) onto an ``nside`` HEALPix grid. With</span>
 </span><span id="line-94"><span class="sd">    ``weights=None`` each object counts as 1 (galaxy counts); pass per-object</span>
@@ -312,7 +312,7 @@
 </span><span id="line-104"><span class="sd">        First-occurrence indices into the input from ``np.unique``.</span>
 </span><span id="line-105"><span class="sd">    idx_rep : np.ndarray</span>
 </span><span id="line-106"><span class="sd">        Inverse map: pixel-group index for each input object.</span>
-</span><span id="line-107"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-107"><span class="sd">    """</span>
 </span><span id="line-108">    <span class="n">theta</span> <span class="o">=</span> <span class="p">(</span><span class="mf">90.0</span> <span class="o">-</span> <span class="n">dec</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mf">180.0</span>
 </span><span id="line-109">    <span class="n">phi</span> <span class="o">=</span> <span class="n">ra</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mf">180.0</span>
 </span><span id="line-110">    <span class="n">pix</span> <span class="o">=</span> <span class="n">hp</span><span class="o">.</span><span class="n">ang2pix</span><span class="p">(</span><span class="n">nside</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">phi</span><span class="p">)</span>
@@ -327,7 +327,7 @@
 <div class="viewcode-block" id="apply_random_rotation">
 <a class="viewcode-back" href="../../sp_validation.pseudo_cl.html#sp_validation.pseudo_cl.apply_random_rotation">[docs]</a>
 </span><span id="line-118"><span class="k">def</span><span class="w"> </span><span class="nf">apply_random_rotation</span><span class="p">(</span><span class="n">e1</span><span class="p">,</span> <span class="n">e2</span><span class="p">,</span> <span class="n">rng</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-</span><span id="line-119"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Apply a uniform random rotation to ellipticity components.</span>
+</span><span id="line-119"><span class="w">    </span><span class="sd">"""Apply a uniform random rotation to ellipticity components.</span>
 </span><span id="line-120">
 </span><span id="line-121"><span class="sd">    Parameters</span>
 </span><span id="line-122"><span class="sd">    ----------</span>
@@ -342,7 +342,7 @@
 </span><span id="line-131"><span class="sd">    -------</span>
 </span><span id="line-132"><span class="sd">    e1_out, e2_out : np.ndarray</span>
 </span><span id="line-133"><span class="sd">        Rotated ellipticity components.</span>
-</span><span id="line-134"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-134"><span class="sd">    """</span>
 </span><span id="line-135">    <span class="k">if</span> <span class="n">rng</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
 </span><span id="line-136">        <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">()</span>
 </span><span id="line-137">    <span class="n">rot_angle</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">e1</span><span class="p">))</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span>
@@ -366,7 +366,7 @@
 </span><span id="line-152">    <span class="n">n_ell_bins</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span>
 </span><span id="line-153">    <span class="n">power</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
 </span><span id="line-154"><span class="p">):</span>
-</span><span id="line-155"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Map-based pseudo-Cl for a complex shear map.</span>
+</span><span id="line-155"><span class="w">    </span><span class="sd">"""Map-based pseudo-Cl for a complex shear map.</span>
 </span><span id="line-156">
 </span><span id="line-157"><span class="sd">    Parameters</span>
 </span><span id="line-158"><span class="sd">    ----------</span>
@@ -393,7 +393,7 @@
 </span><span id="line-179"><span class="sd">        Decoupled EE/EB/BE/BB spectra, shape ``(4, n_bands)``.</span>
 </span><span id="line-180"><span class="sd">    wsp : nmt.NmtWorkspace</span>
 </span><span id="line-181"><span class="sd">        The coupling workspace (newly built or the one passed in).</span>
-</span><span id="line-182"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-182"><span class="sd">    """</span>
 </span><span id="line-183">    <span class="n">lmin</span><span class="p">,</span> <span class="n">lmax</span><span class="p">,</span> <span class="n">b_lmax</span> <span class="o">=</span> <span class="n">pseudo_cl_geometry</span><span class="p">(</span><span class="n">nside</span><span class="p">)</span>
 </span><span id="line-184">
 </span><span id="line-185">    <span class="n">b</span> <span class="o">=</span> <span class="n">make_namaster_bin</span><span class="p">(</span>
@@ -436,7 +436,7 @@
 </span><span id="line-219">    <span class="n">n_ell_bins</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span>
 </span><span id="line-220">    <span class="n">power</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
 </span><span id="line-221"><span class="p">):</span>
-</span><span id="line-222"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Catalog-based pseudo-Cl via NaMaster&#39;s ``NmtFieldCatalog``.</span>
+</span><span id="line-222"><span class="w">    </span><span class="sd">"""Catalog-based pseudo-Cl via NaMaster's ``NmtFieldCatalog``.</span>
 </span><span id="line-223">
 </span><span id="line-224"><span class="sd">    Parameters</span>
 </span><span id="line-225"><span class="sd">    ----------</span>
@@ -464,7 +464,7 @@
 </span><span id="line-247"><span class="sd">        Decoupled EE/EB/BE/BB spectra, shape ``(4, n_bands)``.</span>
 </span><span id="line-248"><span class="sd">    wsp : nmt.NmtWorkspace</span>
 </span><span id="line-249"><span class="sd">        The coupling workspace (newly built or the one passed in).</span>
-</span><span id="line-250"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-250"><span class="sd">    """</span>
 </span><span id="line-251">    <span class="n">lmin</span><span class="p">,</span> <span class="n">lmax</span><span class="p">,</span> <span class="n">b_lmax</span> <span class="o">=</span> <span class="n">pseudo_cl_geometry</span><span class="p">(</span><span class="n">nside</span><span class="p">)</span>
 </span><span id="line-252">
 </span><span id="line-253">    <span class="n">b</span> <span class="o">=</span> <span class="n">make_namaster_bin</span><span class="p">(</span>
@@ -481,9 +481,9 @@
 </span><span id="line-264">    <span class="n">factor</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span> <span class="k">if</span> <span class="n">pol_factor</span> <span class="k">else</span> <span class="mi">1</span>
 </span><span id="line-265">
 </span><span id="line-266">    <span class="n">f_all</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtFieldCatalog</span><span class="p">(</span>
-</span><span id="line-267">        <span class="n">positions</span><span class="o">=</span><span class="p">[</span><span class="n">catalog</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;ra_col&quot;</span><span class="p">]],</span> <span class="n">catalog</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;dec_col&quot;</span><span class="p">]]],</span>
-</span><span id="line-268">        <span class="n">weights</span><span class="o">=</span><span class="n">catalog</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;w_col&quot;</span><span class="p">]],</span>
-</span><span id="line-269">        <span class="n">field</span><span class="o">=</span><span class="p">[</span><span class="n">catalog</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;e1_col&quot;</span><span class="p">]],</span> <span class="n">factor</span> <span class="o">*</span> <span class="n">catalog</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;e2_col&quot;</span><span class="p">]]],</span>
+</span><span id="line-267">        <span class="n">positions</span><span class="o">=</span><span class="p">[</span><span class="n">catalog</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"ra_col"</span><span class="p">]],</span> <span class="n">catalog</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"dec_col"</span><span class="p">]]],</span>
+</span><span id="line-268">        <span class="n">weights</span><span class="o">=</span><span class="n">catalog</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"w_col"</span><span class="p">]],</span>
+</span><span id="line-269">        <span class="n">field</span><span class="o">=</span><span class="p">[</span><span class="n">catalog</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"e1_col"</span><span class="p">]],</span> <span class="n">factor</span> <span class="o">*</span> <span class="n">catalog</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"e2_col"</span><span class="p">]]],</span>
 </span><span id="line-270">        <span class="n">lmax</span><span class="o">=</span><span class="n">b_lmax</span><span class="p">,</span>
 </span><span id="line-271">        <span class="n">lmax_mask</span><span class="o">=</span><span class="n">b_lmax</span><span class="p">,</span>
 </span><span id="line-272">        <span class="n">spin</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
@@ -507,11 +507,11 @@
 <div class="viewcode-block" id="bandpower_window_from_workspace">
 <a class="viewcode-back" href="../../sp_validation.pseudo_cl.html#sp_validation.pseudo_cl.bandpower_window_from_workspace">[docs]</a>
 </span><span id="line-289"><span class="k">def</span><span class="w"> </span><span class="nf">bandpower_window_from_workspace</span><span class="p">(</span><span class="n">wsp</span><span class="p">):</span>
-</span><span id="line-290"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract the bandpower window matrix ``W`` for a spin-2×spin-2 workspace.</span>
+</span><span id="line-290"><span class="w">    </span><span class="sd">"""Extract the bandpower window matrix ``W`` for a spin-2×spin-2 workspace.</span>
 </span><span id="line-291">
-</span><span id="line-292"><span class="sd">    NaMaster&#39;s ``get_bandpower_windows()`` returns a four-index array</span>
+</span><span id="line-292"><span class="sd">    NaMaster's ``get_bandpower_windows()`` returns a four-index array</span>
 </span><span id="line-293"><span class="sd">    ``(n_cl_out, n_bpw, n_cl_in, n_ell)`` describing how each output bandpower</span>
-</span><span id="line-294"><span class="sd">    is built from the input multipoles across the EE/EB/BE/BB spectra. SACC&#39;s</span>
+</span><span id="line-294"><span class="sd">    is built from the input multipoles across the EE/EB/BE/BB spectra. SACC's</span>
 </span><span id="line-295"><span class="sd">    ``BandpowerWindow`` model (one window per bandpower, shared across the</span>
 </span><span id="line-296"><span class="sd">    stored spectra) needs the per-spectrum *decoupling* window, i.e. the</span>
 </span><span id="line-297"><span class="sd">    diagonal EE←EE block (equal to BB←BB and EB←EB, verified identical).</span>
@@ -524,7 +524,7 @@
 </span><span id="line-304"><span class="sd">    window_weights : np.ndarray</span>
 </span><span id="line-305"><span class="sd">        ``W`` of shape ``(n_ell, n_bpw)`` — one column per bandpower, the layout</span>
 </span><span id="line-306"><span class="sd">        :func:`sp_validation.sacc_io.add_pseudo_cl` expects.</span>
-</span><span id="line-307"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-307"><span class="sd">    """</span>
 </span><span id="line-308">    <span class="n">bpw</span> <span class="o">=</span> <span class="n">wsp</span><span class="o">.</span><span class="n">get_bandpower_windows</span><span class="p">()</span>  <span class="c1"># (n_cl_out, n_bpw, n_cl_in, n_ell)</span>
 </span><span id="line-309">    <span class="n">diagonal</span> <span class="o">=</span> <span class="n">bpw</span><span class="p">[</span><span class="n">_NMT_EE</span><span class="p">,</span> <span class="p">:,</span> <span class="n">_NMT_EE</span><span class="p">,</span> <span class="p">:]</span>  <span class="c1"># (n_bpw, n_ell)</span>
 </span><span id="line-310">    <span class="n">window_ells</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">diagonal</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>

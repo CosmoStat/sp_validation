@@ -199,11 +199,11 @@
     <div id="content" role="main">
       <h1>Source code for sp_validation.cosmo_val.pure_eb</h1><div class="highlight"><pre>
 <span></span><code><span id="line-1"><span class="c1"># %%</span>
-</span><span id="line-2"><span class="sd">&quot;&quot;&quot;Pure E/B-mode decomposition diagnostic.</span>
+</span><span id="line-2"><span class="sd">"""Pure E/B-mode decomposition diagnostic.</span>
 </span><span id="line-3">
 </span><span id="line-4"><span class="sd">Provides :class:`PureEBMixin`, which computes and plots the pure E/B-mode</span>
 </span><span id="line-5"><span class="sd">correlation functions (xi+/xi- pure-mode decomposition) for catalog versions.</span>
-</span><span id="line-6"><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="line-6"><span class="sd">"""</span>
 </span><span id="line-7">
 </span><span id="line-8"><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 </span><span id="line-9">
@@ -233,14 +233,14 @@
 </span><span id="line-29">        <span class="n">max_sep_int</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
 </span><span id="line-30">        <span class="n">nbins_int</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
 </span><span id="line-31">        <span class="n">npatch</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span>
-</span><span id="line-32">        <span class="n">var_method</span><span class="o">=</span><span class="s2">&quot;jackknife&quot;</span><span class="p">,</span>
+</span><span id="line-32">        <span class="n">var_method</span><span class="o">=</span><span class="s2">"jackknife"</span><span class="p">,</span>
 </span><span id="line-33">        <span class="n">cov_path_int</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
 </span><span id="line-34">        <span class="n">cosmo_cov</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
 </span><span id="line-35">        <span class="n">n_samples</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
 </span><span id="line-36">    <span class="p">):</span>
-</span><span id="line-37"><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="line-37"><span class="w">        </span><span class="sd">"""</span>
 </span><span id="line-38"><span class="sd">        Calculate the pure E/B modes for the given catalog version.</span>
-</span><span id="line-39"><span class="sd">        The class instance&#39;s treecorr_config will be used for the &quot;reporting&quot; binning</span>
+</span><span id="line-39"><span class="sd">        The class instance's treecorr_config will be used for the "reporting" binning</span>
 </span><span id="line-40"><span class="sd">        by default, but any kwargs passed to this function will overwrite the defaults.</span>
 </span><span id="line-41">
 </span><span id="line-42"><span class="sd">        Parameters</span>
@@ -266,7 +266,7 @@
 </span><span id="line-62"><span class="sd">            Number of patches for the jackknife or bootstrap resampling. Defaults to</span>
 </span><span id="line-63"><span class="sd">            the value in self.npatch if not provided.</span>
 </span><span id="line-64"><span class="sd">        var_method : str, optional</span>
-</span><span id="line-65"><span class="sd">            Variance estimation method. Defaults to &quot;jackknife&quot;.</span>
+</span><span id="line-65"><span class="sd">            Variance estimation method. Defaults to "jackknife".</span>
 </span><span id="line-66"><span class="sd">        cov_path_int : str, optional</span>
 </span><span id="line-67"><span class="sd">            Path to the covariance matrix for the reporting binning. Replaces the</span>
 </span><span id="line-68"><span class="sd">            treecorr covariance matrix if provided, meaning that var_method has no</span>
@@ -285,29 +285,29 @@
 </span><span id="line-81"><span class="sd">        dict</span>
 </span><span id="line-82"><span class="sd">            A dictionary containing the following keys:</span>
 </span><span id="line-83">
-</span><span id="line-84"><span class="sd">            - &quot;xip_E&quot;: Pure E-mode correlation function for xi+.</span>
-</span><span id="line-85"><span class="sd">            - &quot;xim_E&quot;: Pure E-mode correlation function for xi-.</span>
-</span><span id="line-86"><span class="sd">            - &quot;xip_B&quot;: Pure B-mode correlation function for xi+.</span>
-</span><span id="line-87"><span class="sd">            - &quot;xim_B&quot;: Pure B-mode correlation function for xi-.</span>
-</span><span id="line-88"><span class="sd">            - &quot;xip_amb&quot;: Ambiguity mode for xi+.</span>
-</span><span id="line-89"><span class="sd">            - &quot;xim_amb&quot;: Ambiguity mode for xi-.</span>
-</span><span id="line-90"><span class="sd">            - &quot;cov&quot;: Covariance matrix for the pure E/B modes.</span>
-</span><span id="line-91"><span class="sd">            - &quot;theta&quot;, &quot;left_edges&quot;, &quot;right_edges&quot;: Reporting-grid bin centres</span>
+</span><span id="line-84"><span class="sd">            - "xip_E": Pure E-mode correlation function for xi+.</span>
+</span><span id="line-85"><span class="sd">            - "xim_E": Pure E-mode correlation function for xi-.</span>
+</span><span id="line-86"><span class="sd">            - "xip_B": Pure B-mode correlation function for xi+.</span>
+</span><span id="line-87"><span class="sd">            - "xim_B": Pure B-mode correlation function for xi-.</span>
+</span><span id="line-88"><span class="sd">            - "xip_amb": Ambiguity mode for xi+.</span>
+</span><span id="line-89"><span class="sd">            - "xim_amb": Ambiguity mode for xi-.</span>
+</span><span id="line-90"><span class="sd">            - "cov": Covariance matrix for the pure E/B modes.</span>
+</span><span id="line-91"><span class="sd">            - "theta", "left_edges", "right_edges": Reporting-grid bin centres</span>
 </span><span id="line-92"><span class="sd">              and edges.</span>
-</span><span id="line-93"><span class="sd">            - &quot;xip&quot;, &quot;xim&quot;, &quot;var_xip&quot;, &quot;var_xim&quot;: Reporting-grid xi+/xi- and</span>
+</span><span id="line-93"><span class="sd">            - "xip", "xim", "var_xip", "var_xim": Reporting-grid xi+/xi- and</span>
 </span><span id="line-94"><span class="sd">              their variances.</span>
-</span><span id="line-95"><span class="sd">            - &quot;theta_int&quot;, &quot;xip_int&quot;, &quot;xim_int&quot;: Integration-grid xi+/xi-.</span>
-</span><span id="line-96"><span class="sd">            - &quot;n_eff&quot;: Realisation count behind &quot;cov&quot; (jackknife patches or</span>
+</span><span id="line-95"><span class="sd">            - "theta_int", "xip_int", "xim_int": Integration-grid xi+/xi-.</span>
+</span><span id="line-96"><span class="sd">            - "n_eff": Realisation count behind "cov" (jackknife patches or</span>
 </span><span id="line-97"><span class="sd">              MC draws), which sets the Hartlap debiasing.</span>
-</span><span id="line-98"><span class="sd">            - &quot;eb_samples&quot;: (only when using semi-analytical covariance) Semi-analytic</span>
+</span><span id="line-98"><span class="sd">            - "eb_samples": (only when using semi-analytical covariance) Semi-analytic</span>
 </span><span id="line-99"><span class="sd">              EB samples used for covariance calculation. Shape: (n_samples, 6*nbins)</span>
 </span><span id="line-100">
 </span><span id="line-101"><span class="sd">        Notes</span>
 </span><span id="line-102"><span class="sd">        -----</span>
 </span><span id="line-103"><span class="sd">        - A shared patch file is used for the reporting and integration binning,</span>
 </span><span id="line-104"><span class="sd">          and is created if it does not exist.</span>
-</span><span id="line-105"><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="line-106">        <span class="bp">self</span><span class="o">.</span><span class="n">print_start</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Computing </span><span class="si">{</span><span class="n">version</span><span class="si">}</span><span class="s2"> pure E/B&quot;</span><span class="p">)</span>
+</span><span id="line-105"><span class="sd">        """</span>
+</span><span id="line-106">        <span class="bp">self</span><span class="o">.</span><span class="n">print_start</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Computing </span><span class="si">{</span><span class="n">version</span><span class="si">}</span><span class="s2"> pure E/B"</span><span class="p">)</span>
 </span><span id="line-107">
 </span><span id="line-108">        <span class="c1"># Set up parameters with defaults</span>
 </span><span id="line-109">        <span class="n">npatch</span> <span class="o">=</span> <span class="n">npatch</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">npatch</span>
@@ -356,14 +356,14 @@
 </span><span id="line-149">        <span class="n">max_sep_int</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
 </span><span id="line-150">        <span class="n">nbins_int</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
 </span><span id="line-151">        <span class="n">npatch</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-</span><span id="line-152">        <span class="n">var_method</span><span class="o">=</span><span class="s2">&quot;jackknife&quot;</span><span class="p">,</span>
+</span><span id="line-152">        <span class="n">var_method</span><span class="o">=</span><span class="s2">"jackknife"</span><span class="p">,</span>
 </span><span id="line-153">        <span class="n">cov_path_int</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
 </span><span id="line-154">        <span class="n">cosmo_cov</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
 </span><span id="line-155">        <span class="n">n_samples</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
 </span><span id="line-156">        <span class="n">results</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
 </span><span id="line-157">        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
 </span><span id="line-158">    <span class="p">):</span>
-</span><span id="line-159"><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="line-159"><span class="w">        </span><span class="sd">"""</span>
 </span><span id="line-160"><span class="sd">        Generate comprehensive pure E/B mode analysis plots.</span>
 </span><span id="line-161">
 </span><span id="line-162"><span class="sd">        Creates four types of plots for each version:</span>
@@ -390,8 +390,8 @@
 </span><span id="line-183"><span class="sd">        npatch : int, optional</span>
 </span><span id="line-184"><span class="sd">            Number of patches for jackknife covariance. Uses self.npatch if None.</span>
 </span><span id="line-185"><span class="sd">        var_method : str</span>
-</span><span id="line-186"><span class="sd">            Variance method (&quot;jackknife&quot; or &quot;semi-analytic&quot;).</span>
-</span><span id="line-187"><span class="sd">            Automatically set to &quot;semi-analytic&quot; when cov_path_int is provided.</span>
+</span><span id="line-186"><span class="sd">            Variance method ("jackknife" or "semi-analytic").</span>
+</span><span id="line-187"><span class="sd">            Automatically set to "semi-analytic" when cov_path_int is provided.</span>
 </span><span id="line-188"><span class="sd">        cov_path_int : str, optional</span>
 </span><span id="line-189"><span class="sd">            Path to integration covariance matrix for semi-analytical calculation</span>
 </span><span id="line-190"><span class="sd">        cosmo_cov : pyccl.Cosmology, optional</span>
@@ -416,20 +416,20 @@
 </span><span id="line-209"><span class="sd">          parameters</span>
 </span><span id="line-210"><span class="sd">        - Delegates individual plot generation to specialized functions in</span>
 </span><span id="line-211"><span class="sd">          b_modes module</span>
-</span><span id="line-212"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-212"><span class="sd">        """</span>
 </span><span id="line-213">        <span class="c1"># Use instance defaults for unspecified parameters</span>
 </span><span id="line-214">        <span class="n">versions</span> <span class="o">=</span> <span class="n">versions</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">versions</span>
-</span><span id="line-215">        <span class="n">output_dir</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="s2">&quot;paths&quot;</span><span class="p">][</span><span class="s2">&quot;output&quot;</span><span class="p">]</span>
+</span><span id="line-215">        <span class="n">output_dir</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="s2">"paths"</span><span class="p">][</span><span class="s2">"output"</span><span class="p">]</span>
 </span><span id="line-216">        <span class="n">npatch</span> <span class="o">=</span> <span class="n">npatch</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">npatch</span>
 </span><span id="line-217">
 </span><span id="line-218">        <span class="c1"># Override var_method to analytic when cov_path_int is provided</span>
 </span><span id="line-219">        <span class="k">if</span> <span class="n">cov_path_int</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-220">            <span class="n">var_method</span> <span class="o">=</span> <span class="s2">&quot;semi-analytic&quot;</span>
+</span><span id="line-220">            <span class="n">var_method</span> <span class="o">=</span> <span class="s2">"semi-analytic"</span>
 </span><span id="line-221">
 </span><span id="line-222">        <span class="c1"># Use treecorr_config defaults for reporting scale binning</span>
-</span><span id="line-223">        <span class="n">min_sep</span> <span class="o">=</span> <span class="n">min_sep</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">treecorr_config</span><span class="p">[</span><span class="s2">&quot;min_sep&quot;</span><span class="p">]</span>
-</span><span id="line-224">        <span class="n">max_sep</span> <span class="o">=</span> <span class="n">max_sep</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">treecorr_config</span><span class="p">[</span><span class="s2">&quot;max_sep&quot;</span><span class="p">]</span>
-</span><span id="line-225">        <span class="n">nbins</span> <span class="o">=</span> <span class="n">nbins</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">treecorr_config</span><span class="p">[</span><span class="s2">&quot;nbins&quot;</span><span class="p">]</span>
+</span><span id="line-223">        <span class="n">min_sep</span> <span class="o">=</span> <span class="n">min_sep</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">treecorr_config</span><span class="p">[</span><span class="s2">"min_sep"</span><span class="p">]</span>
+</span><span id="line-224">        <span class="n">max_sep</span> <span class="o">=</span> <span class="n">max_sep</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">treecorr_config</span><span class="p">[</span><span class="s2">"max_sep"</span><span class="p">]</span>
+</span><span id="line-225">        <span class="n">nbins</span> <span class="o">=</span> <span class="n">nbins</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">treecorr_config</span><span class="p">[</span><span class="s2">"nbins"</span><span class="p">]</span>
 </span><span id="line-226">
 </span><span id="line-227">        <span class="c1"># Handle results parameter - convert to list format for consistent processing</span>
 </span><span id="line-228">        <span class="k">if</span> <span class="n">results</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -437,30 +437,30 @@
 </span><span id="line-230">                <span class="c1"># Single results dict provided - should match single version</span>
 </span><span id="line-231">                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">versions</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
 </span><span id="line-232">                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-</span><span id="line-233">                        <span class="s2">&quot;Single results dict provided but multiple versions specified. &quot;</span>
-</span><span id="line-234">                        <span class="s2">&quot;Provide results list matching versions length.&quot;</span>
+</span><span id="line-233">                        <span class="s2">"Single results dict provided but multiple versions specified. "</span>
+</span><span id="line-234">                        <span class="s2">"Provide results list matching versions length."</span>
 </span><span id="line-235">                    <span class="p">)</span>
 </span><span id="line-236">                <span class="n">results_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">results</span><span class="p">]</span>
 </span><span id="line-237">            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">results</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
 </span><span id="line-238">                <span class="c1"># List of results provided</span>
 </span><span id="line-239">                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">versions</span><span class="p">):</span>
 </span><span id="line-240">                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-</span><span id="line-241">                        <span class="sa">f</span><span class="s2">&quot;Results list length (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">)</span><span class="si">}</span><span class="s2">) does not match versions &quot;</span>
-</span><span id="line-242">                        <span class="sa">f</span><span class="s2">&quot;length (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">versions</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span>
+</span><span id="line-241">                        <span class="sa">f</span><span class="s2">"Results list length (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">)</span><span class="si">}</span><span class="s2">) does not match versions "</span>
+</span><span id="line-242">                        <span class="sa">f</span><span class="s2">"length (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">versions</span><span class="p">)</span><span class="si">}</span><span class="s2">)"</span>
 </span><span id="line-243">                    <span class="p">)</span>
 </span><span id="line-244">                <span class="n">results_list</span> <span class="o">=</span> <span class="n">results</span>
 </span><span id="line-245">            <span class="k">else</span><span class="p">:</span>
-</span><span id="line-246">                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Results must be dict, list, or None&quot;</span><span class="p">)</span>
+</span><span id="line-246">                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">"Results must be dict, list, or None"</span><span class="p">)</span>
 </span><span id="line-247">        <span class="k">else</span><span class="p">:</span>
 </span><span id="line-248">            <span class="n">results_list</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">versions</span><span class="p">)</span>
 </span><span id="line-249">
 </span><span id="line-250">        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">version</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">versions</span><span class="p">):</span>
 </span><span id="line-251">            <span class="c1"># Generate standardized output filename stub</span>
 </span><span id="line-252">            <span class="n">out_stub</span> <span class="o">=</span> <span class="p">(</span>
-</span><span id="line-253">                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">output_dir</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">version</span><span class="si">}</span><span class="s2">_eb_minsep=</span><span class="si">{</span><span class="n">min_sep</span><span class="si">}</span><span class="s2">_&quot;</span>
-</span><span id="line-254">                <span class="sa">f</span><span class="s2">&quot;maxsep=</span><span class="si">{</span><span class="n">max_sep</span><span class="si">}</span><span class="s2">_nbins=</span><span class="si">{</span><span class="n">nbins</span><span class="si">}</span><span class="s2">_minsepint=</span><span class="si">{</span><span class="n">min_sep_int</span><span class="si">}</span><span class="s2">_&quot;</span>
-</span><span id="line-255">                <span class="sa">f</span><span class="s2">&quot;maxsepint=</span><span class="si">{</span><span class="n">max_sep_int</span><span class="si">}</span><span class="s2">_nbinsint=</span><span class="si">{</span><span class="n">nbins_int</span><span class="si">}</span><span class="s2">_npatch=</span><span class="si">{</span><span class="n">npatch</span><span class="si">}</span><span class="s2">_&quot;</span>
-</span><span id="line-256">                <span class="sa">f</span><span class="s2">&quot;varmethod=</span><span class="si">{</span><span class="n">var_method</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="line-253">                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">output_dir</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">version</span><span class="si">}</span><span class="s2">_eb_minsep=</span><span class="si">{</span><span class="n">min_sep</span><span class="si">}</span><span class="s2">_"</span>
+</span><span id="line-254">                <span class="sa">f</span><span class="s2">"maxsep=</span><span class="si">{</span><span class="n">max_sep</span><span class="si">}</span><span class="s2">_nbins=</span><span class="si">{</span><span class="n">nbins</span><span class="si">}</span><span class="s2">_minsepint=</span><span class="si">{</span><span class="n">min_sep_int</span><span class="si">}</span><span class="s2">_"</span>
+</span><span id="line-255">                <span class="sa">f</span><span class="s2">"maxsepint=</span><span class="si">{</span><span class="n">max_sep_int</span><span class="si">}</span><span class="s2">_nbinsint=</span><span class="si">{</span><span class="n">nbins_int</span><span class="si">}</span><span class="s2">_npatch=</span><span class="si">{</span><span class="n">npatch</span><span class="si">}</span><span class="s2">_"</span>
+</span><span id="line-256">                <span class="sa">f</span><span class="s2">"varmethod=</span><span class="si">{</span><span class="n">var_method</span><span class="si">}</span><span class="s2">"</span>
 </span><span id="line-257">            <span class="p">)</span>
 </span><span id="line-258">
 </span><span id="line-259">            <span class="c1"># Get or calculate results for this version</span>
@@ -485,14 +485,14 @@
 </span><span id="line-278">            <span class="c1"># Integration vs Reporting comparison plot</span>
 </span><span id="line-279">            <span class="n">plot_integration_vs_reporting</span><span class="p">(</span>
 </span><span id="line-280">                <span class="n">version_results</span><span class="p">,</span>
-</span><span id="line-281">                <span class="n">out_stub</span> <span class="o">+</span> <span class="s2">&quot;_integration_vs_reporting.png&quot;</span><span class="p">,</span>
+</span><span id="line-281">                <span class="n">out_stub</span> <span class="o">+</span> <span class="s2">"_integration_vs_reporting.png"</span><span class="p">,</span>
 </span><span id="line-282">                <span class="n">version</span><span class="p">,</span>
 </span><span id="line-283">            <span class="p">)</span>
 </span><span id="line-284">
 </span><span id="line-285">            <span class="c1"># E/B/Ambiguous correlation functions plot</span>
 </span><span id="line-286">            <span class="n">plot_pure_eb_correlations</span><span class="p">(</span>
 </span><span id="line-287">                <span class="n">version_results</span><span class="p">,</span>
-</span><span id="line-288">                <span class="n">out_stub</span> <span class="o">+</span> <span class="s2">&quot;_xis.png&quot;</span><span class="p">,</span>
+</span><span id="line-288">                <span class="n">out_stub</span> <span class="o">+</span> <span class="s2">"_xis.png"</span><span class="p">,</span>
 </span><span id="line-289">                <span class="n">version</span><span class="p">,</span>
 </span><span id="line-290">                <span class="n">fiducial_xip_scale_cut</span><span class="o">=</span><span class="n">fiducial_xip_scale_cut</span><span class="p">,</span>
 </span><span id="line-291">                <span class="n">fiducial_xim_scale_cut</span><span class="o">=</span><span class="n">fiducial_xim_scale_cut</span><span class="p">,</span>
@@ -502,21 +502,21 @@
 </span><span id="line-295">            <span class="n">plot_pte_2d_heatmaps</span><span class="p">(</span>
 </span><span id="line-296">                <span class="n">version_results</span><span class="p">,</span>
 </span><span id="line-297">                <span class="n">version</span><span class="p">,</span>
-</span><span id="line-298">                <span class="n">out_stub</span> <span class="o">+</span> <span class="s2">&quot;_ptes.png&quot;</span><span class="p">,</span>
+</span><span id="line-298">                <span class="n">out_stub</span> <span class="o">+</span> <span class="s2">"_ptes.png"</span><span class="p">,</span>
 </span><span id="line-299">                <span class="n">fiducial_xip_scale_cut</span><span class="o">=</span><span class="n">fiducial_xip_scale_cut</span><span class="p">,</span>
 </span><span id="line-300">                <span class="n">fiducial_xim_scale_cut</span><span class="o">=</span><span class="n">fiducial_xim_scale_cut</span><span class="p">,</span>
 </span><span id="line-301">            <span class="p">)</span>
 </span><span id="line-302">
 </span><span id="line-303">            <span class="c1"># Covariance matrix plot</span>
 </span><span id="line-304">            <span class="n">plot_eb_covariance_matrix</span><span class="p">(</span>
-</span><span id="line-305">                <span class="n">version_results</span><span class="p">[</span><span class="s2">&quot;cov&quot;</span><span class="p">],</span>
+</span><span id="line-305">                <span class="n">version_results</span><span class="p">[</span><span class="s2">"cov"</span><span class="p">],</span>
 </span><span id="line-306">                <span class="n">var_method</span><span class="p">,</span>
-</span><span id="line-307">                <span class="n">out_stub</span> <span class="o">+</span> <span class="s2">&quot;_covariance.png&quot;</span><span class="p">,</span>
+</span><span id="line-307">                <span class="n">out_stub</span> <span class="o">+</span> <span class="s2">"_covariance.png"</span><span class="p">,</span>
 </span><span id="line-308">                <span class="n">version</span><span class="p">,</span>
 </span><span id="line-309">            <span class="p">)</span>
 </span><span id="line-310">
 </span><span id="line-311">            <span class="c1"># Save data products and store on instance</span>
-</span><span id="line-312">            <span class="n">save_pure_eb_results</span><span class="p">(</span><span class="n">version_results</span><span class="p">,</span> <span class="n">out_stub</span> <span class="o">+</span> <span class="s2">&quot;_data.npz&quot;</span><span class="p">)</span>
+</span><span id="line-312">            <span class="n">save_pure_eb_results</span><span class="p">(</span><span class="n">version_results</span><span class="p">,</span> <span class="n">out_stub</span> <span class="o">+</span> <span class="s2">"_data.npz"</span><span class="p">)</span>
 </span><span id="line-313">            <span class="bp">self</span><span class="o">.</span><span class="n">_pure_eb_results</span><span class="p">[</span><span class="n">version</span><span class="p">]</span> <span class="o">=</span> <span class="n">version_results</span></div>
 </div>
 

@@ -198,13 +198,13 @@
 
     <div id="content" role="main">
       <h1>Source code for sp_validation.format</h1><div class="highlight"><pre>
-<span></span><code><span id="line-1"><span class="sd">&quot;&quot;&quot;FORMAT.</span>
+<span></span><code><span id="line-1"><span class="sd">"""FORMAT.</span>
 </span><span id="line-2">
 </span><span id="line-3"><span class="sd">:Description: Human-readable formatting of large numbers.</span>
 </span><span id="line-4">
 </span><span id="line-5"><span class="sd">:Author: Martin Kilbinger &lt;martin.kilblinger@cea.fr&gt;</span>
 </span><span id="line-6">
-</span><span id="line-7"><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="line-7"><span class="sd">"""</span>
 </span><span id="line-8">
 </span><span id="line-9"><span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
 </span><span id="line-10">
@@ -212,7 +212,7 @@
 <div class="viewcode-block" id="millify">
 <a class="viewcode-back" href="../../sp_validation.format.html#sp_validation.format.millify">[docs]</a>
 </span><span id="line-12"><span class="k">def</span><span class="w"> </span><span class="nf">millify</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
-</span><span id="line-13"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Millify.</span>
+</span><span id="line-13"><span class="w">    </span><span class="sd">"""Millify.</span>
 </span><span id="line-14">
 </span><span id="line-15"><span class="sd">    Return human-readible names of large numbers.</span>
 </span><span id="line-16">
@@ -226,8 +226,8 @@
 </span><span id="line-24"><span class="sd">    str</span>
 </span><span id="line-25"><span class="sd">        output name</span>
 </span><span id="line-26">
-</span><span id="line-27"><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="line-28">    <span class="n">millnames</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="s2">&quot; Thousand&quot;</span><span class="p">,</span> <span class="s2">&quot; Million&quot;</span><span class="p">,</span> <span class="s2">&quot; Billion&quot;</span><span class="p">,</span> <span class="s2">&quot; Trillion&quot;</span><span class="p">]</span>
+</span><span id="line-27"><span class="sd">    """</span>
+</span><span id="line-28">    <span class="n">millnames</span> <span class="o">=</span> <span class="p">[</span><span class="s2">""</span><span class="p">,</span> <span class="s2">" Thousand"</span><span class="p">,</span> <span class="s2">" Million"</span><span class="p">,</span> <span class="s2">" Billion"</span><span class="p">,</span> <span class="s2">" Trillion"</span><span class="p">]</span>
 </span><span id="line-29">
 </span><span id="line-30">    <span class="n">n</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
 </span><span id="line-31">    <span class="n">millidx</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span>
@@ -237,7 +237,7 @@
 </span><span id="line-35">        <span class="p">),</span>
 </span><span id="line-36">    <span class="p">)</span>
 </span><span id="line-37">
-</span><span id="line-38">    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">n</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">10</span><span class="w"> </span><span class="o">**</span><span class="w"> </span><span class="p">(</span><span class="mi">3</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">millidx</span><span class="p">)</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}{</span><span class="n">millnames</span><span class="p">[</span><span class="n">millidx</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span></div>
+</span><span id="line-38">    <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">n</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">10</span><span class="w"> </span><span class="o">**</span><span class="w"> </span><span class="p">(</span><span class="mi">3</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">millidx</span><span class="p">)</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}{</span><span class="n">millnames</span><span class="p">[</span><span class="n">millidx</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span></div>
 
 </span><span id="line-39">
 </span><span id="line-40">
@@ -245,7 +245,7 @@
 <a class="viewcode-back" href="../../sp_validation.format.html#sp_validation.format.print_millified">[docs]</a>
 </span><span id="line-41"><span class="k">def</span><span class="w"> </span><span class="nf">print_millified</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
 </span><span id="line-42">
-</span><span id="line-43">    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="n">millify</span><span class="p">(</span><span class="n">n</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+</span><span id="line-43">    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="n">millify</span><span class="p">(</span><span class="n">n</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span></div>
 
 </span></code></pre></div>
     </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">

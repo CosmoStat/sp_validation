@@ -198,37 +198,37 @@
 
     <div id="content" role="main">
       <h1>Source code for sp_validation.masks</h1><div class="highlight"><pre>
-<span></span><code><span id="line-1"><span class="sd">&quot;&quot;&quot;SPATIAL MASKS.</span>
+<span></span><code><span id="line-1"><span class="sd">"""SPATIAL MASKS.</span>
 </span><span id="line-2">
 </span><span id="line-3"><span class="sd">This module implements the healsparse-backed ``Mask`` class and the</span>
 </span><span id="line-4"><span class="sd">spatial-masking helpers (config-driven mask construction, mask statistics,</span>
 </span><span id="line-5"><span class="sd">correlation/confusion matrices) used when building catalogues.</span>
 </span><span id="line-6">
 </span><span id="line-7"><span class="sd">:Author: Martin Kilbinger</span>
-</span><span id="line-8"><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="line-8"><span class="sd">"""</span>
 </span><span id="line-9">
 </span><span id="line-10"><span class="kn">import</span><span class="w"> </span><span class="nn">healsparse</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">hsp</span>
 </span><span id="line-11"><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 </span><span id="line-12"><span class="kn">from</span><span class="w"> </span><span class="nn">astropy.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">fits</span>
 </span><span id="line-13"><span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">stats</span>
 </span><span id="line-14">
-</span><span id="line-15"><span class="n">_KIND_ALIASES</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;smaller_equal&quot;</span><span class="p">:</span> <span class="s2">&quot;less_equal&quot;</span><span class="p">}</span>
+</span><span id="line-15"><span class="n">_KIND_ALIASES</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"smaller_equal"</span><span class="p">:</span> <span class="s2">"less_equal"</span><span class="p">}</span>
 </span><span id="line-16">
 </span><span id="line-17"><span class="n">_KIND_OPS</span> <span class="o">=</span> <span class="p">{</span>
-</span><span id="line-18">    <span class="s2">&quot;equal&quot;</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">a</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="n">a</span> <span class="o">==</span> <span class="n">v</span><span class="p">,</span>
-</span><span id="line-19">    <span class="s2">&quot;not_equal&quot;</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">a</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="n">a</span> <span class="o">!=</span> <span class="n">v</span><span class="p">,</span>
-</span><span id="line-20">    <span class="s2">&quot;greater&quot;</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">a</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="n">a</span> <span class="o">&gt;</span> <span class="n">v</span><span class="p">,</span>
-</span><span id="line-21">    <span class="s2">&quot;greater_equal&quot;</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">a</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="n">a</span> <span class="o">&gt;=</span> <span class="n">v</span><span class="p">,</span>
-</span><span id="line-22">    <span class="s2">&quot;less&quot;</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">a</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="n">a</span> <span class="o">&lt;</span> <span class="n">v</span><span class="p">,</span>
-</span><span id="line-23">    <span class="s2">&quot;less_equal&quot;</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">a</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="n">a</span> <span class="o">&lt;=</span> <span class="n">v</span><span class="p">,</span>
-</span><span id="line-24">    <span class="s2">&quot;range&quot;</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">a</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="p">(</span><span class="n">a</span> <span class="o">&gt;=</span> <span class="n">v</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">a</span> <span class="o">&lt;=</span> <span class="n">v</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span>
+</span><span id="line-18">    <span class="s2">"equal"</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">a</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="n">a</span> <span class="o">==</span> <span class="n">v</span><span class="p">,</span>
+</span><span id="line-19">    <span class="s2">"not_equal"</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">a</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="n">a</span> <span class="o">!=</span> <span class="n">v</span><span class="p">,</span>
+</span><span id="line-20">    <span class="s2">"greater"</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">a</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="n">a</span> <span class="o">&gt;</span> <span class="n">v</span><span class="p">,</span>
+</span><span id="line-21">    <span class="s2">"greater_equal"</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">a</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="n">a</span> <span class="o">&gt;=</span> <span class="n">v</span><span class="p">,</span>
+</span><span id="line-22">    <span class="s2">"less"</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">a</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="n">a</span> <span class="o">&lt;</span> <span class="n">v</span><span class="p">,</span>
+</span><span id="line-23">    <span class="s2">"less_equal"</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">a</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="n">a</span> <span class="o">&lt;=</span> <span class="n">v</span><span class="p">,</span>
+</span><span id="line-24">    <span class="s2">"range"</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">a</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="p">(</span><span class="n">a</span> <span class="o">&gt;=</span> <span class="n">v</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">a</span> <span class="o">&lt;=</span> <span class="n">v</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span>
 </span><span id="line-25"><span class="p">}</span>
 </span><span id="line-26">
 </span><span id="line-27">
 <div class="viewcode-block" id="apply_condition">
 <a class="viewcode-back" href="../../sp_validation.masks.html#sp_validation.catalog_builders.apply_condition">[docs]</a>
 </span><span id="line-28"><span class="k">def</span><span class="w"> </span><span class="nf">apply_condition</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">kind</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
-</span><span id="line-29"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Apply Condition.</span>
+</span><span id="line-29"><span class="w">    </span><span class="sd">"""Apply Condition.</span>
 </span><span id="line-30">
 </span><span id="line-31"><span class="sd">    Evaluate one mask condition (``kind``/``value``, as specified in mask</span>
 </span><span id="line-32"><span class="sd">    config YAML files) against an array and return a boolean mask. Single</span>
@@ -240,21 +240,21 @@
 </span><span id="line-38"><span class="sd">    array : numpy.ndarray</span>
 </span><span id="line-39"><span class="sd">        input data</span>
 </span><span id="line-40"><span class="sd">    kind : str</span>
-</span><span id="line-41"><span class="sd">        operation type, one of &quot;equal&quot;, &quot;not_equal&quot;, &quot;greater&quot;,</span>
-</span><span id="line-42"><span class="sd">        &quot;greater_equal&quot;, &quot;less&quot;, &quot;less_equal&quot; (alias &quot;smaller_equal&quot;),</span>
-</span><span id="line-43"><span class="sd">        &quot;range&quot;</span>
+</span><span id="line-41"><span class="sd">        operation type, one of "equal", "not_equal", "greater",</span>
+</span><span id="line-42"><span class="sd">        "greater_equal", "less", "less_equal" (alias "smaller_equal"),</span>
+</span><span id="line-43"><span class="sd">        "range"</span>
 </span><span id="line-44"><span class="sd">    value : float or list</span>
-</span><span id="line-45"><span class="sd">        value(s) to be used in mask operation; two-element list for &quot;range&quot;</span>
+</span><span id="line-45"><span class="sd">        value(s) to be used in mask operation; two-element list for "range"</span>
 </span><span id="line-46">
 </span><span id="line-47"><span class="sd">    Returns</span>
 </span><span id="line-48"><span class="sd">    -------</span>
 </span><span id="line-49"><span class="sd">    numpy.ndarray</span>
 </span><span id="line-50"><span class="sd">        boolean mask</span>
 </span><span id="line-51">
-</span><span id="line-52"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-52"><span class="sd">    """</span>
 </span><span id="line-53">    <span class="n">kind</span> <span class="o">=</span> <span class="n">_KIND_ALIASES</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">kind</span><span class="p">,</span> <span class="n">kind</span><span class="p">)</span>
 </span><span id="line-54">    <span class="k">if</span> <span class="n">kind</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_KIND_OPS</span><span class="p">:</span>
-</span><span id="line-55">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown mask condition kind: </span><span class="si">{</span><span class="n">kind</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="line-55">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Unknown mask condition kind: </span><span class="si">{</span><span class="n">kind</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
 </span><span id="line-56">    <span class="k">return</span> <span class="n">_KIND_OPS</span><span class="p">[</span><span class="n">kind</span><span class="p">](</span><span class="n">array</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span></div>
 
 </span><span id="line-57">
@@ -286,30 +286,30 @@
 </span><span id="line-78">
 </span><span id="line-79">    <span class="n">result</span> <span class="o">=</span> <span class="p">{}</span>
 </span><span id="line-80">
-</span><span id="line-81">    <span class="n">result</span><span class="p">[</span><span class="s2">&quot;true_pos&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">prediction</span> <span class="o">&amp;</span> <span class="n">observation</span><span class="p">)</span>
-</span><span id="line-82">    <span class="n">result</span><span class="p">[</span><span class="s2">&quot;true_neg&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">logical_not</span><span class="p">(</span><span class="n">prediction</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_not</span><span class="p">(</span><span class="n">observation</span><span class="p">))</span>
-</span><span id="line-83">    <span class="n">result</span><span class="p">[</span><span class="s2">&quot;false_neg&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">prediction</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_not</span><span class="p">(</span><span class="n">observation</span><span class="p">))</span>
-</span><span id="line-84">    <span class="n">result</span><span class="p">[</span><span class="s2">&quot;false_pos&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">logical_not</span><span class="p">(</span><span class="n">prediction</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">observation</span><span class="p">)</span>
-</span><span id="line-85">    <span class="n">result</span><span class="p">[</span><span class="s2">&quot;false_pos_rate&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;false_pos&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span>
-</span><span id="line-86">        <span class="n">result</span><span class="p">[</span><span class="s2">&quot;false_pos&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;true_neg&quot;</span><span class="p">]</span>
+</span><span id="line-81">    <span class="n">result</span><span class="p">[</span><span class="s2">"true_pos"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">prediction</span> <span class="o">&amp;</span> <span class="n">observation</span><span class="p">)</span>
+</span><span id="line-82">    <span class="n">result</span><span class="p">[</span><span class="s2">"true_neg"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">logical_not</span><span class="p">(</span><span class="n">prediction</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_not</span><span class="p">(</span><span class="n">observation</span><span class="p">))</span>
+</span><span id="line-83">    <span class="n">result</span><span class="p">[</span><span class="s2">"false_neg"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">prediction</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_not</span><span class="p">(</span><span class="n">observation</span><span class="p">))</span>
+</span><span id="line-84">    <span class="n">result</span><span class="p">[</span><span class="s2">"false_pos"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">logical_not</span><span class="p">(</span><span class="n">prediction</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">observation</span><span class="p">)</span>
+</span><span id="line-85">    <span class="n">result</span><span class="p">[</span><span class="s2">"false_pos_rate"</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">"false_pos"</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span>
+</span><span id="line-86">        <span class="n">result</span><span class="p">[</span><span class="s2">"false_pos"</span><span class="p">]</span> <span class="o">+</span> <span class="n">result</span><span class="p">[</span><span class="s2">"true_neg"</span><span class="p">]</span>
 </span><span id="line-87">    <span class="p">)</span>
-</span><span id="line-88">    <span class="n">result</span><span class="p">[</span><span class="s2">&quot;false_neg_rate&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;false_neg&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span>
-</span><span id="line-89">        <span class="n">result</span><span class="p">[</span><span class="s2">&quot;false_neg&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;true_pos&quot;</span><span class="p">]</span>
+</span><span id="line-88">    <span class="n">result</span><span class="p">[</span><span class="s2">"false_neg_rate"</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">"false_neg"</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span>
+</span><span id="line-89">        <span class="n">result</span><span class="p">[</span><span class="s2">"false_neg"</span><span class="p">]</span> <span class="o">+</span> <span class="n">result</span><span class="p">[</span><span class="s2">"true_pos"</span><span class="p">]</span>
 </span><span id="line-90">    <span class="p">)</span>
-</span><span id="line-91">    <span class="n">result</span><span class="p">[</span><span class="s2">&quot;sensitivity&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;true_pos&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span>
-</span><span id="line-92">        <span class="n">result</span><span class="p">[</span><span class="s2">&quot;true_pos&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;false_neg&quot;</span><span class="p">]</span>
+</span><span id="line-91">    <span class="n">result</span><span class="p">[</span><span class="s2">"sensitivity"</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">"true_pos"</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span>
+</span><span id="line-92">        <span class="n">result</span><span class="p">[</span><span class="s2">"true_pos"</span><span class="p">]</span> <span class="o">+</span> <span class="n">result</span><span class="p">[</span><span class="s2">"false_neg"</span><span class="p">]</span>
 </span><span id="line-93">    <span class="p">)</span>
-</span><span id="line-94">    <span class="n">result</span><span class="p">[</span><span class="s2">&quot;specificity&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;true_neg&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span>
-</span><span id="line-95">        <span class="n">result</span><span class="p">[</span><span class="s2">&quot;true_neg&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;false_pos&quot;</span><span class="p">]</span>
+</span><span id="line-94">    <span class="n">result</span><span class="p">[</span><span class="s2">"specificity"</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">"true_neg"</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span>
+</span><span id="line-95">        <span class="n">result</span><span class="p">[</span><span class="s2">"true_neg"</span><span class="p">]</span> <span class="o">+</span> <span class="n">result</span><span class="p">[</span><span class="s2">"false_pos"</span><span class="p">]</span>
 </span><span id="line-96">    <span class="p">)</span>
 </span><span id="line-97">
 </span><span id="line-98">    <span class="n">cm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
-</span><span id="line-99">    <span class="n">cm</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;true_pos&quot;</span><span class="p">]</span>
-</span><span id="line-100">    <span class="n">cm</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;true_neg&quot;</span><span class="p">]</span>
-</span><span id="line-101">    <span class="n">cm</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;false_neg&quot;</span><span class="p">]</span>
-</span><span id="line-102">    <span class="n">cm</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;false_pos&quot;</span><span class="p">]</span>
-</span><span id="line-103">    <span class="n">cmn</span> <span class="o">=</span> <span class="n">cm</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;float&quot;</span><span class="p">)</span> <span class="o">/</span> <span class="n">cm</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
-</span><span id="line-104">    <span class="n">result</span><span class="p">[</span><span class="s2">&quot;cmn&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">cmn</span>
+</span><span id="line-99">    <span class="n">cm</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">"true_pos"</span><span class="p">]</span>
+</span><span id="line-100">    <span class="n">cm</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">"true_neg"</span><span class="p">]</span>
+</span><span id="line-101">    <span class="n">cm</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">"false_neg"</span><span class="p">]</span>
+</span><span id="line-102">    <span class="n">cm</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">"false_pos"</span><span class="p">]</span>
+</span><span id="line-103">    <span class="n">cmn</span> <span class="o">=</span> <span class="n">cm</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">"float"</span><span class="p">)</span> <span class="o">/</span> <span class="n">cm</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+</span><span id="line-104">    <span class="n">result</span><span class="p">[</span><span class="s2">"cmn"</span><span class="p">]</span> <span class="o">=</span> <span class="n">cmn</span>
 </span><span id="line-105">
 </span><span id="line-106">    <span class="k">return</span> <span class="n">result</span></div>
 
@@ -318,7 +318,7 @@
 <div class="viewcode-block" id="Mask">
 <a class="viewcode-back" href="../../sp_validation.masks.html#sp_validation.catalog_builders.Mask">[docs]</a>
 </span><span id="line-109"><span class="k">class</span><span class="w"> </span><span class="nc">Mask</span><span class="p">:</span>
-</span><span id="line-110"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Mask.</span>
+</span><span id="line-110"><span class="w">    </span><span class="sd">"""Mask.</span>
 </span><span id="line-111">
 </span><span id="line-112"><span class="sd">    Class to handle masking of catalogues.</span>
 </span><span id="line-113">
@@ -330,19 +330,19 @@
 </span><span id="line-119"><span class="sd">        mask label</span>
 </span><span id="line-120"><span class="sd">    kind : str</span>
 </span><span id="line-121"><span class="sd">        operation type; see :func:`apply_condition` for the allowed values,</span>
-</span><span id="line-122"><span class="sd">        plus &quot;not_equal_2bands&quot;, which keeps objects whose value differs</span>
+</span><span id="line-122"><span class="sd">        plus "not_equal_2bands", which keeps objects whose value differs</span>
 </span><span id="line-123"><span class="sd">        from ``value`` in ``col_name`` *or* ``col_name2`` (two-band OR)</span>
 </span><span id="line-124"><span class="sd">    value : float or list</span>
 </span><span id="line-125"><span class="sd">        value(s) to be used in mask operation</span>
 </span><span id="line-126"><span class="sd">    col_name2 : str, optional</span>
 </span><span id="line-127"><span class="sd">        name of second column; required for (and only used by) kind</span>
-</span><span id="line-128"><span class="sd">        &quot;not_equal_2bands&quot;</span>
+</span><span id="line-128"><span class="sd">        "not_equal_2bands"</span>
 </span><span id="line-129"><span class="sd">    dat : numpy.ndarray, optional</span>
 </span><span id="line-130"><span class="sd">        input data, default is `None`; apply mask if given</span>
 </span><span id="line-131"><span class="sd">    verbose : bool, optional</span>
 </span><span id="line-132"><span class="sd">        verbose output if ``True``; default is ``False``</span>
 </span><span id="line-133">
-</span><span id="line-134"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-134"><span class="sd">    """</span>
 </span><span id="line-135">
 </span><span id="line-136">    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
 </span><span id="line-137">        <span class="bp">self</span><span class="p">,</span>
@@ -359,14 +359,14 @@
 </span><span id="line-148">        <span class="bp">self</span><span class="o">.</span><span class="n">_label</span> <span class="o">=</span> <span class="n">label</span>
 </span><span id="line-149">        <span class="bp">self</span><span class="o">.</span><span class="n">_value</span> <span class="o">=</span> <span class="n">value</span>
 </span><span id="line-150">        <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span> <span class="o">=</span> <span class="n">kind</span>
-</span><span id="line-151">        <span class="k">if</span> <span class="n">kind</span> <span class="o">==</span> <span class="s2">&quot;not_equal_2bands&quot;</span> <span class="ow">and</span> <span class="n">col_name2</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-152">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;kind &#39;not_equal_2bands&#39; requires col_name2&quot;</span><span class="p">)</span>
+</span><span id="line-151">        <span class="k">if</span> <span class="n">kind</span> <span class="o">==</span> <span class="s2">"not_equal_2bands"</span> <span class="ow">and</span> <span class="n">col_name2</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-152">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"kind 'not_equal_2bands' requires col_name2"</span><span class="p">)</span>
 </span><span id="line-153">        <span class="bp">self</span><span class="o">.</span><span class="n">_col_name2</span> <span class="o">=</span> <span class="n">col_name2</span>
 </span><span id="line-154">        <span class="bp">self</span><span class="o">.</span><span class="n">_num_ok</span> <span class="o">=</span> <span class="kc">None</span>
 </span><span id="line-155">        <span class="bp">self</span><span class="o">.</span><span class="n">_verbose</span> <span class="o">=</span> <span class="n">verbose</span>
 </span><span id="line-156">
 </span><span id="line-157">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_verbose</span><span class="p">:</span>
-</span><span id="line-158">            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Initialising mask:&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+</span><span id="line-158">            <span class="nb">print</span><span class="p">(</span><span class="s2">"Initialising mask:"</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
 </span><span id="line-159">
 </span><span id="line-160">        <span class="k">if</span> <span class="n">dat</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
 </span><span id="line-161">            <span class="bp">self</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">dat</span><span class="p">)</span>
@@ -374,19 +374,19 @@
 </span><span id="line-163">    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 </span><span id="line-164">
 </span><span id="line-165">        <span class="k">return</span> <span class="p">(</span>
-</span><span id="line-166">            <span class="sa">f</span><span class="s2">&quot;Mask(col_name=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_col_name</span><span class="si">}</span><span class="s2">, label=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_label</span><span class="si">}</span><span class="s2">, kind=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_kind</span><span class="si">}</span><span class="s2">,&quot;</span>
-</span><span id="line-167">            <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot; value=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_value</span><span class="si">}</span><span class="s2">)&quot;</span>
+</span><span id="line-166">            <span class="sa">f</span><span class="s2">"Mask(col_name=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_col_name</span><span class="si">}</span><span class="s2">, label=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_label</span><span class="si">}</span><span class="s2">, kind=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_kind</span><span class="si">}</span><span class="s2">,"</span>
+</span><span id="line-167">            <span class="o">+</span> <span class="sa">f</span><span class="s2">" value=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_value</span><span class="si">}</span><span class="s2">)"</span>
 </span><span id="line-168">        <span class="p">)</span>
 </span><span id="line-169">
 <div class="viewcode-block" id="Mask.from_list">
 <a class="viewcode-back" href="../../sp_validation.masks.html#sp_validation.catalog_builders.Mask.from_list">[docs]</a>
 </span><span id="line-170">    <span class="nd">@classmethod</span>
-</span><span id="line-171">    <span class="k">def</span><span class="w"> </span><span class="nf">from_list</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">masks</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;combined&quot;</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+</span><span id="line-171">    <span class="k">def</span><span class="w"> </span><span class="nf">from_list</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">masks</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"combined"</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 </span><span id="line-172">
 </span><span id="line-173">        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
-</span><span id="line-174">            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Combining </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">masks</span><span class="p">)</span><span class="si">}</span><span class="s2"> masks&quot;</span><span class="p">)</span>
+</span><span id="line-174">            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Combining </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">masks</span><span class="p">)</span><span class="si">}</span><span class="s2"> masks"</span><span class="p">)</span>
 </span><span id="line-175">
-</span><span id="line-176">        <span class="n">my_mask</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;combined&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</span><span id="line-176">        <span class="n">my_mask</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">"combined"</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </span><span id="line-177">
 </span><span id="line-178">        <span class="n">my_mask</span><span class="o">.</span><span class="n">_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="o">.</span><span class="n">reduce</span><span class="p">([</span><span class="n">m</span><span class="o">.</span><span class="n">_mask</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">masks</span><span class="p">])</span>
 </span><span id="line-179">
@@ -397,10 +397,10 @@
 <a class="viewcode-back" href="../../sp_validation.masks.html#sp_validation.catalog_builders.Mask.apply">[docs]</a>
 </span><span id="line-182">    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dat</span><span class="p">):</span>
 </span><span id="line-183">
-</span><span id="line-184">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span> <span class="o">==</span> <span class="s2">&quot;not_equal_2bands&quot;</span><span class="p">:</span>
+</span><span id="line-184">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span> <span class="o">==</span> <span class="s2">"not_equal_2bands"</span><span class="p">:</span>
 </span><span id="line-185">            <span class="bp">self</span><span class="o">.</span><span class="n">_mask</span> <span class="o">=</span> <span class="n">apply_condition</span><span class="p">(</span>
-</span><span id="line-186">                <span class="n">dat</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_col_name</span><span class="p">],</span> <span class="s2">&quot;not_equal&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_value</span>
-</span><span id="line-187">            <span class="p">)</span> <span class="o">|</span> <span class="n">apply_condition</span><span class="p">(</span><span class="n">dat</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_col_name2</span><span class="p">],</span> <span class="s2">&quot;not_equal&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_value</span><span class="p">)</span>
+</span><span id="line-186">                <span class="n">dat</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_col_name</span><span class="p">],</span> <span class="s2">"not_equal"</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_value</span>
+</span><span id="line-187">            <span class="p">)</span> <span class="o">|</span> <span class="n">apply_condition</span><span class="p">(</span><span class="n">dat</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_col_name2</span><span class="p">],</span> <span class="s2">"not_equal"</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_value</span><span class="p">)</span>
 </span><span id="line-188">        <span class="k">else</span><span class="p">:</span>
 </span><span id="line-189">            <span class="bp">self</span><span class="o">.</span><span class="n">_mask</span> <span class="o">=</span> <span class="n">apply_condition</span><span class="p">(</span><span class="n">dat</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_col_name</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_value</span><span class="p">)</span></div>
 
@@ -410,19 +410,19 @@
 </span><span id="line-191">    <span class="k">def</span><span class="w"> </span><span class="nf">to_bool</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hsp_mask</span><span class="p">):</span>
 </span><span id="line-192">
 </span><span id="line-193">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_verbose</span><span class="p">:</span>
-</span><span id="line-194">            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;to_bool: get valid pixels&quot;</span><span class="p">)</span>
+</span><span id="line-194">            <span class="nb">print</span><span class="p">(</span><span class="s2">"to_bool: get valid pixels"</span><span class="p">)</span>
 </span><span id="line-195">        <span class="n">valid_pixels</span> <span class="o">=</span> <span class="n">hsp_mask</span><span class="o">.</span><span class="n">valid_pixels</span>
 </span><span id="line-196">
 </span><span id="line-197">        <span class="c1"># Abuse of col_name</span>
 </span><span id="line-198">        <span class="bp">self</span><span class="o">.</span><span class="n">_col_name</span> <span class="o">=</span> <span class="n">valid_pixels</span>
 </span><span id="line-199">
 </span><span id="line-200">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_verbose</span><span class="p">:</span>
-</span><span id="line-201">            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;to_bool: apply mask&quot;</span><span class="p">)</span>
+</span><span id="line-201">            <span class="nb">print</span><span class="p">(</span><span class="s2">"to_bool: apply mask"</span><span class="p">)</span>
 </span><span id="line-202">        <span class="bp">self</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">hsp_mask</span><span class="p">)</span>
 </span><span id="line-203">        <span class="n">mask_bool</span> <span class="o">=</span> <span class="n">hsp</span><span class="o">.</span><span class="n">HealSparseMap</span><span class="o">.</span><span class="n">make_empty</span><span class="p">(</span>
 </span><span id="line-204">            <span class="n">hsp_mask</span><span class="o">.</span><span class="n">nside_coverage</span><span class="p">,</span>
 </span><span id="line-205">            <span class="n">hsp_mask</span><span class="o">.</span><span class="n">nside_sparse</span><span class="p">,</span>
-</span><span id="line-206">            <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;bool&quot;</span><span class="p">,</span>
+</span><span id="line-206">            <span class="n">dtype</span><span class="o">=</span><span class="s2">"bool"</span><span class="p">,</span>
 </span><span id="line-207">        <span class="p">)</span>
 </span><span id="line-208">        <span class="n">mask_bool</span><span class="p">[</span><span class="n">valid_pixels</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mask</span>
 </span><span id="line-209">        <span class="k">return</span> <span class="n">mask_bool</span></div>
@@ -432,7 +432,7 @@
 <a class="viewcode-back" href="../../sp_validation.masks.html#sp_validation.catalog_builders.Mask.print_strings">[docs]</a>
 </span><span id="line-211">    <span class="nd">@classmethod</span>
 </span><span id="line-212">    <span class="k">def</span><span class="w"> </span><span class="nf">print_strings</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">coln</span><span class="p">,</span> <span class="n">lab</span><span class="p">,</span> <span class="n">num</span><span class="p">,</span> <span class="n">fnum</span><span class="p">,</span> <span class="n">f_out</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-</span><span id="line-213">        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">coln</span><span class="si">:</span><span class="s2">30s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">lab</span><span class="si">:</span><span class="s2">30s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">num</span><span class="si">:</span><span class="s2">10s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">fnum</span><span class="si">:</span><span class="s2">10s</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="line-213">        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">coln</span><span class="si">:</span><span class="s2">30s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">lab</span><span class="si">:</span><span class="s2">30s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">num</span><span class="si">:</span><span class="s2">10s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">fnum</span><span class="si">:</span><span class="s2">10s</span><span class="si">}</span><span class="s2">"</span>
 </span><span id="line-214">        <span class="nb">print</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
 </span><span id="line-215">        <span class="k">if</span> <span class="n">f_out</span><span class="p">:</span>
 </span><span id="line-216">            <span class="nb">print</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">f_out</span><span class="p">)</span></div>
@@ -444,8 +444,8 @@
 </span><span id="line-219">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_ok</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
 </span><span id="line-220">            <span class="bp">self</span><span class="o">.</span><span class="n">_num_ok</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_mask</span><span class="p">)</span>
 </span><span id="line-221">
-</span><span id="line-222">        <span class="n">si</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_num_ok</span><span class="si">:</span><span class="s2">10d</span><span class="si">}</span><span class="s2">&quot;</span>
-</span><span id="line-223">        <span class="n">sf</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_num_ok</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">num_obj</span><span class="si">:</span><span class="s2">10.2%</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="line-222">        <span class="n">si</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_num_ok</span><span class="si">:</span><span class="s2">10d</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-223">        <span class="n">sf</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_num_ok</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">num_obj</span><span class="si">:</span><span class="s2">10.2%</span><span class="si">}</span><span class="s2">"</span>
 </span><span id="line-224">        <span class="bp">self</span><span class="o">.</span><span class="n">print_strings</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_col_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_label</span><span class="p">,</span> <span class="n">si</span><span class="p">,</span> <span class="n">sf</span><span class="p">,</span> <span class="n">f_out</span><span class="o">=</span><span class="n">f_out</span><span class="p">)</span></div>
 
 </span><span id="line-225">
@@ -454,14 +454,14 @@
 </span><span id="line-226">    <span class="k">def</span><span class="w"> </span><span class="nf">get_sign</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">latex</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 </span><span id="line-227">
 </span><span id="line-228">        <span class="n">sign</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="line-229">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span> <span class="o">==</span> <span class="s2">&quot;equal&quot;</span><span class="p">:</span>
-</span><span id="line-230">            <span class="n">sign</span> <span class="o">=</span> <span class="s2">&quot;$=$&quot;</span> <span class="k">if</span> <span class="n">latex</span> <span class="k">else</span> <span class="s2">&quot;=&quot;</span>
-</span><span id="line-231">        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span> <span class="o">==</span> <span class="s2">&quot;not_equal&quot;</span><span class="p">:</span>
-</span><span id="line-232">            <span class="n">sign</span> <span class="o">=</span> <span class="sa">r</span><span class="s2">&quot;$\ne$&quot;</span> <span class="k">if</span> <span class="n">latex</span> <span class="k">else</span> <span class="s2">&quot;!=&quot;</span>
-</span><span id="line-233">        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;greater_equal&quot;</span><span class="p">,</span> <span class="s2">&quot;range&quot;</span><span class="p">):</span>
-</span><span id="line-234">            <span class="n">sign</span> <span class="o">=</span> <span class="sa">r</span><span class="s2">&quot;$\leq$&quot;</span> <span class="k">if</span> <span class="n">latex</span> <span class="k">else</span> <span class="s2">&quot;&gt;=&quot;</span>
-</span><span id="line-235">        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span> <span class="o">==</span> <span class="s2">&quot;smaller_equal&quot;</span><span class="p">:</span>
-</span><span id="line-236">            <span class="n">sign</span> <span class="o">=</span> <span class="sa">r</span><span class="s2">&quot;$\geq$&quot;</span> <span class="k">if</span> <span class="n">latex</span> <span class="k">else</span> <span class="s2">&quot;&lt;=&quot;</span>
+</span><span id="line-229">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span> <span class="o">==</span> <span class="s2">"equal"</span><span class="p">:</span>
+</span><span id="line-230">            <span class="n">sign</span> <span class="o">=</span> <span class="s2">"$=$"</span> <span class="k">if</span> <span class="n">latex</span> <span class="k">else</span> <span class="s2">"="</span>
+</span><span id="line-231">        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span> <span class="o">==</span> <span class="s2">"not_equal"</span><span class="p">:</span>
+</span><span id="line-232">            <span class="n">sign</span> <span class="o">=</span> <span class="sa">r</span><span class="s2">"$\ne$"</span> <span class="k">if</span> <span class="n">latex</span> <span class="k">else</span> <span class="s2">"!="</span>
+</span><span id="line-233">        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"greater_equal"</span><span class="p">,</span> <span class="s2">"range"</span><span class="p">):</span>
+</span><span id="line-234">            <span class="n">sign</span> <span class="o">=</span> <span class="sa">r</span><span class="s2">"$\leq$"</span> <span class="k">if</span> <span class="n">latex</span> <span class="k">else</span> <span class="s2">"&gt;="</span>
+</span><span id="line-235">        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span> <span class="o">==</span> <span class="s2">"smaller_equal"</span><span class="p">:</span>
+</span><span id="line-236">            <span class="n">sign</span> <span class="o">=</span> <span class="sa">r</span><span class="s2">"$\geq$"</span> <span class="k">if</span> <span class="n">latex</span> <span class="k">else</span> <span class="s2">"&lt;="</span>
 </span><span id="line-237">        <span class="k">return</span> <span class="n">sign</span></div>
 
 </span><span id="line-238">
@@ -470,36 +470,36 @@
 </span><span id="line-239">    <span class="k">def</span><span class="w"> </span><span class="nf">print_condition</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f_out</span><span class="p">,</span> <span class="n">latex</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 </span><span id="line-240">
 </span><span id="line-241">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-242">            <span class="k">return</span> <span class="s2">&quot;&quot;</span>
+</span><span id="line-242">            <span class="k">return</span> <span class="s2">""</span>
 </span><span id="line-243">
 </span><span id="line-244">        <span class="n">sign</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_sign</span><span class="p">(</span><span class="n">latex</span><span class="o">=</span><span class="n">latex</span><span class="p">)</span>
 </span><span id="line-245">
 </span><span id="line-246">        <span class="n">name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_label</span> <span class="k">if</span> <span class="n">latex</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">_col_name</span>
 </span><span id="line-247">
 </span><span id="line-248">        <span class="k">if</span> <span class="n">sign</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-249">            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">sign</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">f_out</span><span class="p">)</span>
+</span><span id="line-249">            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">sign</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_value</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">f_out</span><span class="p">)</span>
 </span><span id="line-250">
-</span><span id="line-251">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span> <span class="o">==</span> <span class="s2">&quot;not_equal_2bands&quot;</span><span class="p">:</span>
+</span><span id="line-251">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span> <span class="o">==</span> <span class="s2">"not_equal_2bands"</span><span class="p">:</span>
 </span><span id="line-252">            <span class="nb">print</span><span class="p">(</span>
-</span><span id="line-253">                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> != </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_value</span><span class="si">}</span><span class="s2"> or </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_col_name2</span><span class="si">}</span><span class="s2"> != </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+</span><span id="line-253">                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> != </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_value</span><span class="si">}</span><span class="s2"> or </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_col_name2</span><span class="si">}</span><span class="s2"> != </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_value</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
 </span><span id="line-254">                <span class="n">file</span><span class="o">=</span><span class="n">f_out</span><span class="p">,</span>
 </span><span id="line-255">            <span class="p">)</span>
 </span><span id="line-256">
-</span><span id="line-257">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span> <span class="o">==</span> <span class="s2">&quot;range&quot;</span><span class="p">:</span>
-</span><span id="line-258">            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_value</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">sign</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">sign</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_value</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">f_out</span><span class="p">)</span></div>
+</span><span id="line-257">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span> <span class="o">==</span> <span class="s2">"range"</span><span class="p">:</span>
+</span><span id="line-258">            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_value</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">sign</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">sign</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_value</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">f_out</span><span class="p">)</span></div>
 
 </span><span id="line-259">
 <div class="viewcode-block" id="Mask.print_summary">
 <a class="viewcode-back" href="../../sp_validation.masks.html#sp_validation.catalog_builders.Mask.print_summary">[docs]</a>
 </span><span id="line-260">    <span class="k">def</span><span class="w"> </span><span class="nf">print_summary</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f_out</span><span class="p">):</span>
-</span><span id="line-261">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_label</span><span class="si">}</span><span class="s2">]</span><span class="se">\t\t\t</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">f_out</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+</span><span id="line-261">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_label</span><span class="si">}</span><span class="s2">]</span><span class="se">\t\t\t</span><span class="s2">"</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">f_out</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">""</span><span class="p">)</span>
 </span><span id="line-262">        <span class="bp">self</span><span class="o">.</span><span class="n">print_condition</span><span class="p">(</span><span class="n">f_out</span><span class="p">)</span></div>
 
 </span><span id="line-263">
 <div class="viewcode-block" id="Mask.create_descr">
 <a class="viewcode-back" href="../../sp_validation.masks.html#sp_validation.catalog_builders.Mask.create_descr">[docs]</a>
 </span><span id="line-264">    <span class="k">def</span><span class="w"> </span><span class="nf">create_descr</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-</span><span id="line-265"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Create Descr.</span>
+</span><span id="line-265"><span class="w">        </span><span class="sd">"""Create Descr.</span>
 </span><span id="line-266">
 </span><span id="line-267"><span class="sd">        Create description of mask for later use in output file header.</span>
 </span><span id="line-268">
@@ -508,14 +508,14 @@
 </span><span id="line-271"><span class="sd">        str</span>
 </span><span id="line-272"><span class="sd">            description</span>
 </span><span id="line-273">
-</span><span id="line-274"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-274"><span class="sd">        """</span>
 </span><span id="line-275">        <span class="n">sign</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_sign</span><span class="p">()</span>
 </span><span id="line-276">        <span class="k">if</span> <span class="n">sign</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-277">            <span class="n">descr</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">sign</span><span class="si">}{</span><span class="bp">self</span><span class="o">.</span><span class="n">_value</span><span class="si">}</span><span class="s2">&quot;</span>
-</span><span id="line-278">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span> <span class="o">==</span> <span class="s2">&quot;range&quot;</span><span class="p">:</span>
-</span><span id="line-279">            <span class="n">descr</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_value</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&lt;=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_col_name</span><span class="si">}</span><span class="s2">&lt;=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_value</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
-</span><span id="line-280">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span> <span class="o">==</span> <span class="s2">&quot;not_equal_2bands&quot;</span><span class="p">:</span>
-</span><span id="line-281">            <span class="n">descr</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;!=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_value</span><span class="si">}</span><span class="s2"> in </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_col_name</span><span class="si">}</span><span class="s2"> or </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_col_name2</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="line-277">            <span class="n">descr</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">sign</span><span class="si">}{</span><span class="bp">self</span><span class="o">.</span><span class="n">_value</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-278">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span> <span class="o">==</span> <span class="s2">"range"</span><span class="p">:</span>
+</span><span id="line-279">            <span class="n">descr</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_value</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&lt;=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_col_name</span><span class="si">}</span><span class="s2">&lt;=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_value</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-280">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span> <span class="o">==</span> <span class="s2">"not_equal_2bands"</span><span class="p">:</span>
+</span><span id="line-281">            <span class="n">descr</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"!=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_value</span><span class="si">}</span><span class="s2"> in </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_col_name</span><span class="si">}</span><span class="s2"> or </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_col_name2</span><span class="si">}</span><span class="s2">"</span>
 </span><span id="line-282">        <span class="bp">self</span><span class="o">.</span><span class="n">_descr</span> <span class="o">=</span> <span class="n">descr</span></div>
 
 </span><span id="line-283">
@@ -539,7 +539,7 @@
 <div class="viewcode-block" id="print_mask_stats">
 <a class="viewcode-back" href="../../sp_validation.masks.html#sp_validation.catalog_builders.print_mask_stats">[docs]</a>
 </span><span id="line-297"><span class="k">def</span><span class="w"> </span><span class="nf">print_mask_stats</span><span class="p">(</span><span class="n">num_obj</span><span class="p">,</span> <span class="n">masks</span><span class="p">,</span> <span class="n">mask_combined</span><span class="p">):</span>
-</span><span id="line-298"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Print Mask Stats.</span>
+</span><span id="line-298"><span class="w">    </span><span class="sd">"""Print Mask Stats.</span>
 </span><span id="line-299">
 </span><span id="line-300"><span class="sd">    Print mask statistics.</span>
 </span><span id="line-301">
@@ -547,8 +547,8 @@
 </span><span id="line-303"><span class="sd">    ----------</span>
 </span><span id="line-304"><span class="sd">    num_obj</span>
 </span><span id="line-305">
-</span><span id="line-306"><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="line-307">    <span class="n">Mask</span><span class="o">.</span><span class="n">print_strings</span><span class="p">(</span><span class="s2">&quot;flag&quot;</span><span class="p">,</span> <span class="s2">&quot;label&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;num_ok&#39;</span><span class="si">:</span><span class="s2">&gt;10</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;num_ok[%]&#39;</span><span class="si">:</span><span class="s2">&gt;10</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="line-306"><span class="sd">    """</span>
+</span><span id="line-307">    <span class="n">Mask</span><span class="o">.</span><span class="n">print_strings</span><span class="p">(</span><span class="s2">"flag"</span><span class="p">,</span> <span class="s2">"label"</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="s1">'num_ok'</span><span class="si">:</span><span class="s2">&gt;10</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="s1">'num_ok[%]'</span><span class="si">:</span><span class="s2">&gt;10</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </span><span id="line-308">    <span class="k">for</span> <span class="n">my_mask</span> <span class="ow">in</span> <span class="n">masks</span><span class="p">:</span>
 </span><span id="line-309">        <span class="n">my_mask</span><span class="o">.</span><span class="n">print_stats</span><span class="p">(</span><span class="n">num_obj</span><span class="p">)</span>
 </span><span id="line-310">
@@ -559,7 +559,7 @@
 <div class="viewcode-block" id="get_masks_from_config">
 <a class="viewcode-back" href="../../sp_validation.masks.html#sp_validation.catalog_builders.get_masks_from_config">[docs]</a>
 </span><span id="line-314"><span class="k">def</span><span class="w"> </span><span class="nf">get_masks_from_config</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">dat</span><span class="p">,</span> <span class="n">dat_ext</span><span class="p">,</span> <span class="n">masks_to_apply</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-</span><span id="line-315"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Get Masks From Config.</span>
+</span><span id="line-315"><span class="w">    </span><span class="sd">"""Get Masks From Config.</span>
 </span><span id="line-316">
 </span><span id="line-317"><span class="sd">    Return mask information from yaml config structure.</span>
 </span><span id="line-318">
@@ -583,7 +583,7 @@
 </span><span id="line-336"><span class="sd">    dict</span>
 </span><span id="line-337"><span class="sd">        list of indices for given mask column name (label)</span>
 </span><span id="line-338">
-</span><span id="line-339"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-339"><span class="sd">    """</span>
 </span><span id="line-340">    <span class="c1"># List to store all mask objects</span>
 </span><span id="line-341">    <span class="n">masks</span> <span class="o">=</span> <span class="p">[]</span>
 </span><span id="line-342">
@@ -591,29 +591,29 @@
 </span><span id="line-344">    <span class="n">labels</span> <span class="o">=</span> <span class="p">{}</span>
 </span><span id="line-345">
 </span><span id="line-346">    <span class="c1"># Loop over mask sections from config file</span>
-</span><span id="line-347">    <span class="n">config_data</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">config</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;dat&quot;</span><span class="p">,</span> <span class="s2">&quot;dat_ext&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">config</span><span class="p">}</span>
+</span><span id="line-347">    <span class="n">config_data</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">config</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">"dat"</span><span class="p">,</span> <span class="s2">"dat_ext"</span><span class="p">]</span> <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">config</span><span class="p">}</span>
 </span><span id="line-348">    <span class="n">idx</span> <span class="o">=</span> <span class="mi">0</span>
 </span><span id="line-349">    <span class="k">for</span> <span class="n">section</span><span class="p">,</span> <span class="n">mask_list</span> <span class="ow">in</span> <span class="n">config_data</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
 </span><span id="line-350">        <span class="c1"># Set data source</span>
-</span><span id="line-351">        <span class="n">dat_source</span> <span class="o">=</span> <span class="n">dat</span> <span class="k">if</span> <span class="n">section</span> <span class="o">==</span> <span class="s2">&quot;dat&quot;</span> <span class="k">else</span> <span class="n">dat_ext</span>
+</span><span id="line-351">        <span class="n">dat_source</span> <span class="o">=</span> <span class="n">dat</span> <span class="k">if</span> <span class="n">section</span> <span class="o">==</span> <span class="s2">"dat"</span> <span class="k">else</span> <span class="n">dat_ext</span>
 </span><span id="line-352">
 </span><span id="line-353">        <span class="c1"># Loop over mask information in this section</span>
 </span><span id="line-354">        <span class="k">for</span> <span class="n">mask_params</span> <span class="ow">in</span> <span class="n">mask_list</span><span class="p">:</span>
 </span><span id="line-355">            <span class="n">use_this_mask</span> <span class="o">=</span> <span class="kc">False</span>
 </span><span id="line-356">            <span class="k">if</span> <span class="n">masks_to_apply</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-357">                <span class="k">if</span> <span class="n">mask_params</span><span class="p">[</span><span class="s2">&quot;col_name&quot;</span><span class="p">]</span> <span class="ow">in</span> <span class="n">masks_to_apply</span><span class="p">:</span>
+</span><span id="line-357">                <span class="k">if</span> <span class="n">mask_params</span><span class="p">[</span><span class="s2">"col_name"</span><span class="p">]</span> <span class="ow">in</span> <span class="n">masks_to_apply</span><span class="p">:</span>
 </span><span id="line-358">                    <span class="n">use_this_mask</span> <span class="o">=</span> <span class="kc">True</span>
 </span><span id="line-359">            <span class="k">else</span><span class="p">:</span>
 </span><span id="line-360">                <span class="n">use_this_mask</span> <span class="o">=</span> <span class="kc">True</span>
 </span><span id="line-361">
 </span><span id="line-362">            <span class="k">if</span> <span class="n">use_this_mask</span><span class="p">:</span>
-</span><span id="line-363">                <span class="c1"># Ensure &#39;range&#39; kind has exactly two values</span>
-</span><span id="line-364">                <span class="n">value</span> <span class="o">=</span> <span class="n">mask_params</span><span class="p">[</span><span class="s2">&quot;value&quot;</span><span class="p">]</span>
-</span><span id="line-365">                <span class="k">if</span> <span class="n">mask_params</span><span class="p">[</span><span class="s2">&quot;kind&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;range&quot;</span> <span class="ow">and</span> <span class="p">(</span>
+</span><span id="line-363">                <span class="c1"># Ensure 'range' kind has exactly two values</span>
+</span><span id="line-364">                <span class="n">value</span> <span class="o">=</span> <span class="n">mask_params</span><span class="p">[</span><span class="s2">"value"</span><span class="p">]</span>
+</span><span id="line-365">                <span class="k">if</span> <span class="n">mask_params</span><span class="p">[</span><span class="s2">"kind"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"range"</span> <span class="ow">and</span> <span class="p">(</span>
 </span><span id="line-366">                    <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span>
 </span><span id="line-367">                <span class="p">):</span>
 </span><span id="line-368">                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-</span><span id="line-369">                        <span class="sa">f</span><span class="s2">&quot;Range kind requires a list of two values, got </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="line-369">                        <span class="sa">f</span><span class="s2">"Range kind requires a list of two values, got </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">"</span>
 </span><span id="line-370">                    <span class="p">)</span>
 </span><span id="line-371">
 </span><span id="line-372">                <span class="c1"># Create mask instance and append to list</span>
@@ -623,7 +623,7 @@
 </span><span id="line-376">                <span class="n">idx</span> <span class="o">+=</span> <span class="mi">1</span>
 </span><span id="line-377">            <span class="k">else</span><span class="p">:</span>
 </span><span id="line-378">                <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
-</span><span id="line-379">                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Skipping mask </span><span class="si">{</span><span class="n">mask_params</span><span class="p">[</span><span class="s1">&#39;col_name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="line-379">                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Skipping mask </span><span class="si">{</span><span class="n">mask_params</span><span class="p">[</span><span class="s1">'col_name'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </span><span id="line-380">                <span class="k">continue</span>
 </span><span id="line-381">
 </span><span id="line-382">    <span class="k">return</span> <span class="n">masks</span><span class="p">,</span> <span class="n">labels</span></div>

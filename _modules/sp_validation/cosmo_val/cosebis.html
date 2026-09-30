@@ -199,11 +199,11 @@
     <div id="content" role="main">
       <h1>Source code for sp_validation.cosmo_val.cosebis</h1><div class="highlight"><pre>
 <span></span><code><span id="line-1"><span class="c1"># %%</span>
-</span><span id="line-2"><span class="sd">&quot;&quot;&quot;COSEBIs diagnostic: complete orthogonal E/B integrals.</span>
+</span><span id="line-2"><span class="sd">"""COSEBIs diagnostic: complete orthogonal E/B integrals.</span>
 </span><span id="line-3">
 </span><span id="line-4"><span class="sd">Mixin providing COSEBIs calculation and plotting for the</span>
 </span><span id="line-5"><span class="sd">:class:`~sp_validation.cosmo_val.CosmologyValidation` class.</span>
-</span><span id="line-6"><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="line-6"><span class="sd">"""</span>
 </span><span id="line-7">
 </span><span id="line-8"><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 </span><span id="line-9">
@@ -237,7 +237,7 @@
 </span><span id="line-33">        <span class="n">max_sep</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
 </span><span id="line-34">        <span class="n">nbins</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
 </span><span id="line-35">    <span class="p">):</span>
-</span><span id="line-36"><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="line-36"><span class="w">        </span><span class="sd">"""</span>
 </span><span id="line-37"><span class="sd">        Calculate COSEBIs from a finely-binned correlation function.</span>
 </span><span id="line-38">
 </span><span id="line-39"><span class="sd">        COSEBIs fundamentally require fine binning for accurate transformations.</span>
@@ -274,13 +274,13 @@
 </span><span id="line-70"><span class="sd">            provided. Defaults to False.</span>
 </span><span id="line-71"><span class="sd">        min_sep : float, optional</span>
 </span><span id="line-72"><span class="sd">            Minimum separation for reporting binning (only used when</span>
-</span><span id="line-73"><span class="sd">            evaluate_all_scale_cuts=True). Defaults to self.treecorr_config[&quot;min_sep&quot;].</span>
+</span><span id="line-73"><span class="sd">            evaluate_all_scale_cuts=True). Defaults to self.treecorr_config["min_sep"].</span>
 </span><span id="line-74"><span class="sd">        max_sep : float, optional</span>
 </span><span id="line-75"><span class="sd">            Maximum separation for reporting binning (only used when</span>
-</span><span id="line-76"><span class="sd">            evaluate_all_scale_cuts=True). Defaults to self.treecorr_config[&quot;max_sep&quot;].</span>
+</span><span id="line-76"><span class="sd">            evaluate_all_scale_cuts=True). Defaults to self.treecorr_config["max_sep"].</span>
 </span><span id="line-77"><span class="sd">        nbins : int, optional</span>
 </span><span id="line-78"><span class="sd">            Number of bins for reporting binning (only used when</span>
-</span><span id="line-79"><span class="sd">            evaluate_all_scale_cuts=True). Defaults to self.treecorr_config[&quot;nbins&quot;].</span>
+</span><span id="line-79"><span class="sd">            evaluate_all_scale_cuts=True). Defaults to self.treecorr_config["nbins"].</span>
 </span><span id="line-80">
 </span><span id="line-81"><span class="sd">        Returns</span>
 </span><span id="line-82"><span class="sd">        -------</span>
@@ -289,8 +289,8 @@
 </span><span id="line-85"><span class="sd">            with E/B modes, covariances, and statistics.</span>
 </span><span id="line-86"><span class="sd">            When multiple scale cuts: Dictionary with scale cut tuples as</span>
 </span><span id="line-87"><span class="sd">            keys and results dictionaries as values.</span>
-</span><span id="line-88"><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="line-89">        <span class="bp">self</span><span class="o">.</span><span class="n">print_start</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Computing </span><span class="si">{</span><span class="n">version</span><span class="si">}</span><span class="s2"> COSEBIs&quot;</span><span class="p">)</span>
+</span><span id="line-88"><span class="sd">        """</span>
+</span><span id="line-89">        <span class="bp">self</span><span class="o">.</span><span class="n">print_start</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Computing </span><span class="si">{</span><span class="n">version</span><span class="si">}</span><span class="s2"> COSEBIs"</span><span class="p">)</span>
 </span><span id="line-90">
 </span><span id="line-91">        <span class="c1"># Set up parameters with defaults</span>
 </span><span id="line-92">        <span class="n">npatch</span> <span class="o">=</span> <span class="n">npatch</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">npatch</span>
@@ -300,14 +300,14 @@
 </span><span id="line-96">
 </span><span id="line-97">        <span class="c1"># Calculate single fine-binned correlation function for COSEBIs</span>
 </span><span id="line-98">        <span class="nb">print</span><span class="p">(</span>
-</span><span id="line-99">            <span class="sa">f</span><span class="s2">&quot;Computing fine-binned 2PCF with </span><span class="si">{</span><span class="n">nbins_int</span><span class="si">}</span><span class="s2"> bins from </span><span class="si">{</span><span class="n">min_sep_int</span><span class="si">}</span><span class="s2"> to &quot;</span>
-</span><span id="line-100">            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">max_sep_int</span><span class="si">}</span><span class="s2"> arcmin&quot;</span>
+</span><span id="line-99">            <span class="sa">f</span><span class="s2">"Computing fine-binned 2PCF with </span><span class="si">{</span><span class="n">nbins_int</span><span class="si">}</span><span class="s2"> bins from </span><span class="si">{</span><span class="n">min_sep_int</span><span class="si">}</span><span class="s2"> to "</span>
+</span><span id="line-100">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">max_sep_int</span><span class="si">}</span><span class="s2"> arcmin"</span>
 </span><span id="line-101">        <span class="p">)</span>
 </span><span id="line-102">        <span class="n">gg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate_2pcf</span><span class="p">(</span><span class="n">version</span><span class="p">,</span> <span class="n">npatch</span><span class="o">=</span><span class="n">npatch</span><span class="p">,</span> <span class="o">**</span><span class="n">treecorr_config</span><span class="p">)</span>
 </span><span id="line-103">
 </span><span id="line-104">        <span class="k">if</span> <span class="n">scale_cuts</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
 </span><span id="line-105">            <span class="c1"># Explicit scale cuts provided</span>
-</span><span id="line-106">            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Evaluating </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">scale_cuts</span><span class="p">)</span><span class="si">}</span><span class="s2"> explicit scale cuts&quot;</span><span class="p">)</span>
+</span><span id="line-106">            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Evaluating </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">scale_cuts</span><span class="p">)</span><span class="si">}</span><span class="s2"> explicit scale cuts"</span><span class="p">)</span>
 </span><span id="line-107">            <span class="n">results</span> <span class="o">=</span> <span class="n">calculate_cosebis</span><span class="p">(</span>
 </span><span id="line-108">                <span class="n">gg</span><span class="o">=</span><span class="n">gg</span><span class="p">,</span> <span class="n">nmodes</span><span class="o">=</span><span class="n">nmodes</span><span class="p">,</span> <span class="n">scale_cuts</span><span class="o">=</span><span class="n">scale_cuts</span><span class="p">,</span> <span class="n">cov_path</span><span class="o">=</span><span class="n">cov_path</span>
 </span><span id="line-109">            <span class="p">)</span>
@@ -315,9 +315,9 @@
 </span><span id="line-111">            <span class="c1"># Use reporting binning parameters or inherit from class config</span>
 </span><span id="line-112">            <span class="n">binning</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_binning</span><span class="p">(</span><span class="n">min_sep</span><span class="p">,</span> <span class="n">max_sep</span><span class="p">,</span> <span class="n">nbins</span><span class="p">)</span>
 </span><span id="line-113">            <span class="n">min_sep</span><span class="p">,</span> <span class="n">max_sep</span><span class="p">,</span> <span class="n">nbins</span> <span class="o">=</span> <span class="p">(</span>
-</span><span id="line-114">                <span class="n">binning</span><span class="p">[</span><span class="s2">&quot;min_sep&quot;</span><span class="p">],</span>
-</span><span id="line-115">                <span class="n">binning</span><span class="p">[</span><span class="s2">&quot;max_sep&quot;</span><span class="p">],</span>
-</span><span id="line-116">                <span class="n">binning</span><span class="p">[</span><span class="s2">&quot;nbins&quot;</span><span class="p">],</span>
+</span><span id="line-114">                <span class="n">binning</span><span class="p">[</span><span class="s2">"min_sep"</span><span class="p">],</span>
+</span><span id="line-115">                <span class="n">binning</span><span class="p">[</span><span class="s2">"max_sep"</span><span class="p">],</span>
+</span><span id="line-116">                <span class="n">binning</span><span class="p">[</span><span class="s2">"nbins"</span><span class="p">],</span>
 </span><span id="line-117">            <span class="p">)</span>
 </span><span id="line-118">
 </span><span id="line-119">            <span class="c1"># Generate scale cuts using np.geomspace (no TreeCorr needed)</span>
@@ -328,7 +328,7 @@
 </span><span id="line-124">                <span class="k">for</span> <span class="n">stop</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">start</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">nbins</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
 </span><span id="line-125">            <span class="p">]</span>
 </span><span id="line-126">
-</span><span id="line-127">            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Evaluating </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">generated_cuts</span><span class="p">)</span><span class="si">}</span><span class="s2"> scale cut combinations&quot;</span><span class="p">)</span>
+</span><span id="line-127">            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Evaluating </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">generated_cuts</span><span class="p">)</span><span class="si">}</span><span class="s2"> scale cut combinations"</span><span class="p">)</span>
 </span><span id="line-128">
 </span><span id="line-129">            <span class="c1"># Call b_modes function with scale cuts list</span>
 </span><span id="line-130">            <span class="n">results</span> <span class="o">=</span> <span class="n">calculate_cosebis</span><span class="p">(</span>
@@ -365,7 +365,7 @@
 </span><span id="line-158">        <span class="n">fiducial_scale_cut</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># For plotting reference</span>
 </span><span id="line-159">        <span class="n">results</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
 </span><span id="line-160">    <span class="p">):</span>
-</span><span id="line-161"><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="line-161"><span class="w">        </span><span class="sd">"""</span>
 </span><span id="line-162"><span class="sd">        Generate comprehensive COSEBIs analysis plots for a single version.</span>
 </span><span id="line-163">
 </span><span id="line-164"><span class="sd">        Creates two types of plots:</span>
@@ -377,7 +377,7 @@
 </span><span id="line-170"><span class="sd">        version : str, optional</span>
 </span><span id="line-171"><span class="sd">            Version string to process. Defaults to first version in self.versions.</span>
 </span><span id="line-172"><span class="sd">        output_dir : str, optional</span>
-</span><span id="line-173"><span class="sd">            Output directory for plots. Defaults to self.cc[&#39;paths&#39;][&#39;output&#39;].</span>
+</span><span id="line-173"><span class="sd">            Output directory for plots. Defaults to self.cc['paths']['output'].</span>
 </span><span id="line-174"><span class="sd">        min_sep_int, max_sep_int, nbins_int : float, float, int</span>
 </span><span id="line-175"><span class="sd">            Integration binning parameters for correlation function</span>
 </span><span id="line-176"><span class="sd">            (default: 0.5, 500, 1000)</span>
@@ -401,26 +401,26 @@
 </span><span id="line-194"><span class="sd">        results : dict, optional</span>
 </span><span id="line-195"><span class="sd">            Precalculated results to avoid recomputation. If None (default),</span>
 </span><span id="line-196"><span class="sd">            results will be calculated using calculate_cosebis.</span>
-</span><span id="line-197"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-197"><span class="sd">        """</span>
 </span><span id="line-198">
 </span><span id="line-199">        <span class="c1"># Use instance defaults if not specified</span>
 </span><span id="line-200">        <span class="n">version</span> <span class="o">=</span> <span class="n">version</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">versions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-</span><span id="line-201">        <span class="n">output_dir</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="s2">&quot;paths&quot;</span><span class="p">][</span><span class="s2">&quot;output&quot;</span><span class="p">]</span>
-</span><span id="line-202">        <span class="n">npatch</span> <span class="o">=</span> <span class="n">npatch</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">treecorr_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;npatch&quot;</span><span class="p">,</span> <span class="mi">256</span><span class="p">)</span>
+</span><span id="line-201">        <span class="n">output_dir</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="s2">"paths"</span><span class="p">][</span><span class="s2">"output"</span><span class="p">]</span>
+</span><span id="line-202">        <span class="n">npatch</span> <span class="o">=</span> <span class="n">npatch</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">treecorr_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"npatch"</span><span class="p">,</span> <span class="mi">256</span><span class="p">)</span>
 </span><span id="line-203">
 </span><span id="line-204">        <span class="c1"># Determine variance method based on whether theoretical covariance is used</span>
-</span><span id="line-205">        <span class="n">var_method</span> <span class="o">=</span> <span class="s2">&quot;analytic&quot;</span> <span class="k">if</span> <span class="n">cov_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">&quot;jackknife&quot;</span>
+</span><span id="line-205">        <span class="n">var_method</span> <span class="o">=</span> <span class="s2">"analytic"</span> <span class="k">if</span> <span class="n">cov_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">"jackknife"</span>
 </span><span id="line-206">
 </span><span id="line-207">        <span class="c1"># Create output filename with integration parameters to match Snakemake</span>
 </span><span id="line-208">        <span class="n">out_stub</span> <span class="o">=</span> <span class="p">(</span>
-</span><span id="line-209">            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">output_dir</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">version</span><span class="si">}</span><span class="s2">_cosebis_minsep=</span><span class="si">{</span><span class="n">min_sep_int</span><span class="si">}</span><span class="s2">_&quot;</span>
-</span><span id="line-210">            <span class="sa">f</span><span class="s2">&quot;maxsep=</span><span class="si">{</span><span class="n">max_sep_int</span><span class="si">}</span><span class="s2">_nbins=</span><span class="si">{</span><span class="n">nbins_int</span><span class="si">}</span><span class="s2">_npatch=</span><span class="si">{</span><span class="n">npatch</span><span class="si">}</span><span class="s2">_&quot;</span>
-</span><span id="line-211">            <span class="sa">f</span><span class="s2">&quot;varmethod=</span><span class="si">{</span><span class="n">var_method</span><span class="si">}</span><span class="s2">_nmodes=</span><span class="si">{</span><span class="n">nmodes</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="line-209">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">output_dir</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">version</span><span class="si">}</span><span class="s2">_cosebis_minsep=</span><span class="si">{</span><span class="n">min_sep_int</span><span class="si">}</span><span class="s2">_"</span>
+</span><span id="line-210">            <span class="sa">f</span><span class="s2">"maxsep=</span><span class="si">{</span><span class="n">max_sep_int</span><span class="si">}</span><span class="s2">_nbins=</span><span class="si">{</span><span class="n">nbins_int</span><span class="si">}</span><span class="s2">_npatch=</span><span class="si">{</span><span class="n">npatch</span><span class="si">}</span><span class="s2">_"</span>
+</span><span id="line-211">            <span class="sa">f</span><span class="s2">"varmethod=</span><span class="si">{</span><span class="n">var_method</span><span class="si">}</span><span class="s2">_nmodes=</span><span class="si">{</span><span class="n">nmodes</span><span class="si">}</span><span class="s2">"</span>
 </span><span id="line-212">        <span class="p">)</span>
 </span><span id="line-213">
 </span><span id="line-214">        <span class="c1"># Add scale cut info if provided</span>
 </span><span id="line-215">        <span class="k">if</span> <span class="n">fiducial_scale_cut</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-216">            <span class="n">out_stub</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;_scalecut=</span><span class="si">{</span><span class="n">fiducial_scale_cut</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">fiducial_scale_cut</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="line-216">            <span class="n">out_stub</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">"_scalecut=</span><span class="si">{</span><span class="n">fiducial_scale_cut</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">fiducial_scale_cut</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span>
 </span><span id="line-217">
 </span><span id="line-218">        <span class="c1"># Get or calculate results for this version</span>
 </span><span id="line-219">        <span class="k">if</span> <span class="n">results</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -460,12 +460,12 @@
 </span><span id="line-253">        <span class="n">plot_cosebis_modes</span><span class="p">(</span>
 </span><span id="line-254">            <span class="n">plot_results</span><span class="p">,</span>
 </span><span id="line-255">            <span class="n">version</span><span class="p">,</span>
-</span><span id="line-256">            <span class="n">out_stub</span> <span class="o">+</span> <span class="s2">&quot;_cosebis.png&quot;</span><span class="p">,</span>
+</span><span id="line-256">            <span class="n">out_stub</span> <span class="o">+</span> <span class="s2">"_cosebis.png"</span><span class="p">,</span>
 </span><span id="line-257">            <span class="n">fiducial_scale_cut</span><span class="o">=</span><span class="n">fiducial_scale_cut</span><span class="p">,</span>
 </span><span id="line-258">        <span class="p">)</span>
 </span><span id="line-259">
 </span><span id="line-260">        <span class="n">plot_cosebis_covariance_matrix</span><span class="p">(</span>
-</span><span id="line-261">            <span class="n">plot_results</span><span class="p">,</span> <span class="n">version</span><span class="p">,</span> <span class="n">var_method</span><span class="p">,</span> <span class="n">out_stub</span> <span class="o">+</span> <span class="s2">&quot;_covariance.png&quot;</span>
+</span><span id="line-261">            <span class="n">plot_results</span><span class="p">,</span> <span class="n">version</span><span class="p">,</span> <span class="n">var_method</span><span class="p">,</span> <span class="n">out_stub</span> <span class="o">+</span> <span class="s2">"_covariance.png"</span>
 </span><span id="line-262">        <span class="p">)</span>
 </span><span id="line-263">
 </span><span id="line-264">        <span class="c1"># Generate scale cut heatmap if we have multiple scale cuts</span>
@@ -480,12 +480,12 @@
 </span><span id="line-273">                <span class="n">results</span><span class="p">,</span>
 </span><span id="line-274">                <span class="p">(</span><span class="n">gg_temp</span><span class="o">.</span><span class="n">left_edges</span><span class="p">,</span> <span class="n">gg_temp</span><span class="o">.</span><span class="n">right_edges</span><span class="p">),</span>
 </span><span id="line-275">                <span class="n">version</span><span class="p">,</span>
-</span><span id="line-276">                <span class="n">out_stub</span> <span class="o">+</span> <span class="s2">&quot;_scalecut_ptes.png&quot;</span><span class="p">,</span>
+</span><span id="line-276">                <span class="n">out_stub</span> <span class="o">+</span> <span class="s2">"_scalecut_ptes.png"</span><span class="p">,</span>
 </span><span id="line-277">                <span class="n">fiducial_scale_cut</span><span class="o">=</span><span class="n">fiducial_scale_cut</span><span class="p">,</span>
 </span><span id="line-278">            <span class="p">)</span>
 </span><span id="line-279">
 </span><span id="line-280">        <span class="c1"># Save data products and store on instance</span>
-</span><span id="line-281">        <span class="n">save_cosebis_results</span><span class="p">(</span><span class="n">results</span><span class="p">,</span> <span class="n">out_stub</span> <span class="o">+</span> <span class="s2">&quot;_data.npz&quot;</span><span class="p">,</span> <span class="n">fiducial_scale_cut</span><span class="p">)</span>
+</span><span id="line-281">        <span class="n">save_cosebis_results</span><span class="p">(</span><span class="n">results</span><span class="p">,</span> <span class="n">out_stub</span> <span class="o">+</span> <span class="s2">"_data.npz"</span><span class="p">,</span> <span class="n">fiducial_scale_cut</span><span class="p">)</span>
 </span><span id="line-282">        <span class="bp">self</span><span class="o">.</span><span class="n">_cosebis_results</span><span class="p">[</span><span class="n">version</span><span class="p">]</span> <span class="o">=</span> <span class="n">results</span></div>
 </div>
 

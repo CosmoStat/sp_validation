@@ -198,7 +198,7 @@
 
     <div id="content" role="main">
       <h1>Source code for sp_validation.io</h1><div class="highlight"><pre>
-<span></span><code><span id="line-1"><span class="sd">&quot;&quot;&quot;IO.</span>
+<span></span><code><span id="line-1"><span class="sd">"""IO.</span>
 </span><span id="line-2">
 </span><span id="line-3"><span class="sd">:Name: io.py</span>
 </span><span id="line-4">
@@ -207,7 +207,7 @@
 </span><span id="line-7"><span class="sd">:Author: Martin Kilbinger</span>
 </span><span id="line-8">
 </span><span id="line-9">
-</span><span id="line-10"><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="line-10"><span class="sd">"""</span>
 </span><span id="line-11">
 </span><span id="line-12"><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 </span><span id="line-13">
@@ -217,7 +217,7 @@
 <div class="viewcode-block" id="make_out_dirs">
 <a class="viewcode-back" href="../../sp_validation.io.html#sp_validation.io.make_out_dirs">[docs]</a>
 </span><span id="line-17"><span class="k">def</span><span class="w"> </span><span class="nf">make_out_dirs</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">plot_dir</span><span class="p">,</span> <span class="n">plot_subdirs</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-</span><span id="line-18"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Make output directories.</span>
+</span><span id="line-18"><span class="w">    </span><span class="sd">"""Make output directories.</span>
 </span><span id="line-19">
 </span><span id="line-20"><span class="sd">    Create output directories and subdirs</span>
 </span><span id="line-21">
@@ -229,17 +229,17 @@
 </span><span id="line-27"><span class="sd">        subdirectory names</span>
 </span><span id="line-28"><span class="sd">    verbose: bool, optional, default=False</span>
 </span><span id="line-29"><span class="sd">        verbose output if True</span>
-</span><span id="line-30"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-30"><span class="sd">    """</span>
 </span><span id="line-31">    <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">plot_dir</span><span class="p">):</span>
 </span><span id="line-32">        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">d</span><span class="p">):</span>
 </span><span id="line-33">            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
-</span><span id="line-34">                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Creating dir </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">d</span><span class="p">))</span>
+</span><span id="line-34">                <span class="nb">print</span><span class="p">(</span><span class="s2">"Creating dir </span><span class="si">{}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">d</span><span class="p">))</span>
 </span><span id="line-35">            <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
 </span><span id="line-36">    <span class="k">for</span> <span class="n">sd</span> <span class="ow">in</span> <span class="n">plot_subdirs</span><span class="p">:</span>
-</span><span id="line-37">        <span class="n">dsd</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">/</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">plot_dir</span><span class="p">,</span> <span class="n">sd</span><span class="p">)</span>
+</span><span id="line-37">        <span class="n">dsd</span> <span class="o">=</span> <span class="s2">"</span><span class="si">{}</span><span class="s2">/</span><span class="si">{}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">plot_dir</span><span class="p">,</span> <span class="n">sd</span><span class="p">)</span>
 </span><span id="line-38">        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">dsd</span><span class="p">):</span>
 </span><span id="line-39">            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
-</span><span id="line-40">                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Creating dir </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">dsd</span><span class="p">))</span>
+</span><span id="line-40">                <span class="nb">print</span><span class="p">(</span><span class="s2">"Creating dir </span><span class="si">{}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">dsd</span><span class="p">))</span>
 </span><span id="line-41">            <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">dsd</span><span class="p">)</span></div>
 
 </span><span id="line-42">
@@ -247,7 +247,7 @@
 <div class="viewcode-block" id="open_stats_file">
 <a class="viewcode-back" href="../../sp_validation.io.html#sp_validation.io.open_stats_file">[docs]</a>
 </span><span id="line-44"><span class="k">def</span><span class="w"> </span><span class="nf">open_stats_file</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">file_name</span><span class="p">):</span>
-</span><span id="line-45"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Open statistics file.</span>
+</span><span id="line-45"><span class="w">    </span><span class="sd">"""Open statistics file.</span>
 </span><span id="line-46">
 </span><span id="line-47"><span class="sd">    Open output file for statistics</span>
 </span><span id="line-48">
@@ -257,8 +257,8 @@
 </span><span id="line-52"><span class="sd">        directory</span>
 </span><span id="line-53"><span class="sd">    file_name : string</span>
 </span><span id="line-54"><span class="sd">        file name</span>
-</span><span id="line-55"><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="line-56">    <span class="n">stats_file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2">/</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">file_name</span><span class="p">),</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span>
+</span><span id="line-55"><span class="sd">    """</span>
+</span><span id="line-56">    <span class="n">stats_file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s2">"</span><span class="si">{}</span><span class="s2">/</span><span class="si">{}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">file_name</span><span class="p">),</span> <span class="s2">"w"</span><span class="p">)</span>
 </span><span id="line-57">
 </span><span id="line-58">    <span class="k">return</span> <span class="n">stats_file</span></div>
 
@@ -267,7 +267,7 @@
 <div class="viewcode-block" id="print_stats">
 <a class="viewcode-back" href="../../sp_validation.io.html#sp_validation.io.print_stats">[docs]</a>
 </span><span id="line-61"><span class="k">def</span><span class="w"> </span><span class="nf">print_stats</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">stats_file</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-</span><span id="line-62"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Print stats.</span>
+</span><span id="line-62"><span class="w">    </span><span class="sd">"""Print stats.</span>
 </span><span id="line-63">
 </span><span id="line-64"><span class="sd">    Print message to stats file.</span>
 </span><span id="line-65">
@@ -279,9 +279,9 @@
 </span><span id="line-71"><span class="sd">        statistics output file</span>
 </span><span id="line-72"><span class="sd">    verbose : bool, optional, default=False</span>
 </span><span id="line-73"><span class="sd">        print message to stdout if True</span>
-</span><span id="line-74"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-74"><span class="sd">    """</span>
 </span><span id="line-75">    <span class="n">stats_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
-</span><span id="line-76">    <span class="n">stats_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="line-76">    <span class="n">stats_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
 </span><span id="line-77">    <span class="n">stats_file</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
 </span><span id="line-78">
 </span><span id="line-79">    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
@@ -292,7 +292,7 @@
 <div class="viewcode-block" id="print_ratio">
 <a class="viewcode-back" href="../../sp_validation.io.html#sp_validation.io.print_ratio">[docs]</a>
 </span><span id="line-83"><span class="k">def</span><span class="w"> </span><span class="nf">print_ratio</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">numerator</span><span class="p">,</span> <span class="n">denominator</span><span class="p">,</span> <span class="n">stats_file</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-</span><span id="line-84"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Print Ratio.</span>
+</span><span id="line-84"><span class="w">    </span><span class="sd">"""Print Ratio.</span>
 </span><span id="line-85">
 </span><span id="line-86"><span class="sd">    pretty-print ratio of two numbers</span>
 </span><span id="line-87">
@@ -306,14 +306,14 @@
 </span><span id="line-95"><span class="sd">        output staistic file</span>
 </span><span id="line-96"><span class="sd">    verbose : bool, optional, default=False</span>
 </span><span id="line-97"><span class="sd">        verbose output if True</span>
-</span><span id="line-98"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-98"><span class="sd">    """</span>
 </span><span id="line-99">    <span class="k">if</span> <span class="n">denominator</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
 </span><span id="line-100">        <span class="n">ratio</span> <span class="o">=</span> <span class="n">numerator</span> <span class="o">/</span> <span class="n">denominator</span> <span class="o">*</span> <span class="mi">100</span>
 </span><span id="line-101">    <span class="k">else</span><span class="p">:</span>
 </span><span id="line-102">        <span class="n">ratio</span> <span class="o">=</span> <span class="mi">0</span>
 </span><span id="line-103">
 </span><span id="line-104">    <span class="n">print_stats</span><span class="p">(</span>
-</span><span id="line-105">        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="n">numerator</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">denominator</span><span class="si">}</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot; = </span><span class="si">{</span><span class="n">ratio</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">,</span>
+</span><span id="line-105">        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="n">numerator</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">denominator</span><span class="si">}</span><span class="s2">"</span> <span class="o">+</span> <span class="sa">f</span><span class="s2">" = </span><span class="si">{</span><span class="n">ratio</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%"</span><span class="p">,</span>
 </span><span id="line-106">        <span class="n">stats_file</span><span class="p">,</span>
 </span><span id="line-107">        <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span>
 </span><span id="line-108">    <span class="p">)</span></div>
@@ -322,12 +322,12 @@
 </span><span id="line-110">
 <div class="viewcode-block" id="write_binned_quantity">
 <a class="viewcode-back" href="../../sp_validation.io.html#sp_validation.io.write_binned_quantity">[docs]</a>
-</span><span id="line-111"><span class="k">def</span><span class="w"> </span><span class="nf">write_binned_quantity</span><span class="p">(</span><span class="n">quantity</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">bin_edges</span><span class="p">,</span> <span class="n">extra_key</span><span class="o">=</span><span class="s2">&quot;quantity&quot;</span><span class="p">):</span>
+</span><span id="line-111"><span class="k">def</span><span class="w"> </span><span class="nf">write_binned_quantity</span><span class="p">(</span><span class="n">quantity</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">bin_edges</span><span class="p">,</span> <span class="n">extra_key</span><span class="o">=</span><span class="s2">"quantity"</span><span class="p">):</span>
 </span><span id="line-112">
 </span><span id="line-113">    <span class="n">shape</span> <span class="o">=</span> <span class="n">quantity</span><span class="o">.</span><span class="n">shape</span>
 </span><span id="line-114">    <span class="n">nx</span><span class="p">,</span> <span class="n">ny</span> <span class="o">=</span> <span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
 </span><span id="line-115">
-</span><span id="line-116">    <span class="n">filename</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">_binned.npz&quot;</span>
+</span><span id="line-116">    <span class="n">filename</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">_binned.npz"</span>
 </span><span id="line-117">
 </span><span id="line-118">    <span class="n">combined</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="n">bin_edges</span><span class="p">,</span> <span class="n">extra_key</span><span class="p">:</span> <span class="n">quantity</span><span class="p">}</span>
 </span><span id="line-119">    <span class="n">np</span><span class="o">.</span><span class="n">savez</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="o">**</span><span class="n">combined</span><span class="p">)</span></div>
