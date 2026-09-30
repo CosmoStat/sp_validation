@@ -372,7 +372,7 @@ def get_jackknife_cov(
                 field = rho_stat_handler.catalogs.catalogs_dict[
                     f"psf_{version}{i}"
                 ].getNField(max_top=int.bit_length(npatch) - 1, coords="spherical")
-                patch, centers = field.run_kmeans(npatch)
+                patch, centers = field.run_kmeans(npatch, rng=np.random.default_rng(0))
 
                 # Update the patch centers of the catalogs
                 for key, cat in rho_stat_handler.catalogs.catalogs_dict.items():
