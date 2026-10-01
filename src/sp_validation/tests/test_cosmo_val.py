@@ -501,39 +501,60 @@ class TestCosmologyValidation:
                 getattr(read, column), getattr(measured, column), rtol=1e-4
             )
 
-    def test_calculate_2pcf_does_not_depend_on_thread_count(self, tmp_path):
-        """calculate_2pcf's ξ± is the same on 4 and on 48 TreeCorr threads.
+    def test_calculate_2pcf_is_reproducible_across_machines(
+        self, tmp_path, monkeypatch
+    ):
+        """Two fresh output trees on 4- and 16-CPU machines measure the same ξ±.
 
-        Production binning (default bin_slop/angle_slop), both runs on the
-        jackknife patches the first one writes, each from a fresh Catalog; they
-        must agree to far below the jackknife σ.
+        TreeCorr's default k-means tree depth follows the machine's OpenMP
+        thread count (3 levels on 4 CPUs, 4 on 16). With 100 patches (up to 6
+        levels, and not a power of two) that changes the k-means start, so a
+        seed alone would split the catalogue differently. calculate_2pcf pins
+        the depth: patch labels, per-patch-pair counts, ξ± and its jackknife
+        variance all agree.
         """
         import treecorr
+        import treecorr.field
 
-        params, version = self._write_synthetic_catalogs(
-            tmp_path, n_gal=4000, coherent_shear=True
-        )
-        cv = CosmologyValidation(
-            versions=[version],
-            npatch=8,
-            theta_min=15.0,
-            theta_max=70.0,
-            nbins=6,
-            **params,
-        )
+        patches = []
+        process = treecorr.GGCorrelation.process
 
-        xi = {}
-        for n_threads in (4, 48):
-            # calculate_2pcf reads back an existing text dump instead of measuring.
-            for dump in Path(params["output_dir"]).glob(f"{version}_xi_*.txt"):
-                dump.unlink()
-            gg = cv.calculate_2pcf(version, num_threads=n_threads)
-            assert treecorr.get_omp_threads() == n_threads  # the count took effect
-            xi[n_threads] = np.concatenate([gg.xip, gg.xim])
-            sigma = np.sqrt(np.concatenate([gg.varxip, gg.varxim]))
+        def recording_process(gg, cat, *args, **kwargs):
+            patches.append(np.array(cat.patch))
+            return process(gg, cat, *args, **kwargs)
 
-        shift = np.max(np.abs(xi[48] - xi[4]) / sigma)
-        assert shift < 1e-6, f"ξ± moves by {shift:.3g}σ between 4 and 48 threads"
+        monkeypatch.setattr(treecorr.GGCorrelation, "process", recording_process)
+
+        xi, var, counts = {}, {}, {}
+        for tree, n_cpu in (("a", 4), ("b", 16)):
+            # The thread count TreeCorr's default tree depth reads.
+            monkeypatch.setattr(treecorr.field, "get_omp_threads", lambda n=n_cpu: n)
+            (tmp_path / tree).mkdir()
+            params, version = self._write_synthetic_catalogs(
+                tmp_path / tree,
+                n_gal=4000,
+                ra_range=(0.0, 60.0),
+                dec_range=(-10.0, 30.0),
+                coherent_shear=True,
+            )
+            gg = CosmologyValidation(
+                versions=[version],
+                npatch=100,
+                theta_min=15.0,
+                theta_max=70.0,
+                nbins=6,
+                **params,
+            ).calculate_2pcf(version)
+            xi[tree] = np.concatenate([gg.xip, gg.xim])
+            var[tree] = np.concatenate([gg.varxip, gg.varxim])
+            counts[tree] = {k: r.npairs for k, r in gg.results.items()}
+
+        np.testing.assert_array_equal(patches[0], patches[1])
+        assert counts["a"].keys() == counts["b"].keys()
+        for k in counts["a"]:
+            np.testing.assert_array_equal(counts["a"][k], counts["b"][k])
+        np.testing.assert_allclose(xi["a"], xi["b"], rtol=0, atol=1e-12)
+        np.testing.assert_allclose(var["a"], var["b"], rtol=1e-10)
 
     def test_treecorr_runs_on_the_cpus_the_process_holds(self, tmp_path):
         """By default TreeCorr takes the process's CPU affinity, not the node's count."""
