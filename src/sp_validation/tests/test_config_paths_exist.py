@@ -280,14 +280,15 @@ def _declared_columns(block, kind):
 def test_cat_config_columns_exist_on_candide():
     """Every cat_config psf/shear column is among those its file presents.
 
-    Reads only FITS headers, through ``grammar.read_column_names``, so a v1
-    file is checked against the v2 names it presents to the rho/tau path.
+    Opens each file through ``io.Catalogue`` without reading its rows, so a
+    v1 file is checked against the v2 names it presents to the rho/tau path,
+    and a ``column_map`` applies as it does when reading.
     Entries whose file is absent are left to the path guard above.
     """
     if not _on_candide():
         pytest.skip("Candide-local column guard skipped: no /automnt/n17data/cdaley")
 
-    from sp_validation.grammar import read_column_names
+    from sp_validation.io import Catalogue
 
     with (_repo_root() / "cosmo_val/cat_config.yaml").open() as handle:
         config = yaml.safe_load(handle)
@@ -305,8 +306,10 @@ def test_cat_config_columns_exist_on_candide():
                 path = Path(entry["subdir"]) / path
             if not path.exists():
                 continue
-            hdu = block.get("hdu") or 1
-            present = set(read_column_names(path, hdu=hdu))
+            with Catalogue(
+                path, hdu=block.get("hdu"), column_map=block.get("column_map")
+            ) as catalogue:
+                present = set(catalogue.dtype().names)
             absent = {
                 key: col
                 for key, col in _declared_columns(block, kind).items()

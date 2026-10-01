@@ -8,8 +8,7 @@ from astropy.io import fits
 from shear_psf_leakage.rho_tau_cov import CovTauTh
 from shear_psf_leakage.rho_tau_stat import RhoStat, TauStat
 
-from sp_validation import grammar
-from sp_validation.grammar import read_catalogue
+from sp_validation import grammar, io
 
 # SquareRootScale lives in sp_validation.plots; re-exported here so that
 # `from sp_validation.rho_tau import SquareRootScale` keeps working.
@@ -24,9 +23,12 @@ def _extract_xip(correlations):
 class _CatalogueLoader:
     """Supply FITS paths to the file-based rho/tau readers.
 
-    Already-v2 HDU-1 catalogues pass through unchanged. Other tables are
-    materialized with only the configured columns into temporary FITS files,
-    because the rho/tau consumers read paths with ``fits.getdata``.
+    The rho/tau consumers (``shear_psf_leakage``) read FITS HDU 1 from a path.
+    A catalogue that already is exactly that, with no column renamed by the
+    grammar or the entry's ``column_map``, passes through unchanged. Any other
+    (another HDU, HDF5, a v1 or foreign naming convention) is read through
+    ``io.Catalogue``, keeping only the configured columns, into a temporary
+    FITS file.
     """
 
     def __init__(self, info, params):
@@ -92,22 +94,25 @@ class _CatalogueLoader:
     def __call__(self, block):
         if block not in self._cache:
             entry = self._info[block]
-            source = os.fspath(entry["path"])
-            hdu = 1 if entry.get("hdu") is None else entry["hdu"]
-
-            if hdu == 1 and not grammar.requires_adaptation(source, hdu=hdu):
-                self._cache[block] = source
-            else:
-                if self._temporary_directory is None:
-                    raise RuntimeError("use the catalogue loader inside a with block")
-                view = read_catalogue(source, hdu=hdu)
-                table = grammar.materialise(view, names=self._columns(block))
-                output = Path(self._temporary_directory.name) / f"{block}.fits"
-                with fits.HDUList(
-                    [fits.PrimaryHDU(), fits.BinTableHDU(data=table)]
-                ) as hdus:
-                    hdus.writeto(output)
-                self._cache[block] = os.fspath(output)
+            with io.Catalogue(
+                entry["path"], hdu=entry.get("hdu"), column_map=entry.get("column_map")
+            ) as catalogue:
+                if catalogue.hdu == 1 and not isinstance(
+                    catalogue.table(), grammar.V2View
+                ):
+                    self._cache[block] = catalogue.path
+                else:
+                    if self._temporary_directory is None:
+                        raise RuntimeError(
+                            "use the catalogue loader inside a with block"
+                        )
+                    table = catalogue.read(columns=self._columns(block))
+                    output = Path(self._temporary_directory.name) / f"{block}.fits"
+                    with fits.HDUList(
+                        [fits.PrimaryHDU(), fits.BinTableHDU(data=table)]
+                    ) as hdus:
+                        hdus.writeto(output)
+                    self._cache[block] = os.fspath(output)
         return self._cache[block]
 
 

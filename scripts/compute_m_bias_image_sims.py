@@ -59,13 +59,13 @@ def parse_args():
 def get_n_tiles(grids_dir, num):
     """Detect number of tiles from final_cat HDF5 files.
 
-    Layout-agnostic: uses ``sp_validation.catalog.find_dataset_group``, so it
+    Layout-agnostic: uses ``sp_validation.io.find_dataset_group``, so it
     works on both the nested ``patches/<campaign>/<tile-ID>`` and the flat
     per-tile HDF5 layouts.
     """
     import h5py
 
-    from sp_validation.catalog import find_dataset_group
+    from sp_validation.io import find_dataset_group
 
     for sim in ["1z2z_grid", "1m2z_grid", "1p2z_grid", "1z2m_grid", "1z2p_grid"]:
         sim_name = f"{sim}_{num}"

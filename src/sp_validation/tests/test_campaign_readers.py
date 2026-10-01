@@ -1,4 +1,4 @@
-"""Tests for the ShapePipe v2 campaign catalogue readers and mask cut."""
+"""Tests for the catalogue reader on ShapePipe v2 campaign products, and the mask cut."""
 
 import tempfile
 import unittest
@@ -8,9 +8,30 @@ import h5py
 import numpy as np
 import numpy.testing as npt
 
-from sp_validation import catalog, galaxy
+from sp_validation import galaxy, io
 from sp_validation.catalog_builders import JointCat
 from sp_validation.masks import Mask
+
+#: Columns ShapePipe v2's ``MergeStarCatPSFEX`` writes into
+#: ``full_starcat_<campaign>.hdf5`` (one dataset per exposure).
+STAR_CAT_COLUMNS = (
+    "X",
+    "Y",
+    "RA",
+    "DEC",
+    "HSM_G1_PSF",
+    "HSM_G2_PSF",
+    "HSM_T_PSF",
+    "HSM_G1_STAR",
+    "HSM_G2_STAR",
+    "HSM_T_STAR",
+    "HSM_FLAG_PSF",
+    "HSM_FLAG_STAR",
+    "MAG",
+    "SNR",
+    "ACCEPTED",
+    "CCD_NB",
+)
 
 GAL_DTYPE = np.dtype(
     [
@@ -69,7 +90,7 @@ class TestCampaignReader(unittest.TestCase):
         path = self._dir / "final_cat_CAMPAIGN.hdf5"
         write_campaign(path, "nested", self._tiles)
 
-        dat = catalog.read_campaign_catalogue(path, verbose=False)
+        dat = io.read_catalogue(path, verbose=False)
 
         self.assertEqual(len(dat), 5)
         npt.assert_array_equal(dat["RA"], self._expected()["RA"])
@@ -78,7 +99,7 @@ class TestCampaignReader(unittest.TestCase):
         path = self._dir / "final_cat_CAMPAIGN.hdf5"
         write_campaign(path, "flat", self._tiles)
 
-        dat = catalog.read_campaign_catalogue(path, verbose=False)
+        dat = io.read_catalogue(path, verbose=False)
 
         self.assertEqual(len(dat), 5)
         npt.assert_array_equal(dat["RA"], self._expected()["RA"])
@@ -90,17 +111,15 @@ class TestCampaignReader(unittest.TestCase):
         write_campaign(flat, "flat", self._tiles)
 
         npt.assert_array_equal(
-            catalog.read_campaign_catalogue(nested, verbose=False),
-            catalog.read_campaign_catalogue(flat, verbose=False),
+            io.read_catalogue(nested, verbose=False),
+            io.read_catalogue(flat, verbose=False),
         )
 
     def test_param_list_restriction(self):
         path = self._dir / "final_cat_CAMPAIGN.hdf5"
         write_campaign(path, "flat", self._tiles)
 
-        dat = catalog.read_campaign_catalogue(
-            path, param_list=["RA", "Dec"], verbose=False
-        )
+        dat = io.read_catalogue(path, columns=["RA", "Dec"], verbose=False)
 
         self.assertEqual(tuple(dat.dtype.names), ("RA", "Dec"))
 
@@ -109,9 +128,7 @@ class TestCampaignReader(unittest.TestCase):
         write_campaign(path, "flat", self._tiles)
 
         with self.assertRaises(KeyError) as ctx:
-            catalog.read_campaign_catalogue(
-                path, param_list=["RA", "NOT_A_COLUMN"], verbose=False
-            )
+            io.read_catalogue(path, columns=["RA", "NOT_A_COLUMN"], verbose=False)
         self.assertIn("NOT_A_COLUMN", str(ctx.exception))
 
     def test_row_order_is_tile_name_order(self):
@@ -128,7 +145,7 @@ class TestCampaignReader(unittest.TestCase):
                 group.create_dataset(tile_id, data=dat)
             f.attrs["n_tiles"] = len(tiles)
 
-        dat = catalog.read_campaign_catalogue(path, verbose=False)
+        dat = io.read_catalogue(path, verbose=False)
 
         npt.assert_array_equal(dat["RA"], [0, 1, 100, 101, 200, 201])
 
@@ -140,7 +157,7 @@ class TestCampaignReader(unittest.TestCase):
             f.attrs["n_tiles"] = 10
 
         with self.assertRaises(ValueError) as ctx:
-            catalog.read_campaign_catalogue(path, verbose=False)
+            io.read_catalogue(path, verbose=False)
         self.assertIn("incomplete", str(ctx.exception))
 
     def test_column_missing_from_later_tile_raises_clear_error(self):
@@ -154,9 +171,7 @@ class TestCampaignReader(unittest.TestCase):
             )
 
         with self.assertRaises(KeyError) as ctx:
-            catalog.read_campaign_catalogue(
-                path, param_list=["RA", "MAG_AUTO"], verbose=False
-            )
+            io.read_catalogue(path, columns=["RA", "MAG_AUTO"], verbose=False)
         message = str(ctx.exception)
         self.assertIn("MAG_AUTO", message)
         self.assertIn("001.000", message)
@@ -177,9 +192,7 @@ class TestCampaignReader(unittest.TestCase):
         write_campaign(path, "flat", {"000.000": narrow, "000.001": wide})
         param_list = ["N_EPOCH", "TILE_ID", "RA"]
 
-        dat = catalog.read_campaign_catalogue(
-            str(path), param_list=param_list, verbose=False
-        )
+        dat = io.read_catalogue(str(path), columns=param_list, verbose=False)
 
         self.assertEqual(dat.dtype["N_EPOCH"], np.dtype("i4"))
         self.assertEqual(dat.dtype["TILE_ID"], np.dtype("S12"))
@@ -191,20 +204,20 @@ class TestCampaignReader(unittest.TestCase):
         )
         self.assertEqual(dat["RA"][2], 3.123456789)
 
-        # campaign_shape must report the same promoted dtype, since the merge
+        # Catalogue.dtype must report the same promoted dtype, since the merge
         # preallocates from it.
-        n_rows, dtype_out = catalog.campaign_shape(str(path), param_list=param_list)
+        with io.Catalogue(str(path)) as catalogue:
+            n_rows, dtype_out = len(catalogue), catalogue.dtype(param_list)
         self.assertEqual(n_rows, 4)
         self.assertEqual(dtype_out, dat.dtype)
 
-    def test_iter_campaign_tiles(self):
+    def test_iter_chunks(self):
         """The streaming reader yields one restricted tile at a time."""
         path = self._dir / "final_cat_CAMPAIGN.hdf5"
         write_campaign(path, "nested", self._tiles)
 
-        tiles = list(
-            catalog.iter_campaign_tiles(str(path), param_list=["RA"], verbose=False)
-        )
+        with io.Catalogue(str(path)) as catalogue:
+            tiles = list(catalogue.iter_chunks(["RA"]))
 
         self.assertEqual([len(tile) for tile in tiles], [3, 2])
         for tile in tiles:
@@ -221,7 +234,7 @@ class TestCampaignReader(unittest.TestCase):
             f.create_group("other")
 
         with self.assertRaises(ValueError):
-            catalog.read_campaign_catalogue(path, verbose=False)
+            io.read_catalogue(path, verbose=False)
 
 
 class TestStarCatalogueReader(unittest.TestCase):
@@ -231,7 +244,7 @@ class TestStarCatalogueReader(unittest.TestCase):
         self._tmp = tempfile.TemporaryDirectory()
         self._dir = Path(self._tmp.name)
 
-        dtype = np.dtype([(name, "f8") for name in catalog.STAR_CAT_COLUMNS])
+        dtype = np.dtype([(name, "f8") for name in STAR_CAT_COLUMNS])
         self._exposures = {
             "2110000p": np.zeros(4, dtype=dtype),
             "2110001p": np.ones(6, dtype=dtype),
@@ -248,11 +261,11 @@ class TestStarCatalogueReader(unittest.TestCase):
         self._tmp.cleanup()
 
     def test_read_hdf5(self):
-        dat = catalog.read_star_catalogue(self._path, verbose=False)
+        dat = io.read_catalogue(self._path, key_column="EXPID")
 
         self.assertEqual(len(dat), 10)
         # the reader appends EXPID to the ShapePipe star columns
-        self.assertEqual(tuple(dat.dtype.names), catalog.STAR_CAT_COLUMNS + ("EXPID",))
+        self.assertEqual(tuple(dat.dtype.names), STAR_CAT_COLUMNS + ("EXPID",))
         npt.assert_array_equal(dat["MAG"][:4], np.zeros(4))
         npt.assert_array_equal(dat["MAG"][4:], np.ones(6))
 
@@ -266,7 +279,7 @@ class TestStarCatalogueReader(unittest.TestCase):
         ("2086324", as the smk-g7 products write it) or carry the CFIS
         processed-exposure suffix ("2110000p").
         """
-        dat = catalog.read_star_catalogue(self._path, verbose=False)
+        dat = io.read_catalogue(self._path, key_column="EXPID")
 
         self.assertEqual(dat.dtype["EXPID"].kind, "i")
         npt.assert_array_equal(dat["EXPID"][:4], np.full(4, 2110000))
@@ -288,7 +301,7 @@ class TestStarCatalogueReader(unittest.TestCase):
                 group.create_dataset(exp, data=dat)
 
         with self.assertRaises(ValueError) as ctx:
-            catalog.read_star_catalogue(path, verbose=False)
+            io.read_catalogue(path, key_column="EXPID")
         self.assertIn("n_exposures", str(ctx.exception))
 
     def test_missing_n_exposures_attr_is_allowed(self):
@@ -302,7 +315,7 @@ class TestStarCatalogueReader(unittest.TestCase):
             for exp, dat in self._exposures.items():
                 group.create_dataset(exp, data=dat)
 
-        self.assertEqual(len(catalog.read_star_catalogue(path, verbose=False)), 10)
+        self.assertEqual(len(io.read_catalogue(path, key_column="EXPID")), 10)
 
     def test_read_fits(self):
         from astropy.io import fits
@@ -311,7 +324,7 @@ class TestStarCatalogueReader(unittest.TestCase):
         dat = np.concatenate(list(self._exposures.values()))
         fits.BinTableHDU(data=dat).writeto(fits_path)
 
-        out = catalog.read_star_catalogue(str(fits_path), verbose=False)
+        out = io.read_catalogue(str(fits_path), key_column="EXPID")
 
         self.assertEqual(len(out), 10)
         npt.assert_array_equal(np.asarray(out["MAG"]), dat["MAG"])
@@ -524,6 +537,6 @@ class TestGroupDtype(unittest.TestCase):
         full = np.zeros(2, dtype=[("RA", "f8"), ("SPREAD_MODEL", "f4")])
         tiles = {"t0": full, "t1": full[["RA"]], "t2": full}
         with self.assertRaisesRegex(KeyError, r"1 of 3 tables.*'t1'.*SPREAD_MODEL"):
-            catalog.group_dtype(tiles)
-        dtype = catalog.group_dtype(tiles, param_list=["RA"])
+            io.group_dtype(tiles)
+        dtype = io.group_dtype(tiles, columns=["RA"])
         self.assertEqual(dtype.names, ("RA",))

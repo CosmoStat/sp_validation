@@ -535,7 +535,7 @@ if dat is not None:
 
 # %%
 if dat is not None:
-    obj.close_hd5()
+    obj.close_cat()
 
 # %%
 for mask in masks:

@@ -42,6 +42,7 @@ from sp_validation.calibration import *
 from sp_validation.calibration import metacal
 from sp_validation.galaxy import *
 from sp_validation.io import *
+from sp_validation.io import read_catalogue
 from sp_validation.survey import *
 
 # ## 1. Set-up
@@ -63,13 +64,12 @@ output_ext = output_format
 # ### Load merged (final) galaxy catalogue
 
 # +
-extension = os.path.splitext(galaxy_cat_path)[1]
-if extension == ".fits":
-    print("Loading galaxy .npy file...")
-    dd = np.load(galaxy_cat_path, mmap_mode=mmap_mode)
-else:
-    print("Loading galaxy .hdf5 file...")
-    dd = spv_cat.read_campaign_catalogue(galaxy_cat_path, param_path=param_list_path)
+dd = read_catalogue(
+    galaxy_cat_path,
+    columns=spv_cat.read_param_file(param_list_path) if param_list_path else None,
+    column_map=galaxy_column_map,
+    verbose=verbose,
+)
 
 n_obj = len(dd)
 print_stats(
@@ -80,17 +80,16 @@ print_stats(
 # #### Print some quantities to check nothing obvious is wrong with catalogue
 
 # PSF keys
-key_base = shape.upper()
-key_PSF_g1 = f"{key_base}_G1_PSF_ORIG_NOSHEAR"
-key_PSF_g2 = f"{key_base}_G2_PSF_ORIG_NOSHEAR"
-key_PSF_size = f"{key_base}_T_PSF_ORIG_NOSHEAR"
+key_PSF_g1 = "NGMIX_G1_PSF_ORIG_NOSHEAR"
+key_PSF_g2 = "NGMIX_G2_PSF_ORIG_NOSHEAR"
+key_PSF_size = "NGMIX_T_PSF_ORIG_NOSHEAR"
 size_to_fwhm = T_to_fwhm
 
 print_stats("Galaxies:", stats_file, verbose=verbose)
 n_tot = spv_cat.print_some_quantities(dd, stats_file, verbose=verbose)
 spv_cat.print_mean_ellipticity(
     dd,
-    [f"{key_base}_G1_NOSHEAR", f"{key_base}_G2_NOSHEAR"],
+    ["NGMIX_G1_NOSHEAR", "NGMIX_G2_NOSHEAR"],
     1,
     n_tot,
     stats_file,
@@ -114,7 +113,13 @@ print_stats(f"Tiles in input catalogue: {n_found}", stats_file, verbose=verbose)
 # ### Load star catalogue
 
 if star_cat_path:
-    d_star = spv_cat.read_star_catalogue(star_cat_path, hdu=hdu_star_cat)
+    d_star = read_catalogue(
+        star_cat_path,
+        hdu=hdu_star_cat,
+        column_map=star_column_map,
+        key_column="EXPID",
+        verbose=verbose,
+    )
 
 if star_cat_path:
     print_stats("Stars:", stats_file, verbose=verbose)
@@ -188,7 +193,7 @@ if star_cat_path:
 
 spv_cat.check_invalid(
     dd,
-    [key_PSF_g1, f"{key_base}_G1_NOSHEAR"],
+    [key_PSF_g1, "NGMIX_G1_NOSHEAR"],
     [-10, -10],
     stats_file,
     name=["`PSF", "galaxy ellipticity"],
@@ -247,8 +252,8 @@ _, _, iv_w = metacal.get_variance_ivweights(dd, sigma_eps_prior, mask=None)
 
 mag = spv_cat.get_col(dd, "MAG_AUTO", None, None)
 snr = spv_cat.get_snr(shape, dd, None, None)
-g1_uncal = dd[f"{key_base}_G1_NOSHEAR"]
-g2_uncal = dd[f"{key_base}_G2_NOSHEAR"]
+g1_uncal = dd["NGMIX_G1_NOSHEAR"]
+g2_uncal = dd["NGMIX_G2_NOSHEAR"]
 
 # Comprehensive catalogue without cuts nor mask applied
 if verbose:
@@ -360,7 +365,6 @@ from sp_validation.survey import *
 gal_metacal = metacal(
     dd,
     m_gal,
-    prefix=key_base,
     snr_min=gal_snr_min,
     snr_max=gal_snr_max,
     rel_size_min=gal_rel_size_min,

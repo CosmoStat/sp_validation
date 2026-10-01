@@ -46,9 +46,14 @@ data_dir = "."
 ### Tile IDs
 path_tile_ID = f"{data_dir}/tiles_{campaign}.txt"
 
-### Weak-lensing galaxy catalog name
+### Weak-lensing galaxy catalog name (FITS or HDF5; sp_validation.io)
 galaxy_cat_path = f"{data_dir}/final_cat_{campaign}.hdf5"
 print(f"Galaxy catalogue = {galaxy_cat_path}")
+
+### Galaxy catalogue column map {canonical name: name in the file}, for a
+### catalogue not in the ShapePipe v2 names (config/columns/shapepipe_v2.yaml);
+### set to `None` if not required
+galaxy_column_map = None
 
 ## Parameter list; optional, set to `None` if not required
 param_list_path = f"{data_dir}/cfis/final_cat.param"
@@ -56,9 +61,12 @@ param_list_path = f"{data_dir}/cfis/final_cat.param"
 ### Star and PSF catalog name; optional, set to `None` if not required
 star_cat_path = f"{data_dir}/full_starcat_{campaign}.hdf5"
 
-# HDU number of star and PSF catalogue; only used for a FITS star catalogue
-# (a path ending in .fits), ignored for the HDF5 product
+# HDU number of star and PSF catalogue; only used for a FITS star catalogue,
+# ignored for HDF5
 hdu_star_cat = 1
+
+### Star catalogue column map, as galaxy_column_map
+star_column_map = None
 
 ### External mask; optional, set to `None` if not required
 mask_external_path = None
@@ -97,9 +105,6 @@ stats_file_name = "stats_file.txt"
 ### Coordinate column names
 col_name_ra = "XWIN_WORLD"
 col_name_dec = "YWIN_WORLD"
-
-### Memory mode, set to None unless very large file
-mmap_mode = None
 
 ## Output
 

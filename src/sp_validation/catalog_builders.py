@@ -33,6 +33,7 @@ from sp_validation.masks import (
 
 from . import calibration, format, grammar
 from . import catalog as sp_cat
+from . import io as sp_io
 
 # Names re-exported for external code that resolves them off this module.
 __all__ = [
@@ -101,61 +102,51 @@ class BaseCat(object):
 
         return config
 
-    def read_cat(self, load_into_memory=False, mode="r", hdu=1, name="data"):
+    def read_cat(self, load_into_memory=False):
         """Read Cat.
 
-        Read input catalogue, either FITS or HDF5.
+        Read the input catalogue (``input_path``) as one table in the v2
+        column grammar, through ``sp_validation.io.Catalogue``, which detects
+        the container. A comprehensive HDF5 catalogue's ``data`` and, when
+        present, ``data_ext`` datasets are joined column-wise, so mask
+        columns read the same whether they sit in ``data`` (ShapePipe v2) or
+        in ``data_ext`` (post-processed v1). The optional ``column_map``
+        parameter renames a catalogue in another naming convention.
 
         Parameters
         ----------
         load_into_memory: bool, optional
-            load data into memory (potentially slow) of ``True``;
-            default is ``False``
-        mode: bool, optional
-            HDF5 read mode, default is "r"
-        hdu: int, optional
-            HDU number (for FITS file); default is 1
-        name: str, optional
-            dataset name, default is 'data'
+            read the data into memory (potentially slow) if ``True``;
+            otherwise return a lazy table, valid until ``close_cat``.
+            Default is ``False``
 
         Returns
         -------
-        list
-            Catalogue data
-
-        Raises
-        ------
-        IOError
-            If file extension is not .fits or .hd5
+        numpy.ndarray, astropy.io.fits.FITS_rec, h5py.Dataset or grammar.V2View
+            catalogue data
 
         """
         fpath = self._params["input_path"]
         verbose = self._params["verbose"]
 
-        extension = os.path.splitext(fpath)[1]
-        if extension == ".fits":
-            if verbose:
-                print(f"Reading FITS file {fpath}, HDU {hdu}...")
-
-            hdu = 1
-            dat = fits.getdata(fpath, hdu)
-
-        elif extension in (".hdf5", ".hd5"):
-            if verbose:
-                print(f"Reading HDF5 file {fpath}...")
-
-            self._hd5file = h5py.File(fpath, mode)
-            try:
-                dat = self._hd5file[name]
-            except:
-                print(f"Error while reading file {fpath}")
-                raise
-            if load_into_memory:
-                return dat[()]
-            else:
-                return dat
+        if verbose:
+            print(f"Reading catalogue {fpath}...")
+        self._catalogue = sp_io.Catalogue(
+            fpath, column_map=self._params.get("column_map")
+        )
+        if load_into_memory:
+            dat = self._catalogue.read(verbose=verbose)
+            self.close_cat()
         else:
-            raise IOError(f"Unknown file extension {extension}")
+            dat = self._catalogue.table()
+
+        if verbose:
+            print(
+                f"Found {len(dat)} (~{format.millify(len(dat))}) objects"
+                + " in catalogue"
+            )
+
+        return dat
 
     def write_hdf5_header(self, hd5file):
         """Write HDF5 Header.
@@ -231,17 +222,17 @@ class BaseCat(object):
         if self._params["verbose"]:
             print("Done.")
 
-    def close_hd5(self):
-        """Close HD5.
+    def close_cat(self):
+        """Close Cat.
 
-        Close HDF5 file.
+        Close the catalogue file ``read_cat`` opened.
 
         """
-        self._hd5file.close()
+        self._catalogue.close()
 
 
-# Column-dtype promotion is shared with the per-campaign reader in ``catalog``.
-_promote = sp_cat.promote_dtypes
+# Column-dtype promotion is shared with the catalogue reader in ``io``.
+_promote = sp_io.promote_dtypes
 
 
 def _checked_assign(target, start, end, values, name):
@@ -542,9 +533,11 @@ class JointCat(BaseCat):
         # First pass over file metadata only (row counts and dtypes), so the
         # merged array is allocated once and filled in place, instead of
         # concatenating per-campaign copies (peak memory 2x the output).
-        shapes = [
-            sp_cat.campaign_shape(path, param_list=param_list) for path in input_paths
-        ]
+        column_map = self._params.get("column_map")
+        shapes = []
+        for path in input_paths:
+            with sp_io.Catalogue(path, column_map=column_map) as catalogue:
+                shapes.append((len(catalogue), catalogue.dtype(param_list)))
         n_total = sum(n_rows for n_rows, _ in shapes)
         dtype_out = self.output_dtype([dtype for _, dtype in shapes], n_char_campaign)
 
@@ -554,18 +547,17 @@ class JointCat(BaseCat):
             # Fill tile by tile: peak memory is the merged output plus a
             # single tile, never a whole campaign copy on top of it.
             n_campaign = 0
-            for dat in sp_cat.iter_campaign_tiles(
-                input_path,
-                param_list=param_list,
-                verbose=self._params["verbose"],
-            ):
-                end = start + len(dat)
-                for name in dat.dtype.names:
-                    _checked_assign(dat_all[name], start, end, dat[name], name)
-                dat_all["campaign"][start:end] = campaign.encode()
-                start = end
-                n_campaign += len(dat)
-                del dat
+            with sp_io.Catalogue(input_path, column_map=column_map) as catalogue:
+                for dat in catalogue.iter_chunks(
+                    param_list, verbose=self._params["verbose"]
+                ):
+                    end = start + len(dat)
+                    for name in dat.dtype.names:
+                        _checked_assign(dat_all[name], start, end, dat[name], name)
+                    dat_all["campaign"][start:end] = campaign.encode()
+                    start = end
+                    n_campaign += len(dat)
+                    del dat
 
             if self._params["verbose"]:
                 print(
@@ -855,7 +847,7 @@ class ApplyHspMasks(BaseCat):
         obj.update_params()
 
         # Read input data
-        dat = obj.read_cat(load_into_memory=True, mode="r")
+        dat = obj.read_cat(load_into_memory=True)
 
         # Get masks
         masks = obj.get_masks(dat=dat)
@@ -865,9 +857,6 @@ class ApplyHspMasks(BaseCat):
 
         # Write extended data to new HDF5 file
         obj.write_hdf5_file(dat_ext)
-
-        # Close input HDF5 catalogue file
-        obj.close_hd5()
 
     def append_masks(self, dat, masks):
         """Append Masks.
@@ -1014,56 +1003,6 @@ class CalibrateCat(BaseCat):
             "input_path": "path input FITS catalogue",
             "cmatrices": "compute correlation and confusion matrices",
         }
-
-    def read_cat(self, load_into_memory=False):
-        """Read Cat.
-
-        Read the input comprehensive catalogue as one table in the v2 column
-        grammar (``sp_validation.grammar``). An HDF5 catalogue's ``data`` and,
-        when present, ``data_ext`` datasets are joined column-wise, so mask
-        columns read the same whether they sit in ``data`` (ShapePipe v2) or
-        in ``data_ext`` (post-processed v1).
-
-        Parameters
-        ----------
-        load_into_memory: bool, optional
-            load data into memory (potentially slow) of ``True``;
-            default is ``False``
-
-        Returns
-        -------
-        numpy.ndarray or grammar.V2View
-            catalogue data
-
-        """
-        fpath = self._params["input_path"]
-        verbose = self._params["verbose"]
-
-        # Image-simulation path: a single per-run comprehensive catalogue in
-        # FITS, not the joined multi-campaign HDF5 the data path builds.
-        extension = os.path.splitext(fpath)[1]
-        if extension == ".fits":
-            if verbose:
-                print(f"Reading FITS file {fpath}, HDU 1...")
-            dat = grammar.materialise(fits.getdata(fpath, 1))
-        else:
-            if verbose:
-                print(f"Reading HDF5 file {fpath}...")
-            self._hd5file = h5py.File(fpath, "r")
-            parts = [self._hd5file["data"]]
-            if "data_ext" in self._hd5file:
-                parts.append(self._hd5file["data_ext"])
-            dat = grammar.adapt(*parts)
-            if load_into_memory:
-                dat = grammar.materialise(dat)
-
-        if verbose:
-            print(
-                f"Found {len(dat)} (~{format.millify(len(dat))}) objects"
-                + " in catalogue"
-            )
-
-        return dat
 
     def add_params_to_FITS_header(self, header, cm=None):
         header_new = fits.Header()

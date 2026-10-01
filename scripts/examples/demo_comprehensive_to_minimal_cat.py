@@ -302,4 +302,4 @@ plt.show(block=False)
 plt.savefig("confusion_matrix.png")
 # -
 
-obj.close_hd5()
+obj.close_cat()

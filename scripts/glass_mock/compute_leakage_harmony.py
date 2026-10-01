@@ -8,8 +8,8 @@ import argparse
 import numpy as np
 from astropy.io import fits
 
-from sp_validation import catalog as spv_cat
 from sp_validation.glass_mock import compute_leakage_harmony
+from sp_validation.io import read_catalogue
 
 
 def get_parser():
@@ -54,7 +54,7 @@ if __name__ == "__main__":
     print("Catalog data loaded successfully.")
 
     print("Loading the star catalog data...")
-    cat_star = spv_cat.read_star_catalogue(args.star_cat_path)
+    cat_star = read_catalogue(args.star_cat_path, key_column="EXPID")
     print("Star catalog data loaded successfully.")
 
     print("Computing leakage in harmonic space...")

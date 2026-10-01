@@ -1,4 +1,4 @@
-"""ShapePipe column grammars.
+"""Column grammars: the v2 schema, and the maps that present a table in it.
 
 ShapePipe products name their columns in one of two grammars. ``v2`` is the
 grammar the rest of sp_validation reads (``HSM_T_PSF``, ``NGMIX_G1_NOSHEAR``,
@@ -54,6 +54,14 @@ it, and ``NGMIX_Tpsf_NOSHEAR`` otherwise (a cut catalogue such as v1.4.6.3's,
 whose no-shear column already holds the ``1P`` value). ShapePipe v2 reuses one
 reconvolved PSF across metacal types, so its columns need no correction.
 
+A catalogue in another naming convention can carry a ``column_map``,
+``{v2 name: name in the file}``, which ``adapt`` applies as renames ahead of
+the rules above: an entry overrides any rule producing the same v2 name, and
+the v1 detection runs on the columns the map leaves. An entry may hold one
+``*`` on both sides, matching any stem: ``{"NGMIX_*": "MYFIT_*"}`` presents
+every ``MYFIT_<stem>`` column as ``NGMIX_<stem>``. Explicit entries take
+precedence over pattern entries.
+
 Every other column passes through under its own name; source names that have a
 v2 equivalent are hidden.
 
@@ -61,12 +69,10 @@ v2 equivalent are hidden.
 HDF5 splits one catalogue over its ``data`` and ``data_ext`` datasets.
 """
 
-import os
 from dataclasses import dataclass
 
 import h5py
 import numpy as np
-from astropy.io import fits
 from cs_util.size import sigma_to_T
 
 #: Metacal shear types carried by the ngmix columns.
@@ -227,20 +233,61 @@ def detect_generation(names):
     return None
 
 
-def _resolve(names):
+def _map_rules(names, column_map):
+    """Return the rename rules ``column_map`` yields for a table's ``names``.
+
+    Entries whose file column is absent yield nothing, so one map serves
+    tables that carry only some of its columns.
+    """
+    if not column_map:
+        return ()
+    rules = {}
+    patterns = []
+    for v2, source in column_map.items():
+        if "*" not in v2 and "*" not in source:
+            if source in names and source != v2:
+                rules[v2] = Rule(v2, source)
+            continue
+        if v2.count("*") != 1 or source.count("*") != 1:
+            raise ValueError(
+                f"column_map pattern {v2!r}: {source!r} needs exactly one '*'"
+                + " on each side"
+            )
+        patterns.append((v2.split("*"), source.split("*")))
+    for (v2_head, v2_tail), (head, tail) in patterns:
+        for name in names:
+            if (
+                len(name) >= len(head) + len(tail)
+                and name.startswith(head)
+                and name.endswith(tail)
+            ):
+                stem = name[len(head) : len(name) - len(tail)]
+                v2 = f"{v2_head}{stem}{v2_tail}"
+                if v2 != name:
+                    rules.setdefault(v2, Rule(v2, name))
+    return tuple(rules.values())
+
+
+def _resolve(names, column_map=None):
     """Return (presented names, {v2 name: (rule, source name)}) for ``names``."""
+    mapped = _map_rules(names, column_map)
+    mapped_sources = {rule.source for rule in mapped}
     rules = MASK_RULES
-    if detect_generation(names) == "v1":
+    if detect_generation([n for n in names if n not in mapped_sources]) == "v1":
         rules = V1_RULES + MASK_RULES
+    claimed = {rule.v2 for rule in mapped}
+    rules = mapped + tuple(rule for rule in rules if rule.v2 not in claimed)
     position = {name: i for i, name in enumerate(names)}
     derived = {}
     consumed = set()
     by_anchor = {}
     for rule in rules:
         sources = [s for s in rule.sources() if s in position]
+        if rule not in mapped:
+            sources = [s for s in sources if s not in mapped_sources]
         if not sources:
             continue
-        if rule.v2 in position:
+        if rule.v2 in position and rule.v2 not in mapped_sources:
             raise ValueError(
                 f"catalogue carries both {sources[0]!r} and {rule.v2!r},"
                 + " two names for the same column"
@@ -260,12 +307,12 @@ def _resolve(names):
     return tuple(presented), derived
 
 
-def v2_names(names):
+def v2_names(names, column_map=None):
     """Return the column names a table with columns ``names`` presents.
 
     Header-only counterpart of ``adapt``.
     """
-    return _resolve(tuple(names))[0]
+    return _resolve(tuple(names), column_map)[0]
 
 
 #: Bytes of whole HDF5 rows read per block when selecting rows of a dataset.
@@ -357,7 +404,7 @@ class V2View:
     Column names are case-sensitive, unlike a FITS_rec's.
     """
 
-    def __init__(self, bases, rows=None, dtype=None):
+    def __init__(self, bases, rows=None, dtype=None, column_map=None):
         self._bases = tuple(bases)
         n_rows = {len(base) for base in self._bases}
         if len(n_rows) != 1:
@@ -371,7 +418,8 @@ class V2View:
                 self._owner[name] = base
         # None (all rows), a ``range`` or an integer index array.
         self._rows = rows
-        self._names, self._derived = _resolve(tuple(self._owner))
+        self._column_map = column_map
+        self._names, self._derived = _resolve(tuple(self._owner), column_map)
         self._on_disk = any(isinstance(base, h5py.Dataset) for base in self._bases)
         self._dtype = dtype
 
@@ -420,8 +468,10 @@ class V2View:
         rows = self._select(key)
         if self._on_disk:
             bases = [_take(base, rows) for base in self._bases]
-            return V2View(bases, dtype=self._dtype)
-        return V2View(self._bases, rows=rows, dtype=self._dtype)
+            return V2View(bases, dtype=self._dtype, column_map=self._column_map)
+        return V2View(
+            self._bases, rows=rows, dtype=self._dtype, column_map=self._column_map
+        )
 
     def __array__(self, dtype=None, copy=None):
         out = self.to_structured()
@@ -526,20 +576,22 @@ class V2View:
         return np.dtype((column.dtype, column.shape[1:]))
 
 
-def adapt(table, *tables):
+def adapt(table, *tables, column_map=None):
     """Present ``table`` (joined with any further ``tables``) in the v2 grammar.
 
     A single table with nothing to rename, or already a ``V2View``, is returned
     unchanged; otherwise the result is a ``V2View``. Each table is anything
     whose ``dtype.names`` lists its columns and whose ``table[name]`` reads
     one: a numpy structured array, FITS_rec or h5py Dataset. Joined tables
-    must have equal lengths and disjoint column names.
+    must have equal lengths and disjoint column names. ``column_map``
+    (``{v2 name: name in the file}``, see the module docstring) renames a
+    foreign convention's columns.
     """
     if not tables and (
-        isinstance(table, V2View) or not _resolve(column_names(table))[1]
+        isinstance(table, V2View) or not _resolve(column_names(table), column_map)[1]
     ):
         return table
-    return V2View((table,) + tables)
+    return V2View((table,) + tables, column_map=column_map)
 
 
 def materialise(table, names=None):
@@ -557,27 +609,3 @@ def materialise(table, names=None):
     for name in names:
         out[name] = view[name]
     return out
-
-
-def read_catalogue(path, hdu=1):
-    """Read a FITS catalogue HDU and present it in the v2 grammar."""
-    return adapt(fits.getdata(os.fspath(path), ext=hdu))
-
-
-def read_column_names(path, hdu=1):
-    """Return the v2-grammar column names of a FITS HDU, reading only its header."""
-    return v2_names(_read_fits_column_names(path, hdu))
-
-
-def requires_adaptation(path, hdu=1):
-    """Return whether a FITS HDU has any columns that need grammar mapping.
-
-    The header-only check lets file-based consumers keep using an already-v2
-    catalogue without loading or rewriting its table data.
-    """
-    return bool(_resolve(_read_fits_column_names(path, hdu))[1])
-
-
-def _read_fits_column_names(path, hdu):
-    header = fits.getheader(os.fspath(path), ext=hdu)
-    return [header[f"TTYPE{i}"] for i in range(1, header["TFIELDS"] + 1)]

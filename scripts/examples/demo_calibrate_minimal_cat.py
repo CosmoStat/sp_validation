@@ -234,4 +234,4 @@ with open("masks.txt", "w") as f_out:
 
 #
 
-obj.close_hd5()
+obj.close_cat()

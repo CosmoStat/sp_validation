@@ -7,7 +7,9 @@ catalogue (one ``data`` dataset, v2 grammar, ``MASK_{b}_{label}``). Read
 through the readers the pipeline uses, the two must give identical mask
 selections, for ``galaxy.mask_cut`` and for every mask config, and identical
 metacal inputs.
-Also covers the campaign and star readers on v1-grammar files.
+Also covers the catalogue reader on v1-grammar campaign and star files, and a
+catalogue in a foreign naming convention calibrating like its v2 twin through a
+``column_map``.
 """
 
 from pathlib import Path
@@ -19,8 +21,8 @@ import yaml
 from astropy.io import fits
 from cs_util.size import T_to_sigma
 
-from sp_validation import catalog, galaxy, grammar
-from sp_validation.calibration import metacal
+from sp_validation import galaxy, grammar, io
+from sp_validation.calibration import get_calibrated_quantities, metacal
 from sp_validation.catalog_builders import CalibrateCat, JointCat
 from sp_validation.masks import Mask, get_masks_from_config
 
@@ -116,7 +118,7 @@ def comprehensive(tmp_path):
         readers.append(reader)
     yield tables
     for reader in readers:
-        reader._hd5file.close()
+        reader.close_cat()
 
 
 def test_v1_comprehensive_presents_the_v2_columns(comprehensive):
@@ -209,11 +211,67 @@ def test_metacal_inputs_are_identical(comprehensive):
     np.testing.assert_array_equal(mc_v1.R, mc_v2.R)
 
 
+def _calibrate(table, config):
+    """Return (metacal, calibrated g) for ``table`` under mask config ``config``."""
+    cm = config["metacal"]
+    masks, _ = get_masks_from_config(config, table)
+    mc = metacal(
+        table,
+        Mask.from_list(masks)._mask,
+        snr_min=cm["gal_snr_min"],
+        snr_max=cm["gal_snr_max"],
+        rel_size_min=cm["gal_rel_size_min"],
+        rel_size_max=cm["gal_rel_size_max"],
+        size_corr_ell=cm["gal_size_corr_ell"],
+        sigma_eps=cm["sigma_eps_prior"],
+        global_R_weight=None,
+    )
+    g_corr, _, _, _ = get_calibrated_quantities(mc)
+    return mc, g_corr
+
+
+def test_foreign_names_with_a_column_map_calibrate_like_v2(tmp_path):
+    """A catalogue under its own column names calibrates through a column_map.
+
+    The v2 twin is written with every ``NGMIX_*`` column renamed ``MYFIT_*`` and
+    RA/Dec renamed; ``CalibrateCat`` reads it with a map holding one pattern
+    and two explicit entries, and metacal gives the same calibrated shear.
+    """
+    _, _, v2 = _twins()
+    renames = {"RA": "ALPHA", "Dec": "DELTA"}
+    foreign_names = [
+        renames.get(name, name.replace("NGMIX_", "MYFIT_", 1))
+        for name in v2.dtype.names
+    ]
+    foreign = np.empty(
+        N,
+        dtype=[(new, v2.dtype[old]) for new, old in zip(foreign_names, v2.dtype.names)],
+    )
+    for new, old in zip(foreign_names, v2.dtype.names):
+        foreign[new] = v2[old]
+    with h5py.File(tmp_path / "foreign.hdf5", "w") as handle:
+        handle.create_dataset("data", data=foreign)
+
+    reader = CalibrateCat()
+    reader._params["input_path"] = str(tmp_path / "foreign.hdf5")
+    reader._params["column_map"] = {"NGMIX_*": "MYFIT_*", **renames}
+    table = reader.read_cat(load_into_memory=True)
+    assert set(table.dtype.names) == set(v2.dtype.names)
+
+    config = yaml.safe_load((CONFIG_DIR / "mask_v1.X.6.yaml").read_text())
+    available = set(v2.dtype.names)
+    config["dat"] = [cut for cut in config["dat"] if cut["col_name"] in available]
+    mc_foreign, g_foreign = _calibrate(table, config)
+    mc_v2, g_v2 = _calibrate(v2, config)
+    assert mc_v2._n_input > 0
+    np.testing.assert_array_equal(mc_foreign.R, mc_v2.R)
+    np.testing.assert_array_equal(g_foreign, g_v2)
+
+
 def test_load_into_memory_matches_the_view(comprehensive, tmp_path):
     reader = CalibrateCat()
     reader._params["input_path"] = str(tmp_path / "v1.hdf5")
     loaded = reader.read_cat(load_into_memory=True)
-    reader._hd5file.close()
     assert isinstance(loaded, np.ndarray)
     for name in loaded.dtype.names:
         np.testing.assert_array_equal(loaded[name], comprehensive["v1"][name])
@@ -237,16 +295,13 @@ def test_campaign_reader_presents_v1_tiles_in_v2(tmp_path):
         {"000.000": v1[:1500], "001.000": v1[1500:]},
     )
     wanted = ["RA", "NGMIX_G1_NOSHEAR", "NGMIX_MCAL_TYPES_FAIL", "HSM_T_PSF"]
-    dat = catalog.read_campaign_catalogue(
-        str(tmp_path / "final_cat_CAMPAIGN.hdf5"), param_list=wanted, verbose=False
-    )
+    dat = io.read_catalogue(str(tmp_path / "final_cat_CAMPAIGN.hdf5"), columns=wanted)
     assert dat.dtype.names == tuple(wanted)
     for name in wanted:
         np.testing.assert_allclose(dat[name], v2[name], rtol=1e-14)
 
-    n_rows, dtype = catalog.campaign_shape(
-        str(tmp_path / "final_cat_CAMPAIGN.hdf5"), param_list=wanted
-    )
+    with io.Catalogue(str(tmp_path / "final_cat_CAMPAIGN.hdf5")) as catalogue:
+        n_rows, dtype = len(catalogue), catalogue.dtype(wanted)
     assert n_rows == N and dtype.names == tuple(wanted)
 
     merger = JointCat()
@@ -272,7 +327,7 @@ def test_star_reader_presents_v1_fits_in_v2(tmp_path):
     v1["E1_STAR_HSM"] = rng.normal(0, 0.05, 50)
     v1["SIGMA_STAR_HSM"] = T_to_sigma(T)
     fits.BinTableHDU(v1).writeto(tmp_path / "stars.fits")
-    stars = catalog.read_star_catalogue(str(tmp_path / "stars.fits"), verbose=False)
+    stars = io.read_catalogue(str(tmp_path / "stars.fits"), key_column="EXPID")
     assert isinstance(stars, np.ndarray)
     np.testing.assert_allclose(stars["HSM_T_STAR"], T, rtol=1e-12)
     np.testing.assert_array_equal(stars["HSM_G1_STAR"], v1["E1_STAR_HSM"])

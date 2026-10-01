@@ -3,11 +3,9 @@
 sp_validation reads the ShapePipe-v2 column grammar everywhere: live package,
 configs, calibration scripts, paper figures and notebooks. Catalogues written in
 the v1 grammar (every release up to v1.6.x) are presented in the v2 grammar at the
-read boundary by `sp_validation.grammar`: the campaign and star readers
-(`catalog.read_campaign_catalogue`, `read_star_catalogue`, the `JointCat` merge),
-`CalibrateCat.read_cat`, the ρ/τ path (`rho_tau.py`) and the theory-covariance
-script all read through it. `adapt(table)` (or `read_catalogue(path, hdu)` for a
-FITS file) presents a v1 table under the v2 names and units below, as a lazy
+read boundary by `sp_validation.grammar`: every catalogue read goes through
+`sp_validation.io` (`read_catalogue`, `Catalogue`), which applies it. `adapt(table)`
+presents a v1 table under the v2 names and units below, as a lazy
 column view over a numpy array, FITS_rec or h5py dataset, and returns v2 or
 grammar-neutral tables unchanged. `detect_generation` tells the grammars apart
 from column names, and `v2_names` maps a header's names without reading data.

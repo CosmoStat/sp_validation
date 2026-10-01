@@ -15,15 +15,13 @@ from astropy.io import fits
 from cs_util.size import T_to_sigma
 from numpy.lib import recfunctions as rfn
 
-from sp_validation import grammar
+from sp_validation import grammar, io
 from sp_validation.grammar import (
     MASK_LABELS,
     SHEARS,
     V2View,
     adapt,
     detect_generation,
-    read_catalogue,
-    read_column_names,
     v2_names,
 )
 
@@ -198,17 +196,20 @@ def test_v2_and_neutral_tables_pass_through_unchanged():
     assert v2_names(v2.dtype.names) == v2.dtype.names
 
 
-def test_read_catalogue_and_header_names(tmp_path):
+def test_catalogue_presents_a_v1_fits_file_in_v2(tmp_path):
     v1, v2 = _twins()
     _, path = _to_fits_rec(v1, tmp_path)
-    view = read_catalogue(path, hdu=1)
-    _assert_same_columns(view, v2)
-    assert read_column_names(path, hdu=1) == view.names
-    assert grammar.requires_adaptation(path, hdu=1)
+    with io.Catalogue(path) as catalogue:
+        assert catalogue.hdu == 1
+        view = catalogue.table()
+        assert isinstance(view, V2View)
+        _assert_same_columns(view, v2)
+        assert catalogue.dtype().names == view.names
 
     v2_path = tmp_path / "v2.fits"
     fits.BinTableHDU(v2).writeto(v2_path)
-    assert not grammar.requires_adaptation(v2_path, hdu=1)
+    with io.Catalogue(v2_path) as catalogue:
+        assert not isinstance(catalogue.table(), V2View)
 
 
 def test_psf_size_error_matches_between_grammars():

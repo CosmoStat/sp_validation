@@ -7,8 +7,9 @@ import colorama
 import numpy as np
 import yaml
 from cs_util.cosmo import get_cosmo
-from shear_psf_leakage import run_object, run_scale
+from shear_psf_leakage import leakage, run_object, run_scale
 
+from .. import io
 from ..b_modes import (
     _get_pte_from_scale_cut,
     find_conservative_scale_cut_key,
@@ -21,6 +22,37 @@ from .pseudo_cl import PseudoClMixin
 from .psf_systematics import PSFSystematicsMixin
 from .pure_eb import PureEBMixin
 from .real_space import RealSpaceMixin
+
+
+class _LeakageScale(run_scale.LeakageScale):
+    """``LeakageScale`` reading its catalogues through ``sp_validation.io``.
+
+    ``entries`` holds the version's cat_config ``shear`` and ``star`` blocks.
+    """
+
+    entries = None
+
+    def read_data(self, shear=True, psf=True):
+        if shear:
+            self.dat_shear = leakage.cut_data(
+                io.read_catalogue_entry(self.entries["shear"]),
+                self._params["cut"],
+                self._params["verbose"],
+            )
+        if psf:
+            self.dat_PSF = self.handle_close_objects(
+                io.read_catalogue_entry(self.entries["star"])
+            )
+
+
+class _LeakageObject(run_object.LeakageObject):
+    """``LeakageObject`` reading its catalogue through ``sp_validation.io``."""
+
+    entries = None
+
+    def read_data(self):
+        self._dat = io.read_catalogue_entry(self.entries["shear"])
+
 
 # %%
 BMODE_COLUMNS = {
@@ -481,17 +513,18 @@ class CosmologyValidation(
         # Branch is loop-invariant: pick the leakage class and its parameter
         # builder once, then apply per version.
         make_leakage, set_params = (
-            (run_object.LeakageObject, self.set_params_leakage_object)
+            (_LeakageObject, self.set_params_leakage_object)
             if objectwise
-            else (run_scale.LeakageScale, self.set_params_leakage_scale)
+            else (_LeakageScale, self.set_params_leakage_scale)
         )
 
         results = {}
         for ver in self.versions:
-            leakage = results[ver] = make_leakage()
-            leakage._params.update(set_params(ver))
-            leakage.check_params()
-            leakage.prepare_output()
+            obj = results[ver] = make_leakage()
+            obj.entries = self.cc[ver]
+            obj._params.update(set_params(ver))
+            obj.check_params()
+            obj.prepare_output()
 
         return results
 

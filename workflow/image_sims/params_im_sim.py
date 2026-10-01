@@ -55,6 +55,10 @@ path_tile_ID = f"{data_dir}/tiles_{campaign}.txt"
 galaxy_cat_path = f"{data_dir}/final_cat_{campaign}.hdf5"
 print(f"Galaxy catalogue = {galaxy_cat_path}")
 
+### Galaxy catalogue column map {canonical name: name in the file}; `None` if
+### the catalogue carries the ShapePipe v2 names
+galaxy_column_map = None
+
 ## Parameter list; optional, set to `None` if not required
 param_list_path = f"{data_dir}/cfis/final_cat.param"
 
@@ -63,6 +67,9 @@ star_cat_path = None
 
 # HDU number of star and PSF catalogue
 hdu_star_cat = 1
+
+### Star catalogue column map, as galaxy_column_map
+star_column_map = None
 
 ### External mask; optional, set to `None` if not required
 mask_external_path = None
@@ -97,9 +104,6 @@ stats_file_name = "stats_file.txt"
 ### Coordinate column names
 col_name_ra = "XWIN_WORLD"
 col_name_dec = "YWIN_WORLD"
-
-### Memory mode, set to None unless very large file
-mmap_mode = None
 
 ## Output
 

@@ -18,6 +18,7 @@ from astropy.io import fits
 from cs_util.cosmo import get_theo_c_ell
 
 from .. import sacc_io
+from ..io import read_catalogue_entry
 from ..pseudo_cl import (
     apply_random_rotation,
     get_n_gal_map,
@@ -190,7 +191,7 @@ class PseudoClMixin:
                 b = self.get_namaster_bin(lmin, lmax, b_lmax)
 
                 # Load data and create shear and noise maps
-                cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
+                cat_gal = read_catalogue_entry(self.cc[ver]["shear"])
 
                 n_gal, unique_pix, _idx, idx_rep = self.get_n_gal_map(
                     params, nside, cat_gal
@@ -549,7 +550,7 @@ class PseudoClMixin:
         params = get_params_rho_tau(self.cc[ver], survey=ver)
 
         # Load data and create shear and noise maps
-        cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
+        cat_gal = read_catalogue_entry(self.cc[ver]["shear"])
 
         w = cat_gal[params["w_col"]]
         self.print_cyan("Creating maps and computing Cl's...")
@@ -618,7 +619,7 @@ class PseudoClMixin:
         params = get_params_rho_tau(self.cc[ver], survey=ver)
 
         # Load data and create shear and noise maps
-        cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
+        cat_gal = read_catalogue_entry(self.cc[ver]["shear"])
 
         ell_eff, cl_shear, wsp = self.get_pseudo_cls_catalog(
             catalog=cat_gal, params=params

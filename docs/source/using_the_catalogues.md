@@ -17,11 +17,12 @@ how to apply the metacalibration corrections yourself.
 The examples below target catalogue **v1.0** (April 2022), which is distributed
 as FITS. From ShapePipe catalogue **v1.4.1** onward the comprehensive catalogue
 ships as one HDF5 file holding two row-aligned datasets, `data` and `data_ext`.
-Open it with `h5py`, or read both datasets as one table with
-`sp_validation.grammar.adapt(f["data"], f["data_ext"])`, which also presents
-the columns under the current ShapePipe names. The cut catalogues of those
-releases remain FITS; {func}`sp_validation.grammar.read_catalogue` reads one
-the same way. The calibration recipe is unchanged.
+Open it with `h5py`, or read it as one table with
+{func}`sp_validation.io.read_catalogue`, which joins the two datasets and
+presents the columns under the current ShapePipe names. The cut catalogues of
+those releases remain FITS, and the same function reads them. The calibration
+recipe is unchanged. [Catalogue columns](catalogue_columns.md) lists the
+columns sp_validation reads and how to read a catalogue with other names.
 ```
 
 Two catalogues are released for each version, and they are used very
