@@ -115,8 +115,8 @@ PURE_TYPES = {
 }
 # PURE_TYPES key order is the insertion order of the six pure-EB blocks —
 # matches b_modes._EB_KEYS, whose order is the [xip_E; xim_E; xip_B; xim_B;
-# xip_amb; xim_amb] layout of the treecorr/MC pure-EB covariance
-# (b_modes.calculate_eb_statistics, ~L392).
+# xip_amb; xim_amb] block layout of the pure-EB covariance
+# (b_modes.calculate_pure_eb_correlation).
 PURE_KEYS = tuple(PURE_TYPES)
 
 RHO_PLUS = "psf_rho{k}_xi_plus"
@@ -578,6 +578,11 @@ def _get_pm(s, dtype_p, dtype_m, tracers, **tags):
 def get_xi(s, bins, *, grid):
     """Return ``(theta, xip, xim)`` for one tracer pair and grid."""
     return _get_pm(s, XI_PLUS, XI_MINUS, _pair(bins), grid=grid)
+
+
+def get_xi_npairs(s, bins, *, grid):
+    """Return the TreeCorr pair counts stored with :func:`add_xi`'s ξ+ points."""
+    return _tag(s, XI_PLUS, _pair(bins), "npairs", grid=grid)
 
 
 def get_pseudo_cl(s, bins):

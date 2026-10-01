@@ -2,8 +2,8 @@
 
 This module pins the numeric behavior of the pure E/B-mode helpers in
 ``sp_validation.b_modes`` against fixed, deterministic inputs (seeded RNG,
-hand-built arrays and one committed ξ± fixture — no cluster data, no catalogue
-files).
+hand-built arrays and one committed fine-grid ξ± fixture — no cluster data, no
+catalogue files).
 Every pinned literal was produced by an actual run of the estimator inside
 the container; a future refactor that changes the numbers must fail.
 
@@ -49,9 +49,8 @@ def _grid_gg():
 def _eb_inputs():
     """Fixed seeded input for calculate_eb_statistics.
 
-    nbins=4, npatch=50 so the Hartlap factor (n_eff - nbins_eff - 2)/(n_eff-1)
-    is well-defined and strictly positive for every scale-cut combination.
-    n_eff is the jackknife patch count, as it is for a jackknife covariance.
+    nbins=4, npatch=50 so the Hartlap factor (npatch - p - 2)/(npatch - 1) is
+    well-defined and strictly positive for every scale-cut combination.
     The covariance is built SPD via A @ A.T + I; the B-mode vectors are O(1)
     so the chi-squared (and hence PTE) lands in a meaningful range rather than
     being saturated at 1.0.
@@ -64,7 +63,7 @@ def _eb_inputs():
     xim_B = rng.standard_normal(nbins)
     return {
         "theta": np.geomspace(1.0, 100.0, nbins),
-        "n_eff": npatch,
+        "npatch": npatch,
         "cov": cov,
         "xip_B": xip_B,
         "xim_B": xim_B,
@@ -236,8 +235,9 @@ def test_calculate_eb_statistics_pte_matrices():
     """Pin representative PTE-matrix entries from the full 2D E/B analysis.
 
     Inputs are fixed (seed 12345, nbins=4, npatch=50, SPD cov = A@A.T + I,
-    O(1) B-mode vectors). The Hartlap correction uses n_eff = 50, the patch
-    count behind a jackknife covariance. For each of xip_B, xim_B and combined we pin the
+    O(1) B-mode vectors). The Hartlap correction uses npatch = 50 over the
+    length of the inverted vector (2x for combined). For each of xip_B, xim_B
+    and combined we pin the
     full-range entry [0, nbins-1] (start=0, stop=nbins) and an interior entry
     [0, 2] (start=0, stop=3). These chi2->sf PTE values are deterministic
     functions of the seeded input.
@@ -253,12 +253,12 @@ def test_calculate_eb_statistics_pte_matrices():
     # Full-range entries [0, nbins-1].
     npt.assert_allclose(pm["xip_B"][0, nbins - 1], 0.9985059590347458, rtol=1e-9)
     npt.assert_allclose(pm["xim_B"][0, nbins - 1], 0.9979174764123961, rtol=1e-9)
-    npt.assert_allclose(pm["combined"][0, nbins - 1], 0.9999930883595443, rtol=1e-9)
+    npt.assert_allclose(pm["combined"][0, nbins - 1], 0.9999952393605003, rtol=1e-9)
 
     # Interior entries [0, 2] (start_bin=0, stop_bin=3).
     npt.assert_allclose(pm["xip_B"][0, 2], 0.9991074524059739, rtol=1e-9)
     npt.assert_allclose(pm["xim_B"][0, 2], 0.9896253892931961, rtol=1e-9)
-    npt.assert_allclose(pm["combined"][0, 2], 0.9999497648089674, rtol=1e-9)
+    npt.assert_allclose(pm["combined"][0, 2], 0.9999590178816327, rtol=1e-9)
 
     # Structural pins: off the valid upper triangle the matrices are NaN.
     for key in ("xip_B", "xim_B", "combined"):
@@ -266,6 +266,28 @@ def test_calculate_eb_statistics_pte_matrices():
         assert np.isnan(m[1, 0])  # start > stop-1 region is invalid
         assert np.isnan(m[2, 0])
         assert np.all(np.isfinite(np.diag(m)))  # single-bin cuts are valid
+
+
+def test_calculate_eb_statistics_analytic_covariance_skips_hartlap():
+    """An analytic covariance (npatch None) gives the plain χ² PTE.
+
+    The full-range χ² is data·C⁻¹·data with no factor, so its PTE is pinned
+    directly against scipy; the jackknife PTE on the same input differs.
+    """
+    from scipy import stats
+
+    results, nbins = _eb_inputs()
+    results["npatch"] = None
+    pm = b_modes.calculate_eb_statistics(results)["pte_matrices"]
+
+    cov_B = results["cov_xip_B"]
+    chi2 = results["xip_B"] @ np.linalg.solve(cov_B, results["xip_B"])
+    npt.assert_allclose(pm["xip_B"][0, nbins - 1], stats.chi2.sf(chi2, nbins))
+    npt.assert_allclose(pm["combined"][0, nbins - 1], 0.9999894806723678, rtol=1e-9)
+
+    jackknife, _ = _eb_inputs()
+    pm_jk = b_modes.calculate_eb_statistics(jackknife)["pte_matrices"]
+    assert pm_jk["xip_B"][0, nbins - 1] != pm["xip_B"][0, nbins - 1]
 
 
 def test_calculate_eb_statistics_has_teeth():
@@ -295,75 +317,171 @@ def test_calculate_eb_statistics_has_teeth():
 
 
 # ---------------------------------------------------------------------------
-# 5. pure_eb_from_xi on committed ξ± (the transform pin)
+# 5. The pure-E/B operator on committed fine-grid ξ±
 # ---------------------------------------------------------------------------
 
-# pure_eb_from_xi(**fixture); regenerated only when the transform is meant to move.
+# calculate_pure_eb_correlation(**fixture) modes; regenerated only when the
+# estimator is meant to move.
 _PURE_EB_PINS = {
     "xip_E": [
-        -2.9831529669542025e-06,
-        -1.5008524620265777e-05,
-        3.221623968725757e-07,
-        1.1797672310858565e-05,
-        5.715510692557323e-06,
-        8.825804523824443e-07,
+        0.000126760298350234,
+        0.00011658330412818888,
+        0.00011288505914719275,
+        0.0001134165787303342,
+        9.413529992584958e-05,
+        8.504614832216474e-05,
     ],
     "xim_E": [
-        -4.737558091773235e-05,
-        -0.00010853189443993388,
-        -9.094825175032069e-05,
-        -5.826599101284694e-05,
-        -4.646405415748759e-05,
-        -1.9978028925333273e-05,
+        7.835778225465925e-06,
+        -3.2941169447535557e-08,
+        1.258394911549768e-06,
+        5.9168056533555394e-06,
+        -5.7480349079948186e-06,
+        5.3046595852565625e-06,
     ],
     "xip_B": [
-        1.7069121242262332e-05,
-        3.059889782373755e-05,
-        -4.8805399253844115e-06,
-        -6.999262696335271e-06,
-        -1.2672006989728095e-05,
-        -1.214149138979614e-06,
+        -5.883756312983891e-05,
+        -5.4151696474192125e-05,
+        -7.033237297030058e-05,
+        -6.463826834039258e-05,
+        -6.439549548932501e-05,
+        -5.781563569551224e-05,
     ],
     "xim_B": [
-        -0.00011478091634539627,
-        -5.445112002141066e-05,
-        -3.100806652947907e-05,
-        -1.0940424256759085e-05,
-        -5.755185146643215e-06,
-        -1.628217762504557e-06,
+        -1.238817586945211e-05,
+        1.138850799409577e-06,
+        3.7912186858520153e-06,
+        9.138091322053387e-06,
+        5.4865624360288735e-06,
+        4.457794156886124e-06,
     ],
     "xip_amb": [
-        0.00014017621792612224,
-        0.0001378482153667787,
-        0.0001339573019551001,
-        0.00012745126271361765,
-        0.00011662385105911986,
-        9.851844704443032e-05,
+        8.984508946714618e-05,
+        8.879513749174612e-05,
+        8.704203334235309e-05,
+        8.410988894408256e-05,
+        7.923019633199604e-05,
+        7.107159007248638e-05,
     ],
     "xim_amb": [
-        -4.389203999135455e-05,
-        5.279277664928643e-05,
-        5.800339397836051e-05,
-        4.4242350610114584e-05,
-        2.9902912946755567e-05,
-        1.912262132836568e-05,
+        1.5110099529260723e-06,
+        9.05896609235364e-07,
+        5.429748754312615e-07,
+        3.250845464381953e-07,
+        1.9494837233251687e-07,
+        1.1676980700188147e-07,
     ],
 }
 
 
-def test_pure_eb_from_xi_reproduces_pins_on_committed_xi(pure_eb_xi):
-    """The pure-E/B transform of the committed ξ± reproduces its pins.
+def _spd(n, seed):
+    """A seeded SPD matrix standing in for a ξ± covariance."""
+    A = np.random.default_rng(seed).standard_normal((n, n))
+    return A @ A.T / n + np.eye(n)
 
-    With ξ± frozen, these pins move only when the transform does. rtol=1e-6 is
-    far above the 1e-12 reduction-order noise across thread counts.
+
+def test_pure_eb_reproduces_pins_on_committed_xi(pure_eb_xi):
+    """The pure-E/B estimator on the committed ξ± reproduces its pins.
+
+    With ξ± frozen, these pins move only when the estimator does. The operator
+    is deterministic linear algebra, so rtol=1e-8 leaves room only for BLAS
+    summation order.
     """
-    modes = b_modes.pure_eb_from_xi(**pure_eb_xi)
+    n_fine = len(pure_eb_xi["theta_int"])
+    results = b_modes.calculate_pure_eb_correlation(
+        **pure_eb_xi, cov_xi=np.eye(2 * n_fine)
+    )
     for key in b_modes._EB_KEYS:
-        npt.assert_allclose(modes[key], _PURE_EB_PINS[key], rtol=1e-6, err_msg=key)
+        npt.assert_allclose(results[key], _PURE_EB_PINS[key], rtol=1e-8, err_msg=key)
 
-    # Teeth: widening the integration interval by 1% leaves the pins.
-    moved = b_modes.pure_eb_from_xi(**{**pure_eb_xi, "tmax": 1.01 * pure_eb_xi["tmax"]})
+    # Teeth: uniform rather than pair-count weights leave the pins.
+    moved = b_modes.calculate_pure_eb_correlation(
+        **{**pure_eb_xi, "npairs_int": np.ones(n_fine)}, cov_xi=np.eye(2 * n_fine)
+    )
     assert not np.allclose(moved["xip_E"], _PURE_EB_PINS["xip_E"], rtol=1e-6, atol=0)
+
+
+def test_pure_eb_modes_sum_to_the_averaged_xi(pure_eb_xi):
+    """ξ± = E ± B + amb holds in every reporting bin.
+
+    It holds at each fine node by construction of the decomposition, and the
+    modes and the reported ξ± are the same pair-count average of those nodes.
+    """
+    n_fine = len(pure_eb_xi["theta_int"])
+    r = b_modes.calculate_pure_eb_correlation(**pure_eb_xi, cov_xi=np.eye(2 * n_fine))
+    scale = np.abs(r["xip"]).max()
+    npt.assert_allclose(
+        r["xip"], r["xip_E"] + r["xip_B"] + r["xip_amb"], rtol=0, atol=1e-12 * scale
+    )
+    npt.assert_allclose(
+        r["xim"], r["xim_E"] - r["xim_B"] + r["xim_amb"], rtol=0, atol=1e-12 * scale
+    )
+
+
+def test_pure_eb_covariance_is_the_operator_sandwich(pure_eb_xi):
+    """``cov`` is K C Kᵀ for the supplied ξ± covariance, and records npatch.
+
+    The reported ξ± variances are the same pair-count average pushed through
+    the ξ+ and ξ− blocks of C.
+    """
+    n_fine = len(pure_eb_xi["theta_int"])
+    cov_xi = _spd(2 * n_fine, seed=7)
+    r = b_modes.calculate_pure_eb_correlation(**pure_eb_xi, cov_xi=cov_xi, npatch=40)
+    K, P = b_modes.pure_eb_operator(
+        pure_eb_xi["theta_int"],
+        pure_eb_xi["npairs_int"],
+        pure_eb_xi["left_edges"],
+        pure_eb_xi["right_edges"],
+    )
+    npt.assert_allclose(r["cov"], K @ cov_xi @ K.T, rtol=1e-12)
+    npt.assert_allclose(r["cov"], r["cov"].T, rtol=1e-12)
+    npt.assert_allclose(r["var_xip"], np.diag(P @ cov_xi[:n_fine, :n_fine] @ P.T))
+    npt.assert_allclose(r["var_xim"], np.diag(P @ cov_xi[n_fine:, n_fine:] @ P.T))
+    assert r["npatch"] == 40
+
+    with pytest.raises(ValueError, match="npatch > 1"):
+        b_modes.calculate_pure_eb_correlation(**pure_eb_xi, cov_xi=cov_xi, npatch=1)
+
+
+def test_pure_eb_binning_is_a_pair_count_average():
+    """Each reporting row averages its fine nodes with pair-count weights.
+
+    Rows sum to one; nodes outside the reporting range or without pairs carry
+    no weight; equal pair counts give the plain mean; an empty bin raises.
+    """
+    theta = np.geomspace(1.0, 100.0, 40)
+    npairs = np.arange(1.0, 41.0)
+    npairs[20] = 0.0
+    left, right = b_modes.log_bin_edges(2.0, 50.0, 4)
+    P = b_modes._npairs_binning_matrix(theta, npairs, left, right)
+
+    npt.assert_allclose(P.sum(axis=1), 1.0)
+    assert np.all(P[:, (theta < 2.0) | (theta >= 50.0)] == 0)
+    assert np.all(P[:, 20] == 0)
+    inside = (theta >= left[1]) & (theta < right[1]) & (npairs > 0)
+    npt.assert_allclose(P[1, inside], npairs[inside] / npairs[inside].sum())
+
+    flat = b_modes._npairs_binning_matrix(theta, np.ones(40), left, right)
+    inside = (theta >= left[0]) & (theta < right[0])
+    npt.assert_allclose(flat[0, inside], 1.0 / inside.sum())
+
+    with pytest.raises(ValueError, match="hold no integration-grid pairs"):
+        b_modes._npairs_binning_matrix(theta, np.zeros(40), left, right)
+
+
+def test_pure_eb_operator_refuses_a_reporting_floor_at_the_grid_edge(pure_eb_xi):
+    """Reporting bins that reach the fine grid's floor raise, never return NaN.
+
+    The ξ− integrals over [tmin, t] have fewer than interp_order + 1 nodes for
+    the first few fine nodes, so those operator rows are under-determined.
+    """
+    theta_int = pure_eb_xi["theta_int"]
+    with pytest.raises(ValueError, match="under-determined"):
+        b_modes.pure_eb_operator(
+            theta_int,
+            pure_eb_xi["npairs_int"],
+            *b_modes.log_bin_edges(theta_int[0], 70.0, 6),
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -477,8 +595,8 @@ def test_pure_eb_npz_carries_what_the_summary_reads(tmp_path):
     """The .npz keys cv_summarize_bmodes reads are the ones the writer emits.
 
     The two live in different rules, so the contract between them — the PTE
-    matrices under ``pte_matrices_{stat}`` and the realisation count under
-    ``n_eff`` — is pinned here rather than discovered on a cluster run.
+    matrices under ``pte_matrices_{stat}`` and the jackknife patch count under
+    ``npatch`` — is pinned here rather than discovered on a cluster run.
     """
     results, nbins = _eb_inputs()
     results.update(
@@ -493,7 +611,7 @@ def test_pure_eb_npz_carries_what_the_summary_reads(tmp_path):
     for stat in ("xip_B", "xim_B", "combined"):
         assert f"pte_matrices_{stat}" in saved
         assert saved[f"pte_matrices_{stat}"].shape == (nbins, nbins)
-    assert saved["n_eff"] == results["n_eff"]
+    assert saved["npatch"] == results["npatch"]
     npt.assert_allclose(saved["theta"], results["theta"])
     for key in b_modes._EB_KEYS:
         assert key in saved
@@ -505,52 +623,3 @@ def test_pure_eb_npz_carries_what_the_summary_reads(tmp_path):
         saved["pte_matrices_xip_B"], edges, (1.0, 100.0)
     )
     assert np.isfinite(pte)
-
-
-def test_pure_eb_covariance_mc_draws_around_the_theory_mean(monkeypatch):
-    """The MC draws centre on cs_util's theory ξ±, binned to the reporting grid.
-
-    ``get_theo_xi`` returns ``{pair: (ξ+, ξ−)}``; one n(z) is one pair. With a
-    zero covariance every draw is the theory mean, so a stub kernel that echoes
-    its reporting-grid ξ± pins the unpack, the [ξ+; ξ−] order and the binning.
-    """
-    nrep = 4
-    left, right = b_modes.log_bin_edges(2.0, 50.0, nrep)
-    theta = np.sqrt(left * right)
-    theta_int = np.geomspace(1.0, 100.0, 40)
-    xip_th, xim_th = theta_int.copy(), 2 * theta_int
-
-    monkeypatch.setattr(
-        b_modes, "get_theo_xi", lambda **kw: {"W0xW0": (xip_th, xim_th)}
-    )
-
-    def _echo(theta, theta_int, xip, xim, xip_int, xim_int, tmin, tmax, parallel):
-        zeros = np.zeros_like(xip)
-        return xip, xim, zeros, zeros, zeros, zeros
-
-    module = types.ModuleType("cosmo_numba.B_modes.schneider2022")
-    module.get_pure_EB_modes = _echo
-    monkeypatch.setitem(
-        __import__("sys").modules, "cosmo_numba.B_modes.schneider2022", module
-    )
-
-    cov, eb_samples = b_modes.pure_eb_covariance_mc(
-        theta=theta,
-        left_edges=left,
-        right_edges=right,
-        theta_int=theta_int,
-        cov_int=np.zeros((2 * len(theta_int), 2 * len(theta_int))),
-        z=np.linspace(0.01, 2.0, 50),
-        nz=np.ones(50),
-        cosmo=None,
-        n_samples=3,
-    )
-
-    inside = [(theta_int >= lo) & (theta_int < hi) for lo, hi in zip(left, right)]
-    expected_xip = np.array([xip_th[m].mean() for m in inside])
-    expected_xim = np.array([xim_th[m].mean() for m in inside])
-    assert eb_samples.shape == (3, 6 * nrep)
-    for draw in eb_samples:
-        npt.assert_allclose(draw[:nrep], expected_xip)
-        npt.assert_allclose(draw[nrep : 2 * nrep], expected_xim)
-    npt.assert_allclose(cov, 0.0, atol=1e-20)

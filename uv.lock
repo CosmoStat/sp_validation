@@ -588,8 +588,8 @@ wheels = [
 
 [[package]]
 name = "cosmo-numba"
-version = "1.0.1.dev6+g188d272c6"
-source = { git = "https://github.com/aguinot/cosmo-numba.git?rev=main#188d272c67d6d699d7cff7a7a53ded8dec759bb0" }
+version = "0.1.dev113+gd78a189d9"
+source = { git = "https://github.com/cailmdaley/cosmo-numba.git?rev=d78a189d9af75a9c113fef7647102a1bad0fd452#d78a189d9af75a9c113fef7647102a1bad0fd452" }
 dependencies = [
     { name = "mpmath" },
     { name = "numba" },
@@ -3821,7 +3821,7 @@ requires-dist = [
     { name = "camb", specifier = ">=2.0" },
     { name = "clmm" },
     { name = "colorama" },
-    { name = "cosmo-numba", git = "https://github.com/aguinot/cosmo-numba.git?rev=main" },
+    { name = "cosmo-numba", git = "https://github.com/cailmdaley/cosmo-numba.git?rev=d78a189d9af75a9c113fef7647102a1bad0fd452" },
     { name = "cosmology", marker = "extra == 'glass'", specifier = "==2022.10.9" },
     { name = "cosmosis", marker = "extra == 'workflow'", specifier = ">=3.25" },
     { name = "cryptography" },
