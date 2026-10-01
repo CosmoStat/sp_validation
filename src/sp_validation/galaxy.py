@@ -28,45 +28,29 @@ from tqdm import tqdm
 # T = 2 sigma^2 as if it were sigma; the cs_util version carries the
 # required square root: FWHM = 2.35482 sqrt(T / 2)
 from sp_validation import io
+from sp_validation.grammar import mask_column
 
 #: All mask columns written by ShapePipe v2 (bool, ``True`` = masked), one per
 #: bit of the UNIONS healsparse mask product (``grammar.MASK_LABELS``; v2 does
-#: not write n512). Post-processed v1 comprehensive catalogues carry the same
+#: not write bit 512). Post-processed v1 comprehensive catalogues carry the same
 #: columns, presented under these names by ``sp_validation.grammar``.
 #:
-#: The r-band default bitmask uses n1 faint star halos, n2 bright star halos,
-#: n4 star bodies, n8 manual galaxy mask, n64 r-band coverage, and n1024 MaxiMask.
-#:
-#: Per-band coverage flags: n16 (u), n32 (g), n64 (r), n128 (i), n256
-#: (HSC z). n2048 is ``True`` where Pan-STARRS z-band (z2) coverage is absent.
-MASK_COLUMNS = (
-    "MASK_n1",
-    "MASK_n2",
-    "MASK_n4",
-    "MASK_n8",
-    "MASK_n16",
-    "MASK_n32",
-    "MASK_n64",
-    "MASK_n128",
-    "MASK_n256",
-    "MASK_n1024",
-    "MASK_n2048",
+#: The r-band default bitmask uses bits 1 (faint star halos), 2 (bright star
+#: halos), 4 (star bodies), 8 (manual galaxy mask), 64 (r-band coverage) and
+#: 1024 (MaxiMask). The per-band coverage flags are 16 (u), 32 (g), 64 (r),
+#: 128 (i) and 256 (HSC z); 2048 is ``True`` where Pan-STARRS z-band (z2)
+#: coverage is absent.
+MASK_COLUMNS = tuple(
+    mask_column(bit) for bit in (1, 2, 4, 8, 16, 32, 64, 128, 256, 1024, 2048)
 )
 
 #: Mask columns OR'd together for the default galaxy selection. This set is
 #: the ShapePipe r-band default bitmask: their OR matches ``mask_r`` on covered
 #: P3 granules, with differences at footprint edges without map coverage.
 #: Deliberately not a blanket OR over MASK_COLUMNS: the other coverage flags
-#: (n16, n32, n128, n256) and n2048 would mask essentially the whole
+#: (bits 16, 32, 128, 256) and bit 2048 would mask essentially the whole
 #: catalogue.
-DEFAULT_MASK_COLUMNS = (
-    "MASK_n4",
-    "MASK_n1",
-    "MASK_n2",
-    "MASK_n8",
-    "MASK_n64",
-    "MASK_n1024",
-)
+DEFAULT_MASK_COLUMNS = tuple(mask_column(bit) for bit in (4, 1, 2, 8, 64, 1024))
 
 
 def _column_names(dd):
@@ -126,7 +110,7 @@ def mask_cut(dd, mask_columns=None):
         if values.dtype == bool:
             flagged = values
         else:
-            # ShapePipe's writer can emit the MASK_n* columns as float64
+            # ShapePipe's writer can emit the mask columns as float64
             # {0, 1} rather than bool, so decide on the value (threshold at
             # 0.5, so integer, float and bool columns behave identically),
             # and count NaNs rather than let them pass unremarked.

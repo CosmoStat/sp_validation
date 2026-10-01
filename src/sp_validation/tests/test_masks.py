@@ -106,8 +106,8 @@ def test_dat_ext_cut_list_is_refused_not_dropped():
         "dat": [{"col_name": "FLAGS", "label": "SE", "kind": "equal", "value": 0}],
         "dat_ext": [{"col_name": "4_Stars", "kind": "equal", "value": False}],
     }
-    dat = np.zeros(3, dtype=[("FLAGS", "i2"), ("MASK_n4", "?")])
-    with pytest.raises(ValueError, match="dat_ext.*4_Stars.*MASK_n4"):
+    dat = np.zeros(3, dtype=[("FLAGS", "i2"), ("MASK_4_Stars", "?")])
+    with pytest.raises(ValueError, match="dat_ext.*4_Stars.*MASK_4_Stars"):
         get_masks_from_config(config, dat)
     del config["dat_ext"]
     assert catalogue_cuts(config) == config["dat"]
@@ -122,7 +122,7 @@ def test_masking_script_refuses_dat_ext():
     masking = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(masking)
     config = {"dat": [], "dat_ext": [{"col_name": "8_Manual"}]}
-    dat = np.zeros(3, dtype=[("MASK_n8", "?")])
+    dat = np.zeros(3, dtype=[("MASK_8_Manual", "?")])
     with pytest.raises(ValueError, match="dat_ext"):
         masking.apply_masks(dat, config, footprint_only=True)
     assert "IMAFLAGS_ISO" in masking.SPATIAL_CUTS

@@ -288,7 +288,7 @@ masks, labels = sp_joint.get_masks_from_config(
 # Combine mask according to scenario
 # List of basic masks to apply to all cases
 
-masks_labels_basic = ["overlap", "mag", "MASK_n64"]
+masks_labels_basic = ["overlap", "mag", "MASK_64_r"]
 col_names = ["basic masks"]
 
 if scenario == 0:
@@ -299,9 +299,9 @@ if scenario == 0:
             "NGMIX_MCAL_TYPES_FAIL",
             "NGMIX_G1_PSF_ORIG_NOSHEAR",
             "NGMIX_G2_PSF_ORIG_NOSHEAR",
-            "MASK_n4",
-            "MASK_n8",
-            "MASK_n1024",
+            "MASK_4_Stars",
+            "MASK_8_Manual",
+            "MASK_1024_Maximask",
         ]
     )
 
@@ -315,9 +315,9 @@ elif scenario == 1:
             "NGMIX_MCAL_TYPES_FAIL",
             "NGMIX_G1_PSF_ORIG_NOSHEAR",
             "NGMIX_G2_PSF_ORIG_NOSHEAR",
-            "MASK_n4",
-            "MASK_n8",
-            "MASK_n1024",
+            "MASK_4_Stars",
+            "MASK_8_Manual",
+            "MASK_1024_Maximask",
             "N_EPOCH",
             "npoint3",
             "metacal",

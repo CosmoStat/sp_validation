@@ -48,7 +48,7 @@ ops:
   # --- mask bits (post-processing / coverage masks) ----------------------
   - why: >-
       No coverage masks on sims: the healsparse mask-bit cuts (stars, manual
-      mask, n64, Maximask) are survey post-processing with no analogue in the
+      mask, r coverage, Maximask) are survey post-processing with no analogue in the
       simulated tiles.
     drop: |2
 
@@ -56,25 +56,25 @@ ops:
         # HDF5's data_ext dataset)
 
         # Stars
-        - col_name: MASK_n4
+        - col_name: MASK_4_Stars
           label: "Stars"
           kind: equal
           value: False
 
         # Manual mask
-        - col_name: MASK_n8
+        - col_name: MASK_8_Manual
           label: "manual mask"
           kind: equal
           value: False
 
         # r-band footprint
-        - col_name: MASK_n64
+        - col_name: MASK_64_r
           label: "r-band imaging"
           kind: equal
           value: False
 
         # Maximask
-        - col_name: MASK_n1024
+        - col_name: MASK_1024_Maximask
           label: "maximask"
           kind: equal
           value: False

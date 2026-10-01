@@ -1,28 +1,28 @@
 # Config file for masking and calibration, ShapePipe v2 catalogues.
 #
 # ShapePipe v2 replaces the single IMAFLAGS_ISO column with per-reason boolean
-# mask columns MASK_n<bit>, where True means MASKED. They are therefore cut
-# with `kind: equal, value: False` (keep the un-masked objects):
+# mask columns MASK_<bit>_<label>, where True means MASKED. They are therefore
+# cut with `kind: equal, value: False` (keep the un-masked objects):
 #
 # Reason bits of the ShapePipe r-band default bitmask:
 #
-#   MASK_n1           faint star halos (bit 0; value 1)
-#   MASK_n2           bright star halos (bit 1; value 2)
-#   MASK_n4           star bodies (bit 2; value 4)
-#   MASK_n8           manual galaxy mask
-#   MASK_n64          r-band coverage
-#   MASK_n1024        MaxiMask
+#   MASK_1_Faint_star_halos     faint star halos (bit 0; value 1)
+#   MASK_2_Bright_star_halos    bright star halos (bit 1; value 2)
+#   MASK_4_Stars                star bodies (bit 2; value 4)
+#   MASK_8_Manual               manual galaxy mask
+#   MASK_64_r                   r-band coverage
+#   MASK_1024_Maximask          MaxiMask
 #
 # Per-band coverage flags and Pan-STARRS:
 #
-#   MASK_n16, MASK_n32, MASK_n64, MASK_n128, MASK_n256
-#                     u, g, r, i, HSC z-band coverage
-#   MASK_n2048        no Pan-STARRS z-band (z2) coverage
+#   MASK_16_u, MASK_32_g, MASK_64_r, MASK_128_i, MASK_256_z
+#                               u, g, r, i, HSC z-band coverage
+#   MASK_2048_z2                no Pan-STARRS z-band (z2) coverage
 #
 # The default selection (see sp_validation.galaxy.DEFAULT_MASK_COLUMNS) is
-# n1 + n2 + n4 + n8 + n64 + n1024, whose OR matches mask_r, the r-band
+# bits 1 + 2 + 4 + 8 + 64 + 1024, whose OR matches mask_r, the r-band
 # mask, on covered P3 granules; footprint-edge granules without mask_r coverage
-# can differ. The other coverage flags and n2048 are listed
+# can differ. The other coverage flags and bit 2048 are listed
 # here but commented out, since ORing all of them masks essentially
 # everything.
 
@@ -51,48 +51,48 @@ dat:
     value: True
 
   # ShapePipe masks (boolean, True = masked)
-  - col_name: MASK_n4
+  - col_name: MASK_4_Stars
     label: "star bodies"
     kind: equal
     value: False
   # Star-halo bits follow the UNIONS mask producer schema.
-  - col_name: MASK_n1
+  - col_name: MASK_1_Faint_star_halos
     label: "faint star halos"
     kind: equal
     value: False
-  - col_name: MASK_n2
+  - col_name: MASK_2_Bright_star_halos
     label: "bright star halos"
     kind: equal
     value: False
-  - col_name: MASK_n8
+  - col_name: MASK_8_Manual
     label: "manual mask"
     kind: equal
     value: False
-  - col_name: MASK_n1024
+  - col_name: MASK_1024_Maximask
     label: "maximask"
     kind: equal
     value: False
 
   # r-band coverage. Required for the OR above to reproduce mask_r.
-  - col_name: MASK_n64
+  - col_name: MASK_64_r
     label: "r-band imaging"
     kind: equal
     value: False
 
   # Other per-band coverage flags and Pan-STARRS z2; enable as required.
   # Cutting on all of them at once leaves essentially no objects.
-  # - col_name: MASK_n16
+  # - col_name: MASK_16_u
   #   label: "u coverage"
   #   kind: equal
   #   value: False
-  # - col_name: MASK_n2048
+  # - col_name: MASK_2048_z2
   #   label: "no PS-z2"
   #   kind: equal
   #   value: False
   #
   # v1.X also applied a rough pointing-coverage cut, 'npoint3' >= 3, from an
   # external post-processing catalogue. ShapePipe v2 emits no such column and
-  # no MASK_n* bit encodes it, so that cut has no v2 counterpart; add it back
+  # no mask bit encodes it, so that cut has no v2 counterpart; add it back
   # here if an external pointing-coverage map is ever joined onto the
   # catalogue.
 

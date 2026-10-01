@@ -125,7 +125,7 @@ add_cols = [
 ## Pre-calibration catalogue, including masked objects and mask flags.
 ## ShapePipe-v2 (post-#761) ngmix grammar: ellipticity in named scalar
 ## components NGMIX_G{1,2}_*, PSF size split into NGMIX_T_PSF_ORIG/RECONV.
-## The MASK_n* columns (present in the data-path params) are omitted: the
+## The MASK_<bit>_<label> columns (present in the data-path params) are omitted: the
 ## simulation pipeline runs no imaging-flag masking stage, so they do not
 ## exist -- hence the empty mask_columns below.
 ## NGMIX_MCAL_TYPES_FAIL is kept -- it is the metacal moments-failure flag the

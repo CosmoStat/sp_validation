@@ -17,12 +17,12 @@ GAL_DTYPE = np.dtype(
         ("RA", "f8"),
         ("Dec", "f8"),
         ("MAG_AUTO", "f4"),
-        ("MASK_n4", "?"),
-        ("MASK_n1", "?"),
-        ("MASK_n2", "?"),
-        ("MASK_n8", "?"),
-        ("MASK_n64", "?"),
-        ("MASK_n1024", "?"),
+        ("MASK_4_Stars", "?"),
+        ("MASK_1_Faint_star_halos", "?"),
+        ("MASK_2_Bright_star_halos", "?"),
+        ("MASK_8_Manual", "?"),
+        ("MASK_64_r", "?"),
+        ("MASK_1024_Maximask", "?"),
     ]
 )
 
@@ -324,8 +324,8 @@ class TestMaskCut(unittest.TestCase):
         self._dat = make_galaxy_data(5)
 
     def test_default_columns(self):
-        self._dat["MASK_n4"][0] = True
-        self._dat["MASK_n1024"][3] = True
+        self._dat["MASK_4_Stars"][0] = True
+        self._dat["MASK_1024_Maximask"][3] = True
 
         npt.assert_array_equal(
             galaxy.mask_cut(self._dat),
@@ -333,16 +333,16 @@ class TestMaskCut(unittest.TestCase):
         )
 
     def test_explicit_column_list(self):
-        self._dat["MASK_n4"][0] = True
-        self._dat["MASK_n8"][1] = True
+        self._dat["MASK_4_Stars"][0] = True
+        self._dat["MASK_8_Manual"][1] = True
 
         npt.assert_array_equal(
-            galaxy.mask_cut(self._dat, ["MASK_n8"]),
+            galaxy.mask_cut(self._dat, ["MASK_8_Manual"]),
             np.array([True, False, True, True, True]),
         )
 
     def test_empty_column_list_keeps_everything(self):
-        self._dat["MASK_n4"][:] = True
+        self._dat["MASK_4_Stars"][:] = True
 
         npt.assert_array_equal(
             galaxy.mask_cut(self._dat, []), np.ones(len(self._dat), dtype=bool)
@@ -350,8 +350,8 @@ class TestMaskCut(unittest.TestCase):
 
     def test_missing_column_raises(self):
         with self.assertRaises(KeyError) as ctx:
-            galaxy.mask_cut(self._dat, ["MASK_n16"])
-        self.assertIn("MASK_n16", str(ctx.exception))
+            galaxy.mask_cut(self._dat, ["MASK_16_u"])
+        self.assertIn("MASK_16_u", str(ctx.exception))
 
     def test_catalogue_without_mask_columns_raises(self):
         dat = np.zeros(3, dtype=[("FLAGS", "i2")])
@@ -362,7 +362,7 @@ class TestMaskCut(unittest.TestCase):
     def test_float_and_int_mask_columns(self):
         """Test that float and int mask columns cut like bool ones.
 
-        ShapePipe's writer can emit the MASK_n* columns as float64
+        ShapePipe's writer can emit the mask columns as float64
         {0.0, 1.0} rather than bool, so the cut
         must decide on the value, not on the dtype.
         """
@@ -370,8 +370,8 @@ class TestMaskCut(unittest.TestCase):
             dat = np.zeros(
                 4, dtype=[(col, dtype) for col in galaxy.DEFAULT_MASK_COLUMNS]
             )
-            dat["MASK_n4"][0] = 1
-            dat["MASK_n1024"][2] = 1
+            dat["MASK_4_Stars"][0] = 1
+            dat["MASK_1024_Maximask"][2] = 1
 
             npt.assert_array_equal(
                 galaxy.mask_cut(dat),
@@ -387,8 +387,8 @@ class TestMaskCut(unittest.TestCase):
         and warns: a nonzero count means the input product is defective.
         """
         dat = np.zeros(3, dtype=[(col, "f8") for col in galaxy.DEFAULT_MASK_COLUMNS])
-        dat["MASK_n4"][0] = np.nan
-        dat["MASK_n4"][1] = 1.0
+        dat["MASK_4_Stars"][0] = np.nan
+        dat["MASK_4_Stars"][1] = 1.0
 
         with self.assertWarns(RuntimeWarning) as ctx:
             keep = galaxy.mask_cut(dat)
@@ -396,7 +396,9 @@ class TestMaskCut(unittest.TestCase):
         # row 0 NaN -> masked, row 1 masked, row 2 clean -> kept
         npt.assert_array_equal(keep, np.array([False, False, True]))
         self.assertIn("NaN", str(ctx.warning))
-        config_keep = Mask("MASK_n4", "stars", kind="equal", value=False, dat=dat)._mask
+        config_keep = Mask(
+            "MASK_4_Stars", "stars", kind="equal", value=False, dat=dat
+        )._mask
         npt.assert_array_equal(config_keep, keep)
 
     def test_no_warning_when_no_nan(self):

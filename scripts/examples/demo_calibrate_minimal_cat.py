@@ -47,9 +47,9 @@ if True:
 
 masks_to_apply = [
     "FLAGS",
-    "MASK_n4",
-    "MASK_n64",
-    "MASK_n1024",
+    "MASK_4_Stars",
+    "MASK_64_r",
+    "MASK_1024_Maximask",
     "N_EPOCH",
     "mag",
     "NGMIX_MCAL_TYPES_FAIL",

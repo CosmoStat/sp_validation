@@ -19,30 +19,32 @@ from `NGMIX_Tpsf_1P` (see the reconvolved-PSF table). The tables below
 (Old = v1, New = v2) are the rule table in `grammar.V1_RULES`.
 
 Mask columns follow a separate rule family, applied whatever the generation.
-The UNIONS healsparse mask product is one bitmask. ShapePipe v2 writes bit `b`
-as the boolean `MASK_n{b}`, so the reader and
-`catalog_builders.ApplyHspMasks` use that producer name for both generations.
-The v1 `data_ext` dataset instead calls it `{b}_{label}`; the adapter uses
-`grammar.MASK_LABELS` to map that descriptive name to the same bit. Keeping
-the bit as the column identity makes one mask configuration work for both
-releases, while the labels remain documented here and in the config:
+The UNIONS healsparse mask product is one bitmask, and bit `b` is the boolean
+column `MASK_{b}_{label}`: the bit value for its identity, the label for its
+meaning (`grammar.mask_column`, labels from `grammar.MASK_LABELS`). ShapePipe v2
+and `catalog_builders.ApplyHspMasks` write these names, and every mask
+configuration cuts on them, so one configuration serves both generations. The
+adapter presents two other spellings of the same bit under the canonical name:
+`{b}_{label}`, the `data_ext` dataset of every released v1 comprehensive HDF5,
+and `MASK_n{b}`, written by pre-release ShapePipe v2 runs. No spelling marks a
+generation.
 
-| bit | old `data_ext` name | meaning |
-|---|---|---|
-| 1 (bit 0) | `1_Faint_star_halos` | faint star halos (`MASK_n1`) |
-| 2 (bit 1) | `2_Bright_star_halos` | bright star halos (`MASK_n2`) |
-| 4 (bit 2) | `4_Stars` | star body mask (`MASK_n4`) |
-| 8 | `8_Manual` | manual mask (large galaxies) |
-| 16–256 | `16_u`, `32_g`, `64_r`, `128_i`, `256_z` | per-band coverage; `256_z` is the HSC z-band |
-| 512 | `512_Tile_RA_DEC_cut` | outside the tile's unique region |
-| 1024 | `1024_Maximask` | MaxiMask |
-| 2048 | `2048_z2` | Pan-STARRS z-band (`z2`); true means no coverage |
+| bit | column | v1 `data_ext` name | meaning |
+|---|---|---|---|
+| 1 (bit 0) | `MASK_1_Faint_star_halos` | `1_Faint_star_halos` | faint star halos |
+| 2 (bit 1) | `MASK_2_Bright_star_halos` | `2_Bright_star_halos` | bright star halos |
+| 4 (bit 2) | `MASK_4_Stars` | `4_Stars` | star bodies |
+| 8 | `MASK_8_Manual` | `8_Manual` | manual mask (large galaxies) |
+| 16–256 | `MASK_16_u` … `MASK_256_z` | `16_u`, `32_g`, `64_r`, `128_i`, `256_z` | per-band coverage; `256_z` is the HSC z-band |
+| 512 | `MASK_512_Tile_RA_DEC_cut` | `512_Tile_RA_DEC_cut` | outside the tile's unique region |
+| 1024 | `MASK_1024_Maximask` | `1024_Maximask` | MaxiMask |
+| 2048 | `MASK_2048_z2` | `2048_z2` | Pan-STARRS z-band (`z2`); true means no coverage |
 
 `adapt(data, data_ext)` joins the two datasets of a comprehensive HDF5 into one
 table, so a v1 comprehensive catalogue and a v2 catalogue take the same mask
 configuration and the same `galaxy.mask_cut`. `IMAFLAGS_ISO` passes through
 unmapped: its v1 bits (2 halo, 4 border, 16 Messier, 32 NGC, 128 spike) are not
-the `MASK_n{b}` of the same value.
+the mask bits of the same value.
 
 shapepipe#761 turns the shape-measurement output into **one column grammar for
 the whole catalogue**: every estimator names its outputs

@@ -60,37 +60,37 @@ dat:
   # Healsparse mask bits and post-processing columns (the comprehensive
   # HDF5's data_ext dataset)
   # Faint star halos
-  - col_name: MASK_n1
+  - col_name: MASK_1_Faint_star_halos
     label: "Faint star halos"
     kind: equal
     value: False
 
   # Bright star halos
-  - col_name: MASK_n2
+  - col_name: MASK_2_Bright_star_halos
     label: "Bright star halos"
     kind: equal
     value: False
 
   # Stars
-  - col_name: MASK_n4
+  - col_name: MASK_4_Stars
     label: "Stars"
     kind: equal
     value: False
 
   # Manual mask
-  - col_name: MASK_n8
+  - col_name: MASK_8_Manual
     label: "manual mask"
     kind: equal
     value: False
 
   # r-band footprint
-  - col_name: MASK_n64
+  - col_name: MASK_64_r
     label: "r-band imaging"
     kind: equal
     value: False
 
   # Maximask
-  - col_name: MASK_n1024
+  - col_name: MASK_1024_Maximask
     label: "maximask"
     kind: equal
     value: False

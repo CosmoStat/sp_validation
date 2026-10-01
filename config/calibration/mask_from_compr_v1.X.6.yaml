@@ -27,25 +27,25 @@ dat:
   # HDF5's data_ext dataset)
 
   # Stars
-  - col_name: MASK_n4
+  - col_name: MASK_4_Stars
     label: "Stars"
     kind: equal
     value: False
 
   # Manual mask
-  - col_name: MASK_n8
+  - col_name: MASK_8_Manual
     label: "manual mask"
     kind: equal
     value: False
 
   # r-band footprint
-  - col_name: MASK_n64
+  - col_name: MASK_64_r
     label: "r-band imaging"
     kind: equal
     value: False
 
   # Maximask
-  - col_name: MASK_n1024
+  - col_name: MASK_1024_Maximask
     label: "maximask"
     kind: equal
     value: False

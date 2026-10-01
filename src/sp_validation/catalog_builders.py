@@ -625,8 +625,8 @@ class ApplyHspMasks(BaseCat):
     def get_mask_col_name(cls, bit):
         """Get Mask Col Name.
 
-        Return column name of mask corresponding to input bit: ``MASK_n{bit}``,
-        the name ShapePipe v2 gives the same bit.
+        Return column name of mask corresponding to input bit:
+        ``MASK_{bit}_{label}`` (``grammar.mask_column``).
 
         Parameters
         ----------

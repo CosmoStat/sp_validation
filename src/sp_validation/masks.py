@@ -318,7 +318,7 @@ def catalogue_cuts(config):
         raise ValueError(
             f"mask config has a 'dat_ext' cut list {names}, which is not read:"
             + " move its entries into 'dat', renaming the mask columns"
-            + " {b}_{label} to MASK_n{b} (e.g. 4_Stars -> MASK_n4;"
+            + " {b}_{label} to MASK_{b}_{label} (e.g. 4_Stars -> MASK_4_Stars;"
             + " see sp_validation.grammar.MASK_LABELS)"
         )
     return config.get("dat") or []

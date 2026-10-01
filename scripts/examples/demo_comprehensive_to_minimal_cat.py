@@ -52,12 +52,12 @@ if False:
 # (column names as declared in config/calibration/mask_v2.0.yaml)
 masks_to_apply = [
     "overlap",
-    "MASK_n4",
-    "MASK_n1",
-    "MASK_n2",
-    "MASK_n8",
-    "MASK_n64",
-    "MASK_n1024",
+    "MASK_4_Stars",
+    "MASK_1_Faint_star_halos",
+    "MASK_2_Bright_star_halos",
+    "MASK_8_Manual",
+    "MASK_64_r",
+    "MASK_1024_Maximask",
     "NGMIX_MCAL_TYPES_FAIL",
     "NGMIX_G1_PSF_ORIG_NOSHEAR",
     "NGMIX_G2_PSF_ORIG_NOSHEAR",

@@ -3,9 +3,10 @@
 One synthetic catalogue is written twice: as a post-processed ShapePipe v1
 comprehensive HDF5 (``data`` in the v1 grammar, ``data_ext`` holding the
 healsparse mask bits under their ``{b}_{label}`` names) and as a ShapePipe v2
-catalogue (one ``data`` dataset, v2 grammar, ``MASK_n{b}``). Read through the
-readers the pipeline uses, the two must give identical mask selections, for
-``galaxy.mask_cut`` and for every mask config, and identical metacal inputs.
+catalogue (one ``data`` dataset, v2 grammar, ``MASK_{b}_{label}``). Read
+through the readers the pipeline uses, the two must give identical mask
+selections, for ``galaxy.mask_cut`` and for every mask config, and identical
+metacal inputs.
 Also covers the campaign and star readers on v1-grammar files.
 """
 
@@ -84,7 +85,7 @@ def _twins():
     for bit in BITS:
         flag = rng.random(N) < 0.08
         ext[f"{bit}_{grammar.MASK_LABELS[bit]}"] = flag
-        v2[f"MASK_n{bit}"] = flag
+        v2[grammar.mask_column(bit)] = flag
     npoint = rng.integers(0, 6, N).astype(np.int16)
     ext["npoint3"] = v2["npoint3"] = npoint
     return _structured(v1), _structured(ext), _structured(v2)
@@ -128,7 +129,7 @@ def test_v1_comprehensive_presents_the_v2_columns(comprehensive):
 
 def test_mask_cut_is_identical(comprehensive):
     v1, v2 = comprehensive["v1"], comprehensive["v2"]
-    for columns in (None, [f"MASK_n{bit}" for bit in BITS], ["MASK_n4"]):
+    for columns in (None, [grammar.mask_column(bit) for bit in BITS], ["MASK_4_Stars"]):
         np.testing.assert_array_equal(
             galaxy.mask_cut(v1, columns), galaxy.mask_cut(v2, columns)
         )
@@ -175,7 +176,7 @@ def test_v1_configs_cut_every_mask_column_they_name(comprehensive):
             continue
         config = yaml.safe_load(path.read_text())
         for cut in config["dat"]:
-            if cut["col_name"].startswith("MASK_n"):
+            if cut["col_name"].startswith("MASK_"):
                 assert cut["col_name"] in names, (path.name, cut["col_name"])
 
 

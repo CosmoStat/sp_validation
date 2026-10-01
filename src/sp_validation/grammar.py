@@ -2,7 +2,7 @@
 
 ShapePipe products name their columns in one of two grammars. ``v2`` is the
 grammar the rest of sp_validation reads (``HSM_T_PSF``, ``NGMIX_G1_NOSHEAR``,
-``MASK_n4``, ...; see ``docs/ngmix_psf_column_migration.md``). ``v1`` is the
+``MASK_4_Stars``, ...; see ``docs/ngmix_psf_column_migration.md``). ``v1`` is the
 grammar of the catalogues released up to and including v1.6.x (``SIGMA_PSF_HSM``,
 the 2-vector ``NGMIX_ELL_NOSHEAR``, ...).
 
@@ -25,16 +25,17 @@ apply:
     ``NGMIX_MCAL_TYPES_FAIL``, except that ``NGMIX_T_PSF_RECONV_NOSHEAR`` is
     read from ``NGMIX_Tpsf_1P`` when the table has it (see below).
 
-- The UNIONS mask-bit columns, applied to any table: ``{b}_{label}``
-  (``1_Faint_star_halos``, ``4_Stars``, ``2048_z2``, ...), the names under
-  which ``catalog_builders.ApplyHspMasks`` wrote the healsparse mask bits into
-  the ``data_ext`` dataset of the comprehensive HDF5, become ``MASK_n{b}``,
-  the name ShapePipe v2 and ``ApplyHspMasks`` give the same bit of the same
-  bitmask (``MASK_LABELS``). These columns belong to the mask product, not to
-  a ShapePipe generation, so they neither mark nor require one.
+- The UNIONS mask-bit columns, applied to any table. Bit ``b`` of the
+  healsparse mask product is the boolean ``MASK_{b}_{label}``
+  (``MASK_1_Faint_star_halos``, ``MASK_4_Stars``, ``MASK_2048_z2``, ...;
+  ``mask_column``, labels from ``MASK_LABELS``). Two other spellings of the
+  same bit are presented under that name: ``{b}_{label}``, the ``data_ext``
+  dataset of every released v1 comprehensive HDF5, and ``MASK_n{b}``, written
+  by pre-release ShapePipe v2 runs. These columns belong to the mask product,
+  not to a ShapePipe generation, so no spelling marks or requires one.
 
 ``IMAFLAGS_ISO`` is not mapped: its v1 bits (2 halo, 4 border, 16 Messier,
-32 NGC, 128 spike) differ in meaning from the ``MASK_n{b}`` of the same value,
+32 NGC, 128 spike) differ in meaning from the mask bits of the same value,
 so it passes through under its own name for the v1 mask configs that cut on it.
 
 The mapping is by *name*, deliberately, including where the v1 values mean
@@ -72,8 +73,7 @@ from cs_util.size import sigma_to_T
 SHEARS = ("NOSHEAR", "1P", "1M", "2P", "2M")
 
 #: Bits of the UNIONS healsparse mask product and what each flags. The column
-#: for bit ``b`` is ``MASK_n{b}``; the ``data_ext`` dataset of a v1
-#: comprehensive HDF5 carries it as ``{b}_{label}``.
+#: for bit ``b`` is ``MASK_{b}_{label}`` (``mask_column``).
 MASK_LABELS = {
     1: "Faint_star_halos",
     2: "Bright_star_halos",
@@ -91,7 +91,7 @@ MASK_LABELS = {
 
 
 def mask_column(bit):
-    """Return the catalogue column holding mask bit ``bit``: ``MASK_n{bit}``.
+    """Return the column holding mask bit ``bit``: ``MASK_{bit}_{label}``.
 
     Raises
     ------
@@ -100,7 +100,7 @@ def mask_column(bit):
     """
     if bit not in MASK_LABELS:
         raise KeyError(f"{bit} is not a UNIONS mask bit; bits: {list(MASK_LABELS)}")
-    return f"MASK_n{bit}"
+    return f"MASK_{bit}_{MASK_LABELS[bit]}"
 
 
 @dataclass(frozen=True)
@@ -180,9 +180,11 @@ def _v1_rules():
 #: The v1 -> v2 map of the shape-measurement columns, applied to v1 tables.
 V1_RULES = _v1_rules()
 
-#: ``{b}_{label}`` -> ``MASK_n{b}``, applied to every table.
+#: ``{b}_{label}`` (v1 ``data_ext``) or ``MASK_n{b}`` (pre-release v2)
+#: -> ``MASK_{b}_{label}``, applied to every table.
 MASK_RULES = tuple(
-    Rule(mask_column(bit), f"{bit}_{label}") for bit, label in MASK_LABELS.items()
+    Rule(mask_column(bit), f"{bit}_{label}", fallback=f"MASK_n{bit}")
+    for bit, label in MASK_LABELS.items()
 )
 
 #: Names whose presence marks a table as v1 / as v2.

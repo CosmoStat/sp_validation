@@ -477,7 +477,7 @@ def sky_plots(dat, masks, labels, zoom_ra, zoom_dec):
     plot_area_mask(ra, dec, zoom)
 
     # SExtractor and SP flags: whichever mask columns the config declared
-    # (the MASK_n<bit> columns, and the v1 configs' IMAFLAGS_ISO).
+    # (the MASK_<bit>_<label> columns, and the v1 configs' IMAFLAGS_ISO).
     m_flags = masks[labels["FLAGS"]]._mask
     for col in ("IMAFLAGS_ISO",) + tuple(MASK_COLUMNS):
         if col in labels:
@@ -496,8 +496,8 @@ def sky_plots(dat, masks, labels, zoom_ra, zoom_dec):
 
     # Maximask
     m_maxi = m_point
-    if "MASK_n1024" in labels:
-        m_maxi = masks[labels["MASK_n1024"]]._mask & m_point
+    if "MASK_1024_Maximask" in labels:
+        m_maxi = masks[labels["MASK_1024_Maximask"]]._mask & m_point
     plot_area_mask(ra, dec, zoom, mask=m_maxi)
 
     # Combined mask over all supplied masks (was passed in by the caller before
@@ -509,8 +509,12 @@ def sky_plots(dat, masks, labels, zoom_ra, zoom_dec):
     m_comb = mask_combined._mask
     plot_area_mask(ra, dec, zoom, mask=m_comb)
 
-    m_man = m_maxi & masks[labels["MASK_n8"]]._mask
+    m_man = m_maxi & masks[labels["MASK_8_Manual"]]._mask
     plot_area_mask(ra, dec, zoom, mask=m_man)
 
-    m_halos = m_maxi & masks[labels["MASK_n1"]]._mask & masks[labels["MASK_n2"]]._mask
+    m_halos = (
+        m_maxi
+        & masks[labels["MASK_1_Faint_star_halos"]]._mask
+        & masks[labels["MASK_2_Bright_star_halos"]]._mask
+    )
     plot_area_mask(ra, dec, zoom, mask=m_halos)

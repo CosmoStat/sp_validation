@@ -1,8 +1,8 @@
 """The ShapePipe v1 -> v2 grammar adapter presents v1 products as their v2 twins.
 
 One synthetic catalogue is written in both grammars: v2 (T, split G1/G2,
-boolean MASK_n*) and v1 (sigma, 2-vector or flattened ELL, {b}_{label} mask
-flags, plus the IMAFLAGS_ISO bitmask the adapter leaves alone).
+boolean MASK_{b}_{label}) and v1 (sigma, 2-vector or flattened ELL,
+{b}_{label} mask flags, plus the IMAFLAGS_ISO bitmask the adapter leaves alone).
 Adapting the v1 form must reproduce the v2 form column for column, for every
 table flavour the pipeline reads (numpy, FITS_rec, h5py), and row selection
 must commute with adaptation.
@@ -90,7 +90,9 @@ def _twins(vector_ell=True):
     v2["NGMIX_MCAL_TYPES_FAIL"] = v1["NGMIX_MOM_FAIL"] = fail
     v1["IMAFLAGS_ISO"] = rng.integers(0, 256, N).astype(np.int16)
     for b, label in MASK_LABELS.items():
-        v2[f"MASK_n{b}"] = v1[f"{b}_{label}"] = rng.integers(0, 2, N).astype(bool)
+        v2[grammar.mask_column(b)] = v1[f"{b}_{label}"] = rng.integers(0, 2, N).astype(
+            bool
+        )
     return _structured(v1), _structured(v2)
 
 
@@ -286,13 +288,15 @@ def test_get_rho_tau_identical_for_v1_and_v2_psf_catalogues(tmp_path):
 
 
 def _data_ext_mask_table(n=N, extra=()):
-    """A data_ext-style table of {b}_{label} flags, and its MASK_n{b} twin."""
+    """A data_ext-style table of {b}_{label} flags, and its MASK_{b}_{label} twin."""
     rng = np.random.default_rng(7)
     old = {
         f"{b}_{label}": rng.integers(0, 2, n).astype(bool)
         for b, label in MASK_LABELS.items()
     }
-    new = {f"MASK_n{b}": old[f"{b}_{label}"] for b, label in MASK_LABELS.items()}
+    new = {
+        grammar.mask_column(b): old[f"{b}_{label}"] for b, label in MASK_LABELS.items()
+    }
     for name in extra:
         old[name] = new[name] = rng.integers(0, 6, n)
     return _structured_n(old), _structured_n(new)
@@ -307,9 +311,12 @@ def _structured_n(columns):
 
 
 @pytest.mark.parametrize("bit", sorted(MASK_LABELS))
-def test_every_mask_bit_maps_to_mask_n(bit):
-    assert grammar.mask_column(bit) == f"MASK_n{bit}"
-    assert v2_names([f"{bit}_{MASK_LABELS[bit]}"]) == (f"MASK_n{bit}",)
+def test_every_mask_bit_spelling_maps_to_the_canonical_column(bit):
+    canonical = f"MASK_{bit}_{MASK_LABELS[bit]}"
+    assert grammar.mask_column(bit) == canonical
+    assert v2_names([f"{bit}_{MASK_LABELS[bit]}"]) == (canonical,)
+    assert v2_names([f"MASK_n{bit}"]) == (canonical,)
+    assert v2_names([canonical]) == (canonical,)
 
 
 def test_mask_column_rejects_unknown_bit():
@@ -329,14 +336,18 @@ def test_data_ext_mask_flags_rename_without_a_generation():
 
     # Alongside v2 shape columns too: the mask family is not a v1 marker.
     _, v2 = _twins()
-    v2_shape = v2[[n for n in v2.dtype.names if not n.startswith("MASK_n")]]
+    v2_shape = v2[[n for n in v2.dtype.names if not n.startswith("MASK_")]]
     joined = adapt(rfn.repack_fields(v2_shape), old)
     assert detect_generation(joined.names) == "v2"
-    np.testing.assert_array_equal(joined["MASK_n4"], new["MASK_n4"])
+    np.testing.assert_array_equal(joined["MASK_4_Stars"], new["MASK_4_Stars"])
     np.testing.assert_array_equal(joined["HSM_T_PSF"], v2["HSM_T_PSF"])
 
 
-def test_halo_masks_keep_faint_and_bright_selections_distinct():
+@pytest.mark.parametrize(
+    "faint, bright",
+    [("1_Faint_star_halos", "2_Bright_star_halos"), ("MASK_n1", "MASK_n2")],
+)
+def test_halo_masks_keep_faint_and_bright_selections_distinct(faint, bright):
     """Producer halo names retain their bit identity through adaptation and cuts."""
     from sp_validation.galaxy import mask_cut
 
@@ -344,29 +355,58 @@ def test_halo_masks_keep_faint_and_bright_selections_distinct():
     # MASK_LABELS, which would hide a reversed faint/bright mapping.
     source = _structured_n(
         {
-            "1_Faint_star_halos": np.array([False, True, False, True]),
-            "2_Bright_star_halos": np.array([False, False, True, True]),
+            faint: np.array([False, True, False, True]),
+            bright: np.array([False, False, True, True]),
         }
     )
     view = adapt(source)
-    np.testing.assert_array_equal(view["MASK_n1"], [False, True, False, True])
-    np.testing.assert_array_equal(view["MASK_n2"], [False, False, True, True])
     np.testing.assert_array_equal(
-        mask_cut(view, ["MASK_n1"]), [True, False, True, False]
+        view["MASK_1_Faint_star_halos"], [False, True, False, True]
     )
     np.testing.assert_array_equal(
-        mask_cut(view, ["MASK_n2"]), [True, True, False, False]
+        view["MASK_2_Bright_star_halos"], [False, False, True, True]
     )
     np.testing.assert_array_equal(
-        mask_cut(view, ["MASK_n1", "MASK_n2"]), [True, False, False, False]
+        mask_cut(view, ["MASK_1_Faint_star_halos"]), [True, False, True, False]
     )
+    np.testing.assert_array_equal(
+        mask_cut(view, ["MASK_2_Bright_star_halos"]), [True, True, False, False]
+    )
+    np.testing.assert_array_equal(
+        mask_cut(view, ["MASK_1_Faint_star_halos", "MASK_2_Bright_star_halos"]),
+        [True, False, False, False],
+    )
+
+
+def test_pre_release_mask_names_match_data_ext_names_and_cuts():
+    """MASK_n{b} and {b}_{label} present the same columns and give the same cut."""
+    from sp_validation.galaxy import DEFAULT_MASK_COLUMNS, MASK_COLUMNS, mask_cut
+
+    old, new = _data_ext_mask_table(extra=("npoint3",))
+    pre = rfn.rename_fields(
+        old, {f"{b}_{label}": f"MASK_n{b}" for b, label in MASK_LABELS.items()}
+    )
+    assert detect_generation(pre.dtype.names) is None
+    view_old, view_pre = adapt(old), adapt(pre)
+    assert view_pre.names == view_old.names == new.dtype.names
+    for name in new.dtype.names:
+        np.testing.assert_array_equal(view_pre[name], new[name])
+    for columns in (DEFAULT_MASK_COLUMNS, MASK_COLUMNS, ["MASK_8_Manual"]):
+        expected = mask_cut(new, columns)
+        np.testing.assert_array_equal(mask_cut(view_pre, columns), expected)
+        np.testing.assert_array_equal(mask_cut(view_old, columns), expected)
 
 
 def test_new_mask_names_pass_through_and_both_names_conflict():
     old, new = _data_ext_mask_table()
     assert adapt(new) is new
     with pytest.raises(ValueError, match="two names"):
-        adapt(old, new[["MASK_n4"]].copy())
+        adapt(old, new[["MASK_4_Stars"]].copy())
+    with pytest.raises(ValueError, match="two names"):
+        adapt(
+            _structured_n({"MASK_n4": new["MASK_4_Stars"]}),
+            new[["MASK_4_Stars"]].copy(),
+        )
 
 
 def test_join_requires_equal_lengths_and_disjoint_names():
@@ -417,7 +457,7 @@ def test_boolean_selection_holds_only_the_selected_rows():
     assert isinstance(window._rows, range)
     sub = window[mask[100:900]]
     assert list(sub._rows) == [500]
-    np.testing.assert_array_equal(sub["MASK_n4"], old["4_Stars"][[500]])
+    np.testing.assert_array_equal(sub["MASK_4_Stars"], old["4_Stars"][[500]])
 
 
 def _h5py_mask_table(tmp_path, n=1000):
@@ -454,14 +494,18 @@ def test_h5py_selection_reads_each_dataset_once(tmp_path, monkeypatch, block_row
             for name in new.dtype.names:
                 np.testing.assert_array_equal(sub[name], new[key][name], err_msg=name)
         takes.clear()
-        got = view[mask].to_structured(["MASK_n8", "npoint3"])
-        np.testing.assert_array_equal(got["MASK_n8"], new["MASK_n8"][mask])
+        got = view[mask].to_structured(["MASK_8_Manual", "npoint3"])
+        np.testing.assert_array_equal(got["MASK_8_Manual"], new["MASK_8_Manual"][mask])
 
         # Materialising named columns reads only their fields, in one pass.
         takes.clear()
-        got = view.to_structured(["MASK_n8", "npoint3", "MASK_n1"])
+        got = view.to_structured(
+            ["MASK_8_Manual", "npoint3", "MASK_1_Faint_star_halos"]
+        )
         assert takes == [["8_Manual", "npoint3", "1_Faint_star_halos"]]
-        np.testing.assert_array_equal(got["MASK_n1"], new["MASK_n1"])
+        np.testing.assert_array_equal(
+            got["MASK_1_Faint_star_halos"], new["MASK_1_Faint_star_halos"]
+        )
 
 
 @pytest.mark.parametrize("key", [(), Ellipsis])
@@ -471,7 +515,9 @@ def test_empty_tuple_and_ellipsis_select_every_row(tmp_path, key):
         for view in (adapt(old), adapt(handle["data_ext"])):
             everything = view[key]
             assert len(everything) == len(new)
-            np.testing.assert_array_equal(everything["MASK_n4"], new["MASK_n4"])
+            np.testing.assert_array_equal(
+                everything["MASK_4_Stars"], new["MASK_4_Stars"]
+            )
             with pytest.raises(IndexError, match="tuple"):
                 view[(0, 1)]
 
