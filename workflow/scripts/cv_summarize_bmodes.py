@@ -13,7 +13,11 @@ import numpy as np
 from cv_runner import _unbuffer_streams, verify_outputs
 
 from sp_validation import sacc_io
-from sp_validation.b_modes import _get_pte_from_scale_cut, log_bin_edges
+from sp_validation.b_modes import (
+    _get_pte_from_scale_cut,
+    covariance_label,
+    log_bin_edges,
+)
 from sp_validation.cosmo_val.core import print_bmode_summary
 from sp_validation.statistics import chi2_and_pte
 
@@ -36,7 +40,8 @@ for i, version in enumerate(p["versions"]):
             )
         except (KeyError, RuntimeError):
             pass
-    cov_methods.add(f"pure-E/B: semi-analytic ({int(pure_eb['n_eff'])} draws)")
+    npatch = int(pure_eb["npatch"]) if "npatch" in pure_eb else None
+    cov_methods.add(f"pure-E/B: {covariance_label(npatch)}")
 
     # The COSEBIs .npz is written at the fiducial cut, so its PTE is the one
     # this table wants.

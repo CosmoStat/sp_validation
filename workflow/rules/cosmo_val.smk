@@ -7,8 +7,7 @@
 # products they write under COSMO_VAL (= cosmo_val/output):
 #
 #   catalogue ──→ xi (one job per grid: reporting, integration)
-#                   ├─ reporting part ──────→ pure_eb (part, npz, figures)
-#                   ├─ integration part ─┬──→ pure_eb
+#                   ├─ integration part ─┬──→ pure_eb (part, npz, figures)
 #                   │                    └──→ cosebis (part, npz, figures)
 #                   └─ reporting .txt ──→ 2pcf plot, ratio_xi_sys_xi
 #   CosmoCov ξ±, integration grid ──→ pure_eb, cosebis (their covariances)
@@ -80,7 +79,7 @@ def _pure_eb_stub(version):
             f"{version}_eb_minsep={CV['theta_min']}_maxsep={CV['theta_max']}"
             f"_nbins={CV['nbins']}_minsepint={eb['min_sep']}"
             f"_maxsepint={eb['max_sep']}_nbinsint={eb['nbins']}"
-            f"_npatch={CV['npatch']}_varmethod=semi-analytic"
+            f"_npatch={CV['npatch']}_varmethod=analytic"
         )
     )
 
@@ -396,13 +395,12 @@ rule cv_plot_pseudo_cl:
 # ---------------------------------------------------------------------------
 
 rule cv_pure_eb:
-    """Pure E/B-mode decomposition for one version, from its ξ± parts.
+    """Pure E/B-mode decomposition for one version, from its integration-grid part.
 
-    The modes come from the two parts; the covariance is Monte Carlo from the
-    integration-grid covariance model, so no patched estimator run is involved.
+    The modes are a fixed linear operator on the part's ξ±; the covariance is
+    the CosmoCov ξ± covariance on the same grid pushed exactly through it.
     """
     input:
-        xi_reporting=lambda w: cv_xi_sacc(w.version, "reporting"),
         xi_integration=lambda w: cv_xi_sacc(w.version, "integration"),
         cov_integration=lambda w: cv_xi_cov_integration(w.version),
     output:
@@ -414,13 +412,10 @@ rule cv_pure_eb:
         min_sep=CV["theta_min"],
         max_sep=CV["theta_max"],
         nbins=CV["nbins"],
-        n_samples=CV.get("n_mc_samples", 1000),
-        cosmo_params=CV["cosmo_params"],
         fiducial_scale_cut=CV["fiducial_scale_cut"],
-    threads: 24
     resources:
-        mem_mb=40000,
-        runtime=360,
+        mem_mb=8000,
+        runtime=20,
     script:
         "../scripts/cv_pure_eb.py"
 
