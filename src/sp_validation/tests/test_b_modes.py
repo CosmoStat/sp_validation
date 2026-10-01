@@ -324,52 +324,52 @@ def test_calculate_eb_statistics_has_teeth():
 # estimator is meant to move.
 _PURE_EB_PINS = {
     "xip_E": [
-        0.0001267927403538086,
-        0.00011661471866769028,
-        0.00011285998097487562,
-        0.00011342826992976761,
-        9.413729942634515e-05,
-        8.504628509885555e-05,
+        0.00012679274035380905,
+        0.00011661471866769055,
+        0.00011285998097487589,
+        0.00011342826992976775,
+        9.413729942634518e-05,
+        8.504628509885567e-05,
     ],
     "xim_E": [
-        7.84636379789262e-06,
-        -2.1854362709680197e-08,
-        1.2476650697806643e-06,
-        5.931628899598654e-06,
-        -5.748552740802833e-06,
-        5.307121527471898e-06,
+        7.846363797892477e-06,
+        -2.1854362709441122e-08,
+        1.247665069781001e-06,
+        5.931628899598502e-06,
+        -5.748552740802789e-06,
+        5.307121527471727e-06,
     ],
     "xip_B": [
-        -5.890048396074994e-05,
-        -5.413134881293027e-05,
-        -7.033477076572411e-05,
-        -6.464207645137761e-05,
-        -6.438127715272536e-05,
-        -5.781687325365341e-05,
+        -5.8900483960750064e-05,
+        -5.413134881293024e-05,
+        -7.033477076572403e-05,
+        -6.464207645137748e-05,
+        -6.438127715272512e-05,
+        -5.781687325365326e-05,
     ],
     "xim_B": [
-        -1.2460349217324633e-05,
-        1.1641684220790763e-06,
-        3.7838279437020602e-06,
-        9.134846190559186e-06,
-        5.499212937161553e-06,
-        4.460746452672484e-06,
+        -1.246034921732448e-05,
+        1.164168422079476e-06,
+        3.783827943702509e-06,
+        9.134846190559095e-06,
+        5.499212937161643e-06,
+        4.4607464526723306e-06,
     ],
     "xip_amb": [
-        8.984494180845635e-05,
-        8.879536535671083e-05,
-        8.704153035693623e-05,
-        8.410960918777171e-05,
-        7.923091774259722e-05,
-        7.107059682711236e-05,
+        8.984494180845601e-05,
+        8.879536535671052e-05,
+        8.704153035693591e-05,
+        8.410960918777141e-05,
+        7.923091774259691e-05,
+        7.107059682711207e-05,
     ],
     "xim_amb": [
-        1.5108576414191464e-06,
-        9.059561894981808e-07,
-        5.429016867191619e-07,
-        3.250730808381593e-07,
-        1.9496276632352545e-07,
-        1.1676364182463817e-07,
+        1.5108576414194198e-06,
+        9.059561894983459e-07,
+        5.429016867192604e-07,
+        3.2507308083821813e-07,
+        1.9496276632356086e-07,
+        1.1676364182465932e-07,
     ],
 }
 
@@ -421,74 +421,94 @@ def test_pure_eb_modes_sum_to_the_averaged_xi(pure_eb_xi):
 def test_pure_eb_covariance_is_the_operator_sandwich(pure_eb_xi):
     """``cov`` is K C Kᵀ for the supplied ξ± covariance, and records npatch.
 
-    The reported ξ± variances are the same pair-weighted average pushed through
-    the ξ+ and ξ− blocks of C.
+    The reported ξ± variances are the same pair-weighted average pushed
+    through the ξ+ and ξ− blocks of C, and the reported edges are the snapped
+    ones the operator used.
     """
     n_fine = len(pure_eb_xi["theta_int"])
     cov_xi = _spd(2 * n_fine, seed=7)
     r = b_modes.calculate_pure_eb_correlation(**pure_eb_xi, cov_xi=cov_xi, npatch=40)
-    K, P = b_modes.pure_eb_operator(
+    K, P, edges = b_modes.pure_eb_operator(
         pure_eb_xi["theta_int"],
         pure_eb_xi["weight_int"],
-        pure_eb_xi["left_edges"],
-        pure_eb_xi["right_edges"],
+        pure_eb_xi["edges_int"],
+        pure_eb_xi["reporting_edges"],
     )
     npt.assert_allclose(r["cov"], K @ cov_xi @ K.T, rtol=1e-12)
     npt.assert_allclose(r["cov"], r["cov"].T, rtol=1e-12)
     npt.assert_allclose(r["var_xip"], np.diag(P @ cov_xi[:n_fine, :n_fine] @ P.T))
     npt.assert_allclose(r["var_xim"], np.diag(P @ cov_xi[n_fine:, n_fine:] @ P.T))
+    npt.assert_array_equal(r["left_edges"], edges[:-1])
+    npt.assert_array_equal(r["right_edges"], edges[1:])
+    assert np.all(np.isin(edges, pure_eb_xi["edges_int"]))
     assert r["npatch"] == 40
 
     with pytest.raises(ValueError, match="npatch > 1"):
         b_modes.calculate_pure_eb_correlation(**pure_eb_xi, cov_xi=cov_xi, npatch=1)
 
 
-def test_pure_eb_binning_is_a_pair_weighted_average():
-    """Each reporting row averages its fine nodes with TreeCorr pair weights.
+def test_pure_eb_reporting_bins_are_unions_of_fine_bins():
+    """Requested edges snap to the nearest fine edge; rows pool whole fine bins.
 
-    Rows sum to one; nodes outside the reporting range or without pairs carry
-    no weight; equal weights give the plain mean; an empty bin raises.
+    Rows sum to one and weight their fine bins by the pair weight; a fine bin
+    with no weight carries none; equal weights give the plain mean. Edges that
+    snap together, edges outside the fine grid and empty bins raise.
     """
-    theta = np.geomspace(1.0, 100.0, 40)
+    edges_int = np.geomspace(1.0, 100.0, 41)
     weight = np.arange(1.0, 41.0)
     weight[20] = 0.0
-    left, right = b_modes.log_bin_edges(2.0, 50.0, 4)
-    P = b_modes._weight_binning_matrix(theta, weight, left, right)
+    requested = np.array([2.1, 6.0, 20.0, 49.0])
+    P, edges = b_modes._reporting_binning(weight, edges_int, requested)
 
+    snap = [np.argmin(np.abs(np.log(edges_int / e))) for e in requested]
+    npt.assert_array_equal(edges, edges_int[snap])
     npt.assert_allclose(P.sum(axis=1), 1.0)
-    assert np.all(P[:, (theta < 2.0) | (theta >= 50.0)] == 0)
+    for row, (lo, hi) in enumerate(zip(snap[:-1], snap[1:])):
+        inside = np.zeros(40, dtype=bool)
+        inside[lo:hi] = True
+        npt.assert_allclose(P[row, inside], weight[inside] / weight[inside].sum())
+        assert np.all(P[row, ~inside] == 0)
     assert np.all(P[:, 20] == 0)
-    inside = (theta >= left[1]) & (theta < right[1]) & (weight > 0)
-    npt.assert_allclose(P[1, inside], weight[inside] / weight[inside].sum())
 
-    flat = b_modes._weight_binning_matrix(theta, np.ones(40), left, right)
-    inside = (theta >= left[0]) & (theta < right[0])
-    npt.assert_allclose(flat[0, inside], 1.0 / inside.sum())
+    flat, _ = b_modes._reporting_binning(np.ones(40), edges_int, requested)
+    npt.assert_allclose(flat[0, snap[0] : snap[1]], 1.0 / (snap[1] - snap[0]))
 
+    with pytest.raises(ValueError, match="same fine edge"):
+        b_modes._reporting_binning(weight, edges_int, [2.0, 2.05, 20.0])
+    with pytest.raises(ValueError, match="outside the fine grid"):
+        b_modes._reporting_binning(weight, edges_int, [2.0, 20.0, 200.0])
     with pytest.raises(ValueError, match="hold no integration-grid pairs"):
-        b_modes._weight_binning_matrix(theta, np.zeros(40), left, right)
+        b_modes._reporting_binning(np.zeros(40), edges_int, requested)
 
 
-def test_pure_eb_binning_reproduces_the_reporting_measurement():
-    """P on nested fine bins gives TreeCorr's reporting-bin ξ± and meanr.
-
-    TreeCorr's ξ± and meanr in a bin are averages over its pairs weighted by
-    ``w_i w_j``, so pooling fine bins whose edges nest the reporting edges with
-    the fine ``weight`` is the same sum. A weighted catalogue with exact
-    binning makes that hold to round-off; weighting by ``npairs`` instead
-    does not.
-    """
-    treecorr = pytest.importorskip("treecorr")
-
+def _weighted_catalogue(treecorr):
+    """A weighted flat shear catalogue, separations in arcmin."""
     rng = np.random.default_rng(2024)
     n_gal = 3000
     x, y = rng.uniform(0.0, 300.0, (2, n_gal))
     g1, g2 = 0.02 + 0.05 * rng.standard_normal((2, n_gal))
-    cat = treecorr.Catalog(x=x, y=y, g1=g1, g2=g2, w=rng.uniform(0.2, 1.0, n_gal))
+    return treecorr.Catalog(x=x, y=y, g1=g1, g2=g2, w=rng.uniform(0.2, 1.0, n_gal))
 
+
+@pytest.mark.parametrize(
+    "requested",
+    [np.geomspace(15.0, 70.0, 7), np.geomspace(14.0, 73.0, 7)],
+    ids=["nested", "snapped"],
+)
+def test_pure_eb_binning_reproduces_the_reporting_measurement(requested):
+    """P on the fine grid gives TreeCorr's ξ± and meanr on the snapped bins.
+
+    TreeCorr's ξ± and meanr in a bin are averages over its pairs weighted by
+    ``w_i w_j``, and every reporting bin is a union of fine bins, so pooling
+    them with the fine ``weight`` is the same sum. A weighted catalogue with
+    exact binning makes that hold to round-off, whether or not the requested
+    edges fall on fine edges; weighting by ``npairs`` instead does not.
+    """
+    treecorr = pytest.importorskip("treecorr")
+    cat = _weighted_catalogue(treecorr)
     exact = {"bin_slop": 0, "angle_slop": 0}
-    reporting = treecorr.GGCorrelation(min_sep=15.0, max_sep=70.0, nbins=6, **exact)
-    # Eight fine bins per reporting bin, plus four on either side.
+
+    # Eight fine bins per [15, 70]′ / 6 reporting bin, plus four either side.
     step = np.log(70.0 / 15.0) / 48
     fine = treecorr.GGCorrelation(
         min_sep=15.0 * np.exp(-4 * step),
@@ -496,21 +516,28 @@ def test_pure_eb_binning_reproduces_the_reporting_measurement():
         nbins=56,
         **exact,
     )
-    reporting.process(cat)
     fine.process(cat)
+    edges_int = np.append(fine.left_edges, fine.right_edges[-1])
 
-    P = b_modes._weight_binning_matrix(
-        fine.meanr, fine.weight, reporting.left_edges, reporting.right_edges
-    )
+    P, edges = b_modes._reporting_binning(fine.weight, edges_int, requested)
+    assert np.all(np.isin(edges, edges_int))
+    measured = []
+    for lo, hi in zip(edges[:-1], edges[1:]):
+        gg = treecorr.GGCorrelation(min_sep=lo, max_sep=hi, nbins=1, **exact)
+        gg.process(cat)
+        measured.append(gg)
     for key in ("xip", "xim", "meanr"):
         npt.assert_allclose(
-            P @ getattr(fine, key), getattr(reporting, key), rtol=1e-10, err_msg=key
+            P @ getattr(fine, key),
+            [getattr(gg, key)[0] for gg in measured],
+            rtol=1e-10,
+            err_msg=key,
         )
 
-    by_npairs = b_modes._weight_binning_matrix(
-        fine.meanr, fine.npairs, reporting.left_edges, reporting.right_edges
+    by_npairs, _ = b_modes._reporting_binning(fine.npairs, edges_int, requested)
+    assert not np.allclose(
+        by_npairs @ fine.xip, [gg.xip[0] for gg in measured], rtol=1e-6, atol=0
     )
-    assert not np.allclose(by_npairs @ fine.xip, reporting.xip, rtol=1e-6, atol=0)
 
 
 def test_pure_eb_operator_refuses_a_reporting_floor_at_the_grid_edge(pure_eb_xi):
@@ -519,12 +546,13 @@ def test_pure_eb_operator_refuses_a_reporting_floor_at_the_grid_edge(pure_eb_xi)
     The ξ− integrals over [tmin, t] have fewer than interp_order + 1 nodes for
     the first few fine nodes, so those operator rows are under-determined.
     """
-    theta_int = pure_eb_xi["theta_int"]
+    edges_int = pure_eb_xi["edges_int"]
     with pytest.raises(ValueError, match="under-determined"):
         b_modes.pure_eb_operator(
-            theta_int,
+            pure_eb_xi["theta_int"],
             pure_eb_xi["weight_int"],
-            *b_modes.log_bin_edges(theta_int[0], 70.0, 6),
+            edges_int,
+            np.geomspace(edges_int[0], 70.0, 7),
         )
 
 
@@ -639,12 +667,16 @@ def test_pure_eb_npz_carries_what_the_summary_reads(tmp_path):
     """The .npz keys cv_summarize_bmodes reads are the ones the writer emits.
 
     The two live in different rules, so the contract between them — the PTE
-    matrices under ``pte_matrices_{stat}`` and the jackknife patch count under
-    ``npatch`` — is pinned here rather than discovered on a cluster run.
+    matrices under ``pte_matrices_{stat}``, the reporting edges they are
+    indexed on and the jackknife patch count under ``npatch`` — is pinned here
+    rather than discovered on a cluster run.
     """
     results, nbins = _eb_inputs()
     results.update(
         {key: np.zeros(nbins) for key in b_modes._EB_KEYS if key not in results}
+    )
+    results["left_edges"], results["right_edges"] = b_modes.log_bin_edges(
+        1.0, 100.0, nbins
     )
     results = b_modes.calculate_eb_statistics(results)
 
@@ -661,8 +693,10 @@ def test_pure_eb_npz_carries_what_the_summary_reads(tmp_path):
         assert key in saved
 
     # The summary reads the fiducial cut out of those matrices through the same
-    # helper the plots use, so a valid cut must resolve to a finite PTE.
-    edges = b_modes.log_bin_edges(1.0, 100.0, nbins)
+    # helper the plots use, on the saved edges, so a valid cut must resolve to
+    # a finite PTE.
+    edges = (saved["left_edges"], saved["right_edges"])
+    npt.assert_array_equal(edges[0], results["left_edges"])
     pte = b_modes._get_pte_from_scale_cut(
         saved["pte_matrices_xip_B"], edges, (1.0, 100.0)
     )

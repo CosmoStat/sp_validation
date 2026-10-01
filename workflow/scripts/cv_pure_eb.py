@@ -3,7 +3,8 @@
 A consumer of the integration-grid ξ± part plus a ξ± covariance on that grid —
 nothing here touches a catalogue. The estimator is one fixed linear operator
 on the fine ξ± (b_modes.pure_eb_operator), averaged into the reporting bins with
-the part's TreeCorr pair weights, so its covariance is the supplied ξ± covariance pushed
+the part's TreeCorr pair weights into reporting bins snapped onto the fine
+edges, so its covariance is the supplied ξ± covariance pushed
 exactly through that operator.
 """
 
@@ -15,7 +16,6 @@ from sp_validation.b_modes import (
     calculate_eb_statistics,
     calculate_pure_eb_correlation,
     covariance_label,
-    log_bin_edges,
     plot_eb_covariance_matrix,
     plot_integration_vs_reporting,
     plot_pte_2d_heatmaps,
@@ -32,16 +32,18 @@ fiducial_scale_cut = tuple(p["fiducial_scale_cut"])
 part = sacc_io.load(snakemake.input["xi_integration"])
 theta_int, xip_int, xim_int = sacc_io.get_xi(part, (0, 0), grid="integration")
 weight_int = sacc_io.get_xi_weight(part, (0, 0), grid="integration")
-left_edges, right_edges = log_bin_edges(p["min_sep"], p["max_sep"], p["nbins"])
+# A part stores bin centres; the edges come from the grid it was measured on.
+grid = p["integration"]
+edges_int = np.geomspace(grid["min_sep"], grid["max_sep"], grid["nbins"] + 1)
 
 results = calculate_pure_eb_correlation(
     theta_int,
     xip_int,
     xim_int,
     weight_int,
+    edges_int,
     np.loadtxt(snakemake.input["cov_integration"]),
-    left_edges,
-    right_edges,
+    np.geomspace(p["min_sep"], p["max_sep"], p["nbins"] + 1),
 )
 results = calculate_eb_statistics(results)
 

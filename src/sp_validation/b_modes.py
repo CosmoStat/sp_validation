@@ -129,30 +129,43 @@ def hartlap_factor(npatch, dof):
     return 1.0 if npatch is None else (npatch - dof - 2) / (npatch - 1)
 
 
-def _weight_binning_matrix(theta_int, weight_int, left_edges, right_edges):
-    """Pair-weighted average from the fine grid into the reporting bins.
+def _reporting_binning(weight_int, edges_int, reporting_edges):
+    """Reporting bins as unions of fine bins, and their pair-weighted average.
 
-    Row ``i`` of the ``(n_report, n_fine)`` result weights the fine nodes whose
-    ``theta_int`` falls in reporting bin ``i`` by their TreeCorr pair weight
-    ``Σ w_i w_j`` and sums to one. TreeCorr's ξ± and ``meanr`` are averages
-    over pairs under that same weight, so when the fine bin edges nest the
-    reporting edges a row reproduces the reporting-bin measurement. Nodes
-    outside the reporting range or with zero weight get none.
+    Each requested reporting edge snaps to the nearest fine edge (in log θ), so
+    every reporting bin is a whole number of fine bins. Row ``i`` of the
+    ``(n_report, n_fine)`` matrix weights the fine bins of reporting bin ``i``
+    by their TreeCorr pair weight ``Σ w_i w_j`` and sums to one. TreeCorr's ξ±
+    and ``meanr`` are averages over pairs under that same weight, so each row
+    reproduces what TreeCorr would measure on the snapped bin.
+
+    Returns ``(binning, edges)``, ``edges`` being the snapped reporting edges.
     """
-    theta_int = np.asarray(theta_int, dtype=float)
     weight_int = np.asarray(weight_int, dtype=float)
-    if weight_int.shape != theta_int.shape:
-        raise ValueError("weight_int must have one entry per integration bin")
-    n_report = len(left_edges)
-    rows = np.digitize(theta_int, np.append(left_edges, right_edges[-1])) - 1
-    inside = (rows >= 0) & (rows < n_report) & (weight_int > 0)
-    binning = np.zeros((n_report, theta_int.size))
-    binning[rows[inside], np.flatnonzero(inside)] = weight_int[inside]
+    edges_int = np.asarray(edges_int, dtype=float)
+    reporting_edges = np.asarray(reporting_edges, dtype=float)
+    if edges_int.shape != (weight_int.size + 1,):
+        raise ValueError("edges_int must hold n_fine + 1 fine-grid edges")
+    if reporting_edges.min() < edges_int[0] or reporting_edges.max() > edges_int[-1]:
+        raise ValueError(
+            f"reporting edges [{reporting_edges.min()}, {reporting_edges.max()}] "
+            f"reach outside the fine grid [{edges_int[0]}, {edges_int[-1]}]"
+        )
+    snap = np.abs(np.log(reporting_edges)[:, None] - np.log(edges_int)).argmin(axis=1)
+    if np.any(np.diff(snap) <= 0):
+        raise ValueError(
+            "reporting edges snap onto the same fine edge; the fine grid is too "
+            f"coarse for them: {reporting_edges.tolist()} -> "
+            f"{edges_int[snap].tolist()}"
+        )
+    binning = np.zeros((snap.size - 1, weight_int.size))
+    for i, (lo, hi) in enumerate(zip(snap[:-1], snap[1:])):
+        binning[i, lo:hi] = weight_int[lo:hi]
     weight = binning.sum(axis=1)
     if np.any(weight == 0):
         empty = np.flatnonzero(weight == 0).tolist()
         raise ValueError(f"reporting bins {empty} hold no integration-grid pairs")
-    return binning / weight[:, None]
+    return binning / weight[:, None], edges_int[snap]
 
 
 def _fixed_quadrature_operator(theta_eval, theta_int):
@@ -186,14 +199,16 @@ def _fixed_quadrature_operator(theta_eval, theta_int):
     return np.vstack([operator["matrices"][key] for key in _EB_KEYS])
 
 
-def pure_eb_operator(theta_int, weight_int, left_edges, right_edges):
+def pure_eb_operator(theta_int, weight_int, edges_int, reporting_edges):
     """The pure-E/B estimator as one matrix on the fine ξ± grid.
 
     The Schneider et al. (2022) transform is evaluated with fixed-quadrature
     weights at the fine-grid nodes inside the reporting range, integrating over
     the whole fine grid, and the six pure modes are then averaged into the
-    reporting bins with TreeCorr pair weights. Both steps are linear and
-    independent of the ξ± values, so the estimator is ``K = (I_6 ⊗ P) · M`` and
+    reporting bins with TreeCorr pair weights. The reporting edges snap to the
+    nearest fine edges, so each reporting bin is a union of fine bins. Both
+    steps are linear and independent of the ξ± values, so the estimator is
+    ``K = (I_6 ⊗ P) · M`` and
 
         [xip_E; xim_E; xip_B; xim_B; xip_amb; xim_amb] = K @ [xip_int; xim_int]
 
@@ -208,8 +223,10 @@ def pure_eb_operator(theta_int, weight_int, left_edges, right_edges):
     weight_int : array_like
         TreeCorr pair weight ``Σ w_i w_j`` per fine bin (``gg.weight``), the
         averaging weights.
-    left_edges, right_edges : array_like
-        Reporting-bin edges.
+    edges_int : array_like
+        The ``n_fine + 1`` fine-grid bin edges.
+    reporting_edges : array_like
+        Requested reporting-bin edges, ``n_report + 1`` of them.
 
     Returns
     -------
@@ -217,9 +234,13 @@ def pure_eb_operator(theta_int, weight_int, left_edges, right_edges):
         ``K``, shape ``(6 * n_report, 2 * n_fine)``.
     binning : numpy.ndarray
         ``P``, the ``(n_report, n_fine)`` pair-weighted average.
+    edges : numpy.ndarray
+        The reporting edges actually used, each a fine-grid edge.
     """
     theta_int = np.asarray(theta_int, dtype=float)
-    binning = _weight_binning_matrix(theta_int, weight_int, left_edges, right_edges)
+    if np.shape(weight_int) != theta_int.shape:
+        raise ValueError("weight_int must have one entry per integration bin")
+    binning, edges = _reporting_binning(weight_int, edges_int, reporting_edges)
     nodes = np.flatnonzero(binning.any(axis=0))
     transform = _fixed_quadrature_operator(theta_int[nodes], theta_int)
     n_nodes = nodes.size
@@ -229,7 +250,7 @@ def pure_eb_operator(theta_int, weight_int, left_edges, right_edges):
             for i in range(len(_EB_KEYS))
         ]
     )
-    return operator, binning
+    return operator, binning, edges
 
 
 def calculate_pure_eb_correlation(
@@ -237,9 +258,9 @@ def calculate_pure_eb_correlation(
     xip_int,
     xim_int,
     weight_int,
+    edges_int,
     cov_xi,
-    left_edges,
-    right_edges,
+    reporting_edges,
     *,
     npatch=None,
 ):
@@ -252,18 +273,22 @@ def calculate_pure_eb_correlation(
     travels in the results and sets the Hartlap factor of every χ² built on
     them (:func:`hartlap_factor`).
 
-    The reporting-bin ``theta``, ``xip``/``xim`` and their variances are the
-    same pair-weighted average of the fine grid, so ``xi_± = E ± B + amb`` holds
-    bin by bin.
+    The reporting bins are unions of fine bins (the requested edges snap to
+    the nearest fine edges), and their ``theta``, ``xip``/``xim`` and
+    variances are the same pair-weighted average of the fine grid, so
+    ``xi_± = E ± B + amb`` holds bin by bin and ``theta``/``xip``/``xim`` are
+    what TreeCorr would measure on the snapped bins.
 
     Parameters
     ----------
     theta_int, xip_int, xim_int, weight_int : array_like
         Fine-grid ``meanr``, ξ±, and TreeCorr pair weight ``Σ w_i w_j``.
+    edges_int : array_like
+        The ``n_fine + 1`` fine-grid bin edges.
     cov_xi : array_like
         ``(2 n_fine, 2 n_fine)`` covariance of ``[xip_int; xim_int]``.
-    left_edges, right_edges : array_like
-        Reporting-bin edges.
+    reporting_edges : array_like
+        Requested reporting-bin edges, ``n_report + 1`` of them.
     npatch : int, optional
         Jackknife patch count behind ``cov_xi``; ``None`` if it is analytic.
 
@@ -271,10 +296,10 @@ def calculate_pure_eb_correlation(
     -------
     dict
         The six ``_EB_KEYS`` mode arrays, ``cov`` (in ``_EB_KEYS`` block
-        order), ``npatch``, the reporting grid (``theta``, ``left_edges``,
-        ``right_edges``, ``xip``, ``xim``, ``var_xip``, ``var_xim``) and the
-        fine-grid inputs (``theta_int``, ``xip_int``, ``xim_int``,
-        ``weight_int``).
+        order), ``npatch``, the reporting grid (``theta``, the snapped
+        ``left_edges``/``right_edges``, ``xip``, ``xim``, ``var_xip``,
+        ``var_xim``) and the fine-grid inputs (``theta_int``, ``xip_int``,
+        ``xim_int``, ``weight_int``, ``edges_int``).
     """
     if npatch is not None and npatch < 2:
         raise ValueError(f"a jackknife covariance needs npatch > 1, not {npatch}")
@@ -282,14 +307,16 @@ def calculate_pure_eb_correlation(
         np.asarray(a, dtype=float) for a in (theta_int, xip_int, xim_int)
     )
     cov_xi = np.asarray(cov_xi, dtype=float)
-    operator, binning = pure_eb_operator(theta_int, weight_int, left_edges, right_edges)
+    operator, binning, edges = pure_eb_operator(
+        theta_int, weight_int, edges_int, reporting_edges
+    )
     if cov_xi.shape != (operator.shape[1],) * 2:
         raise ValueError(
             f"cov_xi has shape {cov_xi.shape}; the fine grid needs "
             f"{(operator.shape[1],) * 2}"
         )
 
-    n_report = len(left_edges)
+    n_report = len(edges) - 1
     modes = operator @ np.concatenate([xip_int, xim_int])
     n_fine = theta_int.size
     var_xip, var_xim = (
@@ -298,8 +325,8 @@ def calculate_pure_eb_correlation(
     )
     results = {
         "theta": binning @ theta_int,
-        "left_edges": np.asarray(left_edges, dtype=float),
-        "right_edges": np.asarray(right_edges, dtype=float),
+        "left_edges": edges[:-1],
+        "right_edges": edges[1:],
         "xip": binning @ xip_int,
         "xim": binning @ xim_int,
         "var_xip": var_xip,
@@ -308,6 +335,7 @@ def calculate_pure_eb_correlation(
         "xip_int": xip_int,
         "xim_int": xim_int,
         "weight_int": np.asarray(weight_int, dtype=float),
+        "edges_int": np.asarray(edges_int, dtype=float),
         "cov": operator @ cov_xi @ operator.T,
         "npatch": npatch,
     }
@@ -1264,7 +1292,9 @@ def save_pure_eb_results(results, output_path):
         Output .npz file path
     """
     # Data vectors and covariance
-    save_dict = {"theta": results["theta"], "cov": results["cov"]}
+    save_dict = {
+        key: results[key] for key in ("theta", "left_edges", "right_edges", "cov")
+    }
     for key in _EB_KEYS:
         save_dict[key] = results[key]
 

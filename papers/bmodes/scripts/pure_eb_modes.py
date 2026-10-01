@@ -10,7 +10,8 @@ pure-mode plot / PTE.
     python pure_eb_modes.py \
         --xi-integration <xi 1000-bin .txt> \
         --cov-integration <Gaussian ξ± covariance, same grid> \
-        --min-sep 1.0 --max-sep 250.0 --nbins 20 --nbins-int 1000 \
+        --min-sep 1.0 --max-sep 250.0 --nbins 20 \
+        --min-sep-int 0.5 --max-sep-int 300.0 --nbins-int 1000 \
         --out <version>_pure_eb.npz
 """
 
@@ -19,7 +20,7 @@ import os
 
 import numpy as np
 
-from sp_validation.b_modes import calculate_pure_eb_correlation, log_bin_edges
+from sp_validation.b_modes import calculate_pure_eb_correlation
 from sp_validation.sacc_io import PURE_KEYS
 
 
@@ -34,15 +35,26 @@ def _load_xi(path, nbins):
 
 
 def pure_eb_modes(
-    xi_integration, cov_integration, min_sep, max_sep, nbins, nbins_int, out_path
+    xi_integration,
+    cov_integration,
+    min_sep,
+    max_sep,
+    nbins,
+    min_sep_int,
+    max_sep_int,
+    nbins_int,
+    out_path,
 ):
     results = calculate_pure_eb_correlation(
         *_load_xi(xi_integration, nbins_int),
+        np.geomspace(min_sep_int, max_sep_int, nbins_int + 1),
         np.loadtxt(cov_integration),
-        *log_bin_edges(min_sep, max_sep, nbins),
+        np.geomspace(min_sep, max_sep, nbins + 1),
     )
     package = {
         "theta": results["theta"],
+        "left_edges": results["left_edges"],
+        "right_edges": results["right_edges"],
         "theta_int": results["theta_int"],
         "xip_total": results["xip"],
         "xim_total": results["xim"],
@@ -63,6 +75,8 @@ def _from_snakemake(smk):
         p["min_sep"],
         p["max_sep"],
         p["nbins"],
+        p["min_sep_int"],
+        p["max_sep_int"],
         p["nbins_int"],
         smk.output[0],
     )
@@ -75,6 +89,8 @@ def _from_cli(argv=None):
     ap.add_argument("--min-sep", type=float, default=1.0)
     ap.add_argument("--max-sep", type=float, default=250.0)
     ap.add_argument("--nbins", type=int, default=20)
+    ap.add_argument("--min-sep-int", type=float, default=0.5)
+    ap.add_argument("--max-sep-int", type=float, default=300.0)
     ap.add_argument("--nbins-int", type=int, default=1000)
     ap.add_argument("--out", required=True, help="Output .npz path")
     a = ap.parse_args(argv)
@@ -84,6 +100,8 @@ def _from_cli(argv=None):
         a.min_sep,
         a.max_sep,
         a.nbins,
+        a.min_sep_int,
+        a.max_sep_int,
         a.nbins_int,
         a.out,
     )

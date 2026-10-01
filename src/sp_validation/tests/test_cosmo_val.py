@@ -626,26 +626,22 @@ class TestCosmologyValidation:
 
         measured = {
             key: results[key]
-            for key in (
-                "theta_int",
-                "xip_int",
-                "xim_int",
-                "weight_int",
-                "left_edges",
-                "right_edges",
-            )
+            for key in ("theta_int", "xip_int", "xim_int", "weight_int", "edges_int")
         }
+        measured["reporting_edges"] = np.geomspace(15.0, 70.0, nbins + 1)
         # Regenerate the fixture with np.savez(conftest.PURE_EB_XI, **measured).
         for key, value in measured.items():
             np.testing.assert_allclose(
                 value, pure_eb_xi[key], rtol=1e-10, atol=0, err_msg=key
             )
 
-        operator, _ = b_modes.pure_eb_operator(
-            *(measured[k] for k in ("theta_int", "weight_int")),
-            measured["left_edges"],
-            measured["right_edges"],
+        operator, _, edges = b_modes.pure_eb_operator(
+            *(
+                measured[k]
+                for k in ("theta_int", "weight_int", "edges_int", "reporting_edges")
+            )
         )
+        np.testing.assert_array_equal(results["left_edges"], edges[:-1])
         modes = operator @ np.concatenate([measured["xip_int"], measured["xim_int"]])
         for i, key in enumerate(b_modes._EB_KEYS):
             vec = np.asarray(results[key])

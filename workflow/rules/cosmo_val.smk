@@ -412,6 +412,7 @@ rule cv_pure_eb:
         min_sep=CV["theta_min"],
         max_sep=CV["theta_max"],
         nbins=CV["nbins"],
+        integration=XI_GRIDS["integration"],
         fiducial_scale_cut=CV["fiducial_scale_cut"],
     resources:
         mem_mb=8000,
@@ -467,9 +468,6 @@ rule cv_summarize_bmodes:
     params:
         versions=CV_VERSIONS,
         fiducial_scale_cut=CV["fiducial_scale_cut"],
-        min_sep=CV["theta_min"],
-        max_sep=CV["theta_max"],
-        nbins=CV["nbins"],
         include_pseudo_cl=CV.get("include_pseudo_cl", False),
     resources:
         mem_mb=8000,

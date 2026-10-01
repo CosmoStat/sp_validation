@@ -11,7 +11,6 @@ from ..b_modes import (
     calculate_eb_statistics,
     calculate_pure_eb_correlation,
     covariance_label,
-    log_bin_edges,
     plot_eb_covariance_matrix,
     plot_integration_vs_reporting,
     plot_pte_2d_heatmaps,
@@ -38,8 +37,8 @@ class PureEBMixin:
 
         ξ± is measured on the fine integration grid only; the reporting
         binning (the instance's treecorr_config unless overridden) enters as
-        bin edges, into which :func:`~sp_validation.b_modes.pure_eb_operator`
-        averages the modes.
+        bin edges, snapped onto the fine edges, into which
+        :func:`~sp_validation.b_modes.pure_eb_operator` averages the modes.
 
         Parameters
         ----------
@@ -67,9 +66,6 @@ class PureEBMixin:
         self.print_start(f"Computing {version} pure E/B")
 
         reporting = self._binning(min_sep, max_sep, nbins)
-        left_edges, right_edges = log_bin_edges(
-            reporting["min_sep"], reporting["max_sep"], reporting["nbins"]
-        )
         gg_int = self.calculate_2pcf(
             version,
             npatch=npatch,
@@ -87,9 +83,11 @@ class PureEBMixin:
             gg_int.xip,
             gg_int.xim,
             gg_int.weight,
+            np.append(gg_int.left_edges, gg_int.right_edges[-1]),
             cov_xi,
-            left_edges,
-            right_edges,
+            np.geomspace(
+                reporting["min_sep"], reporting["max_sep"], reporting["nbins"] + 1
+            ),
             npatch=npatch,
         )
 

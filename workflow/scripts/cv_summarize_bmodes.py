@@ -13,19 +13,13 @@ import numpy as np
 from cv_runner import _unbuffer_streams, verify_outputs
 
 from sp_validation import sacc_io
-from sp_validation.b_modes import (
-    _get_pte_from_scale_cut,
-    covariance_label,
-    log_bin_edges,
-)
+from sp_validation.b_modes import _get_pte_from_scale_cut, covariance_label
 from sp_validation.cosmo_val.core import print_bmode_summary
 from sp_validation.statistics import chi2_and_pte
 
 _unbuffer_streams()
 p = snakemake.params
 fiducial_scale_cut = tuple(p["fiducial_scale_cut"])
-edges = log_bin_edges(p["min_sep"], p["max_sep"], p["nbins"])
-
 summary = {}
 cov_methods = set()
 
@@ -33,6 +27,8 @@ for i, version in enumerate(p["versions"]):
     row = {}
 
     pure_eb = np.load(snakemake.input["pure_eb"][i])
+    # The bins the PTE matrices are indexed on: the snapped reporting edges.
+    edges = (pure_eb["left_edges"], pure_eb["right_edges"])
     for stat in ("xip_B", "xim_B", "combined"):
         try:
             row[stat] = _get_pte_from_scale_cut(
