@@ -60,7 +60,7 @@ rule rho_tau_stats:
         cat_config=CAT_CONFIG,
         output_dir=str(COSMO_VAL),
     resources:
-        mem_mb=30000,
+        mem_mb=64000,
         disk_mb=20000,
         runtime=360,
     script:

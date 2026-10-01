@@ -556,6 +556,16 @@ class TestCosmologyValidation:
         np.testing.assert_allclose(xi["a"], xi["b"], rtol=0, atol=1e-12)
         np.testing.assert_allclose(var["a"], var["b"], rtol=1e-10)
 
+    def test_treecorr_runs_on_the_cpus_the_process_holds(self, tmp_path):
+        """By default TreeCorr takes the process's CPU affinity, not the node's count."""
+        import treecorr
+
+        params, version = self._write_synthetic_catalogs(tmp_path)
+        CosmologyValidation(versions=[version], npatch=1, **params).calculate_2pcf(
+            version
+        )
+        assert treecorr.get_omp_threads() == len(os.sched_getaffinity(0))
+
     def test_calculate_scale_dependent_leakage_runs_on_synthetic_catalog(
         self, tmp_path
     ):
