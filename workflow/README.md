@@ -101,7 +101,15 @@ halves of one commit, split.
 The catalogue config is the launched checkout's `cosmo_val/cat_config.yaml`.
 `COSMO_VAL` defaults to the launched checkout's `cosmo_val/output`, so writing
 into another checkout's products means naming it; `COSMO_INFERENCE` defaults to
-the shared candide tree.
+the shared candide tree, which holds the CosmoCov covariances and only its owner
+can write. Anyone else launches with `COSMO_INFERENCE=<tree>` of their own,
+holding a link to the shared tree's `data/mask/` (the one input the covariance
+rules take from it); the CosmoCov chain then runs there:
+
+```bash
+mkdir -p <tree>/data
+ln -s /n17data/cdaley/unions/code/sp_validation/cosmo_inference/data/mask <tree>/data/
+```
 
 **Caveat:** `rerun-triggers: code` watches rule bodies and `script:` files, not
 `src/`. Editing a module under `src/` does not by itself mark outputs stale —
@@ -113,8 +121,7 @@ To reproduce a run from the image alone, opt out:
 snakemake --profile workflow/profiles/candide --config checkout_pythonpath=false <target>
 ```
 
-Either way the checkout has to sit under one of the profile's bind mounts to be
-visible inside the job.
+Either way the checkout has to sit on a disk the jobs see (next section).
 
 Most of the time this default is all you need. Reach for a different *image*
 only when the dependency stack changed — a new package, a lockfile bump — not
@@ -128,8 +135,15 @@ directory. `/automnt/nXXdataN` works only from a node that does *not* own that
 disk. On the owning node the disk is mounted directly at `/nXXdataN` and there
 is no `/automnt/nXXdataN` entry at all, so a job that lands there dies about one
 second after the allocation starts, before any log file is written. This is why
-`n17` is in the profile's exclude list. Every canonical path in `common.py`
-already uses the plain form; keep new paths the same.
+`n17` is in the profile's exclude list. `common.py` spells the launched
+checkout, `COSMO_VAL` and `COSMO_INFERENCE` in the plain form whatever spelling
+it is given (a symlink, a relative path, `/automnt`), and Snakemake matches a
+target by its path string, so name file targets in the plain form too; keep new
+paths the same. A job sees a plain path only on a disk the profile binds by
+name — `/home`, `/n17data`, `/n23data1`, `/n09data` (the `/automnt` bind does
+not serve it) — so the checkout and both output roots sit on one of those. To
+work on another disk, add it to both bind lists: the candide profile's
+`apptainer-args` and `container.DEFAULT_BINDS`.
 
 ### Run Snakemake from the host, never from inside the container
 

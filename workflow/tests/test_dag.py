@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from conftest import REPO, VERSIONS, on_candide, parse_jobs
+from conftest import REPO, VERSIONS, _load_module, on_candide, parse_jobs
 
 
 def test_assemble_resolves(toy):
@@ -77,6 +77,48 @@ def test_outputs_stay_in_the_output_roots(toy, named):
         if not any((toy.rundir / o).resolve().is_relative_to(r) for r in roots)
     ]
     assert not strays, strays
+
+
+@pytest.mark.parametrize("root", ["COSMO_VAL", "COSMO_INFERENCE"])
+def test_every_spelling_of_an_output_root_declares_the_same_paths(toy, tmp_path, root):
+    """Snakemake keys its persistence records by path string, so a symlinked
+    spelling of an output root declares the tree's resolved paths."""
+    tree = Path(toy.env[root]).resolve()
+    link = tmp_path / "link"
+    link.symlink_to(tree, target_is_directory=True)
+    result = toy.snakemake("-n", "all", env={**toy.env, root: str(link)})
+    assert result.returncode == 0, result.stdout
+    declared = [f for j in parse_jobs(result.stdout) for f in j.input + j.output]
+    assert any(f.startswith(f"{tree}/") for f in declared), declared
+    assert not [f for f in declared if f.startswith(f"{link}/")], declared
+
+
+def test_output_roots_take_the_plain_spelling(toy):
+    """A root given as /automnt/<disk>/... is declared as /<disk>/..., the one
+    spelling every node has, on any host: a job step re-derives the launch's
+    paths on its own node, and the node that owns a disk has neither
+    /automnt/<disk> nor a /<disk> link to it, like the disk no host has here.
+    A file target named in the plain spelling resolves, and no declared path
+    lies under /automnt."""
+    tree = Path("/n00data0/spv-dag-toy")  # a dry-run creates nothing
+    env = {
+        **toy.env,
+        "COSMO_VAL": f"/automnt{tree}/val",
+        "COSMO_INFERENCE": f"/automnt{tree}/inference",
+    }
+    common = _load_module(toy.root / "workflow" / "common.py", "plain_common", env)
+    assert (common.COSMO_VAL, common.COSMO_INFERENCE) == (
+        tree / "val",
+        tree / "inference",
+    )
+    grids = toy.common.xi_grids(toy.config, toy.config["fiducial"])
+    reporting = toy.common.grid_binning(grids["reporting"])
+    target = tree / "val" / f"{VERSIONS[0]}_xi_{reporting}.sacc"
+    result = toy.snakemake("-n", str(target), env=env)
+    assert result.returncode == 0, result.stdout
+    declared = [f for j in parse_jobs(result.stdout) for f in j.input + j.output]
+    assert str(target) in declared, declared
+    assert not [f for f in declared if f.startswith("/automnt/")], declared
 
 
 def _apptainer_stub(tmp_path):

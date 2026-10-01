@@ -535,6 +535,16 @@ class TestCosmologyValidation:
         shift = np.max(np.abs(xi[48] - xi[4]) / sigma)
         assert shift < 1e-6, f"ξ± moves by {shift:.3g}σ between 4 and 48 threads"
 
+    def test_treecorr_runs_on_the_cpus_the_process_holds(self, tmp_path):
+        """By default TreeCorr takes the process's CPU affinity, not the node's count."""
+        import treecorr
+
+        params, version = self._write_synthetic_catalogs(tmp_path)
+        CosmologyValidation(versions=[version], npatch=1, **params).calculate_2pcf(
+            version
+        )
+        assert treecorr.get_omp_threads() == len(os.sched_getaffinity(0))
+
     def test_calculate_scale_dependent_leakage_runs_on_synthetic_catalog(
         self, tmp_path
     ):
