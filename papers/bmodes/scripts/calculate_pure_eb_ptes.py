@@ -47,6 +47,9 @@ def calculate_ptes(
     pte_matrices = results["pte_matrices"]
     output_data = {
         "theta": theta,
+        # The bins the matrices are indexed on, for scale-cut windows.
+        "left_edges": dataset["left_edges"],
+        "right_edges": dataset["right_edges"],
         "pte_xip_B": pte_matrices["xip_B"],
         "pte_xim_B": pte_matrices["xim_B"],
         "pte_combined": pte_matrices["combined"],
