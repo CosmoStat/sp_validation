@@ -56,8 +56,9 @@ reconvolved PSF across metacal types, so its columns need no correction.
 
 A catalogue in another naming convention can carry a ``column_map``,
 ``{v2 name: name in the file}``, which ``adapt`` applies as renames ahead of
-the rules above: an entry overrides any rule producing the same v2 name, and
-the v1 detection runs on the columns the map leaves. An entry may hold one
+the rules above: an entry overrides the rule producing the same v2 name and no
+other (a column it renames still feeds the other rules that read it), and the
+v1 detection runs on the columns the map does not rename. An entry may hold one
 ``*`` on both sides, matching any stem: ``{"NGMIX_*": "MYFIT_*"}`` presents
 every ``MYFIT_<stem>`` column as ``NGMIX_<stem>``. Explicit entries take
 precedence over pattern entries.
@@ -283,8 +284,6 @@ def _resolve(names, column_map=None):
     by_anchor = {}
     for rule in rules:
         sources = [s for s in rule.sources() if s in position]
-        if rule not in mapped:
-            sources = [s for s in sources if s not in mapped_sources]
         if not sources:
             continue
         if rule.v2 in position and rule.v2 not in mapped_sources:
@@ -579,16 +578,18 @@ class V2View:
 def adapt(table, *tables, column_map=None):
     """Present ``table`` (joined with any further ``tables``) in the v2 grammar.
 
-    A single table with nothing to rename, or already a ``V2View``, is returned
-    unchanged; otherwise the result is a ``V2View``. Each table is anything
-    whose ``dtype.names`` lists its columns and whose ``table[name]`` reads
-    one: a numpy structured array, FITS_rec or h5py Dataset. Joined tables
-    must have equal lengths and disjoint column names. ``column_map``
-    (``{v2 name: name in the file}``, see the module docstring) renames a
-    foreign convention's columns.
+    A single table with nothing to rename is returned unchanged, as is a
+    ``V2View`` given no ``column_map``; otherwise the result is a ``V2View``.
+    Each table is anything whose ``dtype.names`` lists its columns and whose
+    ``table[name]`` reads one: a numpy structured array, FITS_rec, h5py
+    Dataset or ``V2View``. Joined tables must have equal lengths and disjoint
+    column names. ``column_map`` (``{v2 name: name in the table}``, see the
+    module docstring) renames a foreign convention's columns; over a
+    ``V2View`` it renames the columns that view presents.
     """
     if not tables and (
-        isinstance(table, V2View) or not _resolve(column_names(table), column_map)[1]
+        (isinstance(table, V2View) and column_map is None)
+        or not _resolve(column_names(table), column_map)[1]
     ):
         return table
     return V2View((table,) + tables, column_map=column_map)

@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from cs_util import plots as cs_plots
 
-from ..io import read_catalogue_entry
+from ..io import open_entry
 from ..survey import (
     additive_bias,
     area_from_coords,
@@ -76,9 +76,7 @@ class CatalogCharacterizationMixin:
             raise FileNotFoundError(f"Shear catalog not found: {catalog_path}")
 
         weight_column = weights_key_override or shear_cfg["w_col"]
-        data = read_catalogue_entry(
-            shear_cfg, columns=[shear_cfg["e1_col"], shear_cfg["e2_col"], weight_column]
-        )
+        data = open_entry(shear_cfg)
         n_rows = len(data)
 
         e1 = np.asarray(data[shear_cfg["e1_col"]], dtype=float)
@@ -132,7 +130,7 @@ class CatalogCharacterizationMixin:
     def _area_from_catalog(self, shear_cfg, nside):
         ra_col = shear_cfg.get("ra_col", "RA")
         dec_col = shear_cfg.get("dec_col", "Dec")
-        data = read_catalogue_entry(shear_cfg, columns=[ra_col, dec_col])
+        data = open_entry(shear_cfg)
         ra = np.asarray(data[ra_col], dtype=float)
         dec = np.asarray(data[dec_col], dtype=float)
         return area_from_coords(ra, dec, nside)

@@ -35,13 +35,13 @@ class _LeakageScale(run_scale.LeakageScale):
     def read_data(self, shear=True, psf=True):
         if shear:
             self.dat_shear = leakage.cut_data(
-                io.read_catalogue_entry(self.entries["shear"]),
+                io.open_entry(self.entries["shear"]),
                 self._params["cut"],
                 self._params["verbose"],
             )
         if psf:
             self.dat_PSF = self.handle_close_objects(
-                io.read_catalogue_entry(self.entries["star"])
+                io.open_entry(self.entries["star"])
             )
 
 
@@ -51,7 +51,7 @@ class _LeakageObject(run_object.LeakageObject):
     entries = None
 
     def read_data(self):
-        self._dat = io.read_catalogue_entry(self.entries["shear"])
+        self._dat = io.open_entry(self.entries["shear"])
 
 
 # %%

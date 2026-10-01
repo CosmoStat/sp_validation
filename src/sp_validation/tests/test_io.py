@@ -7,6 +7,8 @@ HDF5 and an HDF5 group of row chunks; its names pass through unless a
 HDF5 by the column names its config gives.
 """
 
+import mmap
+
 import h5py
 import numpy as np
 import numpy.testing as npt
@@ -163,3 +165,63 @@ def test_rho_tau_loader_passes_plain_fits_through(foreign, tmp_path):
     with _CatalogueLoader({"psf": entry}, {"ra_PSF_col": "RA"}) as load:
         assert load("psf") != str(path)
         npt.assert_array_equal(fits.getdata(load("psf"), 1)["RA"], foreign["alpha"])
+
+
+def test_column_map_overrides_only_its_own_canonical_name():
+    """A map entry reading a v1 column leaves the v1 rules that read it intact.
+
+    Mapping ``NGMIX_T_PSF_RECONV_1P`` onto ``NGMIX_Tpsf_1P`` must not make the
+    no-shear size fall back to the wrong ``NGMIX_Tpsf_NOSHEAR``.
+    """
+    v1 = np.zeros(
+        3,
+        dtype=[
+            ("NGMIX_Tpsf_1P", "f8"),
+            ("NGMIX_Tpsf_NOSHEAR", "f8"),
+            ("NGMIX_MOM_FAIL", "i2"),
+        ],
+    )
+    v1["NGMIX_Tpsf_1P"] = [1.0, 2.0, 3.0]
+    v1["NGMIX_Tpsf_NOSHEAR"] = 1.02 * v1["NGMIX_Tpsf_1P"]
+    view = grammar.adapt(v1, column_map={"NGMIX_T_PSF_RECONV_1P": "NGMIX_Tpsf_1P"})
+    npt.assert_array_equal(view["NGMIX_T_PSF_RECONV_1P"], v1["NGMIX_Tpsf_1P"])
+    npt.assert_array_equal(view["NGMIX_T_PSF_RECONV_NOSHEAR"], v1["NGMIX_Tpsf_1P"])
+    assert "NGMIX_MCAL_TYPES_FAIL" in view.names
+
+
+def test_column_map_applies_over_an_existing_view():
+    v1 = np.zeros(4, dtype=[("SIGMA_PSF_HSM", "f8"), ("alpha", "f8")])
+    v1["SIGMA_PSF_HSM"] = 0.5
+    v1["alpha"] = [1, 2, 3, 4]
+    view = grammar.adapt(v1)
+    assert grammar.adapt(view) is view
+    mapped = grammar.adapt(view, column_map={"RA": "alpha"})
+    assert set(mapped.names) == {"HSM_T_PSF", "RA"}
+    npt.assert_array_equal(mapped["RA"], v1["alpha"])
+    npt.assert_allclose(mapped["HSM_T_PSF"], 2 * 0.5**2)
+    npt.assert_array_equal(mapped[1:3]["RA"], [2, 3])
+
+
+def _memory_mapped(array):
+    while array is not None:
+        if isinstance(array, (np.memmap, mmap.mmap)):
+            return True
+        array = getattr(array, "base", None)
+    return False
+
+
+@pytest.mark.parametrize("layout", ("fits", "dataset", "comprehensive"))
+def test_open_catalogue_reads_lazily(foreign, tmp_path, layout):
+    """An unchunked catalogue opens as a lazy table, not an in-memory copy."""
+    import gc
+
+    path = _write(foreign, tmp_path / f"stars.{layout}", layout)
+    table = io.open_catalogue(path, column_map={"RA": "alpha"})
+    gc.collect()  # the HDF5 file stays open while the table is referenced
+    assert isinstance(table, grammar.V2View)
+    if layout == "fits":
+        assert all(_memory_mapped(base) for base in table._bases)
+    else:
+        assert all(isinstance(base, h5py.Dataset) for base in table._bases)
+    npt.assert_array_equal(table["RA"], foreign["alpha"])
+    npt.assert_array_equal(table["star_e2"], foreign["star_e2"])

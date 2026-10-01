@@ -344,17 +344,35 @@ def read_catalogue(
         return catalogue.read(columns=columns, key_column=key_column, verbose=verbose)
 
 
-def read_catalogue_entry(entry, columns=None):
-    """Read the catalogue a config block names, e.g. a cat_config ``shear`` block.
+def open_catalogue(path, hdu=None, column_map=None):
+    """Return a catalogue as one table, reading no data up front.
+
+    A FITS table is memory-mapped and an unchunked HDF5 table read column by
+    column on access (its file stays open while the table is referenced), so
+    a consumer pays only for the columns it indexes, derived v2 columns
+    included. A chunked HDF5 catalogue has no single on-disk table and is
+    read into memory. Parameters as for ``Catalogue``.
+
+    Returns
+    -------
+    astropy.io.fits.FITS_rec, h5py.Dataset, grammar.V2View or numpy.ndarray
+        catalogue data in the v2 grammar
+    """
+    catalogue = Catalogue(path, hdu=hdu, column_map=column_map)
+    if catalogue.chunked:
+        with catalogue:
+            return catalogue.read()
+    return catalogue.table()
+
+
+def open_entry(entry):
+    """Return the catalogue a config block names (e.g. a cat_config ``shear``).
 
     The block's ``path``, optional ``hdu`` and optional ``column_map`` go to
-    ``read_catalogue``; ``columns`` restricts what is read.
+    ``open_catalogue``.
     """
-    return read_catalogue(
-        entry["path"],
-        columns=columns,
-        hdu=entry.get("hdu"),
-        column_map=entry.get("column_map"),
+    return open_catalogue(
+        entry["path"], hdu=entry.get("hdu"), column_map=entry.get("column_map")
     )
 
 
