@@ -348,7 +348,7 @@ class TestCosmologyValidation:
         """By default TreeCorr takes the process's CPU affinity, not the node's count."""
         import treecorr
 
-        params, version = self._write_synthetic_catalogs(tmp_path)
+        params, version = write_synthetic_catalogs(tmp_path)
         CosmologyValidation(versions=[version], npatch=1, **params).calculate_2pcf(
             version
         )
