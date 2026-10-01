@@ -561,6 +561,30 @@ def test_pure_eb_operator_refuses_a_reporting_floor_at_the_grid_edge(pure_eb_xi)
 # ---------------------------------------------------------------------------
 
 
+def test_scale_cuts_select_the_same_bins_on_every_fine_grid():
+    """A cut on nominal edges picks the same bins whatever grid they snapped to.
+
+    [1, 250]′ in 20 bins snapped onto the cosmo_val (0.08–300′) and Paper II
+    (0.5–300′) fine grids moves edge 9 (11.997′) to either side of 12′, so
+    exact containment would disagree; snapping the cut to the nearest edge
+    selects bins 9–15 for [12, 83]′ and all bins for [1, 250]′ on both.
+    """
+    requested = np.geomspace(1.0, 250.0, 21)
+    for lo in (0.08, 0.5):
+        fine = np.geomspace(lo, 300.0, 1001)
+        _, edges = b_modes._reporting_binning(np.ones(1000), fine, requested)
+        left, right = edges[:-1], edges[1:]
+        assert b_modes.bins_from_scale_cut(left, right, (12.0, 83.0)) == (9, 16)
+        assert b_modes.bins_from_scale_cut(left, right, (1.0, 250.0)) == (0, 20)
+        pte = np.arange(400.0).reshape(20, 20)
+        assert (
+            b_modes._get_pte_from_scale_cut(pte, (left, right), (12, 83)) == pte[9, 15]
+        )
+
+    with pytest.raises(RuntimeError, match="selects no bins"):
+        b_modes.bins_from_scale_cut(left, right, (12.0, 12.5))
+
+
 def test_log_bin_edges_matches_the_grid_stub():
     """Edges reconstructed from a binning are the ones TreeCorr would report.
 

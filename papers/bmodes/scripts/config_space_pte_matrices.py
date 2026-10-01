@@ -39,15 +39,19 @@ from plotting_utils import (
     make_pte_norm,
 )
 
+from sp_validation.b_modes import bins_from_scale_cut
+
 plt.style.use(PAPER_MPLSTYLE)
 
 
 def resolve_fiducial_bin_window(edges, theta_min, theta_max):
-    """Return the first and last reporting bins inside a scale-cut window."""
-    left, right = edges[:-1], edges[1:]
-    inside = (left >= theta_min * (1.0 - 1e-2)) & (right <= theta_max * (1.0 + 1e-2))
-    bins = np.flatnonzero(inside)
-    return int(bins[0]), int(bins[-1])
+    """Return the first and last reporting bins of a pure-E/B scale cut.
+
+    The cut snaps to the nearest reporting edges, as everywhere pure-E/B PTEs
+    are read (``sp_validation.b_modes.bins_from_scale_cut``).
+    """
+    start, stop = bins_from_scale_cut(edges[:-1], edges[1:], (theta_min, theta_max))
+    return start, stop - 1
 
 
 def _path_matches_version(path, version):

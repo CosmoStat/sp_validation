@@ -91,6 +91,23 @@ def bins_from_edges(left_edges, right_edges, min_scale=None, max_scale=None):
     return start_bin, stop_bin
 
 
+def bins_from_scale_cut(left_edges, right_edges, scale_cut):
+    """Reporting bins inside a pure-E/B scale cut, as ``(start_bin, stop_bin)``.
+
+    Each end of ``scale_cut`` snaps to the nearest reporting edge in log θ —
+    the rule that snaps reporting edges onto the fine grid — so a cut placed
+    on a nominal edge selects the same bins whichever fine grid the edges
+    were snapped to. ``stop_bin`` is exclusive.
+    """
+    edges = np.append(left_edges, right_edges[-1])
+    start_bin, stop_bin = (
+        int(np.abs(np.log(edges) - np.log(cut)).argmin()) for cut in scale_cut
+    )
+    if stop_bin <= start_bin:
+        raise RuntimeError(f"scale cut {scale_cut} selects no bins")
+    return start_bin, stop_bin
+
+
 def log_bin_edges(min_sep, max_sep, nbins):
     """TreeCorr ``Log`` bin edges — the grid a binning defines.
 
@@ -640,7 +657,7 @@ def plot_integration_vs_reporting(results, output_path, version):
 
 def _get_pte_from_scale_cut(pte_matrix, edges, scale_cut):
     """
-    Extract PTE value from matrix based on scale cut range using conservative logic.
+    Extract PTE value from matrix at a scale cut (:func:`bins_from_scale_cut`).
 
     Parameters
     ----------
@@ -663,13 +680,7 @@ def _get_pte_from_scale_cut(pte_matrix, edges, scale_cut):
         # Return full-range PTE (first row, last column)
         return pte_matrix[0, nbins - 1]
 
-    min_scale, max_scale = scale_cut
-
-    start_bin, stop_bin = bins_from_edges(left_edges, right_edges, min_scale, max_scale)
-
-    # Ensure valid range, otherwise fallback to full range
-    if stop_bin <= start_bin or start_bin >= nbins or stop_bin <= 0:
-        raise RuntimeError("Invalid scale cut range")
+    start_bin, stop_bin = bins_from_scale_cut(left_edges, right_edges, scale_cut)
     return pte_matrix[start_bin, stop_bin - 1]
 
 
@@ -704,12 +715,16 @@ def plot_pure_eb_correlations(
     # Calculate combined PTE using off-diagonal covariance blocks
     # Get scale cuts for both xi+ and xi-
     if fiducial_xip_scale_cut is not None:
-        xip_start_bin, xip_stop_bin = bins_from_edges(*edges, *fiducial_xip_scale_cut)
+        xip_start_bin, xip_stop_bin = bins_from_scale_cut(
+            *edges, fiducial_xip_scale_cut
+        )
     else:
         xip_start_bin, xip_stop_bin = 0, nbins
 
     if fiducial_xim_scale_cut is not None:
-        xim_start_bin, xim_stop_bin = bins_from_edges(*edges, *fiducial_xim_scale_cut)
+        xim_start_bin, xim_stop_bin = bins_from_scale_cut(
+            *edges, fiducial_xim_scale_cut
+        )
     else:
         xim_start_bin, xim_stop_bin = 0, nbins
 
@@ -836,11 +851,10 @@ def plot_pure_eb_correlations(
     scale_cuts = [(fiducial_xip_scale_cut, 0), (fiducial_xim_scale_cut, 1)]
     for scale_cut, ax_idx in scale_cuts:
         if scale_cut is not None:
-            min_scale, max_scale = scale_cut
             xlim = original_xlims[ax_idx]
 
-            # Use conservative scale_cut_to_bins helper for consistency
-            start_bin, stop_bin = bins_from_edges(*edges, min_scale, max_scale)
+            # The same bins the PTEs use
+            start_bin, stop_bin = bins_from_scale_cut(*edges, scale_cut)
 
             # Show excluded regions based on bin edges used in PTE calculation
             # Lower exclusion: bins 0 to start_bin-1 are excluded
@@ -1123,8 +1137,7 @@ def plot_pte_2d_heatmaps(
     fiducial_scale_cuts = [fiducial_xip_scale_cut, fiducial_xim_scale_cut]
     for ax_idx, fiducial_scale_cut in enumerate(fiducial_scale_cuts):
         if fiducial_scale_cut is not None:
-            min_scale, max_scale = fiducial_scale_cut
-            start_bin, stop_bin = bins_from_edges(*edges, min_scale, max_scale)
+            start_bin, stop_bin = bins_from_scale_cut(*edges, fiducial_scale_cut)
 
             if stop_bin > start_bin and start_bin < nbins and stop_bin > 0:
                 rect_x = start_bin
