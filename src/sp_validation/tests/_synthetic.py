@@ -2,33 +2,33 @@
 
 The glue tests run the real compute seams on it: a shear catalogue
 (RA/Dec/e1/e2/w), a PSF star catalogue with the columns the leakage and ρ/τ
-seams read, a cs_util-readable dndz, and a ``cat_config.yaml`` whose blind
-registry is ``blinds/`` beside it. Every catalogue entry in the config reads its
-own copy of the same galaxies and declares its own custody.
+seams read, a cs_util-readable dndz, and a ``cat_config.yaml`` whose blinds
+live in ``blinds/`` beside it. Every catalogue entry in the config reads its
+own copy of the same galaxies and declares its own blind.
 
-``TOY_STANDARD`` is :data:`sp_validation.blinding.STANDARD` with the analytic
-``toy_theory`` in place of each default theory, so a blind shifts without
-running CAMB.
+``toy_shear`` stands in for :func:`sp_validation.theory.shear`, so a blind
+shifts without running CAMB.
 """
 
 import copy
-from types import MappingProxyType
 
 import numpy as np
 import yaml
 
-from sp_validation import blinding
+from sp_validation import sacc_io
+
+SIGNAL = (sacc_io.XI_PLUS, sacc_io.XI_MINUS, sacc_io.CL_EE)
 
 
-def toy_theory(params, s, rows):
-    """A power law in θ or ℓ whose amplitude grows with S8 and Ωm."""
-    x = np.array([s.data[i].tags.get("theta", s.data[i].tags.get("ell")) for i in rows])
-    return 1e-4 * params["S8"] ** 2 * params["Omega_m"] ** 0.3 * (x / 10.0) ** -0.8
-
-
-TOY_STANDARD = MappingProxyType(
-    {t: toy_theory if callable(r) else r for t, r in blinding.STANDARD.items()}
-)
+def toy_shear(params, s):
+    """A power law in θ or ℓ for ξ± and Cℓ_EE, its amplitude growing with S8
+    and Ωm; zeros for every other row."""
+    out = np.zeros(len(s.mean))
+    for i, dp in enumerate(s.data):
+        if dp.data_type in SIGNAL:
+            x = dp.tags.get("theta", dp.tags.get("ell"))
+            out[i] = params["S8"] ** 2 * params["Omega_m"] ** 0.3 * (x / 10.0) ** -0.8
+    return 1e-4 * out
 
 
 def write_synthetic_catalogs(
@@ -55,8 +55,8 @@ def write_synthetic_catalogs(
     catalogues : dict, optional
         ``{version: blind}``, one catalogue entry each, reading its own copy of
         the shear catalogue. ``blind`` is the entry's ``blind:`` value, or
-        ``None`` for an entry that declares none. Defaults to one mock,
-        ``TestCatalog``.
+        ``None`` for an entry that declares none. Defaults to one public
+        catalogue, ``TestCatalog``.
 
     Returns
     -------
@@ -66,7 +66,7 @@ def write_synthetic_catalogs(
     """
     from astropy.table import Table
 
-    catalogues = catalogues or {"TestCatalog": "mock"}
+    catalogues = catalogues or {"TestCatalog": "none"}
     rng = np.random.default_rng(seed)
 
     cat_dir = tmp_path / "catalog"

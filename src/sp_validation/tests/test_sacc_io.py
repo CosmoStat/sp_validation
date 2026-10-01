@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 
 from sp_validation import sacc_io as sio
-from sp_validation.custody import Custody
+from sp_validation.blinding import NONE
 
 
 # --------------------------------------------------------------------------- #
@@ -63,12 +63,11 @@ def _cosebi_block(s, tr):
 # --------------------------------------------------------------------------- #
 # 1. Per-writer round-trip (arrays / tags / windows / NZ bitwise)
 # --------------------------------------------------------------------------- #
-MOCK = Custody("mock")
 
 
 def _roundtrip(s, tmp_path, name="rt"):
     path = tmp_path / f"{name}.sacc"
-    sio.save(s, str(path), custody=MOCK)
+    sio.save(s, str(path), blind=NONE)
     return sio.load(str(path))
 
 
@@ -469,7 +468,7 @@ def test_end_to_end_one_file_layout(tmp_path):
         s,
         [(xi_c, _spd(len(xi_c), 1)), (co, _spd(len(co), 2)), (xi_f, fine_block)],
     )
-    sio.save(s, str(tmp_path / f"{version}.sacc"), custody=MOCK)
+    sio.save(s, str(tmp_path / f"{version}.sacc"), blind=NONE)
 
     a = sio.load(str(tmp_path / f"{version}.sacc"))
 
@@ -508,7 +507,7 @@ def test_one_file_layout_diagonal_fine_fallback(tmp_path):
     xi_f = _xi_block(s, tr, grid="integration")
     variances = np.concatenate([np.arange(1, 51) * 1e-12, np.arange(1, 51) * 2e-12])
     sio.assemble_covariance(s, [(xi_c, _spd(len(xi_c), 1)), (xi_f, np.diag(variances))])
-    sio.save(s, str(tmp_path / "vDIAG.sacc"), custody=MOCK)
+    sio.save(s, str(tmp_path / "vDIAG.sacc"), blind=NONE)
     a = sio.load(str(tmp_path / "vDIAG.sacc"))
     assert np.array_equal(np.diag(a.covariance.dense[np.ix_(xi_f, xi_f)]), variances)
 
@@ -647,7 +646,7 @@ def test_merge_per_statistic_files(tmp_path):
     # inputs untouched
     assert s_xi.metadata["version"] == "vM"
     # readers work on the merged file after a round-trip
-    sio.save(merged, str(tmp_path / "vM.sacc"), custody=MOCK)
+    sio.save(merged, str(tmp_path / "vM.sacc"), blind=NONE)
     merged_rt = sio.load(str(tmp_path / "vM.sacc"))
     _, p, _ = sio.get_xi(merged_rt, (0, 0), grid="reporting")
     assert np.array_equal(p, np.arange(6) * 1e-5)
@@ -682,7 +681,7 @@ def test_merge_block_diagonal_covariance_stays_block_diagonal(tmp_path):
     assert type(s_xi.covariance).__name__ == "BlockDiagonalCovariance"
     merged = sio.merge([s_xi, s_co])
     assert type(merged.covariance).__name__ == "BlockDiagonalCovariance"
-    sio.save(merged, str(tmp_path / "vBLK.sacc"), custody=MOCK)
+    sio.save(merged, str(tmp_path / "vBLK.sacc"), blind=NONE)
     merged_rt = sio.load(str(tmp_path / "vBLK.sacc"))
     assert type(merged_rt.covariance).__name__ == "BlockDiagonalCovariance"
     n_xi = len(s_xi.mean)

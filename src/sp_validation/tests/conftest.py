@@ -21,9 +21,9 @@ def pure_eb_xi():
 
 @pytest.fixture
 def toy_theory(monkeypatch):
-    """Blinds shift by the analytic ``_synthetic.toy_theory``."""
-    from _synthetic import TOY_STANDARD
+    """Blinds shift by the analytic ``_synthetic.toy_shear``."""
+    from _synthetic import toy_shear
 
-    from sp_validation import blinding
+    from sp_validation import theory
 
-    monkeypatch.setattr(blinding, "STANDARD", TOY_STANDARD)
+    monkeypatch.setattr(theory, "shear", toy_shear)

@@ -8,15 +8,7 @@ from pathlib import Path
 
 import pytest
 import yaml
-from conftest import (
-    PUBLIC,
-    REPO,
-    UNCOVERED,
-    UNDECLARED,
-    VERSIONS,
-    on_candide,
-    parse_jobs,
-)
+from conftest import REPO, UNDECLARED, VERSIONS, on_candide, parse_jobs
 
 
 @pytest.fixture(scope="module")
@@ -89,33 +81,16 @@ def test_one_integration_grid(toy, forced, grids):
         assert {part, covariance} <= by_rule["cv_pure_eb"], by_rule["cv_pure_eb"]
 
 
-def test_custody_is_the_checkouts_and_no_rule_touches_a_blind(toy, forced, tmp_path):
-    """A catalogue and its variant share one custody line; even a
-    forced run schedules nothing that reads or writes the registry; and a
-    config file declaring the catalogue public changes nothing."""
-    output, jobs = forced
-    line = f"[custody] {VERSIONS[0]} (+ {VERSIONS[1]}): blinded under toy"
-    assert {x for x in output.splitlines() if x.startswith("[custody]")} == {line}
-    registry = (toy.root / "blinds").resolve()
-    assert not [j.rule for j in jobs if "blind" in j.rule]
-    touched = [
-        f
-        for j in jobs
-        for f in j.input + j.output
-        if (toy.rundir / f).resolve().is_relative_to(registry)
-    ]
-    assert not touched, touched
-
-    override = tmp_path / "override.yaml"
-    override.write_text(yaml.safe_dump({VERSIONS[0]: {"blind": "none"}}))
-    result = toy.snakemake("-n", "assemble_sacc_all", "--configfile", str(override))
-    assert result.returncode == 0, result.stdout
-    assert line in result.stdout
+def test_a_launch_prints_each_catalogues_blind(forced):
+    """A catalogue and its variant share one line."""
+    output, _ = forced
+    line = f"[blind] {VERSIONS[0]} (+ {VERSIONS[1]}): toy"
+    assert {x for x in output.splitlines() if x.startswith("[blind]")} == {line}
 
 
-def test_a_custody_flip_reruns_the_catalogues_parts(toy, grids, tmp_path):
-    """A part's params carry its catalogue's custody token, so declaring
-    the catalogue public reruns the part and nothing else does."""
+def test_a_blind_flip_reruns_the_catalogues_parts(toy, grids, tmp_path):
+    """A part's params carry its catalogue's blind, so declaring the catalogue
+    public reruns the part and nothing else does."""
     env = toy.env | {"COSMO_VAL": str(tmp_path / "cosmo_val")}
     reporting = toy.common.grid_binning(grids["reporting"])
     part = tmp_path / "cosmo_val" / f"{VERSIONS[0]}_xi_{reporting}.sacc"
@@ -145,23 +120,12 @@ def test_a_custody_flip_reruns_the_catalogues_parts(toy, grids, tmp_path):
     assert "params have changed" in output.lower(), output
 
 
-LAUNCH_REFUSALS = {
-    # A blind the registry does not hold, an entry declaring none, and a
-    # blinded catalogue overlaid with a public one
-    "no_blind": ([UNCOVERED], [f"{UNCOVERED} is blinded under gone", "init gone"]),
-    "undeclared": ([UNDECLARED], ["declares no `blind:`"]),
-    "mixed": ([VERSIONS[0], PUBLIC], ["shows the blind's shift"]),
-}
-
-
-@pytest.mark.parametrize("case", LAUNCH_REFUSALS)
-def test_a_launch_the_dag_cannot_honour_stops_with_the_fix(toy, case):
-    versions, message = LAUNCH_REFUSALS[case]
-    listed = ", ".join(f'"{v}"' for v in versions)
-    result = toy.snakemake("-n", "assemble_sacc_all", config=[f"versions=[{listed}]"])
+def test_a_launch_stops_on_a_catalogue_declaring_no_blind(toy):
+    result = toy.snakemake(
+        "-n", "assemble_sacc_all", config=[f'versions=["{UNDECLARED}"]']
+    )
     assert result.returncode != 0, result.stdout
-    for fragment in message:
-        assert fragment in result.stdout, result.stdout
+    assert "declares no `blind:`" in result.stdout, result.stdout
     assert "rule assemble_sacc" not in result.stdout
 
 

@@ -10,15 +10,14 @@ parse with the standard library and Snakemake alone -- the condition a host
 Snakemake is in. The ``candide`` tests need candide itself; CI deselects them.
 
 The ``toy`` fixture is a disposable checkout: copies of ``workflow/`` and
-``papers/cosmo_val/``, this checkout's ``src/`` symlinked in, one catalogue per
-custody state, a hand-written blind record (the host never draws), stand-ins
-for the processed CosmoCov covariances (their inputs live on candide), and both
-output roots in tmp.
+``papers/cosmo_val/``, this checkout's ``src/`` symlinked in, a blinded, a
+public and an undeclared catalogue, stand-ins for the processed CosmoCov
+covariances (their inputs live on candide), and both output roots in tmp. The
+host never opens a blind, so there is no blind record.
 """
 
 import dataclasses
 import importlib.util
-import json
 import os
 import re
 import shutil
@@ -34,8 +33,6 @@ REPO = Path(__file__).resolve().parents[2]
 # The toy catalogue and its leakage-corrected variant: blinded under `toy`.
 VERSIONS = ("SP_v0.1", "SP_v0.1_leak_corr")
 PUBLIC = "SP_v0.2"
-# Declared under the blind `gone`, which the registry does not hold.
-UNCOVERED = "SP_v0.4"
 # Declares no blind.
 UNDECLARED = "SP_v0.5"
 
@@ -130,8 +127,9 @@ class Toy:
         )
 
 
-def _cat_config(data, registry):
-    """One catalogue per custody state, each reading its own touched file."""
+def _cat_config(data):
+    """A blinded, a public and an undeclared catalogue, each reading its own
+    touched file."""
 
     def entry(name, **declaration):
         catalogue = data / f"{name}.fits"
@@ -157,18 +155,9 @@ def _cat_config(data, registry):
     return {
         VERSIONS[0]: entry(VERSIONS[0], blind="toy"),
         PUBLIC: entry(PUBLIC, blind="none"),
-        "SP_v0.3": entry("SP_v0.3", blind="mock"),
-        UNCOVERED: entry(UNCOVERED, blind="gone"),
         UNDECLARED: entry(UNDECLARED),
-        "paths": {"output": "./output", "blinds": str(registry)},
+        "paths": {"output": "./output"},
     }
-
-
-def _registry(registry):
-    """The blind `toy`, as ``blinding init`` writes it but for a stand-in seed."""
-    registry.mkdir()
-    record = {"seed": "toy-seed", "envelope": {"S8": 0.075}, "draw_scheme": 2}
-    (registry / "toy.blind.json").write_text(json.dumps(record))
 
 
 @pytest.fixture(scope="session")
@@ -184,9 +173,8 @@ def toy(tmp_path_factory):
     (root / "data").mkdir()
     (root / "cosmo_val").mkdir()
     (root / "cosmo_val" / "cat_config.yaml").write_text(
-        yaml.safe_dump(_cat_config(root / "data", root / "blinds"))
+        yaml.safe_dump(_cat_config(root / "data"))
     )
-    _registry(root / "blinds")
 
     rundir = root / "papers" / "cosmo_val"
     config_path = rundir / "config" / "config.yaml"

@@ -1,13 +1,14 @@
 """B-modes under a blind, on synthetic ξ±.
 
-A blind shifts ξ± by one E-mode signal, so it moves COSEBIs B_n and pure-E/B
-ξ_B only by each transform's response to a pure E-mode vector. The input is the
-default theory's ξ± at the fiducial on the production reporting and integration
-grids, noise-free and with one seeded shape-noise draw, sealed under a blind
-whose hidden point is each corner of the envelope in turn. The transform's
-response to δ must stay under a tenth of a bin's standard deviation; pure-E/B's
-additivity, B(x + δ) − B(x) = B(δ), holds noise-free to its quadrature's floor,
-measured at ≤ 10⁻³σ and asserted at 10⁻²σ.
+A blind shifts ξ± by one E-mode signal, δ = t(hidden) − t(fiducial), so it
+moves COSEBIs B_n and pure-E/B ξ_B only by each transform's response to a pure
+E-mode vector. The input is the default theory's ξ± at the fiducial on the
+production reporting and integration grids, noise-free and (for COSEBIs) with
+one seeded shape-noise draw, and δ is taken with the hidden point at each
+corner of the envelope in turn. The transform's response to δ must stay under
+a tenth of a bin's standard deviation; pure-E/B's additivity,
+B(x + δ) − B(x) = B(δ), holds noise-free to its quadrature's floor, measured
+at ≤ 10⁻³σ and asserted at 10⁻²σ.
 """
 
 import numpy as np
@@ -15,7 +16,6 @@ import pytest
 
 from sp_validation import b_modes, theory
 from sp_validation import blinding as bd
-from sp_validation import custody as cu
 from sp_validation import sacc_io as sio
 
 REPORTING = (1.0, 250.0, 20)
@@ -51,7 +51,7 @@ def _fiducial_xi():
     s = sio.new_sacc({0: (z, np.exp(-(((z - 0.7) / 0.3) ** 2)))})
     for theta, grid in ((THETA, "reporting"), (THETA_INT, "integration")):
         sio.add_xi(s, (0, 0), theta, 0 * theta, 0 * theta, grid=grid, theta_nom=theta)
-    for dp, value in zip(s.data, theory.predict(s, theory.fiducial(), bd.STANDARD)):
+    for dp, value in zip(s.data, theory.shear(theory.fiducial(), s)):
         dp.value = float(value)
     s.add_covariance(VARIANCE)
     return s
@@ -64,33 +64,24 @@ def _vector(s):
 
 
 @pytest.fixture(scope="module")
-def shifts(tmp_path_factory):
-    """Each input's ξ± and, per envelope corner, its sealed ξ±'s shift."""
-    root = tmp_path_factory.mktemp("bmodes")
-    catalogues = {
-        "paths": {"blinds": str(root / "blinds")},
-        "SYN": {"shear": {"path": str(root / "SYN.fits")}, "blind": "syn"},
-    }
-    bd.init("syn", catalogues)
-    custody = cu.custody_of(catalogues, "SYN")
-    clean = _fiducial_xi()
-    noisy = clean.copy()
-    noise = np.random.default_rng(3).normal(0.0, np.sqrt(VARIANCE))
-    for dp, n in zip(noisy.data, noise):
-        dp.value += float(n)
+def shifts():
+    """Each input's ξ± and the blind's shift δ at each envelope corner."""
+    s = _fiducial_xi()
+    clean = _vector(s)
+    noisy = clean + np.random.default_rng(3).normal(0.0, np.sqrt(VARIANCE))
     fiducial = theory.fiducial()
     corners = [
         {**fiducial, "S8": fiducial["S8"] + a, "Omega_m": fiducial["Omega_m"] + b}
         for a in (-bd.ENVELOPE["S8"], bd.ENVELOPE["S8"])
         for b in (-bd.ENVELOPE["Omega_m"], bd.ENVELOPE["Omega_m"])
     ]
-    out = {"noise-free": (_vector(clean), []), "noisy": (_vector(noisy), [])}
-    with pytest.MonkeyPatch.context() as m:
-        for corner in corners:
-            m.setattr(bd, "_hidden", lambda blind, corner=corner: corner)
-            for name, s in (("noise-free", clean), ("noisy", noisy)):
-                out[name][1].append(_vector(sio.seal(s, custody)) - out[name][0])
-    return out
+    deltas = []
+    for corner in corners:
+        shifted = s.copy()
+        for dp, d in zip(shifted.data, theory.shear(corner, s) - s.mean):
+            dp.value += float(d)
+        deltas.append(_vector(shifted) - clean)
+    return {"noise-free": (clean, deltas), "noisy": (noisy, deltas)}
 
 
 def _as_b(delta):
@@ -162,30 +153,11 @@ def test_cosebis_b_modes_move_only_by_the_transforms_response(shifts, cosebis, n
         assert np.max(np.abs(b_n(_as_b(delta))) / sigma) > 10 * CEILING
 
 
-@pytest.mark.parametrize(
-    "noise",
-    [
-        "noise-free",
-        pytest.param(
-            "noisy",
-            marks=pytest.mark.xfail(
-                strict=True,
-                reason="pure-eb-bmode-numerics: on a noisy 1000-bin ξ± "
-                "the pure-E/B transform is not additive: an E-mode δ moves ξ_B by "
-                "0.1-1.2σ in isolated bins across noise draws and corners, unchanged by "
-                "tightening epsabs/epsrel from 1e-10 to 1e-13, so blinded and "
-                "unblinded pure-E/B alike carry this error",
-            ),
-        ),
-    ],
-)
-def test_pure_eb_b_modes_move_only_by_the_transforms_response(
-    shifts, sigma_pure_b, noise
-):
-    """ΔB = B(x + δ) − B(x) equals B(δ), the kernel's B response to a pure
-    E-mode δ, to the quadrature's floor, and B(δ) stays under the ceiling;
-    δ's pure-B counterpart moves B well past it."""
-    x, deltas = shifts[noise]
+def test_pure_eb_b_modes_move_only_by_the_transforms_response(shifts, sigma_pure_b):
+    """On noise-free ξ±, ΔB = B(x + δ) − B(x) equals B(δ), the kernel's B
+    response to a pure E-mode δ, to the quadrature's floor, and B(δ) stays
+    under the ceiling; δ's pure-B counterpart moves B well past it."""
+    x, deltas = shifts["noise-free"]
     before = _pure_b(x)
     for delta in deltas:
         moved = _pure_b(x + delta) - before

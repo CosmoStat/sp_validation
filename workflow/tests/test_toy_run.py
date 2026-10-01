@@ -7,7 +7,6 @@ workflow/, papers/cosmo_val/ and src/, and one synthetic catalogue declared
 under a blind drawn in the image with the default theory.
 """
 
-import json
 import os
 import shutil
 import subprocess
@@ -17,9 +16,7 @@ from pathlib import Path
 
 import pytest
 import yaml
-from conftest import REPO, _load_module, container, on_candide
-
-custody = _load_module(REPO / "src" / "sp_validation" / "custody.py", "custody", {})
+from conftest import REPO, container, on_candide
 
 VERSIONS = ("SP_v0.1", "SP_v0.1_leak_corr")
 REPORTING = {"theta_min": 5.0, "theta_max": 60.0, "nbins": 6, "npatch": 4}
@@ -45,14 +42,13 @@ def _in_image(image, root, *command):
 
 
 def _stamps(image, root, parts):
-    """The custody stamp of each SACC part, read in the image."""
+    """The blind stamp of each SACC part, read in the image."""
     script = (
-        "import json, sys\n"
-        "from sp_validation import custody, sacc_io\n"
-        "print(json.dumps([custody.read_stamp(sacc_io.load(p).metadata).token"
-        " for p in sys.argv[1:]]))"
+        "import sys\n"
+        "from sp_validation import sacc_io\n"
+        "print(*(sacc_io.stamp(sacc_io.load(p)) for p in sys.argv[1:]))"
     )
-    return json.loads(_in_image(image, root, "python", "-c", script, *map(str, parts)))
+    return _in_image(image, root, "python", "-c", script, *map(str, parts)).split()
 
 
 def _toy_checkout(root, image):
@@ -100,7 +96,7 @@ def _toy_checkout(root, image):
 
 @pytest.mark.candide
 @on_candide
-def test_xi_parts_are_stamped_with_the_blinds_commitment():
+def test_xi_parts_are_stamped_with_the_blind():
     image, kind = container.resolve_image()
     assert kind != "tag", "no local image; run `spv-container pull`"
     root = Path(tempfile.mkdtemp(prefix="toy_run_", dir=Path.home()))
@@ -142,9 +138,7 @@ def test_xi_parts_are_stamped_with_the_blinds_commitment():
     )
     assert result.returncode == 0, result.stdout
 
-    record = json.loads((root / "cosmo_val/blinds/toy.blind.json").read_text())
-    token = f"toy:{custody.commitment(record)}"
     parts = [out / f"{v}_xi_{BINNING}.sacc" for v in VERSIONS]
-    assert _stamps(image, root, parts) == [token] * len(parts)
+    assert _stamps(image, root, parts) == ["toy"] * len(parts)
 
     shutil.rmtree(root)  # kept on failure, for post-mortem

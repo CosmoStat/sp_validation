@@ -15,8 +15,8 @@ import numpy as np
 import pytest
 
 from sp_validation import sacc_io as sio
+from sp_validation.blinding import NONE
 from sp_validation.cosmo_val import sacc_writers as sw
-from sp_validation.custody import Custody
 
 
 def _nz(seed=0, n=40):
@@ -33,12 +33,9 @@ def _theta(n=6):
     return np.geomspace(1.0, 100.0, n)
 
 
-MOCK = Custody("mock")
-
-
 def _roundtrip(s, tmp_path, name):
     p = tmp_path / f"{name}.sacc"
-    sio.save(s, str(p), custody=MOCK)
+    sio.save(s, str(p), blind=NONE)
     return sio.load(str(p))
 
 
@@ -147,7 +144,7 @@ def test_paper_pseudo_cl_reader(tmp_path):
 
     part = sw.pseudo_cl_to_sacc({0: _nz()}, META, ell, cl_all, _Workspace())
     path = tmp_path / "pseudo_cl.sacc"
-    sio.save(part, str(path), custody=MOCK)
+    sio.save(part, str(path), blind=NONE)
 
     data = _paper_pseudo_cl_reader()(path)
     assert np.array_equal(data["ELL"], ell)
@@ -353,7 +350,7 @@ def test_assemble_from_reloaded_parts(tmp_path):
     parts = _make_parts(nz)
     reloaded = []
     for i, part in enumerate(parts):
-        sio.save(part, str(tmp_path / f"part{i}.sacc"), custody=MOCK)
+        sio.save(part, str(tmp_path / f"part{i}.sacc"), blind=NONE)
         reloaded.append(sio.load(str(tmp_path / f"part{i}.sacc")))
     s = sw.assemble_analysis_sacc(reloaded)
     assert type(s.covariance).__name__ == "BlockDiagonalCovariance"

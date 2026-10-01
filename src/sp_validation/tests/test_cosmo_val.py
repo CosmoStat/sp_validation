@@ -388,10 +388,8 @@ class TestCosmologyValidation:
         ``pure_eb_from_xi`` of those ξ± and edges, and every reporting bin is
         finite. ``test_b_modes`` pins the transform itself on the same ξ±, so a
         failure names the step that moved: measurement, wiring or transform.
-        Its jackknife covariance, the integration part's pushed through the
-        kernel, matches TreeCorr's jackknife of the modes in each statistic's
-        total variance, loosely: on this sparse toy ξ± the kernel's ξ−
-        quadrature is additive to only ~30%.
+        The covariance comes from the integration-grid covariance file, which
+        it requires; its Monte Carlo is stubbed here.
 
         Finiteness: the Schneider (2022) integrals are near-singular where a
         reporting bin meets the integration boundary, so the integration grid
@@ -413,6 +411,7 @@ class TestCosmologyValidation:
 
         npatch = 8
         nbins = 6
+        nbins_int = 600
         cv = CosmologyValidation(
             versions=[version],
             npatch=npatch,
@@ -423,22 +422,26 @@ class TestCosmologyValidation:
         )
         cv.treecorr_config.update(bin_slop=0, angle_slop=0)
 
-        import treecorr
+        grids = dict(npatch=npatch, min_sep_int=1.0, max_sep_int=300.0)
+        with pytest.raises(ValueError, match="cov_path_int"):
+            cv.calculate_pure_eb(version, nbins_int=nbins_int, **grids)
 
-        kernel = b_modes.pure_eb_from_xi
-        process, correlations = treecorr.GGCorrelation.process, []
-        monkeypatch.setattr(
-            treecorr.GGCorrelation,
-            "process",
-            lambda gg, *a, **kw: correlations.append(gg) or process(gg, *a, **kw),
-        )
+        cov_int = np.diag(np.full(2 * nbins_int, 1e-10))
+        cov_path = tmp_path / "cov_int.txt"
+        np.savetxt(cov_path, cov_int)
+        seen = {}
+
+        def mc(**kwargs):
+            seen.update(kwargs)
+            return np.eye(6 * nbins), np.zeros((kwargs["n_samples"], 6 * nbins))
+
+        monkeypatch.setattr(b_modes, "pure_eb_covariance_mc", mc)
         results = cv.calculate_pure_eb(
-            version,
-            npatch=npatch,
-            min_sep_int=1.0,
-            max_sep_int=300.0,
-            nbins_int=600,
+            version, nbins_int=nbins_int, cov_path_int=str(cov_path), **grids
         )
+        np.testing.assert_array_equal(seen["cov_int"], cov_int)
+        np.testing.assert_array_equal(results["cov"], np.eye(6 * nbins))
+        assert results["n_eff"] == seen["n_samples"]
 
         measured = {
             "theta_report": results["theta"],
@@ -463,36 +466,6 @@ class TestCosmologyValidation:
             assert np.all(np.isfinite(vec)), f"{key} not finite"
             np.testing.assert_allclose(vec, modes[key], rtol=1e-10, err_msg=key)
 
-        # TreeCorr's jackknife of the modes, from the two measurements.
-        def modes_of(pair):
-            gg, gg_int = pair
-            return b_modes._eb_vector(
-                kernel(
-                    gg.meanr,
-                    gg.xip,
-                    gg.xim,
-                    gg_int.meanr,
-                    gg_int.xip,
-                    gg_int.xim,
-                    gg.left_edges[0],
-                    gg.right_edges[-1],
-                )
-            )
-
-        reference = treecorr.estimate_multi_cov(
-            correlations, "jackknife", func=modes_of, cross_patch_weight="match"
-        )
-        cov = np.asarray(results["cov"])
-        assert cov.shape == reference.shape == (6 * nbins, 6 * nbins)
-
-        def block_variances(c):
-            return np.diag(c).reshape(6, nbins).sum(axis=1)
-
-        np.testing.assert_allclose(
-            block_variances(cov), block_variances(reference), rtol=0.4
-        )
-        assert results["n_eff"] == npatch
-
 
 # --------------------------------------------------------------------------- #
 # I14: a blinded catalogue's ξ± leaves CosmologyValidation only concealed
@@ -510,36 +483,29 @@ def blinded_and_twin(tmp_path, toy_theory):
         coherent_shear=True,
         catalogues={"TOY": "toy", "TOY_OPEN": "none"},
     )
-    catalogues = yaml.safe_load(open(params["catalog_config"]))
-    blinding.init("toy", catalogues)
+    blinding.init("toy", yaml.safe_load(open(params["catalog_config"])))
     grid = dict(npatch=1, theta_min=5.0, theta_max=60.0, nbins=6, **params)
     return (
         CosmologyValidation(versions=["TOY"], **grid),
         CosmologyValidation(versions=["TOY_OPEN"], **grid),
-        grid,
     )
 
 
 def test_a_blinded_catalogues_xi_leaves_concealed(blinded_and_twin):
-    """[signal-leaves-sealed] calculate_2pcf returns, and caches, a blinded
-    catalogue's ξ± shifted from its public twin's by exactly the blind's shift;
-    and the two are never held together."""
+    """calculate_2pcf returns, and caches, a blinded catalogue's ξ± shifted
+    from its public twin's by exactly the blind's shift, stamped with its name."""
     from sp_validation import blinding
-    from sp_validation.custody import CustodyError
 
-    cv, cv_open, grid = blinded_and_twin
+    cv, cv_open = blinded_and_twin
     blinded, twin = cv.calculate_2pcf("TOY"), cv_open.calculate_2pcf("TOY_OPEN")
-    shift = blinding.conceal(twin, blinding.open_blind(cv.custody("TOY"))).mean
-    shift = shift - twin.mean
+    shift = blinding.conceal(twin, cv.blind("TOY")).mean - twin.mean
 
     assert np.all(shift != 0)
     np.testing.assert_allclose(
         blinded.mean - twin.mean, shift, rtol=1e-8, atol=1e-12 * np.abs(shift).max()
     )
-    assert blinded.metadata["custody"] == cv.custody("TOY").token
+    assert sacc_io.stamp(blinded) == "toy" and sacc_io.stamp(twin) == "none"
     assert cv.xi_parts["TOY", "reporting"] is blinded
-    with pytest.raises(CustodyError, match="shows the blind's shift"):
-        CosmologyValidation(versions=["TOY", "TOY_OPEN"], **grid)
 
 
 def test_map2_transform_is_treecorrs_calculate_map_sq():

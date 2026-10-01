@@ -16,9 +16,7 @@ from sp_validation.cosmo_val import CosmologyValidation
 
 REPO = Path(__file__).resolve().parents[3]
 
-EXEMPT = {
-    "custody": "per-version custody tokens, passed from the rule's params.custody",
-}
+EXEMPT = {}
 
 
 def _load_common():

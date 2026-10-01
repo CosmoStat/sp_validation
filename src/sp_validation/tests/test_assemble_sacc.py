@@ -18,8 +18,8 @@ import numpy as np
 import pytest
 
 from sp_validation import sacc_io as sio
+from sp_validation.blinding import NONE
 from sp_validation.cosmo_val import sacc_writers as sw
-from sp_validation.custody import Custody
 
 
 def _load_assemble_module():
@@ -52,7 +52,6 @@ def _theta(n=6):
 
 
 META = {"catalogue_version": "vSYNTH", "npatch": 1}
-MOCK = Custody("mock")
 
 
 def _xi_cov_txt(tmp_path, n=12, seed=21):
@@ -159,7 +158,7 @@ def _write_parts(tmp_path, *, with_pseudo_cl=True, cov_less=("xi_reporting",)):
     paths = {}
     for name, part in parts.items():
         p = tmp_path / f"{name}.sacc"
-        sio.save(part, str(p), custody=MOCK)
+        sio.save(part, str(p), blind=NONE)
         paths[name] = str(p)
     return paths
 
@@ -175,7 +174,7 @@ def test_assemble_sacc_canonical_order(tmp_path):
         "vSYNTH",
         paths,
         str(out),
-        custody=MOCK,
+        blind="none",
         xi_cov=cov_path,
         pseudo_cl_cov=cl_cov_path,
     )
@@ -224,7 +223,7 @@ def test_injected_xi_covariance_replaces_the_parts_own(tmp_path):
         "vSYNTH",
         paths,
         str(out),
-        custody=MOCK,
+        blind="none",
         xi_cov=cov_path,
         pseudo_cl_cov=cl_cov_path,
     )
@@ -244,7 +243,7 @@ def test_assemble_sacc_injects_pseudo_cl_covariance(tmp_path):
 
     out = tmp_path / "vSYNTH.sacc"
     s = asm.assemble_sacc(
-        "vSYNTH", paths, str(out), custody=MOCK, xi_cov=cov_path, pseudo_cl_cov=cov_fits
+        "vSYNTH", paths, str(out), blind="none", xi_cov=cov_path, pseudo_cl_cov=cov_fits
     )
     tr = ("source_0", "source_0")
     cl_idx = np.concatenate(
@@ -265,7 +264,7 @@ def test_missing_injected_covariance_raises(tmp_path):
     paths = _write_parts(tmp_path, cov_less=())  # every part born with a block
     out = tmp_path / "vSYNTH.sacc"
     with pytest.raises(ValueError, match="takes its analysis covariance from"):
-        asm.assemble_sacc("vSYNTH", paths, str(out), custody=MOCK)
+        asm.assemble_sacc("vSYNTH", paths, str(out), blind="none")
 
 
 def test_assemble_sacc_respects_pseudo_cl_toggle(tmp_path):
@@ -274,7 +273,7 @@ def test_assemble_sacc_respects_pseudo_cl_toggle(tmp_path):
     assert "pseudo_cl" not in paths
     cov_path, _xi_cov = _xi_cov_txt(tmp_path)
     out = tmp_path / "vSYNTH.sacc"
-    s = asm.assemble_sacc("vSYNTH", paths, str(out), custody=MOCK, xi_cov=cov_path)
+    s = asm.assemble_sacc("vSYNTH", paths, str(out), blind="none", xi_cov=cov_path)
     tr = ("source_0", "source_0")
     assert len(s.indices(sio.CL_EE, tr)) == 0
     # Round-trips as a valid BlockDiagonalCovariance over the remaining points.
@@ -296,7 +295,7 @@ def test_assemble_sacc_expected_part_missing_raises(tmp_path):
             "vSYNTH",
             paths,
             str(out),
-            custody=MOCK,
+            blind="none",
             expected=["xi_reporting", "pseudo_cl", "cosebis", "pure_eb", "rho_tau"],
             xi_cov=cov_path,
         )
@@ -312,7 +311,7 @@ def test_assemble_sacc_expected_rejects_unknown_name(tmp_path):
             "vSYNTH",
             paths,
             str(out),
-            custody=MOCK,
+            blind="none",
             expected=["cosebi"],
             xi_cov=cov_path,
         )
