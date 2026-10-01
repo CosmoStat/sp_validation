@@ -168,46 +168,38 @@ def _reporting_binning(weight_int, edges_int, reporting_edges):
     return binning / weight[:, None], edges_int[snap]
 
 
-def _fixed_quadrature_operator(theta_eval, theta_int):
-    """Rows of the Schneider (2022) transform at ``theta_eval``, ``_EB_KEYS`` order.
+def _fixed_quadrature_operator(theta_int):
+    """The Schneider (2022) transform at every fine node, ``_EB_KEYS`` order.
 
-    The single call into cosmo_numba. ``[tmin, tmax]`` is the extent of the
-    integration grid, so every evaluation node keeps interpolation support on
-    both sides. Returns the ``(6 * n_eval, 2 * n_fine)`` stack of the six
-    matrices acting on ``[xi_+; xi_-]``.
+    The single call into cosmo_numba. Evaluating at every node of the fine
+    grid, with ``[tmin, tmax]`` at its extent, makes the transform a function
+    of the fine grid alone: the zero-padded ξ− window is extended from the
+    evaluation grid. Returns the ``(6, n_fine, 2 * n_fine)`` stack of the six
+    matrices acting on ``[xi_+; xi_-]``; rows whose integration support is too
+    small near the grid edges are NaN.
     """
-    from cosmo_numba.B_modes.schneider2022_operator import get_pure_EB_operator
+    from cosmo_numba.B_modes.schneider2022 import get_pure_EB_operator
 
-    operator = get_pure_EB_operator(
-        theta_eval=theta_eval,
-        theta=theta_int,
-        tmin=theta_int[0] * (1 - 1e-9),
-        tmax=theta_int[-1] * (1 + 1e-9),
-        outputs=_EB_KEYS,
-    )
-    # A row whose support holds fewer than interp_order + 1 nodes is NaN.
-    invalid = {
-        key: int(np.count_nonzero(~valid))
-        for key, valid in operator["valid"].items()
-        if not valid.all()
-    }
-    if invalid:
-        raise ValueError(
-            "pure-E/B operator rows are under-determined (evaluation nodes too "
-            f"close to the integration-grid edge): {invalid}"
+    return np.stack(
+        get_pure_EB_operator(
+            theta_int,
+            theta_int,
+            tmin=theta_int[0] * (1 - 1e-9),
+            tmax=theta_int[-1] * (1 + 1e-9),
+            local_from_int=True,
         )
-    return np.vstack([operator["matrices"][key] for key in _EB_KEYS])
+    )
 
 
 def pure_eb_operator(theta_int, weight_int, edges_int, reporting_edges):
     """The pure-E/B estimator as one matrix on the fine ξ± grid.
 
     The Schneider et al. (2022) transform is evaluated with fixed-quadrature
-    weights at the fine-grid nodes inside the reporting range, integrating over
-    the whole fine grid, and the six pure modes are then averaged into the
-    reporting bins with TreeCorr pair weights. The reporting edges snap to the
-    nearest fine edges, so each reporting bin is a union of fine bins. Both
-    steps are linear and independent of the ξ± values, so the estimator is
+    weights at the fine-grid nodes, integrating over the whole fine grid, and
+    the six pure modes are then averaged into the reporting bins with TreeCorr
+    pair weights. The reporting edges snap to the nearest fine edges, so each
+    reporting bin is a union of fine bins. Both steps are linear and
+    independent of the ξ± values, so the estimator is
     ``K = (I_6 ⊗ P) · M`` and
 
         [xip_E; xim_E; xip_B; xim_B; xip_amb; xim_amb] = K @ [xip_int; xim_int]
@@ -242,14 +234,20 @@ def pure_eb_operator(theta_int, weight_int, edges_int, reporting_edges):
         raise ValueError("weight_int must have one entry per integration bin")
     binning, edges = _reporting_binning(weight_int, edges_int, reporting_edges)
     nodes = np.flatnonzero(binning.any(axis=0))
-    transform = _fixed_quadrature_operator(theta_int[nodes], theta_int)
-    n_nodes = nodes.size
-    operator = np.vstack(
-        [
-            binning[:, nodes] @ transform[i * n_nodes : (i + 1) * n_nodes]
-            for i in range(len(_EB_KEYS))
-        ]
-    )
+    # Only the rows P averages enter; NaN edge rows outside them are dropped,
+    # since 0 · NaN would still poison the product.
+    transform = _fixed_quadrature_operator(theta_int)[:, nodes]
+    undetermined = {
+        key: int(np.count_nonzero(~np.isfinite(rows).all(axis=1)))
+        for key, rows in zip(_EB_KEYS, transform)
+        if not np.isfinite(rows).all()
+    }
+    if undetermined:
+        raise ValueError(
+            "pure-E/B operator rows are under-determined (reporting bins too "
+            f"close to the integration-grid edge): {undetermined}"
+        )
+    operator = np.vstack([binning[:, nodes] @ rows for rows in transform])
     return operator, binning, edges
 
 

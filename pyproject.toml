@@ -39,12 +39,12 @@ dependencies = [
     # CosmoStat/cs_util#76 — so this goes green once #76 merges into develop.
     "cs_util @ git+https://github.com/CosmoStat/cs_util.git@develop",
     # Fast numba B-mode kernels (Schneider et al. 2022): the fixed-quadrature
-    # pure-E/B operator (schneider2022_operator) and COSEBIS live here, imported
+    # pure-E/B operator (schneider2022) and COSEBIS live here, imported
     # in b_modes.py. Pinned to a commit on cailmdaley/cosmo-numba, which carries
     # the operator on top of aguinot/cosmo-numba main (not published on PyPI):
     # main's numpy-2 FFT fix via rocket-fft, and its numba/numpy/rocket-fft
     # requirements, which reach the resolver.
-    "cosmo-numba @ git+https://github.com/cailmdaley/cosmo-numba.git@d78a189d9af75a9c113fef7647102a1bad0fd452",
+    "cosmo-numba @ git+https://github.com/cailmdaley/cosmo-numba.git@a64cb2ed13e595a16ad056a128ef24594b811504",
     "emcee",
     # numba is the load-bearing pin of this whole environment: its numpy ceiling
     # (numba 0.66 -> numpy<2.5) is what keeps the resolver from drifting numpy
