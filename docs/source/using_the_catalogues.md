@@ -15,10 +15,13 @@ how to apply the metacalibration corrections yourself.
 
 ```{note}
 The examples below target catalogue **v1.0** (April 2022), which is distributed
-as FITS. From ShapePipe catalogue **v1.4.1** onward the merged catalogues ship
-as HDF5 instead; open those with {func}`sp_validation.catalog.read_campaign_catalogue` (or
-`h5py` / `astropy`) in place of `astropy.io.fits` below — the column names and
-the calibration recipe are unchanged.
+as FITS. From ShapePipe catalogue **v1.4.1** onward the comprehensive catalogue
+ships as one HDF5 file holding two row-aligned datasets, `data` and `data_ext`.
+Open it with `h5py`, or read both datasets as one table with
+`sp_validation.grammar.adapt(f["data"], f["data_ext"])`, which also presents
+the columns under the current ShapePipe names. The cut catalogues of those
+releases remain FITS; {func}`sp_validation.grammar.read_catalogue` reads one
+the same way. The calibration recipe is unchanged.
 ```
 
 Two catalogues are released for each version, and they are used very
@@ -167,7 +170,7 @@ mask = np.full(len(data_ext), True)
 
 # Other examples:
 # mask = data_ext['mask_extern'] == 0  # LensFit-unmasked regions
-# mask = data_ext['campaign'] == b'W3'   # objects from campaign W3
+# mask = data_ext['patch'] == 3        # objects in patch P3
 # mask = data_ext['mag'] < 23.5        # r-band magnitude cut
 
 n_kept, n_all = np.count_nonzero(mask), len(data_ext)

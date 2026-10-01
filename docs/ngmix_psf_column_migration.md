@@ -164,8 +164,8 @@ truly held σ) now reads `HSM_T_*` directly.
 The σ→T change makes the old squaring dead: `HSM_T_*` (and DES's `piff_T`) already
 hold `T`, so nothing squares. The per-dataset `square_size:` flags in
 `cat_config.yaml` are dropped, the `not_square_size` list in `rho_tau.py` is
-removed, and the `square_size` key is gone from both param builders
-(`rho_tau.get_params_rho_tau`, `cosmo_val/compute_theory_cov.py`). The parameter
+removed, and the `square_size` key is gone from the param builder
+(`rho_tau.get_params_rho_tau`). The parameter
 is also removed from `shear_psf_leakage`'s `build_cat_to_compute_{rho,tau}` and
 `CovTauTh` ([PR #27](https://github.com/CosmoStat/shear_psf_leakage/pull/27)), so
 sp_validation no longer *passes* it — the two migrations are coordinated. (Passing
@@ -178,7 +178,7 @@ dropping the argument here is what keeps the container green once #27 lands.)
 - **Configs** — `cosmo_val/cat_config.yaml` (HSM blocks; DES/piff spared);
   `config/calibration/mask_v1.X.*.yaml` ×10 (`NGMIX_ELL_PSFo_NOSHEAR_0/_1`).
 - **rho/τ + covariance** — `src/sp_validation/rho_tau.py`,
-  `src/sp_validation/cosmo_val/psf_systematics.py`, `cosmo_val/compute_theory_cov.py`,
+  `src/sp_validation/cosmo_val/psf_systematics.py`,
   `src/sp_validation/glass_mock.py`.
 - **Scripts** — `scripts/calibration/{extract_info,params,calibrate_comprehensive_cat}.py`,
   `scripts/apply_alpha_snr_size_bin.py`, `scripts/examples/demo_*.py`.

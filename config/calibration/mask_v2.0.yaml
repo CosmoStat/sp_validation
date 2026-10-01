@@ -21,8 +21,8 @@
 #
 # The default selection (see sp_validation.galaxy.DEFAULT_MASK_COLUMNS) is
 # bits 1 + 2 + 4 + 8 + 64 + 1024, whose OR matches mask_r, the r-band
-# mask, on covered P3 granules; footprint-edge granules without mask_r coverage
-# can differ. The other coverage flags and bit 2048 are listed
+# mask, on covered granules (verified on the P3 sky area); footprint-edge
+# granules without mask_r coverage can differ. The other coverage flags and bit 2048 are listed
 # here but commented out, since ORing all of them masks essentially
 # everything.
 

@@ -224,7 +224,7 @@ def test_load_into_memory_matches_the_view(comprehensive, tmp_path):
 
 def _write_campaign(path, tiles):
     with h5py.File(path, "w") as handle:
-        group = handle.create_group("patches").create_group("P3")
+        group = handle.create_group("patches").create_group("CAMPAIGN")
         for tile_id, dat in tiles.items():
             group.create_dataset(tile_id, data=dat)
         handle.attrs["n_tiles"] = len(tiles)
@@ -233,25 +233,26 @@ def _write_campaign(path, tiles):
 def test_campaign_reader_presents_v1_tiles_in_v2(tmp_path):
     v1, _, v2 = _twins()
     _write_campaign(
-        tmp_path / "final_cat_P3.hdf5", {"000.000": v1[:1500], "001.000": v1[1500:]}
+        tmp_path / "final_cat_CAMPAIGN.hdf5",
+        {"000.000": v1[:1500], "001.000": v1[1500:]},
     )
     wanted = ["RA", "NGMIX_G1_NOSHEAR", "NGMIX_MCAL_TYPES_FAIL", "HSM_T_PSF"]
     dat = catalog.read_campaign_catalogue(
-        str(tmp_path / "final_cat_P3.hdf5"), param_list=wanted, verbose=False
+        str(tmp_path / "final_cat_CAMPAIGN.hdf5"), param_list=wanted, verbose=False
     )
     assert dat.dtype.names == tuple(wanted)
     for name in wanted:
         np.testing.assert_allclose(dat[name], v2[name], rtol=1e-14)
 
     n_rows, dtype = catalog.campaign_shape(
-        str(tmp_path / "final_cat_P3.hdf5"), param_list=wanted
+        str(tmp_path / "final_cat_CAMPAIGN.hdf5"), param_list=wanted
     )
     assert n_rows == N and dtype.names == tuple(wanted)
 
     merger = JointCat()
     merger._params["verbose"] = False
     merger._params["param_path"] = None
-    merged = merger.merge_catalogues([str(tmp_path / "final_cat_P3.hdf5")])
+    merged = merger.merge_catalogues([str(tmp_path / "final_cat_CAMPAIGN.hdf5")])
     np.testing.assert_array_equal(merged["NGMIX_G2_ERR_1P"], v2["NGMIX_G2_ERR_1P"])
     assert "NGMIX_ELL_1P_0" not in merged.dtype.names
 

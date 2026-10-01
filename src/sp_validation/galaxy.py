@@ -46,7 +46,8 @@ MASK_COLUMNS = tuple(
 
 #: Mask columns OR'd together for the default galaxy selection. This set is
 #: the ShapePipe r-band default bitmask: their OR matches ``mask_r`` on covered
-#: P3 granules, with differences at footprint edges without map coverage.
+#: granules (verified on the P3 sky area), with differences at footprint edges
+#: without map coverage.
 #: Deliberately not a blanket OR over MASK_COLUMNS: the other coverage flags
 #: (bits 16, 32, 128, 256) and bit 2048 would mask essentially the whole
 #: catalogue.

@@ -603,25 +603,6 @@ class ApplyHspMasks(BaseCat):
         self.params_default()
 
     @classmethod
-    def get_label_struct(cls, bit):
-        """Get Label Struct.
-
-        Return label of bit-coded mask.
-
-        Parameters
-        ----------
-        bit: int
-            input bit
-
-        Returns
-        -------
-        str
-            label
-
-        """
-        return grammar.MASK_LABELS[bit]
-
-    @classmethod
     def get_mask_col_name(cls, bit):
         """Get Mask Col Name.
 
