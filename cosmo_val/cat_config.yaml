@@ -1,5 +1,5 @@
-# One entry per catalogue. `blind:` is its custody: `none` (public), `mock`, or
-# the name of the blind its signal is concealed under. See custody.py.
+# One entry per catalogue. `blind:` is `none` (public) or the name of the blind
+# its signal is concealed under (sp_validation.blinding).
 DES:
   blind: none
   subdir: /n17data/mkilbing/astro/data/DES
@@ -372,7 +372,7 @@ SP_v1.4.5_faint:
     path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
   patch_number: 150
 SP_v1.4.6_glass_mock:
-  blind: mock
+  blind: none
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
   colour: darkgreen
@@ -1194,7 +1194,7 @@ nz:
     path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_{pipeline}_A.txt
 paths:
   output: ./output
-  # The blind registry: <name>.blind.json records, outside any git worktree.
+  # Where the <name>.blind.json records live.
   blinds: /n17data/UNIONS/WL/blinds
 SP_v1.6.6:
   blind: none
