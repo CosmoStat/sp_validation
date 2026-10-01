@@ -258,6 +258,9 @@ class CosmologyValidation(
             # thread count (max(3, ceil(log2 n))) and ξ± depends on the machine.
             # 6 is what TreeCorr derives on candide's 48- and 64-CPU nodes.
             "min_top": 6,
+            # The CPUs this process may use; TreeCorr's own default is the
+            # node's count, whatever share of it the job holds.
+            "num_threads": len(os.sched_getaffinity(0)),
         }
 
         self.catalog_config_path = Path(catalog_config)

@@ -12,8 +12,25 @@ import re
 import sys
 from pathlib import Path
 
+
+def _plain(path):
+    """``path`` resolved, in the spelling every candide node can reach.
+
+    A data disk is mounted at ``/nXXdataN`` on the node that owns it and
+    reached from every other node through ``/nXXdataN -> /automnt/nXXdataN``;
+    the owning node has no ``/automnt/nXXdataN``. A resolved path under
+    ``/automnt/<disk>`` is therefore spelled back under ``/<disk>``, whatever
+    the host: a job step re-derives its paths on its own node, and must
+    derive the launch's.
+    """
+    path = Path(path).resolve()
+    if len(path.parts) > 2 and path.parts[1] == "automnt":
+        return Path("/", *path.parts[2:])
+    return path
+
+
 # The checkout this workflow was launched from: workflow/common.py -> <repo>.
-REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = _plain(__file__).parents[1]
 REPO_SRC = REPO_ROOT / "src"
 
 
@@ -57,9 +74,12 @@ os.environ.pop("XDG_CACHE_HOME", None)
 # fresh tree without clobbering (or silently reusing) prior products. COSMO_VAL
 # defaults to the launched checkout's own (gitignored) cosmo_val/output, so a
 # launch writes into another checkout's products only when it names that tree;
-# COSMO_INFERENCE defaults to the shared tree on candide.
-COSMO_VAL = Path(os.environ.get("COSMO_VAL", REPO_ROOT / "cosmo_val" / "output"))
-COSMO_INFERENCE = Path(
+# COSMO_INFERENCE defaults to the shared tree on candide. Snakemake keys its
+# persistence records (params, input, code) and matches targets by path string,
+# so both roots are spelled plain whatever spelling a launch gives, and a file
+# target is named in that plain form.
+COSMO_VAL = _plain(os.environ.get("COSMO_VAL", REPO_ROOT / "cosmo_val" / "output"))
+COSMO_INFERENCE = _plain(
     os.environ.get(
         "COSMO_INFERENCE", "/n17data/cdaley/unions/code/sp_validation/cosmo_inference"
     )

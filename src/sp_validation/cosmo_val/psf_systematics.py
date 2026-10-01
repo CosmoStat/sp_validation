@@ -26,6 +26,7 @@ from .sacc_writers import rho_tau_to_sacc
 
 class PSFSystematicsMixin:
     def calculate_rho_tau_stats(self):
+        """Measure ρ/τ statistics per version and write each version's SACC part."""
         out_dir = f"{self.cc['paths']['output']}/rho_tau_stats"
         if not os.path.exists(out_dir):
             os.mkdir(out_dir)
