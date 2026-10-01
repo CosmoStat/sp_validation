@@ -81,14 +81,6 @@ def _reporting_cov_path(version):
     return covariance_path(version, gaussian="ng")
 
 
-def _xi_reporting_path(version):
-    """Path to the reporting-scale ξ± part."""
-    return (
-        f"{COSMO_VAL_OUTPUT}/{version}_xi_minsep={FIDUCIAL['min_sep']}"
-        f"_maxsep={FIDUCIAL['max_sep']}_nbins={FIDUCIAL['nbins']}_npatch={FIDUCIAL['npatch']}.sacc"
-    )
-
-
 def _xi_integration_path(version):
     """Path to the fine-binned ξ± integration part (unpatched)."""
     return (
@@ -183,50 +175,20 @@ rule cosebis_data_vector:
 # Pure E/B
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-# Number of parallel chunks for MC covariance estimation
-N_PURE_EB_CHUNKS = config["pure_eb"]["n_chunks"]
-
-
-rule precompute_pure_eb_chunk:
-    """Compute a chunk of MC samples for pure E/B covariance (scatter)."""
+rule pure_eb_modes:
+    """Pure E/B modes and their exact covariance K C_ξ Kᵀ from the fine ξ±."""
     input:
+        xi_integration=lambda w: _xi_integration_path(w.version),
         cov_integration=lambda w: _cov_integration_path(w.version),
-        xi_reporting=lambda w: _xi_reporting_path(w.version),
-        xi_integration=lambda w: _xi_integration_path(w.version),
     output:
-        "results/paper_plots/intermediate/chunks/{version}_pure_eb_chunk_{chunk_id}.npz",
+        "results/paper_plots/intermediate/{version}_pure_eb.npz",
     params:
-        version="{version}",
-        chunk_id="{chunk_id}",
-        n_chunks=N_PURE_EB_CHUNKS,
-        n_samples=config["covariance"]["n_samples"],
-        cosmo_params=PLANCK18,
         **FIDUCIAL_BINNING,
     resources:
         mem_mb=8000,
+        runtime=20,
     script:
-        "../scripts/precompute_pure_eb_chunk.py"
-
-
-rule precompute_pure_eb:
-    """Gather MC sample chunks and compute final pure E/B covariance."""
-    input:
-        chunks=expand(
-            "results/paper_plots/intermediate/chunks/{{version}}_pure_eb_chunk_{chunk_id}.npz",
-            chunk_id=range(N_PURE_EB_CHUNKS),
-        ),
-        xi_reporting=lambda w: _xi_reporting_path(w.version),
-        xi_integration=lambda w: _xi_integration_path(w.version),
-    output:
-        "results/paper_plots/intermediate/{version}_pure_eb_semianalytic.npz",
-    params:
-        version="{version}",
-        **FIDUCIAL_BINNING,
-    resources:
-        mem_mb=8000,
-        runtime=5,
-    script:
-        "../scripts/gather_pure_eb_chunks.py"
+        "../scripts/pure_eb_modes.py"
 
 
 rule pure_eb_data_vector:
@@ -239,7 +201,7 @@ rule pure_eb_data_vector:
     """
     input:
         # Per-version inputs: pure_eb_{version} and cov_{version} for all versions
-        **{f"pure_eb_{ver}": f"results/paper_plots/intermediate/{ver}_pure_eb_semianalytic.npz"
+        **{f"pure_eb_{ver}": f"results/paper_plots/intermediate/{ver}_pure_eb.npz"
            for ver in VERSIONS_ALL_FOR_PLOTS},
         **{f"cov_{ver}": _reporting_cov_path(ver) for ver in VERSIONS_ALL_FOR_PLOTS},
     output:
@@ -259,7 +221,7 @@ rule pure_eb_version_comparison:
     input:
         # Pure E/B only for leak-corrected versions
         pure_eb_data=[
-            f"results/paper_plots/intermediate/{ver}_pure_eb_semianalytic.npz"
+            f"results/paper_plots/intermediate/{ver}_pure_eb.npz"
             for ver in VERSIONS_LEAK_CORR
         ],
     params:
@@ -282,7 +244,7 @@ rule pure_eb_covariance:
     - Correlation structure across 6 blocks (E+/E-/B+/B-/amb+/amb-)
     """
     input:
-        pure_eb_data=f"results/paper_plots/intermediate/{FIDUCIAL_VERSION}_pure_eb_semianalytic.npz",
+        pure_eb_data=f"results/paper_plots/intermediate/{FIDUCIAL_VERSION}_pure_eb.npz",
     output:
         evidence=f"{TAPESTRY_DIR}/pure_eb_covariance/evidence.json",
         figure=f"{TAPESTRY_DIR}/pure_eb_covariance/figure.png",
@@ -292,17 +254,13 @@ rule pure_eb_covariance:
 
 
 rule calculate_pure_eb_ptes:
-    """PTE matrices for pure E/B-mode scale-cut robustness.
-
-    The PTEs are Hartlap-debiased by the MC draw count.
-    """
+    """PTE matrices for pure E/B-mode scale-cut robustness."""
     input:
-        pure_eb_data="results/paper_plots/intermediate/{version}_pure_eb_semianalytic.npz",
+        pure_eb_data="results/paper_plots/intermediate/{version}_pure_eb.npz",
     output:
         "results/paper_plots/intermediate/{version}_pure_eb_ptes.npz",
     params:
         version="{version}",
-        n_samples=config["covariance"]["n_samples"],
     resources:
         mem_mb=16000,
         runtime=30,
@@ -455,7 +413,7 @@ rule bb_covariance_nz_independence:
     """
     input:
         # Per-realisation MC-propagated pure E/B covariances
-        **{f"pure_eb_{label}": f"results/paper_plots/intermediate/{ver}_pure_eb_semianalytic.npz"
+        **{f"pure_eb_{label}": f"results/paper_plots/intermediate/{ver}_pure_eb.npz"
            for label, ver in NZ_REALISATIONS.items()},
         # COSEBIS: xi integration file (shared) + per-realisation config-space covariances
         xi_integration=_xi_integration_path(MOCK_VERSION),

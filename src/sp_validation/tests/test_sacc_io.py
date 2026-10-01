@@ -103,6 +103,7 @@ def test_xi_roundtrip(tmp_path):
     assert np.array_equal(th, theta)
     assert np.array_equal(p, xip)
     assert np.array_equal(m, xim)
+    assert np.array_equal(sio.xi_correlation(s2, grid="reporting").weight, weight)
     # extra tags survive
     idx = s2.indices(sio.XI_PLUS, ("source_0", "source_0"), grid="reporting")
     tags = s2.data[idx[0]].tags

@@ -78,7 +78,7 @@ def test_one_integration_grid(toy, forced, grids):
         part = str(toy.cosmo_val / f"{version}_xi_{tag}.sacc")
         covariance = str(toy.covariances[version, "g"])
         assert by_rule["cv_cosebis"] == {part, covariance}, by_rule["cv_cosebis"]
-        assert {part, covariance} <= by_rule["cv_pure_eb"], by_rule["cv_pure_eb"]
+        assert by_rule["cv_pure_eb"] == {part, covariance}, by_rule["cv_pure_eb"]
 
 
 def test_a_launch_prints_each_catalogues_blind(forced):

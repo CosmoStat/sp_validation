@@ -61,7 +61,7 @@ rule rho_tau_stats:
         output_dir=str(COSMO_VAL),
         blind=lambda w: blind_of(w.version),
     resources:
-        mem_mb=30000,
+        mem_mb=64000,
         disk_mb=20000,
         runtime=360,
     script:

@@ -57,7 +57,7 @@ cosmo_val:
   # C_l^BB column belongs in the standard B-mode summary.
   include_pseudo_cl: true
 
-  # Theory cosmology for pseudo-Cl / semi-analytic covariance (astropy Planck18
+  # Theory cosmology for the pseudo-Cl covariance (astropy Planck18
   # + CAMB nonlinear settings, matching the original run_cosmo_val.py driver).
   cosmo_params:
     Omega_m: 0.30966
@@ -110,8 +110,6 @@ var_method: jackknife
 
 covariance:
   default_masked: true
-  use_semianalytic: true
-  n_samples: 2000
 
 cl:
   n_ell_bins: 32

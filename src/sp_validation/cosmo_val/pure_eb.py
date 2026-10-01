@@ -11,6 +11,7 @@ from .. import sacc_io
 from ..b_modes import (
     calculate_eb_statistics,
     calculate_pure_eb_correlation,
+    covariance_label,
     plot_eb_covariance_matrix,
     plot_integration_vs_reporting,
     plot_pte_2d_heatmaps,
@@ -29,113 +30,76 @@ class PureEBMixin:
         min_sep_int=0.08,
         max_sep_int=300,
         nbins_int=1000,
-        npatch=256,
+        npatch=None,
         cov_path_int=None,
-        cosmo_cov=None,
-        n_samples=1000,
     ):
         """
         Calculate the pure E/B modes for the given catalog version.
-        The class instance's treecorr_config will be used for the "reporting" binning
-        by default, but any kwargs passed to this function will overwrite the defaults.
+
+        ξ± is measured on the fine integration grid only, as the version's
+        sealed part (:meth:`calculate_2pcf`), so a blinded catalogue's modes
+        are concealed. The reporting binning (the instance's treecorr_config
+        unless overridden) enters as bin edges, snapped onto the fine edges,
+        into which :func:`~sp_validation.b_modes.pure_eb_operator` averages
+        the modes.
 
         Parameters
         ----------
         version : str
             The catalog version to compute the pure E/B modes for.
-        min_sep : float, optional
-            Minimum separation for the reporting binning. Defaults to the value in
-            self.treecorr_config if not provided.
-        max_sep : float, optional
-            Maximum separation for the reporting binning. Defaults to the value in
-            self.treecorr_config if not provided.
-        nbins : int, optional
-            Number of bins for the reporting binning. Defaults to the value in
-            self.treecorr_config if not provided.
-        min_sep_int : float, optional
-            Minimum separation for the integration binning. Defaults to 0.08.
-        max_sep_int : float, optional
-            Maximum separation for the integration binning. Defaults to 300.
-        nbins_int : int, optional
-            Number of bins for the integration binning. Defaults to 1000.
+        min_sep, max_sep, nbins : float, float, int, optional
+            Reporting binning. Default to the values in self.treecorr_config.
+        min_sep_int, max_sep_int, nbins_int : float, float, int, optional
+            Integration binning (default: 0.08-300 arcmin, 1000 bins). It must
+            extend beyond the reporting range on both sides.
         npatch : int, optional
-            Number of patches of the ξ± measurements. Defaults to the value in
-            self.npatch if not provided.
-        cov_path_int : str
-            Path to the integration-grid ξ± covariance (CosmoCov), required:
-            the modes' covariance is Monte Carlo through the kernel from it.
-        cosmo_cov : pyccl.Cosmology, optional
-            Cosmology object to use for theoretical xi+/xi- predictions in the
-            semi-analytical covariance calculation. Defaults to self.cosmo if not
-            provided.
-        n_samples : int, optional
-            Number of Monte Carlo samples for semi-analytical covariance propagation.
-            Defaults to 1000.
+            Jackknife patch count. Defaults to self.npatch.
+        cov_path_int : str, optional
+            Analytic ξ± covariance on the integration grid. Without it the
+            covariance is the jackknife the integration-grid part carries.
 
         Returns
         -------
         dict
-            A dictionary containing the following keys:
-
-            - "xip_E": Pure E-mode correlation function for xi+.
-            - "xim_E": Pure E-mode correlation function for xi-.
-            - "xip_B": Pure B-mode correlation function for xi+.
-            - "xim_B": Pure B-mode correlation function for xi-.
-            - "xip_amb": Ambiguity mode for xi+.
-            - "xim_amb": Ambiguity mode for xi-.
-            - "cov": Covariance matrix for the pure E/B modes.
-            - "theta", "left_edges", "right_edges": Reporting-grid bin centres
-              and edges.
-            - "xip", "xim", "var_xip", "var_xim": Reporting-grid xi+/xi- and
-              their variances.
-            - "theta_int", "xip_int", "xim_int": Integration-grid xi+/xi-.
-            - "n_eff": MC draws behind "cov", which set the Hartlap debiasing.
-            - "eb_samples": Semi-analytic EB samples used for covariance
-              calculation. Shape: (n_samples, 6*nbins)
-
-        Notes
-        -----
-        - Both binnings are the version's sealed ξ± parts
-          (:meth:`calculate_2pcf`), so a blinded catalogue's modes are
-          concealed.
+            The results of :func:`~sp_validation.b_modes.calculate_pure_eb_correlation`:
+            the six pure-mode arrays, their covariance ``cov`` and its
+            ``npatch`` record (``None`` for an analytic covariance), the
+            reporting grid and the integration-grid ξ±.
         """
-        if cov_path_int is None:
-            raise ValueError(
-                "calculate_pure_eb needs cov_path_int, the CosmoCov "
-                "integration-grid ξ± covariance"
-            )
         self.print_start(f"Computing {version} pure E/B")
 
-        gg, gg_int = (
-            sacc_io.xi_correlation(
-                self.calculate_2pcf(
-                    version,
-                    grid=grid,
-                    npatch=npatch,
-                    min_sep=lo,
-                    max_sep=hi,
-                    nbins=n,
-                )
-            )
-            for grid, lo, hi, n in (
-                ("pure_eb_reporting", min_sep, max_sep, nbins),
-                ("integration", min_sep_int, max_sep_int, nbins_int),
+        reporting = self._binning(min_sep, max_sep, nbins)
+        integration = self._binning(min_sep_int, max_sep_int, nbins_int)
+        gg_int = sacc_io.xi_correlation(
+            self.calculate_2pcf(
+                version,
+                grid="integration",
+                npatch=npatch,
+                min_sep=integration["min_sep"],
+                max_sep=integration["max_sep"],
+                nbins=integration["nbins"],
             )
         )
 
-        z_dist = np.column_stack(self.get_redshift(version))
+        if cov_path_int is not None:
+            cov_xi, npatch = np.loadtxt(cov_path_int), None
+        else:
+            cov_xi, npatch = gg_int.cov, gg_int.npatch1
 
-        # Delegate to b_modes module
-        results = calculate_pure_eb_correlation(
-            gg=gg,
-            gg_int=gg_int,
-            cov_path_int=cov_path_int,
-            cosmo_cov=cosmo_cov or self.cosmo,
-            n_samples=n_samples,
-            z_dist=z_dist,
+        return calculate_pure_eb_correlation(
+            gg_int.meanr,
+            gg_int.xip,
+            gg_int.xim,
+            gg_int.weight,
+            np.geomspace(
+                integration["min_sep"], integration["max_sep"], integration["nbins"] + 1
+            ),
+            cov_xi,
+            np.geomspace(
+                reporting["min_sep"], reporting["max_sep"], reporting["nbins"] + 1
+            ),
+            npatch=npatch,
         )
-
-        return results
 
     def plot_pure_eb(
         self,
@@ -151,10 +115,7 @@ class PureEBMixin:
         nbins_int=1000,
         npatch=None,
         cov_path_int=None,
-        cosmo_cov=None,
-        n_samples=1000,
         results=None,
-        **kwargs,
     ):
         """
         Generate comprehensive pure E/B mode analysis plots.
@@ -183,23 +144,20 @@ class PureEBMixin:
         npatch : int, optional
             Number of patches for jackknife covariance. Uses self.npatch if None.
         cov_path_int : str, optional
-            Path to integration covariance matrix for semi-analytical calculation
-        cosmo_cov : pyccl.Cosmology, optional
-            Cosmology for theoretical predictions in semi-analytical covariance
-        n_samples : int
-            Number of Monte Carlo samples for semi-analytical covariance (default: 1000)
+            Analytic ξ± covariance on the integration grid; the jackknife is
+            used without it.
         results : dict or list, optional
             Precalculated results to avoid recomputation. Can be a single results dict
             for one version, or a list of results dicts for multiple versions.
             If None (default), results will be calculated using calculate_pure_eb.
-        **kwargs : dict
-            Additional arguments passed to calculate_eb_statistics
 
         Notes
         -----
         This function orchestrates the full E/B mode analysis workflow:
 
         - Uses instance configuration as defaults for unspecified parameters
+        - Uses the analytic covariance when cov_path_int is given, the
+          jackknife otherwise
         - Generates standardized output file naming based on all analysis
           parameters
         - Delegates individual plot generation to specialized functions in
@@ -210,7 +168,7 @@ class PureEBMixin:
         output_dir = output_dir or self.cc["paths"]["output"]
         npatch = npatch or self.npatch
 
-        var_method = "semi-analytic"
+        var_method = "jackknife" if cov_path_int is None else "analytic"
 
         # Use treecorr_config defaults for reporting scale binning
         min_sep = min_sep or self.treecorr_config["min_sep"]
@@ -260,12 +218,10 @@ class PureEBMixin:
                 nbins_int=nbins_int,
                 npatch=npatch,
                 cov_path_int=cov_path_int,
-                cosmo_cov=cosmo_cov,
-                n_samples=n_samples,
             )
 
             # Calculate E/B statistics for all bin combinations
-            version_results = calculate_eb_statistics(version_results, **kwargs)
+            version_results = calculate_eb_statistics(version_results)
 
             # Integration vs Reporting comparison plot
             plot_integration_vs_reporting(
@@ -295,7 +251,7 @@ class PureEBMixin:
             # Covariance matrix plot
             plot_eb_covariance_matrix(
                 version_results["cov"],
-                var_method,
+                covariance_label(version_results["npatch"]),
                 out_stub + "_covariance.png",
                 version,
             )

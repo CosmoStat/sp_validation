@@ -5,10 +5,9 @@ moves COSEBIs B_n and pure-E/B ξ_B only by each transform's response to a pure
 E-mode vector. The input is the default theory's ξ± at the fiducial on the
 production reporting and integration grids, noise-free and (for COSEBIs) with
 one seeded shape-noise draw, and δ is taken with the hidden point at each
-corner of the envelope in turn. The transform's response to δ must stay under
-a tenth of a bin's standard deviation; pure-E/B's additivity,
-B(x + δ) − B(x) = B(δ), holds noise-free to its quadrature's floor, measured
-at ≤ 10⁻³σ and asserted at 10⁻²σ.
+corner of the envelope in turn. Both transforms are linear with fixed
+weights, so B(x + δ) − B(x) = B(δ) to round-off, and the transform's response
+to δ must stay under a tenth of a bin's standard deviation.
 """
 
 import numpy as np
@@ -24,7 +23,6 @@ COSEBIS_CUT, NMODES = (12.0, 83.0), 20
 # SP_v1.4.6.3's shape noise (its cov_th in cosmo_val/cat_config.yaml).
 AREA_DEG2, N_EFF, SIGMA_E = 2894.0, 4.96, 0.378
 CEILING = 0.1
-QUADRATURE_FLOOR = 0.01
 
 
 def _grid(lo, hi, n):
@@ -91,15 +89,25 @@ def _as_b(delta):
     return sign * delta
 
 
-def _pure_b(x):
-    """Pure-E/B (ξ+_B, ξ−_B) on the reporting grid."""
+@pytest.fixture(scope="module")
+def pure_b():
+    """Pure-E/B (ξ+_B, ξ−_B) of an integration-grid ξ±, and their σ.
+
+    The operator :func:`b_modes.pure_eb_operator` builds, averaged into the
+    reporting bins with pair weights ∝ the bins' annulus areas; σ is the
+    shape-noise covariance pushed exactly through it.
+    """
     n, n_int = len(THETA), len(THETA_INT)
-    xip, xim = x[:n], x[n : 2 * n]
-    xip_int, xim_int = x[2 * n : 2 * n + n_int], x[2 * n + n_int :]
-    modes = b_modes.pure_eb_from_xi(
-        THETA, xip, xim, THETA_INT, xip_int, xim_int, EDGES[0], EDGES[-1]
-    )
-    return np.r_[modes["xip_B"], modes["xim_B"]]
+    operator, _, _ = b_modes.pure_eb_operator(np.diff(EDGES_INT**2), EDGES_INT, EDGES)
+    b_rows = slice(2 * n, 4 * n)  # xip_B, xim_B in _EB_KEYS order
+    operator_b = operator[b_rows]
+    rows = np.r_[2 * n : 2 * n + 2 * n_int]
+    sigma = np.sqrt(np.einsum("ij,j,ij->i", operator_b, VARIANCE[rows], operator_b))
+
+    def b(x):
+        return operator_b @ x[rows]
+
+    return b, sigma
 
 
 @pytest.fixture(scope="module")
@@ -129,15 +137,6 @@ def cosebis():
     return b_n, np.sqrt(np.diag(covariance)[NMODES:])
 
 
-@pytest.fixture(scope="module")
-def sigma_pure_b(shifts):
-    """σ of pure-E/B ξ_B over shape-noise draws about the fiducial."""
-    clean, _ = shifts["noise-free"]
-    rng = np.random.default_rng(5)
-    draws = [_pure_b(clean + rng.normal(0.0, np.sqrt(VARIANCE))) for _ in range(50)]
-    return np.std(draws, axis=0)
-
-
 @pytest.mark.parametrize("noise", ["noise-free", "noisy"])
 def test_cosebis_b_modes_move_only_by_the_transforms_response(shifts, cosebis, noise):
     """COSEBIs are linear with fixed weights: ΔB_n = B_n(δ) to round-off, and
@@ -153,15 +152,17 @@ def test_cosebis_b_modes_move_only_by_the_transforms_response(shifts, cosebis, n
         assert np.max(np.abs(b_n(_as_b(delta))) / sigma) > 10 * CEILING
 
 
-def test_pure_eb_b_modes_move_only_by_the_transforms_response(shifts, sigma_pure_b):
-    """On noise-free ξ±, ΔB = B(x + δ) − B(x) equals B(δ), the kernel's B
-    response to a pure E-mode δ, to the quadrature's floor, and B(δ) stays
-    under the ceiling; δ's pure-B counterpart moves B well past it."""
-    x, deltas = shifts["noise-free"]
-    before = _pure_b(x)
+@pytest.mark.parametrize("noise", ["noise-free", "noisy"])
+def test_pure_eb_b_modes_move_only_by_the_transforms_response(shifts, pure_b, noise):
+    """Pure-E/B is one fixed linear operator on the integration-grid ξ±:
+    ΔB = B(δ) to round-off, and B(δ), the operator's B response to a pure
+    E-mode δ, stays under the ceiling; δ's pure-B counterpart moves B well
+    past it."""
+    b, sigma = pure_b
+    x, deltas = shifts[noise]
     for delta in deltas:
-        moved = _pure_b(x + delta) - before
-        response = _pure_b(delta)
-        assert np.max(np.abs(moved - response) / sigma_pure_b) < QUADRATURE_FLOOR
-        assert np.max(np.abs(response) / sigma_pure_b) < CEILING
-        assert np.max(np.abs(_pure_b(_as_b(delta))) / sigma_pure_b) > 10 * CEILING
+        before, after = b(x), b(x + delta)
+        roundoff = 1e-10 * np.max(np.abs(np.r_[before, after, b(delta)]))
+        np.testing.assert_allclose(after - before, b(delta), rtol=0, atol=roundoff)
+        assert np.max(np.abs(b(delta)) / sigma) < CEILING
+        assert np.max(np.abs(b(_as_b(delta))) / sigma) > 10 * CEILING

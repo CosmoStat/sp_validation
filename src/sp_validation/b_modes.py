@@ -1,8 +1,9 @@
 """
 B-mode analysis functions for weak lensing validation.
 
-This module contains pure E/B mode decomposition, COSEBIs analysis,
-and semi-analytical covariance calculations extracted from CosmologyValidation.
+Pure E/B modes (Schneider et al. 2022) as a fixed linear operator on the fine
+ξ± grid with their exact covariance, COSEBIs, and the χ²/PTE and plotting
+helpers shared by both.
 """
 
 import warnings
@@ -11,16 +12,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 import tqdm
-from cs_util.cosmo import get_theo_xi
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from scipy import sparse, stats
+from scipy import stats
 
 _EB_KEYS = ("xip_E", "xim_E", "xip_B", "xim_B", "xip_amb", "xim_amb")
-
-
-def _eb_vector(modes):
-    """Pure-E/B modes concatenated in ``_EB_KEYS`` order, the covariance layout."""
-    return np.concatenate([modes[k] for k in _EB_KEYS])
 
 
 def find_conservative_scale_cut_key(results, requested_scale_cut):
@@ -96,6 +91,23 @@ def bins_from_edges(left_edges, right_edges, min_scale=None, max_scale=None):
     return start_bin, stop_bin
 
 
+def bins_from_scale_cut(left_edges, right_edges, scale_cut):
+    """Reporting bins inside a pure-E/B scale cut, as ``(start_bin, stop_bin)``.
+
+    Each end of ``scale_cut`` snaps to the nearest reporting edge in log θ —
+    the rule that snaps reporting edges onto the fine grid — so a cut placed
+    on a nominal edge selects the same bins whichever fine grid the edges
+    were snapped to. ``stop_bin`` is exclusive.
+    """
+    edges = np.append(left_edges, right_edges[-1])
+    start_bin, stop_bin = (
+        int(np.abs(np.log(edges) - np.log(cut)).argmin()) for cut in scale_cut
+    )
+    if stop_bin <= start_bin:
+        raise RuntimeError(f"scale cut {scale_cut} selects no bins")
+    return start_bin, stop_bin
+
+
 def log_bin_edges(min_sep, max_sep, nbins):
     """TreeCorr ``Log`` bin edges — the grid a binning defines.
 
@@ -124,87 +136,243 @@ def correlation_from_covariance(covariance):
     return covariance / np.outer(stdev, stdev)
 
 
-def calculate_pure_eb_correlation(
-    gg,
-    gg_int,
-    cov_path_int,
-    cosmo_cov,
-    z_dist,
-    n_samples=1000,
-):
+def hartlap_factor(npatch, dof):
+    """Hartlap (2007) debiasing of an inverse covariance.
+
+    ``(N - p - 2) / (N - 1)`` for a jackknife covariance from ``N = npatch``
+    patches inverted over ``p = dof`` data points; exactly 1 for an analytic
+    covariance, which ``npatch=None`` denotes.
     """
-    Calculate pure E/B modes from ξ± on the reporting and integration grids.
+    return 1.0 if npatch is None else (npatch - dof - 2) / (npatch - 1)
+
+
+def _reporting_binning(weight_int, edges_int, reporting_edges):
+    """Reporting bins as unions of fine bins, and their pair-weighted average.
+
+    Each requested reporting edge snaps to the nearest fine edge (in log θ), so
+    every reporting bin is a whole number of fine bins. Row ``i`` of the
+    ``(n_report, n_fine)`` matrix weights the fine bins of reporting bin ``i``
+    by their TreeCorr pair weight ``Σ w_i w_j`` and sums to one. TreeCorr's ξ±
+    and ``meanr`` are averages over pairs under that same weight, so each row
+    reproduces what TreeCorr would measure on the snapped bin.
+
+    Returns ``(binning, edges)``, ``edges`` being the snapped reporting edges.
+    """
+    weight_int = np.asarray(weight_int, dtype=float)
+    edges_int = np.asarray(edges_int, dtype=float)
+    reporting_edges = np.asarray(reporting_edges, dtype=float)
+    if edges_int.shape != (weight_int.size + 1,):
+        raise ValueError("edges_int must hold n_fine + 1 fine-grid edges")
+    if reporting_edges.min() < edges_int[0] or reporting_edges.max() > edges_int[-1]:
+        raise ValueError(
+            f"reporting edges [{reporting_edges.min()}, {reporting_edges.max()}] "
+            f"reach outside the fine grid [{edges_int[0]}, {edges_int[-1]}]"
+        )
+    snap = np.abs(np.log(reporting_edges)[:, None] - np.log(edges_int)).argmin(axis=1)
+    if np.any(np.diff(snap) <= 0):
+        raise ValueError(
+            "reporting edges snap onto the same fine edge; the fine grid is too "
+            f"coarse for them: {reporting_edges.tolist()} -> "
+            f"{edges_int[snap].tolist()}"
+        )
+    binning = np.zeros((snap.size - 1, weight_int.size))
+    for i, (lo, hi) in enumerate(zip(snap[:-1], snap[1:])):
+        binning[i, lo:hi] = weight_int[lo:hi]
+    weight = binning.sum(axis=1)
+    if np.any(weight == 0):
+        empty = np.flatnonzero(weight == 0).tolist()
+        raise ValueError(f"reporting bins {empty} hold no integration-grid pairs")
+    return binning / weight[:, None], edges_int[snap]
+
+
+def _fixed_quadrature_operator(edges_int):
+    """The Schneider (2022) transform on the fine grid, ``_EB_KEYS`` order.
+
+    The single call into cosmo_numba. Its interpolator places the samples on
+    a regular grid in log θ, so the transform runs on the log-uniform nodes of
+    the fine bins — their geometric centres, TreeCorr's ``rnom`` — and is
+    evaluated at every node, with ``[tmin, tmax]`` at their extent. That
+    makes it a function of the fine grid alone (the zero-padded ξ− window
+    extends from the evaluation grid). Returns the ``(6, n_fine, 2 * n_fine)``
+    stack of the six matrices acting on ``[xi_+; xi_-]``; rows whose
+    integration support is too small near the grid edges are NaN.
+    """
+    from cosmo_numba.B_modes.schneider2022 import get_pure_EB_operator
+
+    log_edges = np.log(np.asarray(edges_int, dtype=float))
+    step = np.diff(log_edges)
+    if np.ptp(step) > 1e-10 * np.mean(step):
+        raise ValueError(
+            "the pure-E/B transform needs log-uniform fine-grid edges (TreeCorr "
+            f"Log binning); their log spacing varies by {np.ptp(step):.3e}"
+        )
+    nodes = np.exp(0.5 * (log_edges[:-1] + log_edges[1:]))
+    return np.stack(
+        get_pure_EB_operator(
+            nodes,
+            nodes,
+            tmin=nodes[0] * (1 - 1e-9),
+            tmax=nodes[-1] * (1 + 1e-9),
+            local_from_int=True,
+        )
+    )
+
+
+def pure_eb_operator(weight_int, edges_int, reporting_edges):
+    """The pure-E/B estimator as one matrix on the fine ξ± grid.
+
+    The Schneider et al. (2022) transform is evaluated with fixed-quadrature
+    weights at the log-uniform fine-grid nodes (TreeCorr ``rnom``),
+    integrating over the whole fine grid, and
+    the six pure modes are then averaged into the reporting bins with TreeCorr
+    pair weights. The reporting edges snap to the nearest fine edges, so each
+    reporting bin is a union of fine bins. Both steps are linear and
+    independent of the ξ± values, so the estimator is
+    ``K = (I_6 ⊗ P) · M`` and
+
+        [xip_E; xim_E; xip_B; xim_B; xip_amb; xim_amb] = K @ [xip_int; xim_int]
+
+    with ``K`` of shape ``(6 * n_report, 2 * n_fine)``.
 
     Parameters
     ----------
-    gg : sacc_io.xi_correlation view
-        ξ± on the reporting binning (coarser binning for final results)
-    gg_int : sacc_io.xi_correlation view
-        ξ± on the integration binning (fine binning for numerical integration)
-    cov_path_int : str
-        Path to the integration-grid ξ± covariance (CosmoCov), from which the
-        modes' covariance is drawn by Monte Carlo
-        (:func:`pure_eb_covariance_mc`)
-    cosmo_cov : pyccl.Cosmology
-        Cosmology for the theory mean of the Monte Carlo draws
-    z_dist : 2D array
-        Redshift distribution;
-        z_dist[:, 0] = z, z_dist[:, 1] = n(z)
-    n_samples : int, optional
-        Number of Monte Carlo samples for semi-analytical covariance
+    weight_int : array_like
+        TreeCorr pair weight ``Σ w_i w_j`` per fine bin (``gg.weight``), the
+        averaging weights.
+    edges_int : array_like
+        The ``n_fine + 1`` log-uniform fine-grid bin edges. The transform's
+        ``[tmin, tmax]`` is the extent of their centres, so they must reach
+        beyond the reporting range on both sides.
+    reporting_edges : array_like
+        Requested reporting-bin edges, ``n_report + 1`` of them.
+
+    Returns
+    -------
+    operator : numpy.ndarray
+        ``K``, shape ``(6 * n_report, 2 * n_fine)``.
+    binning : numpy.ndarray
+        ``P``, the ``(n_report, n_fine)`` pair-weighted average.
+    edges : numpy.ndarray
+        The reporting edges actually used, each a fine-grid edge.
+    """
+    binning, edges = _reporting_binning(weight_int, edges_int, reporting_edges)
+    nodes = np.flatnonzero(binning.any(axis=0))
+    # Only the rows P averages enter; NaN edge rows outside them are dropped,
+    # since 0 · NaN would still poison the product.
+    transform = _fixed_quadrature_operator(edges_int)[:, nodes]
+    undetermined = {
+        key: int(np.count_nonzero(~np.isfinite(rows).all(axis=1)))
+        for key, rows in zip(_EB_KEYS, transform)
+        if not np.isfinite(rows).all()
+    }
+    if undetermined:
+        raise ValueError(
+            "pure-E/B operator rows are under-determined (reporting bins too "
+            f"close to the integration-grid edge): {undetermined}"
+        )
+    operator = np.vstack([binning[:, nodes] @ rows for rows in transform])
+    return operator, binning, edges
+
+
+def calculate_pure_eb_correlation(
+    theta_int,
+    xip_int,
+    xim_int,
+    weight_int,
+    edges_int,
+    cov_xi,
+    reporting_edges,
+    *,
+    npatch=None,
+):
+    """Pure E/B modes and their exact covariance from fine-grid ξ±.
+
+    The modes are :func:`pure_eb_operator` applied to ``[xip_int; xim_int]``,
+    and the covariance is ``K C_xi Kᵀ`` — exact for whatever ξ± covariance is
+    supplied, analytic or jackknife. ``npatch`` records which: the jackknife
+    patch count behind ``cov_xi``, or ``None`` for an analytic covariance. It
+    travels in the results and sets the Hartlap factor of every χ² built on
+    them (:func:`hartlap_factor`).
+
+    The reporting bins are unions of fine bins (the requested edges snap to
+    the nearest fine edges), and their ``theta``, ``xip``/``xim`` and
+    variances are the same pair-weighted average of the fine grid, so
+    ``xi_± = E ± B + amb`` holds bin by bin and ``theta``/``xip``/``xim`` are
+    what TreeCorr would measure on the snapped bins.
+
+    Parameters
+    ----------
+    theta_int, xip_int, xim_int, weight_int : array_like
+        Fine-grid ``meanr``, ξ±, and TreeCorr pair weight ``Σ w_i w_j``.
+        ``meanr`` enters only the reported ``theta``; the transform runs on
+        the log-uniform nodes of ``edges_int``.
+    edges_int : array_like
+        The ``n_fine + 1`` log-uniform fine-grid bin edges.
+    cov_xi : array_like
+        ``(2 n_fine, 2 n_fine)`` covariance of ``[xip_int; xim_int]``.
+    reporting_edges : array_like
+        Requested reporting-bin edges, ``n_report + 1`` of them.
+    npatch : int, optional
+        Jackknife patch count behind ``cov_xi``; ``None`` if it is analytic.
 
     Returns
     -------
     dict
-        Dictionary containing pure E/B mode results and covariance
+        The six ``_EB_KEYS`` mode arrays, ``cov`` (in ``_EB_KEYS`` block
+        order), ``npatch``, the reporting grid (``theta``, the snapped
+        ``left_edges``/``right_edges``, ``xip``, ``xim``, ``var_xip``,
+        ``var_xim``) and the fine-grid inputs (``theta_int``, ``xip_int``,
+        ``xim_int``, ``weight_int``, ``edges_int``).
     """
-    # The results dict is self-describing: the grids it was measured on travel
-    # with the modes, so every consumer downstream works from values alone.
-    results = {
-        "theta": gg.meanr,
-        "left_edges": gg.left_edges,
-        "right_edges": gg.right_edges,
-        "xip": gg.xip,
-        "xim": gg.xim,
-        "var_xip": gg.varxip,
-        "var_xim": gg.varxim,
-        "theta_int": gg_int.meanr,
-        "xip_int": gg_int.xip,
-        "xim_int": gg_int.xim,
-        "n_eff": n_samples,
-    }
-    results.update(
-        pure_eb_from_xi(
-            gg.meanr,
-            gg.xip,
-            gg.xim,
-            gg_int.meanr,
-            gg_int.xip,
-            gg_int.xim,
-            gg.left_edges[0],
-            gg.right_edges[-1],
+    if npatch is not None and npatch < 2:
+        raise ValueError(f"a jackknife covariance needs npatch > 1, not {npatch}")
+    theta_int, xip_int, xim_int = (
+        np.asarray(a, dtype=float) for a in (theta_int, xip_int, xim_int)
+    )
+    cov_xi = np.asarray(cov_xi, dtype=float)
+    if np.shape(weight_int) != theta_int.shape:
+        raise ValueError("weight_int must have one entry per integration bin")
+    operator, binning, edges = pure_eb_operator(weight_int, edges_int, reporting_edges)
+    if cov_xi.shape != (operator.shape[1],) * 2:
+        raise ValueError(
+            f"cov_xi has shape {cov_xi.shape}; the fine grid needs "
+            f"{(operator.shape[1],) * 2}"
         )
-    )
 
-    cov, eb_samples = pure_eb_covariance_mc(
-        theta=gg.meanr,
-        left_edges=gg.left_edges,
-        right_edges=gg.right_edges,
-        theta_int=gg_int.meanr,
-        cov_int=np.loadtxt(cov_path_int),
-        z=z_dist[:, 0],
-        nz=z_dist[:, 1],
-        cosmo=cosmo_cov,
-        n_samples=n_samples,
+    n_report = len(edges) - 1
+    modes = operator @ np.concatenate([xip_int, xim_int])
+    n_fine = theta_int.size
+    var_xip, var_xim = (
+        np.einsum("ij,jk,ik->i", binning, block, binning)
+        for block in (cov_xi[:n_fine, :n_fine], cov_xi[n_fine:, n_fine:])
     )
-    results.update({"cov": cov, "eb_samples": eb_samples})
+    results = {
+        "theta": binning @ theta_int,
+        "left_edges": edges[:-1],
+        "right_edges": edges[1:],
+        "xip": binning @ xip_int,
+        "xim": binning @ xim_int,
+        "var_xip": var_xip,
+        "var_xim": var_xim,
+        "theta_int": theta_int,
+        "xip_int": xip_int,
+        "xim_int": xim_int,
+        "weight_int": np.asarray(weight_int, dtype=float),
+        "edges_int": np.asarray(edges_int, dtype=float),
+        "cov": operator @ cov_xi @ operator.T,
+        "npatch": npatch,
+    }
+    for i, key in enumerate(_EB_KEYS):
+        results[key] = modes[i * n_report : (i + 1) * n_report]
 
-    # Validate covariance matrix
+    # The B-mode block is what every χ² inverts; the ambiguous blocks are
+    # ill-conditioned by construction.
+    b_block = slice(2 * n_report, 4 * n_report)
     try:
-        np.linalg.cholesky(results["cov"])
+        np.linalg.cholesky(results["cov"][b_block, b_block])
     except np.linalg.LinAlgError:
         warnings.warn(
-            "E/B mode covariance matrix is not positive definite. "
+            "B-mode covariance is not positive definite. "
             "Chi-squared statistics may be unreliable.",
             UserWarning,
         )
@@ -212,111 +380,9 @@ def calculate_pure_eb_correlation(
     return results
 
 
-def pure_eb_from_xi(
-    theta_report, xip_report, xim_report, theta_int, xip_int, xim_int, tmin, tmax
-):
-    """Pure-E/B correlation functions from ξ± arrays through the pipeline kernel.
-
-    The one place this module calls cosmo_numba's Schneider (2022) transform.
-
-    ``tmin``/``tmax`` are the reporting correlation's TreeCorr *bin edges*
-    (``gg.left_edges[0]`` / ``gg.right_edges[-1]``). The reporting grid must be a
-    strict sub-range of the integration grid: a reporting point on the
-    integration boundary has no interior support and comes back NaN.
-
-    Returns
-    -------
-    dict
-        Keyed by ``_EB_KEYS`` (xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb).
-    """
-    from cosmo_numba.B_modes.schneider2022 import get_pure_EB_modes
-
-    modes = get_pure_EB_modes(
-        theta=np.asarray(theta_report),
-        xip=np.asarray(xip_report),
-        xim=np.asarray(xim_report),
-        theta_int=np.asarray(theta_int),
-        xip_int=np.asarray(xip_int),
-        xim_int=np.asarray(xim_int),
-        tmin=tmin,
-        tmax=tmax,
-        parallel=True,
-    )
-    return dict(zip(_EB_KEYS, (np.asarray(m) for m in modes)))
-
-
-def pure_eb_covariance_mc(
-    *,
-    theta,
-    left_edges,
-    right_edges,
-    theta_int,
-    cov_int,
-    z,
-    nz,
-    cosmo,
-    n_samples=1000,
-    rng=None,
-):
-    """Pure-E/B covariance by Monte Carlo through the same kernel as the modes.
-
-    ξ± draws come from ``cov_int``, a ξ± covariance on the integration grid,
-    around the theory mean for ``(z, nz)`` under ``cosmo``; each draw is binned
-    down to the reporting grid and pushed through :func:`pure_eb_from_xi`. The
-    covariance of the transformed draws is the result, so it depends on the
-    covariance model and the grids, never on the measured data vector. ``rng``
-    (a ``numpy.random.Generator``) draws the realisations; fresh entropy when
-    ``None``.
-
-    Returns ``(cov, eb_samples)`` — the covariance in ``_EB_KEYS`` order and
-    the draws behind it.
-    """
-    theta, theta_int = np.asarray(theta), np.asarray(theta_int)
-    nbins_int = len(theta_int)
-
-    # Each reporting bin averages the integration bins that fall inside it.
-    reporting_bin_edges = np.concatenate([left_edges, [right_edges[-1]]])
-    bin_indices = np.digitize(theta_int, reporting_bin_edges) - 1
-    valid_mask = (bin_indices >= 0) & (bin_indices < len(theta))
-    row_indices, col_indices = (bin_indices[valid_mask], np.where(valid_mask)[0])
-    binning_matrix = sparse.csr_matrix(
-        (np.ones(len(row_indices)), (row_indices, col_indices)),
-        shape=(len(theta), nbins_int),
-    )
-    row_sums = np.array(binning_matrix.sum(axis=1)).flatten()
-    binning_matrix = sparse.diags(1 / row_sums) @ binning_matrix
-
-    # One n(z) gives one tracer pair: get_theo_xi's single (xi+, xi-) entry.
-    (xi_pm,) = get_theo_xi(
-        theta=theta_int, z=z, nz=nz, backend="ccl", cosmo=cosmo
-    ).values()
-    mean_int = np.concatenate(xi_pm)
-    rng = np.random.default_rng() if rng is None else rng
-    samples_int = rng.multivariate_normal(mean_int, cov_int, size=n_samples)
-    samples_int_xip, samples_int_xim = (
-        samples_int[:, :nbins_int],
-        samples_int[:, nbins_int:],
-    )
-    samples_rep_xip = (binning_matrix @ samples_int_xip.T).T
-    samples_rep_xim = (binning_matrix @ samples_int_xim.T).T
-
-    def eb_draw(i):
-        modes = pure_eb_from_xi(
-            theta_report=theta,
-            xip_report=samples_rep_xip[i],
-            xim_report=samples_rep_xim[i],
-            theta_int=theta_int,
-            xip_int=samples_int_xip[i],
-            xim_int=samples_int_xim[i],
-            tmin=left_edges[0],
-            tmax=right_edges[-1],
-        )
-        return _eb_vector(modes)
-
-    eb_samples = np.array(
-        [eb_draw(i) for i in tqdm.tqdm(range(n_samples), desc="MC samples")]
-    )
-    return np.cov(eb_samples.T), eb_samples
+def covariance_label(npatch):
+    """How a pure-E/B covariance was made, from its ``npatch`` record."""
+    return "analytic" if npatch is None else f"jackknife ({npatch} patches)"
 
 
 def calculate_cosebis(gg, nmodes=10, scale_cuts=None, cov_path=None):
@@ -460,8 +526,9 @@ def calculate_eb_statistics(results):
     ----------
     results : dict
         Pure E/B results: the six mode arrays, the ``cov`` block, the reporting
-        ``theta``, and ``n_eff`` — the realisation count behind the covariance
-        (jackknife patches or MC draws), which sets the Hartlap debiasing
+        ``theta``, and ``npatch`` — the jackknife patch count behind the
+        covariance, or ``None`` for an analytic one — which sets the Hartlap
+        factor (:func:`hartlap_factor`)
 
     Returns
     -------
@@ -469,7 +536,7 @@ def calculate_eb_statistics(results):
         Updated results dictionary with PTE matrices and statistics
     """
     nbins = len(results["theta"])
-    n_eff = results["n_eff"]
+    npatch = results["npatch"]
 
     # Extract covariance blocks and standard deviations
     cov = results["cov"]
@@ -491,7 +558,7 @@ def calculate_eb_statistics(results):
 
     for start_bin, stop_bin in combinations:
         nbins_eff = stop_bin - start_bin
-        hartlap_factor = (n_eff - nbins_eff - 2) / (n_eff - 1)
+        hartlap = hartlap_factor(npatch, nbins_eff)
 
         # Individual B-mode chi-squared calculations
         data_slices = [results[f"{xi}_B"][start_bin:stop_bin] for xi in ["xip", "xim"]]
@@ -500,7 +567,7 @@ def calculate_eb_statistics(results):
             for xi in ["xip", "xim"]
         ]
         chi2_values = [
-            hartlap_factor * (data @ np.linalg.solve(cov, data))
+            hartlap * (data @ np.linalg.solve(cov, data))
             for data, cov in zip(data_slices, cov_slices)
         ]
 
@@ -519,7 +586,7 @@ def calculate_eb_statistics(results):
         cov_combined = np.block(
             [[cov_xip_block, cov_cross_block], [cov_cross_block.T, cov_xim_block]]
         )
-        chi2_combined = hartlap_factor * (
+        chi2_combined = hartlap_factor(npatch, 2 * nbins_eff) * (
             data_combined @ np.linalg.solve(cov_combined, data_combined)
         )
         pte_combined[start_bin, stop_bin - 1] = stats.chi2.sf(
@@ -540,9 +607,10 @@ def plot_integration_vs_reporting(results, output_path, version):
     Parameters
     ----------
     results : dict
-        Pure E/B results carrying both grids (``theta``/``xip``/``xim`` and the
-        ``theta_int``/``xip_int``/``xim_int`` counterparts), plus the reporting
-        ``var_xip``/``var_xim`` the error bars use
+        Pure E/B results carrying the fine grid (``theta_int``/``xip_int``/
+        ``xim_int``) and its pair-weighted average into the reporting bins
+        (``theta``/``xip``/``xim``, with the ``var_xip``/``var_xim`` the error
+        bars use)
     output_path : str
         Output file path for the plot
     version : str
@@ -597,7 +665,7 @@ def plot_integration_vs_reporting(results, output_path, version):
 
 def _get_pte_from_scale_cut(pte_matrix, edges, scale_cut):
     """
-    Extract PTE value from matrix based on scale cut range using conservative logic.
+    Extract PTE value from matrix at a scale cut (:func:`bins_from_scale_cut`).
 
     Parameters
     ----------
@@ -620,13 +688,7 @@ def _get_pte_from_scale_cut(pte_matrix, edges, scale_cut):
         # Return full-range PTE (first row, last column)
         return pte_matrix[0, nbins - 1]
 
-    min_scale, max_scale = scale_cut
-
-    start_bin, stop_bin = bins_from_edges(left_edges, right_edges, min_scale, max_scale)
-
-    # Ensure valid range, otherwise fallback to full range
-    if stop_bin <= start_bin or start_bin >= nbins or stop_bin <= 0:
-        raise RuntimeError("Invalid scale cut range")
+    start_bin, stop_bin = bins_from_scale_cut(left_edges, right_edges, scale_cut)
     return pte_matrix[start_bin, stop_bin - 1]
 
 
@@ -661,12 +723,16 @@ def plot_pure_eb_correlations(
     # Calculate combined PTE using off-diagonal covariance blocks
     # Get scale cuts for both xi+ and xi-
     if fiducial_xip_scale_cut is not None:
-        xip_start_bin, xip_stop_bin = bins_from_edges(*edges, *fiducial_xip_scale_cut)
+        xip_start_bin, xip_stop_bin = bins_from_scale_cut(
+            *edges, fiducial_xip_scale_cut
+        )
     else:
         xip_start_bin, xip_stop_bin = 0, nbins
 
     if fiducial_xim_scale_cut is not None:
-        xim_start_bin, xim_stop_bin = bins_from_edges(*edges, *fiducial_xim_scale_cut)
+        xim_start_bin, xim_stop_bin = bins_from_scale_cut(
+            *edges, fiducial_xim_scale_cut
+        )
     else:
         xim_start_bin, xim_stop_bin = 0, nbins
 
@@ -696,15 +762,7 @@ def plot_pure_eb_correlations(
 
     # Calculate combined chi-squared with Hartlap factor
     nbins_eff = len(xip_B_data) + len(xim_B_data)
-
-    # Determine effective number of samples for Hartlap correction
-    if "eb_samples" in results:  # Semi-analytical case
-        n_eff = results["eb_samples"].shape[0]
-    else:  # Jackknife case
-        n_eff = results["n_eff"]
-
-    hartlap_factor = (n_eff - nbins_eff - 2) / (n_eff - 1)
-    chi2_combined = hartlap_factor * (
+    chi2_combined = hartlap_factor(results["npatch"], nbins_eff) * (
         data_combined.T @ np.linalg.solve(cov_combined, data_combined)
     )
     combined_pte = stats.chi2.sf(chi2_combined, nbins_eff)
@@ -801,11 +859,10 @@ def plot_pure_eb_correlations(
     scale_cuts = [(fiducial_xip_scale_cut, 0), (fiducial_xim_scale_cut, 1)]
     for scale_cut, ax_idx in scale_cuts:
         if scale_cut is not None:
-            min_scale, max_scale = scale_cut
             xlim = original_xlims[ax_idx]
 
-            # Use conservative scale_cut_to_bins helper for consistency
-            start_bin, stop_bin = bins_from_edges(*edges, min_scale, max_scale)
+            # The same bins the PTEs use
+            start_bin, stop_bin = bins_from_scale_cut(*edges, scale_cut)
 
             # Show excluded regions based on bin edges used in PTE calculation
             # Lower exclusion: bins 0 to start_bin-1 are excluded
@@ -1088,8 +1145,7 @@ def plot_pte_2d_heatmaps(
     fiducial_scale_cuts = [fiducial_xip_scale_cut, fiducial_xim_scale_cut]
     for ax_idx, fiducial_scale_cut in enumerate(fiducial_scale_cuts):
         if fiducial_scale_cut is not None:
-            min_scale, max_scale = fiducial_scale_cut
-            start_bin, stop_bin = bins_from_edges(*edges, min_scale, max_scale)
+            start_bin, stop_bin = bins_from_scale_cut(*edges, fiducial_scale_cut)
 
             if stop_bin > start_bin and start_bin < nbins and stop_bin > 0:
                 rect_x = start_bin
@@ -1140,7 +1196,7 @@ def plot_pte_2d_heatmaps(
     plt.savefig(output_path, dpi=300, bbox_inches="tight")
 
 
-def plot_eb_covariance_matrix(cov_matrix, var_method, output_path, version):
+def plot_eb_covariance_matrix(cov_matrix, label, output_path, version):
     """
     Plot E/B mode covariance matrix as correlation matrix.
 
@@ -1148,8 +1204,8 @@ def plot_eb_covariance_matrix(cov_matrix, var_method, output_path, version):
     ----------
     cov_matrix : numpy.ndarray
         Covariance matrix from E/B mode analysis
-    var_method : str
-        Variance method used for the analysis
+    label : str
+        How the covariance was made (:func:`covariance_label`)
     output_path : str
         Output file path for the plot
     version : str
@@ -1181,7 +1237,7 @@ def plot_eb_covariance_matrix(cov_matrix, var_method, output_path, version):
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.1)
     plt.colorbar(im, cax=cax)
-    ax.set_title(f"{version}: {var_method} correlation matrix")
+    ax.set_title(f"{version}: {label} correlation matrix")
     plt.savefig(output_path, dpi=300, bbox_inches="tight")
 
 
@@ -1255,7 +1311,9 @@ def save_pure_eb_results(results, output_path):
         Output .npz file path
     """
     # Data vectors and covariance
-    save_dict = {"theta": results["theta"], "cov": results["cov"]}
+    save_dict = {
+        key: results[key] for key in ("theta", "left_edges", "right_edges", "cov")
+    }
     for key in _EB_KEYS:
         save_dict[key] = results[key]
 
@@ -1263,13 +1321,9 @@ def save_pure_eb_results(results, output_path):
     for key, matrix in results.get("pte_matrices", {}).items():
         save_dict[f"pte_matrices_{key}"] = matrix
 
-    # Metadata
-    save_dict["n_eff"] = np.array(results["n_eff"])
-    if "eb_samples" in results:
-        save_dict["var_method"] = np.array("semi-analytic")
-        save_dict["n_samples"] = np.array(results["eb_samples"].shape[0])
-    else:
-        save_dict["var_method"] = np.array("jackknife")
+    # The jackknife patch count, stored only for a jackknife covariance.
+    if results["npatch"] is not None:
+        save_dict["npatch"] = np.array(results["npatch"])
 
     np.savez(output_path, **save_dict)
     print(f"Saved pure E/B results to {output_path}")
