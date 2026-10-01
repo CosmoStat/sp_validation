@@ -150,7 +150,6 @@ class PureEBMixin:
         max_sep_int=300,
         nbins_int=1000,
         npatch=None,
-        var_method="jackknife",
         cov_path_int=None,
         cosmo_cov=None,
         n_samples=1000,
@@ -183,9 +182,6 @@ class PureEBMixin:
             (default: 0.08-300 arcmin, 1000 bins)
         npatch : int, optional
             Number of patches for jackknife covariance. Uses self.npatch if None.
-        var_method : str
-            Variance method ("jackknife" or "semi-analytic").
-            Automatically set to "semi-analytic" when cov_path_int is provided.
         cov_path_int : str, optional
             Path to integration covariance matrix for semi-analytical calculation
         cosmo_cov : pyccl.Cosmology, optional
@@ -204,8 +200,6 @@ class PureEBMixin:
         This function orchestrates the full E/B mode analysis workflow:
 
         - Uses instance configuration as defaults for unspecified parameters
-        - Automatically switches to analytical variance when theoretical
-          covariance provided
         - Generates standardized output file naming based on all analysis
           parameters
         - Delegates individual plot generation to specialized functions in
@@ -216,9 +210,7 @@ class PureEBMixin:
         output_dir = output_dir or self.cc["paths"]["output"]
         npatch = npatch or self.npatch
 
-        # Override var_method to analytic when cov_path_int is provided
-        if cov_path_int is not None:
-            var_method = "semi-analytic"
+        var_method = "semi-analytic"
 
         # Use treecorr_config defaults for reporting scale binning
         min_sep = min_sep or self.treecorr_config["min_sep"]
