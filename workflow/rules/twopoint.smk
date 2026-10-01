@@ -33,7 +33,7 @@ rule xi:
         cat_config=CAT_CONFIG,
         output_dir=str(COSMO_VAL),
         grid=lambda w: grid_of(XI_GRIDS, w),
-        custody=lambda w: custody_token(w.version),
+        blind=lambda w: blind_of(w.version),
     resources:
         # The fine integration grid needs more memory and wall time than the
         # ~20-bin reporting one; scale on nbins rather than splitting the rule.
@@ -59,7 +59,7 @@ rule rho_tau_stats:
         npatch="{npatch}",
         cat_config=CAT_CONFIG,
         output_dir=str(COSMO_VAL),
-        custody=lambda w: custody_token(w.version),
+        blind=lambda w: blind_of(w.version),
     resources:
         mem_mb=30000,
         disk_mb=20000,
@@ -87,7 +87,7 @@ rule pseudo_cl:
         binning="{binning}",
         nbins=lambda w: int(w.nbins),
         power=0.5,
-        custody=lambda w: custody_token(w.version),
+        blind=lambda w: blind_of(w.version),
     resources:
         mem_mb=32000,
         runtime=120,

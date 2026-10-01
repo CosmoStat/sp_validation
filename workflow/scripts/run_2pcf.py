@@ -15,7 +15,7 @@ orchestration:
 The measurement is binning-agnostic: the reporting and the fine integration
 grids are the same compute with different ``--min-sep/--max-sep/--nbins``. The
 ξ± is born as a SACC part, named by its binning, tagged with its ``--grid`` and
-sealed under the catalogue's custody by ``CosmologyValidation.calculate_2pcf``.
+sealed under the catalogue's blind by ``CosmologyValidation.calculate_2pcf``.
 
 ``output_dir`` is passed explicitly so lc can point each run at its own
 ``{output}`` tree.
@@ -37,7 +37,6 @@ def run_2pcf(
     output_dir,
     sacc_out=None,
     grid="reporting",
-    custody=None,
 ):
     """Measure ξ±(θ) for ``ver`` and write its sealed SACC part.
 
@@ -47,9 +46,7 @@ def run_2pcf(
     the catalog configuration; ``output_dir`` overrides
     ``cat_config['paths']['output']``. ``sacc_out`` is the exact destination for
     the part (the Snakemake-declared output); it defaults to a binning-derived
-    name under the resolved output directory for the CLI path. ``custody`` is
-    the custody token Snakemake resolved for ``ver`` (the rule's
-    ``params.custody``), which the part is sealed under.
+    name under the resolved output directory for the CLI path.
 
     Returns
     -------
@@ -60,7 +57,6 @@ def run_2pcf(
         versions=[ver],
         catalog_config=cat_config,
         output_dir=output_dir,
-        custody=None if custody is None else {ver: custody},
     )
     out_path = sacc_out or os.path.join(
         output_dir or cv.cc["paths"]["output"],
@@ -91,7 +87,6 @@ def _from_snakemake(smk):
         output_dir=p["output_dir"],
         grid=p.get("grid", "reporting"),
         sacc_out=smk.output["sacc"],
-        custody=p["custody"],
     )
 
 

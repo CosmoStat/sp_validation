@@ -7,7 +7,7 @@ seeded draws from the CosmoCov integration-grid ξ± covariance around a theory
 mean, so it is a function of the covariance model and the grids alone, never
 of the measured vector. A jackknife of the transformed modes would need
 per-patch realisations, which are never persisted. The pure-E/B part is a
-derivation of the two ξ± parts and carries their custody.
+derivation of the two ξ± parts and carries their blind stamp.
 """
 
 import numpy as np
@@ -58,7 +58,7 @@ cov, eb_samples = pure_eb_covariance_mc(
     n_samples=p["n_samples"],
     rng=np.random.default_rng(0),
 )
-# Written first, so parts under two custodies are refused before any product
+# Written first, so parts under two blinds are refused before any product
 # of them exists.
 sacc_io.save(
     pure_eb_to_sacc({0: (z, nz)}, reporting.metadata, theta, modes, covariance=cov),

@@ -37,7 +37,6 @@ def generate_pseudo_cl(
     binning: str = "linear",
     nbins: int = None,
     power: float = 0.5,
-    custody: str = None,
 ):
     """Generate a pseudo-Cl data vector, born as a SACC part at ``out_path``.
 
@@ -63,9 +62,6 @@ def generate_pseudo_cl(
         Number of ell bins (required)
     power : float
         Power for powspace binning (0.5 = sqrt spacing)
-    custody : str, optional
-        The custody token Snakemake resolved for ``version`` (the rule's
-        ``params.custody``), which the part is sealed under.
 
     Returns
     -------
@@ -119,7 +115,6 @@ def generate_pseudo_cl(
         theta_min=1.0,
         theta_max=250.0,
         nbins=20,
-        custody=None if custody is None else {version: custody},
     )
     if binning == "linear":
         cv_kwargs["ell_step"] = ell_step
@@ -150,7 +145,6 @@ def _from_snakemake(smk):
         binning=p["binning"],
         nbins=int(p["nbins"]),
         power=float(p.get("power", 0.5)),
-        custody=p["custody"],
     )
 
 

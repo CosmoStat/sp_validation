@@ -710,7 +710,7 @@ class PseudoClMixin:
         ``cl_all`` is NaMaster's decoupled ``(4, nbp)`` array (EE, EB, BE, BB);
         the writer takes the shared bandpower window from ``wsp``. No covariance
         is attached here. Returns the part as sealed under the version's
-        custody.
+        blind.
         """
         s = pseudo_cl_to_sacc(
             self.sacc_nz(version),
@@ -719,7 +719,7 @@ class PseudoClMixin:
             cl_all,
             wsp,
         )
-        return sacc_io.save(s, out_path, custody=self.custody(version))
+        return sacc_io.save(s, out_path, blind=self.blind(version))
 
     def plot_pseudo_cl(self):
         """Plot the EE/EB/BB pseudo-Cl spectra for every version."""

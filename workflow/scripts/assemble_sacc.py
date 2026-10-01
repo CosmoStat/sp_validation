@@ -16,10 +16,9 @@ matching what the B-mode PTE reads today.
 import argparse
 
 import numpy as np
-import yaml
 
-from sp_validation import custody as _custody
 from sp_validation import sacc_io
+from sp_validation.blinding import Blind
 from sp_validation.cosmo_val.sacc_writers import assemble_analysis_sacc
 
 # NaMaster iNKA covariance FITS: per-spectrum HDU names, in SACC insertion order.
@@ -93,17 +92,15 @@ def assemble_sacc(
     part_paths,
     out_path,
     *,
-    custody,
+    blind,
     expected=None,
     xi_cov=None,
     pseudo_cl_cov=None,
 ):
     """Assemble ``{version}.sacc`` from the per-statistic ``part_paths`` mapping.
 
-    @sc one-custody-per-assembly
-    Every part, signal-bearing or not, must carry one stamp, and it must be
-    ``custody``: a stale part after a custody flip, a part under another blind,
-    a mock in data and public parts in a blinded file are all refused.
+    Every part must be stamped with ``blind``, the catalogue's declared blind,
+    so a stale part from before a flip is refused.
 
     Parameters
     ----------
@@ -115,8 +112,8 @@ def assemble_sacc(
     expected : sequence of str, optional
         Statistics that must be present, from the caller's config toggles. A
         typo'd input keyword would otherwise silently drop a statistic.
-    custody : sp_validation.custody.Custody
-        The custody ``version`` runs under.
+    blind : str
+        The name of the blind ``version`` is declared under.
     xi_cov, pseudo_cl_cov
         Covariance sourcing — see the module docstring.
     """
@@ -143,7 +140,7 @@ def assemble_sacc(
     if not parts:
         raise ValueError(f"no parts found for {version}: {part_paths}")
     s = sacc_io.save(
-        assemble_analysis_sacc(parts), out_path, derived_from=parts, custody=custody
+        assemble_analysis_sacc(parts), out_path, derived_from=parts, blind=Blind(blind)
     )
     print(f"Assembled {len(parts)} parts -> {out_path}")
     return s
@@ -161,7 +158,7 @@ def _from_snakemake(smk):
         version=p["version"],
         part_paths=part_paths,
         out_path=str(smk.output[0]),
-        custody=_custody.parse(p["custody"]),
+        blind=p["blind"],
         expected=list(p["expected"]),
         xi_cov=getattr(inp, "xi_cov", None),
         pseudo_cl_cov=getattr(inp, "pseudo_cl_cov", None),
@@ -175,9 +172,7 @@ def _from_cli(argv=None):
     ap.add_argument("--version", required=True, help="Catalogue version")
     ap.add_argument("--out", required=True, help="Output {version}.sacc path")
     ap.add_argument(
-        "--cat-config",
-        required=True,
-        help="cat_config.yaml declaring the catalogue's custody",
+        "--blind", required=True, help="The blind the catalogue is declared under"
     )
     for name in CANONICAL:
         ap.add_argument(
@@ -193,7 +188,7 @@ def _from_cli(argv=None):
         version=a.version,
         part_paths=part_paths,
         out_path=a.out,
-        custody=_custody.custody_of(yaml.safe_load(open(a.cat_config)), a.version),
+        blind=a.blind,
         xi_cov=a.xi_cov,
         pseudo_cl_cov=a.pseudo_cl_cov,
     )

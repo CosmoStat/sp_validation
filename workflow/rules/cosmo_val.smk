@@ -508,7 +508,7 @@ rule assemble_sacc:
         sacc=cv_analysis_sacc("{version}"),
     params:
         version="{version}",
-        custody=lambda w: custody_token(w.version),
+        blind=lambda w: blind_of(w.version),
         # The statistics this rule wired, so a typo'd input keyword cannot
         # silently drop one.
         expected=lambda w: [

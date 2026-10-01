@@ -16,7 +16,7 @@ from shear_psf_leakage import plots as psfleak_plots
 from shear_psf_leakage.rho_tau_stat import PSFErrorFit
 from uncertainties import ufloat
 
-from .. import sacc_io
+from .. import sacc_io, theory
 from ..rho_tau import (
     get_rho_tau_w_cov,
     get_samples,
@@ -54,7 +54,7 @@ class PSFSystematicsMixin:
     def rho_tau_to_sacc_part(
         self, version, out_dir, base, rho_stat_handler, tau_stat_handler
     ):
-        """Write the ρ/τ SACC part for one version, under the version's custody.
+        """Write the ρ/τ SACC part for one version, under the version's blind.
 
         ρ_0…ρ_5 autos and τ_0/τ_2/τ_5 leakage from the handler tables. The
         ``CovTauTh`` theory covariance ``cov_tau_{base}_th.npy`` is passed as
@@ -77,7 +77,8 @@ class PSFSystematicsMixin:
             tau_cov_th=tau_cov_th,
         )
         out_path = os.path.join(out_dir, f"rho_tau_{base}.sacc")
-        sacc_io.save(s, out_path, custody=self.custody(version))
+        # ρ/τ carry no cosmological signal: the blind leaves them unshifted.
+        sacc_io.save(s, out_path, blind=self.blind(version), theory=theory.none)
 
     @property
     def rho_stat_handler(self):

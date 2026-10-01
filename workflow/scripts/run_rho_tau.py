@@ -43,7 +43,6 @@ cv = CosmologyValidation(
     npatch=int(params["npatch"]),
     catalog_config=params["cat_config"],
     output_dir=params["output_dir"],
-    custody={params["ver"]: params["custody"]},
 )
 
 cv.calculate_rho_tau_stats()

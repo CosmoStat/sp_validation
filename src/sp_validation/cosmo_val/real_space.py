@@ -29,14 +29,12 @@ class RealSpaceMixin:
         out=None,
         **treecorr_config,
     ):
-        """ξ± of ``ver`` on one binning, as its SACC part sealed under its custody.
+        """ξ± of ``ver`` on one binning, as its SACC part sealed under its blind.
 
-        @sc signal-leaves-sealed
         A catalogue's ξ± leaves this object only as a part sealed under the
-        catalogue's custody (:func:`sp_validation.sacc_io.seal`): concealed
-        when it is blinded, before it is returned, cached or written. The
-        blind is opened first, so a blind that cannot open fails before
-        TreeCorr runs.
+        catalogue's blind (:func:`sp_validation.sacc_io.seal`), concealed
+        before it is returned, cached or written. The blind is opened first,
+        so a blind that cannot open fails before TreeCorr runs.
 
         With patches, the catalogue splits at the output tree's
         ``{ver}_patches_npatch={npatch}.dat``, drawn by TreeCorr's k-means and
@@ -57,12 +55,7 @@ class RealSpaceMixin:
         """
         self.print_magenta(f"Computing {ver} ξ±")
         npatch = int(npatch or self.npatch)
-        custody = self.custody(ver)
-        if custody.blinded:
-            from .. import blinding
-
-            blinding.open_blind(custody)
-
+        blind = self.blind(ver)
         metadata = {**self.sacc_metadata(ver), "npatch": npatch}
         jackknife = npatch > 1
         patch_file = self._output_path(f"{ver}_patches_npatch={npatch}.dat")
@@ -106,9 +99,7 @@ class RealSpaceMixin:
             covariance=gg.cov if jackknife else None,
             variances=None if jackknife else np.concatenate([gg.varxip, gg.varxim]),
         )
-        part = (
-            sacc_io.save(s, out, custody=custody) if out else sacc_io.seal(s, custody)
-        )
+        part = sacc_io.save(s, out, blind=blind) if out else sacc_io.seal(s, blind)
         self.xi_parts[ver, grid] = part
         self.print_done("Done 2PCF")
         return part

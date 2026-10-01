@@ -43,7 +43,7 @@ compare_revision = _container.compare_revision
 image_revision = _container.image_revision
 resolve_image = _container.resolve_image
 
-# Catalogue custody, resolved as container jobs resolve it.
+# Each catalogue's declared blind and shear file, resolved as container jobs do.
 _custody = _load_checkout_module("custody")
 
 # Every job inherits this launch's environment (the slurm executor submits with
@@ -186,33 +186,28 @@ def configure(workflow_config):
     DEFAULT_MASK_SUFFIX = (
         "_masked" if workflow_config["covariance"].get("default_masked", False) else ""
     )
-    announce_custody(workflow_config)
+    announce_blinds(workflow_config)
     with open(COSMOLOGY_PARAMS) as f:
         PLANCK18 = json.load(f)
 
 
-def announce_custody(workflow_config):
-    """Print each run catalogue's custody, or stop the launch with why it cannot run.
-
-    Every version the config names must resolve (a blinded one, to its blind),
-    and the overlaid ``versions`` must pass the mixing rule.
-    """
+def announce_blinds(workflow_config):
+    """Print each run catalogue's blind, or stop the launch if one declares none."""
     from snakemake.exceptions import WorkflowError
 
     versions = workflow_config.get("versions", [])
     fiducial = [FIDUCIAL.get(k) for k in ("version", "mock_version")]
     try:
-        _custody.check_mix({v: _custody.declared(CATALOG_CONFIG, v) for v in versions})
         lines = _custody.summary(CATALOG_CONFIG, [*versions, *filter(None, fiducial)])
-    except _custody.CustodyError as err:
+    except ValueError as err:
         raise WorkflowError(str(err)) from None
     print("\n".join(lines), file=sys.stderr)
 
 
-def custody_token(version):
-    """``version``'s custody token: a producer's ``params.custody``, so a
-    custody change reruns it, and the custody its job seals under."""
-    return _custody.custody_of(CATALOG_CONFIG, version).token
+def blind_of(version):
+    """``version``'s declared blind: a producer's ``params.blind``, so flipping
+    it reruns exactly the jobs it touches."""
+    return _custody.declared(CATALOG_CONFIG, version)
 
 
 def fiducial_binning_suffix(fiducial=None):

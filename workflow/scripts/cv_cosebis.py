@@ -4,7 +4,7 @@ A consumer of the integration-grid ξ± part and the CosmoCov ξ± covariance on
 the same grid — nothing here touches a catalogue. The covariance goes through
 the same linear kernel as the modes to give the COSEBIs covariance; it is
 analytic, so no Hartlap debiasing applies. The COSEBIs part is a derivation of
-the ξ± part and carries its custody.
+the ξ± part and carries its blind stamp.
 """
 
 import numpy as np
