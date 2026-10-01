@@ -423,7 +423,7 @@ def compute_two_point_cl(cat, nside=1024, lmin=8, n_bins=32):
     cl_coupled = nmt.compute_coupled_cell(f_all, f_all)
     cl_all = wsp.decouple_cell(cl_coupled)
 
-    cl_coupled = np.concatenate([np.arange(1, lmax + 1)[np.newaxis, :], cl_coupled])
+    cl_coupled = np.concatenate([np.arange(lmax)[np.newaxis, :], cl_coupled])
     cl_all = np.concatenate([ell_eff[np.newaxis, ...], cl_all])
     return cl_coupled, cl_all
 
@@ -478,7 +478,7 @@ def compute_two_point_cl_map(cat, nside=1024, lmin=8, n_bins=32):
     cl_coupled = nmt.compute_coupled_cell(f_all, f_all)
     cl_all = wsp.decouple_cell(cl_coupled)
 
-    cl_coupled = np.concatenate([np.arange(1, lmax + 1)[np.newaxis, :], cl_coupled])
+    cl_coupled = np.concatenate([np.arange(lmax)[np.newaxis, :], cl_coupled])
     cl_all = np.concatenate([ell_eff[np.newaxis, ...], cl_all])
     return cl_coupled, cl_all
 

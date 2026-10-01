@@ -4,9 +4,9 @@ Stateless shared primitives for the pseudo-Cl (harmonic-space) estimator,
 mirroring ``b_modes.py`` and ``rho_tau.py``: the orchestrator mixin in
 ``sp_validation.cosmo_val.pseudo_cl`` (and analysis scripts directly) call these
 free functions. Everything here is pure computation -- NaMaster binning,
-weighted galaxy number-density maps, random-rotation noise debiasing, and the
-map-/catalog-based pseudo-Cl estimators. Depends on pymaster (NaMaster) and
-healpy.
+theory C_ℓ on NaMaster's multipole grid, weighted galaxy number-density maps,
+random-rotation noise debiasing, and the map-/catalog-based pseudo-Cl
+estimators. Depends on pymaster (NaMaster) and healpy.
 
 The harmonic geometry the estimators use is fixed by ``nside``: ``lmin = 8``,
 ``lmax = 2 * nside``, ``b_lmax = lmax - 1``. ``pseudo_cl_geometry`` returns that
@@ -29,6 +29,36 @@ def pseudo_cl_geometry(nside):
     """
     lmax = 2 * nside
     return LMIN, lmax, lmax - 1
+
+
+def pixelised_theory_cl(cl_of_ell, nside, b_lmax):
+    """Theory C_ℓ on NaMaster's multipole grid, times the pixel window pw²(ℓ).
+
+    Arrays NaMaster takes or returns for fields built with ``lmax=b_lmax``
+    (coupled spectra, ``couple_cell``, ``gaussian_covariance`` inputs, the
+    coupling matrix) run over ℓ = 0..b_lmax, with index equal to ℓ. This
+    returns a C_ℓ on that grid: ``cl_of_ell`` evaluated at ℓ ≥ 2 and multiplied
+    by the HEALPix pixel window squared at ``nside``; entries ℓ = 0, 1 are zero
+    (spin-2 fields carry no monopole or dipole).
+
+    Parameters
+    ----------
+    cl_of_ell : callable
+        Maps an integer multipole array to the C_ℓ at those multipoles.
+    nside : int
+        HEALPix resolution of the maps the spectrum is measured on.
+    b_lmax : int
+        Maximum multipole of the NaMaster fields.
+
+    Returns
+    -------
+    np.ndarray
+        Shape ``(b_lmax + 1,)``; element ℓ is pw²(ℓ) C_ℓ.
+    """
+    ell = np.arange(b_lmax + 1)
+    cl = np.zeros(ell.size)
+    cl[2:] = cl_of_ell(ell[2:])
+    return cl * hp.pixwin(nside, lmax=b_lmax) ** 2
 
 
 def make_namaster_bin(

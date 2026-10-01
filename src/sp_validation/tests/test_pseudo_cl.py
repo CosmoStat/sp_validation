@@ -612,3 +612,43 @@ def test_calculate_pseudo_cl_out_path_rejects_multiversion(cv):
     cv.versions = [cv._test_version, "SecondVersion"]
     with pytest.raises(ValueError, match="one part to one path"):
         cv.calculate_pseudo_cl(out_path=cv._output_path("pseudo_cl_x.sacc"))
+
+
+def test_pixelised_theory_cl_indexes_by_ell():
+    """Element ℓ of the theory vector is pw²(ℓ) C_ℓ on NaMaster's ℓ = 0..b_lmax grid.
+
+    The vector feeds ``couple_cell`` / ``gaussian_covariance`` directly, so it
+    must match NaMaster's own multipole axis: same length as a coupled spectrum,
+    and on the full sky (coupling = identity for ℓ ≥ 2) coupling returns it
+    unchanged at every ℓ.
+    """
+    from sp_validation.pseudo_cl import pixelised_theory_cl, pseudo_cl_geometry
+
+    nside = 16
+    _lmin, _lmax, b_lmax = pseudo_cl_geometry(nside)
+    cl = pixelised_theory_cl(lambda ell: 1.0 / ell**2, nside, b_lmax)
+
+    ell = np.arange(b_lmax + 1)
+    pw2 = healpy.pixwin(nside, lmax=b_lmax) ** 2
+    npt.assert_array_equal(cl[:2], 0.0)
+    npt.assert_allclose(cl[2:], pw2[2:] / ell[2:] ** 2, rtol=1e-14)
+
+    mask = np.ones(healpy.nside2npix(nside))
+    f = pymaster.NmtField(mask=mask, maps=[np.zeros_like(mask)] * 2, lmax=b_lmax)
+    b = pymaster.NmtBin.from_lmax_linear(b_lmax, 4)
+    wsp = pymaster.NmtWorkspace.from_fields(f, f, b)
+    assert pymaster.compute_coupled_cell(f, f).shape == (4, cl.size)
+
+    zero = np.zeros_like(cl)
+    coupled = wsp.couple_cell(np.array([cl, zero, zero, zero]))
+    npt.assert_allclose(coupled[0, 2:], cl[2:], rtol=1e-3)
+
+
+def test_calculate_pseudo_cl_eb_cov_runs(cv):
+    """The iNKA covariance runs end to end and returns a symmetric, positive EE block."""
+    cv.calculate_pseudo_cl_eb_cov()
+    cov = cv._pseudo_cls[cv._test_version]["cov"]
+    ee = cov["COVAR_EE_EE"].data
+    assert ee.shape == (N_ELL_BINS, N_ELL_BINS)
+    npt.assert_allclose(ee, ee.T, rtol=1e-6)
+    assert np.all(np.diag(ee) > 0)

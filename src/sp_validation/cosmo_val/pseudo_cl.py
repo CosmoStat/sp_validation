@@ -24,6 +24,8 @@ from ..pseudo_cl import (
     get_pseudo_cls_catalog,
     get_pseudo_cls_map,
     make_namaster_bin,
+    pixelised_theory_cl,
+    pseudo_cl_geometry,
 )
 from ..rho_tau import get_params_rho_tau
 from ..statistics import chi2_and_pte, cov_from_one_covariance
@@ -157,35 +159,24 @@ class PseudoClMixin:
 
                 self.print_cyan(f"Extracting the fiducial power spectrum for {ver}")
 
-                lmax = 2 * self.nside
-                ell = np.arange(1, lmax + 1)
-                pw = hp.pixwin(nside, lmax=lmax)
-                if pw.shape[0] != len(ell) + 1:
-                    raise ValueError(
-                        "Unexpected pixwin length for lmax="
-                        f"{lmax}: got {pw.shape[0]}, expected {len(ell) + 1}"
-                    )
-                pw = pw[1 : len(ell) + 1]
+                lmin, lmax, b_lmax = pseudo_cl_geometry(nside)
 
                 # Load redshift distribution and calculate theory C_ell
                 path_redshift_distr = self.cc[ver]["shear"]["redshift_path"]
                 z, dndz = np.loadtxt(path_redshift_distr, unpack=True)
-                fiducial_cl = (
-                    get_theo_c_ell(
+                fiducial_cl = pixelised_theory_cl(
+                    lambda ell: get_theo_c_ell(
                         ell=ell,
                         z=z,
                         nz=dndz,
                         backend="ccl",
                         cosmo=self.cosmo,
-                    )
-                    * pw**2
+                    )["W1xW1"],
+                    nside,
+                    b_lmax,
                 )
 
                 self.print_cyan("Getting a binning, n_gal_map, field and workspace.")
-
-                lmin = 8
-                lmax = 2 * self.nside
-                b_lmax = lmax - 1
 
                 b = self.get_namaster_bin(lmin, lmax, b_lmax)
 
