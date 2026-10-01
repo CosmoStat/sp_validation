@@ -630,7 +630,7 @@ class TestCosmologyValidation:
                 "theta_int",
                 "xip_int",
                 "xim_int",
-                "npairs_int",
+                "weight_int",
                 "left_edges",
                 "right_edges",
             )
@@ -642,7 +642,7 @@ class TestCosmologyValidation:
             )
 
         operator, _ = b_modes.pure_eb_operator(
-            *(measured[k] for k in ("theta_int", "npairs_int")),
+            *(measured[k] for k in ("theta_int", "weight_int")),
             measured["left_edges"],
             measured["right_edges"],
         )

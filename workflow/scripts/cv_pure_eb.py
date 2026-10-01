@@ -3,7 +3,7 @@
 A consumer of the integration-grid ξ± part plus a ξ± covariance on that grid —
 nothing here touches a catalogue. The estimator is one fixed linear operator
 on the fine ξ± (b_modes.pure_eb_operator), averaged into the reporting bins with
-the part's pair counts, so its covariance is the supplied ξ± covariance pushed
+the part's TreeCorr pair weights, so its covariance is the supplied ξ± covariance pushed
 exactly through that operator.
 """
 
@@ -31,14 +31,14 @@ fiducial_scale_cut = tuple(p["fiducial_scale_cut"])
 
 part = sacc_io.load(snakemake.input["xi_integration"])
 theta_int, xip_int, xim_int = sacc_io.get_xi(part, (0, 0), grid="integration")
-npairs_int = sacc_io.get_xi_npairs(part, (0, 0), grid="integration")
+weight_int = sacc_io.get_xi_weight(part, (0, 0), grid="integration")
 left_edges, right_edges = log_bin_edges(p["min_sep"], p["max_sep"], p["nbins"])
 
 results = calculate_pure_eb_correlation(
     theta_int,
     xip_int,
     xim_int,
-    npairs_int,
+    weight_int,
     np.loadtxt(snakemake.input["cov_integration"]),
     left_edges,
     right_edges,

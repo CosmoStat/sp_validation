@@ -12,7 +12,7 @@ PURE_EB_XI = Path(__file__).parent / "data" / "pure_eb_xi_fixture.npz"
 def pure_eb_xi():
     """Committed fine-grid ξ± of the synthetic coherent-shear catalogue.
 
-    Exact-binning integration grid [1, 300]′ in 600 bins with its pair counts,
+    Exact-binning integration grid [1, 300]′ in 600 bins with its pair weights,
     and the edges of a [15, 70]′ reporting grid in 6 bins, keyed by
     ``b_modes.calculate_pure_eb_correlation``'s parameters.
     """

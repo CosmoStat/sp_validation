@@ -129,23 +129,25 @@ def hartlap_factor(npatch, dof):
     return 1.0 if npatch is None else (npatch - dof - 2) / (npatch - 1)
 
 
-def _npairs_binning_matrix(theta_int, npairs_int, left_edges, right_edges):
-    """Pair-count weighted average from the fine grid into the reporting bins.
+def _weight_binning_matrix(theta_int, weight_int, left_edges, right_edges):
+    """Pair-weighted average from the fine grid into the reporting bins.
 
     Row ``i`` of the ``(n_report, n_fine)`` result weights the fine nodes whose
-    ``theta_int`` falls in reporting bin ``i`` by their pair counts (Asgari et
-    al. 2019, Appendix A) and sums to one. Nodes outside the reporting range
-    or with no pairs get zero weight.
+    ``theta_int`` falls in reporting bin ``i`` by their TreeCorr pair weight
+    ``Σ w_i w_j`` and sums to one. TreeCorr's ξ± and ``meanr`` are averages
+    over pairs under that same weight, so when the fine bin edges nest the
+    reporting edges a row reproduces the reporting-bin measurement. Nodes
+    outside the reporting range or with zero weight get none.
     """
     theta_int = np.asarray(theta_int, dtype=float)
-    npairs_int = np.asarray(npairs_int, dtype=float)
-    if npairs_int.shape != theta_int.shape:
-        raise ValueError("npairs_int must have one entry per integration bin")
+    weight_int = np.asarray(weight_int, dtype=float)
+    if weight_int.shape != theta_int.shape:
+        raise ValueError("weight_int must have one entry per integration bin")
     n_report = len(left_edges)
     rows = np.digitize(theta_int, np.append(left_edges, right_edges[-1])) - 1
-    inside = (rows >= 0) & (rows < n_report) & (npairs_int > 0)
+    inside = (rows >= 0) & (rows < n_report) & (weight_int > 0)
     binning = np.zeros((n_report, theta_int.size))
-    binning[rows[inside], np.flatnonzero(inside)] = npairs_int[inside]
+    binning[rows[inside], np.flatnonzero(inside)] = weight_int[inside]
     weight = binning.sum(axis=1)
     if np.any(weight == 0):
         empty = np.flatnonzero(weight == 0).tolist()
@@ -184,14 +186,14 @@ def _fixed_quadrature_operator(theta_eval, theta_int):
     return np.vstack([operator["matrices"][key] for key in _EB_KEYS])
 
 
-def pure_eb_operator(theta_int, npairs_int, left_edges, right_edges):
+def pure_eb_operator(theta_int, weight_int, left_edges, right_edges):
     """The pure-E/B estimator as one matrix on the fine ξ± grid.
 
     The Schneider et al. (2022) transform is evaluated with fixed-quadrature
     weights at the fine-grid nodes inside the reporting range, integrating over
     the whole fine grid, and the six pure modes are then averaged into the
-    reporting bins with pair-count weights. Both steps are linear and
-    data-independent, so the estimator is ``K = (I_6 ⊗ P) · M`` and
+    reporting bins with TreeCorr pair weights. Both steps are linear and
+    independent of the ξ± values, so the estimator is ``K = (I_6 ⊗ P) · M`` and
 
         [xip_E; xim_E; xip_B; xim_B; xip_amb; xim_amb] = K @ [xip_int; xim_int]
 
@@ -203,8 +205,9 @@ def pure_eb_operator(theta_int, npairs_int, left_edges, right_edges):
         Fine (integration) grid, ascending and log-spaced — TreeCorr ``meanr``.
         The transform's ``[tmin, tmax]`` is its extent, so it must reach
         beyond the reporting range on both sides.
-    npairs_int : array_like
-        Pair counts on the fine grid, the averaging weights.
+    weight_int : array_like
+        TreeCorr pair weight ``Σ w_i w_j`` per fine bin (``gg.weight``), the
+        averaging weights.
     left_edges, right_edges : array_like
         Reporting-bin edges.
 
@@ -213,10 +216,10 @@ def pure_eb_operator(theta_int, npairs_int, left_edges, right_edges):
     operator : numpy.ndarray
         ``K``, shape ``(6 * n_report, 2 * n_fine)``.
     binning : numpy.ndarray
-        ``P``, the ``(n_report, n_fine)`` pair-count average.
+        ``P``, the ``(n_report, n_fine)`` pair-weighted average.
     """
     theta_int = np.asarray(theta_int, dtype=float)
-    binning = _npairs_binning_matrix(theta_int, npairs_int, left_edges, right_edges)
+    binning = _weight_binning_matrix(theta_int, weight_int, left_edges, right_edges)
     nodes = np.flatnonzero(binning.any(axis=0))
     transform = _fixed_quadrature_operator(theta_int[nodes], theta_int)
     n_nodes = nodes.size
@@ -233,7 +236,7 @@ def calculate_pure_eb_correlation(
     theta_int,
     xip_int,
     xim_int,
-    npairs_int,
+    weight_int,
     cov_xi,
     left_edges,
     right_edges,
@@ -250,13 +253,13 @@ def calculate_pure_eb_correlation(
     them (:func:`hartlap_factor`).
 
     The reporting-bin ``theta``, ``xip``/``xim`` and their variances are the
-    same pair-count average of the fine grid, so ``xi_± = E ± B + amb`` holds
+    same pair-weighted average of the fine grid, so ``xi_± = E ± B + amb`` holds
     bin by bin.
 
     Parameters
     ----------
-    theta_int, xip_int, xim_int, npairs_int : array_like
-        Fine-grid ``meanr``, ξ±, and pair counts.
+    theta_int, xip_int, xim_int, weight_int : array_like
+        Fine-grid ``meanr``, ξ±, and TreeCorr pair weight ``Σ w_i w_j``.
     cov_xi : array_like
         ``(2 n_fine, 2 n_fine)`` covariance of ``[xip_int; xim_int]``.
     left_edges, right_edges : array_like
@@ -271,7 +274,7 @@ def calculate_pure_eb_correlation(
         order), ``npatch``, the reporting grid (``theta``, ``left_edges``,
         ``right_edges``, ``xip``, ``xim``, ``var_xip``, ``var_xim``) and the
         fine-grid inputs (``theta_int``, ``xip_int``, ``xim_int``,
-        ``npairs_int``).
+        ``weight_int``).
     """
     if npatch is not None and npatch < 2:
         raise ValueError(f"a jackknife covariance needs npatch > 1, not {npatch}")
@@ -279,7 +282,7 @@ def calculate_pure_eb_correlation(
         np.asarray(a, dtype=float) for a in (theta_int, xip_int, xim_int)
     )
     cov_xi = np.asarray(cov_xi, dtype=float)
-    operator, binning = pure_eb_operator(theta_int, npairs_int, left_edges, right_edges)
+    operator, binning = pure_eb_operator(theta_int, weight_int, left_edges, right_edges)
     if cov_xi.shape != (operator.shape[1],) * 2:
         raise ValueError(
             f"cov_xi has shape {cov_xi.shape}; the fine grid needs "
@@ -304,7 +307,7 @@ def calculate_pure_eb_correlation(
         "theta_int": theta_int,
         "xip_int": xip_int,
         "xim_int": xim_int,
-        "npairs_int": np.asarray(npairs_int, dtype=float),
+        "weight_int": np.asarray(weight_int, dtype=float),
         "cov": operator @ cov_xi @ operator.T,
         "npatch": npatch,
     }
@@ -554,7 +557,7 @@ def plot_integration_vs_reporting(results, output_path, version):
     ----------
     results : dict
         Pure E/B results carrying the fine grid (``theta_int``/``xip_int``/
-        ``xim_int``) and its pair-count average into the reporting bins
+        ``xim_int``) and its pair-weighted average into the reporting bins
         (``theta``/``xip``/``xim``, with the ``var_xip``/``var_xim`` the error
         bars use)
     output_path : str

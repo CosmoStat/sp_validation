@@ -1,6 +1,6 @@
 """Pure E/B modes and their exact covariance for one version.
 
-Reads the fine-grid ξ± (TreeCorr text dump, with its pair counts) and the
+Reads the fine-grid ξ± (TreeCorr text dump, with its pair weights) and the
 Gaussian ξ± covariance on the same grid, and applies
 ``sp_validation.b_modes.calculate_pure_eb_correlation``: the fixed-operator
 pure-E/B estimator averaged into the reporting bins, with covariance
@@ -24,13 +24,13 @@ from sp_validation.sacc_io import PURE_KEYS
 
 
 def _load_xi(path, nbins):
-    """``(meanr, xip, xim, npairs)`` from a TreeCorr text dump.
+    """``(meanr, xip, xim, weight)`` from a TreeCorr text dump.
 
     TreeCorr's ASCII header is
     r_nom meanr meanlogr xip xim xip_im xim_im sigma_xip sigma_xim weight npairs.
     """
     data = np.loadtxt(path, comments="#", max_rows=nbins)
-    return data[:, 1], data[:, 3], data[:, 4], data[:, 10]
+    return data[:, 1], data[:, 3], data[:, 4], data[:, 9]
 
 
 def pure_eb_modes(

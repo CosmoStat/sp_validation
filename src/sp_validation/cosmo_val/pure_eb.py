@@ -86,7 +86,7 @@ class PureEBMixin:
             gg_int.meanr,
             gg_int.xip,
             gg_int.xim,
-            gg_int.npairs,
+            gg_int.weight,
             cov_xi,
             left_edges,
             right_edges,

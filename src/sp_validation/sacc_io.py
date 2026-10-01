@@ -580,9 +580,9 @@ def get_xi(s, bins, *, grid):
     return _get_pm(s, XI_PLUS, XI_MINUS, _pair(bins), grid=grid)
 
 
-def get_xi_npairs(s, bins, *, grid):
-    """Return the TreeCorr pair counts stored with :func:`add_xi`'s ξ+ points."""
-    return _tag(s, XI_PLUS, _pair(bins), "npairs", grid=grid)
+def get_xi_weight(s, bins, *, grid):
+    """Return the TreeCorr pair weights stored with :func:`add_xi`'s ξ+ points."""
+    return _tag(s, XI_PLUS, _pair(bins), "weight", grid=grid)
 
 
 def get_pseudo_cl(s, bins):
