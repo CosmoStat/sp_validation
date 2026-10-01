@@ -1,281 +1,135 @@
-"""The blind: a secret seed, drawn once, and the shift it conceals signal by.
+"""Blinds, and the one call that conceals a data vector under one.
 
-@sc standard-estimators
-:data:`STANDARD` names each estimator cosmo_val computes and its blinding
-rule, once. Any other data type is shifted when its birth passes a theory
-function, ``sacc_io.save(s, path, custody=c, theory={data_type: f})``, with
-``f(params, s, rows) -> values`` as in :mod:`sp_validation.theory`; without
-one it is refused under a blind.
+A blind is a named secret, ``<paths.blinds>/<name>.blind.json`` holding a
+seed, the envelope the hidden point is drawn in and the fiducial point. It is
+drawn once, ``python -m sp_validation.blinding init <name>``, and never
+committed (``*.blind.json`` is gitignored).
 
-@sc blind-record
-A blind is one read-only file, ``<paths.blinds>/<name>.blind.json``, outside
-any git worktree: its seed (unencrypted: registry access is blind access), the
-envelope the hidden point is drawn in, the fiducial and the fork's draw scheme.
-:class:`Blind` holds a name and a path, never a hidden value; :func:`_hidden`
-returns a mapping whose repr is ``<hidden cosmology>``, and a theory failure at
-the hidden point is reported by exception type alone.
-
-@sc hidden-draw-uniform-s8-om
-The hidden point is the fiducial (:func:`sp_validation.theory.fiducial`) moved
-by the fork's per-key draw from the seed, uniform within the envelope in S8 and
-Ωm.
-
-``python -m sp_validation.blinding init <name>`` draws a blind; ``show <name>``
-prints its public record (everything but the seed).
+:func:`conceal` adds the blind's shift, t(hidden) − t(fiducial), to every row
+of a SACC; Smokescreen draws the hidden point from the seed and evaluates the
+theory t at both points (:mod:`sp_validation.theory`).
 """
 
 import argparse
 import dataclasses
-import io
 import json
 import os
+import re
 import secrets
-import warnings
-from collections.abc import Mapping
-from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
-from types import MappingProxyType
 
 import numpy as np
 
-from . import custody as _custody
-from . import sacc_io as sio
 from . import theory as _theory
 
 ENVELOPE = {"S8": 0.075, "Omega_m": 0.1}
-SECRET = "secret: never print, paste or commit"
-
-# --------------------------------------------------------------------------- #
-# The standard estimators cosmo_val computes, and how a blind treats each
-# --------------------------------------------------------------------------- #
-UNSHIFTED = "unshifted"  # signal a pure E-mode shift leaves unchanged
-DERIVED = "derived"  # computed from ξ±, so shifted through the rows it reads
-SIGNAL_FREE = "signal-free"  # PSF diagnostics, no cosmological signal
-
-STANDARD = MappingProxyType(
-    {
-        # Shifted by t(hidden) − t(fiducial), t the default PyCCL theory.
-        sio.XI_PLUS: _theory.shear_xi,
-        sio.XI_MINUS: _theory.shear_xi,
-        sio.CL_EE: _theory.shear_cl,
-        sio.CL_BB: UNSHIFTED,
-        sio.CL_EB: UNSHIFTED,
-        sio.COSEBI_EE: DERIVED,
-        sio.COSEBI_BB: DERIVED,
-        **dict.fromkeys(sio.PURE_TYPES.values(), DERIVED),
-        **{
-            t.format(k=k): SIGNAL_FREE
-            for ts, ks in (
-                ((sio.RHO_PLUS, sio.RHO_MINUS), range(6)),
-                ((sio.TAU_PLUS, sio.TAU_MINUS), (0, 2, 5)),
-            )
-            for t in ts
-            for k in ks
-        },
-    }
-)
-
-
-def rule(data_type, theory=None):
-    """``data_type``'s rule: its theory function if a blind shifts it, else
-    :data:`UNSHIFTED`, :data:`DERIVED`, :data:`SIGNAL_FREE`, or None (refused
-    under a blind). ``theory`` gives functions for custom types and may
-    replace a standard one's."""
-    standard = STANDARD.get(data_type)
-    if theory and data_type in theory:
-        if standard is not None and not callable(standard):
-            raise ValueError(f"{data_type} is {standard} under a blind; no theory")
-        return theory[data_type]
-    return standard
-
-
-def shiftable(s, theory=None):
-    """Indices of the rows of ``s`` a blind shifts."""
-    rules = [rule(dp.data_type, theory) for dp in s.data]
-    return np.array([i for i, r in enumerate(rules) if callable(r)], dtype=int)
-
-
-def refuse_unruled(s, theory=None):
-    """Refuse rows of a data type with no blinding rule."""
-    unruled = sorted(
-        {dp.data_type for dp in s.data if rule(dp.data_type, theory) is None}
-    )
-    if unruled:
-        raise ValueError(
-            f"{unruled}: no blinding rule for these data types, so a blinded "
-            "catalogue's SACC cannot hold them; pass each a theory function, "
-            "save(..., theory={data_type: f})"
-        )
+REPO_CAT_CONFIG = Path(__file__).parents[2] / "cosmo_val" / "cat_config.yaml"
+_NAME = re.compile(r"[a-z0-9][a-z0-9_.-]*")
 
 
 class BlindingError(RuntimeError):
-    """Concealment failed; the message carries no hidden value."""
+    """A blind cannot be opened or applied; the message carries no hidden value."""
 
 
 @dataclasses.dataclass(frozen=True)
 class Blind:
-    """An opened blind: its name and the path of its record."""
+    """A blind's name and the path of its record; ``none`` has no record."""
 
     name: str
-    path: Path
+    path: Path | None = None
+
+    def record(self):
+        """The blind's ``{seed, envelope, fiducial}``."""
+        return json.loads(self.path.read_text())
 
 
-def draw_scheme():
-    """The installed fork's shift-draw semantics (``smokescreen.DRAW_SCHEME``)."""
-    from smokescreen import DRAW_SCHEME
-
-    return int(DRAW_SCHEME)
+NONE = Blind("none")
 
 
-def open_blind(custody):
-    """The blind a blinded custody names, its record matching the commitment."""
-    path = Path(custody.registry or "") / f"{custody.blind}.blind.json"
-    try:
-        record = json.loads(path.read_text())
-    except (OSError, ValueError):
-        raise _custody.CustodyError(
-            f"cannot read blind {custody.blind} at {path}"
-        ) from None
-    if _custody.commitment(record) != custody.commitment:
-        raise _custody.CustodyError(
-            f"blind {custody.blind}'s record no longer matches the commitment this "
-            "run was launched under; launch again"
+def registry(catalogues):
+    """The directory a catalogue config keeps its blinds in (``paths.blinds``)."""
+    return Path(os.path.expanduser(catalogues["paths"]["blinds"]))
+
+
+def open_blind(name, catalogues):
+    """Blind ``name`` of the catalogue config ``catalogues``; its record must exist."""
+    if name == NONE.name:
+        return NONE
+    path = registry(catalogues) / f"{name}.blind.json"
+    if not os.access(path, os.R_OK):
+        raise BlindingError(
+            f"cannot read blind {name} at {path}; `python -m sp_validation.blinding "
+            f"init {name}` draws it, if it is meant to be new"
         )
-    if record["draw_scheme"] != draw_scheme():
-        raise _custody.CustodyError(
-            f"blind {custody.blind} was drawn under draw scheme "
-            f"{record['draw_scheme']}; this smokescreen draws under {draw_scheme()}"
-        )
-    return Blind(custody.blind, path)
-
-
-class _Hidden(Mapping):
-    def __init__(self, values):
-        self._values = values
-
-    def __getitem__(self, key):
-        return self._values[key]
-
-    def __iter__(self):
-        return iter(self._values)
-
-    def __len__(self):
-        return len(self._values)
-
-    def __repr__(self):
-        return "<hidden cosmology>"
-
-    __str__ = __repr__
-
-
-def _hidden(blind):
-    """The blind's hidden point: its fiducial moved by the seed's draw."""
-    from smokescreen.param_shifts import draw_param_shifts
-
-    record = json.loads(blind.path.read_text())
-    shift = draw_param_shifts(dict(record["envelope"]), record["seed"])
-    fiducial = record["fiducial"]
-    return _Hidden({k: v + shift[k] if k in shift else v for k, v in fiducial.items()})
-
-
-def _at_hidden(s, rows, theory, blind):
-    """The theory of ``rows`` at the hidden point; a failure names only its type.
-
-    Warnings and the theory's own prints are silenced, and the error is raised
-    outside the ``except``, so no context or frame carries the hidden point.
-    """
-
-    def evaluate():
-        quiet = io.StringIO()
-        with warnings.catch_warnings(), redirect_stdout(quiet), redirect_stderr(quiet):
-            warnings.simplefilter("ignore")
-            return _theory.predict(s, _hidden(blind), theory, rows)
-
-    try:
-        return evaluate()
-    except Exception as err:  # the message must carry no value
-        failure = type(err).__name__
-    raise BlindingError(
-        f"the theory failed at blind {blind.name}'s hidden point ({failure})"
-    )
+    return Blind(name, path)
 
 
 def conceal(s, blind, theory=None):
-    """A copy of ``s`` with its :func:`shiftable` rows moved by the blind's shift.
+    """A copy of SACC ``s`` with ``blind``'s shift added to every row.
 
-    The shift is t(hidden) − t(fiducial), t each row's theory (:data:`STANDARD`,
-    or ``theory`` for a custom type), evaluated at the fiducial first. A data
-    type and tracer pair the blind leaves unmoved or moves to a non-finite
-    value is refused.
+    The shift is t(hidden) − t(fiducial), t being ``theory`` (default
+    :func:`sp_validation.theory.shear`) evaluated on ``s``. A failure raises
+    :class:`BlindingError` naming only the exception type, so no message or
+    traceback shows the hidden point.
     """
-    rows = shiftable(s, theory)
-    functions = {s.data[i].data_type: rule(s.data[i].data_type, theory) for i in rows}
-    fiducial = json.loads(blind.path.read_text())["fiducial"]
-    at_fiducial = _theory.predict(s, fiducial, functions, rows)
-    delta = _at_hidden(s, rows, functions, blind) - at_fiducial
-    groups = {}
-    for n, i in enumerate(rows):
-        groups.setdefault((s.data[i].data_type, s.data[i].tracers), []).append(n)
-    for (data_type, pair), at in groups.items():
-        if not np.all(np.isfinite(delta[at])) or not delta[at].any():
-            raise BlindingError(
-                f"blind {blind.name} leaves {data_type} of {pair} unmoved or "
-                "non-finite; its theory must depend on the cosmology"
-            )
+    from smokescreen.datavector import concealing_factor
+
+    theory = theory or _theory.shear
+    record, failure = blind.record(), None
+    try:
+        shift = concealing_factor(
+            record["fiducial"],
+            record["envelope"],
+            seed=record["seed"],
+            theory_fn=lambda params: theory(params, s),
+        )
+    except Exception as err:
+        failure = type(err).__name__
+    if failure:  # raised outside the except, so nothing is chained
+        raise BlindingError(f"the theory failed under blind {blind.name} ({failure})")
+    shift = np.asarray(shift, float)
+    if shift.shape != (len(s.mean),):
+        raise BlindingError(
+            f"the theory returned {shift.shape[0] if shift.ndim else 0} values for "
+            f"{len(s.mean)} rows"
+        )
     out = s.copy()
-    for row, d in zip(rows, delta):
-        out.data[int(row)].value += float(d)
+    for dp, d in zip(out.data, shift):
+        dp.value += float(d)
     return out
 
 
 def init(name, catalogues):
     """Draw blind ``name`` into the catalogue config's registry, once."""
-    if not _custody.BLIND_NAME.fullmatch(name) or name in (
-        _custody.NONE,
-        _custody.MOCK,
-    ):
-        raise _custody.CustodyError(f"blind name {name!r}: use a-z, 0-9, - _ .")
-    where = _custody.registry(catalogues)
+    if not _NAME.fullmatch(name) or name == NONE.name:
+        raise BlindingError(f"blind name {name!r}: use a-z, 0-9, - _ .")
+    where = registry(catalogues)
     where.mkdir(mode=0o700, parents=True, exist_ok=True)
     record = {
-        "_": SECRET,
         "seed": secrets.token_hex(32),
         "envelope": ENVELOPE,
         "fiducial": _theory.fiducial(),
-        "draw_scheme": draw_scheme(),
     }
     path = where / f"{name}.blind.json"
     try:
         fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o440)
     except FileExistsError:
-        raise _custody.CustodyError(
-            f"blind {name} exists at {path}; a blind is drawn once"
-        ) from None
+        raise BlindingError(f"blind {name} exists at {path}") from None
     with os.fdopen(fd, "w") as f:
         json.dump(record, f, indent=1)
-    print(f"[blinding] drew blind {name}, commitment {_custody.commitment(record)}")
+    print(f"[blinding] drew blind {name} at {path}")
     return Blind(name, path)
-
-
-def show(name, catalogues):
-    """Print blind ``name``'s public record: everything but the seed."""
-    path = _custody.registry(catalogues) / f"{name}.blind.json"
-    record = json.loads(path.read_text())
-    print(f"blind {name}, commitment {_custody.commitment(record)}")
-    for key in ("envelope", "fiducial", "draw_scheme"):
-        print(f"  {key}: {json.dumps(record[key])}")
 
 
 def main(argv=None):
     import yaml
 
     parser = argparse.ArgumentParser(prog="python -m sp_validation.blinding")
-    parser.add_argument("command", choices=("init", "show"))
+    parser.add_argument("command", choices=("init",))
     parser.add_argument("blind")
-    parser.add_argument("--cat-config", default=str(_custody.REPO_CAT_CONFIG))
+    parser.add_argument("--cat-config", default=str(REPO_CAT_CONFIG))
     a = parser.parse_args(argv)
-    catalogues = yaml.safe_load(Path(a.cat_config).read_text())
-    (init if a.command == "init" else show)(a.blind, catalogues)
+    init(a.blind, yaml.safe_load(Path(a.cat_config).read_text()))
     return 0
 
 

@@ -93,7 +93,6 @@ import numpy as np
 import sacc
 from astropy.io import fits
 
-from . import custody as _custody
 from .statistics import cov_from_one_covariance
 
 PSF_TRACER = "psf_stars"
@@ -973,157 +972,77 @@ def _check_grid_consistency(s, angle):
 
 
 # --------------------------------------------------------------------------- #
-# The file door: every SACC is born sealed, derived with one stamp, or refused
+# Saving: a birth is concealed under its catalogue's blind, a derivation
+# inherits its inputs' stamp
 # --------------------------------------------------------------------------- #
-# Which rows a blind shifts, leaves or refuses is sp_validation.blinding's
-# table of standard estimators, imported only when a file is sealed or derived.
-def _stamped(s):
-    return _custody.STAMP_KEY in s.metadata
+STAMP_KEY = "blind"
 
 
-def _mint(s, custody):
-    s.metadata[_custody.STAMP_KEY] = custody.token
+def stamp(s):
+    """The blind ``s`` was saved under: its ``blind`` metadata, ``none`` if absent."""
+    return s.metadata.get(STAMP_KEY, "none")
 
 
-def seal(s, custody, theory=None):
-    """A stamped copy of ``s``, concealed first when the catalogue is blinded.
-
-    @sc born-sealed
-    A catalogue-born SACC leaves memory only through here. Under a blinded
-    custody every shiftable row (:func:`sp_validation.blinding.shiftable`:
-    ξ±, Cℓ_EE, and each type ``theory`` gives a function) is shifted on a copy
-    before the stamp is minted; a SACC with none is stamped without opening
-    the blind; a derived statistic (COSEBIs, pure-E/B) is refused here and
-    saved with ``derived_from``; any other type is refused. An already-stamped
-    SACC is re-written only as a derivation.
-    """
-    if _stamped(s):
-        raise ValueError(
-            "this SACC is already stamped; a loaded or sealed SACC is re-written "
-            "only as a derivation (save(..., derived_from=[...]))"
-        )
-    if not custody.blinded:
+def seal(s, blind, theory=None):
+    """What :func:`save` writes for a birth, kept in memory: a copy of ``s``
+    concealed under ``blind`` with ``theory`` and stamped with its name."""
+    if blind.name == "none":
         out = s.copy()
     else:
-        from . import blinding
+        from .blinding import conceal
 
-        blinding.refuse_unruled(s, theory)
-        derived = {
-            dp.data_type
-            for dp in s.data
-            if blinding.rule(dp.data_type) == blinding.DERIVED
-        }
-        if derived:
-            raise ValueError(
-                f"a blinded catalogue's {sorted(derived)} rows are derived "
-                "statistics: save them with derived_from=[their input parts]"
-            )
-        if len(blinding.shiftable(s, theory)):
-            out = blinding.conceal(s, blinding.open_blind(custody), theory)
-        else:
-            out = s.copy()
-    _mint(out, custody)
+        out = conceal(s, blind, theory)
+    out.metadata[STAMP_KEY] = blind.name
     return out
 
 
-def _row_key(dp):
-    tags = tuple(sorted((k, v) for k, v in dp.tags.items() if k != "window"))
-    return (dp.data_type, tuple(dp.tracers), float(dp.value), tags)
+def save(s, path, *, blind=None, theory=None, derived_from=None):
+    """Write ``s`` to ``path`` (FITS) and return what was written.
 
+    - ``save(s, path, blind=b)``: a birth. ``b`` is a
+      :class:`sp_validation.blinding.Blind`; unless it is ``none``, every row
+      of ``s`` is shifted by t(hidden) − t(fiducial), t being ``theory``. The
+      output is stamped with ``b``'s name.
+    - ``save(s, path, derived_from=parts)``: a derivation (COSEBIs, pure-E/B,
+      an assembly); the parts must share one :func:`stamp`, which ``s`` takes,
+      unshifted. With ``blind=b`` too, that stamp must be ``b``'s name.
 
-def _derive(s, parts, custody):
-    """A copy of ``s`` under its inputs' one stamp (and ``custody``'s, if given)."""
-    from . import blinding
-
-    if not parts:
-        raise ValueError("a derivation needs its input parts")
-    stamps = [_custody.read_stamp(p.metadata) for p in parts]
-    stamp = stamps[0]
-    if any(st != stamp for st in stamps):
-        raise ValueError(
-            "input parts carry different custody stamps: "
-            + "; ".join(f"part {i}: {st.token}" for i, st in enumerate(stamps))
-        )
-    if custody is not None and custody != stamp:
-        raise ValueError(
-            f"parts are stamped {stamp.token}, but the catalogue is declared "
-            f"{custody.token}"
-        )
-
-    def born(x):
-        """Rows only a birth makes: shiftable ones, and under a blind custom types."""
-        rules = [blinding.rule(dp.data_type) for dp in x.data]
-        return [
-            i
-            for i, r in enumerate(rules)
-            if callable(r) or (stamp.blinded and r is None)
-        ]
-
-    inputs = {_row_key(p.data[i]) for p in parts for i in born(p)}
-    stray = [i for i in born(s) if _row_key(s.data[i]) not in inputs]
-    if stray:
-        raise ValueError(
-            f"{len(stray)} rows of a derivation are not copies of its inputs' "
-            "rows, but only a birth makes them (shiftable signal, and under a "
-            "blind any custom type): save them with custody="
-        )
-    out = s.copy()
-    _mint(out, stamp)
-    return out
-
-
-def save(s, path, *, custody=None, derived_from=None, theory=None):
-    """Write ``s`` to ``path`` (FITS) through the one door; return what was written.
-
-    @sc one-door
-    The only writer of a SACC file, and with :func:`seal` the only place a
-    custody stamp is minted:
-
-    - ``save(s, path, custody=c)``: a birth, sealed by :func:`seal`;
-      ``theory={data_type: f}`` shifts a type outside the standard estimators
-      under a blind (:mod:`sp_validation.blinding`);
-    - ``save(s, path, derived_from=parts)``: a derivation, stamped with its
-      inputs' one stamp;
-    - ``save(s, path, derived_from=parts, custody=c)``: an assembly, a
-      derivation whose stamp must also be ``c``'s.
+    ``theory(params, s)`` returns the prediction for every row of ``s``: an
+    array the length of ``s.mean``, in its order, zero where the cosmology has
+    no effect. ``params`` is a plain dict with the keys of
+    :func:`sp_validation.theory.fiducial`; the theory is called at the blind's
+    fiducial and hidden points, which differ only in ``S8`` and ``Omega_m``.
+    The default, :func:`sp_validation.theory.shear`, predicts ξ± and Cℓ_EE and
+    gives zeros for Cℓ_BB and Cℓ_EB; :func:`sp_validation.theory.none` gives
+    zeros throughout.
 
     A measurement computes its signal and saves (or seals) it in the same
-    function, returning the sealed part, so its raw signal never leaves it.
-
-    @sc derived-inherit
-    A derivation's inputs must share one stamp, and each of its shiftable rows
-    (under a blind, each row of a custom type too) must be a copy of an input
-    row (type, tracers, value, tags; windows by index), so plaintext cannot be
-    saved under a concealed stamp.
+    function, returning the sealed part, so on a blinded catalogue its raw
+    signal never leaves that function.
     """
     if derived_from is not None:
-        if theory is not None:
-            raise ValueError("theory= shifts a birth; a derivation inherits")
-        out = _derive(s, list(derived_from), custody)
-    elif custody is not None:
-        out = seal(s, custody, theory)
+        stamps = {stamp(p) for p in derived_from}
+        if len(stamps) != 1:
+            raise ValueError(f"input parts carry different blinds: {sorted(stamps)}")
+        (name,) = stamps
+        if blind is not None and blind.name != name:
+            raise ValueError(
+                f"parts are stamped {name}, but the catalogue is declared under "
+                f"{blind.name}"
+            )
+        out = s.copy()
+        out.metadata[STAMP_KEY] = name
+    elif blind is not None:
+        out = seal(s, blind, theory)
     else:
-        raise ValueError(
-            "save needs custody= (a birth) or derived_from= (a derivation); "
-            "a SACC is never written unstamped"
-        )
+        raise ValueError("save needs blind= (a birth) or derived_from= (a derivation)")
     out.save_fits(str(path), overwrite=True)
     return out
 
 
 def load(path):
-    """Load the SACC at ``path``, refusing a file without a valid custody stamp.
-
-    @sc stamped-or-refused
-    Every file ``save`` wrote carries a custody stamp; anything else was
-    not born through the door and is refused, with no escape hatch.
-    """
-    s = sacc.Sacc.load_fits(str(path))
-    try:
-        _custody.read_stamp(s.metadata)
-    except _custody.CustodyError as err:
-        raise _custody.CustodyError(f"{path}: {err}") from None
-    return s
+    """Load the SACC at ``path``."""
+    return sacc.Sacc.load_fits(str(path))
 
 
 # =============================================================================
@@ -1318,12 +1237,10 @@ def sacc_to_twopoint_fits(
     Raises
     ------
     ValueError
-        If the SACC carries no custody stamp (it was not born through
-        :func:`save`); if it has no ξ points; if ``n_bins != 1`` or its ξ tracer
+        If the SACC has no ξ points; if ``n_bins != 1`` or the SACC's ξ tracer
         pairs are anything other than exactly ``{(source_0, source_0)}`` (the
         single-bin contract); or if exactly one of the ρ/τ sidecars is supplied.
     """
-    _custody.read_stamp(s.metadata)
     if (rho_stats_hdu is None) != (tau_stats_hdu is None):
         raise ValueError(
             "rho_stats_hdu and tau_stats_hdu must be supplied together "

@@ -1,28 +1,38 @@
-"""Theory data vectors: a prediction for the rows of a SACC, per data type.
+"""Theory data vectors: a prediction for every row of a SACC.
 
-@sc theory-plugin
-A theory is a function ``f(params, s, rows) -> values``: the prediction, at the
-parameter point ``params``, for rows ``rows`` of SACC ``s``, which share a data
-type's theory, a tracer pair and a bandpower window; values are aligned to
-``rows``. ``params`` is a plain mapping with the keys of :func:`fiducial`,
-never a CCL object, so an emulator can stand in for CCL. :func:`shear_xi` and
-:func:`shear_cl` are the defaults :data:`sp_validation.blinding.STANDARD`
-shifts ξ± and Cℓ_EE by.
+A theory is a function ``theory(params, s) -> np.ndarray``:
 
-@sc theory-ccl-default
-The defaults build one ``pyccl.Cosmology`` per point through
-``cs_util.cosmo.get_cosmo``, on the CAMB HMCode2020-feedback route the CosmoSIS
-inference runs, with σ8 = S8/√(Ωm/0.3). ``Omega_m`` is ``get_cosmo``'s
-argument, from which it subtracts CAMB's Ω_ν for Ω_c.
+- ``params`` is a plain dict of cosmological parameters by name, with exactly
+  the keys of :func:`fiducial`: ``S8``, ``Omega_m``, ``Omega_b``, ``h``,
+  ``n_s``, ``m_nu``, ``w0``, ``wa``, ``logT_AGN`` and ``A_IA``. Blinding calls
+  the theory twice, at a blind's fiducial point and at the hidden point drawn
+  from it; the two differ only in ``S8`` and ``Omega_m``.
+- ``s`` is the ``sacc.Sacc`` being blinded. Its rows, ``s.data``, each carry a
+  data type, a tracer pair and a θ or ℓ tag (Cℓ rows also a bandpower window,
+  ``s.get_bandpower_windows(rows)``); its tracers, ``s.tracers``, carry the
+  n(z).
+- It returns an array the length of ``s.mean``, in the same order: the
+  prediction for each row, zero where the cosmology has no effect.
 
-pyccl and cs_util are imported only when a default theory runs.
+For a SACC of Cℓ_EE/BB/EB bandpowers, a theory could read::
+
+    def my_theory(params, s):
+        out = np.zeros(len(s.mean))
+        ee = s.indices(sacc_io.CL_EE)
+        window = s.get_bandpower_windows(ee)
+        cl = my_cl_ee(params, window.values)  # Cℓ_EE on the window's ℓ
+        out[ee] = window.weight.T @ cl
+        return out  # Cℓ_BB and Cℓ_EB stay zero
+
+:func:`shear` is the default, :func:`none` the theory of statistics with no
+cosmological signal.
 """
 
 import functools
 
 import numpy as np
 
-from .sacc_io import XI_PLUS
+from .sacc_io import CL_BB, CL_EB, CL_EE, XI_MINUS, XI_PLUS
 
 # Multipoles the ξ± Hankel transform integrates over: every ℓ below 50,
 # then 200 log-spaced up to 6·10⁴.
@@ -45,8 +55,46 @@ def fiducial():
     }
 
 
+def none(params, s):
+    """Zeros: the theory of a statistic with no cosmological signal (ρ/τ)."""
+    return np.zeros(len(s.mean))
+
+
+def shear(params, s):
+    """Cosmic-shear ξ± and Cℓ_EE from pyccl; zeros for Cℓ_BB and Cℓ_EB.
+
+    ξ± is evaluated at each row's stored θ (TreeCorr's ``meanr``) and Cℓ_EE
+    through each row's bandpower window. Any other data type raises: pass your
+    own theory. pyccl and cs_util are imported only when this runs.
+    """
+    out = np.zeros(len(s.mean))
+    groups = {}
+    for i, dp in enumerate(s.data):
+        if dp.data_type in (XI_PLUS, XI_MINUS):
+            key = (_xi, dp.tracers)
+        elif dp.data_type == CL_EE:
+            key = (_cl, dp.tracers, id(dp.tags.get("window")))
+        elif dp.data_type in (CL_BB, CL_EB):
+            continue
+        else:
+            raise ValueError(
+                f"theory.shear has no prediction for {dp.data_type}; pass your "
+                "own theory"
+            )
+        groups.setdefault(key, []).append(i)
+    # One call per tracer pair (and window), so ξ+ and ξ− share their Cℓ.
+    for (function, *_), rows in groups.items():
+        out[rows] = function(params, s, np.asarray(rows))
+    return out
+
+
 def cosmology(params):
-    """The ``pyccl.Cosmology`` at ``params``, built once per point."""
+    """The ``pyccl.Cosmology`` at ``params``, built once per point.
+
+    Built through ``cs_util.cosmo.get_cosmo`` on the CAMB HMCode2020-feedback
+    route the CosmoSIS inference runs, with σ8 = S8/√(Ωm/0.3); ``get_cosmo``
+    subtracts CAMB's Ω_ν from ``Omega_m`` for Ω_c.
+    """
     return _cosmology(tuple(float(params[k]) for k in _COSMOLOGY))
 
 
@@ -80,28 +128,17 @@ def _cosmology(point):
     return cosmo
 
 
-def tag(s, rows, name):
-    """Tag ``name`` (or ``"data_type"``) of each of ``rows``."""
-    return np.array(
-        [
-            s.data[i].data_type if name == "data_type" else s.data[i].tags[name]
-            for i in rows
-        ]
-    )
-
-
-def nz(s, name):
-    """The ``(z, n(z))`` of tracer ``name``."""
-    tracer = s.tracers[name]
-    if getattr(tracer, "nz", None) is None:
-        raise ValueError(f"tracer {name} has no n(z)")
-    return np.asarray(tracer.z, float), np.asarray(tracer.nz, float)
+def _tag(s, rows, name):
+    return np.array([s.data[i].tags[name] for i in rows])
 
 
 def _lensing(cosmo, params, s, name):
     import pyccl as ccl
 
-    z, n = nz(s, name)
+    tracer = s.tracers[name]
+    if getattr(tracer, "nz", None) is None:
+        raise ValueError(f"tracer {name} has no n(z)")
+    z, n = np.asarray(tracer.z, float), np.asarray(tracer.nz, float)
     ia = None if params["A_IA"] == 0 else (z, np.full_like(z, params["A_IA"]))
     return ccl.WeakLensingTracer(cosmo, dndz=(z, n), ia_bias=ia)
 
@@ -114,42 +151,22 @@ def _shear_cl(params, s, rows, ell):
     return ccl.angular_cl(cosmo, a, b, ell)
 
 
-def shear_xi(params, s, rows):
-    """ξ± of one shear pair: Limber C_ℓ on :data:`ELL`, then CCL's Hankel transform."""
+def _xi(params, s, rows):
+    """ξ± of one shear pair: Limber Cℓ on :data:`ELL`, then CCL's Hankel transform."""
     import pyccl as ccl
 
     cosmo, cl = cosmology(params), _shear_cl(params, s, rows, ELL)
-    theta = tag(s, rows, "theta") / 60.0
+    theta = _tag(s, rows, "theta") / 60.0
     xip, xim = (
         ccl.correlation(cosmo, ell=ELL, C_ell=cl, theta=theta, type=t)
         for t in ("GG+", "GG-")
     )
-    return np.where(tag(s, rows, "data_type") == XI_PLUS, xip, xim)
+    plus = np.array([s.data[i].data_type == XI_PLUS for i in rows])
+    return np.where(plus, xip, xim)
 
 
-def shear_cl(params, s, rows):
+def _cl(params, s, rows):
     """Cℓ_EE of one shear pair through its bandpower window."""
     window = s.get_bandpower_windows(rows)
     cl = _shear_cl(params, s, rows, np.asarray(window.values, float))
     return np.asarray(window.weight).T @ cl
-
-
-def predict(s, params, theory, rows=None):
-    """The theory of ``rows`` (default: all) of ``s`` at ``params``.
-
-    ``theory`` maps data type to function; a row without one raises. Rows are
-    grouped by function, tracer pair and bandpower window, one call per group,
-    so ξ+ and ξ− of a pair share their C_ℓ.
-    """
-    rows = np.arange(len(s.data)) if rows is None else np.asarray(rows, int)
-    groups = {}
-    for n, i in enumerate(rows):
-        dp = s.data[i]
-        if dp.data_type not in theory:
-            raise ValueError(f"no theory for {dp.data_type}")
-        window = id(dp.tags.get("window"))
-        groups.setdefault((theory[dp.data_type], dp.tracers, window), []).append(n)
-    out = np.empty(len(rows))
-    for (function, *_), at in groups.items():
-        out[at] = function(params, s, rows[at])
-    return out
