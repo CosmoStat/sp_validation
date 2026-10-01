@@ -398,7 +398,7 @@ rule cv_pure_eb:
     """Pure E/B-mode decomposition for one version, from its integration-grid part.
 
     The modes are a fixed linear operator on the part's ξ±; the covariance is
-    the CosmoCov ξ± covariance on the same grid pushed exactly through it.
+    the integration-grid ξ± covariance pushed exactly through it.
     """
     input:
         xi_integration=lambda w: cv_xi_sacc(w.version, "integration"),

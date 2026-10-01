@@ -1,9 +1,9 @@
 """Rule cv_pure_eb: pure E/B-mode decomposition for one version.
 
-A consumer of the integration-grid ξ± part plus its analytic covariance —
+A consumer of the integration-grid ξ± part plus a ξ± covariance on that grid —
 nothing here touches a catalogue. The estimator is one fixed linear operator
 on the fine ξ± (b_modes.pure_eb_operator), averaged into the reporting bins with
-the part's pair counts, so its covariance is the CosmoCov ξ± covariance pushed
+the part's pair counts, so its covariance is the supplied ξ± covariance pushed
 exactly through that operator.
 """
 
