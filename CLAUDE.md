@@ -42,7 +42,8 @@ is the container (full scientific stack pre-built). For a local dev environment:
 - `cat.py`: Catalogue handling and manipulation
 - `cosmo_val.py`: Cosmology validation routines
 - `cosmology.py`: Cosmological calculations and theory
-- `theory.py`: Theory data vectors for SACC rows, one pluggable function per data type
+- `theory.py`: Theory data vectors for a SACC, `theory(params, s)`, from which blinding shifts are made
+- `blinding.py`: Blinds, and `conceal`, which shifts a SACC by one
 - `galaxy.py`: Galaxy-specific processing
 - `io.py`: Input/output utilities
 - `plots.py`: Plotting functions
@@ -81,8 +82,8 @@ Main configuration in `scripts/calibration/params.py` with parameters:
 - pyccl for cosmological calculations
 
 ## Blinded catalogues
-Each `cosmo_val/cat_config.yaml` entry declares `blind: none`, `mock` or a blind's name.
-- For an entry with `blind: <name>`, signal (ξ±, Cℓ, COSEBIs, M_ap, maps, any cosmological statistic) leaves the function that measures it only sealed: compute it and `sacc_io.save(..., custody=)` it in that function and return the sealed part, as `CosmologyValidation` and the workflow do. Never measure it from the file and keep the raw values.
+Each `cosmo_val/cat_config.yaml` entry declares `blind: none` or a blind's name.
+- For an entry with `blind: <name>`, signal (ξ±, Cℓ, any cosmological statistic) leaves the function that measures it only concealed: compute it and `sacc_io.save(..., blind=)` it in that function and return the saved part, as `CosmologyValidation` and the workflow do. Never measure it from the file and keep the raw values.
 - Never set `blind: none` to get a run through.
 - Never print, paste or commit a `.blind.json`.
 
