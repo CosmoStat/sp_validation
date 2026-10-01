@@ -986,6 +986,11 @@ def stamp(s):
 def seal(s, blind, theory=None):
     """What :func:`save` writes for a birth, kept in memory: a copy of ``s``
     concealed under ``blind`` with ``theory`` and stamped with its name."""
+    if STAMP_KEY in s.metadata:
+        raise ValueError(
+            "this SACC already carries a blind stamp, so it is not a birth; "
+            "save it with derived_from=[its input parts]"
+        )
     if blind.name == "none":
         out = s.copy()
     else:
