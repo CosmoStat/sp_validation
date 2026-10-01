@@ -243,7 +243,7 @@ def _create_version_comparison_figure(
 
 
 def _pure_eb_npz(results_dir, ver):
-    return f"{results_dir}/{ver}_pure_eb_semianalytic.npz"
+    return f"{results_dir}/{ver}_pure_eb.npz"
 
 
 def main(
@@ -472,7 +472,7 @@ def _from_cli(argv=None):
     ap.add_argument(
         "--results-dir",
         required=True,
-        help="Directory holding per-version <version>_pure_eb_semianalytic.npz files",
+        help="Directory holding per-version <version>_pure_eb.npz files",
     )
     ap.add_argument("--out", required=True, help="Output directory (lc {output})")
     ap.add_argument(

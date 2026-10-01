@@ -136,7 +136,6 @@ def make_figure(
     cosebis_results,
     reference,
     output_path,
-    n_samples=2000,
 ):
     """Four-panel figure comparing BB vs EE stability across n(z) realisations.
 
@@ -152,40 +151,26 @@ def make_figure(
     color_E = "#E69F00"  # orange for E
     color_B = "#0072B2"  # blue for B
 
-    # Expected 1σ error on ratio of two MC-estimated quantities
-    # σ(ratio) ≈ √(2/N) for ratio ≈ 1
-    ratio_err = np.sqrt(2.0 / n_samples)
-
-    def setup_ratio_panel(ax, xlabel, title, show_mc_band=False):
+    def setup_ratio_panel(ax, xlabel, title):
         ax.axhline(1.0, color="gray", ls="-", lw=0.8, zorder=0)
-        if show_mc_band:
-            ax.axhspan(
-                1 - ratio_err,
-                1 + ratio_err,
-                color="gray",
-                alpha=0.25,
-                label=rf"$\pm\sqrt{{2/N}}$ ($N={n_samples}$)",
-            )
         ax.set_xscale("log")
         ax.set_xlabel(xlabel)
         ax.set_title(title)
 
-    def plot_ratios(ax, x, results, b_key, e_key, b_name, e_name, shift, b_err):
-        """B (with optional MC error bar) and E ratios for every realisation."""
+    def plot_ratios(ax, x, results, b_key, e_key, b_name, e_name, shift):
+        """B and E ratios for every realisation."""
         for i, (label, res) in enumerate(results.items()):
             xi = shift(x, i)
             marker = MARKERS[i % len(MARKERS)]
             pair = f"{label}/{reference}"
-            ax.errorbar(
+            ax.plot(
                 xi,
                 res[b_key]["ratio"],
-                yerr=b_err,
-                fmt=marker,
+                marker,
                 color=color_B,
                 label=f"{b_name} {pair}",
                 markersize=5,
                 alpha=0.8,
-                capsize=0,
             )
             ax.plot(
                 xi,
@@ -212,7 +197,6 @@ def make_figure(
             ax,
             r"$\theta$ [arcmin]",
             rf"${name}$: covariance ratio across n(z)",
-            show_mc_band=True,
         )
         plot_ratios(
             ax,
@@ -223,7 +207,6 @@ def make_figure(
             "B-mode",
             "E-mode",
             log_shift,
-            ratio_err,
         )
         ax.legend(loc="upper right", fontsize=7, ncol=2)
         ax.set_xlim(1, 300)
@@ -237,9 +220,7 @@ def make_figure(
     ax.axhline(1.0, color="gray", ls="-", lw=0.8, zorder=0)
     ax.set_xlabel(r"Mode $n$")
     ax.set_title(r"COSEBIS: covariance ratio across n(z)")
-    plot_ratios(
-        ax, n_arr, cosebis_results, "B", "E", "B-mode", "E-mode", lin_shift, None
-    )
+    plot_ratios(ax, n_arr, cosebis_results, "B", "E", "B-mode", "E-mode", lin_shift)
     ax.set_ylabel("Diagonal ratio")
     ax.legend(loc="upper right", fontsize=7, ncol=2)
     ax.set_ylim(0.85, 1.15)
@@ -247,7 +228,7 @@ def make_figure(
     # --- Panel 4: C_ell^BB vs C_ell^EE ---
     ax = axes[1, 1]
     setup_ratio_panel(ax, r"$\ell$", r"$C_\ell$: covariance ratio across n(z)")
-    plot_ratios(ax, ell_eff, harmonic_results, "BB", "EE", "BB", "EE", log_shift, None)
+    plot_ratios(ax, ell_eff, harmonic_results, "BB", "EE", "BB", "EE", log_shift)
     ax.set_ylabel("Diagonal ratio")
     ax.legend(loc="upper right", fontsize=7, ncol=2)
     ax.set_ylim(0.85, 1.15)
@@ -330,7 +311,6 @@ def main(
     for res in cosebis_results.values():
         res["nmodes"] = nmodes
 
-    n_samples = config["covariance"]["n_samples"]
     make_figure(
         theta,
         ell_eff,
@@ -339,7 +319,6 @@ def main(
         cosebis_results,
         reference,
         figure_path,
-        n_samples=n_samples,
     )
 
     def max_dev(results, mode):
@@ -485,7 +464,7 @@ def _from_cli(argv=None):
     ap.add_argument(
         "--pure-eb-dir",
         required=True,
-        help="Dir with {version}_pure_eb_semianalytic.npz per n(z) realisation",
+        help="Dir with {version}_pure_eb.npz per n(z) realisation",
     )
     ap.add_argument(
         "--cosmo-val-dir",
@@ -517,7 +496,7 @@ def _from_cli(argv=None):
 
     realisations = fid["nz_realisations"]
     pure_eb_paths = {
-        b: os.path.join(a.pure_eb_dir, f"{ver}_pure_eb_semianalytic.npz")
+        b: os.path.join(a.pure_eb_dir, f"{ver}_pure_eb.npz")
         for b, ver in realisations.items()
     }
     harmonic_paths = {

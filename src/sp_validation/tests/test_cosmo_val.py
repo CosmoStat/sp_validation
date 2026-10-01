@@ -581,17 +581,13 @@ class TestCosmologyValidation:
         assert hasattr(res, "C_sys_p") and hasattr(res, "C_sys_m")
 
     def test_calculate_pure_eb_runs_on_synthetic_catalog(self, tmp_path, pure_eb_xi):
-        """calculate_pure_eb carries ξ± through cosmo_numba's pure-E/B split.
+        """calculate_pure_eb measures the fine ξ± and pushes it through the operator.
 
-        The ξ± it measures equal the committed ``pure_eb_xi``, its modes are
-        ``pure_eb_from_xi`` of those ξ± and edges, and every reporting bin is
-        finite. ``test_b_modes`` pins the transform itself on the same ξ±, so a
-        failure names the step that moved: measurement, wiring or transform.
-
-        Finiteness: the Schneider (2022) integrals are near-singular where a
-        reporting bin meets the integration boundary, so the integration grid
-        [1, 300]′ brackets the reporting grid [15, 70]′ on both ends and is fine
-        (600 bins); about 80 integration bins NaN the edge bins.
+        The ξ± it measures equal the committed ``pure_eb_xi`` (``test_b_modes``
+        pins the operator on the same ξ±, so a failure names the step that
+        moved), and the jackknife covariance of the modes is the jackknife ξ±
+        covariance through the operator: for a linear estimator that equals
+        TreeCorr's per-patch jackknife of the modes themselves.
 
         ξ±: exact binning (bin_slop = angle_slop = 0) makes ξ± a plain pair sum,
         independent of the tree and so of the jackknife patches, whose k-means
@@ -599,6 +595,8 @@ class TestCosmologyValidation:
         """
         pytest.importorskip("treecorr")
         pytest.importorskip("cosmo_numba")
+        import treecorr
+
         from sp_validation import b_modes
 
         # Coherent shear -> smooth xi+/-, so the pure-E/B integral is well-posed.
@@ -627,29 +625,39 @@ class TestCosmologyValidation:
         )
 
         measured = {
-            "theta_report": results["theta"],
-            "xip_report": results["xip"],
-            "xim_report": results["xim"],
-            "theta_int": results["theta_int"],
-            "xip_int": results["xip_int"],
-            "xim_int": results["xim_int"],
-            "tmin": results["left_edges"][0],
-            "tmax": results["right_edges"][-1],
+            key: results[key]
+            for key in ("theta_int", "xip_int", "xim_int", "weight_int", "edges_int")
         }
+        measured["reporting_edges"] = np.geomspace(15.0, 70.0, nbins + 1)
         # Regenerate the fixture with np.savez(conftest.PURE_EB_XI, **measured).
         for key, value in measured.items():
             np.testing.assert_allclose(
                 value, pure_eb_xi[key], rtol=1e-10, atol=0, err_msg=key
             )
 
-        modes = b_modes.pure_eb_from_xi(**measured)
-        for key in b_modes._EB_KEYS:
+        operator, _, edges = b_modes.pure_eb_operator(
+            *(measured[k] for k in ("weight_int", "edges_int", "reporting_edges"))
+        )
+        np.testing.assert_array_equal(results["left_edges"], edges[:-1])
+        modes = operator @ np.concatenate([measured["xip_int"], measured["xim_int"]])
+        for i, key in enumerate(b_modes._EB_KEYS):
             vec = np.asarray(results[key])
             assert vec.shape == (nbins,)
             assert np.all(np.isfinite(vec)), f"{key} not finite"
-            np.testing.assert_allclose(vec, modes[key], rtol=1e-10, err_msg=key)
+            np.testing.assert_allclose(
+                vec, modes[i * nbins : (i + 1) * nbins], rtol=1e-12, err_msg=key
+            )
 
-        # Jackknife covariance over the 6 stats (xip/xim x E/B/amb) x nbins.
         cov = np.asarray(results["cov"])
         assert cov.shape == (6 * nbins, 6 * nbins)
-        assert results["n_eff"] == npatch
+        assert results["npatch"] == npatch
+        gg_int = cv.cat_ggs[version]
+        jackknife_of_modes = treecorr.estimate_multi_cov(
+            [gg_int],
+            "jackknife",
+            func=lambda corrs: operator @ np.concatenate([corrs[0].xip, corrs[0].xim]),
+            cross_patch_weight="match",
+        )
+        np.testing.assert_allclose(
+            cov, jackknife_of_modes, rtol=0, atol=1e-10 * np.abs(cov).max()
+        )
