@@ -324,52 +324,52 @@ def test_calculate_eb_statistics_has_teeth():
 # estimator is meant to move.
 _PURE_EB_PINS = {
     "xip_E": [
-        0.00012675909649037545,
-        0.00011663318638709152,
-        0.00011284314562619557,
-        0.00011343413369325459,
-        9.414565637924643e-05,
-        8.505124884351236e-05,
+        0.00012671119742922553,
+        0.00011647263203301798,
+        0.00011277680462627065,
+        0.00011334741455438306,
+        9.407280835053578e-05,
+        8.500501372536384e-05,
     ],
     "xim_E": [
-        7.846111474871327e-06,
-        -2.1614773716458632e-08,
-        1.2479998822054037e-06,
-        5.931629229668291e-06,
-        -5.7485620307162e-06,
-        5.307223369378577e-06,
+        7.684864690558884e-06,
+        -2.9296916553309855e-07,
+        1.1150412226648596e-06,
+        5.81495542664638e-06,
+        -5.8802091546090845e-06,
+        5.245220040191294e-06,
     ],
     "xip_B": [
-        -5.8866840097316286e-05,
-        -5.4149816532331074e-05,
-        -7.031793541704363e-05,
-        -6.464794021486418e-05,
-        -6.438963410562624e-05,
-        -5.782183699830983e-05,
+        -5.872804581564311e-05,
+        -5.3898600777518044e-05,
+        -7.01611878338831e-05,
+        -6.447148201049941e-05,
+        -6.422794082425538e-05,
+        -5.7688865883825626e-05,
     ],
     "xim_B": [
-        -1.2460601540345636e-05,
-        1.1644080110724575e-06,
-        3.784162756126911e-06,
-        9.134846520628891e-06,
-        5.499203647248232e-06,
-        4.460848294579186e-06,
+        -1.2625808436389906e-05,
+        8.906960918149856e-07,
+        3.6497760325039334e-06,
+        9.0173210532702e-06,
+        5.367045395488404e-06,
+        4.3985417696428825e-06,
     ],
     "xip_amb": [
-        8.98449418084559e-05,
-        8.87953653567104e-05,
-        8.704153035693577e-05,
-        8.410960918777129e-05,
-        7.92309177425968e-05,
-        7.107059682711196e-05,
+        8.975404658793264e-05,
+        8.870470395597095e-05,
+        8.695112377370022e-05,
+        8.401987012227805e-05,
+        7.914207248993659e-05,
+        7.098386083077631e-05,
     ],
     "xim_amb": [
-        1.5108576414194206e-06,
-        9.059561894983458e-07,
-        5.429016867192606e-07,
-        3.2507308083821834e-07,
-        1.9496276632356097e-07,
-        1.167636418246594e-07,
+        1.5068975296876175e-06,
+        9.035986620575128e-07,
+        5.414736226368331e-07,
+        3.2422141650144327e-07,
+        1.9445163845662097e-07,
+        1.1646044607564388e-07,
     ],
 }
 
@@ -429,7 +429,6 @@ def test_pure_eb_covariance_is_the_operator_sandwich(pure_eb_xi):
     cov_xi = _spd(2 * n_fine, seed=7)
     r = b_modes.calculate_pure_eb_correlation(**pure_eb_xi, cov_xi=cov_xi, npatch=40)
     K, P, edges = b_modes.pure_eb_operator(
-        pure_eb_xi["theta_int"],
         pure_eb_xi["weight_int"],
         pure_eb_xi["edges_int"],
         pure_eb_xi["reporting_edges"],
@@ -540,6 +539,18 @@ def test_pure_eb_binning_reproduces_the_reporting_measurement(requested):
     )
 
 
+def test_pure_eb_transform_needs_a_log_uniform_grid():
+    """The transform runs on log-uniform nodes and refuses irregular edges.
+
+    cosmo_numba's interpolator places samples on a regular grid in log θ, so
+    edges that are not log-uniform would silently mis-place them.
+    """
+    edges = np.geomspace(1.0, 300.0, 61)
+    edges[30] *= 1.001
+    with pytest.raises(ValueError, match="log-uniform"):
+        b_modes._fixed_quadrature_operator(edges)
+
+
 def test_pure_eb_operator_refuses_a_reporting_floor_at_the_grid_edge(pure_eb_xi):
     """Reporting bins that reach the fine grid's floor raise, never return NaN.
 
@@ -549,7 +560,6 @@ def test_pure_eb_operator_refuses_a_reporting_floor_at_the_grid_edge(pure_eb_xi)
     edges_int = pure_eb_xi["edges_int"]
     with pytest.raises(ValueError, match="under-determined"):
         b_modes.pure_eb_operator(
-            pure_eb_xi["theta_int"],
             pure_eb_xi["weight_int"],
             edges_int,
             np.geomspace(edges_int[0], 70.0, 7),

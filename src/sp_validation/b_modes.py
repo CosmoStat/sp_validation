@@ -185,34 +185,45 @@ def _reporting_binning(weight_int, edges_int, reporting_edges):
     return binning / weight[:, None], edges_int[snap]
 
 
-def _fixed_quadrature_operator(theta_int):
-    """The Schneider (2022) transform at every fine node, ``_EB_KEYS`` order.
+def _fixed_quadrature_operator(edges_int):
+    """The Schneider (2022) transform on the fine grid, ``_EB_KEYS`` order.
 
-    The single call into cosmo_numba. Evaluating at every node of the fine
-    grid, with ``[tmin, tmax]`` at its extent, makes the transform a function
-    of the fine grid alone: the zero-padded ξ− window is extended from the
-    evaluation grid. Returns the ``(6, n_fine, 2 * n_fine)`` stack of the six
-    matrices acting on ``[xi_+; xi_-]``; rows whose integration support is too
-    small near the grid edges are NaN.
+    The single call into cosmo_numba. Its interpolator places the samples on
+    a regular grid in log θ, so the transform runs on the log-uniform nodes of
+    the fine bins — their geometric centres, TreeCorr's ``rnom`` — and is
+    evaluated at every node, with ``[tmin, tmax]`` at their extent. That
+    makes it a function of the fine grid alone (the zero-padded ξ− window
+    extends from the evaluation grid). Returns the ``(6, n_fine, 2 * n_fine)``
+    stack of the six matrices acting on ``[xi_+; xi_-]``; rows whose
+    integration support is too small near the grid edges are NaN.
     """
     from cosmo_numba.B_modes.schneider2022 import get_pure_EB_operator
 
+    log_edges = np.log(np.asarray(edges_int, dtype=float))
+    step = np.diff(log_edges)
+    if np.ptp(step) > 1e-10 * np.mean(step):
+        raise ValueError(
+            "the pure-E/B transform needs log-uniform fine-grid edges (TreeCorr "
+            f"Log binning); their log spacing varies by {np.ptp(step):.3e}"
+        )
+    nodes = np.exp(0.5 * (log_edges[:-1] + log_edges[1:]))
     return np.stack(
         get_pure_EB_operator(
-            theta_int,
-            theta_int,
-            tmin=theta_int[0] * (1 - 1e-9),
-            tmax=theta_int[-1] * (1 + 1e-9),
+            nodes,
+            nodes,
+            tmin=nodes[0] * (1 - 1e-9),
+            tmax=nodes[-1] * (1 + 1e-9),
             local_from_int=True,
         )
     )
 
 
-def pure_eb_operator(theta_int, weight_int, edges_int, reporting_edges):
+def pure_eb_operator(weight_int, edges_int, reporting_edges):
     """The pure-E/B estimator as one matrix on the fine ξ± grid.
 
     The Schneider et al. (2022) transform is evaluated with fixed-quadrature
-    weights at the fine-grid nodes, integrating over the whole fine grid, and
+    weights at the log-uniform fine-grid nodes (TreeCorr ``rnom``),
+    integrating over the whole fine grid, and
     the six pure modes are then averaged into the reporting bins with TreeCorr
     pair weights. The reporting edges snap to the nearest fine edges, so each
     reporting bin is a union of fine bins. Both steps are linear and
@@ -225,15 +236,13 @@ def pure_eb_operator(theta_int, weight_int, edges_int, reporting_edges):
 
     Parameters
     ----------
-    theta_int : array_like
-        Fine (integration) grid, ascending and log-spaced — TreeCorr ``meanr``.
-        The transform's ``[tmin, tmax]`` is its extent, so it must reach
-        beyond the reporting range on both sides.
     weight_int : array_like
         TreeCorr pair weight ``Σ w_i w_j`` per fine bin (``gg.weight``), the
         averaging weights.
     edges_int : array_like
-        The ``n_fine + 1`` fine-grid bin edges.
+        The ``n_fine + 1`` log-uniform fine-grid bin edges. The transform's
+        ``[tmin, tmax]`` is the extent of their centres, so they must reach
+        beyond the reporting range on both sides.
     reporting_edges : array_like
         Requested reporting-bin edges, ``n_report + 1`` of them.
 
@@ -246,14 +255,11 @@ def pure_eb_operator(theta_int, weight_int, edges_int, reporting_edges):
     edges : numpy.ndarray
         The reporting edges actually used, each a fine-grid edge.
     """
-    theta_int = np.asarray(theta_int, dtype=float)
-    if np.shape(weight_int) != theta_int.shape:
-        raise ValueError("weight_int must have one entry per integration bin")
     binning, edges = _reporting_binning(weight_int, edges_int, reporting_edges)
     nodes = np.flatnonzero(binning.any(axis=0))
     # Only the rows P averages enter; NaN edge rows outside them are dropped,
     # since 0 · NaN would still poison the product.
-    transform = _fixed_quadrature_operator(theta_int)[:, nodes]
+    transform = _fixed_quadrature_operator(edges_int)[:, nodes]
     undetermined = {
         key: int(np.count_nonzero(~np.isfinite(rows).all(axis=1)))
         for key, rows in zip(_EB_KEYS, transform)
@@ -298,8 +304,10 @@ def calculate_pure_eb_correlation(
     ----------
     theta_int, xip_int, xim_int, weight_int : array_like
         Fine-grid ``meanr``, ξ±, and TreeCorr pair weight ``Σ w_i w_j``.
+        ``meanr`` enters only the reported ``theta``; the transform runs on
+        the log-uniform nodes of ``edges_int``.
     edges_int : array_like
-        The ``n_fine + 1`` fine-grid bin edges.
+        The ``n_fine + 1`` log-uniform fine-grid bin edges.
     cov_xi : array_like
         ``(2 n_fine, 2 n_fine)`` covariance of ``[xip_int; xim_int]``.
     reporting_edges : array_like
@@ -322,9 +330,9 @@ def calculate_pure_eb_correlation(
         np.asarray(a, dtype=float) for a in (theta_int, xip_int, xim_int)
     )
     cov_xi = np.asarray(cov_xi, dtype=float)
-    operator, binning, edges = pure_eb_operator(
-        theta_int, weight_int, edges_int, reporting_edges
-    )
+    if np.shape(weight_int) != theta_int.shape:
+        raise ValueError("weight_int must have one entry per integration bin")
+    operator, binning, edges = pure_eb_operator(weight_int, edges_int, reporting_edges)
     if cov_xi.shape != (operator.shape[1],) * 2:
         raise ValueError(
             f"cov_xi has shape {cov_xi.shape}; the fine grid needs "

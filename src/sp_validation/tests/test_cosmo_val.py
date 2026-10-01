@@ -636,10 +636,7 @@ class TestCosmologyValidation:
             )
 
         operator, _, edges = b_modes.pure_eb_operator(
-            *(
-                measured[k]
-                for k in ("theta_int", "weight_int", "edges_int", "reporting_edges")
-            )
+            *(measured[k] for k in ("weight_int", "edges_int", "reporting_edges"))
         )
         np.testing.assert_array_equal(results["left_edges"], edges[:-1])
         modes = operator @ np.concatenate([measured["xip_int"], measured["xim_int"]])
