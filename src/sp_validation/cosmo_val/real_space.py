@@ -14,8 +14,30 @@ import numpy as np
 import treecorr
 from cs_util import plots as cs_plots
 
+from sp_validation.statistics import jackknife_patch_centers
+
 
 class RealSpaceMixin:
+    def _shear_catalog(self, ver, npatch):
+        """Calibrated shear catalogue of ``ver`` with seeded jackknife patches.
+
+        Call inside ``self.results[ver].temporarily_read_data()``.
+        """
+        positions = {
+            "ra": self.results[ver].dat_shear["RA"],
+            "dec": self.results[ver].dat_shear["Dec"],
+            "w": self._read_shear_cols(ver, "w_col"),
+            "ra_units": self.treecorr_config["ra_units"],
+            "dec_units": self.treecorr_config["dec_units"],
+        }
+        centers = None
+        if int(npatch) > 1:
+            centers = jackknife_patch_centers(
+                treecorr.Catalog(**positions), int(npatch)
+            )
+        g1, g2 = self._calibrated_g(ver)
+        return treecorr.Catalog(**positions, g1=g1, g2=g2, patch_centers=centers)
+
     def calculate_2pcf(self, ver, npatch=None, **treecorr_config):
         """
         Calculate the two-point correlation function (2PCF) ξ± for a given catalog
@@ -43,9 +65,10 @@ class RealSpaceMixin:
         Notes:
             - If the output file for the given configuration already exists, the
               calculation is skipped, and the results are loaded from the file.
-            - Jackknife patches come from a k-means seeded with a fixed
-              generator, so they are a pure function of the catalogue's
-              positions and weights, the same on every run and thread count.
+            - Jackknife patches come from a seeded k-means on a fixed-depth tree
+              (``statistics.jackknife_patch_centers``), so they are a pure
+              function of the catalogue's positions and weights, the same on
+              every run and thread count.
             - The ``.txt`` TreeCorr dump is the only raw byproduct written here.
         """
 
@@ -71,20 +94,7 @@ class RealSpaceMixin:
         else:
             # Load data and create a catalog
             with self.results[ver].temporarily_read_data():
-                g1, g2 = self._calibrated_g(ver)
-                w = self._read_shear_cols(ver, "w_col")
-
-                cat_gal = treecorr.Catalog(
-                    ra=self.results[ver].dat_shear["RA"],
-                    dec=self.results[ver].dat_shear["Dec"],
-                    g1=g1,
-                    g2=g2,
-                    w=w,
-                    ra_units=self.treecorr_config["ra_units"],
-                    dec_units=self.treecorr_config["dec_units"],
-                    npatch=npatch,
-                    rng=np.random.default_rng(0),
-                )
+                cat_gal = self._shear_catalog(ver, npatch)
 
             # Process the catalog & write the correlation functions
             gg.process(cat_gal)
@@ -340,24 +350,10 @@ class RealSpaceMixin:
                 gg.read(out_fname)
             else:
                 with self.results[ver].temporarily_read_data():
-                    g1, g2 = self._calibrated_g(ver)
-                    cat_gal = treecorr.Catalog(
-                        ra=self.results[ver].dat_shear["RA"],
-                        dec=self.results[ver].dat_shear["Dec"],
-                        g1=g1,
-                        g2=g2,
-                        w=self._read_shear_cols(ver, "w_col"),
-                        ra_units=self.treecorr_config["ra_units"],
-                        dec_units=self.treecorr_config["dec_units"],
-                        npatch=npatch,
-                        rng=np.random.default_rng(0),
-                    )
-
+                    cat_gal = self._shear_catalog(ver, npatch)
                     gg.process(cat_gal)
                     gg.write(out_fname)
                     del cat_gal
-                    del g1
-                    del g2
 
             mapsq, mapsq_im, mxsq, mxsq_im, varmapsq = gg.calculateMapSq(
                 R=theta_map,

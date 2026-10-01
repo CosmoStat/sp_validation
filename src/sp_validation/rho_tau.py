@@ -9,6 +9,7 @@ from shear_psf_leakage.rho_tau_stat import RhoStat, TauStat
 # SquareRootScale now lives in sp_validation.plots; re-exported here so that
 # `from sp_validation.rho_tau import SquareRootScale` keeps working.
 from sp_validation.plots import SquareRootScale  # noqa: F401
+from sp_validation.statistics import jackknife_patch_centers
 
 
 def _extract_xip(correlations):
@@ -369,10 +370,10 @@ def get_jackknife_cov(
                 print(f"Computing the patch centers for patch {i + 1}/{ncov}")
 
                 npatch = rho_stat_handler.catalogs._params["patch_number"]
-                field = rho_stat_handler.catalogs.catalogs_dict[
-                    f"psf_{version}{i}"
-                ].getNField(max_top=int.bit_length(npatch) - 1, coords="spherical")
-                patch, centers = field.run_kmeans(npatch, rng=np.random.default_rng(0))
+                centers = jackknife_patch_centers(
+                    rho_stat_handler.catalogs.catalogs_dict[f"psf_{version}{i}"],
+                    npatch,
+                )
 
                 # Update the patch centers of the catalogs
                 for key, cat in rho_stat_handler.catalogs.catalogs_dict.items():

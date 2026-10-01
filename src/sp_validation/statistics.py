@@ -3,12 +3,49 @@
 :Name: statistics.py
 
 :Description: Cosmology-independent statistical helpers (jackknife resampling,
-              chi2/PTE, covariance<->correlation, OneCovariance reshaping).
+              jackknife patch centres, chi2/PTE, covariance<->correlation,
+              OneCovariance reshaping).
               Extracted verbatim from the former basic.py.
 """
 
 import numpy as np
 from scipy import stats
+
+#: Depth of the ball-tree layers that seed the jackknife k-means.
+PATCH_MIN_TOP = 6
+
+
+def jackknife_patch_centers(cat, npatch, seed=0):
+    """Seeded k-means jackknife patch centres for a TreeCorr catalogue.
+
+    Seeding the k-means does not by itself fix the patches. TreeCorr starts the
+    k-means from the top layers of a ball tree whose depth, unless ``min_top``
+    is given, grows with the OpenMP thread count (``Field._determine_top``),
+    and ``Catalog(npatch=..., rng=...)`` offers no way to set it. Pinning that
+    depth makes the centres a function of the catalogue's positions, weights
+    and ``seed`` alone, on every machine.
+
+    Parameters
+    ----------
+    cat : treecorr.Catalog
+        Catalogue with spherical (RA, Dec) positions.
+    npatch : int
+        Number of patches.
+    seed : int, optional
+        Seed for the k-means initialisation.
+
+    Returns
+    -------
+    numpy.ndarray
+        Patch centres, to pass as ``patch_centers`` to ``treecorr.Catalog``.
+    """
+    field = cat.getNField(
+        min_top=PATCH_MIN_TOP,
+        max_top=int.bit_length(npatch) - 1,
+        coords="spherical",
+    )
+    _, centers = field.run_kmeans(npatch, rng=np.random.default_rng(seed))
+    return centers
 
 
 def jackknif_weighted_average2(
