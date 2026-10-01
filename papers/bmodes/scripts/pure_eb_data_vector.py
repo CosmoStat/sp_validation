@@ -7,7 +7,7 @@ values including the joint B-mode test.
 CLI:
     python pure_eb_data_vector.py \
         --config config.yaml \
-        --pure-eb-data <version>_pure_eb_semianalytic.npz \
+        --pure-eb-data <version>_pure_eb.npz \
         --reporting-cov <cov_reporting_ng>/covariance_processed.txt \
         --out <output_dir>
 """
@@ -34,7 +34,7 @@ def _extract_sigma(covariance, block_index, block_size):
     return np.sqrt(np.clip(np.diag(covariance[block_slice, block_slice]), 0, None))
 
 
-def _compute_joint_pte(xip_B, xim_B, cov_xip_B, cov_xim_B, cov_cross, n_samples=None):
+def _compute_joint_pte(xip_B, xim_B, cov_xip_B, cov_xim_B, cov_cross):
     """Compute joint PTE for combined B-mode data vector [xip_B, xim_B]."""
     data_joint = np.concatenate([xip_B, xim_B])
     n_xip, n_xim = len(xip_B), len(xim_B)
@@ -45,12 +45,12 @@ def _compute_joint_pte(xip_B, xim_B, cov_xip_B, cov_xim_B, cov_cross, n_samples=
     cov_joint[:n_xip, n_xip:] = cov_cross
     cov_joint[n_xip:, :n_xip] = cov_cross.T
 
-    chi2, pte, dof = compute_chi2_pte(data_joint, cov_joint, n_samples=n_samples)
+    chi2, pte, dof = compute_chi2_pte(data_joint, cov_joint)
     return pte, chi2, dof
 
 
 def _load_pure_eb_data(pure_eb_path, cov_path):
-    """Load pure E/B decomposition, the 6-block MC covariance, and the
+    """Load pure E/B decomposition, the 6-block covariance, and the
     reporting-grid CosmoCov ξ± covariance used for the total-curve error bars."""
     dataset = np.load(pure_eb_path)
     theta = dataset["theta"]
@@ -241,9 +241,6 @@ def main(config, pure_eb_path, cov_path, out_dir):
     cov_pure_eb = data["cov_pure_eb"]
     xip_B, xim_B = data["xip_B"], data["xim_B"]
 
-    # Hartlap correction: MC-propagated covariance uses n_samples from config
-    n_samples = int(config["covariance"]["n_samples"])
-
     # Extract B-mode covariance blocks
     cov_xip_B_full = cov_pure_eb[2 * nbins : 3 * nbins, 2 * nbins : 3 * nbins]
     cov_xim_B_full = cov_pure_eb[3 * nbins : 4 * nbins, 3 * nbins : 4 * nbins]
@@ -264,10 +261,10 @@ def main(config, pure_eb_path, cov_path, out_dir):
 
     # Compute PTEs at fiducial scale cuts
     chi2_xip_fid, pte_xip_fid, dof_xip_fid = compute_chi2_pte(
-        xip_B[mask_xip], cov_xip_B_cut, n_samples=n_samples
+        xip_B[mask_xip], cov_xip_B_cut
     )
     chi2_xim_fid, pte_xim_fid, dof_xim_fid = compute_chi2_pte(
-        xim_B[mask_xim], cov_xim_B_cut, n_samples=n_samples
+        xim_B[mask_xim], cov_xim_B_cut
     )
     pte_joint_fid, chi2_joint_fid, dof_joint_fid = _compute_joint_pte(
         xip_B[mask_xip],
@@ -275,19 +272,17 @@ def main(config, pure_eb_path, cov_path, out_dir):
         cov_xip_B_cut,
         cov_xim_B_cut,
         cov_cross_cut,
-        n_samples=n_samples,
     )
 
     # Compute PTEs at full range
-    _, pte_xip_full, _ = compute_chi2_pte(xip_B, cov_xip_B_full, n_samples=n_samples)
-    _, pte_xim_full, _ = compute_chi2_pte(xim_B, cov_xim_B_full, n_samples=n_samples)
+    _, pte_xip_full, _ = compute_chi2_pte(xip_B, cov_xip_B_full)
+    _, pte_xim_full, _ = compute_chi2_pte(xim_B, cov_xim_B_full)
     pte_joint_full, chi2_joint_full, dof_joint_full = _compute_joint_pte(
         xip_B,
         xim_B,
         cov_xip_B_full,
         cov_xim_B_full,
         cov_cross_full,
-        n_samples=n_samples,
     )
 
     print(
@@ -338,8 +333,7 @@ def _from_cli(argv=None):
     ap.add_argument(
         "--pure-eb-data",
         required=True,
-        help="Fiducial <version>_pure_eb_semianalytic.npz "
-        "(decomposed ξ± + 6-block MC covariance)",
+        help="Fiducial <version>_pure_eb.npz (decomposed ξ± + 6-block covariance)",
     )
     ap.add_argument(
         "--reporting-cov",

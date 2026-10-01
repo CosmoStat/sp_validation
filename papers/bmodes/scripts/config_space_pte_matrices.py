@@ -39,15 +39,19 @@ from plotting_utils import (
     make_pte_norm,
 )
 
+from sp_validation.b_modes import bins_from_scale_cut
+
 plt.style.use(PAPER_MPLSTYLE)
 
 
 def resolve_fiducial_bin_window(edges, theta_min, theta_max):
-    """Return the first and last reporting bins inside a scale-cut window."""
-    left, right = edges[:-1], edges[1:]
-    inside = (left >= theta_min * (1.0 - 1e-2)) & (right <= theta_max * (1.0 + 1e-2))
-    bins = np.flatnonzero(inside)
-    return int(bins[0]), int(bins[-1])
+    """Return the first and last reporting bins of a pure-E/B scale cut.
+
+    The cut snaps to the nearest reporting edges, as everywhere pure-E/B PTEs
+    are read (``sp_validation.b_modes.bins_from_scale_cut``).
+    """
+    start, stop = bins_from_scale_cut(edges[:-1], edges[1:], (theta_min, theta_max))
+    return start, stop - 1
 
 
 def _path_matches_version(path, version):
@@ -189,22 +193,25 @@ def load_pure_eb_pte_matrices(pte_files, version, override_path=None):
         Angular scale grid.
     pte_combined : ndarray or None
         PTE matrix for combined ξ_tot^B, or None if not available.
+    edges : ndarray or None
+        The reporting edges the matrices are indexed on, or None for a file
+        that does not record them.
     """
-    if override_path is not None:
-        data = np.load(override_path)
-        pte_combined = data["pte_combined"] if "pte_combined" in data else None
-        return data["pte_xip_B"], data["pte_xim_B"], data["theta"], pte_combined
-
-    for pte_file in pte_files:
+    if override_path is None:
         # Filter to this version (exact match, no substring false positives)
-        if not _path_matches_version(pte_file, version):
-            continue
+        matching = [p for p in pte_files if _path_matches_version(p, version)]
+        if not matching:
+            raise ValueError(f"No PTE file found for version {version}")
+        override_path = matching[0]
 
-        data = np.load(pte_file)
-        pte_combined = data["pte_combined"] if "pte_combined" in data else None
-        return data["pte_xip_B"], data["pte_xim_B"], data["theta"], pte_combined
-
-    raise ValueError(f"No PTE file found for version {version}")
+    data = np.load(override_path)
+    pte_combined = data["pte_combined"] if "pte_combined" in data else None
+    edges = (
+        np.append(data["left_edges"], data["right_edges"][-1])
+        if "left_edges" in data
+        else None
+    )
+    return data["pte_xip_B"], data["pte_xim_B"], data["theta"], pte_combined, edges
 
 
 def _load_version_pte_data(
@@ -215,12 +222,19 @@ def _load_version_pte_data(
     Returns
     -------
     dict with keys: pte_xip_B, pte_xim_B, pte_combined (or None),
-        pte_cosebis, pte_cosebis_20, theta_pure_eb, theta_cosebis.
+        pte_cosebis, pte_cosebis_20, theta_pure_eb, edges_pure_eb,
+        theta_cosebis.
     """
     pure_eb_override, cosebis_override = _resolve_overrides(version, fiducial_overrides)
-    pte_xip_B, pte_xim_B, theta_pure_eb, pte_combined = load_pure_eb_pte_matrices(
-        pure_eb_pte_files, version, override_path=pure_eb_override
+    pte_xip_B, pte_xim_B, theta_pure_eb, pte_combined, edges_pure_eb = (
+        load_pure_eb_pte_matrices(
+            pure_eb_pte_files, version, override_path=pure_eb_override
+        )
     )
+    if edges_pure_eb is None:
+        # A PTE file without saved edges was binned on the nominal grid.
+        fid = config["fiducial"]
+        edges_pure_eb = np.geomspace(fid["min_sep"], fid["max_sep"], fid["nbins"] + 1)
     pte_cosebis, theta_cosebis = load_cosebis_pte_matrix(
         cosebis_pte_files,
         version,
@@ -242,6 +256,7 @@ def _load_version_pte_data(
         "pte_cosebis": pte_cosebis,
         "pte_cosebis_20": pte_cosebis_20,
         "theta_pure_eb": theta_pure_eb,
+        "edges_pure_eb": edges_pure_eb,
         "theta_cosebis": theta_cosebis,
     }
 
@@ -522,13 +537,9 @@ def create_3panel_composite(
     cosebis_fid_start = np.argmin(np.abs(theta_cosebis[:-1] - cosebis_fid[0]))
     cosebis_fid_stop = np.argmin(np.abs(theta_cosebis[1:] - cosebis_fid[1])) + 1
 
-    reporting_edges = np.geomspace(
-        config["fiducial"]["min_sep"],
-        config["fiducial"]["max_sep"],
-        config["fiducial"]["nbins"] + 1,
-    )
-    xip_start, xip_stop = resolve_fiducial_bin_window(reporting_edges, *xip_fid)
-    xim_start, xim_stop = resolve_fiducial_bin_window(reporting_edges, *xim_fid)
+    edges_pure_eb = matrices["edges_pure_eb"]
+    xip_start, xip_stop = resolve_fiducial_bin_window(edges_pure_eb, *xip_fid)
+    xim_start, xim_stop = resolve_fiducial_bin_window(edges_pure_eb, *xim_fid)
 
     # Create subplot axes
     ax_xip = fig.add_subplot(gs[0, 0])
@@ -680,13 +691,9 @@ def create_9panel_composite(
         cosebis_fid_start = np.argmin(np.abs(theta_cosebis[:-1] - cosebis_fid[0]))
         cosebis_fid_stop = np.argmin(np.abs(theta_cosebis[1:] - cosebis_fid[1])) + 1
 
-        reporting_edges = np.geomspace(
-            config["fiducial"]["min_sep"],
-            config["fiducial"]["max_sep"],
-            config["fiducial"]["nbins"] + 1,
-        )
-        xip_start, xip_stop = resolve_fiducial_bin_window(reporting_edges, *xip_fid)
-        xim_start, xim_stop = resolve_fiducial_bin_window(reporting_edges, *xim_fid)
+        edges_pure_eb = matrices["edges_pure_eb"]
+        xip_start, xip_stop = resolve_fiducial_bin_window(edges_pure_eb, *xip_fid)
+        xim_start, xim_stop = resolve_fiducial_bin_window(edges_pure_eb, *xim_fid)
 
         # Create subplot axes for this row
         ax_xip = fig.add_subplot(gs[row_idx, 0])
@@ -910,16 +917,12 @@ def main(
                     fiducial_overrides,
                 )
                 theta_co = matrices["theta_cosebis"]
-                reporting_edges = np.geomspace(
-                    config["fiducial"]["min_sep"],
-                    config["fiducial"]["max_sep"],
-                    config["fiducial"]["nbins"] + 1,
-                )
+                edges_pure_eb = matrices["edges_pure_eb"]
                 xip_start, xip_stop = resolve_fiducial_bin_window(
-                    reporting_edges, *xip_fid
+                    edges_pure_eb, *xip_fid
                 )
                 xim_start, xim_stop = resolve_fiducial_bin_window(
-                    reporting_edges, *xim_fid
+                    edges_pure_eb, *xim_fid
                 )
                 cos_start = np.argmin(np.abs(theta_co[:-1] - cosebis_fid[0]))
                 cos_stop = np.argmin(np.abs(theta_co[1:] - cosebis_fid[1])) + 1

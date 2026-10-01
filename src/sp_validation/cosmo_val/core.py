@@ -11,6 +11,7 @@ from shear_psf_leakage import run_object, run_scale
 
 from ..b_modes import (
     _get_pte_from_scale_cut,
+    covariance_label,
     find_conservative_scale_cut_key,
 )
 from ..statistics import chi2_and_pte
@@ -608,11 +609,7 @@ class CosmologyValidation(
                         )
                 except (KeyError, RuntimeError):
                     pass
-                cov_methods.add(
-                    "semi-analytic"
-                    if "eb_samples" in res
-                    else f"jackknife ({res['n_eff']} patches)"
-                )
+                cov_methods.add(covariance_label(res["npatch"]))
 
             # COSEBIs PTE from stored results
             if ver in self._cosebis_results:

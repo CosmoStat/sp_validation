@@ -226,8 +226,7 @@ def _from_cli(argv=None):
     ap.add_argument(
         "--pure-eb-data",
         required=True,
-        help="Fiducial <version>_pure_eb_semianalytic.npz "
-        "(provides the 6-block cov_pure_eb)",
+        help="Fiducial <version>_pure_eb.npz (provides the 6-block cov_pure_eb)",
     )
     ap.add_argument("--out", required=True, help="Output directory (lc {output})")
     a = ap.parse_args(argv)
