@@ -203,140 +203,311 @@
 </span><span id="line-3"><span class="sd">:Name: statistics.py</span>
 </span><span id="line-4">
 </span><span id="line-5"><span class="sd">:Description: Cosmology-independent statistical helpers (jackknife resampling,</span>
-</span><span id="line-6"><span class="sd">              chi2/PTE, covariance&lt;-&gt;correlation, OneCovariance reshaping).</span>
-</span><span id="line-7"><span class="sd">              Extracted verbatim from the former basic.py.</span>
+</span><span id="line-6"><span class="sd">              chi2/PTE, calibrated min-PTE across many null tests,</span>
+</span><span id="line-7"><span class="sd">              covariance&lt;-&gt;correlation, OneCovariance reshaping).</span>
 </span><span id="line-8"><span class="sd">"""</span>
 </span><span id="line-9">
-</span><span id="line-10"><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-</span><span id="line-11"><span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">stats</span>
-</span><span id="line-12">
-</span><span id="line-13">
+</span><span id="line-10"><span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+</span><span id="line-11">
+</span><span id="line-12"><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+</span><span id="line-13"><span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">stats</span>
+</span><span id="line-14">
+</span><span id="line-15">
 <div class="viewcode-block" id="jackknif_weighted_average2">
 <a class="viewcode-back" href="../../sp_validation.statistics.html#sp_validation.statistics.jackknif_weighted_average2">[docs]</a>
-</span><span id="line-14"><span class="k">def</span><span class="w"> </span><span class="nf">jackknif_weighted_average2</span><span class="p">(</span>
-</span><span id="line-15">    <span class="n">data</span><span class="p">,</span>
-</span><span id="line-16">    <span class="n">weights</span><span class="p">,</span>
-</span><span id="line-17">    <span class="n">remove_size</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
-</span><span id="line-18">    <span class="n">n_realization</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
-</span><span id="line-19"><span class="p">):</span>
-</span><span id="line-20"><span class="w">    </span><span class="sd">"""Add docstring.</span>
-</span><span id="line-21">
-</span><span id="line-22"><span class="sd">    ...</span>
+</span><span id="line-16"><span class="k">def</span><span class="w"> </span><span class="nf">jackknif_weighted_average2</span><span class="p">(</span>
+</span><span id="line-17">    <span class="n">data</span><span class="p">,</span>
+</span><span id="line-18">    <span class="n">weights</span><span class="p">,</span>
+</span><span id="line-19">    <span class="n">remove_size</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+</span><span id="line-20">    <span class="n">n_realization</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+</span><span id="line-21"><span class="p">):</span>
+</span><span id="line-22"><span class="w">    </span><span class="sd">"""Add docstring.</span>
 </span><span id="line-23">
-</span><span id="line-24"><span class="sd">    """</span>
-</span><span id="line-25">    <span class="n">samp_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-</span><span id="line-26">    <span class="n">keep_size_pc</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">remove_size</span>
-</span><span id="line-27">
-</span><span id="line-28">    <span class="k">if</span> <span class="n">keep_size_pc</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
-</span><span id="line-29">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"remove size should be in [0, 1]"</span><span class="p">)</span>
-</span><span id="line-30">
-</span><span id="line-31">    <span class="n">subsamp_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">samp_size</span> <span class="o">*</span> <span class="n">keep_size_pc</span><span class="p">)</span>
+</span><span id="line-24"><span class="sd">    ...</span>
+</span><span id="line-25">
+</span><span id="line-26"><span class="sd">    """</span>
+</span><span id="line-27">    <span class="n">samp_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+</span><span id="line-28">    <span class="n">keep_size_pc</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">remove_size</span>
+</span><span id="line-29">
+</span><span id="line-30">    <span class="k">if</span> <span class="n">keep_size_pc</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="line-31">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"remove size should be in [0, 1]"</span><span class="p">)</span>
 </span><span id="line-32">
-</span><span id="line-33">    <span class="n">all_ind</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">samp_size</span><span class="p">)</span>
+</span><span id="line-33">    <span class="n">subsamp_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">samp_size</span> <span class="o">*</span> <span class="n">keep_size_pc</span><span class="p">)</span>
 </span><span id="line-34">
-</span><span id="line-35">    <span class="n">all_est</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="line-36">    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_realization</span><span class="p">):</span>
-</span><span id="line-37">        <span class="n">sub_data_ind</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">all_ind</span><span class="p">,</span> <span class="n">subsamp_size</span><span class="p">)</span>
-</span><span id="line-38">
-</span><span id="line-39">        <span class="k">if</span> <span class="nb">sum</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">sub_data_ind</span><span class="p">])</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-</span><span id="line-40">            <span class="n">all_est</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
-</span><span id="line-41">        <span class="k">else</span><span class="p">:</span>
-</span><span id="line-42">            <span class="n">all_est</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-</span><span id="line-43">                <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">sub_data_ind</span><span class="p">],</span> <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">[</span><span class="n">sub_data_ind</span><span class="p">])</span>
-</span><span id="line-44">            <span class="p">)</span>
-</span><span id="line-45">
-</span><span id="line-46">    <span class="n">all_est</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">all_est</span><span class="p">)</span>
+</span><span id="line-35">    <span class="n">all_ind</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">samp_size</span><span class="p">)</span>
+</span><span id="line-36">
+</span><span id="line-37">    <span class="n">all_est</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="line-38">    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_realization</span><span class="p">):</span>
+</span><span id="line-39">        <span class="n">sub_data_ind</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">all_ind</span><span class="p">,</span> <span class="n">subsamp_size</span><span class="p">)</span>
+</span><span id="line-40">
+</span><span id="line-41">        <span class="k">if</span> <span class="nb">sum</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">sub_data_ind</span><span class="p">])</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="line-42">            <span class="n">all_est</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+</span><span id="line-43">        <span class="k">else</span><span class="p">:</span>
+</span><span id="line-44">            <span class="n">all_est</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span id="line-45">                <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">sub_data_ind</span><span class="p">],</span> <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">[</span><span class="n">sub_data_ind</span><span class="p">])</span>
+</span><span id="line-46">            <span class="p">)</span>
 </span><span id="line-47">
-</span><span id="line-48">    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">all_est</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">all_est</span><span class="p">)</span></div>
-
+</span><span id="line-48">    <span class="n">all_est</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">all_est</span><span class="p">)</span>
 </span><span id="line-49">
-</span><span id="line-50">
+</span><span id="line-50">    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">all_est</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">all_est</span><span class="p">)</span></div>
+
+</span><span id="line-51">
+</span><span id="line-52">
 <div class="viewcode-block" id="corr_from_cov">
 <a class="viewcode-back" href="../../sp_validation.statistics.html#sp_validation.statistics.corr_from_cov">[docs]</a>
-</span><span id="line-51"><span class="k">def</span><span class="w"> </span><span class="nf">corr_from_cov</span><span class="p">(</span><span class="n">cov</span><span class="p">):</span>
-</span><span id="line-52"><span class="w">    </span><span class="sd">"""Correlation matrix from a covariance matrix.</span>
-</span><span id="line-53">
-</span><span id="line-54"><span class="sd">    Parameters</span>
-</span><span id="line-55"><span class="sd">    ----------</span>
-</span><span id="line-56"><span class="sd">    cov : numpy.ndarray</span>
-</span><span id="line-57"><span class="sd">        Covariance matrix.</span>
-</span><span id="line-58">
-</span><span id="line-59"><span class="sd">    Returns</span>
-</span><span id="line-60"><span class="sd">    -------</span>
-</span><span id="line-61"><span class="sd">    numpy.ndarray</span>
-</span><span id="line-62"><span class="sd">        Correlation matrix.</span>
-</span><span id="line-63">
-</span><span id="line-64"><span class="sd">    """</span>
-</span><span id="line-65">    <span class="n">std_dev</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">cov</span><span class="p">))</span>
-</span><span id="line-66">    <span class="k">return</span> <span class="n">cov</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">std_dev</span><span class="p">,</span> <span class="n">std_dev</span><span class="p">)</span></div>
+</span><span id="line-53"><span class="k">def</span><span class="w"> </span><span class="nf">corr_from_cov</span><span class="p">(</span><span class="n">cov</span><span class="p">):</span>
+</span><span id="line-54"><span class="w">    </span><span class="sd">"""Correlation matrix from a covariance matrix.</span>
+</span><span id="line-55">
+</span><span id="line-56"><span class="sd">    Parameters</span>
+</span><span id="line-57"><span class="sd">    ----------</span>
+</span><span id="line-58"><span class="sd">    cov : numpy.ndarray</span>
+</span><span id="line-59"><span class="sd">        Covariance matrix.</span>
+</span><span id="line-60">
+</span><span id="line-61"><span class="sd">    Returns</span>
+</span><span id="line-62"><span class="sd">    -------</span>
+</span><span id="line-63"><span class="sd">    numpy.ndarray</span>
+</span><span id="line-64"><span class="sd">        Correlation matrix.</span>
+</span><span id="line-65">
+</span><span id="line-66"><span class="sd">    """</span>
+</span><span id="line-67">    <span class="n">std_dev</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">cov</span><span class="p">))</span>
+</span><span id="line-68">    <span class="k">return</span> <span class="n">cov</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">std_dev</span><span class="p">,</span> <span class="n">std_dev</span><span class="p">)</span></div>
 
-</span><span id="line-67">
-</span><span id="line-68">
+</span><span id="line-69">
+</span><span id="line-70">
 <div class="viewcode-block" id="chi2_and_pte">
 <a class="viewcode-back" href="../../sp_validation.statistics.html#sp_validation.statistics.chi2_and_pte">[docs]</a>
-</span><span id="line-69"><span class="k">def</span><span class="w"> </span><span class="nf">chi2_and_pte</span><span class="p">(</span><span class="n">data_vector</span><span class="p">,</span> <span class="n">cov</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-</span><span id="line-70"><span class="w">    </span><span class="sd">"""Chi-squared, reduced chi-squared and PTE for a data vector.</span>
-</span><span id="line-71">
-</span><span id="line-72"><span class="sd">    The data vector is assumed to be zero-mean under the null hypothesis,</span>
-</span><span id="line-73"><span class="sd">    so ``chi2 = d^T C^-1 d``.</span>
-</span><span id="line-74">
-</span><span id="line-75"><span class="sd">    Parameters</span>
-</span><span id="line-76"><span class="sd">    ----------</span>
-</span><span id="line-77"><span class="sd">    data_vector : numpy.ndarray</span>
-</span><span id="line-78"><span class="sd">        Data vector.</span>
-</span><span id="line-79"><span class="sd">    cov : numpy.ndarray</span>
-</span><span id="line-80"><span class="sd">        Covariance matrix of the data vector.</span>
-</span><span id="line-81"><span class="sd">    verbose : bool, optional</span>
-</span><span id="line-82"><span class="sd">        If ``True``, print the statistics; default is ``False``.</span>
-</span><span id="line-83">
-</span><span id="line-84"><span class="sd">    Returns</span>
-</span><span id="line-85"><span class="sd">    -------</span>
-</span><span id="line-86"><span class="sd">    tuple</span>
-</span><span id="line-87"><span class="sd">        ``(chi2, reduced_chi2, pte)``.</span>
-</span><span id="line-88">
-</span><span id="line-89"><span class="sd">    """</span>
-</span><span id="line-90">    <span class="c1"># Solve the linear system rather than forming C^-1 explicitly (more stable,</span>
-</span><span id="line-91">    <span class="c1"># cheaper); use the survival function rather than 1 - cdf (avoids</span>
-</span><span id="line-92">    <span class="c1"># catastrophic cancellation in the high-chi2 / low-PTE tail).</span>
-</span><span id="line-93">    <span class="n">chi2</span> <span class="o">=</span> <span class="n">data_vector</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">cov</span><span class="p">,</span> <span class="n">data_vector</span><span class="p">)</span>
-</span><span id="line-94">    <span class="n">dof</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data_vector</span><span class="p">)</span>
-</span><span id="line-95">    <span class="n">reduced_chi2</span> <span class="o">=</span> <span class="n">chi2</span> <span class="o">/</span> <span class="n">dof</span>
-</span><span id="line-96">    <span class="n">pte</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">chi2</span><span class="o">.</span><span class="n">sf</span><span class="p">(</span><span class="n">chi2</span><span class="p">,</span> <span class="n">dof</span><span class="p">)</span>
-</span><span id="line-97">    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
-</span><span id="line-98">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Chi2: </span><span class="si">{</span><span class="n">chi2</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-</span><span id="line-99">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Reduced Chi2: </span><span class="si">{</span><span class="n">reduced_chi2</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-</span><span id="line-100">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"PTE: </span><span class="si">{</span><span class="n">pte</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-</span><span id="line-101">    <span class="k">return</span> <span class="n">chi2</span><span class="p">,</span> <span class="n">reduced_chi2</span><span class="p">,</span> <span class="n">pte</span></div>
+</span><span id="line-71"><span class="k">def</span><span class="w"> </span><span class="nf">chi2_and_pte</span><span class="p">(</span><span class="n">data_vector</span><span class="p">,</span> <span class="n">cov</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+</span><span id="line-72"><span class="w">    </span><span class="sd">"""Chi-squared, reduced chi-squared and PTE for a data vector.</span>
+</span><span id="line-73">
+</span><span id="line-74"><span class="sd">    The data vector is assumed to be zero-mean under the null hypothesis,</span>
+</span><span id="line-75"><span class="sd">    so ``chi2 = d^T C^-1 d``.</span>
+</span><span id="line-76">
+</span><span id="line-77"><span class="sd">    Parameters</span>
+</span><span id="line-78"><span class="sd">    ----------</span>
+</span><span id="line-79"><span class="sd">    data_vector : numpy.ndarray</span>
+</span><span id="line-80"><span class="sd">        Data vector.</span>
+</span><span id="line-81"><span class="sd">    cov : numpy.ndarray</span>
+</span><span id="line-82"><span class="sd">        Covariance matrix of the data vector.</span>
+</span><span id="line-83"><span class="sd">    verbose : bool, optional</span>
+</span><span id="line-84"><span class="sd">        If ``True``, print the statistics; default is ``False``.</span>
+</span><span id="line-85">
+</span><span id="line-86"><span class="sd">    Returns</span>
+</span><span id="line-87"><span class="sd">    -------</span>
+</span><span id="line-88"><span class="sd">    tuple</span>
+</span><span id="line-89"><span class="sd">        ``(chi2, reduced_chi2, pte)``.</span>
+</span><span id="line-90">
+</span><span id="line-91"><span class="sd">    """</span>
+</span><span id="line-92">    <span class="c1"># Solve the linear system rather than forming C^-1 explicitly (more stable,</span>
+</span><span id="line-93">    <span class="c1"># cheaper); use the survival function rather than 1 - cdf (avoids</span>
+</span><span id="line-94">    <span class="c1"># catastrophic cancellation in the high-chi2 / low-PTE tail).</span>
+</span><span id="line-95">    <span class="n">chi2</span> <span class="o">=</span> <span class="n">data_vector</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">cov</span><span class="p">,</span> <span class="n">data_vector</span><span class="p">)</span>
+</span><span id="line-96">    <span class="n">dof</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data_vector</span><span class="p">)</span>
+</span><span id="line-97">    <span class="n">reduced_chi2</span> <span class="o">=</span> <span class="n">chi2</span> <span class="o">/</span> <span class="n">dof</span>
+</span><span id="line-98">    <span class="n">pte</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">chi2</span><span class="o">.</span><span class="n">sf</span><span class="p">(</span><span class="n">chi2</span><span class="p">,</span> <span class="n">dof</span><span class="p">)</span>
+</span><span id="line-99">    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+</span><span id="line-100">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Chi2: </span><span class="si">{</span><span class="n">chi2</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="line-101">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Reduced Chi2: </span><span class="si">{</span><span class="n">reduced_chi2</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="line-102">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"PTE: </span><span class="si">{</span><span class="n">pte</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="line-103">    <span class="k">return</span> <span class="n">chi2</span><span class="p">,</span> <span class="n">reduced_chi2</span><span class="p">,</span> <span class="n">pte</span></div>
 
-</span><span id="line-102">
-</span><span id="line-103">
+</span><span id="line-104">
+</span><span id="line-105">
 <div class="viewcode-block" id="cov_from_one_covariance">
 <a class="viewcode-back" href="../../sp_validation.statistics.html#sp_validation.statistics.cov_from_one_covariance">[docs]</a>
-</span><span id="line-104"><span class="k">def</span><span class="w"> </span><span class="nf">cov_from_one_covariance</span><span class="p">(</span><span class="n">cov_one_cov</span><span class="p">,</span> <span class="n">gaussian</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-</span><span id="line-105"><span class="w">    </span><span class="sd">"""Reshape a OneCovariance ``covariance_list`` table into a matrix.</span>
-</span><span id="line-106">
-</span><span id="line-107"><span class="sd">    Parameters</span>
-</span><span id="line-108"><span class="sd">    ----------</span>
-</span><span id="line-109"><span class="sd">    cov_one_cov : numpy.ndarray</span>
-</span><span id="line-110"><span class="sd">        Flat OneCovariance output (e.g. from ``covariance_list_..._Cell.dat``),</span>
-</span><span id="line-111"><span class="sd">        with one row per ``(i, j)`` element pair.</span>
-</span><span id="line-112"><span class="sd">    gaussian : bool, optional</span>
-</span><span id="line-113"><span class="sd">        If ``True`` use the Gaussian-only column, otherwise the</span>
-</span><span id="line-114"><span class="sd">        Gaussian+non-Gaussian column; default is ``True``.</span>
-</span><span id="line-115">
-</span><span id="line-116"><span class="sd">    Returns</span>
-</span><span id="line-117"><span class="sd">    -------</span>
-</span><span id="line-118"><span class="sd">    numpy.ndarray</span>
-</span><span id="line-119"><span class="sd">        Square covariance matrix.</span>
-</span><span id="line-120">
-</span><span id="line-121"><span class="sd">    """</span>
-</span><span id="line-122">    <span class="n">n_bins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">cov_one_cov</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
-</span><span id="line-123">    <span class="n">cov</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_bins</span><span class="p">,</span> <span class="n">n_bins</span><span class="p">))</span>
-</span><span id="line-124">    <span class="n">index_value</span> <span class="o">=</span> <span class="mi">10</span> <span class="k">if</span> <span class="n">gaussian</span> <span class="k">else</span> <span class="mi">9</span>
-</span><span id="line-125">    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_bins</span><span class="p">):</span>
-</span><span id="line-126">        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_bins</span><span class="p">):</span>
-</span><span id="line-127">            <span class="n">cov</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">cov_one_cov</span><span class="p">[</span><span class="n">i</span> <span class="o">*</span> <span class="n">n_bins</span> <span class="o">+</span> <span class="n">j</span><span class="p">,</span> <span class="n">index_value</span><span class="p">]</span>
-</span><span id="line-128">    <span class="k">return</span> <span class="n">cov</span></div>
+</span><span id="line-106"><span class="k">def</span><span class="w"> </span><span class="nf">cov_from_one_covariance</span><span class="p">(</span><span class="n">cov_one_cov</span><span class="p">,</span> <span class="n">gaussian</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+</span><span id="line-107"><span class="w">    </span><span class="sd">"""Reshape a OneCovariance ``covariance_list`` table into a matrix.</span>
+</span><span id="line-108">
+</span><span id="line-109"><span class="sd">    Parameters</span>
+</span><span id="line-110"><span class="sd">    ----------</span>
+</span><span id="line-111"><span class="sd">    cov_one_cov : numpy.ndarray</span>
+</span><span id="line-112"><span class="sd">        Flat OneCovariance output (e.g. from ``covariance_list_..._Cell.dat``),</span>
+</span><span id="line-113"><span class="sd">        with one row per ``(i, j)`` element pair.</span>
+</span><span id="line-114"><span class="sd">    gaussian : bool, optional</span>
+</span><span id="line-115"><span class="sd">        If ``True`` use the Gaussian-only column, otherwise the</span>
+</span><span id="line-116"><span class="sd">        Gaussian+non-Gaussian column; default is ``True``.</span>
+</span><span id="line-117">
+</span><span id="line-118"><span class="sd">    Returns</span>
+</span><span id="line-119"><span class="sd">    -------</span>
+</span><span id="line-120"><span class="sd">    numpy.ndarray</span>
+</span><span id="line-121"><span class="sd">        Square covariance matrix.</span>
+</span><span id="line-122">
+</span><span id="line-123"><span class="sd">    """</span>
+</span><span id="line-124">    <span class="n">n_bins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">cov_one_cov</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+</span><span id="line-125">    <span class="n">cov</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_bins</span><span class="p">,</span> <span class="n">n_bins</span><span class="p">))</span>
+</span><span id="line-126">    <span class="n">index_value</span> <span class="o">=</span> <span class="mi">10</span> <span class="k">if</span> <span class="n">gaussian</span> <span class="k">else</span> <span class="mi">9</span>
+</span><span id="line-127">    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_bins</span><span class="p">):</span>
+</span><span id="line-128">        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_bins</span><span class="p">):</span>
+</span><span id="line-129">            <span class="n">cov</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">cov_one_cov</span><span class="p">[</span><span class="n">i</span> <span class="o">*</span> <span class="n">n_bins</span> <span class="o">+</span> <span class="n">j</span><span class="p">,</span> <span class="n">index_value</span><span class="p">]</span>
+</span><span id="line-130">    <span class="k">return</span> <span class="n">cov</span></div>
+
+</span><span id="line-131">
+</span><span id="line-132">
+<div class="viewcode-block" id="_min_pte">
+<a class="viewcode-back" href="../../sp_validation.statistics.html#sp_validation.statistics._min_pte">[docs]</a>
+</span><span id="line-133"><span class="k">def</span><span class="w"> </span><span class="nf">_min_pte</span><span class="p">(</span><span class="n">ptes</span><span class="p">,</span> <span class="n">two_sided</span><span class="p">):</span>
+</span><span id="line-134"><span class="w">    </span><span class="sd">"""Minimum PTE across the last axis, optionally two-sided."""</span>
+</span><span id="line-135">    <span class="n">ptes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">ptes</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span><span id="line-136">    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">((</span><span class="n">ptes</span> <span class="o">&gt;=</span> <span class="mf">0.0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ptes</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="p">)):</span>
+</span><span id="line-137">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"PTEs must be finite and lie in [0, 1]"</span><span class="p">)</span>
+</span><span id="line-138">    <span class="k">if</span> <span class="n">two_sided</span><span class="p">:</span>
+</span><span id="line-139">        <span class="n">ptes</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">minimum</span><span class="p">(</span><span class="n">ptes</span><span class="p">,</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">ptes</span><span class="p">)</span>
+</span><span id="line-140">    <span class="k">return</span> <span class="n">ptes</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span></div>
+
+</span><span id="line-141">
+</span><span id="line-142">
+<div class="viewcode-block" id="wilson_interval">
+<a class="viewcode-back" href="../../sp_validation.statistics.html#sp_validation.statistics.wilson_interval">[docs]</a>
+</span><span id="line-143"><span class="k">def</span><span class="w"> </span><span class="nf">wilson_interval</span><span class="p">(</span><span class="n">count</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mf">0.68</span><span class="p">):</span>
+</span><span id="line-144"><span class="w">    </span><span class="sd">"""Two-sided Wilson score interval for a binomial fraction ``count / n``."""</span>
+</span><span id="line-145">    <span class="n">z</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">norm</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">+</span> <span class="n">level</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">)</span>
+</span><span id="line-146">    <span class="n">fraction</span> <span class="o">=</span> <span class="n">count</span> <span class="o">/</span> <span class="n">n</span>
+</span><span id="line-147">    <span class="n">denominator</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">+</span> <span class="n">z</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span> <span class="n">n</span>
+</span><span id="line-148">    <span class="n">centre</span> <span class="o">=</span> <span class="p">(</span><span class="n">fraction</span> <span class="o">+</span> <span class="n">z</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span> <span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">n</span><span class="p">))</span> <span class="o">/</span> <span class="n">denominator</span>
+</span><span id="line-149">    <span class="n">half_width</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="line-150">        <span class="n">z</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">fraction</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">fraction</span><span class="p">)</span> <span class="o">/</span> <span class="n">n</span> <span class="o">+</span> <span class="n">z</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span> <span class="p">(</span><span class="mf">4.0</span> <span class="o">*</span> <span class="n">n</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span> <span class="o">/</span> <span class="n">denominator</span>
+</span><span id="line-151">    <span class="p">)</span>
+</span><span id="line-152">    <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">centre</span> <span class="o">-</span> <span class="n">half_width</span><span class="p">),</span> <span class="nb">min</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">centre</span> <span class="o">+</span> <span class="n">half_width</span><span class="p">)</span></div>
+
+</span><span id="line-153">
+</span><span id="line-154">
+<div class="viewcode-block" id="effective_number_of_tests">
+<a class="viewcode-back" href="../../sp_validation.statistics.html#sp_validation.statistics.effective_number_of_tests">[docs]</a>
+</span><span id="line-155"><span class="k">def</span><span class="w"> </span><span class="nf">effective_number_of_tests</span><span class="p">(</span><span class="n">threshold</span><span class="p">,</span> <span class="n">alpha</span><span class="p">):</span>
+</span><span id="line-156"><span class="w">    </span><span class="sd">"""Number of independent tests ``k`` with ``1 - (1 - threshold)^k = alpha``.</span>
+</span><span id="line-157">
+</span><span id="line-158"><span class="sd">    For ``k`` independent uniform PTEs, the ``alpha``-quantile of their minimum</span>
+</span><span id="line-159"><span class="sd">    is ``1 - (1 - alpha)^(1/k)``; inverting that for a calibrated threshold</span>
+</span><span id="line-160"><span class="sd">    gives the effective number of independent tests it corresponds to.</span>
+</span><span id="line-161"><span class="sd">    """</span>
+</span><span id="line-162">    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">log1p</span><span class="p">(</span><span class="o">-</span><span class="n">alpha</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">log1p</span><span class="p">(</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">threshold</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">))</span></div>
+
+</span><span id="line-163">
+</span><span id="line-164">
+<div class="viewcode-block" id="MinPTECalibration">
+<a class="viewcode-back" href="../../sp_validation.statistics.html#sp_validation.statistics.MinPTECalibration">[docs]</a>
+</span><span id="line-165"><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-166"><span class="k">class</span><span class="w"> </span><span class="nc">MinPTECalibration</span><span class="p">:</span>
+</span><span id="line-167"><span class="w">    </span><span class="sd">"""Global min-PTE null-test threshold calibrated on noise-only mocks.</span>
+</span><span id="line-168">
+</span><span id="line-169"><span class="sd">    Attributes</span>
+</span><span id="line-170"><span class="sd">    ----------</span>
+</span><span id="line-171"><span class="sd">    alpha : float</span>
+</span><span id="line-172"><span class="sd">        Global false-positive rate the threshold is calibrated to.</span>
+</span><span id="line-173"><span class="sd">    two_sided : bool</span>
+</span><span id="line-174"><span class="sd">        Whether each PTE ``p`` entered as ``2 min(p, 1 - p)``.</span>
+</span><span id="line-175"><span class="sd">    mock_min_pte : numpy.ndarray</span>
+</span><span id="line-176"><span class="sd">        Minimum PTE across statistics for each mock, shape ``(n_mocks,)``.</span>
+</span><span id="line-177"><span class="sd">    threshold : float</span>
+</span><span id="line-178"><span class="sd">        ``alpha``-quantile of ``mock_min_pte``: a data vector whose minimum</span>
+</span><span id="line-179"><span class="sd">        PTE falls below it fails the global null test at level ``alpha``.</span>
+</span><span id="line-180"><span class="sd">    threshold_interval : tuple of float</span>
+</span><span id="line-181"><span class="sd">        Distribution-free interval on ``threshold`` at confidence ``level``.</span>
+</span><span id="line-182"><span class="sd">    k_eff : float</span>
+</span><span id="line-183"><span class="sd">        Effective number of independent tests implied by ``threshold``.</span>
+</span><span id="line-184"><span class="sd">    k_eff_interval : tuple of float</span>
+</span><span id="line-185"><span class="sd">        ``k_eff`` mapped from ``threshold_interval``.</span>
+</span><span id="line-186"><span class="sd">    level : float</span>
+</span><span id="line-187"><span class="sd">        Confidence level of the intervals.</span>
+</span><span id="line-188"><span class="sd">    """</span>
+</span><span id="line-189">
+</span><span id="line-190">    <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span>
+</span><span id="line-191">    <span class="n">two_sided</span><span class="p">:</span> <span class="nb">bool</span>
+</span><span id="line-192">    <span class="n">mock_min_pte</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+</span><span id="line-193">    <span class="n">threshold</span><span class="p">:</span> <span class="nb">float</span>
+</span><span id="line-194">    <span class="n">threshold_interval</span><span class="p">:</span> <span class="nb">tuple</span>
+</span><span id="line-195">    <span class="n">k_eff</span><span class="p">:</span> <span class="nb">float</span>
+</span><span id="line-196">    <span class="n">k_eff_interval</span><span class="p">:</span> <span class="nb">tuple</span>
+</span><span id="line-197">    <span class="n">level</span><span class="p">:</span> <span class="nb">float</span>
+</span><span id="line-198">
+</span><span id="line-199">    <span class="nd">@property</span>
+</span><span id="line-200">    <span class="k">def</span><span class="w"> </span><span class="nf">n_mocks</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="line-201"><span class="w">        </span><span class="sd">"""Number of mocks the calibration rests on."""</span>
+</span><span id="line-202">        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">mock_min_pte</span><span class="o">.</span><span class="n">size</span>
+</span><span id="line-203">
+<div class="viewcode-block" id="MinPTECalibration.global_pte">
+<a class="viewcode-back" href="../../sp_validation.statistics.html#sp_validation.statistics.MinPTECalibration.global_pte">[docs]</a>
+</span><span id="line-204">    <span class="k">def</span><span class="w"> </span><span class="nf">global_pte</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_ptes</span><span class="p">):</span>
+</span><span id="line-205"><span class="w">        </span><span class="sd">"""Global p-value of a data vector's PTEs against the mocks.</span>
+</span><span id="line-206">
+</span><span id="line-207"><span class="sd">        Parameters</span>
+</span><span id="line-208"><span class="sd">        ----------</span>
+</span><span id="line-209"><span class="sd">        data_ptes : array_like</span>
+</span><span id="line-210"><span class="sd">            The data's PTE for each statistic, ordered as the mock columns.</span>
+</span><span id="line-211">
+</span><span id="line-212"><span class="sd">        Returns</span>
+</span><span id="line-213"><span class="sd">        -------</span>
+</span><span id="line-214"><span class="sd">        tuple</span>
+</span><span id="line-215"><span class="sd">            ``(p, interval)``: the fraction of mocks whose minimum PTE is at</span>
+</span><span id="line-216"><span class="sd">            most the data's, and its Wilson interval at ``level``.</span>
+</span><span id="line-217"><span class="sd">        """</span>
+</span><span id="line-218">        <span class="n">data_min</span> <span class="o">=</span> <span class="n">_min_pte</span><span class="p">(</span><span class="n">data_ptes</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">two_sided</span><span class="p">)</span>
+</span><span id="line-219">        <span class="n">count</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mock_min_pte</span> <span class="o">&lt;=</span> <span class="n">data_min</span><span class="p">))</span>
+</span><span id="line-220">        <span class="k">return</span> <span class="n">count</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_mocks</span><span class="p">,</span> <span class="n">wilson_interval</span><span class="p">(</span><span class="n">count</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_mocks</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">level</span><span class="p">)</span></div>
+</div>
+
+</span><span id="line-221">
+</span><span id="line-222">
+<div class="viewcode-block" id="calibrate_min_pte">
+<a class="viewcode-back" href="../../sp_validation.statistics.html#sp_validation.statistics.calibrate_min_pte">[docs]</a>
+</span><span id="line-223"><span class="k">def</span><span class="w"> </span><span class="nf">calibrate_min_pte</span><span class="p">(</span><span class="n">mock_ptes</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span> <span class="n">two_sided</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mf">0.68</span><span class="p">):</span>
+</span><span id="line-224"><span class="w">    </span><span class="sd">"""Calibrate a global threshold on the minimum PTE across statistics.</span>
+</span><span id="line-225">
+</span><span id="line-226"><span class="sd">    Testing many correlated statistics at a fixed per-test level inflates the</span>
+</span><span id="line-227"><span class="sd">    false-positive rate by an unknown amount. Taking the minimum PTE across</span>
+</span><span id="line-228"><span class="sd">    statistics for each noise-only mock and reading off its ``alpha``-quantile</span>
+</span><span id="line-229"><span class="sd">    gives a threshold with exactly that global rate, whatever the correlations</span>
+</span><span id="line-230"><span class="sd">    between statistics and whatever miscalibration of the individual PTEs.</span>
+</span><span id="line-231">
+</span><span id="line-232"><span class="sd">    Parameters</span>
+</span><span id="line-233"><span class="sd">    ----------</span>
+</span><span id="line-234"><span class="sd">    mock_ptes : array_like</span>
+</span><span id="line-235"><span class="sd">        PTEs of noise-only realisations, shape ``(n_mocks, n_stats)``; the</span>
+</span><span id="line-236"><span class="sd">        columns can be any statistics, redshift-bin pairs or scale cuts.</span>
+</span><span id="line-237"><span class="sd">    alpha : float, optional</span>
+</span><span id="line-238"><span class="sd">        Global false-positive rate; default is ``0.05``.</span>
+</span><span id="line-239"><span class="sd">    two_sided : bool, optional</span>
+</span><span id="line-240"><span class="sd">        If ``True``, test each PTE ``p`` as ``2 min(p, 1 - p)`` so that</span>
+</span><span id="line-241"><span class="sd">        anomalously small statistics also fail; default is ``False``.</span>
+</span><span id="line-242"><span class="sd">    level : float, optional</span>
+</span><span id="line-243"><span class="sd">        Confidence level of the reported intervals; default is ``0.68``.</span>
+</span><span id="line-244">
+</span><span id="line-245"><span class="sd">    Returns</span>
+</span><span id="line-246"><span class="sd">    -------</span>
+</span><span id="line-247"><span class="sd">    MinPTECalibration</span>
+</span><span id="line-248"><span class="sd">        The threshold, its interval, the effective number of independent</span>
+</span><span id="line-249"><span class="sd">        tests, and :meth:`MinPTECalibration.global_pte` for the data.</span>
+</span><span id="line-250">
+</span><span id="line-251"><span class="sd">    Notes</span>
+</span><span id="line-252"><span class="sd">    -----</span>
+</span><span id="line-253"><span class="sd">    The interval on the threshold uses order statistics: the number of mocks</span>
+</span><span id="line-254"><span class="sd">    below the true ``alpha``-quantile is ``Binomial(n_mocks, alpha)``, and the</span>
+</span><span id="line-255"><span class="sd">    ``(1 -/+ level) / 2`` quantiles of that count index the mocks bracketing it.</span>
+</span><span id="line-256"><span class="sd">    """</span>
+</span><span id="line-257">    <span class="n">mock_ptes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mock_ptes</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span><span id="line-258">    <span class="k">if</span> <span class="n">mock_ptes</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+</span><span id="line-259">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"mock_ptes must have shape (n_mocks, n_stats)"</span><span class="p">)</span>
+</span><span id="line-260">    <span class="k">if</span> <span class="ow">not</span> <span class="mf">0.0</span> <span class="o">&lt;</span> <span class="n">alpha</span> <span class="o">&lt;</span> <span class="mf">1.0</span><span class="p">:</span>
+</span><span id="line-261">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"alpha must lie in (0, 1)"</span><span class="p">)</span>
+</span><span id="line-262">
+</span><span id="line-263">    <span class="n">minima</span> <span class="o">=</span> <span class="n">_min_pte</span><span class="p">(</span><span class="n">mock_ptes</span><span class="p">,</span> <span class="n">two_sided</span><span class="p">)</span>
+</span><span id="line-264">    <span class="n">n</span> <span class="o">=</span> <span class="n">minima</span><span class="o">.</span><span class="n">size</span>
+</span><span id="line-265">    <span class="n">ordered</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">minima</span><span class="p">)</span>
+</span><span id="line-266">    <span class="n">tail</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">level</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span>
+</span><span id="line-267">    <span class="n">lower</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">stats</span><span class="o">.</span><span class="n">binom</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="n">tail</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">alpha</span><span class="p">),</span> <span class="mi">1</span><span class="p">,</span> <span class="n">n</span><span class="p">))</span> <span class="o">-</span> <span class="mi">1</span>
+</span><span id="line-268">    <span class="n">upper</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">stats</span><span class="o">.</span><span class="n">binom</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">tail</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">alpha</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">n</span><span class="p">))</span> <span class="o">-</span> <span class="mi">1</span>
+</span><span id="line-269">    <span class="n">threshold</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="n">minima</span><span class="p">,</span> <span class="n">alpha</span><span class="p">))</span>
+</span><span id="line-270">    <span class="n">interval</span> <span class="o">=</span> <span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">ordered</span><span class="p">[</span><span class="n">lower</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">ordered</span><span class="p">[</span><span class="n">upper</span><span class="p">]))</span>
+</span><span id="line-271">    <span class="n">k_eff</span> <span class="o">=</span> <span class="n">effective_number_of_tests</span><span class="p">([</span><span class="n">threshold</span><span class="p">,</span> <span class="o">*</span><span class="n">interval</span><span class="p">],</span> <span class="n">alpha</span><span class="p">)</span>
+</span><span id="line-272">    <span class="k">return</span> <span class="n">MinPTECalibration</span><span class="p">(</span>
+</span><span id="line-273">        <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">,</span>
+</span><span id="line-274">        <span class="n">two_sided</span><span class="o">=</span><span class="n">two_sided</span><span class="p">,</span>
+</span><span id="line-275">        <span class="n">mock_min_pte</span><span class="o">=</span><span class="n">minima</span><span class="p">,</span>
+</span><span id="line-276">        <span class="n">threshold</span><span class="o">=</span><span class="n">threshold</span><span class="p">,</span>
+</span><span id="line-277">        <span class="n">threshold_interval</span><span class="o">=</span><span class="n">interval</span><span class="p">,</span>
+</span><span id="line-278">        <span class="n">k_eff</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">k_eff</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
+</span><span id="line-279">        <span class="n">k_eff_interval</span><span class="o">=</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">k_eff</span><span class="p">[</span><span class="mi">2</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">k_eff</span><span class="p">[</span><span class="mi">1</span><span class="p">])),</span>
+</span><span id="line-280">        <span class="n">level</span><span class="o">=</span><span class="n">level</span><span class="p">,</span>
+</span><span id="line-281">    <span class="p">)</span></div>
 
 </span></code></pre></div>
     </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">

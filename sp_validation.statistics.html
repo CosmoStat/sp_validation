@@ -156,8 +156,8 @@
 </dd>
 <dt class="field-even">Description<span class="colon">:</span></dt>
 <dd class="field-even"><p>Cosmology-independent statistical helpers (jackknife resampling,
-chi2/PTE, covariance&lt;-&gt;correlation, OneCovariance reshaping).
-Extracted verbatim from the former basic.py.</p>
+chi2/PTE, calibrated min-PTE across many null tests,
+covariance&lt;-&gt;correlation, OneCovariance reshaping).</p>
 </dd>
 </dl>
 <dl class="py function">
@@ -225,6 +225,198 @@ Gaussian+non-Gaussian column; default is <code class="docutils literal notransla
 </dd>
 </dl>
 </dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.statistics._min_pte">
+<span class="sig-name descname"><span class="pre">_min_pte</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ptes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">two_sided</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/statistics.html#_min_pte"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.statistics._min_pte" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.statistics._min_pte'">¶</a></dt>
+<dd><p>Minimum PTE across the last axis, optionally two-sided.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.statistics.wilson_interval">
+<span class="sig-name descname"><span class="pre">wilson_interval</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">level</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.68</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/statistics.html#wilson_interval"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.statistics.wilson_interval" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.statistics.wilson_interval'">¶</a></dt>
+<dd><p>Two-sided Wilson score interval for a binomial fraction <code class="docutils literal notranslate"><span class="pre">count</span> <span class="pre">/</span> <span class="pre">n</span></code>.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.statistics.effective_number_of_tests">
+<span class="sig-name descname"><span class="pre">effective_number_of_tests</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/statistics.html#effective_number_of_tests"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.statistics.effective_number_of_tests" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.statistics.effective_number_of_tests'">¶</a></dt>
+<dd><p>Number of independent tests <code class="docutils literal notranslate"><span class="pre">k</span></code> with <code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">-</span> <span class="pre">(1</span> <span class="pre">-</span> <span class="pre">threshold)^k</span> <span class="pre">=</span> <span class="pre">alpha</span></code>.</p>
+<p>For <code class="docutils literal notranslate"><span class="pre">k</span></code> independent uniform PTEs, the <code class="docutils literal notranslate"><span class="pre">alpha</span></code>-quantile of their minimum
+is <code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">-</span> <span class="pre">(1</span> <span class="pre">-</span> <span class="pre">alpha)^(1/k)</span></code>; inverting that for a calibrated threshold
+gives the effective number of independent tests it corresponds to.</p>
+</dd></dl>
+<dl class="py class">
+<dt class="sig sig-object py" id="sp_validation.statistics.MinPTECalibration">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">MinPTECalibration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">two_sided</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">mock_min_pte</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><span class="pre">ndarray</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold_interval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">k_eff</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">k_eff_interval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/statistics.html#MinPTECalibration"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.statistics.MinPTECalibration" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.statistics.MinPTECalibration'">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Global min-PTE null-test threshold calibrated on noise-only mocks.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.statistics.MinPTECalibration.alpha">
+<span class="sig-name descname"><span class="pre">alpha</span></span><a class="headerlink" href="#sp_validation.statistics.MinPTECalibration.alpha" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.statistics.MinPTECalibration.alpha'">¶</a></dt>
+<dd><p>Global false-positive rate the threshold is calibrated to.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.statistics.MinPTECalibration.two_sided">
+<span class="sig-name descname"><span class="pre">two_sided</span></span><a class="headerlink" href="#sp_validation.statistics.MinPTECalibration.two_sided" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.statistics.MinPTECalibration.two_sided'">¶</a></dt>
+<dd><p>Whether each PTE <code class="docutils literal notranslate"><span class="pre">p</span></code> entered as <code class="docutils literal notranslate"><span class="pre">2</span> <span class="pre">min(p,</span> <span class="pre">1</span> <span class="pre">-</span> <span class="pre">p)</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.statistics.MinPTECalibration.mock_min_pte">
+<span class="sig-name descname"><span class="pre">mock_min_pte</span></span><a class="headerlink" href="#sp_validation.statistics.MinPTECalibration.mock_min_pte" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.statistics.MinPTECalibration.mock_min_pte'">¶</a></dt>
+<dd><p>Minimum PTE across statistics for each mock, shape <code class="docutils literal notranslate"><span class="pre">(n_mocks,)</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)">numpy.ndarray</a></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.statistics.MinPTECalibration.threshold">
+<span class="sig-name descname"><span class="pre">threshold</span></span><a class="headerlink" href="#sp_validation.statistics.MinPTECalibration.threshold" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.statistics.MinPTECalibration.threshold'">¶</a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">alpha</span></code>-quantile of <code class="docutils literal notranslate"><span class="pre">mock_min_pte</span></code>: a data vector whose minimum
+PTE falls below it fails the global null test at level <code class="docutils literal notranslate"><span class="pre">alpha</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.statistics.MinPTECalibration.threshold_interval">
+<span class="sig-name descname"><span class="pre">threshold_interval</span></span><a class="headerlink" href="#sp_validation.statistics.MinPTECalibration.threshold_interval" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.statistics.MinPTECalibration.threshold_interval'">¶</a></dt>
+<dd><p>Distribution-free interval on <code class="docutils literal notranslate"><span class="pre">threshold</span></code> at confidence <code class="docutils literal notranslate"><span class="pre">level</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a> of <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.statistics.MinPTECalibration.k_eff">
+<span class="sig-name descname"><span class="pre">k_eff</span></span><a class="headerlink" href="#sp_validation.statistics.MinPTECalibration.k_eff" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.statistics.MinPTECalibration.k_eff'">¶</a></dt>
+<dd><p>Effective number of independent tests implied by <code class="docutils literal notranslate"><span class="pre">threshold</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.statistics.MinPTECalibration.k_eff_interval">
+<span class="sig-name descname"><span class="pre">k_eff_interval</span></span><a class="headerlink" href="#sp_validation.statistics.MinPTECalibration.k_eff_interval" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.statistics.MinPTECalibration.k_eff_interval'">¶</a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">k_eff</span></code> mapped from <code class="docutils literal notranslate"><span class="pre">threshold_interval</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a> of <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.statistics.MinPTECalibration.level">
+<span class="sig-name descname"><span class="pre">level</span></span><a class="headerlink" href="#sp_validation.statistics.MinPTECalibration.level" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.statistics.MinPTECalibration.level'">¶</a></dt>
+<dd><p>Confidence level of the intervals.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">alpha</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><a class="headerlink" href="#id0" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#id0'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id1">
+<span class="sig-name descname"><span class="pre">two_sided</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><a class="headerlink" href="#id1" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#id1'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id2">
+<span class="sig-name descname"><span class="pre">mock_min_pte</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><span class="pre">ndarray</span></a></span><a class="headerlink" href="#id2" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#id2'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id3">
+<span class="sig-name descname"><span class="pre">threshold</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><a class="headerlink" href="#id3" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#id3'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id4">
+<span class="sig-name descname"><span class="pre">threshold_interval</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a></span><a class="headerlink" href="#id4" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#id4'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id5">
+<span class="sig-name descname"><span class="pre">k_eff</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><a class="headerlink" href="#id5" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#id5'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id6">
+<span class="sig-name descname"><span class="pre">k_eff_interval</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a></span><a class="headerlink" href="#id6" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#id6'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id7">
+<span class="sig-name descname"><span class="pre">level</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><a class="headerlink" href="#id7" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#id7'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="sp_validation.statistics.MinPTECalibration.n_mocks">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">n_mocks</span></span><a class="headerlink" href="#sp_validation.statistics.MinPTECalibration.n_mocks" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.statistics.MinPTECalibration.n_mocks'">¶</a></dt>
+<dd><p>Number of mocks the calibration rests on.</p>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.statistics.MinPTECalibration.global_pte">
+<span class="sig-name descname"><span class="pre">global_pte</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data_ptes</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/statistics.html#MinPTECalibration.global_pte"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.statistics.MinPTECalibration.global_pte" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.statistics.MinPTECalibration.global_pte'">¶</a></dt>
+<dd><p>Global p-value of a data vector’s PTEs against the mocks.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>data_ptes</strong> (<em>array_like</em>) – The data’s PTE for each statistic, ordered as the mock columns.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">(p,</span> <span class="pre">interval)</span></code>: the fraction of mocks whose minimum PTE is at
+most the data’s, and its Wilson interval at <code class="docutils literal notranslate"><span class="pre">level</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a></p>
+</dd>
+</dl>
+</dd></dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.statistics.calibrate_min_pte">
+<span class="sig-name descname"><span class="pre">calibrate_min_pte</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mock_ptes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">two_sided</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">level</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.68</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/statistics.html#calibrate_min_pte"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.statistics.calibrate_min_pte" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.statistics.calibrate_min_pte'">¶</a></dt>
+<dd><p>Calibrate a global threshold on the minimum PTE across statistics.</p>
+<p>Testing many correlated statistics at a fixed per-test level inflates the
+false-positive rate by an unknown amount. Taking the minimum PTE across
+statistics for each noise-only mock and reading off its <code class="docutils literal notranslate"><span class="pre">alpha</span></code>-quantile
+gives a threshold with exactly that global rate, whatever the correlations
+between statistics and whatever miscalibration of the individual PTEs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mock_ptes</strong> (<em>array_like</em>) – PTEs of noise-only realisations, shape <code class="docutils literal notranslate"><span class="pre">(n_mocks,</span> <span class="pre">n_stats)</span></code>; the
+columns can be any statistics, redshift-bin pairs or scale cuts.</p></li>
+<li><p><strong>alpha</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em>) – Global false-positive rate; default is <code class="docutils literal notranslate"><span class="pre">0.05</span></code>.</p></li>
+<li><p><strong>two_sided</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, test each PTE <code class="docutils literal notranslate"><span class="pre">p</span></code> as <code class="docutils literal notranslate"><span class="pre">2</span> <span class="pre">min(p,</span> <span class="pre">1</span> <span class="pre">-</span> <span class="pre">p)</span></code> so that
+anomalously small statistics also fail; default is <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+<li><p><strong>level</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em>) – Confidence level of the reported intervals; default is <code class="docutils literal notranslate"><span class="pre">0.68</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The threshold, its interval, the effective number of independent
+tests, and <a class="reference internal" href="#sp_validation.statistics.MinPTECalibration.global_pte" title="sp_validation.statistics.MinPTECalibration.global_pte"><code class="xref py py-meth docutils literal notranslate"><span class="pre">MinPTECalibration.global_pte()</span></code></a> for the data.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#sp_validation.statistics.MinPTECalibration" title="sp_validation.statistics.MinPTECalibration">MinPTECalibration</a></p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>The interval on the threshold uses order statistics: the number of mocks
+below the true <code class="docutils literal notranslate"><span class="pre">alpha</span></code>-quantile is <code class="docutils literal notranslate"><span class="pre">Binomial(n_mocks,</span> <span class="pre">alpha)</span></code>, and the
+<code class="docutils literal notranslate"><span class="pre">(1</span> <span class="pre">-/+</span> <span class="pre">level)</span> <span class="pre">/</span> <span class="pre">2</span></code> quantiles of that count index the mocks bracketing it.</p>
+</dd></dl>
 </section>
 </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
 <div class="mr-auto">
@@ -250,6 +442,31 @@ Gaussian+non-Gaussian column; default is <code class="docutils literal notransla
 <li><a :data-current="activeSection === '#sp_validation.statistics.corr_from_cov'" class="reference internal" href="#sp_validation.statistics.corr_from_cov"><code class="docutils literal notranslate"><span class="pre">corr_from_cov()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.statistics.chi2_and_pte'" class="reference internal" href="#sp_validation.statistics.chi2_and_pte"><code class="docutils literal notranslate"><span class="pre">chi2_and_pte()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.statistics.cov_from_one_covariance'" class="reference internal" href="#sp_validation.statistics.cov_from_one_covariance"><code class="docutils literal notranslate"><span class="pre">cov_from_one_covariance()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.statistics._min_pte'" class="reference internal" href="#sp_validation.statistics._min_pte"><code class="docutils literal notranslate"><span class="pre">_min_pte()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.statistics.wilson_interval'" class="reference internal" href="#sp_validation.statistics.wilson_interval"><code class="docutils literal notranslate"><span class="pre">wilson_interval()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.statistics.effective_number_of_tests'" class="reference internal" href="#sp_validation.statistics.effective_number_of_tests"><code class="docutils literal notranslate"><span class="pre">effective_number_of_tests()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.statistics.MinPTECalibration'" class="reference internal" href="#sp_validation.statistics.MinPTECalibration"><code class="docutils literal notranslate"><span class="pre">MinPTECalibration</span></code></a><ul>
+<li><a :data-current="activeSection === '#sp_validation.statistics.MinPTECalibration.alpha'" class="reference internal" href="#sp_validation.statistics.MinPTECalibration.alpha"><code class="docutils literal notranslate"><span class="pre">MinPTECalibration.alpha</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.statistics.MinPTECalibration.two_sided'" class="reference internal" href="#sp_validation.statistics.MinPTECalibration.two_sided"><code class="docutils literal notranslate"><span class="pre">MinPTECalibration.two_sided</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.statistics.MinPTECalibration.mock_min_pte'" class="reference internal" href="#sp_validation.statistics.MinPTECalibration.mock_min_pte"><code class="docutils literal notranslate"><span class="pre">MinPTECalibration.mock_min_pte</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.statistics.MinPTECalibration.threshold'" class="reference internal" href="#sp_validation.statistics.MinPTECalibration.threshold"><code class="docutils literal notranslate"><span class="pre">MinPTECalibration.threshold</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.statistics.MinPTECalibration.threshold_interval'" class="reference internal" href="#sp_validation.statistics.MinPTECalibration.threshold_interval"><code class="docutils literal notranslate"><span class="pre">MinPTECalibration.threshold_interval</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.statistics.MinPTECalibration.k_eff'" class="reference internal" href="#sp_validation.statistics.MinPTECalibration.k_eff"><code class="docutils literal notranslate"><span class="pre">MinPTECalibration.k_eff</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.statistics.MinPTECalibration.k_eff_interval'" class="reference internal" href="#sp_validation.statistics.MinPTECalibration.k_eff_interval"><code class="docutils literal notranslate"><span class="pre">MinPTECalibration.k_eff_interval</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.statistics.MinPTECalibration.level'" class="reference internal" href="#sp_validation.statistics.MinPTECalibration.level"><code class="docutils literal notranslate"><span class="pre">MinPTECalibration.level</span></code></a></li>
+<li><a :data-current="activeSection === '#id0'" class="reference internal" href="#id0"><code class="docutils literal notranslate"><span class="pre">MinPTECalibration.alpha</span></code></a></li>
+<li><a :data-current="activeSection === '#id1'" class="reference internal" href="#id1"><code class="docutils literal notranslate"><span class="pre">MinPTECalibration.two_sided</span></code></a></li>
+<li><a :data-current="activeSection === '#id2'" class="reference internal" href="#id2"><code class="docutils literal notranslate"><span class="pre">MinPTECalibration.mock_min_pte</span></code></a></li>
+<li><a :data-current="activeSection === '#id3'" class="reference internal" href="#id3"><code class="docutils literal notranslate"><span class="pre">MinPTECalibration.threshold</span></code></a></li>
+<li><a :data-current="activeSection === '#id4'" class="reference internal" href="#id4"><code class="docutils literal notranslate"><span class="pre">MinPTECalibration.threshold_interval</span></code></a></li>
+<li><a :data-current="activeSection === '#id5'" class="reference internal" href="#id5"><code class="docutils literal notranslate"><span class="pre">MinPTECalibration.k_eff</span></code></a></li>
+<li><a :data-current="activeSection === '#id6'" class="reference internal" href="#id6"><code class="docutils literal notranslate"><span class="pre">MinPTECalibration.k_eff_interval</span></code></a></li>
+<li><a :data-current="activeSection === '#id7'" class="reference internal" href="#id7"><code class="docutils literal notranslate"><span class="pre">MinPTECalibration.level</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.statistics.MinPTECalibration.n_mocks'" class="reference internal" href="#sp_validation.statistics.MinPTECalibration.n_mocks"><code class="docutils literal notranslate"><span class="pre">MinPTECalibration.n_mocks</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.statistics.MinPTECalibration.global_pte'" class="reference internal" href="#sp_validation.statistics.MinPTECalibration.global_pte"><code class="docutils literal notranslate"><span class="pre">MinPTECalibration.global_pte()</span></code></a></li>
+</ul>
+</li>
+<li><a :data-current="activeSection === '#sp_validation.statistics.calibrate_min_pte'" class="reference internal" href="#sp_validation.statistics.calibrate_min_pte"><code class="docutils literal notranslate"><span class="pre">calibrate_min_pte()</span></code></a></li>
 </ul>
 </div>
 </aside>
