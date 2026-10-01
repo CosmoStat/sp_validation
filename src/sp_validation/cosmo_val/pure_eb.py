@@ -59,12 +59,11 @@ class PureEBMixin:
         nbins_int : int, optional
             Number of bins for the integration binning. Defaults to 1000.
         npatch : int, optional
-            Number of jackknife patches. Defaults to the value in self.npatch if
-            not provided.
-        cov_path_int : str, optional
-            Path to the integration-grid ξ± covariance. When given, the
-            covariance is Monte Carlo through the kernel from it, instead of the
-            jackknife.
+            Number of patches of the ξ± measurements. Defaults to the value in
+            self.npatch if not provided.
+        cov_path_int : str
+            Path to the integration-grid ξ± covariance (CosmoCov), required:
+            the modes' covariance is Monte Carlo through the kernel from it.
         cosmo_cov : pyccl.Cosmology, optional
             Cosmology object to use for theoretical xi+/xi- predictions in the
             semi-analytical covariance calculation. Defaults to self.cosmo if not
@@ -90,20 +89,21 @@ class PureEBMixin:
             - "xip", "xim", "var_xip", "var_xim": Reporting-grid xi+/xi- and
               their variances.
             - "theta_int", "xip_int", "xim_int": Integration-grid xi+/xi-.
-            - "n_eff": Realisation count behind "cov" (jackknife patches or
-              MC draws), which sets the Hartlap debiasing.
-            - "eb_samples": (only when using semi-analytical covariance) Semi-analytic
-              EB samples used for covariance calculation. Shape: (n_samples, 6*nbins)
+            - "n_eff": MC draws behind "cov", which set the Hartlap debiasing.
+            - "eb_samples": Semi-analytic EB samples used for covariance
+              calculation. Shape: (n_samples, 6*nbins)
 
         Notes
         -----
         - Both binnings are the version's sealed ξ± parts
-          (:meth:`calculate_2pcf`), split at the same patch centres, so a
-          blinded catalogue's modes are concealed. The jackknife covariance is
-          the integration part's, pushed through the kernel
-          (:func:`~sp_validation.b_modes.pure_eb_covariance_from_xi`): the
-          shift, the same in every patch, leaves it unchanged.
+          (:meth:`calculate_2pcf`), so a blinded catalogue's modes are
+          concealed.
         """
+        if cov_path_int is None:
+            raise ValueError(
+                "calculate_pure_eb needs cov_path_int, the CosmoCov "
+                "integration-grid ξ± covariance"
+            )
         self.print_start(f"Computing {version} pure E/B")
 
         gg, gg_int = (
@@ -123,19 +123,14 @@ class PureEBMixin:
             )
         )
 
-        # Get redshift distribution if using analytic covariance
-        z_dist = (
-            np.column_stack(self.get_redshift(version))
-            if cov_path_int is not None
-            else None
-        )
+        z_dist = np.column_stack(self.get_redshift(version))
 
         # Delegate to b_modes module
         results = calculate_pure_eb_correlation(
             gg=gg,
             gg_int=gg_int,
             cov_path_int=cov_path_int,
-            cosmo_cov=cosmo_cov,
+            cosmo_cov=cosmo_cov or self.cosmo,
             n_samples=n_samples,
             z_dist=z_dist,
         )
