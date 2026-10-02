@@ -16,6 +16,17 @@
 base: mask_v1.X.9.yaml
 
 ops:
+  # --- header ------------------------------------------------------------
+  - why: >-
+      The runtime file is the image-sim selection the decision record's
+      shear_bias_simulations.mbias_sim_selection pins; one file-scope tag ties
+      it there.
+    replace: |
+      # Less conservative cuts, type v1.X.9 (e.g. for matching with spectroscopic sample).
+    with: |
+      # Less conservative cuts, type v1.X.9 (e.g. for matching with spectroscopic sample).
+      # @sc [decision:shear_bias_simulations.mbias_sim_selection,scope:file]
+
   # --- params ------------------------------------------------------------
   - why: >-
       Sims read the ShapePipe FITS catalogue staged in the run dir, not the

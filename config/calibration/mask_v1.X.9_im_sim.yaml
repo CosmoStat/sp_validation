@@ -1,5 +1,6 @@
 # Config file for masking and calibration.
 # Less conservative cuts, type v1.X.9 (e.g. for matching with spectroscopic sample).
+# @sc [decision:shear_bias_simulations.mbias_sim_selection,scope:file]
 
 # General parameters (can also given on command line)
 params:
@@ -10,7 +11,6 @@ params:
 
 # Masks
 ## Cuts on catalogue columns, in the v2 grammar (sp_validation.grammar)
-# @sc [decision:shear_bias_simulations.mbias_sim_selection]
 dat:
   # SExtractor flags
   - col_name: FLAGS
@@ -25,7 +25,6 @@ dat:
     value: True
 
   # Number of epochs
-  # @sc [decision:shear_bias_simulations.mbias_sim_selection]
   - col_name: N_EPOCH
     label: r"$n_{\rm epoch}$"
     kind: greater_equal
@@ -59,12 +58,10 @@ metacal:
   sigma_eps_prior: 0.34
 
   # Signal-to-noise range
-  # @sc [decision:shear_bias_simulations.mbias_sim_selection]
   gal_snr_min: 5
   gal_snr_max: 500
 
   # Relative-size (hlr / hlr_psf) range
-  # @sc [decision:shear_bias_simulations.mbias_sim_selection]
   gal_rel_size_min: 0.25
   gal_rel_size_max: 10
 
@@ -74,10 +71,8 @@ metacal:
   # Weight for global response matrix, None for unweighted mean.
   # Unweighted for image sims: no weights anywhere in sim m-bias (#227),
   # and the w_des-weighted R had N_eff ~ 20-100 objects.
-  # @sc [decision:shear_bias_simulations.mbias_sim_selection]
   global_R_weight: null
 
   # Subtract additive bias (mean shear)? Use False for constant-shear
   # image sims
-  # @sc [decision:shear_bias_simulations.mbias_sim_selection]
   additive_correction: False
