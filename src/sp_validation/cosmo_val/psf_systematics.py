@@ -534,6 +534,7 @@ class PSFSystematicsMixin:
         cov_tau_a,
         cov_tau_b,
         n_samples=10_000,
+        same_bin=False,
         seed=0,
     ):
         """
@@ -558,6 +559,9 @@ class PSFSystematicsMixin:
             The covariance matrix for the tau statistics for tomographic bin b.
         n_samples : int, optional
             Number of Gaussian draws for the error.
+        same_bin : bool, optional
+            True when a and b are the same bin: tau_0_a and tau_0_b are then one
+            measurement, and each draw uses a single tau sample (tau^2 / rho).
         seed : int or np.random.Generator, optional
             Seed (or generator) for the draws, so that errors are reproducible.
         """
@@ -568,9 +572,12 @@ class PSFSystematicsMixin:
         tau_samples_a = rng.multivariate_normal(
             mean=tau_0_a, cov=cov_tau_a, size=n_samples
         )
-        tau_samples_b = rng.multivariate_normal(
-            mean=tau_0_b, cov=cov_tau_b, size=n_samples
-        )
+        if same_bin:
+            tau_samples_b = tau_samples_a
+        else:
+            tau_samples_b = rng.multivariate_normal(
+                mean=tau_0_b, cov=cov_tau_b, size=n_samples
+            )
         xi_psf_sys_samples = (tau_samples_a * tau_samples_b) / rho_samples
         xi_psf_sys_err = np.std(xi_psf_sys_samples, axis=0)
 
@@ -1424,12 +1431,25 @@ class PSFSystematicsMixin:
         cov_rho_m = np.diag(self.rho_stat_handler.rho_stats["varrho_0_m"])
 
         # Compute the scale-dependent xi_psf_sys and its error bars
+        same_bin = tomo_bin_a == tomo_bin_b
         xi_psf_sys_plus, xi_psf_sys_plus_err = self._compute_scale_dependent_xi_psf_sys(
-            rho_0_p, tau_0_p_a, tau_0_p_b, cov_rho_p, cov_tau_p_a, cov_tau_p_b
+            rho_0_p,
+            tau_0_p_a,
+            tau_0_p_b,
+            cov_rho_p,
+            cov_tau_p_a,
+            cov_tau_p_b,
+            same_bin=same_bin,
         )
         xi_psf_sys_minus, xi_psf_sys_minus_err = (
             self._compute_scale_dependent_xi_psf_sys(
-                rho_0_m, tau_0_m_a, tau_0_m_b, cov_rho_m, cov_tau_m_a, cov_tau_m_b
+                rho_0_m,
+                tau_0_m_a,
+                tau_0_m_b,
+                cov_rho_m,
+                cov_tau_m_a,
+                cov_tau_m_b,
+                same_bin=same_bin,
             )
         )
 
