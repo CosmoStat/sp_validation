@@ -12,7 +12,8 @@ Absence selects exactly one same-decision tagged file and searches the entire
 file (the named INI section, including DEFAULT inheritance). INI section names
 are case-sensitive and keys are not, as CosmoSIS lower-cases them and merges
 repeated sections; interpolation and inline-comment stripping are off. A YAML or
-INI key repeated in the same file outside the governed span fails: the last wins.
+INI key, or a Python name rebound in the same scope, repeated in the file outside
+the governed span fails: the last one wins.
 Python settings are defaults, keywords, dict entries and assignments to names,
 self attributes and constant string subscripts (``d["key"] = ...``).
 Snakemake values use Python literal syntax: assignments, directive scalars and
@@ -51,7 +52,6 @@ _TAG = re.compile(r"@sc\s+\[([^\]]*)\](?:\s+([A-Za-z_][\w.-]*))?\s*\Z")
 _NUMBER = re.compile(r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?\Z")
 _ABSENT = object()
 _DECL = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
-_SHADOWING = {".yaml", ".yml", ".ini"}
 
 
 @dataclass(frozen=True)
@@ -77,7 +77,12 @@ class Tag:
 
 @dataclass(frozen=True)
 class Location:
-    """A physical setting; error retains a matched but non-literal expression."""
+    """A physical setting; error retains a matched but non-literal expression.
+
+    Two settings of one ref and one non-None scope in a file are the same
+    setting: the later decides the value read (a config key, or a Python name
+    rebound in the same function, class or module body).
+    """
 
     path: str
     line: int
@@ -85,6 +90,7 @@ class Location:
     ref: str
     value: object
     error: str = ""
+    scope: object = None
 
     @property
     def identity(self):
@@ -467,13 +473,23 @@ def _python_literal(node, source):
 
 
 def _python_locations(path, source, tree, offset=0):
-    def location(ref, key, value):
+    scopes = {}
+    if Path(path).suffix == ".py":
+        # Name bindings are scoped by their enclosing function, class or module.
+        for owner in ast.walk(tree):
+            if isinstance(owner, (ast.Module, *_DECL)):
+                for statement in ast.walk(owner):
+                    if statement is not owner and isinstance(statement, ast.stmt):
+                        scopes[statement] = getattr(owner, "lineno", 0)
+
+    def location(ref, key, value, scope=None):
         try:
             actual, error = _python_literal(value, source), ""
         except (ValueError, TypeError, InvalidOperation):
             actual = ast.get_source_segment(source, value)
             error = f"non-literal {actual!r}"
-        return Location(path, key.lineno + offset, key.col_offset, ref, actual, error)
+        line = key.lineno + offset
+        return Location(path, line, key.col_offset, ref, actual, error, scope)
 
     for node in ast.walk(tree):
         pairs = []
@@ -514,7 +530,8 @@ def _python_locations(path, source, tree, offset=0):
                 if name and node.value is not None:
                     # An augmented assignment isn't a literal setting.
                     value = node if isinstance(node, ast.AugAssign) else node.value
-                    pairs.append((name, target, value))
+                    scope = scopes.get(node) if isinstance(target, ast.Name) else None
+                    pairs.append((name, target, value, scope))
         elif isinstance(node, ast.keyword) and node.arg:
             pairs.append((node.arg, node, node.value))
         elif isinstance(node, ast.Dict):
@@ -523,8 +540,8 @@ def _python_locations(path, source, tree, offset=0):
                 for key, value in zip(node.keys, node.values)
                 if isinstance(key, ast.Constant) and isinstance(key.value, str)
             )
-        for ref, key, value in pairs:
-            yield location(ref, key, value)
+        for ref, key, value, *scope in pairs:
+            yield location(ref, key, value, *scope)
 
 
 def _snakemake_locations(path, source):
@@ -617,6 +634,7 @@ def _yaml_locations(path, source):
                         ".".join(full),
                         actual,
                         error,
+                        "file",
                     )
                     yield from walk(value, full, (*ancestors, node))
             elif isinstance(node, yaml.SequenceNode):
@@ -681,6 +699,7 @@ def _ini_locations(path, source):
                 indent,
                 section + "." + key.strip(),
                 _ini_value("\n".join(parts)),
+                scope="file",
             )
 
 
@@ -766,15 +785,15 @@ def value_errors(root, record, tags):
                             )
                         ):
                             found[loc.identity] = loc
-                        elif matches and Path(path).suffix in _SHADOWING:
-                            # A config key names one setting per file; a repeat
-                            # outside the span still decides the value read.
+                        elif matches and loc.scope is not None:
                             shadows[loc.identity] = loc
                 candidates = list(found.values())
                 shadows = [
                     loc
                     for loc in shadows.values()
-                    if any(c.path == loc.path for c in candidates)
+                    if any(
+                        (c.path, c.scope) == (loc.path, loc.scope) for c in candidates
+                    )
                 ]
                 detail = "; ".join(loc.describe() for loc in candidates) or "[]"
                 context = (
