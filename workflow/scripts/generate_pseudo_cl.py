@@ -13,9 +13,10 @@ Snakemake) with lc handling orchestration:
         --out <output_dir> \
         --binning powspace --nbins 32 --power 0.5
 
-Supports two binning modes:
-- Linear binning with configurable nbins for COSEBIS
-- Power-space binning with configurable nbins for standard C_ell analysis
+Supports three binning modes:
+- Linear binning with a configurable number of bins
+- Log-space binning with a configurable number of bins
+- Power-space binning with a configurable number of bins
 
 See generate_pseudo_cl_cov.py for covariance generation.
 """
@@ -51,7 +52,8 @@ def generate_pseudo_cl(
     cat_config : str
         Path to catalog configuration YAML
     nside : int
-        HEALPix nside for map-based estimation
+        Sets ``lmax = 2 * nside`` and the covariance workspace; the data vector
+        uses the catalogue estimator.
     npatch : int
         Number of jackknife patches
     cosmo_params : dict, optional
