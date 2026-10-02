@@ -42,6 +42,7 @@ is the container (full scientific stack pre-built). For a local dev environment:
 - `cat.py`: Catalogue handling and manipulation
 - `cosmo_val.py`: Cosmology validation routines
 - `cosmology.py`: Cosmological calculations and theory
+- `blinding.py`: Blinds, the theory `theory(params, s)` they shift by, and `conceal`, which shifts a SACC by one
 - `galaxy.py`: Galaxy-specific processing
 - `io.py`: Input/output utilities
 - `plots.py`: Plotting functions
@@ -78,6 +79,12 @@ Main configuration in `scripts/calibration/params.py` with parameters:
 - healpy/healsparse for sky maps
 - emcee for MCMC sampling
 - pyccl for cosmological calculations
+
+## Blinded catalogues
+Each `cosmo_val/cat_config.yaml` entry declares `blind: none` or a blind's name.
+- For an entry with `blind: <name>`, signal (ξ±, Cℓ, any cosmological statistic) leaves the function that measures it only concealed: compute it and `sacc_io.save(..., blind=)` it in that function and return the saved part, as `CosmologyValidation` and the workflow do. Never measure it from the file and keep the raw values.
+- Never set `blind: none` to get a run through.
+- Never print, paste or commit a `.blind.json`.
 
 ## Container Usage
 Nothing is hand-built. CI publishes `ghcr.io/cosmostat/sp_validation:<branch>` on

@@ -1,4 +1,7 @@
+# One entry per catalogue. `blind:` is `none` (public) or the name of the blind
+# its signal is concealed under (sp_validation.blinding).
 DES:
+  blind: none
   subdir: /n17data/mkilbing/astro/data/DES
   pipeline: SP
   colour: orange
@@ -40,6 +43,7 @@ DES:
     path: psf_y3a1-v29.fits
   patch_number: 120
 SP_axel_v0.0:
+  blind: none
   subdir: /n17data/mkilbing/astro/data/CFIS/v0.0
   pipeline: SP
   colour: cyan
@@ -80,6 +84,7 @@ SP_axel_v0.0:
     path: star_cat.fits
   patch_number: 120
 SP_v0.1.1:
+  blind: none
   subdir: /n17data/mkilbing/astro/data/CFIS/v0.0
   pipeline: SP
   colour: cyan
@@ -114,6 +119,7 @@ SP_v0.1.1:
     path: star_cat.fits
   patch_number: 150
 SP_v1.3:
+  blind: none
   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/ShapePipe
   pipeline: SP
   colour: green
@@ -150,6 +156,7 @@ SP_v1.3:
     path: unions_shapepipe_star_2022_v1.0.3.fits
   patch_number: 150
 SP_v1.3.6:
+  blind: none
   subdir: /n17data/UNIONS/WL/v1.3.x
   pipeline: SP
   colour: coral
@@ -194,6 +201,7 @@ SP_v1.3.6:
     path: unions_shapepipe_star_2022_v1.0.3.fits
   patch_number: 150
 SP_v1.4.5:
+  blind: none
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
   colour: dodgerblue
@@ -238,6 +246,7 @@ SP_v1.4.5:
     path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
   patch_number: 150
 SP_v1.4.5.A:
+  blind: none
   subdir: /n17data/guinot/CFIS_3500_cat/catalogues_SPv1_v1.4.5
   pipeline: SP
   colour: red
@@ -279,6 +288,7 @@ SP_v1.4.5.A:
     path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
   patch_number: 150
 SP_v1.4.5_bright:
+  blind: none
   subdir: /n17data/murray/unions_cats
   pipeline: SP
   colour: mediumblue
@@ -320,6 +330,7 @@ SP_v1.4.5_bright:
     path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
   patch_number: 150
 SP_v1.4.5_faint:
+  blind: none
   subdir: /n17data/murray/unions_cats
   pipeline: SP
   colour: forestgreen
@@ -361,6 +372,7 @@ SP_v1.4.5_faint:
     path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
   patch_number: 150
 SP_v1.4.6_glass_mock:
+  blind: none
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
   colour: darkgreen
@@ -404,6 +416,7 @@ SP_v1.4.6_glass_mock:
     path: unions_shapepipe_star_2024_v1.4.a.fits
   patch_number: 150
 SP_v1.4.5_intermediate:
+  blind: none
   subdir: /n17data/murray/unions_cats
   pipeline: SP
   colour: orange
@@ -445,6 +458,7 @@ SP_v1.4.5_intermediate:
     path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
   patch_number: 150
 SP_v1.4.6:
+  blind: none
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
   colour: green
@@ -489,6 +503,7 @@ SP_v1.4.6:
     path: unions_shapepipe_star_2024_v1.4.a.fits
   patch_number: 150
 SP_v1.4.6.3:
+  blind: none
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
   colour: orange
@@ -533,6 +548,7 @@ SP_v1.4.6.3:
     path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
   patch_number: 150
 SP_v1.4.6.3_B:
+  blind: none
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
   colour: green
@@ -577,6 +593,7 @@ SP_v1.4.6.3_B:
     path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
   patch_number: 150
 SP_v1.4.6.3_C:
+  blind: none
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
   colour: green
@@ -621,6 +638,7 @@ SP_v1.4.6.3_C:
     path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
   patch_number: 150
 SP_v1.4.6.3_A:
+  blind: none
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
   colour: green
@@ -665,6 +683,7 @@ SP_v1.4.6.3_A:
     path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
   patch_number: 150
 SP_v1.4.6_ecut07:
+  blind: none
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
   colour: darkgreen
@@ -709,6 +728,7 @@ SP_v1.4.6_ecut07:
     path: unions_shapepipe_star_2024_v1.4.a.fits
   patch_number: 150
 SP_v1.4.6.1:
+  blind: none
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
   colour: red
@@ -753,6 +773,7 @@ SP_v1.4.6.1:
     path: unions_shapepipe_star_2024_v1.4.a.fits
   patch_number: 100
 SP_v1.4.7:
+  blind: none
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
   colour: darkorchid
@@ -799,6 +820,7 @@ SP_v1.4.7:
     path: unions_shapepipe_star_2024_v1.4.a.fits
   patch_number: 150
 SP_v1.4.8:
+  blind: none
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
   colour: darkorchid
@@ -843,6 +865,7 @@ SP_v1.4.8:
     path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
   patch_number: 150
 SP_v1.4.11.2:
+  blind: none
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
   colour: orange
@@ -887,6 +910,7 @@ SP_v1.4.11.2:
     path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
   patch_number: 150
 SP_v1.4.11.3:
+  blind: none
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
   colour: red
@@ -931,6 +955,7 @@ SP_v1.4.11.3:
     path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
   patch_number: 150
 SP_v1.4.12.3:
+  blind: none
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
   colour: lightblue
@@ -976,6 +1001,7 @@ SP_v1.4.12.3:
     path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
   patch_number: 150
 SP_v1.4.13.3:
+  blind: none
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
   colour: cyan
@@ -1021,6 +1047,7 @@ SP_v1.4.13.3:
     path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
   patch_number: 150
 SP_v1.4.11.3_ecut07:
+  blind: none
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
   colour: darkblue
@@ -1065,6 +1092,7 @@ SP_v1.4.11.3_ecut07:
     path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
   patch_number: 150
 SP_v1.4.6.3_uncal:
+  blind: none
   pipeline: SP
   subdir: /n17data/UNIONS/WL/v1.4.x
   shear:
@@ -1080,6 +1108,7 @@ SP_v1.4.6.3_uncal:
     hdu: 1
   patch_number: 100
 SP_v1.4.6.3_uncal_w_iv:
+  blind: none
   pipeline: SP
   subdir: /n17data/UNIONS/WL/v1.4.x
   shear:
@@ -1095,6 +1124,7 @@ SP_v1.4.6.3_uncal_w_iv:
     hdu: 1
   patch_number: 100
 SP_v1.4.6.3_uncal_w_1:
+  blind: none
   pipeline: SP
   subdir: /n17data/UNIONS/WL/v1.4.x
   shear:
@@ -1110,6 +1140,7 @@ SP_v1.4.6.3_uncal_w_1:
     hdu: 1
   patch_number: 100
 SP_v1.4.5_uncal:
+  blind: none
   pipeline: SP
   subdir: /n17data/UNIONS/WL/v1.4.x
   shear:
@@ -1125,6 +1156,7 @@ SP_v1.4.5_uncal:
     hdu: 1
   patch_number: 100
 SP_v1.4.7_uncal:
+  blind: none
   pipeline: SP
   subdir: /n17data/UNIONS/WL/v1.4.x
   shear:
@@ -1140,6 +1172,7 @@ SP_v1.4.7_uncal:
     hdu: 1
   patch_number: 100
 SP_v1.4.8_uncal:
+  blind: none
   pipeline: SP
   subdir: /n17data/UNIONS/WL/v1.4.x
   shear:
@@ -1161,7 +1194,10 @@ nz:
     path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_{pipeline}_A.txt
 paths:
   output: ./output
+  # Where the <name>.blind.json records live.
+  blinds: /n17data/UNIONS/WL/blinds
 SP_v1.6.6:
+  blind: none
   subdir: /n17data/UNIONS/WL/v1.6.x
   pipeline: SP
   colour: violet

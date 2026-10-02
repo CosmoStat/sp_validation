@@ -7,6 +7,7 @@ correlation functions (xi+/xi- pure-mode decomposition) for catalog versions.
 
 import numpy as np
 
+from .. import sacc_io
 from ..b_modes import (
     calculate_eb_statistics,
     calculate_pure_eb_correlation,
@@ -35,10 +36,12 @@ class PureEBMixin:
         """
         Calculate the pure E/B modes for the given catalog version.
 
-        ξ± is measured on the fine integration grid only; the reporting
-        binning (the instance's treecorr_config unless overridden) enters as
-        bin edges, snapped onto the fine edges, into which
-        :func:`~sp_validation.b_modes.pure_eb_operator` averages the modes.
+        ξ± is measured on the fine integration grid only, as the version's
+        sealed part (:meth:`calculate_2pcf`), so a blinded catalogue's modes
+        are concealed. The reporting binning (the instance's treecorr_config
+        unless overridden) enters as bin edges, snapped onto the fine edges,
+        into which :func:`~sp_validation.b_modes.pure_eb_operator` averages
+        the modes.
 
         Parameters
         ----------
@@ -53,7 +56,7 @@ class PureEBMixin:
             Jackknife patch count. Defaults to self.npatch.
         cov_path_int : str, optional
             Analytic ξ± covariance on the integration grid. Without it the
-            covariance is the jackknife of the integration-grid ξ±.
+            covariance is the jackknife the integration-grid part carries.
 
         Returns
         -------
@@ -66,24 +69,31 @@ class PureEBMixin:
         self.print_start(f"Computing {version} pure E/B")
 
         reporting = self._binning(min_sep, max_sep, nbins)
-        gg_int = self.calculate_2pcf(
-            version,
-            npatch=npatch,
-            **self._binning(min_sep_int, max_sep_int, nbins_int),
+        integration = self._binning(min_sep_int, max_sep_int, nbins_int)
+        gg_int = sacc_io.xi_correlation(
+            self.calculate_2pcf(
+                version,
+                grid="integration",
+                npatch=npatch,
+                min_sep=integration["min_sep"],
+                max_sep=integration["max_sep"],
+                nbins=integration["nbins"],
+            )
         )
 
         if cov_path_int is not None:
             cov_xi, npatch = np.loadtxt(cov_path_int), None
         else:
-            cov_xi = gg_int.estimate_cov("jackknife", cross_patch_weight="match")
-            npatch = gg_int.npatch1
+            cov_xi, npatch = gg_int.cov, gg_int.npatch1
 
         return calculate_pure_eb_correlation(
             gg_int.meanr,
             gg_int.xip,
             gg_int.xim,
             gg_int.weight,
-            np.append(gg_int.left_edges, gg_int.right_edges[-1]),
+            np.geomspace(
+                integration["min_sep"], integration["max_sep"], integration["nbins"] + 1
+            ),
             cov_xi,
             np.geomspace(
                 reporting["min_sep"], reporting["max_sep"], reporting["nbins"] + 1

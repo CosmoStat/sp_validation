@@ -14,7 +14,7 @@ def xi_binning(grid):
 
 
 rule xi:
-    """TreeCorr ξ±(θ) for one version on one angular grid.
+    """TreeCorr ξ±(θ) for one version on one angular grid, as its sealed SACC part.
 
     One rule for every grid: outputs are named by their binning, so a request
     binds the wildcards and the grid label resolves from them.
@@ -22,7 +22,6 @@ rule xi:
     input:
         catalog=get_shear_catalog,
     output:
-        txt=str(COSMO_VAL / "{version}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.txt"),
         sacc=str(COSMO_VAL / "{version}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc"),
     threads: 24
     params:
@@ -34,6 +33,7 @@ rule xi:
         cat_config=CAT_CONFIG,
         output_dir=str(COSMO_VAL),
         grid=lambda w: grid_of(XI_GRIDS, w),
+        blind=lambda w: blind_of(w.version),
     resources:
         # The fine integration grid needs more memory and wall time than the
         # ~20-bin reporting one; scale on nbins rather than splitting the rule.
@@ -59,6 +59,7 @@ rule rho_tau_stats:
         npatch="{npatch}",
         cat_config=CAT_CONFIG,
         output_dir=str(COSMO_VAL),
+        blind=lambda w: blind_of(w.version),
     resources:
         mem_mb=64000,
         disk_mb=20000,
@@ -86,6 +87,7 @@ rule pseudo_cl:
         binning="{binning}",
         nbins=lambda w: int(w.nbins),
         power=0.5,
+        blind=lambda w: blind_of(w.version),
     resources:
         mem_mb=32000,
         runtime=120,

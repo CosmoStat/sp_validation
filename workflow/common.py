@@ -33,20 +33,32 @@ def _plain(path):
 REPO_ROOT = _plain(__file__).parents[1]
 REPO_SRC = REPO_ROOT / "src"
 
-# The container model lives in the package (``sp_validation/container.py``).
-# Taken from *this checkout's* src/, so the workflow and the ``spv-container``
-# CLI can never disagree about which image to run.
-_container = importlib.util.module_from_spec(
-    importlib.util.spec_from_file_location(
-        "_spv_container", REPO_SRC / "sp_validation" / "container.py"
-    )
-)
-sys.modules["_spv_container"] = _container
-_container.__loader__.exec_module(_container)
 
+def _load_checkout_module(name):
+    """Load ``sp_validation/<name>.py``, a stdlib-only module, from this checkout.
+
+    By path, since the host Snakemake has no sp_validation installed; from
+    *this checkout's* src/, so the workflow and the package never disagree.
+    """
+    alias = f"_spv_{name}"
+    module = importlib.util.module_from_spec(
+        importlib.util.spec_from_file_location(
+            alias, REPO_SRC / "sp_validation" / f"{name}.py"
+        )
+    )
+    sys.modules[alias] = module
+    module.__loader__.exec_module(module)
+    return module
+
+
+# The container model, shared with the ``spv-container`` CLI.
+_container = _load_checkout_module("container")
 compare_revision = _container.compare_revision
 image_revision = _container.image_revision
 resolve_image = _container.resolve_image
+
+# Each catalogue's declared blind (``blinding.blind_of``).
+_blinding = _load_checkout_module("blinding")
 
 # Every job inherits this launch's environment (the slurm executor submits with
 # --export=ALL), and the Snakemake each job step starts keeps its source cache
@@ -193,6 +205,16 @@ def configure(workflow_config):
     )
     with open(COSMOLOGY_PARAMS) as f:
         PLANCK18 = json.load(f)
+    # A run catalogue that declares no blind stops the launch before any job.
+    fiducial = (FIDUCIAL.get(k) for k in ("version", "mock_version"))
+    for version in [*workflow_config.get("versions", []), *filter(None, fiducial)]:
+        blind_of(version)
+
+
+def blind_of(version):
+    """``version``'s declared blind: a producer's ``params.blind``, so flipping
+    it reruns exactly the jobs it touches."""
+    return _blinding.blind_of(CATALOG_CONFIG, catalogue_name(version))
 
 
 def fiducial_binning_suffix(fiducial=None):
@@ -260,12 +282,17 @@ def base_version(version):
     return re.sub(r"_ecut\d+", "", re.sub(r"_leak_corr$", "", version))
 
 
-def catalogue_entry(version):
-    """The catalogue-config entry describing ``version`` (its own, or the one
-    its ``_leak_corr`` variant derives from)."""
+def catalogue_name(version):
+    """The name of the catalogue-config entry describing ``version`` (its own,
+    or the one its ``_leak_corr`` / ``_seed<N>`` variant derives from)."""
     if version in CATALOG_CONFIG:
-        return CATALOG_CONFIG[version]
-    return CATALOG_CONFIG[re.sub(r"_leak_corr$", "", version)]
+        return version
+    return re.sub(r"_seed\d+$", "", re.sub(r"_leak_corr$", "", version))
+
+
+def catalogue_entry(version):
+    """The catalogue-config entry describing ``version``."""
+    return CATALOG_CONFIG[catalogue_name(version)]
 
 
 def redshift_path(version):

@@ -70,6 +70,12 @@ def plot_pseudo_cl_spectrum(datasets, spectrum, output_path):
     plt.close(fig)
 
 
+def _spectra(part):
+    """The ELL/EE/EB/BB dict of a pseudo-Cl part."""
+    ell, ee, bb, eb, _window = sacc_io.get_pseudo_cl(part, SACC_BIN)
+    return {"ELL": ell, "EE": ee, "EB": eb, "BB": bb}
+
+
 class PseudoClMixin:
     @property
     def pseudo_cls(self):
@@ -520,14 +526,7 @@ class PseudoClMixin:
             self._pseudo_cls[ver] = {}
 
             ver_out_path = out_path or self._output_path(f"pseudo_cl_{ver}.sacc")
-            if os.path.exists(ver_out_path):
-                self.print_done(
-                    f"Skipping Pseudo-Cl's calculation, {ver_out_path} exists"
-                )
-                self._pseudo_cls[ver]["pseudo_cl"] = self._load_pseudo_cl_sacc(
-                    ver_out_path
-                )
-            elif self.cell_method == "map":
+            if self.cell_method == "map":
                 self.calculate_pseudo_cl_map(ver, nside, ver_out_path)
             elif self.cell_method == "catalog":
                 self.calculate_pseudo_cl_catalog(ver, ver_out_path)
@@ -535,15 +534,6 @@ class PseudoClMixin:
                 raise ValueError(f"Unknown cell method: {self.cell_method}")
 
         self.print_done("Done pseudo-Cl's")
-
-    @staticmethod
-    def _load_pseudo_cl_sacc(out_path):
-        """Read a pseudo-Cl SACC part into the ELL/EE/EB/BB dict."""
-        # Readback of a part this producer just wrote — a legitimate pre-blind
-        # consumer, so the fail-closed load is opted out of.
-        s = sacc_io.load(out_path, allow_unblinded=True)
-        ell, ee, bb, eb, _window = sacc_io.get_pseudo_cl(s, SACC_BIN)
-        return {"ELL": ell, "EE": ee, "EB": eb, "BB": bb}
 
     def calculate_pseudo_cl_map(self, ver, nside, out_path):
         params = get_params_rho_tau(self.cc[ver], survey=ver)
@@ -610,9 +600,8 @@ class PseudoClMixin:
         cl_shear = cl_shear - cl_noise
 
         self.print_cyan("Saving pseudo-Cl's...")
-        self.pseudo_cl_to_sacc_part(ver, out_path, ell_eff, cl_shear, wsp)
-
-        self._pseudo_cls[ver]["pseudo_cl"] = self._load_pseudo_cl_sacc(out_path)
+        sealed = self.pseudo_cl_to_sacc_part(ver, out_path, ell_eff, cl_shear, wsp)
+        self._pseudo_cls[ver]["pseudo_cl"] = _spectra(sealed)
 
     def calculate_pseudo_cl_catalog(self, ver, out_path):
         params = get_params_rho_tau(self.cc[ver], survey=ver)
@@ -625,9 +614,8 @@ class PseudoClMixin:
         )
 
         self.print_cyan("Saving pseudo-Cl's...")
-        self.pseudo_cl_to_sacc_part(ver, out_path, ell_eff, cl_shear, wsp)
-
-        self._pseudo_cls[ver]["pseudo_cl"] = self._load_pseudo_cl_sacc(out_path)
+        sealed = self.pseudo_cl_to_sacc_part(ver, out_path, ell_eff, cl_shear, wsp)
+        self._pseudo_cls[ver]["pseudo_cl"] = _spectra(sealed)
 
     def get_n_gal_map(self, params, nside, cat_gal):
         """Weighted galaxy number-density map (thin wrapper -> primitive)."""
@@ -721,7 +709,8 @@ class PseudoClMixin:
 
         ``cl_all`` is NaMaster's decoupled ``(4, nbp)`` array (EE, EB, BE, BB);
         the writer takes the shared bandpower window from ``wsp``. No covariance
-        is attached here.
+        is attached here. Returns the part as sealed under the version's
+        blind.
         """
         s = pseudo_cl_to_sacc(
             self.sacc_nz(version),
@@ -730,7 +719,7 @@ class PseudoClMixin:
             cl_all,
             wsp,
         )
-        sacc_io.save(s, out_path, type="data")
+        return sacc_io.save(s, out_path, blind=self.blind(version))
 
     def plot_pseudo_cl(self):
         """Plot the EE/EB/BB pseudo-Cl spectra for every version."""

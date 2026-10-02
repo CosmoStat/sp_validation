@@ -206,3 +206,6 @@ report.md
 check2.txt
 format2.txt
 residual.md
+
+# Blind records hold a secret seed and never enter git.
+*.blind.json

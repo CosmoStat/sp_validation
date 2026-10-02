@@ -82,10 +82,10 @@ def _reporting_cov_path(version):
 
 
 def _xi_integration_path(version):
-    """Path to fine-binned 2PCF integration file. Unpatched: values only, no covariance."""
+    """Path to the fine-binned ξ± integration part (unpatched)."""
     return (
         f"{COSMO_VAL_OUTPUT}/{version}_xi_minsep={FIDUCIAL['min_sep_int']}"
-        f"_maxsep={FIDUCIAL['max_sep_int']}_nbins={FIDUCIAL['nbins_int']}_npatch=1.txt"
+        f"_maxsep={FIDUCIAL['max_sep_int']}_nbins={FIDUCIAL['nbins_int']}_npatch=1.sacc"
     )
 
 

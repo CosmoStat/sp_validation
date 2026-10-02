@@ -24,7 +24,6 @@ import argparse
 import json
 import os
 
-from sp_validation import sacc_io
 from sp_validation.cosmo_val import CosmologyValidation
 
 
@@ -47,7 +46,7 @@ def generate_pseudo_cl(
         Catalog version (e.g., "SP_v1.4.6_leak_corr")
     out_path : str
         Exact destination the SACC part is born at — its final (possibly tagged)
-        name. Skip-if-exists keys on it, so no two rules share a basename.
+        name.
     cat_config : str
         Path to catalog configuration YAML
     nside : int
@@ -128,12 +127,9 @@ def generate_pseudo_cl(
     # Pseudo-Cls only (no covariance), born directly at the final out_path.
     cv.calculate_pseudo_cl(out_path=out_path)
 
-    if os.path.exists(out_path):
-        # Readback of the part just written — a legitimate pre-blind consumer.
-        s = sacc_io.load(out_path, allow_unblinded=True)
-        ell = sacc_io.get_pseudo_cl(s, (0, 0))[0]
-        print(f"Generated pseudo-Cl with {len(ell)} ell bins")
-        print(f"ell range: [{ell.min():.1f}, {ell.max():.1f}]")
+    ell = cv.pseudo_cls[version]["pseudo_cl"]["ELL"]
+    print(f"Generated pseudo-Cl with {len(ell)} ell bins")
+    print(f"ell range: [{ell.min():.1f}, {ell.max():.1f}]")
     return out_path
 
 
