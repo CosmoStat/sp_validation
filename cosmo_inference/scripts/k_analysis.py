@@ -16,13 +16,11 @@ from scipy.special import j0, jn
 
 
 def process_theta(theta, nz_file, output_root):
-    """Compute shear correlation functions for a single angular scale.
+    """Prototype for ξ± at one angular separation across a kmax grid.
 
-    For a given angular separation, this function computes the weak-lensing
-    correlation functions xi+ and xi- over a range of maximum wavenumbers
-    (kmax). The calculation includes nonlinear matter power spectra from
-    CAMB and optionally intrinsic-alignment contributions. Results are
-    appended to output text files.
+    The routine raises ``KeyError('As')`` in CAMB setup before writing output.
+    Its IA terms are always enabled and use ``P_IA = -A_IA c1 Ω_m / D`` without
+    ``rho_crit``.
 
     Parameters
     ----------
@@ -32,14 +30,7 @@ def process_theta(theta, nz_file, output_root):
         Path to the source redshift distribution file. The file must contain
         two columns giving redshift and n(z).
     output_root : str
-        Prefix of the output files. Results are written to
-        ``{output_root}_xip.txt`` and ``{output_root}_xim.txt``.
-
-    Returns
-    -------
-    float
-        The input angular separation, returned for bookkeeping when running
-        in parallel.
+        Prefix passed to the output writers after CAMB setup.
     """
 
     def Hz(z):
