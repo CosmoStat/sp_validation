@@ -271,11 +271,12 @@ def ellipticity_dispersion(e1, e2, w):
 
 
 def additive_bias(e1, e2, w, R):
-    """Weighted additive-bias estimates ``(c1, c2)``.
+    """Weighted response-scaled means used for additive subtraction.
     @sc [decision:shear_field.mean_subtraction_and_response]
 
-    Returns the weighted mean of the response-corrected ellipticities
-    ``⟨e1 / R⟩`` and ``⟨e2 / R⟩``, weighted by ``w``.
+    Returns ``⟨e1 / R⟩_w`` and ``⟨e2 / R⟩_w``. These equal the mean
+    ellipticities only when ``R = 1``; the two-point pipeline subtracts them
+    from raw ``e``.
 
     Parameters
     ----------
