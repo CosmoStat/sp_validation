@@ -43,7 +43,8 @@ is the container (full scientific stack pre-built). For a local dev environment:
 - `cosmo_val.py`: Cosmology validation routines
 - `cosmology.py`: Cosmological calculations and theory
 - `galaxy.py`: Galaxy-specific processing
-- `io.py`: Input/output utilities
+- `grammar.py`: Column grammars: ShapePipe v1 -> v2 adapter and `column_map` renames (`adapt`)
+- `io.py`: Input/output; the catalogue reader (`read_catalogue`, `Catalogue`), which detects FITS/HDF5 layouts
 - `plots.py`: Plotting functions
 - `rho_tau.py`: Rho and tau statistics calculations
 - `statistics.py`: Cosmology-independent statistics (jackknife resampling, χ²/PTE, covariance↔correlation, OneCovariance reshaping)
@@ -67,10 +68,10 @@ snakemake --profile workflow/profiles/candide -s workflow/Snakefile \
 
 ### Configuration
 Main configuration in `scripts/calibration/params.py` with parameters:
-- `name`: Field/patch identifier
+- `campaign`: Campaign name (the ShapePipe tile list); names the input products
 - `data_dir`: Input data directory
 - `galaxy_cat_path`: Galaxy catalogue path (.fits/.hdf5)
-- `star_cat_path`: Star catalogue path (.fits)
+- `star_cat_path`: Star catalogue path (.hdf5, or a v1 .fits)
 
 ### Key Dependencies
 - astropy, numpy, scipy for core calculations

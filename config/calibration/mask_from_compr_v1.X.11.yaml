@@ -9,7 +9,7 @@ params:
   verbose: True
 
 # Masks
-## Using columns in 'dat' group (ShapePipe flags)
+## Cuts on catalogue columns, in the v2 grammar (sp_validation.grammar)
 dat:
 
   # Duplicate objects
@@ -24,29 +24,29 @@ dat:
     kind: greater_equal
     value: 2
 
-## Using columns in 'dat_ext' group (post-processing flags)
-dat_ext:
+  # Healsparse mask bits and post-processing columns (the comprehensive
+  # HDF5's data_ext dataset)
 
   # Stars
-  - col_name: 4_Stars
+  - col_name: MASK_4_Stars
     label: "Stars"
     kind: equal
     value: False
 
   # Manual mask
-  - col_name: 8_Manual
+  - col_name: MASK_8_Manual
     label: "manual mask"
     kind: equal
     value: False
 
   # r-band footprint
-  - col_name: 64_r
+  - col_name: MASK_64_r
     label: "r-band imaging"
     kind: equal
     value: False
 
   # Maximask
-  - col_name: 1024_Maximask
+  - col_name: MASK_1024_Maximask
     label: "maximask"
     kind: equal
     value: False

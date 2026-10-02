@@ -57,7 +57,6 @@ def apply_condition(array, kind, value):
 
 
 def correlation_matrix(masks, confidence_level=0.9):
-
     n_key = len(masks)
     print(n_key)
 
@@ -75,7 +74,6 @@ def correlation_matrix(masks, confidence_level=0.9):
 
 
 def confusion_matrix(prediction, observation):
-
     result = {}
 
     result["true_pos"] = sum(prediction & observation)
@@ -143,7 +141,6 @@ class Mask:
         dat=None,
         verbose=False,
     ):
-
         self._col_name = col_name
         self._label = label
         self._value = value
@@ -161,7 +158,6 @@ class Mask:
             self.apply(dat)
 
     def __repr__(self):
-
         return (
             f"Mask(col_name={self._col_name}, label={self._label}, kind={self._kind},"
             + f" value={self._value})"
@@ -169,7 +165,6 @@ class Mask:
 
     @classmethod
     def from_list(cls, masks, label="combined", verbose=False):
-
         if verbose:
             print(f"Combining {len(masks)} masks")
 
@@ -180,7 +175,6 @@ class Mask:
         return my_mask
 
     def apply(self, dat):
-
         if self._kind == "not_equal_2bands":
             self._mask = apply_condition(
                 dat[self._col_name], "not_equal", self._value
@@ -189,7 +183,6 @@ class Mask:
             self._mask = apply_condition(dat[self._col_name], self._kind, self._value)
 
     def to_bool(self, hsp_mask):
-
         if self._verbose:
             print("to_bool: get valid pixels")
         valid_pixels = hsp_mask.valid_pixels
@@ -224,7 +217,6 @@ class Mask:
         self.print_strings(self._col_name, self._label, si, sf, f_out=f_out)
 
     def get_sign(self, latex=False):
-
         sign = None
         if self._kind == "equal":
             sign = "$=$" if latex else "="
@@ -237,7 +229,6 @@ class Mask:
         return sign
 
     def print_condition(self, f_out, latex=False):
-
         if self._value is None:
             return ""
 
@@ -284,7 +275,6 @@ class Mask:
         # Create description for FITS header
 
     def add_summary_to_FITS_header(self, header):
-
         header_new = fits.Header()
 
         self.create_descr()
@@ -311,19 +301,42 @@ def print_mask_stats(num_obj, masks, mask_combined):
     mask_combined.print_stats(num_obj)
 
 
-def get_masks_from_config(config, dat, dat_ext, masks_to_apply=None, verbose=False):
+def catalogue_cuts(config):
+    """Return the catalogue cuts of a mask config: its ``dat`` list.
+
+    Every cut names a column of the one v2-grammar table
+    ``CalibrateCat.read_cat`` returns, mask columns included.
+
+    Raises
+    ------
+    ValueError
+        if the config also has a ``dat_ext`` list, whose cuts would otherwise
+        be silently dropped
+    """
+    if "dat_ext" in config:
+        names = [cut.get("col_name") for cut in config["dat_ext"] or []]
+        raise ValueError(
+            f"mask config has a 'dat_ext' cut list {names}, which is not read:"
+            + " move its entries into 'dat', renaming the mask columns"
+            + " {b}_{label} to MASK_{b}_{label} (e.g. 4_Stars -> MASK_4_Stars;"
+            + " see sp_validation.grammar.MASK_LABELS)"
+        )
+    return config.get("dat") or []
+
+
+def get_masks_from_config(config, dat, masks_to_apply=None, verbose=False):
     """Get Masks From Config.
 
-    Return mask information from yaml config structure.
+    Return the masks of the config's ``dat`` cut list (``catalogue_cuts``),
+    evaluated on ``dat``.
 
     Parameters
     ----------
     config : dict
         config information
-    dat : numpy.ndarray
-        input data
-    det_ext : numpy.ndarray
-        input extended data
+    dat : numpy.ndarray or grammar.V2View
+        input catalogue, in the v2 column grammar (e.g. from
+        ``CalibrateCat.read_cat``)
     masks_to_apply: list, optional
         masks to apply exclusively; if `None` (default), use all masks
     verbose : bool, optional
@@ -343,40 +356,22 @@ def get_masks_from_config(config, dat, dat_ext, masks_to_apply=None, verbose=Fal
     # Dict to associate labels with index in mask list
     labels = {}
 
-    # Loop over mask sections from config file
-    config_data = {key: config[key] for key in ["dat", "dat_ext"] if key in config}
-    idx = 0
-    for section, mask_list in config_data.items():
-        # Set data source
-        dat_source = dat if section == "dat" else dat_ext
+    for mask_params in catalogue_cuts(config):
+        if masks_to_apply is not None and mask_params["col_name"] not in masks_to_apply:
+            if verbose:
+                print(f"Skipping mask {mask_params['col_name']}")
+            continue
 
-        # Loop over mask information in this section
-        for mask_params in mask_list:
-            use_this_mask = False
-            if masks_to_apply is not None:
-                if mask_params["col_name"] in masks_to_apply:
-                    use_this_mask = True
-            else:
-                use_this_mask = True
+        # Ensure 'range' kind has exactly two values
+        value = mask_params["value"]
+        if mask_params["kind"] == "range" and (
+            not isinstance(value, list) or len(value) != 2
+        ):
+            raise ValueError(f"Range kind requires a list of two values, got {value}")
 
-            if use_this_mask:
-                # Ensure 'range' kind has exactly two values
-                value = mask_params["value"]
-                if mask_params["kind"] == "range" and (
-                    not isinstance(value, list) or len(value) != 2
-                ):
-                    raise ValueError(
-                        f"Range kind requires a list of two values, got {value}"
-                    )
-
-                # Create mask instance and append to list
-                my_mask = Mask(**mask_params, dat=dat_source, verbose=verbose)
-                masks.append(my_mask)
-                labels[my_mask._col_name] = idx
-                idx += 1
-            else:
-                if verbose:
-                    print(f"Skipping mask {mask_params['col_name']}")
-                continue
+        # Create mask instance and append to list
+        my_mask = Mask(**mask_params, dat=dat, verbose=verbose)
+        labels[my_mask._col_name] = len(masks)
+        masks.append(my_mask)
 
     return masks, labels

@@ -35,7 +35,7 @@ print(obj._params)
 # !pwd
 
 # Get data. Set load_into_memory to False for very large files
-dat, _ = obj.read_cat(load_into_memory=False)
+dat = obj.read_cat(load_into_memory=False)
 
 if True:
     n_max = 1_000_000
@@ -47,9 +47,9 @@ if True:
 
 masks_to_apply = [
     "FLAGS",
-    "4_Stars",
-    "64_r",
-    "1024_Maximask",
+    "MASK_4_Stars",
+    "MASK_64_r",
+    "MASK_1024_Maximask",
     "N_EPOCH",
     "mag",
     "NGMIX_MCAL_TYPES_FAIL",
@@ -58,7 +58,7 @@ masks_to_apply = [
 ]
 
 masks, labels = sp_joint.get_masks_from_config(
-    config, dat, dat, masks_to_apply=masks_to_apply, verbose=obj._params["verbose"]
+    config, dat, masks_to_apply=masks_to_apply, verbose=obj._params["verbose"]
 )
 
 mask_combined = sp_joint.Mask.from_list(
@@ -234,4 +234,4 @@ with open("masks.txt", "w") as f_out:
 
 #
 
-obj.close_hd5()
+obj.close_cat()

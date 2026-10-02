@@ -1,23 +1,48 @@
 # ShapePipe-v2 column-grammar migration (shapepipe → sp_validation)
 
-**Status:** code-complete on `migrate/ngmix-psf-column-names` (draft PR
-[#201](https://github.com/CosmoStat/sp_validation/pull/201)). Every shape-column
-read in the live package, configs, calibration scripts, paper figures, and
-notebooks uses the ShapePipe-v2 grammar; the σ→T units change and the
-`spread_model` removal are in; the dead `galsim` estimator path is removed; and
-the suite is green against synthetic catalogues carrying the new columns.
+sp_validation reads the ShapePipe-v2 column grammar everywhere: live package,
+configs, calibration scripts, paper figures and notebooks. Catalogues written in
+the v1 grammar (every release up to v1.6.x) are presented in the v2 grammar at the
+read boundary by `sp_validation.grammar`: every catalogue read goes through
+`sp_validation.io` (`read_catalogue`, `Catalogue`), which applies it. `adapt(table)`
+presents a v1 table under the v2 names and units below, as a lazy
+column view over a numpy array, FITS_rec or h5py dataset, and returns v2 or
+grammar-neutral tables unchanged. `detect_generation` tells the grammars apart
+from column names, and `v2_names` maps a header's names without reading data.
+The adapter maps by *name*, so a v1 `*_PSFo` column is presented as
+`*_PSF_ORIG` holding the v1 (reconvolved-alias) values; downstream code never
+branches on the generation. The one exception is a documented v1 defect, which
+the adapter corrects rather than renames: `NGMIX_T_PSF_RECONV_NOSHEAR` is read
+from `NGMIX_Tpsf_1P` (see the reconvolved-PSF table). The tables below
+(Old = v1, New = v2) are the rule table in `grammar.V1_RULES`.
 
-**No code work is left waiting on a regenerated catalogue.** The one *value*
-change — `*_PSF_ORIG` now holds a true original-PSF fit (shapepipe#749) rather
-than the reconvolved-kernel alias the old columns silently held — is a straight
-column rename at the code level and is already in place; the code does not care
-that the numbers moved. All a v2 catalogue enables is a *look-at-the-numbers*
-sanity check (do the α-leakage / size-ratio cuts still behave), which is analysis,
-not code, and does not gate the PR. **The real merge gate is cutover timing:**
-merging this branch makes `develop` *require* v2 columns and stop reading today's
-catalogues, so #201 should land together with — or just after —
-[shapepipe#761](https://github.com/CosmoStat/shapepipe/pull/761)→#741 and the
-first v2 catalogue.
+Mask columns follow a separate rule family, applied whatever the generation.
+The UNIONS healsparse mask product is one bitmask, and bit `b` is the boolean
+column `MASK_{b}_{label}`: the bit value for its identity, the label for its
+meaning (`grammar.mask_column`, labels from `grammar.MASK_LABELS`). ShapePipe v2
+and `catalog_builders.ApplyHspMasks` write these names, and every mask
+configuration cuts on them, so one configuration serves both generations. The
+adapter presents two other spellings of the same bit under the canonical name:
+`{b}_{label}`, the `data_ext` dataset of every released v1 comprehensive HDF5,
+and `MASK_n{b}`, written by pre-release ShapePipe v2 runs. No spelling marks a
+generation.
+
+| bit | column | v1 `data_ext` name | meaning |
+|---|---|---|---|
+| 1 (bit 0) | `MASK_1_Faint_star_halos` | `1_Faint_star_halos` | faint star halos |
+| 2 (bit 1) | `MASK_2_Bright_star_halos` | `2_Bright_star_halos` | bright star halos |
+| 4 (bit 2) | `MASK_4_Stars` | `4_Stars` | star bodies |
+| 8 | `MASK_8_Manual` | `8_Manual` | manual mask (large galaxies) |
+| 16–256 | `MASK_16_u` … `MASK_256_z` | `16_u`, `32_g`, `64_r`, `128_i`, `256_z` | per-band coverage; `256_z` is the HSC z-band |
+| 512 | `MASK_512_Tile_RA_DEC_cut` | `512_Tile_RA_DEC_cut` | outside the tile's unique region |
+| 1024 | `MASK_1024_Maximask` | `1024_Maximask` | MaxiMask |
+| 2048 | `MASK_2048_z2` | `2048_z2` | Pan-STARRS z-band (`z2`); true means no coverage |
+
+`adapt(data, data_ext)` joins the two datasets of a comprehensive HDF5 into one
+table, so a v1 comprehensive catalogue and a v2 catalogue take the same mask
+configuration and the same `galaxy.mask_cut`. `IMAFLAGS_ISO` passes through
+unmapped: its v1 bits (2 halo, 4 border, 16 Messier, 32 NGC, 128 spike) are not
+the mask bits of the same value.
 
 shapepipe#761 turns the shape-measurement output into **one column grammar for
 the whole catalogue**: every estimator names its outputs
@@ -67,7 +92,22 @@ column is also carried through `params.add_cols_pre_cal` and every
 
 | Old | New | Note |
 |---|---|---|
-| `NGMIX_Tpsf_{shear}` | `NGMIX_T_PSF_RECONV_{shear}` | same value (the `T/Tpsf` size-ratio cut) |
+| `NGMIX_Tpsf_{shear}` | `NGMIX_T_PSF_RECONV_{shear}` | same value (the `T/Tpsf` size-ratio cut), for `{shear}` ≠ `NOSHEAR` |
+| `NGMIX_Tpsf_1P`, else `NGMIX_Tpsf_NOSHEAR` | `NGMIX_T_PSF_RECONV_NOSHEAR` | **v1 defect corrected** (below) |
+
+ShapePipe v1 wrote a wrong `NGMIX_Tpsf_NOSHEAR`: in the v1.4, v1.5 and v1.6
+comprehensive catalogues it differs by ~2% for nearly every object from the
+reconvolution kernel metacal applied, which the sheared types'
+`NGMIX_Tpsf_{1P,1M,2P,2M}` record (they agree to ~1e-5). The v1.4.6.3 release
+used the `1P` value in its metacal size cut and wrote it as
+`NGMIX_Tpsf_NOSHEAR` (keeping the raw one as `NGMIX_Tpsf_NOSHEAR_orig`), so the
+adapter reads `NGMIX_Tpsf_1P` whenever a v1 table has it and falls back to
+`NGMIX_Tpsf_NOSHEAR` for a cut catalogue such as v1.4.6.3's, whose no-shear
+column already holds the `1P` value. The release's `w_des` and PSF-leakage
+binning used the raw size, so a calibration through the adapter reproduces the
+release's selection and per-object columns but not those two bit for bit.
+ShapePipe v2 reuses one reconvolved PSF across metacal types and needs no
+correction.
 
 ### ngmix — original PSF (value change — shapepipe#749 fix — *not a code blocker*)
 
@@ -76,7 +116,7 @@ reconvolved-kernel alias the old `ELL_PSFo`/`T_PSFo` columns silently held. The
 rename is a straight column rename in sp_validation and is correct as-is — the
 code does not care that the numbers moved. The only thing a regenerated catalogue
 buys is a *look-at-the-numbers* check that the α-leakage / size-ratio cuts still
-behave; that is analysis, not code, and it does not gate this PR (see Status).
+behave; that is analysis, not code, and it gates nothing in the code.
 
 | Old | New |
 |---|---|
@@ -122,8 +162,8 @@ truly held σ) now reads `HSM_T_*` directly.
 The σ→T change makes the old squaring dead: `HSM_T_*` (and DES's `piff_T`) already
 hold `T`, so nothing squares. The per-dataset `square_size:` flags in
 `cat_config.yaml` are dropped, the `not_square_size` list in `rho_tau.py` is
-removed, and the `square_size` key is gone from both param builders
-(`rho_tau.get_params_rho_tau`, `cosmo_val/compute_theory_cov.py`). The parameter
+removed, and the `square_size` key is gone from the param builder
+(`rho_tau.get_params_rho_tau`). The parameter
 is also removed from `shear_psf_leakage`'s `build_cat_to_compute_{rho,tau}` and
 `CovTauTh` ([PR #27](https://github.com/CosmoStat/shear_psf_leakage/pull/27)), so
 sp_validation no longer *passes* it — the two migrations are coordinated. (Passing
@@ -136,7 +176,7 @@ dropping the argument here is what keeps the container green once #27 lands.)
 - **Configs** — `cosmo_val/cat_config.yaml` (HSM blocks; DES/piff spared);
   `config/calibration/mask_v1.X.*.yaml` ×10 (`NGMIX_ELL_PSFo_NOSHEAR_0/_1`).
 - **rho/τ + covariance** — `src/sp_validation/rho_tau.py`,
-  `src/sp_validation/cosmo_val/psf_systematics.py`, `cosmo_val/compute_theory_cov.py`,
+  `src/sp_validation/cosmo_val/psf_systematics.py`,
   `src/sp_validation/glass_mock.py`.
 - **Scripts** — `scripts/calibration/{extract_info,params,calibrate_comprehensive_cat}.py`,
   `scripts/apply_alpha_snr_size_bin.py`, `scripts/examples/demo_*.py`.
@@ -168,7 +208,7 @@ outside `scratch/` instantiates `metacal(prefix="GALSIM")` or calls
 `col_1p = f"{prefix}_T_PSF_RECONV_1P"` read in `metacal._read_data` never matched
 the galsim producer output (`GALSIM_T_PSF_*`, not `..._T_PSF_RECONV_*`). Carrying
 an untestable, already-broken path onto the new grammar is a worse end state than
-deleting it, so this branch **removes** it:
+deleting it, so sp_validation has none. Absent by design:
 
 - `calibration.metacal._read_data_galsim`, the `prefix == "GALSIM"` dispatch
   branch (now `else: raise` — unknown prefixes fail loudly), and the two galsim
@@ -191,8 +231,8 @@ grammar, and add coverage — not the dead stub that was removed.
   "Adopt ShapePipe-v2 HSM column grammar, retire square_size") is the sibling
   consumer migration. It lands on the same HSM grammar
   (`HSM_G1/G2_{PSF,STAR}`, `HSM_T_*`, `HSM_FLAG_*`) and removed the `square_size`
-  parameter from `build_cat_to_compute_{rho,tau}` and `CovTauTh`; this PR drops the
-  matching argument, so the two land together (see "`square_size` is retired").
+  parameter from `build_cat_to_compute_{rho,tau}` and `CovTauTh`; sp_validation
+  passes no such argument (see "`square_size` is retired").
 - **shapepipe#761** (producer) still renames the `GALSIM_*` family onto the grammar
   for columns nothing can create. If the goal is to simplify the grammar,
   retiring that serialization is a producer-side follow-up worth raising there.
