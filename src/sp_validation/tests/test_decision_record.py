@@ -828,6 +828,13 @@ def test_module_docstring_tag_is_rejected(mini_repo):
     assert_problem(errors, "src/doc.py:3", "module docstring")
 
 
+def test_tag_in_a_test_is_not_a_site(mini_repo):
+    # A test would otherwise keep a decision covered after its code sites go.
+    append(mini_repo, MARKER, "\n# @sc [decision:statement]\nVALUE = 8\n")
+    _, errors = dr.scan_tags(mini_repo)
+    assert_problem(errors, MARKER, "pytest.mark.decision")
+
+
 @pytest.fixture
 def real_repo():
     if not (ROOT / "astra.yaml").is_file():

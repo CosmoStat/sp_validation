@@ -4,6 +4,7 @@ Adapted from ShapePipe's tests/helpers/decisions.py, without its tool-specific
 readers or program analysis. Public checks return diagnostic lists, not pytest
 assertions. No source is imported or executed.
 
+Tags mark implementing sites, never tests (those carry pytest.mark.decision).
 Tags require bracketed metadata with keys decision, label and scope; only
 decision may repeat. Local ids use letters, digits, underscores, dots and
 hyphens, and need not have prose. Paragraphs end at a blank line (not another
@@ -279,6 +280,11 @@ def scan_tags(root):
         for number, body, owner in sorted(raw, key=lambda item: item[0]):
             try:
                 meta, ident = _metadata(body)
+                if "tests" in Path(relative).parts:
+                    raise ValueError(
+                        "@sc tags mark implementing sites, not tests; "
+                        "mark the test with pytest.mark.decision"
+                    )
                 file_scope = meta.get("scope") == ["file"]
                 if owner is not None:
                     site = Site(
