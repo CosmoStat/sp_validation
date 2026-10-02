@@ -777,6 +777,16 @@ def test_subscript_assignment_is_a_setting(mini_repo):
     value_problem(mini_repo, "body", "dict_entry", "candidates found 2", "40")
 
 
+def test_reassignment_in_same_scope_shadows_pin(mini_repo):
+    append(mini_repo, PYTHON, "\nmodule_value = 80\n")
+    value_problem(mini_repo, "statement", "module_value", "governed span", "80")
+
+
+def test_same_name_in_another_scope_is_not_a_shadow(mini_repo):
+    append(mini_repo, PYTHON, "\n\ndef other():\n    module_value = 80\n")
+    assert dr.repository_errors(mini_repo) == []
+
+
 @pytest.fixture
 def real_repo():
     if not (ROOT / "astra.yaml").is_file():
