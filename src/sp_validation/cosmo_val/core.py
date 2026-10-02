@@ -1,6 +1,7 @@
 # %%
 import copy
 import os
+import re
 from pathlib import Path
 
 import colorama
@@ -324,6 +325,9 @@ class CosmologyValidation(
         self.catalog_config_path = Path(catalog_config)
         with self.catalog_config_path.open("r") as file:
             self.cc = cc = yaml.load(file, Loader=yaml.FullLoader)
+        # The config as written, before virtual versions and resolved paths:
+        # what each catalogue's blind is checked against.
+        self._config_as_read = copy.deepcopy(cc)
 
         def resolve_paths_for_version(ver):
             """Resolve relative paths for a version using its subdir."""
@@ -514,7 +518,16 @@ class CosmologyValidation(
     def blind(self, version):
         """The blind every SACC this object writes for ``version`` is saved
         under, as the catalogue config declares it."""
-        return blinding.open_blind(blinding.blind_of(self.cc, version), self.cc)
+        entry = version
+        while entry not in self._config_as_read:
+            base = re.sub(r"_leak_corr$", "", entry)
+            if base == entry:
+                base = self._split_seed_variant(entry)[0] or entry
+            if base == entry:
+                raise ValueError(f"no catalogue {version} in the catalogue config")
+            entry = base
+        catalogues = self._config_as_read
+        return blinding.open_blind(blinding.blind_of(catalogues, entry), catalogues)
 
     def basename(self, version, treecorr_config=None, npatch=None):
         cfg = treecorr_config or self.treecorr_config

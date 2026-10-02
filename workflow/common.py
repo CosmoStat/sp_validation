@@ -284,10 +284,10 @@ def base_version(version):
 
 def catalogue_name(version):
     """The name of the catalogue-config entry describing ``version`` (its own,
-    or the one its ``_leak_corr`` variant derives from)."""
+    or the one its ``_leak_corr`` / ``_seed<N>`` variant derives from)."""
     if version in CATALOG_CONFIG:
         return version
-    return re.sub(r"_leak_corr$", "", version)
+    return re.sub(r"_seed\d+$", "", re.sub(r"_leak_corr$", "", version))
 
 
 def catalogue_entry(version):

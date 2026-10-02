@@ -195,6 +195,24 @@ class TestCosmologyValidation:
         assert seed_version in cv.cc
         assert cv.cc[seed_version]["shear"]["path"].endswith("shear_seed_007.fits")
 
+    def test_blind_is_checked_against_the_config_as_written(self, tmp_path):
+        """A twin entry reading the same shear file under another blind is
+        refused, though the selected entry's paths were resolved; a seeded
+        leak-corrected variant takes its base entry's blind."""
+        params, base_version = self._make_seed_config(
+            tmp_path, shear_filename="shear_seed_1234.fits"
+        )
+        config = yaml.safe_load(open(params["catalog_config"]))
+        cv = CosmologyValidation(versions=[f"{base_version}_seed7_leak_corr"], **params)
+        assert cv.blind(f"{base_version}_seed7_leak_corr").name == "none"
+
+        config["Twin"] = {**config[base_version], "blind": "y3"}
+        with open(params["catalog_config"], "w") as f:
+            yaml.dump(config, f, sort_keys=False)
+        cv = CosmologyValidation(versions=[base_version], **params)
+        with pytest.raises(ValueError, match="different blinds"):
+            cv.blind(base_version)
+
     def test_seed_leak_corr_materializes_seed_first(self, tmp_path):
         """_seed<N>_leak_corr should clone the seed variant before leak fixes."""
         params, base_version = self._make_seed_config(
