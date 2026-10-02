@@ -22,7 +22,7 @@ rule xi:
     input:
         catalog=get_shear_catalog,
     output:
-        txt=str(COSMO_VAL / "{version}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.txt"),
+        txt=str(COSMO_VAL / "xi_{version}_tomo_bin_all_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.txt"),
         sacc=str(COSMO_VAL / "{version}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc"),
     threads: 24
     params:
@@ -46,10 +46,10 @@ rule xi:
 
 rule rho_tau_stats:
     output:
-        rho_stats=str(COSMO_VAL / "rho_tau_stats/rho_stats_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
-        tau_stats=str(COSMO_VAL / "rho_tau_stats/tau_stats_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
+        rho_stats=str(COSMO_VAL / "rho_tau_stats/rho_stats_{version}_tomo_bin_all_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
+        tau_stats=str(COSMO_VAL / "rho_tau_stats/tau_stats_{version}_tomo_bin_all_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
         # Born-as-SACC ρ/τ part, written alongside the FITS.
-        rho_tau=str(COSMO_VAL / "rho_tau_stats/rho_tau_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc"),
+        rho_tau=str(COSMO_VAL / "rho_tau_stats/rho_tau_{version}_tomo_bin_all_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc"),
     threads: 48
     params:
         ver="{version}",

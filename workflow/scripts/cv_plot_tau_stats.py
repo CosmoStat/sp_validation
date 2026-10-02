@@ -8,5 +8,5 @@ from cv_runner import _unbuffer_streams, make_cv, touch_sentinels
 
 _unbuffer_streams()
 cv = make_cv(snakemake)
-cv.plot_tau_stats()
+cv.plot_tau_stats(tomography=False, savefig="tau_stats.png", show=False)
 touch_sentinels(snakemake)

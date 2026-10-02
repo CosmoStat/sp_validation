@@ -269,6 +269,81 @@ class RealSpaceMixin:
             self.calculate_aperture_mass_dispersion()
         return self._map2
 
+    def plot_2pcf(
+        self, tomography=False, offset=0.02, alpha=1.0, show=True, close=True
+    ):
+        """Plot ξ± of every version, one panel per bin pair.
+
+        Measures, or reads back, the 2PCF with :meth:`calculate_2pcf` and draws
+        it with :meth:`plot_2pcf_tomography`, as ξ± (log-log) and as θ·ξ±.
+        Writes ``xi_pm_tomography_{tomography}.png`` and
+        ``xi_pm_theta_tomography_{tomography}.png`` under the output directory.
+        """
+        self.calculate_2pcf(compute_tomography=tomography)
+
+        for times_theta in (False, True):
+            prefix = r"$\theta\,$" if times_theta else ""
+            suffix = "_theta" if times_theta else ""
+            self.plot_2pcf_tomography(
+                self._xiplus_ximinus_sample_x_y_plot_function,
+                r"$\theta$ [arcmin]",
+                prefix + r"$\xi_+(\theta)$",
+                prefix + r"$\xi_-(\theta)$",
+                (0.05, 0.9) if times_theta else (0.8, 0.95),
+                extract_text_offset=times_theta,
+                add_index_version_to_kwargs=True,
+                x_scale="log",
+                y_scale="linear" if times_theta else "log",
+                tomography=tomography,
+                savefig=self._output_path(f"xi_pm{suffix}_tomography_{tomography}.png"),
+                show=show,
+                close=close,
+                offset=offset,
+                times_theta=times_theta,
+                alpha=alpha,
+            )
+
+    def plot_ratio_xi_sys_xi(
+        self, tomography=False, threshold=0.1, offset=0.02, show=True, close=True
+    ):
+        """Plot ξ^{PSF, sys}_± / ξ± of every version, one panel per bin pair.
+
+        The band marks ``±threshold``. ξ± comes from :meth:`calculate_2pcf` and
+        ξ^{PSF, sys} from the ``xi_psf_sys`` property, both on the instance's
+        ``treecorr_config`` binning. Writes ``ratio_xi_sys_xi.png`` (non-
+        tomographic) or ``ratio_xi_sys_xi_tomography.png`` under the output
+        directory.
+        """
+        if tomography and not self.compute_tomography:
+            raise ValueError(
+                "plot_ratio_xi_sys_xi(tomography=True) needs the tomographic "
+                "xi_psf_sys; construct CosmologyValidation with "
+                "compute_tomography=True"
+            )
+        self.calculate_2pcf(compute_tomography=tomography)
+
+        y_label = r"$\xi^{{\rm PSF, sys}}_{0} / \xi_{0}$"
+        self.plot_2pcf_tomography(
+            self._ratio_xi_sys_xi_x_y_plot_function,
+            r"$\theta$ [arcmin]",
+            y_label.format("+"),
+            y_label.format("-"),
+            (0.8, 0.95),
+            extract_text_offset=False,
+            add_index_version_to_kwargs=True,
+            x_scale="log",
+            tomography=tomography,
+            savefig=self._output_path(
+                "ratio_xi_sys_xi_tomography.png"
+                if tomography
+                else "ratio_xi_sys_xi.png"
+            ),
+            show=show,
+            close=close,
+            offset=offset,
+            threshold=threshold,
+        )
+
     def plot_2pcf_tomography(
         self,
         x_y_plot_function,
@@ -648,3 +723,48 @@ class RealSpaceMixin:
             markersize=3,
             capsize=2,
         )
+
+    def _ratio_xi_sys_xi_x_y_plot_function(
+        self,
+        ax_plus,
+        ax_minus,
+        version,
+        tomo_bin_a,
+        tomo_bin_b,
+        idx,
+        versions,
+        color,
+        offset,
+        threshold,
+    ):
+        """Plot ξ^{PSF, sys}_± / ξ± for one version/tomographic-bin pair.
+
+        Fed into :meth:`plot_2pcf_tomography` as the ``x_y_plot_function``
+        argument. The error bar propagates the variances of both ξ^{PSF, sys}
+        and ξ±; the first version also draws the ``±threshold`` band.
+        """
+        key = f"tomo_bin_{tomo_bin_a}_tomo_bin_{tomo_bin_b}"
+        gg = self.cat_ggs[version][key]
+        xi_psf_sys = self.xi_psf_sys[version][key]
+
+        theta = self._get_jittered_theta(gg.meanr, idx, len(versions), offset)
+
+        for ax, xi, var_xi, component in (
+            (ax_plus, gg.xip, gg.varxip, "plus"),
+            (ax_minus, gg.xim, gg.varxim, "minus"),
+        ):
+            mean = xi_psf_sys[f"mean_{component}"]
+            var = xi_psf_sys[f"var_{component}"]
+            ratio = mean / xi
+            ratio_err = np.sqrt(var / xi**2 + mean**2 * var_xi / xi**4)
+            ax.errorbar(
+                theta,
+                ratio,
+                yerr=ratio_err,
+                color=color,
+                fmt=self.cc[version].get("marker", "o"),
+                markersize=3,
+                capsize=2,
+            )
+            if idx == 0:
+                ax.axhspan(-threshold, threshold, color="black", alpha=0.1)

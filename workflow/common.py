@@ -375,14 +375,15 @@ CV_SENTINELS = COSMO_VAL / "snakemake_sentinels"
 
 
 def cv_basename(version, fiducial=None):
-    """Reproduce CosmologyValidation.basename() for a version.
+    """Reproduce CosmologyValidation.basename() for a version's ("all", "all") pair.
 
-    Mirrors the f-string in cosmo_val.py so rule outputs match exactly what the
-    method writes. Uses fiducial binning (min_sep/max_sep/nbins/npatch).
+    Mirrors the f-string of ``CosmologyValidation.basename(version)`` so rule
+    outputs match exactly what the method writes. Uses fiducial binning
+    (min_sep/max_sep/nbins/npatch).
     """
     fiducial = fiducial or FIDUCIAL
     return (
-        f"{version}_minsep={fiducial['min_sep']}"
+        f"{version}_tomo_bin_all_minsep={fiducial['min_sep']}"
         f"_maxsep={fiducial['max_sep']}"
         f"_nbins={fiducial['nbins']}"
         f"_npatch={fiducial['npatch']}"

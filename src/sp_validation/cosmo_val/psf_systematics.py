@@ -67,7 +67,9 @@ class PSFSystematicsMixin:
     @property
     def xi_psf_sys(self):
         if not hasattr(self, "_xi_psf_sys"):
-            self.calculate_rho_tau_fits()
+            self.calculate_rho_tau_fits(tomography=False)
+            if self.compute_tomography:
+                self.calculate_rho_tau_fits(tomography=True)
         return self._xi_psf_sys
 
     # --- calculate functions ---
@@ -833,7 +835,7 @@ class PSFSystematicsMixin:
             sample_list,
             names=["x0", "x1", "x2"],
             labels=[r"\alpha", r"\beta", r"\eta"],
-            savefig=savefig_contours,
+            savefig=savefig,
             legend_labels=versions,
             legend_loc="upper right",
             contour_colors=colors,

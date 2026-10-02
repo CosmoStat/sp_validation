@@ -50,12 +50,12 @@ CV_BINNING = (
 
 
 def cv_xi_txt(version):
-    """Path to the 2pcf data vector calculate_2pcf writes for a version.
+    """Path to the ξ± TreeCorr dump calculate_2pcf_version writes for a version.
 
-    Mirrors the out_fname f-string in cosmo_val.calculate_2pcf:
-    {ver}_xi_minsep=..._maxsep=..._nbins=..._npatch=...txt
+    Mirrors RealSpaceMixin._xi_txt_path for the ("all", "all") pair:
+    xi_{ver}_tomo_bin_all_minsep=..._maxsep=..._nbins=..._npatch=...txt
     """
-    return str(COSMO_VAL / f"{version}_xi_{xi_binning('reporting')}.txt")
+    return str(COSMO_VAL / f"xi_{version}_tomo_bin_all_{xi_binning('reporting')}.txt")
 
 
 def cv_rho_stats(version):

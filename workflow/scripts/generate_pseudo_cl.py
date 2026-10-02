@@ -126,7 +126,7 @@ def generate_pseudo_cl(
     cv = CosmologyValidation(**cv_kwargs)
 
     # Pseudo-Cls only (no covariance), born directly at the final out_path.
-    cv.calculate_pseudo_cl(out_path=out_path)
+    cv.calculate_pseudo_cl(compute_tomography=False, out_path=out_path)
 
     if os.path.exists(out_path):
         # Readback of the part just written — a legitimate pre-blind consumer.

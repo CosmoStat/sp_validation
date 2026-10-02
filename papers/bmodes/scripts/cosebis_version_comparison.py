@@ -148,7 +148,7 @@ def _create_stacked_bmode_figure(
 
 
 def _xi_integration(results_dir, ver):
-    return f"{results_dir}/{ver}_xi_minsep=0.5_maxsep=300.0_nbins=1000_npatch=1.txt"
+    return f"{results_dir}/xi_{ver}_tomo_bin_all_minsep=0.5_maxsep=300.0_nbins=1000_npatch=1.txt"
 
 
 def _cov_integration(cov_dir, ver):

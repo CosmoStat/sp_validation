@@ -16,7 +16,15 @@ from sp_validation.cosmo_val import CosmologyValidation
 
 REPO = Path(__file__).resolve().parents[3]
 
-EXEMPT = {}
+EXEMPT = {
+    # The workflow is the non-tomographic DAG: every rule script names the bin
+    # pair it computes, and the flag only switches the lazy properties on to
+    # tomographic products no rule declares.
+    "compute_tomography": "rule scripts pass tomography per call",
+    # Snakemake owns staleness: it removes a job's declared outputs before
+    # running it, so the methods' skip-if-exists only ever reuses intermediates.
+    "force_run": "Snakemake decides what reruns",
+}
 
 
 def _load_common():
