@@ -2,7 +2,7 @@
 
 """Script apply_alpha.py
 
-Add PSF leakage to galaxy ellipticity using fitted model of alpha.
+Subtract fitted PSF leakage from galaxy ellipticity using the model of alpha.
 Write FITS file with added columns.
 
 :Authors: Martin Kilbinger

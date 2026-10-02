@@ -140,12 +140,12 @@ needed for calibration with the method of *metacalibration*
 *before* calibration.
 
 ```{tip}
-The `sp_validation` library performs every step below for you:
-{func}`sp_validation.calibration.get_calibrated_m_c` calibrates an in-memory
-catalogue for multiplicative and additive bias, and
-{func}`sp_validation.calibration.get_calibrate_e_from_cat` does the same from a
-catalogue on disk. The worked example here is kept for understanding what those
-functions compute.
+`get_calibrated_m_c` calibrates an in-memory catalogue with an unweighted
+additive-bias mean and the response matrix stored on the metacal object.
+`get_calibrate_e_from_cat` reads a catalogue from disk, uses the selected
+weight column for the additive mean, and recomputes the shear response as an
+unweighted mean of the per-object `R_g` columns.
+These helpers therefore need not return the same calibration.
 ```
 
 ### Open the file
@@ -183,13 +183,13 @@ data_ext_sub = data_ext[mask]
 
 **Additive bias.** For a survey as large as UNIONS/CFIS the mean shear over the
 observed area is an excellent approximation to zero, so the additive bias is the
-weighted mean of the uncalibrated ellipticities (also stored in the FITS header
-for the full sample):
+unweighted mean of the uncalibrated ellipticities. The full-sample FITS header
+stores these values as `C_1` and `C_2`:
 
 ```python
 c = np.empty(2)
 for comp in (0, 1):
-    c[comp] = np.average(data_ext_sub[f'e{comp+1}_uncal'], weights=data_ext_sub['w'])
+    c[comp] = np.mean(data_ext_sub[f'e{comp+1}_uncal'])
 
 print('Additive bias')
 for comp in (0, 1):
@@ -198,16 +198,20 @@ for comp in (0, 1):
 
 **Multiplicative bias.** In metacalibration this is a 2×2 matrix
 $R = R_g + R_\mathrm{s}$, the sum of the shear response $R_g$ and the selection
-response $R_\mathrm{s}$. Both are also stored in the header for the full sample.
+response $R_\mathrm{s}$. Both are stored in the full-sample header; its
+$R_g$ is weighted by `w_iv`, while this example computes a weighted response
+for the selected sample.
 
 The per-galaxy shear response is part of the extended catalogue, so the
-ensemble $R_g$ is computed *after* the sub-sample selection:
+`w_iv`-weighted ensemble $R_g$ is computed *after* the sub-sample selection:
 
 ```python
 R_g = np.empty((2, 2))
 for idx in (0, 1):
     for jdx in (0, 1):
-        R_g[idx, jdx] = np.mean(data_ext_sub[f'R_g{idx+1}{jdx+1}'])
+        R_g[idx, jdx] = np.average(
+            data_ext_sub[f'R_g{idx+1}{jdx+1}'], weights=data_ext_sub['w_iv']
+        )
 
 print('Shear response matrix R_g =')
 print(np.matrix(R_g))
