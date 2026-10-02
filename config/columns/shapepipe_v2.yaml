@@ -42,9 +42,9 @@ galaxy:
     NGMIX_MCAL_TYPES_FAIL: Number of metacal types whose fit failed.
     NGMIX_G1_ERR_NOSHEAR: Error on g1 of the unsheared fit; inverse-variance weight.
     NGMIX_G2_ERR_NOSHEAR: Error on g2 of the unsheared fit; inverse-variance weight.
-    NGMIX_G1_PSF_ORIG_NOSHEAR: g1 of the original PSF; -10 = no PSF fit.
-    NGMIX_G2_PSF_ORIG_NOSHEAR: g2 of the original PSF.
-    NGMIX_T_PSF_ORIG_NOSHEAR: Size T of the original PSF.
+    NGMIX_G1_PSF_ORIG_NOSHEAR: v2 original-PSF g1; -10 = no fit; v1 maps the reconvolved alias.
+    NGMIX_G2_PSF_ORIG_NOSHEAR: v2 original-PSF g2; v1 maps the reconvolved alias.
+    NGMIX_T_PSF_ORIG_NOSHEAR: v2 original-PSF size T; v1 maps the reconvolved alias.
     NGMIX_G1_NOSHEAR: Ellipticity g1, unsheared image.
     NGMIX_G2_NOSHEAR: Ellipticity g2, unsheared image.
     NGMIX_T_NOSHEAR: Galaxy size T = 2 sigma^2, unsheared image.
