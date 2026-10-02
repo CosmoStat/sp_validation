@@ -342,6 +342,11 @@ def coverage_errors(record, tags, pending=None):
         if not isinstance(reason, str) or not reason.strip()
     )
     errors.extend(
+        f"PENDING_SITES: {d}: has a tagged site; remove the exception"
+        for d in pending
+        if d in cited
+    )
+    errors.extend(
         f"{d}: decision has no tagged site"
         for d in sorted(known.keys() - cited - pending.keys())
     )
