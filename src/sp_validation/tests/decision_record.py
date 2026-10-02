@@ -9,12 +9,13 @@ digits, underscores, dots and hyphens, and need not have prose. Paragraphs end a
 a blank line (not another tag); overlapping tags count a physical setting once.
 Path qualifiers are relative, component-aligned suffixes; # and :: are synonyms.
 Absence selects exactly one same-decision tagged file and searches the entire
-file (the named INI section, including DEFAULT inheritance). INI keys and section
-names are case-sensitive; interpolation and inline-comment stripping are off.
+file (the named INI section, including DEFAULT inheritance). INI section names
+are case-sensitive and keys are not, as CosmoSIS lower-cases them and merges
+repeated sections; interpolation and inline-comment stripping are off. A YAML or
+INI key repeated in the same file outside the governed span fails: the last wins.
 Snakemake values use Python literal syntax: assignments, directive scalars and
 keyword/dict entries in directive expressions. YAML sequence paths use numeric
-indices; a YAML key repeated outside the governed span fails, as the last wins.
-YAML aliases are rejected if recursive. Only inline ASTRA analyses are
+indices. YAML aliases are rejected if recursive. Only inline ASTRA analyses are
 read; this is an integrity check, not a general ASTRA schema validator.
 """
 
@@ -48,7 +49,7 @@ _TAG = re.compile(r"@sc\s+\[([^\]]*)\](?:\s+([A-Za-z_][\w.-]*))?\s*\Z")
 _NUMBER = re.compile(r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?\Z")
 _ABSENT = object()
 _DECL = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
-_SHADOWING = {".yaml", ".yml"}
+_SHADOWING = {".yaml", ".yml", ".ini"}
 
 
 @dataclass(frozen=True)
@@ -673,6 +674,15 @@ def _reference(text):
     return qualifier.removeprefix("./"), ref
 
 
+def _same_setting(path, actual, ref):
+    """CosmoSIS lower-cases INI keys (not sections); other refs match exactly."""
+    if Path(path).suffix != ".ini":
+        return actual == ref
+    section, _, key = actual.rpartition(".")
+    want_section, _, want_key = ref.rpartition(".")
+    return section == want_section and key.lower() == want_key.lower()
+
+
 def value_errors(root, record, tags):
     """Resolve each Values entry once, with exact typed decimal equality."""
     errors, cache = [], {}
@@ -709,9 +719,11 @@ def value_errors(root, record, tags):
                     if path not in cache:
                         cache[path] = _locations(root, path)
                     for loc in cache[path]:
-                        matches = loc.ref == ref
+                        matches = _same_setting(path, loc.ref, ref)
                         if want is _ABSENT and Path(path).suffix == ".ini":
-                            matches |= loc.ref == "DEFAULT." + ref.rsplit(".", 1)[-1]
+                            matches |= _same_setting(
+                                path, loc.ref, "DEFAULT." + ref.rsplit(".", 1)[-1]
+                            )
                         if matches and (
                             want is _ABSENT
                             or any(
