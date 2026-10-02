@@ -283,6 +283,7 @@ class TestCosmologyValidation:
         seed=1234,
         coherent_shear=False,
         with_psf=False,
+        with_tomography=False,
     ):
         """Write small deterministic FITS catalogs + dndz, return a config dict.
 
@@ -300,6 +301,8 @@ class TestCosmologyValidation:
         with_psf : bool
             If True, add a ``psf`` config block (rho/tau / pseudo-Cl read it via
             ``get_params_rho_tau``).
+        with_tomography : bool
+            If True, add two tomographic bins to the shear catalogue.
         """
         from astropy.table import Table
 
@@ -325,9 +328,10 @@ class TestCosmologyValidation:
         w = rng.uniform(0.5, 1.0, n_gal)
 
         shear_path = cat_dir / "shear.fits"
-        Table({"RA": ra, "Dec": dec, "e1": e1, "e2": e2, "w": w}).write(
-            shear_path, overwrite=True
-        )
+        shear_data = {"RA": ra, "Dec": dec, "e1": e1, "e2": e2, "w": w}
+        if with_tomography:
+            shear_data["tomo_bin_id"] = rng.integers(1, 3, n_gal)
+        Table(shear_data).write(shear_path, overwrite=True)
 
         star_path = cat_dir / "star.fits"
         Table(
@@ -362,6 +366,8 @@ class TestCosmologyValidation:
             "e1_col_corrected": "e1",
             "e2_col_corrected": "e2",
         }
+        if with_tomography:
+            shear_cfg["tomo_bin_col"] = "tomo_bin_id"
         star_cfg = {
             "path": "star.fits",
             "ra_col": "RA",
@@ -506,42 +512,100 @@ class TestCosmologyValidation:
                 getattr(read, column), getattr(measured, column), rtol=1e-4
             )
 
-    def test_calculate_2pcf_does_not_depend_on_thread_count(self, tmp_path):
-        """calculate_2pcf's ξ± is the same on 4 and on 48 TreeCorr threads.
-
-        Production binning (default bin_slop/angle_slop), both runs on the
-        jackknife patches the first one writes, each from a fresh Catalog; they
-        must agree to far below the jackknife σ.
-        """
+    def test_calculate_2pcf_is_reproducible_across_machines(
+        self, tmp_path, monkeypatch
+    ):
+        """Fresh calculate_2pcf_version runs share patches and ξ± across CPU counts."""
         import treecorr
+        import treecorr.field
 
-        params, version = self._write_synthetic_catalogs(
-            tmp_path, n_gal=4000, coherent_shear=True
-        )
-        cv = CosmologyValidation(
-            versions=[version],
-            npatch=8,
-            theta_min=15.0,
-            theta_max=70.0,
-            nbins=6,
-            **params,
-        )
+        patches = []
+        process = treecorr.GGCorrelation.process
 
-        xi = {}
-        for n_threads in (4, 48):
-            # calculate_2pcf_version reads back an existing text dump instead of
-            # measuring.
-            for dump in Path(params["output_dir"]).glob(f"xi_{version}_*.txt"):
-                dump.unlink()
-            gg = cv.calculate_2pcf_version(version, num_threads=n_threads)[
+        def recording_process(gg, cat, *args, **kwargs):
+            patches.append(np.array(cat.patch))
+            return process(gg, cat, *args, **kwargs)
+
+        monkeypatch.setattr(treecorr.GGCorrelation, "process", recording_process)
+
+        xi, var, counts = {}, {}, {}
+        for tree, n_cpu in (("a", 4), ("b", 16)):
+            monkeypatch.setattr(treecorr.field, "get_omp_threads", lambda n=n_cpu: n)
+            run_dir = tmp_path / tree
+            run_dir.mkdir()
+            params, version = self._write_synthetic_catalogs(
+                run_dir,
+                n_gal=4000,
+                ra_range=(0.0, 60.0),
+                dec_range=(-10.0, 30.0),
+                coherent_shear=True,
+            )
+            gg = CosmologyValidation(
+                versions=[version],
+                npatch=100,
+                theta_min=15.0,
+                theta_max=70.0,
+                nbins=6,
+                **params,
+            ).calculate_2pcf_version(version, num_threads=n_cpu)[
                 "tomo_bin_all_tomo_bin_all"
             ]
-            assert treecorr.get_omp_threads() == n_threads  # the count took effect
-            xi[n_threads] = np.concatenate([gg.xip, gg.xim])
-            sigma = np.sqrt(np.concatenate([gg.varxip, gg.varxim]))
+            xi[tree] = np.concatenate([gg.xip, gg.xim])
+            var[tree] = np.concatenate([gg.varxip, gg.varxim])
+            counts[tree] = {key: result.npairs for key, result in gg.results.items()}
 
-        shift = np.max(np.abs(xi[48] - xi[4]) / sigma)
-        assert shift < 1e-6, f"ξ± moves by {shift:.3g}σ between 4 and 48 threads"
+        np.testing.assert_array_equal(patches[0], patches[1])
+        assert counts["a"].keys() == counts["b"].keys()
+        for key in counts["a"]:
+            np.testing.assert_array_equal(counts["a"][key], counts["b"][key])
+        np.testing.assert_allclose(xi["a"], xi["b"], rtol=0, atol=1e-12)
+        np.testing.assert_allclose(var["a"], var["b"], rtol=1e-10)
+
+    def test_cross_tomographic_pair_shares_patch_centres(self, tmp_path, monkeypatch):
+        """Both catalogues in a cross-bin pair use the full-sample centres."""
+        import treecorr
+
+        from sp_validation.statistics import jackknife_patch_centers
+
+        params, version = self._write_synthetic_catalogs(
+            tmp_path, n_gal=400, with_tomography=True
+        )
+        cv = CosmologyValidation(versions=[version], npatch=4, **params)
+        cols = cv._shear_columns(version, compute_tomography=True)
+        full_catalog = treecorr.Catalog(
+            ra=cols["ra"],
+            dec=cols["dec"],
+            w=cols["w"],
+            ra_units=cv.treecorr_config["ra_units"],
+            dec_units=cv.treecorr_config["dec_units"],
+        )
+        expected_centers = jackknife_patch_centers(full_catalog, 4)
+        catalogs = []
+        make_catalog = cv._bin_catalog
+
+        def recording_bin_catalog(cols, bin_id, npatch, patch_centers=None):
+            catalog = make_catalog(cols, bin_id, npatch, patch_centers)
+            catalogs.append((bin_id, patch_centers, np.array(catalog._centers)))
+            return catalog
+
+        monkeypatch.setattr(cv, "_bin_catalog", recording_bin_catalog)
+        cv.calculate_2pcf_version(version, npatch=4, compute_tomography=True)
+
+        assert len(catalogs) == 4
+        cross_pair_catalogs = catalogs[1:3]
+        assert [entry[0] for entry in cross_pair_catalogs] == [1, 2]
+        np.testing.assert_array_equal(
+            cross_pair_catalogs[0][1], cross_pair_catalogs[1][1]
+        )
+        np.testing.assert_array_equal(
+            cross_pair_catalogs[0][2], cross_pair_catalogs[1][2]
+        )
+        np.testing.assert_allclose(
+            cross_pair_catalogs[0][2], expected_centers, rtol=0, atol=1e-14
+        )
+        np.testing.assert_allclose(
+            cross_pair_catalogs[1][2], expected_centers, rtol=0, atol=1e-14
+        )
 
     def test_treecorr_runs_on_the_cpus_the_process_holds(self, tmp_path):
         """By default TreeCorr takes the process's CPU affinity, not the node's count."""

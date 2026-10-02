@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import treecorr
 
+from sp_validation.statistics import jackknife_patch_centers
+
 
 class RealSpaceMixin:
     def calculate_2pcf_version(
@@ -53,8 +55,8 @@ class RealSpaceMixin:
             - The non-tomographic pair is written to the columns-only TreeCorr
               dump ``xi_{basename}.txt``. If that file already exists, the pair is
               read back from it instead of being recomputed.
-            - If a patch file for the given configuration does not exist, it is
-              created during the process.
+            - Seeded patch centres are computed once from the full catalogue and
+              shared by every tomographic bin pair.
         """
 
         npatch = npatch or self.npatch
@@ -88,23 +90,18 @@ class RealSpaceMixin:
             to_compute.append((bin1, bin2))
 
         if to_compute:
-            patch_file = self._output_path(f"{ver}_patches_npatch={npatch}.dat")
             cols = self._shear_columns(ver, compute_tomography)
+            patch_centers = self._patch_centers(cols, npatch)
 
             for bin1, bin2 in to_compute:
                 gg = treecorr.GGCorrelation(treecorr_config)
 
-                patch_centers = patch_file if os.path.exists(patch_file) else None
                 cat_gal1 = self._bin_catalog(cols, bin1, npatch, patch_centers)
                 cat_gal2 = (
                     self._bin_catalog(cols, bin2, npatch, patch_centers)
                     if bin1 != bin2
                     else None
                 )
-
-                # If no patch file exists, save the current patches
-                if not os.path.exists(patch_file):
-                    cat_gal1.write_patch_centers(patch_file)
 
                 gg.process(cat_gal1, cat2=cat_gal2)
 
@@ -153,6 +150,19 @@ class RealSpaceMixin:
                     else None
                 ),
             }
+
+    def _patch_centers(self, cols, npatch):
+        """Seeded patch centres from the full catalogue of one version."""
+        if int(npatch) <= 1:
+            return None
+        cat = treecorr.Catalog(
+            ra=cols["ra"],
+            dec=cols["dec"],
+            w=cols["w"],
+            ra_units=self.treecorr_config["ra_units"],
+            dec_units=self.treecorr_config["dec_units"],
+        )
+        return jackknife_patch_centers(cat, int(npatch))
 
     def _bin_catalog(self, cols, tomo_bin_id, npatch, patch_centers=None):
         """TreeCorr catalogue of one tomographic bin (``"all"``: every row)."""
@@ -239,13 +249,16 @@ class RealSpaceMixin:
 
             self._map2.setdefault(ver, {})
             cols = self._shear_columns(ver, compute_tomography)
+            patch_centers = self._patch_centers(cols, npatch)
 
             for bin1, bin2 in tomo_bin_pairs:
                 gg = treecorr.GGCorrelation(treecorr_config)
 
-                cat_gal1 = self._bin_catalog(cols, bin1, npatch)
+                cat_gal1 = self._bin_catalog(cols, bin1, npatch, patch_centers)
                 cat_gal2 = (
-                    self._bin_catalog(cols, bin2, npatch) if bin1 != bin2 else None
+                    self._bin_catalog(cols, bin2, npatch, patch_centers)
+                    if bin1 != bin2
+                    else None
                 )
 
                 gg.process(cat_gal1, cat2=cat_gal2)
