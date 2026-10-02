@@ -95,6 +95,8 @@ def test_malformed_tag_reports_path_and_line(mini_repo, path, old):
         ("@sc [decision:statement,scope:paragraph]", "scope must be scope:file"),
         ("@sc [decision:statement,label:a,label:b]", "duplicate @sc metadata key"),
         ("@sc [decision:statement] id extra", "malformed @sc tag"),
+        # A misspelt key would otherwise leave a tag that cites nothing.
+        ("@sc [decison:statement]", "unknown @sc metadata key"),
     ],
 )
 def test_bad_tag_grammar(mini_repo, tag, message):

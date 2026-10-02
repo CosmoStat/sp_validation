@@ -4,9 +4,10 @@ Adapted from ShapePipe's tests/helpers/decisions.py, without its tool-specific
 readers or program analysis. Public checks return diagnostic lists, not pytest
 assertions. No source is imported or executed.
 
-Tags require bracketed metadata; only decision may repeat. Local ids use letters,
-digits, underscores, dots and hyphens, and need not have prose. Paragraphs end at
-a blank line (not another tag); overlapping tags count a physical setting once.
+Tags require bracketed metadata with keys decision, label and scope; only
+decision may repeat. Local ids use letters, digits, underscores, dots and
+hyphens, and need not have prose. Paragraphs end at a blank line (not another
+tag); overlapping tags count a physical setting once.
 Path qualifiers are relative, component-aligned suffixes; # and :: are synonyms.
 Absence selects exactly one same-decision tagged file and searches the entire
 file (the named INI section, including DEFAULT inheritance). INI section names
@@ -51,6 +52,7 @@ _DECISION = re.compile(rf"{_ID}(?:\.{_ID})*\Z")
 _TAG = re.compile(r"@sc\s+\[([^\]]*)\](?:\s+([A-Za-z_][\w.-]*))?\s*\Z")
 _NUMBER = re.compile(r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?\Z")
 _ABSENT = object()
+_KEYS = {"decision", "label", "scope"}
 _DECL = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
 
 
@@ -155,6 +157,8 @@ def _metadata(text):
         if not pair:
             raise ValueError("malformed @sc metadata")
         key, value = pair.groups()
+        if key not in _KEYS:
+            raise ValueError(f"unknown @sc metadata key {key}")
         if key in meta and key != "decision":
             raise ValueError(f"duplicate @sc metadata key {key}")
         if key == "decision" and not _DECISION.fullmatch(value):
