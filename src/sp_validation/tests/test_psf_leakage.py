@@ -206,6 +206,26 @@ def test_objectwise_leakage_and_plot_smoke(tmp_path, monkeypatch):
     assert (tmp_path / "output" / "leakage_coefficients_tomo.png").exists()
 
 
+def test_leakage_object_reads_the_selected_rows(tmp_path):
+    """The object-wise reader keeps the rows a galaxy mask selects."""
+    pytest.importorskip("shear_psf_leakage")
+    from sp_validation.cosmo_val import CosmologyValidation
+    from sp_validation.cosmo_val.core import _LeakageObject
+
+    version, params = _objectwise_config(tmp_path)
+    cv = CosmologyValidation(versions=[version], npatch=1, **params)
+    obj = object.__new__(_LeakageObject)
+    obj.entries = cv.cc[version]
+
+    mask = cv._get_galaxy_mask(version, 2)
+    obj.read_data(selection=mask)
+    assert len(obj._dat) == mask.sum()
+    assert np.all(obj._dat["tomo_bin"] == 2)
+
+    with pytest.raises(ValueError, match="different length"):
+        obj.read_data(selection=mask[1:])
+
+
 class _ObjectwiseControlFlow(PSFSystematicsMixin):
     """Two versions, one of which lacks a catalogue column."""
 

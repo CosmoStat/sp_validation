@@ -52,8 +52,18 @@ class _LeakageObject(run_object.LeakageObject):
 
     entries = None
 
-    def read_data(self):
-        self._dat = io.open_entry(self.entries["shear"])
+    def read_data(self, selection=None):
+        """Read the shear entry, keeping the rows ``selection`` marks.
+
+        ``selection`` is an optional boolean array over the rows of
+        ``io.open_entry(entries["shear"])``, in that order.
+        """
+        dat = io.open_entry(self.entries["shear"])
+        if selection is not None:
+            if len(selection) != len(dat):
+                raise ValueError("Selection array has different length than catalogue")
+            dat = dat[selection]
+        self._dat = dat
 
 
 # %%
