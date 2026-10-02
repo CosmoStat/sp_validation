@@ -475,16 +475,19 @@ def compute_two_point_xi(cat, config=None):
     return gg
 
 
-def get_n_gal_map(nside, ra, dec):
-    """Galaxy-count HEALPix map plus the unique-pixel bookkeeping arrays.
+def get_n_gal_map(nside, ra, dec, unique_pix=None, idx=None, idx_rep=None):
+    """Galaxy-count HEALPix map, shape ``(npix,)``.
 
     The unweighted twin of the pseudo-Cl ``get_n_gal_map`` primitive: delegates
-    to it with ``weights=None`` (counts). Imported lazily so this module keeps
-    resolving in CAMB-only environments without the harmonic stack.
+    to it with ``weights=None`` (counts), reusing the ``get_pixels`` bookkeeping
+    when given. Imported lazily so this module keeps resolving in CAMB-only
+    environments without the harmonic stack.
     """
     from sp_validation.pseudo_cl import get_n_gal_map as _get_n_gal_map
 
-    return _get_n_gal_map(nside, ra, dec)
+    return _get_n_gal_map(
+        nside, ra, dec, unique_pix=unique_pix, idx=idx, idx_rep=idx_rep
+    )
 
 
 def compute_two_point_cl(cat, nside=1024, lmin=8, n_bins=32):
@@ -527,7 +530,8 @@ def compute_two_point_cl(cat, nside=1024, lmin=8, n_bins=32):
     cl_coupled = nmt.compute_coupled_cell(f_all, f_all)
     cl_all = wsp.decouple_cell(cl_coupled)
 
-    cl_coupled = np.concatenate([np.arange(1, lmax + 1)[np.newaxis, :], cl_coupled])
+    # compute_coupled_cell runs over ell = 0..b_lmax, index = ell
+    cl_coupled = np.concatenate([np.arange(lmax)[np.newaxis, :], cl_coupled])
     cl_all = np.concatenate([ell_eff[np.newaxis, ...], cl_all])
     return cl_coupled, cl_all
 
@@ -551,6 +555,8 @@ def compute_two_point_cl_map(cat, nside=1024, lmin=8, n_bins=32):
     import healpy as hp
     import pymaster as nmt
 
+    from sp_validation.pseudo_cl import get_pixels
+
     e1 = cat["e1"]
     e2 = cat["e2"]
     ra = cat["ra"]
@@ -562,7 +568,10 @@ def compute_two_point_cl_map(cat, nside=1024, lmin=8, n_bins=32):
     b, ell_eff, lmax, b_lmax = _mock_powspace_bin(nside, lmin, n_bins)
 
     factor = -1
-    n_gal_map, unique_pix, _idx, idx_rep = get_n_gal_map(nside, ra, dec)
+    unique_pix, idx, idx_rep = get_pixels(ra, dec, nside)
+    n_gal_map = get_n_gal_map(
+        nside, ra, dec, unique_pix=unique_pix, idx=idx, idx_rep=idx_rep
+    )
     mask = n_gal_map > 0
 
     shear_map_e1 = np.zeros(hp.nside2npix(nside))
@@ -582,7 +591,8 @@ def compute_two_point_cl_map(cat, nside=1024, lmin=8, n_bins=32):
     cl_coupled = nmt.compute_coupled_cell(f_all, f_all)
     cl_all = wsp.decouple_cell(cl_coupled)
 
-    cl_coupled = np.concatenate([np.arange(1, lmax + 1)[np.newaxis, :], cl_coupled])
+    # compute_coupled_cell runs over ell = 0..b_lmax, index = ell
+    cl_coupled = np.concatenate([np.arange(lmax)[np.newaxis, :], cl_coupled])
     cl_all = np.concatenate([ell_eff[np.newaxis, ...], cl_all])
     return cl_coupled, cl_all
 
