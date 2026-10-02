@@ -208,15 +208,21 @@ analyses:
           mask_r on covered granules), N_EPOCH >= 2, 15 <= mag <= 30,
           NGMIX_MCAL_TYPES_FAIL == 0, NGMIX_N_EPOCH >= 1 (objects ngmix never
           fit keep sentinel shapes and no flag) and PSF ellipticity != -10.
-          mask_v1.X.6.yaml, the selection behind SP_v1.4.6.3, keeps FLAGS ==
-          0, IMAFLAGS_ISO == 0, N_EPOCH >= 2, the same magnitude range, four
-          mask bits (no halo bits) and npoint3 >= 3; v2 catalogues carry no
+          mask_v1.X.6.yaml, the selection behind SP_v1.4.6.3, keeps FLAGS == 0,
+          IMAFLAGS_ISO == 0, N_EPOCH >= 2, four mask bits (no halo bits) and
+          npoint3 >= 3, with the same overlap, magnitude, ngmix-failure and
+          PSF-ellipticity cuts and no NGMIX_N_EPOCH cut; v2 catalogues carry no
           npoint3. For v1 inputs the grammar presents NGMIX_MOM_FAIL as
           NGMIX_MCAL_TYPES_FAIL by name, so the "ngmix failure" cut removes
-          moments-guess failures there and failed metacal types on v2
-          products. No rationale is recorded beyond the inline labels. The
-          selection sets the galaxy sample, hence n_eff, the response and
-          every statistic.
+          moments-guess failures there and failed metacal types on v2 products.
+          The mask_v2.0.yaml comments give three reasons: FLAGS <= 2 is the
+          image-simulation selection (mask_v1.X.9_im_sim.yaml), so data and
+          simulations select identically (shapepipe#885); the six bits
+          reproduce mask_r; and NGMIX_N_EPOCH >= 1 states the never-fit
+          condition directly instead of relying on the -10 sentinel. The other
+          cuts carry one-line labels only. Together with the metacal cuts, the
+          selection sets the galaxy sample, hence n_eff, the response and every
+          shear statistic.
           Values:
           mask_v2.0.yaml#dat.0.col_name = FLAGS;
           mask_v2.0.yaml#dat.0.kind = smaller_equal;
@@ -252,15 +258,18 @@ analyses:
         rationale: >-
           Each metacal type keeps NGMIX_FLAGS == 0, snr_min < flux/flux_err <
           snr_max and rel_size_min < T/Tpsf < rel_size_max, strict on both
-          sides, with T the ngmix size moment (metacal._masking_gal). The
-          committed configs set 10 < SNR < 500 and 0.707 < T/Tpsf < 3 and
-          gal_size_corr_ell False, so the cut uses the raw T; the class
-          defaults are 0.5 < T/Tpsf < 3 and size_corr_ell True, which rescales
-          T by (1 - |g|^2)/(1 + |g|^2). scripts/calibration/params.py gives the
-          reason: the SNR floor removes noisy objects, the ceiling objects too
-          bright for the postage stamp, the size window point-like and
-          overly large objects. The selection defines the sample and the
-          selection response. [LINT] the config comment calls the ratio
+          sides, with T the ngmix size T = 2 sigma^2 and Tpsf the
+          reconvolved-PSF size (metacal._masking_gal). The committed configs
+          set 10 < SNR < 500 and 0.707 < T/Tpsf < 3 and gal_size_corr_ell
+          False, so the cut uses the raw T; the class defaults are 0.5 < T/Tpsf
+          < 3 and size_corr_ell True, which rescales T by (1 - |g|^2)/(1 +
+          |g|^2). scripts/calibration/params.py gives the reasons: the SNR
+          floor removes noisy objects, the ceiling too-bright objects that may
+          be too large for the postage stamp, the size floor objects likely to
+          be point-like, and the size ceiling objects so large they seem to
+          bias the correlation functions. That file's own size floor is 0.5; no
+          reason is recorded for 0.707. The selection defines the sample and
+          the selection response. [LINT] the config comment calls the ratio
           hlr/hlr_psf; the cut is on T/Tpsf.
           Values:
           mask_v2.0.yaml#metacal.gal_snr_min = 10;
@@ -281,40 +290,53 @@ analyses:
             label: 10 < SNR < 500, 0.707 < T/Tpsf < 3, no ellipticity correction of T
           size_0p5_corrected_t:
             label: 0.5 < T/Tpsf < 3 on ellipticity-corrected T (class defaults)
-            description: What metacal() does when the config keys are omitted.
+            description: >-
+              The metacal() constructor defaults;
+              calibrate_comprehensive_cat.py always passes the config values,
+              so selecting them is a config edit.
       noshear_psf_size:
         label: Which reconvolved-PSF size the no-shear selection divides by
         rationale: >-
           For a v1 table the grammar reads NGMIX_T_PSF_RECONV_NOSHEAR from
           NGMIX_Tpsf_1P when the column exists and from NGMIX_Tpsf_NOSHEAR
-          otherwise; v2 products carry one reconvolved PSF for every metacal
-          type. ShapePipe v1 wrote a no-shear reconvolved-PSF size about 2%
-          off the kernel metacal applied, which the sheared types record to
-          1e-5, and the v1.4.6.3 release cut on the 1P value. The size cut
-          moves with the denominator, so the selected sample and its response
-          move with this choice.
+          otherwise; ShapePipe v2 reuses one reconvolved PSF across metacal
+          types and needs no correction. In the v1.4, v1.5 and v1.6
+          comprehensive catalogues NGMIX_Tpsf_NOSHEAR differs by about 2% from
+          the kernel metacal applied, which the sheared types' sizes record
+          (they agree to about 1e-5), and the v1.4.6.3 release cut on the 1P
+          value. The size cut moves with the denominator, so the selected
+          sample and its response move with this choice. The same column sets
+          the size ratio of the w_des and leakage bins; the release binned on
+          the raw value, so calibrating through the grammar reproduces the
+          release's selection but not its w_des and leakage columns bit for
+          bit.
           Values: fallback = NGMIX_Tpsf_NOSHEAR.
         default: tpsf_1p_for_v1
         options:
           tpsf_1p_for_v1:
-            label: v1 no-shear PSF size read from NGMIX_Tpsf_1P
+            label: v1 no-shear PSF size read from NGMIX_Tpsf_1P where the table has it
           tpsf_noshear_as_written:
             label: NGMIX_Tpsf_NOSHEAR as written
             excluded: true
-            excluded_reason: Known wrong by about 2% in v1 products.
+            excluded_reason: >-
+              In the v1 comprehensive catalogues it is about 2% off the kernel
+              metacal applied.
       response_estimator:
         label: Metacal response, R = <R_shear> + R_selection
         rationale: >-
           Per-object R_shear is the finite difference (g+ - g-)/(2h) of the
           sheared types on the no-shear selection, R_selection is the
-          difference of no-shear ellipticity means over the +/- sheared
-          selections, and the global 2x2 R is their sum
+          difference of the no-shear ellipticity means over the +h and -h
+          sheared selections divided by 2h, and the global 2x2 R is the mean of
+          R_shear (weighted as response_weighting sets) plus R_selection
           (metacal._shear_response, _selection_response, _total_response).
           Calibrated shears are inv(R) applied to the no-shear ellipticities
-          (get_calibrated_quantities). h = 0.01 must match ShapePipe's metacal
-          step. Standard metacalibration (Sheldon and Huff 2017). The response
-          sets the multiplicative calibration of every shear statistic.
-          [HARDCODED] estimator form.
+          (get_calibrated_quantities). h = 0.01 matches the metacal step
+          ShapePipe's ngmix module applies in both generations. Standard
+          metacalibration (Sheldon and Huff 2017). R is the multiplicative
+          calibration of the cut-catalogue shears that the downstream shear
+          statistics read; cosmo_val applies no further response to SP_v1.4.6.3
+          (shear.R 1.0). [HARDCODED] estimator form.
           Values: step = 0.01.
         default: global_response
         options:
@@ -326,15 +348,22 @@ analyses:
       response_weighting:
         label: Weight used to average the global shear response
         rationale: >-
-          global_R_weight names the no-shear column that weights the mean of
-          R_shear; the committed configs set w, the inverse-variance weight
-          (shape_weights), while R_selection is unweighted and the class
-          default is None, an unweighted mean. Every two-point statistic
-          weights galaxies by w_des, so the response is averaged under a
-          different weight from the one the statistics use. No rationale is
-          recorded. [LINT] on SP_v1.4.6.3 the w_iv-weighted <R_g> is 0.804
-          against 0.827 under w_des, a multiplicative offset of about 3% in
-          every w_des-weighted statistic (response-weight-mismatch).
+          global_R_weight names the no-shear quantity that weights the mean of
+          per-object R_shear (metacal._total_response); the committed configs
+          set w, the weight metacal.get_variance_ivweights computes
+          (shape_weights), and the class default None gives an unweighted mean.
+          R_selection is unweighted in every case. cosmo_val weights the
+          SP_v1.4.6.3 statistics by w_des (shear.w_col) with shear.R 1.0, so
+          the applied response is averaged under a different weight from the
+          one those statistics use. No rationale is recorded at the sites.
+          [LINT] on a 6M-row sample of SP_v1.4.6.3 the mean diagonal R_g is
+          0.804 under w_iv and 0.827 under w_des; holding R_selection fixed, a
+          w_des-weighted shear response would make the total response about
+          2.9% larger, so shear amplitudes sit about 2.9% and xi about 5.9%
+          above that counterfactual. This is a normalization inconsistency
+          between weightings, not a measured bias against true shear: whether
+          the published image-simulation m = -0.057 absorbs it is not
+          established (response-weight-mismatch).
           Values:
           mask_v2.0.yaml#metacal.global_R_weight = w;
           mask_v1.X.6.yaml#metacal.global_R_weight = w;
@@ -342,25 +371,36 @@ analyses:
         default: iv_weighted_shear_response
         options:
           iv_weighted_shear_response:
-            label: R_shear averaged with w (inverse variance), R_selection unweighted
+            label: >-
+              R_shear averaged with w (the coded inverse-variance weight),
+              R_selection unweighted
           unweighted:
-            label: Unweighted means (class default; image simulations)
+            label: Unweighted means (class default; the committed image-simulation configs)
           statistic_weight:
             label: Average R_shear and R_selection with the statistic weight w_des
-            description: Not implemented; w_des is computed after metacal.
+            description: >-
+              Not implemented; w_des is computed after metacal. The response of
+              a w_des-weighted mean also carries weight and cell-migration
+              derivatives in its selection term, which averaging R_selection
+              with w_des does not capture.
       shape_weights:
         label: Inverse-variance and DES-like shape weights
         rationale: >-
-          w_iv = 1/(2 sigma_eps^2 + G1_ERR + G2_ERR) with sigma_eps the
-          configured prior dispersion (metacal.get_variance_ivweights). w_des
-          follows Gatti et al. (2021): 20 x 20 logarithmic bins in SNR and
-          T/Tpsf over the metacal cut ranges, each bin's weight the squared
-          mean diagonal response over the mean (e1^2 + e2^2)/2 of the
-          uncalibrated ellipticities; objects outside the range fall in the
-          last bin (get_w_des, compute_weights_gatti). w_des is the weight of
-          every shear statistic, and n_eff and sigma_e follow from it. No
-          rationale is recorded for sigma_eps = 0.34. [LINT] G1_ERR and
-          G2_ERR are standard deviations added to variances
+          metacal.get_variance_ivweights computes w = 1/(2 sigma_eps^2 +
+          NGMIX_G1_ERR_NOSHEAR + NGMIX_G2_ERR_NOSHEAR), with sigma_eps the
+          configured prior dispersion; w weights the global shear response
+          (response_weighting). The cut catalogue's w_iv column is copied from
+          the comprehensive catalogue (calibrate_comprehensive_cat.py), and on
+          the 791,667 selected objects of a 6M-row v1.4 comprehensive sample it
+          equals that formula exactly. w_des follows Gatti et al. (2021): 20 x
+          20 logarithmic bins in SNR and T/Tpsf over the metacal cut ranges,
+          each bin's weight the squared mean diagonal response over the mean
+          (e1^2 + e2^2)/2 of the uncalibrated ellipticities; a value outside
+          the range, or missing, falls in the last bin of its axis (get_w_des,
+          compute_weights_gatti). cosmo_val weights the SP_v1.4.6.3 statistics
+          by w_des (shear.w_col), and the n_eff and sigma_e it reports use the
+          configured weight. No rationale is recorded for sigma_eps = 0.34.
+          [LINT] G1_ERR and G2_ERR are standard deviations added to variances
           (iv-weight-adds-sigma-to-variance).
           Values:
           mask_v2.0.yaml#metacal.sigma_eps_prior = 0.34;
@@ -372,16 +412,20 @@ analyses:
             label: w_des from 20x20 SNR-size bins; w_iv as coded
           iv_only:
             label: Inverse-variance weights for the statistics
-            description: cosmo_val reads shear.w_col; the _uncal_w_iv catalogue entries select w_iv.
+            description: cosmo_val reads shear.w_col; the SP_v1.4.6_uncal_w_iv entry selects w_iv.
       additive_bias:
         label: Additive bias subtracted in the cut catalogue
         rationale: >-
           c is the unweighted mean of the uncalibrated no-shear ellipticities
           over the metacal selection, and the calibrated shear is inv(R)(g - c)
           when additive_correction is True, the default the data configs take
-          by omission; the image-simulation config sets it False
-          (get_calibrated_m_c). The survey-mean shear is taken to be zero. The
-          weighted and unweighted means differ by about 1e-5 on SP_v1.4.6.3.
+          by omission; the image-simulation configs set it False
+          (get_calibrated_m_c). Subtracting the sample mean treats the
+          survey-mean shear as zero; the get_calibrated_m_c docstring keeps the
+          mean for constant-shear image simulations, where it is the signal
+          (#226). On a 6M-row sample of SP_v1.4.6.3 the w_des-weighted and
+          unweighted means of the uncalibrated ellipticities differ by 3e-5 in
+          e1 and 8e-6 in e2.
           Values:
           additive_correction = True;
           mask_v2.0.yaml#metacal.additive_correction = absent.
@@ -391,26 +435,30 @@ analyses:
             label: Unweighted mean c, subtracted as inv(R) c
           weighted_mean:
             label: w_des-weighted mean
-            description: Not implemented (CosmoStat/sp_validation #156).
+            description: >-
+              Not implemented in get_calibrated_m_c (CosmoStat/sp_validation
+              #156). The on-disk helper get_calibrate_e_from_cat computes a
+              w_<weight_type>-weighted c, but no pipeline calls it.
           none:
             label: No subtraction (additive_correction False)
       objectwise_leakage_correction:
         label: Object-wise PSF-leakage correction producing e*_leak_corrected
         rationale: >-
           Following Li et al. (2024), galaxies are split into 20 quantile bins
-          of Tpsf/(T + Tpsf) and, within each, 20 SNR quantiles; a weighted
-          least-squares slope alpha of e against e_PSF is fit per bin with
-          w_des, a five-term trend in SNR^-2, SNR^-3, R and R SNR^-2 is fit
-          across bins, and a second per-bin residual pass is added
+          of the size ratio Tpsf/(T + Tpsf) and, within each, 20 SNR quantiles;
+          a weighted least-squares slope alpha (with an intercept) of the
+          calibrated shear e against e_PSF is fit per bin with w_des, a
+          five-term trend (constant, SNR^-2, SNR^-3, size ratio, size ratio
+          times SNR^-2) is fit across bins, and a second per-bin fit on the
+          trend-corrected shears adds a residual slope
           (get_alpha_leakage_per_object). The catalogue stores e_leak_corrected
           = e - alpha e_PSF, the fiducial shear columns of Paper II
-          (shear_field.fiducial_columns). e_PSF is the ngmix PSF_ORIG
-          ellipticity; for v1 inputs the grammar presents the reconvolved-PSF
-          alias under that name, so v1 and v2 catalogues regress against
-          different PSF estimates. [LINT] the trend fit weights by 1/err^4
-          (leakage-trend-fit-weights-squared), and any exception in the fit
-          becomes alpha = -99, which the caller applies to the shears
-          (leakage-fit-failure-becomes-minus-99).
+          (shear_field.fiducial_columns). e_PSF is the comprehensive
+          catalogue's e1_PSF/e2_PSF, the PSF ellipticity at the galaxy position
+          as post-processing writes it, not an ngmix column. [LINT] the trend
+          fit weights by 1/err^4 (leakage-trend-fit-weights-squared), and any
+          exception in the fit becomes alpha = -99, which the caller applies to
+          the shears (leakage-fit-failure-becomes-minus-99).
           Values: calibration.py#weight_type = des; num_bins = 20.
         default: li2024_20x20_wdes
         options:
