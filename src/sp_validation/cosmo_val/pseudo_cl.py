@@ -974,7 +974,7 @@ class PseudoClMixin:
         )
 
     def get_pseudo_cls_catalog(
-        self, catalog, params, wsp=None, tomo_bin_a=None, tomo_bin_b=None
+        self, catalog, params, wsp=None, tomo_bin_a="all", tomo_bin_b="all"
     ):
         """Catalog-based pseudo-cl (thin wrapper, state -> primitive)."""
         return spv_pseudo_cl.get_pseudo_cls_catalog(

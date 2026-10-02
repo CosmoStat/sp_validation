@@ -613,6 +613,16 @@ def test_get_pseudo_cls_catalog(cv, cat_and_params):
     npt.assert_allclose(cl_all[2], cl_all[1], rtol=RTOL_CAT, atol=ATOL_CAT)
 
 
+def test_get_pseudo_cls_catalog_defaults_to_the_whole_catalogue(cv, cat_and_params):
+    """Called without bins, the wrapper measures the ("all", "all") pair."""
+    cat_gal, params = cat_and_params
+    _, cl_default, _ = cv.get_pseudo_cls_catalog(catalog=cat_gal, params=params)
+    _, cl_all, _ = cv.get_pseudo_cls_catalog(
+        catalog=cat_gal, params=params, tomo_bin_a="all", tomo_bin_b="all"
+    )
+    npt.assert_allclose(cl_default, cl_all, rtol=RTOL_CAT, atol=ATOL_CAT)
+
+
 # ===========================================================================
 # apply_random_rotation -- invariant + reproducibility
 # ===========================================================================
