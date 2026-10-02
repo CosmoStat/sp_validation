@@ -116,7 +116,7 @@ cosebis:
 # Statistical thresholds
 # @sc [decision:bmodes.bmode_summary]
 statistics:
-  pte_healthy_range: [0.05, 0.95]  # 2σ equivalent bounds
+  pte_healthy_range: [0.05, 0.95]  # 5% per tail (10% two-sided; about 1.64σ)
 
 # Plotting defaults
 plotting:
