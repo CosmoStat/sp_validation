@@ -129,8 +129,13 @@ class CosmologyValidation(
         Output directory. If None, the catalog config's paths.output.
     rho_tau_method : {'lsq', 'mcmc'}, default 'lsq'
         Fitting method for PSF leakage systematics parameters.
-    cov_estimate_method : {'th', 'jk'}, default 'th'
-        Covariance estimation: 'th' for semi-analytic theory, 'jk' for jackknife.
+    cov_estimate_method : {'th', 'jk', 'sim'}, default 'th'
+        Covariance estimation: 'th' for semi-analytic theory, 'jk' for jackknife,
+        'sim' for a covariance measured on simulations.
+    n_sim_cov : int, default 300
+        Number of simulations the 'sim' rho/tau covariance was measured on.
+        The covariance file does not record it; it sets the Hartlap debiasing
+        of the inverse covariance in the PSF-leakage fits.
     compute_cov_rho : bool, default True
         Whether to compute covariance for rho statistics during PSF analysis.
     n_cov : int, default 100
@@ -279,6 +284,7 @@ class CosmologyValidation(
         cov_estimate_method="th",
         compute_cov_rho=True,
         n_cov=100,
+        n_sim_cov=300,
         theta_min=0.1,
         theta_max=250,
         nbins=20,
@@ -310,6 +316,7 @@ class CosmologyValidation(
         self.cov_estimate_method = cov_estimate_method
         self.compute_cov_rho = compute_cov_rho
         self.n_cov = n_cov
+        self.n_sim_cov = n_sim_cov
         self.theta_min = theta_min
         self.theta_max = theta_max
         self.npatch = npatch

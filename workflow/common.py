@@ -398,6 +398,7 @@ CV_INIT_KEYS = (
     "cov_estimate_method",
     "compute_cov_rho",
     "n_cov",
+    "n_sim_cov",
     "theta_min",
     "theta_max",
     "nbins",

@@ -260,3 +260,36 @@ def test_version_missing_a_column_stays_dropped():
     assert set(cv.leakage_coeff) == {"good"}
     cv.calculate_objectwise_leakage(tomography=True)
     assert "tomo_bin_1" in cv.leakage_coeff["good"]
+
+
+@pytest.mark.parametrize(
+    "cov_estimate_method, expected",
+    [("sim", 500), ("jk", 150), ("th", None)],
+)
+def test_rho_tau_fit_debiases_estimated_covariances(
+    monkeypatch, cov_estimate_method, expected
+):
+    """Simulation and jackknife covariances get Hartlap-debiased; theory does not.
+
+    The debiasing count is the number of simulations (``n_sim_cov``) or of
+    jackknife patches the covariance was estimated from.
+    """
+    from sp_validation.cosmo_val import psf_systematics
+
+    seen = {}
+
+    def fake_get_samples(*args, apply_debias, **kwargs):
+        seen["apply_debias"] = apply_debias
+        return None, None, None
+
+    monkeypatch.setattr(psf_systematics, "get_samples", fake_get_samples)
+    cv = SimpleNamespace(
+        cov_estimate_method=cov_estimate_method,
+        n_sim_cov=500,
+        rho_tau_method="lsq",
+        psf_fitter=None,
+        basename=lambda version, tomo_bin_a="all": version,
+    )
+    cv.get_samples = PSFSystematicsMixin.get_samples.__get__(cv)
+    cv.get_samples("v", {"patch_number": 150}, "all")
+    assert seen["apply_debias"] == expected

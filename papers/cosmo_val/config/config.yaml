@@ -33,6 +33,8 @@ cosmo_val:
   cov_estimate_method: th
   compute_cov_rho: true
   n_cov: 100
+  # simulations behind a cov_estimate_method: sim rho/tau covariance (Hartlap)
+  n_sim_cov: 300
   var_method: jackknife
   quantile: 0.1587
   ylim_xi_sys_ratio: [-0.02, 0.5]

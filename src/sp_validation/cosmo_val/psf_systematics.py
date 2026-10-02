@@ -446,7 +446,11 @@ class PSFSystematicsMixin:
         self.psf_error_nwalkers = nwalkers
 
     def get_samples(self, version, params, tomo_bin_id, track_result=False):
-        npatch = params["patch_number"] if self.cov_estimate_method == "jk" else None
+        # Hartlap debiasing of the inverse covariance: the number of jackknife
+        # patches or of simulations the covariance was estimated from.
+        n_realisations = {"jk": params["patch_number"], "sim": self.n_sim_cov}.get(
+            self.cov_estimate_method
+        )
 
         base_rho = self.basename(version)
         base_tau = self.basename(version, tomo_bin_a=tomo_bin_id)
@@ -464,7 +468,7 @@ class PSFSystematicsMixin:
             base_rho,
             base_tau,
             cov_type=self.cov_estimate_method,
-            apply_debias=npatch,
+            apply_debias=n_realisations,
             sampler=self.rho_tau_method,
             nsamples=n_samples,
             nwalkers=n_walkers,
