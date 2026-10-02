@@ -241,11 +241,20 @@ def scan_tags(root):
             if path.suffix == ".py":
                 tree = ast.parse(text, filename=relative)
                 for owner in ast.walk(tree):
-                    if not isinstance(owner, _DECL) or not ast.get_docstring(owner):
+                    if not isinstance(owner, (ast.Module, *_DECL)) or (
+                        not ast.get_docstring(owner)
+                    ):
                         continue
                     doc = owner.body[0].value
                     for offset, line in enumerate(doc.value.splitlines()):
-                        if line.strip().startswith("@sc"):
+                        if not line.strip().startswith("@sc"):
+                            continue
+                        if isinstance(owner, ast.Module):
+                            errors.append(
+                                f"{relative}:{doc.lineno + offset}: @sc in a module "
+                                "docstring governs nothing; use a # comment tag"
+                            )
+                        else:
                             raw.append((doc.lineno + offset, line, owner))
                 for token in tokenize.generate_tokens(StringIO(text).readline):
                     if token.type != tokenize.COMMENT:
