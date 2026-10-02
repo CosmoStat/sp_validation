@@ -869,24 +869,28 @@ analyses:
           get_pure_EB_operator integrates a degree-5 interpolant in log theta
           with 16-node Gauss-Legendre quadrature per cell (its defaults), on
           the log-uniform fine-grid nodes (TreeCorr rnom), with the local term
-          read from the fine grid (local_from_int) and the interval [tmin,
-          tmax] at the extent of the nodes, so the transform is a function of
-          the grid alone. Reporting bins are then pair-weighted unions of fine
-          bins (pure_eb_rebinning). The adaptive dqags path of cosmo_numba's
-          get_pure_EB_modes, which the tomography branch's b_modes.py calls on
-          the reporting edges as [tmin, tmax], does not converge on noisy xi
-          (CosmoStat/sp_validation #373) and inflates a Monte Carlo covariance
-          through quadrature noise (aguinot/cosmo-numba#23); develop's
-          b_modes.py, which the merge keeps, carries no such path. The
-          operator makes modes and covariance linear in xi (K C K^T exact).
+          read from the fine grid (local_from_int) and [tmin, tmax] at the
+          extent of the nodes (the window of the xi- modes reaches further,
+          bmodes.pure_eb_xim_padding), so the transform is a function of the
+          grid alone. The reporting bins then average whole fine bins under the
+          pair weight (bmodes.pure_eb_rebinning). The modes are linear in xi,
+          so their covariance is exactly K C K^T. The adaptive dqags path of
+          cosmo_numba's get_pure_EB_modes, which the tomography branch's
+          b_modes.py calls with [tmin, tmax] at the reporting edges, chooses
+          its subdivision from the data: on noisy xi it often fails to converge
+          (630 of 1278 integrals on the test of aguinot/cosmo-numba#23) and
+          cosmo_numba discards the flag, so the modes are non-linear in xi, B
+          modes pick up a bias and a Monte Carlo covariance built through it
+          picks up quadrature noise (aguinot/cosmo-numba#23;
+          CosmoStat/sp_validation #373). The merge (CosmoStat/sp_validation
+          #374) brings in develop's operator, which has no adaptive path.
           [LINT] the pinned cosmo-numba (uv.lock, cailmdaley/cosmo-numba
-          a64cb2e) evaluates the K+ kernel as H_-(theta, theta_int) where
-          Eq. 51 needs H_-(theta_int, theta) (aguinot/cosmo-numba#22; fix
-          with tests in cailmdaley/cosmo-numba#3), which leaks pure E into
-          xi-^B; on the committed wide, padded interval the leakage is
-          suppressed by (1-B)^2 and every Paper II number inside 12-83 arcmin
-          moves by at most 0.03 sigma. [HARDCODED] interpolation order and
-          node count.
+          a64cb2e) evaluates the K+ kernel as H_-(theta, theta_int) where Eq.
+          51 needs H_-(theta_int, theta), which leaks pure E into xi-^B
+          (cosmo-numba-kplus-kernel-argument-order; aguinot/cosmo-numba#22, fix
+          with tests in cailmdaley/cosmo-numba#3); the committed padding
+          suppresses the leak (bmodes.pure_eb_xim_padding). [HARDCODED]
+          interpolation order and node count.
           Values: local_from_int = True.
         default: fixed_quadrature_fine_grid_extent
         options:
@@ -896,8 +900,9 @@ analyses:
             label: Adaptive quadrature per evaluation, interval at the reporting edges (tomography branch)
             excluded: true
             excluded_reason: >-
-              Does not converge on noisy xi (#373) and adds quadrature noise
-              to Monte Carlo covariances (aguinot/cosmo-numba#23).
+              Non-linear in xi: on noisy xi it often fails to converge, biases
+              B modes and adds quadrature noise to Monte Carlo covariances
+              (aguinot/cosmo-numba#23; CosmoStat/sp_validation #373).
           fiducial_cut_interval:
             label: The fiducial scale cut as the transform interval
             description: Not implemented; a narrow interval exposes the K+ kernel defect.
@@ -905,26 +910,31 @@ analyses:
         label: Fine-to-reporting rebinning weights of the pure modes
         rationale: >-
           Each requested reporting edge snaps to the nearest fine edge in log
-          theta and every reporting value (modes, xi, theta, variances) is the
-          average of its fine bins under the TreeCorr pair weight Sum w_i w_j
-          (gg.weight, carried on the integration part), applied by one matrix
-          P to the local and integral terms alike (b_modes._reporting_binning;
-          cv_pure_eb.py reads the weights with get_xi_weight). The pure-mode
-          identity holds pointwise, so collapsing the two terms with different
-          functionals biases the estimator, as 350 GLASS mocks showed; among
-          consistent functionals the pair-count weighting is the one whose
-          collapsed local term is the reporting-bin xi-hat (Asgari et al.
-          2019 App. A), and the pair weight generalises pair counts to
-          weighted pairs: it reproduces TreeCorr's own coarse-bin xi+- and
-          meanr exactly with exact binning, where npairs misses by up to 3% on
-          a weighted synthetic catalogue; on UNIONS weight/npairs is flat to
-          0.2% across fine bins, so the two move the modes by under 1e-3 sigma.
-          Uniform weights are indistinguishable for the integral term and
-          wrong for the local term (ruled 2026-09-07). Reporting edges move by
-          up to half a fine bin, 0.4% in theta. The tomography branch's Monte
-          Carlo covariance averages fine bins uniformly while its data xi are
-          pair-weighted [LINT tomo-mc-covariance-uniform-rebinning]; that
-          path does not survive the merge, which keeps develop's b_modes.py.
+          theta, and one matrix P averages the fine bins of each reporting bin
+          under the TreeCorr pair weight Sum w_i w_j (gg.weight, carried on the
+          integration part), acting on the local and integral terms alike
+          (b_modes._reporting_binning; cv_pure_eb.py reads the weights with
+          get_xi_weight). P gives the reporting modes, xi and theta; the
+          reporting variances are diag(P C P^T). The 2026-09-07 ruling fixes
+          the structure and names the weight: the pure-mode identity holds
+          pointwise, so collapsing the two terms with different functionals
+          biases the estimator, as 350 GLASS mocks showed; among consistent
+          functionals it names pair counts, because the pair-count-weighted
+          mean of fine-bin xi-hat is the reporting-bin xi-hat (Asgari et al.
+          2019 App. A); uniform weights are indistinguishable for the integral
+          term and wrong for the local term. The code uses the pair weight,
+          which generalises pair counts to weighted pairs: with exact binning
+          it reproduces TreeCorr's own coarse-bin xi+- and meanr, where npairs
+          misses by about 3% on a weighted synthetic catalogue; on UNIONS
+          weight/npairs is flat to 0.2% across fine bins, so the two move the
+          modes by under 1e-3 sigma. Reporting edges move by up to half a fine
+          bin, 0.41% in theta on cosmo_val's 0.08-300 arcmin, 1000-bin grid.
+          The tomography branch's Monte Carlo covariance (its b_modes.py and
+          papers/bmodes/scripts/precompute_pure_eb_chunk.py) averages fine bins
+          uniformly while its data xi are pair-weighted [LINT
+          tomo-mc-covariance-uniform-rebinning]; the merge
+          (CosmoStat/sp_validation #374) brings in develop's operator for the
+          pure-E/B path.
           Values: grid = integration.
         default: treecorr_pair_weight
         options:
@@ -940,8 +950,9 @@ analyses:
             excluded: true
             excluded_reason: >-
               The unweighted mean of fine-bin xi is not the reporting-bin
-              xi-hat; the sigma differs by 1-2% and the local term is biased
-              relative to the measurement.
+              xi-hat: it differs from the pair-count mean by 2.7% on rebinned
+              xi+, so the local term departs from the measured xi (ruled
+              2026-09-07).
           split_functional:
             label: Different weights on the local and integral terms
             excluded: true
@@ -950,19 +961,25 @@ analyses:
         label: Zero-padding of the xi- branch above the integration grid
         rationale: >-
           _fixed_quadrature_operator passes no pad_xim, so cosmo_numba's
-          defaults apply: pad_xim True extends the xi- integration grid one
-          decade (pad_theta_max_decade 1.0) above its maximum, fills it with
-          zeros and builds the xi- kernels on [tmin, 10 tmax], while the xi+
-          branch keeps [tmin, tmax]. The dependency gives "edge effects" as
-          the reason; sp_validation records none. [LINT] with the pinned
-          kernel the padding suppresses the K+ argument-order defect
-          (aguinot/cosmo-numba#22) by pushing tmax out where V+ is small: on
-          upstream's CCL test data max |xi-^B/xi-| is 33% unpadded and 1.4%
-          padded with the bug, 0.015% unpadded and 0.9% padded with the fix,
-          so once the fixed kernel is pinned, padding adds leakage and
-          pad_xim False is the natural choice. Inside Paper II's 12-83 arcmin
-          window all four bug/pad variants agree to about 0.03 sigma.
-          [HARDCODED] in the dependency default.
+          defaults apply: pad_xim True extends the integration grid of the
+          xi-^E, xi-^B and xi-^amb modes by one decade above the top fine node
+          (pad_theta_max_decade 1.0, rounded to whole log steps), with zeros on
+          the added nodes, and sets their window to [tmin, tmax_xim] with
+          tmax_xim about 10 tmax; the xi+ modes keep [tmin, tmax]. The
+          dependency gives avoiding edge effects as the reason; sp_validation
+          records none. [LINT] with the pinned kernel the padding suppresses
+          the K+ argument-order defect
+          (cosmo-numba-kplus-kernel-argument-order; aguinot/cosmo-numba#22): at
+          tmax_xim, B_xim is close to 1 and the (1-B)^2 prefactor of H_-
+          shrinks the K+ term. On cosmo_numba's CCL test data, max |xi-^B/xi-|
+          is 33% unpadded and 1.4% padded with the bug, and 0.015% unpadded and
+          0.9% padded with the fix (aguinot/cosmo-numba#22), so with the fixed
+          kernel padding adds leakage. On cosmo_val's 0.08-300 arcmin grid the
+          bug moves the fiducial xi-^B by at most 3.3e-7 sigma; on
+          papers/bmodes' 0.5-300 arcmin grid the noiseless xi-^B inside 12-83
+          arcmin agrees across the four bug/padding variants to about 0.03
+          sigma, and xi+^B is the same in all four. [HARDCODED] in the
+          dependency default.
           Values: pad_xim = absent; pad_theta_max_decade = absent.
         default: pad_one_decade
         options:
@@ -971,8 +988,10 @@ analyses:
           no_padding:
             label: pad_xim False
             description: >-
-              Pass pad_xim=False in _fixed_quadrature_operator; the natural
-              choice with the fixed kernel (cailmdaley/cosmo-numba#3).
+              Pass pad_xim=False in _fixed_quadrature_operator. With the fixed
+              kernel (cailmdaley/cosmo-numba#3) it leaks less than padding:
+              0.015% against 0.9% on the CCL test data
+              (aguinot/cosmo-numba#22).
           theory_extrapolation:
             label: Extend xi- with a theory model
             description: Not implemented.
@@ -986,13 +1005,14 @@ analyses:
           (calculate_pure_eb_correlation) and cosmo_numba's
           cosebis_covariance_from_xipm_covariance for COSEBIs, which writes
           zeros for the E/B cross block; npatch is None, so no Hartlap factor
-          applies. The rule comment gives the reason: B-modes only need the
-          scatter a Gaussian field would give. The API path without a
-          covariance file uses the TreeCorr jackknife of the integration-grid
-          xi (PureEBMixin.calculate_pure_eb, CosebisMixin.calculate_cosebis),
-          which the tomography branch's cosmo_val rules select with 100
-          patches; its paper uses Gaussian Monte Carlo draws from the CosmoCov
-          covariance (N 2000). The choice sets every B-mode error bar and PTE.
+          applies. The docstring of cv_xi_cov_integration gives the reason:
+          B-modes only need the scatter a Gaussian field would give. [LINT] the
+          same docstring says the pure-E/B Monte Carlo draws from the
+          covariance, while cv_pure_eb propagates it exactly. Without a
+          covariance file, develop's API mixins (PureEBMixin.calculate_pure_eb,
+          CosebisMixin.calculate_cosebis) use the TreeCorr jackknife of the
+          integration-grid xi, with Hartlap. The choice sets every pure-E/B and
+          COSEBIs error bar and PTE.
           Values: cv_cosebis.py#npatch = absent.
         default: cosmocov_gaussian_exact
         options:
@@ -1000,34 +1020,42 @@ analyses:
             label: CosmoCov Gaussian integration-grid covariance, propagated exactly
           jackknife:
             label: TreeCorr jackknife of the fine-grid xi, with Hartlap
-            description: The API path without cov_path_int; the tomography branch's rules.
+            description: Develop's API path without a covariance file (cov_path_int, cov_path).
           gaussian_monte_carlo:
             label: Monte Carlo draws from the CosmoCov covariance through the transform
             excluded: true
-            excluded_reason: Superseded by exact propagation through the linear operator.
+            excluded_reason: >-
+              With a linear transform, K C K^T is the exact limit of the Monte
+              Carlo covariance, without its sampling noise
+              (CosmoStat/sp_validation #373).
           cosmocov_nongaussian:
             label: CosmoCov with connected and super-sample terms
             description: A rule change; the integration-grid request is Gaussian-only (covariance.cosmocov_terms_per_grid).
       null_test_statistic:
         label: Zero-mean chi2 with asymptotic PTE, Hartlap for sample covariances
         rationale: >-
-          Every B-mode test is chi2 = d^T C^-1 d against the chi2 survival
-          function with dof = len(d) (statistics.chi2_and_pte;
-          b_modes.calculate_eb_statistics, cosebis_scan_from_xi). A sample
-          covariance from N patches is debiased by (N - p - 2)/(N - 1) and an
-          analytic one by 1 (hartlap_factor). Pure E/B tests xi+^B, xi-^B and
-          their joint vector with the cross block, p = n and 2n. The committed
-          covariance is analytic, so the factor is 1 everywhere; where a
+          Every B-mode test computes chi2 = d^T C^-1 d for a zero-mean null and
+          its chi2 upper-tail probability with dof = len(d)
+          (statistics.chi2_and_pte; b_modes.calculate_eb_statistics,
+          cosebis_scan_from_xi); cosebis_scan_from_xi takes the tail as 1 - cdf
+          rather than the survival function, which rounds PTEs below about
+          1e-16 to 0. hartlap_factor scales the chi2 of a covariance from N
+          jackknife patches over p data points by (N - p - 2)/(N - 1) (Hartlap
+          et al. 2007) and of an analytic covariance by 1. Pure E/B tests
+          xi+^B, xi-^B and their joint vector with the cross block, p = n and
+          2n. The covariances committed in the cosmo_val workflow and
+          papers/bmodes are analytic, so the factor is 1 there; where a
           jackknife is used, [LINT] the COSEBIs marginal E and B tests apply p
           = 2 nmodes although each inverts an nmodes x nmodes block
-          (cosebis-hartlap-uses-2-nmodes), and the tomography branch's joint
-          pure-B test applies p = n to a 2n vector
-          (tomo-joint-pure-b-hartlap-dimension). The asymptotic chi2 is not
-          the exact reference for a sample covariance even after Hartlap.
+          (cosebis-hartlap-uses-2-nmodes), and the tomography branch's
+          b_modes.py, which the merge replaces with develop's operator, applies
+          p = n to the joint 2n vector (tomo-joint-pure-b-hartlap-dimension).
+          Even after Hartlap, a chi2 on a sample covariance does not follow the
+          chi2 distribution exactly (Sellentin & Heavens 2016).
         default: chi2_sf_hartlap
         options:
           chi2_sf_hartlap:
-            label: chi2 survival function; Hartlap for sample covariances
+            label: chi2 upper tail; Hartlap for sample covariances
           sellentin_heavens:
             label: Sellentin-Heavens t-distribution likelihood
             description: Not implemented.
@@ -1066,20 +1094,27 @@ analyses:
       cosebis_modes:
         label: Log-COSEBIs, 20 modes, filters on the surviving bins' meanr range
         rationale: >-
-          Logarithmic COSEBIs with N_max 20 and sympy root precision 120,
-          which avoids root-finding failures above mode 10; for each cut the
-          filters are normalised on [min meanr, max meanr] of the integration
-          bins inside the cut and the modes integrate xi+- with cosmo_numba's
-          irregular Simpson weights (cosebis_scan_from_xi). cosmo_val scans
-          seven cuts ([1, 250] to [20, 250] and [12, 83]) and writes the
-          fiducial cut's result to the SACC part tagged with the nominal cut;
-          papers/bmodes also evaluates the first 6 modes and scans all
-          reporting-edge pairs except (9,10), (10,11), (11,12) and (13,14),
-          whose root finding fails. The mode count sets the dof and the
-          B-mode sensitivity. [LINT] the figures.smk comment calls the
-          excluded windows high modes outside the analysis range; they are
-          single-bin windows at 12-50 arcmin. The filter support is about
-          0.4% narrower in theta than the nominal cut the SACC tags record.
+          Logarithmic COSEBIs (the only kind cosmo_numba implements) with N_max
+          20 and sympy root precision 120 rather than the dependency's 80,
+          which the code comment gives as avoiding root-convergence failures
+          for modes 11 and up; for each cut the filters are defined on [min
+          meanr, max meanr] of the integration bins inside the cut and the
+          modes integrate xi+- with cosmo_numba's irregular-grid Simpson
+          weights (cosebis_scan_from_xi). cosmo_val scans seven cuts ([1, 250]
+          to [20, 250] and [12, 83]) and writes the fiducial cut's result to
+          the SACC part tagged with the nominal cut; papers/bmodes also
+          evaluates the first 6 modes and scans all reporting-edge pairs except
+          (9,10), (10,11), (11,12) and (13,14), where root finding fails even
+          at precision 120. The mode count sets the length of the tested vector
+          and the dof. cosebis_scan_from_xi, calculate_cosebis and CosebisMixin
+          default to 10 modes; cv_cosebis passes cosmo_val.cosebis.nmodes and
+          the papers/bmodes PTE scripts pass fiducial.nmodes, both 20. [LINT]
+          the figures.smk comment calls the excluded windows high modes outside
+          the analysis range; they are single reporting bins between 12 and 48
+          arcmin, inside the bins the fiducial cut selects. The filter support
+          is narrower than the nominal cut the SACC tags record: on cosmo_val's
+          0.08-300 arcmin grid its ends sit about 0.5% above 12 and 1% below 83
+          arcmin.
           Values:
           cosmo_val.cosebis.nmodes = 20;
           precision = 120;
@@ -1100,17 +1135,23 @@ analyses:
           cv_summarize_bmodes reports, per version, the xi+^B, xi-^B and joint
           pure-E/B PTEs at the fiducial cut read from the PTE matrices, the
           20-mode COSEBIs PTE at the fiducial cut, and, with include_pseudo_cl,
-          the C_l^BB chi2 of all 32 bandpowers against the NaMaster BB-BB
-          block; papers/bmodes cuts the same C_l^BB statistic to 300 <= ell <=
-          1600, the Paper II harmonic range, so one label means two statistics
-          across the papers [LINT]. No pass/fail threshold is applied in code:
-          the summary carries PTEs, the paper heatmaps colour [0.05, 0.95],
-          [LINT] the config's statistics.pte_healthy_range is read by nothing
-          and its comment calls the interval 2 sigma (it is 10% two-tailed),
-          and statistics.calibrate_min_pte, a mock-calibrated global
-          minimum-PTE threshold, is called by no rule
+          the C_l^BB PTE over all 32 bandpowers (harmonic.fiducial.nbins)
+          against the NaMaster BB-BB block. The config comment gives the reason
+          for including pseudo-Cl: it costs no more than the other diagnostics,
+          and the C_l^BB column belongs in the standard summary. papers/bmodes
+          quotes its fiducial C_l^BB PTE over the bandpowers inside 300 <= ell
+          <= 1600, the Paper II harmonic range, beside the all-band one, so the
+          summary's C_l^BB entry is not the paper's fiducial C_l^BB PTE [LINT].
+          No pass/fail verdict is computed: the summary carries PTEs, and the
+          paper heatmaps colour PTEs below 0.05 and above 0.95 solid. [LINT]
+          papers/bmodes' statistics.pte_healthy_range is read by nothing
+          (heatmap-ignores-pte-healthy-range), and its comment calls the
+          interval 2 sigma, though it leaves 10% in the two tails. develop's
+          statistics.calibrate_min_pte, a mock-calibrated global minimum-PTE
+          threshold, is called by no rule, and its global_pte (count/N) rejects
+          more often than alpha with a finite mock set
           (global-min-pte-finite-mock-pvalue); the tomography branch's
-          statistics.py has no such function.
+          statistics.py, which the merge keeps, has no such function.
           Values:
           cosmo_val.include_pseudo_cl = True;
           cl.fiducial_ell_min = 300;
@@ -1125,7 +1166,10 @@ analyses:
             label: C_l^BB over 300-1600 (papers/bmodes)
           mock_calibrated_global_threshold:
             label: Global minimum-PTE threshold calibrated on mocks
-            description: calibrate_min_pte exists on develop but is wired to no rule.
+            description: >-
+              calibrate_min_pte exists on develop but is wired to no rule; the
+              tomography branch's statistics.py, which the merge keeps, has
+              none.
 
   # ═════════════════════════════════════════════════════════════════════════
   harmonic:
