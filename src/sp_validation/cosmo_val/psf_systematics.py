@@ -1403,15 +1403,17 @@ class PSFSystematicsMixin:
         rho_0_p = self.rho_stat_handler.rho_stats["rho_0_p"]
         rho_0_m = self.rho_stat_handler.rho_stats["rho_0_m"]
 
-        self.tau_stat_handler.load_tau_stats(f"tau_stats_{base_tau_a}.fits")
-
-        tau_0_p_a = self.tau_stat_handler.tau_stats["tau_0_p"]
-        tau_0_m_a = self.tau_stat_handler.tau_stats["tau_0_m"]
-
-        self.tau_stat_handler.load_tau_stats(f"tau_stats_{base_tau_b}.fits")
-
-        tau_0_p_b = self.tau_stat_handler.tau_stats["tau_0_p"]
-        tau_0_m_b = self.tau_stat_handler.tau_stats["tau_0_m"]
+        tau_stats = {}
+        for key, base_tau in (("a", base_tau_a), ("b", base_tau_b)):
+            self.tau_stat_handler.load_tau_stats(f"tau_stats_{base_tau}.fits")
+            tau_stats[key] = {
+                col: self.tau_stat_handler.tau_stats[col]
+                for col in ("tau_0_p", "tau_0_m", "vartau_0_p", "vartau_0_m")
+            }
+        tau_0_p_a = tau_stats["a"]["tau_0_p"]
+        tau_0_m_a = tau_stats["a"]["tau_0_m"]
+        tau_0_p_b = tau_stats["b"]["tau_0_p"]
+        tau_0_m_b = tau_stats["b"]["tau_0_m"]
 
         if cov_type is not None:
             outdir = f"{self.cc['paths']['output']}/rho_tau_stats"
@@ -1422,12 +1424,12 @@ class PSFSystematicsMixin:
             cov_rho_path = Path(outdir) / f"cov_rho_{base_rho}_jk.npy"
             cov_rho_p = np.load(cov_rho_path)[:n_bins, :n_bins]
         else:
-            cov_tau_p_a = np.diag(self.tau_stat_handler.tau_stats["vartau_0_p"])
-            cov_tau_p_b = np.diag(self.tau_stat_handler.tau_stats["vartau_0_p"])
+            cov_tau_p_a = np.diag(tau_stats["a"]["vartau_0_p"])
+            cov_tau_p_b = np.diag(tau_stats["b"]["vartau_0_p"])
             cov_rho_p = np.diag(self.rho_stat_handler.rho_stats["varrho_0_p"])
 
-        cov_tau_m_a = np.diag(self.tau_stat_handler.tau_stats["vartau_0_m"])
-        cov_tau_m_b = np.diag(self.tau_stat_handler.tau_stats["vartau_0_m"])
+        cov_tau_m_a = np.diag(tau_stats["a"]["vartau_0_m"])
+        cov_tau_m_b = np.diag(tau_stats["b"]["vartau_0_m"])
         cov_rho_m = np.diag(self.rho_stat_handler.rho_stats["varrho_0_m"])
 
         # Compute the scale-dependent xi_psf_sys and its error bars
