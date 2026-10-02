@@ -12,7 +12,7 @@ Path qualifiers are relative, component-aligned suffixes; # and :: are synonyms.
 Absence selects exactly one same-decision tagged file and searches the entire
 file (the named INI section, including DEFAULT inheritance). INI section names
 are case-sensitive and keys are not, as CosmoSIS lower-cases them and merges
-repeated sections; interpolation and inline-comment stripping are off. A YAML or
+repeated sections; inline comments are stripped and interpolation is off. A YAML or
 INI key, or a Python name rebound in the same scope, repeated in the file outside
 the governed span fails: the last one wins.
 Python settings are defaults, keywords, dict entries and assignments to names,
@@ -653,6 +653,11 @@ def _ini_value(text):
     return _normal(words.get(text.lower(), text.strip()))
 
 
+def _uncomment(line):
+    """Drop an inline `;`/`#` comment that follows whitespace, as CosmoSIS does."""
+    return re.split(r"(?<=\s)[;#]", line, maxsplit=1)[0]
+
+
 def _ini_locations(path, source):
     section = "DEFAULT"
     lines = source.splitlines()
@@ -666,7 +671,7 @@ def _ini_locations(path, source):
         if header:
             section = header[1].strip()
             continue
-        setting = re.match(r"\s*([^=:\s][^=:]*?)\s*[=:]\s*(.*)$", line)
+        setting = re.match(r"\s*([^=:\s][^=:]*?)\s*[=:]\s*(.*)$", _uncomment(line))
         if setting:
             key, value = setting.groups()
             indent = len(line) - len(line.lstrip())
@@ -677,7 +682,7 @@ def _ini_locations(path, source):
                     continue
                 if len(following) - len(following.lstrip()) <= indent:
                     break
-                parts.append(following.strip())
+                parts.append(_uncomment(following).strip())
                 continuation_end = j + 1
             yield Location(
                 path,

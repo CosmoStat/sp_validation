@@ -813,6 +813,12 @@ def test_comment_tag_governs_decorated_definition(mini_repo):
     assert dr.repository_errors(mini_repo) == []
 
 
+def test_ini_inline_comment_is_not_part_of_the_value(mini_repo):
+    # CosmoSIS strips `;`/`#` comments that follow whitespace.
+    replace(mini_repo, INI, "walkers = 100", "walkers = 100  ; tuned for 12 cores")
+    assert dr.repository_errors(mini_repo) == []
+
+
 @pytest.fixture
 def real_repo():
     if not (ROOT / "astra.yaml").is_file():
