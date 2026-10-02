@@ -95,6 +95,8 @@ def test_malformed_tag_reports_path_and_line(mini_repo, path, old):
         ("@sc [decision:statement,scope:paragraph]", "scope must be scope:file"),
         ("@sc [decision:statement,label:a,label:b]", "duplicate @sc metadata key"),
         ("@sc [decision:statement] id extra", "malformed @sc tag"),
+        # A misspelt key would otherwise leave a tag that cites nothing.
+        ("@sc [decison:statement]", "unknown @sc metadata key"),
     ],
 )
 def test_bad_tag_grammar(mini_repo, tag, message):
@@ -190,6 +192,14 @@ def test_pending_site_allowlist_cannot_rot(mini_repo):
     record, tags = snapshot(mini_repo)
     assert dr.coverage_errors(record, tags, {"missing": "Tomography merge #374"}) == [
         "PENDING_SITES: unknown decision 'missing'"
+    ]
+
+
+def test_pending_site_must_not_outlive_its_tag(mini_repo):
+    # Once the merge tags the decision, the exception would hide a later loss.
+    record, tags = snapshot(mini_repo)
+    assert dr.coverage_errors(record, tags, {"statement": "Tomography merge #374"}) == [
+        "PENDING_SITES: statement: has a tagged site; remove the exception"
     ]
 
 
@@ -713,6 +723,12 @@ def test_comment_prose_can_contain_mentions(mini_repo):
 
 
 def test_pending_dotted_decision_exists(mini_repo):
+    replace(
+        mini_repo,
+        PYTHON,
+        "decision:calibration.response,decision:calibration.validation.noise",
+        "decision:calibration.response",
+    )
     record, tags = snapshot(mini_repo)
     assert (
         dr.coverage_errors(
@@ -750,6 +766,84 @@ def test_bad_docstring_tag_reports_physical_line(mini_repo):
     )
     _, errors = dr.scan_tags(mini_repo)
     assert_problem(errors, f"{PYTHON}:{line}", "malformed @sc metadata")
+
+
+def test_yaml_duplicate_key_outside_span_shadows_pin(mini_repo):
+    # PyYAML keeps the last of two equal keys, so the governed one is dead.
+    append(mini_repo, YAML, "\ncosmo_val:\n  npatch: 50\n")
+    value_problem(
+        mini_repo, "yaml_settings", "cosmo_val.npatch", "outside the governed span"
+    )
+
+
+@pytest.mark.parametrize(
+    "old, new, message",
+    [
+        # CosmoSIS reads with strict=False: a repeated section merges, last wins.
+        (
+            "outside = not-governed",
+            "outside = 0\n\n[sampler]\nwalkers = 50",
+            "governed span",
+        ),
+        # ... and lower-cases keys, so a case variant is the same setting.
+        ("walkers = 100", "walkers = 100\nWalkers = 50", "candidates found 2"),
+    ],
+)
+def test_ini_repeated_setting_shadows_pin(mini_repo, old, new, message):
+    replace(mini_repo, INI, old, new)
+    value_problem(mini_repo, "ini_section", "sampler.walkers", message)
+
+
+def test_subscript_assignment_is_a_setting(mini_repo):
+    replace(
+        mini_repo,
+        PYTHON,
+        '    values = {"dict_entry": 4}\n',
+        '    values = {"dict_entry": 4}\n    values["dict_entry"] = 40\n',
+    )
+    value_problem(mini_repo, "body", "dict_entry", "candidates found 2", "40")
+
+
+def test_reassignment_in_same_scope_shadows_pin(mini_repo):
+    append(mini_repo, PYTHON, "\nmodule_value = 80\n")
+    value_problem(mini_repo, "statement", "module_value", "governed span", "80")
+
+
+def test_same_name_in_another_scope_is_not_a_shadow(mini_repo):
+    append(mini_repo, PYTHON, "\n\ndef other():\n    module_value = 80\n")
+    assert dr.repository_errors(mini_repo) == []
+
+
+def test_comment_tag_governs_decorated_definition(mini_repo):
+    replace(
+        mini_repo,
+        PYTHON,
+        "def nested():\n    # @sc [decision:nested]\n",
+        "# @sc [decision:nested]\n@decorate\ndef nested():\n",
+    )
+    assert dr.repository_errors(mini_repo) == []
+
+
+def test_ini_inline_comment_is_not_part_of_the_value(mini_repo):
+    # CosmoSIS strips `;`/`#` comments that follow whitespace.
+    replace(mini_repo, INI, "walkers = 100", "walkers = 100  ; tuned for 12 cores")
+    assert dr.repository_errors(mini_repo) == []
+
+
+def test_module_docstring_tag_is_rejected(mini_repo):
+    # It would govern nothing, yet read as a citation.
+    append(
+        mini_repo, "src/doc.py", '"""Module.\n\n@sc [decision:statement]\n"""\nx = 1\n'
+    )
+    _, errors = dr.scan_tags(mini_repo)
+    assert_problem(errors, "src/doc.py:3", "module docstring")
+
+
+def test_tag_in_a_test_is_not_a_site(mini_repo):
+    # A test would otherwise keep a decision covered after its code sites go.
+    append(mini_repo, MARKER, "\n# @sc [decision:statement]\nVALUE = 8\n")
+    _, errors = dr.scan_tags(mini_repo)
+    assert_problem(errors, MARKER, "pytest.mark.decision")
 
 
 @pytest.fixture

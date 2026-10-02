@@ -4,13 +4,20 @@ Adapted from ShapePipe's tests/helpers/decisions.py, without its tool-specific
 readers or program analysis. Public checks return diagnostic lists, not pytest
 assertions. No source is imported or executed.
 
-Tags require bracketed metadata; only decision may repeat. Local ids use letters,
-digits, underscores, dots and hyphens, and need not have prose. Paragraphs end at
-a blank line (not another tag); overlapping tags count a physical setting once.
+Tags mark implementing sites, never tests (those carry pytest.mark.decision).
+Tags require bracketed metadata with keys decision, label and scope; only
+decision may repeat. Local ids use letters, digits, underscores, dots and
+hyphens, and need not have prose. Paragraphs end at a blank line (not another
+tag); overlapping tags count a physical setting once.
 Path qualifiers are relative, component-aligned suffixes; # and :: are synonyms.
 Absence selects exactly one same-decision tagged file and searches the entire
-file (the named INI section, including DEFAULT inheritance). INI keys and section
-names are case-sensitive; interpolation and inline-comment stripping are off.
+file (the named INI section, including DEFAULT inheritance). INI section names
+are case-sensitive and keys are not, as CosmoSIS lower-cases them and merges
+repeated sections; inline comments are stripped and interpolation is off. A YAML or
+INI key, or a Python name rebound in the same scope, repeated in the file outside
+the governed span fails: the last one wins.
+Python settings are defaults, keywords, dict entries and assignments to names,
+self attributes and constant string subscripts (``d["key"] = ...``).
 Snakemake values use Python literal syntax: assignments, directive scalars and
 keyword/dict entries in directive expressions. YAML sequence paths use numeric
 indices. YAML aliases are rejected if recursive. Only inline ASTRA analyses are
@@ -46,6 +53,7 @@ _DECISION = re.compile(rf"{_ID}(?:\.{_ID})*\Z")
 _TAG = re.compile(r"@sc\s+\[([^\]]*)\](?:\s+([A-Za-z_][\w.-]*))?\s*\Z")
 _NUMBER = re.compile(r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?\Z")
 _ABSENT = object()
+_KEYS = {"decision", "label", "scope"}
 _DECL = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
 
 
@@ -72,7 +80,12 @@ class Tag:
 
 @dataclass(frozen=True)
 class Location:
-    """A physical setting; error retains a matched but non-literal expression."""
+    """A physical setting; error retains a matched but non-literal expression.
+
+    Two settings of one ref and one non-None scope in a file are the same
+    setting: the later decides the value read (a config key, or a Python name
+    rebound in the same function, class or module body).
+    """
 
     path: str
     line: int
@@ -80,6 +93,7 @@ class Location:
     ref: str
     value: object
     error: str = ""
+    scope: object = None
 
     @property
     def identity(self):
@@ -144,6 +158,8 @@ def _metadata(text):
         if not pair:
             raise ValueError("malformed @sc metadata")
         key, value = pair.groups()
+        if key not in _KEYS:
+            raise ValueError(f"unknown @sc metadata key {key}")
         if key in meta and key != "decision":
             raise ValueError(f"duplicate @sc metadata key {key}")
         if key == "decision" and not _DECISION.fullmatch(value):
@@ -176,10 +192,13 @@ def _comment_span(path, lines, index, tree, file_scope):
     ini = Path(path).suffix == ".ini"
     start = _following(lines, index, ini)
     if tree is not None:
+        # A decorated definition starts at its first decorator.
         statements = [
             n
             for n in ast.walk(tree)
-            if isinstance(n, ast.stmt) and n.lineno == start + 1
+            if isinstance(n, ast.stmt)
+            and min([n.lineno] + [d.lineno for d in getattr(n, "decorator_list", [])])
+            == start + 1
         ]
         if not statements:
             raise ValueError("@sc tag is not immediately above a Python statement")
@@ -187,7 +206,7 @@ def _comment_span(path, lines, index, tree, file_scope):
         indent = len(lines[index]) - len(lines[index].lstrip())
         if node.col_offset != indent:
             raise ValueError("@sc tag and Python statement have different indentation")
-        return Site(path, node.lineno, node.end_lineno)
+        return Site(path, start + 1, node.end_lineno)
     rule = re.match(r"^(\s*)rule\s+\w+\s*:", lines[start])
     section = ini and re.match(r"\s*\[[^]]+\]", lines[start])
     end = len(lines)
@@ -242,11 +261,20 @@ def scan_tags(root):
             if path.suffix == ".py":
                 tree = ast.parse(text, filename=relative)
                 for owner in ast.walk(tree):
-                    if not isinstance(owner, _DECL) or not ast.get_docstring(owner):
+                    if not isinstance(owner, (ast.Module, *_DECL)) or (
+                        not ast.get_docstring(owner)
+                    ):
                         continue
                     doc = owner.body[0].value
                     for offset, line in enumerate(doc.value.splitlines()):
-                        if line.strip().startswith("@sc"):
+                        if not line.strip().startswith("@sc"):
+                            continue
+                        if isinstance(owner, ast.Module):
+                            errors.append(
+                                f"{relative}:{doc.lineno + offset}: @sc in a module "
+                                "docstring governs nothing; use a # comment tag"
+                            )
+                        else:
                             raw.append((doc.lineno + offset, line, owner))
                 for token in tokenize.generate_tokens(StringIO(text).readline):
                     if token.type != tokenize.COMMENT:
@@ -278,6 +306,11 @@ def scan_tags(root):
         for number, body, owner in sorted(raw, key=lambda item: item[0]):
             try:
                 meta, ident = _metadata(body)
+                if "tests" in Path(relative).parts:
+                    raise ValueError(
+                        "@sc tags mark implementing sites, not tests; "
+                        "mark the test with pytest.mark.decision"
+                    )
                 file_scope = meta.get("scope") == ["file"]
                 if owner is not None:
                     site = Site(
@@ -325,6 +358,11 @@ def coverage_errors(record, tags, pending=None):
         f"PENDING_SITES: {d}: needs a nonempty reason"
         for d, reason in pending.items()
         if not isinstance(reason, str) or not reason.strip()
+    )
+    errors.extend(
+        f"PENDING_SITES: {d}: has a tagged site; remove the exception"
+        for d in pending
+        if d in cited
     )
     errors.extend(
         f"{d}: decision has no tagged site"
@@ -462,13 +500,23 @@ def _python_literal(node, source):
 
 
 def _python_locations(path, source, tree, offset=0):
-    def location(ref, key, value):
+    scopes = {}
+    if Path(path).suffix == ".py":
+        # Name bindings are scoped by their enclosing function, class or module.
+        for owner in ast.walk(tree):
+            if isinstance(owner, (ast.Module, *_DECL)):
+                for statement in ast.walk(owner):
+                    if statement is not owner and isinstance(statement, ast.stmt):
+                        scopes[statement] = getattr(owner, "lineno", 0)
+
+    def location(ref, key, value, scope=None):
         try:
             actual, error = _python_literal(value, source), ""
         except (ValueError, TypeError, InvalidOperation):
             actual = ast.get_source_segment(source, value)
             error = f"non-literal {actual!r}"
-        return Location(path, key.lineno + offset, key.col_offset, ref, actual, error)
+        line = key.lineno + offset
+        return Location(path, line, key.col_offset, ref, actual, error, scope)
 
     for node in ast.walk(tree):
         pairs = []
@@ -500,10 +548,17 @@ def _python_locations(path, source, tree, offset=0):
                         else None
                     )
                 )
+                if (
+                    isinstance(target, ast.Subscript)
+                    and isinstance(target.slice, ast.Constant)
+                    and isinstance(target.slice.value, str)
+                ):
+                    name = target.slice.value  # d["key"] = ... sets a dict entry.
                 if name and node.value is not None:
                     # An augmented assignment isn't a literal setting.
                     value = node if isinstance(node, ast.AugAssign) else node.value
-                    pairs.append((name, target, value))
+                    scope = scopes.get(node) if isinstance(target, ast.Name) else None
+                    pairs.append((name, target, value, scope))
         elif isinstance(node, ast.keyword) and node.arg:
             pairs.append((node.arg, node, node.value))
         elif isinstance(node, ast.Dict):
@@ -512,8 +567,8 @@ def _python_locations(path, source, tree, offset=0):
                 for key, value in zip(node.keys, node.values)
                 if isinstance(key, ast.Constant) and isinstance(key.value, str)
             )
-        for ref, key, value in pairs:
-            yield location(ref, key, value)
+        for ref, key, value, *scope in pairs:
+            yield location(ref, key, value, *scope)
 
 
 def _snakemake_locations(path, source):
@@ -606,6 +661,7 @@ def _yaml_locations(path, source):
                         ".".join(full),
                         actual,
                         error,
+                        "file",
                     )
                     yield from walk(value, full, (*ancestors, node))
             elif isinstance(node, yaml.SequenceNode):
@@ -638,6 +694,11 @@ def _ini_value(text):
     return _normal(words.get(text.lower(), text.strip()))
 
 
+def _uncomment(line):
+    """Drop an inline `;`/`#` comment that follows whitespace, as CosmoSIS does."""
+    return re.split(r"(?<=\s)[;#]", line, maxsplit=1)[0]
+
+
 def _ini_locations(path, source):
     section = "DEFAULT"
     lines = source.splitlines()
@@ -651,7 +712,7 @@ def _ini_locations(path, source):
         if header:
             section = header[1].strip()
             continue
-        setting = re.match(r"\s*([^=:\s][^=:]*?)\s*[=:]\s*(.*)$", line)
+        setting = re.match(r"\s*([^=:\s][^=:]*?)\s*[=:]\s*(.*)$", _uncomment(line))
         if setting:
             key, value = setting.groups()
             indent = len(line) - len(line.lstrip())
@@ -662,7 +723,7 @@ def _ini_locations(path, source):
                     continue
                 if len(following) - len(following.lstrip()) <= indent:
                     break
-                parts.append(following.strip())
+                parts.append(_uncomment(following).strip())
                 continuation_end = j + 1
             yield Location(
                 path,
@@ -670,6 +731,7 @@ def _ini_locations(path, source):
                 indent,
                 section + "." + key.strip(),
                 _ini_value("\n".join(parts)),
+                scope="file",
             )
 
 
@@ -695,6 +757,15 @@ def _reference(text):
     ):
         raise ValueError("qualifier must be a relative path suffix")
     return qualifier.removeprefix("./"), ref
+
+
+def _same_setting(path, actual, ref):
+    """CosmoSIS lower-cases INI keys (not sections); other refs match exactly."""
+    if Path(path).suffix != ".ini":
+        return actual == ref
+    section, _, key = actual.rpartition(".")
+    want_section, _, want_key = ref.rpartition(".")
+    return section == want_section and key.lower() == want_key.lower()
 
 
 def value_errors(root, record, tags):
@@ -728,14 +799,16 @@ def value_errors(root, record, tags):
                     )
                 }
                 paths = {s.path for s in sites}
-                found = {}
+                found, shadows = {}, {}
                 for path in sorted(paths):
                     if path not in cache:
                         cache[path] = _locations(root, path)
                     for loc in cache[path]:
-                        matches = loc.ref == ref
+                        matches = _same_setting(path, loc.ref, ref)
                         if want is _ABSENT and Path(path).suffix == ".ini":
-                            matches |= loc.ref == "DEFAULT." + ref.rsplit(".", 1)[-1]
+                            matches |= _same_setting(
+                                path, loc.ref, "DEFAULT." + ref.rsplit(".", 1)[-1]
+                            )
                         if matches and (
                             want is _ABSENT
                             or any(
@@ -744,7 +817,16 @@ def value_errors(root, record, tags):
                             )
                         ):
                             found[loc.identity] = loc
+                        elif matches and loc.scope is not None:
+                            shadows[loc.identity] = loc
                 candidates = list(found.values())
+                shadows = [
+                    loc
+                    for loc in shadows.values()
+                    if any(
+                        (c.path, c.scope) == (loc.path, loc.scope) for c in candidates
+                    )
+                ]
                 detail = "; ".join(loc.describe() for loc in candidates) or "[]"
                 context = (
                     f"{decision}: ref {raw_ref!r}: expected {expected}; "
@@ -776,6 +858,11 @@ def value_errors(root, record, tags):
                 elif len(candidates) != 1:
                     errors.append(
                         context + "; ref must resolve to exactly one location"
+                    )
+                elif shadows:
+                    errors.append(
+                        context + "; the same setting is repeated outside the "
+                        "governed span: " + "; ".join(loc.describe() for loc in shadows)
                     )
                 elif candidates[0].error:
                     errors.append(
