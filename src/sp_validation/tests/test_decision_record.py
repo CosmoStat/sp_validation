@@ -752,6 +752,14 @@ def test_bad_docstring_tag_reports_physical_line(mini_repo):
     assert_problem(errors, f"{PYTHON}:{line}", "malformed @sc metadata")
 
 
+def test_yaml_duplicate_key_outside_span_shadows_pin(mini_repo):
+    # PyYAML keeps the last of two equal keys, so the governed one is dead.
+    append(mini_repo, YAML, "\ncosmo_val:\n  npatch: 50\n")
+    value_problem(
+        mini_repo, "yaml_settings", "cosmo_val.npatch", "outside the governed span"
+    )
+
+
 @pytest.fixture
 def real_repo():
     if not (ROOT / "astra.yaml").is_file():
