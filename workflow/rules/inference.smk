@@ -59,10 +59,10 @@ rule inference_prep:
         # n(z) file: the catalogue entry's
         nz_file=lambda w: redshift_path(w.version),
         # rho/tau stats
-        rho_stats=str(COSMO_VAL / "rho_tau_stats/rho_stats_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
-        tau_stats=str(COSMO_VAL / "rho_tau_stats/tau_stats_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
+        rho_stats=lambda w: cv_rho_stats(w.version, w),
+        tau_stats=lambda w: cv_tau_stats(w.version, w),
         # tau covariance (tracked as dependency)
-        tau_cov=str(COSMO_VAL / "rho_tau_stats/cov_tau_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}_th.npy"),
+        tau_cov=lambda w: cv_cov_tau(w.version, w),
         pseudo_cl=lambda w: pseudo_cl_assets(w.version)[0],
         pseudo_cl_cov=lambda w: pseudo_cl_assets(w.version)[1],
     output:
@@ -131,10 +131,10 @@ rule inference_prep_glass_mock:
         # n(z) file
         nz_file=redshift_path(FIDUCIAL["mock_version"]),
         # Rho/tau stats: rho from real data, tau sampled
-        rho_stats=str(COSMO_VAL / f"rho_tau_stats/rho_stats_{FIDUCIAL['mock_version']}{fiducial_binning_suffix()}.fits"),
+        rho_stats=cv_rho_stats(FIDUCIAL["mock_version"]),
         tau_stats="results/glass_mock_rhotau_samples/{mock_id}/tau_stats_sampled.fits",
         # Tau covariance (real data)
-        tau_cov=str(COSMO_VAL / f"rho_tau_stats/cov_tau_{FIDUCIAL['mock_version']}{fiducial_binning_suffix()}_th.npy"),
+        tau_cov=cv_cov_tau(FIDUCIAL["mock_version"]),
         # C_ell data for dual config generation
         cl_file=f"{GLASS_MOCK_DATA_DIR}/cl_glass_mock_{{mock_id}}_4096.npy",
         cl_cov=pseudo_cl_assets(FIDUCIAL["mock_version"])[1],

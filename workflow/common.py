@@ -390,6 +390,24 @@ def cv_basename(version, fiducial=None):
     )
 
 
+def cv_rho_stats(version, fiducial=None):
+    """ρ-statistics FITS that CosmologyValidation writes for a version."""
+    base = cv_basename(version, fiducial)
+    return str(COSMO_VAL / "rho_tau_stats" / f"rho_stats_{base}.fits")
+
+
+def cv_tau_stats(version, fiducial=None):
+    """τ-statistics FITS that CosmologyValidation writes for a version."""
+    base = cv_basename(version, fiducial)
+    return str(COSMO_VAL / "rho_tau_stats" / f"tau_stats_{base}.fits")
+
+
+def cv_cov_tau(version, fiducial=None):
+    """Theoretical τ covariance that CosmologyValidation writes for a version."""
+    base = cv_basename(version, fiducial)
+    return str(COSMO_VAL / "rho_tau_stats" / f"cov_tau_{base}_th.npy")
+
+
 # CosmologyValidation constructor kwargs read from config["cosmo_val"]. Every
 # keyword with a default is either here or explicitly exempted in
 # src/sp_validation/tests/test_cv_init_params.py, so no default applies silently.
