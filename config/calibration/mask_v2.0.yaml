@@ -35,6 +35,7 @@ params:
 
 # Masks
 ## Cuts on catalogue columns, in the v2 grammar (sp_validation.grammar)
+# @sc [decision:calibration.catalogue_cuts]
 dat:
   # SExtractor flags: keep 0 (clean), 1 (neighbours), 2 (deblended); drop
   # 3 (both) and above. Same as the image-sims config, so data and sims
@@ -51,6 +52,7 @@ dat:
     value: True
 
   # ShapePipe masks (boolean, True = masked)
+  # @sc [decision:calibration.catalogue_cuts]
   - col_name: MASK_4_Stars
     label: "star bodies"
     kind: equal
@@ -74,6 +76,7 @@ dat:
     value: False
 
   # r-band coverage. Required for the OR above to reproduce mask_r.
+  # @sc [decision:calibration.catalogue_cuts]
   - col_name: MASK_64_r
     label: "r-band imaging"
     kind: equal
@@ -97,18 +100,21 @@ dat:
   # catalogue.
 
   # Number of epochs
+  # @sc [decision:calibration.catalogue_cuts]
   - col_name: N_EPOCH
     label: r"$n_{\rm epoch}$"
     kind: greater_equal
     value: 2
 
   # Magnitude range
+  # @sc [decision:calibration.catalogue_cuts]
   - col_name: mag
     label: mag range
     kind: range
     value: [15, 30]
 
   # ngmix flags
+  # @sc [decision:calibration.catalogue_cuts]
   - col_name: NGMIX_MCAL_TYPES_FAIL
     label: "ngmix moments failure"
     kind: equal
@@ -125,12 +131,14 @@ dat:
   # float equality against a sentinel ShapePipe may change, so state the
   # condition directly. Mirrors the guard in
   # sp_validation.galaxy.classification_galaxy_ngmix.
+  # @sc [decision:calibration.catalogue_cuts]
   - col_name: NGMIX_N_EPOCH
     label: "ngmix never fit"
     kind: greater_equal
     value: 1
 
   # invalid PSF ellipticities
+  # @sc [decision:calibration.catalogue_cuts]
   - col_name: NGMIX_G1_PSF_ORIG_NOSHEAR
     label: "bad PSF ellipticity comp 1"
     kind: not_equal
@@ -141,20 +149,26 @@ dat:
     value: -10
 
 # Metacal parameters
+# @sc [decision:calibration.additive_bias]
+# @sc [decision:calibration.shape_weights]
 metacal:
   # Ellipticity dispersion
   sigma_eps_prior: 0.34
 
   # Signal-to-noise range
+  # @sc [decision:calibration.metacal_selection]
   gal_snr_min: 10
   gal_snr_max: 500
 
   # Relative-size (hlr / hlr_psf) range
+  # @sc [decision:calibration.metacal_selection]
   gal_rel_size_min: 0.707
   gal_rel_size_max: 3
 
   # Correct relative size for ellipticity?
+  # @sc [decision:calibration.metacal_selection]
   gal_size_corr_ell: False
 
   # Weight for global response matrix, None for unweighted mean
+  # @sc [decision:calibration.response_weighting]
   global_R_weight: w

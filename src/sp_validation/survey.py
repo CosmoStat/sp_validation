@@ -185,6 +185,7 @@ def write_tile_id_gal_counts(detection_IDs, galaxy_IDs, shape_IDs, fname):
 
 def area_from_coords(ra, dec, nside):
     """Survey area from galaxy coordinates via HEALPix pixel counting.
+    @sc [decision:shear_field.survey_area]
 
     Bins the galaxy positions onto a HEALPix grid at resolution ``nside`` and
     sums the area of every occupied pixel. This ignores partial-pixel coverage
@@ -213,6 +214,7 @@ def area_from_coords(ra, dec, nside):
 
 def n_eff_density(w, area_deg2):
     """Effective galaxy number density per square arcminute.
+    @sc [decision:shear_field.covariance_survey_inputs]
 
     Uses the weighted definition ``n_eff = (Σw)² / (A · Σw²)`` where ``A`` is the
     survey area in square arcminutes (``area_deg2 · 3600``). Returns ``0.0`` when
@@ -239,6 +241,7 @@ def n_eff_density(w, area_deg2):
 
 def ellipticity_dispersion(e1, e2, w):
     """Per-component weighted ellipticity dispersion.
+    @sc [decision:shear_field.covariance_survey_inputs]
 
     Computes ``sqrt(0.5 · (⟨e1²⟩ + ⟨e2²⟩))`` where each component average is
     weighted by ``w²``. This is the *per-component* RMS convention; it differs by
@@ -269,6 +272,7 @@ def ellipticity_dispersion(e1, e2, w):
 
 def additive_bias(e1, e2, w, R):
     """Weighted additive-bias estimates ``(c1, c2)``.
+    @sc [decision:shear_field.mean_subtraction_and_response]
 
     Returns the weighted mean of the response-corrected ellipticities
     ``⟨e1 / R⟩`` and ``⟨e2 / R⟩``, weighted by ``w``.
@@ -297,6 +301,7 @@ def additive_bias(e1, e2, w, R):
 
 def effective_survey_stats(e1, e2, w, area_deg2):
     """Effective survey statistics for a shear catalogue.
+    @sc [decision:shear_field.covariance_survey_inputs]
 
     Bundles the area-dependent number density and the summed-component shape
     noise. Here ``sigma_e = sqrt(Σ[w²(e1² + e2²)] / Σw²)`` sums over *both*

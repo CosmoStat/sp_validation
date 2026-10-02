@@ -61,6 +61,7 @@ def plot_correlation(cov, ndata, plot_path):
 cov_g, cov_ng, ndata = get_cov(snakemake.input[0])  # noqa: F821
 print(f"Dimension of cov: {ndata}x{ndata}")
 
+# @sc [decision:covariance.cosmocov_terms_per_grid]
 cov = cov_g + cov_ng
 
 eigenvalues = np.linalg.eigvalsh(cov)

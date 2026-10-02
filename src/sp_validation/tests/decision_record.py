@@ -29,8 +29,16 @@ from pathlib import Path
 
 import yaml
 
-# The orchestrator can add temporary exceptions here, with a concrete reason.
-PENDING_SITES = {}
+# Decisions whose every site lives in code the tomography merge rewrites; their
+# tags land with that merge.
+_MERGE = "sites in code the tomography merge (#374) rewrites"
+PENDING_SITES = {
+    "real_space.pair_approximation": _MERGE,
+    "mocks.mock_cosmology_and_power": _MERGE,
+    "mocks.mock_geometry": _MERGE,
+    "mocks.mock_source_population": _MERGE,
+}
+REPO_ROOT = Path(__file__).resolve().parents[3]
 _SKIP = {".git", "__pycache__", "scratch"}
 _DATA = "src/sp_validation/tests/data"
 _ID = r"[a-z][a-z0-9_]*"
@@ -281,7 +289,7 @@ def citation_errors(record, tags):
 
 def coverage_errors(record, tags, pending=None):
     """Every decision needs a site; pending exceptions must not rot."""
-    pending = PENDING_SITES if pending is None else pending
+    pending = {} if pending is None else pending
     known = decisions(record)
     cited = {d for t in tags for d in t.decisions}
     errors = [
@@ -755,7 +763,13 @@ def value_errors(root, record, tags):
 
 
 def repository_errors(root, pending=None):
-    """Run all six integrity checks (missing records are handled by pytest)."""
+    """Run all six integrity checks (missing records are handled by pytest).
+
+    ``pending`` defaults to ``PENDING_SITES`` for sp_validation's own checkout
+    and to no exceptions for any other root, such as a test fixture.
+    """
+    if pending is None:
+        pending = PENDING_SITES if Path(root).resolve() == REPO_ROOT else {}
     record = load_record(root)
     tags, errors = scan_tags(root)
     return (

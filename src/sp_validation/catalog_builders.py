@@ -1071,6 +1071,7 @@ def compute_weights_gatti(
     size_ratio_max=3,
 ):
     """Compute Weights Gatti.
+    @sc [decision:calibration.shape_weights]
 
     Compute Gatti et al. (2021) DES-like weights.
 
@@ -1103,7 +1104,10 @@ def compute_PSF_leakage(
     mask_metacal,
     num_bins=20,
 ):
-    """Compute PSF Leakage."""
+    """Compute PSF Leakage.
+
+    @sc [decision:calibration.objectwise_leakage_correction]
+    """
     cat_gal["e1"] = g_corr_mc[0]
     cat_gal["e2"] = g_corr_mc[1]
     cat_gal["e1_PSF"] = sp_cat.get_col(dat, "e1_PSF", mask_combined._mask, mask_metacal)

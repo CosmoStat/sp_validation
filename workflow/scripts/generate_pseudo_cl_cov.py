@@ -98,6 +98,7 @@ def generate_pseudo_cl_cov(
 
     # Remap config cosmology param names to get_cosmo() expected names
     if cosmo_params:
+        # @sc [decision:covariance.pseudo_cl_fiducial_theory]
         cosmo_params = {
             "Omega_m": cosmo_params.get("Omega_m"),
             "Omega_b": cosmo_params.get("Omega_b"),
@@ -107,6 +108,7 @@ def generate_pseudo_cl_cov(
         }
 
     # Build CV kwargs based on binning mode
+    # @sc [decision:harmonic.shear_estimator]
     cv_kwargs = dict(
         versions=[version],
         catalog_config=cat_config,
@@ -131,6 +133,7 @@ def generate_pseudo_cl_cov(
 
     # Calculate covariance only
     print("Calculating covariance...")
+    # @sc [decision:covariance.pseudo_cl_gaussian_covariance]
     cv.calculate_pseudo_cl_eb_cov()
 
     # Report on the native product (renamed by the Snakemake caller, if any)

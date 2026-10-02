@@ -10,6 +10,9 @@ from sp_validation.cosmo_val import CosmologyValidation
 _unbuffer_streams()
 params = snakemake.params
 
+# @sc [decision:psf.psf_star_sample]
+# @sc [decision:psf.rho_tau_estimator]
+# @sc [decision:psf.tau_covariance]
 cv = CosmologyValidation(
     versions=[params["ver"]],
     theta_min=float(params["min_sep"]),

@@ -31,11 +31,14 @@ fiducial_scale_cut = tuple(p["fiducial_scale_cut"])
 
 part = sacc_io.load(snakemake.input["xi_integration"])
 theta_int, xip_int, xim_int = sacc_io.get_xi(part, (0, 0), grid="integration")
+# @sc [decision:bmodes.pure_eb_rebinning]
 weight_int = sacc_io.get_xi_weight(part, (0, 0), grid="integration")
 # A part stores bin centres; the edges come from the grid it was measured on.
 grid = p["integration"]
 edges_int = np.geomspace(grid["min_sep"], grid["max_sep"], grid["nbins"] + 1)
 
+# @sc [decision:bmodes.bmode_covariance]
+# @sc [decision:bmodes.pure_eb_transform]
 results = calculate_pure_eb_correlation(
     theta_int,
     xip_int,

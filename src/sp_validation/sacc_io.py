@@ -136,6 +136,7 @@ def source_name(i):
 
 def new_sacc(nz, metadata=None):
     """Create a Sacc with the survey's NZ (and PSF) tracers.
+    @sc [decision:data_products.terminal_vector_contents]
 
     Parameters
     ----------
@@ -214,6 +215,7 @@ def add_xi(
     weight=None,
 ):
     """Add a real-space shear 2PCF (ξ+ then ξ−) for one tracer pair.
+    @sc [decision:data_products.point_labels_and_windows]
 
     Parameters
     ----------
@@ -464,6 +466,7 @@ def add_tau(s, bins, k, theta, tau_p, tau_m, *, grid="reporting"):
 
 def assemble_covariance(s, blocks):
     """Assemble a ``BlockDiagonalCovariance`` from per-statistic blocks.
+    @sc [decision:covariance.terminal_covariance]
 
     Each block is validated against the current insertion order: its indices
     must be contiguous and ascending, the blocks must tile ``0…len(s.mean)``
@@ -1031,6 +1034,7 @@ _QUANT = {
 
 def _twopoint_hdu(name, values, ang, *, ang_unit=None):
     """Build one 2pt BinTableHDU (BIN1/BIN2/ANGBIN/VALUE/ANG).
+    @sc [decision:inference.theory_sampling]
 
     Reproduces ``cosmosis_fitting.py._create_2pt_hdu`` /``cl_to_fits`` exactly:
     same column order and formats, the ``2PTDATA`` marker, the QUANT pair for

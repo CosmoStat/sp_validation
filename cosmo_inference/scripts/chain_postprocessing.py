@@ -52,6 +52,7 @@ def compute_map_1D(chain, param_name, num_bins=1000):
 
 def compute_map_2D(chain, param_name_x, param_name_y, num_bins=1000):
     """
+    @sc [decision:inference.posterior_summary]
     Compute the MAP value of two parameters from a CosmoSIS chain using 2D KDE
     """
     param_names_getdist = chain.getParamNames()
@@ -142,6 +143,7 @@ def write_samples_getdist_format(path_samples, path_gd, chain_type="polychord"):
     return 0
 
 
+# @sc [decision:inference.posterior_summary]
 def load_chain(path_gd, smoothing_scale=0.3):
     g = plots.get_single_plotter()
     chain = g.samples_for_root(
@@ -156,6 +158,7 @@ def load_chain(path_gd, smoothing_scale=0.3):
     return chain
 
 
+# @sc [decision:inference.posterior_summary]
 def extract_best_fit_params(chain, best_fit_method="weighted_mean"):
     best_fit_params = {}
     chain.getMargeStats()
@@ -365,6 +368,7 @@ def derive_parameter_Om(chain):
     return chain
 
 
+# @sc [decision:inference.posterior_summary]
 def get_sigma_tension(mean1, low1, high1, mean2, low2, high2):
     sigma1 = 0.5 * (high1 + low1)
     sigma2 = 0.5 * (high2 + low2)

@@ -29,6 +29,7 @@ with fits.open(catalog_path) as hdul:
 
 print(f"Loaded {len(ra)} galaxies from {catalog_path}")
 
+# @sc [decision:mocks.mock_two_point_measurements]
 cat = treecorr.Catalog(
     ra=ra,
     dec=dec,
@@ -39,6 +40,7 @@ cat = treecorr.Catalog(
     dec_units="degrees",
 )
 
+# @sc [decision:mocks.mock_two_point_measurements]
 gg = treecorr.GGCorrelation(
     min_sep=min_sep,
     max_sep=max_sep,

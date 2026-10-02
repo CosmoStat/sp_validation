@@ -10,6 +10,7 @@
 
 # Catalog versions to validate. Comparison runs overlay the leakage-corrected
 # variant against its parent.
+# @sc [decision:shear_field.fiducial_columns]
 versions: [
   "SP_v1.4.6.3",
   "SP_v1.4.6.3_leak_corr",
@@ -18,6 +19,15 @@ versions: [
 # ---------------------------------------------------------------------------
 # CosmologyValidation suite parameters (cosmo_val.py)
 # ---------------------------------------------------------------------------
+# @sc [decision:covariance.pseudo_cl_gaussian_covariance]
+# @sc [decision:harmonic.multipoles_and_bandpowers]
+# @sc [decision:harmonic.shear_estimator]
+# @sc [decision:psf.leakage_fit_sampling]
+# @sc [decision:psf.tau_covariance]
+# @sc [decision:real_space.jackknife_patches]
+# @sc [decision:real_space.reporting_grid]
+# @sc [decision:shear_field.survey_area]
+# @sc [decision:spin2_sign_convention]
 cosmo_val:
   # CosmologyValidation constructor
   npatch: 100
@@ -50,15 +60,18 @@ cosmo_val:
   rho_tau_method: lsq
 
   # Fiducial scale cut (arcmin) for B-mode PTE extraction. Paper II: [12, 83].
+  # @sc [decision:bmodes.fiducial_scale_cut]
   fiducial_scale_cut: [12, 83]
 
   # Whether the harmonic-space pseudo-Cl BB enters the B-mode summary. On by
   # default — it is no more expensive than the other diagnostics, and the
   # C_l^BB column belongs in the standard B-mode summary.
+  # @sc [decision:bmodes.bmode_summary]
   include_pseudo_cl: true
 
   # Theory cosmology for the pseudo-Cl covariance (astropy Planck18
   # + CAMB nonlinear settings, matching the original run_cosmo_val.py driver).
+  # @sc [decision:covariance.pseudo_cl_fiducial_theory]
   cosmo_params:
     Omega_m: 0.30966
     Omega_b: 0.04897
@@ -75,12 +88,14 @@ cosmo_val:
         kmax_extrapolate: 500
 
   # The fine ξ± grid both B-mode statistics (COSEBIs, pure-E/B) integrate over.
+  # @sc [decision:real_space.integration_grid]
   integration:
     min_sep: 0.08
     max_sep: 300
     nbins: 1000
 
   # COSEBIs on the integration grid: mode count and the scale cuts scanned.
+  # @sc [decision:bmodes.cosebis_modes]
   cosebis:
     nmodes: 20
     scale_cuts: [
@@ -92,6 +107,7 @@ cosmo_val:
 # Shared-module scaffolding (mirrors papers/bmodes/config). Required so the
 # generic workflow/ Snakefile parses; the cosmo_val rules do not use these.
 # ---------------------------------------------------------------------------
+# @sc [decision:shear_field.fiducial_columns]
 fiducial:
   version: SP_v1.4.6.3_leak_corr
   npatch: 1
@@ -108,6 +124,7 @@ fiducial:
 
 var_method: jackknife
 
+# @sc [decision:covariance.footprint_mask_power]
 covariance:
   default_masked: true
 
@@ -119,6 +136,7 @@ cl:
 
 # Harmonic pseudo-Cl fiducial binning — the tag the producer (twopoint.smk)
 # stamps into the filename, reconstructed by the inference consumer.
+# @sc [decision:harmonic.multipoles_and_bandpowers]
 harmonic:
   fiducial:
     binning: powspace

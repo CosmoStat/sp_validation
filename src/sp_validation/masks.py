@@ -303,6 +303,7 @@ def print_mask_stats(num_obj, masks, mask_combined):
 
 def catalogue_cuts(config):
     """Return the catalogue cuts of a mask config: its ``dat`` list.
+    @sc [decision:calibration.catalogue_cuts]
 
     Every cut names a column of the one v2-grammar table
     ``CalibrateCat.read_cat`` returns, mask columns included.
@@ -326,6 +327,7 @@ def catalogue_cuts(config):
 
 def get_masks_from_config(config, dat, masks_to_apply=None, verbose=False):
     """Get Masks From Config.
+    @sc [decision:calibration.catalogue_cuts]
 
     Return the masks of the config's ``dat`` cut list (``catalogue_cuts``),
     evaluated on ``dat``.

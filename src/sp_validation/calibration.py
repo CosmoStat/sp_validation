@@ -22,6 +22,7 @@ from sp_validation.statistics import jackknif_weighted_average2
 
 def get_calibrated_quantities(gal_metacal):
     """Get Calibrated Quantities.
+    @sc [decision:calibration.response_estimator]
 
     Return catalogue quantities for objects calibrated for multiplicative
     bias.
@@ -59,6 +60,7 @@ def get_calibrated_quantities(gal_metacal):
 
 def get_calibrated_m_c(gal_metacal, additive_correction=True):
     """Get Calibrated C.
+    @sc [decision:calibration.additive_bias]
 
     Return catalogue quantities for objects calibrated for multiplicative and
     additive bias.
@@ -235,6 +237,7 @@ def get_w_des(
     size_ratio_max=None,
 ):
     """
+    @sc [decision:calibration.shape_weights]
     Get DES weights. (Gatti et al. 2021)
     Return an array of DES weights obtained by binning in SNR and size and computing the ratio between
     the shear response and the shape noise.
@@ -305,6 +308,7 @@ def get_w_des(
 
 def get_alpha_leakage_per_object(cat_gal, num_bins, weight_type="des"):
     """
+    @sc [decision:calibration.objectwise_leakage_correction]
     Compute the leakage per object (Li et al. 2024)
     Return an array of leakage coefficients obtained by binning in
     SNR and size.
@@ -727,6 +731,10 @@ class metacal:
 
     """
 
+    # @sc [decision:calibration.metacal_selection]
+    # @sc [decision:calibration.response_estimator]
+    # @sc [decision:calibration.response_weighting]
+    # @sc [decision:calibration.shape_weights]
     def __init__(
         self,
         data,
@@ -791,6 +799,7 @@ class metacal:
 
     def _read_data_ngmix(self, masked_data, m1, p1, m2, p2, ns):
         """Read Data Ngmix.
+        @sc [decision:calibration.noshear_psf_size]
 
         Read data from ngmix catalogue.
 
@@ -835,6 +844,7 @@ class metacal:
     @staticmethod
     def get_variance_ivweights(data, sigma_eps, mask=None):
         """Get Variance IVWEIGHTS.
+        @sc [decision:calibration.shape_weights]
 
         Compute variance and inverse-variance weights.
 
@@ -918,6 +928,7 @@ class metacal:
 
     def _masking_gal(self):
         """Masking Gal.
+        @sc [decision:calibration.metacal_selection]
 
         Mask metacal catalogue, i.e. apply cuts.
         """
@@ -1006,6 +1017,7 @@ class metacal:
 
     def _shear_response(self):
         """Shear Response.
+        @sc [decision:calibration.response_estimator]
 
         Compute shear response matrix
         """
@@ -1051,6 +1063,7 @@ class metacal:
 
     def _selection_response(self):
         """Add docstring.
+        @sc [decision:calibration.response_estimator]
 
         ...
 
@@ -1080,6 +1093,8 @@ class metacal:
 
     def _total_response(self):
         """Add docstring.
+        @sc [decision:calibration.response_estimator]
+        @sc [decision:calibration.response_weighting]
 
         ...
 

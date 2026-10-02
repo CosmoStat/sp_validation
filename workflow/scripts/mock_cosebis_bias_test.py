@@ -62,6 +62,7 @@ cov_xipm = np.loadtxt(cov_path)
 inds = np.arange(start, stop)
 cov_inds = np.concatenate([inds, inds + nbins_xi])
 
+# @sc [decision:mocks.cosebis_bias_test]
 cosebis_obj = COSEBIS(np.min(theta_cut), np.max(theta_cut), nmodes, precision=120)
 cov_cosebis = cosebis_obj.cosebis_covariance_from_xipm_covariance(
     theta_cut, cov_xipm[cov_inds[:, None], cov_inds]
@@ -80,6 +81,7 @@ sigma_ratio = sigma_empirical / sigma_analytic
 bias_significance = mean_Bn / (sigma_analytic / np.sqrt(n_mocks))
 max_bias = np.max(np.abs(bias_significance))
 
+# @sc [decision:mocks.cosebis_bias_test]
 cov_mean = cov_B / n_mocks
 chi2_val = mean_Bn @ np.linalg.solve(cov_mean, mean_Bn)
 pte = chi2_dist.sf(chi2_val, nmodes)

@@ -10,6 +10,7 @@ params:
 
 # Masks
 ## Cuts on catalogue columns, in the v2 grammar (sp_validation.grammar)
+# @sc [decision:calibration.catalogue_cuts]
 dat:
   # SExtractor flags
   - col_name: FLAGS
@@ -24,12 +25,14 @@ dat:
     value: True
 
   # ShapePipe flags
+  # @sc [decision:calibration.catalogue_cuts]
   - col_name: IMAFLAGS_ISO
     label: SP mask
     kind: equal
     value: 0
 
   # Number of epochs
+  # @sc [decision:calibration.catalogue_cuts]
   - col_name: N_EPOCH
     label: r"$n_{\rm epoch}$"
     kind: greater_equal
@@ -85,6 +88,7 @@ dat:
     value: False
 
   # Rough pointing coverage
+  # @sc [decision:calibration.catalogue_cuts]
   - col_name: npoint3
     label: r"$n_{\rm pointing}$"
     kind: greater_equal
@@ -100,6 +104,7 @@ metacal:
   gal_snr_max: 500
 
   # Relative-size (hlr / hlr_psf) range
+  # @sc [decision:calibration.metacal_selection]
   gal_rel_size_min: 0.707
   gal_rel_size_max: 3
 
@@ -107,4 +112,5 @@ metacal:
   gal_size_corr_ell: False
 
   # Weight for global response matrix, None for unweighted mean
+  # @sc [decision:calibration.response_weighting]
   global_R_weight: w

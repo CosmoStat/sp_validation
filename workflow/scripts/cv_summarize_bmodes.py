@@ -23,6 +23,7 @@ fiducial_scale_cut = tuple(p["fiducial_scale_cut"])
 summary = {}
 cov_methods = set()
 
+# @sc [decision:bmodes.bmode_summary]
 for i, version in enumerate(p["versions"]):
     row = {}
 
@@ -52,6 +53,7 @@ for i, version in enumerate(p["versions"]):
         _ell, _ee, bb, _eb, _window = sacc_io.get_pseudo_cl(part, (0, 0))
         with fits.open(snakemake.input["pseudo_cl_cov"][i]) as hdul:
             cov_bb = np.asarray(hdul["COVAR_BB_BB"].data, float)
+        # @sc [decision:bmodes.null_test_statistic]
         _chi2, _red, row["C_l_BB"] = chi2_and_pte(bb, cov_bb)
         cov_methods.add("pseudo-Cℓ: Gaussian (NaMaster)")
 

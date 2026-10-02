@@ -21,6 +21,7 @@ theta_cut = gg.meanr[inds].astype(float)
 xip_cut = gg.xip[inds].astype(float)
 xim_cut = gg.xim[inds].astype(float)
 
+# @sc [decision:mocks.cosebis_bias_test]
 cosebis_obj = COSEBIS(np.min(theta_cut), np.max(theta_cut), nmodes, precision=120)
 En, Bn = cosebis_obj.cosebis_from_xipm(theta_cut, xip_cut, xim_cut, parallel=True)
 

@@ -20,6 +20,7 @@ _EB_KEYS = ("xip_E", "xim_E", "xip_B", "xim_B", "xip_amb", "xim_amb")
 
 def find_conservative_scale_cut_key(results, requested_scale_cut):
     """
+    @sc [decision:bmodes.fiducial_scale_cut]
     Find scale cut key that conservatively fits within requested range.
 
     Parameters
@@ -77,7 +78,10 @@ def scale_cut_to_bins(gg, min_scale=None, max_scale=None):
 
 
 def bins_from_edges(left_edges, right_edges, min_scale=None, max_scale=None):
-    """:func:`scale_cut_to_bins` on bare bin edges."""
+    """:func:`scale_cut_to_bins` on bare bin edges.
+
+    @sc [decision:bmodes.fiducial_scale_cut]
+    """
     start_bin = (
         np.searchsorted(left_edges, min_scale, side="left")
         if min_scale is not None
@@ -93,6 +97,7 @@ def bins_from_edges(left_edges, right_edges, min_scale=None, max_scale=None):
 
 def bins_from_scale_cut(left_edges, right_edges, scale_cut):
     """Reporting bins inside a pure-E/B scale cut, as ``(start_bin, stop_bin)``.
+    @sc [decision:bmodes.fiducial_scale_cut]
 
     Each end of ``scale_cut`` snaps to the nearest reporting edge in log θ —
     the rule that snaps reporting edges onto the fine grid — so a cut placed
@@ -138,6 +143,7 @@ def correlation_from_covariance(covariance):
 
 def hartlap_factor(npatch, dof):
     """Hartlap (2007) debiasing of an inverse covariance.
+    @sc [decision:bmodes.null_test_statistic]
 
     ``(N - p - 2) / (N - 1)`` for a jackknife covariance from ``N = npatch``
     patches inverted over ``p = dof`` data points; exactly 1 for an analytic
@@ -148,6 +154,7 @@ def hartlap_factor(npatch, dof):
 
 def _reporting_binning(weight_int, edges_int, reporting_edges):
     """Reporting bins as unions of fine bins, and their pair-weighted average.
+    @sc [decision:bmodes.pure_eb_rebinning]
 
     Each requested reporting edge snaps to the nearest fine edge (in log θ), so
     every reporting bin is a whole number of fine bins. Row ``i`` of the
@@ -187,6 +194,8 @@ def _reporting_binning(weight_int, edges_int, reporting_edges):
 
 def _fixed_quadrature_operator(edges_int):
     """The Schneider (2022) transform on the fine grid, ``_EB_KEYS`` order.
+    @sc [decision:bmodes.pure_eb_transform]
+    @sc [decision:bmodes.pure_eb_xim_padding]
 
     The single call into cosmo_numba. Its interpolator places the samples on
     a regular grid in log θ, so the transform runs on the log-uniform nodes of
@@ -220,6 +229,7 @@ def _fixed_quadrature_operator(edges_int):
 
 def pure_eb_operator(weight_int, edges_int, reporting_edges):
     """The pure-E/B estimator as one matrix on the fine ξ± grid.
+    @sc [decision:bmodes.pure_eb_transform]
 
     The Schneider et al. (2022) transform is evaluated with fixed-quadrature
     weights at the log-uniform fine-grid nodes (TreeCorr ``rnom``),
@@ -286,6 +296,8 @@ def calculate_pure_eb_correlation(
     npatch=None,
 ):
     """Pure E/B modes and their exact covariance from fine-grid ξ±.
+    @sc [decision:bmodes.bmode_covariance]
+    @sc [decision:bmodes.pure_eb_transform]
 
     The modes are :func:`pure_eb_operator` applied to ``[xip_int; xim_int]``,
     and the covariance is ``K C_xi Kᵀ`` — exact for whatever ξ± covariance is
@@ -437,6 +449,8 @@ def cosebis_scan_from_xi(
     npatch=None,
 ):
     """COSEBIs over a set of scale cuts, from ξ± arrays and their covariance.
+    @sc [decision:bmodes.cosebis_modes]
+    @sc [decision:bmodes.null_test_statistic]
 
     The values-and-covariance seam of :func:`calculate_cosebis`, for callers
     holding a ξ± data vector rather than a TreeCorr ``GGCorrelation``. The
@@ -516,6 +530,7 @@ def cosebis_scan_from_xi(
 
 def calculate_eb_statistics(results):
     """
+    @sc [decision:bmodes.null_test_statistic]
     Calculate E/B mode statistics using 2D PTE analysis for all scale cut combinations.
 
     This function processes pure E/B mode results, calculates covariance blocks,
@@ -665,6 +680,7 @@ def plot_integration_vs_reporting(results, output_path, version):
 
 def _get_pte_from_scale_cut(pte_matrix, edges, scale_cut):
     """
+    @sc [decision:bmodes.fiducial_scale_cut]
     Extract PTE value from matrix at a scale cut (:func:`bins_from_scale_cut`).
 
     Parameters
@@ -700,6 +716,7 @@ def plot_pure_eb_correlations(
     fiducial_xim_scale_cut=None,
 ):
     """
+    @sc [decision:bmodes.null_test_statistic]
     Plot pure E/B mode correlation functions.
 
     Parameters

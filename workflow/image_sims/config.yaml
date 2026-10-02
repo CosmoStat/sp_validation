@@ -7,6 +7,9 @@
 # config that omits one fails at DAG parse, naming the key; an unknown key under
 # `image_sims:` fails as a typo.
 
+# @sc [decision:shear_bias_simulations.mbias_estimator]
+# @sc [decision:shear_bias_simulations.mbias_sim_selection]
+# @sc [decision:shear_bias_simulations.mbias_uncertainty]
 image_sims:
 
   # --- container --------------------------------------------------------

@@ -22,8 +22,10 @@ RHO_K = range(6)  # ρ_0 … ρ_5
 TAU_K = (0, 2, 5)  # τ_0, τ_2, τ_5
 
 # NaMaster spin-2 × spin-2 decoupled-spectrum row order (EE, EB, BE, BB).
+# @sc [decision:data_products.point_labels_and_windows]
 _NMT_EE, _NMT_EB, _NMT_BB = 0, 1, 3
 
+# @sc [decision:data_products.terminal_vector_contents]
 BIN = (0, 0)
 
 
@@ -70,6 +72,7 @@ def xi_to_sacc(
 
 def pseudo_cl_to_sacc(nz, metadata, ell_eff, cl_all, wsp, covariance=None):
     """One pseudo-Cℓ part: EE/BB/EB with the shared bandpower window.
+    @sc [decision:data_products.point_labels_and_windows]
 
     ``cl_all`` is NaMaster's decoupled ``(4, nbp)`` array (EE, EB, BE, BB); the
     window comes from :func:`bandpower_window_from_workspace`. ``covariance``,
@@ -121,6 +124,7 @@ def pure_eb_to_sacc(nz, metadata, theta, eb, covariance=None):
 
 def rho_tau_to_sacc(nz, metadata, rho_stats, tau_stats, tau_cov_th=None):
     """One ρ/τ part: ρ_0…ρ_5 autos and τ_0/τ_2/τ_5 leakage.
+    @sc [decision:covariance.terminal_covariance]
 
     ``rho_stats`` / ``tau_stats`` are the ``shear_psf_leakage`` handler tables
     (columns ``theta``, ``rho_{k}_p``, ``varrho_{k}_p``, … and the τ analogue).
@@ -198,6 +202,7 @@ def _copy_data_points(dst, src):
 
 def assemble_analysis_sacc(parts):
     """Rebuild the single ``{version}.sacc`` analysis file from parts.
+    @sc [decision:covariance.terminal_covariance]
 
     Each part is a single-statistic Sacc (from a ``*_to_sacc`` writer, loaded
     from disk) carrying its own covariance = its block. Tracers and metadata are
