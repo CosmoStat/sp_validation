@@ -4,7 +4,7 @@ by Lisa Goh and Sacha Guerrini, CEA Paris-Saclay
 This folder contains the files neccessary to run the cosmological inference pipeline on the UNIONS galaxy catalogues. 
 
 ### Requirements
-To run the pipeline, one would need to have installed [CosmoSIS](https://cosmosis.readthedocs.io/en/latest/) and [CosmoCov](https://github.com/CosmoLike/CosmoCov). To PSF leakage parameters, the fork of [cosmosis-standard-library](https://github.com/sachaguer/cosmosis-standard-library/) of Sacha Guerrini has to be used.
+To run the pipeline, one would need to have installed [CosmoSIS](https://cosmosis.readthedocs.io/en/latest/). To sample the PSF leakage parameters, the fork of [cosmosis-standard-library](https://github.com/sachaguer/cosmosis-standard-library/) of Sacha Guerrini has to be used.
 
 ### To Run
 The inference pipeline is now orchestrated through Python. Run the main Snakemake workflow from the parent directory:
@@ -15,7 +15,7 @@ snakemake -j<jobs> inference_fiducial
 
 This will automatically execute all steps:
 1. Calculate 2PCF ($\xi_{pm}$) via `cosmo_val.py`
-2. Compute covariance matrices using CosmoCov
+2. Compute covariance matrices using CosmoCov <!--- LG: now obsolete, making way for OnCovariance cauclation instead --->
 3. Prepare CosmoSIS data (FITS) via `cosmosis_fitting.py`
 4. Run CosmoSIS inference
 

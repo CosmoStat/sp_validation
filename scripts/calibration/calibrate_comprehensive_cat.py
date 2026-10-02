@@ -96,8 +96,13 @@ gal_metacal = metacal(
 )
 
 # %%
+additive_correction = cm.get("additive_correction", True)
+if not additive_correction:
+    print("Additive bias correction disabled (additive_correction: False)")
+
 g_corr_mc, g_uncorr, w, mask_metacal, c, c_err = calibration.get_calibrated_m_c(
-    gal_metacal
+    gal_metacal,
+    additive_correction=additive_correction,
 )
 
 num_ok = len(g_corr_mc[0])

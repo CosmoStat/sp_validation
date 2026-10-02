@@ -23,7 +23,14 @@ PATH_KEY_PARTS = (
     "catalog",
     "catalogue",
 )
-NON_PATH_KEYS = ("extra_output",)
+# Keys whose values are never filesystem paths to check. ``extra_output`` is a
+# flag, not a path. ``why``/``replace``/``with``/``drop`` are the declaration
+# keys of a mask *overlay* (config/calibration/*.overlay.yaml): ``why`` is
+# rationale prose and ``replace``/``with``/``drop`` are verbatim blocks of base
+# config text -- content, not paths -- so the path walker must not treat them as
+# files to stat. (The overlay's one real path, ``base:``, is deliberately not
+# listed, so it is still validated.)
+NON_PATH_KEYS = ("extra_output", "why", "replace", "with", "drop")
 PATH_PREFIX_KEYS = ("nz.dndz.path",)
 TEXT_SUFFIXES = (
     ".fits",
