@@ -1,6 +1,6 @@
 """Script apply_alpha_snr_size_bin.py
 
-Add PSF leakage to galaxy ellipticity using fitted model of alpha.
+Subtract fitted PSF leakage from galaxy ellipticity using the model of alpha.
 Follows the methodology from Li et al.(2024) to add the columns.
 Write FITS file with added columns.
 

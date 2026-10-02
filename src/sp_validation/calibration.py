@@ -89,7 +89,8 @@ def get_calibrated_m_c(gal_metacal, additive_correction=True):
     numpy.ndarray :
         additive bias for both components;
     numpy.ndarray :
-        error on the additive bias for both components
+        standard deviation of each uncalibrated ellipticity component, not the
+        error on its mean
 
     """
     # Get m-calibrated quantities
@@ -708,7 +709,8 @@ class metacal:
         size-based galaxy selection (``rel_size_min`` < T/Tpsf <
         ``rel_size_max``) is applied here
     masking_type : string, optional, default='gal'
-        masking type, one in 'gal', 'gal_mom', 'star'
+        one of 'gal', 'galmom', 'star'; 'galmom' requires an 's2n' field that
+        the ngmix reader does not provide
     step : float, optional, default=0.01
         step h in finite differences
     snr_min : float, optional, default=10

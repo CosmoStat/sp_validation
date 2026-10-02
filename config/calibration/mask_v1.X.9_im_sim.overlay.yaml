@@ -81,8 +81,8 @@ ops:
 
   # --- metacal -----------------------------------------------------------
   - why: >-
-      Unweighted for image sims: no weights anywhere in the sim m-bias (#227),
-      and the w_des-weighted global R had only N_eff ~ 20-100 objects.
+      Use an unweighted global response for constant-shear image simulations.
+      The base config's `w` response weight is inverse variance, not `w_des`.
     replace: |2
         # Weight for global response matrix, None for unweighted mean
         global_R_weight: w
