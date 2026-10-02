@@ -1500,10 +1500,12 @@ def read_nz(path):
 def covariance_blocks(cov_list, selectors, *, gaussian=True):
     """Reshape a OneCovariance ``covariance_list`` table into SACC cov blocks.
 
-    OneCovariance emits a flat ``covariance_list_*.dat`` table with one row per
-    ``(i, j)`` element pair (row-major, ``k = i·n + j``); the covariance value
-    lives in column 10 (Gaussian) or column 9 (Gaussian+non-Gaussian). This
-    reshapes the flat table into dense square block(s) — reusing
+    For a single source bin, each row of the flat
+    ``covariance_list_*.dat`` table maps to a dense matrix element in row-major
+    order (``k = i·n + j``). Tomographic output is pair-major: bin-pair loops
+    precede the multipole indices, with ell varying fastest. The covariance
+    value lives in column 10 (Gaussian) or column 9 (Gaussian+non-Gaussian).
+    This reshapes the selected table into dense square block(s) — reusing
     :func:`sp_validation.statistics.cov_from_one_covariance` for the per-block
     reshape — and pairs each with its SACC selector, ready for
     :func:`sp_validation.assemble_covariance`.
