@@ -227,6 +227,9 @@ class PSFSystematicsMixin:
         if not hasattr(self, "leakage_coeff"):
             self.leakage_coeff = {}
         for ver in self.versions:
+            if ver not in self.results_objectwise:
+                # Dropped earlier for a missing catalogue column
+                continue
             self.print_magenta(ver)
 
             results_obj = self.results_objectwise[ver]

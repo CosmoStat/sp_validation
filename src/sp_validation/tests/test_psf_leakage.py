@@ -204,3 +204,39 @@ def test_objectwise_leakage_and_plot_smoke(tmp_path, monkeypatch):
         assert bin_coeff["aii_mean"].nominal_value == pytest.approx(expected, abs=0.03)
         assert "alpha_mean" in bin_coeff
     assert (tmp_path / "output" / "leakage_coefficients_tomo.png").exists()
+
+
+class _ObjectwiseControlFlow(PSFSystematicsMixin):
+    """Two versions, one of which lacks a catalogue column."""
+
+    def __init__(self):
+        self.versions = ["good", "bad"]
+        obj = SimpleNamespace(
+            check_params=lambda: None,
+            update_params=lambda: None,
+            prepare_output=lambda: None,
+        )
+        self.results_objectwise = {"good": obj, "bad": obj}
+
+    def _get_tomo_bins_for_versions(self, versions, tomography):
+        return {v: {"ids": [1, 2] if tomography else ["all"]} for v in versions}
+
+    def _objectwise_leakage_bin(self, obj, ver, *args):
+        if ver == "bad":
+            raise KeyError("fwhm_PSF")
+        return {"aii_mean": 0.1}
+
+    def print_start(self, *args):
+        pass
+
+    def print_magenta(self, *args):
+        pass
+
+
+def test_version_missing_a_column_stays_dropped():
+    cv = _ObjectwiseControlFlow()
+    cv.calculate_objectwise_leakage()
+    assert set(cv.results_objectwise) == {"good"}
+    assert set(cv.leakage_coeff) == {"good"}
+    cv.calculate_objectwise_leakage(tomography=True)
+    assert "tomo_bin_1" in cv.leakage_coeff["good"]

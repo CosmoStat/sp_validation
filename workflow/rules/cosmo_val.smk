@@ -191,9 +191,6 @@ rule cv_footprints:
 
 rule cv_objectwise_leakage:
     """Object-wise PSF-leakage regression vs scale-dependent alpha (all versions)."""
-    input:
-        rho=[cv_rho_stats(v) for v in CV_VERSIONS],
-        tau=[cv_tau_stats(v) for v in CV_VERSIONS],
     output:
         sentinel=str(CV_SENTINELS / "objectwise_leakage.done"),
     params:
