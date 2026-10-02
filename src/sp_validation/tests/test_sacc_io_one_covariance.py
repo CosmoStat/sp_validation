@@ -37,16 +37,15 @@ def _one_cov_table(cov_gauss, cov_all):
     """Flatten two n x n matrices into a OneCovariance ``covariance_list`` table.
 
     Reproduces the real flat output of a single tomographic bin: one row per
-    ``(i, j)`` ℓ-bin pair with ``i <= j`` (the reshape mirrors the other
-    triangle), ℓ_i and ℓ_j in columns 1 and 2, the bin indices of the four
-    fields (all ``1``) in columns 5-8, the Gaussian value in column 10 and the
-    Gaussian+non-Gaussian value in column 9. Columns 0, 3 and 4 hold
-    placeholders the reshape does not read.
+    ``(i, j)`` ℓ-bin pair in row-major order ``k = i·n + j``, ℓ_i and ℓ_j in
+    columns 1 and 2, the bin indices of the four fields (all ``1``) in columns
+    5-8, the Gaussian value in column 10 and the Gaussian+non-Gaussian value in
+    column 9. Columns 0, 3 and 4 hold placeholders the reshape does not read.
     """
     n = cov_gauss.shape[0]
     rows = []
     for i in range(n):
-        for j in range(i, n):
+        for j in range(n):
             row = np.arange(11.0)  # placeholder cols 0, 3, 4
             row[1], row[2] = _ell(i), _ell(j)
             row[5:9] = 1
@@ -89,8 +88,9 @@ def test_covariance_blocks_reshapes_to_hand_built_matrix():
     WHY TEETH: (a) ``gaussian=True`` vs ``False`` must return the two *different*
     matrices, proving the column flag is load-bearing; (b) perturbing a single
     entry of the flat input must change exactly that entry of the reshaped
-    block and its mirror, proving the reshape actually reads the table (not a
-    constant).
+    block, proving the reshape actually reads the table (not a constant). The
+    table stays symmetric, as a covariance is, so the entry is perturbed with
+    its mirror.
     """
     cov_gauss = _spd(4, seed=1)
     cov_all = _spd(4, seed=2)
@@ -108,10 +108,10 @@ def test_covariance_blocks_reshapes_to_hand_built_matrix():
     # TEETH: gaussian and gauss+ng select different columns -> different blocks.
     assert not np.allclose(block_g, block_a)
 
-    # TEETH: a perturbation of one flat-table entry moves exactly that block
-    # entry and its mirror (col 10 for gaussian).
+    # TEETH: a perturbation of one flat-table entry (and its mirror) moves
+    # exactly that block entry (and its mirror), col 10 for gaussian.
     perturbed = table.copy()
-    perturbed[_row_of(table, 1, 2), 10] += 5.0
+    perturbed[[_row_of(table, 1, 2), _row_of(table, 2, 1)], 10] += 5.0
     [(_, block_p)] = sio.covariance_blocks(perturbed, selector, gaussian=True)
     for i, j in ((1, 2), (2, 1)):
         npt.assert_allclose(block_p[i, j] - block_g[i, j], 5.0, rtol=1e-12)
