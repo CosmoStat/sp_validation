@@ -830,6 +830,15 @@ def test_ini_inline_comment_is_not_part_of_the_value(mini_repo):
     assert dr.repository_errors(mini_repo) == []
 
 
+def test_module_docstring_tag_is_rejected(mini_repo):
+    # It would govern nothing, yet read as a citation.
+    append(
+        mini_repo, "src/doc.py", '"""Module.\n\n@sc [decision:statement]\n"""\nx = 1\n'
+    )
+    _, errors = dr.scan_tags(mini_repo)
+    assert_problem(errors, "src/doc.py:3", "module docstring")
+
+
 @pytest.fixture
 def real_repo():
     if not (ROOT / "astra.yaml").is_file():
