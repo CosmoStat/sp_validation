@@ -316,7 +316,9 @@ class CosmologyValidation(
         self.n_ell_bins = n_ell_bins
         self.ell_step = ell_step
 
-        assert pol_factor in (-1, 1), "The polarisatio factor must be -1 or 1."
+        # bool is an int subclass: True would pass `in (-1, 1)` and mean "no flip"
+        if isinstance(pol_factor, bool) or pol_factor not in (-1, 1):
+            raise ValueError(f"pol_factor must be -1 or 1, got {pol_factor!r}")
         self.pol_factor = pol_factor
 
         self.nrandom_cell = nrandom_cell
@@ -462,7 +464,8 @@ class CosmologyValidation(
     def sacc_nz(self, version):
         """Single-bin ``nz`` mapping ``{0: (z, nz)}`` for the SACC writers.
 
-        The round is single-bin, so the whole survey n(z) is bin 0.
+        The SACC parts carry the ("all", "all") pair only, so the whole-survey
+        n(z) of :meth:`get_redshift` is bin 0.
         """
         return {0: tuple(self.get_redshift(version))}
 
@@ -475,7 +478,12 @@ class CosmologyValidation(
         }
 
     def get_redshift(self, version):
-        """Load redshift distribution for a catalog version.
+        """Load the whole-survey redshift distribution of a catalog version.
+
+        The ``redshift_path`` file holds z in column 0 and one n(z) column per
+        tomographic bin (a single column for a non-tomographic version); the
+        whole-survey n(z) is their sum, as
+        ``read_redshift_distribution(version, is_tomography=False)`` returns it.
 
         Parameters
         ----------
@@ -489,7 +497,7 @@ class CosmologyValidation(
         nz : ndarray
             n(z) probability density
         """
-        return np.loadtxt(self.cc[version]["shear"]["redshift_path"], unpack=True)
+        return self.read_redshift_distribution(version, is_tomography=False)
 
     def _write_catalog_config(self):
         with self.catalog_config_path.open("w") as file:
@@ -630,8 +638,9 @@ class CosmologyValidation(
     def summarize_bmodes(self, fiducial_scale_cut=(12, 83), versions=None):
         """Print and return B-mode PTE summary across all statistics.
 
-        Collects PTEs from pure E/B, COSEBIs, and pseudo-Cl at the specified
-        fiducial scale cut. Statistics that haven't been computed show '--'.
+        Collects the PTEs of the non-tomographic ``("all", "all")`` pair from
+        pure E/B, COSEBIs, and pseudo-Cl at the specified fiducial scale cut.
+        Statistics that haven't been computed show '--'.
 
         Parameters
         ----------
@@ -648,45 +657,42 @@ class CosmologyValidation(
         versions = versions or self.versions
         summary = {}
         cov_methods = set()
+        pair = "tomo_bin_all_tomo_bin_all"
 
         for ver in versions:
             row = {}
 
             # Pure E/B PTEs from stored results
-            if ver in self._pure_eb_results:
-                res = self._pure_eb_results[ver]
-                edges = (res["left_edges"], res["right_edges"])
+            pure_eb = self._pure_eb_results.get(ver, {}).get(pair)
+            if pure_eb is not None:
+                edges = (pure_eb["left_edges"], pure_eb["right_edges"])
                 try:
                     for stat in ("xip_B", "xim_B", "combined"):
                         row[stat] = _get_pte_from_scale_cut(
-                            res["pte_matrices"][stat], edges, fiducial_scale_cut
+                            pure_eb["pte_matrices"][stat], edges, fiducial_scale_cut
                         )
-                except (KeyError, RuntimeError):
+                except RuntimeError:
+                    # The scale cut selects no bin of this grid.
                     pass
-                cov_methods.add(covariance_label(res["npatch"]))
+                cov_methods.add(covariance_label(pure_eb["npatch"]))
 
             # COSEBIs PTE from stored results
-            if ver in self._cosebis_results:
-                cosebis_res = self._cosebis_results[ver]
-                has_multi_scale_cuts = all(isinstance(k, tuple) for k in cosebis_res)
-                if has_multi_scale_cuts:
-                    key = find_conservative_scale_cut_key(
-                        cosebis_res, fiducial_scale_cut
-                    )
-                    row["COSEBIS"] = cosebis_res[key]["pte_B"]
-                elif "pte_B" in cosebis_res:
-                    row["COSEBIS"] = cosebis_res["pte_B"]
+            cosebis = self._cosebis_results.get(ver, {}).get(pair)
+            if cosebis is not None:
+                if all(isinstance(k, tuple) for k in cosebis):
+                    key = find_conservative_scale_cut_key(cosebis, fiducial_scale_cut)
+                    row["COSEBIS"] = cosebis[key]["pte_B"]
+                else:
+                    row["COSEBIS"] = cosebis["pte_B"]
 
-            # Pseudo-Cl BB PTE (_pseudo_cls is lazy; check existence without
-            # triggering computation)
-            if hasattr(self, "_pseudo_cls") and ver in self._pseudo_cls:
-                try:
-                    cl_bb = self.pseudo_cls[ver]["pseudo_cl"]["BB"]
-                    cov_bb = self.pseudo_cls[ver]["cov"]["COVAR_BB_BB"].data
-                    _, _, row["C_l_BB"] = chi2_and_pte(cl_bb, cov_bb)
-                    cov_methods.add("Gaussian (NaMaster)")
-                except (KeyError, AttributeError):
-                    pass
+            # Pseudo-Cl BB PTE, once both the spectrum and its covariance are
+            # loaded (_pseudo_cls is lazy; read it without triggering computation)
+            pseudo_cl = getattr(self, "_pseudo_cls", {}).get(ver, {}).get(pair, {})
+            if "pseudo_cl" in pseudo_cl and "cov" in pseudo_cl:
+                cl_bb = pseudo_cl["pseudo_cl"]["BB"]
+                cov_bb = pseudo_cl["cov"]["COVAR_BB_BB"].data
+                _, _, row["C_l_BB"] = chi2_and_pte(cl_bb, cov_bb)
+                cov_methods.add("Gaussian (NaMaster)")
 
             summary[ver] = row
 

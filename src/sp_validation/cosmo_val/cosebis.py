@@ -309,4 +309,4 @@ class CosebisMixin:
 
         # Save data products and store on instance
         save_cosebis_results(results, out_stub + "_data.npz", fiducial_scale_cut)
-        self._cosebis_results[version] = results
+        self._cosebis_results[version] = {"tomo_bin_all_tomo_bin_all": results}
