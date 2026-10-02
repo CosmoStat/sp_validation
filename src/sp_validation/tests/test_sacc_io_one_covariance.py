@@ -28,24 +28,38 @@ from sp_validation import sacc_io as sio
 # --------------------------------------------------------------------------- #
 # Synthetic OneCovariance-shaped fixtures
 # --------------------------------------------------------------------------- #
+def _ell(i):
+    """The multipole of ℓ-bin ``i`` in the synthetic tables."""
+    return 10.0 * (i + 1)
+
+
 def _one_cov_table(cov_gauss, cov_all):
     """Flatten two n x n matrices into a OneCovariance ``covariance_list`` table.
 
-    Reproduces the real flat output: one row per ``(i, j)`` element pair in
-    row-major order ``k = i·n + j``, with the Gaussian value in column 10 and
-    the Gaussian+non-Gaussian value in column 9. Columns 0-8 and the index
-    columns are filled with self-documenting placeholder values (the reshape
-    only reads cols 9/10, but a realistic width proves it does not spill).
+    Reproduces the real flat output of a single tomographic bin: one row per
+    ``(i, j)`` ℓ-bin pair with ``i <= j`` (the reshape mirrors the other
+    triangle), ℓ_i and ℓ_j in columns 1 and 2, the bin indices of the four
+    fields (all ``1``) in columns 5-8, the Gaussian value in column 10 and the
+    Gaussian+non-Gaussian value in column 9. Columns 0, 3 and 4 hold
+    placeholders the reshape does not read.
     """
     n = cov_gauss.shape[0]
     rows = []
     for i in range(n):
-        for j in range(n):
-            row = np.arange(11.0)  # placeholder cols 0-8 (+ overwritten 9,10)
+        for j in range(i, n):
+            row = np.arange(11.0)  # placeholder cols 0, 3, 4
+            row[1], row[2] = _ell(i), _ell(j)
+            row[5:9] = 1
             row[9] = cov_all[i, j]
             row[10] = cov_gauss[i, j]
             rows.append(row)
     return np.array(rows)
+
+
+def _row_of(table, i, j):
+    """Index of the table row holding ℓ-bin pair ``(i, j)``."""
+    [k] = np.flatnonzero((table[:, 1] == _ell(i)) & (table[:, 2] == _ell(j)))
+    return k
 
 
 def _spd(n, seed):
@@ -75,7 +89,8 @@ def test_covariance_blocks_reshapes_to_hand_built_matrix():
     WHY TEETH: (a) ``gaussian=True`` vs ``False`` must return the two *different*
     matrices, proving the column flag is load-bearing; (b) perturbing a single
     entry of the flat input must change exactly that entry of the reshaped
-    block, proving the reshape actually reads the table (not a constant).
+    block and its mirror, proving the reshape actually reads the table (not a
+    constant).
     """
     cov_gauss = _spd(4, seed=1)
     cov_all = _spd(4, seed=2)
@@ -94,12 +109,13 @@ def test_covariance_blocks_reshapes_to_hand_built_matrix():
     assert not np.allclose(block_g, block_a)
 
     # TEETH: a perturbation of one flat-table entry moves exactly that block
-    # entry (row k = i·n + j, col 10 for gaussian).
+    # entry and its mirror (col 10 for gaussian).
     perturbed = table.copy()
-    perturbed[2 * 4 + 1, 10] += 5.0  # element (i=2, j=1)
+    perturbed[_row_of(table, 1, 2), 10] += 5.0
     [(_, block_p)] = sio.covariance_blocks(perturbed, selector, gaussian=True)
-    npt.assert_allclose(block_p[2, 1] - block_g[2, 1], 5.0, rtol=1e-12)
-    block_p[2, 1] = block_g[2, 1]
+    for i, j in ((1, 2), (2, 1)):
+        npt.assert_allclose(block_p[i, j] - block_g[i, j], 5.0, rtol=1e-12)
+        block_p[i, j] = block_g[i, j]
     npt.assert_allclose(block_p, block_g, rtol=1e-12)  # nothing else moved
 
 

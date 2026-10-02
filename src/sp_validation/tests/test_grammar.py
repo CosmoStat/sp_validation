@@ -273,7 +273,7 @@ def test_get_rho_tau_identical_for_v1_and_v2_psf_catalogues(tmp_path):
             "max_sep": 600,
             "nbins": 4,
         }
-        get_rho_tau(config, label, treecorr_config, str(outdir), label)
+        get_rho_tau(config, label, treecorr_config, str(outdir), label, label)
         stats[label] = [
             fits.getdata(outdir / f"{kind}_stats_{label}.fits")
             for kind in ("rho", "tau")

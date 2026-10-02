@@ -372,6 +372,7 @@ class TestCosmologyValidation:
         version_cfg = {
             "subdir": str(cat_dir),
             "pipeline": "SP",
+            "colour": "tab:blue",
             "shear": shear_cfg,
             "star": star_cfg,
         }
@@ -484,19 +485,22 @@ class TestCosmologyValidation:
             )
 
     def test_a_patched_xi_dump_reads_back(self, tmp_path):
-        """calculate_2pcf reads back the text dump a patched measurement wrote.
+        """calculate_2pcf_version reads back the dump a patched measurement wrote.
 
         The ξ± figure rules re-enter calculate_2pcf on the reporting grid, which
         has patches, and are handed the dump rule xi wrote (to its precision).
         """
         params, version = self._write_synthetic_catalogs(tmp_path)
         binning = dict(npatch=4, min_sep=5.0, max_sep=100.0, nbins=6)
-        measured = CosmologyValidation(versions=[version], **params).calculate_2pcf(
+        pair = "tomo_bin_all_tomo_bin_all"
+        measured = CosmologyValidation(
+            versions=[version], **params
+        ).calculate_2pcf_version(version, **binning)[pair]
+        dumps = list(Path(params["output_dir"]).glob(f"xi_{version}_*.txt"))
+        assert len(dumps) == 1
+        read = CosmologyValidation(versions=[version], **params).calculate_2pcf_version(
             version, **binning
-        )
-        read = CosmologyValidation(versions=[version], **params).calculate_2pcf(
-            version, **binning
-        )
+        )[pair]
         for column in ("meanr", "npairs", "xip", "xim", "varxip", "varxim"):
             np.testing.assert_allclose(
                 getattr(read, column), getattr(measured, column), rtol=1e-4
@@ -525,10 +529,13 @@ class TestCosmologyValidation:
 
         xi = {}
         for n_threads in (4, 48):
-            # calculate_2pcf reads back an existing text dump instead of measuring.
-            for dump in Path(params["output_dir"]).glob(f"{version}_xi_*.txt"):
+            # calculate_2pcf_version reads back an existing text dump instead of
+            # measuring.
+            for dump in Path(params["output_dir"]).glob(f"xi_{version}_*.txt"):
                 dump.unlink()
-            gg = cv.calculate_2pcf(version, num_threads=n_threads)
+            gg = cv.calculate_2pcf_version(version, num_threads=n_threads)[
+                "tomo_bin_all_tomo_bin_all"
+            ]
             assert treecorr.get_omp_threads() == n_threads  # the count took effect
             xi[n_threads] = np.concatenate([gg.xip, gg.xim])
             sigma = np.sqrt(np.concatenate([gg.varxip, gg.varxim]))
@@ -541,9 +548,9 @@ class TestCosmologyValidation:
         import treecorr
 
         params, version = self._write_synthetic_catalogs(tmp_path)
-        CosmologyValidation(versions=[version], npatch=1, **params).calculate_2pcf(
-            version
-        )
+        CosmologyValidation(
+            versions=[version], npatch=1, **params
+        ).calculate_2pcf_version(version)
         assert treecorr.get_omp_threads() == len(os.sched_getaffinity(0))
 
     def test_calculate_scale_dependent_leakage_runs_on_synthetic_catalog(
@@ -617,13 +624,10 @@ class TestCosmologyValidation:
         )
         cv.treecorr_config.update(bin_slop=0, angle_slop=0)
 
-        results = cv.calculate_pure_eb(
-            version,
-            npatch=npatch,
-            min_sep_int=1.0,
-            max_sep_int=300.0,
-            nbins_int=600,
-        )
+        integration = dict(min_sep_int=1.0, max_sep_int=300.0, nbins_int=600)
+        results = cv.calculate_pure_eb(version, npatch=npatch, **integration)[
+            "tomo_bin_all_tomo_bin_all"
+        ]
 
         measured = {
             key: results[key]
@@ -652,7 +656,17 @@ class TestCosmologyValidation:
         cov = np.asarray(results["cov"])
         assert cov.shape == (6 * nbins, 6 * nbins)
         assert results["npatch"] == npatch
-        gg_int = cv.cat_ggs[version]
+        # The integration-grid ξ± again, measured on the jackknife patches the
+        # first measurement wrote (its columns-only dump carries no patches).
+        for dump in Path(params["output_dir"]).glob(f"xi_{version}_*.txt"):
+            dump.unlink()
+        gg_int = cv.calculate_2pcf_version(
+            version,
+            npatch=npatch,
+            min_sep=integration["min_sep_int"],
+            max_sep=integration["max_sep_int"],
+            nbins=integration["nbins_int"],
+        )["tomo_bin_all_tomo_bin_all"]
         jackknife_of_modes = treecorr.estimate_multi_cov(
             [gg_int],
             "jackknife",
@@ -662,3 +676,130 @@ class TestCosmologyValidation:
         np.testing.assert_allclose(
             cov, jackknife_of_modes, rtol=0, atol=1e-10 * np.abs(cov).max()
         )
+
+    def test_plot_2pcf_writes_the_non_tomographic_figures(self, tmp_path):
+        """plot_2pcf draws the ("all", "all") ξ± through plot_2pcf_tomography."""
+        params, version = self._write_synthetic_catalogs(tmp_path)
+        cv = CosmologyValidation(
+            versions=[version],
+            npatch=1,
+            theta_min=5.0,
+            theta_max=100.0,
+            nbins=6,
+            **params,
+        )
+        cv.plot_2pcf(show=False)
+
+        out = Path(params["output_dir"])
+        for name in ("xi_pm_tomography_False", "xi_pm_theta_tomography_False"):
+            assert (out / f"{name}.png").is_file(), name
+
+    def test_plot_ratio_xi_sys_xi_writes_the_declared_figure(self, tmp_path):
+        """plot_ratio_xi_sys_xi divides the pair's ξ^{PSF, sys}± by its ξ±.
+
+        ξ^{PSF, sys} is set on the instance, so the test needs no ρ/τ fit; the
+        figure lands where the cv_ratio_xi_sys_xi rule declares it.
+        """
+        params, version = self._write_synthetic_catalogs(tmp_path)
+        nbins = 6
+        cv = CosmologyValidation(
+            versions=[version],
+            npatch=1,
+            theta_min=5.0,
+            theta_max=100.0,
+            nbins=nbins,
+            **params,
+        )
+        sys = np.full(nbins, 1e-6)
+        cv._xi_psf_sys = {
+            version: {
+                "tomo_bin_all_tomo_bin_all": {
+                    "mean_plus": sys,
+                    "var_plus": sys**2,
+                    "mean_minus": sys,
+                    "var_minus": sys**2,
+                }
+            }
+        }
+        cv.plot_ratio_xi_sys_xi(show=False)
+
+        assert (Path(params["output_dir"]) / "ratio_xi_sys_xi.png").is_file()
+        with pytest.raises(ValueError, match="compute_tomography"):
+            cv.plot_ratio_xi_sys_xi(tomography=True, show=False)
+
+    def test_summarize_bmodes_reads_the_all_pair(self, tmp_path):
+        """Each statistic's ("all", "all") result reaches the summary.
+
+        A result whose shape the summary cannot read raises rather than
+        silently leaving its column empty.
+        """
+        from types import SimpleNamespace
+
+        from sp_validation.statistics import chi2_and_pte
+
+        params, version = self._write_synthetic_catalogs(tmp_path)
+        cv = CosmologyValidation(versions=[version], **params)
+        pair = "tomo_bin_all_tomo_bin_all"
+
+        edges = np.geomspace(1.0, 100.0, 6)
+        cv._pure_eb_results[version] = {
+            pair: {
+                "left_edges": edges[:-1],
+                "right_edges": edges[1:],
+                "pte_matrices": {
+                    stat: np.full((5, 5), pte)
+                    for stat, pte in (("xip_B", 0.1), ("xim_B", 0.2), ("combined", 0.3))
+                },
+                "npatch": 8,
+            }
+        }
+        cv._cosebis_results[version] = {pair: {"pte_B": 0.4}}
+        cl_bb = np.array([1.0, -0.5, 0.25])
+        cov_bb = np.diag([2.0, 1.0, 0.5])
+        cv._pseudo_cls = {
+            version: {
+                pair: {
+                    "pseudo_cl": {"BB": cl_bb},
+                    "cov": {"COVAR_BB_BB": SimpleNamespace(data=cov_bb)},
+                }
+            }
+        }
+
+        row = cv.summarize_bmodes(fiducial_scale_cut=(1.0, 100.0))[version]
+
+        assert row == pytest.approx(
+            {
+                "xip_B": 0.1,
+                "xim_B": 0.2,
+                "combined": 0.3,
+                "COSEBIS": 0.4,
+                "C_l_BB": chi2_and_pte(cl_bb, cov_bb)[2],
+            }
+        )
+
+        del cv._pure_eb_results[version][pair]["pte_matrices"]
+        with pytest.raises(KeyError):
+            cv.summarize_bmodes(fiducial_scale_cut=(1.0, 100.0))
+
+    def test_sacc_nz_is_the_summed_tomographic_nz(self, tmp_path):
+        """A multi-column n(z) file gives the SACC parts its whole-survey sum."""
+        params, version = self._write_synthetic_catalogs(tmp_path)
+        cv = CosmologyValidation(versions=[version], **params)
+
+        z = np.linspace(0.0, 2.0, 11)
+        nz_bins = np.stack([np.exp(-((z - mu) ** 2)) for mu in (0.5, 1.0, 1.5)])
+        nz_path = tmp_path / "nz_tomo.txt"
+        np.savetxt(nz_path, np.column_stack([z, *nz_bins]))
+        cv.cc[version]["shear"]["redshift_path"] = str(nz_path)
+
+        [(bin_id, (z_read, nz_read))] = cv.sacc_nz(version).items()
+        assert bin_id == 0
+        np.testing.assert_allclose(z_read, z)
+        np.testing.assert_allclose(nz_read, nz_bins.sum(axis=0))
+
+    @pytest.mark.parametrize("pol_factor", [True, False, 0, 2])
+    def test_pol_factor_must_be_plus_or_minus_one(self, tmp_path, pol_factor):
+        """pol_factor is a ±1 e2 multiplier; a bool would pass `in (-1, 1)`."""
+        params, version = self._write_synthetic_catalogs(tmp_path)
+        with pytest.raises(ValueError, match="pol_factor"):
+            CosmologyValidation(versions=[version], pol_factor=pol_factor, **params)
