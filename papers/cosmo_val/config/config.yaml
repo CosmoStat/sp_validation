@@ -1,12 +1,11 @@
 # UNIONS catalogue cosmology-validation suite — run-specific config.
 #
 # Drives the decomposed CosmologyValidation diagnostics in
-# workflow/rules/cosmo_val.smk. The `cosmo_val:` block holds every parameter
-# the CosmologyValidation constructor and its diagnostic methods need; the
-# remaining top-level keys (fiducial, covariance, cosebis, pixel_mask,
-# glass_mocks, tools, versions) satisfy the parse-time lookups of the shared
-# workflow module this paper composes — they mirror papers/bmodes/config and
-# are not exercised by the cosmo_val rules themselves.
+# workflow/rules/cosmo_val.smk. The `cosmo_val:` block holds the constructor
+# and diagnostic settings. The shared workflow also reads `versions` and
+# `fiducial` to select catalogues and real-space grids,
+# `covariance.default_masked` to choose covariance files, and
+# `harmonic.fiducial` to name pseudo-Cl inputs.
 
 # Catalog versions to validate. Comparison runs overlay the leakage-corrected
 # variant against its parent.
@@ -43,11 +42,13 @@ cosmo_val:
   cov_estimate_method: th
   compute_cov_rho: true
   n_cov: 100
-  var_method: jackknife
+  var_method: jackknife  # TreeCorr variance for rho/tau; xi variance follows npatch.
   quantile: 0.1587
   ylim_xi_sys_ratio: [-0.02, 0.5]
   fiducial_input_inka: coupled
-  # Pseudo-Cl map resolution, ell binning and noise/randoms settings
+  # Diagnostic-runner settings; these do not configure the twopoint producers.
+  # Those use nside=1024, catalogue estimation, power=0.5, 100 randoms, and
+  # binning from harmonic.fiducial.
   nside: 1024
   binning: powspace
   power: 0.5
@@ -104,8 +105,10 @@ cosmo_val:
     ]
 
 # ---------------------------------------------------------------------------
-# Shared-module scaffolding (mirrors papers/bmodes/config). Required so the
-# generic workflow/ Snakefile parses; the cosmo_val rules do not use these.
+# Shared-workflow settings used by the diagnostics.
+# `fiducial` sets real-space grids; `covariance.default_masked` selects
+# covariance inputs.
+# `harmonic.fiducial` supplies the pseudo-Cl filename tag.
 # ---------------------------------------------------------------------------
 # @sc [decision:shear_field.fiducial_columns]
 fiducial:
@@ -122,7 +125,7 @@ fiducial:
   fiducial_min_scale: 12
   fiducial_max_scale: 83
 
-var_method: jackknife
+var_method: jackknife  # Unused at top level; rho/tau uses cosmo_val.var_method.
 
 # @sc [decision:covariance.footprint_mask_power]
 covariance:
