@@ -13,6 +13,8 @@ file (the named INI section, including DEFAULT inheritance). INI section names
 are case-sensitive and keys are not, as CosmoSIS lower-cases them and merges
 repeated sections; interpolation and inline-comment stripping are off. A YAML or
 INI key repeated in the same file outside the governed span fails: the last wins.
+Python settings are defaults, keywords, dict entries and assignments to names,
+self attributes and constant string subscripts (``d["key"] = ...``).
 Snakemake values use Python literal syntax: assignments, directive scalars and
 keyword/dict entries in directive expressions. YAML sequence paths use numeric
 indices. YAML aliases are rejected if recursive. Only inline ASTRA analyses are
@@ -477,6 +479,12 @@ def _python_locations(path, source, tree, offset=0):
                         else None
                     )
                 )
+                if (
+                    isinstance(target, ast.Subscript)
+                    and isinstance(target.slice, ast.Constant)
+                    and isinstance(target.slice.value, str)
+                ):
+                    name = target.slice.value  # d["key"] = ... sets a dict entry.
                 if name and node.value is not None:
                     # An augmented assignment isn't a literal setting.
                     value = node if isinstance(node, ast.AugAssign) else node.value
