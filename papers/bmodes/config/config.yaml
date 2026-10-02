@@ -7,7 +7,7 @@ versions: [
 ]
 ellipticity_suffix: "_leak_corrected"
 
-# grid search parameters
+# These scan keys are unused; the rules read the fiducial block below.
 npatches: [120]
 
 min_seps: [1]
@@ -65,7 +65,7 @@ fiducial:
   chain: SP_v1.4.6.3_leak_corr_C_sc_10_150_new_ia
 
 
-var_method: jackknife
+var_method: jackknife  # Unused; ξ± variance follows fiducial.npatch (shot when 1).
 
 # @sc [decision:covariance.footprint_mask_power]
 covariance:
