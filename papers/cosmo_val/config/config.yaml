@@ -69,8 +69,8 @@ cosmo_val:
   # @sc [decision:bmodes.bmode_summary]
   include_pseudo_cl: true
 
-  # Theory cosmology for the pseudo-Cl covariance (astropy Planck18
-  # + CAMB nonlinear settings, matching the original run_cosmo_val.py driver).
+  # CosmologyValidation reference values. The pseudo-Cl covariance producer
+  # uses results/cosmology/planck18.json and CCL halofit, not these CAMB settings.
   # @sc [decision:covariance.pseudo_cl_fiducial_theory]
   cosmo_params:
     Omega_m: 0.30966

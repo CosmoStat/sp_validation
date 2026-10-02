@@ -37,7 +37,8 @@ is the container (full scientific stack pre-built). For a local dev environment:
 ## Architecture
 
 ### Core Package Structure (`src/sp_validation/`)
-- `b_modes.py`: Pure E-/B-mode decomposition (COSEBIS, pseudo-Cℓ)
+- `b_modes.py`: Pure E-/B-mode decomposition (COSEBIS and pure E/B)
+- `pseudo_cl.py`, `cosmo_val/pseudo_cl.py`: pseudo-Cℓ estimation
 - `calibration.py`: Shear calibration — the `metacal` response class, galaxy selection masks (size/SNR), and m/c calibration routines
 - `cat.py`: Catalogue handling and manipulation
 - `cosmo_val.py`: Cosmology validation routines
