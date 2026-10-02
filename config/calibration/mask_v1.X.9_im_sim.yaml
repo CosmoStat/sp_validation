@@ -9,7 +9,7 @@ params:
   verbose: True
 
 # Masks
-## Using columns in 'dat' group (ShapePipe flags)
+## Cuts on catalogue columns, in the v2 grammar (sp_validation.grammar)
 dat:
   # SExtractor flags
   - col_name: FLAGS

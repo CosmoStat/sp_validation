@@ -3,7 +3,7 @@ Script homogenize_cat_extended.py
 
 Overwrite the extended catalog to replace the columns e1 and e2 from the extended catalog with the columns
 e1 and e2 from the non-extended one. Currently, the calibration of the columns e1 and e2 of the extended catalog
-are calibrated per patch, while the non-extended catalog is calibrated on the whole footprint.
+are calibrated per campaign, while the non-extended catalog is calibrated on the whole footprint.
 
 :Authors: Sacha Guerrini, Martin Kilbinger
 """

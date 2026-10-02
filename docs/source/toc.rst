@@ -17,6 +17,7 @@
 
   using_the_catalogues
   run_validation
+  catalogue_columns
   post_processing
   Leakage_object_Tutorial
 

@@ -20,8 +20,51 @@ from matplotlib.colors import to_rgb
 
 import sp_validation.pseudo_cl as spv_pseudo_cl
 
+from .. import sacc_io
+from ..io import open_entry
 from ..rho_tau import get_params_rho_tau
 from ..statistics import cov_from_one_covariance
+from .sacc_writers import BIN as SACC_BIN
+from .sacc_writers import pseudo_cl_to_sacc
+
+
+def plot_pseudo_cl_spectrum(datasets, spectrum, output_path):
+    """Two-panel ℓC_ℓ / C_ℓ figure for one spectrum across catalogue versions.
+
+    ``datasets`` maps a version to ``{"ell", "cl", "cov", "style"}``, where
+    ``style`` carries the ``marker`` and ``colour`` the version is drawn with.
+    """
+    fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(8, 8))
+    minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
+
+    for panel, scaled in ((ax[0], True), (ax[1], False)):
+        for version, data in datasets.items():
+            ell, cl = np.asarray(data["ell"]), np.asarray(data["cl"])
+            err = np.sqrt(np.diag(np.asarray(data["cov"])))
+            style = data.get("style", {})
+            panel.errorbar(
+                ell,
+                ell * cl if scaled else cl,
+                yerr=ell * err if scaled else err,
+                fmt=style.get("marker", "."),
+                color=style.get("colour"),
+                label=f"{version} {spectrum}",
+                capsize=2 if scaled else None,
+            )
+        panel.set_ylabel(r"$\ell C_\ell$" if scaled else r"$C_\ell$")
+        panel.set_xlim(ell.min() - 10, ell.max() + 100)
+        panel.set_xscale("squareroot")
+        panel.set_xticks(np.array([100, 400, 900, 1600]))
+        panel.minorticks_on()
+        panel.tick_params(axis="x", which="minor", length=2, width=0.8)
+        panel.xaxis.set_ticks(minor_ticks, minor=True)
+
+    ax[1].set_xlabel(r"$\ell$")
+    ax[1].set_yscale("log")
+    plt.suptitle(f"Pseudo-Cl {spectrum} (Gaussian covariance)")
+    plt.legend()
+    plt.savefig(output_path)
+    plt.close(fig)
 
 
 class PseudoClMixin:
@@ -49,10 +92,29 @@ class PseudoClMixin:
         return self._pseudo_cls_onecov
 
     # ---------------- Pseudo-Cl calculation methods ---------------- #
-    def calculate_pseudo_cl(self, compute_tomography=True):
+    def calculate_pseudo_cl(self, compute_tomography=True, out_path=None):
         """
         Compute the pseudo-Cl of a `CosmologyValidation` inputs with tomography.
+
+        With ``compute_tomography=False`` the single ``("all", "all")`` pair is
+        computed and written as a SACC part, by default to
+        ``pseudo_cl_{ver}.sacc``; ``out_path`` overrides that destination (one
+        version only). With ``compute_tomography=True`` every tomographic bin
+        pair is written to its own FITS file and ``out_path`` is not accepted.
         """
+        if out_path is not None:
+            if compute_tomography:
+                raise ValueError(
+                    "calculate_pseudo_cl(out_path=...) names the non-tomographic "
+                    "SACC part; call it with compute_tomography=False"
+                )
+            if len(self.versions) != 1:
+                raise ValueError(
+                    "calculate_pseudo_cl(out_path=...) writes one part to one "
+                    f"path, but {len(self.versions)} versions are configured; "
+                    "call per version"
+                )
+
         out_dir = self._output_path("pseudo_cl")
         os.makedirs(out_dir, exist_ok=True)
 
@@ -92,27 +154,30 @@ class PseudoClMixin:
                         f"tomo_bin_{bin_key1}_tomo_bin_{bin_key2}"
                     ] = {}
 
-                out_path = self._output_path_pseudo_cl(
+                pair_out_path = out_path or self._output_path_pseudo_cl(
                     ver, tomo_bin_pair=(bin_key1, bin_key2)
                 )
-                if os.path.exists(out_path) and not self.force_run:
+                if os.path.exists(pair_out_path) and not self.force_run:
                     self.print_done(
-                        f"Skipping Pseudo-Cl's calculation, {out_path} exists"
+                        f"Skipping Pseudo-Cl's calculation, {pair_out_path} exists"
                     )
-                    cl_shear = fits.getdata(out_path)
                     self._pseudo_cls[ver][f"tomo_bin_{bin_key1}_tomo_bin_{bin_key2}"][
                         "pseudo_cl"
-                    ] = cl_shear
+                    ] = self._load_pseudo_cl(pair_out_path, (bin_key1, bin_key2))
                     continue
 
                 if self.cell_method == "map":
                     self.calculate_pseudo_cl_map(
-                        ver, self.nside, out_path, bin_key1, bin_key2
+                        ver, self.nside, pair_out_path, bin_key1, bin_key2
                     )
                 elif self.cell_method == "catalog":
-                    self.calculate_pseudo_cl_catalog(ver, out_path, bin_key1, bin_key2)
+                    self.calculate_pseudo_cl_catalog(
+                        ver, pair_out_path, bin_key1, bin_key2
+                    )
                 else:
                     raise ValueError(f"Unknown cell method: {self.cell_method}")
+
+        self.print_done("Done pseudo-Cl's")
 
     def calculate_pseudo_cl_map(self, ver, nside, out_path, tomo_bin_a, tomo_bin_b):
         assert (tomo_bin_a == "all" and tomo_bin_b == "all") or (
@@ -127,7 +192,7 @@ class PseudoClMixin:
         )
 
         # Load data and create shear and noise maps
-        cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
+        cat_gal = open_entry(self.cc[ver]["shear"])
 
         # Get the tomographic bin
         cat_gal_a = self._get_tomographic_bin(params, cat_gal, tomo_bin_a)
@@ -206,12 +271,12 @@ class PseudoClMixin:
             cl_shear = cl_shear - cl_noise
 
         self.print_cyan("Saving pseudo-Cl's...")
-        self.save_pseudo_cl(ell_eff, cl_shear, out_path)
+        tomo_bin_pair = (tomo_bin_a, tomo_bin_b)
+        self._save_pseudo_cl(ver, out_path, tomo_bin_pair, ell_eff, cl_shear, wsp)
 
-        cl_shear = fits.getdata(out_path)
         self._pseudo_cls[ver][f"tomo_bin_{tomo_bin_a}_tomo_bin_{tomo_bin_b}"][
             "pseudo_cl"
-        ] = cl_shear
+        ] = self._load_pseudo_cl(out_path, tomo_bin_pair)
 
     def calculate_pseudo_cl_catalog(self, ver, out_path, tomo_bin_a, tomo_bin_b):
         assert (tomo_bin_a == "all" and tomo_bin_b == "all") or (
@@ -222,19 +287,19 @@ class PseudoClMixin:
         params = get_params_rho_tau(self.cc[ver])
 
         # Load data and create shear and noise maps
-        cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
+        cat_gal = open_entry(self.cc[ver]["shear"])
 
         ell_eff, cl_shear, wsp = self.get_pseudo_cls_catalog(
             catalog=cat_gal, params=params, tomo_bin_a=tomo_bin_a, tomo_bin_b=tomo_bin_b
         )
 
         self.print_cyan("Saving pseudo-Cl's...")
-        self.save_pseudo_cl(ell_eff, cl_shear, out_path)
+        tomo_bin_pair = (tomo_bin_a, tomo_bin_b)
+        self._save_pseudo_cl(ver, out_path, tomo_bin_pair, ell_eff, cl_shear, wsp)
 
-        cl_shear = fits.getdata(out_path)
         self._pseudo_cls[ver][f"tomo_bin_{tomo_bin_a}_tomo_bin_{tomo_bin_b}"][
             "pseudo_cl"
-        ] = cl_shear
+        ] = self._load_pseudo_cl(out_path, tomo_bin_pair)
 
     def calculate_pseudo_cl_inka_cov(
         self, compute_tomography=True, load_all_block=False
@@ -341,7 +406,7 @@ class PseudoClMixin:
             self.print_cyan(f"Method used: {self.noise_bias_method}")
 
             params = get_params_rho_tau(self.cc[ver])
-            cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
+            cat_gal = open_entry(self.cc[ver]["shear"])
 
             lmin, lmax, b_lmax = spv_pseudo_cl.pseudo_cl_geometry(self.nside)
             b = self.get_namaster_bin(lmin, lmax, b_lmax)
@@ -1086,18 +1151,19 @@ class PseudoClMixin:
             mask = tomo_bin_id == tomo_bin
             return cat_gal[mask]
 
-    def _output_path_pseudo_cl(self, ver, tomo_bin_pair=None):
-        if tomo_bin_pair is None:
-            return self._output_path(
-                "pseudo_cl",
-                f"pseudo_cl_from_{self.cell_method}_non_tomo_{ver}_binning_{self.binning}_nbins_{self.n_ell_bins}.fits",
-            )
-        else:
-            bin_key1, bin_key2 = tomo_bin_pair
-            return self._output_path(
-                "pseudo_cl",
-                f"pseudo_cl_from_{self.cell_method}_tomo_bin_{bin_key1}_tomo_bin_{bin_key2}_{ver}_binning_{self.binning}_nbins_{self.n_ell_bins}.fits",
-            )
+    def _output_path_pseudo_cl(self, ver, tomo_bin_pair):
+        """Default pseudo-Cl product path of one bin pair.
+
+        The ``("all", "all")`` pair is the SACC part ``pseudo_cl_{ver}.sacc``;
+        a tomographic pair is a FITS table under ``pseudo_cl/``.
+        """
+        if tuple(tomo_bin_pair) == ("all", "all"):
+            return self._output_path(f"pseudo_cl_{ver}.sacc")
+        bin_key1, bin_key2 = tomo_bin_pair
+        return self._output_path(
+            "pseudo_cl",
+            f"pseudo_cl_from_{self.cell_method}_tomo_bin_{bin_key1}_tomo_bin_{bin_key2}_{ver}_binning_{self.binning}_nbins_{self.n_ell_bins}.fits",
+        )
 
     def _output_path_pseudo_cl_cov(self, ver, method, tomography):
         is_tomo = "tomo" if tomography else "non_tomo"
@@ -1114,9 +1180,47 @@ class PseudoClMixin:
             f"pseudo_cl_cov_from_iNKA_tomo_bin_{bin_key_a1}_tomo_bin_{bin_key_a2}_tomo_bin_{bin_key_b1}_tomo_bin_{bin_key_b2}_{ver}_binning_{self.binning}_nbins_{self.n_ell_bins}.fits",
         )
 
+    def _save_pseudo_cl(self, ver, out_path, tomo_bin_pair, ell_eff, cl_all, wsp):
+        """Write one bin pair's pseudo-Cl: SACC for ``("all", "all")``, else FITS."""
+        if tuple(tomo_bin_pair) == ("all", "all"):
+            self.pseudo_cl_to_sacc_part(ver, out_path, ell_eff, cl_all, wsp)
+        else:
+            self.save_pseudo_cl(ell_eff, cl_all, out_path)
+
+    def _load_pseudo_cl(self, out_path, tomo_bin_pair):
+        """Read one bin pair's pseudo-Cl product written by ``_save_pseudo_cl``."""
+        if tuple(tomo_bin_pair) == ("all", "all"):
+            return self._load_pseudo_cl_sacc(out_path)
+        return fits.getdata(out_path)
+
+    @staticmethod
+    def _load_pseudo_cl_sacc(out_path):
+        """Read a pseudo-Cl SACC part into the ELL/EE/EB/BB dict."""
+        # Readback of a part this producer just wrote — a legitimate pre-blind
+        # consumer, so the fail-closed load is opted out of.
+        s = sacc_io.load(out_path, allow_unblinded=True)
+        ell, ee, bb, eb, _window = sacc_io.get_pseudo_cl(s, SACC_BIN)
+        return {"ELL": ell, "EE": ee, "EB": eb, "BB": bb}
+
+    def pseudo_cl_to_sacc_part(self, version, out_path, ell_eff, cl_all, wsp):
+        """Write the pseudo-Cl SACC part (EE/BB/EB + shared bandpower window).
+
+        ``cl_all`` is NaMaster's decoupled ``(4, nbp)`` array (EE, EB, BE, BB);
+        the writer takes the shared bandpower window from ``wsp``. No covariance
+        is attached here.
+        """
+        s = pseudo_cl_to_sacc(
+            self.sacc_nz(version),
+            self.sacc_metadata(version),
+            ell_eff,
+            cl_all,
+            wsp,
+        )
+        sacc_io.save(s, out_path, type="data")
+
     def save_pseudo_cl(self, ell_eff, pseudo_cl, out_path):
         """
-        Save pseudo-Cl's to a FITS file.
+        Save a tomographic bin pair's pseudo-Cl's to a FITS file.
 
         Parameters
         ----------
@@ -1326,7 +1430,7 @@ class PseudoClMixin:
                 pseudo_cls = ver_tomo_info["pseudo_cl"]
                 cov = ver_tomo_info["cov"]
 
-                ell = pseudo_cls["ell"]
+                ell = pseudo_cls["ELL"]
 
                 ell_widths = np.diff(ell)
                 ell_widths = np.append(

@@ -12,15 +12,26 @@ orchestration:
         --cat-config /path/to/cosmo_val/cat_config.yaml \
         --out <output_dir>
 
-The measurement itself is unchanged — ``CosmologyValidation.calculate_2pcf``
-does the TreeCorr work and writes the ``.txt`` dump plus ξ+/ξ- FITS files into
-``output_dir``. ``output_dir`` is passed explicitly (rather than via the
-``COSMO_VAL`` env hook) so lc can point each run at its own ``{output}`` tree.
+The measurement is binning-agnostic: the reporting and the fine integration
+grids are the same compute with different ``--min-sep/--max-sep/--nbins``.
+``CosmologyValidation.calculate_2pcf`` writes the ``.txt`` dump (a raw
+byproduct); the ξ± data product is born as SACC here, a *part* named by its
+binning and tagged with its ``--grid``. The part carries the covariance the
+measurement estimated: the dense jackknife covariance when it had patches, the
+shot-noise ``varxip``/``varxim`` diagonal when it had none.
+
+``output_dir`` is passed explicitly so lc can point each run at its own
+``{output}`` tree.
 """
 
 import argparse
+import os
 
+import numpy as np
+
+from sp_validation import sacc_io
 from sp_validation.cosmo_val import CosmologyValidation
+from sp_validation.cosmo_val.sacc_writers import xi_to_sacc
 
 
 def run_2pcf(
@@ -31,29 +42,62 @@ def run_2pcf(
     npatch,
     cat_config,
     output_dir,
-    save_fits=True,
+    sacc_out=None,
+    grid="reporting",
 ):
-    """Measure ξ±(θ) for ``ver`` and write it under ``output_dir``.
+    """Measure ξ±(θ) for ``ver`` and write its reporting SACC part.
 
     Parameters mirror the TreeCorr reporting/integration grids: ``min_sep`` /
     ``max_sep`` in arcmin, ``nbins`` logarithmic bins, ``npatch`` spatial
     patches (1 for the paper fiducial). ``cat_config`` is an absolute path to
     the catalog configuration; ``output_dir`` overrides
-    ``cat_config['paths']['output']`` so products land where lc expects.
+    ``cat_config['paths']['output']`` so the ``.txt`` byproduct lands where lc
+    expects. ``sacc_out`` is the exact destination for the SACC part (the
+    Snakemake-declared output); it defaults to a binning-derived name under
+    the resolved output directory for the CLI path.
+
+    Returns
+    -------
+    treecorr.GGCorrelation
+        The measured correlation object (also the source of the SACC part).
     """
     cv = CosmologyValidation(
         versions=[ver],
         catalog_config=cat_config,
         output_dir=output_dir,
+        # so the SACC provenance metadata stamps the npatch actually measured
+        npatch=npatch,
     )
-    return cv.calculate_2pcf(
+    gg = cv.calculate_2pcf(
         ver=ver,
         npatch=npatch,
-        save_fits=save_fits,
         min_sep=min_sep,
         max_sep=max_sep,
         nbins=nbins,
     )
+
+    # Born-as-SACC ξ± part. theta = meanr; theta_nom = rnom.
+    jackknife = gg.var_method == "jackknife"
+    s = xi_to_sacc(
+        cv.sacc_nz(ver),
+        cv.sacc_metadata(ver),
+        gg.meanr,
+        gg.xip,
+        gg.xim,
+        grid=grid,
+        theta_nom=gg.rnom,
+        npairs=gg.npairs,
+        weight=gg.weight,
+        covariance=gg.cov if jackknife else None,
+        variances=None if jackknife else np.concatenate([gg.varxip, gg.varxim]),
+    )
+    out_path = sacc_out or os.path.join(
+        output_dir or cv.cc["paths"]["output"],
+        f"{ver}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc",
+    )
+    sacc_io.save(s, out_path, type="data")
+    print(f"Wrote {grid} ξ± SACC part: {out_path}")
+    return gg
 
 
 def _from_snakemake(smk):
@@ -64,13 +108,12 @@ def _from_snakemake(smk):
         max_sep=float(p["max_sep"]),
         nbins=int(p["nbins"]),
         npatch=int(p["npatch"]),
-        # cat_config / output_dir were previously resolved via an os.chdir into
-        # the cosmo_val dir + the COSMO_VAL env var; expose them as optional
-        # params so the rule can pass them explicitly, falling back to the
-        # class defaults (./cat_config.yaml, COSMO_VAL env) otherwise.
-        cat_config=p.get("cat_config", "./cat_config.yaml"),
-        output_dir=p.get("output_dir", None),
-        save_fits=True,
+        cat_config=p["cat_config"],
+        output_dir=p["output_dir"],
+        grid=p.get("grid", "reporting"),
+        # The SACC part goes exactly where the rule declares it; the .txt
+        # byproduct still lands under the resolved output dir.
+        sacc_out=smk.output["sacc"],
     )
 
 
@@ -97,7 +140,9 @@ def _from_cli(argv=None):
         "--cat-config", required=True, help="Absolute path to cat_config.yaml"
     )
     ap.add_argument("--out", required=True, help="Output directory (lc {output})")
-    ap.add_argument("--no-fits", action="store_true", help="Skip ξ+/ξ- FITS export")
+    ap.add_argument(
+        "--grid", default="reporting", help="SACC grid tag for the measured points"
+    )
     a = ap.parse_args(argv)
     run_2pcf(
         ver=a.ver,
@@ -107,7 +152,7 @@ def _from_cli(argv=None):
         npatch=a.npatch,
         cat_config=a.cat_config,
         output_dir=a.out,
-        save_fits=not a.no_fits,
+        grid=a.grid,
     )
 
 

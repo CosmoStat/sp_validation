@@ -2,21 +2,22 @@
 import copy
 import itertools
 import os
-import re
 from pathlib import Path
 
 import colorama
 import numpy as np
 import yaml
-from astropy.io import fits
 from cs_util.cosmo import get_cosmo
-from shear_psf_leakage import run_object, run_scale
+from shear_psf_leakage import leakage, run_object, run_scale
 
+from .. import io
 from ..b_modes import (
     _get_pte_from_scale_cut,
+    covariance_label,
     find_conservative_scale_cut_key,
 )
 from ..statistics import chi2_and_pte
+from ..version import __version__
 from .catalog_characterization import CatalogCharacterizationMixin
 from .cosebis import CosebisMixin
 from .pseudo_cl import PseudoClMixin
@@ -25,7 +26,72 @@ from .pure_eb import PureEBMixin
 from .real_space import RealSpaceMixin
 
 
+class _LeakageScale(run_scale.LeakageScale):
+    """``LeakageScale`` reading its catalogues through ``sp_validation.io``.
+
+    ``entries`` holds the version's cat_config ``shear`` and ``star`` blocks.
+    """
+
+    entries = None
+
+    def read_data(self, shear=True, psf=True):
+        if shear:
+            self.dat_shear = leakage.cut_data(
+                io.open_entry(self.entries["shear"]),
+                self._params["cut"],
+                self._params["verbose"],
+            )
+        if psf:
+            self.dat_PSF = self.handle_close_objects(
+                io.open_entry(self.entries["star"])
+            )
+
+
+class _LeakageObject(run_object.LeakageObject):
+    """``LeakageObject`` reading its catalogue through ``sp_validation.io``."""
+
+    entries = None
+
+    def read_data(self):
+        self._dat = io.open_entry(self.entries["shear"])
+
+
 # %%
+BMODE_COLUMNS = {
+    "xip_B": r"xi+B",
+    "xim_B": r"xi-B",
+    "combined": "Combined",
+    "COSEBIS": "COSEBIS",
+    "C_l_BB": "C_l^BB",
+}
+
+
+def print_bmode_summary(summary, fiducial_scale_cut, cov_methods=()):
+    """Print the B-mode PTE table for ``{version: {statistic: pte}}``.
+
+    Statistics absent from a row print as ``--``.
+    """
+    sc_label = f"[{fiducial_scale_cut[0]}-{fiducial_scale_cut[1]} arcmin]"
+    sep = "\u2500" * 70
+    header = f"{'Version':<28s}" + "".join(
+        f"{label:>10s}" for label in BMODE_COLUMNS.values()
+    )
+
+    print(f"\nB-mode summary {sc_label}")
+    print(sep)
+    print(header)
+    print(sep)
+    for ver, row in summary.items():
+        cells = "".join(
+            f"{row[s]:>10.4f}" if s in row else f"{'--':>10s}" for s in BMODE_COLUMNS
+        )
+        print(f"{ver:<28s}{cells}")
+    print(sep)
+    if cov_methods:
+        print(f"Covariance: {', '.join(sorted(cov_methods))}")
+    print()
+
+
 class CosmologyValidation(
     CosebisMixin,
     PureEBMixin,
@@ -50,8 +116,7 @@ class CosmologyValidation(
         Path to catalog configuration YAML defining survey metadata, file paths,
         and analysis settings for each version.
     output_dir : str, optional
-        Override for output directory. If None, falls back to the COSMO_VAL
-        environment variable, then to the catalog config's paths.output.
+        Output directory. If None, the catalog config's paths.output.
     rho_tau_method : {'lsq', 'mcmc'}, default 'lsq'
         Fitting method for PSF leakage systematics parameters.
     cov_estimate_method : {'th', 'jk'}, default 'th'
@@ -228,7 +293,6 @@ class CosmologyValidation(
         cell_seed=8192,
         path_onecovariance=None,
         cosmo_params=None,
-        blind=None,
         compute_tomography=False,
         force_run=False,
     ):
@@ -262,7 +326,6 @@ class CosmologyValidation(
         self.fiducial_input_inka = fiducial_input_inka
         self.nside_mask = nside_mask
         self.path_onecovariance = path_onecovariance
-        self.blind = blind
         self.compute_tomography = compute_tomography
         self.force_run = force_run
 
@@ -291,6 +354,14 @@ class CosmologyValidation(
             "nbins": nbins,
             "var_method": var_method,
             "cross_patch_weight": "match" if var_method == "jackknife" else "simple",
+            # min_top sets the depth of TreeCorr's root cells, hence which pairs
+            # bin_slop approximates. Left unset, TreeCorr derives it from its
+            # thread count (max(3, ceil(log2 n))) and ξ± depends on the machine.
+            # 6 is what TreeCorr derives on candide's 48- and 64-CPU nodes.
+            "min_top": 6,
+            # The CPUs this process may use; TreeCorr's own default is the
+            # node's count, whatever share of it the job holds.
+            "num_threads": len(os.sched_getaffinity(0)),
         }
 
         self.catalog_config_path = Path(catalog_config)
@@ -301,7 +372,7 @@ class CosmologyValidation(
             """Resolve relative paths for a version using its subdir."""
             subdir = Path(cc[ver]["subdir"])
             for section in cc[ver].values():
-                if "path" in section:
+                if isinstance(section, dict) and "path" in section:
                     path = Path(section["path"])
                     section["path"] = (
                         str(path) if path.is_absolute() else str(subdir / path)
@@ -369,11 +440,6 @@ class CosmologyValidation(
 
         self.versions = final_versions
 
-        # Override output directory: explicit arg > COSMO_VAL env var >
-        # catalog config's paths.output. The env hook lets a reproduction
-        # run redirect every product to a fresh tree without touching the
-        # per-script call sites (mirrors workflow/common.py's COSMO_VAL).
-        output_dir = output_dir or os.environ.get("COSMO_VAL")
         if output_dir is not None:
             cc["paths"]["output"] = output_dir
 
@@ -393,6 +459,21 @@ class CosmologyValidation(
         """
         return os.path.abspath(os.path.join(self.cc["paths"]["output"], *parts))
 
+    def sacc_nz(self, version):
+        """Single-bin ``nz`` mapping ``{0: (z, nz)}`` for the SACC writers.
+
+        The round is single-bin, so the whole survey n(z) is bin 0.
+        """
+        return {0: tuple(self.get_redshift(version))}
+
+    def sacc_metadata(self, version):
+        """Provenance metadata stored on every SACC part for ``version``."""
+        return {
+            "catalogue_version": version,
+            "sp_validation_version": __version__,
+            "npatch": self.npatch,
+        }
+
     def get_redshift(self, version):
         """Load redshift distribution for a catalog version.
 
@@ -407,20 +488,8 @@ class CosmologyValidation(
             Redshift values
         nz : ndarray
             n(z) probability density
-
-        Notes
-        -----
-        If self.blind is set, the redshift path is modified to use the
-        specified blind (A, B, or C) by replacing the blind suffix in the
-        configured path.
         """
-        redshift_path = self.cc[version]["shear"]["redshift_path"]
-
-        # Override blind if specified
-        if self.blind is not None:
-            redshift_path = re.sub(r"_[ABC]\.txt$", f"_{self.blind}.txt", redshift_path)
-
-        return np.loadtxt(redshift_path, unpack=True)
+        return np.loadtxt(self.cc[version]["shear"]["redshift_path"], unpack=True)
 
     def _write_catalog_config(self):
         with self.catalog_config_path.open("w") as file:
@@ -457,17 +526,18 @@ class CosmologyValidation(
         # Branch is loop-invariant: pick the leakage class and its parameter
         # builder once, then apply per version.
         make_leakage, set_params = (
-            (run_object.LeakageObject, self.set_params_leakage_object)
+            (_LeakageObject, self.set_params_leakage_object)
             if objectwise
-            else (run_scale.LeakageScale, self.set_params_leakage_scale)
+            else (_LeakageScale, self.set_params_leakage_scale)
         )
 
         results = {}
         for ver in self.versions:
-            leakage = results[ver] = make_leakage()
-            leakage._params.update(set_params(ver))
-            leakage.check_params()
-            leakage.prepare_output()
+            obj = results[ver] = make_leakage()
+            obj.entries = self.cc[ver]
+            obj._params.update(set_params(ver))
+            obj.check_params()
+            obj.prepare_output()
 
         return results
 
@@ -585,19 +655,15 @@ class CosmologyValidation(
             # Pure E/B PTEs from stored results
             if ver in self._pure_eb_results:
                 res = self._pure_eb_results[ver]
-                gg = res["gg"]
+                edges = (res["left_edges"], res["right_edges"])
                 try:
                     for stat in ("xip_B", "xim_B", "combined"):
                         row[stat] = _get_pte_from_scale_cut(
-                            res["pte_matrices"][stat], gg, fiducial_scale_cut
+                            res["pte_matrices"][stat], edges, fiducial_scale_cut
                         )
                 except (KeyError, RuntimeError):
                     pass
-                cov_methods.add(
-                    "semi-analytic"
-                    if "eb_samples" in res
-                    else f"jackknife ({gg.npatch1} patches)"
-                )
+                cov_methods.add(covariance_label(res["npatch"]))
 
             # COSEBIs PTE from stored results
             if ver in self._cosebis_results:
@@ -624,39 +690,7 @@ class CosmologyValidation(
 
             summary[ver] = row
 
-        # Print summary table
-        col_labels = {
-            "xip_B": r"xi+B",
-            "xim_B": r"xi-B",
-            "combined": "Combined",
-            "COSEBIS": "COSEBIS",
-            "C_l_BB": "C_l^BB",
-        }
-        stats_order = list(col_labels)
-
-        sc_label = f"[{fiducial_scale_cut[0]}-{fiducial_scale_cut[1]} arcmin]"
-        sep = "\u2500" * 70
-        header = f"{'Version':<28s}" + "".join(
-            f"{label:>10s}" for label in col_labels.values()
-        )
-
-        print(f"\nB-mode summary {sc_label}")
-        print(sep)
-        print(header)
-        print(sep)
-
-        for ver in versions:
-            row = summary[ver]
-            cells = "".join(
-                f"{row[s]:>10.4f}" if s in row else f"{'--':>10s}" for s in stats_order
-            )
-            print(f"{ver:<28s}{cells}")
-
-        print(sep)
-        if cov_methods:
-            print(f"Covariance: {', '.join(sorted(cov_methods))}")
-        print()
-
+        print_bmode_summary(summary, fiducial_scale_cut, cov_methods)
         return summary
 
     def _get_tomo_bins(self, version):
@@ -674,7 +708,7 @@ class CosmologyValidation(
             self.print_cyan(
                 f"Extracting tomography information from version {version}."
             )
-            cat_gal = fits.getdata(self.cc[version]["shear"]["path"])
+            cat_gal = io.open_entry(self.cc[version]["shear"])
             tomo_bin = cat_gal[self.cc[version]["shear"]["tomo_bin_col"]]
             tomo_bin_ids = np.unique(tomo_bin)
             tomo_bin_ids = tomo_bin_ids[

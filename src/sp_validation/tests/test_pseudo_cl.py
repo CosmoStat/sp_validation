@@ -58,7 +58,9 @@ import numpy.testing as npt
 import pytest
 import yaml
 
+from sp_validation import sacc_io
 from sp_validation.cosmo_val import CosmologyValidation
+from sp_validation.cosmo_val.sacc_writers import BIN as SACC_BIN
 from sp_validation.pseudo_cl import apply_random_rotation
 from sp_validation.rho_tau import get_params_rho_tau
 
@@ -117,6 +119,7 @@ def _write_synthetic_config(tmp_path):
 
     shear_cfg = {
         "path": "shear.fits",
+        "redshift_path": str(nz_dir / "dndz_SP_A.txt"),
         "w_col": "w",
         "e1_col": "e1",
         "e2_col": "e2",
@@ -144,7 +147,7 @@ def _write_synthetic_config(tmp_path):
         "star_flag": "w",
     }
     config_data = {
-        "nz": {"subdir": str(nz_dir), "dndz": {"blind": "A", "path": "dndz"}},
+        "nz": {"subdir": str(nz_dir), "dndz": {"path": "dndz_{pipeline}_A.txt"}},
         "paths": {"output": str(output_dir)},
         version: {
             "subdir": str(cat_dir),
@@ -152,6 +155,7 @@ def _write_synthetic_config(tmp_path):
             "shear": shear_cfg,
             "star": {**psf_cfg},
             "psf": psf_cfg,
+            "patch_number": 150,
         },
     }
     config_path = tmp_path / "config.yaml"
@@ -655,24 +659,20 @@ def test_apply_random_rotation_reproducible_with_seed(cv, cat_and_params):
 # calculate_pseudo_cl_catalog -- deterministic end-to-end catalog path
 # ===========================================================================
 def test_calculate_pseudo_cl_catalog_end_to_end(cv, tmp_path):
-    """End-to-end catalog path: FITS round-trip of ell + EE/EB/BB.
+    """End-to-end catalog path: SACC round-trip of ell + EE/EB/BB.
 
     The catalog method has no random noise debiasing, so it is reproducible to
-    the same ~2e-12 catalog-path float noise. save_pseudo_cl stores ELL/EE/EB/BB
-    (it drops the BE row); we pin the round-tripped table.
+    the same ~2e-12 catalog-path float noise; we pin the round-tripped spectra.
     """
     ver = cv._test_version
     cv._pseudo_cls = {ver: {"tomo_bin_all_tomo_bin_all": {}}}
-    out_path = cv._output_path(f"pseudo_cl_cat_{ver}.fits")
+    out_path = cv._output_path(f"pseudo_cl_{ver}.sacc")
     cv.calculate_pseudo_cl_catalog(ver, out_path, tomo_bin_a="all", tomo_bin_b="all")
 
     assert os.path.exists(out_path)
-    d = fits.getdata(out_path)
-    # FITS gives big-endian f8; normalize for value comparison.
-    ell = np.asarray(d["ELL"], dtype=np.float64)
-    ee = np.asarray(d["EE"], dtype=np.float64)
-    eb = np.asarray(d["EB"], dtype=np.float64)
-    bb = np.asarray(d["BB"], dtype=np.float64)
+    s = sacc_io.load(out_path, allow_unblinded=True)
+    ell, ee, bb, eb, window = sacc_io.get_pseudo_cl(s, SACC_BIN)
+    assert window is not None  # the shared BandpowerWindow rides the part
 
     npt.assert_allclose(
         ell,
@@ -732,7 +732,7 @@ def test_calculate_pseudo_cl_catalog_end_to_end(cv, tmp_path):
         atol=ATOL_CAT,
     )
     # The end-to-end catalog EE matches the primitive get_pseudo_cls_catalog EE
-    # (same computation, FITS round-trip) -- consistency, not an independent pin.
+    # (same computation, SACC round-trip) -- consistency, not an independent pin.
     cat_gal = fits.getdata(cv.cc[ver]["shear"]["path"])
     params = get_params_rho_tau(cv.cc[ver])
     _, cl_prim, _ = cv.get_pseudo_cls_catalog(
@@ -826,3 +826,36 @@ def test_calculate_pseudo_cl_catalog_end_to_end_tomo(cv, tmp_path):
             catalog=cat_gal, params=params, tomo_bin_a=tomo_bin_a, tomo_bin_b=tomo_bin_b
         )
         npt.assert_allclose(ee, cl_prim[0], rtol=RTOL_CAT, atol=ATOL_CAT)
+
+
+def test_calculate_pseudo_cl_out_path_born_at_declared_name(cv):
+    """calculate_pseudo_cl(out_path=...) writes to the given path, never the
+    untagged native name — so the tagged and diagnostic rules stay disjoint."""
+    ver = cv._test_version
+    cv._pseudo_cls = {}
+    tagged = cv._output_path(f"pseudo_cl_{ver}_powspace_nbins=32.sacc")
+    native = cv._output_path(f"pseudo_cl_{ver}.sacc")
+
+    cv.calculate_pseudo_cl(compute_tomography=False, out_path=tagged)
+
+    assert os.path.exists(tagged)
+    assert not os.path.exists(native)  # no undeclared native basename touched
+
+
+def test_calculate_pseudo_cl_out_path_rejects_multiversion(cv):
+    """out_path targets one part; a multi-version instance must fail loudly
+    rather than write every version to the same path."""
+    cv.versions = [cv._test_version, "SecondVersion"]
+    with pytest.raises(ValueError, match="one part to one path"):
+        cv.calculate_pseudo_cl(
+            compute_tomography=False, out_path=cv._output_path("pseudo_cl_x.sacc")
+        )
+
+
+def test_calculate_pseudo_cl_out_path_rejects_tomography(cv):
+    """out_path names the non-tomographic SACC part; tomographic pairs keep
+    their own per-pair paths, so asking for both must fail loudly."""
+    with pytest.raises(ValueError, match="compute_tomography=False"):
+        cv.calculate_pseudo_cl(
+            compute_tomography=True, out_path=cv._output_path("pseudo_cl_x.sacc")
+        )

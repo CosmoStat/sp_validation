@@ -31,7 +31,6 @@ PATH_KEY_PARTS = (
 # files to stat. (The overlay's one real path, ``base:``, is deliberately not
 # listed, so it is still validated.)
 NON_PATH_KEYS = ("extra_output", "why", "replace", "with", "drop")
-PATH_PREFIX_KEYS = ("nz.dndz.path",)
 TEXT_SUFFIXES = (
     ".fits",
     ".fits.gz",
@@ -78,10 +77,6 @@ def _non_path_key(key: str) -> bool:
     return key.lower().endswith(NON_PATH_KEYS)
 
 
-def _path_prefix_key(key: str) -> bool:
-    return key.lower() in PATH_PREFIX_KEYS
-
-
 def _pathish_value(value: str) -> bool:
     if not value or any(part in value for part in SKIP_VALUE_PARTS):
         return False
@@ -108,11 +103,7 @@ def _walk_yaml(
             yield from _walk_yaml(child, trail + (str(index),), base_dir)
     elif isinstance(value, str):
         key = ".".join(trail)
-        if (
-            not _non_path_key(key)
-            and not _path_prefix_key(key)
-            and (_pathish_key(key) or _pathish_value(value))
-        ):
+        if not _non_path_key(key) and (_pathish_key(key) or _pathish_value(value)):
             yield key, value, base_dir
 
 
@@ -182,13 +173,41 @@ def _config_files() -> list[Path]:
     ]
 
 
+def _located_elsewhere(source: Path, key: str, value: str) -> bool:
+    """Whether a path-shaped value names nothing the config itself locates.
+
+    ``paths.output`` in the catalogue config is where cosmo_val writes, created
+    by the run. A calibration ``params.input_path`` with no directory is opened
+    relative to its consumer's run directory (the image-sim run, or the
+    catalogue directory ``scripts/masking.py`` prefixes).
+    """
+    if source.name == "cat_config.yaml":
+        return key == "paths.output"
+    return (
+        source.parent.name == "calibration"
+        and key == "params.input_path"
+        and "/" not in value
+    )
+
+
 def _candidate_paths() -> list[tuple[Path, str, Path]]:
     root = _repo_root()
     candidates = []
     for config_path in _config_files():
         iterator = _iter_ini_paths if config_path.suffix == ".ini" else _iter_yaml_paths
+        calibration = config_path.parent == root / "config/calibration"
         for source, key, value, base_dir in iterator(config_path):
+            if _located_elsewhere(source, key, value):
+                continue
             expanded = Path(value).expanduser()
+            if (
+                calibration
+                and key == "params.input_path"
+                and not expanded.is_absolute()
+            ):
+                # A calibration config runs as config_mask.yaml in its run
+                # directory; a relative input_path names a file there.
+                continue
             if expanded.is_absolute():
                 resolved = expanded
             elif base_dir is not None:
@@ -220,3 +239,91 @@ def test_configured_paths_exist_on_candide():
         f"{len(missing)} missing configured paths out of {len(candidates)} checked:\n"
         + "\n".join(missing[:25])
     )
+
+
+# Columns each cat_config block declares for the rho/tau path. The psf block's
+# are read from the PSF file (``rho_tau.get_params_rho_tau``); the shear
+# block's are every ``*_col`` key, with the RA/Dec defaults rho/tau assumes.
+PSF_COLUMN_KEYS = (
+    "ra_col",
+    "dec_col",
+    "e1_PSF_col",
+    "e2_PSF_col",
+    "e1_star_col",
+    "e2_star_col",
+    "PSF_size",
+    "star_size",
+    "PSF_flag",
+    "star_flag",
+)
+SHEAR_COLUMN_DEFAULTS = {"ra_col": "RA", "dec_col": "Dec"}
+
+# Entries whose declared columns are known not to exist in their files, with
+# why. The test fails if one of these starts passing, so the entry is dropped
+# here once its config or data is fixed.
+KNOWN_COLUMN_GAPS = {
+    ("SP_axel_v0.0", "shear"): "file carries no PSF-shape columns",
+    ("SP_v1.3", "psf"): "2022 star file stores T_{PSF,STAR}_HSM, in neither"
+    " ShapePipe grammar and of unconfirmed convention",
+    ("SP_v1.4.6_glass_mock", "shear"): "GLASS mock carries no PSF-shape columns",
+    ("SP_v1.4.6.3_uncal_w_1", "shear"): "w_col 'one' names no column",
+}
+
+
+def _declared_columns(block, kind):
+    if kind == "psf":
+        return {key: block[key] for key in PSF_COLUMN_KEYS if key in block}
+    declared = {key: val for key, val in block.items() if key.endswith("_col")}
+    return SHEAR_COLUMN_DEFAULTS | declared
+
+
+def test_cat_config_columns_exist_on_candide():
+    """Every cat_config psf/shear column is among those its file presents.
+
+    Opens each file through ``io.Catalogue`` without reading its rows, so a
+    v1 file is checked against the v2 names it presents to the rho/tau path,
+    and a ``column_map`` applies as it does when reading.
+    Entries whose file is absent are left to the path guard above.
+    """
+    if not _on_candide():
+        pytest.skip("Candide-local column guard skipped: no /automnt/n17data/cdaley")
+
+    from sp_validation.io import Catalogue
+
+    with (_repo_root() / "cosmo_val/cat_config.yaml").open() as handle:
+        config = yaml.safe_load(handle)
+
+    checked, missing = 0, {}
+    for version, entry in config.items():
+        if not isinstance(entry, dict) or "subdir" not in entry:
+            continue
+        for kind in ("psf", "shear"):
+            block = entry.get(kind) or {}
+            if "path" not in block:
+                continue
+            path = Path(block["path"])
+            if not path.is_absolute():
+                path = Path(entry["subdir"]) / path
+            if not path.exists():
+                continue
+            with Catalogue(
+                path, hdu=block.get("hdu"), column_map=block.get("column_map")
+            ) as catalogue:
+                present = set(catalogue.dtype().names)
+            absent = {
+                key: col
+                for key, col in _declared_columns(block, kind).items()
+                if col not in present
+            }
+            checked += 1
+            if absent:
+                missing[(version, kind)] = f"{path}: {absent}"
+
+    assert checked, "no cat_config catalogue found to check"
+    unexpected = {k: v for k, v in missing.items() if k not in KNOWN_COLUMN_GAPS}
+    healed = sorted(set(KNOWN_COLUMN_GAPS) - set(missing))
+    assert not unexpected, "declared columns absent from their files:\n" + "\n".join(
+        f"{version}.{kind} -> {detail}"
+        for (version, kind), detail in unexpected.items()
+    )
+    assert not healed, f"known column gaps now pass; drop them: {healed}"

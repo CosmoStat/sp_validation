@@ -1,9 +1,8 @@
 """Real-space two-point diagnostics for cosmology validation.
 
 This mixin holds the real-space machinery: the TreeCorr two-point correlation
-function (2PCF) ξ± measurement and its plots, the ratio of PSF systematics to
-the cosmic-shear signal, and the aperture-mass dispersion ⟨M_ap²⟩ measurement
-and plots. It depends on TreeCorr.
+function (2PCF) ξ± measurement, the aperture-mass dispersion ⟨M_ap²⟩
+measurement, and the per-bin-pair plots of both. It depends on TreeCorr.
 """
 
 import os
@@ -11,7 +10,6 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import treecorr
-from astropy.io import fits
 
 
 class RealSpaceMixin:
@@ -50,6 +48,13 @@ class RealSpaceMixin:
             dict: Mapping of ``"tomo_bin_{b1}_tomo_bin_{b2}"`` to the corresponding
             treecorr.GGCorrelation object. For the non-tomographic case the single
             key is ``"tomo_bin_all_tomo_bin_all"``.
+
+        Notes:
+            - The non-tomographic pair is written to the columns-only TreeCorr
+              dump ``xi_{basename}.txt``. If that file already exists, the pair is
+              read back from it instead of being recomputed.
+            - If a patch file for the given configuration does not exist, it is
+              created during the process.
         """
 
         npatch = npatch or self.npatch
@@ -70,63 +75,99 @@ class RealSpaceMixin:
             tomo_bin_pairs = [("all", "all")]
 
         ggs = {f"tomo_bin_{b1}_tomo_bin_{b2}": None for b1, b2 in tomo_bin_pairs}
-
-        # LG TO-DO: Change to sacc_io method
-
-        patch_file = self._output_path(f"{ver}_patches_npatch={npatch}.dat")
-
-        cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
-        with self.results[ver].temporarily_read_data():
-            g1, g2 = self._calibrated_g(ver)
-            w = self._read_shear_cols(ver, "w_col")
-
+        to_compute = []
         for bin1, bin2 in tomo_bin_pairs:
-            gg = treecorr.GGCorrelation(treecorr_config)
+            if (bin1, bin2) == ("all", "all"):
+                out_fname = self._xi_txt_path(ver, treecorr_config, npatch)
+                if os.path.exists(out_fname):
+                    self.print_done(f"Skipping 2PCF calculation, {out_fname} exists")
+                    gg = treecorr.GGCorrelation(treecorr_config)
+                    gg.read(out_fname)
+                    ggs["tomo_bin_all_tomo_bin_all"] = gg
+                    continue
+            to_compute.append((bin1, bin2))
 
-            # Load data and create a catalog
-            if bin1 == "all" and bin2 == "all":
-                mask_bin1 = np.ones(len(g1), dtype=bool)
-            else:
-                mask_bin1 = cat_gal[self.cc[ver]["shear"]["tomo_bin_col"]] == bin1
+        if to_compute:
+            patch_file = self._output_path(f"{ver}_patches_npatch={npatch}.dat")
+            cols = self._shear_columns(ver, compute_tomography)
 
-            cat_gal1 = treecorr.Catalog(
-                ra=cat_gal["RA"][mask_bin1],
-                dec=cat_gal["Dec"][mask_bin1],
-                g1=g1[mask_bin1],
-                g2=g2[mask_bin1],
-                w=w[mask_bin1],
-                ra_units=self.treecorr_config["ra_units"],
-                dec_units=self.treecorr_config["dec_units"],
-                npatch=npatch,
-                patch_centers=patch_file if os.path.exists(patch_file) else None,
-            )
-            cat_gal2 = None
+            for bin1, bin2 in to_compute:
+                gg = treecorr.GGCorrelation(treecorr_config)
 
-            if bin1 != bin2:
-                mask_bin2 = cat_gal[self.cc[ver]["shear"]["tomo_bin_col"]] == bin2
-                cat_gal2 = treecorr.Catalog(
-                    ra=cat_gal["RA"][mask_bin2],
-                    dec=cat_gal["Dec"][mask_bin2],
-                    g1=g1[mask_bin2],
-                    g2=g2[mask_bin2],
-                    w=w[mask_bin2],
-                    ra_units=self.treecorr_config["ra_units"],
-                    dec_units=self.treecorr_config["dec_units"],
-                    npatch=npatch,
-                    patch_centers=patch_file if os.path.exists(patch_file) else None,
+                patch_centers = patch_file if os.path.exists(patch_file) else None
+                cat_gal1 = self._bin_catalog(cols, bin1, npatch, patch_centers)
+                cat_gal2 = (
+                    self._bin_catalog(cols, bin2, npatch, patch_centers)
+                    if bin1 != bin2
+                    else None
                 )
 
-            # If no patch file exists, save the current patches
-            if not os.path.exists(patch_file):
-                cat_gal1.write_patch_centers(patch_file)
+                # If no patch file exists, save the current patches
+                if not os.path.exists(patch_file):
+                    cat_gal1.write_patch_centers(patch_file)
 
-            # Process the catalog & write the correlation functions
-            gg.process(cat_gal1, cat2=cat_gal2)
-            ggs[f"tomo_bin_{bin1}_tomo_bin_{bin2}"] = gg
+                gg.process(cat_gal1, cat2=cat_gal2)
+
+                if (bin1, bin2) == ("all", "all"):
+                    # Columns only. The covariance matrix lives in the SACC part;
+                    # a per-patch ξ± realisation is an unblinded data vector
+                    # nothing reads; and TreeCorr cannot read back a text file
+                    # carrying the matrix without the per-patch results.
+                    gg.write(
+                        self._xi_txt_path(ver, treecorr_config, npatch),
+                        write_patch_results=False,
+                        write_cov=False,
+                    )
+
+                ggs[f"tomo_bin_{bin1}_tomo_bin_{bin2}"] = gg
 
         self.print_done(f"Done 2PCF for {ver}.")
 
         return ggs
+
+    def _xi_txt_path(self, ver, treecorr_config, npatch):
+        """Path of the non-tomographic ξ± TreeCorr dump for a version."""
+        return self._output_path(
+            f"xi_{self.basename(ver, treecorr_config=treecorr_config, npatch=npatch)}.txt"
+        )
+
+    def _shear_columns(self, ver, compute_tomography):
+        """Positions, calibrated shears, weights and bin labels of a version.
+
+        All arrays come from the same rows of the version's shear catalogue, as
+        read by ``self.results[ver]``. The bin labels are ``None`` unless
+        ``compute_tomography``.
+        """
+        with self.results[ver].temporarily_read_data():
+            dat = self.results[ver].dat_shear
+            g1, g2 = self._calibrated_g(ver)
+            return {
+                "ra": np.asarray(dat["RA"]),
+                "dec": np.asarray(dat["Dec"]),
+                "g1": np.asarray(g1),
+                "g2": np.asarray(g2),
+                "w": np.asarray(self._read_shear_cols(ver, "w_col")),
+                "tomo_bin": (
+                    np.asarray(dat[self.cc[ver]["shear"]["tomo_bin_col"]])
+                    if compute_tomography
+                    else None
+                ),
+            }
+
+    def _bin_catalog(self, cols, tomo_bin_id, npatch, patch_centers=None):
+        """TreeCorr catalogue of one tomographic bin (``"all"``: every row)."""
+        mask = slice(None) if tomo_bin_id == "all" else cols["tomo_bin"] == tomo_bin_id
+        return treecorr.Catalog(
+            ra=cols["ra"][mask],
+            dec=cols["dec"][mask],
+            g1=cols["g1"][mask],
+            g2=cols["g2"][mask],
+            w=cols["w"][mask],
+            ra_units=self.treecorr_config["ra_units"],
+            dec_units=self.treecorr_config["dec_units"],
+            npatch=npatch,
+            patch_centers=patch_centers,
+        )
 
     def calculate_2pcf(
         self,
@@ -164,8 +205,6 @@ class RealSpaceMixin:
                 **treecorr_config,
             )
 
-        # LG TO-DO: No longer writing out text file, change to sacc_io method
-
         return self.cat_ggs
 
     def calculate_aperture_mass_dispersion(
@@ -177,7 +216,6 @@ class RealSpaceMixin:
         npatch=25,
         compute_tomography=False,
     ):
-
         self._map2 = {}
         theta_map = np.geomspace(theta_min * 5, theta_max / 2, nbins_map)
         self._map2["theta_map"] = theta_map
@@ -200,46 +238,15 @@ class RealSpaceMixin:
                 tomo_bin_pairs = [("all", "all")]
 
             self._map2.setdefault(ver, {})
-            cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
-
-            # LG TO-DO: Change to sacc_io method
-            with self.results[ver].temporarily_read_data():
-                g1, g2 = self._calibrated_g(ver)
-                w = self._read_shear_cols(ver, "w_col")
+            cols = self._shear_columns(ver, compute_tomography)
 
             for bin1, bin2 in tomo_bin_pairs:
                 gg = treecorr.GGCorrelation(treecorr_config)
 
-                # Load data and create a catalog
-                if bin1 == "all" and bin2 == "all":
-                    mask_bin1 = np.ones(len(cat_gal), dtype=bool)
-                else:
-                    mask_bin1 = cat_gal[self.cc[ver]["shear"]["tomo_bin_col"]] == bin1
-
-                cat_gal1 = treecorr.Catalog(
-                    ra=cat_gal["RA"][mask_bin1],
-                    dec=cat_gal["Dec"][mask_bin1],
-                    g1=g1[mask_bin1],
-                    g2=g2[mask_bin1],
-                    w=w[mask_bin1],
-                    ra_units=self.treecorr_config["ra_units"],
-                    dec_units=self.treecorr_config["dec_units"],
-                    npatch=npatch,
+                cat_gal1 = self._bin_catalog(cols, bin1, npatch)
+                cat_gal2 = (
+                    self._bin_catalog(cols, bin2, npatch) if bin1 != bin2 else None
                 )
-                cat_gal2 = None
-
-                if bin1 != bin2:
-                    mask_bin2 = cat_gal[self.cc[ver]["shear"]["tomo_bin_col"]] == bin2
-                    cat_gal2 = treecorr.Catalog(
-                        ra=cat_gal["RA"][mask_bin2],
-                        dec=cat_gal["Dec"][mask_bin2],
-                        g1=g1[mask_bin2],
-                        g2=g2[mask_bin2],
-                        w=w[mask_bin2],
-                        ra_units=self.treecorr_config["ra_units"],
-                        dec_units=self.treecorr_config["dec_units"],
-                        npatch=npatch,
-                    )
 
                 gg.process(cat_gal1, cat2=cat_gal2)
 
@@ -262,7 +269,6 @@ class RealSpaceMixin:
             self.calculate_aperture_mass_dispersion()
         return self._map2
 
-    # LG: plotting functions removed, perhaps can use Sacha's implementation in psf_systematics.py instead
     def plot_2pcf_tomography(
         self,
         x_y_plot_function,

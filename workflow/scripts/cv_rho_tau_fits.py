@@ -9,7 +9,6 @@ recomputed (not persisted) by the cv_ratio_xi_sys_xi rule.
 """
 
 from cv_runner import _unbuffer_streams, make_cv, touch_sentinels
-from snakemake.script import snakemake
 
 _unbuffer_streams()
 cv = make_cv(snakemake)

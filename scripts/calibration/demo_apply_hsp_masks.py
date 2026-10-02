@@ -95,7 +95,7 @@ if trace_mem:
     )
 
 # Read catalogue
-dat = obj.read_cat(load_into_memory=False, mode="r")
+dat = obj.read_cat(load_into_memory=False)
 
 if trace_mem:
     current, peak = tracemalloc.get_traced_memory()
@@ -119,4 +119,4 @@ if trace_mem:
 obj.write_hdf5_file(dat, dat_new)
 
 # Close input HDF5 catalogue file
-obj.close_hd5()
+obj.close_cat()

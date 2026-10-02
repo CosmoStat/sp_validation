@@ -3,11 +3,12 @@
 :Name: statistics.py
 
 :Description: Cosmology-independent statistical helpers (jackknife resampling,
-              chi2/PTE, covariance<->correlation, OneCovariance reshaping).
-              Extracted verbatim from the former basic.py.
+              chi2/PTE, calibrated min-PTE across many null tests,
+              covariance<->correlation, OneCovariance reshaping).
 """
 
 import itertools
+from dataclasses import dataclass
 
 import numpy as np
 from scipy import stats
@@ -178,3 +179,154 @@ def cov_from_one_covariance(cov_one_cov, gaussian=True):
     cov[col, row] = values  # Symmetrize
 
     return cov
+
+
+def _min_pte(ptes, two_sided):
+    """Minimum PTE across the last axis, optionally two-sided."""
+    ptes = np.asarray(ptes, dtype=float)
+    if not np.all((ptes >= 0.0) & (ptes <= 1.0)):
+        raise ValueError("PTEs must be finite and lie in [0, 1]")
+    if two_sided:
+        ptes = 2.0 * np.minimum(ptes, 1.0 - ptes)
+    return ptes.min(axis=-1)
+
+
+def wilson_interval(count, n, level=0.68):
+    """Two-sided Wilson score interval for a binomial fraction ``count / n``."""
+    z = stats.norm.ppf(0.5 + level / 2.0)
+    fraction = count / n
+    denominator = 1.0 + z**2 / n
+    centre = (fraction + z**2 / (2.0 * n)) / denominator
+    half_width = (
+        z * np.sqrt(fraction * (1.0 - fraction) / n + z**2 / (4.0 * n**2)) / denominator
+    )
+    return max(0.0, centre - half_width), min(1.0, centre + half_width)
+
+
+def effective_number_of_tests(threshold, alpha):
+    """Number of independent tests ``k`` with ``1 - (1 - threshold)^k = alpha``.
+
+    For ``k`` independent uniform PTEs, the ``alpha``-quantile of their minimum
+    is ``1 - (1 - alpha)^(1/k)``; inverting that for a calibrated threshold
+    gives the effective number of independent tests it corresponds to.
+    """
+    return np.log1p(-alpha) / np.log1p(-np.asarray(threshold, dtype=float))
+
+
+@dataclass(frozen=True)
+class MinPTECalibration:
+    """Global min-PTE null-test threshold calibrated on noise-only mocks.
+
+    Attributes
+    ----------
+    alpha : float
+        Global false-positive rate the threshold is calibrated to.
+    two_sided : bool
+        Whether each PTE ``p`` entered as ``2 min(p, 1 - p)``.
+    mock_min_pte : numpy.ndarray
+        Minimum PTE across statistics for each mock, shape ``(n_mocks,)``.
+    threshold : float
+        ``alpha``-quantile of ``mock_min_pte``: a data vector whose minimum
+        PTE falls below it fails the global null test at level ``alpha``.
+    threshold_interval : tuple of float
+        Distribution-free interval on ``threshold`` at confidence ``level``.
+    k_eff : float
+        Effective number of independent tests implied by ``threshold``.
+    k_eff_interval : tuple of float
+        ``k_eff`` mapped from ``threshold_interval``.
+    level : float
+        Confidence level of the intervals.
+    """
+
+    alpha: float
+    two_sided: bool
+    mock_min_pte: np.ndarray
+    threshold: float
+    threshold_interval: tuple
+    k_eff: float
+    k_eff_interval: tuple
+    level: float
+
+    @property
+    def n_mocks(self):
+        """Number of mocks the calibration rests on."""
+        return self.mock_min_pte.size
+
+    def global_pte(self, data_ptes):
+        """Global p-value of a data vector's PTEs against the mocks.
+
+        Parameters
+        ----------
+        data_ptes : array_like
+            The data's PTE for each statistic, ordered as the mock columns.
+
+        Returns
+        -------
+        tuple
+            ``(p, interval)``: the fraction of mocks whose minimum PTE is at
+            most the data's, and its Wilson interval at ``level``.
+        """
+        data_min = _min_pte(data_ptes, self.two_sided)
+        count = int(np.count_nonzero(self.mock_min_pte <= data_min))
+        return count / self.n_mocks, wilson_interval(count, self.n_mocks, self.level)
+
+
+def calibrate_min_pte(mock_ptes, alpha=0.05, two_sided=False, level=0.68):
+    """Calibrate a global threshold on the minimum PTE across statistics.
+
+    Testing many correlated statistics at a fixed per-test level inflates the
+    false-positive rate by an unknown amount. Taking the minimum PTE across
+    statistics for each noise-only mock and reading off its ``alpha``-quantile
+    gives a threshold with exactly that global rate, whatever the correlations
+    between statistics and whatever miscalibration of the individual PTEs.
+
+    Parameters
+    ----------
+    mock_ptes : array_like
+        PTEs of noise-only realisations, shape ``(n_mocks, n_stats)``; the
+        columns can be any statistics, redshift-bin pairs or scale cuts.
+    alpha : float, optional
+        Global false-positive rate; default is ``0.05``.
+    two_sided : bool, optional
+        If ``True``, test each PTE ``p`` as ``2 min(p, 1 - p)`` so that
+        anomalously small statistics also fail; default is ``False``.
+    level : float, optional
+        Confidence level of the reported intervals; default is ``0.68``.
+
+    Returns
+    -------
+    MinPTECalibration
+        The threshold, its interval, the effective number of independent
+        tests, and :meth:`MinPTECalibration.global_pte` for the data.
+
+    Notes
+    -----
+    The interval on the threshold uses order statistics: the number of mocks
+    below the true ``alpha``-quantile is ``Binomial(n_mocks, alpha)``, and the
+    ``(1 -/+ level) / 2`` quantiles of that count index the mocks bracketing it.
+    """
+    mock_ptes = np.asarray(mock_ptes, dtype=float)
+    if mock_ptes.ndim != 2:
+        raise ValueError("mock_ptes must have shape (n_mocks, n_stats)")
+    if not 0.0 < alpha < 1.0:
+        raise ValueError("alpha must lie in (0, 1)")
+
+    minima = _min_pte(mock_ptes, two_sided)
+    n = minima.size
+    ordered = np.sort(minima)
+    tail = (1.0 - level) / 2.0
+    lower = int(np.clip(stats.binom.ppf(tail, n, alpha), 1, n)) - 1
+    upper = int(np.clip(stats.binom.ppf(1.0 - tail, n, alpha) + 1, 1, n)) - 1
+    threshold = float(np.quantile(minima, alpha))
+    interval = (float(ordered[lower]), float(ordered[upper]))
+    k_eff = effective_number_of_tests([threshold, *interval], alpha)
+    return MinPTECalibration(
+        alpha=alpha,
+        two_sided=two_sided,
+        mock_min_pte=minima,
+        threshold=threshold,
+        threshold_interval=interval,
+        k_eff=float(k_eff[0]),
+        k_eff_interval=(float(k_eff[2]), float(k_eff[1])),
+        level=level,
+    )

@@ -357,9 +357,10 @@ def create_mask_from_catalogue(nside, path, output, ra_col="RA", dec_col="DEC"):
     Pixels containing at least one object get 1.0, everything else 0.0.
     """
     import healpy as hp
-    from astropy.io import fits
 
-    cat_gal = fits.getdata(path)
+    from sp_validation.io import read_catalogue
+
+    cat_gal = read_catalogue(path, columns=[ra_col, dec_col])
     ra = cat_gal[ra_col]
     dec = cat_gal[dec_col]
 
