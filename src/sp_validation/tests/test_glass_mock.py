@@ -131,6 +131,16 @@ def test_config_change_breaks_reference():
 
 
 @pytest.mark.skipif(not HAVE_GLASS, reason="GLASS not installed in this image")
+@pytest.mark.xfail(
+    reason=(
+        "glass_mock builds its cosmology with cosmology.compat.camb, which an image "
+        "built before the lock carried glass 2026.2 + cosmology-compat-camb 0.2.0 "
+        "lacks. With those locked pins on the path the test passes; drop this "
+        "xfail once it XPASSes in the image built from the current uv.lock."
+    ),
+    strict=False,
+    raises=ModuleNotFoundError,
+)
 def test_matter_maps_are_seed_deterministic():
     """Same config + seed → bit-identical matter/lensing maps.
 

@@ -36,11 +36,13 @@ def _ell(i):
 def _one_cov_table(cov_gauss, cov_all):
     """Flatten two n x n matrices into a OneCovariance ``covariance_list`` table.
 
-    Reproduces the real flat output of a single tomographic bin: one row per
-    ``(i, j)`` ℓ-bin pair in row-major order ``k = i·n + j``, ℓ_i and ℓ_j in
-    columns 1 and 2, the bin indices of the four fields (all ``1``) in columns
-    5-8, the Gaussian value in column 10 and the Gaussian+non-Gaussian value in
-    column 9. Columns 0, 3 and 4 hold placeholders the reshape does not read.
+    Reproduces the real flat output of a single tomographic bin, as
+    OneCovariance's ``__write_cov_list`` writes it (every ℓ pair, both
+    orders): one row per ``(i, j)`` ℓ-bin pair in row-major order
+    ``k = i·n + j``, ℓ_i and ℓ_j in columns 1 and 2, the bin indices of the
+    four fields (all ``1``) in columns 5-8, the Gaussian value in column 10 and
+    the total (Gaussian + non-Gaussian) value in column 9. Columns 0, 3 and 4
+    hold placeholders the reshape does not read.
     """
     n = cov_gauss.shape[0]
     rows = []
