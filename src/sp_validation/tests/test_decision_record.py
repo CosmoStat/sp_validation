@@ -195,6 +195,14 @@ def test_pending_site_allowlist_cannot_rot(mini_repo):
     ]
 
 
+def test_pending_site_must_not_outlive_its_tag(mini_repo):
+    # Once the merge tags the decision, the exception would hide a later loss.
+    record, tags = snapshot(mini_repo)
+    assert dr.coverage_errors(record, tags, {"statement": "Tomography merge #374"}) == [
+        "PENDING_SITES: statement: has a tagged site; remove the exception"
+    ]
+
+
 def test_pending_site_reason_cannot_be_empty(mini_repo):
     record, tags = snapshot(mini_repo)
     assert_problem(
@@ -704,6 +712,12 @@ def test_comment_prose_can_contain_mentions(mini_repo):
 
 
 def test_pending_dotted_decision_exists(mini_repo):
+    replace(
+        mini_repo,
+        PYTHON,
+        "decision:calibration.response,decision:calibration.validation.noise",
+        "decision:calibration.response",
+    )
     record, tags = snapshot(mini_repo)
     assert (
         dr.coverage_errors(
