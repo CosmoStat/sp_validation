@@ -119,9 +119,8 @@ def _grid_cov(version, grid, gaussian):
 def cv_xi_cov_integration(version):
     """CosmoCov gaussian ξ± covariance on the integration grid.
 
-    The one analytic covariance both B-mode statistics take: the pure-E/B Monte
-    Carlo draws from it and COSEBIs carry it through their kernel. Gaussian
-    because B-modes only need the scatter a Gaussian field would give.
+    The Gaussian integration-grid covariance is propagated exactly to pure E/B
+    as ``K C K^T``; COSEBIs carry the same input through their mode kernel.
     """
     return _grid_cov(version, "integration", "g")
 

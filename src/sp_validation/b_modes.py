@@ -454,8 +454,9 @@ def cosebis_scan_from_xi(
 
     The values-and-covariance seam of :func:`calculate_cosebis`, for callers
     holding a ξ± data vector rather than a TreeCorr ``GGCorrelation``. The
-    COSEBIs covariance is the ξ± covariance carried through the same linear
-    kernel as the modes, so no estimator re-run is involved. ``npatch`` is the
+    ξ± covariance is propagated through the mode kernel for the EE and BB
+    blocks; the COSEBIs dependency sets the E/B cross block to zero. No estimator
+    re-run is involved. ``npatch`` is the
     jackknife realisation count behind ``cov_xipm``, which sets the Hartlap
     debiasing; leave it ``None`` for a theory covariance, which needs none.
 
