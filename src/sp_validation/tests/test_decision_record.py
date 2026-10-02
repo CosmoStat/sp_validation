@@ -778,6 +778,16 @@ def test_ini_repeated_setting_shadows_pin(mini_repo, old, new, message):
     value_problem(mini_repo, "ini_section", "sampler.walkers", message)
 
 
+def test_subscript_assignment_is_a_setting(mini_repo):
+    replace(
+        mini_repo,
+        PYTHON,
+        '    values = {"dict_entry": 4}\n',
+        '    values = {"dict_entry": 4}\n    values["dict_entry"] = 40\n',
+    )
+    value_problem(mini_repo, "body", "dict_entry", "candidates found 2", "40")
+
+
 @pytest.fixture
 def real_repo():
     if not (ROOT / "astra.yaml").is_file():
