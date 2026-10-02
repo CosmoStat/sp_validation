@@ -1,0 +1,79 @@
+version: '1.0'
+name: Static checker fixture
+decisions:
+  defaults:
+    label: Function defaults
+    rationale: 'Values: threshold = 5e-4; iterations = 100; enabled = True; optional = None; limits = [1, 250].'
+    options: {fixed: {label: Fixed}}
+    default: fixed
+  body:
+    label: Python body settings
+    rationale: 'Values: assigned = 1.0; keyword = 3; dict_entry = 4; dict_call = 5; returned = 6; attr = 7.'
+    options: {fixed: {label: Fixed}}
+    default: fixed
+  statement:
+    label: One statement
+    rationale: 'Values: module_value = 8.'
+    options: {fixed: {label: Fixed}}
+    default: fixed
+  nested:
+    label: Nested statement
+    rationale: 'Values: local_value = 9.'
+    options: {fixed: {label: Fixed}}
+    default: fixed
+  class_span:
+    label: Whole class
+    rationale: 'Values: class_value = 10.'
+    options: {fixed: {label: Fixed}}
+    default: fixed
+  file_span:
+    label: Whole Python file
+    rationale: 'Values: final_value = 11.'
+    options: {fixed: {label: Fixed}}
+    default: fixed
+  yaml_settings:
+    label: YAML paragraph
+    rationale: 'Values: cosmo_val.npatch = 100; cosmo_val.cosebis.nmodes = 20; cosmo_val.limits = [1, 250]; cosmo_val.enabled = True; cosmo_val.optional = None; cosmo_val.method = analytic; cosmo_val.text = "1".'
+    options: {fixed: {label: Fixed}}
+    default: fixed
+  yaml_file:
+    label: Whole YAML file
+    rationale: 'Values: tail.value = 12; settings.yaml#tail.missing = absent.'
+    options: {fixed: {label: Fixed}}
+    default: fixed
+  ini_section:
+    label: CosmoSIS section
+    rationale: 'Values: sampler.walkers = 100; sampler.step = 0.0005; sampler.enabled = True; sampler.disabled = False; sampler.method = emcee; settings.ini#sampler.missing = absent.'
+    options: {fixed: {label: Fixed}}
+    default: fixed
+  ini_paragraph:
+    label: CosmoSIS paragraph
+    rationale: 'Values: other.count = 13.'
+    options: {fixed: {label: Fixed}}
+    default: fixed
+  workflow_rule:
+    label: Rule block
+    rationale: 'Values: threads = 2; nmodes = 20; angular_limits = [1, 250].'
+    options: {fixed: {label: Fixed}}
+    default: fixed
+  workflow_paragraph:
+    label: Workflow paragraph
+    rationale: 'Values: SCALE = 0.0005.'
+    options: {fixed: {label: Fixed}}
+    default: fixed
+analyses:
+  calibration:
+    decisions:
+      response:
+        label: Sub-analysis decision
+        rationale: 'Values: response = 0.01.'
+        options: {fixed: {label: Fixed}}
+        default: fixed
+    analyses:
+      validation:
+        decisions:
+          noise:
+            label: Nested sub-analysis decision
+            rationale: 'Values: noise = 0.02.'
+            options: {fixed: {label: Fixed}}
+            default: fixed

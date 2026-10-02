@@ -1,0 +1,17 @@
+# @sc [decision:yaml_file,scope:file]
+# File-wide values remain governed across blank lines.
+# @sc [decision:yaml_settings] yaml-contract
+# This paragraph controls the correlation settings.
+cosmo_val:
+  npatch: 100
+  cosebis:
+    nmodes: 20
+  limits: [1, 250]
+  enabled: true
+  optional: null
+  method: analytic
+  text: '1'
+
+# Another paragraph, governed only by the file tag.
+tail:
+  value: 12
