@@ -1463,11 +1463,21 @@ class PSFSystematicsMixin:
         y_minus_err = xi_psf_sys_minus_err * (theta if times_theta else 1)
 
         ax_plus.errorbar(
-            jittered_theta, y_plus, yerr=y_plus_err, fmt=fmt, capsize=capsize
+            jittered_theta,
+            y_plus,
+            yerr=y_plus_err,
+            fmt=fmt,
+            capsize=capsize,
+            color=color,
         )
 
         ax_minus.errorbar(
-            jittered_theta, y_minus, yerr=y_minus_err, fmt=fmt, capsize=capsize
+            jittered_theta,
+            y_minus,
+            yerr=y_minus_err,
+            fmt=fmt,
+            capsize=capsize,
+            color=color,
         )
 
     def _get_jittered_theta(self, theta, idx, n_versions, offset):
