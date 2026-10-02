@@ -760,6 +760,24 @@ def test_yaml_duplicate_key_outside_span_shadows_pin(mini_repo):
     )
 
 
+@pytest.mark.parametrize(
+    "old, new, message",
+    [
+        # CosmoSIS reads with strict=False: a repeated section merges, last wins.
+        (
+            "outside = not-governed",
+            "outside = 0\n\n[sampler]\nwalkers = 50",
+            "governed span",
+        ),
+        # ... and lower-cases keys, so a case variant is the same setting.
+        ("walkers = 100", "walkers = 100\nWalkers = 50", "candidates found 2"),
+    ],
+)
+def test_ini_repeated_setting_shadows_pin(mini_repo, old, new, message):
+    replace(mini_repo, INI, old, new)
+    value_problem(mini_repo, "ini_section", "sampler.walkers", message)
+
+
 @pytest.fixture
 def real_repo():
     if not (ROOT / "astra.yaml").is_file():
