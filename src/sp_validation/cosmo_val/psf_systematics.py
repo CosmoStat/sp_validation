@@ -464,9 +464,13 @@ class PSFSystematicsMixin:
         cov_rho=None,
         cov_tau=None,
         n_samples=10_000,
+        seed=0,
     ):
         """
         Compute the alpha leakage parameter from the rho and tau statistics.
+
+        alpha(theta) = tau_0,+(theta) / rho_0,+(theta); its error is the standard
+        deviation of that ratio over Gaussian draws of rho_0,+ and tau_0,+.
 
         Parameters
         ----------
@@ -475,14 +479,22 @@ class PSFSystematicsMixin:
         tau_stat_handler : TauStatHandler
             The handler for the tau statistics.
         cov_rho : np.ndarray, optional
-            The covariance matrix for the rho statistics. If None, it will be computed.
+            The covariance matrix for the rho statistics; its leading block is
+            the rho_0,+ covariance. If None, the variances in the rho-statistics
+            table are used.
         cov_tau : np.ndarray, optional
-            The covariance matrix for the tau statistics. If None, it will be computed.
+            The covariance matrix for the tau statistics; its leading block is
+            the tau_0,+ covariance. If None, the variances in the tau-statistics
+            table are used.
+        n_samples : int, optional
+            Number of Gaussian draws for the error.
+        seed : int or np.random.Generator, optional
+            Seed (or generator) for the draws, so that errors are reproducible.
 
         Returns
         -------
-        alpha_leak : float
-            The estimated alpha leakage parameter.
+        theta, alpha, alpha_err : np.ndarray
+            Angular scales, alpha leakage and its error.
         """
         if cov_rho is None:
             cov_rho = np.diag(rho_stat_handler.rho_stats["varrho_0_p"])
@@ -496,13 +508,13 @@ class PSFSystematicsMixin:
             / rho_stat_handler.rho_stats["rho_0_p"]
         )
 
-        # Derive alpha_err by sampling from the covariance matrices of rho and tau statistics
-        rho_samples = np.random.multivariate_normal(
+        rng = np.random.default_rng(seed)
+        rho_samples = rng.multivariate_normal(
             mean=rho_stat_handler.rho_stats["rho_0_p"],
             cov=cov_rho[:n_bins, :n_bins],
             size=n_samples,
         )
-        tau_samples = np.random.multivariate_normal(
+        tau_samples = rng.multivariate_normal(
             mean=tau_stat_handler.tau_stats["tau_0_p"],
             cov=cov_tau[:n_bins, :n_bins],
             size=n_samples,
@@ -514,10 +526,21 @@ class PSFSystematicsMixin:
         return theta, alpha, alpha_err
 
     def _compute_scale_dependent_xi_psf_sys(
-        self, rho_0, tau_0_a, tau_0_b, cov_rho, cov_tau_a, cov_tau_b, n_samples=10_000
+        self,
+        rho_0,
+        tau_0_a,
+        tau_0_b,
+        cov_rho,
+        cov_tau_a,
+        cov_tau_b,
+        n_samples=10_000,
+        seed=0,
     ):
         """
         Compute the scale-dependent xi_psf_sys from the rho and tau statistics.
+
+        xi_psf_sys = tau_0_a * tau_0_b / rho_0; its error is the standard
+        deviation over Gaussian draws of rho_0, tau_0_a and tau_0_b.
 
         Parameters
         ----------
@@ -533,25 +556,20 @@ class PSFSystematicsMixin:
             The covariance matrix for the tau statistics for tomographic bin a.
         cov_tau_b : np.ndarray
             The covariance matrix for the tau statistics for tomographic bin b.
+        n_samples : int, optional
+            Number of Gaussian draws for the error.
+        seed : int or np.random.Generator, optional
+            Seed (or generator) for the draws, so that errors are reproducible.
         """
-        # Compute xi_psf_sys for each scale using the formula:
         xi_psf_sys = (tau_0_a * tau_0_b) / rho_0
 
-        # Derive the error bars by sampling the statistics
-        rho_samples = np.random.multivariate_normal(
-            mean=rho_0,
-            cov=cov_rho,
-            size=n_samples,
+        rng = np.random.default_rng(seed)
+        rho_samples = rng.multivariate_normal(mean=rho_0, cov=cov_rho, size=n_samples)
+        tau_samples_a = rng.multivariate_normal(
+            mean=tau_0_a, cov=cov_tau_a, size=n_samples
         )
-        tau_samples_a = np.random.multivariate_normal(
-            mean=tau_0_a,
-            cov=cov_tau_a,
-            size=n_samples,
-        )
-        tau_samples_b = np.random.multivariate_normal(
-            mean=tau_0_b,
-            cov=cov_tau_b,
-            size=n_samples,
+        tau_samples_b = rng.multivariate_normal(
+            mean=tau_0_b, cov=cov_tau_b, size=n_samples
         )
         xi_psf_sys_samples = (tau_samples_a * tau_samples_b) / rho_samples
         xi_psf_sys_err = np.std(xi_psf_sys_samples, axis=0)
