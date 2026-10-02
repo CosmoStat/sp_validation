@@ -60,8 +60,12 @@ import yaml
 
 from sp_validation import sacc_io
 from sp_validation.cosmo_val import CosmologyValidation
+from sp_validation.cosmo_val.pseudo_cl import _apply_pixel_window_to_fiducial_cl
 from sp_validation.cosmo_val.sacc_writers import BIN as SACC_BIN
-from sp_validation.pseudo_cl import apply_random_rotation
+from sp_validation.pseudo_cl import (
+    apply_random_rotation,
+    bandpower_window_from_workspace,
+)
 from sp_validation.rho_tau import get_params_rho_tau
 
 # These tests need the full harmonic-space stack (pymaster/NaMaster + healpy),
@@ -658,14 +662,24 @@ def test_apply_random_rotation_reproducible_with_seed(cv, cat_and_params):
 # ===========================================================================
 # calculate_pseudo_cl_catalog -- deterministic end-to-end catalog path
 # ===========================================================================
-def test_calculate_pseudo_cl_catalog_end_to_end(cv, tmp_path):
-    """End-to-end catalog path: SACC round-trip of ell + EE/EB/BB.
-
-    The catalog method has no random noise debiasing, so it is reproducible to
-    the same ~2e-12 catalog-path float noise; we pin the round-tripped spectra.
-    """
+def test_calculate_pseudo_cl_catalog_end_to_end(cv, tmp_path, monkeypatch):
+    """Catalog SACC output retains the unwindowed workspace bandpower window."""
     ver = cv._test_version
+    cv.cell_method = "catalog"
     cv._pseudo_cls = {ver: {"tomo_bin_all_tomo_bin_all": {}}}
+    saved = {}
+    save_pseudo_cl = cv._save_pseudo_cl
+
+    def capture_workspace(
+        ver, out_path, tomo_bin_pair, ell_eff, cl_all, wsp, nside=None
+    ):
+        saved["workspace"] = wsp
+        saved["nside"] = nside
+        return save_pseudo_cl(
+            ver, out_path, tomo_bin_pair, ell_eff, cl_all, wsp, nside=nside
+        )
+
+    monkeypatch.setattr(cv, "_save_pseudo_cl", capture_workspace)
     out_path = cv._output_path(f"pseudo_cl_{ver}.sacc")
     cv.calculate_pseudo_cl_catalog(ver, out_path, tomo_bin_a="all", tomo_bin_b="all")
 
@@ -673,6 +687,12 @@ def test_calculate_pseudo_cl_catalog_end_to_end(cv, tmp_path):
     s = sacc_io.load(out_path, allow_unblinded=True)
     ell, ee, bb, eb, window = sacc_io.get_pseudo_cl(s, SACC_BIN)
     assert window is not None  # the shared BandpowerWindow rides the part
+    assert saved["nside"] is None
+    window_ells, unwindowed_weights = bandpower_window_from_workspace(
+        saved["workspace"]
+    )
+    assert len(window_ells) == window.weight.shape[0]
+    npt.assert_allclose(window.weight, unwindowed_weights, rtol=1e-12, atol=1e-15)
 
     npt.assert_allclose(
         ell,
@@ -739,6 +759,64 @@ def test_calculate_pseudo_cl_catalog_end_to_end(cv, tmp_path):
         catalog=cat_gal, params=params, tomo_bin_a="all", tomo_bin_b="all"
     )
     npt.assert_allclose(ee, cl_prim[0], rtol=RTOL_CAT, atol=ATOL_CAT)
+
+
+def test_calculate_pseudo_cl_map_sacc_pixel_window(cv, monkeypatch):
+    """Map SACC output multiplies its workspace window by pw²(ℓ)."""
+    ver = cv._test_version
+    cv.cell_method = "map"
+    cv.noise_bias_method = "analytic"
+    cv._pseudo_cls = {ver: {"tomo_bin_all_tomo_bin_all": {}}}
+    saved = {}
+    save_pseudo_cl = cv._save_pseudo_cl
+
+    def capture_workspace(
+        ver, out_path, tomo_bin_pair, ell_eff, cl_all, wsp, nside=None
+    ):
+        saved["workspace"] = wsp
+        saved["nside"] = nside
+        return save_pseudo_cl(
+            ver, out_path, tomo_bin_pair, ell_eff, cl_all, wsp, nside=nside
+        )
+
+    monkeypatch.setattr(cv, "_save_pseudo_cl", capture_workspace)
+    out_path = cv._output_path(f"pseudo_cl_map_{ver}.sacc")
+    cv.calculate_pseudo_cl_map(ver, NSIDE, out_path, "all", "all")
+
+    s = sacc_io.load(out_path, allow_unblinded=True)
+    _ell, _ee, _bb, _eb, window = sacc_io.get_pseudo_cl(s, SACC_BIN)
+    assert saved["nside"] == NSIDE
+    window_ells, unwindowed_weights = bandpower_window_from_workspace(
+        saved["workspace"]
+    )
+    assert len(window_ells) == window.weight.shape[0]
+    pw2 = healpy.pixwin(NSIDE, lmax=len(window_ells) - 1) ** 2
+    nonzero = np.abs(unwindowed_weights) > 1e-20
+    npt.assert_allclose(
+        window.weight[nonzero] / unwindowed_weights[nonzero],
+        np.broadcast_to(pw2[:, None], unwindowed_weights.shape)[nonzero],
+        rtol=1e-12,
+    )
+
+
+def test_fiducial_pixel_window_applies_only_to_map():
+    """iNKA fiducials carry pw² on maps and remain unchanged for catalogues."""
+    nside = 4
+    ell_grid = np.arange(12)
+    fiducial = {
+        "W1xW1": 1.0 + ell_grid.astype(float),
+        "W1xW2": 2.0 + 2 * ell_grid.astype(float),
+    }
+    original = {key: value.copy() for key, value in fiducial.items()}
+
+    catalog_fiducial = _apply_pixel_window_to_fiducial_cl(fiducial, nside, "catalog")
+    map_fiducial = _apply_pixel_window_to_fiducial_cl(fiducial, nside, "map")
+    pw2 = healpy.pixwin(nside, lmax=len(ell_grid) - 1) ** 2
+
+    for key, cl in original.items():
+        npt.assert_array_equal(catalog_fiducial[key], cl)
+        npt.assert_allclose(map_fiducial[key], cl * pw2, rtol=1e-14, atol=0.0)
+        npt.assert_array_equal(fiducial[key], cl)
 
 
 def test_calculate_pseudo_cl_catalog_end_to_end_tomo(cv, tmp_path):

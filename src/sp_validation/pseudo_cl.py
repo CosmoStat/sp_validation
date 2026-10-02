@@ -1054,8 +1054,12 @@ def get_pseudo_cl_iNKA_covariance(
 _NMT_EE = 0
 
 
-def bandpower_window_from_workspace(wsp):
+def bandpower_window_from_workspace(wsp, nside=None):
     """Extract the bandpower window matrix ``W`` for a spin-2×spin-2 workspace.
+
+    For HEALPix-map spectra, supply ``nside`` to include the pixel window
+    ``pw²(ℓ)`` in the measured spectrum. Catalogue-based spectra have no pixel
+    window and must leave ``nside`` unset.
 
     NaMaster's ``get_bandpower_windows()`` returns a four-index array
     ``(n_cl_out, n_bpw, n_cl_in, n_ell)`` describing how each output bandpower
@@ -1071,9 +1075,13 @@ def bandpower_window_from_workspace(wsp):
         ``compute_coupled_cell``.
     window_weights : np.ndarray
         ``W`` of shape ``(n_ell, n_bpw)`` — one column per bandpower, the layout
-        :func:`sp_validation.sacc_io.add_pseudo_cl` expects.
+        :func:`sp_validation.sacc_io.add_pseudo_cl` expects. If ``nside`` is
+        given, this includes ``pw²(ℓ)`` on the window's multipole grid.
     """
     bpw = wsp.get_bandpower_windows()  # (n_cl_out, n_bpw, n_cl_in, n_ell)
     diagonal = bpw[_NMT_EE, :, _NMT_EE, :]  # (n_bpw, n_ell)
     window_ells = np.arange(diagonal.shape[1], dtype=float)
+    if nside is not None:
+        pixwin = hp.pixwin(nside, lmax=diagonal.shape[1] - 1)
+        diagonal = diagonal * pixwin**2
     return window_ells, diagonal.T

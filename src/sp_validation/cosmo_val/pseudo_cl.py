@@ -28,6 +28,23 @@ from .sacc_writers import BIN as SACC_BIN
 from .sacc_writers import pseudo_cl_to_sacc
 
 
+def _apply_pixel_window_to_fiducial_cl(fiducial_cl, nside, cell_method):
+    """Apply ``pw²(ℓ)`` to fiducial spectra only for HEALPix-map measurements.
+
+    Each spectrum array uses index ``ell``, so the window spans the matching
+    ``ell = 0..len(spectrum)-1`` grid. Catalogue spectra are point-sampled and
+    must remain unchanged.
+    """
+    if cell_method != "map" or not fiducial_cl:
+        return fiducial_cl
+
+    lmax = len(next(iter(fiducial_cl.values()))) - 1
+    pixwin = hp.pixwin(nside, lmax=lmax)
+    return {
+        key: np.asarray(cl, dtype=float) * pixwin**2 for key, cl in fiducial_cl.items()
+    }
+
+
 def plot_pseudo_cl_spectrum(datasets, spectrum, output_path):
     """Two-panel ℓC_ℓ / C_ℓ figure for one spectrum across catalogue versions.
 
@@ -272,7 +289,9 @@ class PseudoClMixin:
 
         self.print_cyan("Saving pseudo-Cl's...")
         tomo_bin_pair = (tomo_bin_a, tomo_bin_b)
-        self._save_pseudo_cl(ver, out_path, tomo_bin_pair, ell_eff, cl_shear, wsp)
+        self._save_pseudo_cl(
+            ver, out_path, tomo_bin_pair, ell_eff, cl_shear, wsp, nside=nside
+        )
 
         self._pseudo_cls[ver][f"tomo_bin_{tomo_bin_a}_tomo_bin_{tomo_bin_b}"][
             "pseudo_cl"
@@ -304,8 +323,11 @@ class PseudoClMixin:
     def calculate_pseudo_cl_inka_cov(
         self, compute_tomography=True, load_all_block=False
     ):
-        """
-        Compute a theoretical Gaussian covariance of the Pseudo-Cl for EE, EB and BB.
+        """Compute the Gaussian iNKA covariance for EE, EB, and BB.
+
+        Apply the HEALPix pixel window ``pw²(ℓ)`` to each fiducial spectrum only
+        when ``cell_method == "map"``. Catalogue-based spectra have no pixel
+        window and use the unmodified fiducial.
         """
         self.print_start("Computing Pseudo-Cl covariance")
 
@@ -399,6 +421,9 @@ class PseudoClMixin:
                 key: np.concatenate(([0.0], np.asarray(value[:-1], dtype=float)))
                 for key, value in fiducial_cl.items()
             }
+            fiducial_cl = _apply_pixel_window_to_fiducial_cl(
+                fiducial_cl, nside, self.cell_method
+            )
 
             self.print_cyan(
                 "Estimating and adding the noise bias to the fiducial power spectra"
@@ -1180,10 +1205,14 @@ class PseudoClMixin:
             f"pseudo_cl_cov_from_iNKA_tomo_bin_{bin_key_a1}_tomo_bin_{bin_key_a2}_tomo_bin_{bin_key_b1}_tomo_bin_{bin_key_b2}_{ver}_binning_{self.binning}_nbins_{self.n_ell_bins}.fits",
         )
 
-    def _save_pseudo_cl(self, ver, out_path, tomo_bin_pair, ell_eff, cl_all, wsp):
-        """Write one bin pair's pseudo-Cl: SACC for ``("all", "all")``, else FITS."""
+    def _save_pseudo_cl(
+        self, ver, out_path, tomo_bin_pair, ell_eff, cl_all, wsp, nside=None
+    ):
+        """Write one pair as SACC or FITS, forwarding ``nside`` for map spectra."""
         if tuple(tomo_bin_pair) == ("all", "all"):
-            self.pseudo_cl_to_sacc_part(ver, out_path, ell_eff, cl_all, wsp)
+            self.pseudo_cl_to_sacc_part(
+                ver, out_path, ell_eff, cl_all, wsp, nside=nside
+            )
         else:
             self.save_pseudo_cl(ell_eff, cl_all, out_path)
 
@@ -1202,12 +1231,15 @@ class PseudoClMixin:
         ell, ee, bb, eb, _window = sacc_io.get_pseudo_cl(s, SACC_BIN)
         return {"ELL": ell, "EE": ee, "EB": eb, "BB": bb}
 
-    def pseudo_cl_to_sacc_part(self, version, out_path, ell_eff, cl_all, wsp):
-        """Write the pseudo-Cl SACC part (EE/BB/EB + shared bandpower window).
+    def pseudo_cl_to_sacc_part(
+        self, version, out_path, ell_eff, cl_all, wsp, nside=None
+    ):
+        """Write the pseudo-Cl SACC part with its shared bandpower window.
 
-        ``cl_all`` is NaMaster's decoupled ``(4, nbp)`` array (EE, EB, BE, BB);
-        the writer takes the shared bandpower window from ``wsp``. No covariance
-        is attached here.
+        ``cl_all`` is NaMaster's decoupled ``(4, nbp)`` array (EE, EB, BE, BB).
+        Map-based callers pass ``nside`` so the window includes ``pw²(ℓ)``;
+        catalogue-based callers leave it unset because their spectra have no
+        HEALPix pixel window. No covariance is attached here.
         """
         s = pseudo_cl_to_sacc(
             self.sacc_nz(version),
@@ -1215,6 +1247,7 @@ class PseudoClMixin:
             ell_eff,
             cl_all,
             wsp,
+            nside=nside,
         )
         sacc_io.save(s, out_path, type="data")
 
