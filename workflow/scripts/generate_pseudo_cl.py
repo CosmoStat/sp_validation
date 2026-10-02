@@ -103,6 +103,8 @@ def generate_pseudo_cl(
         }
 
     # Build CV kwargs based on binning mode
+    # @sc [decision:harmonic.shear_estimator]
+    # @sc [decision:spin2_sign_convention]
     cv_kwargs = dict(
         versions=[version],
         catalog_config=cat_config,

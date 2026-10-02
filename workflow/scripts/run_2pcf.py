@@ -77,7 +77,9 @@ def run_2pcf(
     )
 
     # Born-as-SACC ξ± part. theta = meanr; theta_nom = rnom.
+    # @sc [decision:real_space.jackknife_patches]
     jackknife = gg.var_method == "jackknife"
+    # @sc [decision:data_products.point_labels_and_windows]
     s = xi_to_sacc(
         cv.sacc_nz(ver),
         cv.sacc_metadata(ver),

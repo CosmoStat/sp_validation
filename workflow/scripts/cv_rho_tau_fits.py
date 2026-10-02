@@ -12,6 +12,8 @@ from cv_runner import _unbuffer_streams, make_cv, touch_sentinels
 
 _unbuffer_streams()
 cv = make_cv(snakemake)
+# @sc [decision:psf.leakage_fit_sampling]
+# @sc [decision:psf.psf_error_model]
 if cv.rho_tau_method != "none":
     cv.plot_rho_tau_fits()
 touch_sentinels(snakemake)

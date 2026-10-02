@@ -13,6 +13,8 @@ def xi_binning(grid):
     return grid_binning(XI_GRIDS[grid])
 
 
+# @sc [decision:real_space.jackknife_patches]
+# @sc [decision:real_space.reporting_grid]
 rule xi:
     """TreeCorr ξ±(θ) for one version on one angular grid.
 
@@ -44,6 +46,7 @@ rule xi:
         "../scripts/run_2pcf.py"
 
 
+# @sc [decision:psf.rho_tau_estimator]
 rule rho_tau_stats:
     output:
         rho_stats=str(COSMO_VAL / "rho_tau_stats/rho_stats_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
@@ -73,6 +76,8 @@ wildcard_constraints:
     binning="linear|logspace|powspace",
 
 
+# @sc [decision:harmonic.multipoles_and_bandpowers]
+# @sc [decision:harmonic.shear_estimator]
 rule pseudo_cl:
     """Generate pseudo-Cl data vector (born as SACC) with configurable binning."""
     output:
@@ -94,6 +99,7 @@ rule pseudo_cl:
         "../scripts/generate_pseudo_cl.py"
 
 
+# @sc [decision:covariance.pseudo_cl_gaussian_covariance]
 rule pseudo_cl_cov:
     """Generate pseudo-Cl covariance with configurable binning."""
     output:

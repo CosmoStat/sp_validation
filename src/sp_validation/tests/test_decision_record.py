@@ -172,24 +172,23 @@ def test_removed_site_orphans_decision(mini_repo):
     ]
 
 
-def test_pending_site_exception_is_allowed(mini_repo, monkeypatch):
+def test_pending_site_exception_is_allowed(mini_repo):
     replace(
         mini_repo,
         PYTHON,
         "# @sc [decision:statement,label:selection] module-contract\n",
         "",
     )
-    monkeypatch.setattr(dr, "PENDING_SITES", {"statement": "Tomography merge #374"})
     record, tags = snapshot(mini_repo)
-    assert dr.coverage_errors(record, tags) == []
+    pending = {"statement": "Tomography merge #374"}
+    assert dr.coverage_errors(record, tags, pending) == []
     # An exception to coverage does not disable Values checks.
     assert_problem(dr.value_errors(mini_repo, record, tags), "statement", "found 0")
 
 
-def test_pending_site_allowlist_cannot_rot(mini_repo, monkeypatch):
-    monkeypatch.setattr(dr, "PENDING_SITES", {"missing": "Tomography merge #374"})
+def test_pending_site_allowlist_cannot_rot(mini_repo):
     record, tags = snapshot(mini_repo)
-    assert dr.coverage_errors(record, tags) == [
+    assert dr.coverage_errors(record, tags, {"missing": "Tomography merge #374"}) == [
         "PENDING_SITES: unknown decision 'missing'"
     ]
 
@@ -762,7 +761,7 @@ def test_repo_citations_exist(real_repo):
 
 def test_repo_decisions_have_sites(real_repo):
     tags, _ = dr.scan_tags(real_repo)
-    errors = dr.coverage_errors(dr.load_record(real_repo), tags)
+    errors = dr.coverage_errors(dr.load_record(real_repo), tags, dr.PENDING_SITES)
     assert not errors, errors
 
 

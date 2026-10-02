@@ -23,7 +23,10 @@ from astropy.io import fits
 
 
 def _create_2pt_hdu(values, theta, name, quant1, quant2):
-    """Create standardized 2-point correlation FITS HDU."""
+    """Create standardized 2-point correlation FITS HDU.
+
+    @sc [decision:inference.theory_sampling]
+    """
     nbins = len(values)
     lst = np.arange(1, nbins + 1)
 
@@ -252,6 +255,7 @@ def covdat_to_fits(
     filename_cov_xi, filename_cov_tau=None, filename_cov_cl=None, cov_hdu=None
 ):
     """
+    @sc [decision:inference.likelihood_covariance]
     Convert CosmoCov covariance matrix to FITS format.
 
     If tau covariance provided, block with xi covariance.
@@ -406,6 +410,7 @@ def _generate_ini_file(
 
     if not is_harmonic:
         if args.use_rho_tau:
+            # @sc [decision:inference.likelihood_data_vector]
             like_section = (
                 "[2pt_like]\nfile = %(COSMOSIS_DIR)s/likelihood/2pt/2pt_like_xi_sys.py"
                 "\ndata_sets=XI_PLUS XI_MINUS TAU_0_PLUS TAU_2_PLUS\nadd_xi_sys=T"
@@ -450,7 +455,10 @@ def _generate_ini_file(
 
 
 def generate_cosmosis_config(args):
-    """Generate CosmoSIS INI files (real-space and optional harmonic-space)."""
+    """Generate CosmoSIS INI files (real-space and optional harmonic-space).
+
+    @sc [decision:mocks.mock_inference]
+    """
     if args.use_rho_tau:
         template_base_realspace = "cosmosis_pipeline_A_psf.ini"
         values_file = "values_psf.ini"
@@ -738,6 +746,7 @@ if __name__ == "__main__":
             tau_theta = tau_stats["theta"]
             rho_theta = rho_stats["theta"]
 
+            # @sc [decision:inference.theory_sampling]
             check_meanr_consistency(xi_theta, tau_theta, rho_theta, threshold=5.0)
             print("✓ Forcing rho and tau to use xi meanr values for consistency")
 

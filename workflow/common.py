@@ -78,6 +78,7 @@ BLOCK_PAIRS = [("++", "1"), ("--", "2"), ("+-", "3")]
 # Source of truth: cs_util.cosmo.PLANCK18
 # Regenerate with: snakemake results/cosmology/planck18.json
 # Resolved relative to the run directory at configure() time.
+# @sc [decision:covariance.cosmocov_cosmology]
 COSMOLOGY_PARAMS = "results/cosmology/planck18.json"
 
 # Wildcard constraints shared by every Snakefile that composes these rules.
@@ -180,7 +181,10 @@ def warn_if_image_stale():
 
 
 def configure(workflow_config):
-    """Install config-derived values after Snakemake has loaded configfiles."""
+    """Install config-derived values after Snakemake has loaded configfiles.
+
+    @sc [decision:covariance.footprint_mask_power]
+    """
     global CATALOG_CONFIG, DEFAULT_MASK_SUFFIX, FIDUCIAL, PLANCK18
     from snakemake.common.configfile import load_configfile
 
@@ -249,19 +253,24 @@ def covariance_path(
     mask_suffix=None,
     suffix="_processed.txt",
 ):
-    """Construct covariance file path."""
+    """Construct covariance file path.
+
+    @sc [decision:covariance.cosmocov_terms_per_grid]
+    """
     base = covariance_base(version, gaussian, min_sep, max_sep, nbins, mask_suffix)
     return str(COSMO_INFERENCE / f"data/covariance/{base}/{base}{suffix}")
 
 
 def base_version(version):
     """Strip the `_leak_corr` / `_ecut{N}` suffixes to the base catalogue
+    @sc [decision:shear_field.fiducial_columns]
     version, whose footprint and plotting style its variants share."""
     return re.sub(r"_ecut\d+", "", re.sub(r"_leak_corr$", "", version))
 
 
 def catalogue_entry(version):
     """The catalogue-config entry describing ``version`` (its own, or the one
+    @sc [decision:shear_field.fiducial_columns]
     its ``_leak_corr`` variant derives from)."""
     if version in CATALOG_CONFIG:
         return CATALOG_CONFIG[version]
@@ -285,6 +294,8 @@ XI_KEYS = ("min_sep", "max_sep", "nbins", "npatch")
 
 def xi_grids(config, fiducial):
     """The named ξ± grids of a workflow, canonicalised.
+    @sc [decision:real_space.integration_grid]
+    @sc [decision:real_space.reporting_grid]
 
     Workflows carrying no cosmo_val block (e.g. papers/bmodes) fall back to
     ``fiducial``. Values are coerced here — separations to float, counts to int

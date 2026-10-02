@@ -144,6 +144,9 @@ class Rule:
         return column[:, self.arg] if column.ndim == 2 else column
 
 
+# @sc [decision:calibration.catalogue_cuts]
+# @sc [decision:calibration.noshear_psf_size]
+# @sc [decision:psf.psf_star_sample]
 def _v1_rules():
     rules = []
     for obj in ("PSF", "STAR"):

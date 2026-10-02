@@ -1,0 +1,87 @@
+id: committed
+description: The committed configuration on develop (8db2aa5a), with the tomography-merge survivors where the record says so.
+decisions:
+  spin2_sign_convention: flip_for_namaster_only
+analyses:
+  calibration:
+    decisions:
+      catalogue_cuts: v2_flags_le_2_rband_bits
+      metacal_selection: snr_10_500_size_0p707_3_raw_t
+      noshear_psf_size: tpsf_1p_for_v1
+      response_estimator: global_response
+      response_weighting: iv_weighted_shear_response
+      shape_weights: gatti_20x20_and_iv
+      additive_bias: unweighted_mean_subtracted
+      objectwise_leakage_correction: li2024_20x20_wdes
+  shear_bias_simulations:
+    decisions:
+      mbias_estimator: paired_difference
+      mbias_sim_selection: v1x9_im_sim_unweighted
+      mbias_uncertainty: object_bootstrap_fixed_response
+  shear_field:
+    decisions:
+      fiducial_columns: leak_corrected_wdes
+      mean_subtraction_and_response: global_weighted_mean_scalar_r
+      survey_area: mask_integral
+      covariance_survey_inputs: static_cov_th_summed_sigma
+  real_space:
+    decisions:
+      reporting_grid: log_1_250_20
+      integration_grid: cosmo_val_0p08_300_1000
+      pair_approximation: treecorr_defaults
+      jackknife_patches: kmeans_jackknife_by_npatch
+  bmodes:
+    decisions:
+      pure_eb_transform: fixed_quadrature_fine_grid_extent
+      pure_eb_rebinning: treecorr_pair_weight
+      pure_eb_xim_padding: pad_one_decade
+      bmode_covariance: cosmocov_gaussian_exact
+      null_test_statistic: chi2_sf_hartlap
+      fiducial_scale_cut: cut_12_83_snap_and_containment
+      cosebis_modes: log_20_modes
+      bmode_summary: pure_eb_cosebis_clbb_all_bands
+  harmonic:
+    decisions:
+      shear_estimator: catalog_field
+      multipoles_and_bandpowers: nside1024_lmin8_powspace32
+  psf:
+    decisions:
+      psf_star_sample: flags_zero_g_and_t
+      rho_tau_estimator: wdes_galaxies_centred_stars_raw
+      psf_error_model: alpha_beta_eta
+      tau_covariance: theory_tau_jackknife_rho
+      leakage_fit_sampling: lsq_independent_draws
+      leakage_diagnostics: fast_ratio_and_linear_mix
+  covariance:
+    decisions:
+      cosmocov_cosmology: planck18_no_ia
+      cosmocov_terms_per_grid: ng_reporting_g_integration
+      footprint_mask_power: occupancy_footprint_area_normalised
+      pseudo_cl_gaussian_covariance: inka_coupled_analytic_noise
+      pseudo_cl_fiducial_theory: planck18_lensing_only
+      terminal_covariance: analytic_injected_block_diagonal
+  data_products:
+    decisions:
+      terminal_vector_contents: reporting_plus_derived_single_bin
+      point_labels_and_windows: meanr_shared_ee_window
+  inference:
+    decisions:
+      likelihood_data_vector: xi_12_83_with_tau_02
+      theory_sampling: sample_at_data_angles
+      likelihood_covariance: fixed_gaussian_block_diagonal
+      psf_leakage_model: gaussian_alpha_beta
+      shear_calibration_prior: gaussian_m1
+      photoz_shift: additive_gaussian
+      intrinsic_alignment_model: nla_gaussian_prior
+      cosmological_parameter_space: s8_flat_lcdm
+      nonlinear_power_and_baryons: hmcode2020_feedback
+      sampler: polychord_192
+      posterior_summary: kde_mode_2d
+  mocks:
+    decisions:
+      mock_cosmology_and_power: planck18_sigma8_0p8102_hmcode
+      mock_geometry: linear_shells_lmax_nside_lognormal
+      mock_source_population: neff_6p09_b1p2_sigma_0p2684
+      mock_two_point_measurements: data_integration_grid_catalog_powspace32
+      cosebis_bias_test: analytic_cov_over_n_100_mocks
+      mock_inference: gaussian_tau_null_zero_centred_priors

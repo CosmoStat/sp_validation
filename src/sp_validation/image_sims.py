@@ -25,6 +25,7 @@ _DEFAULT_PAIRS = [
 # Weight-scheme name that means "no weighting": every object gets unit weight.
 # ``None`` (from a YAML ``null``) is accepted as an alias, so the fiducial
 # unweighted primary scheme can be written either ``none`` or ``null``.
+# @sc [decision:shear_bias_simulations.mbias_sim_selection]
 _UNWEIGHTED = "none"
 
 
@@ -35,6 +36,7 @@ def _is_unweighted(scheme):
 
 def _load_cat(path, w_cols):
     """Load RA, Dec, ellipticities and per-scheme weights from a FITS catalogue.
+    @sc [decision:shear_bias_simulations.mbias_estimator]
 
     Reads the ``e1``/``e2`` columns, which the calibration stage writes as the
     *calibrated* shear estimate ``g = R^-1 g_uncal - c`` (metacal response and
@@ -177,6 +179,8 @@ class ImageSimMBias:
 
     def _m_c_pair(self, name_p, name_m, comp, verbose=True):
         """Compute m and c for one shear pair and component (0=g1, 1=g2).
+        @sc [decision:shear_bias_simulations.mbias_estimator]
+        @sc [decision:shear_bias_simulations.mbias_uncertainty]
 
         Paired ("pool") estimator. The +g and -g simulations inject opposite
         input shear on the *same* galaxies, so matching them directly by

@@ -21,15 +21,20 @@ from sp_validation import sacc_io
 from sp_validation.cosmo_val.sacc_writers import assemble_analysis_sacc
 
 # NaMaster iNKA covariance FITS: per-spectrum HDU names, in SACC insertion order.
+# @sc [decision:covariance.terminal_covariance]
 _CL_HDUS = ("COVAR_EE_EE", "COVAR_BB_BB", "COVAR_EB_EB")
 
 # Canonical part order — the order points are inserted in, which must match the
 # covariance block order. Missing parts are simply skipped.
+# @sc [decision:data_products.terminal_vector_contents]
 CANONICAL = ("xi_reporting", "pseudo_cl", "cosebis", "pure_eb", "rho_tau")
 
 
 def _pseudo_cl_cov_block(cov_fits):
-    """Block-diagonal ``[EE; BB; EB]`` from the NaMaster iNKA covariance FITS."""
+    """Block-diagonal ``[EE; BB; EB]`` from the NaMaster iNKA covariance FITS.
+
+    @sc [decision:covariance.terminal_covariance]
+    """
     from astropy.io import fits
 
     with fits.open(cov_fits) as hdul:
@@ -48,11 +53,13 @@ def _pseudo_cl_cov_block(cov_fits):
 # takes it from. A part of one of these types may be born with an estimate of
 # its own — the ξ± reporting part carries the jackknife it was measured with —
 # but the analysis file takes the external one, always.
+# @sc [decision:covariance.terminal_covariance]
 _INJECTED = {"xi_reporting": "xi_cov", "pseudo_cl": "pseudo_cl_cov"}
 
 
 def _attach_cov(part, name, xi_cov, pseudo_cl_cov):
     """Give ``part`` (mutated in place) the covariance the analysis file uses.
+    @sc [decision:covariance.terminal_covariance]
 
     For the two statistics with an external covariance the supplied block
     replaces whatever the part was born with, loudly; every other part keeps

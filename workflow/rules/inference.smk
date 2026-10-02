@@ -48,6 +48,8 @@ def pseudo_cl_assets(version):
     cov_path = PSEUDO_CL_DIR / f"pseudo_cl_cov_{version}_{PSEUDO_CL_TAG}.fits"
     return str(cl_path), str(cov_path)
 
+# @sc [decision:inference.likelihood_covariance]
+# @sc [decision:inference.likelihood_data_vector]
 rule inference_prep:
     input:
         # Processed covariance matrix - use centralized covariance_path()
@@ -122,6 +124,7 @@ rule inference_glass_mocks:
         expand(GLASS_MOCK_FITS_PATTERN, mock_id=[f"{i:05d}" for i in range(GLASS_MOCK_SEED_RANGE[0], GLASS_MOCK_SEED_RANGE[1] + 1)])
 
 
+# @sc [decision:mocks.mock_inference]
 rule inference_prep_glass_mock:
     input:
         xi=f"{GLASS_MOCK_DIR}/xi_glass_mock_{{mock_id}}_4096_nbins=20.fits",

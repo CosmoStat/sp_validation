@@ -1,6 +1,7 @@
 # BLOCK_PAIRS, PLANCK18, COSMOLOGY_PARAMS defined in Snakefile
 
 
+# @sc [decision:shear_field.covariance_survey_inputs]
 def get_cat_params(version):
     """Covariance parameters (area, n_e, sigma_e) of ``version``'s catalogue entry."""
     cov_th = catalogue_entry(version)["cov_th"]
@@ -12,21 +13,26 @@ def get_cat_params(version):
 # DEFAULT_MASK_SUFFIX defined in Snakefile
 # Footprint mask power spectra (nside=4096, from comprehensive catalog with spatial cuts only)
 MASK_CLS_BASE = str(COSMO_INFERENCE / "data/mask")
+# @sc [decision:covariance.footprint_mask_power]
 MASK_CLS_FILES = {
     "footprint": f"{MASK_CLS_BASE}/mask_cls_footprint_nside_4096_norm.txt",
     "footprint_starhalo": f"{MASK_CLS_BASE}/mask_cls_footprint_starhalo_nside_4096_norm.txt",
 }
 
 # SP_v1.4.8 uses the star-halo footprint; every other catalogue the standard one.
+# @sc [decision:covariance.footprint_mask_power]
 STARHALO_CATALOGUES = {"SP_v1.4.8"}
 
 
+# @sc [decision:covariance.footprint_mask_power]
 def get_mask_cls_path(version):
     """Return absolute mask Cl path for the requested catalog version."""
     starhalo = base_version(version) in STARHALO_CATALOGUES
     return MASK_CLS_FILES["footprint_starhalo" if starhalo else "footprint"]
 
 
+# @sc [decision:covariance.cosmocov_cosmology]
+# @sc [decision:covariance.pseudo_cl_fiducial_theory]
 rule cosmology_params:
     """Generate cosmology parameters JSON from sp_validation.
 
@@ -52,6 +58,7 @@ with open('{output}', 'w') as f:
         """
 
 
+# @sc [decision:covariance.cosmocov_terms_per_grid]
 rule covariance_ini:
     input:
         nz_file=lambda w: redshift_path(w.version),
@@ -80,6 +87,7 @@ rule covariance_ini:
 
         cat > {output} << 'EOF'
 #
+# @sc [decision:covariance.cosmocov_cosmology]
 # Cosmological parameters
 #
 Omega_m : {params.omega_m}
@@ -112,6 +120,7 @@ clustering_REDSHIFT_FILE : {input.nz_file}
 c_footprint_file : {params.mask}
 
 
+# @sc [decision:covariance.cosmocov_cosmology]
 # IA parameters
 IA : 1
 A_ia : 0.0
@@ -246,6 +255,7 @@ rule covariance_process:
         "../scripts/cosmocov_process.py"
 
 
+# @sc [decision:real_space.integration_grid]
 def fiducial_covariance_outputs(mask_suffix=""):
     """Return processed covariance files for the fiducial version."""
     ng_path = covariance_path(

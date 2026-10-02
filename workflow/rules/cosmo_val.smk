@@ -32,6 +32,7 @@
 
 CV = config["cosmo_val"]
 CV_VERSIONS = config["versions"]
+# @sc [decision:real_space.reporting_grid]
 CV_FIDUCIAL = {
     "min_sep": CV["theta_min"],
     "max_sep": CV["theta_max"],
@@ -113,6 +114,8 @@ def _grid_cov(version, grid, gaussian):
     )
 
 
+# @sc [decision:bmodes.bmode_covariance]
+# @sc [decision:covariance.cosmocov_terms_per_grid]
 def cv_xi_cov_integration(version):
     """CosmoCov gaussian ξ± covariance on the integration grid.
 
@@ -170,6 +173,7 @@ def cv_pseudo_cl_cov(version):
     return str(COSMO_VAL / f"pseudo_cl_cov_{version}_{_PSEUDO_CL_TAG}.fits")
 
 
+# @sc [decision:covariance.cosmocov_terms_per_grid]
 def cv_xi_cov(version):
     """CosmoCov ξ± covariance on the reporting grid, the terminal file's."""
     return _grid_cov(version, "reporting", "ng")
@@ -394,6 +398,7 @@ rule cv_plot_pseudo_cl:
 # Pure E/B modes and COSEBIs (per version), then the B-mode summary
 # ---------------------------------------------------------------------------
 
+# @sc [decision:bmodes.pure_eb_transform]
 rule cv_pure_eb:
     """Pure E/B-mode decomposition for one version, from its integration-grid part.
 
@@ -421,6 +426,7 @@ rule cv_pure_eb:
         "../scripts/cv_pure_eb.py"
 
 
+# @sc [decision:bmodes.cosebis_modes]
 rule cv_cosebis:
     """COSEBIs E/B decomposition for one version, from its integration-grid part.
 
@@ -450,6 +456,7 @@ rule cv_cosebis:
         "../scripts/cv_cosebis.py"
 
 
+# @sc [decision:bmodes.bmode_summary]
 rule cv_summarize_bmodes:
     """Collect B-mode PTEs (pure E/B, COSEBIs, pseudo-Cl) into one summary."""
     input:
@@ -485,6 +492,7 @@ rule cv_summarize_bmodes:
 # the covariance inputs below.
 
 
+# @sc [decision:data_products.terminal_vector_contents]
 def cv_assemble_inputs(version):
     """The per-statistic SACC parts + covariance inputs assemble_sacc consumes.
 
@@ -503,6 +511,7 @@ def cv_assemble_inputs(version):
     return parts
 
 
+# @sc [decision:covariance.terminal_covariance]
 rule assemble_sacc:
     """Assemble the terminal {version}.sacc from the per-statistic SACC parts."""
     input:

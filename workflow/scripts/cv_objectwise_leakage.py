@@ -11,5 +11,6 @@ from cv_runner import _unbuffer_streams, make_cv, touch_sentinels
 
 _unbuffer_streams()
 cv = make_cv(snakemake)
+# @sc [decision:psf.leakage_diagnostics]
 cv.plot_objectwise_leakage()
 touch_sentinels(snakemake)

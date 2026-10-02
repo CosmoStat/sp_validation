@@ -30,6 +30,8 @@ part = sacc_io.load(snakemake.input["xi"])
 theta, xip, xim = sacc_io.get_xi(part, (0, 0), grid="integration")
 edges = log_bin_edges(p["min_sep"], p["max_sep"], p["nbins"])
 
+# @sc [decision:bmodes.bmode_covariance]
+# @sc [decision:bmodes.cosebis_modes]
 results = cosebis_scan_from_xi(
     theta,
     xip,
@@ -40,6 +42,7 @@ results = cosebis_scan_from_xi(
     scale_cuts=[tuple(sc) for sc in p["scale_cuts"]],
 )
 
+# @sc [decision:bmodes.cosebis_modes]
 fiducial_key = find_conservative_scale_cut_key(results, fiducial_scale_cut)
 fiducial = results[fiducial_key]
 

@@ -93,6 +93,7 @@ def create_tau_fits(sampled_values, theta, header=None):
 
 def generate_samples_for_mock(mock_id, cov_tau, theta, ref_tau_header, output_dir):
     """Generate sampled tau statistics for a single mock.
+    @sc [decision:mocks.mock_inference]
 
     Only tau is needed; inference_prep_glass_mock uses real rho data.
     """

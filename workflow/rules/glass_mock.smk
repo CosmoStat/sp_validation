@@ -6,11 +6,14 @@
 # or bypass the MCM — these rules run the full pipeline on mock catalogs.
 
 # GLASS_MOCK_DIR and GLASS_MOCK_SUITE defined in Snakefile.
+# @sc [decision:mocks.cosebis_bias_test]
 GLASS_MOCK_IDS = [f"{i:05d}" for i in range(1, 101)]
 MOCK_RESULTS = f"results/glass_mock/{GLASS_MOCK_SUITE}"
 
 # Mock ξ± are measured on the data's integration grid, node for node, so the
 # E/B transforms see the same θ sampling on mocks and data.
+# @sc [decision:mocks.mock_two_point_measurements]
+# @sc [decision:real_space.integration_grid]
 MOCK_XI_GRID = XI_GRIDS["integration"]
 MOCK_XI = f"{MOCK_RESULTS}/gg_glass_mock_{{mock_id}}_{xi_binning('integration')}.fits"
 
@@ -18,6 +21,7 @@ wildcard_constraints:
     cl_nbins=r"\d+",
 
 
+# @sc [decision:mocks.mock_two_point_measurements]
 rule glass_mock_xi_fine:
     """Treecorr ξ± for one GLASS mock on the data's integration grid.
 
@@ -40,6 +44,7 @@ rule glass_mock_xi_fine:
         "../scripts/run_glass_mock_2pcf.py"
 
 
+# @sc [decision:mocks.mock_two_point_measurements]
 rule glass_mock_pseudo_cl:
     """NaMaster pseudo-Cℓ for one GLASS mock (powspace, configurable nbins).
 
@@ -88,6 +93,7 @@ rule glass_mock_validation:
         rules.glass_mock_all_pseudo_cl.input,
 
 
+# @sc [decision:mocks.cosebis_bias_test]
 rule mock_cosebis_scatter:
     """Scatter: compute COSEBIS E_n/B_n for one GLASS mock.
 
@@ -108,6 +114,7 @@ rule mock_cosebis_scatter:
         "../scripts/mock_cosebis_scatter.py"
 
 
+# @sc [decision:mocks.cosebis_bias_test]
 rule mock_cosebis_bias_test:
     """Gather: 100-mock COSEBIS bias test figure + evidence.
 
