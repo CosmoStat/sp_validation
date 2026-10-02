@@ -969,10 +969,14 @@ def get_pseudo_cls_catalog(
 
 
 # ---------------------- Covariance computation functions ----------------------
-def get_fiducial_cl(z, dndz, lmax, cosmo, backend="camb"):
+def get_fiducial_cl(z, dndz, lmax, cosmo, backend="ccl"):
     """
     Get the fiducial Cl's using the redshift distribution.
-    Cosmology is determined by the input cosmo object.
+
+    Cosmology is determined by the input CCL cosmo object. The default CCL
+    backend evaluates that object as configured; cs_util's CAMB backend
+    rebuilds a CAMB cosmology from it, dropping the neutrino mass and using
+    CAMB's own non-linear model.
     """
     ell = np.arange(1, lmax + 1)
 
