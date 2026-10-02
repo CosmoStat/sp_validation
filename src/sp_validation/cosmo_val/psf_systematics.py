@@ -210,8 +210,13 @@ class PSFSystematicsMixin:
         self.print_done("Finished scale-dependent leakage calculation.")
 
     def calculate_objectwise_leakage(self, tomography=False):
-        # TODO: Upgrade for tomography
-        # Get the tomographic bins
+        """Fit the object-wise PSF leakage, per version and tomographic bin.
+
+        Stores ``a11``, ``a22`` and ``aii_mean`` (as ufloats) in
+        ``self.leakage_coeff[ver]["tomo_bin_<id>"]``, with ``<id>`` ``all`` when
+        ``tomography`` is False. A version whose catalogue lacks a required
+        column is dropped from ``results_objectwise`` and ``leakage_coeff``.
+        """
         tomo_bins = self._get_tomo_bins_for_versions(
             self.versions, tomography=tomography
         )
@@ -224,62 +229,67 @@ class PSFSystematicsMixin:
         for ver in self.versions:
             self.print_magenta(ver)
 
-            self.leakage_coeff.setdefault(ver, {})
-
             results_obj = self.results_objectwise[ver]
             results_obj.check_params()
             results_obj.update_params()
             results_obj.prepare_output()
 
-            # Skip read_data() and copy catalogue from scale leakage instance instead
-            # results_obj._dat = self.results[ver].dat_shear
-
-            # Iterate on the tomographic bins for this version
-            for tomo_bin_id in tomo_bins[ver]["ids"]:
-                if tomo_bin_id == "all":
-                    selection = None
-                else:
-                    selection = self._get_galaxy_mask(ver, tomo_bin_id)
-
-                suffix = f"tomo_bin_{tomo_bin_id}"
-
-                out_base = results_obj.get_out_base(mix, order, suffix=suffix)
-                out_path = f"{out_base}.pkl"
-                if os.path.exists(out_path):
-                    self.print_green(
-                        f"Skipping object-wise leakage, file {out_path} exists"
+            coeff_ver = self.leakage_coeff.setdefault(ver, {})
+            try:
+                for tomo_bin_id in tomo_bins[ver]["ids"]:
+                    coeff_ver[f"tomo_bin_{tomo_bin_id}"] = self._objectwise_leakage_bin(
+                        results_obj, ver, tomo_bin_id, mix, order
                     )
-                    results_obj.par_best_fit = leakage.read_from_file(out_path)
-                else:
-                    self.print_cyan("Computing object-wise leakage regression")
+            except KeyError as e:
+                print(f"{e}\nExpected key is missing from catalog.")
+                self.results_objectwise.pop(ver)
+                self.leakage_coeff.pop(ver)
 
-                    # Run
-                    with results_obj.temporarily_read_data(selection=selection):
-                        try:
-                            results_obj.PSF_leakage(suffix=suffix)
+    def _objectwise_leakage_bin(self, results_obj, ver, tomo_bin_id, mix, order):
+        """Object-wise leakage coefficients of one tomographic bin."""
+        selection = (
+            None if tomo_bin_id == "all" else self._get_galaxy_mask(ver, tomo_bin_id)
+        )
+        suffix = f"tomo_bin_{tomo_bin_id}"
 
-                            # Gather coefficients
+        out_path = f"{results_obj.get_out_base(mix, order, suffix=suffix)}.pkl"
+        if os.path.exists(out_path):
+            self.print_green(f"Skipping object-wise leakage, file {out_path} exists")
+            results_obj.par_best_fit = leakage.read_from_file(out_path)
+        else:
+            self.print_cyan(f"Computing object-wise leakage regression, {suffix}")
+            with results_obj.temporarily_read_data(selection=selection):
+                results_obj.PSF_leakage(mix=mix, order=order, suffix=suffix)
 
-                        except KeyError as e:
-                            print(f"{e}\nExpected key is missing from catalog.")
-                            # remove the results object for this version
-                            self.results_objectwise.pop(ver)
-                            continue
+        par_best_fit = results_obj.par_best_fit
+        a11 = ufloat(par_best_fit["a11"].value, par_best_fit["a11"].stderr)
+        a22 = ufloat(par_best_fit["a22"].value, par_best_fit["a22"].stderr)
+        return {"a11": a11, "a22": a22, "aii_mean": 0.5 * (a11 + a22)}
 
-                par_best_fit = results_obj.par_best_fit
+    def calculate_alpha_leakage_summaries(self, tomography=False, cov_type=None):
+        """Summarise the scale-dependent leakage alpha(theta) = tau_0 / rho_0.
 
-                # Object-wise leakage
-                a11 = ufloat(par_best_fit["a11"].value, par_best_fit["a11"].stderr)
-                a22 = ufloat(par_best_fit["a22"].value, par_best_fit["a22"].stderr)
-                self.leakage_coeff[ver][f"tomo_bin_{tomo_bin_id}"] = {
-                    "a11": a11,
-                    "a22": a22,
-                    "aii_mean": 0.5 * (a11 + a22),
-                }
+        For each version in ``leakage_coeff`` and each of its tomographic bins,
+        stores ``alpha_mean``, ``alpha_1`` and ``alpha_0`` (see
+        `_alpha_summaries`) next to the object-wise coefficients in
+        ``self.leakage_coeff[ver]["tomo_bin_<id>"]``.
+        """
+        tomo_bins = self._get_tomo_bins_for_versions(
+            list(self.leakage_coeff), tomography=tomography
+        )
+        for ver, coeff_ver in self.leakage_coeff.items():
+            for tomo_bin_id in tomo_bins[ver]["ids"]:
+                theta, alpha, alpha_err = self._load_alpha_leakage(
+                    ver, tomo_bin_id, cov_type
+                )
+                coeff_ver.setdefault(f"tomo_bin_{tomo_bin_id}", {}).update(
+                    self._alpha_summaries(theta, alpha, alpha_err)
+                )
 
     # --- utility functions ---
     def _get_galaxy_mask(self, ver, tomo_bin_id):
-        cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
+        # HDU 1 is the table LeakageObject.read_data reads, so masks align by row
+        cat_gal = fits.getdata(self.cc[ver]["shear"]["path"], ext=1)
         if tomo_bin_id != "all":
             gal_mask = cat_gal[self.cc[ver]["shear"]["tomo_bin_col"]] == tomo_bin_id
         else:
@@ -457,6 +467,34 @@ class PSFSystematicsMixin:
 
         return xi_psf_sys_samples_plus, xi_psf_sys_samples_minus
 
+    def _load_alpha_leakage(self, ver, tomo_bin_id, cov_type=None, seed=0):
+        """Alpha(theta) of one version and tomographic bin from its rho/tau files.
+
+        With ``cov_type`` None the errors use the variances in the rho/tau
+        files; otherwise the ``cov_tau_*_<cov_type>.npy`` and jackknife
+        ``cov_rho_*_jk.npy`` covariances under ``rho_tau_stats/``.
+        """
+        base_rho = self.basename(ver)
+        base_tau = self.basename(ver, tomo_bin_a=tomo_bin_id)
+        self.rho_stat_handler.load_rho_stats(f"rho_stats_{base_rho}.fits")
+        self.tau_stat_handler.load_tau_stats(f"tau_stats_{base_tau}.fits")
+
+        if cov_type is not None:
+            out_dir = Path(self.cc["paths"]["output"]) / "rho_tau_stats"
+            cov_tau = np.load(out_dir / f"cov_tau_{base_tau}_{cov_type}.npy")
+            cov_rho = np.load(out_dir / f"cov_rho_{base_rho}_jk.npy")
+        else:
+            cov_tau = None
+            cov_rho = None
+
+        return self._get_alpha_leakage(
+            self.rho_stat_handler,
+            self.tau_stat_handler,
+            cov_rho,
+            cov_tau,
+            seed=seed,
+        )
+
     def _get_alpha_leakage(
         self,
         rho_stat_handler,
@@ -524,6 +562,37 @@ class PSFSystematicsMixin:
         alpha_err = np.std(alpha_samples, axis=0)
 
         return theta, alpha, alpha_err
+
+    @staticmethod
+    def _alpha_summaries(theta, alpha, alpha_err):
+        """Scalar summaries of alpha(theta), as ufloats.
+
+        Returns
+        -------
+        dict
+            ``alpha_mean``: inverse-variance weighted mean of alpha(theta), with
+            the weighted standard deviation; ``alpha_1``: alpha and its error at
+            the smallest theta; ``alpha_0``: intercept c of the weighted
+            least-squares affine fit alpha(theta) = c + m theta, with its error
+            from the fit covariance (errors taken as absolute).
+        """
+        theta = np.asarray(theta, dtype=float)
+        alpha = np.asarray(alpha, dtype=float)
+        alpha_err = np.asarray(alpha_err, dtype=float)
+
+        weights = 1 / alpha_err**2
+        mean = np.average(alpha, weights=weights)
+        std = np.sqrt(np.average((alpha - mean) ** 2, weights=weights))
+
+        i_min = np.argmin(theta)
+
+        (_, c), cov = np.polyfit(theta, alpha, 1, w=1 / alpha_err, cov="unscaled")
+
+        return {
+            "alpha_mean": ufloat(mean, std),
+            "alpha_1": ufloat(alpha[i_min], alpha_err[i_min]),
+            "alpha_0": ufloat(c, np.sqrt(cov[1, 1])),
+        }
 
     def _compute_scale_dependent_xi_psf_sys(
         self,
@@ -1125,8 +1194,6 @@ class PSFSystematicsMixin:
 
         n_tomo_bins_plot = max(len(bins["ids"]) for bins in tomo_bins.values())
 
-        out_dir = f"{self.cc['paths']['output']}/rho_tau_stats"
-
         fig, axs = plt.subplots(
             n_tomo_bins_plot, 1, figsize=(8, 3 * n_tomo_bins_plot), sharex=True
         )
@@ -1136,23 +1203,8 @@ class PSFSystematicsMixin:
             label = self.cc[ver]["label"] if "label" in self.cc[ver] else ver
             # Iterate upon each tomographic bin
             for tomo_bin_id in tomo_bins[ver]["ids"]:
-                base_rho = self.basename(ver)
-                base_tau = self.basename(ver, tomo_bin_a=tomo_bin_id)
-                self.rho_stat_handler.load_rho_stats(f"rho_stats_{base_rho}.fits")
-                self.tau_stat_handler.load_tau_stats(f"tau_stats_{base_tau}.fits")
-
-                if cov_type is not None:
-                    cov_tau_path = Path(out_dir) / f"cov_tau_{base_tau}_{cov_type}.npy"
-                    cov_tau = np.load(cov_tau_path)
-                    cov_rho_path = Path(out_dir) / f"cov_rho_{base_rho}_jk.npy"
-                    cov_rho = np.load(cov_rho_path)
-                else:
-                    cov_tau = None
-                    cov_rho = None
-
-                # Get the error bar sampling from the covariance matrices
-                theta, alpha, alpha_err = self._get_alpha_leakage(
-                    self.rho_stat_handler, self.tau_stat_handler, cov_rho, cov_tau
+                theta, alpha, alpha_err = self._load_alpha_leakage(
+                    ver, tomo_bin_id, cov_type
                 )
 
                 jittered_theta = self._get_jittered_theta(
@@ -1217,49 +1269,88 @@ class PSFSystematicsMixin:
         if close:
             plt.close()
 
-    def plot_objectwise_leakage(self):
-        if not hasattr(self, "leakage_coeff"):
-            self.calculate_objectwise_leakage()
+    def plot_objectwise_leakage(self, tomography=False, cov_type=None):
+        """Plot object-wise leakage against the scale-dependent alpha.
+
+        x is the object-wise <a_ii>, y the alpha(theta) summaries from the
+        rho/tau products (fill style: mean, smallest scale, affine intercept).
+        Marker shape is the version; colour is the version (non-tomographic) or
+        the tomographic bin. Saved to ``leakage_coefficients.png``, or
+        ``leakage_coefficients_tomo.png`` when ``tomography`` is True.
+        """
+        tomo_bins = self._get_tomo_bins_for_versions(
+            self.versions, tomography=tomography
+        )
+        existing = getattr(self, "leakage_coeff", {})
+        if any(
+            ver in self.results_objectwise
+            and any(f"tomo_bin_{i}" not in existing.get(ver, {}) for i in bins["ids"])
+            for ver, bins in tomo_bins.items()
+        ):
+            self.calculate_objectwise_leakage(tomography=tomography)
+        self.calculate_alpha_leakage_summaries(tomography=tomography, cov_type=cov_type)
 
         self.print_start("Plotting object-wise leakage:")
         cs_plots.figure(figsize=(15, 15))
 
-        linestyles = ["-", "--", ":"]
-        fillstyles = ["full", "none", "left", "right", "bottom", "top"]
+        summaries = {
+            "alpha_mean": (r"$\bar\alpha$", "-", "full"),
+            "alpha_1": (r"$\alpha(\theta_{\rm min})$", "--", "none"),
+            "alpha_0": (r"$\alpha(0)$", ":", "left"),
+        }
+        max_bins = max(len(bins["ids"]) for bins in tomo_bins.values())
+        bin_colours = plt.get_cmap("viridis")(np.linspace(0, 0.9, max_bins))
 
-        for ver in self.results_objectwise:
-            label = ver
-            for key, ls, fs in zip(
-                ["alpha_mean", "alpha_1", "alpha_0"], linestyles, fillstyles
-            ):
-                x = self.leakage_coeff[ver]["aii_mean"].nominal_value
-                dx = self.leakage_coeff[ver]["aii_mean"].std_dev
-                y = self.leakage_coeff[ver][key].nominal_value
-                dy = self.leakage_coeff[ver][key].std_dev
-
-                eb = plt.errorbar(
-                    x,
-                    y,
-                    xerr=dx,
-                    yerr=dy,
-                    fmt=self.cc[ver]["marker"],
-                    color=self.cc[ver]["colour"],
-                    fillstyle=fs,
-                    label=label,
+        handles = []
+        for ver in self.leakage_coeff:
+            marker = self.cc[ver]["marker"]
+            ver_colour = "k" if tomography else self.cc[ver]["colour"]
+            for i_bin, tomo_bin_id in enumerate(tomo_bins[ver]["ids"]):
+                coeff = self.leakage_coeff[ver][f"tomo_bin_{tomo_bin_id}"]
+                colour = bin_colours[i_bin] if tomography else ver_colour
+                for key, (_, ls, fs) in summaries.items():
+                    eb = plt.errorbar(
+                        coeff["aii_mean"].nominal_value,
+                        coeff[key].nominal_value,
+                        xerr=coeff["aii_mean"].std_dev,
+                        yerr=coeff[key].std_dev,
+                        fmt=marker,
+                        color=colour,
+                        fillstyle=fs,
+                    )
+                    eb[-1][0].set_linestyle(ls)
+            handles.append(
+                plt.Line2D(
+                    [],
+                    [],
+                    marker=marker,
+                    ls="",
+                    color=ver_colour,
+                    label=self.cc[ver].get("label", ver),
                 )
-                label = None
-                eb[-1][0].set_linestyle(ls)
+            )
+
+        if tomography:
+            handles += [
+                plt.Line2D([], [], marker="s", ls="", color=c, label=f"bin {i + 1}")
+                for i, c in enumerate(bin_colours)
+            ]
+        handles += [
+            plt.Line2D([], [], marker="o", ls=ls, color="grey", fillstyle=fs, label=lab)
+            for lab, ls, fs in summaries.values()
+        ]
 
         # y=x line
         xlim = 0.02
         x = [-xlim, xlim]
-        y = x
-        plt.plot(x, y, "k:", linewidth=0.5)
+        plt.plot(x, x, "k:", linewidth=0.5)
 
-        plt.legend()
-        plt.xlabel(r"tr $a$ (object-wise)")
-        plt.ylabel(r"$\alpha$ (scale-dependent)")
-        out_path = self._output_path("leakage_coefficients.png")
+        plt.legend(handles=handles)
+        plt.xlabel(r"$\langle a_{ii} \rangle$ (object-wise)")
+        plt.ylabel(r"$\alpha$ (scale-dependent, $\tau_0 / \rho_0$)")
+        out_path = self._output_path(
+            f"leakage_coefficients{'_tomo' if tomography else ''}.png"
+        )
         cs_plots.savefig(out_path, close_fig=False)
         cs_plots.show()
         self.print_done(f"Object-wise leakage coefficients plot saved to {out_path}")

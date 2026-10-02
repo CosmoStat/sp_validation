@@ -1,9 +1,9 @@
 """Rule cv_objectwise_leakage: object-wise vs scale-dependent PSF leakage.
 
-plot_objectwise_leakage triggers calculate_objectwise_leakage, which itself
-triggers calculate_scale_dependent_leakage — the whole leakage chain runs here.
-Writes leakage_{version}/ products (the object-wise regression .pkl is the
-durable artifact) and leakage_coefficients.png. Sentinel-tracked because the
+plot_objectwise_leakage runs calculate_objectwise_leakage (the per-version
+regression) and summarises the scale-dependent alpha(theta) = tau_0 / rho_0 from
+the rho/tau products. Writes leakage_{version}/ products (the object-wise
+regression .pkl is the durable artifact) and leakage_coefficients.png. Sentinel-tracked because the
 per-version leakage product paths are built inside shear_psf_leakage.
 """
 
