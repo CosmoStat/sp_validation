@@ -113,6 +113,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../using_the_catalogues.html">Using the weak-lensing catalogues</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../run_validation.html">Running shear validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../catalogue_columns.html">Catalogue columns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../post_processing.html">Post-processing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../Leakage_object_Tutorial.html">Leakage_object Tutorial</a></li>
 </ul>
@@ -138,6 +139,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.format.html">sp_validation.format</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.galaxy.html">sp_validation.galaxy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.glass_mock.html">sp_validation.glass_mock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.grammar.html">sp_validation.grammar</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.image_sims.html">sp_validation.image_sims</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.io.html">sp_validation.io</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.masks.html">sp_validation.masks</a></li>
@@ -392,244 +394,170 @@
 
 </span><span id="line-184">
 </span><span id="line-185">
-<div class="viewcode-block" id="get_footprint">
-<a class="viewcode-back" href="../../sp_validation.survey.html#sp_validation.survey.get_footprint">[docs]</a>
-</span><span id="line-186"><span class="k">def</span><span class="w"> </span><span class="nf">get_footprint</span><span class="p">(</span><span class="n">patch</span><span class="p">,</span> <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">):</span>
-</span><span id="line-187"><span class="w">    </span><span class="sd">"""Get Footprint.</span>
-</span><span id="line-188">
-</span><span id="line-189"><span class="sd">    Return coordinates within footprint of patch.</span>
-</span><span id="line-190">
-</span><span id="line-191"><span class="sd">    Parameters</span>
-</span><span id="line-192"><span class="sd">    ----------</span>
-</span><span id="line-193"><span class="sd">    patch : str</span>
-</span><span id="line-194"><span class="sd">        patch name</span>
-</span><span id="line-195"><span class="sd">    ra : array of float</span>
-</span><span id="line-196"><span class="sd">        R,A, coordintates</span>
-</span><span id="line-197"><span class="sd">    dec : array of float</span>
-</span><span id="line-198"><span class="sd">        DEC coordinates</span>
-</span><span id="line-199">
-</span><span id="line-200"><span class="sd">    Returns</span>
-</span><span id="line-201"><span class="sd">    -------</span>
-</span><span id="line-202"><span class="sd">    list of float</span>
-</span><span id="line-203"><span class="sd">        list of coordinates withint footprint</span>
-</span><span id="line-204">
-</span><span id="line-205"><span class="sd">    """</span>
-</span><span id="line-206">    <span class="c1"># Set boundary coordinates between some of the patches</span>
-</span><span id="line-207">    <span class="n">ra_14</span> <span class="o">=</span> <span class="mf">157.5</span>
-</span><span id="line-208">    <span class="n">ra_45</span> <span class="o">=</span> <span class="mi">207</span>
-</span><span id="line-209">    <span class="n">ra2_45</span> <span class="o">=</span> <span class="mi">220</span>
-</span><span id="line-210">    <span class="n">ra_36</span> <span class="o">=</span> <span class="mi">230</span>
-</span><span id="line-211">    <span class="n">dec_3456</span> <span class="o">=</span> <span class="mi">48</span>
-</span><span id="line-212">
-</span><span id="line-213">    <span class="n">ra2_34</span> <span class="o">=</span> <span class="mi">190</span>
-</span><span id="line-214">
-</span><span id="line-215">    <span class="n">dec_min</span> <span class="o">=</span> <span class="mi">29</span>
-</span><span id="line-216">    <span class="n">dec_max</span> <span class="o">=</span> <span class="mi">60</span>
-</span><span id="line-217">
-</span><span id="line-218">    <span class="c1"># Check whether input matches one of the seven CFIS patch name.</span>
-</span><span id="line-219">    <span class="c1"># Return coordinates within the patch</span>
-</span><span id="line-220">    <span class="k">if</span> <span class="n">patch</span> <span class="o">==</span> <span class="s2">"P1"</span><span class="p">:</span>
-</span><span id="line-221">        <span class="k">return</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&gt;</span> <span class="mi">100</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="n">ra_14</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&gt;</span> <span class="n">dec_min</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&lt;</span> <span class="n">dec_max</span><span class="p">)</span>
-</span><span id="line-222">
-</span><span id="line-223">    <span class="k">elif</span> <span class="n">patch</span> <span class="o">==</span> <span class="s2">"P2"</span><span class="p">:</span>
-</span><span id="line-224">        <span class="c1"># -30 &lt; ra &lt; 60</span>
-</span><span id="line-225">        <span class="k">return</span> <span class="p">((</span><span class="n">ra</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="mi">60</span><span class="p">))</span> <span class="o">|</span> <span class="p">((</span><span class="n">ra</span> <span class="o">&gt;</span> <span class="mi">330</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="mi">360</span><span class="p">))</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&gt;</span> <span class="n">dec_min</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span>
-</span><span id="line-226">            <span class="n">dec</span> <span class="o">&lt;</span> <span class="n">dec_max</span>
-</span><span id="line-227">        <span class="p">)</span>
-</span><span id="line-228">
-</span><span id="line-229">    <span class="k">elif</span> <span class="n">patch</span> <span class="o">==</span> <span class="s2">"P3"</span><span class="p">:</span>
-</span><span id="line-230">        <span class="k">return</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&gt;</span> <span class="n">ra2_34</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="n">ra_36</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&gt;</span> <span class="n">dec_3456</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&lt;</span> <span class="mi">70</span><span class="p">)</span>
-</span><span id="line-231">
-</span><span id="line-232">    <span class="k">elif</span> <span class="n">patch</span> <span class="o">==</span> <span class="s2">"P4"</span><span class="p">:</span>
-</span><span id="line-233">        <span class="k">return</span> <span class="p">(</span>
-</span><span id="line-234">            <span class="p">((</span><span class="n">ra</span> <span class="o">&gt;</span> <span class="n">ra_14</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="n">ra_45</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&gt;</span> <span class="n">dec_min</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&lt;</span> <span class="n">dec_3456</span><span class="p">))</span>
-</span><span id="line-235">            <span class="o">|</span> <span class="p">((</span><span class="n">ra</span> <span class="o">&gt;</span> <span class="n">ra_14</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="n">ra2_34</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&gt;</span> <span class="n">dec_min</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&lt;</span> <span class="mi">70</span><span class="p">))</span>
-</span><span id="line-236">            <span class="o">|</span> <span class="p">((</span><span class="n">ra</span> <span class="o">&gt;</span> <span class="n">ra_45</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="n">ra2_45</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&gt;</span> <span class="n">dec_min</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&lt;</span> <span class="mi">36</span><span class="p">))</span>
-</span><span id="line-237">        <span class="p">)</span>
-</span><span id="line-238">
-</span><span id="line-239">    <span class="k">elif</span> <span class="n">patch</span> <span class="o">==</span> <span class="s2">"P5"</span><span class="p">:</span>
-</span><span id="line-240">        <span class="k">return</span> <span class="p">((</span><span class="n">ra</span> <span class="o">&gt;</span> <span class="n">ra2_45</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="mi">330</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&gt;</span> <span class="n">dec_min</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&lt;</span> <span class="n">dec_3456</span><span class="p">))</span> <span class="o">|</span> <span class="p">(</span>
-</span><span id="line-241">            <span class="p">(</span><span class="n">ra</span> <span class="o">&gt;</span> <span class="n">ra_45</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="n">ra2_45</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&gt;</span> <span class="mi">36</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&lt;</span> <span class="n">dec_3456</span><span class="p">)</span>
-</span><span id="line-242">        <span class="p">)</span>
-</span><span id="line-243">
-</span><span id="line-244">    <span class="k">elif</span> <span class="n">patch</span> <span class="o">==</span> <span class="s2">"P6"</span><span class="p">:</span>
-</span><span id="line-245">        <span class="k">return</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&gt;</span> <span class="n">ra_36</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="mi">330</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&gt;</span> <span class="n">dec_3456</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&gt;</span> <span class="mi">70</span><span class="p">)</span>
-</span><span id="line-246">
-</span><span id="line-247">    <span class="k">elif</span> <span class="n">patch</span> <span class="o">==</span> <span class="s2">"P7"</span><span class="p">:</span>
-</span><span id="line-248">        <span class="k">return</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&gt;</span> <span class="mi">60</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="mi">180</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&gt;</span> <span class="mi">60</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&lt;</span> <span class="mi">90</span><span class="p">)</span>
-</span><span id="line-249">
-</span><span id="line-250">    <span class="k">elif</span> <span class="n">patch</span> <span class="o">==</span> <span class="s2">"W3"</span><span class="p">:</span>
-</span><span id="line-251">        <span class="k">return</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&gt;</span> <span class="mi">208</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="mi">221</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&gt;</span> <span class="mi">51</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&lt;</span> <span class="mi">58</span><span class="p">)</span>
-</span><span id="line-252">
-</span><span id="line-253">    <span class="k">else</span><span class="p">:</span>
-</span><span id="line-254">        <span class="k">return</span> <span class="n">dec</span> <span class="o">&gt;</span> <span class="n">dec_min</span></div>
-
-</span><span id="line-255">
-</span><span id="line-256">
 <div class="viewcode-block" id="area_from_coords">
 <a class="viewcode-back" href="../../sp_validation.survey.html#sp_validation.survey.area_from_coords">[docs]</a>
-</span><span id="line-257"><span class="k">def</span><span class="w"> </span><span class="nf">area_from_coords</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">nside</span><span class="p">):</span>
-</span><span id="line-258"><span class="w">    </span><span class="sd">"""Survey area from galaxy coordinates via HEALPix pixel counting.</span>
-</span><span id="line-259">
-</span><span id="line-260"><span class="sd">    Bins the galaxy positions onto a HEALPix grid at resolution ``nside`` and</span>
-</span><span id="line-261"><span class="sd">    sums the area of every occupied pixel. This ignores partial-pixel coverage</span>
-</span><span id="line-262"><span class="sd">    and so overestimates the true observed area, but needs no external mask.</span>
-</span><span id="line-263">
-</span><span id="line-264"><span class="sd">    Parameters</span>
-</span><span id="line-265"><span class="sd">    ----------</span>
-</span><span id="line-266"><span class="sd">    ra : array of float</span>
-</span><span id="line-267"><span class="sd">        Right-ascension coordinates in degrees.</span>
-</span><span id="line-268"><span class="sd">    dec : array of float</span>
-</span><span id="line-269"><span class="sd">        Declination coordinates in degrees.</span>
-</span><span id="line-270"><span class="sd">    nside : int</span>
-</span><span id="line-271"><span class="sd">        HEALPix resolution parameter.</span>
-</span><span id="line-272">
-</span><span id="line-273"><span class="sd">    Returns</span>
-</span><span id="line-274"><span class="sd">    -------</span>
-</span><span id="line-275"><span class="sd">    float</span>
-</span><span id="line-276"><span class="sd">        Area in square degrees.</span>
-</span><span id="line-277"><span class="sd">    """</span>
-</span><span id="line-278">    <span class="n">theta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="mf">90.0</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">dec</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">))</span>
-</span><span id="line-279">    <span class="n">phi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">))</span>
-</span><span id="line-280">    <span class="n">pix</span> <span class="o">=</span> <span class="n">hp</span><span class="o">.</span><span class="n">ang2pix</span><span class="p">(</span><span class="n">nside</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">phi</span><span class="p">,</span> <span class="n">lonlat</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-</span><span id="line-281">    <span class="n">unique_pix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">pix</span><span class="p">)</span>
-</span><span id="line-282">    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">unique_pix</span><span class="o">.</span><span class="n">size</span> <span class="o">*</span> <span class="n">hp</span><span class="o">.</span><span class="n">nside2pixarea</span><span class="p">(</span><span class="n">nside</span><span class="p">,</span> <span class="n">degrees</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span></div>
+</span><span id="line-186"><span class="k">def</span><span class="w"> </span><span class="nf">area_from_coords</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">nside</span><span class="p">):</span>
+</span><span id="line-187"><span class="w">    </span><span class="sd">"""Survey area from galaxy coordinates via HEALPix pixel counting.</span>
+</span><span id="line-188">
+</span><span id="line-189"><span class="sd">    Bins the galaxy positions onto a HEALPix grid at resolution ``nside`` and</span>
+</span><span id="line-190"><span class="sd">    sums the area of every occupied pixel. This ignores partial-pixel coverage</span>
+</span><span id="line-191"><span class="sd">    and so overestimates the true observed area, but needs no external mask.</span>
+</span><span id="line-192">
+</span><span id="line-193"><span class="sd">    Parameters</span>
+</span><span id="line-194"><span class="sd">    ----------</span>
+</span><span id="line-195"><span class="sd">    ra : array of float</span>
+</span><span id="line-196"><span class="sd">        Right-ascension coordinates in degrees.</span>
+</span><span id="line-197"><span class="sd">    dec : array of float</span>
+</span><span id="line-198"><span class="sd">        Declination coordinates in degrees.</span>
+</span><span id="line-199"><span class="sd">    nside : int</span>
+</span><span id="line-200"><span class="sd">        HEALPix resolution parameter.</span>
+</span><span id="line-201">
+</span><span id="line-202"><span class="sd">    Returns</span>
+</span><span id="line-203"><span class="sd">    -------</span>
+</span><span id="line-204"><span class="sd">    float</span>
+</span><span id="line-205"><span class="sd">        Area in square degrees.</span>
+</span><span id="line-206"><span class="sd">    """</span>
+</span><span id="line-207">    <span class="n">theta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="mf">90.0</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">dec</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">))</span>
+</span><span id="line-208">    <span class="n">phi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">))</span>
+</span><span id="line-209">    <span class="n">pix</span> <span class="o">=</span> <span class="n">hp</span><span class="o">.</span><span class="n">ang2pix</span><span class="p">(</span><span class="n">nside</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">phi</span><span class="p">,</span> <span class="n">lonlat</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</span><span id="line-210">    <span class="n">unique_pix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">pix</span><span class="p">)</span>
+</span><span id="line-211">    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">unique_pix</span><span class="o">.</span><span class="n">size</span> <span class="o">*</span> <span class="n">hp</span><span class="o">.</span><span class="n">nside2pixarea</span><span class="p">(</span><span class="n">nside</span><span class="p">,</span> <span class="n">degrees</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span></div>
 
-</span><span id="line-283">
-</span><span id="line-284">
+</span><span id="line-212">
+</span><span id="line-213">
 <div class="viewcode-block" id="n_eff_density">
 <a class="viewcode-back" href="../../sp_validation.survey.html#sp_validation.survey.n_eff_density">[docs]</a>
-</span><span id="line-285"><span class="k">def</span><span class="w"> </span><span class="nf">n_eff_density</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">area_deg2</span><span class="p">):</span>
-</span><span id="line-286"><span class="w">    </span><span class="sd">"""Effective galaxy number density per square arcminute.</span>
-</span><span id="line-287">
-</span><span id="line-288"><span class="sd">    Uses the weighted definition ``n_eff = (Σw)² / (A · Σw²)`` where ``A`` is the</span>
-</span><span id="line-289"><span class="sd">    survey area in square arcminutes (``area_deg2 · 3600``). Returns ``0.0`` when</span>
-</span><span id="line-290"><span class="sd">    ``Σw² == 0`` to avoid division by zero.</span>
-</span><span id="line-291">
-</span><span id="line-292"><span class="sd">    Parameters</span>
-</span><span id="line-293"><span class="sd">    ----------</span>
-</span><span id="line-294"><span class="sd">    w : array of float</span>
-</span><span id="line-295"><span class="sd">        Per-galaxy weights.</span>
-</span><span id="line-296"><span class="sd">    area_deg2 : float</span>
-</span><span id="line-297"><span class="sd">        Survey area in square degrees.</span>
-</span><span id="line-298">
-</span><span id="line-299"><span class="sd">    Returns</span>
-</span><span id="line-300"><span class="sd">    -------</span>
-</span><span id="line-301"><span class="sd">    float</span>
-</span><span id="line-302"><span class="sd">        Effective number density in galaxies per square arcminute.</span>
-</span><span id="line-303"><span class="sd">    """</span>
-</span><span id="line-304">    <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
-</span><span id="line-305">    <span class="n">sum_w</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">w</span><span class="p">))</span>
-</span><span id="line-306">    <span class="n">sum_w2</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">w</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
-</span><span id="line-307">    <span class="n">area_arcmin2</span> <span class="o">=</span> <span class="n">area_deg2</span> <span class="o">*</span> <span class="mf">3600.0</span>
-</span><span id="line-308">    <span class="k">return</span> <span class="p">(</span><span class="n">sum_w</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">area_arcmin2</span> <span class="o">*</span> <span class="n">sum_w2</span><span class="p">)</span> <span class="k">if</span> <span class="n">sum_w2</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span></div>
+</span><span id="line-214"><span class="k">def</span><span class="w"> </span><span class="nf">n_eff_density</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">area_deg2</span><span class="p">):</span>
+</span><span id="line-215"><span class="w">    </span><span class="sd">"""Effective galaxy number density per square arcminute.</span>
+</span><span id="line-216">
+</span><span id="line-217"><span class="sd">    Uses the weighted definition ``n_eff = (Σw)² / (A · Σw²)`` where ``A`` is the</span>
+</span><span id="line-218"><span class="sd">    survey area in square arcminutes (``area_deg2 · 3600``). Returns ``0.0`` when</span>
+</span><span id="line-219"><span class="sd">    ``Σw² == 0`` to avoid division by zero.</span>
+</span><span id="line-220">
+</span><span id="line-221"><span class="sd">    Parameters</span>
+</span><span id="line-222"><span class="sd">    ----------</span>
+</span><span id="line-223"><span class="sd">    w : array of float</span>
+</span><span id="line-224"><span class="sd">        Per-galaxy weights.</span>
+</span><span id="line-225"><span class="sd">    area_deg2 : float</span>
+</span><span id="line-226"><span class="sd">        Survey area in square degrees.</span>
+</span><span id="line-227">
+</span><span id="line-228"><span class="sd">    Returns</span>
+</span><span id="line-229"><span class="sd">    -------</span>
+</span><span id="line-230"><span class="sd">    float</span>
+</span><span id="line-231"><span class="sd">        Effective number density in galaxies per square arcminute.</span>
+</span><span id="line-232"><span class="sd">    """</span>
+</span><span id="line-233">    <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span><span id="line-234">    <span class="n">sum_w</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">w</span><span class="p">))</span>
+</span><span id="line-235">    <span class="n">sum_w2</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">w</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+</span><span id="line-236">    <span class="n">area_arcmin2</span> <span class="o">=</span> <span class="n">area_deg2</span> <span class="o">*</span> <span class="mf">3600.0</span>
+</span><span id="line-237">    <span class="k">return</span> <span class="p">(</span><span class="n">sum_w</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">area_arcmin2</span> <span class="o">*</span> <span class="n">sum_w2</span><span class="p">)</span> <span class="k">if</span> <span class="n">sum_w2</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span></div>
 
-</span><span id="line-309">
-</span><span id="line-310">
+</span><span id="line-238">
+</span><span id="line-239">
 <div class="viewcode-block" id="ellipticity_dispersion">
 <a class="viewcode-back" href="../../sp_validation.survey.html#sp_validation.survey.ellipticity_dispersion">[docs]</a>
-</span><span id="line-311"><span class="k">def</span><span class="w"> </span><span class="nf">ellipticity_dispersion</span><span class="p">(</span><span class="n">e1</span><span class="p">,</span> <span class="n">e2</span><span class="p">,</span> <span class="n">w</span><span class="p">):</span>
-</span><span id="line-312"><span class="w">    </span><span class="sd">"""Per-component weighted ellipticity dispersion.</span>
-</span><span id="line-313">
-</span><span id="line-314"><span class="sd">    Computes ``sqrt(0.5 · (⟨e1²⟩ + ⟨e2²⟩))`` where each component average is</span>
-</span><span id="line-315"><span class="sd">    weighted by ``w²``. This is the *per-component* RMS convention; it differs by</span>
-</span><span id="line-316"><span class="sd">    a factor ``√2`` from the summed-component ``sigma_e`` returned by</span>
-</span><span id="line-317"><span class="sd">    :func:`effective_survey_stats`. Keep the two conventions distinct.</span>
-</span><span id="line-318">
-</span><span id="line-319"><span class="sd">    Parameters</span>
-</span><span id="line-320"><span class="sd">    ----------</span>
-</span><span id="line-321"><span class="sd">    e1, e2 : array of float</span>
-</span><span id="line-322"><span class="sd">        Ellipticity components.</span>
-</span><span id="line-323"><span class="sd">    w : array of float</span>
-</span><span id="line-324"><span class="sd">        Per-galaxy weights.</span>
-</span><span id="line-325">
-</span><span id="line-326"><span class="sd">    Returns</span>
-</span><span id="line-327"><span class="sd">    -------</span>
-</span><span id="line-328"><span class="sd">    float</span>
-</span><span id="line-329"><span class="sd">        Per-component ellipticity dispersion.</span>
-</span><span id="line-330"><span class="sd">    """</span>
-</span><span id="line-331">    <span class="n">e1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">e1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
-</span><span id="line-332">    <span class="n">e2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">e2</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
-</span><span id="line-333">    <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
-</span><span id="line-334">    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span>
-</span><span id="line-335">        <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span>
-</span><span id="line-336">            <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">e1</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">w</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">e2</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">w</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
-</span><span id="line-337">        <span class="p">)</span>
-</span><span id="line-338">    <span class="p">)</span></div>
+</span><span id="line-240"><span class="k">def</span><span class="w"> </span><span class="nf">ellipticity_dispersion</span><span class="p">(</span><span class="n">e1</span><span class="p">,</span> <span class="n">e2</span><span class="p">,</span> <span class="n">w</span><span class="p">):</span>
+</span><span id="line-241"><span class="w">    </span><span class="sd">"""Per-component weighted ellipticity dispersion.</span>
+</span><span id="line-242">
+</span><span id="line-243"><span class="sd">    Computes ``sqrt(0.5 · (⟨e1²⟩ + ⟨e2²⟩))`` where each component average is</span>
+</span><span id="line-244"><span class="sd">    weighted by ``w²``. This is the *per-component* RMS convention; it differs by</span>
+</span><span id="line-245"><span class="sd">    a factor ``√2`` from the summed-component ``sigma_e`` returned by</span>
+</span><span id="line-246"><span class="sd">    :func:`effective_survey_stats`. Keep the two conventions distinct.</span>
+</span><span id="line-247">
+</span><span id="line-248"><span class="sd">    Parameters</span>
+</span><span id="line-249"><span class="sd">    ----------</span>
+</span><span id="line-250"><span class="sd">    e1, e2 : array of float</span>
+</span><span id="line-251"><span class="sd">        Ellipticity components.</span>
+</span><span id="line-252"><span class="sd">    w : array of float</span>
+</span><span id="line-253"><span class="sd">        Per-galaxy weights.</span>
+</span><span id="line-254">
+</span><span id="line-255"><span class="sd">    Returns</span>
+</span><span id="line-256"><span class="sd">    -------</span>
+</span><span id="line-257"><span class="sd">    float</span>
+</span><span id="line-258"><span class="sd">        Per-component ellipticity dispersion.</span>
+</span><span id="line-259"><span class="sd">    """</span>
+</span><span id="line-260">    <span class="n">e1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">e1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span><span id="line-261">    <span class="n">e2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">e2</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span><span id="line-262">    <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span><span id="line-263">    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span>
+</span><span id="line-264">        <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span>
+</span><span id="line-265">            <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">e1</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">w</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">e2</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">w</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+</span><span id="line-266">        <span class="p">)</span>
+</span><span id="line-267">    <span class="p">)</span></div>
 
-</span><span id="line-339">
-</span><span id="line-340">
+</span><span id="line-268">
+</span><span id="line-269">
 <div class="viewcode-block" id="additive_bias">
 <a class="viewcode-back" href="../../sp_validation.survey.html#sp_validation.survey.additive_bias">[docs]</a>
-</span><span id="line-341"><span class="k">def</span><span class="w"> </span><span class="nf">additive_bias</span><span class="p">(</span><span class="n">e1</span><span class="p">,</span> <span class="n">e2</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">R</span><span class="p">):</span>
-</span><span id="line-342"><span class="w">    </span><span class="sd">"""Weighted additive-bias estimates ``(c1, c2)``.</span>
-</span><span id="line-343">
-</span><span id="line-344"><span class="sd">    Returns the weighted mean of the response-corrected ellipticities</span>
-</span><span id="line-345"><span class="sd">    ``⟨e1 / R⟩`` and ``⟨e2 / R⟩``, weighted by ``w``.</span>
-</span><span id="line-346">
-</span><span id="line-347"><span class="sd">    Parameters</span>
-</span><span id="line-348"><span class="sd">    ----------</span>
-</span><span id="line-349"><span class="sd">    e1, e2 : array of float</span>
-</span><span id="line-350"><span class="sd">        Ellipticity components (before response correction).</span>
-</span><span id="line-351"><span class="sd">    w : array of float</span>
-</span><span id="line-352"><span class="sd">        Per-galaxy weights.</span>
-</span><span id="line-353"><span class="sd">    R : float</span>
-</span><span id="line-354"><span class="sd">        Multiplicative shear response.</span>
-</span><span id="line-355">
-</span><span id="line-356"><span class="sd">    Returns</span>
-</span><span id="line-357"><span class="sd">    -------</span>
-</span><span id="line-358"><span class="sd">    tuple of float</span>
-</span><span id="line-359"><span class="sd">        ``(c1, c2)`` additive-bias estimates.</span>
-</span><span id="line-360"><span class="sd">    """</span>
-</span><span id="line-361">    <span class="n">e1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">e1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
-</span><span id="line-362">    <span class="n">e2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">e2</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
-</span><span id="line-363">    <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
-</span><span id="line-364">    <span class="n">c1</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">e1</span> <span class="o">/</span> <span class="n">R</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">w</span><span class="p">))</span>
-</span><span id="line-365">    <span class="n">c2</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">e2</span> <span class="o">/</span> <span class="n">R</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">w</span><span class="p">))</span>
-</span><span id="line-366">    <span class="k">return</span> <span class="n">c1</span><span class="p">,</span> <span class="n">c2</span></div>
+</span><span id="line-270"><span class="k">def</span><span class="w"> </span><span class="nf">additive_bias</span><span class="p">(</span><span class="n">e1</span><span class="p">,</span> <span class="n">e2</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">R</span><span class="p">):</span>
+</span><span id="line-271"><span class="w">    </span><span class="sd">"""Weighted additive-bias estimates ``(c1, c2)``.</span>
+</span><span id="line-272">
+</span><span id="line-273"><span class="sd">    Returns the weighted mean of the response-corrected ellipticities</span>
+</span><span id="line-274"><span class="sd">    ``⟨e1 / R⟩`` and ``⟨e2 / R⟩``, weighted by ``w``.</span>
+</span><span id="line-275">
+</span><span id="line-276"><span class="sd">    Parameters</span>
+</span><span id="line-277"><span class="sd">    ----------</span>
+</span><span id="line-278"><span class="sd">    e1, e2 : array of float</span>
+</span><span id="line-279"><span class="sd">        Ellipticity components (before response correction).</span>
+</span><span id="line-280"><span class="sd">    w : array of float</span>
+</span><span id="line-281"><span class="sd">        Per-galaxy weights.</span>
+</span><span id="line-282"><span class="sd">    R : float</span>
+</span><span id="line-283"><span class="sd">        Multiplicative shear response.</span>
+</span><span id="line-284">
+</span><span id="line-285"><span class="sd">    Returns</span>
+</span><span id="line-286"><span class="sd">    -------</span>
+</span><span id="line-287"><span class="sd">    tuple of float</span>
+</span><span id="line-288"><span class="sd">        ``(c1, c2)`` additive-bias estimates.</span>
+</span><span id="line-289"><span class="sd">    """</span>
+</span><span id="line-290">    <span class="n">e1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">e1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span><span id="line-291">    <span class="n">e2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">e2</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span><span id="line-292">    <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span><span id="line-293">    <span class="n">c1</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">e1</span> <span class="o">/</span> <span class="n">R</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">w</span><span class="p">))</span>
+</span><span id="line-294">    <span class="n">c2</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">e2</span> <span class="o">/</span> <span class="n">R</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">w</span><span class="p">))</span>
+</span><span id="line-295">    <span class="k">return</span> <span class="n">c1</span><span class="p">,</span> <span class="n">c2</span></div>
 
-</span><span id="line-367">
-</span><span id="line-368">
+</span><span id="line-296">
+</span><span id="line-297">
 <div class="viewcode-block" id="effective_survey_stats">
 <a class="viewcode-back" href="../../sp_validation.survey.html#sp_validation.survey.effective_survey_stats">[docs]</a>
-</span><span id="line-369"><span class="k">def</span><span class="w"> </span><span class="nf">effective_survey_stats</span><span class="p">(</span><span class="n">e1</span><span class="p">,</span> <span class="n">e2</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">area_deg2</span><span class="p">):</span>
-</span><span id="line-370"><span class="w">    </span><span class="sd">"""Effective survey statistics for a shear catalogue.</span>
-</span><span id="line-371">
-</span><span id="line-372"><span class="sd">    Bundles the area-dependent number density and the summed-component shape</span>
-</span><span id="line-373"><span class="sd">    noise. Here ``sigma_e = sqrt(Σ[w²(e1² + e2²)] / Σw²)`` sums over *both*</span>
-</span><span id="line-374"><span class="sd">    components (no ``0.5`` factor); this is distinct from the per-component</span>
-</span><span id="line-375"><span class="sd">    :func:`ellipticity_dispersion`, differing by a factor ``√2``.</span>
-</span><span id="line-376">
-</span><span id="line-377"><span class="sd">    Parameters</span>
-</span><span id="line-378"><span class="sd">    ----------</span>
-</span><span id="line-379"><span class="sd">    e1, e2 : array of float</span>
-</span><span id="line-380"><span class="sd">        Ellipticity components.</span>
-</span><span id="line-381"><span class="sd">    w : array of float</span>
-</span><span id="line-382"><span class="sd">        Per-galaxy weights.</span>
-</span><span id="line-383"><span class="sd">    area_deg2 : float</span>
-</span><span id="line-384"><span class="sd">        Survey area in square degrees.</span>
-</span><span id="line-385">
-</span><span id="line-386"><span class="sd">    Returns</span>
-</span><span id="line-387"><span class="sd">    -------</span>
-</span><span id="line-388"><span class="sd">    dict</span>
-</span><span id="line-389"><span class="sd">        Keys ``n_eff``, ``sigma_e``, ``sum_w``, ``sum_w2``.</span>
-</span><span id="line-390"><span class="sd">    """</span>
-</span><span id="line-391">    <span class="n">e1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">e1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
-</span><span id="line-392">    <span class="n">e2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">e2</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
-</span><span id="line-393">    <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
-</span><span id="line-394">
-</span><span id="line-395">    <span class="n">sum_w</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">w</span><span class="p">))</span>
-</span><span id="line-396">    <span class="n">sum_w2</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">w</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
-</span><span id="line-397">    <span class="n">sum_w2_e2</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="n">w</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">e1</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">e2</span><span class="o">**</span><span class="mi">2</span><span class="p">)))</span>
-</span><span id="line-398">
-</span><span id="line-399">    <span class="n">sigma_e</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">sum_w2_e2</span> <span class="o">/</span> <span class="n">sum_w2</span><span class="p">)</span> <span class="k">if</span> <span class="n">sum_w2</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span>
-</span><span id="line-400">
-</span><span id="line-401">    <span class="k">return</span> <span class="p">{</span>
-</span><span id="line-402">        <span class="s2">"n_eff"</span><span class="p">:</span> <span class="n">n_eff_density</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">area_deg2</span><span class="p">),</span>
-</span><span id="line-403">        <span class="s2">"sigma_e"</span><span class="p">:</span> <span class="n">sigma_e</span><span class="p">,</span>
-</span><span id="line-404">        <span class="s2">"sum_w"</span><span class="p">:</span> <span class="n">sum_w</span><span class="p">,</span>
-</span><span id="line-405">        <span class="s2">"sum_w2"</span><span class="p">:</span> <span class="n">sum_w2</span><span class="p">,</span>
-</span><span id="line-406">    <span class="p">}</span></div>
+</span><span id="line-298"><span class="k">def</span><span class="w"> </span><span class="nf">effective_survey_stats</span><span class="p">(</span><span class="n">e1</span><span class="p">,</span> <span class="n">e2</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">area_deg2</span><span class="p">):</span>
+</span><span id="line-299"><span class="w">    </span><span class="sd">"""Effective survey statistics for a shear catalogue.</span>
+</span><span id="line-300">
+</span><span id="line-301"><span class="sd">    Bundles the area-dependent number density and the summed-component shape</span>
+</span><span id="line-302"><span class="sd">    noise. Here ``sigma_e = sqrt(Σ[w²(e1² + e2²)] / Σw²)`` sums over *both*</span>
+</span><span id="line-303"><span class="sd">    components (no ``0.5`` factor); this is distinct from the per-component</span>
+</span><span id="line-304"><span class="sd">    :func:`ellipticity_dispersion`, differing by a factor ``√2``.</span>
+</span><span id="line-305">
+</span><span id="line-306"><span class="sd">    Parameters</span>
+</span><span id="line-307"><span class="sd">    ----------</span>
+</span><span id="line-308"><span class="sd">    e1, e2 : array of float</span>
+</span><span id="line-309"><span class="sd">        Ellipticity components.</span>
+</span><span id="line-310"><span class="sd">    w : array of float</span>
+</span><span id="line-311"><span class="sd">        Per-galaxy weights.</span>
+</span><span id="line-312"><span class="sd">    area_deg2 : float</span>
+</span><span id="line-313"><span class="sd">        Survey area in square degrees.</span>
+</span><span id="line-314">
+</span><span id="line-315"><span class="sd">    Returns</span>
+</span><span id="line-316"><span class="sd">    -------</span>
+</span><span id="line-317"><span class="sd">    dict</span>
+</span><span id="line-318"><span class="sd">        Keys ``n_eff``, ``sigma_e``, ``sum_w``, ``sum_w2``.</span>
+</span><span id="line-319"><span class="sd">    """</span>
+</span><span id="line-320">    <span class="n">e1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">e1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span><span id="line-321">    <span class="n">e2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">e2</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span><span id="line-322">    <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span><span id="line-323">
+</span><span id="line-324">    <span class="n">sum_w</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">w</span><span class="p">))</span>
+</span><span id="line-325">    <span class="n">sum_w2</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">w</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+</span><span id="line-326">    <span class="n">sum_w2_e2</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="n">w</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">e1</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">e2</span><span class="o">**</span><span class="mi">2</span><span class="p">)))</span>
+</span><span id="line-327">
+</span><span id="line-328">    <span class="n">sigma_e</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">sum_w2_e2</span> <span class="o">/</span> <span class="n">sum_w2</span><span class="p">)</span> <span class="k">if</span> <span class="n">sum_w2</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span>
+</span><span id="line-329">
+</span><span id="line-330">    <span class="k">return</span> <span class="p">{</span>
+</span><span id="line-331">        <span class="s2">"n_eff"</span><span class="p">:</span> <span class="n">n_eff_density</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">area_deg2</span><span class="p">),</span>
+</span><span id="line-332">        <span class="s2">"sigma_e"</span><span class="p">:</span> <span class="n">sigma_e</span><span class="p">,</span>
+</span><span id="line-333">        <span class="s2">"sum_w"</span><span class="p">:</span> <span class="n">sum_w</span><span class="p">,</span>
+</span><span id="line-334">        <span class="s2">"sum_w2"</span><span class="p">:</span> <span class="n">sum_w2</span><span class="p">,</span>
+</span><span id="line-335">    <span class="p">}</span></div>
 
 </span></code></pre></div>
     </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
@@ -639,7 +567,7 @@
       </div><footer class="py-6 border-t border-border md:py-0">
     <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
       <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-        <p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini&nbsp;Last updated: 01 Oct, 2026.&nbsp;Built with <a class="font-medium underline underline-offset-4"
+        <p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini&nbsp;Last updated: 02 Oct, 2026.&nbsp;Built with <a class="font-medium underline underline-offset-4"
     href="https://www.sphinx-doc.org"
     rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>

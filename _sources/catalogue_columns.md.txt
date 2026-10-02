@@ -1,0 +1,156 @@
+# Catalogue columns
+
+These are the catalogue columns sp_validation reads by fixed name. Their
+canonical names are ShapePipe v2's. Every other column it reads is named in
+configuration: the cosmo_val `cat_config.yaml` `*_col` keys pick the shear,
+weight, PSF and star columns; masking configs name the columns they cut on
+(`col_name`); `mask_columns` overrides the default mask columns listed below.
+
+This page is generated from `config/columns/shapepipe_v2.yaml`, which a test
+keeps in step with the code.
+
+## Reading a catalogue with other column names
+
+Give the catalogue's configuration a `column_map`,
+`{canonical name: name in the file}`. The reader presents the file's columns
+under the canonical names, lazily and without copying the data, so nothing
+downstream changes. One `*` on each side maps a family of columns at once;
+explicit entries take precedence over patterns.
+
+```yaml
+# cat_config.yaml: a shear, psf or star block
+shear:
+  path: my_catalogue.hdf5
+  column_map:
+    RA: ALPHA_J2000
+    Dec: DELTA_J2000
+
+# calibration config (config/calibration/*.yaml), under params:
+params:
+  input_path: my_comprehensive.hdf5
+  column_map:
+    "NGMIX_*": "MYFIT_*"
+```
+
+The calibration scripts take `galaxy_column_map` and `star_column_map` in
+`params.py`. The `*_col` keys keep naming columns as the reader presents them,
+that is after the map.
+
+The container is detected from the file contents: FITS (one table HDU, the
+first unless `hdu` says otherwise), or HDF5 holding one dataset, a
+comprehensive `data` dataset (joined with `data_ext` when present), or a group
+of per-tile or per-exposure datasets, as ShapePipe writes them.
+
+## ShapePipe v1 products
+
+Catalogues released up to v1.6.x name their columns in ShapePipe's v1
+grammar (`SIGMA_PSF_HSM`, the 2-vector `NGMIX_ELL_NOSHEAR`, ...). They need no
+map: the reader detects them and presents the names below, converting where
+the v1 quantity differs (sigma to `T = 2 sigma^2`, 2-vectors to components).
+`sp_validation.grammar` holds the rules. A `column_map` applies before that
+detection and overrides any rule for the same canonical name.
+
+
+## Galaxy catalogue
+
+ShapePipe galaxy catalogue: the campaign catalogue (`final_cat_<campaign>.hdf5`) and the comprehensive catalogue merged from it. Read by the calibration pipeline (`scripts/calibration`, `catalog_builders`).
+
+| Column | Meaning |
+|---|---|
+| `RA` | Right ascension [deg]. |
+| `DEC` | Declination [deg] (campaign catalogue). |
+| `XWIN_WORLD` | SExtractor windowed right ascension [deg]; tile-overlap cut. |
+| `YWIN_WORLD` | SExtractor windowed declination [deg]; tile-overlap cut. |
+| `TILE_ID` | Tile the object was detected on. |
+| `FLAGS` | SExtractor extraction flags. |
+| `MAG_AUTO` | SExtractor magnitude. |
+| `N_EPOCH` | Number of exposures covering the object. |
+| `MASK_1_Faint_star_halos` | Mask bit 1 (faint-star halo); True = masked. |
+| `MASK_2_Bright_star_halos` | Mask bit 2 (bright-star halo); True = masked. |
+| `MASK_4_Stars` | Mask bit 4 (star body); True = masked. |
+| `MASK_8_Manual` | Mask bit 8 (manual mask); True = masked. |
+| `MASK_64_r` | Mask bit 64 (no r-band coverage); True = masked. |
+| `MASK_1024_Maximask` | Mask bit 1024 (MaxiMask artefact); True = masked. |
+| `NGMIX_N_EPOCH` | Number of epochs ngmix fit; 0 = never fit. |
+| `NGMIX_MCAL_FLAGS` | ngmix metacal fit flags. |
+| `NGMIX_MCAL_TYPES_FAIL` | Number of metacal types whose fit failed. |
+| `NGMIX_G1_ERR_NOSHEAR` | Error on g1 of the unsheared fit; inverse-variance weight. |
+| `NGMIX_G2_ERR_NOSHEAR` | Error on g2 of the unsheared fit; inverse-variance weight. |
+| `NGMIX_G1_PSF_ORIG_NOSHEAR` | g1 of the original PSF; -10 = no PSF fit. |
+| `NGMIX_G2_PSF_ORIG_NOSHEAR` | g2 of the original PSF. |
+| `NGMIX_T_PSF_ORIG_NOSHEAR` | Size T of the original PSF. |
+| `NGMIX_G1_NOSHEAR` | Ellipticity g1, unsheared image. |
+| `NGMIX_G2_NOSHEAR` | Ellipticity g2, unsheared image. |
+| `NGMIX_T_NOSHEAR` | Galaxy size T = 2 sigma^2, unsheared image. |
+| `NGMIX_T_ERR_NOSHEAR` | Error on T, unsheared image. |
+| `NGMIX_FLUX_NOSHEAR` | Flux, unsheared image. |
+| `NGMIX_FLUX_ERR_NOSHEAR` | Error on the flux, unsheared image. |
+| `NGMIX_FLAGS_NOSHEAR` | Fit flags, unsheared image. |
+| `NGMIX_T_PSF_RECONV_NOSHEAR` | Size T of the reconvolution PSF, unsheared image. |
+| `NGMIX_G1_1P` | Ellipticity g1, image sheared by +h along g1. |
+| `NGMIX_G2_1P` | Ellipticity g2, image sheared by +h along g1. |
+| `NGMIX_T_1P` | Galaxy size T = 2 sigma^2, image sheared by +h along g1. |
+| `NGMIX_T_ERR_1P` | Error on T, image sheared by +h along g1. |
+| `NGMIX_FLUX_1P` | Flux, image sheared by +h along g1. |
+| `NGMIX_FLUX_ERR_1P` | Error on the flux, image sheared by +h along g1. |
+| `NGMIX_FLAGS_1P` | Fit flags, image sheared by +h along g1. |
+| `NGMIX_T_PSF_RECONV_1P` | Size T of the reconvolution PSF, image sheared by +h along g1. |
+| `NGMIX_G1_1M` | Ellipticity g1, image sheared by -h along g1. |
+| `NGMIX_G2_1M` | Ellipticity g2, image sheared by -h along g1. |
+| `NGMIX_T_1M` | Galaxy size T = 2 sigma^2, image sheared by -h along g1. |
+| `NGMIX_T_ERR_1M` | Error on T, image sheared by -h along g1. |
+| `NGMIX_FLUX_1M` | Flux, image sheared by -h along g1. |
+| `NGMIX_FLUX_ERR_1M` | Error on the flux, image sheared by -h along g1. |
+| `NGMIX_FLAGS_1M` | Fit flags, image sheared by -h along g1. |
+| `NGMIX_T_PSF_RECONV_1M` | Size T of the reconvolution PSF, image sheared by -h along g1. |
+| `NGMIX_G1_2P` | Ellipticity g1, image sheared by +h along g2. |
+| `NGMIX_G2_2P` | Ellipticity g2, image sheared by +h along g2. |
+| `NGMIX_T_2P` | Galaxy size T = 2 sigma^2, image sheared by +h along g2. |
+| `NGMIX_T_ERR_2P` | Error on T, image sheared by +h along g2. |
+| `NGMIX_FLUX_2P` | Flux, image sheared by +h along g2. |
+| `NGMIX_FLUX_ERR_2P` | Error on the flux, image sheared by +h along g2. |
+| `NGMIX_FLAGS_2P` | Fit flags, image sheared by +h along g2. |
+| `NGMIX_T_PSF_RECONV_2P` | Size T of the reconvolution PSF, image sheared by +h along g2. |
+| `NGMIX_G1_2M` | Ellipticity g1, image sheared by -h along g2. |
+| `NGMIX_G2_2M` | Ellipticity g2, image sheared by -h along g2. |
+| `NGMIX_T_2M` | Galaxy size T = 2 sigma^2, image sheared by -h along g2. |
+| `NGMIX_T_ERR_2M` | Error on T, image sheared by -h along g2. |
+| `NGMIX_FLUX_2M` | Flux, image sheared by -h along g2. |
+| `NGMIX_FLUX_ERR_2M` | Error on the flux, image sheared by -h along g2. |
+| `NGMIX_FLAGS_2M` | Fit flags, image sheared by -h along g2. |
+| `NGMIX_T_PSF_RECONV_2M` | Size T of the reconvolution PSF, image sheared by -h along g2. |
+
+## Comprehensive catalogue
+
+Columns a comprehensive catalogue carries beyond the galaxy columns, as post-processing writes them. Read when calibrating it (`calibrate_comprehensive_cat.py`, `catalog_builders`).
+
+| Column | Meaning |
+|---|---|
+| `Dec` | Declination [deg]. |
+| `mag` | Magnitude. |
+| `MAGERR_AUTO` | SExtractor magnitude error. |
+| `FLUX_RADIUS` | SExtractor half-light radius [pixel]. |
+| `w_iv` | Inverse-variance shape weight. |
+| `e1_PSF` | PSF ellipticity e1 at the galaxy position. |
+| `e2_PSF` | PSF ellipticity e2 at the galaxy position. |
+| `fwhm_PSF` | PSF FWHM at the galaxy position. |
+
+## Star catalogue
+
+ShapePipe star/PSF catalogue (`full_starcat_<campaign>.hdf5`, or FITS). Rho/tau statistics read their star columns by cat_config keys instead.
+
+| Column | Meaning |
+|---|---|
+| `RA` | Right ascension [deg]. |
+| `DEC` | Declination [deg]. |
+| `HSM_G1_PSF` | PSF model ellipticity g1 (HSM). |
+| `HSM_G2_PSF` | PSF model ellipticity g2 (HSM). |
+
+## Shear catalogue
+
+Calibrated shear catalogue, as sp_validation writes it and cosmo_val reads it. Shapes and weights are named by the cat_config `*_col` keys; these are read by fixed name.
+
+| Column | Meaning |
+|---|---|
+| `RA` | Right ascension [deg]. |
+| `Dec` | Declination [deg]. |

@@ -81,6 +81,7 @@
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Using the weak-lensing catalogues</a></li>
 <li class="toctree-l1"><a class="reference internal" href="run_validation.html">Running shear validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="catalogue_columns.html">Catalogue columns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="post_processing.html">Post-processing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Leakage_object_Tutorial.html">Leakage_object Tutorial</a></li>
 </ul>
@@ -106,6 +107,7 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.format.html">sp_validation.format</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html">sp_validation.galaxy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html">sp_validation.glass_mock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.grammar.html">sp_validation.grammar</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.image_sims.html">sp_validation.image_sims</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html">sp_validation.io</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.masks.html">sp_validation.masks</a></li>
@@ -162,10 +164,14 @@ an earlier version of the catalogue.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>The examples below target catalogue <strong>v1.0</strong> (April 2022), which is distributed
-as FITS. From ShapePipe catalogue <strong>v1.4.1</strong> onward the merged catalogues ship
-as HDF5 instead; open those with <code class="xref py py-func docutils literal notranslate"><span class="pre">sp_validation.io.read_hdf5_file()</span></code> (or
-<code class="docutils literal notranslate"><span class="pre">h5py</span></code> / <code class="docutils literal notranslate"><span class="pre">astropy</span></code>) in place of <code class="docutils literal notranslate"><span class="pre">astropy.io.fits</span></code> below — the column names and
-the calibration recipe are unchanged.</p>
+as FITS. From ShapePipe catalogue <strong>v1.4.1</strong> onward the comprehensive catalogue
+ships as one HDF5 file holding two row-aligned datasets, <code class="docutils literal notranslate"><span class="pre">data</span></code> and <code class="docutils literal notranslate"><span class="pre">data_ext</span></code>.
+Open it with <code class="docutils literal notranslate"><span class="pre">h5py</span></code>, or read it as one table with
+<a class="reference internal" href="sp_validation.io.html#sp_validation.io.read_catalogue" title="sp_validation.io.read_catalogue"><code class="xref py py-func docutils literal notranslate"><span class="pre">sp_validation.io.read_catalogue()</span></code></a>, which joins the two datasets and
+presents the columns under the current ShapePipe names. The cut catalogues of
+those releases remain FITS, and the same function reads them. The calibration
+recipe is unchanged. <a class="reference internal" href="catalogue_columns.html"><span class="std std-doc">Catalogue columns</span></a> lists the
+columns sp_validation reads and how to read a catalogue with other names.</p>
 </div>
 <p>Two catalogues are released for each version, and they are used very
 differently:</p>
@@ -305,7 +311,7 @@ everything; uncomment a line to apply a real selection.</p>
 </span><span id="line-2">
 </span><span id="line-3"><span class="c1"># Other examples:</span>
 </span><span id="line-4"><span class="c1"># mask = data_ext['mask_extern'] == 0  # LensFit-unmasked regions</span>
-</span><span id="line-5"><span class="c1"># mask = data_ext['patch'] == 3        # patch P3</span>
+</span><span id="line-5"><span class="c1"># mask = data_ext['patch'] == 3        # objects in patch P3</span>
 </span><span id="line-6"><span class="c1"># mask = data_ext['mag'] &lt; 23.5        # r-band magnitude cut</span>
 </span><span id="line-7">
 </span><span id="line-8"><span class="n">n_kept</span><span class="p">,</span> <span class="n">n_all</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">mask</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">data_ext</span><span class="p">)</span>
@@ -422,7 +428,7 @@ shears computed by hand should match those in the base catalogue:</p>
 </div><footer class="py-6 border-t border-border md:py-0">
 <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
 <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 01 Oct, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 02 Oct, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>
 </div>
 </footer>

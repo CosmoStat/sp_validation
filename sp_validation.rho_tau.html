@@ -81,6 +81,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="using_the_catalogues.html">Using the weak-lensing catalogues</a></li>
 <li class="toctree-l1"><a class="reference internal" href="run_validation.html">Running shear validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="catalogue_columns.html">Catalogue columns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="post_processing.html">Post-processing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Leakage_object_Tutorial.html">Leakage_object Tutorial</a></li>
 </ul>
@@ -106,6 +107,7 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.format.html">sp_validation.format</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html">sp_validation.galaxy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html">sp_validation.glass_mock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.grammar.html">sp_validation.grammar</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.image_sims.html">sp_validation.image_sims</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html">sp_validation.io</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.masks.html">sp_validation.masks</a></li>
@@ -153,6 +155,22 @@
 <dt class="sig sig-object py" id="sp_validation.rho_tau._extract_xip">
 <span class="sig-name descname"><span class="pre">_extract_xip</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">correlations</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/rho_tau.html#_extract_xip"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.rho_tau._extract_xip" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.rho_tau._extract_xip'">¶</a></dt>
 <dd><p>Return flattened array of xip values from a list of correlations.</p>
+</dd></dl>
+<dl class="py class">
+<dt class="sig sig-object py" id="sp_validation.rho_tau._CatalogueLoader">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">_CatalogueLoader</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">info</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">params</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/rho_tau.html#_CatalogueLoader"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.rho_tau._CatalogueLoader" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.rho_tau._CatalogueLoader'">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Supply FITS paths to the file-based rho/tau readers.</p>
+<p>The rho/tau consumers (<code class="docutils literal notranslate"><span class="pre">shear_psf_leakage</span></code>) read FITS HDU 1 from a path.
+A catalogue that already is exactly that, with no column renamed by the
+grammar or the entry’s <code class="docutils literal notranslate"><span class="pre">column_map</span></code>, passes through unchanged. Any other
+(another HDU, HDF5, a v1 or foreign naming convention) is read through
+<code class="docutils literal notranslate"><span class="pre">io.Catalogue</span></code>, keeping only the configured columns, into a temporary
+FITS file.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.rho_tau._CatalogueLoader._columns">
+<span class="sig-name descname"><span class="pre">_columns</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">block</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/rho_tau.html#_CatalogueLoader._columns"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.rho_tau._CatalogueLoader._columns" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.rho_tau._CatalogueLoader._columns'">¶</a></dt>
+<dd></dd></dl>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.rho_tau.get_params_rho_tau">
@@ -266,6 +284,10 @@ Also compute rho and tau-statistics.</p>
 <div class="sticky top-16 -mt-10 max-h-[calc(100vh-5rem)] h-full overflow-y-auto pt-6 space-y-2"><p class="font-medium">On this page</p>
 <ul>
 <li><a :data-current="activeSection === '#sp_validation.rho_tau._extract_xip'" class="reference internal" href="#sp_validation.rho_tau._extract_xip"><code class="docutils literal notranslate"><span class="pre">_extract_xip()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.rho_tau._CatalogueLoader'" class="reference internal" href="#sp_validation.rho_tau._CatalogueLoader"><code class="docutils literal notranslate"><span class="pre">_CatalogueLoader</span></code></a><ul>
+<li><a :data-current="activeSection === '#sp_validation.rho_tau._CatalogueLoader._columns'" class="reference internal" href="#sp_validation.rho_tau._CatalogueLoader._columns"><code class="docutils literal notranslate"><span class="pre">_CatalogueLoader._columns()</span></code></a></li>
+</ul>
+</li>
 <li><a :data-current="activeSection === '#sp_validation.rho_tau.get_params_rho_tau'" class="reference internal" href="#sp_validation.rho_tau.get_params_rho_tau"><code class="docutils literal notranslate"><span class="pre">get_params_rho_tau()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.rho_tau.get_rho_tau_w_cov'" class="reference internal" href="#sp_validation.rho_tau.get_rho_tau_w_cov"><code class="docutils literal notranslate"><span class="pre">get_rho_tau_w_cov()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.rho_tau.get_rho_tau'" class="reference internal" href="#sp_validation.rho_tau.get_rho_tau"><code class="docutils literal notranslate"><span class="pre">get_rho_tau()</span></code></a></li>
@@ -282,7 +304,7 @@ Also compute rho and tau-statistics.</p>
 </div><footer class="py-6 border-t border-border md:py-0">
 <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
 <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 01 Oct, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 02 Oct, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>
 </div>
 </footer>

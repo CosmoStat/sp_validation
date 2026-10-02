@@ -81,6 +81,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="using_the_catalogues.html">Using the weak-lensing catalogues</a></li>
 <li class="toctree-l1"><a class="reference internal" href="run_validation.html">Running shear validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="catalogue_columns.html">Catalogue columns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="post_processing.html">Post-processing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Leakage_object_Tutorial.html">Leakage_object Tutorial</a></li>
 </ul>
@@ -106,6 +107,7 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.format.html">sp_validation.format</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html">sp_validation.galaxy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html">sp_validation.glass_mock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.grammar.html">sp_validation.grammar</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.image_sims.html">sp_validation.image_sims</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">sp_validation.io</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.masks.html">sp_validation.masks</a></li>
@@ -155,7 +157,9 @@
 <dd class="field-odd"><p>io.py</p>
 </dd>
 <dt class="field-even">Description<span class="colon">:</span></dt>
-<dd class="field-even"><p>This script contains methods for input and output.</p>
+<dd class="field-even"><p>Input and output: output directories and statistics files, and
+the catalogue reader (<code class="docutils literal notranslate"><span class="pre">read_catalogue</span></code>, <code class="docutils literal notranslate"><span class="pre">Catalogue</span></code>), the one place
+that knows how a catalogue’s rows are stored on disk.</p>
 </dd>
 <dt class="field-odd">Author<span class="colon">:</span></dt>
 <dd class="field-odd"><p>Martin Kilbinger</p>
@@ -231,6 +235,285 @@
 <dt class="sig sig-object py" id="sp_validation.io.read_binned_quantity">
 <span class="sig-name descname"><span class="pre">read_binned_quantity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/io.html#read_binned_quantity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.io.read_binned_quantity" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.io.read_binned_quantity'">¶</a></dt>
 <dd></dd></dl>
+<dl class="py data">
+<dt class="sig sig-object py" id="sp_validation.io.N_UNITS_ATTRS">
+<span class="sig-name descname"><span class="pre">N_UNITS_ATTRS</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'n_exposures':</span> <span class="pre">'exposure',</span> <span class="pre">'n_tiles':</span> <span class="pre">'tile'}</span></span><a class="headerlink" href="#sp_validation.io.N_UNITS_ATTRS" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.io.N_UNITS_ATTRS'">¶</a></dt>
+<dd><p>Root attributes in which a chunked ShapePipe product declares its chunk
+count, with the name of one chunk (for error messages).</p>
+</dd></dl>
+<dl class="py class">
+<dt class="sig sig-object py" id="sp_validation.io.Catalogue">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">Catalogue</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hdu</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/io.html#Catalogue"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.io.Catalogue" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.io.Catalogue'">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>An open catalogue file, presented as row chunks in the v2 grammar.</p>
+<p>The container is detected from the file contents (<code class="docutils literal notranslate"><span class="pre">h5py.is_hdf5</span></code>), not
+from its extension. Supported layouts:</p>
+<ul class="simple">
+<li><p>FITS: one table HDU, <code class="docutils literal notranslate"><span class="pre">hdu</span></code> or by default the first table HDU;</p></li>
+<li><p>HDF5 comprehensive catalogue: a root <code class="docutils literal notranslate"><span class="pre">data</span></code> dataset, joined
+column-wise with <code class="docutils literal notranslate"><span class="pre">data_ext</span></code> when present;</p></li>
+<li><p>HDF5 single dataset at the root, of any name;</p></li>
+<li><p>HDF5 group of per-unit row chunks (one dataset per tile or exposure,
+as ShapePipe writes campaign galaxy and star catalogues), found by
+<code class="docutils literal notranslate"><span class="pre">find_dataset_group</span></code>, concatenated in dataset-name order, and
+checked against a declared <code class="docutils literal notranslate"><span class="pre">n_tiles</span></code> or <code class="docutils literal notranslate"><span class="pre">n_exposures</span></code> count.</p></li>
+</ul>
+<p>Nothing is read on opening: <code class="docutils literal notranslate"><span class="pre">chunks</span></code> maps each chunk name to a lazy
+table. Use as a context manager, or <code class="docutils literal notranslate"><span class="pre">close</span></code> when done; tables read into
+memory stay valid after closing.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/os.html#os.PathLike" title="(in Python v3.14)"><em>os.PathLike</em></a>) – catalogue file</p></li>
+<li><p><strong>hdu</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>optional</em>) – FITS HDU to read; ignored for HDF5. Default is <code class="docutils literal notranslate"><span class="pre">None</span></code>, the first
+table HDU</p></li>
+<li><p><strong>column_map</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>, </em><em>optional</em>) – <code class="docutils literal notranslate"><span class="pre">{v2</span> <span class="pre">name:</span> <span class="pre">name</span> <span class="pre">in</span> <span class="pre">the</span> <span class="pre">file}</span></code> for a catalogue in another naming
+convention, applied by <code class="docutils literal notranslate"><span class="pre">grammar.adapt</span></code> (patterns such as
+<code class="docutils literal notranslate"><span class="pre">{"NGMIX_*":</span> <span class="pre">"MYFIT_*"}</span></code> allowed). Default is <code class="docutils literal notranslate"><span class="pre">None</span></code></p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.io.Catalogue.close">
+<span class="sig-name descname"><span class="pre">close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/io.html#Catalogue.close"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.io.Catalogue.close" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.io.Catalogue.close'">¶</a></dt>
+<dd><p>Close the underlying file; a no-op once closed, and for FITS.</p>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.io.Catalogue.dtype">
+<span class="sig-name descname"><span class="pre">dtype</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/io.html#Catalogue.dtype"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.io.Catalogue.dtype" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.io.Catalogue.dtype'">¶</a></dt>
+<dd><p>Return the structured dtype <code class="docutils literal notranslate"><span class="pre">read(columns)</span></code> produces.</p>
+<p>Each column’s dtype is promoted across every chunk (<code class="docutils literal notranslate"><span class="pre">group_dtype</span></code>).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#KeyError" title="(in Python v3.14)"><strong>KeyError</strong></a> – if a chunk lacks one of <code class="docutils literal notranslate"><span class="pre">columns</span></code>, naming the chunk</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.io.Catalogue.table">
+<span class="sig-name descname"><span class="pre">table</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/io.html#Catalogue.table"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.io.Catalogue.table" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.io.Catalogue.table'">¶</a></dt>
+<dd><p>Return the catalogue as one table, lazily when it is not chunked.</p>
+<p>An unchunked catalogue is returned as its lazy table (a FITS_rec, an
+h5py Dataset or a <code class="docutils literal notranslate"><span class="pre">grammar.V2View</span></code>), valid while the file is open;
+a chunked one is read into memory (<code class="docutils literal notranslate"><span class="pre">read</span></code>).</p>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.io.Catalogue.iter_chunks">
+<span class="sig-name descname"><span class="pre">iter_chunks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/io.html#Catalogue.iter_chunks"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.io.Catalogue.iter_chunks" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.io.Catalogue.iter_chunks'">¶</a></dt>
+<dd><p>Yield the row chunks one at a time, in memory, restricted to <code class="docutils literal notranslate"><span class="pre">columns</span></code>.</p>
+<p>A caller filling a preallocated array (<code class="docutils literal notranslate"><span class="pre">len</span></code> and <code class="docutils literal notranslate"><span class="pre">dtype</span></code> give its
+shape) so never holds more than one chunk on top of its output.</p>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.io.Catalogue.read">
+<span class="sig-name descname"><span class="pre">read</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/io.html#Catalogue.read"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.io.Catalogue.read" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.io.Catalogue.read'">¶</a></dt>
+<dd><p>Read the catalogue into one numpy structured array.</p>
+<p>Chunks are copied one at a time into a preallocated output, so peak
+memory is the output plus one chunk.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>columns</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – v2-grammar columns to read; default is <code class="docutils literal notranslate"><span class="pre">None</span></code> (all)</p></li>
+<li><p><strong>key_column</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – for a chunked catalogue, name of an integer column to add, holding
+for each row the leading integer of its chunk’s name. ShapePipe
+star catalogues name each chunk by its exposure number
+(<code class="docutils literal notranslate"><span class="pre">"2086324"</span></code>, or <code class="docutils literal notranslate"><span class="pre">"2110000p"</span></code> with the CFIS processed-exposure
+suffix), which this keeps (<code class="docutils literal notranslate"><span class="pre">key_column="EXPID"</span></code>). An unchunked
+catalogue has no chunk names and gets no column. Default is
+<code class="docutils literal notranslate"><span class="pre">None</span></code></p></li>
+<li><p><strong>verbose</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – report progress if <code class="docutils literal notranslate"><span class="pre">True</span></code></p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>catalogue data in the v2 grammar</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)">numpy.ndarray</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#KeyError" title="(in Python v3.14)"><strong>KeyError</strong></a> – if a chunk lacks one of <code class="docutils literal notranslate"><span class="pre">columns</span></code></p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – if <code class="docutils literal notranslate"><span class="pre">key_column</span></code> collides with a column, or a chunk name does
+not begin with an integer</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.io.Catalogue._load">
+<span class="sig-name descname"><span class="pre">_load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/io.html#Catalogue._load"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.io.Catalogue._load" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.io.Catalogue._load'">¶</a></dt>
+<dd><p>Return chunk <code class="docutils literal notranslate"><span class="pre">key</span></code> in memory, or lazily when the file is unchunked.</p>
+<p>A chunk (one tile or exposure) is small, so it is read whole, which is
+faster than column by column; an unchunked table is read per column.</p>
+</dd></dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.io.read_catalogue">
+<span class="sig-name descname"><span class="pre">read_catalogue</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hdu</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/io.html#read_catalogue"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.io.read_catalogue" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.io.read_catalogue'">¶</a></dt>
+<dd><p>Read a catalogue into memory, in the v2 column grammar.</p>
+<p>Any container <code class="docutils literal notranslate"><span class="pre">Catalogue</span></code> supports; <code class="docutils literal notranslate"><span class="pre">columns</span></code> restricts what is read.
+A catalogue in another naming convention keeps its own column names,
+unless <code class="docutils literal notranslate"><span class="pre">column_map</span></code> renames them. See <code class="docutils literal notranslate"><span class="pre">Catalogue</span></code> and
+<code class="docutils literal notranslate"><span class="pre">Catalogue.read</span></code> for the parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>catalogue data</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)">numpy.ndarray</a> or astropy.io.fits.FITS_rec</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.io.open_catalogue">
+<span class="sig-name descname"><span class="pre">open_catalogue</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hdu</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/io.html#open_catalogue"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.io.open_catalogue" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.io.open_catalogue'">¶</a></dt>
+<dd><p>Return a catalogue as one table, reading no data up front.</p>
+<p>A FITS table is memory-mapped and an unchunked HDF5 table read column by
+column on access (its file stays open while the table is referenced), so
+a consumer pays only for the columns it indexes, derived v2 columns
+included. A chunked HDF5 catalogue has no single on-disk table and is
+read into memory. Parameters as for <code class="docutils literal notranslate"><span class="pre">Catalogue</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>catalogue data in the v2 grammar</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>astropy.io.fits.FITS_rec, h5py.Dataset, <a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.V2View" title="sp_validation.grammar.V2View">grammar.V2View</a> or <a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)">numpy.ndarray</a></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.io.open_entry">
+<span class="sig-name descname"><span class="pre">open_entry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">entry</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/io.html#open_entry"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.io.open_entry" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.io.open_entry'">¶</a></dt>
+<dd><p>Return the catalogue a config block names (e.g. a cat_config <code class="docutils literal notranslate"><span class="pre">shear</span></code>).</p>
+<p>The block’s <code class="docutils literal notranslate"><span class="pre">path</span></code>, optional <code class="docutils literal notranslate"><span class="pre">hdu</span></code> and optional <code class="docutils literal notranslate"><span class="pre">column_map</span></code> go to
+<code class="docutils literal notranslate"><span class="pre">open_catalogue</span></code>.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.io._first_table_hdu">
+<span class="sig-name descname"><span class="pre">_first_table_hdu</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hdus</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/io.html#_first_table_hdu"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.io._first_table_hdu" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.io._first_table_hdu'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.io._hdf5_parts">
+<span class="sig-name descname"><span class="pre">_hdf5_parts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hdf5_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/io.html#_hdf5_parts"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.io._hdf5_parts" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.io._hdf5_parts'">¶</a></dt>
+<dd><p>Return ({chunk name: tuple of row-aligned datasets}, chunked) of a file.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.io._chunk_numbers">
+<span class="sig-name descname"><span class="pre">_chunk_numbers</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">keys</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key_column</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/io.html#_chunk_numbers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.io._chunk_numbers" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.io._chunk_numbers'">¶</a></dt>
+<dd><p>Return {chunk name: its leading integer}, for <code class="docutils literal notranslate"><span class="pre">Catalogue.read</span></code>.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.io._check_columns">
+<span class="sig-name descname"><span class="pre">_check_columns</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dtype</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">columns</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/io.html#_check_columns"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.io._check_columns" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.io._check_columns'">¶</a></dt>
+<dd><p>Raise a clear error if requested columns are absent from a chunk.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.io.find_dataset_group">
+<span class="sig-name descname"><span class="pre">find_dataset_group</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hdf5_file</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/io.html#find_dataset_group"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.io.find_dataset_group" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.io.find_dataset_group'">¶</a></dt>
+<dd><p>Find Dataset Group.</p>
+<p>Descend from the root of an open HDF5 file to the single group whose
+members are the per-unit datasets (one per tile, or one per exposure).</p>
+<p>This makes the reader independent of how deeply the products nest that
+group: it walks down as long as the current node holds exactly one
+sub-group, and stops as soon as the members are datasets. It therefore
+reads both the nested <code class="docutils literal notranslate"><span class="pre">patches/&lt;campaign&gt;/&lt;tile-ID&gt;</span></code> layout (the
+“patches” key is a ShapePipe-side compatibility shim, not a concept) and
+a flat <code class="docutils literal notranslate"><span class="pre">tiles/&lt;tile-ID&gt;</span></code> or <code class="docutils literal notranslate"><span class="pre">exposures/&lt;exp&gt;</span></code> layout.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>hdf5_file</strong> (<em>h5py.File</em><em> or </em><em>h5py.Group</em>) – open input file</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>group whose members are the per-unit datasets</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>h5py.Group</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – if the file is empty, or a level holds more than one sub-group</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.io.promote_dtypes">
+<span class="sig-name descname"><span class="pre">promote_dtypes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dtype_a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype_b</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/io.html#promote_dtypes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.io.promote_dtypes" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.io.promote_dtypes'">¶</a></dt>
+<dd><p>Promote Dtypes.</p>
+<p>Return a scalar dtype that holds both input dtypes without truncation
+or overflow.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dtype_a</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v2.5)"><em>numpy.dtype</em></a>) – first input dtype</p></li>
+<li><p><strong>dtype_b</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v2.5)"><em>numpy.dtype</em></a>) – second input dtype</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>promoted dtype</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v2.5)">numpy.dtype</a></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.io.group_dtype">
+<span class="sig-name descname"><span class="pre">group_dtype</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tables</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/io.html#group_dtype"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.io.group_dtype" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.io.group_dtype'">¶</a></dt>
+<dd><p>Group Dtype.</p>
+<p>Build the structured output dtype of a group of row-chunk tables,
+promoting each column across <em>every</em> table. A campaign that was
+partially reprocessed can carry e.g. <code class="docutils literal notranslate"><span class="pre">S7</span></code> tile IDs in one tile and
+<code class="docutils literal notranslate"><span class="pre">S12</span></code> in another, or <code class="docutils literal notranslate"><span class="pre">f4</span></code> next to <code class="docutils literal notranslate"><span class="pre">f8</span></code>; taking the dtype of the
+first table alone would silently truncate the others.</p>
+<p>Note that ShapePipe currently writes <code class="docutils literal notranslate"><span class="pre">TILE_ID</span></code> as <code class="docutils literal notranslate"><span class="pre">f8</span></code> (the tile
+<code class="docutils literal notranslate"><span class="pre">183.307</span></code> arrives as the float <code class="docutils literal notranslate"><span class="pre">183.307</span></code>), not as a string, so the
+string-promotion branch above is for a future string-valued <code class="docutils literal notranslate"><span class="pre">TILE_ID</span></code>
+and is not exercised by today’s products.</p>
+<p>TODO: whether <code class="docutils literal notranslate"><span class="pre">TILE_ID</span></code> should be a string is an open schema decision.
+A float cannot represent the ID exactly and cannot be compared for
+equality safely; changing it is a breaking product change, so it is left
+as-is here and this reader deliberately handles both.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tables</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – row-chunk tables (h5py Datasets, or their <code class="docutils literal notranslate"><span class="pre">grammar.adapt</span></code> views),
+optionally keyed by dataset name for error messages</p></li>
+<li><p><strong>columns</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – columns to keep; default is <code class="docutils literal notranslate"><span class="pre">None</span></code> (all columns of the first table)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>structured output dtype</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v2.5)">numpy.dtype</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#KeyError" title="(in Python v3.14)"><strong>KeyError</strong></a> – if a table lacks one of the columns, naming the tables that do</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.io.check_n_units">
+<span class="sig-name descname"><span class="pre">check_n_units</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hdf5_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">group</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/io.html#check_n_units"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.io.check_n_units" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.io.check_n_units'">¶</a></dt>
+<dd><p>Check Number of Units.</p>
+<p>Compare the number of datasets found against the count a ShapePipe
+product declares in a root attribute (<code class="docutils literal notranslate"><span class="pre">N_UNITS_ATTRS</span></code>: <code class="docutils literal notranslate"><span class="pre">n_tiles</span></code> for
+galaxy catalogues, <code class="docutils literal notranslate"><span class="pre">n_exposures</span></code> for star catalogues), to catch a
+catalogue truncated by an interrupted merge job or file transfer.</p>
+<p>A missing attribute is not an error: older products carry none.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>hdf5_file</strong> (<em>h5py.File</em>) – open input file</p></li>
+<li><p><strong>group</strong> (<em>h5py.Group</em>) – group holding the per-unit datasets</p></li>
+<li><p><strong>file_path</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – input file path, for the error message</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – if the number of datasets differs from the declared count</p>
+</dd>
+</dl>
+</dd></dl>
 </section>
 </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
 <div class="mr-auto">
@@ -258,6 +541,27 @@
 <li><a :data-current="activeSection === '#sp_validation.io.print_ratio'" class="reference internal" href="#sp_validation.io.print_ratio"><code class="docutils literal notranslate"><span class="pre">print_ratio()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.io.write_binned_quantity'" class="reference internal" href="#sp_validation.io.write_binned_quantity"><code class="docutils literal notranslate"><span class="pre">write_binned_quantity()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.io.read_binned_quantity'" class="reference internal" href="#sp_validation.io.read_binned_quantity"><code class="docutils literal notranslate"><span class="pre">read_binned_quantity()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.io.N_UNITS_ATTRS'" class="reference internal" href="#sp_validation.io.N_UNITS_ATTRS"><code class="docutils literal notranslate"><span class="pre">N_UNITS_ATTRS</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.io.Catalogue'" class="reference internal" href="#sp_validation.io.Catalogue"><code class="docutils literal notranslate"><span class="pre">Catalogue</span></code></a><ul>
+<li><a :data-current="activeSection === '#sp_validation.io.Catalogue.close'" class="reference internal" href="#sp_validation.io.Catalogue.close"><code class="docutils literal notranslate"><span class="pre">Catalogue.close()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.io.Catalogue.dtype'" class="reference internal" href="#sp_validation.io.Catalogue.dtype"><code class="docutils literal notranslate"><span class="pre">Catalogue.dtype()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.io.Catalogue.table'" class="reference internal" href="#sp_validation.io.Catalogue.table"><code class="docutils literal notranslate"><span class="pre">Catalogue.table()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.io.Catalogue.iter_chunks'" class="reference internal" href="#sp_validation.io.Catalogue.iter_chunks"><code class="docutils literal notranslate"><span class="pre">Catalogue.iter_chunks()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.io.Catalogue.read'" class="reference internal" href="#sp_validation.io.Catalogue.read"><code class="docutils literal notranslate"><span class="pre">Catalogue.read()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.io.Catalogue._load'" class="reference internal" href="#sp_validation.io.Catalogue._load"><code class="docutils literal notranslate"><span class="pre">Catalogue._load()</span></code></a></li>
+</ul>
+</li>
+<li><a :data-current="activeSection === '#sp_validation.io.read_catalogue'" class="reference internal" href="#sp_validation.io.read_catalogue"><code class="docutils literal notranslate"><span class="pre">read_catalogue()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.io.open_catalogue'" class="reference internal" href="#sp_validation.io.open_catalogue"><code class="docutils literal notranslate"><span class="pre">open_catalogue()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.io.open_entry'" class="reference internal" href="#sp_validation.io.open_entry"><code class="docutils literal notranslate"><span class="pre">open_entry()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.io._first_table_hdu'" class="reference internal" href="#sp_validation.io._first_table_hdu"><code class="docutils literal notranslate"><span class="pre">_first_table_hdu()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.io._hdf5_parts'" class="reference internal" href="#sp_validation.io._hdf5_parts"><code class="docutils literal notranslate"><span class="pre">_hdf5_parts()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.io._chunk_numbers'" class="reference internal" href="#sp_validation.io._chunk_numbers"><code class="docutils literal notranslate"><span class="pre">_chunk_numbers()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.io._check_columns'" class="reference internal" href="#sp_validation.io._check_columns"><code class="docutils literal notranslate"><span class="pre">_check_columns()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.io.find_dataset_group'" class="reference internal" href="#sp_validation.io.find_dataset_group"><code class="docutils literal notranslate"><span class="pre">find_dataset_group()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.io.promote_dtypes'" class="reference internal" href="#sp_validation.io.promote_dtypes"><code class="docutils literal notranslate"><span class="pre">promote_dtypes()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.io.group_dtype'" class="reference internal" href="#sp_validation.io.group_dtype"><code class="docutils literal notranslate"><span class="pre">group_dtype()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.io.check_n_units'" class="reference internal" href="#sp_validation.io.check_n_units"><code class="docutils literal notranslate"><span class="pre">check_n_units()</span></code></a></li>
 </ul>
 </div>
 </aside>
@@ -266,7 +570,7 @@
 </div><footer class="py-6 border-t border-border md:py-0">
 <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
 <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 01 Oct, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 02 Oct, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>
 </div>
 </footer>

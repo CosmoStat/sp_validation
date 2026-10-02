@@ -113,6 +113,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../using_the_catalogues.html">Using the weak-lensing catalogues</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../run_validation.html">Running shear validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../catalogue_columns.html">Catalogue columns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../post_processing.html">Post-processing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../Leakage_object_Tutorial.html">Leakage_object Tutorial</a></li>
 </ul>
@@ -138,6 +139,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.format.html">sp_validation.format</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.galaxy.html">sp_validation.galaxy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.glass_mock.html">sp_validation.glass_mock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.grammar.html">sp_validation.grammar</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.image_sims.html">sp_validation.image_sims</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.io.html">sp_validation.io</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.masks.html">sp_validation.masks</a></li>
@@ -202,144 +204,678 @@
 </span><span id="line-2">
 </span><span id="line-3"><span class="sd">:Name: io.py</span>
 </span><span id="line-4">
-</span><span id="line-5"><span class="sd">:Description: This script contains methods for input and output.</span>
-</span><span id="line-6">
-</span><span id="line-7"><span class="sd">:Author: Martin Kilbinger</span>
+</span><span id="line-5"><span class="sd">:Description: Input and output: output directories and statistics files, and</span>
+</span><span id="line-6"><span class="sd">    the catalogue reader (``read_catalogue``, ``Catalogue``), the one place</span>
+</span><span id="line-7"><span class="sd">    that knows how a catalogue's rows are stored on disk.</span>
 </span><span id="line-8">
-</span><span id="line-9">
-</span><span id="line-10"><span class="sd">"""</span>
+</span><span id="line-9"><span class="sd">:Author: Martin Kilbinger</span>
+</span><span id="line-10">
 </span><span id="line-11">
-</span><span id="line-12"><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+</span><span id="line-12"><span class="sd">"""</span>
 </span><span id="line-13">
-</span><span id="line-14"><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-</span><span id="line-15">
+</span><span id="line-14"><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+</span><span id="line-15"><span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
 </span><span id="line-16">
+</span><span id="line-17"><span class="kn">import</span><span class="w"> </span><span class="nn">h5py</span>
+</span><span id="line-18"><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+</span><span id="line-19"><span class="kn">import</span><span class="w"> </span><span class="nn">tqdm</span>
+</span><span id="line-20"><span class="kn">from</span><span class="w"> </span><span class="nn">astropy.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">fits</span>
+</span><span id="line-21">
+</span><span id="line-22"><span class="kn">from</span><span class="w"> </span><span class="nn">sp_validation</span><span class="w"> </span><span class="kn">import</span> <span class="n">grammar</span>
+</span><span id="line-23">
+</span><span id="line-24">
 <div class="viewcode-block" id="make_out_dirs">
 <a class="viewcode-back" href="../../sp_validation.io.html#sp_validation.io.make_out_dirs">[docs]</a>
-</span><span id="line-17"><span class="k">def</span><span class="w"> </span><span class="nf">make_out_dirs</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">plot_dir</span><span class="p">,</span> <span class="n">plot_subdirs</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-</span><span id="line-18"><span class="w">    </span><span class="sd">"""Make output directories.</span>
-</span><span id="line-19">
-</span><span id="line-20"><span class="sd">    Create output directories and subdirs</span>
-</span><span id="line-21">
-</span><span id="line-22"><span class="sd">    Parameters</span>
-</span><span id="line-23"><span class="sd">    ----------</span>
-</span><span id="line-24"><span class="sd">    plot_dir: string</span>
-</span><span id="line-25"><span class="sd">        directory name</span>
-</span><span id="line-26"><span class="sd">    plot_subdirs: array of string</span>
-</span><span id="line-27"><span class="sd">        subdirectory names</span>
-</span><span id="line-28"><span class="sd">    verbose: bool, optional, default=False</span>
-</span><span id="line-29"><span class="sd">        verbose output if True</span>
-</span><span id="line-30"><span class="sd">    """</span>
-</span><span id="line-31">    <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">plot_dir</span><span class="p">):</span>
-</span><span id="line-32">        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">d</span><span class="p">):</span>
-</span><span id="line-33">            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
-</span><span id="line-34">                <span class="nb">print</span><span class="p">(</span><span class="s2">"Creating dir </span><span class="si">{}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">d</span><span class="p">))</span>
-</span><span id="line-35">            <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
-</span><span id="line-36">    <span class="k">for</span> <span class="n">sd</span> <span class="ow">in</span> <span class="n">plot_subdirs</span><span class="p">:</span>
-</span><span id="line-37">        <span class="n">dsd</span> <span class="o">=</span> <span class="s2">"</span><span class="si">{}</span><span class="s2">/</span><span class="si">{}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">plot_dir</span><span class="p">,</span> <span class="n">sd</span><span class="p">)</span>
-</span><span id="line-38">        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">dsd</span><span class="p">):</span>
-</span><span id="line-39">            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
-</span><span id="line-40">                <span class="nb">print</span><span class="p">(</span><span class="s2">"Creating dir </span><span class="si">{}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">dsd</span><span class="p">))</span>
-</span><span id="line-41">            <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">dsd</span><span class="p">)</span></div>
+</span><span id="line-25"><span class="k">def</span><span class="w"> </span><span class="nf">make_out_dirs</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">plot_dir</span><span class="p">,</span> <span class="n">plot_subdirs</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+</span><span id="line-26"><span class="w">    </span><span class="sd">"""Make output directories.</span>
+</span><span id="line-27">
+</span><span id="line-28"><span class="sd">    Create output directories and subdirs</span>
+</span><span id="line-29">
+</span><span id="line-30"><span class="sd">    Parameters</span>
+</span><span id="line-31"><span class="sd">    ----------</span>
+</span><span id="line-32"><span class="sd">    plot_dir: string</span>
+</span><span id="line-33"><span class="sd">        directory name</span>
+</span><span id="line-34"><span class="sd">    plot_subdirs: array of string</span>
+</span><span id="line-35"><span class="sd">        subdirectory names</span>
+</span><span id="line-36"><span class="sd">    verbose: bool, optional, default=False</span>
+</span><span id="line-37"><span class="sd">        verbose output if True</span>
+</span><span id="line-38"><span class="sd">    """</span>
+</span><span id="line-39">    <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">plot_dir</span><span class="p">):</span>
+</span><span id="line-40">        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">d</span><span class="p">):</span>
+</span><span id="line-41">            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+</span><span id="line-42">                <span class="nb">print</span><span class="p">(</span><span class="s2">"Creating dir </span><span class="si">{}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">d</span><span class="p">))</span>
+</span><span id="line-43">            <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+</span><span id="line-44">    <span class="k">for</span> <span class="n">sd</span> <span class="ow">in</span> <span class="n">plot_subdirs</span><span class="p">:</span>
+</span><span id="line-45">        <span class="n">dsd</span> <span class="o">=</span> <span class="s2">"</span><span class="si">{}</span><span class="s2">/</span><span class="si">{}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">plot_dir</span><span class="p">,</span> <span class="n">sd</span><span class="p">)</span>
+</span><span id="line-46">        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">dsd</span><span class="p">):</span>
+</span><span id="line-47">            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+</span><span id="line-48">                <span class="nb">print</span><span class="p">(</span><span class="s2">"Creating dir </span><span class="si">{}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">dsd</span><span class="p">))</span>
+</span><span id="line-49">            <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">dsd</span><span class="p">)</span></div>
 
-</span><span id="line-42">
-</span><span id="line-43">
+</span><span id="line-50">
+</span><span id="line-51">
 <div class="viewcode-block" id="open_stats_file">
 <a class="viewcode-back" href="../../sp_validation.io.html#sp_validation.io.open_stats_file">[docs]</a>
-</span><span id="line-44"><span class="k">def</span><span class="w"> </span><span class="nf">open_stats_file</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">file_name</span><span class="p">):</span>
-</span><span id="line-45"><span class="w">    </span><span class="sd">"""Open statistics file.</span>
-</span><span id="line-46">
-</span><span id="line-47"><span class="sd">    Open output file for statistics</span>
-</span><span id="line-48">
-</span><span id="line-49"><span class="sd">    Parameters</span>
-</span><span id="line-50"><span class="sd">    ----------</span>
-</span><span id="line-51"><span class="sd">    directory : string</span>
-</span><span id="line-52"><span class="sd">        directory</span>
-</span><span id="line-53"><span class="sd">    file_name : string</span>
-</span><span id="line-54"><span class="sd">        file name</span>
-</span><span id="line-55"><span class="sd">    """</span>
-</span><span id="line-56">    <span class="n">stats_file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s2">"</span><span class="si">{}</span><span class="s2">/</span><span class="si">{}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">file_name</span><span class="p">),</span> <span class="s2">"w"</span><span class="p">)</span>
-</span><span id="line-57">
-</span><span id="line-58">    <span class="k">return</span> <span class="n">stats_file</span></div>
+</span><span id="line-52"><span class="k">def</span><span class="w"> </span><span class="nf">open_stats_file</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">file_name</span><span class="p">):</span>
+</span><span id="line-53"><span class="w">    </span><span class="sd">"""Open statistics file.</span>
+</span><span id="line-54">
+</span><span id="line-55"><span class="sd">    Open output file for statistics</span>
+</span><span id="line-56">
+</span><span id="line-57"><span class="sd">    Parameters</span>
+</span><span id="line-58"><span class="sd">    ----------</span>
+</span><span id="line-59"><span class="sd">    directory : string</span>
+</span><span id="line-60"><span class="sd">        directory</span>
+</span><span id="line-61"><span class="sd">    file_name : string</span>
+</span><span id="line-62"><span class="sd">        file name</span>
+</span><span id="line-63"><span class="sd">    """</span>
+</span><span id="line-64">    <span class="n">stats_file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s2">"</span><span class="si">{}</span><span class="s2">/</span><span class="si">{}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">file_name</span><span class="p">),</span> <span class="s2">"w"</span><span class="p">)</span>
+</span><span id="line-65">
+</span><span id="line-66">    <span class="k">return</span> <span class="n">stats_file</span></div>
 
-</span><span id="line-59">
-</span><span id="line-60">
+</span><span id="line-67">
+</span><span id="line-68">
 <div class="viewcode-block" id="print_stats">
 <a class="viewcode-back" href="../../sp_validation.io.html#sp_validation.io.print_stats">[docs]</a>
-</span><span id="line-61"><span class="k">def</span><span class="w"> </span><span class="nf">print_stats</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">stats_file</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-</span><span id="line-62"><span class="w">    </span><span class="sd">"""Print stats.</span>
-</span><span id="line-63">
-</span><span id="line-64"><span class="sd">    Print message to stats file.</span>
-</span><span id="line-65">
-</span><span id="line-66"><span class="sd">    Parameters</span>
-</span><span id="line-67"><span class="sd">    ----------</span>
-</span><span id="line-68"><span class="sd">    msg : string</span>
-</span><span id="line-69"><span class="sd">        message</span>
-</span><span id="line-70"><span class="sd">    stats_file : file handler</span>
-</span><span id="line-71"><span class="sd">        statistics output file</span>
-</span><span id="line-72"><span class="sd">    verbose : bool, optional, default=False</span>
-</span><span id="line-73"><span class="sd">        print message to stdout if True</span>
-</span><span id="line-74"><span class="sd">    """</span>
-</span><span id="line-75">    <span class="n">stats_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
-</span><span id="line-76">    <span class="n">stats_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
-</span><span id="line-77">    <span class="n">stats_file</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
-</span><span id="line-78">
-</span><span id="line-79">    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
-</span><span id="line-80">        <span class="nb">print</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span></div>
+</span><span id="line-69"><span class="k">def</span><span class="w"> </span><span class="nf">print_stats</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">stats_file</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+</span><span id="line-70"><span class="w">    </span><span class="sd">"""Print stats.</span>
+</span><span id="line-71">
+</span><span id="line-72"><span class="sd">    Print message to stats file.</span>
+</span><span id="line-73">
+</span><span id="line-74"><span class="sd">    Parameters</span>
+</span><span id="line-75"><span class="sd">    ----------</span>
+</span><span id="line-76"><span class="sd">    msg : string</span>
+</span><span id="line-77"><span class="sd">        message</span>
+</span><span id="line-78"><span class="sd">    stats_file : file handler</span>
+</span><span id="line-79"><span class="sd">        statistics output file</span>
+</span><span id="line-80"><span class="sd">    verbose : bool, optional, default=False</span>
+</span><span id="line-81"><span class="sd">        print message to stdout if True</span>
+</span><span id="line-82"><span class="sd">    """</span>
+</span><span id="line-83">    <span class="n">stats_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+</span><span id="line-84">    <span class="n">stats_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="line-85">    <span class="n">stats_file</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+</span><span id="line-86">
+</span><span id="line-87">    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+</span><span id="line-88">        <span class="nb">print</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span></div>
 
-</span><span id="line-81">
-</span><span id="line-82">
+</span><span id="line-89">
+</span><span id="line-90">
 <div class="viewcode-block" id="print_ratio">
 <a class="viewcode-back" href="../../sp_validation.io.html#sp_validation.io.print_ratio">[docs]</a>
-</span><span id="line-83"><span class="k">def</span><span class="w"> </span><span class="nf">print_ratio</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">numerator</span><span class="p">,</span> <span class="n">denominator</span><span class="p">,</span> <span class="n">stats_file</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-</span><span id="line-84"><span class="w">    </span><span class="sd">"""Print Ratio.</span>
-</span><span id="line-85">
-</span><span id="line-86"><span class="sd">    pretty-print ratio of two numbers</span>
-</span><span id="line-87">
-</span><span id="line-88"><span class="sd">    msg : string</span>
-</span><span id="line-89"><span class="sd">        message</span>
-</span><span id="line-90"><span class="sd">    numerator : float</span>
-</span><span id="line-91"><span class="sd">        ratio numerator</span>
-</span><span id="line-92"><span class="sd">    denominator : float</span>
-</span><span id="line-93"><span class="sd">        ratio denominator</span>
-</span><span id="line-94"><span class="sd">    stats_file : file handler</span>
-</span><span id="line-95"><span class="sd">        output staistic file</span>
-</span><span id="line-96"><span class="sd">    verbose : bool, optional, default=False</span>
-</span><span id="line-97"><span class="sd">        verbose output if True</span>
-</span><span id="line-98"><span class="sd">    """</span>
-</span><span id="line-99">    <span class="k">if</span> <span class="n">denominator</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
-</span><span id="line-100">        <span class="n">ratio</span> <span class="o">=</span> <span class="n">numerator</span> <span class="o">/</span> <span class="n">denominator</span> <span class="o">*</span> <span class="mi">100</span>
-</span><span id="line-101">    <span class="k">else</span><span class="p">:</span>
-</span><span id="line-102">        <span class="n">ratio</span> <span class="o">=</span> <span class="mi">0</span>
-</span><span id="line-103">
-</span><span id="line-104">    <span class="n">print_stats</span><span class="p">(</span>
-</span><span id="line-105">        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="n">numerator</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">denominator</span><span class="si">}</span><span class="s2">"</span> <span class="o">+</span> <span class="sa">f</span><span class="s2">" = </span><span class="si">{</span><span class="n">ratio</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%"</span><span class="p">,</span>
-</span><span id="line-106">        <span class="n">stats_file</span><span class="p">,</span>
-</span><span id="line-107">        <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span>
-</span><span id="line-108">    <span class="p">)</span></div>
+</span><span id="line-91"><span class="k">def</span><span class="w"> </span><span class="nf">print_ratio</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">numerator</span><span class="p">,</span> <span class="n">denominator</span><span class="p">,</span> <span class="n">stats_file</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+</span><span id="line-92"><span class="w">    </span><span class="sd">"""Print Ratio.</span>
+</span><span id="line-93">
+</span><span id="line-94"><span class="sd">    pretty-print ratio of two numbers</span>
+</span><span id="line-95">
+</span><span id="line-96"><span class="sd">    msg : string</span>
+</span><span id="line-97"><span class="sd">        message</span>
+</span><span id="line-98"><span class="sd">    numerator : float</span>
+</span><span id="line-99"><span class="sd">        ratio numerator</span>
+</span><span id="line-100"><span class="sd">    denominator : float</span>
+</span><span id="line-101"><span class="sd">        ratio denominator</span>
+</span><span id="line-102"><span class="sd">    stats_file : file handler</span>
+</span><span id="line-103"><span class="sd">        output staistic file</span>
+</span><span id="line-104"><span class="sd">    verbose : bool, optional, default=False</span>
+</span><span id="line-105"><span class="sd">        verbose output if True</span>
+</span><span id="line-106"><span class="sd">    """</span>
+</span><span id="line-107">    <span class="k">if</span> <span class="n">denominator</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="line-108">        <span class="n">ratio</span> <span class="o">=</span> <span class="n">numerator</span> <span class="o">/</span> <span class="n">denominator</span> <span class="o">*</span> <span class="mi">100</span>
+</span><span id="line-109">    <span class="k">else</span><span class="p">:</span>
+</span><span id="line-110">        <span class="n">ratio</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span id="line-111">
+</span><span id="line-112">    <span class="n">print_stats</span><span class="p">(</span>
+</span><span id="line-113">        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="n">numerator</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">denominator</span><span class="si">}</span><span class="s2">"</span> <span class="o">+</span> <span class="sa">f</span><span class="s2">" = </span><span class="si">{</span><span class="n">ratio</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%"</span><span class="p">,</span>
+</span><span id="line-114">        <span class="n">stats_file</span><span class="p">,</span>
+</span><span id="line-115">        <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span>
+</span><span id="line-116">    <span class="p">)</span></div>
 
-</span><span id="line-109">
-</span><span id="line-110">
+</span><span id="line-117">
+</span><span id="line-118">
 <div class="viewcode-block" id="write_binned_quantity">
 <a class="viewcode-back" href="../../sp_validation.io.html#sp_validation.io.write_binned_quantity">[docs]</a>
-</span><span id="line-111"><span class="k">def</span><span class="w"> </span><span class="nf">write_binned_quantity</span><span class="p">(</span><span class="n">quantity</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">bin_edges</span><span class="p">,</span> <span class="n">extra_key</span><span class="o">=</span><span class="s2">"quantity"</span><span class="p">):</span>
-</span><span id="line-112">
-</span><span id="line-113">    <span class="n">shape</span> <span class="o">=</span> <span class="n">quantity</span><span class="o">.</span><span class="n">shape</span>
-</span><span id="line-114">    <span class="n">nx</span><span class="p">,</span> <span class="n">ny</span> <span class="o">=</span> <span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
-</span><span id="line-115">
-</span><span id="line-116">    <span class="n">filename</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">_binned.npz"</span>
-</span><span id="line-117">
-</span><span id="line-118">    <span class="n">combined</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="n">bin_edges</span><span class="p">,</span> <span class="n">extra_key</span><span class="p">:</span> <span class="n">quantity</span><span class="p">}</span>
-</span><span id="line-119">    <span class="n">np</span><span class="o">.</span><span class="n">savez</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="o">**</span><span class="n">combined</span><span class="p">)</span></div>
+</span><span id="line-119"><span class="k">def</span><span class="w"> </span><span class="nf">write_binned_quantity</span><span class="p">(</span><span class="n">quantity</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">bin_edges</span><span class="p">,</span> <span class="n">extra_key</span><span class="o">=</span><span class="s2">"quantity"</span><span class="p">):</span>
+</span><span id="line-120">    <span class="n">shape</span> <span class="o">=</span> <span class="n">quantity</span><span class="o">.</span><span class="n">shape</span>
+</span><span id="line-121">    <span class="n">nx</span><span class="p">,</span> <span class="n">ny</span> <span class="o">=</span> <span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+</span><span id="line-122">
+</span><span id="line-123">    <span class="n">filename</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">_binned.npz"</span>
+</span><span id="line-124">
+</span><span id="line-125">    <span class="n">combined</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="n">bin_edges</span><span class="p">,</span> <span class="n">extra_key</span><span class="p">:</span> <span class="n">quantity</span><span class="p">}</span>
+</span><span id="line-126">    <span class="n">np</span><span class="o">.</span><span class="n">savez</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="o">**</span><span class="n">combined</span><span class="p">)</span></div>
 
-</span><span id="line-120">
-</span><span id="line-121">
+</span><span id="line-127">
+</span><span id="line-128">
 <div class="viewcode-block" id="read_binned_quantity">
 <a class="viewcode-back" href="../../sp_validation.io.html#sp_validation.io.read_binned_quantity">[docs]</a>
-</span><span id="line-122"><span class="k">def</span><span class="w"> </span><span class="nf">read_binned_quantity</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
-</span><span id="line-123">
-</span><span id="line-124">    <span class="k">with</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span> <span class="k">as</span> <span class="n">data</span><span class="p">:</span>
-</span><span id="line-125">        <span class="k">return</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">data</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">files</span><span class="p">}</span></div>
+</span><span id="line-129"><span class="k">def</span><span class="w"> </span><span class="nf">read_binned_quantity</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+</span><span id="line-130">    <span class="k">with</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span> <span class="k">as</span> <span class="n">data</span><span class="p">:</span>
+</span><span id="line-131">        <span class="k">return</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">data</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">files</span><span class="p">}</span></div>
+
+</span><span id="line-132">
+</span><span id="line-133">
+</span><span id="line-134"><span class="c1"># -- catalogues ---------------------------------------------------------------</span>
+</span><span id="line-135"><span class="c1">#</span>
+</span><span id="line-136"><span class="c1"># A catalogue is one table of objects. How its rows are stored (the container)</span>
+</span><span id="line-137"><span class="c1"># is detected here from the file's contents; which names its columns carry is</span>
+</span><span id="line-138"><span class="c1"># the column grammar's business (``sp_validation.grammar``). Every table this</span>
+</span><span id="line-139"><span class="c1"># module hands out is presented through ``grammar.adapt``, which maps ShapePipe</span>
+</span><span id="line-140"><span class="c1"># v1 names to v2 and passes any other naming convention through untouched,</span>
+</span><span id="line-141"><span class="c1"># unless a ``column_map`` renames it.</span>
+</span><span id="line-142">
+</span><span id="line-143"><span class="c1">#: Root attributes in which a chunked ShapePipe product declares its chunk</span>
+</span><span id="line-144"><span class="c1">#: count, with the name of one chunk (for error messages).</span>
+</span><span id="line-145"><span class="n">N_UNITS_ATTRS</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"n_tiles"</span><span class="p">:</span> <span class="s2">"tile"</span><span class="p">,</span> <span class="s2">"n_exposures"</span><span class="p">:</span> <span class="s2">"exposure"</span><span class="p">}</span>
+</span><span id="line-146">
+</span><span id="line-147">
+<div class="viewcode-block" id="Catalogue">
+<a class="viewcode-back" href="../../sp_validation.io.html#sp_validation.io.Catalogue">[docs]</a>
+</span><span id="line-148"><span class="k">class</span><span class="w"> </span><span class="nc">Catalogue</span><span class="p">:</span>
+</span><span id="line-149"><span class="w">    </span><span class="sd">"""An open catalogue file, presented as row chunks in the v2 grammar.</span>
+</span><span id="line-150">
+</span><span id="line-151"><span class="sd">    The container is detected from the file contents (``h5py.is_hdf5``), not</span>
+</span><span id="line-152"><span class="sd">    from its extension. Supported layouts:</span>
+</span><span id="line-153">
+</span><span id="line-154"><span class="sd">    - FITS: one table HDU, ``hdu`` or by default the first table HDU;</span>
+</span><span id="line-155"><span class="sd">    - HDF5 comprehensive catalogue: a root ``data`` dataset, joined</span>
+</span><span id="line-156"><span class="sd">      column-wise with ``data_ext`` when present;</span>
+</span><span id="line-157"><span class="sd">    - HDF5 single dataset at the root, of any name;</span>
+</span><span id="line-158"><span class="sd">    - HDF5 group of per-unit row chunks (one dataset per tile or exposure,</span>
+</span><span id="line-159"><span class="sd">      as ShapePipe writes campaign galaxy and star catalogues), found by</span>
+</span><span id="line-160"><span class="sd">      ``find_dataset_group``, concatenated in dataset-name order, and</span>
+</span><span id="line-161"><span class="sd">      checked against a declared ``n_tiles`` or ``n_exposures`` count.</span>
+</span><span id="line-162">
+</span><span id="line-163"><span class="sd">    Nothing is read on opening: ``chunks`` maps each chunk name to a lazy</span>
+</span><span id="line-164"><span class="sd">    table. Use as a context manager, or ``close`` when done; tables read into</span>
+</span><span id="line-165"><span class="sd">    memory stay valid after closing.</span>
+</span><span id="line-166">
+</span><span id="line-167"><span class="sd">    Parameters</span>
+</span><span id="line-168"><span class="sd">    ----------</span>
+</span><span id="line-169"><span class="sd">    path : str or os.PathLike</span>
+</span><span id="line-170"><span class="sd">        catalogue file</span>
+</span><span id="line-171"><span class="sd">    hdu : int, optional</span>
+</span><span id="line-172"><span class="sd">        FITS HDU to read; ignored for HDF5. Default is ``None``, the first</span>
+</span><span id="line-173"><span class="sd">        table HDU</span>
+</span><span id="line-174"><span class="sd">    column_map : dict, optional</span>
+</span><span id="line-175"><span class="sd">        ``{v2 name: name in the file}`` for a catalogue in another naming</span>
+</span><span id="line-176"><span class="sd">        convention, applied by ``grammar.adapt`` (patterns such as</span>
+</span><span id="line-177"><span class="sd">        ``{"NGMIX_*": "MYFIT_*"}`` allowed). Default is ``None``</span>
+</span><span id="line-178"><span class="sd">    """</span>
+</span><span id="line-179">
+</span><span id="line-180">    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">hdu</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">column_map</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+</span><span id="line-181">        <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">fspath</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</span><span id="line-182">        <span class="bp">self</span><span class="o">.</span><span class="n">column_map</span> <span class="o">=</span> <span class="n">column_map</span>
+</span><span id="line-183">        <span class="bp">self</span><span class="o">.</span><span class="n">_file</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="line-184">        <span class="k">if</span> <span class="n">h5py</span><span class="o">.</span><span class="n">is_hdf5</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">):</span>
+</span><span id="line-185">            <span class="bp">self</span><span class="o">.</span><span class="n">hdu</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="line-186">            <span class="bp">self</span><span class="o">.</span><span class="n">_file</span> <span class="o">=</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="s2">"r"</span><span class="p">)</span>
+</span><span id="line-187">            <span class="bp">self</span><span class="o">.</span><span class="n">_parts</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">chunked</span> <span class="o">=</span> <span class="n">_hdf5_parts</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_file</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+</span><span id="line-188">        <span class="k">else</span><span class="p">:</span>
+</span><span id="line-189">            <span class="k">with</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="n">memmap</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">hdus</span><span class="p">:</span>
+</span><span id="line-190">                <span class="bp">self</span><span class="o">.</span><span class="n">hdu</span> <span class="o">=</span> <span class="n">_first_table_hdu</span><span class="p">(</span><span class="n">hdus</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">)</span> <span class="k">if</span> <span class="n">hdu</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">hdu</span>
+</span><span id="line-191">                <span class="bp">self</span><span class="o">.</span><span class="n">_parts</span> <span class="o">=</span> <span class="p">{</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">hdu</span><span class="p">):</span> <span class="p">(</span><span class="n">hdus</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">hdu</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">,)}</span>
+</span><span id="line-192">            <span class="bp">self</span><span class="o">.</span><span class="n">chunked</span> <span class="o">=</span> <span class="kc">False</span>
+</span><span id="line-193">        <span class="bp">self</span><span class="o">.</span><span class="n">chunks</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="line-194">            <span class="n">key</span><span class="p">:</span> <span class="n">grammar</span><span class="o">.</span><span class="n">adapt</span><span class="p">(</span><span class="o">*</span><span class="n">parts</span><span class="p">,</span> <span class="n">column_map</span><span class="o">=</span><span class="n">column_map</span><span class="p">)</span>
+</span><span id="line-195">            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">parts</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parts</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+</span><span id="line-196">        <span class="p">}</span>
+</span><span id="line-197">
+</span><span id="line-198">    <span class="k">def</span><span class="w"> </span><span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="line-199">        <span class="k">return</span> <span class="bp">self</span>
+</span><span id="line-200">
+</span><span id="line-201">    <span class="k">def</span><span class="w"> </span><span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc_type</span><span class="p">,</span> <span class="n">exc_value</span><span class="p">,</span> <span class="n">traceback</span><span class="p">):</span>
+</span><span id="line-202">        <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</span><span id="line-203">
+<div class="viewcode-block" id="Catalogue.close">
+<a class="viewcode-back" href="../../sp_validation.io.html#sp_validation.io.Catalogue.close">[docs]</a>
+</span><span id="line-204">    <span class="k">def</span><span class="w"> </span><span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="line-205"><span class="w">        </span><span class="sd">"""Close the underlying file; a no-op once closed, and for FITS."""</span>
+</span><span id="line-206">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_file</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-207">            <span class="bp">self</span><span class="o">.</span><span class="n">_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</span><span id="line-208">            <span class="bp">self</span><span class="o">.</span><span class="n">_file</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+</span><span id="line-209">
+</span><span id="line-210">    <span class="k">def</span><span class="w"> </span><span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="line-211">        <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">table</span><span class="p">)</span> <span class="k">for</span> <span class="n">table</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">chunks</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+</span><span id="line-212">
+<div class="viewcode-block" id="Catalogue.dtype">
+<a class="viewcode-back" href="../../sp_validation.io.html#sp_validation.io.Catalogue.dtype">[docs]</a>
+</span><span id="line-213">    <span class="k">def</span><span class="w"> </span><span class="nf">dtype</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+</span><span id="line-214"><span class="w">        </span><span class="sd">"""Return the structured dtype ``read(columns)`` produces.</span>
+</span><span id="line-215">
+</span><span id="line-216"><span class="sd">        Each column's dtype is promoted across every chunk (``group_dtype``).</span>
+</span><span id="line-217">
+</span><span id="line-218"><span class="sd">        Raises</span>
+</span><span id="line-219"><span class="sd">        ------</span>
+</span><span id="line-220"><span class="sd">        KeyError</span>
+</span><span id="line-221"><span class="sd">            if a chunk lacks one of ``columns``, naming the chunk</span>
+</span><span id="line-222"><span class="sd">        """</span>
+</span><span id="line-223">        <span class="k">if</span> <span class="n">columns</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-224">            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">table</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">chunks</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="line-225">                <span class="n">_check_columns</span><span class="p">(</span><span class="n">table</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">columns</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+</span><span id="line-226">        <span class="k">return</span> <span class="n">group_dtype</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">chunks</span><span class="p">,</span> <span class="n">columns</span><span class="p">)</span></div>
+
+</span><span id="line-227">
+<div class="viewcode-block" id="Catalogue.table">
+<a class="viewcode-back" href="../../sp_validation.io.html#sp_validation.io.Catalogue.table">[docs]</a>
+</span><span id="line-228">    <span class="k">def</span><span class="w"> </span><span class="nf">table</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="line-229"><span class="w">        </span><span class="sd">"""Return the catalogue as one table, lazily when it is not chunked.</span>
+</span><span id="line-230">
+</span><span id="line-231"><span class="sd">        An unchunked catalogue is returned as its lazy table (a FITS_rec, an</span>
+</span><span id="line-232"><span class="sd">        h5py Dataset or a ``grammar.V2View``), valid while the file is open;</span>
+</span><span id="line-233"><span class="sd">        a chunked one is read into memory (``read``).</span>
+</span><span id="line-234"><span class="sd">        """</span>
+</span><span id="line-235">        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">chunks</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+</span><span id="line-236">            <span class="k">return</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">chunks</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
+</span><span id="line-237">        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">read</span><span class="p">()</span></div>
+
+</span><span id="line-238">
+<div class="viewcode-block" id="Catalogue.iter_chunks">
+<a class="viewcode-back" href="../../sp_validation.io.html#sp_validation.io.Catalogue.iter_chunks">[docs]</a>
+</span><span id="line-239">    <span class="k">def</span><span class="w"> </span><span class="nf">iter_chunks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+</span><span id="line-240"><span class="w">        </span><span class="sd">"""Yield the row chunks one at a time, in memory, restricted to ``columns``.</span>
+</span><span id="line-241">
+</span><span id="line-242"><span class="sd">        A caller filling a preallocated array (``len`` and ``dtype`` give its</span>
+</span><span id="line-243"><span class="sd">        shape) so never holds more than one chunk on top of its output.</span>
+</span><span id="line-244"><span class="sd">        """</span>
+</span><span id="line-245">        <span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="n">columns</span><span class="p">)</span>
+</span><span id="line-246">        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="o">.</span><span class="n">tqdm</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">chunks</span><span class="p">),</span> <span class="n">disable</span><span class="o">=</span><span class="ow">not</span> <span class="n">verbose</span><span class="p">):</span>
+</span><span id="line-247">            <span class="k">yield</span> <span class="n">grammar</span><span class="o">.</span><span class="n">materialise</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_load</span><span class="p">(</span><span class="n">key</span><span class="p">),</span> <span class="n">columns</span><span class="p">)</span></div>
+
+</span><span id="line-248">
+<div class="viewcode-block" id="Catalogue.read">
+<a class="viewcode-back" href="../../sp_validation.io.html#sp_validation.io.Catalogue.read">[docs]</a>
+</span><span id="line-249">    <span class="k">def</span><span class="w"> </span><span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">key_column</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+</span><span id="line-250"><span class="w">        </span><span class="sd">"""Read the catalogue into one numpy structured array.</span>
+</span><span id="line-251">
+</span><span id="line-252"><span class="sd">        Chunks are copied one at a time into a preallocated output, so peak</span>
+</span><span id="line-253"><span class="sd">        memory is the output plus one chunk.</span>
+</span><span id="line-254">
+</span><span id="line-255"><span class="sd">        Parameters</span>
+</span><span id="line-256"><span class="sd">        ----------</span>
+</span><span id="line-257"><span class="sd">        columns : list of str, optional</span>
+</span><span id="line-258"><span class="sd">            v2-grammar columns to read; default is ``None`` (all)</span>
+</span><span id="line-259"><span class="sd">        key_column : str, optional</span>
+</span><span id="line-260"><span class="sd">            for a chunked catalogue, name of an integer column to add, holding</span>
+</span><span id="line-261"><span class="sd">            for each row the leading integer of its chunk's name. ShapePipe</span>
+</span><span id="line-262"><span class="sd">            star catalogues name each chunk by its exposure number</span>
+</span><span id="line-263"><span class="sd">            (``"2086324"``, or ``"2110000p"`` with the CFIS processed-exposure</span>
+</span><span id="line-264"><span class="sd">            suffix), which this keeps (``key_column="EXPID"``). An unchunked</span>
+</span><span id="line-265"><span class="sd">            catalogue has no chunk names and gets no column. Default is</span>
+</span><span id="line-266"><span class="sd">            ``None``</span>
+</span><span id="line-267"><span class="sd">        verbose : bool, optional</span>
+</span><span id="line-268"><span class="sd">            report progress if ``True``</span>
+</span><span id="line-269">
+</span><span id="line-270"><span class="sd">        Returns</span>
+</span><span id="line-271"><span class="sd">        -------</span>
+</span><span id="line-272"><span class="sd">        numpy.ndarray</span>
+</span><span id="line-273"><span class="sd">            catalogue data in the v2 grammar</span>
+</span><span id="line-274">
+</span><span id="line-275"><span class="sd">        Raises</span>
+</span><span id="line-276"><span class="sd">        ------</span>
+</span><span id="line-277"><span class="sd">        KeyError</span>
+</span><span id="line-278"><span class="sd">            if a chunk lacks one of ``columns``</span>
+</span><span id="line-279"><span class="sd">        ValueError</span>
+</span><span id="line-280"><span class="sd">            if ``key_column`` collides with a column, or a chunk name does</span>
+</span><span id="line-281"><span class="sd">            not begin with an integer</span>
+</span><span id="line-282"><span class="sd">        """</span>
+</span><span id="line-283">        <span class="n">dtype_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="n">columns</span><span class="p">)</span>
+</span><span id="line-284">        <span class="n">keys</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">chunks</span><span class="p">)</span>
+</span><span id="line-285">        <span class="n">add_key</span> <span class="o">=</span> <span class="n">key_column</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">chunked</span>
+</span><span id="line-286">        <span class="k">if</span> <span class="ow">not</span> <span class="n">add_key</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">keys</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+</span><span id="line-287">            <span class="k">return</span> <span class="n">grammar</span><span class="o">.</span><span class="n">materialise</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">chunks</span><span class="p">[</span><span class="n">keys</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span> <span class="n">columns</span><span class="p">)</span>
+</span><span id="line-288">
+</span><span id="line-289">        <span class="k">if</span> <span class="n">add_key</span><span class="p">:</span>
+</span><span id="line-290">            <span class="n">key_values</span> <span class="o">=</span> <span class="n">_chunk_numbers</span><span class="p">(</span><span class="n">keys</span><span class="p">,</span> <span class="n">key_column</span><span class="p">,</span> <span class="n">dtype_out</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+</span><span id="line-291">            <span class="n">dtype_out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="n">dtype_out</span><span class="o">.</span><span class="n">descr</span> <span class="o">+</span> <span class="p">[(</span><span class="n">key_column</span><span class="p">,</span> <span class="s2">"i8"</span><span class="p">)])</span>
+</span><span id="line-292">
+</span><span id="line-293">        <span class="n">n_rows</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+</span><span id="line-294">        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+</span><span id="line-295">            <span class="nb">print</span><span class="p">(</span>
+</span><span id="line-296">                <span class="sa">f</span><span class="s2">"Reading </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">keys</span><span class="p">)</span><span class="si">}</span><span class="s2"> datasets,"</span>
+</span><span id="line-297">                <span class="o">+</span> <span class="sa">f</span><span class="s2">" estimating </span><span class="si">{</span><span class="n">dtype_out</span><span class="o">.</span><span class="n">itemsize</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">n_rows</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">1024</span><span class="o">**</span><span class="mi">3</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-298">                <span class="o">+</span> <span class="sa">f</span><span class="s2">" Gb memory for the (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">dtype_out</span><span class="o">.</span><span class="n">names</span><span class="p">)</span><span class="si">}</span><span class="s2"> x </span><span class="si">{</span><span class="n">n_rows</span><span class="si">}</span><span class="s2">)"</span>
+</span><span id="line-299">                <span class="o">+</span> <span class="s2">" data array ..."</span>
+</span><span id="line-300">            <span class="p">)</span>
+</span><span id="line-301">
+</span><span id="line-302">        <span class="n">out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n_rows</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype_out</span><span class="p">)</span>
+</span><span id="line-303">        <span class="n">start</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span id="line-304">        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="o">.</span><span class="n">tqdm</span><span class="p">(</span><span class="n">keys</span><span class="p">,</span> <span class="n">disable</span><span class="o">=</span><span class="ow">not</span> <span class="n">verbose</span><span class="p">):</span>
+</span><span id="line-305">            <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_load</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+</span><span id="line-306">            <span class="n">end</span> <span class="o">=</span> <span class="n">start</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+</span><span id="line-307">            <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">dtype_out</span><span class="o">.</span><span class="n">names</span><span class="p">:</span>
+</span><span id="line-308">                <span class="k">if</span> <span class="n">add_key</span> <span class="ow">and</span> <span class="n">name</span> <span class="o">==</span> <span class="n">key_column</span><span class="p">:</span>
+</span><span id="line-309">                    <span class="n">out</span><span class="p">[</span><span class="n">name</span><span class="p">][</span><span class="n">start</span><span class="p">:</span><span class="n">end</span><span class="p">]</span> <span class="o">=</span> <span class="n">key_values</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+</span><span id="line-310">                <span class="k">else</span><span class="p">:</span>
+</span><span id="line-311">                    <span class="n">out</span><span class="p">[</span><span class="n">name</span><span class="p">][</span><span class="n">start</span><span class="p">:</span><span class="n">end</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+</span><span id="line-312">            <span class="n">start</span> <span class="o">=</span> <span class="n">end</span>
+</span><span id="line-313">            <span class="k">del</span> <span class="n">data</span>
+</span><span id="line-314">        <span class="k">return</span> <span class="n">out</span></div>
+
+</span><span id="line-315">
+<div class="viewcode-block" id="Catalogue._load">
+<a class="viewcode-back" href="../../sp_validation.io.html#sp_validation.io.Catalogue._load">[docs]</a>
+</span><span id="line-316">    <span class="k">def</span><span class="w"> </span><span class="nf">_load</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+</span><span id="line-317"><span class="w">        </span><span class="sd">"""Return chunk ``key`` in memory, or lazily when the file is unchunked.</span>
+</span><span id="line-318">
+</span><span id="line-319"><span class="sd">        A chunk (one tile or exposure) is small, so it is read whole, which is</span>
+</span><span id="line-320"><span class="sd">        faster than column by column; an unchunked table is read per column.</span>
+</span><span id="line-321"><span class="sd">        """</span>
+</span><span id="line-322">        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">chunked</span><span class="p">:</span>
+</span><span id="line-323">            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">chunks</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+</span><span id="line-324">        <span class="n">parts</span> <span class="o">=</span> <span class="p">(</span><span class="n">part</span><span class="p">[()]</span> <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parts</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
+</span><span id="line-325">        <span class="k">return</span> <span class="n">grammar</span><span class="o">.</span><span class="n">adapt</span><span class="p">(</span><span class="o">*</span><span class="n">parts</span><span class="p">,</span> <span class="n">column_map</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">column_map</span><span class="p">)</span></div>
+</div>
+
+</span><span id="line-326">
+</span><span id="line-327">
+<div class="viewcode-block" id="read_catalogue">
+<a class="viewcode-back" href="../../sp_validation.io.html#sp_validation.io.read_catalogue">[docs]</a>
+</span><span id="line-328"><span class="k">def</span><span class="w"> </span><span class="nf">read_catalogue</span><span class="p">(</span>
+</span><span id="line-329">    <span class="n">path</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">hdu</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">column_map</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">key_column</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span>
+</span><span id="line-330"><span class="p">):</span>
+</span><span id="line-331"><span class="w">    </span><span class="sd">"""Read a catalogue into memory, in the v2 column grammar.</span>
+</span><span id="line-332">
+</span><span id="line-333"><span class="sd">    Any container ``Catalogue`` supports; ``columns`` restricts what is read.</span>
+</span><span id="line-334"><span class="sd">    A catalogue in another naming convention keeps its own column names,</span>
+</span><span id="line-335"><span class="sd">    unless ``column_map`` renames them. See ``Catalogue`` and</span>
+</span><span id="line-336"><span class="sd">    ``Catalogue.read`` for the parameters.</span>
+</span><span id="line-337">
+</span><span id="line-338"><span class="sd">    Returns</span>
+</span><span id="line-339"><span class="sd">    -------</span>
+</span><span id="line-340"><span class="sd">    numpy.ndarray or astropy.io.fits.FITS_rec</span>
+</span><span id="line-341"><span class="sd">        catalogue data</span>
+</span><span id="line-342"><span class="sd">    """</span>
+</span><span id="line-343">    <span class="k">with</span> <span class="n">Catalogue</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">hdu</span><span class="o">=</span><span class="n">hdu</span><span class="p">,</span> <span class="n">column_map</span><span class="o">=</span><span class="n">column_map</span><span class="p">)</span> <span class="k">as</span> <span class="n">catalogue</span><span class="p">:</span>
+</span><span id="line-344">        <span class="k">return</span> <span class="n">catalogue</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="n">columns</span><span class="p">,</span> <span class="n">key_column</span><span class="o">=</span><span class="n">key_column</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">)</span></div>
+
+</span><span id="line-345">
+</span><span id="line-346">
+<div class="viewcode-block" id="open_catalogue">
+<a class="viewcode-back" href="../../sp_validation.io.html#sp_validation.io.open_catalogue">[docs]</a>
+</span><span id="line-347"><span class="k">def</span><span class="w"> </span><span class="nf">open_catalogue</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">hdu</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">column_map</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+</span><span id="line-348"><span class="w">    </span><span class="sd">"""Return a catalogue as one table, reading no data up front.</span>
+</span><span id="line-349">
+</span><span id="line-350"><span class="sd">    A FITS table is memory-mapped and an unchunked HDF5 table read column by</span>
+</span><span id="line-351"><span class="sd">    column on access (its file stays open while the table is referenced), so</span>
+</span><span id="line-352"><span class="sd">    a consumer pays only for the columns it indexes, derived v2 columns</span>
+</span><span id="line-353"><span class="sd">    included. A chunked HDF5 catalogue has no single on-disk table and is</span>
+</span><span id="line-354"><span class="sd">    read into memory. Parameters as for ``Catalogue``.</span>
+</span><span id="line-355">
+</span><span id="line-356"><span class="sd">    Returns</span>
+</span><span id="line-357"><span class="sd">    -------</span>
+</span><span id="line-358"><span class="sd">    astropy.io.fits.FITS_rec, h5py.Dataset, grammar.V2View or numpy.ndarray</span>
+</span><span id="line-359"><span class="sd">        catalogue data in the v2 grammar</span>
+</span><span id="line-360"><span class="sd">    """</span>
+</span><span id="line-361">    <span class="n">catalogue</span> <span class="o">=</span> <span class="n">Catalogue</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">hdu</span><span class="o">=</span><span class="n">hdu</span><span class="p">,</span> <span class="n">column_map</span><span class="o">=</span><span class="n">column_map</span><span class="p">)</span>
+</span><span id="line-362">    <span class="k">if</span> <span class="n">catalogue</span><span class="o">.</span><span class="n">chunked</span><span class="p">:</span>
+</span><span id="line-363">        <span class="k">with</span> <span class="n">catalogue</span><span class="p">:</span>
+</span><span id="line-364">            <span class="k">return</span> <span class="n">catalogue</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+</span><span id="line-365">    <span class="k">return</span> <span class="n">catalogue</span><span class="o">.</span><span class="n">table</span><span class="p">()</span></div>
+
+</span><span id="line-366">
+</span><span id="line-367">
+<div class="viewcode-block" id="open_entry">
+<a class="viewcode-back" href="../../sp_validation.io.html#sp_validation.io.open_entry">[docs]</a>
+</span><span id="line-368"><span class="k">def</span><span class="w"> </span><span class="nf">open_entry</span><span class="p">(</span><span class="n">entry</span><span class="p">):</span>
+</span><span id="line-369"><span class="w">    </span><span class="sd">"""Return the catalogue a config block names (e.g. a cat_config ``shear``).</span>
+</span><span id="line-370">
+</span><span id="line-371"><span class="sd">    The block's ``path``, optional ``hdu`` and optional ``column_map`` go to</span>
+</span><span id="line-372"><span class="sd">    ``open_catalogue``.</span>
+</span><span id="line-373"><span class="sd">    """</span>
+</span><span id="line-374">    <span class="k">return</span> <span class="n">open_catalogue</span><span class="p">(</span>
+</span><span id="line-375">        <span class="n">entry</span><span class="p">[</span><span class="s2">"path"</span><span class="p">],</span> <span class="n">hdu</span><span class="o">=</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"hdu"</span><span class="p">),</span> <span class="n">column_map</span><span class="o">=</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"column_map"</span><span class="p">)</span>
+</span><span id="line-376">    <span class="p">)</span></div>
+
+</span><span id="line-377">
+</span><span id="line-378">
+<div class="viewcode-block" id="_first_table_hdu">
+<a class="viewcode-back" href="../../sp_validation.io.html#sp_validation.io._first_table_hdu">[docs]</a>
+</span><span id="line-379"><span class="k">def</span><span class="w"> </span><span class="nf">_first_table_hdu</span><span class="p">(</span><span class="n">hdus</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+</span><span id="line-380">    <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">hdu</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">hdus</span><span class="p">):</span>
+</span><span id="line-381">        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">hdu</span><span class="p">,</span> <span class="p">(</span><span class="n">fits</span><span class="o">.</span><span class="n">BinTableHDU</span><span class="p">,</span> <span class="n">fits</span><span class="o">.</span><span class="n">TableHDU</span><span class="p">)):</span>
+</span><span id="line-382">            <span class="k">return</span> <span class="n">index</span>
+</span><span id="line-383">    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"No table HDU in FITS file </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span></div>
+
+</span><span id="line-384">
+</span><span id="line-385">
+<div class="viewcode-block" id="_hdf5_parts">
+<a class="viewcode-back" href="../../sp_validation.io.html#sp_validation.io._hdf5_parts">[docs]</a>
+</span><span id="line-386"><span class="k">def</span><span class="w"> </span><span class="nf">_hdf5_parts</span><span class="p">(</span><span class="n">hdf5_file</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+</span><span id="line-387"><span class="w">    </span><span class="sd">"""Return ({chunk name: tuple of row-aligned datasets}, chunked) of a file."""</span>
+</span><span id="line-388">    <span class="n">data</span> <span class="o">=</span> <span class="n">hdf5_file</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"data"</span><span class="p">)</span>
+</span><span id="line-389">    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">h5py</span><span class="o">.</span><span class="n">Dataset</span><span class="p">):</span>
+</span><span id="line-390">        <span class="n">parts</span> <span class="o">=</span> <span class="p">(</span><span class="n">data</span><span class="p">,)</span> <span class="o">+</span> <span class="p">((</span><span class="n">hdf5_file</span><span class="p">[</span><span class="s2">"data_ext"</span><span class="p">],)</span> <span class="k">if</span> <span class="s2">"data_ext"</span> <span class="ow">in</span> <span class="n">hdf5_file</span> <span class="k">else</span> <span class="p">())</span>
+</span><span id="line-391">        <span class="k">return</span> <span class="p">{</span><span class="s2">"data"</span><span class="p">:</span> <span class="n">parts</span><span class="p">},</span> <span class="kc">False</span>
+</span><span id="line-392">    <span class="n">group</span> <span class="o">=</span> <span class="n">find_dataset_group</span><span class="p">(</span><span class="n">hdf5_file</span><span class="p">)</span>
+</span><span id="line-393">    <span class="n">check_n_units</span><span class="p">(</span><span class="n">hdf5_file</span><span class="p">,</span> <span class="n">group</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+</span><span id="line-394">    <span class="n">chunked</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">name</span> <span class="o">!=</span> <span class="s2">"/"</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">group</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span>
+</span><span id="line-395">    <span class="k">return</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="p">(</span><span class="n">group</span><span class="p">[</span><span class="n">key</span><span class="p">],)</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">group</span><span class="p">)},</span> <span class="n">chunked</span></div>
+
+</span><span id="line-396">
+</span><span id="line-397">
+<div class="viewcode-block" id="_chunk_numbers">
+<a class="viewcode-back" href="../../sp_validation.io.html#sp_validation.io._chunk_numbers">[docs]</a>
+</span><span id="line-398"><span class="k">def</span><span class="w"> </span><span class="nf">_chunk_numbers</span><span class="p">(</span><span class="n">keys</span><span class="p">,</span> <span class="n">key_column</span><span class="p">,</span> <span class="n">dtype</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+</span><span id="line-399"><span class="w">    </span><span class="sd">"""Return {chunk name: its leading integer}, for ``Catalogue.read``."""</span>
+</span><span id="line-400">    <span class="k">if</span> <span class="n">key_column</span> <span class="ow">in</span> <span class="p">(</span><span class="n">dtype</span><span class="o">.</span><span class="n">names</span> <span class="ow">or</span> <span class="p">()):</span>
+</span><span id="line-401">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-402">            <span class="sa">f</span><span class="s2">"Cannot add column </span><span class="si">{</span><span class="n">key_column</span><span class="si">!r}</span><span class="s2"> to catalogue </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">:"</span>
+</span><span id="line-403">            <span class="o">+</span> <span class="s2">" a column of that name is already present."</span>
+</span><span id="line-404">        <span class="p">)</span>
+</span><span id="line-405">    <span class="n">matches</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s2">"\d+"</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">}</span>
+</span><span id="line-406">    <span class="n">bad</span> <span class="o">=</span> <span class="p">[</span><span class="n">key</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">match</span> <span class="ow">in</span> <span class="n">matches</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">match</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">]</span>
+</span><span id="line-407">    <span class="k">if</span> <span class="n">bad</span><span class="p">:</span>
+</span><span id="line-408">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-409">            <span class="sa">f</span><span class="s2">"Cannot derive </span><span class="si">{</span><span class="n">key_column</span><span class="si">!r}</span><span class="s2"> for catalogue </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">:"</span>
+</span><span id="line-410">            <span class="o">+</span> <span class="sa">f</span><span class="s2">" dataset name(s) </span><span class="si">{</span><span class="n">bad</span><span class="si">}</span><span class="s2"> do not begin with an integer."</span>
+</span><span id="line-411">        <span class="p">)</span>
+</span><span id="line-412">    <span class="k">return</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">())</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">match</span> <span class="ow">in</span> <span class="n">matches</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span></div>
+
+</span><span id="line-413">
+</span><span id="line-414">
+<div class="viewcode-block" id="_check_columns">
+<a class="viewcode-back" href="../../sp_validation.io.html#sp_validation.io._check_columns">[docs]</a>
+</span><span id="line-415"><span class="k">def</span><span class="w"> </span><span class="nf">_check_columns</span><span class="p">(</span><span class="n">dtype</span><span class="p">,</span> <span class="n">columns</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">chunk</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+</span><span id="line-416"><span class="w">    </span><span class="sd">"""Raise a clear error if requested columns are absent from a chunk."""</span>
+</span><span id="line-417">    <span class="n">missing</span> <span class="o">=</span> <span class="p">[</span><span class="n">col</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">columns</span> <span class="k">if</span> <span class="n">col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="n">dtype</span><span class="o">.</span><span class="n">names</span> <span class="ow">or</span> <span class="p">())]</span>
+</span><span id="line-418">    <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
+</span><span id="line-419">        <span class="n">where</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">" (dataset </span><span class="si">{</span><span class="n">chunk</span><span class="si">!r}</span><span class="s2">)"</span> <span class="k">if</span> <span class="n">chunk</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">""</span>
+</span><span id="line-420">        <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
+</span><span id="line-421">            <span class="sa">f</span><span class="s2">"Column(s) </span><span class="si">{</span><span class="n">missing</span><span class="si">}</span><span class="s2"> not found in catalogue </span><span class="si">{</span><span class="n">path</span><span class="si">}{</span><span class="n">where</span><span class="si">}</span><span class="s2">."</span>
+</span><span id="line-422">            <span class="o">+</span> <span class="sa">f</span><span class="s2">" Available columns: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">dtype</span><span class="o">.</span><span class="n">names</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="p">())</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-423">        <span class="p">)</span></div>
+
+</span><span id="line-424">
+</span><span id="line-425">
+<div class="viewcode-block" id="find_dataset_group">
+<a class="viewcode-back" href="../../sp_validation.io.html#sp_validation.io.find_dataset_group">[docs]</a>
+</span><span id="line-426"><span class="k">def</span><span class="w"> </span><span class="nf">find_dataset_group</span><span class="p">(</span><span class="n">hdf5_file</span><span class="p">):</span>
+</span><span id="line-427"><span class="w">    </span><span class="sd">"""Find Dataset Group.</span>
+</span><span id="line-428">
+</span><span id="line-429"><span class="sd">    Descend from the root of an open HDF5 file to the single group whose</span>
+</span><span id="line-430"><span class="sd">    members are the per-unit datasets (one per tile, or one per exposure).</span>
+</span><span id="line-431">
+</span><span id="line-432"><span class="sd">    This makes the reader independent of how deeply the products nest that</span>
+</span><span id="line-433"><span class="sd">    group: it walks down as long as the current node holds exactly one</span>
+</span><span id="line-434"><span class="sd">    sub-group, and stops as soon as the members are datasets. It therefore</span>
+</span><span id="line-435"><span class="sd">    reads both the nested ``patches/&lt;campaign&gt;/&lt;tile-ID&gt;`` layout (the</span>
+</span><span id="line-436"><span class="sd">    "patches" key is a ShapePipe-side compatibility shim, not a concept) and</span>
+</span><span id="line-437"><span class="sd">    a flat ``tiles/&lt;tile-ID&gt;`` or ``exposures/&lt;exp&gt;`` layout.</span>
+</span><span id="line-438">
+</span><span id="line-439"><span class="sd">    Parameters</span>
+</span><span id="line-440"><span class="sd">    ----------</span>
+</span><span id="line-441"><span class="sd">    hdf5_file : h5py.File or h5py.Group</span>
+</span><span id="line-442"><span class="sd">        open input file</span>
+</span><span id="line-443">
+</span><span id="line-444"><span class="sd">    Returns</span>
+</span><span id="line-445"><span class="sd">    -------</span>
+</span><span id="line-446"><span class="sd">    h5py.Group</span>
+</span><span id="line-447"><span class="sd">        group whose members are the per-unit datasets</span>
+</span><span id="line-448">
+</span><span id="line-449"><span class="sd">    Raises</span>
+</span><span id="line-450"><span class="sd">    ------</span>
+</span><span id="line-451"><span class="sd">    ValueError</span>
+</span><span id="line-452"><span class="sd">        if the file is empty, or a level holds more than one sub-group</span>
+</span><span id="line-453">
+</span><span id="line-454"><span class="sd">    """</span>
+</span><span id="line-455">    <span class="n">node</span> <span class="o">=</span> <span class="n">hdf5_file</span>
+</span><span id="line-456">    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+</span><span id="line-457">        <span class="n">keys</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+</span><span id="line-458">        <span class="k">if</span> <span class="ow">not</span> <span class="n">keys</span><span class="p">:</span>
+</span><span id="line-459">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-460">                <span class="sa">f</span><span class="s2">"No data found under </span><span class="si">{</span><span class="n">node</span><span class="o">.</span><span class="n">name</span><span class="si">!r}</span><span class="s2"> in </span><span class="si">{</span><span class="n">hdf5_file</span><span class="o">.</span><span class="n">file</span><span class="o">.</span><span class="n">filename</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-461">            <span class="p">)</span>
+</span><span id="line-462">        <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">node</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="n">h5py</span><span class="o">.</span><span class="n">Dataset</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">):</span>
+</span><span id="line-463">            <span class="k">return</span> <span class="n">node</span>
+</span><span id="line-464">        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">keys</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+</span><span id="line-465">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-466">                <span class="sa">f</span><span class="s2">"Expected a single container group under </span><span class="si">{</span><span class="n">node</span><span class="o">.</span><span class="n">name</span><span class="si">!r}</span><span class="s2"> in"</span>
+</span><span id="line-467">                <span class="o">+</span> <span class="sa">f</span><span class="s2">" </span><span class="si">{</span><span class="n">hdf5_file</span><span class="o">.</span><span class="n">file</span><span class="o">.</span><span class="n">filename</span><span class="si">}</span><span class="s2">, found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">keys</span><span class="p">)</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">keys</span><span class="p">[:</span><span class="mi">5</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-468">            <span class="p">)</span>
+</span><span id="line-469">        <span class="n">node</span> <span class="o">=</span> <span class="n">node</span><span class="p">[</span><span class="n">keys</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span></div>
+
+</span><span id="line-470">
+</span><span id="line-471">
+<div class="viewcode-block" id="promote_dtypes">
+<a class="viewcode-back" href="../../sp_validation.io.html#sp_validation.io.promote_dtypes">[docs]</a>
+</span><span id="line-472"><span class="k">def</span><span class="w"> </span><span class="nf">promote_dtypes</span><span class="p">(</span><span class="n">dtype_a</span><span class="p">,</span> <span class="n">dtype_b</span><span class="p">):</span>
+</span><span id="line-473"><span class="w">    </span><span class="sd">"""Promote Dtypes.</span>
+</span><span id="line-474">
+</span><span id="line-475"><span class="sd">    Return a scalar dtype that holds both input dtypes without truncation</span>
+</span><span id="line-476"><span class="sd">    or overflow.</span>
+</span><span id="line-477">
+</span><span id="line-478"><span class="sd">    Parameters</span>
+</span><span id="line-479"><span class="sd">    ----------</span>
+</span><span id="line-480"><span class="sd">    dtype_a : numpy.dtype</span>
+</span><span id="line-481"><span class="sd">        first input dtype</span>
+</span><span id="line-482"><span class="sd">    dtype_b : numpy.dtype</span>
+</span><span id="line-483"><span class="sd">        second input dtype</span>
+</span><span id="line-484">
+</span><span id="line-485"><span class="sd">    Returns</span>
+</span><span id="line-486"><span class="sd">    -------</span>
+</span><span id="line-487"><span class="sd">    numpy.dtype</span>
+</span><span id="line-488"><span class="sd">        promoted dtype</span>
+</span><span id="line-489">
+</span><span id="line-490"><span class="sd">    """</span>
+</span><span id="line-491">    <span class="k">if</span> <span class="n">dtype_a</span> <span class="o">==</span> <span class="n">dtype_b</span><span class="p">:</span>
+</span><span id="line-492">        <span class="k">return</span> <span class="n">dtype_a</span>
+</span><span id="line-493">    <span class="k">if</span> <span class="n">dtype_a</span><span class="o">.</span><span class="n">kind</span> <span class="ow">in</span> <span class="s2">"SU"</span> <span class="ow">and</span> <span class="n">dtype_b</span><span class="o">.</span><span class="n">kind</span> <span class="ow">in</span> <span class="s2">"SU"</span><span class="p">:</span>
+</span><span id="line-494">        <span class="n">kind</span> <span class="o">=</span> <span class="s2">"U"</span> <span class="k">if</span> <span class="s2">"U"</span> <span class="ow">in</span> <span class="p">(</span><span class="n">dtype_a</span><span class="o">.</span><span class="n">kind</span><span class="p">,</span> <span class="n">dtype_b</span><span class="o">.</span><span class="n">kind</span><span class="p">)</span> <span class="k">else</span> <span class="s2">"S"</span>
+</span><span id="line-495">        <span class="n">size_a</span> <span class="o">=</span> <span class="n">dtype_a</span><span class="o">.</span><span class="n">itemsize</span> <span class="o">//</span> <span class="p">(</span><span class="mi">4</span> <span class="k">if</span> <span class="n">dtype_a</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s2">"U"</span> <span class="k">else</span> <span class="mi">1</span><span class="p">)</span>
+</span><span id="line-496">        <span class="n">size_b</span> <span class="o">=</span> <span class="n">dtype_b</span><span class="o">.</span><span class="n">itemsize</span> <span class="o">//</span> <span class="p">(</span><span class="mi">4</span> <span class="k">if</span> <span class="n">dtype_b</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s2">"U"</span> <span class="k">else</span> <span class="mi">1</span><span class="p">)</span>
+</span><span id="line-497">        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">kind</span><span class="si">}{</span><span class="nb">max</span><span class="p">(</span><span class="n">size_a</span><span class="p">,</span><span class="w"> </span><span class="n">size_b</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="line-498">
+</span><span id="line-499">    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">promote_types</span><span class="p">(</span><span class="n">dtype_a</span><span class="p">,</span> <span class="n">dtype_b</span><span class="p">)</span></div>
+
+</span><span id="line-500">
+</span><span id="line-501">
+<div class="viewcode-block" id="group_dtype">
+<a class="viewcode-back" href="../../sp_validation.io.html#sp_validation.io.group_dtype">[docs]</a>
+</span><span id="line-502"><span class="k">def</span><span class="w"> </span><span class="nf">group_dtype</span><span class="p">(</span><span class="n">tables</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+</span><span id="line-503"><span class="w">    </span><span class="sd">"""Group Dtype.</span>
+</span><span id="line-504">
+</span><span id="line-505"><span class="sd">    Build the structured output dtype of a group of row-chunk tables,</span>
+</span><span id="line-506"><span class="sd">    promoting each column across *every* table. A campaign that was</span>
+</span><span id="line-507"><span class="sd">    partially reprocessed can carry e.g. ``S7`` tile IDs in one tile and</span>
+</span><span id="line-508"><span class="sd">    ``S12`` in another, or ``f4`` next to ``f8``; taking the dtype of the</span>
+</span><span id="line-509"><span class="sd">    first table alone would silently truncate the others.</span>
+</span><span id="line-510">
+</span><span id="line-511"><span class="sd">    Note that ShapePipe currently writes ``TILE_ID`` as ``f8`` (the tile</span>
+</span><span id="line-512"><span class="sd">    ``183.307`` arrives as the float ``183.307``), not as a string, so the</span>
+</span><span id="line-513"><span class="sd">    string-promotion branch above is for a future string-valued ``TILE_ID``</span>
+</span><span id="line-514"><span class="sd">    and is not exercised by today's products.</span>
+</span><span id="line-515">
+</span><span id="line-516"><span class="sd">    TODO: whether ``TILE_ID`` should be a string is an open schema decision.</span>
+</span><span id="line-517"><span class="sd">    A float cannot represent the ID exactly and cannot be compared for</span>
+</span><span id="line-518"><span class="sd">    equality safely; changing it is a breaking product change, so it is left</span>
+</span><span id="line-519"><span class="sd">    as-is here and this reader deliberately handles both.</span>
+</span><span id="line-520">
+</span><span id="line-521"><span class="sd">    Parameters</span>
+</span><span id="line-522"><span class="sd">    ----------</span>
+</span><span id="line-523"><span class="sd">    tables : list or dict</span>
+</span><span id="line-524"><span class="sd">        row-chunk tables (h5py Datasets, or their ``grammar.adapt`` views),</span>
+</span><span id="line-525"><span class="sd">        optionally keyed by dataset name for error messages</span>
+</span><span id="line-526"><span class="sd">    columns : list of str, optional</span>
+</span><span id="line-527"><span class="sd">        columns to keep; default is ``None`` (all columns of the first table)</span>
+</span><span id="line-528">
+</span><span id="line-529"><span class="sd">    Returns</span>
+</span><span id="line-530"><span class="sd">    -------</span>
+</span><span id="line-531"><span class="sd">    numpy.dtype</span>
+</span><span id="line-532"><span class="sd">        structured output dtype</span>
+</span><span id="line-533">
+</span><span id="line-534"><span class="sd">    Raises</span>
+</span><span id="line-535"><span class="sd">    ------</span>
+</span><span id="line-536"><span class="sd">    KeyError</span>
+</span><span id="line-537"><span class="sd">        if a table lacks one of the columns, naming the tables that do</span>
+</span><span id="line-538">
+</span><span id="line-539"><span class="sd">    """</span>
+</span><span id="line-540">    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">tables</span><span class="p">,</span> <span class="s2">"items"</span><span class="p">):</span>
+</span><span id="line-541">        <span class="n">tables</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">enumerate</span><span class="p">(</span><span class="n">tables</span><span class="p">))</span>
+</span><span id="line-542">    <span class="n">dtypes</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">table</span><span class="o">.</span><span class="n">dtype</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">table</span> <span class="ow">in</span> <span class="n">tables</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+</span><span id="line-543">    <span class="n">first</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">dtypes</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
+</span><span id="line-544">    <span class="n">names</span> <span class="o">=</span> <span class="n">columns</span> <span class="k">if</span> <span class="n">columns</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">list</span><span class="p">(</span><span class="n">first</span><span class="o">.</span><span class="n">names</span><span class="p">)</span>
+</span><span id="line-545">
+</span><span id="line-546">    <span class="n">missing</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="line-547">        <span class="n">key</span><span class="p">:</span> <span class="p">[</span><span class="n">name</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">names</span> <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">dtype</span><span class="o">.</span><span class="n">names</span><span class="p">]</span>
+</span><span id="line-548">        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">dtype</span> <span class="ow">in</span> <span class="n">dtypes</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+</span><span id="line-549">    <span class="p">}</span>
+</span><span id="line-550">    <span class="n">missing</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">cols</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">cols</span> <span class="ow">in</span> <span class="n">missing</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">cols</span><span class="p">}</span>
+</span><span id="line-551">    <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
+</span><span id="line-552">        <span class="n">key</span><span class="p">,</span> <span class="n">cols</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">missing</span><span class="o">.</span><span class="n">items</span><span class="p">()))</span>
+</span><span id="line-553">        <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
+</span><span id="line-554">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">missing</span><span class="p">)</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">tables</span><span class="p">)</span><span class="si">}</span><span class="s2"> tables lack columns"</span>
+</span><span id="line-555">            <span class="o">+</span> <span class="sa">f</span><span class="s2">" </span><span class="si">{</span><span class="s1">'requested'</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">columns</span><span class="w"> </span><span class="ow">is</span><span class="w"> </span><span class="ow">not</span><span class="w"> </span><span class="kc">None</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">'of the first table'</span><span class="si">}</span><span class="s2">,"</span>
+</span><span id="line-556">            <span class="o">+</span> <span class="sa">f</span><span class="s2">" e.g. table </span><span class="si">{</span><span class="n">key</span><span class="si">!r}</span><span class="s2"> lacks </span><span class="si">{</span><span class="n">cols</span><span class="si">}</span><span class="s2">; tables lacking some:"</span>
+</span><span id="line-557">            <span class="o">+</span> <span class="sa">f</span><span class="s2">" </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">missing</span><span class="p">)[:</span><span class="mi">20</span><span class="p">]</span><span class="si">}</span><span class="s2">. Request columns without them."</span>
+</span><span id="line-558">        <span class="p">)</span>
+</span><span id="line-559">    <span class="n">dtypes</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">dtypes</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+</span><span id="line-560">
+</span><span id="line-561">    <span class="n">fields</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="line-562">    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">names</span><span class="p">:</span>
+</span><span id="line-563">        <span class="n">promoted</span> <span class="o">=</span> <span class="n">dtypes</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">name</span><span class="p">]</span>
+</span><span id="line-564">        <span class="k">for</span> <span class="n">dtype</span> <span class="ow">in</span> <span class="n">dtypes</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+</span><span id="line-565">            <span class="n">promoted</span> <span class="o">=</span> <span class="n">promote_dtypes</span><span class="p">(</span><span class="n">promoted</span><span class="p">,</span> <span class="n">dtype</span><span class="p">[</span><span class="n">name</span><span class="p">])</span>
+</span><span id="line-566">        <span class="n">fields</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">name</span><span class="p">,</span> <span class="n">promoted</span><span class="p">))</span>
+</span><span id="line-567">
+</span><span id="line-568">    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="n">fields</span><span class="p">)</span></div>
+
+</span><span id="line-569">
+</span><span id="line-570">
+<div class="viewcode-block" id="check_n_units">
+<a class="viewcode-back" href="../../sp_validation.io.html#sp_validation.io.check_n_units">[docs]</a>
+</span><span id="line-571"><span class="k">def</span><span class="w"> </span><span class="nf">check_n_units</span><span class="p">(</span><span class="n">hdf5_file</span><span class="p">,</span> <span class="n">group</span><span class="p">,</span> <span class="n">file_path</span><span class="p">):</span>
+</span><span id="line-572"><span class="w">    </span><span class="sd">"""Check Number of Units.</span>
+</span><span id="line-573">
+</span><span id="line-574"><span class="sd">    Compare the number of datasets found against the count a ShapePipe</span>
+</span><span id="line-575"><span class="sd">    product declares in a root attribute (``N_UNITS_ATTRS``: ``n_tiles`` for</span>
+</span><span id="line-576"><span class="sd">    galaxy catalogues, ``n_exposures`` for star catalogues), to catch a</span>
+</span><span id="line-577"><span class="sd">    catalogue truncated by an interrupted merge job or file transfer.</span>
+</span><span id="line-578">
+</span><span id="line-579"><span class="sd">    A missing attribute is not an error: older products carry none.</span>
+</span><span id="line-580">
+</span><span id="line-581"><span class="sd">    Parameters</span>
+</span><span id="line-582"><span class="sd">    ----------</span>
+</span><span id="line-583"><span class="sd">    hdf5_file : h5py.File</span>
+</span><span id="line-584"><span class="sd">        open input file</span>
+</span><span id="line-585"><span class="sd">    group : h5py.Group</span>
+</span><span id="line-586"><span class="sd">        group holding the per-unit datasets</span>
+</span><span id="line-587"><span class="sd">    file_path : str</span>
+</span><span id="line-588"><span class="sd">        input file path, for the error message</span>
+</span><span id="line-589">
+</span><span id="line-590"><span class="sd">    Raises</span>
+</span><span id="line-591"><span class="sd">    ------</span>
+</span><span id="line-592"><span class="sd">    ValueError</span>
+</span><span id="line-593"><span class="sd">        if the number of datasets differs from the declared count</span>
+</span><span id="line-594">
+</span><span id="line-595"><span class="sd">    """</span>
+</span><span id="line-596">    <span class="k">for</span> <span class="n">attr</span><span class="p">,</span> <span class="n">unit</span> <span class="ow">in</span> <span class="n">N_UNITS_ATTRS</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="line-597">        <span class="n">n_declared</span> <span class="o">=</span> <span class="n">hdf5_file</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">attr</span><span class="p">)</span>
+</span><span id="line-598">        <span class="k">if</span> <span class="n">n_declared</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-599">            <span class="k">continue</span>
+</span><span id="line-600">        <span class="n">n_found</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">group</span><span class="p">)</span>
+</span><span id="line-601">        <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="n">n_declared</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n_found</span><span class="p">:</span>
+</span><span id="line-602">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-603">                <span class="sa">f</span><span class="s2">"Catalogue </span><span class="si">{</span><span class="n">file_path</span><span class="si">}</span><span class="s2"> declares </span><span class="si">{</span><span class="n">attr</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">n_declared</span><span class="p">)</span><span class="si">}</span><span class="s2"> but"</span>
+</span><span id="line-604">                <span class="o">+</span> <span class="sa">f</span><span class="s2">" holds </span><span class="si">{</span><span class="n">n_found</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">unit</span><span class="si">}</span><span class="s2"> dataset(s); the file is incomplete."</span>
+</span><span id="line-605">            <span class="p">)</span></div>
 
 </span></code></pre></div>
     </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
@@ -349,7 +885,7 @@
       </div><footer class="py-6 border-t border-border md:py-0">
     <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
       <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-        <p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini&nbsp;Last updated: 01 Oct, 2026.&nbsp;Built with <a class="font-medium underline underline-offset-4"
+        <p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini&nbsp;Last updated: 02 Oct, 2026.&nbsp;Built with <a class="font-medium underline underline-offset-4"
     href="https://www.sphinx-doc.org"
     rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>

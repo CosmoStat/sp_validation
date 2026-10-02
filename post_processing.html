@@ -29,7 +29,7 @@
 <link href="search.html" rel="search" title="Search"/>
 <link href="genindex.html" rel="index" title="Index"/>
 <link href="Leakage_object_Tutorial.html" rel="next" title="Leakage_object Tutorial"/>
-<link href="run_validation.html" rel="prev" title="Running shear validation"/>
+<link href="catalogue_columns.html" rel="prev" title="Catalogue columns"/>
 </head>
 <body :class="{ 'overflow-hidden': showSidebar }" @scroll.window="showScrollTop = pageYOffset &gt; 100" class="min-h-screen font-sans antialiased bg-background text-foreground" x-data="{ showSidebar: false, showScrollTop: false }">
 <div @click.self="showSidebar = false" class="fixed inset-0 z-50 overflow-hidden bg-background/80 backdrop-blur-sm md:hidden" x-cloak="" x-show="showSidebar"></div><div class="relative flex flex-col min-h-screen" id="page"><a class="absolute top-0 left-0 z-[100] block bg-background p-4 text-xl transition -translate-x-full opacity-0 focus:translate-x-0 focus:opacity-100" href="#content">
@@ -81,6 +81,7 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="using_the_catalogues.html">Using the weak-lensing catalogues</a></li>
 <li class="toctree-l1"><a class="reference internal" href="run_validation.html">Running shear validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="catalogue_columns.html">Catalogue columns</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Post-processing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Leakage_object_Tutorial.html">Leakage_object Tutorial</a></li>
 </ul>
@@ -106,6 +107,7 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.format.html">sp_validation.format</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html">sp_validation.galaxy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html">sp_validation.glass_mock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.grammar.html">sp_validation.grammar</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.image_sims.html">sp_validation.image_sims</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html">sp_validation.io</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.masks.html">sp_validation.masks</a></li>
@@ -152,8 +154,8 @@
 <h2>Science-ready catalogue production<a class="headerlink" href="#science-ready-catalogue-production" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#science-ready-catalogue-production'">¶</a></h2>
 <p>Processing steps of <code class="docutils literal notranslate"><span class="pre">ShapePipe</span></code> output catalogues carried out by the <code class="docutils literal notranslate"><span class="pre">sp_validation</span></code> package to produce science-ready catalogues are:</p>
 <ol class="arabic simple">
-<li><p>Extract relevant information from a final <code class="docutils literal notranslate"><span class="pre">ShapePipe</span></code> output catalogue per patch; run basic diagnostic tests, create pre-calibration shear catalogues.</p></li>
-<li><p>Merge pre-calibration catalogues created in the previous step, e.g. processed by individual patches, into one or more joint catalogues;</p></li>
+<li><p>Extract relevant information from a final <code class="docutils literal notranslate"><span class="pre">ShapePipe</span></code> output catalogue per campaign; run basic diagnostic tests, create pre-calibration shear catalogues.</p></li>
+<li><p>Merge pre-calibration catalogues created in the previous step, e.g. processed as individual campaigns, into one or more joint catalogues;</p></li>
 <li><p>Apply external area and footprint masks. These are the “structural” and the coverage masks.</p></li>
 <li><p>Create calibrated galaxy shear catalogue. This step includes the tasks:<br/>
 a. Mask objects using flags and criteria in <code class="docutils literal notranslate"><span class="pre">ShapePipe</span></code> output catalogues and external (e.g. mask) files;<br/>
@@ -167,7 +169,7 @@ c. Calibrate the shear estimates with the <code class="docutils literal notransl
 <p>This script creates three shear catalogues in FITS format:</p>
 <ul class="simple">
 <li><p><em>Basic</em> catalogue containing
-positions, shapes (calibrated +  PSF-leakage corrected), weights (DES), magnitude, patch ID. Masking and galaxy selection are applied.</p></li>
+positions, shapes (calibrated +  PSF-leakage corrected), weights (DES), magnitude, campaign ID. Masking and galaxy selection are applied.</p></li>
 <li><p><em>Extended</em> catalogue containing <strong>in addition</strong>
 uncalibrated shapes inverse-variance weights, shear response matrices, SNR, flux, size, PSF quantities. Masking and galaxy selection are applied.</p></li>
 <li><p><em>Comprehensive</em> catalogue containing <strong>in addition</strong>
@@ -175,11 +177,11 @@ metacal information (measured sheared quantities), mask information (<code class
 This catalogue does not contain calibrated shear estimates, since the calibration is carried out after applying masking and selection.<br/>
 This is the main output catalogue that will be processed further.</p></li>
 </ul>
-<p>This step is carried out per patch. Parameters have to be set via the python configuration file <code class="docutils literal notranslate"><span class="pre">params.py</span></code> (template at <code class="docutils literal notranslate"><span class="pre">scripts/calibration/params.py</span></code>).</p>
+<p>This step is carried out per campaign. Parameters have to be set via the python configuration file <code class="docutils literal notranslate"><span class="pre">params.py</span></code> (template at <code class="docutils literal notranslate"><span class="pre">scripts/calibration/params.py</span></code>).</p>
 </section>
 <section id="merge-catalogues">
 <h3>2. Merge catalogues<a class="headerlink" href="#merge-catalogues" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#merge-catalogues'">¶</a></h3>
-<p>The patch-wise comprehensive catalogues extracted in the previous step are merged using the script <code class="docutils literal notranslate"><span class="pre">scripts/calibration/create_joint_comprehensive_cat.py</span></code>, which is a front-end
+<p>The per-campaign comprehensive catalogues extracted in the previous step are merged using the script <code class="docutils literal notranslate"><span class="pre">scripts/calibration/create_joint_comprehensive_cat.py</span></code>, which is a front-end
 of the <code class="docutils literal notranslate"><span class="pre">sp_validation</span></code> library class <code class="docutils literal notranslate"><span class="pre">catalog_builders:JointCat</span></code>.</p>
 </section>
 <section id="apply-external-masks">
@@ -191,61 +193,16 @@ of the <code class="docutils literal notranslate"><span class="pre">sp_validatio
 <p>The steps of masking, galaxy sample selection, and calibration are carried out jointly using the script
 <code class="docutils literal notranslate"><span class="pre">scripts/calibration/calibrate_comprehensive_cat.py</span></code>.</p>
 <p>Masking parameters have to be set via a configuration file <code class="docutils literal notranslate"><span class="pre">config_mask.yaml</span></code>. Examples can be found in <code class="docutils literal notranslate"><span class="pre">sp_validation/config/calibration</span></code>.</p>
-<hr class="docutils"/>
-<p>The following describes the pre-v1.4.2 method to create a joint, calibrated shear catalogue.</p>
-</section>
-<section id="combine-shear-validation-run-output-catalogues">
-<h3>Combine shear validation run output catalogues<a class="headerlink" href="#combine-shear-validation-run-output-catalogues" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#combine-shear-validation-run-output-catalogues'">¶</a></h3>
-</section>
-<section id="combine-shear-validation-run-statistics">
-<h3>Combine shear validation run statistics<a class="headerlink" href="#combine-shear-validation-run-statistics" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#combine-shear-validation-run-statistics'">¶</a></h3>
-<p>Summary statistics created by shear validation runs of sub-areas of a survey
-can be combined to create joint summary statistics. This is useful in cases
-where the galaxy catalogue of an entire survey is too large to process, and
-needs to be broken down in smaller patches. This step provides global summary
-statistics from those patches.</p>
-<p>Depending on the type of summary, their combination can be the sum (e.g. for
-number of objects), average, weighted average (e.g. for the additive bias), the
-weighted average of the square (e.g. the ellipticity dispersion), the weighted
-variance (to combine variance estimates), or the weighted variance of the mean
-(to combine mean variance estimates).</p>
-<p>In a directory containing the subpatches as subdirectories, and within each
-their own output directory (<code class="docutils literal notranslate"><span class="pre">sp_output</span></code>by default in <code class="docutils literal notranslate"><span class="pre">params.py</span></code>) with results
-of the validation runs, type</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code><span id="line-1">combine_results.py
-</span></code></pre></div>
-</div>
-<p>This script creates a number of output files, including <code class="docutils literal notranslate"><span class="pre">R.txt</span></code> and <code class="docutils literal notranslate"><span class="pre">c.txt</span></code>
-with the combined multiplicative and additive biases, respectively.</p>
-<p>At the moment (ShapePipe catalogues v1.4.1 and older), this script needs to
-be run to write summary statistics output files before creating the joint
-shear catalogue with <code class="docutils literal notranslate"><span class="pre">create_joint_shape_cat.py</span></code>, see
-<a class="reference internal" href="#create-combined-calibrated-shear-catalogue">here</a>.</p>
-</section>
-<section id="create-combined-calibrated-shear-catalogue">
-<span id="id1"></span><h3>Create combined calibrated shear catalogue<a class="headerlink" href="#create-combined-calibrated-shear-catalogue" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#create-combined-calibrated-shear-catalogue'">¶</a></h3>
-<p>After creating the combined statistics results described above, the global
-calibration outputs can be used to create a combined, globally calibrated shear
-catalogue. The calibration is obtained from the files <code class="docutils literal notranslate"><span class="pre">R.txt</span></code> and <code class="docutils literal notranslate"><span class="pre">c.txt</span></code>
-created above.</p>
-<p>In the same directory containing the subpatches as above, type</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code><span id="line-1">create_joint_shape_cat.py
-</span></code></pre></div>
-</div>
-<p>It creates the joint output catalogues
-<code class="docutils literal notranslate"><span class="pre">{survey}_{pipeline}_{year}_v{version}.fits</span></code>
-(e.g. <code class="docutils literal notranslate"><span class="pre">unions_shapepipe_2022_v1.4.fits</span></code>) and
-<code class="docutils literal notranslate"><span class="pre">{survey}_{pipeline}_extended_{year}_v{version}.fits</span></code>.</p>
 </section>
 </section>
 </section>
 </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
 <div class="mr-auto">
-<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="run_validation.html">
+<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="catalogue_columns.html">
 <svg class="mr-2 h-4 w-4" fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
 <polyline points="15 18 9 12 15 6"></polyline>
 </svg>
-        Running shear validation
+        Catalogue columns
       </a>
 </div>
 <div class="ml-auto">
@@ -264,9 +221,6 @@ created above.</p>
 <li><a :data-current="activeSection === '#merge-catalogues'" class="reference internal" href="#merge-catalogues">2. Merge catalogues</a></li>
 <li><a :data-current="activeSection === '#apply-external-masks'" class="reference internal" href="#apply-external-masks">3. Apply external masks</a></li>
 <li><a :data-current="activeSection === '#mask-select-and-calibrate'" class="reference internal" href="#mask-select-and-calibrate">4. Mask, select, and calibrate</a></li>
-<li><a :data-current="activeSection === '#combine-shear-validation-run-output-catalogues'" class="reference internal" href="#combine-shear-validation-run-output-catalogues">Combine shear validation run output catalogues</a></li>
-<li><a :data-current="activeSection === '#combine-shear-validation-run-statistics'" class="reference internal" href="#combine-shear-validation-run-statistics">Combine shear validation run statistics</a></li>
-<li><a :data-current="activeSection === '#create-combined-calibrated-shear-catalogue'" class="reference internal" href="#create-combined-calibrated-shear-catalogue">Create combined calibrated shear catalogue</a></li>
 </ul>
 </li>
 </ul>
@@ -277,7 +231,7 @@ created above.</p>
 </div><footer class="py-6 border-t border-border md:py-0">
 <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
 <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 01 Oct, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 02 Oct, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>
 </div>
 </footer>

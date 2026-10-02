@@ -113,6 +113,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../using_the_catalogues.html">Using the weak-lensing catalogues</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../run_validation.html">Running shear validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../catalogue_columns.html">Catalogue columns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../post_processing.html">Post-processing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../Leakage_object_Tutorial.html">Leakage_object Tutorial</a></li>
 </ul>
@@ -138,6 +139,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.format.html">sp_validation.format</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.galaxy.html">sp_validation.galaxy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.glass_mock.html">sp_validation.glass_mock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.grammar.html">sp_validation.grammar</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.image_sims.html">sp_validation.image_sims</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.io.html">sp_validation.io</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.masks.html">sp_validation.masks</a></li>
@@ -535,256 +537,257 @@
 </span><span id="line-303"><span class="sd">    Pixels containing at least one object get 1.0, everything else 0.0.</span>
 </span><span id="line-304"><span class="sd">    """</span>
 </span><span id="line-305">    <span class="kn">import</span><span class="w"> </span><span class="nn">healpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">hp</span>
-</span><span id="line-306">    <span class="kn">from</span><span class="w"> </span><span class="nn">astropy.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">fits</span>
-</span><span id="line-307">
-</span><span id="line-308">    <span class="n">cat_gal</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">getdata</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
-</span><span id="line-309">    <span class="n">ra</span> <span class="o">=</span> <span class="n">cat_gal</span><span class="p">[</span><span class="n">ra_col</span><span class="p">]</span>
-</span><span id="line-310">    <span class="n">dec</span> <span class="o">=</span> <span class="n">cat_gal</span><span class="p">[</span><span class="n">dec_col</span><span class="p">]</span>
-</span><span id="line-311">
-</span><span id="line-312">    <span class="n">theta</span> <span class="o">=</span> <span class="p">(</span><span class="mf">90.0</span> <span class="o">-</span> <span class="n">dec</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mf">180.0</span>
-</span><span id="line-313">    <span class="n">phi</span> <span class="o">=</span> <span class="n">ra</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mf">180.0</span>
-</span><span id="line-314">    <span class="n">pix</span> <span class="o">=</span> <span class="n">hp</span><span class="o">.</span><span class="n">ang2pix</span><span class="p">(</span><span class="n">nside</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">phi</span><span class="p">)</span>
-</span><span id="line-315">
-</span><span id="line-316">    <span class="n">_unique_pix</span><span class="p">,</span> <span class="n">_idx</span><span class="p">,</span> <span class="n">idx_rep</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">return_index</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">return_inverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="line-317">    <span class="n">n_gal</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">hp</span><span class="o">.</span><span class="n">nside2npix</span><span class="p">(</span><span class="n">nside</span><span class="p">))</span>
-</span><span id="line-318">    <span class="n">n_gal</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">pix</span><span class="p">)]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">idx_rep</span><span class="p">)</span>
-</span><span id="line-319">    <span class="n">mask</span> <span class="o">=</span> <span class="n">n_gal</span> <span class="o">!=</span> <span class="mi">0</span>
-</span><span id="line-320">
-</span><span id="line-321">    <span class="n">hp</span><span class="o">.</span><span class="n">write_map</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+</span><span id="line-306">
+</span><span id="line-307">    <span class="kn">from</span><span class="w"> </span><span class="nn">sp_validation.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">read_catalogue</span>
+</span><span id="line-308">
+</span><span id="line-309">    <span class="n">cat_gal</span> <span class="o">=</span> <span class="n">read_catalogue</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="n">ra_col</span><span class="p">,</span> <span class="n">dec_col</span><span class="p">])</span>
+</span><span id="line-310">    <span class="n">ra</span> <span class="o">=</span> <span class="n">cat_gal</span><span class="p">[</span><span class="n">ra_col</span><span class="p">]</span>
+</span><span id="line-311">    <span class="n">dec</span> <span class="o">=</span> <span class="n">cat_gal</span><span class="p">[</span><span class="n">dec_col</span><span class="p">]</span>
+</span><span id="line-312">
+</span><span id="line-313">    <span class="n">theta</span> <span class="o">=</span> <span class="p">(</span><span class="mf">90.0</span> <span class="o">-</span> <span class="n">dec</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mf">180.0</span>
+</span><span id="line-314">    <span class="n">phi</span> <span class="o">=</span> <span class="n">ra</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mf">180.0</span>
+</span><span id="line-315">    <span class="n">pix</span> <span class="o">=</span> <span class="n">hp</span><span class="o">.</span><span class="n">ang2pix</span><span class="p">(</span><span class="n">nside</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">phi</span><span class="p">)</span>
+</span><span id="line-316">
+</span><span id="line-317">    <span class="n">_unique_pix</span><span class="p">,</span> <span class="n">_idx</span><span class="p">,</span> <span class="n">idx_rep</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">return_index</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">return_inverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-318">    <span class="n">n_gal</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">hp</span><span class="o">.</span><span class="n">nside2npix</span><span class="p">(</span><span class="n">nside</span><span class="p">))</span>
+</span><span id="line-319">    <span class="n">n_gal</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">pix</span><span class="p">)]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">idx_rep</span><span class="p">)</span>
+</span><span id="line-320">    <span class="n">mask</span> <span class="o">=</span> <span class="n">n_gal</span> <span class="o">!=</span> <span class="mi">0</span>
+</span><span id="line-321">
+</span><span id="line-322">    <span class="n">hp</span><span class="o">.</span><span class="n">write_map</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
 
-</span><span id="line-322">
 </span><span id="line-323">
-</span><span id="line-324"><span class="c1"># --- two-point statistics on mock catalogues --------------------------------</span>
-</span><span id="line-325">
-</span><span id="line-326"><span class="c1"># Configuration-space treecorr defaults for the GLASS-mock 2PCF.</span>
-</span><span id="line-327"><span class="n">TREECORR_CONFIG</span> <span class="o">=</span> <span class="p">{</span>
-</span><span id="line-328">    <span class="s2">"ra_units"</span><span class="p">:</span> <span class="s2">"degrees"</span><span class="p">,</span>
-</span><span id="line-329">    <span class="s2">"dec_units"</span><span class="p">:</span> <span class="s2">"degrees"</span><span class="p">,</span>
-</span><span id="line-330">    <span class="s2">"min_sep"</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
-</span><span id="line-331">    <span class="s2">"max_sep"</span><span class="p">:</span> <span class="mf">250.0</span><span class="p">,</span>
-</span><span id="line-332">    <span class="s2">"nbins"</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span>
-</span><span id="line-333">    <span class="s2">"sep_units"</span><span class="p">:</span> <span class="s2">"arcmin"</span><span class="p">,</span>
-</span><span id="line-334">    <span class="s2">"num_threads"</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>
-</span><span id="line-335"><span class="p">}</span>
-</span><span id="line-336">
+</span><span id="line-324">
+</span><span id="line-325"><span class="c1"># --- two-point statistics on mock catalogues --------------------------------</span>
+</span><span id="line-326">
+</span><span id="line-327"><span class="c1"># Configuration-space treecorr defaults for the GLASS-mock 2PCF.</span>
+</span><span id="line-328"><span class="n">TREECORR_CONFIG</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="line-329">    <span class="s2">"ra_units"</span><span class="p">:</span> <span class="s2">"degrees"</span><span class="p">,</span>
+</span><span id="line-330">    <span class="s2">"dec_units"</span><span class="p">:</span> <span class="s2">"degrees"</span><span class="p">,</span>
+</span><span id="line-331">    <span class="s2">"min_sep"</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+</span><span id="line-332">    <span class="s2">"max_sep"</span><span class="p">:</span> <span class="mf">250.0</span><span class="p">,</span>
+</span><span id="line-333">    <span class="s2">"nbins"</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span>
+</span><span id="line-334">    <span class="s2">"sep_units"</span><span class="p">:</span> <span class="s2">"arcmin"</span><span class="p">,</span>
+</span><span id="line-335">    <span class="s2">"num_threads"</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>
+</span><span id="line-336"><span class="p">}</span>
 </span><span id="line-337">
-</span><span id="line-338"><span class="k">def</span><span class="w"> </span><span class="nf">_mock_powspace_bin</span><span class="p">(</span><span class="n">nside</span><span class="p">,</span> <span class="n">lmin</span><span class="p">,</span> <span class="n">n_bins</span><span class="p">):</span>
-</span><span id="line-339"><span class="w">    </span><span class="sd">"""Powspace NaMaster binning for the mock harmonic stats, via the primitive.</span>
-</span><span id="line-340">
-</span><span id="line-341"><span class="sd">    Returns ``(bin, ell_eff, lmax, b_lmax)`` — the 4-tuple the mock harmonic</span>
-</span><span id="line-342"><span class="sd">    helpers consume. The binning itself is the shared</span>
-</span><span id="line-343"><span class="sd">    ``pseudo_cl.make_namaster_bin`` powspace scheme (``power=0.5`` reproduces the</span>
-</span><span id="line-344"><span class="sd">    old square-root spacing exactly); ``lmax = 2 * nside`` / ``b_lmax = lmax - 1``</span>
-</span><span id="line-345"><span class="sd">    come from ``pseudo_cl.pseudo_cl_geometry``. Note the mock's ``lmin`` floor is</span>
-</span><span id="line-346"><span class="sd">    a call argument here, whereas the geometry helper fixes ``lmin = 8``; the two</span>
-</span><span id="line-347"><span class="sd">    coincide for the production default, and this wrapper keeps the override.</span>
-</span><span id="line-348"><span class="sd">    """</span>
-</span><span id="line-349">    <span class="kn">from</span><span class="w"> </span><span class="nn">sp_validation.pseudo_cl</span><span class="w"> </span><span class="kn">import</span> <span class="n">make_namaster_bin</span><span class="p">,</span> <span class="n">pseudo_cl_geometry</span>
-</span><span id="line-350">
-</span><span id="line-351">    <span class="n">_lmin</span><span class="p">,</span> <span class="n">lmax</span><span class="p">,</span> <span class="n">b_lmax</span> <span class="o">=</span> <span class="n">pseudo_cl_geometry</span><span class="p">(</span><span class="n">nside</span><span class="p">)</span>
-</span><span id="line-352">    <span class="n">b</span> <span class="o">=</span> <span class="n">make_namaster_bin</span><span class="p">(</span><span class="n">lmin</span><span class="p">,</span> <span class="n">lmax</span><span class="p">,</span> <span class="n">b_lmax</span><span class="p">,</span> <span class="s2">"powspace"</span><span class="p">,</span> <span class="n">n_ell_bins</span><span class="o">=</span><span class="n">n_bins</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
-</span><span id="line-353">    <span class="k">return</span> <span class="n">b</span><span class="p">,</span> <span class="n">b</span><span class="o">.</span><span class="n">get_effective_ells</span><span class="p">(),</span> <span class="n">lmax</span><span class="p">,</span> <span class="n">b_lmax</span>
-</span><span id="line-354">
+</span><span id="line-338">
+</span><span id="line-339"><span class="k">def</span><span class="w"> </span><span class="nf">_mock_powspace_bin</span><span class="p">(</span><span class="n">nside</span><span class="p">,</span> <span class="n">lmin</span><span class="p">,</span> <span class="n">n_bins</span><span class="p">):</span>
+</span><span id="line-340"><span class="w">    </span><span class="sd">"""Powspace NaMaster binning for the mock harmonic stats, via the primitive.</span>
+</span><span id="line-341">
+</span><span id="line-342"><span class="sd">    Returns ``(bin, ell_eff, lmax, b_lmax)`` — the 4-tuple the mock harmonic</span>
+</span><span id="line-343"><span class="sd">    helpers consume. The binning itself is the shared</span>
+</span><span id="line-344"><span class="sd">    ``pseudo_cl.make_namaster_bin`` powspace scheme (``power=0.5`` reproduces the</span>
+</span><span id="line-345"><span class="sd">    old square-root spacing exactly); ``lmax = 2 * nside`` / ``b_lmax = lmax - 1``</span>
+</span><span id="line-346"><span class="sd">    come from ``pseudo_cl.pseudo_cl_geometry``. Note the mock's ``lmin`` floor is</span>
+</span><span id="line-347"><span class="sd">    a call argument here, whereas the geometry helper fixes ``lmin = 8``; the two</span>
+</span><span id="line-348"><span class="sd">    coincide for the production default, and this wrapper keeps the override.</span>
+</span><span id="line-349"><span class="sd">    """</span>
+</span><span id="line-350">    <span class="kn">from</span><span class="w"> </span><span class="nn">sp_validation.pseudo_cl</span><span class="w"> </span><span class="kn">import</span> <span class="n">make_namaster_bin</span><span class="p">,</span> <span class="n">pseudo_cl_geometry</span>
+</span><span id="line-351">
+</span><span id="line-352">    <span class="n">_lmin</span><span class="p">,</span> <span class="n">lmax</span><span class="p">,</span> <span class="n">b_lmax</span> <span class="o">=</span> <span class="n">pseudo_cl_geometry</span><span class="p">(</span><span class="n">nside</span><span class="p">)</span>
+</span><span id="line-353">    <span class="n">b</span> <span class="o">=</span> <span class="n">make_namaster_bin</span><span class="p">(</span><span class="n">lmin</span><span class="p">,</span> <span class="n">lmax</span><span class="p">,</span> <span class="n">b_lmax</span><span class="p">,</span> <span class="s2">"powspace"</span><span class="p">,</span> <span class="n">n_ell_bins</span><span class="o">=</span><span class="n">n_bins</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+</span><span id="line-354">    <span class="k">return</span> <span class="n">b</span><span class="p">,</span> <span class="n">b</span><span class="o">.</span><span class="n">get_effective_ells</span><span class="p">(),</span> <span class="n">lmax</span><span class="p">,</span> <span class="n">b_lmax</span>
 </span><span id="line-355">
+</span><span id="line-356">
 <div class="viewcode-block" id="compute_two_point_xi">
 <a class="viewcode-back" href="../../sp_validation.glass_mock.html#sp_validation.glass_mock.compute_two_point_xi">[docs]</a>
-</span><span id="line-356"><span class="k">def</span><span class="w"> </span><span class="nf">compute_two_point_xi</span><span class="p">(</span><span class="n">cat</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-</span><span id="line-357"><span class="w">    </span><span class="sd">"""Configuration-space shear 2PCF (treecorr ``GGCorrelation``) for a mock."""</span>
-</span><span id="line-358">    <span class="kn">import</span><span class="w"> </span><span class="nn">treecorr</span>
-</span><span id="line-359">
-</span><span id="line-360">    <span class="n">treecorr_config</span> <span class="o">=</span> <span class="n">TREECORR_CONFIG</span> <span class="k">if</span> <span class="n">config</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">config</span>
-</span><span id="line-361">    <span class="n">treecorr_cat</span> <span class="o">=</span> <span class="n">treecorr</span><span class="o">.</span><span class="n">Catalog</span><span class="p">(</span>
-</span><span id="line-362">        <span class="n">ra</span><span class="o">=</span><span class="n">cat</span><span class="p">[</span><span class="s2">"ra"</span><span class="p">],</span>
-</span><span id="line-363">        <span class="n">dec</span><span class="o">=</span><span class="n">cat</span><span class="p">[</span><span class="s2">"dec"</span><span class="p">],</span>
-</span><span id="line-364">        <span class="n">g1</span><span class="o">=</span><span class="n">cat</span><span class="p">[</span><span class="s2">"e1"</span><span class="p">],</span>
-</span><span id="line-365">        <span class="n">g2</span><span class="o">=</span><span class="n">cat</span><span class="p">[</span><span class="s2">"e2"</span><span class="p">],</span>
-</span><span id="line-366">        <span class="n">ra_units</span><span class="o">=</span><span class="s2">"degrees"</span><span class="p">,</span>
-</span><span id="line-367">        <span class="n">dec_units</span><span class="o">=</span><span class="s2">"degrees"</span><span class="p">,</span>
-</span><span id="line-368">    <span class="p">)</span>
-</span><span id="line-369">    <span class="n">gg</span> <span class="o">=</span> <span class="n">treecorr</span><span class="o">.</span><span class="n">GGCorrelation</span><span class="p">(</span><span class="n">treecorr_config</span><span class="p">)</span>
-</span><span id="line-370">    <span class="n">gg</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="n">treecorr_cat</span><span class="p">)</span>
-</span><span id="line-371">    <span class="k">return</span> <span class="n">gg</span></div>
+</span><span id="line-357"><span class="k">def</span><span class="w"> </span><span class="nf">compute_two_point_xi</span><span class="p">(</span><span class="n">cat</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+</span><span id="line-358"><span class="w">    </span><span class="sd">"""Configuration-space shear 2PCF (treecorr ``GGCorrelation``) for a mock."""</span>
+</span><span id="line-359">    <span class="kn">import</span><span class="w"> </span><span class="nn">treecorr</span>
+</span><span id="line-360">
+</span><span id="line-361">    <span class="n">treecorr_config</span> <span class="o">=</span> <span class="n">TREECORR_CONFIG</span> <span class="k">if</span> <span class="n">config</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">config</span>
+</span><span id="line-362">    <span class="n">treecorr_cat</span> <span class="o">=</span> <span class="n">treecorr</span><span class="o">.</span><span class="n">Catalog</span><span class="p">(</span>
+</span><span id="line-363">        <span class="n">ra</span><span class="o">=</span><span class="n">cat</span><span class="p">[</span><span class="s2">"ra"</span><span class="p">],</span>
+</span><span id="line-364">        <span class="n">dec</span><span class="o">=</span><span class="n">cat</span><span class="p">[</span><span class="s2">"dec"</span><span class="p">],</span>
+</span><span id="line-365">        <span class="n">g1</span><span class="o">=</span><span class="n">cat</span><span class="p">[</span><span class="s2">"e1"</span><span class="p">],</span>
+</span><span id="line-366">        <span class="n">g2</span><span class="o">=</span><span class="n">cat</span><span class="p">[</span><span class="s2">"e2"</span><span class="p">],</span>
+</span><span id="line-367">        <span class="n">ra_units</span><span class="o">=</span><span class="s2">"degrees"</span><span class="p">,</span>
+</span><span id="line-368">        <span class="n">dec_units</span><span class="o">=</span><span class="s2">"degrees"</span><span class="p">,</span>
+</span><span id="line-369">    <span class="p">)</span>
+</span><span id="line-370">    <span class="n">gg</span> <span class="o">=</span> <span class="n">treecorr</span><span class="o">.</span><span class="n">GGCorrelation</span><span class="p">(</span><span class="n">treecorr_config</span><span class="p">)</span>
+</span><span id="line-371">    <span class="n">gg</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="n">treecorr_cat</span><span class="p">)</span>
+</span><span id="line-372">    <span class="k">return</span> <span class="n">gg</span></div>
 
-</span><span id="line-372">
 </span><span id="line-373">
+</span><span id="line-374">
 <div class="viewcode-block" id="get_n_gal_map">
 <a class="viewcode-back" href="../../sp_validation.glass_mock.html#sp_validation.glass_mock.get_n_gal_map">[docs]</a>
-</span><span id="line-374"><span class="k">def</span><span class="w"> </span><span class="nf">get_n_gal_map</span><span class="p">(</span><span class="n">nside</span><span class="p">,</span> <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">):</span>
-</span><span id="line-375"><span class="w">    </span><span class="sd">"""Galaxy-count HEALPix map plus the unique-pixel bookkeeping arrays.</span>
-</span><span id="line-376">
-</span><span id="line-377"><span class="sd">    The unweighted twin of the pseudo-Cl ``get_n_gal_map`` primitive: delegates</span>
-</span><span id="line-378"><span class="sd">    to it with ``weights=None`` (counts). Imported lazily so this module keeps</span>
-</span><span id="line-379"><span class="sd">    resolving in CAMB-only environments without the harmonic stack.</span>
-</span><span id="line-380"><span class="sd">    """</span>
-</span><span id="line-381">    <span class="kn">from</span><span class="w"> </span><span class="nn">sp_validation.pseudo_cl</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_n_gal_map</span> <span class="k">as</span> <span class="n">_get_n_gal_map</span>
-</span><span id="line-382">
-</span><span id="line-383">    <span class="k">return</span> <span class="n">_get_n_gal_map</span><span class="p">(</span><span class="n">nside</span><span class="p">,</span> <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">)</span></div>
+</span><span id="line-375"><span class="k">def</span><span class="w"> </span><span class="nf">get_n_gal_map</span><span class="p">(</span><span class="n">nside</span><span class="p">,</span> <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">):</span>
+</span><span id="line-376"><span class="w">    </span><span class="sd">"""Galaxy-count HEALPix map plus the unique-pixel bookkeeping arrays.</span>
+</span><span id="line-377">
+</span><span id="line-378"><span class="sd">    The unweighted twin of the pseudo-Cl ``get_n_gal_map`` primitive: delegates</span>
+</span><span id="line-379"><span class="sd">    to it with ``weights=None`` (counts). Imported lazily so this module keeps</span>
+</span><span id="line-380"><span class="sd">    resolving in CAMB-only environments without the harmonic stack.</span>
+</span><span id="line-381"><span class="sd">    """</span>
+</span><span id="line-382">    <span class="kn">from</span><span class="w"> </span><span class="nn">sp_validation.pseudo_cl</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_n_gal_map</span> <span class="k">as</span> <span class="n">_get_n_gal_map</span>
+</span><span id="line-383">
+</span><span id="line-384">    <span class="k">return</span> <span class="n">_get_n_gal_map</span><span class="p">(</span><span class="n">nside</span><span class="p">,</span> <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">)</span></div>
 
-</span><span id="line-384">
 </span><span id="line-385">
+</span><span id="line-386">
 <div class="viewcode-block" id="compute_two_point_cl">
 <a class="viewcode-back" href="../../sp_validation.glass_mock.html#sp_validation.glass_mock.compute_two_point_cl">[docs]</a>
-</span><span id="line-386"><span class="k">def</span><span class="w"> </span><span class="nf">compute_two_point_cl</span><span class="p">(</span><span class="n">cat</span><span class="p">,</span> <span class="n">nside</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">lmin</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">n_bins</span><span class="o">=</span><span class="mi">32</span><span class="p">):</span>
-</span><span id="line-387"><span class="w">    </span><span class="sd">"""Catalogue-based NaMaster pseudo-Cl for a mock shear field.</span>
-</span><span id="line-388">
-</span><span id="line-389"><span class="sd">    Returns ``(cl_coupled, cl_all)``, each with the ell axis prepended.</span>
-</span><span id="line-390">
-</span><span id="line-391"><span class="sd">    Deliberately keeps its own ``NmtFieldCatalog`` construction rather than</span>
-</span><span id="line-392"><span class="sd">    delegating to the ``pseudo_cl.get_pseudo_cls_catalog`` primitive: the mock</span>
-</span><span id="line-393"><span class="sd">    field is UNWEIGHTED (``weights = ones``, no per-object shear weight) and this</span>
-</span><span id="line-394"><span class="sd">    function returns the COUPLED pseudo-Cl alongside the decoupled one (both with</span>
-</span><span id="line-395"><span class="sd">    an ell axis prepended), which the primitive's ``(ell_eff, cl_all, wsp)``</span>
-</span><span id="line-396"><span class="sd">    contract does not expose. The shared piece — the powspace binning — is taken</span>
-</span><span id="line-397"><span class="sd">    from ``_mock_powspace_bin`` so the bandpower drift is gone.</span>
-</span><span id="line-398"><span class="sd">    """</span>
-</span><span id="line-399">    <span class="kn">import</span><span class="w"> </span><span class="nn">pymaster</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nmt</span>
-</span><span id="line-400">
-</span><span id="line-401">    <span class="n">e1</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[</span><span class="s2">"e1"</span><span class="p">]</span>
-</span><span id="line-402">    <span class="n">e2</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[</span><span class="s2">"e2"</span><span class="p">]</span>
-</span><span id="line-403">    <span class="n">ra</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[</span><span class="s2">"ra"</span><span class="p">]</span>
-</span><span id="line-404">    <span class="n">dec</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[</span><span class="s2">"dec"</span><span class="p">]</span>
-</span><span id="line-405">    <span class="k">del</span> <span class="n">cat</span>
-</span><span id="line-406">
-</span><span id="line-407">    <span class="n">ra</span><span class="p">[</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">360</span>
-</span><span id="line-408">
-</span><span id="line-409">    <span class="n">b</span><span class="p">,</span> <span class="n">ell_eff</span><span class="p">,</span> <span class="n">lmax</span><span class="p">,</span> <span class="n">b_lmax</span> <span class="o">=</span> <span class="n">_mock_powspace_bin</span><span class="p">(</span><span class="n">nside</span><span class="p">,</span> <span class="n">lmin</span><span class="p">,</span> <span class="n">n_bins</span><span class="p">)</span>
-</span><span id="line-410">
-</span><span id="line-411">    <span class="n">factor</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
-</span><span id="line-412">    <span class="n">f_all</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtFieldCatalog</span><span class="p">(</span>
-</span><span id="line-413">        <span class="n">positions</span><span class="o">=</span><span class="p">[</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">],</span>
-</span><span id="line-414">        <span class="n">weights</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">e1</span><span class="p">),</span>
-</span><span id="line-415">        <span class="n">field</span><span class="o">=</span><span class="p">[</span><span class="n">e1</span><span class="p">,</span> <span class="n">factor</span> <span class="o">*</span> <span class="n">e2</span><span class="p">],</span>
-</span><span id="line-416">        <span class="n">lmax</span><span class="o">=</span><span class="n">b_lmax</span><span class="p">,</span>
-</span><span id="line-417">        <span class="n">lmax_mask</span><span class="o">=</span><span class="n">b_lmax</span><span class="p">,</span>
-</span><span id="line-418">        <span class="n">spin</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-</span><span id="line-419">        <span class="n">lonlat</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-</span><span id="line-420">    <span class="p">)</span>
-</span><span id="line-421">
-</span><span id="line-422">    <span class="n">wsp</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtWorkspace</span><span class="o">.</span><span class="n">from_fields</span><span class="p">(</span><span class="n">f_all</span><span class="p">,</span> <span class="n">f_all</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
-</span><span id="line-423">    <span class="n">cl_coupled</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">compute_coupled_cell</span><span class="p">(</span><span class="n">f_all</span><span class="p">,</span> <span class="n">f_all</span><span class="p">)</span>
-</span><span id="line-424">    <span class="n">cl_all</span> <span class="o">=</span> <span class="n">wsp</span><span class="o">.</span><span class="n">decouple_cell</span><span class="p">(</span><span class="n">cl_coupled</span><span class="p">)</span>
-</span><span id="line-425">
-</span><span id="line-426">    <span class="n">cl_coupled</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">lmax</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:],</span> <span class="n">cl_coupled</span><span class="p">])</span>
-</span><span id="line-427">    <span class="n">cl_all</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">ell_eff</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="n">cl_all</span><span class="p">])</span>
-</span><span id="line-428">    <span class="k">return</span> <span class="n">cl_coupled</span><span class="p">,</span> <span class="n">cl_all</span></div>
+</span><span id="line-387"><span class="k">def</span><span class="w"> </span><span class="nf">compute_two_point_cl</span><span class="p">(</span><span class="n">cat</span><span class="p">,</span> <span class="n">nside</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">lmin</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">n_bins</span><span class="o">=</span><span class="mi">32</span><span class="p">):</span>
+</span><span id="line-388"><span class="w">    </span><span class="sd">"""Catalogue-based NaMaster pseudo-Cl for a mock shear field.</span>
+</span><span id="line-389">
+</span><span id="line-390"><span class="sd">    Returns ``(cl_coupled, cl_all)``, each with the ell axis prepended.</span>
+</span><span id="line-391">
+</span><span id="line-392"><span class="sd">    Deliberately keeps its own ``NmtFieldCatalog`` construction rather than</span>
+</span><span id="line-393"><span class="sd">    delegating to the ``pseudo_cl.get_pseudo_cls_catalog`` primitive: the mock</span>
+</span><span id="line-394"><span class="sd">    field is UNWEIGHTED (``weights = ones``, no per-object shear weight) and this</span>
+</span><span id="line-395"><span class="sd">    function returns the COUPLED pseudo-Cl alongside the decoupled one (both with</span>
+</span><span id="line-396"><span class="sd">    an ell axis prepended), which the primitive's ``(ell_eff, cl_all, wsp)``</span>
+</span><span id="line-397"><span class="sd">    contract does not expose. The shared piece — the powspace binning — is taken</span>
+</span><span id="line-398"><span class="sd">    from ``_mock_powspace_bin`` so the bandpower drift is gone.</span>
+</span><span id="line-399"><span class="sd">    """</span>
+</span><span id="line-400">    <span class="kn">import</span><span class="w"> </span><span class="nn">pymaster</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nmt</span>
+</span><span id="line-401">
+</span><span id="line-402">    <span class="n">e1</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[</span><span class="s2">"e1"</span><span class="p">]</span>
+</span><span id="line-403">    <span class="n">e2</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[</span><span class="s2">"e2"</span><span class="p">]</span>
+</span><span id="line-404">    <span class="n">ra</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[</span><span class="s2">"ra"</span><span class="p">]</span>
+</span><span id="line-405">    <span class="n">dec</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[</span><span class="s2">"dec"</span><span class="p">]</span>
+</span><span id="line-406">    <span class="k">del</span> <span class="n">cat</span>
+</span><span id="line-407">
+</span><span id="line-408">    <span class="n">ra</span><span class="p">[</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">360</span>
+</span><span id="line-409">
+</span><span id="line-410">    <span class="n">b</span><span class="p">,</span> <span class="n">ell_eff</span><span class="p">,</span> <span class="n">lmax</span><span class="p">,</span> <span class="n">b_lmax</span> <span class="o">=</span> <span class="n">_mock_powspace_bin</span><span class="p">(</span><span class="n">nside</span><span class="p">,</span> <span class="n">lmin</span><span class="p">,</span> <span class="n">n_bins</span><span class="p">)</span>
+</span><span id="line-411">
+</span><span id="line-412">    <span class="n">factor</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+</span><span id="line-413">    <span class="n">f_all</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtFieldCatalog</span><span class="p">(</span>
+</span><span id="line-414">        <span class="n">positions</span><span class="o">=</span><span class="p">[</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">],</span>
+</span><span id="line-415">        <span class="n">weights</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">e1</span><span class="p">),</span>
+</span><span id="line-416">        <span class="n">field</span><span class="o">=</span><span class="p">[</span><span class="n">e1</span><span class="p">,</span> <span class="n">factor</span> <span class="o">*</span> <span class="n">e2</span><span class="p">],</span>
+</span><span id="line-417">        <span class="n">lmax</span><span class="o">=</span><span class="n">b_lmax</span><span class="p">,</span>
+</span><span id="line-418">        <span class="n">lmax_mask</span><span class="o">=</span><span class="n">b_lmax</span><span class="p">,</span>
+</span><span id="line-419">        <span class="n">spin</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+</span><span id="line-420">        <span class="n">lonlat</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="line-421">    <span class="p">)</span>
+</span><span id="line-422">
+</span><span id="line-423">    <span class="n">wsp</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtWorkspace</span><span class="o">.</span><span class="n">from_fields</span><span class="p">(</span><span class="n">f_all</span><span class="p">,</span> <span class="n">f_all</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+</span><span id="line-424">    <span class="n">cl_coupled</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">compute_coupled_cell</span><span class="p">(</span><span class="n">f_all</span><span class="p">,</span> <span class="n">f_all</span><span class="p">)</span>
+</span><span id="line-425">    <span class="n">cl_all</span> <span class="o">=</span> <span class="n">wsp</span><span class="o">.</span><span class="n">decouple_cell</span><span class="p">(</span><span class="n">cl_coupled</span><span class="p">)</span>
+</span><span id="line-426">
+</span><span id="line-427">    <span class="n">cl_coupled</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">lmax</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:],</span> <span class="n">cl_coupled</span><span class="p">])</span>
+</span><span id="line-428">    <span class="n">cl_all</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">ell_eff</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="n">cl_all</span><span class="p">])</span>
+</span><span id="line-429">    <span class="k">return</span> <span class="n">cl_coupled</span><span class="p">,</span> <span class="n">cl_all</span></div>
 
-</span><span id="line-429">
 </span><span id="line-430">
+</span><span id="line-431">
 <div class="viewcode-block" id="compute_two_point_cl_map">
 <a class="viewcode-back" href="../../sp_validation.glass_mock.html#sp_validation.glass_mock.compute_two_point_cl_map">[docs]</a>
-</span><span id="line-431"><span class="k">def</span><span class="w"> </span><span class="nf">compute_two_point_cl_map</span><span class="p">(</span><span class="n">cat</span><span class="p">,</span> <span class="n">nside</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">lmin</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">n_bins</span><span class="o">=</span><span class="mi">32</span><span class="p">):</span>
-</span><span id="line-432"><span class="w">    </span><span class="sd">"""Map-based NaMaster pseudo-Cl for a mock shear field.</span>
-</span><span id="line-433">
-</span><span id="line-434"><span class="sd">    Bins the galaxies onto a HEALPix shear map (count-weighted mean per pixel)</span>
-</span><span id="line-435"><span class="sd">    and runs the MCM on the resulting masked field. Returns</span>
-</span><span id="line-436"><span class="sd">    ``(cl_coupled, cl_all)`` with the ell axis prepended.</span>
-</span><span id="line-437">
-</span><span id="line-438"><span class="sd">    Deliberately keeps its own ``NmtField`` construction rather than delegating</span>
-</span><span id="line-439"><span class="sd">    to the ``pseudo_cl.get_pseudo_cls_map`` primitive: the mock shear map is</span>
-</span><span id="line-440"><span class="sd">    built from UNWEIGHTED galaxy counts (the mask is the count map and the</span>
-</span><span id="line-441"><span class="sd">    per-pixel mean divides by counts, not summed shear weights), and this</span>
-</span><span id="line-442"><span class="sd">    function returns the COUPLED pseudo-Cl alongside the decoupled one (both with</span>
-</span><span id="line-443"><span class="sd">    an ell axis prepended), which the primitive's ``(ell_eff, cl_all, wsp)``</span>
-</span><span id="line-444"><span class="sd">    contract does not expose. The shared pieces — the powspace binning and the</span>
-</span><span id="line-445"><span class="sd">    galaxy-count map — come from ``_mock_powspace_bin`` and ``get_n_gal_map``.</span>
-</span><span id="line-446"><span class="sd">    """</span>
-</span><span id="line-447">    <span class="kn">import</span><span class="w"> </span><span class="nn">healpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">hp</span>
-</span><span id="line-448">    <span class="kn">import</span><span class="w"> </span><span class="nn">pymaster</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nmt</span>
-</span><span id="line-449">
-</span><span id="line-450">    <span class="n">e1</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[</span><span class="s2">"e1"</span><span class="p">]</span>
-</span><span id="line-451">    <span class="n">e2</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[</span><span class="s2">"e2"</span><span class="p">]</span>
-</span><span id="line-452">    <span class="n">ra</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[</span><span class="s2">"ra"</span><span class="p">]</span>
-</span><span id="line-453">    <span class="n">dec</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[</span><span class="s2">"dec"</span><span class="p">]</span>
-</span><span id="line-454">    <span class="k">del</span> <span class="n">cat</span>
-</span><span id="line-455">
-</span><span id="line-456">    <span class="n">ra</span><span class="p">[</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">360</span>
-</span><span id="line-457">
-</span><span id="line-458">    <span class="n">b</span><span class="p">,</span> <span class="n">ell_eff</span><span class="p">,</span> <span class="n">lmax</span><span class="p">,</span> <span class="n">b_lmax</span> <span class="o">=</span> <span class="n">_mock_powspace_bin</span><span class="p">(</span><span class="n">nside</span><span class="p">,</span> <span class="n">lmin</span><span class="p">,</span> <span class="n">n_bins</span><span class="p">)</span>
-</span><span id="line-459">
-</span><span id="line-460">    <span class="n">factor</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
-</span><span id="line-461">    <span class="n">n_gal_map</span><span class="p">,</span> <span class="n">unique_pix</span><span class="p">,</span> <span class="n">_idx</span><span class="p">,</span> <span class="n">idx_rep</span> <span class="o">=</span> <span class="n">get_n_gal_map</span><span class="p">(</span><span class="n">nside</span><span class="p">,</span> <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">)</span>
-</span><span id="line-462">    <span class="n">mask</span> <span class="o">=</span> <span class="n">n_gal_map</span> <span class="o">&gt;</span> <span class="mi">0</span>
-</span><span id="line-463">
-</span><span id="line-464">    <span class="n">shear_map_e1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">hp</span><span class="o">.</span><span class="n">nside2npix</span><span class="p">(</span><span class="n">nside</span><span class="p">))</span>
-</span><span id="line-465">    <span class="n">shear_map_e2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">hp</span><span class="o">.</span><span class="n">nside2npix</span><span class="p">(</span><span class="n">nside</span><span class="p">))</span>
-</span><span id="line-466">    <span class="n">shear_map_e1</span><span class="p">[</span><span class="n">unique_pix</span><span class="p">]</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">idx_rep</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">e1</span><span class="p">)</span>
-</span><span id="line-467">    <span class="n">shear_map_e2</span><span class="p">[</span><span class="n">unique_pix</span><span class="p">]</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">idx_rep</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">e2</span><span class="p">)</span>
-</span><span id="line-468">    <span class="n">shear_map_e1</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">/=</span> <span class="n">n_gal_map</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
-</span><span id="line-469">    <span class="n">shear_map_e2</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">/=</span> <span class="n">n_gal_map</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
-</span><span id="line-470">
-</span><span id="line-471">    <span class="n">f_all</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtField</span><span class="p">(</span>
-</span><span id="line-472">        <span class="n">mask</span><span class="o">=</span><span class="n">n_gal_map</span><span class="p">,</span>
-</span><span id="line-473">        <span class="n">maps</span><span class="o">=</span><span class="p">[</span><span class="n">shear_map_e1</span><span class="p">,</span> <span class="n">factor</span> <span class="o">*</span> <span class="n">shear_map_e2</span><span class="p">],</span>
-</span><span id="line-474">        <span class="n">lmax</span><span class="o">=</span><span class="n">b_lmax</span><span class="p">,</span>
-</span><span id="line-475">    <span class="p">)</span>
-</span><span id="line-476">
-</span><span id="line-477">    <span class="n">wsp</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtWorkspace</span><span class="o">.</span><span class="n">from_fields</span><span class="p">(</span><span class="n">f_all</span><span class="p">,</span> <span class="n">f_all</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
-</span><span id="line-478">    <span class="n">cl_coupled</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">compute_coupled_cell</span><span class="p">(</span><span class="n">f_all</span><span class="p">,</span> <span class="n">f_all</span><span class="p">)</span>
-</span><span id="line-479">    <span class="n">cl_all</span> <span class="o">=</span> <span class="n">wsp</span><span class="o">.</span><span class="n">decouple_cell</span><span class="p">(</span><span class="n">cl_coupled</span><span class="p">)</span>
-</span><span id="line-480">
-</span><span id="line-481">    <span class="n">cl_coupled</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">lmax</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:],</span> <span class="n">cl_coupled</span><span class="p">])</span>
-</span><span id="line-482">    <span class="n">cl_all</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">ell_eff</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="n">cl_all</span><span class="p">])</span>
-</span><span id="line-483">    <span class="k">return</span> <span class="n">cl_coupled</span><span class="p">,</span> <span class="n">cl_all</span></div>
+</span><span id="line-432"><span class="k">def</span><span class="w"> </span><span class="nf">compute_two_point_cl_map</span><span class="p">(</span><span class="n">cat</span><span class="p">,</span> <span class="n">nside</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">lmin</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">n_bins</span><span class="o">=</span><span class="mi">32</span><span class="p">):</span>
+</span><span id="line-433"><span class="w">    </span><span class="sd">"""Map-based NaMaster pseudo-Cl for a mock shear field.</span>
+</span><span id="line-434">
+</span><span id="line-435"><span class="sd">    Bins the galaxies onto a HEALPix shear map (count-weighted mean per pixel)</span>
+</span><span id="line-436"><span class="sd">    and runs the MCM on the resulting masked field. Returns</span>
+</span><span id="line-437"><span class="sd">    ``(cl_coupled, cl_all)`` with the ell axis prepended.</span>
+</span><span id="line-438">
+</span><span id="line-439"><span class="sd">    Deliberately keeps its own ``NmtField`` construction rather than delegating</span>
+</span><span id="line-440"><span class="sd">    to the ``pseudo_cl.get_pseudo_cls_map`` primitive: the mock shear map is</span>
+</span><span id="line-441"><span class="sd">    built from UNWEIGHTED galaxy counts (the mask is the count map and the</span>
+</span><span id="line-442"><span class="sd">    per-pixel mean divides by counts, not summed shear weights), and this</span>
+</span><span id="line-443"><span class="sd">    function returns the COUPLED pseudo-Cl alongside the decoupled one (both with</span>
+</span><span id="line-444"><span class="sd">    an ell axis prepended), which the primitive's ``(ell_eff, cl_all, wsp)``</span>
+</span><span id="line-445"><span class="sd">    contract does not expose. The shared pieces — the powspace binning and the</span>
+</span><span id="line-446"><span class="sd">    galaxy-count map — come from ``_mock_powspace_bin`` and ``get_n_gal_map``.</span>
+</span><span id="line-447"><span class="sd">    """</span>
+</span><span id="line-448">    <span class="kn">import</span><span class="w"> </span><span class="nn">healpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">hp</span>
+</span><span id="line-449">    <span class="kn">import</span><span class="w"> </span><span class="nn">pymaster</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nmt</span>
+</span><span id="line-450">
+</span><span id="line-451">    <span class="n">e1</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[</span><span class="s2">"e1"</span><span class="p">]</span>
+</span><span id="line-452">    <span class="n">e2</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[</span><span class="s2">"e2"</span><span class="p">]</span>
+</span><span id="line-453">    <span class="n">ra</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[</span><span class="s2">"ra"</span><span class="p">]</span>
+</span><span id="line-454">    <span class="n">dec</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[</span><span class="s2">"dec"</span><span class="p">]</span>
+</span><span id="line-455">    <span class="k">del</span> <span class="n">cat</span>
+</span><span id="line-456">
+</span><span id="line-457">    <span class="n">ra</span><span class="p">[</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">360</span>
+</span><span id="line-458">
+</span><span id="line-459">    <span class="n">b</span><span class="p">,</span> <span class="n">ell_eff</span><span class="p">,</span> <span class="n">lmax</span><span class="p">,</span> <span class="n">b_lmax</span> <span class="o">=</span> <span class="n">_mock_powspace_bin</span><span class="p">(</span><span class="n">nside</span><span class="p">,</span> <span class="n">lmin</span><span class="p">,</span> <span class="n">n_bins</span><span class="p">)</span>
+</span><span id="line-460">
+</span><span id="line-461">    <span class="n">factor</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+</span><span id="line-462">    <span class="n">n_gal_map</span><span class="p">,</span> <span class="n">unique_pix</span><span class="p">,</span> <span class="n">_idx</span><span class="p">,</span> <span class="n">idx_rep</span> <span class="o">=</span> <span class="n">get_n_gal_map</span><span class="p">(</span><span class="n">nside</span><span class="p">,</span> <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">)</span>
+</span><span id="line-463">    <span class="n">mask</span> <span class="o">=</span> <span class="n">n_gal_map</span> <span class="o">&gt;</span> <span class="mi">0</span>
+</span><span id="line-464">
+</span><span id="line-465">    <span class="n">shear_map_e1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">hp</span><span class="o">.</span><span class="n">nside2npix</span><span class="p">(</span><span class="n">nside</span><span class="p">))</span>
+</span><span id="line-466">    <span class="n">shear_map_e2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">hp</span><span class="o">.</span><span class="n">nside2npix</span><span class="p">(</span><span class="n">nside</span><span class="p">))</span>
+</span><span id="line-467">    <span class="n">shear_map_e1</span><span class="p">[</span><span class="n">unique_pix</span><span class="p">]</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">idx_rep</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">e1</span><span class="p">)</span>
+</span><span id="line-468">    <span class="n">shear_map_e2</span><span class="p">[</span><span class="n">unique_pix</span><span class="p">]</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">idx_rep</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">e2</span><span class="p">)</span>
+</span><span id="line-469">    <span class="n">shear_map_e1</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">/=</span> <span class="n">n_gal_map</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+</span><span id="line-470">    <span class="n">shear_map_e2</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">/=</span> <span class="n">n_gal_map</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+</span><span id="line-471">
+</span><span id="line-472">    <span class="n">f_all</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtField</span><span class="p">(</span>
+</span><span id="line-473">        <span class="n">mask</span><span class="o">=</span><span class="n">n_gal_map</span><span class="p">,</span>
+</span><span id="line-474">        <span class="n">maps</span><span class="o">=</span><span class="p">[</span><span class="n">shear_map_e1</span><span class="p">,</span> <span class="n">factor</span> <span class="o">*</span> <span class="n">shear_map_e2</span><span class="p">],</span>
+</span><span id="line-475">        <span class="n">lmax</span><span class="o">=</span><span class="n">b_lmax</span><span class="p">,</span>
+</span><span id="line-476">    <span class="p">)</span>
+</span><span id="line-477">
+</span><span id="line-478">    <span class="n">wsp</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtWorkspace</span><span class="o">.</span><span class="n">from_fields</span><span class="p">(</span><span class="n">f_all</span><span class="p">,</span> <span class="n">f_all</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+</span><span id="line-479">    <span class="n">cl_coupled</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">compute_coupled_cell</span><span class="p">(</span><span class="n">f_all</span><span class="p">,</span> <span class="n">f_all</span><span class="p">)</span>
+</span><span id="line-480">    <span class="n">cl_all</span> <span class="o">=</span> <span class="n">wsp</span><span class="o">.</span><span class="n">decouple_cell</span><span class="p">(</span><span class="n">cl_coupled</span><span class="p">)</span>
+</span><span id="line-481">
+</span><span id="line-482">    <span class="n">cl_coupled</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">lmax</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:],</span> <span class="n">cl_coupled</span><span class="p">])</span>
+</span><span id="line-483">    <span class="n">cl_all</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">ell_eff</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="n">cl_all</span><span class="p">])</span>
+</span><span id="line-484">    <span class="k">return</span> <span class="n">cl_coupled</span><span class="p">,</span> <span class="n">cl_all</span></div>
 
-</span><span id="line-484">
 </span><span id="line-485">
+</span><span id="line-486">
 <div class="viewcode-block" id="compute_leakage_harmony">
 <a class="viewcode-back" href="../../sp_validation.glass_mock.html#sp_validation.glass_mock.compute_leakage_harmony">[docs]</a>
-</span><span id="line-486"><span class="k">def</span><span class="w"> </span><span class="nf">compute_leakage_harmony</span><span class="p">(</span><span class="n">cat</span><span class="p">,</span> <span class="n">cat_star</span><span class="p">,</span> <span class="n">nside</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">lmin</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">n_bins</span><span class="o">=</span><span class="mi">32</span><span class="p">):</span>
-</span><span id="line-487"><span class="w">    </span><span class="sd">"""Harmonic-space PSF-leakage rho_0 / tau_0 from galaxy + star catalogues.</span>
-</span><span id="line-488">
-</span><span id="line-489"><span class="sd">    Returns ``(rho_cl, tau_cl)``: the PSF-PSF (rho_0) and galaxy-PSF (tau_0)</span>
-</span><span id="line-490"><span class="sd">    decoupled pseudo-Cl, each with the effective-ell axis prepended.</span>
-</span><span id="line-491"><span class="sd">    """</span>
-</span><span id="line-492">    <span class="kn">import</span><span class="w"> </span><span class="nn">pymaster</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nmt</span>
-</span><span id="line-493">
-</span><span id="line-494">    <span class="n">e1</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[</span><span class="s2">"e1"</span><span class="p">]</span>
-</span><span id="line-495">    <span class="n">e2</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[</span><span class="s2">"e2"</span><span class="p">]</span>
-</span><span id="line-496">    <span class="n">e1_psf</span> <span class="o">=</span> <span class="n">cat_star</span><span class="p">[</span><span class="s2">"HSM_G1_PSF"</span><span class="p">]</span>
-</span><span id="line-497">    <span class="n">e2_psf</span> <span class="o">=</span> <span class="n">cat_star</span><span class="p">[</span><span class="s2">"HSM_G2_PSF"</span><span class="p">]</span>
-</span><span id="line-498">
-</span><span id="line-499">    <span class="n">ra</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[</span><span class="s2">"ra"</span><span class="p">]</span>
-</span><span id="line-500">    <span class="n">dec</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[</span><span class="s2">"dec"</span><span class="p">]</span>
-</span><span id="line-501">    <span class="n">ra_star</span> <span class="o">=</span> <span class="n">cat_star</span><span class="p">[</span><span class="s2">"RA"</span><span class="p">]</span>
-</span><span id="line-502">    <span class="n">dec_star</span> <span class="o">=</span> <span class="n">cat_star</span><span class="p">[</span><span class="s2">"DEC"</span><span class="p">]</span>
-</span><span id="line-503">    <span class="k">del</span> <span class="n">cat</span>
-</span><span id="line-504">
-</span><span id="line-505">    <span class="n">ra</span><span class="p">[</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">360</span>
-</span><span id="line-506">    <span class="n">ra_star</span><span class="p">[</span><span class="n">ra_star</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">360</span>
-</span><span id="line-507">
-</span><span id="line-508">    <span class="n">b</span><span class="p">,</span> <span class="n">ell_eff</span><span class="p">,</span> <span class="n">_lmax</span><span class="p">,</span> <span class="n">b_lmax</span> <span class="o">=</span> <span class="n">_mock_powspace_bin</span><span class="p">(</span><span class="n">nside</span><span class="p">,</span> <span class="n">lmin</span><span class="p">,</span> <span class="n">n_bins</span><span class="p">)</span>
-</span><span id="line-509">
-</span><span id="line-510">    <span class="n">factor</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
-</span><span id="line-511">    <span class="n">f_psf</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtFieldCatalog</span><span class="p">(</span>
-</span><span id="line-512">        <span class="n">positions</span><span class="o">=</span><span class="p">[</span><span class="n">ra_star</span><span class="p">,</span> <span class="n">dec_star</span><span class="p">],</span>
-</span><span id="line-513">        <span class="n">weights</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">ra_star</span><span class="p">),</span>
-</span><span id="line-514">        <span class="n">field</span><span class="o">=</span><span class="p">[</span><span class="n">e1_psf</span><span class="p">,</span> <span class="n">factor</span> <span class="o">*</span> <span class="n">e2_psf</span><span class="p">],</span>
-</span><span id="line-515">        <span class="n">lmax</span><span class="o">=</span><span class="n">b_lmax</span><span class="p">,</span>
-</span><span id="line-516">        <span class="n">lmax_mask</span><span class="o">=</span><span class="n">b_lmax</span><span class="p">,</span>
-</span><span id="line-517">        <span class="n">spin</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-</span><span id="line-518">        <span class="n">lonlat</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-</span><span id="line-519">    <span class="p">)</span>
-</span><span id="line-520">    <span class="n">f_gal</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtFieldCatalog</span><span class="p">(</span>
-</span><span id="line-521">        <span class="n">positions</span><span class="o">=</span><span class="p">[</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">],</span>
-</span><span id="line-522">        <span class="n">weights</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">ra</span><span class="p">),</span>
-</span><span id="line-523">        <span class="n">field</span><span class="o">=</span><span class="p">[</span><span class="n">e1</span><span class="p">,</span> <span class="n">factor</span> <span class="o">*</span> <span class="n">e2</span><span class="p">],</span>
-</span><span id="line-524">        <span class="n">lmax</span><span class="o">=</span><span class="n">b_lmax</span><span class="p">,</span>
-</span><span id="line-525">        <span class="n">lmax_mask</span><span class="o">=</span><span class="n">b_lmax</span><span class="p">,</span>
-</span><span id="line-526">        <span class="n">spin</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-</span><span id="line-527">        <span class="n">lonlat</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-</span><span id="line-528">    <span class="p">)</span>
-</span><span id="line-529">
-</span><span id="line-530">    <span class="c1"># rho_0: PSF-PSF</span>
-</span><span id="line-531">    <span class="n">wsp</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtWorkspace</span><span class="o">.</span><span class="n">from_fields</span><span class="p">(</span><span class="n">f_psf</span><span class="p">,</span> <span class="n">f_psf</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
-</span><span id="line-532">    <span class="n">rho_cl</span> <span class="o">=</span> <span class="n">wsp</span><span class="o">.</span><span class="n">decouple_cell</span><span class="p">(</span><span class="n">nmt</span><span class="o">.</span><span class="n">compute_coupled_cell</span><span class="p">(</span><span class="n">f_psf</span><span class="p">,</span> <span class="n">f_psf</span><span class="p">))</span>
-</span><span id="line-533">    <span class="n">rho_cl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">ell_eff</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="n">rho_cl</span><span class="p">])</span>
-</span><span id="line-534">
-</span><span id="line-535">    <span class="c1"># tau_0: galaxy-PSF</span>
-</span><span id="line-536">    <span class="n">wsp</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtWorkspace</span><span class="o">.</span><span class="n">from_fields</span><span class="p">(</span><span class="n">f_gal</span><span class="p">,</span> <span class="n">f_psf</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
-</span><span id="line-537">    <span class="n">tau_cl</span> <span class="o">=</span> <span class="n">wsp</span><span class="o">.</span><span class="n">decouple_cell</span><span class="p">(</span><span class="n">nmt</span><span class="o">.</span><span class="n">compute_coupled_cell</span><span class="p">(</span><span class="n">f_gal</span><span class="p">,</span> <span class="n">f_psf</span><span class="p">))</span>
-</span><span id="line-538">    <span class="n">tau_cl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">ell_eff</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="n">tau_cl</span><span class="p">])</span>
-</span><span id="line-539">
-</span><span id="line-540">    <span class="k">return</span> <span class="n">rho_cl</span><span class="p">,</span> <span class="n">tau_cl</span></div>
+</span><span id="line-487"><span class="k">def</span><span class="w"> </span><span class="nf">compute_leakage_harmony</span><span class="p">(</span><span class="n">cat</span><span class="p">,</span> <span class="n">cat_star</span><span class="p">,</span> <span class="n">nside</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">lmin</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">n_bins</span><span class="o">=</span><span class="mi">32</span><span class="p">):</span>
+</span><span id="line-488"><span class="w">    </span><span class="sd">"""Harmonic-space PSF-leakage rho_0 / tau_0 from galaxy + star catalogues.</span>
+</span><span id="line-489">
+</span><span id="line-490"><span class="sd">    Returns ``(rho_cl, tau_cl)``: the PSF-PSF (rho_0) and galaxy-PSF (tau_0)</span>
+</span><span id="line-491"><span class="sd">    decoupled pseudo-Cl, each with the effective-ell axis prepended.</span>
+</span><span id="line-492"><span class="sd">    """</span>
+</span><span id="line-493">    <span class="kn">import</span><span class="w"> </span><span class="nn">pymaster</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nmt</span>
+</span><span id="line-494">
+</span><span id="line-495">    <span class="n">e1</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[</span><span class="s2">"e1"</span><span class="p">]</span>
+</span><span id="line-496">    <span class="n">e2</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[</span><span class="s2">"e2"</span><span class="p">]</span>
+</span><span id="line-497">    <span class="n">e1_psf</span> <span class="o">=</span> <span class="n">cat_star</span><span class="p">[</span><span class="s2">"HSM_G1_PSF"</span><span class="p">]</span>
+</span><span id="line-498">    <span class="n">e2_psf</span> <span class="o">=</span> <span class="n">cat_star</span><span class="p">[</span><span class="s2">"HSM_G2_PSF"</span><span class="p">]</span>
+</span><span id="line-499">
+</span><span id="line-500">    <span class="n">ra</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[</span><span class="s2">"ra"</span><span class="p">]</span>
+</span><span id="line-501">    <span class="n">dec</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[</span><span class="s2">"dec"</span><span class="p">]</span>
+</span><span id="line-502">    <span class="n">ra_star</span> <span class="o">=</span> <span class="n">cat_star</span><span class="p">[</span><span class="s2">"RA"</span><span class="p">]</span>
+</span><span id="line-503">    <span class="n">dec_star</span> <span class="o">=</span> <span class="n">cat_star</span><span class="p">[</span><span class="s2">"DEC"</span><span class="p">]</span>
+</span><span id="line-504">    <span class="k">del</span> <span class="n">cat</span>
+</span><span id="line-505">
+</span><span id="line-506">    <span class="n">ra</span><span class="p">[</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">360</span>
+</span><span id="line-507">    <span class="n">ra_star</span><span class="p">[</span><span class="n">ra_star</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">360</span>
+</span><span id="line-508">
+</span><span id="line-509">    <span class="n">b</span><span class="p">,</span> <span class="n">ell_eff</span><span class="p">,</span> <span class="n">_lmax</span><span class="p">,</span> <span class="n">b_lmax</span> <span class="o">=</span> <span class="n">_mock_powspace_bin</span><span class="p">(</span><span class="n">nside</span><span class="p">,</span> <span class="n">lmin</span><span class="p">,</span> <span class="n">n_bins</span><span class="p">)</span>
+</span><span id="line-510">
+</span><span id="line-511">    <span class="n">factor</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+</span><span id="line-512">    <span class="n">f_psf</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtFieldCatalog</span><span class="p">(</span>
+</span><span id="line-513">        <span class="n">positions</span><span class="o">=</span><span class="p">[</span><span class="n">ra_star</span><span class="p">,</span> <span class="n">dec_star</span><span class="p">],</span>
+</span><span id="line-514">        <span class="n">weights</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">ra_star</span><span class="p">),</span>
+</span><span id="line-515">        <span class="n">field</span><span class="o">=</span><span class="p">[</span><span class="n">e1_psf</span><span class="p">,</span> <span class="n">factor</span> <span class="o">*</span> <span class="n">e2_psf</span><span class="p">],</span>
+</span><span id="line-516">        <span class="n">lmax</span><span class="o">=</span><span class="n">b_lmax</span><span class="p">,</span>
+</span><span id="line-517">        <span class="n">lmax_mask</span><span class="o">=</span><span class="n">b_lmax</span><span class="p">,</span>
+</span><span id="line-518">        <span class="n">spin</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+</span><span id="line-519">        <span class="n">lonlat</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="line-520">    <span class="p">)</span>
+</span><span id="line-521">    <span class="n">f_gal</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtFieldCatalog</span><span class="p">(</span>
+</span><span id="line-522">        <span class="n">positions</span><span class="o">=</span><span class="p">[</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">],</span>
+</span><span id="line-523">        <span class="n">weights</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">ra</span><span class="p">),</span>
+</span><span id="line-524">        <span class="n">field</span><span class="o">=</span><span class="p">[</span><span class="n">e1</span><span class="p">,</span> <span class="n">factor</span> <span class="o">*</span> <span class="n">e2</span><span class="p">],</span>
+</span><span id="line-525">        <span class="n">lmax</span><span class="o">=</span><span class="n">b_lmax</span><span class="p">,</span>
+</span><span id="line-526">        <span class="n">lmax_mask</span><span class="o">=</span><span class="n">b_lmax</span><span class="p">,</span>
+</span><span id="line-527">        <span class="n">spin</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+</span><span id="line-528">        <span class="n">lonlat</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="line-529">    <span class="p">)</span>
+</span><span id="line-530">
+</span><span id="line-531">    <span class="c1"># rho_0: PSF-PSF</span>
+</span><span id="line-532">    <span class="n">wsp</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtWorkspace</span><span class="o">.</span><span class="n">from_fields</span><span class="p">(</span><span class="n">f_psf</span><span class="p">,</span> <span class="n">f_psf</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+</span><span id="line-533">    <span class="n">rho_cl</span> <span class="o">=</span> <span class="n">wsp</span><span class="o">.</span><span class="n">decouple_cell</span><span class="p">(</span><span class="n">nmt</span><span class="o">.</span><span class="n">compute_coupled_cell</span><span class="p">(</span><span class="n">f_psf</span><span class="p">,</span> <span class="n">f_psf</span><span class="p">))</span>
+</span><span id="line-534">    <span class="n">rho_cl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">ell_eff</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="n">rho_cl</span><span class="p">])</span>
+</span><span id="line-535">
+</span><span id="line-536">    <span class="c1"># tau_0: galaxy-PSF</span>
+</span><span id="line-537">    <span class="n">wsp</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtWorkspace</span><span class="o">.</span><span class="n">from_fields</span><span class="p">(</span><span class="n">f_gal</span><span class="p">,</span> <span class="n">f_psf</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+</span><span id="line-538">    <span class="n">tau_cl</span> <span class="o">=</span> <span class="n">wsp</span><span class="o">.</span><span class="n">decouple_cell</span><span class="p">(</span><span class="n">nmt</span><span class="o">.</span><span class="n">compute_coupled_cell</span><span class="p">(</span><span class="n">f_gal</span><span class="p">,</span> <span class="n">f_psf</span><span class="p">))</span>
+</span><span id="line-539">    <span class="n">tau_cl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">ell_eff</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="n">tau_cl</span><span class="p">])</span>
+</span><span id="line-540">
+</span><span id="line-541">    <span class="k">return</span> <span class="n">rho_cl</span><span class="p">,</span> <span class="n">tau_cl</span></div>
 
 </span></code></pre></div>
     </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
@@ -794,7 +797,7 @@
       </div><footer class="py-6 border-t border-border md:py-0">
     <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
       <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-        <p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini&nbsp;Last updated: 01 Oct, 2026.&nbsp;Built with <a class="font-medium underline underline-offset-4"
+        <p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini&nbsp;Last updated: 02 Oct, 2026.&nbsp;Built with <a class="font-medium underline underline-offset-4"
     href="https://www.sphinx-doc.org"
     rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>

@@ -28,7 +28,7 @@
 <link href="_static/theme.css?v=d6d7c91b" rel="stylesheet" type="text/css"/>
 <link href="search.html" rel="search" title="Search"/>
 <link href="genindex.html" rel="index" title="Index"/>
-<link href="post_processing.html" rel="next" title="Post-processing"/>
+<link href="catalogue_columns.html" rel="next" title="Catalogue columns"/>
 <link href="using_the_catalogues.html" rel="prev" title="Using the weak-lensing catalogues"/>
 </head>
 <body :class="{ 'overflow-hidden': showSidebar }" @scroll.window="showScrollTop = pageYOffset &gt; 100" class="min-h-screen font-sans antialiased bg-background text-foreground" x-data="{ showSidebar: false, showScrollTop: false }">
@@ -81,6 +81,7 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="using_the_catalogues.html">Using the weak-lensing catalogues</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Running shear validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="catalogue_columns.html">Catalogue columns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="post_processing.html">Post-processing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Leakage_object_Tutorial.html">Leakage_object Tutorial</a></li>
 </ul>
@@ -106,6 +107,7 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.format.html">sp_validation.format</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html">sp_validation.galaxy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html">sp_validation.glass_mock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.grammar.html">sp_validation.grammar</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.image_sims.html">sp_validation.image_sims</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html">sp_validation.io</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.masks.html">sp_validation.masks</a></li>
@@ -159,11 +161,12 @@ including the sheared values for metacalibration.</p>
 <code class="docutils literal notranslate"><span class="pre">scripts/calibration/params.py</span></code>, that needs to be edited accordingly.
 The main parameters are:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">name</span></code>: field or patch name, can be any string. E.g. <code class="docutils literal notranslate"><span class="pre">P3</span></code> for patch 3.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">campaign</span></code>: campaign name (the ShapePipe tile list), can be any string.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">data_dir</span></code>: input directory for data. Set to <code class="docutils literal notranslate"><span class="pre">.</span></code> for validation run in
 current directory.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">galaxy_cat_path</span></code>: path to galaxy catalogue, format <code class="docutils literal notranslate"><span class="pre">.fits</span></code>. or <code class="docutils literal notranslate"><span class="pre">.hdf5</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">star_cat_path</span></code>: path to star catalogue, format <code class="docutils literal notranslate"><span class="pre">.fits</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">galaxy_cat_path</span></code>: path to galaxy catalogue, FITS or HDF5 (the container is
+detected from the file).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">star_cat_path</span></code>: path to star catalogue, FITS or HDF5.</p></li>
 </ul>
 <p>Optional parameters are:</p>
 <ul class="simple">
@@ -174,9 +177,14 @@ hdf5 data read errors if input parameters vary from tile to tile. Set to
 <code class="docutils literal notranslate"><span class="pre">None</span></code> if not required.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">mask_external_path</span></code>: path to external mask file, format <code class="docutils literal notranslate"><span class="pre">.reg</span></code>. Set to
 <code class="docutils literal notranslate"><span class="pre">None</span></code> if not required.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">galaxy_column_map</span></code>, <code class="docutils literal notranslate"><span class="pre">star_column_map</span></code>: <code class="docutils literal notranslate"><span class="pre">{canonical</span> <span class="pre">name:</span> <span class="pre">name</span> <span class="pre">in</span> <span class="pre">the</span> <span class="pre">file}</span></code>
+for a catalogue whose columns are not named as ShapePipe v2 names them; see
+<a class="reference internal" href="catalogue_columns.html"><span class="std std-doc">Catalogue columns</span></a> for the columns read and the map.
+Set to <code class="docutils literal notranslate"><span class="pre">None</span></code> if not required.</p></li>
 </ul>
-<p>See the script <code class="docutils literal notranslate"><span class="pre">prepare_patch_for_spval.sh</span></code> for an example of copying
-the required input files to where the validation is to be run.</p>
+<p>Link or copy the campaign’s merged products – <code class="docutils literal notranslate"><span class="pre">final_cat_&lt;campaign&gt;.hdf5</span></code>
+and <code class="docutils literal notranslate"><span class="pre">full_starcat_&lt;campaign&gt;.hdf5</span></code> – into the directory where the validation
+is to be run.</p>
 </section>
 <section id="run">
 <h3>Run<a class="headerlink" href="#run" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#run'">¶</a></h3>
@@ -194,8 +202,8 @@ the required input files to where the validation is to be run.</p>
       </a>
 </div>
 <div class="ml-auto">
-<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="post_processing.html">
-        Post-processing
+<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="catalogue_columns.html">
+        Catalogue columns
         <svg class="ml-2 h-4 w-4" fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
 <polyline points="9 18 15 12 9 6"></polyline>
 </svg>
@@ -217,7 +225,7 @@ the required input files to where the validation is to be run.</p>
 </div><footer class="py-6 border-t border-border md:py-0">
 <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
 <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 01 Oct, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 02 Oct, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>
 </div>
 </footer>

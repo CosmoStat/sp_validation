@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+
+<html :class="{ 'dark' : darkMode === true }" data-content_root="./" lang="en" x-data="{ darkMode: $persist(window.matchMedia('(prefers-color-scheme: dark)').matches), activeSection: ''}">
+<head>
+<script>
+    (function () {
+      // Set initial color scheme
+      if ((localStorage.getItem("_x_darkMode") === "true") || (window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+        document.documentElement.classList.add("dark");
+      }
+
+      // Watch for media preference changes
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (event) => {
+        localStorage.setItem("_x_darkMode", event.matches);
+        document.documentElement.classList.toggle("dark", event.matches);
+      });
+    })();
+  </script>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta charset="utf-8"/>
+<meta content="#ffffff" media="(prefers-color-scheme: light)" name="theme-color"/>
+<meta content="#030711" media="(prefers-color-scheme: dark)" name="theme-color"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>sp_validation.grammar | sp_validation v0.6.0</title>
+<meta content="sp_validation.grammar | sp_validation v0.6.0" property="og:title"/>
+<meta content="sp_validation.grammar | sp_validation v0.6.0" name="twitter:title"/>
+<link href="_static/pygments.css?v=b86133f3" rel="stylesheet" type="text/css"/>
+<link href="_static/theme.css?v=d6d7c91b" rel="stylesheet" type="text/css"/>
+<link href="search.html" rel="search" title="Search"/>
+<link href="genindex.html" rel="index" title="Index"/>
+<link href="sp_validation.image_sims.html" rel="next" title="sp_validation.image_sims"/>
+<link href="sp_validation.glass_mock.html" rel="prev" title="sp_validation.glass_mock"/>
+</head>
+<body :class="{ 'overflow-hidden': showSidebar }" @scroll.window="showScrollTop = pageYOffset &gt; 100" class="min-h-screen font-sans antialiased bg-background text-foreground" x-data="{ showSidebar: false, showScrollTop: false }">
+<div @click.self="showSidebar = false" class="fixed inset-0 z-50 overflow-hidden bg-background/80 backdrop-blur-sm md:hidden" x-cloak="" x-show="showSidebar"></div><div class="relative flex flex-col min-h-screen" id="page"><a class="absolute top-0 left-0 z-[100] block bg-background p-4 text-xl transition -translate-x-full opacity-0 focus:translate-x-0 focus:opacity-100" href="#content">
+      Skip to content
+    </a><header class="sticky top-0 z-40 w-full border-b shadow-xs border-border bg-background/90 backdrop-blur"><div class="container flex items-center h-14">
+<div class="hidden mr-4 md:flex">
+<a class="flex items-center mr-6" href="index.html"><span class="hidden font-bold sm:inline-block text-clip whitespace-nowrap">sp_validation v0.6.0</span>
+</a></div><button @click="showSidebar = true" class="inline-flex items-center justify-center h-10 px-0 py-2 mr-2 text-base font-medium transition-colors rounded-md hover:text-accent-foreground hover:bg-transparent md:hidden" type="button">
+<svg aria-hidden="true" fill="currentColor" height="24" viewbox="0 96 960 960" width="24" xmlns="http://www.w3.org/2000/svg">
+<path d="M152.587 825.087q-19.152 0-32.326-13.174t-13.174-32.326q0-19.152 13.174-32.326t32.326-13.174h440q19.152 0 32.326 13.174t13.174 32.326q0 19.152-13.174 32.326t-32.326 13.174h-440Zm0-203.587q-19.152 0-32.326-13.174T107.087 576q0-19.152 13.174-32.326t32.326-13.174h320q19.152 0 32.326 13.174T518.087 576q0 19.152-13.174 32.326T472.587 621.5h-320Zm0-203.587q-19.152 0-32.326-13.174t-13.174-32.326q0-19.152 13.174-32.326t32.326-13.174h440q19.152 0 32.326 13.174t13.174 32.326q0 19.152-13.174 32.326t-32.326 13.174h-440ZM708.913 576l112.174 112.174q12.674 12.674 12.674 31.826t-12.674 31.826Q808.413 764.5 789.261 764.5t-31.826-12.674l-144-144Q600 594.391 600 576t13.435-31.826l144-144q12.674-12.674 31.826-12.674t31.826 12.674q12.674 12.674 12.674 31.826t-12.674 31.826L708.913 576Z"></path>
+</svg>
+<span class="sr-only">Toggle navigation menu</span>
+</button>
+<div class="flex items-center justify-between flex-1 gap-2 sm:gap-4 md:justify-end">
+<div class="flex-1 w-full md:w-auto md:flex-none"><form @keydown.k.window.meta="$refs.search.focus()" action="search.html" class="relative flex items-center group" id="searchbox" method="get">
+<input aria-label="Search the docs" class="inline-flex items-center font-medium transition-colors bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background border border-input hover:bg-accent focus:bg-accent hover:text-accent-foreground focus:text-accent-foreground hover:placeholder-accent-foreground py-2 px-4 relative h-9 w-full justify-start rounded-[0.5rem] text-sm text-muted-foreground sm:pr-12 md:w-40 lg:w-64" id="search-input" name="q" placeholder="Search ..." type="search" x-ref="search"/>
+<kbd class="pointer-events-none absolute right-1.5 top-2 hidden h-5 select-none text-muted-foreground items-center gap-1 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex group-hover:bg-accent group-hover:text-accent-foreground">
+<span class="text-xs">⌘</span>
+    K
+  </kbd>
+</form>
+</div>
+<nav class="flex items-center gap-1">
+<button @click="darkMode = !darkMode" class="relative inline-flex items-center justify-center px-0 text-sm font-medium transition-colors rounded-md hover:bg-accent hover:text-accent-foreground h-9 w-9" title="Toggle color scheme" type="button">
+<svg class="absolute transition-all scale-100 rotate-0 dark:-rotate-90 dark:scale-0" fill="currentColor" height="16" viewbox="0 96 960 960" width="16" xmlns="http://www.w3.org/2000/svg">
+<path d="M480 685q45.456 0 77.228-31.772Q589 621.456 589 576q0-45.456-31.772-77.228Q525.456 467 480 467q-45.456 0-77.228 31.772Q371 530.544 371 576q0 45.456 31.772 77.228Q434.544 685 480 685Zm0 91q-83 0-141.5-58.5T280 576q0-83 58.5-141.5T480 376q83 0 141.5 58.5T680 576q0 83-58.5 141.5T480 776ZM80 621.5q-19.152 0-32.326-13.174T34.5 576q0-19.152 13.174-32.326T80 530.5h80q19.152 0 32.326 13.174T205.5 576q0 19.152-13.174 32.326T160 621.5H80Zm720 0q-19.152 0-32.326-13.174T754.5 576q0-19.152 13.174-32.326T800 530.5h80q19.152 0 32.326 13.174T925.5 576q0 19.152-13.174 32.326T880 621.5h-80Zm-320-320q-19.152 0-32.326-13.174T434.5 256v-80q0-19.152 13.174-32.326T480 130.5q19.152 0 32.326 13.174T525.5 176v80q0 19.152-13.174 32.326T480 301.5Zm0 720q-19.152 0-32.326-13.17Q434.5 995.152 434.5 976v-80q0-19.152 13.174-32.326T480 850.5q19.152 0 32.326 13.174T525.5 896v80q0 19.152-13.174 32.33-13.174 13.17-32.326 13.17ZM222.174 382.065l-43-42Q165.5 327.391 166 308.239t13.174-33.065q13.435-13.674 32.587-13.674t32.065 13.674l42.239 43q12.674 13.435 12.555 31.706-.12 18.272-12.555 31.946-12.674 13.674-31.445 13.413-18.772-.261-32.446-13.174Zm494 494.761-42.239-43q-12.674-13.435-12.674-32.087t12.674-31.565Q686.609 756.5 705.38 757q18.772.5 32.446 13.174l43 41.761Q794.5 824.609 794 843.761t-13.174 33.065Q767.391 890.5 748.239 890.5t-32.065-13.674Zm-42-494.761Q660.5 369.391 661 350.62q.5-18.772 13.174-32.446l41.761-43Q728.609 261.5 747.761 262t33.065 13.174q13.674 13.435 13.674 32.587t-13.674 32.065l-43 42.239q-13.435 12.674-31.706 12.555-18.272-.12-31.946-12.555Zm-495 494.761Q165.5 863.391 165.5 844.239t13.674-32.065l43-42.239q13.435-12.674 32.087-12.674t31.565 12.674Q299.5 782.609 299 801.38q-.5 18.772-13.174 32.446l-41.761 43Q231.391 890.5 212.239 890t-33.065-13.174ZM480 576Z"></path>
+</svg>
+<svg class="absolute transition-all scale-0 rotate-90 dark:rotate-0 dark:scale-100" fill="currentColor" height="16" viewbox="0 96 960 960" width="16" xmlns="http://www.w3.org/2000/svg">
+<path d="M480 936q-151 0-255.5-104.5T120 576q0-138 90-239.5T440 218q25-3 39 18t-1 44q-17 26-25.5 55t-8.5 61q0 90 63 153t153 63q31 0 61.5-9t54.5-25q21-14 43-1.5t19 39.5q-14 138-117.5 229T480 936Zm0-80q88 0 158-48.5T740 681q-20 5-40 8t-40 3q-123 0-209.5-86.5T364 396q0-20 3-40t8-40q-78 32-126.5 102T200 576q0 116 82 198t198 82Zm-10-270Z"></path>
+</svg>
+</button>
+</nav>
+</div>
+</div>
+</header>
+<div class="flex-1"><div class="container md:grid md:grid-cols-[220px_minmax(0,1fr)] md:gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-10"><aside :aria-hidden="!showSidebar" :class="{ 'translate-x-0': showSidebar }" class="fixed inset-y-0 left-0 md:top-14 z-50 md:z-30 bg-background md:bg-transparent transition-all duration-100 -translate-x-full md:translate-x-0 ml-0 p-6 md:p-0 md:-ml-2 md:h-[calc(100vh-3.5rem)] w-5/6 md:w-full overflow-y-auto border-r border-border md:sticky" id="left-sidebar">
+<a class="justify-start text-sm md:!hidden bg-background" href="index.html"><span class="font-bold text-clip whitespace-nowrap">sp_validation v0.6.0</span>
+</a>
+<div class="relative overflow-hidden md:overflow-auto my-4 md:my-0">
+<div class="overflow-y-auto h-full w-full relative pr-6"><nav class="table w-full min-w-full my-6 lg:my-8">
+<p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="repository_structure.html">Repository structure</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="using_the_catalogues.html">Using the weak-lensing catalogues</a></li>
+<li class="toctree-l1"><a class="reference internal" href="run_validation.html">Running shear validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="catalogue_columns.html">Catalogue columns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="post_processing.html">Post-processing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Leakage_object_Tutorial.html">Leakage_object Tutorial</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="current">
+<li class="toctree-l1 current" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.html">sp_validation<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul class="current" x-show="expanded">
+<li class="toctree-l2" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.cosmo_val.html">sp_validation.cosmo_val<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul x-cloak="" x-show="expanded">
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.catalog_characterization.html">sp_validation.cosmo_val.catalog_characterization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html">sp_validation.cosmo_val.core</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.cosebis.html">sp_validation.cosmo_val.cosebis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html">sp_validation.cosmo_val.pseudo_cl</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.psf_systematics.html">sp_validation.cosmo_val.psf_systematics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pure_eb.html">sp_validation.cosmo_val.pure_eb</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.real_space.html">sp_validation.cosmo_val.real_space</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.sacc_writers.html">sp_validation.cosmo_val.sacc_writers</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html">sp_validation.b_modes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.calibration.html">sp_validation.calibration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html">sp_validation.catalog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog_builders.html">sp_validation.catalog_builders</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.container.html">sp_validation.container</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.format.html">sp_validation.format</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html">sp_validation.galaxy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html">sp_validation.glass_mock</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">sp_validation.grammar</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.image_sims.html">sp_validation.image_sims</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html">sp_validation.io</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.masks.html">sp_validation.masks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.plot_style.html">sp_validation.plot_style</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.plots.html">sp_validation.plots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.pseudo_cl.html">sp_validation.pseudo_cl</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.rho_tau.html">sp_validation.rho_tau</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.sacc_io.html">sp_validation.sacc_io</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.statistics.html">sp_validation.statistics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.survey.html">sp_validation.survey</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.version.html">sp_validation.version</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="z_ref.html">References</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Guidelines</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
+</ul>
+</nav>
+</div>
+</div>
+<button @click="showSidebar = false" class="absolute md:hidden right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100" type="button">
+<svg class="h-4 w-4" fill="currentColor" height="24" stroke="none" viewbox="0 96 960 960" width="24" xmlns="http://www.w3.org/2000/svg">
+<path d="M480 632 284 828q-11 11-28 11t-28-11q-11-11-11-28t11-28l196-196-196-196q-11-11-11-28t11-28q11-11 28-11t28 11l196 196 196-196q11-11 28-11t28 11q11 11 11 28t-11 28L536 576l196 196q11 11 11 28t-11 28q-11 11-28 11t-28-11L480 632Z"></path>
+</svg>
+</button>
+</aside>
+<main class="relative py-6 lg:gap-10 lg:py-8 xl:grid xl:grid-cols-[1fr_300px]">
+<div class="w-full min-w-0 mx-auto">
+<nav aria-label="breadcrumbs" class="flex items-center mb-4 space-x-1 text-sm text-muted-foreground">
+<a class="overflow-hidden text-ellipsis whitespace-nowrap hover:text-foreground" href="index.html">
+<span class="hidden md:inline">sp_validation v0.6.0</span>
+<svg aria-label="Home" class="md:hidden" fill="currentColor" height="18" stroke="none" viewbox="0 96 960 960" width="18" xmlns="http://www.w3.org/2000/svg">
+<path d="M240 856h120V616h240v240h120V496L480 316 240 496v360Zm-80 80V456l320-240 320 240v480H520V696h-80v240H160Zm320-350Z"></path>
+</svg>
+</a>
+<div class="mr-1">/</div><a class="hover:text-foreground overflow-hidden text-ellipsis whitespace-nowrap" href="sp_validation.html">sp_validation</a>
+<div class="mr-1">/</div><span aria-current="page" class="font-medium text-foreground overflow-hidden text-ellipsis whitespace-nowrap">sp_validation.grammar</span>
+</nav>
+<div id="content" role="main">
+<section id="module-sp_validation.grammar">
+<span id="sp-validation-grammar"></span><h1>sp_validation.grammar<a class="headerlink" href="#module-sp_validation.grammar" title="Link to this heading">¶</a></h1>
+<p>Column grammars: the v2 schema, and the maps that present a table in it.</p>
+<p>ShapePipe products name their columns in one of two grammars. <code class="docutils literal notranslate"><span class="pre">v2</span></code> is the
+grammar the rest of sp_validation reads (<code class="docutils literal notranslate"><span class="pre">HSM_T_PSF</span></code>, <code class="docutils literal notranslate"><span class="pre">NGMIX_G1_NOSHEAR</span></code>,
+<code class="docutils literal notranslate"><span class="pre">MASK_4_Stars</span></code>, …; see <code class="docutils literal notranslate"><span class="pre">docs/ngmix_psf_column_migration.md</span></code>). <code class="docutils literal notranslate"><span class="pre">v1</span></code> is the
+grammar of the catalogues released up to and including v1.6.x (<code class="docutils literal notranslate"><span class="pre">SIGMA_PSF_HSM</span></code>,
+the 2-vector <code class="docutils literal notranslate"><span class="pre">NGMIX_ELL_NOSHEAR</span></code>, …).</p>
+<p>This module is the single place that knows the difference. <code class="docutils literal notranslate"><span class="pre">adapt</span></code> hands a
+table back as a lazy view presenting v2 names and units, so downstream code
+reads one grammar and never branches on the generation. Two rule families
+apply:</p>
+<ul class="simple">
+<li><p>The v1 shape-measurement columns, applied when the table is v1 (see
+<code class="docutils literal notranslate"><span class="pre">detect_generation</span></code>):</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">E{1,2}_{PSF,STAR}_HSM</span></code> and <code class="docutils literal notranslate"><span class="pre">FLAG_{PSF,STAR}_HSM</span></code> are renamed;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">SIGMA_{PSF,STAR}_HSM</span></code> (sigma) is presented as <code class="docutils literal notranslate"><span class="pre">HSM_T_{PSF,STAR}</span></code>
+holding <code class="docutils literal notranslate"><span class="pre">T</span> <span class="pre">=</span> <span class="pre">2</span> <span class="pre">sigma^2</span></code>, via <code class="docutils literal notranslate"><span class="pre">cs_util.size.sigma_to_T</span></code>;</p></li>
+<li><p>the 2-vector ngmix columns <code class="docutils literal notranslate"><span class="pre">NGMIX_ELL[_ERR|_PSFo]_{shear}</span></code> (or their
+flattened <code class="docutils literal notranslate"><span class="pre">_0</span></code>/<code class="docutils literal notranslate"><span class="pre">_1</span></code> forms, as in the comprehensive HDF5) are split
+into <code class="docutils literal notranslate"><span class="pre">NGMIX_G{1,2}[_ERR|_PSF_ORIG]_{shear}</span></code>;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">NGMIX_T_PSFo_{shear}</span></code>, <code class="docutils literal notranslate"><span class="pre">NGMIX_Tpsf_{shear}</span></code> and <code class="docutils literal notranslate"><span class="pre">NGMIX_MOM_FAIL</span></code>
+become <code class="docutils literal notranslate"><span class="pre">NGMIX_T_PSF_ORIG_{shear}</span></code>, <code class="docutils literal notranslate"><span class="pre">NGMIX_T_PSF_RECONV_{shear}</span></code> and
+<code class="docutils literal notranslate"><span class="pre">NGMIX_MCAL_TYPES_FAIL</span></code>, except that <code class="docutils literal notranslate"><span class="pre">NGMIX_T_PSF_RECONV_NOSHEAR</span></code> is
+read from <code class="docutils literal notranslate"><span class="pre">NGMIX_Tpsf_1P</span></code> when the table has it (see below).</p></li>
+</ul>
+</li>
+<li><p>The UNIONS mask-bit columns, applied to any table. Bit <code class="docutils literal notranslate"><span class="pre">b</span></code> of the
+healsparse mask product is the boolean <code class="docutils literal notranslate"><span class="pre">MASK_{b}_{label}</span></code>
+(<code class="docutils literal notranslate"><span class="pre">MASK_1_Faint_star_halos</span></code>, <code class="docutils literal notranslate"><span class="pre">MASK_4_Stars</span></code>, <code class="docutils literal notranslate"><span class="pre">MASK_2048_z2</span></code>, …;
+<code class="docutils literal notranslate"><span class="pre">mask_column</span></code>, labels from <code class="docutils literal notranslate"><span class="pre">MASK_LABELS</span></code>). Two other spellings of the
+same bit are presented under that name: <code class="docutils literal notranslate"><span class="pre">{b}_{label}</span></code>, the <code class="docutils literal notranslate"><span class="pre">data_ext</span></code>
+dataset of every released v1 comprehensive HDF5, and <code class="docutils literal notranslate"><span class="pre">MASK_n{b}</span></code>, written
+by pre-release ShapePipe v2 runs. These columns belong to the mask product,
+not to a ShapePipe generation, so no spelling marks or requires one.</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">IMAFLAGS_ISO</span></code> is not mapped: its v1 bits (2 halo, 4 border, 16 Messier,
+32 NGC, 128 spike) differ in meaning from the mask bits of the same value,
+so it passes through under its own name for the v1 mask configs that cut on it.</p>
+<p>The mapping is by <em>name</em>, deliberately, including where the v1 values mean
+something different from their v2 namesakes: v1 <code class="docutils literal notranslate"><span class="pre">NGMIX_*_PSFo_*</span></code> hold the
+reconvolved-PSF alias rather than a fit to the original PSF, and
+<code class="docutils literal notranslate"><span class="pre">NGMIX_MOM_FAIL</span></code> counts moments-guess failures rather than failed metacal
+types. Those values are presented unchanged.</p>
+<p>One v1 value is corrected rather than renamed. ShapePipe v1 wrote a wrong
+no-shear reconvolved-PSF size: <code class="docutils literal notranslate"><span class="pre">NGMIX_Tpsf_NOSHEAR</span></code> differs by ~2% for
+nearly every object from the reconvolution kernel metacal applied, which the
+sheared types’ <code class="docutils literal notranslate"><span class="pre">NGMIX_Tpsf_{1P,1M,2P,2M}</span></code> record (they agree to ~1e-5).
+The v1.4.6.3 release cut on and wrote the <code class="docutils literal notranslate"><span class="pre">1P</span></code> value, so
+<code class="docutils literal notranslate"><span class="pre">NGMIX_T_PSF_RECONV_NOSHEAR</span></code> reads <code class="docutils literal notranslate"><span class="pre">NGMIX_Tpsf_1P</span></code> whenever the table has
+it, and <code class="docutils literal notranslate"><span class="pre">NGMIX_Tpsf_NOSHEAR</span></code> otherwise (a cut catalogue such as v1.4.6.3’s,
+whose no-shear column already holds the <code class="docutils literal notranslate"><span class="pre">1P</span></code> value). ShapePipe v2 reuses one
+reconvolved PSF across metacal types, so its columns need no correction.</p>
+<p>A catalogue in another naming convention can carry a <code class="docutils literal notranslate"><span class="pre">column_map</span></code>,
+<code class="docutils literal notranslate"><span class="pre">{v2</span> <span class="pre">name:</span> <span class="pre">name</span> <span class="pre">in</span> <span class="pre">the</span> <span class="pre">file}</span></code>, which <code class="docutils literal notranslate"><span class="pre">adapt</span></code> applies as renames ahead of
+the rules above: an entry overrides the rule producing the same v2 name and no
+other (a column it renames still feeds the other rules that read it), and the
+v1 detection runs on the columns the map does not rename. An entry may hold one
+<code class="docutils literal notranslate"><span class="pre">*</span></code> on both sides, matching any stem: <code class="docutils literal notranslate"><span class="pre">{"NGMIX_*":</span> <span class="pre">"MYFIT_*"}</span></code> presents
+every <code class="docutils literal notranslate"><span class="pre">MYFIT_&lt;stem&gt;</span></code> column as <code class="docutils literal notranslate"><span class="pre">NGMIX_&lt;stem&gt;</span></code>. Explicit entries take
+precedence over pattern entries.</p>
+<p>Every other column passes through under its own name; source names that have a
+v2 equivalent are hidden.</p>
+<p><code class="docutils literal notranslate"><span class="pre">adapt</span></code> also joins row-aligned tables into one view, as the comprehensive
+HDF5 splits one catalogue over its <code class="docutils literal notranslate"><span class="pre">data</span></code> and <code class="docutils literal notranslate"><span class="pre">data_ext</span></code> datasets.</p>
+<dl class="py data">
+<dt class="sig sig-object py" id="sp_validation.grammar.SHEARS">
+<span class="sig-name descname"><span class="pre">SHEARS</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">('NOSHEAR',</span> <span class="pre">'1P',</span> <span class="pre">'1M',</span> <span class="pre">'2P',</span> <span class="pre">'2M')</span></span><a class="headerlink" href="#sp_validation.grammar.SHEARS" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.SHEARS'">¶</a></dt>
+<dd><p>Metacal shear types carried by the ngmix columns.</p>
+</dd></dl>
+<dl class="py data">
+<dt class="sig sig-object py" id="sp_validation.grammar.MASK_LABELS">
+<span class="sig-name descname"><span class="pre">MASK_LABELS</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{1:</span> <span class="pre">'Faint_star_halos',</span> <span class="pre">2:</span> <span class="pre">'Bright_star_halos',</span> <span class="pre">4:</span> <span class="pre">'Stars',</span> <span class="pre">8:</span> <span class="pre">'Manual',</span> <span class="pre">16:</span> <span class="pre">'u',</span> <span class="pre">32:</span> <span class="pre">'g',</span> <span class="pre">64:</span> <span class="pre">'r',</span> <span class="pre">128:</span> <span class="pre">'i',</span> <span class="pre">256:</span> <span class="pre">'z',</span> <span class="pre">512:</span> <span class="pre">'Tile_RA_DEC_cut',</span> <span class="pre">1024:</span> <span class="pre">'Maximask',</span> <span class="pre">2048:</span> <span class="pre">'z2'}</span></span><a class="headerlink" href="#sp_validation.grammar.MASK_LABELS" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.MASK_LABELS'">¶</a></dt>
+<dd><p>Bits of the UNIONS healsparse mask product and what each flags. The column
+for bit <code class="docutils literal notranslate"><span class="pre">b</span></code> is <code class="docutils literal notranslate"><span class="pre">MASK_{b}_{label}</span></code> (<code class="docutils literal notranslate"><span class="pre">mask_column</span></code>).</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.grammar.mask_column">
+<span class="sig-name descname"><span class="pre">mask_column</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bit</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#mask_column"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar.mask_column" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.mask_column'">¶</a></dt>
+<dd><p>Return the column holding mask bit <code class="docutils literal notranslate"><span class="pre">bit</span></code>: <code class="docutils literal notranslate"><span class="pre">MASK_{bit}_{label}</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#KeyError" title="(in Python v3.14)"><strong>KeyError</strong></a> – if <code class="docutils literal notranslate"><span class="pre">bit</span></code> is not a bit of the mask product</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py class">
+<dt class="sig sig-object py" id="sp_validation.grammar.Rule">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">Rule</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">v2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">source</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">kind</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'rename'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fallback</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#Rule"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar.Rule" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.Rule'">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>One v2 column presented from a source column.</p>
+<p><code class="docutils literal notranslate"><span class="pre">kind</span></code> is <code class="docutils literal notranslate"><span class="pre">"rename"</span></code> (same values), <code class="docutils literal notranslate"><span class="pre">"sigma_to_T"</span></code> (T = 2 sigma^2)
+or <code class="docutils literal notranslate"><span class="pre">"component"</span></code> (element <code class="docutils literal notranslate"><span class="pre">arg</span></code> of a 2-vector, stored either as one
+vector column <code class="docutils literal notranslate"><span class="pre">source</span></code> or as the flattened <code class="docutils literal notranslate"><span class="pre">{source}_{arg}</span></code>).
+<code class="docutils literal notranslate"><span class="pre">fallback</span></code> names a column read instead when <code class="docutils literal notranslate"><span class="pre">source</span></code> is absent.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.grammar.Rule.v2">
+<span class="sig-name descname"><span class="pre">v2</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><a class="headerlink" href="#sp_validation.grammar.Rule.v2" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.Rule.v2'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.grammar.Rule.source">
+<span class="sig-name descname"><span class="pre">source</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><a class="headerlink" href="#sp_validation.grammar.Rule.source" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.Rule.source'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.grammar.Rule.kind">
+<span class="sig-name descname"><span class="pre">kind</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'rename'</span></span><a class="headerlink" href="#sp_validation.grammar.Rule.kind" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.Rule.kind'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.grammar.Rule.arg">
+<span class="sig-name descname"><span class="pre">arg</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#sp_validation.grammar.Rule.arg" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.Rule.arg'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.grammar.Rule.fallback">
+<span class="sig-name descname"><span class="pre">fallback</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#sp_validation.grammar.Rule.fallback" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.Rule.fallback'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.grammar.Rule.sources">
+<span class="sig-name descname"><span class="pre">sources</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#Rule.sources"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar.Rule.sources" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.Rule.sources'">¶</a></dt>
+<dd><p>Return the source names this rule can read from, in preference order.</p>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.grammar.Rule.apply">
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">column</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#Rule.apply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar.Rule.apply" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.Rule.apply'">¶</a></dt>
+<dd><p>Return the v2 column computed from source <code class="docutils literal notranslate"><span class="pre">column</span></code>.</p>
+</dd></dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.grammar._v1_rules">
+<span class="sig-name descname"><span class="pre">_v1_rules</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#_v1_rules"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar._v1_rules" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar._v1_rules'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py data">
+<dt class="sig sig-object py" id="sp_validation.grammar.V1_RULES">
+<span class="sig-name descname"><span class="pre">V1_RULES</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">(Rule(v2='HSM_G1_PSF',</span> <span class="pre">source='E1_PSF_HSM',</span> <span class="pre">kind='rename',</span> <span class="pre">arg=None,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='HSM_G2_PSF',</span> <span class="pre">source='E2_PSF_HSM',</span> <span class="pre">kind='rename',</span> <span class="pre">arg=None,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='HSM_T_PSF',</span> <span class="pre">source='SIGMA_PSF_HSM',</span> <span class="pre">kind='sigma_to_T',</span> <span class="pre">arg=None,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='HSM_FLAG_PSF',</span> <span class="pre">source='FLAG_PSF_HSM',</span> <span class="pre">kind='rename',</span> <span class="pre">arg=None,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='HSM_G1_STAR',</span> <span class="pre">source='E1_STAR_HSM',</span> <span class="pre">kind='rename',</span> <span class="pre">arg=None,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='HSM_G2_STAR',</span> <span class="pre">source='E2_STAR_HSM',</span> <span class="pre">kind='rename',</span> <span class="pre">arg=None,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='HSM_T_STAR',</span> <span class="pre">source='SIGMA_STAR_HSM',</span> <span class="pre">kind='sigma_to_T',</span> <span class="pre">arg=None,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='HSM_FLAG_STAR',</span> <span class="pre">source='FLAG_STAR_HSM',</span> <span class="pre">kind='rename',</span> <span class="pre">arg=None,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_G1_NOSHEAR',</span> <span class="pre">source='NGMIX_ELL_NOSHEAR',</span> <span class="pre">kind='component',</span> <span class="pre">arg=0,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_G1_ERR_NOSHEAR',</span> <span class="pre">source='NGMIX_ELL_ERR_NOSHEAR',</span> <span class="pre">kind='component',</span> <span class="pre">arg=0,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_G1_PSF_ORIG_NOSHEAR',</span> <span class="pre">source='NGMIX_ELL_PSFo_NOSHEAR',</span> <span class="pre">kind='component',</span> <span class="pre">arg=0,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_G2_NOSHEAR',</span> <span class="pre">source='NGMIX_ELL_NOSHEAR',</span> <span class="pre">kind='component',</span> <span class="pre">arg=1,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_G2_ERR_NOSHEAR',</span> <span class="pre">source='NGMIX_ELL_ERR_NOSHEAR',</span> <span class="pre">kind='component',</span> <span class="pre">arg=1,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_G2_PSF_ORIG_NOSHEAR',</span> <span class="pre">source='NGMIX_ELL_PSFo_NOSHEAR',</span> <span class="pre">kind='component',</span> <span class="pre">arg=1,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_T_PSF_ORIG_NOSHEAR',</span> <span class="pre">source='NGMIX_T_PSFo_NOSHEAR',</span> <span class="pre">kind='rename',</span> <span class="pre">arg=None,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_T_PSF_RECONV_NOSHEAR',</span> <span class="pre">source='NGMIX_Tpsf_1P',</span> <span class="pre">kind='rename',</span> <span class="pre">arg=None,</span> <span class="pre">fallback='NGMIX_Tpsf_NOSHEAR'),</span> <span class="pre">Rule(v2='NGMIX_G1_1P',</span> <span class="pre">source='NGMIX_ELL_1P',</span> <span class="pre">kind='component',</span> <span class="pre">arg=0,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_G1_ERR_1P',</span> <span class="pre">source='NGMIX_ELL_ERR_1P',</span> <span class="pre">kind='component',</span> <span class="pre">arg=0,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_G1_PSF_ORIG_1P',</span> <span class="pre">source='NGMIX_ELL_PSFo_1P',</span> <span class="pre">kind='component',</span> <span class="pre">arg=0,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_G2_1P',</span> <span class="pre">source='NGMIX_ELL_1P',</span> <span class="pre">kind='component',</span> <span class="pre">arg=1,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_G2_ERR_1P',</span> <span class="pre">source='NGMIX_ELL_ERR_1P',</span> <span class="pre">kind='component',</span> <span class="pre">arg=1,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_G2_PSF_ORIG_1P',</span> <span class="pre">source='NGMIX_ELL_PSFo_1P',</span> <span class="pre">kind='component',</span> <span class="pre">arg=1,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_T_PSF_ORIG_1P',</span> <span class="pre">source='NGMIX_T_PSFo_1P',</span> <span class="pre">kind='rename',</span> <span class="pre">arg=None,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_T_PSF_RECONV_1P',</span> <span class="pre">source='NGMIX_Tpsf_1P',</span> <span class="pre">kind='rename',</span> <span class="pre">arg=None,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_G1_1M',</span> <span class="pre">source='NGMIX_ELL_1M',</span> <span class="pre">kind='component',</span> <span class="pre">arg=0,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_G1_ERR_1M',</span> <span class="pre">source='NGMIX_ELL_ERR_1M',</span> <span class="pre">kind='component',</span> <span class="pre">arg=0,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_G1_PSF_ORIG_1M',</span> <span class="pre">source='NGMIX_ELL_PSFo_1M',</span> <span class="pre">kind='component',</span> <span class="pre">arg=0,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_G2_1M',</span> <span class="pre">source='NGMIX_ELL_1M',</span> <span class="pre">kind='component',</span> <span class="pre">arg=1,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_G2_ERR_1M',</span> <span class="pre">source='NGMIX_ELL_ERR_1M',</span> <span class="pre">kind='component',</span> <span class="pre">arg=1,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_G2_PSF_ORIG_1M',</span> <span class="pre">source='NGMIX_ELL_PSFo_1M',</span> <span class="pre">kind='component',</span> <span class="pre">arg=1,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_T_PSF_ORIG_1M',</span> <span class="pre">source='NGMIX_T_PSFo_1M',</span> <span class="pre">kind='rename',</span> <span class="pre">arg=None,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_T_PSF_RECONV_1M',</span> <span class="pre">source='NGMIX_Tpsf_1M',</span> <span class="pre">kind='rename',</span> <span class="pre">arg=None,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_G1_2P',</span> <span class="pre">source='NGMIX_ELL_2P',</span> <span class="pre">kind='component',</span> <span class="pre">arg=0,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_G1_ERR_2P',</span> <span class="pre">source='NGMIX_ELL_ERR_2P',</span> <span class="pre">kind='component',</span> <span class="pre">arg=0,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_G1_PSF_ORIG_2P',</span> <span class="pre">source='NGMIX_ELL_PSFo_2P',</span> <span class="pre">kind='component',</span> <span class="pre">arg=0,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_G2_2P',</span> <span class="pre">source='NGMIX_ELL_2P',</span> <span class="pre">kind='component',</span> <span class="pre">arg=1,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_G2_ERR_2P',</span> <span class="pre">source='NGMIX_ELL_ERR_2P',</span> <span class="pre">kind='component',</span> <span class="pre">arg=1,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_G2_PSF_ORIG_2P',</span> <span class="pre">source='NGMIX_ELL_PSFo_2P',</span> <span class="pre">kind='component',</span> <span class="pre">arg=1,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_T_PSF_ORIG_2P',</span> <span class="pre">source='NGMIX_T_PSFo_2P',</span> <span class="pre">kind='rename',</span> <span class="pre">arg=None,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_T_PSF_RECONV_2P',</span> <span class="pre">source='NGMIX_Tpsf_2P',</span> <span class="pre">kind='rename',</span> <span class="pre">arg=None,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_G1_2M',</span> <span class="pre">source='NGMIX_ELL_2M',</span> <span class="pre">kind='component',</span> <span class="pre">arg=0,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_G1_ERR_2M',</span> <span class="pre">source='NGMIX_ELL_ERR_2M',</span> <span class="pre">kind='component',</span> <span class="pre">arg=0,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_G1_PSF_ORIG_2M',</span> <span class="pre">source='NGMIX_ELL_PSFo_2M',</span> <span class="pre">kind='component',</span> <span class="pre">arg=0,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_G2_2M',</span> <span class="pre">source='NGMIX_ELL_2M',</span> <span class="pre">kind='component',</span> <span class="pre">arg=1,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_G2_ERR_2M',</span> <span class="pre">source='NGMIX_ELL_ERR_2M',</span> <span class="pre">kind='component',</span> <span class="pre">arg=1,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_G2_PSF_ORIG_2M',</span> <span class="pre">source='NGMIX_ELL_PSFo_2M',</span> <span class="pre">kind='component',</span> <span class="pre">arg=1,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_T_PSF_ORIG_2M',</span> <span class="pre">source='NGMIX_T_PSFo_2M',</span> <span class="pre">kind='rename',</span> <span class="pre">arg=None,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_T_PSF_RECONV_2M',</span> <span class="pre">source='NGMIX_Tpsf_2M',</span> <span class="pre">kind='rename',</span> <span class="pre">arg=None,</span> <span class="pre">fallback=None),</span> <span class="pre">Rule(v2='NGMIX_MCAL_TYPES_FAIL',</span> <span class="pre">source='NGMIX_MOM_FAIL',</span> <span class="pre">kind='rename',</span> <span class="pre">arg=None,</span> <span class="pre">fallback=None))</span></span><a class="headerlink" href="#sp_validation.grammar.V1_RULES" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.V1_RULES'">¶</a></dt>
+<dd><p>The v1 -&gt; v2 map of the shape-measurement columns, applied to v1 tables.</p>
+</dd></dl>
+<dl class="py data">
+<dt class="sig sig-object py" id="sp_validation.grammar.MASK_RULES">
+<span class="sig-name descname"><span class="pre">MASK_RULES</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">(Rule(v2='MASK_1_Faint_star_halos',</span> <span class="pre">source='1_Faint_star_halos',</span> <span class="pre">kind='rename',</span> <span class="pre">arg=None,</span> <span class="pre">fallback='MASK_n1'),</span> <span class="pre">Rule(v2='MASK_2_Bright_star_halos',</span> <span class="pre">source='2_Bright_star_halos',</span> <span class="pre">kind='rename',</span> <span class="pre">arg=None,</span> <span class="pre">fallback='MASK_n2'),</span> <span class="pre">Rule(v2='MASK_4_Stars',</span> <span class="pre">source='4_Stars',</span> <span class="pre">kind='rename',</span> <span class="pre">arg=None,</span> <span class="pre">fallback='MASK_n4'),</span> <span class="pre">Rule(v2='MASK_8_Manual',</span> <span class="pre">source='8_Manual',</span> <span class="pre">kind='rename',</span> <span class="pre">arg=None,</span> <span class="pre">fallback='MASK_n8'),</span> <span class="pre">Rule(v2='MASK_16_u',</span> <span class="pre">source='16_u',</span> <span class="pre">kind='rename',</span> <span class="pre">arg=None,</span> <span class="pre">fallback='MASK_n16'),</span> <span class="pre">Rule(v2='MASK_32_g',</span> <span class="pre">source='32_g',</span> <span class="pre">kind='rename',</span> <span class="pre">arg=None,</span> <span class="pre">fallback='MASK_n32'),</span> <span class="pre">Rule(v2='MASK_64_r',</span> <span class="pre">source='64_r',</span> <span class="pre">kind='rename',</span> <span class="pre">arg=None,</span> <span class="pre">fallback='MASK_n64'),</span> <span class="pre">Rule(v2='MASK_128_i',</span> <span class="pre">source='128_i',</span> <span class="pre">kind='rename',</span> <span class="pre">arg=None,</span> <span class="pre">fallback='MASK_n128'),</span> <span class="pre">Rule(v2='MASK_256_z',</span> <span class="pre">source='256_z',</span> <span class="pre">kind='rename',</span> <span class="pre">arg=None,</span> <span class="pre">fallback='MASK_n256'),</span> <span class="pre">Rule(v2='MASK_512_Tile_RA_DEC_cut',</span> <span class="pre">source='512_Tile_RA_DEC_cut',</span> <span class="pre">kind='rename',</span> <span class="pre">arg=None,</span> <span class="pre">fallback='MASK_n512'),</span> <span class="pre">Rule(v2='MASK_1024_Maximask',</span> <span class="pre">source='1024_Maximask',</span> <span class="pre">kind='rename',</span> <span class="pre">arg=None,</span> <span class="pre">fallback='MASK_n1024'),</span> <span class="pre">Rule(v2='MASK_2048_z2',</span> <span class="pre">source='2048_z2',</span> <span class="pre">kind='rename',</span> <span class="pre">arg=None,</span> <span class="pre">fallback='MASK_n2048'))</span></span><a class="headerlink" href="#sp_validation.grammar.MASK_RULES" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.MASK_RULES'">¶</a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">{b}_{label}</span></code> (v1 <code class="docutils literal notranslate"><span class="pre">data_ext</span></code>) or <code class="docutils literal notranslate"><span class="pre">MASK_n{b}</span></code> (pre-release v2)
+-&gt; <code class="docutils literal notranslate"><span class="pre">MASK_{b}_{label}</span></code>, applied to every table.</p>
+</dd></dl>
+<dl class="py data">
+<dt class="sig sig-object py" id="sp_validation.grammar.V1_MARKERS">
+<span class="sig-name descname"><span class="pre">V1_MARKERS</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">frozenset({'E1_PSF_HSM',</span> <span class="pre">'E1_STAR_HSM',</span> <span class="pre">'E2_PSF_HSM',</span> <span class="pre">'E2_STAR_HSM',</span> <span class="pre">'FLAG_PSF_HSM',</span> <span class="pre">'FLAG_STAR_HSM',</span> <span class="pre">'NGMIX_ELL_1M',</span> <span class="pre">'NGMIX_ELL_1M_0',</span> <span class="pre">'NGMIX_ELL_1M_1',</span> <span class="pre">'NGMIX_ELL_1P',</span> <span class="pre">'NGMIX_ELL_1P_0',</span> <span class="pre">'NGMIX_ELL_1P_1',</span> <span class="pre">'NGMIX_ELL_2M',</span> <span class="pre">'NGMIX_ELL_2M_0',</span> <span class="pre">'NGMIX_ELL_2M_1',</span> <span class="pre">'NGMIX_ELL_2P',</span> <span class="pre">'NGMIX_ELL_2P_0',</span> <span class="pre">'NGMIX_ELL_2P_1',</span> <span class="pre">'NGMIX_ELL_ERR_1M',</span> <span class="pre">'NGMIX_ELL_ERR_1M_0',</span> <span class="pre">'NGMIX_ELL_ERR_1M_1',</span> <span class="pre">'NGMIX_ELL_ERR_1P',</span> <span class="pre">'NGMIX_ELL_ERR_1P_0',</span> <span class="pre">'NGMIX_ELL_ERR_1P_1',</span> <span class="pre">'NGMIX_ELL_ERR_2M',</span> <span class="pre">'NGMIX_ELL_ERR_2M_0',</span> <span class="pre">'NGMIX_ELL_ERR_2M_1',</span> <span class="pre">'NGMIX_ELL_ERR_2P',</span> <span class="pre">'NGMIX_ELL_ERR_2P_0',</span> <span class="pre">'NGMIX_ELL_ERR_2P_1',</span> <span class="pre">'NGMIX_ELL_ERR_NOSHEAR',</span> <span class="pre">'NGMIX_ELL_ERR_NOSHEAR_0',</span> <span class="pre">'NGMIX_ELL_ERR_NOSHEAR_1',</span> <span class="pre">'NGMIX_ELL_NOSHEAR',</span> <span class="pre">'NGMIX_ELL_NOSHEAR_0',</span> <span class="pre">'NGMIX_ELL_NOSHEAR_1',</span> <span class="pre">'NGMIX_ELL_PSFo_1M',</span> <span class="pre">'NGMIX_ELL_PSFo_1M_0',</span> <span class="pre">'NGMIX_ELL_PSFo_1M_1',</span> <span class="pre">'NGMIX_ELL_PSFo_1P',</span> <span class="pre">'NGMIX_ELL_PSFo_1P_0',</span> <span class="pre">'NGMIX_ELL_PSFo_1P_1',</span> <span class="pre">'NGMIX_ELL_PSFo_2M',</span> <span class="pre">'NGMIX_ELL_PSFo_2M_0',</span> <span class="pre">'NGMIX_ELL_PSFo_2M_1',</span> <span class="pre">'NGMIX_ELL_PSFo_2P',</span> <span class="pre">'NGMIX_ELL_PSFo_2P_0',</span> <span class="pre">'NGMIX_ELL_PSFo_2P_1',</span> <span class="pre">'NGMIX_ELL_PSFo_NOSHEAR',</span> <span class="pre">'NGMIX_ELL_PSFo_NOSHEAR_0',</span> <span class="pre">'NGMIX_ELL_PSFo_NOSHEAR_1',</span> <span class="pre">'NGMIX_MOM_FAIL',</span> <span class="pre">'NGMIX_T_PSFo_1M',</span> <span class="pre">'NGMIX_T_PSFo_1P',</span> <span class="pre">'NGMIX_T_PSFo_2M',</span> <span class="pre">'NGMIX_T_PSFo_2P',</span> <span class="pre">'NGMIX_T_PSFo_NOSHEAR',</span> <span class="pre">'NGMIX_Tpsf_1M',</span> <span class="pre">'NGMIX_Tpsf_1P',</span> <span class="pre">'NGMIX_Tpsf_2M',</span> <span class="pre">'NGMIX_Tpsf_2P',</span> <span class="pre">'NGMIX_Tpsf_NOSHEAR',</span> <span class="pre">'SIGMA_PSF_HSM',</span> <span class="pre">'SIGMA_STAR_HSM'})</span></span><a class="headerlink" href="#sp_validation.grammar.V1_MARKERS" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.V1_MARKERS'">¶</a></dt>
+<dd><p>Names whose presence marks a table as v1 / as v2.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.grammar.column_names">
+<span class="sig-name descname"><span class="pre">column_names</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">table</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#column_names"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar.column_names" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.column_names'">¶</a></dt>
+<dd><p>Return the column names of a structured array, FITS_rec or h5py Dataset.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.grammar.detect_generation">
+<span class="sig-name descname"><span class="pre">detect_generation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">names</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#detect_generation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar.detect_generation" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.detect_generation'">¶</a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">"v1"</span></code>, <code class="docutils literal notranslate"><span class="pre">"v2"</span></code> or <code class="docutils literal notranslate"><span class="pre">None</span></code> from the column names present.</p>
+<p><code class="docutils literal notranslate"><span class="pre">None</span></code> means grammar-neutral: no shape-measurement column either grammar
+names (e.g. a cut catalogue carrying only <code class="docutils literal notranslate"><span class="pre">RA</span></code>, <code class="docutils literal notranslate"><span class="pre">Dec</span></code>, <code class="docutils literal notranslate"><span class="pre">e1</span></code>, <code class="docutils literal notranslate"><span class="pre">e2</span></code>,
+<code class="docutils literal notranslate"><span class="pre">w</span></code>, or a table of mask columns). Mask columns mark no generation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – if columns of both grammars are present.</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.grammar._map_rules">
+<span class="sig-name descname"><span class="pre">_map_rules</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">names</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column_map</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#_map_rules"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar._map_rules" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar._map_rules'">¶</a></dt>
+<dd><p>Return the rename rules <code class="docutils literal notranslate"><span class="pre">column_map</span></code> yields for a table’s <code class="docutils literal notranslate"><span class="pre">names</span></code>.</p>
+<p>Entries whose file column is absent yield nothing, so one map serves
+tables that carry only some of its columns.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.grammar._resolve">
+<span class="sig-name descname"><span class="pre">_resolve</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">names</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#_resolve"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar._resolve" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar._resolve'">¶</a></dt>
+<dd><p>Return (presented names, {v2 name: (rule, source name)}) for <code class="docutils literal notranslate"><span class="pre">names</span></code>.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.grammar.v2_names">
+<span class="sig-name descname"><span class="pre">v2_names</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">names</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#v2_names"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar.v2_names" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.v2_names'">¶</a></dt>
+<dd><p>Return the column names a table with columns <code class="docutils literal notranslate"><span class="pre">names</span></code> presents.</p>
+<p>Header-only counterpart of <code class="docutils literal notranslate"><span class="pre">adapt</span></code>.</p>
+</dd></dl>
+<dl class="py data">
+<dt class="sig sig-object py" id="sp_validation.grammar.BLOCK_BYTES">
+<span class="sig-name descname"><span class="pre">BLOCK_BYTES</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">268435456</span></span><a class="headerlink" href="#sp_validation.grammar.BLOCK_BYTES" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.BLOCK_BYTES'">¶</a></dt>
+<dd><p>Bytes of whole HDF5 rows read per block when selecting rows of a dataset.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.grammar._read_window">
+<span class="sig-name descname"><span class="pre">_read_window</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stop</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#_read_window"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar._read_window" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar._read_window'">¶</a></dt>
+<dd><p>Read rows <code class="docutils literal notranslate"><span class="pre">start:stop</span></code> of column <code class="docutils literal notranslate"><span class="pre">name</span></code>, and only those.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.grammar._take">
+<span class="sig-name descname"><span class="pre">_take</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rows</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fields</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#_take"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar._take" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar._take'">¶</a></dt>
+<dd><p>Return rows <code class="docutils literal notranslate"><span class="pre">rows</span></code> of <code class="docutils literal notranslate"><span class="pre">table</span></code> as an in-memory structured array.</p>
+<p><code class="docutils literal notranslate"><span class="pre">rows</span></code> is <code class="docutils literal notranslate"><span class="pre">None</span></code> (all rows), a <code class="docutils literal notranslate"><span class="pre">range</span></code> or an integer index array;
+<code class="docutils literal notranslate"><span class="pre">fields</span></code> restricts the output to those columns. An h5py Dataset is read
+in one pass: whole rows in blocks of <code class="docutils literal notranslate"><span class="pre">BLOCK_BYTES</span></code> over the span of the
+selection, skipping blocks that hold no selected row, so each byte of the
+file is read at most once however many columns are wanted.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.grammar._row_key">
+<span class="sig-name descname"><span class="pre">_row_key</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rows</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#_row_key"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar._row_key" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar._row_key'">¶</a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">rows</span></code> (a <code class="docutils literal notranslate"><span class="pre">range</span></code> or index array) as a numpy row index.</p>
+</dd></dl>
+<dl class="py class">
+<dt class="sig sig-object py" id="sp_validation.grammar.V2View">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">V2View</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bases</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rows</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#V2View"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar.V2View" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.V2View'">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Lazy v2-grammar view of one table, or of row-aligned tables joined.</p>
+<p>Wraps numpy structured arrays, FITS_recs or h5py Datasets without reading
+them. <code class="docutils literal notranslate"><span class="pre">view[name]</span></code> returns one column as an array (computed on access for
+derived columns); a list of names returns a structured array of those
+columns; <code class="docutils literal notranslate"><span class="pre">view[()]</span></code>, <code class="docutils literal notranslate"><span class="pre">view[...]</span></code> and any other row key (slice, boolean
+mask, index array) select rows and return a view over them.</p>
+<p>Selecting rows of a view over h5py Datasets reads the selected rows of
+every column into memory in one pass per dataset, as indexing the Dataset
+itself would, and wraps them in a view over the in-memory arrays: reading
+many columns of a selection one at a time would otherwise re-read the whole
+span of rows for each. Over in-memory tables, selection stays lazy.</p>
+<p>Column names are case-sensitive, unlike a FITS_rec’s.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="sp_validation.grammar.V2View.names">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">names</span></span><a class="headerlink" href="#sp_validation.grammar.V2View.names" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.V2View.names'">¶</a></dt>
+<dd><p>Presented column names.</p>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.grammar.V2View.keys">
+<span class="sig-name descname"><span class="pre">keys</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#V2View.keys"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar.V2View.keys" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.V2View.keys'">¶</a></dt>
+<dd><p>Presented column names.</p>
+</dd></dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="sp_validation.grammar.V2View.dtype">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">dtype</span></span><a class="headerlink" href="#sp_validation.grammar.V2View.dtype" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.V2View.dtype'">¶</a></dt>
+<dd><p>Numpy dtype of the presented columns (found without reading rows).</p>
+</dd></dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="sp_validation.grammar.V2View.shape">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">shape</span></span><a class="headerlink" href="#sp_validation.grammar.V2View.shape" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.V2View.shape'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.grammar.V2View.to_structured">
+<span class="sig-name descname"><span class="pre">to_structured</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#V2View.to_structured"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar.V2View.to_structured" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.V2View.to_structured'">¶</a></dt>
+<dd><p>Materialise the presented columns as a numpy structured array.</p>
+<p>Over h5py Datasets, each dataset is read once, for all the columns
+requested of it.</p>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.grammar.V2View._select">
+<span class="sig-name descname"><span class="pre">_select</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#V2View._select"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar.V2View._select" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.V2View._select'">¶</a></dt>
+<dd><p>Base rows of <code class="docutils literal notranslate"><span class="pre">key</span></code> applied to this view’s rows.</p>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.grammar.V2View._read">
+<span class="sig-name descname"><span class="pre">_read</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#V2View._read"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar.V2View._read" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.V2View._read'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.grammar.V2View._column">
+<span class="sig-name descname"><span class="pre">_column</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#V2View._column"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar.V2View._column" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.V2View._column'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.grammar.V2View._field_dtype">
+<span class="sig-name descname"><span class="pre">_field_dtype</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#V2View._field_dtype"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar.V2View._field_dtype" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.V2View._field_dtype'">¶</a></dt>
+<dd><p>Dtype (with any subarray shape) <code class="docutils literal notranslate"><span class="pre">_column(name)</span></code> returns.</p>
+</dd></dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.grammar.adapt">
+<span class="sig-name descname"><span class="pre">adapt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">table</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">tables</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#adapt"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar.adapt" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.adapt'">¶</a></dt>
+<dd><p>Present <code class="docutils literal notranslate"><span class="pre">table</span></code> (joined with any further <code class="docutils literal notranslate"><span class="pre">tables</span></code>) in the v2 grammar.</p>
+<p>A single table with nothing to rename is returned unchanged, as is a
+<code class="docutils literal notranslate"><span class="pre">V2View</span></code> given no <code class="docutils literal notranslate"><span class="pre">column_map</span></code>; otherwise the result is a <code class="docutils literal notranslate"><span class="pre">V2View</span></code>.
+Each table is anything whose <code class="docutils literal notranslate"><span class="pre">dtype.names</span></code> lists its columns and whose
+<code class="docutils literal notranslate"><span class="pre">table[name]</span></code> reads one: a numpy structured array, FITS_rec, h5py
+Dataset or <code class="docutils literal notranslate"><span class="pre">V2View</span></code>. Joined tables must have equal lengths and disjoint
+column names. <code class="docutils literal notranslate"><span class="pre">column_map</span></code> (<code class="docutils literal notranslate"><span class="pre">{v2</span> <span class="pre">name:</span> <span class="pre">name</span> <span class="pre">in</span> <span class="pre">the</span> <span class="pre">table}</span></code>, see the
+module docstring) renames a foreign convention’s columns; over a
+<code class="docutils literal notranslate"><span class="pre">V2View</span></code> it renames the columns that view presents.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.grammar.materialise">
+<span class="sig-name descname"><span class="pre">materialise</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#materialise"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar.materialise" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.materialise'">¶</a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">adapt(table)</span></code> as an in-memory numpy structured array.</p>
+<p><code class="docutils literal notranslate"><span class="pre">names</span></code> restricts the output to those v2-grammar columns.</p>
+</dd></dl>
+</section>
+</div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
+<div class="mr-auto">
+<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="sp_validation.glass_mock.html">
+<svg class="mr-2 h-4 w-4" fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+<polyline points="15 18 9 12 15 6"></polyline>
+</svg>
+        sp_validation.glass_mock
+      </a>
+</div>
+<div class="ml-auto">
+<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="sp_validation.image_sims.html">
+        sp_validation.image_sims
+        <svg class="ml-2 h-4 w-4" fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+<polyline points="9 18 15 12 9 6"></polyline>
+</svg>
+</a>
+</div>
+</div></div><aside class="hidden text-sm xl:block" id="right-sidebar">
+<div class="sticky top-16 -mt-10 max-h-[calc(100vh-5rem)] h-full overflow-y-auto pt-6 space-y-2"><p class="font-medium">On this page</p>
+<ul>
+<li><a :data-current="activeSection === '#sp_validation.grammar.SHEARS'" class="reference internal" href="#sp_validation.grammar.SHEARS"><code class="docutils literal notranslate"><span class="pre">SHEARS</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.grammar.MASK_LABELS'" class="reference internal" href="#sp_validation.grammar.MASK_LABELS"><code class="docutils literal notranslate"><span class="pre">MASK_LABELS</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.grammar.mask_column'" class="reference internal" href="#sp_validation.grammar.mask_column"><code class="docutils literal notranslate"><span class="pre">mask_column()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.grammar.Rule'" class="reference internal" href="#sp_validation.grammar.Rule"><code class="docutils literal notranslate"><span class="pre">Rule</span></code></a><ul>
+<li><a :data-current="activeSection === '#sp_validation.grammar.Rule.v2'" class="reference internal" href="#sp_validation.grammar.Rule.v2"><code class="docutils literal notranslate"><span class="pre">Rule.v2</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.grammar.Rule.source'" class="reference internal" href="#sp_validation.grammar.Rule.source"><code class="docutils literal notranslate"><span class="pre">Rule.source</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.grammar.Rule.kind'" class="reference internal" href="#sp_validation.grammar.Rule.kind"><code class="docutils literal notranslate"><span class="pre">Rule.kind</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.grammar.Rule.arg'" class="reference internal" href="#sp_validation.grammar.Rule.arg"><code class="docutils literal notranslate"><span class="pre">Rule.arg</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.grammar.Rule.fallback'" class="reference internal" href="#sp_validation.grammar.Rule.fallback"><code class="docutils literal notranslate"><span class="pre">Rule.fallback</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.grammar.Rule.sources'" class="reference internal" href="#sp_validation.grammar.Rule.sources"><code class="docutils literal notranslate"><span class="pre">Rule.sources()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.grammar.Rule.apply'" class="reference internal" href="#sp_validation.grammar.Rule.apply"><code class="docutils literal notranslate"><span class="pre">Rule.apply()</span></code></a></li>
+</ul>
+</li>
+<li><a :data-current="activeSection === '#sp_validation.grammar._v1_rules'" class="reference internal" href="#sp_validation.grammar._v1_rules"><code class="docutils literal notranslate"><span class="pre">_v1_rules()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.grammar.V1_RULES'" class="reference internal" href="#sp_validation.grammar.V1_RULES"><code class="docutils literal notranslate"><span class="pre">V1_RULES</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.grammar.MASK_RULES'" class="reference internal" href="#sp_validation.grammar.MASK_RULES"><code class="docutils literal notranslate"><span class="pre">MASK_RULES</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.grammar.V1_MARKERS'" class="reference internal" href="#sp_validation.grammar.V1_MARKERS"><code class="docutils literal notranslate"><span class="pre">V1_MARKERS</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.grammar.column_names'" class="reference internal" href="#sp_validation.grammar.column_names"><code class="docutils literal notranslate"><span class="pre">column_names()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.grammar.detect_generation'" class="reference internal" href="#sp_validation.grammar.detect_generation"><code class="docutils literal notranslate"><span class="pre">detect_generation()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.grammar._map_rules'" class="reference internal" href="#sp_validation.grammar._map_rules"><code class="docutils literal notranslate"><span class="pre">_map_rules()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.grammar._resolve'" class="reference internal" href="#sp_validation.grammar._resolve"><code class="docutils literal notranslate"><span class="pre">_resolve()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.grammar.v2_names'" class="reference internal" href="#sp_validation.grammar.v2_names"><code class="docutils literal notranslate"><span class="pre">v2_names()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.grammar.BLOCK_BYTES'" class="reference internal" href="#sp_validation.grammar.BLOCK_BYTES"><code class="docutils literal notranslate"><span class="pre">BLOCK_BYTES</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.grammar._read_window'" class="reference internal" href="#sp_validation.grammar._read_window"><code class="docutils literal notranslate"><span class="pre">_read_window()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.grammar._take'" class="reference internal" href="#sp_validation.grammar._take"><code class="docutils literal notranslate"><span class="pre">_take()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.grammar._row_key'" class="reference internal" href="#sp_validation.grammar._row_key"><code class="docutils literal notranslate"><span class="pre">_row_key()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.grammar.V2View'" class="reference internal" href="#sp_validation.grammar.V2View"><code class="docutils literal notranslate"><span class="pre">V2View</span></code></a><ul>
+<li><a :data-current="activeSection === '#sp_validation.grammar.V2View.names'" class="reference internal" href="#sp_validation.grammar.V2View.names"><code class="docutils literal notranslate"><span class="pre">V2View.names</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.grammar.V2View.keys'" class="reference internal" href="#sp_validation.grammar.V2View.keys"><code class="docutils literal notranslate"><span class="pre">V2View.keys()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.grammar.V2View.dtype'" class="reference internal" href="#sp_validation.grammar.V2View.dtype"><code class="docutils literal notranslate"><span class="pre">V2View.dtype</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.grammar.V2View.shape'" class="reference internal" href="#sp_validation.grammar.V2View.shape"><code class="docutils literal notranslate"><span class="pre">V2View.shape</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.grammar.V2View.to_structured'" class="reference internal" href="#sp_validation.grammar.V2View.to_structured"><code class="docutils literal notranslate"><span class="pre">V2View.to_structured()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.grammar.V2View._select'" class="reference internal" href="#sp_validation.grammar.V2View._select"><code class="docutils literal notranslate"><span class="pre">V2View._select()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.grammar.V2View._read'" class="reference internal" href="#sp_validation.grammar.V2View._read"><code class="docutils literal notranslate"><span class="pre">V2View._read()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.grammar.V2View._column'" class="reference internal" href="#sp_validation.grammar.V2View._column"><code class="docutils literal notranslate"><span class="pre">V2View._column()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.grammar.V2View._field_dtype'" class="reference internal" href="#sp_validation.grammar.V2View._field_dtype"><code class="docutils literal notranslate"><span class="pre">V2View._field_dtype()</span></code></a></li>
+</ul>
+</li>
+<li><a :data-current="activeSection === '#sp_validation.grammar.adapt'" class="reference internal" href="#sp_validation.grammar.adapt"><code class="docutils literal notranslate"><span class="pre">adapt()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.grammar.materialise'" class="reference internal" href="#sp_validation.grammar.materialise"><code class="docutils literal notranslate"><span class="pre">materialise()</span></code></a></li>
+</ul>
+</div>
+</aside>
+</main>
+</div>
+</div><footer class="py-6 border-t border-border md:py-0">
+<div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
+<div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 02 Oct, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
+</div>
+</div>
+</footer>
+</div><button :class="{'opacity-0 invisible' : !showScrollTop}" @click="window.scrollTo({top: 0, behavior: 'smooth'})" class="fixed bottom-8 right-8 p-2 z-10 rounded-sm bg-gray-700 text-xs text-white transition-all duration-1000 hover:bg-gray-950 focus:bg-gray-950" id="scrolltop" x-cloak="">
+<svg aria-hidden="true" class="inline fill-current mb-[2px]" height="14" viewbox="0 96 960 960" width="14" xmlns="http://www.w3.org/2000/svg">
+<path d="M450 896V370L202 618l-42-42 320-320 320 320-42 42-248-248v526h-60Z"></path>
+</svg>
+  Back to top
+</button>
+<script src="_static/documentation_options.js?v=5929fcd5"></script>
+<script src="_static/doctools.js?v=fd6eb6e6"></script>
+<script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+<script defer="defer" src="_static/theme.js?v=5db23cf8"></script>
+</body>
+</html>

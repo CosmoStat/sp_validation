@@ -81,6 +81,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="using_the_catalogues.html">Using the weak-lensing catalogues</a></li>
 <li class="toctree-l1"><a class="reference internal" href="run_validation.html">Running shear validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="catalogue_columns.html">Catalogue columns</a></li>
 <li class="toctree-l1"><a class="reference internal" href="post_processing.html">Post-processing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Leakage_object_Tutorial.html">Leakage_object Tutorial</a></li>
 </ul>
@@ -106,6 +107,7 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.format.html">sp_validation.format</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html">sp_validation.galaxy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html">sp_validation.glass_mock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.grammar.html">sp_validation.grammar</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.image_sims.html">sp_validation.image_sims</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html">sp_validation.io</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.masks.html">sp_validation.masks</a></li>
@@ -191,6 +193,8 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html">sp_validation.cosmo_val.core</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core._LeakageScale"><code class="docutils literal notranslate"><span class="pre">_LeakageScale</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core._LeakageObject"><code class="docutils literal notranslate"><span class="pre">_LeakageObject</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.print_bmode_summary"><code class="docutils literal notranslate"><span class="pre">print_bmode_summary()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation</span></code></a></li>
 </ul>
@@ -305,12 +309,10 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html#sp_validation.catalog.match_subsample"><code class="docutils literal notranslate"><span class="pre">match_subsample()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html#sp_validation.catalog.match_catalogs_radec"><code class="docutils literal notranslate"><span class="pre">match_catalogs_radec()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html#sp_validation.catalog.match_stars2"><code class="docutils literal notranslate"><span class="pre">match_stars2()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html#sp_validation.catalog.read_shape_catalog"><code class="docutils literal notranslate"><span class="pre">read_shape_catalog()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html#sp_validation.catalog.write_shape_catalog"><code class="docutils literal notranslate"><span class="pre">write_shape_catalog()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html#sp_validation.catalog.write_galaxy_cat"><code class="docutils literal notranslate"><span class="pre">write_galaxy_cat()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html#sp_validation.catalog.write_PSF_cat"><code class="docutils literal notranslate"><span class="pre">write_PSF_cat()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html#sp_validation.catalog.read_param_file"><code class="docutils literal notranslate"><span class="pre">read_param_file()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html#sp_validation.catalog.read_hdf5_file"><code class="docutils literal notranslate"><span class="pre">read_hdf5_file()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html#sp_validation.catalog.get_maked_col"><code class="docutils literal notranslate"><span class="pre">get_maked_col()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html#sp_validation.catalog.get_col"><code class="docutils literal notranslate"><span class="pre">get_col()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html#sp_validation.catalog.get_snr"><code class="docutils literal notranslate"><span class="pre">get_snr()</span></code></a></li>
@@ -359,6 +361,10 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="sp_validation.galaxy.html">sp_validation.galaxy</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html#sp_validation.galaxy.MASK_COLUMNS"><code class="docutils literal notranslate"><span class="pre">MASK_COLUMNS</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html#sp_validation.galaxy.DEFAULT_MASK_COLUMNS"><code class="docutils literal notranslate"><span class="pre">DEFAULT_MASK_COLUMNS</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html#sp_validation.galaxy._column_names"><code class="docutils literal notranslate"><span class="pre">_column_names()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html#sp_validation.galaxy.mask_cut"><code class="docutils literal notranslate"><span class="pre">mask_cut()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html#sp_validation.galaxy.classification_galaxy_overlap_ra_dec"><code class="docutils literal notranslate"><span class="pre">classification_galaxy_overlap_ra_dec()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html#sp_validation.galaxy.classification_galaxy_base"><code class="docutils literal notranslate"><span class="pre">classification_galaxy_base()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html#sp_validation.galaxy.classification_galaxy_ngmix"><code class="docutils literal notranslate"><span class="pre">classification_galaxy_ngmix()</span></code></a></li>
@@ -407,6 +413,49 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.compute_leakage_harmony"><code class="docutils literal notranslate"><span class="pre">compute_leakage_harmony()</span></code></a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="sp_validation.grammar.html">sp_validation.grammar</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.SHEARS"><code class="docutils literal notranslate"><span class="pre">SHEARS</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.MASK_LABELS"><code class="docutils literal notranslate"><span class="pre">MASK_LABELS</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.mask_column"><code class="docutils literal notranslate"><span class="pre">mask_column()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.Rule"><code class="docutils literal notranslate"><span class="pre">Rule</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.Rule.v2"><code class="docutils literal notranslate"><span class="pre">Rule.v2</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.Rule.source"><code class="docutils literal notranslate"><span class="pre">Rule.source</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.Rule.kind"><code class="docutils literal notranslate"><span class="pre">Rule.kind</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.Rule.arg"><code class="docutils literal notranslate"><span class="pre">Rule.arg</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.Rule.fallback"><code class="docutils literal notranslate"><span class="pre">Rule.fallback</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.Rule.sources"><code class="docutils literal notranslate"><span class="pre">Rule.sources()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.Rule.apply"><code class="docutils literal notranslate"><span class="pre">Rule.apply()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar._v1_rules"><code class="docutils literal notranslate"><span class="pre">_v1_rules()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.V1_RULES"><code class="docutils literal notranslate"><span class="pre">V1_RULES</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.MASK_RULES"><code class="docutils literal notranslate"><span class="pre">MASK_RULES</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.V1_MARKERS"><code class="docutils literal notranslate"><span class="pre">V1_MARKERS</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.column_names"><code class="docutils literal notranslate"><span class="pre">column_names()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.detect_generation"><code class="docutils literal notranslate"><span class="pre">detect_generation()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar._map_rules"><code class="docutils literal notranslate"><span class="pre">_map_rules()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar._resolve"><code class="docutils literal notranslate"><span class="pre">_resolve()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.v2_names"><code class="docutils literal notranslate"><span class="pre">v2_names()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.BLOCK_BYTES"><code class="docutils literal notranslate"><span class="pre">BLOCK_BYTES</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar._read_window"><code class="docutils literal notranslate"><span class="pre">_read_window()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar._take"><code class="docutils literal notranslate"><span class="pre">_take()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar._row_key"><code class="docutils literal notranslate"><span class="pre">_row_key()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.V2View"><code class="docutils literal notranslate"><span class="pre">V2View</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.V2View.names"><code class="docutils literal notranslate"><span class="pre">V2View.names</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.V2View.keys"><code class="docutils literal notranslate"><span class="pre">V2View.keys()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.V2View.dtype"><code class="docutils literal notranslate"><span class="pre">V2View.dtype</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.V2View.shape"><code class="docutils literal notranslate"><span class="pre">V2View.shape</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.V2View.to_structured"><code class="docutils literal notranslate"><span class="pre">V2View.to_structured()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.V2View._select"><code class="docutils literal notranslate"><span class="pre">V2View._select()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.V2View._read"><code class="docutils literal notranslate"><span class="pre">V2View._read()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.V2View._column"><code class="docutils literal notranslate"><span class="pre">V2View._column()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.V2View._field_dtype"><code class="docutils literal notranslate"><span class="pre">V2View._field_dtype()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.adapt"><code class="docutils literal notranslate"><span class="pre">adapt()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.materialise"><code class="docutils literal notranslate"><span class="pre">materialise()</span></code></a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="sp_validation.image_sims.html">sp_validation.image_sims</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.image_sims.html#sp_validation.image_sims._is_unweighted"><code class="docutils literal notranslate"><span class="pre">_is_unweighted()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.image_sims.html#sp_validation.image_sims._load_cat"><code class="docutils literal notranslate"><span class="pre">_load_cat()</span></code></a></li>
@@ -426,6 +475,27 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io.print_ratio"><code class="docutils literal notranslate"><span class="pre">print_ratio()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io.write_binned_quantity"><code class="docutils literal notranslate"><span class="pre">write_binned_quantity()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io.read_binned_quantity"><code class="docutils literal notranslate"><span class="pre">read_binned_quantity()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io.N_UNITS_ATTRS"><code class="docutils literal notranslate"><span class="pre">N_UNITS_ATTRS</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io.Catalogue"><code class="docutils literal notranslate"><span class="pre">Catalogue</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.io.html#sp_validation.io.Catalogue.close"><code class="docutils literal notranslate"><span class="pre">Catalogue.close()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.io.html#sp_validation.io.Catalogue.dtype"><code class="docutils literal notranslate"><span class="pre">Catalogue.dtype()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.io.html#sp_validation.io.Catalogue.table"><code class="docutils literal notranslate"><span class="pre">Catalogue.table()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.io.html#sp_validation.io.Catalogue.iter_chunks"><code class="docutils literal notranslate"><span class="pre">Catalogue.iter_chunks()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.io.html#sp_validation.io.Catalogue.read"><code class="docutils literal notranslate"><span class="pre">Catalogue.read()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.io.html#sp_validation.io.Catalogue._load"><code class="docutils literal notranslate"><span class="pre">Catalogue._load()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io.read_catalogue"><code class="docutils literal notranslate"><span class="pre">read_catalogue()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io.open_catalogue"><code class="docutils literal notranslate"><span class="pre">open_catalogue()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io.open_entry"><code class="docutils literal notranslate"><span class="pre">open_entry()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io._first_table_hdu"><code class="docutils literal notranslate"><span class="pre">_first_table_hdu()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io._hdf5_parts"><code class="docutils literal notranslate"><span class="pre">_hdf5_parts()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io._chunk_numbers"><code class="docutils literal notranslate"><span class="pre">_chunk_numbers()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io._check_columns"><code class="docutils literal notranslate"><span class="pre">_check_columns()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io.find_dataset_group"><code class="docutils literal notranslate"><span class="pre">find_dataset_group()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io.promote_dtypes"><code class="docutils literal notranslate"><span class="pre">promote_dtypes()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io.group_dtype"><code class="docutils literal notranslate"><span class="pre">group_dtype()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io.check_n_units"><code class="docutils literal notranslate"><span class="pre">check_n_units()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="sp_validation.masks.html">sp_validation.masks</a><ul>
@@ -446,6 +516,7 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.masks.html#sp_validation.masks.print_mask_stats"><code class="docutils literal notranslate"><span class="pre">print_mask_stats()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.masks.html#sp_validation.masks.catalogue_cuts"><code class="docutils literal notranslate"><span class="pre">catalogue_cuts()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.masks.html#sp_validation.masks.get_masks_from_config"><code class="docutils literal notranslate"><span class="pre">get_masks_from_config()</span></code></a></li>
 </ul>
 </li>
@@ -498,6 +569,10 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="sp_validation.rho_tau.html">sp_validation.rho_tau</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.rho_tau.html#sp_validation.rho_tau._extract_xip"><code class="docutils literal notranslate"><span class="pre">_extract_xip()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.rho_tau.html#sp_validation.rho_tau._CatalogueLoader"><code class="docutils literal notranslate"><span class="pre">_CatalogueLoader</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.rho_tau.html#sp_validation.rho_tau._CatalogueLoader._columns"><code class="docutils literal notranslate"><span class="pre">_CatalogueLoader._columns()</span></code></a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.rho_tau.html#sp_validation.rho_tau.get_params_rho_tau"><code class="docutils literal notranslate"><span class="pre">get_params_rho_tau()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.rho_tau.html#sp_validation.rho_tau.get_rho_tau_w_cov"><code class="docutils literal notranslate"><span class="pre">get_rho_tau_w_cov()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.rho_tau.html#sp_validation.rho_tau.get_rho_tau"><code class="docutils literal notranslate"><span class="pre">get_rho_tau()</span></code></a></li>
@@ -596,7 +671,6 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.survey.html#sp_validation.survey.get_area"><code class="docutils literal notranslate"><span class="pre">get_area()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.survey.html#sp_validation.survey.missing_tiles"><code class="docutils literal notranslate"><span class="pre">missing_tiles()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.survey.html#sp_validation.survey.write_tile_id_gal_counts"><code class="docutils literal notranslate"><span class="pre">write_tile_id_gal_counts()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="sp_validation.survey.html#sp_validation.survey.get_footprint"><code class="docutils literal notranslate"><span class="pre">get_footprint()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.survey.html#sp_validation.survey.area_from_coords"><code class="docutils literal notranslate"><span class="pre">area_from_coords()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.survey.html#sp_validation.survey.n_eff_density"><code class="docutils literal notranslate"><span class="pre">n_eff_density()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.survey.html#sp_validation.survey.ellipticity_dispersion"><code class="docutils literal notranslate"><span class="pre">ellipticity_dispersion()</span></code></a></li>
@@ -639,7 +713,7 @@
 </div><footer class="py-6 border-t border-border md:py-0">
 <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
 <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 01 Oct, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 02 Oct, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>
 </div>
 </footer>
