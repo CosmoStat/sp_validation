@@ -318,7 +318,7 @@ rule cv_weights:
 # call); the xi rule does not depend on it.
 
 rule cv_additive_bias:
-    """Weighted mean ellipticity c1/c2 per version (standalone diagnostic)."""
+    """Weighted response-scaled mean ellipticities c1/c2 per version."""
     output:
         additive_bias=str(COSMO_VAL / "additive_bias.json"),
     params:
