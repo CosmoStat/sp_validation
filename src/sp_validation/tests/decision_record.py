@@ -13,7 +13,8 @@ file (the named INI section, including DEFAULT inheritance). INI keys and sectio
 names are case-sensitive; interpolation and inline-comment stripping are off.
 Snakemake values use Python literal syntax: assignments, directive scalars and
 keyword/dict entries in directive expressions. YAML sequence paths use numeric
-indices. YAML aliases are rejected if recursive. Only inline ASTRA analyses are
+indices; a YAML key repeated outside the governed span fails, as the last wins.
+YAML aliases are rejected if recursive. Only inline ASTRA analyses are
 read; this is an integrity check, not a general ASTRA schema validator.
 """
 
@@ -47,6 +48,7 @@ _TAG = re.compile(r"@sc\s+\[([^\]]*)\](?:\s+([A-Za-z_][\w.-]*))?\s*\Z")
 _NUMBER = re.compile(r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?\Z")
 _ABSENT = object()
 _DECL = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+_SHADOWING = {".yaml", ".yml"}
 
 
 @dataclass(frozen=True)
@@ -702,7 +704,7 @@ def value_errors(root, record, tags):
                     )
                 }
                 paths = {s.path for s in sites}
-                found = {}
+                found, shadows = {}, {}
                 for path in sorted(paths):
                     if path not in cache:
                         cache[path] = _locations(root, path)
@@ -718,7 +720,16 @@ def value_errors(root, record, tags):
                             )
                         ):
                             found[loc.identity] = loc
+                        elif matches and Path(path).suffix in _SHADOWING:
+                            # A config key names one setting per file; a repeat
+                            # outside the span still decides the value read.
+                            shadows[loc.identity] = loc
                 candidates = list(found.values())
+                shadows = [
+                    loc
+                    for loc in shadows.values()
+                    if any(c.path == loc.path for c in candidates)
+                ]
                 detail = "; ".join(loc.describe() for loc in candidates) or "[]"
                 context = (
                     f"{decision}: ref {raw_ref!r}: expected {expected}; "
@@ -750,6 +761,11 @@ def value_errors(root, record, tags):
                 elif len(candidates) != 1:
                     errors.append(
                         context + "; ref must resolve to exactly one location"
+                    )
+                elif shadows:
+                    errors.append(
+                        context + "; the same setting is repeated outside the "
+                        "governed span: " + "; ".join(loc.describe() for loc in shadows)
                     )
                 elif candidates[0].error:
                     errors.append(
