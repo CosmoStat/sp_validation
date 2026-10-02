@@ -41,11 +41,10 @@ Off-cluster, drop `--profile` and add `-j <jobs>` instead. Each job runs
 inside the sp_validation container automatically — no `apptainer shell` or
 `apptainer exec` needed by hand.
 
-This will automatically execute all steps:
-1. Calculate 2PCF ($\xi_{pm}$) via `cosmo_val.py`
-2. Compute covariance matrices using CosmoCov <!--- LG: now obsolete, making way for OnCovariance cauclation instead --->
-3. Prepare CosmoSIS data (FITS) via `cosmosis_fitting.py`
-4. Run CosmoSIS inference
+The dormant `inference_fiducial` target prepares a CosmoSIS FITS data file and
+`.ini`; it does not launch the CosmoSIS sampler. Its pseudo-$C_\ell$ inputs are
+also unresolved: the inference rule requests FITS files, while the producer
+writes SACC parts.
 
 For standalone FITS data preparation (real-space inputs plus optional pseudo-$C_\ell$ data), you can also use the Python script directly:
 
@@ -54,7 +53,8 @@ python scripts/cosmosis_fitting.py \
   --cosmosis-root "catalog_version_config" \
   --data-dir "/path/to/output/chains" \
   --nz-file "/path/to/nz_file.txt" \
-  --out-file "/path/to/output.fits" \
+  --output-root "/path/to/output" \
+  --output-basename "catalog_version_config" \
   --xi "/path/to/xi_plus.fits" "/path/to/xi_minus.fits" \
   --cov-xi "/path/to/covariance.txt" \
   --use-rho-tau \
@@ -70,7 +70,10 @@ You can view all available options with:
 python scripts/cosmosis_fitting.py --help
 ``` 
 
-Ensure the pseudo-$C_\ell$ spectra (`pseudo_cl_*.fits`) and their covariance (`pseudo_cl_cov_*.fits`) produced by `cosmo_val.py` exist for the requested catalog version (or mock seed) before running the standalone command.
+The pseudo-$C_\ell$ producer writes SACC parts, while `cosmosis_fitting.py`
+expects pseudo-$C_\ell$ FITS inputs. The inference DAG requests FITS paths that
+have no producer; supply compatible FITS files separately for standalone use.
 
-
-This is the pipeline used to derive cosmological constraints with cosmic shear data from the UNIONS v1.4 catalogue.
+The published UNIONS v1.4 chains used a separate configuration. The committed
+templates have different fiducial priors for $m_1$, $\Delta z$, $\alpha$,
+$A_\mathrm{IA}$, and $\Omega_b$.
