@@ -9,12 +9,11 @@ For each requested grid catalogue, produces:
   - PSF leakage scatter (e1 vs e1_PSF, e2 vs e2_PSF)
   - additive bias (weighted mean e1, e2)
 
-Shares the estimator's config schema (``sp_validation.image_sims``): the same
-``grids_dir`` / ``num`` / ``catalog_name`` keys, the ``branches`` list (the sim
-map, not a hard-coded five), and the same ``w_col`` weight semantics -- a column
-name, or ``null`` for unit weights.  Reading ``w_col`` (rather than hard-coding
-``w_des``) means the diagnostics never KeyError on a catalogue that lacks the
-weight column, and they weight exactly as the m-bias run they accompany.
+Uses a diagnostics-specific config with ``grids_dir``, ``num``,
+``catalog_name``, ``branches`` and a required scalar ``w_col``. A ``null``
+``w_col`` gives unit weights; a named column must exist in every catalogue.
+The workflow's estimator config uses ``w_cols`` and cannot be passed here
+without adding ``w_col``.
 
 Usage:
     diagnostics_image_sims.py -c config.yaml [-v]
@@ -43,11 +42,9 @@ def load(path):
 
 
 def weights(cat, w_col):
-    """Per-object weights: the ``w_col`` column, or unit weights when null.
+    """Per-object weights from ``w_col``; ``None`` gives unit weights.
 
-    Mirrors the estimator's ``w_col`` contract (image_sims._load_cat): ``None``
-    -> every object unit weight (the no-weighting mode, #227).  Reading it here
-    means the diagnostics never KeyError when the weight column is absent.
+    A named column must exist in the catalogue or indexing raises ``KeyError``.
     """
     return cat[w_col].copy() if w_col else np.ones(len(cat["RA"]))
 
@@ -181,8 +178,8 @@ def main():
     with open(args.config) as f:
         config = yaml.safe_load(f)
 
-    # Same config schema as the estimator: grids_dir (not base), num,
-    # catalog_name, the branch map, and the w_col weight contract.
+    # Diagnostics-specific schema: grids_dir, num, catalog_name, branches,
+    # and required w_col (the workflow estimator config uses w_cols).
     grids_dir = config["grids_dir"]
     num = config["num"]
     cat_name = config.get("catalog_name", "shape_catalog_cut_ngmix.fits")

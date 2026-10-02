@@ -38,18 +38,18 @@ def _load_cat(path, w_cols):
     """Load RA, Dec, ellipticities and per-scheme weights from a FITS catalogue.
     @sc [decision:shear_bias_simulations.mbias_estimator]
 
-    Reads the ``e1``/``e2`` columns, which the calibration stage writes as the
-    *calibrated* shear estimate ``g = R^-1 g_uncal - c`` (metacal response and
-    additive-bias corrected) -- not the raw ``e1_uncal``/``e2_uncal`` columns
-    that sit alongside them in the same catalogue.  The bias this estimator
-    measures is therefore the *residual* m/c left after the chain's own metacal
-    calibration, not the raw pre-calibration bias.
+    Reads the ``e1``/``e2`` columns, which the image-sim calibration writes as
+    ``g = R^-1 g_uncal`` with each branch's own response matrix; additive
+    correction is disabled.
+    These are not the raw ``e1_uncal``/``e2_uncal``
+    columns that sit alongside them in the same catalogue. The bias this
+    estimator measures is the *residual* m/c left after the chain's own
+    metacalibration, not the raw pre-calibration bias.
 
     ``w_cols`` is the list of weight schemes to load. The scheme ``"none"``
-    (equivalently a ``None``/``null`` entry) gives every object unit weight --
-    the no-weighting mode for m-bias runs (#227: shape weights are excluded from
-    sim calibration); any other entry is read as a FITS column name. The weights
-    come back as a dict keyed by scheme so one catalogue load serves every
+    (equivalently a ``None``/``null`` entry) gives every object unit weight;
+    any other entry names a FITS weight column. The loaded weights are returned
+    as a dict keyed by scheme so one catalogue load serves every
     scheme in a multi-weight run.
     """
     with fits.open(path) as hdul:
@@ -73,10 +73,11 @@ def _load_cat(path, w_cols):
 class ImageSimMBias:
     """Compute multiplicative and additive shear bias from image simulations.
 
-    The estimator consumes the *calibrated* ``e1``/``e2`` columns (the metacal
-    response- and additive-bias-corrected shear ``g = R^-1 g_uncal - c``), so
-    the headline m/c is the **residual** bias remaining after the chain's own
-    metacal calibration, not the raw pre-calibration bias.
+    The estimator consumes the *calibrated* ``e1``/``e2`` columns. For image
+    simulations they contain ``g = R^-1 g_uncal`` with a branch-specific
+    response matrix and no additive correction, so the headline m/c is the
+    **residual** bias after the chain's own metacalibration, not the raw
+    pre-calibration bias.
 
     Parameters
     ----------
@@ -97,12 +98,11 @@ class ImageSimMBias:
           catalogue (the paired per-object cancellation is then unavailable)
         - w_cols : list of str, weight schemes to compute in one run
           (required); ``"none"`` (or a ``null`` entry) means unit weights,
-          any other entry is a FITS column name. The **first** entry is the
-          primary result surfaced at the top level of ``run()``'s output. Our
-          fiducial run leads with the unweighted scheme (``["none", ...]``),
-          per the #227 verdict that shape weights are excluded from sim
-          calibration; the unweighted m also avoids the ``cov(w, e)`` residual
-          weighted estimators carry on constant-shear sims.
+          any other entry names a FITS weight column. The **first** entry is the
+          primary result surfaced at the top level of ``run()``'s output. The
+          fiducial configuration leads with the unweighted scheme
+          (``["none", ...]``); its unweighted m avoids the ``cov(w, e)``
+          residual carried by weighted estimators on constant-shear simulations.
         - w_col : str or None, *deprecated* single weight scheme; accepted for
           back-compat and used as ``[w_col]`` only when ``w_cols`` is absent.
         - n_bootstrap : int, number of bootstrap resamples for errors (required)
@@ -189,11 +189,13 @@ class ImageSimMBias:
 
             m = <(e_+ - e_-) / (2 g_in) - 1> ,   c = <(e_+ + e_-) / 2> ,
 
-        cancels the intrinsic shape (sigma_e ~ 0.3) object-by-object in the
-        multiplicative term, leaving only measurement noise -- so sigma(m)
-        shrinks by ~sigma_e/sigma_meas relative to differencing two
-        independent means. (The additive term c is a *sum*, so intrinsic
-        shape does not cancel there and its error stays shape-noise limited.)
+        cancels intrinsic shape only when both branches share the same
+        calibration response.
+        Each branch has its own response matrix, so
+        response noise does not cancel; the bootstrap resamples calibrated
+        ellipticities but not response estimates, so sigma(m) omits that term.
+        The additive term c is a *sum*, so intrinsic shape remains and its error
+        stays shape-noise limited.
 
         With ``pair_match=False`` the +g and -g sims are *not* matched: every
         object of each catalogue is used, so the per-object cancellation is

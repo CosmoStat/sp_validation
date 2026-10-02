@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Calculate angular power spectrum for a single HEALPix mask.
+"""Write the raw anafast angular power spectrum for a HEALPix mask.
 
-Loads downgraded mask, computes C_ell using healpy.anafast, exports for CosmoCov.
+The two-column text output is not normalized for CosmoCov.
 """
 
 import os
@@ -54,7 +54,7 @@ def calculate_power_spectrum(
 def export_power_spectrum(
     ell: np.ndarray, cl: np.ndarray, nside: int, output_path: str, verbose: bool = True
 ) -> None:
-    """Export power spectrum in CosmoCov format."""
+    """Export raw anafast C_ell values as two columns, not CosmoCov-normalized."""
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
     header = (

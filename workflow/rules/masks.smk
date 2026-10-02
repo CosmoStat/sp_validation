@@ -8,7 +8,7 @@ MASK_CLS_FILES in covariance.smk. See covariance.md spec for details.
 This file contains rules for:
 - Processing HealSparse masks to individual nside values (parallelizable)
 - Calculating effective survey areas
-- Computing mask power spectra for CosmoCov integration
+- Computing raw anafast mask power spectra (not CosmoCov-normalized)
 - Generating comparison plots and analysis
 """
 from datetime import datetime
@@ -92,7 +92,7 @@ rule combine_area_summaries:
 rule mask_power_spectrum:
     """Calculate angular power spectrum for a single mask.
 
-    Loads downgraded HEALPix mask, computes C_ell, exports for CosmoCov.
+    Loads a downgraded HEALPix mask and writes its raw anafast C_ell spectrum.
     """
     input:
         mask=f"{MASK_OUTPUT_DIR}/mask_nside{{nside}}.fits"
@@ -185,9 +185,9 @@ rule effective_area_comparison:
         
         report_content.extend([
             "",
-            "## CosmoCov Integration",
+            "## Mask power spectra",
             "",
-            "The following power spectrum files are ready for CosmoCov integration:",
+            "These files contain raw anafast C_ell values and are not CosmoCov-ready:",
             ""
         ])
         
@@ -199,7 +199,7 @@ rule effective_area_comparison:
         
         report_content.extend([
             "",
-            "To use these in CosmoCov, set the `c_footprint_file` parameter to point to the appropriate power spectrum file.",
+            "CosmoCov reads the 4π-scaled `*_norm.txt` spectra under `data/mask/`, not these raw spectra.",
             "",
             "## Recommendations",
             ""
@@ -240,12 +240,12 @@ rule masks_full_analysis:
         f"{MASK_OUTPUT_DIR}/area_comparison_report.md"
 
 
-# Integration with existing covariance workflow
+# Raw mask spectra are copied for inspection; covariance rules use normalized files.
 rule prepare_mask_for_cosmocov:
     """
-    Prepare mask power spectra for integration with CosmoCov covariance calculations.
+    Copy raw mask spectra to the configured CosmoCov data directory.
     
-    This rule creates copies of mask power spectra in the CosmoCov data directory.
+    The covariance rules read the 4π-scaled `*_norm.txt` spectra under `data/mask/`.
     """
     input:
         power_spectra=expand(f"{MASK_OUTPUT_DIR}/power_spectra/cl_mask_nside{{nside}}.txt", nside=target_nsides),
@@ -279,17 +279,19 @@ rule prepare_mask_for_cosmocov:
         
         # Create integration status file
         with open(output.cosmocov_ready, 'w') as f:
-            f.write("UNIONS Mask Power Spectra - CosmoCov Integration Ready\n")
+            f.write("UNIONS Raw Mask Power Spectra - Not CosmoCov-Ready\n")
             f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d')}\n")
             f.write(f"Source: {MASK_OUTPUT_DIR}\n")
             f.write(f"Destination: {params.cosmocov_mask_dir}\n")
             f.write("\nCopied files:\n")
             for file_path in copied_files:
                 f.write(f"- {file_path}\n")
-            f.write("\nTo use in CosmoCov:\n")
-            f.write("Set c_footprint_file parameter to the appropriate power spectrum file path.\n")
+            f.write("\nCosmoCov reads the 4π-scaled *_norm.txt spectra under data/mask/.\n")
         
-        print(f"CosmoCov integration prepared: {output.cosmocov_ready}")
+        print(
+            "Copied raw mask spectra; CosmoCov uses normalized *_norm.txt files: "
+            f"{output.cosmocov_ready}"
+        )
 
 
 # Fast rules that don't need cluster resources

@@ -15,8 +15,9 @@ check at load rejects an unknown key (typo) and a missing science key (see
 ``workflow/image_sims/config.yaml`` for the operational/science split).
 
 The five simulations per grid are the reference ``1z2z`` (no input shear) plus
-the ``+/-`` shear pairs ``1p2z``/``1m2z`` (g1) and ``1z2p``/``1z2m`` (g2); the
-m-bias estimator matches each to the reference by RA/Dec.
+the ``+/-`` shear pairs ``1p2z``/``1m2z`` (g1) and ``1z2p``/``1z2m`` (g2).
+The m-bias estimator matches each +g branch to its -g partner by RA/Dec; it
+loads the reference for completeness and null-test diagnostics but does not use it.
 """
 
 import os
@@ -38,8 +39,8 @@ _SCIENCE_KEYS = {
     "bootstrap_seed",
     "mask_config",
 }
-# Deprecated but still accepted, so a pre-``w_cols`` run config keeps parsing
-# into the estimator's back-compat path.
+# Direct ImageSimMBias construction accepts ``w_col`` as a fallback. The
+# workflow schema still requires ``w_cols``.
 _DEPRECATED_KEYS = {
     "w_col",
 }
