@@ -1,9 +1,8 @@
 # Imports from Snakefile: FIDUCIAL, COSMO_INFERENCE, COSMO_VAL, covariance_path, redshift_path, fiducial_binning_suffix, pseudo_cl_tag
-# NOTE: dormant subsystem. The file-name plumbing (config-driven paths + the
-# producer-tagged pseudo-Cl names) is fixed and the DAG is valid, but it has not
-# been run end-to-end. Reviving it still needs the FITS-CONTENT plumbing
-# reconciled: cosmosis_fitting.py reads ELL/EE/BB + COVAR_FULL, while the
-# producers write PSEUDO_CELL/ELL + COVAR_BB_BB.
+# Dormant subsystem. inference_fiducial declares CosmoSIS FITS and .ini outputs,
+# but does not launch sampling. Its pseudo-Cl data-vector input is a FITS path;
+# the twopoint pseudo_cl rule writes SACC, so the target is not runnable as
+# configured. The pseudo_cl_cov rule does write FITS.
 
 # Output root for CosmoSIS data products + configs. COSMO_INFERENCE (common.py)
 # already resolves to THIS repo's cosmo_inference dir, so the products land
@@ -31,18 +30,16 @@ GLASS_MOCK_CONFIG_PATTERN = str(
     / f"cosmosis_config/output/{GLASS_MOCK_SUITE}/cosmosis_pipeline_glass_mocks_{GLASS_MOCK_VERSION}_glass_mock_{{mock_id}}.ini"
 )
 
-# Fiducial harmonic-binning tag the pseudo-Cl producer (twopoint.smk) stamps
-# into the filename. These are NOT inference_prep wildcards, so the consumer
-# reads them from config to reconstruct the exact name the producer emits.
+# Fiducial harmonic-binning tag shared by the producer and consumer.
+# The consumer requests a .fits data vector, but pseudo_cl emits a .sacc part.
 PSEUDO_CL_TAG = pseudo_cl_tag(config)
 
 
 def pseudo_cl_assets(version):
-    """Return pseudo-Cl and covariance paths for the requested catalog version.
+    """Return inference's expected pseudo-Cl FITS paths for a catalog version.
 
-    The producer (twopoint.smk rules pseudo_cl / pseudo_cl_cov) writes
-    wildcard-tagged names; the consumer reconstructs them from the fiducial
-    harmonic-binning config so the requested path matches byte-for-byte.
+    The data-vector path has no producer: ``pseudo_cl`` writes SACC, while
+    ``pseudo_cl_cov`` writes FITS.
     """
     cl_path = PSEUDO_CL_DIR / f"pseudo_cl_{version}_{PSEUDO_CL_TAG}.fits"
     cov_path = PSEUDO_CL_DIR / f"pseudo_cl_cov_{version}_{PSEUDO_CL_TAG}.fits"

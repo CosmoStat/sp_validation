@@ -41,10 +41,10 @@ Off-cluster, drop `--profile` and add `-j <jobs>` instead. Each job runs
 inside the sp_validation container automatically — no `apptainer shell` or
 `apptainer exec` needed by hand.
 
-The dormant `inference_fiducial` target prepares a CosmoSIS FITS data file and
-`.ini`; it does not launch the CosmoSIS sampler. Its pseudo-$C_\ell$ inputs are
-also unresolved: the inference rule requests FITS files, while the producer
-writes SACC parts.
+The dormant `inference_fiducial` target declares a CosmoSIS FITS data file and
+`.ini`; it does not launch the sampler. Its pseudo-$C_\ell$ data-vector input is
+an unproduced FITS path: the `pseudo_cl` rule writes a SACC part, while
+`pseudo_cl_cov` does write FITS.
 
 For standalone FITS data preparation (real-space inputs plus optional pseudo-$C_\ell$ data), you can also use the Python script directly:
 
@@ -70,9 +70,10 @@ You can view all available options with:
 python scripts/cosmosis_fitting.py --help
 ``` 
 
-The pseudo-$C_\ell$ producer writes SACC parts, while `cosmosis_fitting.py`
-expects pseudo-$C_\ell$ FITS inputs. The inference DAG requests FITS paths that
-have no producer; supply compatible FITS files separately for standalone use.
+The `pseudo_cl` rule writes the data vector as a SACC part, while
+`cosmosis_fitting.py` expects a pseudo-$C_\ell$ FITS input. Its covariance rule
+writes FITS, but the requested data-vector FITS path has no producer; supply a
+compatible FITS file separately for standalone use.
 
 The published UNIONS v1.4 chains used a separate configuration. The committed
 templates have different fiducial priors for $m_1$, $\Delta z$, $\alpha$,

@@ -19,10 +19,9 @@ Three configurations pin the three product shapes today's ``__main__`` emits:
    with the tau_0<->tau_2 cross-correlation the truncated CosmoCov tau
    covariance carries) and the verbatim RHO_STATS table.
 
-The rho/tau product needs the rho/tau *sidecar* HDUs: the RHO_STATS table carries
-per-mode ``varrho_*`` variances the analysis SACC does not store, so the
-converter copies them from the sidecar exactly as today's assembly does. A teeth
-test pins that a perturbed input moves the output.
+The rho/tau product needs the rho/tau *sidecar* HDUs to preserve the complete
+RHO_STATS table. Its per-mode ``varrho_*`` variances are the diagonal of the ρ
+covariance in SACC. A teeth test pins that a perturbed input moves the output.
 
 The reference builder imports ``cosmosis_fitting.py`` by path (it is a script,
 not a package module), skipping cleanly if a dependency is missing -- the same
