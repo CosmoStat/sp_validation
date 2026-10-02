@@ -285,6 +285,52 @@ def test_get_rho_tau_identical_for_v1_and_v2_psf_catalogues(tmp_path):
             np.testing.assert_allclose(table_v1[name], table_v2[name], rtol=1e-10)
 
 
+def test_jackknife_cov_reads_the_draws_it_writes(tmp_path):
+    """The jackknife ρ/τ covariance averages the per-draw files the library saves.
+
+    shear_psf_leakage writes each draw to cov_{rho,tau}_{catalog_id}.npy; the
+    reader must look for those names, and leave only the averaged products.
+    """
+    from sp_validation.rho_tau import get_jackknife_cov
+
+    _, v2 = _twins()
+    rng = np.random.default_rng(5)
+    shear = np.empty(N, dtype=[(n, "f8") for n in ("RA", "Dec", "e1", "e2", "w")])
+    shear["RA"], shear["Dec"] = v2["RA"], v2["DEC"]
+    shear["e1"], shear["e2"] = rng.normal(0, 0.3, (2, N))
+    shear["w"] = 1.0
+    fits.BinTableHDU(shear).writeto(tmp_path / "shear.fits")
+    fits.BinTableHDU(np.array(v2[list(PSF_BLOCK.values())])).writeto(
+        tmp_path / "psf.fits"
+    )
+    config = {
+        "v": {
+            "patch_number": 2,
+            "psf": PSF_BLOCK | {"path": str(tmp_path / "psf.fits"), "hdu": 1},
+            "shear": SHEAR_BLOCK | {"path": str(tmp_path / "shear.fits")},
+        }
+    }
+    treecorr_config = {
+        "ra_units": "deg",
+        "dec_units": "deg",
+        "sep_units": "arcmin",
+        "min_sep": 10,
+        "max_sep": 600,
+        "nbins": 4,
+    }
+    outdir = tmp_path / "out"
+    outdir.mkdir()
+    get_jackknife_cov(
+        config, "v", treecorr_config, str(outdir), "v", "v_bin_1", npatch=2, ncov=2
+    )
+
+    cov_tau = np.load(outdir / "cov_tau_v_bin_1_jk.npy")
+    cov_rho = np.load(outdir / "cov_rho_v_jk.npy")
+    assert cov_tau.shape == (3 * 4, 3 * 4)
+    assert cov_rho.shape == (6 * 4, 6 * 4)
+    assert not list(outdir.glob("cov_*[0-9].npy"))
+
+
 # -- mask-bit columns: a rule family of their own ---------------------------
 
 

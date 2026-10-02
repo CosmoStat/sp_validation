@@ -462,17 +462,30 @@ def get_jackknife_cov(
 
     tau_stat_handler.catalogs.set_params(params, outdir)
 
+    # shear_psf_leakage keys its catalogues by catalog_id and writes each
+    # draw's covariance to cov_{rho,tau}_{catalog_id}.npy; base_tau names the
+    # draws so that the bins of a tomographic run never share them.
+    def catalog_id(i):
+        return f"{base_tau}{i}"
+
+    def chunks(i):
+        return [
+            os.path.join(outdir, f"cov_{kind}_{catalog_id(i)}.npy")
+            for kind in ("rho", "tau")
+        ]
+
     with _CatalogueLoader(config[version], params) as load:
         for i in range(ncov):
-            tau_chunk = outdir + f"/cov_tau_{base_tau}{i}.npy"
-            rho_chunk = outdir + f"/cov_rho_{base_rho}{i}.npy"
-            if not (os.path.exists(tau_chunk) and os.path.exists(rho_chunk)):
+            if not all(os.path.exists(chunk) for chunk in chunks(i)):
                 print(f"Computing rho-statistics for {version} (patch {i + 1}/{ncov})")
 
-                if f"psf_{version}{i}" not in rho_stat_handler.catalogs.catalogs_dict:
+                if (
+                    f"psf_{catalog_id(i)}"
+                    not in rho_stat_handler.catalogs.catalogs_dict
+                ):
                     # Build catalogues
                     rho_stat_handler.build_cat_to_compute_rho(
-                        load("psf"), catalog_id=version + str(i), mask=mask_star
+                        load("psf"), catalog_id=catalog_id(i), mask=mask_star
                     )
 
                     tau_stat_handler.catalogs.catalogs_dict = (
@@ -483,7 +496,7 @@ def get_jackknife_cov(
                     tau_stat_handler.build_cat_to_compute_tau(
                         load("shear"),
                         cat_type="gal",
-                        catalog_id=version + str(i),
+                        catalog_id=catalog_id(i),
                         mask=mask_gal,
                     )
 
@@ -492,7 +505,7 @@ def get_jackknife_cov(
 
                     npatch = rho_stat_handler.catalogs._params["patch_number"]
                     field = rho_stat_handler.catalogs.catalogs_dict[
-                        f"psf_{version}{i}"
+                        f"psf_{catalog_id(i)}"
                     ].getNField(max_top=int.bit_length(npatch) - 1, coords="spherical")
                     patch, centers = field.run_kmeans(npatch)
 
@@ -506,7 +519,7 @@ def get_jackknife_cov(
 
                 # Compute and save rho stats
                 rho_stat_handler.compute_rho_stats(
-                    version + str(i),
+                    catalog_id(i),
                     rho_filename,
                     save_cov=True,
                     func=_extract_xip,
@@ -515,7 +528,7 @@ def get_jackknife_cov(
 
                 # function to extract the tau_+
                 tau_stat_handler.compute_tau_stats(
-                    version + str(i),
+                    catalog_id(i),
                     tau_filename,
                     save_cov=True,
                     func=_extract_xip,
@@ -525,22 +538,21 @@ def get_jackknife_cov(
                 # Update the keys in the dictionaries
                 rho_dict = rho_stat_handler.catalogs.catalogs_dict
                 tau_dict = tau_stat_handler.catalogs.catalogs_dict
-                rho_dict[f"psf_{version}{i + 1}"] = rho_dict.pop(f"psf_{version}{i}")
-                rho_dict[f"psf_error_{version}{i + 1}"] = rho_dict.pop(
-                    f"psf_error_{version}{i}"
+                for prefix in ("psf", "psf_error", "psf_size_error"):
+                    rho_dict[f"{prefix}_{catalog_id(i + 1)}"] = rho_dict.pop(
+                        f"{prefix}_{catalog_id(i)}"
+                    )
+                tau_dict[f"gal_{catalog_id(i + 1)}"] = tau_dict.pop(
+                    f"gal_{catalog_id(i)}"
                 )
-                rho_dict[f"psf_size_error_{version}{i + 1}"] = rho_dict.pop(
-                    f"psf_size_error_{version}{i}"
-                )
-                tau_dict[f"gal_{version}{i + 1}"] = tau_dict.pop(f"gal_{version}{i}")
 
-    cov_tau_loc = np.zeros_like(np.load(outdir + f"/cov_tau_{base_tau}0.npy"))
-    cov_rho_loc = np.zeros_like(np.load(outdir + f"/cov_rho_{base_rho}0.npy"))
+    cov_rho_loc, cov_tau_loc = (np.zeros_like(np.load(c)) for c in chunks(0))
     for i in range(ncov):
-        cov_tau_loc += np.load(outdir + f"/cov_tau_{base_tau}{i}.npy")
-        cov_rho_loc += np.load(outdir + f"/cov_rho_{base_rho}{i}.npy")
-        os.remove(outdir + f"/cov_tau_{base_tau}{i}.npy")
-        os.remove(outdir + f"/cov_rho_{base_rho}{i}.npy")
+        rho_chunk, tau_chunk = chunks(i)
+        cov_rho_loc += np.load(rho_chunk)
+        cov_tau_loc += np.load(tau_chunk)
+        os.remove(rho_chunk)
+        os.remove(tau_chunk)
 
     cov_tau = cov_tau_loc / ncov
     cov_rho = cov_rho_loc / ncov
