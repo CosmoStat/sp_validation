@@ -814,6 +814,16 @@ def test_same_name_in_another_scope_is_not_a_shadow(mini_repo):
     assert dr.repository_errors(mini_repo) == []
 
 
+def test_comment_tag_governs_decorated_definition(mini_repo):
+    replace(
+        mini_repo,
+        PYTHON,
+        "def nested():\n    # @sc [decision:nested]\n",
+        "# @sc [decision:nested]\n@decorate\ndef nested():\n",
+    )
+    assert dr.repository_errors(mini_repo) == []
+
+
 @pytest.fixture
 def real_repo():
     if not (ROOT / "astra.yaml").is_file():

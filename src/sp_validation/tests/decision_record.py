@@ -191,10 +191,13 @@ def _comment_span(path, lines, index, tree, file_scope):
     ini = Path(path).suffix == ".ini"
     start = _following(lines, index, ini)
     if tree is not None:
+        # A decorated definition starts at its first decorator.
         statements = [
             n
             for n in ast.walk(tree)
-            if isinstance(n, ast.stmt) and n.lineno == start + 1
+            if isinstance(n, ast.stmt)
+            and min([n.lineno] + [d.lineno for d in getattr(n, "decorator_list", [])])
+            == start + 1
         ]
         if not statements:
             raise ValueError("@sc tag is not immediately above a Python statement")
@@ -202,7 +205,7 @@ def _comment_span(path, lines, index, tree, file_scope):
         indent = len(lines[index]) - len(lines[index].lstrip())
         if node.col_offset != indent:
             raise ValueError("@sc tag and Python statement have different indentation")
-        return Site(path, node.lineno, node.end_lineno)
+        return Site(path, start + 1, node.end_lineno)
     rule = re.match(r"^(\s*)rule\s+\w+\s*:", lines[start])
     section = ini and re.match(r"\s*\[[^]]+\]", lines[start])
     end = len(lines)
