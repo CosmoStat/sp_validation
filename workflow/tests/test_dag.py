@@ -81,13 +81,6 @@ def test_one_integration_grid(toy, forced, grids):
         assert by_rule["cv_pure_eb"] == {part, covariance}, by_rule["cv_pure_eb"]
 
 
-def test_a_launch_prints_each_catalogues_blind(forced):
-    """A catalogue and its variant share one line."""
-    output, _ = forced
-    line = f"[blind] {VERSIONS[0]} (+ {VERSIONS[1]}): toy"
-    assert {x for x in output.splitlines() if x.startswith("[blind]")} == {line}
-
-
 def test_a_blind_flip_reruns_the_catalogues_parts(toy, grids, tmp_path):
     """A part's params carry its catalogue's blind, so declaring the catalogue
     public reruns the part and nothing else does."""

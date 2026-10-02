@@ -10,7 +10,6 @@ from cs_util.cosmo import get_cosmo
 from shear_psf_leakage import run_object, run_scale
 
 from .. import blinding
-from .. import custody as _custody
 from ..b_modes import (
     _get_pte_from_scale_cut,
     covariance_label,
@@ -167,6 +166,64 @@ class CosmologyValidation(
             return None, None
         return base, seed_label
 
+    @staticmethod
+    def _materialize_seed_path(
+        base_cfg, seed_label, version, base_version, catalog_config
+    ):
+        """Render the seed-specific shear path using Python string formatting."""
+        shear_cfg = base_cfg["shear"]
+        template = shear_cfg.get("path_template")
+
+        try:
+            seed_value = int(seed_label)
+        except ValueError as error:
+            raise ValueError(
+                f"Seed suffix for '{version}' is not numeric; cannot materialize path."
+            ) from error
+
+        format_context = {"seed": seed_value, "seed_label": seed_label}
+
+        if template:
+            try:
+                return template.format(**format_context)
+            except KeyError as error:
+                raise KeyError(
+                    f"Missing placeholder '{error.args[0]}' in path_template for "
+                    f"'{base_version}' while materializing '{version}'. Update "
+                    f"{catalog_config}."
+                ) from error
+            except ValueError as error:
+                raise ValueError(
+                    f"Invalid format specification in path_template for '{base_version}' "
+                    f"while materializing '{version}'."
+                ) from error
+
+        path = shear_cfg.get("path", "")
+        token_start = path.rfind("seed")
+        if token_start == -1:
+            raise ValueError(
+                f"Cannot materialize '{version}': '{base_version}' lacks a shear "
+                f"path_template and its shear path '{path}' does not contain a 'seed' "
+                f"token. Update {catalog_config}."
+            )
+        cursor = token_start + 4  # len("seed")
+        if cursor < len(path) and not path[cursor].isdigit():
+            cursor += 1
+        digit_start = cursor
+        while cursor < len(path) and path[cursor].isdigit():
+            cursor += 1
+        digit_end = cursor
+        digits = path[digit_start:digit_end]
+        if not digits:
+            raise ValueError(
+                f"Cannot materialize '{version}': shear path '{path}' for base version "
+                f"'{base_version}' lacks digits after the seed token. Update "
+                f"{catalog_config}."
+            )
+
+        template = f"{path[:digit_start]}{{seed_label}}{path[digit_end:]}"
+        return template.format(**format_context)
+
     def __init__(
         self,
         versions,
@@ -267,8 +324,6 @@ class CosmologyValidation(
         self.catalog_config_path = Path(catalog_config)
         with self.catalog_config_path.open("r") as file:
             self.cc = cc = yaml.load(file, Loader=yaml.FullLoader)
-        # The catalogues as declared, before virtual versions are materialised.
-        self._declared = copy.deepcopy(cc)
 
         def resolve_paths_for_version(ver):
             """Resolve relative paths for a version using its subdir."""
@@ -320,9 +375,14 @@ class CosmologyValidation(
                 ensure_version_exists(seed_base)
                 if ver not in cc:
                     cc[ver] = copy.deepcopy(cc[seed_base])
-                    cc[ver]["shear"]["path"] = _custody.seed_path(
-                        cc[seed_base]["shear"], seed_label
+                    seed_path = self._materialize_seed_path(
+                        cc[seed_base],
+                        seed_label,
+                        ver,
+                        seed_base,
+                        catalog_config,
                     )
+                    cc[ver]["shear"]["path"] = seed_path
                 resolve_paths_for_version(ver)
                 processed.add(ver)
                 return
@@ -454,9 +514,7 @@ class CosmologyValidation(
     def blind(self, version):
         """The blind every SACC this object writes for ``version`` is saved
         under, as the catalogue config declares it."""
-        return blinding.open_blind(
-            _custody.declared(self._declared, version), self._declared
-        )
+        return blinding.open_blind(blinding.blind_of(self.cc, version), self.cc)
 
     def basename(self, version, treecorr_config=None, npatch=None):
         cfg = treecorr_config or self.treecorr_config

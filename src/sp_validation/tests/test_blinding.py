@@ -1,215 +1,104 @@
-"""Blinds, concealment and the blind stamp.
+"""What a blind shifts, and what the catalogue config may declare.
 
-Blinds here shift by the analytic ``toy_shear``; one slow test runs the CCL
-default.
+The shifts run the default theory, :func:`sp_validation.blinding.shear`, under
+a blind whose hidden point raises S8 above the fiducial.
 """
 
 import json
-import stat
 
 import numpy as np
 import pytest
-from _synthetic import toy_shear
-from smokescreen.param_shifts import draw_param_shifts
 
+from sp_validation import b_modes
 from sp_validation import blinding as bd
 from sp_validation import sacc_io as sio
-from sp_validation import theory
-
-DELTA_SIGMA = "galaxy_shearDensity_xi_t"
 
 
 @pytest.fixture(scope="module")
-def catalogues(tmp_path_factory):
-    return {"paths": {"blinds": str(tmp_path_factory.mktemp("blinds"))}}
+def up(tmp_path_factory):
+    path = tmp_path_factory.mktemp("blinds") / "up.blind.json"
+    path.write_text(
+        json.dumps(
+            {"seed": "s", "envelope": {"S8": [0.05, 0.06]}, "fiducial": bd.fiducial()}
+        )
+    )
+    return bd.Blind("up", path)
 
 
-@pytest.fixture(scope="module")
-def toy(catalogues):
-    return bd.init("toy", catalogues)
-
-
-@pytest.fixture(scope="module")
-def other(catalogues):
-    return bd.init("other", catalogues)
-
-
-def _nz(z0):
+def _sacc():
     z = np.linspace(0.0, 3.0, 200)
-    return z, np.exp(-0.5 * ((z - z0) / 0.2) ** 2)
-
-
-def part(*, cl=True, rho=False, delta_sigma=False):
-    """ξ± and pseudo-Cℓ (EE, BB, EB) on pairs (0,0), (0,1), (1,1), and
-    optionally ρ and a ΔΣ-like custom type."""
-    s = sio.new_sacc({0: _nz(0.5), 1: _nz(0.9)})
-    theta = np.geomspace(2.0, 200.0, 6)
-    ell = np.array([30.0, 80.0, 150.0, 280.0, 450.0])
-    w_ell = np.arange(2, 501).astype(float)
-    window = np.exp(-0.5 * ((w_ell[:, None] - ell[None, :]) / 40.0) ** 2)
-    for pair in ((0, 0), (0, 1), (1, 1)):
-        xip, xim = 1e-4 * (theta / 10) ** -0.6, 0.5e-4 * (theta / 10) ** -0.9
-        sio.add_xi(s, pair, theta, xip, xim, grid="reporting")
-        if cl:
-            ee = 1e-8 * (ell / 100.0) ** -1.2
-            sio.add_pseudo_cl(
-                s,
-                pair,
-                ell,
-                ee,
-                0.01 * ee,
-                0.02 * ee,
-                window_ells=w_ell,
-                window_weights=window / window.sum(axis=0),
-            )
-    if rho:
-        sio.add_rho(s, 0, theta, np.arange(1, 7) * 1e-7, np.arange(1, 7) * 2e-7)
-    if delta_sigma:
-        for r in (0.5, 2.0, 8.0):  # tagged theta, as sacc requires
-            s.add_data_point(DELTA_SIGMA, ("source_0", "source_1"), 10.0, theta=r)
-    s.add_covariance(np.abs(np.asarray(s.mean)) ** 2 + 1e-20)
-    return s
-
-
-def hidden(blind):
-    """The blind's hidden point, as Smokescreen draws it."""
-    record = blind.record()
-    shift = draw_param_shifts(record["envelope"], record["seed"])
-    return {k: v + shift.get(k, 0.0) for k, v in record["fiducial"].items()}
-
-
-# --------------------------------------------------------------------------- #
-# Concealing: every row moves by its theory's t(hidden) − t(fiducial)
-# --------------------------------------------------------------------------- #
-def test_conceal_moves_signal_rows_by_the_theory_shift(toy, other):
-    """ξ± and Cℓ_EE move by t(hidden) − t(fiducial); Cℓ_BB/EB and the
-    covariance stay identical; the same blind gives the same shift, another
-    blind another."""
-    s = part()
-    shift = bd.conceal(s, toy, toy_shear).mean - s.mean
-    fiducial = toy.record()["fiducial"]
-    expected = toy_shear(hidden(toy), s) - toy_shear(fiducial, s)
-    np.testing.assert_allclose(shift, expected, rtol=1e-10, atol=0)
-    signal = np.isin([dp.data_type for dp in s.data], [sio.XI_PLUS, sio.XI_MINUS])
-    signal |= np.array([dp.data_type == sio.CL_EE for dp in s.data])
-    assert np.all(shift[signal] != 0) and np.all(shift[~signal] == 0)
-    concealed = bd.conceal(s, toy, toy_shear)
-    np.testing.assert_array_equal(concealed.covariance.dense, s.covariance.dense)
-    np.testing.assert_array_equal(concealed.mean - s.mean, shift)
-    assert not np.allclose(bd.conceal(s, other, toy_shear).mean - s.mean, shift)
-
-
-def test_a_theory_failure_names_no_value(toy):
-    """Any failure, including a vector of the wrong length, is a
-    BlindingError carrying neither the hidden point nor the original message."""
-
-    def broken(params, s):
-        raise RuntimeError(f"S8 = {params['S8']}")
-
-    with pytest.raises(bd.BlindingError) as err:
-        bd.conceal(part(), toy, broken)
-    assert "S8" not in str(err.value) and "RuntimeError" in str(err.value)
-    assert err.value.__cause__ is None and err.value.__context__ is None
-    with pytest.raises(bd.BlindingError, match="values for"):
-        bd.conceal(part(), toy, lambda params, s: np.zeros(3))
-
-
-def test_a_custom_theory_blinds_a_custom_type(toy):
-    """A ΔΣ-like type is shifted by a theory that knows it; the default
-    theory refuses it; theory.none leaves every value but stamps."""
-
-    def delta_sigma(params, s):
-        out = toy_shear(params, s)
-        for i, dp in enumerate(s.data):
-            if dp.data_type == DELTA_SIGMA:
-                out[i] = 10.0 * params["S8"] / dp.tags["theta"]
-        return out
-
-    s = part(cl=False, delta_sigma=True)
-    rows = s.indices(DELTA_SIGMA)
-    sealed = sio.seal(s, toy, delta_sigma)
-    assert np.all(sealed.mean[rows] != s.mean[rows])
-    assert sio.stamp(sealed) == "toy"
-    with pytest.raises(bd.BlindingError, match="ValueError"):
-        sio.seal(s, toy)  # theory.shear: no prediction for this type
-    rho = part(cl=False, rho=True)
-    kept = sio.seal(rho, toy, theory.none)
-    np.testing.assert_array_equal(kept.mean, rho.mean)
-    assert sio.stamp(kept) == "toy"
-
-
-def test_none_stamps_without_concealing(tmp_path):
-    s = part()
-    saved = sio.save(s, tmp_path / "x.sacc", blind=bd.NONE)
-    np.testing.assert_array_equal(saved.mean, s.mean)
-    assert sio.stamp(sio.load(tmp_path / "x.sacc")) == "none"
-    assert sio.stamp(part()) == "none"  # absent reads as none
-    with pytest.raises(ValueError, match="blind= .* or derived_from="):
-        sio.save(s, tmp_path / "y.sacc")
-
-
-# --------------------------------------------------------------------------- #
-# Derivations inherit their inputs' one stamp
-# --------------------------------------------------------------------------- #
-@pytest.mark.parametrize(
-    "inputs, declared, allowed",
-    [
-        (["toy"], None, True),
-        (["toy", "toy"], "toy", True),  # an assembly
-        (["none"], None, True),
-        (["toy", "other"], None, False),  # mixed stamps
-        (["toy", "none"], None, False),
-        (["none"], "toy", False),  # a stale public part under a blind
-        (["other"], "toy", False),
-    ],
-)
-def test_a_derivation_carries_its_inputs_one_stamp(
-    toy, other, tmp_path, inputs, declared, allowed
-):
-    blinds = {"toy": toy, "other": other, "none": bd.NONE}
-    parts = [sio.seal(part(cl=False), blinds[b], toy_shear) for b in inputs]
-    path = tmp_path / "d.sacc"
-    kwargs = dict(derived_from=parts, blind=bd.Blind(declared) if declared else None)
-    if not allowed:
-        with pytest.raises(ValueError):
-            sio.save(parts[0], path, **kwargs)
-        assert not path.exists()
-        return
-    derived = sio.save(parts[0], path, **kwargs)
-    assert sio.stamp(sio.load(path)) == inputs[0]
-    np.testing.assert_array_equal(derived.mean, parts[0].mean)
-
-
-# --------------------------------------------------------------------------- #
-# The blind: drawn once, opened by name
-# --------------------------------------------------------------------------- #
-def test_a_blind_is_drawn_once_and_opened_by_name(tmp_path):
-    catalogues = {"paths": {"blinds": str(tmp_path / "blinds")}}
-    blind = bd.init("toy", catalogues)
-    assert stat.S_IMODE(blind.path.stat().st_mode) == 0o440
-    assert set(json.loads(blind.path.read_text())) == {"seed", "envelope", "fiducial"}
-    with pytest.raises(bd.BlindingError, match="exists"):
-        bd.init("toy", catalogues)
-    assert bd.open_blind("toy", catalogues) == blind
-    assert bd.open_blind("none", {}) is bd.NONE
-    with pytest.raises(bd.BlindingError, match="init gone"):
-        bd.open_blind("gone", catalogues)
+    return sio.new_sacc({0: (z, np.exp(-0.5 * ((z - 0.7) / 0.2) ** 2))})
 
 
 @pytest.mark.slow
-def test_the_ccl_default_shifts_with_s8(tmp_path):
-    """theory.shear, at a hidden point with S8 above the fiducial, raises ξ+
-    and Cℓ_EE and leaves Cℓ_BB/EB."""
-    record = {
-        "seed": "s",
-        "envelope": {"S8": [0.05, 0.06]},
-        "fiducial": theory.fiducial(),
-    }
-    path = tmp_path / "up.blind.json"
-    path.write_text(json.dumps(record))
-    s = part()
-    delta = bd.conceal(s, bd.Blind("up", path)).mean - s.mean
-    for data_type in (sio.XI_PLUS, sio.CL_EE):
+def test_a_blind_shifts_xi_and_cl_ee_and_leaves_bb_eb(up):
+    s = _sacc()
+    theta = np.geomspace(2.0, 200.0, 6)
+    sio.add_xi(s, (0, 0), theta, 0 * theta, 0 * theta, grid="reporting")
+    ell = np.array([30.0, 80.0, 150.0, 280.0, 450.0])
+    w_ell = np.arange(2, 501).astype(float)
+    window = np.exp(-0.5 * ((w_ell[:, None] - ell) / 40.0) ** 2)
+    zeros = 0 * ell
+    sio.add_pseudo_cl(
+        s,
+        (0, 0),
+        ell,
+        zeros,
+        zeros,
+        zeros,
+        window_ells=w_ell,
+        window_weights=window / window.sum(axis=0),
+    )
+
+    sealed = sio.seal(s, up)
+    delta = sealed.mean - s.mean
+    for data_type in (sio.XI_PLUS, sio.XI_MINUS, sio.CL_EE):
         assert np.all(delta[s.indices(data_type)] > 0), data_type
     for data_type in (sio.CL_BB, sio.CL_EB):
         assert np.all(delta[s.indices(data_type)] == 0), data_type
+    assert sio.stamp(sealed) == "up"
+
+
+@pytest.mark.slow
+def test_pure_eb_under_a_blind_shifts_e_and_not_b(up):
+    """The pure-E/B operator on the integration-grid ξ± is linear, so a blind
+    moves the modes by its response to the shift: E by several σ, B by under
+    a tenth of σ (σ: UNIONS shape noise through the operator)."""
+    edges_int = np.geomspace(0.08, 300.0, 1001)
+    theta_int = np.sqrt(edges_int[:-1] * edges_int[1:])
+    s = _sacc()
+    sio.add_xi(s, (0, 0), theta_int, 0 * theta_int, 0 * theta_int, grid="integration")
+    shifted = sio.xi_correlation(sio.seal(s, up))
+    delta = np.r_[shifted.xip, shifted.xim]
+
+    annuli = np.diff(edges_int**2)  # ∝ pair counts on a uniform field
+    operator, _, _ = b_modes.pure_eb_operator(
+        annuli, edges_int, np.geomspace(1.0, 250.0, 21)
+    )
+    # Var ξ± = σ_e⁴ / (2 N_pairs), SP_v1.4.6.3's area, n_eff and σ_e.
+    n_eff, area, sigma_e = 4.96, 2894.0 * 3600, 0.378
+    variance = np.tile(sigma_e**4 / (n_eff**2 * area * np.pi * annuli), 2)
+    sigma = np.sqrt(np.einsum("ij,j,ij->i", operator, variance, operator))
+    response = operator @ delta / sigma
+
+    n = len(response) // 6  # blocks in _EB_KEYS order: E+, E−, B+, B−, amb
+    assert np.max(np.abs(response[: 2 * n])) > 1
+    assert np.max(np.abs(response[2 * n : 4 * n])) < 0.1
+
+
+def test_seal_refuses_a_sacc_already_stamped():
+    sealed = sio.seal(_sacc(), bd.NONE)
+    with pytest.raises(ValueError, match="already carries a blind stamp"):
+        sio.seal(sealed, bd.NONE)
+
+
+def test_entries_reading_one_file_declare_one_blind():
+    catalogues = {
+        "paths": {"blinds": "/blinds"},
+        "Y3": {"blind": "y3", "subdir": "/d", "shear": {"path": "y3.fits"}},
+        "TWIN": {"blind": "none", "subdir": "/d", "shear": {"path": "twin.fits"}},
+    }
+    assert bd.blind_of(catalogues, "TWIN") == "none"
+    catalogues["TWIN"]["shear"]["path"] = "/d/sub/../y3.fits"
+    with pytest.raises(ValueError, match="different blinds"):
+        bd.blind_of(catalogues, "TWIN")

@@ -7,7 +7,6 @@ and plots. It depends on TreeCorr.
 """
 
 import os
-import uuid
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
@@ -31,14 +30,9 @@ class RealSpaceMixin:
     ):
         """ξ± of ``ver`` on one binning, as its SACC part sealed under its blind.
 
-        A catalogue's ξ± leaves this object only as a part sealed under the
-        catalogue's blind (:func:`sp_validation.sacc_io.seal`), concealed
-        before it is returned, cached or written. The blind is opened first,
-        so a blind that cannot open fails before TreeCorr runs.
-
-        With patches, the catalogue splits at the output tree's
-        ``{ver}_patches_npatch={npatch}.dat``, drawn by TreeCorr's k-means and
-        written there when missing.
+        The part is concealed (:func:`sp_validation.sacc_io.seal`) before it is
+        returned, cached or written. Patches split at the output tree's
+        ``{ver}_patches_npatch={npatch}.dat``, written when missing.
 
         Parameters:
             ver (str): The catalogue version to measure.
@@ -78,12 +72,8 @@ class RealSpaceMixin:
                 npatch=npatch,
                 patch_centers=patch_file if os.path.exists(patch_file) else None,
             )
-            # Through a temporary file, so a concurrent reader never sees a
-            # torn one.
-            if jackknife and not os.path.exists(patch_file):
-                tmp = f"{patch_file}.{uuid.uuid4().hex}.tmp"
-                catalogue.write_patch_centers(tmp)
-                os.replace(tmp, patch_file)
+            if not os.path.exists(patch_file):
+                catalogue.write_patch_centers(patch_file)
         gg.process(catalogue)
 
         s = xi_to_sacc(

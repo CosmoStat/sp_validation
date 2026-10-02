@@ -63,8 +63,6 @@ def _cosebi_block(s, tr):
 # --------------------------------------------------------------------------- #
 # 1. Per-writer round-trip (arrays / tags / windows / NZ bitwise)
 # --------------------------------------------------------------------------- #
-
-
 def _roundtrip(s, tmp_path, name="rt"):
     path = tmp_path / f"{name}.sacc"
     sio.save(s, str(path), blind=NONE)

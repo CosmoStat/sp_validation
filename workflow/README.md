@@ -28,9 +28,8 @@ each namespaces cleanly under `results/<name>/`.
 ## Blinding
 
 Every entry of `cosmo_val/cat_config.yaml` declares `blind: none` or
-`blind: <name>`; an entry without one stops the launch, which prints one
-`[blind]` line per catalogue. `_leak_corr` and `_seed<N>` versions take their
-entry's blind, and entries reading one shear file declare one blind.
+`blind: <name>`; an entry without one stops the launch. `_leak_corr` versions
+take their entry's blind, and entries reading one shear file declare one blind.
 
 A blind is a secret record, `<paths.blinds>/<name>.blind.json` (seed, envelope,
 fiducial), drawn once with
@@ -38,10 +37,10 @@ fiducial), drawn once with
 committed. On a blinded catalogue, ξ± and Cℓ_EE are shifted by
 t(hidden) − t(fiducial) before they are first written: Smokescreen draws the
 hidden point (S8 and Ωm) from the seed, and the theory `t` is
-`sp_validation.theory.shear`. Cℓ_BB and Cℓ_EB get zero shift; ρ/τ are saved
-with `theory.none`. Another statistic passes its own theory,
+`sp_validation.blinding.shear`. Cℓ_BB and Cℓ_EB get zero shift; ρ/τ are saved
+with `blinding.no_signal`. Another statistic passes its own theory,
 `theory(params, s) -> array the length of s.mean` (see
-`src/sp_validation/theory.py`).
+`src/sp_validation/blinding.py`).
 
 A measurement calculates, then saves: one function computes the signal, saves
 it with `sacc_io.save(s, path, blind=...)` (or `sacc_io.seal`), and returns the

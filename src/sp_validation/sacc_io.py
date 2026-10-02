@@ -1006,20 +1006,13 @@ def save(s, path, *, blind=None, theory=None, derived_from=None):
 
     - ``save(s, path, blind=b)``: a birth. ``b`` is a
       :class:`sp_validation.blinding.Blind`; unless it is ``none``, every row
-      of ``s`` is shifted by t(hidden) − t(fiducial), t being ``theory``. The
-      output is stamped with ``b``'s name.
+      of ``s`` is shifted by t(hidden) − t(fiducial), t being ``theory``
+      (:mod:`sp_validation.blinding` describes a theory; the default is
+      :func:`sp_validation.blinding.shear`). The output is stamped with
+      ``b``'s name.
     - ``save(s, path, derived_from=parts)``: a derivation (COSEBIs, pure-E/B,
       an assembly); the parts must share one :func:`stamp`, which ``s`` takes,
       unshifted. With ``blind=b`` too, that stamp must be ``b``'s name.
-
-    ``theory(params, s)`` returns the prediction for every row of ``s``: an
-    array the length of ``s.mean``, in its order, zero where the cosmology has
-    no effect. ``params`` is a plain dict with the keys of
-    :func:`sp_validation.theory.fiducial`; the theory is called at the blind's
-    fiducial and hidden points, which differ only in ``S8`` and ``Omega_m``.
-    The default, :func:`sp_validation.theory.shear`, predicts ξ± and Cℓ_EE and
-    gives zeros for Cℓ_BB and Cℓ_EB; :func:`sp_validation.theory.none` gives
-    zeros throughout.
 
     A measurement computes its signal and saves (or seals) it in the same
     function, returning the sealed part, so on a blinded catalogue its raw

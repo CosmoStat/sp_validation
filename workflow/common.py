@@ -35,13 +35,10 @@ REPO_SRC = REPO_ROOT / "src"
 
 
 def _load_checkout_module(name):
-    """Load the stdlib-only module ``sp_validation/<name>.py`` from this checkout.
+    """Load ``sp_validation/<name>.py``, a stdlib-only module, from this checkout.
 
-    Loaded by file path rather than imported: snakemake runs on the host, where
-    sp_validation is usually not installed, and importing the package would drag
-    in ``__init__`` -> ``version`` -> a metadata warning on every launch. Taking
-    it from *this checkout's* src/ also means the workflow and the package can
-    never disagree about what the module says.
+    By path, since the host Snakemake has no sp_validation installed; from
+    *this checkout's* src/, so the workflow and the package never disagree.
     """
     alias = f"_spv_{name}"
     module = importlib.util.module_from_spec(
@@ -60,8 +57,8 @@ compare_revision = _container.compare_revision
 image_revision = _container.image_revision
 resolve_image = _container.resolve_image
 
-# Each catalogue's declared blind and shear file, resolved as container jobs do.
-_custody = _load_checkout_module("custody")
+# Each catalogue's declared blind (``blinding.blind_of``).
+_blinding = _load_checkout_module("blinding")
 
 # Every job inherits this launch's environment (the slurm executor submits with
 # --export=ALL), and the Snakemake each job step starts keeps its source cache
@@ -206,28 +203,18 @@ def configure(workflow_config):
     DEFAULT_MASK_SUFFIX = (
         "_masked" if workflow_config["covariance"].get("default_masked", False) else ""
     )
-    announce_blinds(workflow_config)
     with open(COSMOLOGY_PARAMS) as f:
         PLANCK18 = json.load(f)
-
-
-def announce_blinds(workflow_config):
-    """Print each run catalogue's blind, or stop the launch if one declares none."""
-    from snakemake.exceptions import WorkflowError
-
-    versions = workflow_config.get("versions", [])
-    fiducial = [FIDUCIAL.get(k) for k in ("version", "mock_version")]
-    try:
-        lines = _custody.summary(CATALOG_CONFIG, [*versions, *filter(None, fiducial)])
-    except ValueError as err:
-        raise WorkflowError(str(err)) from None
-    print("\n".join(lines), file=sys.stderr)
+    # A run catalogue that declares no blind stops the launch before any job.
+    fiducial = (FIDUCIAL.get(k) for k in ("version", "mock_version"))
+    for version in [*workflow_config.get("versions", []), *filter(None, fiducial)]:
+        blind_of(version)
 
 
 def blind_of(version):
     """``version``'s declared blind: a producer's ``params.blind``, so flipping
     it reruns exactly the jobs it touches."""
-    return _custody.declared(CATALOG_CONFIG, version)
+    return _blinding.blind_of(CATALOG_CONFIG, catalogue_name(version))
 
 
 def fiducial_binning_suffix(fiducial=None):
@@ -295,10 +282,17 @@ def base_version(version):
     return re.sub(r"_ecut\d+", "", re.sub(r"_leak_corr$", "", version))
 
 
+def catalogue_name(version):
+    """The name of the catalogue-config entry describing ``version`` (its own,
+    or the one its ``_leak_corr`` variant derives from)."""
+    if version in CATALOG_CONFIG:
+        return version
+    return re.sub(r"_leak_corr$", "", version)
+
+
 def catalogue_entry(version):
-    """The catalogue-config entry describing ``version`` (its own, or the one
-    its ``_leak_corr``/``_seed<N>`` variant chain reaches)."""
-    return CATALOG_CONFIG[_custody.entry_name(CATALOG_CONFIG, version)]
+    """The catalogue-config entry describing ``version``."""
+    return CATALOG_CONFIG[catalogue_name(version)]
 
 
 def redshift_path(version):
@@ -383,9 +377,14 @@ def pseudo_cl_tag(config):
     return f"{fiducial['binning']}_nbins={fiducial['nbins']}"
 
 
-def shear_catalog(version):
-    """The shear catalogue file of ``version``, from its catalogue entry."""
-    return _custody.shear_file(CATALOG_CONFIG, version)
+def get_shear_catalog(wildcards):
+    """Resolve shear catalog path from config for a given version."""
+    cat_config = CATALOG_CONFIG[wildcards.version.replace("_leak_corr", "")]
+    shear_path = cat_config["shear"]["path"]
+    if shear_path.startswith("/"):
+        return shear_path
+    subdir = cat_config.get("subdir", "")
+    return str(Path(subdir) / shear_path)
 
 
 # ---------------------------------------------------------------------------

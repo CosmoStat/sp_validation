@@ -17,6 +17,7 @@ from sp_validation import survey
 
 class SurveyTestCase(TestCase):
     def setUp(self):
+
         self._dd = np.array(
             [(270.283, 1), (270.283, 0), (188.308, 0)],
             dtype=[("TILE_ID", "f8"), ("FLAGS", "i2")],
@@ -32,6 +33,7 @@ class SurveyTestCase(TestCase):
         self._patch = ["P5"]
 
     def tearDown(self):
+
         self.number_tile = None
         self.number_exp = None
         self.number_int = None

@@ -20,7 +20,7 @@ rule xi:
     binds the wildcards and the grid label resolves from them.
     """
     input:
-        catalog=lambda w: shear_catalog(w.version),
+        catalog=get_shear_catalog,
     output:
         sacc=str(COSMO_VAL / "{version}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc"),
     threads: 24

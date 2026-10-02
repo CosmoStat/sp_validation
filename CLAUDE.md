@@ -42,8 +42,7 @@ is the container (full scientific stack pre-built). For a local dev environment:
 - `cat.py`: Catalogue handling and manipulation
 - `cosmo_val.py`: Cosmology validation routines
 - `cosmology.py`: Cosmological calculations and theory
-- `theory.py`: Theory data vectors for a SACC, `theory(params, s)`, from which blinding shifts are made
-- `blinding.py`: Blinds, and `conceal`, which shifts a SACC by one
+- `blinding.py`: Blinds, the theory `theory(params, s)` they shift by, and `conceal`, which shifts a SACC by one
 - `galaxy.py`: Galaxy-specific processing
 - `io.py`: Input/output utilities
 - `plots.py`: Plotting functions
