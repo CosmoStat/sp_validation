@@ -171,10 +171,10 @@ def _following(lines, index, ini=False):
 
 
 def _comment_span(path, lines, index, tree, file_scope):
-    ini = Path(path).suffix == ".ini"
-    start = _following(lines, index, ini)
     if file_scope:
         return Site(path, 1, len(lines))
+    ini = Path(path).suffix == ".ini"
+    start = _following(lines, index, ini)
     if tree is not None:
         statements = [
             n
@@ -210,6 +210,25 @@ def _comment_span(path, lines, index, tree, file_scope):
     return Site(path, start + 1, end)
 
 
+def _yaml_block_lines(text):
+    """1-based lines holding block-scalar content: string text, never comments."""
+    try:
+        node = yaml.compose(text, Loader=yaml.SafeLoader)
+    except yaml.YAMLError:
+        return set()
+    lines, stack = set(), [node] if node is not None else []
+    while stack:
+        node = stack.pop()
+        if isinstance(node, yaml.MappingNode):
+            stack.extend(n for pair in node.value for n in pair)
+        elif isinstance(node, yaml.SequenceNode):
+            stack.extend(node.value)
+        elif node.style in ("|", ">"):
+            end = node.end_mark.line - (node.end_mark.column == 0)
+            lines.update(range(node.start_mark.line + 2, end + 2))
+    return lines
+
+
 def scan_tags(root):
     """Collect tags and path:line diagnostics for malformed/unattached tags."""
     tags, errors = [], []
@@ -242,9 +261,16 @@ def scan_tags(root):
                         else:
                             raw.append((number, body, None))
             else:
+                strings = (
+                    _yaml_block_lines(text)
+                    if path.suffix in {".yaml", ".yml"}
+                    else set()
+                )
                 for number, line in enumerate(lines, 1):
                     body = _comment(line, path.suffix == ".ini")
-                    if body is not None and body.startswith("@sc"):
+                    if body is None or number in strings:
+                        continue
+                    if body.startswith("@sc"):
                         raw.append((number, body, None))
         except (SyntaxError, tokenize.TokenError) as error:
             errors.append(f"{relative}:{getattr(error, 'lineno', 1)}: {error}")

@@ -615,6 +615,17 @@ def test_tag_examples_in_strings_are_not_tags(mini_repo):
     assert dr.repository_errors(mini_repo) == []
 
 
+def test_yaml_block_scalar_text_is_not_a_tag(mini_repo):
+    append(mini_repo, YAML, "\nexample: |\n  # @sc [malformed tag]\n")
+    assert dr.repository_errors(mini_repo) == []
+
+
+def test_file_scope_tag_needs_no_adjacent_site(mini_repo):
+    old = "# @sc [decision:yaml_file,scope:file]\n"
+    replace(mini_repo, YAML, old, old + "\n")
+    assert dr.repository_errors(mini_repo) == []
+
+
 def test_python_source_is_never_executed(mini_repo):
     append(mini_repo, PYTHON, "\nraise RuntimeError('must never execute')\n")
     assert dr.repository_errors(mini_repo) == []
