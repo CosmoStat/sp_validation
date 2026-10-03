@@ -772,11 +772,15 @@ analyses:
           GGCorrelation receives min_sep, max_sep and nbins in arcmin with
           RA/Dec in degrees and no bin_type, so TreeCorr's Log binning applies
           (CosmologyValidation.treecorr_config; common.xi_grids; the xi rule).
-          The same grid bins rho and tau and indexes the pure-E/B PTE
-          matrices. It matches the Paper II analysis range; no further
-          rationale is recorded. The grid fixes which pairs enter each xi+-
-          point, the scale cuts available downstream and the terminal data
-          vector.
+          The same grid bins rho and tau and, snapped onto the integration
+          grid, indexes the pure-E/B PTE matrices. It is the
+          configuration-space data-vector binning of Paper III, which Paper II
+          adopts (unions_bmodes.tex); no further rationale is recorded.
+          CosmologyValidation's own default lower bound is 0.1 arcmin; the
+          workflow scripts pass the configured bounds. The grid sets the bins
+          pairs are counted into (up to the pair approximation,
+          real_space.pair_approximation), the scale cuts available downstream
+          and the terminal data vector.
           Values:
           cosmo_val.theta_min = 1.0;
           cosmo_val.theta_max = 250.0;
@@ -795,20 +799,23 @@ analyses:
         label: Fine xi+- grid the pure-E/B and COSEBIs integrals use
         rationale: >-
           A second named grid feeds both B-mode statistics (common.xi_grids;
-          cosmo_val.smk routes the integration part and its CosmoCov
-          covariance to cv_pure_eb and cv_cosebis). papers/cosmo_val
-          integrates 0.08-300 arcmin in 1000 Log bins with one patch;
-          papers/bmodes 0.5-300 arcmin in 1000 bins. The pure-E/B kernels need
-          support beyond the reporting range on both sides; no rationale is
-          recorded for the lower bounds. The grid sets the transform interval
+          cosmo_val.smk routes the integration part and its CosmoCov covariance
+          to cv_pure_eb and cv_cosebis). papers/cosmo_val integrates 0.08-300
+          arcmin in 1000 Log bins with one patch; papers/bmodes 0.5-300 arcmin
+          in 1000 bins, the grid of Paper II. The pure-E/B transform integrates
+          over the fine grid's extent, which must reach beyond the reporting
+          range on both sides (b_modes.pure_eb_operator); Paper II gives the
+          extended range as reducing edge effects in the boundary functions S+-
+          and V+- (unions_bmodes.tex). No site records why 0.08 or 0.5 arcmin
+          in particular. The grid sets the transform interval
           (bmodes.pure_eb_transform), the snapped reporting edges and the
-          CosmoCov covariance paired with it. The GLASS-mock xi is measured
-          on the same grid node for node (glass_mock.smk). [LINT]
-          papers/cosmo_val carries both cosmo_val.integration.min_sep 0.08 and
-          fiducial.min_sep_int 0.5; the first governs the cosmo_val rules and
-          the second the covariance.smk fiducial target. The tomography
-          branch's cosmo_val config integrates pure E/B on 0.08-300 and
-          COSEBIs on 0.9-300 arcmin with 100 patches.
+          CosmoCov covariance paired with it. The GLASS-mock xi is measured on
+          the same grid node for node (glass_mock.smk). The API methods default
+          to their own grids: CosmologyValidation.calculate_pure_eb to 0.08-300
+          arcmin and calculate_cosebis to 0.5-500 arcmin, 1000 bins each.
+          [LINT] papers/cosmo_val carries both cosmo_val.integration.min_sep
+          0.08 and fiducial.min_sep_int 0.5; the first governs the cosmo_val
+          rules and the second the covariance.smk fiducial target.
           Values:
           cosmo_val.integration.min_sep = 0.08;
           cosmo_val.integration.max_sep = 300;
@@ -825,7 +832,10 @@ analyses:
           reporting_grid_only:
             label: Integrate the 20-bin reporting grid
             excluded: true
-            excluded_reason: Too coarse for the kernels; the reporting edges must snap onto a finer grid.
+            excluded_reason: >-
+              Integrating over the reporting range itself leaves the edge
+              reporting bins without kernel support beyond them, so
+              pure_eb_operator rejects the under-determined rows.
       pair_approximation:
         label: TreeCorr pair approximation and tree depth
         rationale: >-
@@ -833,15 +843,24 @@ analyses:
           min(1, 0.1/bin_size), 0.36 on the 20-bin reporting grid and 1.0 on
           the 1000-bin grids; angle_slop 0.1) and the metric is TreeCorr's
           Euclidean chord. The tomography branch's core.py, which the merge
-          adopts, sets neither min_top nor num_threads, so TreeCorr derives
-          min_top from its thread count and xi+- depends on the allocation's
-          CPUs [LINT tomo-drops-min-top-pin]; develop's core.py pins min_top =
-          6, the value TreeCorr derives on candide's 48- and 64-CPU nodes, and
-          num_threads to the process affinity. No rationale is recorded for
-          keeping approximate pairs. Approximate pairs shift xi+- and meanr
-          near bin edges; the 1.5% gap between the pair-weighted fine grid and
-          the 20-bin measurement on UNIONS is attributed to it (inferred from a
-          synthetic reproduction, not proved on the data). [HARDCODED]
+          adopts, sets neither min_top nor num_threads, so TreeCorr takes its
+          thread count from the node's CPU count (multiprocessing.cpu_count)
+          and derives min_top from it, and xi+- measured with patches depends
+          on the node the job runs on [LINT] (tomo-drops-min-top-pin).
+          develop's core.py pins min_top = 6, the value TreeCorr derives on
+          candide's 48- and 64-CPU nodes, and num_threads to the process's CPU
+          affinity. No site records why approximate pairs are kept; TreeCorr's
+          docstring describes its default bin_slop as giving a maximum error of
+          10% on any bin. Approximate pairs can shift xi+- and meanr near bin
+          edges. On UNIONS the pair-weighted average of the 1000-bin xi+
+          differs from the measured 20-bin xi+ by 1.5% of its maximum (0.46
+          sigma), and xi- by 0.63 sigma; a synthetic catalogue reproduces gaps
+          of that size from the default bin_slop, so they are attributed to it,
+          which is not proved on the data (Paper II referee-response work). In
+          the #253 end-to-end run the reporting-grid xi+- moved by up to 0.55
+          sigma between two patch-centre sets and 0.63 sigma between 1 and 100
+          patches (sigma from the CosmoCov diagonal), likely through the same
+          approximation (unconfirmed). [HARDCODED]
         default: treecorr_defaults
         options:
           treecorr_defaults:
@@ -852,22 +871,34 @@ analyses:
       jackknife_patches:
         label: Patch count and the variance it selects
         rationale: >-
-          calculate_2pcf sets var_method to jackknife when npatch > 1 and to
-          shot otherwise, whatever the constructor's var_method, with
-          cross_patch_weight match (TreeCorr's (N-1)/N jackknife). Patches
-          are TreeCorr k-means centres computed on the first measurement and
-          written to {version}_patches_npatch={N}.dat, which later
-          measurements reuse; the k-means is unseeded, so a fresh output tree
-          gets a different layout. The xi part is born with the dense
+          calculate_2pcf_version, which calculate_2pcf calls per version, sets
+          var_method to jackknife when npatch > 1 and to shot otherwise,
+          whatever the constructor's var_method. cross_patch_weight is the
+          constructor's: match (the Mohammad & Percival 2022 cross-pair weight)
+          when its var_method is jackknife, the constructor default, and simple
+          otherwise. With npatch > 1 the patches are TreeCorr k-means centres
+          computed on the first measurement's catalogue (with tomography, the
+          first bin pair's first bin) and written to
+          {version}_patches_npatch={N}.dat, which later measurements with the
+          same N reuse; sp_validation passes TreeCorr no seed and its k-means
+          returns different centres in each fresh process, so a fresh output
+          tree gets a different layout. The xi part is born with the dense
           jackknife covariance when it had patches and the shot-noise
-          varxip/varxim diagonal otherwise (run_2pcf.py); assembly replaces
-          both with CosmoCov (covariance.terminal_covariance). papers/cosmo_val
-          uses 100 patches on the reporting grid, papers/bmodes and the
-          integration grid 1. The jackknife reaches reported numbers only
-          where it is the analysis covariance (the tomography branch's
-          cosmo_val COSEBIs, 100 patches). [LINT] the var_method keys of both
-          paper configs and the constructor docstring imply a choice they do
-          not make.
+          varxip/varxim diagonal otherwise (run_2pcf.py); assembly replaces the
+          reporting part's with CosmoCov (covariance.terminal_covariance).
+          papers/cosmo_val uses 100 patches on the reporting grid,
+          papers/bmodes and the integration grid 1. In the committed workflow
+          the jackknife covariance reaches no reported number, since cv_pure_eb
+          and cv_cosebis take the CosmoCov integration-grid covariance; on the
+          API path it is the covariance of
+          CosmologyValidation.calculate_cosebis called without cov_path
+          (b_modes.calculate_cosebis) and the error bars of plot_2pcf. The
+          patch layout and count also move xi+- itself through the pair
+          approximation (real_space.pair_approximation). [LINT]
+          (var-method-overridden-by-npatch) the constructor docstring and
+          papers/cosmo_val's cosmo_val.var_method offer a variance method the
+          xi+- measurement does not apply, and the top-level var_method key of
+          both paper configs is read by nothing.
           Values:
           cosmo_val.npatch = 100;
           cosmo_val.var_method = jackknife;
@@ -877,11 +908,13 @@ analyses:
           kmeans_jackknife_by_npatch:
             label: Unseeded k-means patches, persisted; jackknife iff npatch > 1
           seeded_kmeans:
-            label: Seeded k-means without the centres file
-            description: Not implemented (CosmoStat/sp_validation PR #367).
+            label: Seeded k-means on a tree of pinned depth, no centres file
+            description: >-
+              Not implemented in the committed code; open as
+              CosmoStat/sp_validation PR #367.
           sample_or_bootstrap:
             label: TreeCorr sample or bootstrap variance
-            description: Not reachable; calculate_2pcf overrides var_method.
+            description: Not reachable; calculate_2pcf_version overrides var_method.
 
   # ═════════════════════════════════════════════════════════════════════════
   bmodes:
