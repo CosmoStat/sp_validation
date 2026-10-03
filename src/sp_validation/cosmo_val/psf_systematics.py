@@ -945,9 +945,13 @@ class PSFSystematicsMixin:
 
         else:
             filenames = [f"tau_stats_{self.basename(ver)}.fits" for ver in versions]
-            cov_paths = [
-                f"cov_tau_{self.basename(ver)}_{cov_type}.npy" for ver in versions
-            ]
+            cov_paths = (
+                None
+                if cov_type is None
+                else [
+                    f"cov_tau_{self.basename(ver)}_{cov_type}.npy" for ver in versions
+                ]
+            )
             self.tau_stat_handler.plot_tau_stats(
                 filenames,
                 colors,
