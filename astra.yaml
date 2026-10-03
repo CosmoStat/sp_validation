@@ -876,25 +876,25 @@ analyses:
           whatever the constructor's var_method. cross_patch_weight is the
           constructor's: match (the Mohammad & Percival 2022 cross-pair weight)
           when its var_method is jackknife, the constructor default, and simple
-          otherwise. With npatch > 1 the patches are TreeCorr k-means centres
-          computed on the first measurement's catalogue (with tomography, the
-          first bin pair's first bin) and written to
-          {version}_patches_npatch={N}.dat, which later measurements with the
-          same N reuse; sp_validation passes TreeCorr no seed and its k-means
-          returns different centres in each fresh process, so a fresh output
-          tree gets a different layout. The xi part is born with the dense
-          jackknife covariance when it had patches and the shot-noise
-          varxip/varxim diagonal otherwise (run_2pcf.py); assembly replaces the
-          reporting part's with CosmoCov (covariance.terminal_covariance).
+          otherwise. With npatch > 1 and no existing centres file, TreeCorr
+          computes unseeded k-means centres from the first measurement's
+          catalogue (with tomography, the first bin pair's first bin) and
+          writes them to {version}_patches_npatch={N}.dat for reuse; a fresh
+          output tree can therefore get a different layout. run_2pcf.py selects
+          the dense jackknife covariance for patched measurements and the
+          shot-noise varxip/varxim diagonal otherwise, but it expects a
+          GGCorrelation where the surviving calculate_2pcf returns a nested
+          dict; assembly replaces any reporting-part covariance with CosmoCov.
           papers/cosmo_val uses 100 patches on the reporting grid,
-          papers/bmodes and the integration grid 1. In the committed workflow
-          the jackknife covariance reaches no reported number, since cv_pure_eb
-          and cv_cosebis take the CosmoCov integration-grid covariance; on the
-          API path it is the covariance of
-          CosmologyValidation.calculate_cosebis called without cov_path
-          (b_modes.calculate_cosebis) and the error bars of plot_2pcf. The
-          patch layout and count also move xi+- itself through the pair
-          approximation (real_space.pair_approximation). [LINT]
+          papers/bmodes and the integration grid 1. The B-mode rules and
+          terminal reporting vector use CosmoCov rather than the xi+- jackknife
+          covariance; on the API path, calculate_cosebis without cov_path
+          propagates gg.cov (jackknife when npatch > 1, shot noise otherwise),
+          and plot_2pcf_tomography with the xi+- plotting callback uses
+          sqrt(varxip) and sqrt(varxim) for error bars. The #253 comparisons
+          show that patch layout and count can move xi+- itself, with the pair
+          approximation as an unconfirmed cause
+          (real_space.pair_approximation). [LINT]
           (var-method-overridden-by-npatch) the constructor docstring and
           papers/cosmo_val's cosmo_val.var_method offer a variance method the
           xi+- measurement does not apply, and the top-level var_method key of
