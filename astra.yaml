@@ -1879,14 +1879,18 @@ analyses:
         rationale: >-
           inference_prep always passes --use-rho-tau, so the real-space
           likelihood is 2pt_like_xi_sys over XI_PLUS, XI_MINUS, TAU_0_PLUS and
-          TAU_2_PLUS with add_xi_sys, built from the legacy 2pt FITS the
-          script writes (not {version}.sacc), with xi+ and xi- both cut to
-          12-83 arcmin and tau uncut, all 20 bins; the harmonic template fits
-          CELL_EE alone over 300-1600. tau_5 and eta are measured but not
-          fitted. The cuts follow the B-mode PTEs, the xi_sys < 10% criterion
-          and S8 stability below 12 arcmin (Paper II); the harmonic range the
-          BB null test. [HARDCODED] the data sets live in cosmosis_fitting.py;
-          the no-PSF template carries stale 10-200 and 20-200 arcmin cuts.
+          TAU_2_PLUS with add_xi_sys, built from the legacy 2pt FITS the script
+          writes (not {version}.sacc), with xi+ and xi- both cut to 12-83
+          arcmin and tau uncut, all 20 bins; the harmonic template fits CELL_EE
+          alone over 300-1600. tau_5 is measured but not fitted, and the xi_sys
+          and tau models carry no eta term (Paper III fixes eta = 0). In Paper
+          III the 83 arcmin upper cut keeps xi_sys below 10% of the signal, 12
+          arcmin is the smallest xi- lower cut with a passing xi-^B PTE (Paper
+          II), and the xi+ lower cut sits at 12 arcmin, where S8 stops drifting
+          as the cut rises; Paper IV's 300-1600 range drops the scales where
+          the B-mode PTEs show a potential signal. [HARDCODED] the data sets
+          live in cosmosis_fitting.py. The no-PSF template cuts xi+ to 10-200
+          and xi- to 20-200 arcmin.
           Values:
           cosmosis_pipeline_A_psf.ini#2pt_like.angle_range_XI_PLUS_1_1 = 12.0 83.0;
           cosmosis_pipeline_A_psf.ini#2pt_like.angle_range_XI_MINUS_1_1 = 12.0 83.0;
@@ -1899,7 +1903,7 @@ analyses:
             label: xi+- without the PSF model (cosmosis_pipeline_A_ia.ini, without --use-rho-tau)
           xip_from_5_arcmin:
             label: xi+ from 5 arcmin
-            description: A template edit (Paper II robustness run).
+            description: A template edit (the Paper III small_scales run).
           sacc_likelihood:
             label: Read {version}.sacc with a SACC likelihood
             description: Not implemented (CosmoStat/sp_validation PR #255).
@@ -1949,14 +1953,21 @@ analyses:
       likelihood_covariance:
         label: Fixed Gaussian likelihood with a block-diagonal xi, tau, C_l covariance
         rationale: >-
-          2pt_like reads COVMAT with gaussian_covariance F and no
-          covariance_realizations: a fixed analytic covariance with no Hartlap
-          or Sellentin-Heavens correction, right for CosmoCov and NaMaster
-          inputs. covdat_to_fits stacks the processed CosmoCov xi covariance
-          (ng, masked), the first 2n rows of the 3n-row CovTauTh tau
-          covariance (tau_0+, tau_2+), and the EE block, with zero cross
-          blocks. The xi-tau correlation from the shared galaxy shapes is
-          ignored, which narrows the alpha/beta-S8 coupling.
+          2pt_like reads COVMAT with gaussian_covariance F and sets neither
+          covariance_realizations nor sellentin, so the likelihood is Gaussian
+          in a fixed covariance with no Hartlap or Sellentin-Heavens
+          correction; those corrections address noise in covariances estimated
+          from simulations, and every input here is computed (CosmoCov,
+          CovTauTh, the pseudo-C_l covariance). covdat_to_fits stacks the
+          processed CosmoCov xi covariance (the ng product, Gaussian plus
+          non-Gaussian terms, masked), the leading 2n x 2n block (tau_0+,
+          tau_2+) of the 3n x 3n CovTauTh covariance, and the COVAR_FULL HDU of
+          the pseudo-C_l covariance file as the CELL_EE block, with zero cross
+          blocks. The C_l block enters only the harmonic likelihood, which fits
+          CELL_EE alone, so the zero xi-tau block is the only cross block a fit
+          uses. No xi-tau covariance is computed and its size is not measured;
+          a nonzero block would change the real-space likelihood through the
+          alpha and beta that the tau and xi_sys terms share.
           Values:
           cosmosis_pipeline_A_psf.ini#2pt_like.gaussian_covariance = False;
           cosmosis_pipeline_A_psf.ini#2pt_like.covmat_name = COVMAT.
@@ -2033,13 +2044,16 @@ analyses:
       photoz_shift:
         label: Single additive shift of the n(z) with a Gaussian prior
         rationale: >-
-          photoz_bias in additive mode shifts the one-bin n(z) by bias_1 with
-          cubic interpolation and renormalises; bias_1 is sampled in [-0.1,
-          0.1] with the prior N(-0.030, 0.018) in priors_psf.ini and
-          priors.ini. The prior comes from the SOM calibration on mocks (Paper
-          II). The shift moves the lensing kernel and S8. [LINT] the
-          committed mean -0.030 differs from the paper's -0.003
-          (committed-priors-disagree-with-paper-fiducial).
+          photoz_bias in additive mode shifts the one-bin n(z) to n(z - bias_1)
+          with cubic interpolation and renormalises; bias_1 is sampled in
+          [-0.1, 0.1] with the prior N(-0.030, 0.018) in priors_psf.ini and
+          priors.ini. In Paper III the prior mean is the bias found by running
+          the SOM calibration on MICE2 mocks, and the width is the bootstrap
+          scatter over the spectroscopic calibration sample plus systematic
+          terms. A larger bias_1 raises the mean source redshift and the
+          lensing efficiency, which a lower S8 compensates (Paper III). [LINT]
+          the committed mean -0.030 differs from the -0.0030 of Paper III and
+          its fiducial chain (committed-priors-disagree-with-paper-fiducial).
           Values:
           priors_psf.ini#nofz_shifts.bias_1 = gaussian -0.030 0.018;
           values_psf.ini#nofz_shifts.bias_1 = -0.1 0.0 0.1;
@@ -2060,12 +2074,17 @@ analyses:
         rationale: >-
           la_model with method bk_corrected builds the GI, IG and II terms
           added by add_intrinsic; the amplitude A is sampled in [-5, 5] with
-          the prior N(0.83, 0.7). A single bin cannot constrain A, so the
-          prior comes from red/blue fractions and direct measurements (Paper
-          II). The prior mean moves S8 through the GI term. [LINT] the ia and
-          cell templates load linear_alignments_interface_znla.py and the PSF
-          template the plain interface, identical under bk_corrected; the
-          paper quotes a width of 0.78.
+          the prior N(0.83, 0.7). One redshift bin constrains A poorly, so
+          Paper III sets the prior from direct red- and blue-galaxy
+          measurements weighted by the sample's red and blue fractions, 0.83
+          +/- 0.39, with the width doubled to 0.78. A is degenerate with S8
+          through the GI term: in Paper III fixing A = 0 shifts S8 by -0.71
+          sigma and a flat prior nearly doubles the S8 uncertainty. [LINT] the
+          committed width 0.7 differs from the 0.78 of Paper III and its
+          fiducial chain (committed-priors-disagree-with-paper-fiducial). The
+          ia and cell templates load linear_alignments_interface_znla.py and
+          the PSF template the plain interface; under bk_corrected both run
+          bridle_king_corrected.
           Values:
           linear_alignment.method = bk_corrected;
           priors_psf.ini#intrinsic_alignment_parameters.A = gaussian 0.83 0.7;
@@ -2079,7 +2098,10 @@ analyses:
             description: A prior-file edit (robustness run).
           nla_with_redshift_evolution:
             label: NLA with a redshift power-law (znla interface)
-            description: The ia template's interface; a method switch.
+            description: >-
+              Method znla in linear_alignments_interface_znla.py, the ia and
+              cell templates' interface; it also reads an eta parameter that no
+              committed values file sets.
           tatt:
             label: TATT
             description: Not implemented.
@@ -2087,13 +2109,17 @@ analyses:
         label: Flat LCDM sampled in omch2, h0, ombh2, n_s and S8
         rationale: >-
           values_psf.ini samples omch2 in [0.051, 0.255], h0 in [0.64, 0.82],
-          ombh2 in [0.019, 0.026] with the prior N(0.0244, 0.00038), n_s in
-          [0.84, 1.1] and S_8_input in [0.1, 1.3] through sample_S8, with tau
-          0.0544, w -1, wa 0, omega_k 0 and mnu 0.06 eV fixed. The ranges
-          follow KiDS-Legacy and the BBN baryon prior (Paper II). The S8
-          prior is flat by construction; the h0 and n_s bounds project onto
-          S8. [LINT] the committed ombh2 prior differs from the paper's
-          0.02218 +/- 0.00055 (committed-priors-disagree-with-paper-fiducial).
+          ombh2 in [0.019, 0.026], n_s in [0.84, 1.1] and S_8_input in [0.1,
+          1.3], which sample_S8 converts to sigma_8 = S8 / (Omega_m / 0.3)^0.5,
+          with tau 0.0544, w -1, wa 0, omega_k 0 and mnu 0.06 eV fixed;
+          priors_psf.ini adds the Gaussian N(0.0244, 0.00038) on ombh2. Paper
+          III takes the ranges from Table 2 of the DES Y3 + KiDS-1000 analysis
+          and adds a BBN prior on ombh2. The S8 prior is flat by construction,
+          and the Omega_m prior follows from the omch2, ombh2 and h0 bounds;
+          sampling ln(10^10 A_s) instead would make the implied S8 prior
+          non-flat. [LINT] the committed ombh2 prior differs from the BBN prior
+          0.02218 +/- 0.00055 of Paper III and its fiducial chain
+          (committed-priors-disagree-with-paper-fiducial).
           Values:
           values_psf.ini#cosmological_parameters.omch2 = 0.051 0.12249999999999998 0.255;
           values_psf.ini#cosmological_parameters.h0 = 0.64 0.70 0.82;
@@ -2109,7 +2135,7 @@ analyses:
         default: s8_flat_lcdm
         options:
           s8_flat_lcdm:
-            label: Flat LCDM in S8, fixed neutrino mass and dark energy
+            label: Flat LCDM in S8, with mnu, w and wa fixed
           sample_as:
             label: Sample ln(10^10 A_s) instead of S8
             description: Not implemented in the templates.
@@ -2119,11 +2145,17 @@ analyses:
       nonlinear_power_and_baryons:
         label: CAMB with HMCode2020 feedback, logT_AGN sampled
         rationale: >-
-          camb runs in power mode with halofit_version mead2020_feedback,
-          kmax 20 extrapolated to 500, nk 200 and zmax 5; logT_AGN is sampled
-          in [7.3, 8.0]. HMCode2020 is accurate to 2.5% to k = 10 h/Mpc
-          (Paper II). The small-scale model and the baryon marginalisation
-          set the S8 response to the 12 arcmin cut.
+          The camb section sets power mode with halofit_version
+          mead2020_feedback, kmax 20 extrapolated to 500, nk 200 and zmax 5,
+          and values_psf.ini samples logT_AGN in [7.3, 8.0]. Paper III chooses
+          HMCode2020 for its 2.5% accuracy to k = 10 h/Mpc against N-body
+          simulations and marginalises over AGN feedback, which hydrodynamical
+          simulations put at logT_AGN 7.6-8.0. At 12 arcmin, wavenumbers above
+          0.43 h/Mpc contribute under 10% of xi+ and above 2.85 h/Mpc under 10%
+          of xi-, and Paper III finds no appreciable change in S8, sigma8 or
+          Omega_m with HMCode2020 without feedback or with Takahashi halofit.
+          The fiducial C_l behind the pseudo-C_l covariance does not use this
+          model (covariance.pseudo_cl_fiducial_theory).
           Values:
           camb.halofit_version = mead2020_feedback;
           camb.kmax = 20.0;
@@ -2137,10 +2169,10 @@ analyses:
             label: HMCode2020 with AGN feedback, logT_AGN free
           hmcode_no_feedback:
             label: HMCode without feedback
-            description: A template edit (robustness run).
+            description: halofit_version mead2020, a template edit (the Paper III no_baryons run).
           takahashi_halofit:
             label: Takahashi halofit
-            description: A template edit (robustness run).
+            description: halofit_version takahashi, a template edit (the Paper III Halofit run).
       sampler:
         label: PolyChord with 192 live points
         rationale: >-
