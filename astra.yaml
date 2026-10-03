@@ -1906,17 +1906,27 @@ analyses:
       theory_sampling:
         label: Theory point-sampled at the data angles; rho/tau relabelled onto the xi grid
         rationale: >-
-          Every 2pt HDU carries WINDOWS = SAMPLE (cosmosis_fitting._create_2pt_hdu,
-          cl_to_fits; sacc_io._twopoint_hdu), so CosmoSIS evaluates xi at the
-          stored meanr and C_l at ell_eff, without bin averaging or the
-          NaMaster bandpower windows the SACC carries. rho and tau theta are
-          overwritten with the xi meanr without interpolation, warning only
-          above a 5% difference, so the xi_sys lookup can match by angle. No
-          rationale is recorded for point sampling. The curvature error of
-          point-sampled sqrt-spaced bandpowers is of order (Delta ell/ell)^2
-          per band. [LINT] the xi_sys module reads the next bin's value when a
-          data angle exceeds the xi_sys angle by one ulp
-          (xi-sys-searchsorted-next-bin).
+          cosmosis_fitting.py writes WINDOWS = SAMPLE on the HDUs it builds
+          (_create_2pt_hdu for TAU_0_PLUS and TAU_2_PLUS, cl_to_fits for
+          CELL_EE) and copies the data-mode XI_PLUS and XI_MINUS HDUs from the
+          input files unchanged; sacc_io._twopoint_hdu writes it on every HDU
+          of sacc_to_twopoint_fits, which no committed rule calls. 2pt_like
+          interpolates the theory at each HDU's ANG because no template module
+          flags its output bin-averaged (spec_tools bin_avg, default False), so
+          xi is evaluated at the stored angles and C_l at the stored ell (the
+          NaMaster ell_eff), without bin averaging or the NaMaster bandpower
+          windows the SACC carries, which sacc_io._build_cell drops.
+          cosmosis_fitting.py overwrites the rho and tau theta with the xi ANG
+          without interpolation, printing a warning when they differ by more
+          than 5% and continuing; sacc_io._build_rho_tau does the same without
+          the check. The converter docstrings give consistency with xi as the
+          reason, and the xi_sys lookup, a searchsorted on angle, relies on the
+          shared grid. No rationale is recorded for point sampling. For a
+          smooth spectrum, point sampling a window-averaged bandpower misses a
+          curvature term of order (Delta ell/ell)^2 per band. [LINT]
+          2pt_like_xi_sys adds the next bin's xi_sys when a data angle exceeds
+          the xi_sys angle by one ulp, because the two arcmin-to-radian
+          conversions differ (xi-sys-searchsorted-next-bin).
           Values:
           cosmosis_fitting.py#WINDOWS = SAMPLE;
           sacc_io.py#WINDOWS = SAMPLE;
@@ -1927,10 +1937,15 @@ analyses:
             label: WINDOWS = SAMPLE; rho/tau theta set to the xi meanr
           bandpower_windows:
             label: Convolve the C_l theory with the NaMaster windows
-            description: Not implemented; pending the SACC likelihood.
+            description: >-
+              Not implemented: neither converter writes the windows into the
+              2pt FITS.
           own_theta:
             label: Keep rho and tau at their own meanr
-            description: Not implemented in the converter.
+            description: >-
+              tau_to_fits and rho_to_fits keep their own theta when called
+              without one, but cosmosis_fitting.py always passes the xi theta
+              and has no option to select this.
       likelihood_covariance:
         label: Fixed Gaussian likelihood with a block-diagonal xi, tau, C_l covariance
         rationale: >-
@@ -1958,15 +1973,19 @@ analyses:
       psf_leakage_model:
         label: PSF leakage term in the likelihood and its priors
         rationale: >-
-          add_xi_sys and tau_from_rho (the UNIONS CosmoSIS Standard Library
-          fork) model xi_sys = alpha^2 rho_0 + beta^2 rho_1 + 2 alpha beta
-          rho_2 and the tau prediction with two constant coefficients;
-          priors_psf.ini sets alpha ~ N(0.0051, 0.022) and beta ~ N(0.8098,
-          0.1148), sampled within [-0.1, 0.1] and [-2, 2] (values_psf.ini).
-          The priors come from a separate PSF-only inference and are
-          hand-copied numbers, not read from the rho/tau fit of the catalogue
-          version [HARDCODED]. [LINT] the committed alpha width is ten times
-          the paper's 0.0022 (committed-priors-disagree-with-paper-fiducial).
+          add_xi_sys and tau_from_rho (shear/xi_sys in the UNIONS-WL CosmoSIS
+          Standard Library fork) model xi_sys = alpha^2 rho_0 + beta^2 rho_1 +
+          2 alpha beta rho_2 and tau_0 = alpha rho_0 + beta rho_2, tau_2 =
+          alpha rho_2 + beta rho_1, with two scalar coefficients and one
+          redshift bin. priors_psf.ini sets alpha ~ N(0.0051, 0.022) and beta ~
+          N(0.8098, 0.1148), sampled within [-0.1, 0.1] and [-2, 2]
+          (values_psf.ini). Paper III takes these priors from a separate fit of
+          alpha and beta to rho and tau, because unconstrained leakage
+          parameters can absorb cosmological signal through their degeneracies.
+          In priors_psf.ini they are literals that no committed code derives
+          from the rho/tau fit of the catalogue version [HARDCODED]. [LINT] the
+          committed alpha width is ten times the paper's 0.0022
+          (committed-priors-disagree-with-paper-fiducial).
           Values:
           priors_psf.ini#psf_leakage_parameters.alpha = gaussian 0.0051 0.022;
           priors_psf.ini#psf_leakage_parameters.beta = gaussian 0.8098 0.1148;
@@ -1975,24 +1994,28 @@ analyses:
         default: gaussian_alpha_beta
         options:
           gaussian_alpha_beta:
-            label: alpha, beta with Gaussian priors from the PSF-only fit
+            label: Gaussian priors on alpha and beta (priors_psf.ini)
           flat_alpha_beta:
             label: Flat priors within the sampling bounds
-            description: A prior-file edit (Paper II robustness run).
+            description: A prior-file edit; Paper III runs it for comparison.
           no_xi_sys:
             label: No PSF term
             description: The no-PSF template, selected without --use-rho-tau.
       shear_calibration_prior:
-        label: One multiplicative bias with a Gaussian prior on xi+- (and C_l)
+        label: One multiplicative bias m1 with a Gaussian prior, applied to xi+- (and C_l)
         rationale: >-
-          shear_m_bias applies a single m1 to shear_xi_plus and
-          shear_xi_minus (shear_cl in the harmonic template) with m_per_bin,
-          sampled in [-0.1, 0.1]. priors.ini sets m1 ~ N(-0.057, 0.014), the
-          image-simulation m = -0.057 +/- 0.0047 inflated threefold (Paper II);
-          priors_psf.ini, the file the committed --use-rho-tau path loads,
-          sets N(-0.0057, 0.014). m1 is degenerate with the amplitude, so its
-          mean shifts S8 nearly one for one. [LINT] the committed path's
-          prior mean is ten times smaller than the paper's
+          shear_m_bias with m_per_bin multiplies each auto-correlation bin by
+          (1 + m_i)(1 + m_j); with one source bin a single m1 scales
+          shear_xi_plus and shear_xi_minus (shear_cl in the harmonic template)
+          by (1 + m1)^2, with m1 sampled in [-0.1, 0.1]. priors.ini sets m1 ~
+          N(-0.057, 0.014): the image-simulation m = -0.057 +/- 0.0047 (Paper
+          V) with its uncertainty tripled because the simulated images might
+          not capture these effects exactly (Paper III). priors_psf.ini, which
+          generate_cosmosis_config writes into both the real-space and the
+          harmonic configuration under --use-rho-tau, sets N(-0.0057, 0.014).
+          m1 rescales the theory amplitude, so its prior mean moves S8; at the
+          two committed means (1 + m1)^2 differs by 11%. [LINT] the
+          --use-rho-tau prior mean is a tenth of the paper's -0.057
           (m-prior-typo-rho-tau-path).
           Values:
           priors_psf.ini#shear_calibration_parameters.m1 = gaussian -0.0057 0.014;
@@ -2006,7 +2029,7 @@ analyses:
             label: m1 ~ N(mean, 0.014), one bin
           fixed_zero:
             label: m1 fixed to 0
-            description: A values-file edit (robustness run).
+            description: A values-file edit.
       photoz_shift:
         label: Single additive shift of the n(z) with a Gaussian prior
         rationale: >-
@@ -2121,33 +2144,57 @@ analyses:
       sampler:
         label: PolyChord with 192 live points
         rationale: >-
-          runtime.sampler is polychord with live_points 192, resume T, and
-          tolerance, num_repeats and random_seed at the CosmoSIS defaults.
-          Stage III practice (Paper II). Sampling noise enters S8 and the
-          evidence, and reruns are not bit-reproducible.
-          Values: runtime.sampler = polychord; polychord.live_points = 192;
+          runtime.sampler is polychord with live_points 192 and resume T in the
+          real-space and harmonic templates (cosmosis_pipeline_A_psf.ini,
+          cosmosis_pipeline_A_ia_cell.ini); tolerance (0.1), num_repeats (0,
+          which the sampler expands to three times the slow-parameter count)
+          and random_seed (-1) stay at the CosmoSIS sampler defaults. PolyChord
+          follows other Stage III analyses and gives reliable posteriors at
+          reasonable cost (Paper III). Sampling noise enters S8 and the
+          evidence; with no fixed seed, fresh runs are not bit-reproducible,
+          and resume T reads any saved state under base_dir.
+          Values:
+          runtime.sampler = polychord;
+          polychord.live_points = 192;
           polychord.resume = True.
         default: polychord_192
         options:
           polychord_192:
-            label: PolyChord, 192 live points, unseeded
+            label: PolyChord, 192 live points, no fixed seed
           nautilus:
             label: Nautilus
-            description: A template edit (robustness run).
+            description: A template edit; Paper III runs it as a consistency check.
       posterior_summary:
         label: Point estimate and intervals reported from the chains
         rationale: >-
-          chain_postprocessing loads the chain with GetDist at smoothing scale
-          0.3 keeping every row, and extract_best_fit_params returns the
-          weighted mean by default; the paper scripts request 2Dkde, the mode
-          of the joint (S8, Omega_m) KDE on a 1000-bin grid, with 1D KDE modes
-          for the other parameters, and the 68% limits are GetDist's
-          marginal limits. A tension is |Delta mode|/sqrt(sigma1^2 + sigma2^2)
-          with each sigma the mean of the upper and lower errors
-          (get_sigma_tension). The reported S8 is a KDE mode whose value
-          depends on the smoothing, and the error bars are equal-tail limits
-          measured from it.
-          Values: smoothing_scale = 0.3; num_bins = 1000;
+          write_samples_getdist_format converts the CosmoSIS chain, and
+          load_chain reads it with GetDist with ignore_rows 0 (no burn-in
+          removed) and a KDE smoothing scale that defaults to 0.3;
+          papers/realspace/S8_om_sigma8_whisker.py, which builds the S8, sigma8
+          and Omega_m summary, passes 0.5. extract_best_fit_params returns the
+          weighted posterior mean by default; with 2Dkde, which the whisker
+          script requests, it returns the mode of the joint (S_8, OMEGA_M) KDE
+          on a 1000-bin grid for those two parameters and the 1D KDE mode for
+          the others. Paper III reports the 2D mode for S8 and Omega_m to limit
+          the projection effects of 1D marginalisation, and 1D modes otherwise.
+          The intervals are GetDist's 68% marginal limits: equal-tail quantiles
+          when the normalised KDE density at the two quantiles differs by less
+          than 0.05 (credible_interval_threshold), otherwise the KDE's
+          equal-density limits; the whisker script turns them into offsets from
+          the mode. get_sigma_tension returns |x1 - x2| / sqrt(sigma1^2 +
+          sigma2^2) with the sign of x1 - x2, each sigma the mean of the two
+          offsets; the whisker script passes the 2D modes. The reported S8
+          depends on the KDE smoothing, and for a skewed posterior the mode and
+          the mean differ. [LINT] write_samples_getdist_format writes +log
+          posterior into GetDist's -log-likelihood column for PolyChord chains,
+          so likelihood-ordered GetDist outputs pick the worst sample; weights,
+          means, KDE modes and limits are unaffected
+          (polychord-getdist-loglike-sign). [LINT] derive_parameter_Om, which
+          nothing calls, divides omch2 by (h0/100)^2 although h0 is the reduced
+          h, and omits ombh2 (derive-parameter-om-units).
+          Values:
+          smoothing_scale = 0.3;
+          num_bins = 1000;
           best_fit_method = weighted_mean.
         default: kde_mode_2d
         options:
