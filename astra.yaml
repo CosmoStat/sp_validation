@@ -1023,11 +1023,12 @@ analyses:
           is 33% unpadded and 1.4% padded with the bug, and 0.015% unpadded and
           0.9% padded with the fix (aguinot/cosmo-numba#22), so with the fixed
           kernel padding adds leakage. On cosmo_val's 0.08-300 arcmin grid the
-          bug moves the fiducial xi-^B by at most 3.3e-7 sigma; on
-          papers/bmodes' 0.5-300 arcmin grid the noiseless xi-^B inside 12-83
-          arcmin agrees across the four bug/padding variants to about 0.03
-          sigma, and xi+^B is the same in all four. [HARDCODED] in the
-          dependency default.
+          bug moves the fiducial xi-^B by at most 3.3e-7 sigma; in the upstream
+          comparison on a 0.5-300 arcmin input grid, evaluated at reporting
+          meanr with a separately npairs-rebinned local term and [tmin, tmax] =
+          [1.1658, 221] arcmin, xi-^B/sigma spans up to about 0.06 across the
+          four kernel/padding variants inside 12-83 arcmin, while xi+^B/sigma
+          is identical in all four. [HARDCODED] in the dependency default.
           Values: pad_xim = absent; pad_theta_max_decade = absent.
         default: pad_one_decade
         options:
@@ -1049,19 +1050,19 @@ analyses:
           The cosmo_val workflow feeds both statistics the CosmoCov Gaussian
           ("g") xi+- covariance on the integration grid (cosmo_val.smk
           cv_xi_cov_integration), whose shape noise carries no footprint
-          correction (covariance.footprint_mask_power), and carries it exactly
-          through each linear kernel: K C K^T for the pure modes
-          (calculate_pure_eb_correlation) and cosmo_numba's
-          cosebis_covariance_from_xipm_covariance for COSEBIs, which writes
-          zeros for the E/B cross block; npatch is None, so no Hartlap factor
-          applies. The docstring of cv_xi_cov_integration gives the reason:
-          B-modes only need the scatter a Gaussian field would give. [LINT] the
-          same docstring says the pure-E/B Monte Carlo draws from the
-          covariance, while cv_pure_eb propagates it exactly. Without a
-          covariance file, develop's API mixins (PureEBMixin.calculate_pure_eb,
-          CosebisMixin.calculate_cosebis) use the TreeCorr jackknife of the
-          integration-grid xi, with Hartlap. The choice sets every pure-E/B and
-          COSEBIs error bar and PTE.
+          correction (covariance.footprint_mask_power), and propagates the full
+          pure-mode covariance as K C K^T (calculate_pure_eb_correlation) and
+          the COSEBIs EE and BB marginal blocks through their linear kernels
+          (cosmo_numba's cosebis_covariance_from_xipm_covariance), while
+          setting the COSEBIs E/B cross block to zero; npatch is None, so no
+          Hartlap factor applies. The docstring of cv_xi_cov_integration gives
+          the reason: B-modes only need the scatter a Gaussian field would
+          give. [LINT] the same docstring says the pure-E/B Monte Carlo draws
+          from the covariance, while cv_pure_eb propagates it exactly. Without
+          a covariance file, develop's API mixins
+          (PureEBMixin.calculate_pure_eb, CosebisMixin.calculate_cosebis) use
+          the TreeCorr jackknife of the integration-grid xi, with Hartlap. The
+          choice sets every pure-E/B and COSEBIs error bar and PTE.
           Values: cv_cosebis.py#npatch = absent.
         default: cosmocov_gaussian_exact
         options:
@@ -1161,9 +1162,11 @@ analyses:
           the figures.smk comment calls the excluded windows high modes outside
           the analysis range; they are single reporting bins between 12 and 48
           arcmin, inside the bins the fiducial cut selects. The filter support
-          is narrower than the nominal cut the SACC tags record: on cosmo_val's
-          0.08-300 arcmin grid its ends sit about 0.5% above 12 and 1% below 83
-          arcmin.
+          uses the retained integration bins' measured meanr extrema rather
+          than the nominal cut recorded in the SACC tags; on cosmo_val's
+          0.08-300 arcmin grid, the first and last retained bins for the 12-83
+          arcmin cut span about 12.014-12.113 and 81.738-82.413 arcmin,
+          respectively.
           Values:
           cosmo_val.cosebis.nmodes = 20;
           precision = 120;
@@ -1197,10 +1200,12 @@ analyses:
           (heatmap-ignores-pte-healthy-range), and its comment calls the
           interval 2 sigma, though it leaves 10% in the two tails. develop's
           statistics.calibrate_min_pte, a mock-calibrated global minimum-PTE
-          threshold, is called by no rule, and its global_pte (count/N) rejects
-          more often than alpha with a finite mock set
-          (global-min-pte-finite-mock-pvalue); the tomography branch's
-          statistics.py, which the merge keeps, has no such function.
+          threshold, is called by no rule, and its global_pte (count/N) can
+          reject more often than alpha with a finite mock set: under
+          exchangeable continuous null ranks, p <= 0.05 rejects 2/21 of the
+          time with 20 mocks (global-min-pte-finite-mock-pvalue); the
+          tomography branch's statistics.py, which the merge keeps, has no such
+          function.
           Values:
           cosmo_val.include_pseudo_cl = True;
           cl.fiducial_ell_min = 300;
@@ -1377,9 +1382,10 @@ analyses:
           cat_config names HSM_T_PSF/HSM_T_STAR as the sizes, so the size
           residual is (T_star - T_psf)/T_star = 2r - r^2 for a fractional sigma
           residual r, about twice it, and rho_3, rho_4, rho_5 and tau_5 carry
-          it. Treating the stored values as e and converting them to g would
-          roughly halve every PSF and star ellipticity and rescale every rho
-          and tau.
+          it. Treating the stored values as e and converting them to g
+          approximately halves small PSF and star ellipticities, but the
+          conversion factor depends on each object's ellipticity and does not
+          uniformly rescale the rho and tau statistics.
         default: flags_zero_g_and_t
         options:
           flags_zero_g_and_t:
@@ -1388,7 +1394,7 @@ analyses:
             label: Every PSF-catalogue row (develop)
             excluded: true
             excluded_reason: >-
-              Flagged stars carry a sentinel star size (sigma about 0.185) and
+              On v1.4.a, flagged stars have a median star sigma of 0.1856 and
               enter the size-error field with a median |w| about nine times
               that of clean stars.
           sigma_residual:
@@ -1404,10 +1410,11 @@ analyses:
           reporting grid of real_space.reporting_grid (20 Log bins, 1-250
           arcmin). Galaxies are weighted by shear.w_col, w_des, and have their
           weighted mean subtracted per component; star fields are unweighted
-          and uncentred. No rationale is recorded. Uncentred PSF fields keep
-          <p>^2-type terms in rho at all scales (the mean PSF ellipticity on
-          v1.4.a is (0.011, 0.010)); without the galaxy centering, tau would
-          carry a scale-independent <e_g><p> term. On the tomography branch the
+          and uncentred. No rationale is recorded. Uncentred PSF fields retain
+          mean-shape contributions in rho (the mean PSF ellipticity on v1.4.a
+          is (0.011, 0.010)); galaxy centering removes correlations of the
+          subtracted galaxy mean with each star field, which need not be
+          scale-independent in a finite survey. On the tomography branch the
           galaxy mean is the full-catalogue mean even under a bin mask [LINT
           tomo-tau-centering-before-bin-mask]. [HARDCODED] in the dependency:
           the field definitions, weights and centering; the columns and the
@@ -1541,10 +1548,11 @@ analyses:
           docstring calls them small and time-consuming), and its affine fit
           gives every point the scalar scatter as its error; the merged file
           keeps that method, but nothing in the committed workflow calls it.
-          With fast True a residual additive bias c adds about Re(c
-          <e_p>*)/xi_pp+ to develop's alpha(theta), largest where xi_pp+ is
-          small; a 60,041-star sample of the v1.4.a star catalogue has mean
-          ellipticity (0.011, 0.010). [HARDCODED]
+          With fast True a residual additive bias c changes develop's
+          alpha(theta) by xi_cp+/xi_pp+, where xi_cp+ is the correlation of the
+          constant galaxy field c with the star field; a 60,041-star sample of
+          the v1.4.a star catalogue has mean ellipticity (0.011, 0.010).
+          [HARDCODED]
         default: fast_ratio_and_linear_mix
         options:
           fast_ratio_and_linear_mix:
@@ -2010,27 +2018,28 @@ analyses:
       theory_sampling:
         label: Theory point-sampled at the data angles; rho/tau relabelled onto the xi grid
         rationale: >-
-          cosmosis_fitting.py writes WINDOWS = SAMPLE on the HDUs it builds
-          (_create_2pt_hdu for TAU_0_PLUS and TAU_2_PLUS, cl_to_fits for
-          CELL_EE) and copies the data-mode XI_PLUS and XI_MINUS HDUs from the
-          input files unchanged; sacc_io._twopoint_hdu writes it on every HDU
-          of sacc_to_twopoint_fits, which no committed rule calls. 2pt_like
-          interpolates the theory at each HDU's ANG because no template module
-          flags its output bin-averaged (spec_tools bin_avg, default False), so
-          xi is evaluated at the stored angles and C_l at the stored ell (the
-          NaMaster ell_eff), without bin averaging or the NaMaster bandpower
-          windows the SACC carries, which sacc_io._build_cell drops.
-          cosmosis_fitting.py overwrites the rho and tau theta with the xi ANG
-          without interpolation, printing a warning when they differ by more
-          than 5% and continuing; sacc_io._build_rho_tau does the same without
-          the check. The converter docstrings give consistency with xi as the
-          reason, and the xi_sys lookup, a searchsorted on angle, relies on the
-          shared grid. No rationale is recorded for point sampling. For a
-          smooth spectrum, point sampling a window-averaged bandpower misses a
-          curvature term of order (Delta ell/ell)^2 per band. [LINT]
-          2pt_like_xi_sys adds the next bin's xi_sys when a data angle exceeds
-          the xi_sys angle by one ulp, because the two arcmin-to-radian
-          conversions differ (xi-sys-searchsorted-next-bin).
+          cosmosis_fitting.py writes WINDOWS = SAMPLE on the two-point HDUs it
+          builds and copies the data-mode XI_PLUS and XI_MINUS HDUs unchanged;
+          sacc_io._twopoint_hdu writes it on the XI_PLUS, XI_MINUS, CELL_EE,
+          TAU_0_PLUS and TAU_2_PLUS tables in sacc_to_twopoint_fits, which no
+          committed workflow rule calls. 2pt_like interpolates xi at the stored
+          ANG and C_l at the stored NaMaster ell_eff because these theory
+          sections are not flagged bin-averaged (spec_tools bin_avg defaults to
+          False), while tau uses exact-angle lookup; neither xi nor C_l is
+          bin-averaged in the likelihood, and sacc_io._build_cell drops the
+          SACC bandpower windows. cosmosis_fitting.py overwrites the rho and
+          tau theta with the xi ANG without interpolation, printing a warning
+          when they differ by more than 5% and continuing;
+          sacc_io._build_rho_tau does the same without the check. The converter
+          docstrings give consistency with xi as the reason, and the xi_sys
+          lookup, a searchsorted on angle, relies on the shared grid. No
+          rationale is recorded for point sampling. For a normalised window
+          centred on ell_eff and a spectrum varying on the scale ell_eff, the
+          leading relative point-sampling error is of order (Delta
+          ell/ell_eff)^2. [LINT] 2pt_like_xi_sys adds the next bin's xi_sys
+          when a data angle exceeds the xi_sys angle by one ulp, because the
+          two arcmin-to-radian conversions differ
+          (xi-sys-searchsorted-next-bin).
           Values:
           cosmosis_fitting.py#WINDOWS = SAMPLE;
           sacc_io.py#WINDOWS = SAMPLE;
@@ -2090,13 +2099,13 @@ analyses:
           alpha rho_2 + beta rho_1, with two scalar coefficients and one
           redshift bin. priors_psf.ini sets alpha ~ N(0.0051, 0.022) and beta ~
           N(0.8098, 0.1148), sampled within [-0.1, 0.1] and [-2, 2]
-          (values_psf.ini). Paper III takes these priors from a separate fit of
-          alpha and beta to rho and tau, because unconstrained leakage
-          parameters can absorb cosmological signal through their degeneracies.
-          In priors_psf.ini they are literals that no committed code derives
-          from the rho/tau fit of the catalogue version [HARDCODED]. [LINT] the
-          committed alpha width is ten times the paper's 0.0022
-          (committed-priors-disagree-with-paper-fiducial).
+          (values_psf.ini). Paper III derives its Gaussian leakage priors from
+          a separate fit of alpha and beta to rho and tau, because
+          unconstrained leakage parameters can absorb cosmological signal
+          through their degeneracies. In priors_psf.ini they are literals that
+          no committed code derives from the rho/tau fit of the catalogue
+          version [HARDCODED]. [LINT] the committed alpha width is ten times
+          the paper's 0.0022 (committed-priors-disagree-with-paper-fiducial).
           Values:
           priors_psf.ini#psf_leakage_parameters.alpha = gaussian 0.0051 0.022;
           priors_psf.ini#psf_leakage_parameters.beta = gaussian 0.8098 0.1148;
@@ -2121,11 +2130,12 @@ analyses:
           by (1 + m1)^2, with m1 sampled in [-0.1, 0.1]. priors.ini sets m1 ~
           N(-0.057, 0.014): the image-simulation m = -0.057 +/- 0.0047 (Paper
           V) with its uncertainty tripled because the simulated images might
-          not capture these effects exactly (Paper III). priors_psf.ini, which
-          generate_cosmosis_config writes into both the real-space and the
-          harmonic configuration under --use-rho-tau, sets N(-0.0057, 0.014).
-          m1 rescales the theory amplitude, so its prior mean moves S8; at the
-          two committed means (1 + m1)^2 differs by 11%. [LINT] the
+          not capture these effects exactly (Paper III). priors_psf.ini sets m1
+          ~ N(-0.0057, 0.014), and generate_cosmosis_config references it in
+          each requested real-space or harmonic configuration when
+          --use-rho-tau is set without --mock. m1 rescales the theory
+          amplitude, so changing its prior can affect inferred S8; (1 + m1)^2
+          is 11% larger at m1 = -0.0057 than at m1 = -0.057. [LINT] the
           --use-rho-tau prior mean is a tenth of the paper's -0.057
           (m-prior-typo-rho-tau-path).
           Values:
@@ -2287,7 +2297,8 @@ analyses:
           follows other Stage III analyses and gives reliable posteriors at
           reasonable cost (Paper III). Sampling noise enters S8 and the
           evidence; with no fixed seed, fresh runs are not bit-reproducible,
-          and resume T reads any saved state under base_dir.
+          and resume T enables reading the saved state for
+          polychord_outfile_root under base_dir.
           Values:
           runtime.sampler = polychord;
           polychord.live_points = 192;
@@ -2318,15 +2329,15 @@ analyses:
           equal-density limits; the whisker script turns them into offsets from
           the mode. get_sigma_tension returns |x1 - x2| / sqrt(sigma1^2 +
           sigma2^2) with the sign of x1 - x2, each sigma the mean of the two
-          offsets; the whisker script passes the 2D modes. The reported S8
-          depends on the KDE smoothing, and for a skewed posterior the mode and
-          the mean differ. [LINT] write_samples_getdist_format writes +log
+          offsets; the whisker script passes the 2D modes. The reported
+          KDE-mode S8 depends on the smoothing, and the mode can differ from
+          the posterior mean. [LINT] write_samples_getdist_format writes +log
           posterior into GetDist's -log-likelihood column for PolyChord chains,
           so likelihood-ordered GetDist outputs pick the worst sample; weights,
           means, KDE modes and limits are unaffected
-          (polychord-getdist-loglike-sign). [LINT] derive_parameter_Om, which
-          nothing calls, divides omch2 by (h0/100)^2 although h0 is the reduced
-          h, and omits ombh2 (derive-parameter-om-units).
+          (polychord-getdist-loglike-sign). [LINT] derive_parameter_Om has no
+          production caller; it divides omch2 by (h0/100)^2 although h0 is the
+          reduced h, and omits ombh2 (derive-parameter-om-units).
           Values:
           smoothing_scale = 0.3;
           num_bins = 1000;
@@ -2378,9 +2389,11 @@ analyses:
           recorded for the feedback level or kmax. On the tomography branch
           GlassMockConfig.from_yaml accepts each numeric field from YAML
           (config_glass_mock.yaml lists them commented out); develop's CLI
-          exposes none. sigma8 scales the shell spectra, hence the signal and
-          cosmic variance in every mock statistic; a rerun into an output path
-          that already holds cached spectra keeps their cosmology (see
+          exposes none. sigma8 controls the amplitude of newly computed shell
+          spectra and their contribution to the mock signal and cosmic
+          variance; at unchanged nside and limber, a rerun reuses cached
+          spectra even when the cosmology changes, while shell construction and
+          lensing accumulation still use the requested cosmology (see
           mock_geometry). [HARDCODED] the mead2020_feedback model on both
           branches, and every cosmology field on develop.
         default: planck18_sigma8_0p8102_hmcode
@@ -2405,18 +2418,19 @@ analyses:
           adopts, passes the spectra through glass.discretized_cls (truncation
           to lmax and ncorr 3, and the HEALPix pixel window) and exposes limber
           (default False; the example YAML sets True); develop feeds the raw
-          spectra and uses exact (non-Limber) shell spectra. The footprint is
-          the mask file the run names, resampled when its nside differs and
-          then kept where coverage is at least 0.75; for the v1.4.6.3_v2 mocks
-          it is create_mask.py's occupied-pixel mask of the catalogue at nside
-          4096 (CosmoStat/sp_validation #319). No rationale is recorded for
-          these values. The input spectra stop at ell 4096, about 2.6 arcmin, a
-          scale larger than the 1 arcmin the COSEBIs bias test integrates from,
-          and galaxies sample a shear that is constant over each nside-4096
-          pixel (0.86 arcmin on a side by area). [LINT] the cls cache is keyed
-          on nside and limber (develop's on nside alone) and the
-          downgraded-mask cache on nside alone, neither on the cosmology or the
-          input mask (stale-cls-and-mask-cache).
+          spectra and uses exact (non-Limber) shell spectra. On a mask-cache
+          miss the footprint comes from the mask file the run names, resampled
+          when its nside differs and then kept where coverage is at least 0.75;
+          otherwise the cached mask supplies the footprint, and #319 identifies
+          the v1.4.6.3_v2 input as create_mask.py's occupied-pixel catalogue
+          mask at nside 4096. No rationale is recorded for these values. The
+          input spectra stop at ell 4096, about 2.6 arcmin, a scale larger than
+          the 1 arcmin the COSEBIs bias test integrates from, and galaxies
+          sample a shear that is constant over each nside-4096 pixel (0.86
+          arcmin on a side by area). [LINT] the cls cache is keyed on nside and
+          limber (develop's on nside alone) and the downgraded-mask cache on
+          nside alone, neither on the cosmology or the input mask
+          (stale-cls-and-mask-cache).
         default: linear_shells_lmax_nside_lognormal
         options:
           linear_shells_lmax_nside_lognormal:
@@ -2432,28 +2446,30 @@ analyses:
       mock_source_population:
         label: Source density, clustering, shapes and tomographic labels
         rationale: >-
-          The n(z) is scaled to n_arcmin2 6.0905 and partitioned over shells
-          with glass.partition; positions are drawn with linear bias 1.2 inside
-          the mask; every object has weight 1; intrinsic ellipticities are
-          glass.ellipticity_intnorm with sigma_e 0.2684 per component;
-          glass.galaxy_shear is called without reduced_shear, so the dependency
-          default applies reduced shear g = gamma/(1 - kappa); e2 is stored as
-          -Im(g) (spin2_sign_convention); intrinsic alignments are off (ia_bias
-          None). The tomography branch's make_glass_sim.py, which the merge
-          adopts, normalises each n(z) column to its own n_arcmin2, samples it
-          separately and labels it b + 1; develop digitises PHOTO_Z = z + N(0,
-          0.03 (1 + z)) into equal-density bins (nbins 1), and both branches
-          store that PHOTO_Z. 6.0905 is the catalogue n_eff from the 2405 deg2
-          era; on the 2894 deg2 footprint the catalogue's n_eff is 4.957, and
-          the v1.4.6.3_v2 mocks, generated at the 6.0905 default, carry 17%
-          more galaxies than the catalogue (CosmoStat/sp_validation #319). No
-          rationale is recorded for the bias 1.2. The density and sigma_e set
-          the mock shape noise, which enters every mock covariance and PTE
-          distribution. Reduced shear is nonlinear in the lensing field and can
-          carry a small B-mode (Krause & Hirata 2010) that the zero-mean
-          COSEBIs bias test does not model; its size on these mocks is not
-          measured. [LINT] the optional NLA term is a thousand times too small
-          (ia-nla-amplitude-1e-3).
+          At the generator defaults, the n(z) is normalised to n_arcmin2 6.0905
+          and partitioned over shells with glass.partition; positions are drawn
+          with linear bias 1.2 inside the mask; every object has weight 1;
+          intrinsic ellipticities are glass.ellipticity_intnorm with sigma_e
+          0.2684 per component; glass.galaxy_shear uses its default reduced
+          shear g = gamma/(1 - kappa) to form the lensed ellipticity e_obs =
+          (e_int + g)/(1 + conjugate(g) e_int), and e2 is stored as -Im(e_obs)
+          (spin2_sign_convention); intrinsic alignments are off by default
+          (ia_bias None). The tomography branch's make_glass_sim.py, which the
+          merge adopts, normalises each n(z) column to its own n_arcmin2,
+          samples it separately and labels it b + 1; develop digitises PHOTO_Z
+          drawn from a Gaussian with mean z and standard deviation 0.03 (1 +
+          z), truncated below zero, into equal-density bins (nbins 1), and both
+          branches store photo-z draws from that truncated distribution. 6.0905
+          is the catalogue n_eff from the 2405 deg2 era; on the 2894 deg2
+          footprint the catalogue's n_eff is 4.957, and the v1.4.6.3_v2 mocks,
+          generated at the 6.0905 default, carry 17% more galaxies than the
+          catalogue (CosmoStat/sp_validation #319). No rationale is recorded
+          for the bias 1.2. The density and sigma_e set the mock shape noise,
+          which enters every mock covariance and PTE distribution. Reduced
+          shear is nonlinear in the lensing field and can carry a small B-mode
+          (Krause & Hirata 2010) that the zero-mean COSEBIs bias test does not
+          model; its size on these mocks is not measured. [LINT] the optional
+          NLA term is a thousand times too small (ia-nla-amplitude-1e-3).
         default: neff_6p09_b1p2_sigma_0p2684
         options:
           neff_6p09_b1p2_sigma_0p2684:
@@ -2473,11 +2489,11 @@ analyses:
           (run_glass_mock_2pcf.py), and its pseudo-Cl with NaMaster's catalogue
           estimator on 32 sqrt-spaced bands from lmin 8 to lmax 2048 with e2
           flipped (run_glass_mock_pseudo_cl.py), the bands the data pipeline
-          builds at nside 1024; the rule's nside 1024 is not read by the
-          script. The rule comment gives the reason: the E/B transforms then
-          see the same theta binning on mocks and data, though each runs on its
-          own sample's pair-weighted meanr. The grid extends below the mock
-          band limit (about 2.6 arcmin): it starts at 0.5 arcmin under
+          builds at nside 1024; the script reads the rule's nside 1024 but does
+          not use it. The rule comment gives the reason: the E/B transforms
+          then see the same theta binning on mocks and data, though each runs
+          on its own sample's pair-weighted meanr. The grid extends below the
+          mock band limit (about 2.6 arcmin): it starts at 0.5 arcmin under
           papers/bmodes and 0.08 arcmin under papers/cosmo_val. The standalone
           runner (compute_two_point_stats_glass.py with
           glass_mock.TREECORR_CONFIG) measures xi+- at 1-250 arcmin in 20 bins
@@ -2517,13 +2533,13 @@ analyses:
           further rationale. C_B/N assumes independent mocks whose scatter the
           data covariance describes; sigma_emp/sigma_ana is reported as the
           check but does not enter the chi2. The consumed v1.4.6 mocks hold
-          about 35 M unit-weight galaxies per realisation against the
-          catalogue's 51.6 M weight-effective (CosmoStat/sp_validation #319),
-          and their independence rests on each having been generated with its
-          own -s, since the generator's -N only labels the file. The mocks'
-          reduced shear can carry a small B-mode the zero-mean null does not
-          model. [HARDCODED] the 5- and 8-mode subsets (the config's
-          cosebis.mode_subsets, [6, 20], is not read).
+          about 35 M unit-weight galaxies per realisation; #319's 51.6 M
+          weight-effective count refers to the v1.4.6.3 catalogue, whereas this
+          test selects the SP_v1.4.6_leak_corr covariance, and mock
+          independence requires distinct -s seeds because -N only labels the
+          file. The mocks' reduced shear can carry a small B-mode the zero-mean
+          null does not model. [HARDCODED] the 5- and 8-mode subsets (the
+          config's cosebis.mode_subsets, [6, 20], is not read).
           Values:
           cosebis.theta_min = 1.0;
           cosebis.theta_max = 250.0;
