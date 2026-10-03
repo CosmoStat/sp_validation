@@ -140,12 +140,11 @@ needed for calibration with the method of *metacalibration*
 *before* calibration.
 
 ```{tip}
-`get_calibrated_m_c` calibrates an in-memory catalogue with an unweighted
-additive-bias mean and the response matrix stored on the metacal object.
-`get_calibrate_e_from_cat` reads a catalogue from disk, uses the selected
-weight column for the additive mean, and recomputes the shear response as an
-unweighted mean of the per-object `R_g` columns.
-These helpers therefore need not return the same calibration.
+{func}`sp_validation.calibration.get_calibrated_m_c` calibrates an in-memory
+catalogue with an unweighted additive-bias mean and the metacal object's
+response matrix. {func}`sp_validation.calibration.get_calibrate_e_from_cat`
+calibrates a catalogue on disk with a weighted additive-bias mean and an
+unweighted mean of the per-object `R_g` columns, so the two need not agree.
 ```
 
 ### Open the file
@@ -198,20 +197,18 @@ for comp in (0, 1):
 
 **Multiplicative bias.** In metacalibration this is a 2×2 matrix
 $R = R_g + R_\mathrm{s}$, the sum of the shear response $R_g$ and the selection
-response $R_\mathrm{s}$. Both are stored in the full-sample header; its
-$R_g$ is weighted by `w_iv`, while this example computes a weighted response
-for the selected sample.
+response $R_\mathrm{s}$. Both are stored in the full-sample header, whose
+$R_g$ is an inverse-variance-weighted mean; this example uses an unweighted
+mean.
 
 The per-galaxy shear response is part of the extended catalogue, so the
-`w_iv`-weighted ensemble $R_g$ is computed *after* the sub-sample selection:
+ensemble $R_g$ is computed *after* the sub-sample selection:
 
 ```python
 R_g = np.empty((2, 2))
 for idx in (0, 1):
     for jdx in (0, 1):
-        R_g[idx, jdx] = np.average(
-            data_ext_sub[f'R_g{idx+1}{jdx+1}'], weights=data_ext_sub['w_iv']
-        )
+        R_g[idx, jdx] = np.mean(data_ext_sub[f'R_g{idx+1}{jdx+1}'])
 
 print('Shear response matrix R_g =')
 print(np.matrix(R_g))
