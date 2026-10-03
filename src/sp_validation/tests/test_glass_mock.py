@@ -40,7 +40,23 @@ from sp_validation.glass_mock import (
 
 camb = pytest.importorskip("camb")
 
-HAVE_GLASS = importlib.util.find_spec("glass") is not None
+def _have(module):
+    """True if ``module`` is importable. False if it or a parent is missing."""
+    try:
+        return importlib.util.find_spec(module) is not None
+    except ModuleNotFoundError:
+        # find_spec imports the parent package, which raises if it is absent.
+        return False
+
+
+HAVE_GLASS = _have("glass")
+
+# The map path needs more than GLASS itself: build_shells and
+# Cosmology_from_camb import ``cosmology.compat.camb``, which ships with the
+# ``cosmology`` API package rather than with GLASS. Gate on it separately so a
+# missing dependency reports as a skip instead of masquerading as the (real,
+# but different) glass/cosmology API incompatibility tracked in the xfail below.
+HAVE_COSMOLOGY_CAMB = _have("cosmology.compat.camb")
 
 REFERENCE = Path(__file__).parent / "data" / "glass_mock_camb_reference.npz"
 
@@ -131,6 +147,10 @@ def test_config_change_breaks_reference():
 
 
 @pytest.mark.skipif(not HAVE_GLASS, reason="GLASS not installed in this image")
+@pytest.mark.skipif(
+    not HAVE_COSMOLOGY_CAMB,
+    reason="cosmology.compat.camb not installed in this image",
+)
 @pytest.mark.xfail(
     reason=(
         "glass_mock map path is incompatible with the installed glass/cosmology "

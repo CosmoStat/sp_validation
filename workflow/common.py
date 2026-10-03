@@ -5,19 +5,13 @@ import os
 import re
 from pathlib import Path
 
-# Output roots are env-overridable so a reproduction run can write into a
-# fresh tree without clobbering (or silently reusing) prior products.
-COSMO_VAL = Path(
-    os.environ.get(
-        "COSMO_VAL", "/n17data/cdaley/unions/code/sp_validation/cosmo_val/output"
-    )
-)
+SP_VALIDATION = Path(__file__).resolve().parents[1]
+COSMO_VAL = Path(os.environ.get("COSMO_VAL", SP_VALIDATION / "results/cosmo_val"))
 COSMO_INFERENCE = Path(
-    os.environ.get(
-        "COSMO_INFERENCE", "/n17data/cdaley/unions/code/sp_validation/cosmo_inference"
-    )
+    os.environ.get("COSMO_INFERENCE", SP_VALIDATION / "cosmo_inference")
 )
-CAT_CONFIG = "/n17data/cdaley/unions/code/sp_validation/cosmo_val/cat_config.yaml"
+CAT_CONFIG = SP_VALIDATION / "cosmo_val/cat_config.yaml"
+
 BLINDS = ["A", "B", "C"]
 BLOCK_PAIRS = [("++", "1"), ("--", "2"), ("+-", "3")]
 
@@ -34,12 +28,14 @@ WILDCARD_CONSTRAINTS = {
     "version": r"SP_v[\d.]+(_w_iv)?(_ecut\d+)?(_leak_corr)?",
     "blind": r"[ABC]",
     "nbins": r"\d+",
+    "npatch": r"\d+",
     "min_sep": r"[0-9.]+",
     "max_sep": r"[0-9.]+",
     "gaussian": r"(g|ng)",
     "block_pm": r"(\+\+|--|\+-)",
     "block_i": r"[123]",
     "mask_suffix": r"(_masked)?",
+    "tomo_suffix": r"(_tomo)?",
     "mock_id": r"\d{5}",
     "nside": r"\d+",
 }
