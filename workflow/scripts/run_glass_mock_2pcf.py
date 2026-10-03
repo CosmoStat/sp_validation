@@ -4,7 +4,8 @@ Computes fine-binned ξ±(θ) for mock validation. Output is a treecorr
 GGCorrelation FITS file readable via gg.read(path).
 
 Mock catalogs have columns: RA, Dec, e1, e2, w.
-No response correction or PSF leakage subtraction (these are Gaussian mocks).
+These are lognormal GLASS mocks with no response correction or PSF leakage
+subtraction.
 """
 
 import treecorr

@@ -71,13 +71,13 @@ rule glass_mock_pseudo_cl:
 
 
 rule glass_mock_all_xi:
-    """Aggregator: fine-binned ξ± for 5 mocks."""
+    """Aggregator: fine-binned ξ± for 100 mocks."""
     input:
         expand(MOCK_XI, mock_id=GLASS_MOCK_IDS),
 
 
 rule glass_mock_all_pseudo_cl:
-    """Aggregator: pseudo-Cℓ for 5 mocks at a given nbins."""
+    """Aggregator: pseudo-Cℓ for 100 mocks at a given nbins."""
     input:
         expand(
             f"{MOCK_RESULTS}/pseudo_cl_glass_mock_{{mock_id}}_powspace_nbins={{cl_nbins}}.fits",
@@ -87,7 +87,7 @@ rule glass_mock_all_pseudo_cl:
 
 
 rule glass_mock_validation:
-    """Aggregator: all mock validation inputs (ξ± + pseudo-Cℓ for 5 mocks)."""
+    """Aggregator: all mock validation inputs (ξ± + pseudo-Cℓ for 100 mocks)."""
     input:
         rules.glass_mock_all_xi.input,
         rules.glass_mock_all_pseudo_cl.input,
@@ -116,7 +116,7 @@ rule mock_cosebis_scatter:
 
 # @sc [decision:mocks.cosebis_bias_test]
 rule mock_cosebis_bias_test:
-    """Gather: 25-mock COSEBIS bias test figure + evidence.
+    """Gather: 100-mock COSEBIS bias test figure + evidence.
 
     Collects per-mock COSEBIS from scatter jobs, propagates CosmoCov ξ±
     covariance to COSEBIS space, tests mean B_n = 0 at σ/√N precision.

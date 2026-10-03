@@ -160,7 +160,7 @@ metacal:
   gal_snr_min: 10
   gal_snr_max: 500
 
-  # Relative-size (hlr / hlr_psf) range
+  # Relative-size (ngmix T/Tpsf, with T = 2 sigma^2) range
   # @sc [decision:calibration.metacal_selection]
   gal_rel_size_min: 0.707
   gal_rel_size_max: 3

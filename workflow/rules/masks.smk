@@ -8,7 +8,7 @@ MASK_CLS_FILES in covariance.smk. See covariance.md spec for details.
 This file contains rules for:
 - Processing HealSparse masks to individual nside values (parallelizable)
 - Calculating effective survey areas
-- Computing mask power spectra for CosmoCov integration
+- Computing raw anafast mask power spectra (not CosmoCov-normalized)
 - Generating comparison plots and analysis
 """
 from datetime import datetime
@@ -92,7 +92,7 @@ rule combine_area_summaries:
 rule mask_power_spectrum:
     """Calculate angular power spectrum for a single mask.
 
-    Loads downgraded HEALPix mask, computes C_ell, exports for CosmoCov.
+    Loads a downgraded HEALPix mask and writes its raw anafast C_ell spectrum.
     """
     input:
         mask=f"{MASK_OUTPUT_DIR}/mask_nside{{nside}}.fits"
@@ -240,12 +240,12 @@ rule masks_full_analysis:
         f"{MASK_OUTPUT_DIR}/area_comparison_report.md"
 
 
-# Integration with existing covariance workflow
+# Raw spectra only; the covariance rules read the normalized *_norm.txt files.
 rule prepare_mask_for_cosmocov:
     """
-    Prepare mask power spectra for integration with CosmoCov covariance calculations.
+    Copy raw mask spectra to the configured CosmoCov data directory.
     
-    This rule creates copies of mask power spectra in the CosmoCov data directory.
+    The covariance rules read the 4π-scaled `*_norm.txt` spectra under `data/mask/`.
     """
     input:
         power_spectra=expand(f"{MASK_OUTPUT_DIR}/power_spectra/cl_mask_nside{{nside}}.txt", nside=target_nsides),

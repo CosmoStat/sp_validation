@@ -140,12 +140,11 @@ needed for calibration with the method of *metacalibration*
 *before* calibration.
 
 ```{tip}
-The `sp_validation` library performs every step below for you:
 {func}`sp_validation.calibration.get_calibrated_m_c` calibrates an in-memory
-catalogue for multiplicative and additive bias, and
-{func}`sp_validation.calibration.get_calibrate_e_from_cat` does the same from a
-catalogue on disk. The worked example here is kept for understanding what those
-functions compute.
+catalogue with an unweighted additive-bias mean and the metacal object's
+response matrix. {func}`sp_validation.calibration.get_calibrate_e_from_cat`
+calibrates a catalogue on disk with a weighted additive-bias mean and an
+unweighted mean of the per-object `R_g` columns, so the two need not agree.
 ```
 
 ### Open the file
@@ -183,13 +182,13 @@ data_ext_sub = data_ext[mask]
 
 **Additive bias.** For a survey as large as UNIONS/CFIS the mean shear over the
 observed area is an excellent approximation to zero, so the additive bias is the
-weighted mean of the uncalibrated ellipticities (also stored in the FITS header
-for the full sample):
+unweighted mean of the uncalibrated ellipticities. The full-sample FITS header
+stores these values as `C_1` and `C_2`:
 
 ```python
 c = np.empty(2)
 for comp in (0, 1):
-    c[comp] = np.average(data_ext_sub[f'e{comp+1}_uncal'], weights=data_ext_sub['w'])
+    c[comp] = np.mean(data_ext_sub[f'e{comp+1}_uncal'])
 
 print('Additive bias')
 for comp in (0, 1):
@@ -198,7 +197,9 @@ for comp in (0, 1):
 
 **Multiplicative bias.** In metacalibration this is a 2×2 matrix
 $R = R_g + R_\mathrm{s}$, the sum of the shear response $R_g$ and the selection
-response $R_\mathrm{s}$. Both are also stored in the header for the full sample.
+response $R_\mathrm{s}$. Both are stored in the full-sample header, whose
+$R_g$ is an inverse-variance-weighted mean; this example uses an unweighted
+mean.
 
 The per-galaxy shear response is part of the extended catalogue, so the
 ensemble $R_g$ is computed *after* the sub-sample selection:

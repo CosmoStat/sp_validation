@@ -187,9 +187,11 @@ def area_from_coords(ra, dec, nside):
     """Survey area from galaxy coordinates via HEALPix pixel counting.
     @sc [decision:shear_field.survey_area]
 
-    Bins the galaxy positions onto a HEALPix grid at resolution ``nside`` and
-    sums the area of every occupied pixel. This ignores partial-pixel coverage
-    and so overestimates the true observed area, but needs no external mask.
+    Bins galaxy positions onto a HEALPix grid and sums occupied pixels. Empty
+    footprint pixels make this underestimate area at sparse catalogue sampling.
+    For UNIONS, the estimate is about 37% low at nside=8192 and 6% low at
+    nside=4096; boundary-pixel inflation is smaller.
+    No external mask is required.
 
     Parameters
     ----------
@@ -271,11 +273,12 @@ def ellipticity_dispersion(e1, e2, w):
 
 
 def additive_bias(e1, e2, w, R):
-    """Weighted additive-bias estimates ``(c1, c2)``.
+    """Weighted response-scaled means used for additive subtraction.
     @sc [decision:shear_field.mean_subtraction_and_response]
 
-    Returns the weighted mean of the response-corrected ellipticities
-    ``⟨e1 / R⟩`` and ``⟨e2 / R⟩``, weighted by ``w``.
+    Returns ``⟨e1 / R⟩_w`` and ``⟨e2 / R⟩_w``. These equal the mean
+    ellipticities only when ``R = 1``; the two-point pipeline subtracts them
+    from raw ``e``.
 
     Parameters
     ----------

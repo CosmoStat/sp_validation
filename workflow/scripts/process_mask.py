@@ -64,7 +64,11 @@ def degrade_mask(
 
 
 def calculate_effective_area(healpix_mask: np.ndarray, nside: int) -> float:
-    """Calculate effective survey area in square degrees."""
+    """Estimate area by summing mean-degraded mask values times pixel area.
+
+    HealSparse excludes uncovered children from the mean, so partially covered
+    coarse pixels can be counted as fully covered.
+    """
     # HEALPix pixel area in steradians
     pixel_area_sr = hp.nside2pixarea(nside)
 

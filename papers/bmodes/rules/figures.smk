@@ -102,7 +102,8 @@ def _pte_scale_cut_pairs():
 
     Note: Several pairs excluded due to numerical instability in cosmo_numba
     polynomial root finding (sympy polyroots NoConvergence) with nmodes=20.
-    All involve high modes (>=9) that are beyond our analysis range.
+    They are reporting-grid edge indices of single-bin windows between about
+    12 and 48 arcmin, inside the fiducial [12, 83] arcmin range.
     """
     unstable = {(9, 10), (10, 11), (11, 12), (13, 14)}
     return [(i, j) for i in range(20) for j in range(i + 1, 21) if (i, j) not in unstable]

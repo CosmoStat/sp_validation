@@ -1,7 +1,7 @@
 """Rule cv_plot_2pcf: n_pairs / xi± overlay across versions.
 
-Reads each version's xi txt (declared inputs, produced by cv_2pcf); calls
-plot_2pcf, which re-reads the existing txt files rather than recomputing.
+Reads each version's xi text (declared inputs from the generic `xi` rule in
+`workflow/rules/twopoint.smk`) and calls plot_2pcf, which re-reads the files.
 Writes figures under the output dir. Sentinel-tracked: plot_2pcf emits several
 figures whose names are internal.
 """

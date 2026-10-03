@@ -16,13 +16,12 @@ from scipy.special import j0, jn
 
 
 def process_theta(theta, nz_file, output_root):
-    """Compute shear correlation functions for a single angular scale.
+    """Compute ξ± at one angular separation over a grid of kmax.
 
-    For a given angular separation, this function computes the weak-lensing
-    correlation functions xi+ and xi- over a range of maximum wavenumbers
-    (kmax). The calculation includes nonlinear matter power spectra from
-    CAMB and optionally intrinsic-alignment contributions. Results are
-    appended to output text files.
+    The Limber C_ell uses CAMB's nonlinear matter power spectrum plus
+    intrinsic-alignment terms, always included, with ``P_IA = -A_IA c1 Ω_m / D``
+    (no ``rho_crit`` factor). ``PLANCK18["As"]`` raises ``KeyError`` (cs_util
+    names the key ``A_s``), so the routine fails in CAMB setup before writing.
 
     Parameters
     ----------
@@ -32,7 +31,7 @@ def process_theta(theta, nz_file, output_root):
         Path to the source redshift distribution file. The file must contain
         two columns giving redshift and n(z).
     output_root : str
-        Prefix of the output files. Results are written to
+        Prefix of the output files. Results are appended to
         ``{output_root}_xip.txt`` and ``{output_root}_xim.txt``.
 
     Returns

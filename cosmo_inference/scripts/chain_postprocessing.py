@@ -113,8 +113,9 @@ def load_samples_and_write_paramnames(
 
 
 def write_samples_getdist_format(path_samples, path_gd, chain_type="polychord"):
-    """
-    Load the samples from a CosmoSIS chain and write them in GetDist format
+    """Write CosmoSIS samples in the column layout read by GetDist.
+
+    For PolyChord, column 2 is +log posterior, not GetDist's -log likelihood.
     """
     samples = np.loadtxt(path_samples)
     if chain_type == "nautilus":
@@ -355,8 +356,10 @@ def derive_parameter_S8(chain):
 
 
 def derive_parameter_Om(chain):
-    """
-    Derives the Omega_m parameter from omch2 and h0 in a GetDist chain.
+    """Compute ``Omega_c = omch2 / (h0 / 100)**2`` from a GetDist chain.
+
+    This is the cold-dark-matter density fraction; it omits baryons and
+    neutrinos and is not total ``Omega_m``.
     """
     omch2 = chain.getParams().omch2
     h0 = chain.getParams().h0

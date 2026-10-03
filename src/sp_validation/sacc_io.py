@@ -3,24 +3,18 @@
 :Name: sacc_io.py
 
 :Description: Read/write the standard SACC data-product layout for the
-              weak-lensing validation package. One file describes each
-              catalogue version:
+              weak-lensing validation package. The terminal file for each
+              catalogue version is:
 
               - ``{version}.sacc`` — NZ tracers, reporting-grid ξ±, pseudo-Cℓ
-                (EE/BB/EB) with bandpower windows, COSEBIs, pure E/B, ρ/τ PSF
-                diagnostics, and the fine ξ± integration input for
-                COSEBIs / pure-EB (``grid='integration'`` tagged points). The
-                covariance is assembled block-diagonally from the
-                per-statistic covariances (zero cross-blocks, never
-                materialized): the analysis blocks first, then a dense
-                per-pair integration-ξ block (the analytic integration-binning
-                covariance when it exists — it feeds derived-statistic error
-                propagation — or the TreeCorr ``varxip``/``varxim`` diagonal as
-                degraded fallback). ``assemble_covariance`` hands sacc a list
-                of blocks, which stores a ``BlockDiagonalCovariance`` (one
-                FITS table per block, Σ block² on disk rather than a dense
-                N²) — cost scales with the integration grid's size, a
-                parameter set by the caller, not baked into the layout.
+                (EE/BB/EB) with bandpower windows, COSEBIs, pure E/B, and ρ/τ
+                PSF diagnostics. Fine ξ± integration inputs for COSEBIs and
+                pure E/B live in separate SACC parts tagged
+                ``grid='integration'``; they are not in the terminal file.
+                Its covariance contains the reporting/analysis blocks, assembled
+                block-diagonally from per-statistic covariances with zero
+                cross-blocks. ``assemble_covariance`` stores each block in its
+                own FITS table rather than materializing a dense matrix.
 
               Insertion order is load-bearing. A Sacc is a flat list of data
               points in the order ``add_data_point`` was called, and row/column
@@ -76,12 +70,12 @@ Optionality: a file's contents are flexible about which components of
               the CosmoSIS "2pt FITS" (``sacc_to_twopoint_fits``) and
               OneCovariance's redshift / covariance files (``write_nz``,
               ``nz_config_stanza``, ``read_nz``, ``covariance_blocks``). The
-              2pt-FITS converter reproduces today's hand-assembled product from
-              ``cosmo_inference/scripts/cosmosis_fitting.py`` HDU-for-HDU and
-              byte-for-byte (verified against that writer), and is single-bin
-              only today — it fails fast on a multi-bin SACC (tomographic
-              emission lands with the tomographic round). The OneCovariance
-              converters are coupled to SACC by file format only; OneCovariance
+              2pt-FITS converter matches the hand-assembled products for plain
+              ξ, ξ+Cℓ, and ξ+ρ/τ. For ξ+Cℓ+ρ/τ, ``cosmosis_fitting.py`` appends
+              the Cℓ covariance to COVMAT and this converter does not. The
+              converter is single-bin only — it fails fast on a multi-bin SACC
+              (tomographic emission lands with the tomographic round).
+              The OneCovariance converters exchange files by format; OneCovariance
               itself is not a dependency.
 """
 
@@ -429,8 +423,9 @@ def add_rho(s, k, theta, rho_p, rho_m, *, grid="reporting"):
     rho_p, rho_m : array_like
         ρ_k+ and ρ_k− at ``theta``.
     grid : str, optional
-        Stored as the ``grid`` tag on every point (default ``'reporting'``),
-        joining ξ's theta-consistency group in ``merge``'s guard.
+        Stored as the ``grid`` tag on every point (default ``'reporting'``).
+        ``merge`` checks same-tag theta arrays against ξ; terminal assembly adds
+        these points directly and does not run that guard.
     """
     _check_ascending("theta", theta)
     tracers = (PSF_TRACER, PSF_TRACER)
@@ -455,8 +450,9 @@ def add_tau(s, bins, k, theta, tau_p, tau_m, *, grid="reporting"):
     tau_p, tau_m : array_like
         τ_k+ and τ_k− at ``theta``.
     grid : str, optional
-        Stored as the ``grid`` tag on every point (default ``'reporting'``),
-        joining ξ's theta-consistency group in ``merge``'s guard.
+        Stored as the ``grid`` tag on every point (default ``'reporting'``).
+        ``merge`` checks same-tag theta arrays against ξ; terminal assembly adds
+        these points directly and does not run that guard.
     """
     _check_ascending("theta", theta)
     tracers = (source_name(bins[0]), PSF_TRACER)
@@ -1173,8 +1169,10 @@ def sacc_to_twopoint_fits(
 ):
     """Convert an analysis SACC to a CosmoSIS 2pt-FITS file.
 
-    The assembled ``HDUList`` matches today's ``cosmosis_fitting.py`` product
-    for the configuration the SACC describes: PRIMARY, NZ_SOURCE, COVMAT, then
+    The assembled ``HDUList`` matches ``cosmosis_fitting.py`` for plain ξ,
+    ξ+Cℓ, and ξ+ρ/τ products. For ξ+Cℓ+ρ/τ, ``cosmosis_fitting.py`` appends
+    the Cℓ covariance to COVMAT and this converter does not. The HDUs are
+    PRIMARY, NZ_SOURCE, COVMAT, then
     (if present) COVMAT_CELL, XI_PLUS, XI_MINUS, (if present) CELL_EE / CELL_BB,
     and (if the rho/tau sidecars are supplied) TAU_0_PLUS, TAU_2_PLUS,
     RHO_STATS. The data vector and its covariance are laid out type-major
@@ -1189,10 +1187,10 @@ def sacc_to_twopoint_fits(
     path : str
         Output FITS path (overwritten).
     rho_stats_hdu, tau_stats_hdu : astropy.io.fits.BinTableHDU, optional
-        The rho-stats / tau-stats sidecar HDUs, copied verbatim as today's
-        assembly does. Required together to write the ρ/τ product; the SACC
-        alone cannot rebuild the ``varrho_*`` columns Sacha's fork reads. When
-        omitted, a pure ξ (± Cℓ) product is written.
+        The rho-stats / tau-stats sidecar HDUs, copied verbatim into the output
+        (their ``varrho_*`` columns equal the diagonal of the SACC ρ covariance).
+        Required together to write the ρ/τ product. When omitted, a pure ξ
+        (± Cℓ) product is written.
     n_bins : int, optional
         Number of source tomographic bins. Must be ``1``: this converter emits
         the single-bin 2pt-FITS today's CosmoSIS pipeline consumes. Tomographic
@@ -1326,9 +1324,8 @@ def _build_rho_tau(rho_stats_hdu, tau_stats_hdu, theta, use_rho_tau):
 
     Mirrors ``tau_to_fits`` / ``rho_to_fits``: τ_0/τ_2 read their ``tau_k_p``
     columns onto the shared ξ θ grid (consistency step); RHO_STATS is copied
-    verbatim from the sidecar with its θ column forced onto the ξ grid. The
-    ``varrho_*`` columns ride along in the copy — they are why the sidecar is
-    required (the SACC cannot supply them).
+    verbatim from the sidecar with its θ column forced onto the ξ grid,
+    ``varrho_*`` columns included; those equal the SACC ρ covariance diagonal.
     """
     if not use_rho_tau:
         return (), None
@@ -1500,10 +1497,12 @@ def read_nz(path):
 def covariance_blocks(cov_list, selectors, *, gaussian=True):
     """Reshape a OneCovariance ``covariance_list`` table into SACC cov blocks.
 
-    OneCovariance emits a flat ``covariance_list_*.dat`` table with one row per
-    ``(i, j)`` element pair (row-major, ``k = i·n + j``); the covariance value
-    lives in column 10 (Gaussian) or column 9 (Gaussian+non-Gaussian). This
-    reshapes the flat table into dense square block(s) — reusing
+    For a single source bin, each row of the flat
+    ``covariance_list_*.dat`` table maps to a dense matrix element in row-major
+    order (``k = i·n + j``). Tomographic output is pair-major: bin-pair loops
+    precede the multipole indices, with ell varying fastest. The covariance
+    value lives in column 10 (Gaussian) or column 9 (Gaussian+non-Gaussian).
+    This reshapes the selected table into dense square block(s) — reusing
     :func:`sp_validation.statistics.cov_from_one_covariance` for the per-block
     reshape — and pairs each with its SACC selector, ready for
     :func:`sp_validation.assemble_covariance`.
