@@ -189,7 +189,8 @@ addopts = [
 ]
 markers = [
     "fast: marks tests as fast (deselect with '-m \"not fast\"')",
-    "slow: marks tests as slow (deselect with '-m \"not slow\"')"
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "decision(id): ties a test to the astra.yaml decision whose code it checks"
 ]
 
 [tool.ruff]
