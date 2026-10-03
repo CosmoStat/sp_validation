@@ -76,6 +76,7 @@ rule glass_mock_all_xi:
         expand(MOCK_XI, mock_id=GLASS_MOCK_IDS),
 
 
+# @sc [decision:mocks.mock_two_point_measurements]
 rule glass_mock_all_pseudo_cl:
     """Aggregator: pseudo-Cℓ for the first 100 mocks at a given nbins."""
     input:
@@ -114,6 +115,7 @@ rule mock_cosebis_scatter:
         "../scripts/mock_cosebis_scatter.py"
 
 
+# @sc [decision:covariance.cosmocov_terms_per_grid]
 # @sc [decision:mocks.cosebis_bias_test]
 rule mock_cosebis_bias_test:
     """Gather: 100-mock COSEBIS bias test figure + evidence.

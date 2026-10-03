@@ -91,6 +91,7 @@ def format_pte_colorbar(cbar):
 
 def compute_chi2_pte(data, covariance, n_samples=None):
     """Compute chi-squared and PTE for null test.
+    @sc [decision:bmodes.null_test_statistic]
 
     Parameters
     ----------

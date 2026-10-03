@@ -19,6 +19,7 @@ dat:
     value: 0
 
   # Duplicate objects
+  # @sc [decision:calibration.catalogue_cuts]
   - col_name: overlap
     label: tile overlap
     kind: equal
@@ -39,18 +40,21 @@ dat:
     value: 2
 
   # Magnitude range
+  # @sc [decision:calibration.catalogue_cuts]
   - col_name: mag
     label: r
     kind: range
     value: [15, 30]
 
   # ngmix flags
+  # @sc [decision:calibration.catalogue_cuts]
   - col_name: NGMIX_MCAL_TYPES_FAIL
     label: "ngmix moments failure"
     kind: equal
     value: 0
 
   # invalid PSF ellipticities
+  # @sc [decision:calibration.catalogue_cuts]
   - col_name: NGMIX_G1_PSF_ORIG_NOSHEAR
     label: "bad PSF ellipticity comp 1"
     kind: not_equal
@@ -64,24 +68,28 @@ dat:
   # HDF5's data_ext dataset)
 
   # Stars
+  # @sc [decision:calibration.catalogue_cuts]
   - col_name: MASK_4_Stars
     label: "Stars"
     kind: equal
     value: False
 
   # Manual mask
+  # @sc [decision:calibration.catalogue_cuts]
   - col_name: MASK_8_Manual
     label: "manual mask"
     kind: equal
     value: False
 
   # r-band footprint
+  # @sc [decision:calibration.catalogue_cuts]
   - col_name: MASK_64_r
     label: "r-band imaging"
     kind: equal
     value: False
 
   # Maximask
+  # @sc [decision:calibration.catalogue_cuts]
   - col_name: MASK_1024_Maximask
     label: "maximask"
     kind: equal
@@ -95,11 +103,14 @@ dat:
     value: 3
 
 # Metacal parameters
+# @sc [decision:calibration.additive_bias]
+# @sc [decision:calibration.shape_weights]
 metacal:
   # Ellipticity dispersion
   sigma_eps_prior: 0.34
 
   # Signal-to-noise range
+  # @sc [decision:calibration.metacal_selection]
   gal_snr_min: 10
   gal_snr_max: 500
 
@@ -109,6 +120,7 @@ metacal:
   gal_rel_size_max: 3
 
   # Correct relative size for ellipticity?
+  # @sc [decision:calibration.metacal_selection]
   gal_size_corr_ell: False
 
   # Weight for global response matrix, None for unweighted mean

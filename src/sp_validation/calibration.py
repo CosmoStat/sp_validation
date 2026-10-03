@@ -601,6 +601,8 @@ def get_quantities_binned(
 
 def get_calibrate_e_from_cat(path_cat_gal, weight_type="des", verbose=False):
     """
+    @sc [decision:calibration.additive_bias]
+    @sc [decision:calibration.response_estimator]
     Calibrates ellipticities from a galaxy catalog with a certain weight type.
 
     Parameters
@@ -1066,6 +1068,7 @@ class metacal:
     def _selection_response(self):
         """Add docstring.
         @sc [decision:calibration.response_estimator]
+        @sc [decision:calibration.response_weighting]
 
         ...
 

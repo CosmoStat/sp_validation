@@ -58,7 +58,9 @@ with open('{output}', 'w') as f:
         """
 
 
+# @sc [decision:covariance.cosmocov_cosmology]
 # @sc [decision:covariance.cosmocov_terms_per_grid]
+# @sc [decision:covariance.footprint_mask_power]
 rule covariance_ini:
     input:
         nz_file=lambda w: redshift_path(w.version),
@@ -255,6 +257,7 @@ rule covariance_process:
         "../scripts/cosmocov_process.py"
 
 
+# @sc [decision:covariance.cosmocov_terms_per_grid]
 # @sc [decision:real_space.integration_grid]
 def fiducial_covariance_outputs(mask_suffix=""):
     """Return processed covariance files for the fiducial version."""

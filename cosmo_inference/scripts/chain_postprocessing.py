@@ -65,6 +65,7 @@ def compute_map_2D(chain, param_name_x, param_name_y, num_bins=1000):
 
 def compute_limits(chain, param_name):
     """
+    @sc [decision:inference.posterior_summary]
     Compute the 68% and 95% confidence limits of a parameter from a CosmoSIS chain.
     """
     margestats = chain.getMargeStats()
@@ -114,6 +115,7 @@ def load_samples_and_write_paramnames(
 
 def write_samples_getdist_format(path_samples, path_gd, chain_type="polychord"):
     """Write CosmoSIS samples in the column layout read by GetDist.
+    @sc [decision:inference.posterior_summary]
 
     For PolyChord, column 2 is +log posterior, not GetDist's -log likelihood.
     """

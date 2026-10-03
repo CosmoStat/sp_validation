@@ -399,6 +399,7 @@ def covariance_label(npatch):
 
 def calculate_cosebis(gg, nmodes=10, scale_cuts=None, cov_path=None):
     """
+    @sc [decision:bmodes.cosebis_modes]
     Calculate COSEBIs modes from a correlation function for multiple scale cuts.
 
     Parameters
@@ -449,6 +450,7 @@ def cosebis_scan_from_xi(
     npatch=None,
 ):
     """COSEBIs over a set of scale cuts, from ξ± arrays and their covariance.
+    @sc [decision:bmodes.bmode_covariance]
     @sc [decision:bmodes.cosebis_modes]
     @sc [decision:bmodes.null_test_statistic]
 
@@ -1361,6 +1363,7 @@ def _cosebis_result_to_dict(r, suffix=""):
 
 def save_cosebis_results(results, output_path, fiducial_scale_cut=None):
     """
+    @sc [decision:bmodes.fiducial_scale_cut]
     Save COSEBIs data vectors and covariance to .npz.
 
     Parameters

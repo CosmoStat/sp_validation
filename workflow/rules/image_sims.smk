@@ -31,6 +31,9 @@ IMSIM = config["image_sims"]
 # Science keys: required from the *run* config; no default here or in
 # config.yaml (only a commented template line).  These fix the estimator's
 # scientific behaviour, so they must be stated per run, never inherited.
+# @sc [decision:shear_bias_simulations.mbias_estimator]
+# @sc [decision:shear_bias_simulations.mbias_sim_selection]
+# @sc [decision:shear_bias_simulations.mbias_uncertainty]
 _SCIENCE_KEYS = {
     "w_cols",
     "pair_match",
