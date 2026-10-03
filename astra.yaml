@@ -999,9 +999,10 @@ analyses:
         label: Covariance behind the pure-E/B and COSEBIs tests
         rationale: >-
           The cosmo_val workflow feeds both statistics the CosmoCov Gaussian
-          ("g"), footprint-masked xi+- covariance on the integration grid
-          (cosmo_val.smk cv_xi_cov_integration) and carries it exactly through
-          each linear kernel: K C K^T for the pure modes
+          ("g") xi+- covariance on the integration grid (cosmo_val.smk
+          cv_xi_cov_integration), whose shape noise carries no footprint
+          correction (covariance.footprint_mask_power), and carries it exactly
+          through each linear kernel: K C K^T for the pure modes
           (calculate_pure_eb_correlation) and cosmo_numba's
           cosebis_covariance_from_xipm_covariance for COSEBIs, which writes
           zeros for the E/B cross block; npatch is None, so no Hartlap factor
@@ -1191,21 +1192,32 @@ analyses:
       shear_estimator:
         label: Catalogue-based pseudo-Cl with NaMaster's self-pair noise removal
         rationale: >-
-          The producers build NmtFieldCatalog on per-object (RA, Dec, w, e1,
-          -e2) and correlate it with itself, so NaMaster subtracts its analytic
-          self-pair noise from the coupled auto-spectrum before decoupling
-          with the mode-coupling matrix; no random rotations touch the data
-          vector (pseudo_cl.get_pseudo_cls_catalog). The map alternative
-          averages w-weighted shears in nside pixels, uses the weight-sum map
-          as the mask and subtracts the mean spectrum of nrandom_cell random
-          rotations seeded by cell_seed. On the tomography branch bins are the
-          positive tomo_bin_col values, pairs i <= j, and the noise term is
-          removed for auto pairs only. Catalogue fields avoid pixel-window and
-          pixel-averaging suppression. The estimator changes small-scale
-          power and the noise treatment, and so the BB null test. [LINT] the
-          producers hardcode cell_method catalog and nrandom_cell 100 while
-          the constructor default is map and the papers/cosmo_val keys do not
-          reach them (generic-producers-bypass-cv-init-params).
+          The data-vector producer, generate_pseudo_cl.py, builds one
+          NmtFieldCatalog on per-object (RA, Dec, w, e1, -e2) and correlates it
+          with itself, so NaMaster subtracts its analytic self-pair noise from
+          the coupled auto-spectrum before decoupling with the mode-coupling
+          matrix; no random rotations touch the data vector
+          (pseudo_cl.get_pseudo_cls_catalog). That chain assumes the merge
+          keeps develop's producer interface: generate_pseudo_cl.py calls
+          calculate_pseudo_cl(out_path=...), which the tomography branch's
+          mixin does not accept (it takes compute_tomography and writes FITS).
+          The map alternative averages w-weighted shears in nside pixels, uses
+          the weight-sum map as the mask and subtracts the mean spectrum of
+          nrandom_cell random rotations seeded by cell_seed. On the tomography
+          branch bins are the positive tomo_bin_col values, pairs i <= j, and
+          both estimators remove noise for auto pairs only. No rationale for
+          the catalogue estimator is recorded at the sites. The catalogue field
+          is not pixelised; the map estimator's pixel averaging suppresses
+          power roughly as the HEALPix pixel window, pw^2 = 0.91 at ell 1000
+          and 0.70 at ell 1988 for nside 1024 (healpy.pixwin), which the stored
+          bandpower window does not include. The estimator therefore changes
+          the high-ell bandpowers and the noise treatment, and so the BB null
+          test. [LINT] generate_pseudo_cl.py and generate_pseudo_cl_cov.py
+          hardcode cell_method catalog and nrandom_cell 100 while the
+          constructor default is map and the papers/cosmo_val keys do not reach
+          them (generic-producers-bypass-cv-init-params); nrandom_cell does
+          nothing under the catalogue estimator, and under the committed
+          analytic noise_bias_method neither literal changes the covariance.
           Values:
           cosmo_val.cell_method = catalog;
           cosmo_val.nrandom_cell = 100;
@@ -1221,19 +1233,29 @@ analyses:
       multipoles_and_bandpowers:
         label: Multipole range and bandpower binning
         rationale: >-
-          The geometry is fixed by nside = 1024: multipoles from LMIN 8 to
-          lmax = 2 nside, fields and NmtBin truncated at b_lmax = 2 nside - 1,
-          and the catalogue field's mask band-limit lmax_mask = b_lmax
-          (pseudo_cl.pseudo_cl_geometry, get_pseudo_cls_catalog). Bandpowers
-          are powspace: 32 bands with edges uniform in ell^0.5 between lmin
-          and lmax, integer ells assigned by digitize with the first and last
-          forced into the end bands (make_namaster_bin). No rationale is
-          recorded. The binning sets the band averages, the mode-coupling
-          conditioning, the bandpower windows and the 32 dof of the BB test;
-          mask harmonics above 2047 are dropped from the coupling. [LINT] nside
-          and power are hardcoded in the twopoint.smk rules and the
-          papers/cosmo_val keys of the same names do not govern them; the
-          filename tag comes from harmonic.fiducial.
+          The geometry is fixed by nside = 1024 (pseudo_cl.pseudo_cl_geometry):
+          band edges run from LMIN 8 to lmax = 2 nside, while the fields,
+          NmtBin and the catalogue field's mask band-limit lmax_mask stop at
+          b_lmax = 2 nside - 1, so the bands cover ell 8-2047
+          (get_pseudo_cls_catalog). Bandpowers are powspace: 32 bands with
+          edges uniform in ell^0.5 between lmin and lmax, integer ells assigned
+          by digitize with the first and last forced into the end bands
+          (make_namaster_bin), giving ell_eff from 12.5 to 1988.5. No rationale
+          is recorded at the sites for nside, lmin or the 32 bands; the
+          papers/bmodes comment on cl.cosebis_nbins says 96 powspace bands
+          recover COSEBIs modes 1-5 within about 2% of configuration space on
+          GLASS mocks. The binning sets the band averages, the mode-coupling
+          conditioning, the bandpower windows and the 32 dof of the full-range
+          BB test (cv_summarize_bmodes.py); the mask's harmonics are computed
+          only to 2047, so mask power above that does not enter the coupling.
+          [LINT] the twopoint.smk pseudo_cl and pseudo_cl_cov rules set nside
+          and power as literals and take binning and nbins from their
+          wildcards, so the papers/cosmo_val keys cosmo_val.nside, binning,
+          power and n_ell_bins reach only the cv_runner constructors
+          (generic-producers-bypass-cv-init-params); the binning and band count
+          come from harmonic.fiducial, through the tag common.pseudo_cl_tag
+          puts in the pseudo-Cl and covariance file names that the B-mode
+          summary, the figures and the assembly request.
           Values:
           nside = 1024;
           power = 0.5;
@@ -1246,12 +1268,17 @@ analyses:
         default: nside1024_lmin8_powspace32
         options:
           nside1024_lmin8_powspace32:
-            label: lmin 8, lmax 2048, 32 sqrt-spaced bands
+            label: ell 8-2047 at nside 1024, 32 sqrt-spaced bands
           powspace_96:
             label: 96 bands (COSEBIs comparison)
           logspace_or_linear:
-            label: Logarithmic bands from ell 50, or linear bands of ell_step
-            description: Implemented in make_namaster_bin; selected by the binning wildcard.
+            label: >-
+              Logarithmic bands with edges from ell 50 (lower ells padded into
+              the first), or linear bands of ell_step
+            description: >-
+              Implemented in make_namaster_bin and selected by the binning
+              wildcard; pseudo_cl_fine_all requests linear bands of ell_step 1
+              (nbins=2040) for COSEBIs.
 
   # ═════════════════════════════════════════════════════════════════════════
   psf:
@@ -1468,16 +1495,25 @@ analyses:
       cosmocov_cosmology:
         label: Cosmology and intrinsic alignment at which the CosmoCov covariance is evaluated
         rationale: >-
-          rule covariance_ini writes the Planck18 parameters of
-          results/cosmology/planck18.json, generated by rule cosmology_params
-          from cs_util.cosmo.PLANCK18 (Omega_m 0.30966, Omega_b 0.04897, h
-          0.6766, sigma_8 0.8102, n_s 0.9665, Omega_v = 1 - Omega_m), with w0
-          = -1, wa = 0 and the IA switch on with A_ia = eta_ia = 0. No
-          rationale is recorded for a zero IA amplitude. Sample variance and
-          the non-Gaussian terms scale with sigma_8 and Omega_m, so a
-          covariance evaluated away from the posterior shifts the inferred
-          errors.
-          Values: w0 = -1; wa = 0; IA = 1; A_ia = 0.0; eta_ia = 0.0;
+          rule covariance_ini writes the Planck18 parameters that
+          common.configure loads from the run directory's
+          results/cosmology/planck18.json, committed for both papers and
+          regenerated by rule cosmology_params from cs_util.cosmo.PLANCK18
+          (Omega_m 0.30966, Omega_b 0.04897, h 0.6766, sigma_8 0.8102, n_s
+          0.9665, Omega_v = 1 - Omega_m), with w0 = -1, wa = 0 and the NLA IA
+          switch on with A_ia = eta_ia = 0, so the covariance carries no IA
+          term. workflow/common.py names the source as astropy Planck18 (Table
+          2 + BAO); no rationale is recorded for a zero IA amplitude. CosmoCov
+          computes the Gaussian sample variance from the theory C_l and the
+          non-Gaussian terms from the matter power spectrum at these
+          parameters, so a different cosmology changes the xi+- covariance that
+          the terminal file and inference_prep take.
+          Values:
+          w0 = -1;
+          wa = 0;
+          IA = 1;
+          A_ia = 0.0;
+          eta_ia = 0.0;
           COSMOLOGY_PARAMS = results/cosmology/planck18.json.
         default: planck18_no_ia
         options:
@@ -1492,18 +1528,21 @@ analyses:
       cosmocov_terms_per_grid:
         label: Non-Gaussian terms on the reporting grid, Gaussian only on the integration grid
         rationale: >-
-          The gaussian wildcard selects ng = cng = 1 (connected non-Gaussian
-          and super-sample terms) or 0 in the CosmoCov INI; cosmo_val.smk
+          The gaussian wildcard sets ng = cng = 1 or 0 in the CosmoCov INI. In
+          CosmoCov, ng switches on the non-Gaussian block, which always holds
+          the super-sample term, and cng adds the connected trispectrum to it;
+          the INI's ss : true selects the shear-shear block. cosmo_val.smk
           requests "ng" for the reporting-grid covariance that the terminal
           file carries (cv_xi_cov) and "g" for the integration-grid covariance
-          behind pure E/B and COSEBIs (cv_xi_cov_integration). The
-          inference_prep rule's covariance_path call takes common.py's
-          default, ng. cosmocov_process.py sums the Gaussian and non-Gaussian
-          columns into the processed matrix and also writes the Gaussian part.
-          The rule comment gives the reason for the split: B-modes only need
-          the scatter a Gaussian field would give. Reporting xi+- errors
-          include the non-Gaussian terms; the E-mode uncertainties of the
-          B-mode statistics omit them.
+          behind pure E/B and COSEBIs (cv_xi_cov_integration), and
+          fiducial_covariance_outputs makes the same ng/g split on the fiducial
+          block's grids. The inference_prep rule's covariance_path call takes
+          common.py's default, ng. cosmocov_process.py sums the Gaussian and
+          non-Gaussian columns into the processed matrix and also writes the
+          Gaussian part. The cv_xi_cov_integration docstring gives the reason
+          for the split: B-modes only need the scatter a Gaussian field would
+          give. Reporting xi+- errors include the non-Gaussian terms; the
+          E-mode uncertainties of the B-mode statistics omit them.
           Values: gaussian = ng.
         default: ng_reporting_g_integration
         options:
@@ -1514,39 +1553,60 @@ analyses:
           ng_everywhere:
             label: Non-Gaussian terms on the 1000-bin integration grid too
             excluded: true
-            excluded_reason: The cost of a 1000-bin non-Gaussian CosmoCov run, for a Gaussian-field null test.
+            excluded_reason: >-
+              Cost: the tomography branch's papers/bmodes/config/covariance.md
+              calls non-Gaussian contributions computationally prohibitive at
+              1000 bins, and the B-mode null test needs only Gaussian-field
+              scatter (cv_xi_cov_integration docstring).
       footprint_mask_power:
         label: Footprint mask power in the CosmoCov covariance
         rationale: >-
           With covariance.default_masked true in both paper configs,
           common.configure sets the _masked suffix and covariance_ini passes
-          c_footprint_file = the nside-4096 footprint mask power spectrum: the
-          star-halo footprint for SP_v1.4.8 and the standard footprint for
-          every other version, the fiducial included (covariance.smk
-          MASK_CLS_FILES, STARHALO_CATALOGUES, get_mask_cls_path). The
-          products come from scripts/masking.py: a pixel is 1 when at least
-          one comprehensive-catalogue object survives the cuts whose column is
-          spatial (overlap, IMAFLAGS_ISO, the MASK_* bits, N_EPOCH, npoint3),
-          binary with no fractional coverage; anafast to 3 nside - 1 scaled by
-          area/Sum((2l+1) C_l/4pi), which is 4pi up to the lmax truncation,
-          written as *_norm.txt. CosmoCov's w_mask(theta) uses the absolute
-          C_l for the shape-noise boundary term, so the normalisation sets
-          that term. No rationale is recorded beyond the rule comment. One
-          footprint file serves versions whose cov_th.A differs. [LINT]
-          masking.py prefixes a fixed v1.4.5 directory to the config's
-          absolute input_path, so the committed builder cannot regenerate the
-          committed files from the committed config, and masks.smk's spectra
-          are raw anafast while the covariance takes the normalised
-          convention (masks-smk-cosmocov-normalisation-claim).
+          c_footprint_file = an nside-4096 footprint mask power spectrum: the
+          star-halo footprint for SP_v1.4.8 and its _leak_corr and _ecut
+          variants (base_version), the standard footprint for every other
+          version, the fiducial included (covariance.smk MASK_CLS_FILES,
+          STARHALO_CATALOGUES, get_mask_cls_path). The spectra are not in the
+          repository; their names and scaling are those scripts/masking.py
+          writes: a pixel is 1 when at least one comprehensive-catalogue object
+          survives the cuts whose column is spatial (overlap, IMAFLAGS_ISO, the
+          MASK_* bits, N_EPOCH, npoint3), binary with no fractional coverage;
+          anafast to 3 nside - 1 scaled by A/Sum((2l+1) C_l/4pi) with A the
+          kept area in steradians, which is 4pi up to the lmax truncation,
+          written as *_norm.txt. CosmoCov (the build tools.cosmocov_executable
+          names) reads the file in two places. The super-sample survey variance
+          divides it by C_0, so the normalisation drops out there. The
+          shape-noise boundary correction w_mask(theta) uses the absolute C_l,
+          but CosmoCov sets it to 1 when the file stops below l = 2pi/tmin: the
+          nside-4096 files stop at l = 12287, below 21600 for the 1-arcmin
+          reporting grid and further below for the finer integration grids, so
+          no boundary correction is applied. The footprint therefore enters
+          only the super-sample term of the ng reporting covariance and leaves
+          the Gaussian-only integration-grid covariance unchanged. masking.py's
+          docstring says footprint-only mode defines a consistent footprint
+          from the comprehensive catalogue; no rationale is recorded for
+          occupancy over fractional coverage, for the 4pi scaling or for the
+          SP_v1.4.8 split. One footprint file serves versions whose cov_th.A
+          differs. [LINT] masking.py prefixes a fixed v1.4.5 directory to the
+          absolute input_path of
+          config/calibration/mask_from_compr_v1.X.6.yaml, so the committed
+          builder cannot open the catalogue the committed config names, and
+          masks.smk's spectra are raw anafast while the covariance takes the
+          normalised convention (masks-smk-cosmocov-normalisation-claim).
           Values:
           cosmo_val/config/config.yaml#covariance.default_masked = True;
           bmodes/config/config.yaml#covariance.default_masked = True.
         default: occupancy_footprint_area_normalised
         options:
           occupancy_footprint_area_normalised:
-            label: nside-4096 occupancy footprint, area-normalised C_l, star-halo footprint for v1.4.8 only
+            label: >-
+              nside-4096 occupancy footprint, area-normalised C_l, star-halo
+              footprint for the SP_v1.4.8 family
           area_only:
-            label: f_sky scaling, no mask spectrum (default_masked false)
+            label: >-
+              No mask spectrum: circular f_sky window in the super-sample term
+              (default_masked false)
           per_version_geometric_mask:
             label: Fractional-coverage mask spectrum per catalogue version
             description: Not implemented; the masks.smk path writes NEST data as RING and inflates partial pixels.
@@ -1555,28 +1615,34 @@ analyses:
         rationale: >-
           The covariance is nmt.gaussian_covariance of a spin-2 x spin-2
           workspace built from the nside weight-sum map, also when the data
-          vector is catalogue based, with the fiducial EE spectrum plus a
-          white noise term in EE and BB (zero in EB) as input: the analytic
-          noise is pixel area times the mean per-pixel Sum w^2 (e1^2 + e2^2)/2,
+          vector is catalogue based, with the fiducial EE spectrum plus a white
+          noise term in EE and BB (zero in EB) as input: the analytic noise is
+          pixel area times the mean per-pixel Sum w^2 (e1^2 + e2^2)/2,
           decoupled and unbinned; fiducial_input_inka coupled multiplies the
-          four-spectrum input by the coupling matrix and divides by
-          mean(mask^2) (the improved narrow-kernel approximation). Below the
+          four-spectrum input by the coupling matrix and divides by the mean
+          product of the two weight maps, mean(mask^2) for the non-tomographic
+          spectrum (the improved narrow-kernel approximation, iNKA). Below the
           first band the tomography branch's cosmo_val/pseudo_cl.py, which the
           merge adopts, sets the unbinned noise to zero and applies no pixel
           window to the fiducial spectrum; develop fills ell < lmin with the
           lowest band's value and multiplies by pixwin(nside)^2 for every
-          cell_method. [LINT] zeroing the noise below ell 8 drops white noise
-          the mask couples into the first bands
-          (tomo-covariance-zeroes-noise-below-lmin). Only the Gaussian
-          covariance reaches the SACC and the BB PTE; the OneCovariance
-          Gaussian plus non-Gaussian hybrid (calculate_pseudo_cl_g_ng_cov) is
-          called by no rule. The covariance sets every C_l error bar and the
-          BB PTE; the pixelised workspace differs from the catalogue
-          estimator's coupling at the percent level. [LINT] the producer's
-          constructor takes noise_bias_method, fiducial_input_inka and
-          cell_seed from its defaults, not from papers/cosmo_val
-          (generic-producers-bypass-cv-init-params), and develop's producer
-          cannot run against the locked cs_util
+          cell_method. The zeroing reproduces the exact white-noise covariance
+          to about 1%; develop's fill counts the noise the mask couples in from
+          ell < 8 twice, giving a noise-only first-band BB variance 1.55 times
+          the exact value on the v1.4.6.3 footprint at nside 256. Only the
+          Gaussian covariance reaches the SACC and the BB PTE; the
+          OneCovariance Gaussian plus non-Gaussian hybrid
+          (calculate_pseudo_cl_g_ng_cov) is called by no rule. The covariance
+          sets every C_l error bar and the BB PTE. The pixelised workspace's
+          coupling differs from the catalogue estimator's: the EE windows
+          differ by 1.6% in a 5000-object nside-64 toy, and the production
+          difference is not measured. [LINT] the producer's constructor takes
+          noise_bias_method, fiducial_input_inka and cell_seed from its
+          defaults, not from papers/cosmo_val
+          (generic-producers-bypass-cv-init-params), and
+          generate_pseudo_cl_cov.py calls calculate_pseudo_cl_eb_cov, which
+          fails against the locked cs_util on develop and which the tomography
+          branch's class does not define
           (pseudo-cl-covariance-producer-crashes).
           Values:
           cosmo_val.noise_bias_method = analytic;
@@ -1598,18 +1664,27 @@ analyses:
         label: Fiducial theory C_l behind the Gaussian pseudo-Cl covariance
         rationale: >-
           A lensing-only C_l for the version's n(z) at the Planck18 parameters
-          of results/cosmology/planck18.json, which the twopoint.smk rules
-          pass and generate_pseudo_cl_cov.py remaps to Omega_m, Omega_b, h,
-          sig8 and ns; mnu stays at cs_util's default 0.06. The tomography
-          branch's pseudo_cl.get_fiducial_cl, which the merge adopts, calls
-          cs_util.get_theo_c_ell with the CAMB backend; develop calls CCL,
-          whose nonlinear power is halofit. [LINT] the papers/cosmo_val
-          cosmo_params block (mead2020_feedback, logT_AGN 7.8) reaches neither
-          producer and would be inert for CCL unless matter_power_spectrum
-          were camb (fiducial-cl-ignores-configured-nonlinear-model); the
-          CAMB conversion drops the neutrino mass
-          (camb-conversion-drops-neutrino-mass). The theory sets the sample
-          variance term; the models differ by up to about 15% at ell 2000.
+          of results/cosmology/planck18.json, which the twopoint.smk rules pass
+          and generate_pseudo_cl_cov.py remaps to Omega_m, Omega_b, h, sig8 and
+          ns; the neutrino mass is 0.06 eV, the default of both
+          cs_util.get_cosmo and CAMB. The tomography branch's
+          pseudo_cl.get_fiducial_cl, which the merge adopts, calls
+          cs_util.get_theo_c_ell with the CAMB backend, whose nonlinear power
+          is CAMB's default HMCode-2020 without baryonic feedback (mead2020);
+          develop calls CCL, whose nonlinear power is halofit. [LINT] the
+          papers/cosmo_val cosmo_params block (mead2020_feedback,
+          HMCode_log_T_AGN 7.8) reaches neither producer: the rule passes
+          planck18.json and the script keeps five parameters. Were it routed,
+          CCL would ignore the camb settings unless matter_power_spectrum were
+          camb, the CAMB conversion would drop them, and CCL reads the
+          temperature only under the key HMCode_logT_AGN
+          (fiducial-cl-ignores-configured-nonlinear-model,
+          CosmoStat/sp_validation #381). The CAMB conversion also drops the
+          neutrino mass, which matters only for a value other than 0.06 eV
+          (camb-conversion-drops-neutrino-mass). The theory sets the
+          sample-variance term; for a synthetic n(z), the producers' C_l at ell
+          2000 exceeds the configured model's by 18% on develop and 14% on the
+          tomography branch.
           Values:
           cosmo_val.cosmo_params.Omega_m = 0.30966;
           cosmo_val.cosmo_params.sig8 = 0.8102;
@@ -1623,35 +1698,44 @@ analyses:
             label: Add NLA intrinsic alignments to the fiducial spectrum
             description: Not implemented.
           configured_nonlinear_model:
-            label: HMCode2020 with feedback as the config requests
+            label: HMCode-2020 with AGN feedback (mead2020_feedback), as the config intends
             description: Not reached by the producers.
       terminal_covariance:
         label: Which covariance each statistic carries into the terminal file
         rationale: >-
           assemble_sacc loads the parts in canonical order and gives the
           reporting xi+- part the CosmoCov covariance (--xi-cov) and the
-          pseudo-Cl part the NaMaster COVAR_EE_EE, COVAR_BB_BB and
-          COVAR_EB_EB blocks laid block-diagonally, replacing whatever
-          estimate the part was born with; COSEBIs and pure E/B keep their
-          propagated CosmoCov covariance, and the rho/tau part keeps a varrho
-          diagonal for rho, the CovTauTh matrix on the tau-plus points when
-          cov_tau_{base}_th.npy exists and a vartau diagonal otherwise, with
-          zero rho-tau and tau+/tau- blocks (rho_tau_to_sacc). The blocks
-          become one BlockDiagonalCovariance with zero cross-statistic blocks
-          (assemble_analysis_sacc, sacc_io.assemble_covariance). The analytic
-          covariance is the analysis covariance (assemble_sacc.py docstring);
-          cross terms are out of scope. Any joint chi2 across statistics or
-          polarisations from this file treats correlated measurements of one
-          shear field as independent. [LINT] the tau covariance kind is chosen
-          by a file's existence rather than cov_estimate_method, and nothing
-          in the SACC records which one was used.
+          pseudo-Cl part the NaMaster COVAR_EE_EE, COVAR_BB_BB and COVAR_EB_EB
+          blocks laid block-diagonally, replacing whatever estimate the part
+          was born with; COSEBIs and pure E/B keep their propagated CosmoCov
+          covariance, and the rho/tau part keeps a varrho diagonal for rho, the
+          CovTauTh matrix on the tau-plus points when cov_tau_{base}_th.npy
+          exists and a vartau diagonal otherwise, with zero rho-tau and
+          tau+/tau- blocks (rho_tau_to_sacc). The blocks become one
+          BlockDiagonalCovariance with zero cross-statistic blocks
+          (assemble_analysis_sacc, sacc_io.assemble_covariance). The
+          assemble_sacc.py docstring and comments give the reasons for the
+          injection (the external block is the analysis covariance for those
+          two statistics) and for dropping the pseudo-Cl cross-spectrum blocks
+          (they match what the B-mode PTE reads); no rationale is recorded for
+          the zero cross-statistic blocks. A joint chi2 across statistics or
+          polarisations computed from this file would treat correlated
+          measurements of one shear field as independent; no code in the
+          repository computes one. The part writers (cosmo_val/sacc_writers.py
+          and PSFSystematicsMixin.rho_tau_to_sacc_part) exist only on develop;
+          the tomography branch's cosmo_val defines neither. [LINT] the tau
+          covariance kind is chosen by a file's existence rather than
+          cov_estimate_method, and nothing in the SACC records which one was
+          used (lsq-sample-cache-ignores-cov-type).
           Values: xi_reporting = xi_cov; pseudo_cl = pseudo_cl_cov.
         default: analytic_injected_block_diagonal
         options:
           analytic_injected_block_diagonal:
-            label: CosmoCov ng for xi, NaMaster auto blocks for C_l, propagated and diagonal blocks elsewhere; no cross-statistic terms
+            label: >-
+              CosmoCov ng for xi, NaMaster auto blocks for C_l, each other
+              part's own block; no cross-statistic terms
           keep_measured:
-            label: Keep each part's own jackknife or shot estimate
+            label: Keep the covariance each part was born with (the xi jackknife or shot estimate)
             description: Not reachable; assembly always injects the external blocks.
           joint_mock_covariance:
             label: Joint covariance across statistics from GLASS mocks
@@ -1682,19 +1766,29 @@ analyses:
         label: Statistics and tracer carried in the terminal file
         rationale: >-
           cv_assemble_inputs gathers the reporting xi+- part, the pseudo-Cl
-          EE/BB/EB part when include_pseudo_cl is true, the COSEBIs part at
-          the fiducial cut, the six pure-E/B series and rho_0..5 with
-          tau_0/2/5; the integration-grid xi+- stays a per-part intermediate
-          (cosmo_val.smk; assemble_sacc.CANONICAL). Every part attaches the
-          version's shear.redshift_path, loaded verbatim without
-          renormalisation, as the single NZ tracer source_0, and every
-          statistic uses the bin pair (0, 0) (CosmologyValidation.sacc_nz,
-          sacc_writers.BIN). The round is single-bin; the tomography round
-          replaces this with per-bin tracers and all pairs. The file fixes
-          which rows a SACC-reading likelihood or null test can use and the
-          lensing kernel any theory evaluates. [LINT] sacc_io's module
-          docstring still lists the integration xi+- as a terminal block
-          (sacc-io-docstring-integration-xi).
+          EE/BB/EB part when include_pseudo_cl is true, the COSEBIs part at the
+          fiducial cut, the six pure-E/B series and rho_0..5 with tau_0/2/5;
+          the integration-grid xi+- stays a per-part intermediate
+          (cosmo_val.smk; assemble_sacc.CANONICAL). The xi+-, pseudo-Cl and
+          rho/tau parts attach the version's shear.redshift_path, loaded
+          verbatim without renormalisation, as the single NZ tracer source_0
+          (CosmologyValidation.sacc_nz), and the COSEBIs and pure-E/B parts
+          copy it from their xi+- part; every part also carries the Misc tracer
+          psf_stars. The shear statistics use the source pair (0, 0)
+          (sacc_writers.BIN), tau uses (source_0, psf_stars) and rho
+          (psf_stars, psf_stars). This describes develop's SACC layer, which
+          the record assumes the merge keeps: the tomography branch's cosmo_val
+          modules have no sacc_nz and write no SACC part. sacc_io's writers
+          take a bin pair and new_sacc builds one source_i tracer per n(z) it
+          is given, but no committed code writes per-bin tracers or cross-bin
+          pairs. No rationale is recorded at the sites. No committed rule reads
+          {version}.sacc (the CosmoSIS pipelines read FITS); the file fixes the
+          rows and the n(z) available to a SACC-reading likelihood, which is
+          not implemented (CosmoStat/sp_validation PR #255). [LINT] sacc_io's
+          module docstring lists the integration xi+- as a terminal block
+          (sacc-io-docstring-integration-xi), and assemble_analysis_sacc takes
+          tracers and metadata from the first part without comparing the others
+          (assembly-first-part-tracers).
         default: reporting_plus_derived_single_bin
         options:
           reporting_plus_derived_single_bin:
@@ -1704,22 +1798,39 @@ analyses:
             description: Not wired in cv_assemble_inputs.
           tomographic:
             label: Per-bin tracers and all auto/cross pairs
-            description: The writers hardcode BIN = (0, 0); the tomography round is pending.
+            description: >-
+              Not implemented: the writers hardcode BIN = (0, 0) and sacc_nz
+              supplies one n(z).
       point_labels_and_windows:
         label: Theta and ell labels, and the window stored with the pseudo-Cl
         rationale: >-
           xi+- points are tagged theta = TreeCorr meanr, the pair-weighted mean
-          separation, with rnom kept as theta_nom (run_2pcf.py, sacc_io.add_xi);
-          pseudo-Cl points are tagged ell_eff and share one BandpowerWindow,
-          NaMaster's EE<-EE decoupled window, equal to the BB<-BB and EB<-EB
-          diagonals; the cross-polarisation windows are dropped and the
-          stored spectra are NaMaster's EE, BB and EB rows, so EB is the EB
-          estimator alone rather than the EB/BE average
-          (pseudo_cl.bandpower_window_from_workspace, sacc_writers). SACC's
-          window model holds one window per bandpower. A theory evaluated at
-          the stored theta differs from one at rnom or bin-averaged by up to
-          a few percent of a bin for curved xi; EE-only forward models are
-          exact, and E-to-B residual mixing cannot be modelled from the file.
+          separation of each bin (rnom for a bin with no pairs), with rnom kept
+          as theta_nom (run_2pcf.py, sacc_io.add_xi). Pseudo-Cl points are
+          tagged ell = ell_eff (NmtBin.get_effective_ells) and share one
+          BandpowerWindow, NaMaster's EE<-EE decoupled window, which equals the
+          BB<-BB and EB<-EB diagonals; the cross-polarisation blocks are
+          dropped (pseudo_cl.bandpower_window_from_workspace,
+          sacc_writers.pseudo_cl_to_sacc, sacc_io.add_pseudo_cl). The stored
+          spectra are NaMaster's EE, BB and EB rows; for the single-field
+          auto-spectrum the EB row equals the BE row. The window includes no
+          HEALPix pixel window, which suits the catalogue field but not the map
+          alternative's pixel-averaged bandpowers (CosmoStat/sp_validation PR
+          #366 adds pw^2 for the map path). This describes develop's SACC
+          layer, which the record assumes the merge keeps: the tomography
+          branch's pseudo_cl.py has no bandpower_window_from_workspace and its
+          mixin writes ELL, EE, EB, BE and BB to a FITS table with no window.
+          No rationale for meanr is recorded at the sites; SACC's window model
+          holds one window per bandpower. COSEBIs normalise their filters on,
+          and integrate over, the integration part's meanr (cv_cosebis.py,
+          b_modes.cosebis_scan_from_xi), so the theta label enters the COSEBIs
+          B-mode PTEs; a theory sampled at meanr differs from one at rnom or
+          bin-averaged wherever xi is curved across a bin. A theory with E-mode
+          power only predicts the EE bandpowers exactly through the stored
+          window, but predicts zero BB where NaMaster leaves W(BB<-EE) C_EE; an
+          audit emulation of the production geometry put that at 5.8% of C_EE
+          in the first band (0.17 sigma) and a chi-square of 0.03 over the 32
+          bands (sacc-window-drops-eb-mixing, CosmoStat/sp_validation #385).
         default: meanr_shared_ee_window
         options:
           meanr_shared_ee_window:
