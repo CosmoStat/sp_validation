@@ -16,11 +16,12 @@ from scipy.special import j0, jn
 
 
 def process_theta(theta, nz_file, output_root):
-    """Prototype for ξ± at one angular separation across a kmax grid.
+    """Compute ξ± at one angular separation over a grid of kmax.
 
-    The routine raises ``KeyError('As')`` in CAMB setup before writing output.
-    Its IA terms are always enabled and use ``P_IA = -A_IA c1 Ω_m / D`` without
-    ``rho_crit``.
+    The Limber C_ell uses CAMB's nonlinear matter power spectrum plus
+    intrinsic-alignment terms, always included, with ``P_IA = -A_IA c1 Ω_m / D``
+    (no ``rho_crit`` factor). ``PLANCK18["As"]`` raises ``KeyError`` (cs_util
+    names the key ``A_s``), so the routine fails in CAMB setup before writing.
 
     Parameters
     ----------
@@ -30,7 +31,14 @@ def process_theta(theta, nz_file, output_root):
         Path to the source redshift distribution file. The file must contain
         two columns giving redshift and n(z).
     output_root : str
-        Prefix passed to the output writers after CAMB setup.
+        Prefix of the output files. Results are appended to
+        ``{output_root}_xip.txt`` and ``{output_root}_xim.txt``.
+
+    Returns
+    -------
+    float
+        The input angular separation, returned for bookkeeping when running
+        in parallel.
     """
 
     def Hz(z):
