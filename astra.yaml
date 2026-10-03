@@ -1993,7 +1993,10 @@ analyses:
       posterior summary. The committed configuration is the templates under
       cosmo_inference/cosmosis_config/templates/ as inference_prep (which runs
       cosmosis_fitting.py with --use-rho-tau) selects them; the subsystem
-      prepares the FITS and INI and does not itself run CosmoSIS.
+      prepares the FITS and INI and does not itself run CosmoSIS. The
+      templates are working defaults that evolve after an analysis; each
+      published chain embeds the priors it ran with (Paper III:
+      SP_v1.4.6.3_B_fiducial_config).
     inputs:
       - id: xi_parts
         from: ../real_space.xi_parts
@@ -2137,8 +2140,7 @@ analyses:
           unconstrained leakage parameters can absorb cosmological signal
           through their degeneracies. In priors_psf.ini they are literals that
           no committed code derives from the rho/tau fit of the catalogue
-          version [HARDCODED]. [LINT] the committed alpha width is ten times
-          the paper's 0.0022 (committed-priors-disagree-with-paper-fiducial).
+          version [HARDCODED].
           Values:
           priors_psf.ini#psf_leakage_parameters.alpha = gaussian 0.0051 0.022;
           priors_psf.ini#psf_leakage_parameters.beta = gaussian 0.8098 0.1148;
@@ -2168,9 +2170,7 @@ analyses:
           each requested real-space or harmonic configuration when
           --use-rho-tau is set without --mock. m1 rescales the theory
           amplitude, so changing its prior can affect inferred S8; (1 + m1)^2
-          is 11% larger at m1 = -0.0057 than at m1 = -0.057. [LINT] the
-          --use-rho-tau prior mean is a tenth of the paper's -0.057
-          (m-prior-typo-rho-tau-path).
+          is 11% larger at m1 = -0.0057 than at m1 = -0.057.
           Values:
           priors_psf.ini#shear_calibration_parameters.m1 = gaussian -0.0057 0.014;
           priors.ini#shear_calibration_parameters.m1 = gaussian -0.057 0.014;
@@ -2194,9 +2194,7 @@ analyses:
           the SOM calibration on MICE2 mocks, and the width is the bootstrap
           scatter over the spectroscopic calibration sample plus systematic
           terms. A larger bias_1 raises the mean source redshift and the
-          lensing efficiency, which a lower S8 compensates (Paper III). [LINT]
-          the committed mean -0.030 differs from the -0.0030 of Paper III and
-          its fiducial chain (committed-priors-disagree-with-paper-fiducial).
+          lensing efficiency, which a lower S8 compensates (Paper III).
           Values:
           priors_psf.ini#nofz_shifts.bias_1 = gaussian -0.030 0.018;
           values_psf.ini#nofz_shifts.bias_1 = -0.1 0.0 0.1;
@@ -2222,9 +2220,7 @@ analyses:
           measurements weighted by the sample's red and blue fractions, 0.83
           +/- 0.39, with the width doubled to 0.78. A is degenerate with S8
           through the GI term: in Paper III fixing A = 0 shifts S8 by -0.71
-          sigma and a flat prior nearly doubles the S8 uncertainty. [LINT] the
-          committed width 0.7 differs from the 0.78 of Paper III and its
-          fiducial chain (committed-priors-disagree-with-paper-fiducial). The
+          sigma and a flat prior nearly doubles the S8 uncertainty. The
           ia and cell templates load linear_alignments_interface_znla.py and
           the PSF template the plain interface; under bk_corrected both run
           bridle_king_corrected.
@@ -2261,9 +2257,7 @@ analyses:
           while Omega_m inherits the joint priors on omch2, ombh2 and h0,
           including the Gaussian ombh2 prior and the fixed neutrino
           contribution; sampling ln(10^10 A_s) with a flat prior instead
-          induces a non-flat S8 prior. [LINT] the committed ombh2 prior differs
-          from the BBN prior 0.02218 +/- 0.00055 of Paper III and its fiducial
-          chain (committed-priors-disagree-with-paper-fiducial).
+          induces a non-flat S8 prior.
           Values:
           values_psf.ini#cosmological_parameters.omch2 = 0.051 0.12249999999999998 0.255;
           values_psf.ini#cosmological_parameters.h0 = 0.64 0.70 0.82;

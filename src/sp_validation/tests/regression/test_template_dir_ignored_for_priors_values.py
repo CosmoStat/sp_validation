@@ -31,7 +31,7 @@ def _load_script():
 
 @pytest.mark.xfail(
     strict=True,
-    reason="#379: template-dir is ignored for priors and values paths",
+    reason="#391: --template-dir does not reach the priors and values paths",
 )
 def test_template_dir_custom_priors_reach_generated_pipeline(tmp_path):
     """A custom --template-dir must supply the priors and values CosmoSIS reads.
