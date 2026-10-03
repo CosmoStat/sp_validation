@@ -25,6 +25,7 @@ See generate_pseudo_cl.py for data vector generation.
 """
 
 import argparse
+import gc
 import json
 import os
 import shutil
@@ -141,9 +142,8 @@ def generate_pseudo_cl_cov(
     if os.path.exists(src_cov):
         with fits.open(src_cov) as hdul:
             # CV outputs covariance blocks as COVAR_XX_YY extensions
-            cov = hdul["COVAR_BB_BB"].data
-            n_ell = int(len(cov) ** 0.5)
-            print(f"Generated covariance matrix: {n_ell}x{n_ell}")
+            n_row, n_col = hdul["COVAR_BB_BB"].data.shape
+            print(f"Generated BB covariance block: {n_row}x{n_col}")
     return src_cov
 
 
@@ -154,8 +154,12 @@ def _from_snakemake(smk):
     os.makedirs(out_dir, exist_ok=True)
     # The iNKA blocks and the merged covariance are cached under names that
     # carry the binning only, so the job computes in a directory of its own and
-    # never picks up a block another configuration left behind.
-    with tempfile.TemporaryDirectory(dir=out_dir, prefix=".pseudo_cl_cov_") as work:
+    # never picks up a block another configuration left behind. On NFS, files
+    # still held open at exit leave .nfs placeholders that block the removal,
+    # so a leftover work directory is tolerated rather than failing the job.
+    with tempfile.TemporaryDirectory(
+        dir=out_dir, prefix=".pseudo_cl_cov_", ignore_cleanup_errors=True
+    ) as work:
         src_cov = generate_pseudo_cl_cov(
             version=p["version"],
             output_dir=work,
@@ -168,6 +172,7 @@ def _from_snakemake(smk):
             power=float(p.get("power", 0.5)),
         )
         shutil.move(src_cov, output_cov)
+        gc.collect()
     print(f"Saved to: {output_cov}")
 
 
