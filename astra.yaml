@@ -2251,6 +2251,13 @@ analyses:
         options:
           additive_gaussian:
             label: n(z - bias_1), bias_1 ~ N(-0.030, 0.018)
+          additive_flat:
+            label: n(z - bias_1), bias_1 flat in [-0.1, 0.1]
+            description: >-
+              A template edit (drop the nofz_shifts prior) that the committed
+              configs do not select. Paper III's flat-prior run (its
+              published flat_delta_z.ini uses priors/no_delta_z.ini) triples
+              the Delta-z error bars.
           multiplicative:
             label: z (1 - bias_1) stretch
             description: Available in photoz_bias; not selected.
@@ -2282,6 +2289,12 @@ analyses:
           nla_flat_prior:
             label: Flat A in [-5, 5]
             description: A prior-file edit (robustness run).
+          no_ia:
+            label: No intrinsic alignments (A = 0)
+            description: >-
+              A template edit (A fixed to 0, as the published values/no_ia.ini
+              sets) that the committed configs do not select. Paper III's
+              largest S8 shift, -0.71 sigma.
           nla_with_redshift_evolution:
             label: NLA with a redshift power-law (znla interface)
             description: >-
