@@ -2310,16 +2310,21 @@ analyses:
         label: Mock cosmology and nonlinear power
         rationale: >-
           GlassMockConfig sets CAMB from h 0.6766, Omega_m 0.30966, Omega_b
-          0.04897, n_s 0.9665 and mnu 0.06 eV with the neutrino density taken
+          0.04897, n_s 0.9665 and mnu 0.06 eV, with the neutrino density taken
           from CDM so the total matter density is fixed, and rescales A_s from
           2.1e-9 so that sigma8(z=0) is 0.8102; the nonlinear power is HMCode
           mead2020_feedback with logT_AGN 7.8 to kmax 20 (build_camb_params).
-          The docstring calls this the Planck18 base with the UNIONS fiducial
-          overrides that reproduce the v1.4.6.3 mock; no rationale is recorded
-          for the sigma8 value. The tomography branch's config_glass_mock.yaml
-          exposes every field; develop's CLI exposes none. The amplitude sets
-          every mock xi and C_l, hence the mean and scatter of every
-          mock-calibrated test. [HARDCODED] on develop.
+          The densities, n_s, sigma8 and mnu are astropy's Planck18 values
+          (Planck 2018 TT,TE,EE+lowE+lensing+BAO), and the docstring says these
+          defaults reproduce the fiducial UNIONS v1.4.6.3 mock; no rationale is
+          recorded for the feedback level or kmax. On the tomography branch
+          GlassMockConfig.from_yaml accepts each numeric field from YAML
+          (config_glass_mock.yaml lists them commented out); develop's CLI
+          exposes none. sigma8 scales the shell spectra, hence the signal and
+          cosmic variance in every mock statistic; a rerun into an output path
+          that already holds cached spectra keeps their cosmology (see
+          mock_geometry). [HARDCODED] the mead2020_feedback model on both
+          branches, and every cosmology field on develop.
         default: planck18_sigma8_0p8102_hmcode
         options:
           planck18_sigma8_0p8102_hmcode:
@@ -2335,26 +2340,31 @@ analyses:
         rationale: >-
           Matter shells are glass.linear_windows on a comoving grid of
           thickness dx 200 Mpc (the example YAML uses 120) from z = 0 to zmax
-          3, the n(z) truncated at zmax; the shell spectra are computed to
-          lmax = nside (4096 for the consumed mocks), lognormal fields with
-          ncorr 3 shell correlations are generated, and galaxies take the
-          shear of their pixel. The tomography branch's make_glass_sim.py,
-          which the merge adopts, passes the spectra through
-          glass.discretized_cls (the HEALPix pixel window) and exposes limber
+          3, the n(z) truncated at zmax; the shell spectra are computed to lmax
+          = nside (4096 for the consumed mocks), lognormal fields with ncorr 3
+          shell correlations are generated, and each galaxy takes the shear of
+          its pixel. The tomography branch's make_glass_sim.py, which the merge
+          adopts, passes the spectra through glass.discretized_cls (truncation
+          to lmax and ncorr 3, and the HEALPix pixel window) and exposes limber
           (default False; the example YAML sets True); develop feeds the raw
-          spectra and uses exact shell spectra. The mock footprint is an
-          occupancy mask of the catalogue read at nside 4096 and, when
-          downgraded, kept where the coverage is at least 0.75. No rationale
-          is recorded. There is no mock power above ell 4096 (about 2.6
-          arcmin) and the shear is piecewise constant inside 0.86-arcmin
-          pixels, below the 1 arcmin the COSEBIs bias test integrates from.
-          [LINT] the branches disagree on the pixel window; the mock's
-          cls and downgraded mask caches are keyed on nside alone
-          (stale-cls-and-mask-cache).
+          spectra and uses exact (non-Limber) shell spectra. The footprint is
+          the mask file the run names, resampled when its nside differs and
+          then kept where coverage is at least 0.75; for the v1.4.6.3_v2 mocks
+          it is create_mask.py's occupied-pixel mask of the catalogue at nside
+          4096 (CosmoStat/sp_validation #319). No rationale is recorded for
+          these values. The input spectra stop at ell 4096, about 2.6 arcmin, a
+          scale larger than the 1 arcmin the COSEBIs bias test integrates from,
+          and galaxies sample a shear that is constant over each nside-4096
+          pixel (0.86 arcmin on a side by area). [LINT] the cls cache is keyed
+          on nside and limber (develop's on nside alone) and the
+          downgraded-mask cache on nside alone, neither on the cosmology or the
+          input mask (stale-cls-and-mask-cache).
         default: linear_shells_lmax_nside_lognormal
         options:
           linear_shells_lmax_nside_lognormal:
-            label: dx 200 Mpc linear windows to z 3, lmax = nside, lognormal ncorr 3, occupancy mask at 0.75
+            label: >-
+              dx 200 Mpc linear windows to z 3, lmax = nside, lognormal ncorr
+              3, mask kept at coverage 0.75 when resampled
           higher_band_limit:
             label: lmax = 2-3 nside
             description: Not exposed; lmax is tied to nside.
@@ -2365,23 +2375,27 @@ analyses:
         label: Source density, clustering, shapes and tomographic labels
         rationale: >-
           The n(z) is scaled to n_arcmin2 6.0905 and partitioned over shells
-          with glass.partition; positions are drawn with linear bias 1.2
-          inside the mask; every object has weight 1; intrinsic ellipticities
-          are glass.ellipticity_intnorm with sigma_e 0.2684 per component;
-          glass.galaxy_shear is called without reduced_shear, so the
-          dependency default applies reduced shear g = gamma/(1 - kappa); e2
-          is stored as -Im(g) (spin2_sign_convention); intrinsic alignments
-          are off (ia_bias None). The tomography branch's make_glass_sim.py,
-          which the merge adopts, samples each n(z) column separately,
-          normalised to its own n_arcmin2, and labels it b + 1; develop draws
-          PHOTO_Z = z + N(0, 0.03 (1 + z)) and digitises it into
-          equal-density bins (nbins 1). No rationale is recorded for 6.0905
-          or 1.2. The density and sigma_e set the mock noise, hence every
-          mock covariance and PTE distribution; reduced shear adds a small
-          genuine B the zero-B bias test does not account for. [LINT] the
-          optional NLA term is a thousand times too small
-          (ia-nla-amplitude-1e-3), and the v2 mocks carry 17% more galaxies
-          than the catalogue (CosmoStat/sp_validation #319).
+          with glass.partition; positions are drawn with linear bias 1.2 inside
+          the mask; every object has weight 1; intrinsic ellipticities are
+          glass.ellipticity_intnorm with sigma_e 0.2684 per component;
+          glass.galaxy_shear is called without reduced_shear, so the dependency
+          default applies reduced shear g = gamma/(1 - kappa); e2 is stored as
+          -Im(g) (spin2_sign_convention); intrinsic alignments are off (ia_bias
+          None). The tomography branch's make_glass_sim.py, which the merge
+          adopts, normalises each n(z) column to its own n_arcmin2, samples it
+          separately and labels it b + 1; develop digitises PHOTO_Z = z + N(0,
+          0.03 (1 + z)) into equal-density bins (nbins 1), and both branches
+          store that PHOTO_Z. 6.0905 is the catalogue n_eff from the 2405 deg2
+          era; on the 2894 deg2 footprint the catalogue's n_eff is 4.957, and
+          the v1.4.6.3_v2 mocks, generated at the 6.0905 default, carry 17%
+          more galaxies than the catalogue (CosmoStat/sp_validation #319). No
+          rationale is recorded for the bias 1.2. The density and sigma_e set
+          the mock shape noise, which enters every mock covariance and PTE
+          distribution. Reduced shear is nonlinear in the lensing field and can
+          carry a small B-mode (Krause & Hirata 2010) that the zero-mean
+          COSEBIs bias test does not model; its size on these mocks is not
+          measured. [LINT] the optional NLA term is a thousand times too small
+          (ia-nla-amplitude-1e-3).
         default: neff_6p09_b1p2_sigma_0p2684
         options:
           neff_6p09_b1p2_sigma_0p2684:
@@ -2396,18 +2410,29 @@ analyses:
         label: xi+- and pseudo-Cl measured on the mocks
         rationale: >-
           glass_mock.smk measures each mock's xi+- with TreeCorr on the data's
-          integration grid, node for node, with the catalogue's unit weights
-          and no response or leakage correction (run_glass_mock_2pcf.py), and
-          its pseudo-Cl with the catalogue estimator at nside 1024 on 32
-          sqrt-spaced bands from lmin 8 to lmax 2048 with e2 flipped,
-          matching the data binning (run_glass_mock_pseudo_cl.py). The
-          standalone runner glass_mock.TREECORR_CONFIG measures 1-250 arcmin
-          in 20 bins. The E/B transforms therefore see the same theta
-          sampling on mocks and data, although the 0.08-1 arcmin nodes lie
-          below the mock band limit. The tomography branch's glass_mock.smk
-          hard-codes a 0.5-500 arcmin grid [LINT], dropping the shared-grid
-          link.
-          Values: nside = 1024; power = 0.5; lmin = 8; lmax = 2048;
+          integration grid (the same min_sep, max_sep and nbins) with the
+          catalogue's unit weights and no response or leakage correction
+          (run_glass_mock_2pcf.py), and its pseudo-Cl with NaMaster's catalogue
+          estimator on 32 sqrt-spaced bands from lmin 8 to lmax 2048 with e2
+          flipped (run_glass_mock_pseudo_cl.py), the bands the data pipeline
+          builds at nside 1024; the rule's nside 1024 is not read by the
+          script. The rule comment gives the reason: the E/B transforms then
+          see the same theta binning on mocks and data, though each runs on its
+          own sample's pair-weighted meanr. The grid extends below the mock
+          band limit (about 2.6 arcmin): it starts at 0.5 arcmin under
+          papers/bmodes and 0.08 arcmin under papers/cosmo_val. The standalone
+          runner (compute_two_point_stats_glass.py with
+          glass_mock.TREECORR_CONFIG) measures xi+- at 1-250 arcmin in 20 bins
+          and the catalogue pseudo-Cl on the same 32 bands, under the
+          xi_glass_mock_*_nbins=20 and cl_glass_mock_* names the mock inference
+          and mock covariance rules read. The tomography branch's
+          glass_mock.smk hard-codes 0.5-500 arcmin in 1000 bins instead
+          (fixed_grid).
+          Values:
+          nside = 1024;
+          power = 0.5;
+          lmin = 8;
+          lmax = 2048;
           sep_units = arcmin.
         default: data_integration_grid_catalog_powspace32
         options:
@@ -2416,7 +2441,9 @@ analyses:
           fixed_grid:
             label: 0.5-500 arcmin, 1000 bins (tomography branch)
             excluded: true
-            excluded_reason: Breaks the node-for-node match with the data transforms.
+            excluded_reason: >-
+              Its bins differ from the data's integration grid, so mock and
+              data E/B transforms would not share a theta binning.
       cosebis_bias_test:
         label: COSEBIs B_n bias test on 100 GLASS mocks
         rationale: >-
@@ -2426,13 +2453,19 @@ analyses:
           mock_cosebis_bias_test tests the mean B_n over mocks 1-100 against
           zero with chi2 = mean^T (C_B/N)^-1 mean, C_B the CosmoCov Gaussian
           masked covariance of SP_v1.4.6_leak_corr on the same grid carried
-          through the COSEBIs kernel, reporting the 20-mode PTE, printed
-          5- and 8-mode subsets and sigma_emp/sigma_ana per mode. The script
-          docstring gives the reason: a test of the estimator for additive B
-          leakage at sigma/sqrt(N) precision. The test assumes independent
-          mocks whose noise the data covariance describes, which #319
-          questions, and the mocks' reduced shear contributes a small
-          genuine B.
+          through the COSEBIs kernel, reporting the 20-mode PTE, printed 5- and
+          8-mode subsets and sigma_emp/sigma_ana per mode. The docstrings state
+          the test (mean B_n = 0 at sigma/sqrt(N) precision) and record no
+          further rationale. C_B/N assumes independent mocks whose scatter the
+          data covariance describes; sigma_emp/sigma_ana is reported as the
+          check but does not enter the chi2. The consumed v1.4.6 mocks hold
+          about 35 M unit-weight galaxies per realisation against the
+          catalogue's 51.6 M weight-effective (CosmoStat/sp_validation #319),
+          and their independence rests on each having been generated with its
+          own -s, since the generator's -N only labels the file. The mocks'
+          reduced shear can carry a small B-mode the zero-mean null does not
+          model. [HARDCODED] the 5- and 8-mode subsets (the config's
+          cosebis.mode_subsets, [6, 20], is not read).
           Values:
           cosebis.theta_min = 1.0;
           cosebis.theta_max = 250.0;
@@ -2443,28 +2476,40 @@ analyses:
             label: Mean B_n over 100 mocks against C_B/N from the analytic covariance
           empirical_mock_covariance:
             label: Covariance of the mean from the mock ensemble
-            description: Not implemented; sigma_emp/sigma_ana is printed instead.
+            description: >-
+              Not implemented; the per-mode sigma_emp/sigma_ana is plotted and
+              written to the evidence JSON instead.
           all_configured_seeds:
             label: All 350 configured seeds
             description: The rule enumerates mocks 1-100 directly.
       mock_inference:
-        label: Mock CosmoSIS runs with tau null draws, zero-centred priors and a mock goodness of fit
+        label: >-
+          Mock CosmoSIS inputs with tau null draws and zero-centred priors, and
+          the mock goodness of fit
         rationale: >-
-          inference_prep_glass_mock pairs each mock's xi with the real rho
-          statistics and a tau_0+, tau_2+, tau_5+ vector drawn from N(0,
-          C_tau) of the real data, seeded by the mock id
-          (generate_glass_mock_rhotau_samples.py): mocks carry no PSF
-          leakage, so tau is consistent with zero. --mock selects
-          priors_mock.ini, whose nuisance priors are zero-centred (alpha, beta,
-          A, m1 and bias_1) because mocks carry no leakage, IA, m or Delta z;
-          the data runs use priors_psf.ini. The paper scripts (papers/
-          harmonic, papers/realspace) fit each mock and quote the fiducial's
-          PTE within the mock best-fit chi2 distribution. Mock-versus-data S8
-          comparisons therefore run under different nuisance priors. [LINT]
-          the PTE integrates a 25-bin histogram from the bin after the one
-          holding the fiducial chi2 (histogram-pte-drops-fiducial-bin), and
-          the real-space mock chi2 omits cross-covariance blocks the fiducial
-          includes (realspace-mock-chi2-block-diagonal).
+          inference_prep_glass_mock pairs each mock's precomputed 20-bin xi
+          (xi_glass_mock_*_nbins=20 in glass_mock_data_dir) with the real rho
+          statistics and a tau_0+, tau_2+, tau_5+ vector drawn from N(0, C_tau)
+          of the real data, seeded by the mock id
+          (generate_glass_mock_rhotau_samples.py), whose docstring gives the
+          reason: mocks carry no PSF leakage, so tau is consistent with zero.
+          cosmosis_fitting.py passes only tau_0+ and tau_2+ to the likelihood.
+          --mock selects priors_mock.ini, whose alpha, beta, A, m1 and bias_1
+          priors are centred on zero; the data runs use priors_psf.ini. No
+          rationale is recorded at the prior sites; the generator injects no
+          PSF leakage or shear calibration bias and, at its default, no IA. The
+          rule only writes the CosmoSIS inputs, and inference.smk marks the
+          subsystem dormant. The paper scripts (papers/harmonic,
+          papers/realspace) take each mock's best fit from its existing chain,
+          compute its chi2 from a CosmoSIS test-sampler run there, and quote
+          the fiducial chi2's PTE within that distribution. Mock and data runs
+          therefore differ in every nuisance prior centre and in the m1 width
+          (0.01 against 0.014). [LINT] the PTE integrates a 25-bin histogram
+          from the bin after the one holding the fiducial chi2
+          (histogram-pte-drops-fiducial-bin), and the real-space mock total
+          chi2 sums separate xi+, xi- and tau terms, dropping the xi+/xi-
+          cross-covariance the fiducial likelihood includes
+          (realspace-mock-chi2-block-diagonal).
           Values:
           priors_mock.ini#psf_leakage_parameters.alpha = gaussian 0.0 0.022;
           priors_mock.ini#psf_leakage_parameters.beta = gaussian 0.0 0.1148;
@@ -2477,7 +2522,13 @@ analyses:
             label: tau ~ N(0, C_tau) with real rho; zero-centred nuisance priors
           measured_mock_tau:
             label: Measure tau between mock shear and real PSF stars
-            description: Not implemented.
+            description: >-
+              Not wired into the mock inference;
+              glass_mock.compute_leakage_harmony measures a harmonic-space
+              tau_0 pseudo-Cl between mock galaxies and real PSF stars as a
+              separate diagnostic.
           data_priors:
             label: Run mocks under the data priors
-            description: A flag change; not selected.
+            description: >-
+              Not selectable alone: --mock picks both priors_mock.ini and the
+              mock xi reader; not selected.
