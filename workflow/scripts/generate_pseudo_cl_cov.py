@@ -108,7 +108,6 @@ def generate_pseudo_cl_cov(
         }
 
     # Build CV kwargs based on binning mode
-    # @sc [decision:harmonic.shear_estimator]
     cv_kwargs = dict(
         versions=[version],
         catalog_config=cat_config,

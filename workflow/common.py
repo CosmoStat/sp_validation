@@ -79,6 +79,7 @@ BLOCK_PAIRS = [("++", "1"), ("--", "2"), ("+-", "3")]
 # Regenerate with: snakemake results/cosmology/planck18.json
 # Resolved relative to the run directory at configure() time.
 # @sc [decision:covariance.cosmocov_cosmology]
+# @sc [decision:covariance.pseudo_cl_fiducial_theory]
 COSMOLOGY_PARAMS = "results/cosmology/planck18.json"
 
 # Wildcard constraints shared by every Snakefile that composes these rules.

@@ -475,7 +475,7 @@ analyses:
           (leakage-trend-fit-weights-squared), and any exception in the fit
           becomes alpha = -99, which the caller applies to the shears
           (leakage-fit-failure-becomes-minus-99).
-          Values: calibration.py#weight_type = des; num_bins = 20.
+          Values: catalog_builders.py#weight_type = des; num_bins = 20.
         default: li2024_20x20_wdes
         options:
           li2024_20x20_wdes:
@@ -1250,12 +1250,13 @@ analyses:
           than the nominal cut recorded in the SACC tags; on cosmo_val's
           0.08-300 arcmin grid, the first and last retained bins for the 12-83
           arcmin cut span about 12.014-12.113 and 81.738-82.413 arcmin,
-          respectively.
+          respectively. [LINT] papers/bmodes' cosebis.mode_subsets ([6, 20])
+          is read by nothing; compute_cosebis_pte_single.py hardcodes the 6-
+          and 20-mode evaluations.
           Values:
           cosmo_val.cosebis.nmodes = 20;
           precision = 120;
-          bmodes/config/config.yaml#fiducial.nmodes = 20;
-          cosebis.mode_subsets = [6, 20].
+          bmodes/config/config.yaml#fiducial.nmodes = 20.
         default: log_20_modes
         options:
           log_20_modes:
@@ -1279,7 +1280,9 @@ analyses:
           <= 1600, the Paper II harmonic range, beside the all-band one, so the
           summary's C_l^BB entry is not the paper's fiducial C_l^BB PTE [LINT].
           No pass/fail verdict is computed: the summary carries PTEs, and the
-          paper heatmaps colour PTEs below 0.05 and above 0.95 solid. [LINT]
+          paper heatmaps colour PTEs below 0.05 and above 0.95 solid
+          (plotting_utils.make_pte_norm's defaults, which the paper scripts
+          take). [LINT] papers/bmodes' cl.n_ell_bins is read by nothing, and
           papers/bmodes' statistics.pte_healthy_range is read by nothing
           (heatmap-ignores-pte-healthy-range), and its comment calls the
           interval 2 sigma, though it leaves 10% in the two tails. develop's
@@ -1294,8 +1297,9 @@ analyses:
           cosmo_val.include_pseudo_cl = True;
           cl.fiducial_ell_min = 300;
           cl.fiducial_ell_max = 1600;
-          cl.n_ell_bins = 32;
-          statistics.pte_healthy_range = [0.05, 0.95].
+          harmonic.fiducial.nbins = 32;
+          plotting_utils.py#low = 0.05;
+          plotting_utils.py#high = 0.95.
         default: pure_eb_cosebis_clbb_all_bands
         options:
           pure_eb_cosebis_clbb_all_bands:
@@ -1351,16 +1355,13 @@ analyses:
           the high-ell bandpowers and the noise treatment, and so the BB null
           test. [LINT] generate_pseudo_cl.py and generate_pseudo_cl_cov.py
           hardcode cell_method catalog and nrandom_cell 100 while the
-          constructor default is map and the papers/cosmo_val keys do not reach
-          them (generic-producers-bypass-cv-init-params); nrandom_cell does
-          nothing under the catalogue estimator, and under the committed
-          analytic noise_bias_method neither literal changes the covariance.
-          Values:
-          cosmo_val.cell_method = catalog;
-          cosmo_val.nrandom_cell = 100;
-          generate_pseudo_cl.py#cell_method = catalog;
-          generate_pseudo_cl.py#nrandom_cell = 100;
-          generate_pseudo_cl_cov.py#cell_method = catalog.
+          constructor default is map and the papers/cosmo_val keys
+          cell_method and nrandom_cell do not reach them
+          (generic-producers-bypass-cv-init-params, CosmoStat/sp_validation
+          #381); nrandom_cell does nothing under the catalogue estimator, and
+          under the committed analytic noise_bias_method neither literal
+          changes the covariance.
+          Values: generate_pseudo_cl.py#cell_method = catalog.
         default: catalog_field
         options:
           catalog_field:
@@ -1389,17 +1390,14 @@ analyses:
           and power as literals and take binning and nbins from their
           wildcards, so the papers/cosmo_val keys cosmo_val.nside, binning,
           power and n_ell_bins reach only the cv_runner constructors
-          (generic-producers-bypass-cv-init-params); the binning and band count
+          (generic-producers-bypass-cv-init-params, CosmoStat/sp_validation
+          #381); the binning and band count
           come from harmonic.fiducial, through the tag common.pseudo_cl_tag
           puts in the pseudo-Cl and covariance file names that the B-mode
           summary, the figures and the assembly request.
           Values:
           nside = 1024;
           power = 0.5;
-          cosmo_val.nside = 1024;
-          cosmo_val.binning = powspace;
-          cosmo_val.power = 0.5;
-          cosmo_val.n_ell_bins = 32;
           harmonic.fiducial.binning = powspace;
           harmonic.fiducial.nbins = 32.
         default: nside1024_lmin8_powspace32
@@ -1560,13 +1558,13 @@ analyses:
           CovTauTh fills shot noise only for the tau auto-blocks
           (tau-th-cov-missing-cross-shot-noise, in shear_psf_leakage), develop
           passes A and n_e that CovTauTh ignores
-          (tau-cov-ignores-configured-survey-inputs), and the papers/cosmo_val
-          keys cov_estimate_method, compute_cov_rho and n_cov do not reach the
-          producer rule.
+          (tau-cov-ignores-configured-survey-inputs), the papers/cosmo_val keys
+          cov_estimate_method and compute_cov_rho do not reach the producer
+          rule (generic-producers-bypass-cv-init-params,
+          CosmoStat/sp_validation #381), and its n_cov reaches no code.
           Values:
           cosmo_val.cov_estimate_method = th;
-          cosmo_val.compute_cov_rho = True;
-          cosmo_val.n_cov = 100.
+          cosmo_val.compute_cov_rho = True.
         default: theory_tau_jackknife_rho
         options:
           theory_tau_jackknife_rho:
@@ -1824,18 +1822,17 @@ analyses:
           coupling differs from the catalogue estimator's: the EE windows
           differ by 1.6% in a 5000-object nside-64 toy, and the production
           difference is not measured. [LINT] the producer's constructor takes
-          noise_bias_method, fiducial_input_inka and cell_seed from its
-          defaults, not from papers/cosmo_val
-          (generic-producers-bypass-cv-init-params), and
+          noise_bias_method analytic, fiducial_input_inka coupled and
+          cell_seed 8192 from its defaults (cosmo_val/core.py on both
+          branches); the papers/cosmo_val keys of those names hold the same
+          values but reach only the cv_runner rules
+          (generic-producers-bypass-cv-init-params, CosmoStat/sp_validation
+          #381), and
           generate_pseudo_cl_cov.py calls calculate_pseudo_cl_eb_cov, which
           fails against the locked cs_util on develop and which the tomography
           branch's class does not define
           (pseudo-cl-covariance-producer-crashes).
-          Values:
-          cosmo_val.noise_bias_method = analytic;
-          cosmo_val.fiducial_input_inka = coupled;
-          cosmo_val.cell_seed = 8192;
-          twopoint.smk#nside = 1024.
+          Values: twopoint.smk#nside = 1024.
         default: inka_coupled_analytic_noise
         options:
           inka_coupled_analytic_noise:
@@ -1873,11 +1870,7 @@ analyses:
           unwindowed C_l at ell 2000 exceeds the CAMB mead2020_feedback
           reference by 18% with develop's CCL backend and 14% with the
           tomography branch's CAMB backend.
-          Values:
-          cosmo_val.cosmo_params.Omega_m = 0.30966;
-          cosmo_val.cosmo_params.sig8 = 0.8102;
-          cosmo_val.cosmo_params.extra_params.camb.halofit_version = mead2020_feedback;
-          cosmo_val.cosmo_params.extra_params.camb.HMCode_log_T_AGN = 7.8.
+          Values: COSMOLOGY_PARAMS = results/cosmology/planck18.json.
         default: planck18_lensing_only
         options:
           planck18_lensing_only:
@@ -2418,7 +2411,10 @@ analyses:
           means, KDE modes and limits are unaffected
           (polychord-getdist-loglike-sign). [LINT] derive_parameter_Om has no
           production caller; it divides omch2 by (h0/100)^2 although h0 is the
-          reduced h, and omits ombh2 (derive-parameter-om-units).
+          reduced h, and omits ombh2 (derive-parameter-om-units). The
+          smoothing_scale and best_fit_method pins hold the chain_postprocessing
+          defaults; the reported values (0.5 and 2Dkde) are set in the whisker
+          script.
           Values:
           smoothing_scale = 0.3;
           num_bins = 1000;
@@ -2584,10 +2580,10 @@ analyses:
           glass_mock.smk hard-codes 0.5-500 arcmin in 1000 bins instead
           (fixed_grid).
           Values:
-          nside = 1024;
           power = 0.5;
           lmin = 8;
           glass_mock.smk#lmax = 2048;
+          cl_nbins = [32];
           sep_units = arcmin.
         default: data_integration_grid_catalog_powspace32
         options:
