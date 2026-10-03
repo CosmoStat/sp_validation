@@ -43,6 +43,7 @@ results = cosebis_scan_from_xi(
 )
 
 # @sc [decision:bmodes.cosebis_modes]
+# @sc [decision:bmodes.fiducial_scale_cut]
 fiducial_key = find_conservative_scale_cut_key(results, fiducial_scale_cut)
 fiducial = results[fiducial_key]
 

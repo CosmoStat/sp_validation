@@ -116,6 +116,7 @@ def _grid_cov(version, grid, gaussian):
 
 # @sc [decision:bmodes.bmode_covariance]
 # @sc [decision:covariance.cosmocov_terms_per_grid]
+# @sc [decision:real_space.integration_grid]
 def cv_xi_cov_integration(version):
     """CosmoCov gaussian ξ± covariance on the integration grid.
 

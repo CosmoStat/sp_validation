@@ -258,6 +258,7 @@ def add_pseudo_cl(
     grid="reporting",
 ):
     """Add pseudo-Cℓ EE (required) plus whichever of BB/EB were computed.
+    @sc [decision:data_products.point_labels_and_windows]
 
     Parameters
     ----------
@@ -1248,6 +1249,7 @@ def sacc_to_twopoint_fits(
 
 def _build_cell(s, bins):
     """Build the CELL_EE 2pt HDU plus the COVMAT_CELL HDU from the SACC pseudo-Cℓ.
+    @sc [decision:inference.theory_sampling]
 
     Returns ``(None, None)`` when the SACC has no pseudo-Cℓ. Only CELL_EE is
     emitted — the harmonic ``2pt_like`` fits ``data_sets=CELL_EE``, and today's
@@ -1321,6 +1323,7 @@ def _block_diag(*blocks):
 
 def _build_rho_tau(rho_stats_hdu, tau_stats_hdu, theta, use_rho_tau):
     """Build the TAU_{0,2}_PLUS 2pt HDUs and the verbatim RHO_STATS HDU.
+    @sc [decision:inference.theory_sampling]
 
     Mirrors ``tau_to_fits`` / ``rho_to_fits``: τ_0/τ_2 read their ``tau_k_p``
     columns onto the shared ξ θ grid (consistency step); RHO_STATS is copied

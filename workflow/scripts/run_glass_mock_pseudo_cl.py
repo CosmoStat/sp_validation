@@ -51,6 +51,8 @@ print(f"Binning: {nbins} powspace bins, ell=[{ell_eff[0]:.1f}, {ell_eff[-1]:.1f}
 # Create NaMaster spin-2 field from catalog
 # pol_factor=True: e2 sign flip to match IAU polarization convention
 print("Creating NaMaster field...")
+# @sc [decision:mocks.mock_two_point_measurements]
+# @sc [decision:spin2_sign_convention]
 f_all = nmt.NmtFieldCatalog(
     positions=[ra, dec],
     weights=w,

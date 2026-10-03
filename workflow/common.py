@@ -295,6 +295,7 @@ XI_KEYS = ("min_sep", "max_sep", "nbins", "npatch")
 def xi_grids(config, fiducial):
     """The named ξ± grids of a workflow, canonicalised.
     @sc [decision:real_space.integration_grid]
+    @sc [decision:real_space.jackknife_patches]
     @sc [decision:real_space.reporting_grid]
 
     Workflows carrying no cosmo_val block (e.g. papers/bmodes) fall back to
@@ -356,7 +357,9 @@ def grid_of(grids, binning):
 
 
 def pseudo_cl_tag(config):
-    """Fiducial harmonic-binning tag stamped into pseudo-Cl filenames."""
+    """Fiducial harmonic-binning tag stamped into pseudo-Cl filenames.
+    @sc [decision:harmonic.multipoles_and_bandpowers]
+    """
     fiducial = config["harmonic"]["fiducial"]
     return f"{fiducial['binning']}_nbins={fiducial['nbins']}"
 

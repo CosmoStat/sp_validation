@@ -46,6 +46,7 @@ dat:
     value: 2
 
   # Duplicate objects
+  # @sc [decision:calibration.catalogue_cuts]
   - col_name: overlap
     label: tile overlap
     kind: equal

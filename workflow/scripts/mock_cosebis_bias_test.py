@@ -86,6 +86,7 @@ cov_mean = cov_B / n_mocks
 chi2_val = mean_Bn @ np.linalg.solve(cov_mean, mean_Bn)
 pte = chi2_dist.sf(chi2_val, nmodes)
 
+# @sc [decision:mocks.cosebis_bias_test]
 for n_sub in [5, 8]:
     cov_sub = cov_B[:n_sub, :n_sub] / n_mocks
     chi2_sub = mean_Bn[:n_sub] @ np.linalg.solve(cov_sub, mean_Bn[:n_sub])

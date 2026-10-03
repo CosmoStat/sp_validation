@@ -209,6 +209,7 @@ def cov_cl_to_fits(cov_file, cov_hdu="COVAR_FULL"):
 
 def tau_to_fits(filename, theta=None):
     """
+    @sc [decision:mocks.mock_inference]
     Convert tau statistics to FITS format.
     If theta provided, override original values for consistency with xi.
     """
@@ -411,6 +412,7 @@ def _generate_ini_file(
     if not is_harmonic:
         if args.use_rho_tau:
             # @sc [decision:inference.likelihood_data_vector]
+            # @sc [decision:inference.psf_leakage_model]
             like_section = (
                 "[2pt_like]\nfile = %(COSMOSIS_DIR)s/likelihood/2pt/2pt_like_xi_sys.py"
                 "\ndata_sets=XI_PLUS XI_MINUS TAU_0_PLUS TAU_2_PLUS\nadd_xi_sys=T"
@@ -457,6 +459,8 @@ def _generate_ini_file(
 def generate_cosmosis_config(args):
     """Generate CosmoSIS INI files (real-space and optional harmonic-space).
 
+    @sc [decision:inference.psf_leakage_model]
+    @sc [decision:inference.shear_calibration_prior]
     @sc [decision:mocks.mock_inference]
     """
     if args.use_rho_tau:
@@ -750,7 +754,9 @@ if __name__ == "__main__":
             check_meanr_consistency(xi_theta, tau_theta, rho_theta, threshold=5.0)
             print("✓ Forcing rho and tau to use xi meanr values for consistency")
 
+            # @sc [decision:inference.theory_sampling]
             rho_hdu = rho_to_fits(args.rho_stats, theta=xi_theta)
+            # @sc [decision:inference.theory_sampling]
             tau_0_p_hdu, tau_2_p_hdu = tau_to_fits(args.tau_stats, theta=xi_theta)
             print("Loaded rho/tau statistics")
 

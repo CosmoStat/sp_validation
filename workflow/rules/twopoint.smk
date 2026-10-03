@@ -99,6 +99,7 @@ rule pseudo_cl:
         "../scripts/generate_pseudo_cl.py"
 
 
+# @sc [decision:covariance.pseudo_cl_fiducial_theory]
 # @sc [decision:covariance.pseudo_cl_gaussian_covariance]
 rule pseudo_cl_cov:
     """Generate pseudo-Cl covariance with configurable binning."""

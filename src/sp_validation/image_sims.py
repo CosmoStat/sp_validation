@@ -294,6 +294,7 @@ class ImageSimMBias:
 
     def run(self, verbose=True):
         """Compute m and c for both shear components and every weight scheme.
+        @sc [decision:shear_bias_simulations.mbias_sim_selection]
 
         Returns
         -------

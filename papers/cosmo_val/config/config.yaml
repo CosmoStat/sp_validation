@@ -151,6 +151,7 @@ inference:
   glass_mock_data_dir: "/n09data/guerrini/glass_mock_v1.4.6/results"
   glass_mock_chains_dir: "/n09data/guerrini/glass_mock_chains"
 
+# @sc [decision:mocks.cosebis_bias_test]
 cosebis:
   theta_min: 1.0
   theta_max: 250.0

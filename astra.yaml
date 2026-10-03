@@ -2229,8 +2229,8 @@ analyses:
           priors_psf.ini#shear_calibration_parameters.m1 = gaussian -0.0057 0.014;
           priors.ini#shear_calibration_parameters.m1 = gaussian -0.057 0.014;
           values_psf.ini#shear_calibration_parameters.m1 = -0.1 0.0 0.1;
-          shear_m_bias.m_per_bin = True;
-          shear_m_bias.cl_section = shear_xi_plus shear_xi_minus.
+          cosmosis_pipeline_A_psf.ini#shear_m_bias.m_per_bin = True;
+          cosmosis_pipeline_A_psf.ini#shear_m_bias.cl_section = shear_xi_plus shear_xi_minus.
         default: gaussian_m1
         options:
           gaussian_m1:
@@ -2252,8 +2252,8 @@ analyses:
           Values:
           priors_psf.ini#nofz_shifts.bias_1 = gaussian -0.030 0.018;
           values_psf.ini#nofz_shifts.bias_1 = -0.1 0.0 0.1;
-          photoz_bias.mode = additive;
-          photoz_bias.interpolation = cubic.
+          cosmosis_pipeline_A_psf.ini#photoz_bias.mode = additive;
+          cosmosis_pipeline_A_psf.ini#photoz_bias.interpolation = cubic.
         default: additive_gaussian
         options:
           additive_gaussian:
@@ -2279,7 +2279,7 @@ analyses:
           the PSF template the plain interface; under bk_corrected both run
           bridle_king_corrected.
           Values:
-          linear_alignment.method = bk_corrected;
+          cosmosis_pipeline_A_psf.ini#linear_alignment.method = bk_corrected;
           priors_psf.ini#intrinsic_alignment_parameters.A = gaussian 0.83 0.7;
           values_psf.ini#intrinsic_alignment_parameters.A = -5.0 0 5.0.
         default: nla_gaussian_prior
@@ -2351,11 +2351,11 @@ analyses:
           fiducial C_l behind the pseudo-C_l covariance does not use this model
           (covariance.pseudo_cl_fiducial_theory).
           Values:
-          camb.halofit_version = mead2020_feedback;
-          camb.kmax = 20.0;
-          camb.kmax_extrapolate = 500.0;
-          camb.nk = 200;
-          camb.zmax = 5.0;
+          cosmosis_pipeline_A_psf.ini#camb.halofit_version = mead2020_feedback;
+          cosmosis_pipeline_A_psf.ini#camb.kmax = 20.0;
+          cosmosis_pipeline_A_psf.ini#camb.kmax_extrapolate = 500.0;
+          cosmosis_pipeline_A_psf.ini#camb.nk = 200;
+          cosmosis_pipeline_A_psf.ini#camb.zmax = 5.0;
           values_psf.ini#halo_model_parameters.logT_AGN = 7.3 7.4755796676459387 8.0.
         default: hmcode2020_feedback
         options:
@@ -2381,9 +2381,9 @@ analyses:
           and resume T enables reading the saved state for
           polychord_outfile_root under base_dir.
           Values:
-          runtime.sampler = polychord;
-          polychord.live_points = 192;
-          polychord.resume = True.
+          cosmosis_pipeline_A_psf.ini#runtime.sampler = polychord;
+          cosmosis_pipeline_A_psf.ini#polychord.live_points = 192;
+          cosmosis_pipeline_A_psf.ini#polychord.resume = True.
         default: polychord_192
         options:
           polychord_192:
@@ -2587,7 +2587,7 @@ analyses:
           nside = 1024;
           power = 0.5;
           lmin = 8;
-          lmax = 2048;
+          glass_mock.smk#lmax = 2048;
           sep_units = arcmin.
         default: data_integration_grid_catalog_powspace32
         options:
@@ -2622,8 +2622,10 @@ analyses:
           null does not model. [HARDCODED] the 5- and 8-mode subsets (the
           config's cosebis.mode_subsets, [6, 20], is not read).
           Values:
-          cosebis.theta_min = 1.0;
-          cosebis.theta_max = 250.0;
+          bmodes/config/config.yaml#cosebis.theta_min = 1.0;
+          bmodes/config/config.yaml#cosebis.theta_max = 250.0;
+          cosmo_val/config/config.yaml#cosebis.theta_min = 1.0;
+          cosmo_val/config/config.yaml#cosebis.theta_max = 250.0;
           mock_cosebis_bias_test.py#precision = 120.
         default: analytic_cov_over_n_100_mocks
         options:
