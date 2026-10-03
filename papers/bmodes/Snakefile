@@ -1,4 +1,4 @@
-# UNIONS B-modes paper (Paper III): figures, PTE tables and LaTeX macros,
+# UNIONS B-modes paper (Paper II): figures, PTE tables and LaTeX macros,
 # composed over the generic compute workflow at ../../workflow/.
 
 configfile: "config/config.yaml"
