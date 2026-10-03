@@ -68,7 +68,9 @@ def make_pte_colormap(
 
 
 def make_pte_norm(low=0.05, high=0.95, n_gradient=PTE_GRADIENT_LEVELS):
-    """Create exact threshold normalization for PTE heatmaps."""
+    """Create exact threshold normalization for PTE heatmaps.
+    @sc [decision:bmodes.bmode_summary]
+    """
     boundaries = np.concatenate(
         (
             [0.0],

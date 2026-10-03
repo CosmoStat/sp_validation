@@ -139,6 +139,7 @@ cl:
 
 # Harmonic pseudo-Cl fiducial binning — the tag the producer (twopoint.smk)
 # stamps into the filename, reconstructed by the inference consumer.
+# @sc [decision:bmodes.bmode_summary]
 # @sc [decision:harmonic.multipoles_and_bandpowers]
 harmonic:
   fiducial:
