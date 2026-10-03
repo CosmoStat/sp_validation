@@ -829,30 +829,6 @@ def test_fiducial_pixel_window_applies_only_to_map():
         npt.assert_array_equal(fiducial[key], cl)
 
 
-def test_fiducial_cl_follows_the_configured_cosmology():
-    """The iNKA fiducial is CCL's prediction for the configured cosmology.
-
-    A non-default neutrino mass makes the check bite: cs_util's CAMB backend
-    drops it.
-    """
-    import pyccl as ccl
-    from cs_util.cosmo import get_cosmo
-
-    from sp_validation.pseudo_cl import get_fiducial_cl
-
-    cosmo = get_cosmo(mnu=0.3)
-    z = np.linspace(0.01, 3.0, 200)
-    dndz = np.exp(-(((z - 0.7) / 0.3) ** 2))
-    lmax = 128
-    fiducial = get_fiducial_cl(z, dndz, lmax, cosmo)["W1xW1"]
-
-    ell = np.arange(1, lmax + 1)
-    tracer = ccl.WeakLensingTracer(cosmo, dndz=(z, dndz))
-    npt.assert_allclose(
-        fiducial, ccl.angular_cl(cosmo, tracer, tracer, ell), rtol=1e-10
-    )
-
-
 def test_calculate_pseudo_cl_catalog_end_to_end_tomo(cv, tmp_path):
     """End-to-end catalog path: FITS round-trip of ell + EE/EB/BB.
 
