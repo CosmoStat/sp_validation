@@ -4,16 +4,17 @@ The serialized plus columns match one statistic-major Gaussian draw; minus
 columns are zero, and the mock ID alone determines a reproducible draw.
 """
 
-import os
 from pathlib import Path
 
 import numpy as np
 import pytest
 from astropy.io import fits
 
+import sp_validation
+
 pytestmark = [pytest.mark.fast, pytest.mark.decision("mocks.mock_inference")]
 
-REPO_ROOT = Path(os.environ["PYTHONPATH"].split(os.pathsep)[0]).parent
+REPO_ROOT = Path(sp_validation.__file__).resolve().parents[2]
 SCRIPT_PATH = (
     REPO_ROOT / "workflow" / "scripts" / "generate_glass_mock_rhotau_samples.py"
 )
