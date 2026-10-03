@@ -267,10 +267,12 @@ analyses:
           floor removes noisy objects, the ceiling too-bright objects that may
           be too large for the postage stamp, the size floor objects likely to
           be point-like, and the size ceiling objects so large they seem to
-          bias the correlation functions. That file's own size floor is 0.5; no
-          reason is recorded for 0.707. The selection defines the sample and
-          the selection response. [LINT] the config comment calls the ratio
-          hlr/hlr_psf; the cut is on T/Tpsf.
+          bias the correlation functions. That file's own size floor is 0.5;
+          the two data configs set 0.707 without a rationale comment, while
+          Paper II describes the tightened 0.707 threshold as removing galaxies
+          whose shape measurement and leakage correction are least reliable.
+          The selection defines the sample and the selection response. [LINT]
+          the config comment calls the ratio hlr/hlr_psf; the cut is on T/Tpsf.
           Values:
           mask_v2.0.yaml#metacal.gal_snr_min = 10;
           mask_v2.0.yaml#metacal.gal_snr_max = 500;
@@ -319,8 +321,8 @@ analyses:
             label: NGMIX_Tpsf_NOSHEAR as written
             excluded: true
             excluded_reason: >-
-              In the v1 comprehensive catalogues it is about 2% off the kernel
-              metacal applied.
+              In the v1.4, v1.5 and v1.6 comprehensive catalogues
+              NGMIX_Tpsf_NOSHEAR is about 2% off the kernel metacal applies.
       response_estimator:
         label: Metacal response, R = <R_shear> + R_selection
         rationale: >-
@@ -399,8 +401,9 @@ analyses:
           the range, or missing, falls in the last bin of its axis (get_w_des,
           compute_weights_gatti). cosmo_val weights the SP_v1.4.6.3 statistics
           by w_des (shear.w_col), and the n_eff and sigma_e it reports use the
-          configured weight. No rationale is recorded for sigma_eps = 0.34.
-          [LINT] G1_ERR and G2_ERR are standard deviations added to variances
+          configured weight. The data calibration configs set sigma_eps_prior =
+          0.34 without a rationale comment. [LINT] G1_ERR and G2_ERR are
+          standard deviations added to variances
           (iv-weight-adds-sigma-to-variance).
           Values:
           mask_v2.0.yaml#metacal.sigma_eps_prior = 0.34;
@@ -444,7 +447,7 @@ analyses:
       objectwise_leakage_correction:
         label: Object-wise PSF-leakage correction producing e*_leak_corrected
         rationale: >-
-          Following Li et al. (2024), galaxies are split into 20 quantile bins
+          Following Li et al. (2023), galaxies are split into 20 quantile bins
           of the size ratio Tpsf/(T + Tpsf) and, within each, 20 SNR quantiles;
           a weighted least-squares slope alpha (with an intercept) of the
           calibrated shear e against e_PSF is fit per bin with w_des, a
@@ -454,11 +457,13 @@ analyses:
           (get_alpha_leakage_per_object). The catalogue stores e_leak_corrected
           = e - alpha e_PSF, the fiducial shear columns of Paper II
           (shear_field.fiducial_columns). e_PSF is the comprehensive
-          catalogue's e1_PSF/e2_PSF, the PSF ellipticity at the galaxy position
-          as post-processing writes it, not an ngmix column. [LINT] the trend
-          fit weights by 1/err^4 (leakage-trend-fit-weights-squared), and any
-          exception in the fit becomes alpha = -99, which the caller applies to
-          the shears (leakage-fit-failure-becomes-minus-99).
+          catalogue's e1_PSF/e2_PSF; the committed extract_info.py writes these
+          as copies of NGMIX_G1_PSF_ORIG_NOSHEAR and NGMIX_G2_PSF_ORIG_NOSHEAR,
+          which the grammar presents from reconvolved-PSF aliases for v1
+          inputs. [LINT] the trend fit weights by 1/err^4
+          (leakage-trend-fit-weights-squared), and any exception in the fit
+          becomes alpha = -99, which the caller applies to the shears
+          (leakage-fit-failure-becomes-minus-99).
           Values: calibration.py#weight_type = des; num_bins = 20.
         default: li2024_20x20_wdes
         options:
@@ -539,19 +544,21 @@ analyses:
           sets an unweighted global response and no additive-bias subtraction.
           Its cuts are FLAGS <= 2, overlap, N_EPOCH >= 1, 15 <= mag <= 30, no
           ngmix failure, valid PSF ellipticities, 5 < SNR < 500 and 0.25 <
-          T/Tpsf < 10. Additive-bias subtraction is off because subtracting
-          each catalogue's mean shear removes the injected constant shear and
-          drives m to -1 (#226). The response is unweighted and the template's
-          w_cols leads with "none" (unit weights; the first w_cols entry is the
-          headline result) because w_des weights on the simulations are
-          dominated by a few objects, and #227 closed on using no weights in
-          the simulation m-bias. A measured m therefore applies to objects
-          passing the v1.X.9 cuts (the matched pairs among them when pair_match
-          is true) under the first w_cols scheme, while the SP_v1.4.6.3 FITS
-          header records the mask_v1.X.6.yaml selection (among it FLAGS = 0,
-          N_EPOCH >= 2, SNR > 10 and 0.707 < T/Tpsf < 3) with a response
-          weighted by w, and cosmo_val analyses that catalogue under w_des.
-          mask_config and w_cols are required run keys.
+          T/Tpsf < 10. Additive-bias subtraction is off because it makes each
+          branch's unweighted full-sample mean calibrated shear zero, giving m
+          = -1 for an unweighted, unmatched estimate but not necessarily for
+          matched or weighted estimates (#226). The response is unweighted and
+          the template's w_cols leads with "none" (unit weights; the first
+          w_cols entry is the headline result) because w_des weights on the
+          simulations are dominated by a few objects, and #227 closed on using
+          no weights in the simulation m-bias. When mask_config selects
+          mask_v1.X.9_im_sim.yaml, the headline m applies to its
+          simulation-selected sample (the matched pairs among it when
+          pair_match is true) under the first w_cols scheme, while the
+          SP_v1.4.6.3 FITS header records the mask_v1.X.6.yaml selection (among
+          it FLAGS = 0, N_EPOCH >= 2, SNR > 10 and 0.707 < T/Tpsf < 3) with a
+          response weighted by w, and cosmo_val analyses that catalogue under
+          w_des. mask_config and w_cols are required run keys.
           Values:
           mask_v1.X.9_im_sim.yaml#dat.0.value = 2;
           mask_v1.X.9_im_sim.yaml#dat.2.value = 1;
@@ -583,16 +590,18 @@ analyses:
           with replacement; with pair_match false the +g and -g catalogues are
           resampled independently. For each shear pair the indices come from a
           generator seeded with bootstrap_seed and are reused across weight
-          schemes. Only calibrated ellipticities are resampled, so the response
-          is not re-estimated per resample. [LINT] the reported error omits
-          response-estimation noise (imsim-bootstrap-fixed-response,
-          CosmoStat/sp_validation #386): in a synthetic ensemble the repeat-run
-          scatter of m is 1.96 (m1) and 1.89 (m2) times the reported error, and
-          on one SKiLLS tile on disk (imsims-ab grid_1, tile 233.293)
-          re-estimating the mean shear response in each resample raises
-          sigma(m1) from 0.027 to 0.039 and sigma(m2) from 0.022 to 0.042,
-          still without selection-response noise. Both keys are required run
-          keys; the template suggests 500 and 42.
+          schemes. Each resample uses calibrated ellipticities and their
+          corresponding weights, with each branch's response held fixed. [LINT]
+          the reported error omits response-estimation noise
+          (imsim-bootstrap-fixed-response, CosmoStat/sp_validation #386): in a
+          synthetic ensemble the repeat-run scatter of m is 1.96 (m1) and 1.89
+          (m2) times the mean reported error, and a diagnostic on one SKiLLS
+          tile on disk (imsims-ab grid_1, tile 233.293), using assumed g_in =
+          0.02 rather than the injected 0.025, raises sigma(m1) from 0.027 to
+          0.039 and sigma(m2) from 0.022 to 0.042 when the mean shear response
+          is re-estimated on each matched resample with selection response held
+          fixed. Both keys are required run keys; the template suggests 500 and
+          42.
           Values:
           image_sims/config.yaml#image_sims.n_bootstrap = absent;
           image_sims/config.yaml#image_sims.bootstrap_seed = absent.
@@ -1710,10 +1719,12 @@ analyses:
           merge adopts, sets the unbinned noise to zero and applies no pixel
           window to the fiducial spectrum; develop fills ell < lmin with the
           lowest band's value and multiplies by pixwin(nside)^2 for every
-          cell_method. The zeroing reproduces the exact white-noise covariance
-          to about 1%; develop's fill counts the noise the mask couples in from
-          ell < 8 twice, giving a noise-only first-band BB variance 1.55 times
-          the exact value on the v1.4.6.3 footprint at nside 256. Only the
+          cell_method. In the noise-only checks, the tomography branch's BB
+          variance diagonals agree with a NaMaster iNKA reference built from
+          flat white-noise input to about 1% on the v1.4.6.3 footprint at nside
+          256 and within 3.7% in the nside-16 toy; develop's fill counts the
+          noise the mask couples in from ell < 8 twice and gives a first-band
+          BB variance 1.55 times the reference on that footprint. Only the
           Gaussian covariance reaches the SACC and the BB PTE; the
           OneCovariance Gaussian plus non-Gaussian hybrid
           (calculate_pseudo_cl_g_ng_cov) is called by no rule. The covariance
@@ -1766,9 +1777,10 @@ analyses:
           CosmoStat/sp_validation #381). The CAMB conversion also drops the
           neutrino mass, which matters only for a value other than 0.06 eV
           (camb-conversion-drops-neutrino-mass). The theory sets the
-          sample-variance term; for a synthetic n(z), the producers' C_l at ell
-          2000 exceeds the configured model's by 18% on develop and 14% on the
-          tomography branch.
+          sample-variance term; for the synthetic n(z) in the backend test, the
+          unwindowed C_l at ell 2000 exceeds the CAMB mead2020_feedback
+          reference by 18% with develop's CCL backend and 14% with the
+          tomography branch's CAMB backend.
           Values:
           cosmo_val.cosmo_params.Omega_m = 0.30966;
           cosmo_val.cosmo_params.sig8 = 0.8102;
@@ -1802,12 +1814,14 @@ analyses:
           injection (the external block is the analysis covariance for those
           two statistics) and for dropping the pseudo-Cl cross-spectrum blocks
           (they match what the B-mode PTE reads); no rationale is recorded for
-          the zero cross-statistic blocks. A joint chi2 across statistics or
-          polarisations computed from this file would treat correlated
-          measurements of one shear field as independent; no code in the
-          repository computes one. The part writers (cosmo_val/sacc_writers.py
-          and PSFSystematicsMixin.rho_tau_to_sacc_part) exist only on develop;
-          the tomography branch's cosmo_val defines neither. [LINT] the tau
+          the zero cross-statistic blocks. A joint chi2 from this file ignores
+          cross-statistic covariance and the cross-polarisation covariance
+          between pseudo-Cl EE, BB and EB, while retaining the supplied
+          within-part covariance for COSEBIs and pure E/B; no code in the
+          repository computes such a joint chi2 from the terminal file. The
+          part writers (cosmo_val/sacc_writers.py and
+          PSFSystematicsMixin.rho_tau_to_sacc_part) exist only on develop; the
+          tomography branch's cosmo_val defines neither. [LINT] the tau
           covariance kind is chosen by a file's existence rather than
           cov_estimate_method, and nothing in the SACC records which one was
           used (lsq-sample-cache-ignores-cov-type).
@@ -1864,12 +1878,13 @@ analyses:
           the record assumes the merge keeps: the tomography branch's cosmo_val
           modules have no sacc_nz and write no SACC part. sacc_io's writers
           take a bin pair and new_sacc builds one source_i tracer per n(z) it
-          is given, but no committed code writes per-bin tracers or cross-bin
-          pairs. No rationale is recorded at the sites. No committed rule reads
-          {version}.sacc (the CosmoSIS pipelines read FITS); the file fixes the
-          rows and the n(z) available to a SACC-reading likelihood, which is
-          not implemented (CosmoStat/sp_validation PR #255). [LINT] sacc_io's
-          module docstring lists the integration xi+- as a terminal block
+          is given, but the committed analysis producers supply one source
+          tracer and use the source pair (0, 0). No rationale is recorded at
+          the sites. No committed rule reads {version}.sacc (the CosmoSIS
+          pipelines read FITS); the file fixes the rows and the n(z) available
+          to a SACC-reading likelihood, which is not implemented
+          (CosmoStat/sp_validation PR #255). [LINT] sacc_io's module docstring
+          lists the integration xi+- as a terminal block
           (sacc-io-docstring-integration-xi), and assemble_analysis_sacc takes
           tracers and metadata from the first part without comparing the others
           (assembly-first-part-tracers).
@@ -1908,13 +1923,14 @@ analyses:
           holds one window per bandpower. COSEBIs normalise their filters on,
           and integrate over, the integration part's meanr (cv_cosebis.py,
           b_modes.cosebis_scan_from_xi), so the theta label enters the COSEBIs
-          B-mode PTEs; a theory sampled at meanr differs from one at rnom or
-          bin-averaged wherever xi is curved across a bin. A theory with E-mode
-          power only predicts the EE bandpowers exactly through the stored
-          window, but predicts zero BB where NaMaster leaves W(BB<-EE) C_EE; an
-          audit emulation of the production geometry put that at 5.8% of C_EE
-          in the first band (0.17 sigma) and a chi-square of 0.03 over the 32
-          bands (sacc-window-drops-eb-mixing, CosmoStat/sp_validation #385).
+          B-mode PTEs; a theory sampled at meanr can differ from one sampled at
+          rnom or averaged over the bin when xi is curved across the bin. A
+          theory with E-mode power only predicts the EE bandpowers exactly
+          through the stored window, but predicts zero BB where NaMaster leaves
+          W(BB<-EE) C_EE; an audit emulation of the production geometry put
+          that at 5.8% of C_EE in the first band (0.17 sigma) and a chi-square
+          of 0.03 over the 32 bands (sacc-window-drops-eb-mixing,
+          CosmoStat/sp_validation #385).
         default: meanr_shared_ee_window
         options:
           meanr_shared_ee_window:
@@ -2199,11 +2215,12 @@ analyses:
           priors_psf.ini adds the Gaussian N(0.0244, 0.00038) on ombh2. Paper
           III takes the ranges from Table 2 of the DES Y3 + KiDS-1000 analysis
           and adds a BBN prior on ombh2. The S8 prior is flat by construction,
-          and the Omega_m prior follows from the omch2, ombh2 and h0 bounds;
-          sampling ln(10^10 A_s) instead would make the implied S8 prior
-          non-flat. [LINT] the committed ombh2 prior differs from the BBN prior
-          0.02218 +/- 0.00055 of Paper III and its fiducial chain
-          (committed-priors-disagree-with-paper-fiducial).
+          while Omega_m inherits the joint priors on omch2, ombh2 and h0,
+          including the Gaussian ombh2 prior and the fixed neutrino
+          contribution; sampling ln(10^10 A_s) with a flat prior instead
+          induces a non-flat S8 prior. [LINT] the committed ombh2 prior differs
+          from the BBN prior 0.02218 +/- 0.00055 of Paper III and its fiducial
+          chain (committed-priors-disagree-with-paper-fiducial).
           Values:
           values_psf.ini#cosmological_parameters.omch2 = 0.051 0.12249999999999998 0.255;
           values_psf.ini#cosmological_parameters.h0 = 0.64 0.70 0.82;
@@ -2231,15 +2248,17 @@ analyses:
         rationale: >-
           The camb section sets power mode with halofit_version
           mead2020_feedback, kmax 20 extrapolated to 500, nk 200 and zmax 5,
-          and values_psf.ini samples logT_AGN in [7.3, 8.0]. Paper III chooses
-          HMCode2020 for its 2.5% accuracy to k = 10 h/Mpc against N-body
-          simulations and marginalises over AGN feedback, which hydrodynamical
-          simulations put at logT_AGN 7.6-8.0. At 12 arcmin, wavenumbers above
-          0.43 h/Mpc contribute under 10% of xi+ and above 2.85 h/Mpc under 10%
-          of xi-, and Paper III finds no appreciable change in S8, sigma8 or
-          Omega_m with HMCode2020 without feedback or with Takahashi halofit.
-          The fiducial C_l behind the pseudo-C_l covariance does not use this
-          model (covariance.pseudo_cl_fiducial_theory).
+          and values_psf.ini samples logT_AGN in [7.3, 8.0]. Paper III uses
+          HMCode2020, quotes accuracy of up to 2.5% for k <= 10 h/Mpc against
+          N-body simulations, and marginalises over AGN feedback, whose
+          hydrodynamical calibrations give logT_AGN around 7.6-8.0. For its
+          Planck 2018 fiducial cosmology and adopted n(z), Paper III estimates
+          that at 12 arcmin wavenumbers above 0.43 h/Mpc contribute no more
+          than 10% of xi+ and those above 2.85 h/Mpc no more than 10% of xi-,
+          and finds no appreciable change in the best-fit S8, sigma8 or Omega_m
+          with HMCode2020 without feedback or with Takahashi halofit. The
+          fiducial C_l behind the pseudo-C_l covariance does not use this model
+          (covariance.pseudo_cl_fiducial_theory).
           Values:
           camb.halofit_version = mead2020_feedback;
           camb.kmax = 20.0;
