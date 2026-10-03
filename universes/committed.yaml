@@ -51,7 +51,7 @@ analyses:
       psf_error_model: alpha_beta_eta
       tau_covariance: theory_tau_jackknife_rho
       leakage_fit_sampling: lsq_independent_draws
-      leakage_diagnostics: fast_ratio_and_linear_mix
+      leakage_diagnostics: tau0_rho0_ratio_seeded_and_linear_mix
   covariance:
     decisions:
       cosmocov_cosmology: planck18_no_ia

@@ -1635,12 +1635,13 @@ analyses:
           constant galaxy field c with the star field; a 60,041-star sample of
           the v1.4.a star catalogue has mean ellipticity (0.011, 0.010).
           [HARDCODED]
-        default: fast_ratio_and_linear_mix
+        default: tau0_rho0_ratio_seeded_and_linear_mix
         options:
-          fast_ratio_and_linear_mix:
+          tau0_rho0_ratio_seeded_and_linear_mix:
             label: >-
-              alpha = tau_0+/rho_0+ (develop: uncentred xi_gp+/xi_pp+ with mean
-              terms dropped); 2x2 linear object-wise fit
+              alpha = tau_0+/rho_0+ with errors from seeded draws (develop:
+              uncentred xi_gp+/xi_pp+ with mean terms dropped); 2x2 linear
+              object-wise fit
           full_ratio:
             label: fast False, mean terms subtracted
             description: >-
