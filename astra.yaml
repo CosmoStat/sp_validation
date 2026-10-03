@@ -45,8 +45,9 @@
 #     not implement says so in its description and is not excluded.
 #   * [HARDCODED]: the committed choice is fixed in code, with no config key.
 #     [LINT]: the code disagrees with itself, its configuration or its own
-#     documentation; the issue that tracks it follows in parentheses, or,
-#     where none exists, the audit key its regression test is named for.
+#     documentation. The issue that tracks it follows in parentheses, or the
+#     audit key a regression test is named for; an inconsistency with no
+#     effect on a result carries neither.
 #   * Tomography merge (CosmoStat/sp_validation #374/#375): the tomography
 #     branch's src/sp_validation/cosmo_val/*.py, pseudo_cl.py, rho_tau.py,
 #     glass_mock.py, statistics.py, cosmo_val/cat_config.yaml and
@@ -1189,15 +1190,15 @@ analyses:
         rationale: >-
           B-mode PTEs are quoted at 12-83 arcmin for xi+^B, xi-^B, their joint
           vector and COSEBIs, Paper II's fiducial cuts (config comments;
-          unions_bmodes.tex); papers/bmodes also reports the full 1-250 arcmin range.
-          Pure-E/B cuts snap each end to the nearest reporting edge in log
-          theta (bins_from_scale_cut), so a cut on a nominal edge selects the
-          same bins whichever fine grid the edges snapped to; COSEBIs keep
+          unions_bmodes.tex); papers/bmodes also reports the full 1-250 arcmin
+          range. Pure-E/B cuts snap each end to the nearest reporting edge in
+          log theta (bins_from_scale_cut), so a cut on a nominal edge selects
+          the same bins whichever fine grid the edges snapped to; COSEBIs keep
           only integration bins wholly inside the cut (bins_from_edges), and
-          when no scanned COSEBIs cut fits inside the request the nearest by
-          L1 endpoint distance is used (find_conservative_scale_cut_key). The
-          cut selects 7 of 20 reporting bins and the COSEBIs filter support.
-          [LINT] the fallback can select a cut wider than requested.
+          when no scanned COSEBIs cut fits inside the request the nearest by L1
+          endpoint distance is used (find_conservative_scale_cut_key). The cut
+          selects 7 of 20 reporting bins and the COSEBIs filter support. [LINT]
+          the fallback can select a cut wider than requested.
           Values:
           cosmo_val.fiducial_scale_cut = [12, 83];
           fiducial.fiducial_min_scale = 12;
@@ -1263,22 +1264,23 @@ analyses:
           the C_l^BB PTE over all 32 bandpowers (harmonic.fiducial.nbins)
           against the NaMaster BB-BB block. The config comment gives the reason
           for including pseudo-Cl: it costs no more than the other diagnostics,
-          and the C_l^BB column belongs in the standard summary. papers/bmodes
-          quotes its fiducial C_l^BB PTE over the bandpowers inside 300 <= ell
-          <= 1600, the fiducial harmonic range of Papers II and IV, beside the all-band one, so the
-          summary's C_l^BB entry is not the paper's fiducial C_l^BB PTE [LINT].
-          No pass/fail verdict is computed: the summary carries PTEs, and the
-          paper heatmaps colour PTEs below 0.05 and above 0.95 solid
-          (plotting_utils.make_pte_norm's defaults, which the paper scripts
-          take). [LINT] papers/bmodes' cl.n_ell_bins is read by nothing, and
-          papers/bmodes' statistics.pte_healthy_range is read by nothing, and
-          its comment calls the interval 2 sigma, though it leaves 10% in the
-          two tails. develop's statistics.calibrate_min_pte, a mock-calibrated
-          global minimum-PTE threshold, is called by no rule, and its
-          global_pte (count/N) can reject more often than alpha with a finite
-          mock set: under exchangeable continuous null ranks, p <= 0.05 rejects
-          2/21 of the time with 20 mocks (#378); the tomography branch's
-          statistics.py, which the merge keeps, has no such function.
+          and the C_l^BB column belongs in the standard summary. [LINT]
+          papers/bmodes quotes its fiducial C_l^BB PTE over the bandpowers
+          inside 300 <= ell <= 1600, the fiducial harmonic range of Papers II
+          and IV, beside the all-band one, so the summary's C_l^BB entry is not
+          the paper's fiducial C_l^BB PTE. No pass/fail verdict is computed:
+          the summary carries PTEs, and the paper heatmaps colour PTEs below
+          0.05 and above 0.95 solid (plotting_utils.make_pte_norm's defaults,
+          which the paper scripts take). [LINT] papers/bmodes' cl.n_ell_bins is
+          read by nothing, and papers/bmodes' statistics.pte_healthy_range is
+          read by nothing, and its comment calls the interval 2 sigma, though
+          it leaves 10% in the two tails. develop's
+          statistics.calibrate_min_pte, a mock-calibrated global minimum-PTE
+          threshold, is called by no rule, and its global_pte (count/N) can
+          reject more often than alpha with a finite mock set: under
+          exchangeable continuous null ranks, p <= 0.05 rejects 2/21 of the
+          time with 20 mocks (#378); the tomography branch's statistics.py,
+          which the merge keeps, has no such function.
           Values:
           cosmo_val.include_pseudo_cl = True;
           cl.fiducial_ell_min = 300;
@@ -1571,7 +1573,7 @@ analyses:
           tomography branch cross-bin xi_psf_sys zips the samples of two
           independently fitted bins. The rho-tau cross covariance is ignored.
           [LINT] the draws use the global unseeded numpy generator
-          (lsq-draws-unseeded).
+          (#382).
           Values: cosmo_val.rho_tau_method = lsq; cosmo_val.quantile = 0.1587.
         default: lsq_independent_draws
         options:

@@ -80,6 +80,23 @@ Main configuration in `scripts/calibration/params.py` with parameters:
 - emcee for MCMC sampling
 - pyccl for cosmological calculations
 
+## Decision Record
+`astra.yaml` records sp_validation's scientific decisions: what the code and the
+committed configs select, why, and the alternatives. A choice belongs there if a
+different defensible choice would change a reported statistic, its uncertainty, a
+null-test verdict, or the data vector or covariance handed to inference.
+
+- `@sc [decision:<id>]` tags mark the code and config sites that implement each
+  decision, and a rationale's `Values:` pins the literals there. The header
+  comment of `astra.yaml` gives the grammar.
+- `src/sp_validation/tests/test_decision_record.py` fails when a pin, tag or
+  decision drifts. When you change a scientific default, a config value or a
+  tagged site, update the decision in the same change.
+- `src/sp_validation/tests/invariants/` holds a relation test for each estimator
+  behind a reported number, tied to its decision by `pytest.mark.decision`.
+  `src/sp_validation/tests/regression/` holds `xfail(strict=True)` tests for open
+  defects, each citing its issue; a fix turns them green and the marker comes off.
+
 ## Container Usage
 Nothing is hand-built. CI publishes `ghcr.io/cosmostat/sp_validation:<branch>` on
 every push, and each person keeps their own copy at

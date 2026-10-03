@@ -42,7 +42,7 @@ def restore_random_state():
 @pytest.mark.xfail(
     strict=True,
     raises=AssertionError,
-    reason="unseeded draws: least-squares draws use an unseeded random stream",
+    reason="#382: least-squares draws use an unseeded random stream",
 )
 def test_lsq_samples_identical_for_identical_inputs(restore_random_state):
     """Two fresh fits must return identical samples and reported quantiles.
