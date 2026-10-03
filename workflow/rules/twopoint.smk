@@ -5,17 +5,20 @@ rule xi:
     input:
         catalog=get_shear_catalog,
     output:
-        str(COSMO_VAL / "{version}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.txt"),
-        str(COSMO_VAL / "xi_plus_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
-        str(COSMO_VAL / "xi_minus_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
+        # Restore output files when a sacc_io writer is available.
+        # str(COSMO_VAL / "{version}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.txt"),
+        # str(COSMO_VAL / "xi_plus_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
+        # str(COSMO_VAL / "xi_minus_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
+        touch(str(CV_SENTINELS / "xi_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}{tomo_suffix}.done")),
     threads: 24
     params:
         ver="{version}",
+        compute_tomography=lambda w: w.tomo_suffix == "_tomo",
         min_sep="{min_sep}",
         max_sep="{max_sep}",
         nbins="{nbins}",
         npatch="{npatch}",
-        fits=False,
+        cat_config=CAT_CONFIG,
     resources:
         mem_mb=30000,
         disk_mb=20000,
