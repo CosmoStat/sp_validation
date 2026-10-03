@@ -1314,17 +1314,24 @@ analyses:
           The tomography branch's psf_systematics, which the merge adopts,
           keeps rows with HSM_FLAG_PSF == 0 and HSM_FLAG_STAR == 0
           (_get_star_mask) and passes that mask to the rho/tau builders and
-          CovTauTh; develop forwards the flag names in params but builds the
-          catalogues with no cut, so every row enters [LINT
+          CovTauTh. It and the merged rho_tau.py read the PSF catalogue
+          straight from FITS, not through the grammar, so on the committed
+          v1.4.a file, whose columns are FLAG_*_HSM, E*_HSM and SIGMA_*_HSM,
+          _get_star_mask raises KeyError [LINT
+          tomo-star-mask-bypasses-v1-grammar]. Develop reads the catalogue
+          through the grammar and forwards the flag names in params but builds
+          the catalogues with no cut, so every row enters [LINT
           develop-rho-tau-ignores-hsm-flags; 1.4e-4 of the v1.4.a stars are
-          flagged, with sentinel-like sizes]. The v1 catalogues' E*_HSM
-          columns are renamed to HSM_G* with no value change, because
-          ShapePipe stored galsim's observed_shape g under the E names, and
-          SIGMA_*_HSM is presented as HSM_T_* = 2 sigma^2 (grammar._v1_rules);
+          flagged, with sentinel-like sizes]. The grammar renames the v1 E*_HSM
+          columns to HSM_G* with no value change, because ShapePipe stored
+          galsim's observed_shape g under the E names (shapepipe psfex_interp),
+          and presents SIGMA_*_HSM as HSM_T_* = 2 sigma^2 (grammar._v1_rules).
           cat_config names HSM_T_PSF/HSM_T_STAR as the sizes, so the size
-          residual is (T_star - T_psf)/T_star, about twice the sigma residual,
-          and rho_2, rho_3, rho_4 carry it. An e-to-g conversion would rescale
-          every PSF-ellipticity correlation.
+          residual is (T_star - T_psf)/T_star = 2r - r^2 for a fractional sigma
+          residual r, about twice it, and rho_3, rho_4, rho_5 and tau_5 carry
+          it. Treating the stored values as e and converting them to g would
+          roughly halve every PSF and star ellipticity and rescale every rho
+          and tau.
         default: flags_zero_g_and_t
         options:
           flags_zero_g_and_t:
@@ -1332,26 +1339,31 @@ analyses:
           all_rows:
             label: Every PSF-catalogue row (develop)
             excluded: true
-            excluded_reason: Flagged stars carry sentinel sizes that enter the size-error field as outliers.
+            excluded_reason: >-
+              Flagged stars carry a sentinel star size (sigma about 0.185) and
+              enter the size-error field with a median |w| about nine times
+              that of clean stars.
           sigma_residual:
             label: Size residual in sigma
             description: Not implemented; the grammar presents T.
       rho_tau_estimator:
         label: rho/tau estimator, its fields, weights, centering and binning
         rationale: >-
-          shear_psf_leakage builds four TreeCorr catalogues, galaxies g,
-          PSF p = e_PSF, residual q = e_star - e_PSF and size error w =
-          e_star (T_star - T_psf)/T_star, and measures rho_0..5 among the
-          star fields and tau_0, tau_2, tau_5 of galaxies against them, on the
+          shear_psf_leakage builds four TreeCorr catalogues, galaxies g, PSF p
+          = e_PSF, residual q = e_star - e_PSF and size error w = e_star
+          (T_star - T_psf)/T_star, and measures rho_0..5 among the star fields
+          and tau_0, tau_2, tau_5 of galaxies against p, q and w, on the
           reporting grid of real_space.reporting_grid (20 Log bins, 1-250
           arcmin). Galaxies are weighted by shear.w_col, w_des, and have their
           weighted mean subtracted per component; star fields are unweighted
           and uncentred. No rationale is recorded. Uncentred PSF fields keep
-          <p>^2-type terms in rho at all scales (mean PSF ellipticity about
-          0.01 per component on v1.4.a), and the centering choice moves
-          large-scale tau. On the tomography branch the galaxy mean is the
-          full-catalogue mean even under a bin mask [LINT
-          tomo-tau-centering-before-bin-mask]. [HARDCODED] in the dependency.
+          <p>^2-type terms in rho at all scales (the mean PSF ellipticity on
+          v1.4.a is (0.011, 0.010)); without the galaxy centering, tau would
+          carry a scale-independent <e_g><p> term. On the tomography branch the
+          galaxy mean is the full-catalogue mean even under a bin mask [LINT
+          tomo-tau-centering-before-bin-mask]. [HARDCODED] in the dependency:
+          the field definitions, weights and centering; the columns and the
+          grid come from cat_config and the constructor.
         default: wdes_galaxies_centred_stars_raw
         options:
           wdes_galaxies_centred_stars_raw:
@@ -1363,11 +1375,12 @@ analyses:
         label: PSF error model alpha, beta, eta on the p, q, w fields
         rationale: >-
           PSFErrorFit models the galaxy-PSF correlations as e_sys = alpha p +
-          beta q + eta w, fitting tau_0, tau_2, tau_5 against the six rho
-          statistics with use_eta True and no fourth-moment terms (the
-          dependency defaults the psf_fitter property takes), and CovTauTh
-          is built with the same use_eta. The three-parameter model follows
-          Gatti et al. (DES Y3). The model sets alpha, beta, eta and every
+          beta q + eta w, fitting tau_0+, tau_2+ and tau_5+ against rho_0+ to
+          rho_5+ with use_eta True and no fourth-moment terms (the dependency
+          defaults the psf_fitter property takes), and CovTauTh is built with
+          the same use_eta. The dependency attributes the model to Gatti et al.
+          2022 (PSFErrorFit docstring); no rationale is recorded at the
+          sp_validation sites. The model sets alpha, beta, eta and every
           xi_psf_sys derived from them; inference uses alpha and beta only
           (inference.psf_leakage_model). [HARDCODED] in the dependency default.
         default: alpha_beta_eta
@@ -1384,25 +1397,33 @@ analyses:
         label: Covariance of tau (semi-analytic) and rho (jackknife) for the leakage fit
         rationale: >-
           With cov_estimate_method th, the constructor default the
-          rho_tau_stats rule takes, the tau covariance is CovTauTh's Gaussian
-          estimate: shot-noise, mixed and cosmic-variance terms built from the
-          measured correlations, interpolated linearly and zero outside their
-          range, and integrated with Simpson's rule on nbin_ang 100 angles and
-          nbin_rad 200 linear radii from 0.1 to 1000 arcmin
-          (rho_tau.get_rho_tau_w_cov, get_theory_cov; CovTauTh.build_cov).
-          CovTauTh recomputes the area from occupied nside-4096 pixels of the
-          galaxy catalogue and n_eff from the weights; the cat_config cov_th
-          values play no part. The rho covariance is a single TreeCorr
-          jackknife with the entry's patch_number (compute_cov_rho True),
-          which the tomography branch's set_params_rho_tau defaults to 100
-          when the entry has none, as its cat_config SP_v1.4.6.3 entry has
-          none; develop's entry carries 150. jk averages 100 jackknife
-          partitions for both; sim reads a precomputed file. The precision
-          matrix is not debiased for th. [LINT] CovTauTh fills shot noise
-          only for the tau auto-blocks (tau-th-cov-missing-cross-shot-noise,
-          in shear_psf_leakage), develop passes A and n_e that CovTauTh
-          ignores, and the papers/cosmo_val keys cov_estimate_method,
-          compute_cov_rho and n_cov do not reach the producer rule.
+          rho_tau_stats rule takes, the tau covariance is CovTauTh's
+          semi-analytic estimate, the sum of shot-noise, mixed and
+          cosmic-variance terms (rho_tau.get_rho_tau_w_cov, get_theory_cov;
+          CovTauTh.build_cov). The shot noise is TreeCorr's shot-noise
+          covariance of the galaxy-PSF correlations; the mixed and
+          cosmic-variance terms integrate measured correlations, interpolated
+          linearly over 30 log bins from 0.08 to 1000 arcmin and zero outside,
+          with Simpson's rule on nbin_ang 100 angles and nbin_rad 200 linear
+          radii from 0.1 to 1000 arcmin. CovTauTh recomputes the area from
+          occupied nside-4096 pixels of the galaxy catalogue and n_eff from the
+          weights; the cat_config cov_th values play no part. The rho
+          covariance is a single TreeCorr jackknife with the entry's
+          patch_number (compute_cov_rho True), which the tomography branch's
+          get_params_rho_tau defaults to 100 when the entry has none, as its
+          cat_config SP_v1.4.6.3 entry has none; develop's entry carries 150.
+          jk averages the rho and tau jackknife covariances over 100 k-means
+          partitions into patch_number patches (get_rho_tau_w_cov's ncov
+          default; n_cov is stored by the constructor and read nowhere) and
+          Hartlap-debiases the tau precision matrix with patch_number; th and
+          sim are not debiased. sim fits with a precomputed cov_tau_*_sim.npy,
+          while its producer branch requires cov_tau_*_th.npy to exist. [LINT]
+          CovTauTh fills shot noise only for the tau auto-blocks
+          (tau-th-cov-missing-cross-shot-noise, in shear_psf_leakage), develop
+          passes A and n_e that CovTauTh ignores
+          (tau-cov-ignores-configured-survey-inputs), and the papers/cosmo_val
+          keys cov_estimate_method, compute_cov_rho and n_cov do not reach the
+          producer rule.
           Values:
           cosmo_val.cov_estimate_method = th;
           cosmo_val.compute_cov_rho = True;
@@ -1412,7 +1433,7 @@ analyses:
           theory_tau_jackknife_rho:
             label: CovTauTh tau covariance; single-jackknife rho covariance
           jackknife_both:
-            label: Jackknife tau and rho averaged over 100 partitions (jk)
+            label: Jackknife tau and rho, averaged over 100 k-means partitions (jk)
           simulation:
             label: Precomputed covariance file (sim)
           joint_rho_tau:
@@ -1422,12 +1443,15 @@ analyses:
         label: How the alpha, beta, eta posterior and xi_psf_sys are sampled and summarised
         rationale: >-
           rho_tau_method lsq draws rho ~ N(rho, C_rho) and tau ~ N(tau, C_tau)
-          independently 10000 times (the dependency default) and solves the
-          generalised least squares per draw
-          (get_least_squares_params_samples); mcmc runs emcee at the measured
-          rho with flat priors. xi_psf_sys is evaluated per draw at the
-          measured rho and summarised by its mean, ddof-0 variance and the
-          [quantile, 1 - quantile] band, 0.1587 for one sigma. On the
+          independently 10000 times (get_samples' n_samples fallback, equal to
+          the dependency default) and solves the generalised least squares per
+          draw (get_least_squares_params_samples); alpha, beta and eta are
+          summarised by their 16th, 50th and 84th percentiles. rho_tau_method
+          emcee runs emcee at the measured rho with flat box priors; the
+          constructor docstring lists this value as mcmc, which get_samples
+          rejects. xi_psf_sys is evaluated per draw at the measured rho and
+          summarised by its mean, ddof-0 variance and the 1 - quantile and
+          quantile sample quantiles, 0.8413 and 0.1587 for one sigma. On the
           tomography branch cross-bin xi_psf_sys zips the samples of two
           independently fitted bins. The rho-tau cross covariance is ignored.
           [LINT] the draws use the global unseeded numpy generator
@@ -1436,33 +1460,54 @@ analyses:
         default: lsq_independent_draws
         options:
           lsq_independent_draws:
-            label: GLS on 10000 independent rho and tau draws; mean and 15.87/84.13% quantiles
+            label: >-
+              GLS on 10000 independent rho and tau draws; xi_psf_sys mean and
+              15.87/84.13% quantiles
           mcmc:
-            label: emcee with flat box priors at fixed rho
+            label: emcee (rho_tau_method emcee) with flat box priors at fixed rho
           joint_draws:
             label: Draw rho and tau jointly
             description: Not implemented.
       leakage_diagnostics:
         label: Scale-dependent and object-wise leakage coefficients
         rationale: >-
-          The scale-dependent leakage is alpha(theta) = xi_gp+/xi_pp+ of
-          uncentred galaxy and star-catalogue ellipticities with fast True,
-          so the <e_g><e_p> and |<e_p>|^2 mean terms are not subtracted
-          (calculate_scale_dependent_leakage; run_scale.do_alpha), reduced to
-          an inverse-variance weighted alpha_mean and the intercept alpha_0 of
-          an affine fit that gives every point the scalar scatter as its
-          error. The object-wise regression fits e_gal = A e_PSF + c with a
-          full 2x2 linear A (mix True, order lin) and errors 1/sqrt(w), and
-          reports (a11 + a22)/2 (calculate_objectwise_leakage). No rationale
-          is recorded. With fast True a residual additive bias c leaks into
-          alpha(theta) as Re(c* <e_p>)/xi_pp wherever xi_pp is small; the
-          mean star ellipticity on v1.4.a is about (0.011, 0.010).
+          The merged psf_systematics reports the scale-dependent leakage as
+          alpha(theta) = tau_0+/rho_0+ from the rho/tau products
+          (_get_alpha_leakage), so it inherits psf.rho_tau_estimator's centred,
+          w_des-weighted galaxies and uncentred PSF field. Its error is the
+          standard deviation of the ratio over 10000 seeded Gaussian draws of
+          tau_0+ and rho_0+, which on the committed path
+          (plot_objectwise_leakage with cov_type None) use the variances stored
+          in the rho and tau tables. It is reduced to an inverse-variance
+          weighted alpha_mean, alpha_1 at the smallest scale, and the intercept
+          alpha_0 of an affine fit weighted by those per-point errors
+          (_alpha_summaries). The object-wise regression fits e_gal = A e_PSF +
+          c against the shear catalogue's e1_PSF/e2_PSF with a full 2x2 linear
+          A (mix True, order lin) and errors 1/sqrt(w), and reports (a11 +
+          a22)/2 (calculate_objectwise_leakage). The sp_validation sites record
+          no rationale; mix True and order lin are the dependency's PSF_leakage
+          defaults. Develop instead forms alpha(theta) = xi_gp+/xi_pp+ of
+          uncentred galaxy and star-catalogue ellipticities with fast True, so
+          the <e_g><e_p> and |<e_p>|^2 mean terms are not subtracted
+          (calculate_scale_dependent_leakage; run_scale.do_alpha, whose
+          docstring calls them small and time-consuming), and its affine fit
+          gives every point the scalar scatter as its error; the merged file
+          keeps that method, but nothing in the committed workflow calls it.
+          With fast True a residual additive bias c adds about Re(c
+          <e_p>*)/xi_pp+ to develop's alpha(theta), largest where xi_pp+ is
+          small; a 60,041-star sample of the v1.4.a star catalogue has mean
+          ellipticity (0.011, 0.010). [HARDCODED]
         default: fast_ratio_and_linear_mix
         options:
           fast_ratio_and_linear_mix:
-            label: Uncentred ratio with mean terms dropped; 2x2 linear object-wise fit
+            label: >-
+              alpha = tau_0+/rho_0+ (develop: uncentred xi_gp+/xi_pp+ with mean
+              terms dropped); 2x2 linear object-wise fit
           full_ratio:
             label: fast False, mean terms subtracted
+            description: >-
+              Applies to develop's xi_gp+/xi_pp+ route; the dependency's
+              do_alpha default, which sp_validation does not select.
           diagonal_or_quadratic:
             label: Diagonal (mix False) or quadratic (order quad) object-wise model
             description: Dependency options not selected by sp_validation.
