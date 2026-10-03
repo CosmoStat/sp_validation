@@ -89,7 +89,7 @@ def cv(tmp_path):
 
 @pytest.mark.xfail(
     strict=True,
-    reason=("#393: aperture-mass errors omit full jackknife covariance"),
+    reason=("#378: aperture-mass errors omit full jackknife covariance"),
 )
 def test_aperture_mass_variance_is_jackknife_not_diagonal_xi_propagation(
     cv, monkeypatch

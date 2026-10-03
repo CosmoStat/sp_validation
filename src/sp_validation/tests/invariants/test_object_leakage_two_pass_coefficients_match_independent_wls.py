@@ -173,7 +173,7 @@ def _independent_two_pass_reference(catalogue, num_bins=4):
 @pytest.mark.xfail(
     strict=True,
     reason=(
-        "#383: the trend fit scales rows by "
+        "#382: the trend fit scales rows by "
         "1/SE^2 instead of 1/SE, so it minimizes a 1/SE^4 objective"
     ),
 )

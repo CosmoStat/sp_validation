@@ -11,7 +11,7 @@ from sp_validation.catalog_builders import compute_PSF_leakage
 @pytest.mark.xfail(
     strict=True,
     raises=AssertionError,
-    reason="#383: a failed leakage fit returns alpha=-99",
+    reason="#382: a failed leakage fit returns alpha=-99",
 )
 def test_leakage_fit_failure_does_not_return_minus_99_sentinel():
     """A failed fit must surface, rather than corrupt released ellipticities.

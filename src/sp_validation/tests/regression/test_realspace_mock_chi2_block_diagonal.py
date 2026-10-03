@@ -23,7 +23,7 @@ import sp_validation
 DROPPED_COVARIANCE = pytest.mark.xfail(
     strict=True,
     raises=AssertionError,
-    reason="#380: mock total chi2 drops cross-covariance",
+    reason="#378: mock total chi2 drops cross-covariance",
 )
 
 
@@ -197,7 +197,7 @@ def test_mock_total_chi2_retains_cross_covariance(monkeypatch, correlations):
 @pytest.mark.xfail(
     strict=True,
     raises=AssertionError,
-    reason="#380: mock PTE drops joint covariance",
+    reason="#378: mock PTE drops joint covariance",
 )
 def test_mock_pte_uses_same_full_covariance_statistic_as_fiducial(monkeypatch):
     """Protect the reported total-panel PTE from inconsistent quadratic forms.

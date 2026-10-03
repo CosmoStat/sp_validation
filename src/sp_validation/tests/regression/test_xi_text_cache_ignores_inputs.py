@@ -93,7 +93,7 @@ def _mapsq(cv):
 @pytest.mark.xfail(
     strict=True,
     raises=AssertionError,
-    reason="#384: xi text cache ignores changed catalogue inputs",
+    reason="#381: xi text cache ignores changed catalogue inputs",
 )
 def test_calculate_2pcf_recomputes_xi_after_catalogue_changes(tmp_path):
     """Protects xi+/- (and the SACC part run_2pcf writes from it) against a stale cache.
@@ -127,7 +127,7 @@ def test_calculate_2pcf_recomputes_xi_after_catalogue_changes(tmp_path):
 @pytest.mark.xfail(
     strict=True,
     raises=AssertionError,
-    reason="#384: aperture-mass xi text cache ignores changed inputs",
+    reason="#381: aperture-mass xi text cache ignores changed inputs",
 )
 def test_aperture_mass_recomputes_xi_after_catalogue_changes(tmp_path):
     """Protects <M_ap^2> against the ``xi_for_map2_{ver}.txt`` cache.

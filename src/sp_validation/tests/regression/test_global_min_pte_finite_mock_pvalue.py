@@ -8,7 +8,7 @@ from sp_validation import statistics
 
 @pytest.mark.xfail(
     strict=True,
-    reason="#392: count/N gives anti-conservative finite-mock p-values",
+    reason="#378: count/N gives anti-conservative finite-mock p-values",
 )
 def test_global_pte_rejects_at_most_alpha_with_finite_mocks():
     """The global PTE must control false positives across all N+1 null ranks.

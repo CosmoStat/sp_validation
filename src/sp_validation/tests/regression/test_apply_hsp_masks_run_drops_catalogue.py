@@ -12,7 +12,7 @@ from sp_validation.catalog_builders import ApplyHspMasks
 @pytest.mark.xfail(
     strict=True,
     raises=AssertionError,
-    reason="#388: mask application drops input science columns",
+    reason="#387: mask application drops input science columns",
 )
 def test_apply_hsp_masks_run_preserves_catalogue_columns_and_values(
     tmp_path, monkeypatch

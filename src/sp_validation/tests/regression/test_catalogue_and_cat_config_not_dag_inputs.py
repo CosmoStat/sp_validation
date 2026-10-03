@@ -172,7 +172,7 @@ def tree(tmp_path):
 @pytest.mark.xfail(
     strict=True,
     raises=AssertionError,
-    reason="#384: cat_config.yaml is not a DAG input to its readers",
+    reason="#381: cat_config.yaml is not a DAG input to its readers",
 )
 def test_cat_config_edit_reruns_rules_that_read_it(tree):
     """An edit to cat_config.yaml must mark every rule that reads it stale.
@@ -206,7 +206,7 @@ def test_cat_config_edit_reruns_rules_that_read_it(tree):
 @pytest.mark.xfail(
     strict=True,
     raises=AssertionError,
-    reason="#384: catalogue is not a DAG input to all its readers",
+    reason="#381: catalogue is not a DAG input to all its readers",
 )
 def test_catalogue_replaced_in_place_reruns_rules_that_read_it(tree):
     """Replacing the shear catalogue file must mark every rule that reads it stale.

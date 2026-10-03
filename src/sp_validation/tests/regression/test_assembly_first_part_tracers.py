@@ -57,7 +57,7 @@ def test_matching_parts_preserve_all_points_and_source_nz():
 
 @pytest.mark.xfail(
     strict=True,
-    reason="#385: assembly silently keeps the first part's n(z)",
+    reason="#381: assembly silently keeps the first part's n(z)",
 )
 def test_assembly_rejects_parts_with_different_source_nz():
     """All statistics sharing ``source_0`` must use the same source n(z).
@@ -77,7 +77,7 @@ def test_assembly_rejects_parts_with_different_source_nz():
 
 @pytest.mark.xfail(
     strict=True,
-    reason="#385: assembly silently keeps conflicting metadata",
+    reason="#381: assembly silently keeps conflicting metadata",
 )
 def test_assembly_rejects_parts_with_conflicting_metadata():
     """Every part of an analysis SACC must describe the same catalogue version.

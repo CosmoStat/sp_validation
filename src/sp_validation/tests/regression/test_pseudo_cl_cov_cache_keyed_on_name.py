@@ -112,7 +112,7 @@ def _ee_cov(output_dir, cat_config, sig8):
 @pytest.mark.xfail(
     strict=True,
     raises=AssertionError,
-    reason="#384: pseudo-Cl covariance cache ignores cosmology",
+    reason="#381: pseudo-Cl covariance cache ignores cosmology",
 )
 def test_pseudo_cl_cov_cache_ignores_cosmology(tmp_path, cat_config):
     """The Gaussian pseudo-Cl covariance scales with the fiducial C_ell, so a
@@ -144,7 +144,7 @@ def _load_script():
 @pytest.mark.xfail(
     strict=True,
     raises=AssertionError,
-    reason="#384: covariance rule adopts an undeclared stale native file",
+    reason="#381: covariance rule adopts an undeclared stale native file",
 )
 def test_pseudo_cl_cov_rule_adopts_stale_native_file(tmp_path, cat_config):
     """The pseudo_cl_cov Snakemake rule declares a tagged output, but the

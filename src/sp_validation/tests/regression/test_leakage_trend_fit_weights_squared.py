@@ -30,7 +30,7 @@ def _synthetic_catalogue(n=120_000, seed=7):
 @pytest.mark.xfail(
     strict=True,
     raises=AssertionError,
-    reason="#383: trend weights bins by 1/error**4",
+    reason="#382: trend weights bins by 1/error**4",
 )
 def test_leakage_trend_fit_weights_bins_by_inverse_variance(monkeypatch):
     """Protect the trend coefficients that determine per-object leakage.

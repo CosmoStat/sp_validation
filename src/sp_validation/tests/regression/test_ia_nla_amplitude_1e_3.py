@@ -15,7 +15,7 @@ C1_TIMES_H2 = 5e-14
 @pytest.mark.xfail(
     strict=True,
     raises=AssertionError,
-    reason="#389: NLA convergence amplitude is 1000x too small",
+    reason="#386: NLA convergence amplitude is 1000x too small",
 )
 def test_ia_nla_prefactor_is_c1_rho_crit_not_1e3_smaller():
     """Protect the NLA amplitude of the IA convergence term in GLASS mocks.

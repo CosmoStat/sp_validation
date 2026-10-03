@@ -48,7 +48,7 @@ def _leakage_statements():
 @pytest.mark.xfail(
     strict=True,
     raises=AssertionError,
-    reason="#383: failed fit publishes alpha=-99 shears",
+    reason="#382: failed fit publishes alpha=-99 shears",
 )
 def test_psf_leakage_fit_failure_aborts_before_writing_corrected_shears(tmp_path):
     """A failed PSF-leakage fit must abort rather than publish corrected shears.

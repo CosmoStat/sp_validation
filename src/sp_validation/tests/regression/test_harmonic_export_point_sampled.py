@@ -18,7 +18,7 @@ TWOPT_DIR = (
 
 @pytest.mark.xfail(
     strict=True,
-    reason="#385: harmonic export drops the bandpower window",
+    reason="#381: harmonic export drops the bandpower window",
 )
 def test_cell_ee_prediction_is_window_averaged_not_point_sampled_at_ell_eff(
     tmp_path, monkeypatch

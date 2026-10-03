@@ -48,7 +48,7 @@ def partial_mask(tmp_path):
 
 @pytest.mark.xfail(
     strict=True,
-    reason="#390: _area_from_mask counts hp.UNSEEN as negative area",
+    reason="#387: _area_from_mask counts hp.UNSEEN as negative area",
 )
 def test_mask_area_excludes_unseen_pixels_in_compute_survey_stats(partial_mask):
     """Protect the area that compute_survey_stats divides into n_eff.
@@ -68,7 +68,7 @@ def test_mask_area_excludes_unseen_pixels_in_compute_survey_stats(partial_mask):
 
 @pytest.mark.xfail(
     strict=True,
-    reason="#390: calculate_area counts hp.UNSEEN as negative area",
+    reason="#387: calculate_area counts hp.UNSEEN as negative area",
 )
 def test_mask_area_excludes_unseen_pixels_in_calculate_area(partial_mask):
     """Protect CosmologyValidation.area when a version's config names a mask.
