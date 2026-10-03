@@ -1,13 +1,14 @@
 # ShapePipe-v2 column-grammar migration (shapepipe → sp_validation)
 
-Grammar-aware sp_validation readers use the ShapePipe-v2 column grammar in
-configs, calibration scripts, figures and notebooks. Callers of
-`sp_validation.io` (`read_catalogue`, `Catalogue`) adapt v1 products at the read
-boundary; direct readers such as `image_sims._load_cat` and
-`calibration.get_calibrate_e_from_cat` bypass that adapter and read only
-grammar-neutral cut-catalogue columns. `adapt(table)` presents a v1 table under
-the v2 names and units below, as a lazy column view over a numpy array, FITS_rec
-or h5py dataset, and returns v2 or grammar-neutral tables unchanged. `detect_generation` tells the grammars apart
+sp_validation reads the ShapePipe-v2 column grammar: live package, configs,
+calibration scripts, paper figures and notebooks. Catalogues written in the v1
+grammar (every release up to v1.6.x) are presented in the v2 grammar by
+`sp_validation.grammar` when read through `sp_validation.io` (`read_catalogue`,
+`Catalogue`). Direct FITS readers of cut catalogues (`image_sims._load_cat`,
+`calibration.get_calibrate_e_from_cat`) bypass it and read only grammar-neutral
+columns. `adapt(table)` presents a v1 table under the v2 names and units below,
+as a lazy column view over a numpy array, FITS_rec or h5py dataset, and returns
+v2 or grammar-neutral tables unchanged. `detect_generation` tells the grammars apart
 from column names, and `v2_names` maps a header's names without reading data.
 The adapter maps by *name*, so a v1 `*_PSFo` column is presented as
 `*_PSF_ORIG` holding the v1 (reconvolved-alias) values; downstream code never

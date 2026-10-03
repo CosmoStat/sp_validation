@@ -39,8 +39,8 @@ image_sims:
   psf_dict: /home/hervas/fhervas/workdir_skills/input/psf_files/Full_psf_dict.pickle
 
   # --- simulation grid --------------------------------------------------
-  sims_type: grid        # 'grid' -> *_grid_{num}; other values -> *_num.
-  # The estimator and tile counter require *_grid_{num}. [operational]
+  sims_type: grid        # 'grid' -> *_grid_{num}; anything else -> *_{num}  [operational]
+  # The m-bias estimator reads only *_grid_{num}.
   num: 1
   # Branches this run requests: the unsheared reference plus the four +/-
   # sheared branches.  Injected shear is NOT set here -- it is parsed from each
