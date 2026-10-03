@@ -22,7 +22,7 @@ def _toy_workspace():
 
 @pytest.mark.xfail(
     strict=True,
-    reason="#385: SACC window drops BB-from-EE mixing",
+    reason="#381: SACC window drops BB-from-EE mixing",
 )
 def test_sacc_pseudo_cl_window_does_not_drop_e_to_b_leakage():
     """The SACC pseudo-Cl part must forward-model decoupled BB of a pure-E sky.

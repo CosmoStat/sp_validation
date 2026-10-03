@@ -76,7 +76,7 @@ def _first_draws(branch, mod, tmp_path, number, monkeypatch):
 @pytest.mark.xfail(
     strict=True,
     raises=AssertionError,
-    reason="#389: mock number does not enter the RNG seed",
+    reason="#386: mock number does not enter the RNG seed",
 )
 def test_numbered_mocks_with_default_seed_are_distinct_realisations(
     tmp_path, monkeypatch

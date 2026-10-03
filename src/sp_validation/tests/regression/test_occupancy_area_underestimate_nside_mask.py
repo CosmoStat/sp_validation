@@ -66,7 +66,7 @@ class _Stub(CatalogCharacterizationMixin):
 
 @pytest.mark.xfail(
     strict=True,
-    reason="#390: default occupancy drops Poisson-empty footprint pixels",
+    reason="#387: default occupancy drops Poisson-empty footprint pixels",
 )
 def test_occupancy_area_underestimates_footprint_at_default_nside_mask():
     """Protect the mask-less fallback of CosmologyValidation.area.

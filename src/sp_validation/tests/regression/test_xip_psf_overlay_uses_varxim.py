@@ -44,7 +44,7 @@ def _make_validator(tmp_path):
 
 @pytest.mark.xfail(
     strict=True,
-    reason="#393: xi+ PSF overlay uses xi- variance",
+    reason="#378: xi+ PSF overlay uses xi- variance",
 )
 def test_xip_in_psf_sys_overlay_uses_sqrt_varxip_error_bars(tmp_path, monkeypatch):
     """Protect the xi_p_xi_psf_sys_{ver}.png overlay's xi+ error bars.

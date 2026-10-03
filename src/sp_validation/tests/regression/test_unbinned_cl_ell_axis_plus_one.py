@@ -30,7 +30,7 @@ def _single_mode_catalogue():
 @pytest.mark.xfail(
     strict=True,
     raises=AssertionError,
-    reason="#389: coupled C_ell multipole labels are shifted by +1",
+    reason="#386: coupled C_ell multipole labels are shifted by +1",
 )
 @pytest.mark.parametrize(
     "estimator", ["compute_two_point_cl", "compute_two_point_cl_map"]
@@ -75,7 +75,7 @@ def _sky_script():
 @pytest.mark.xfail(
     strict=True,
     raises=AssertionError,
-    reason="#389: CAMB source C_ell labels are shifted by +1",
+    reason="#386: CAMB source C_ell labels are shifted by +1",
 )
 def test_camb_source_cl_ell_column_starts_at_zero(tmp_path):
     """Protects the ``ell`` column of the CAMB source C_ell FITS (``--camb``).

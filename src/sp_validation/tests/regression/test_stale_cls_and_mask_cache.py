@@ -117,7 +117,7 @@ def masks(tmp_path):
 @pytest.mark.xfail(
     strict=True,
     raises=AssertionError,
-    reason="#384: shell spectra cache ignores changes to cosmology",
+    reason="#381: shell spectra cache ignores changes to cosmology",
 )
 def test_shell_cls_cache_ignores_changed_sigma8(tmp_path, masks, monkeypatch):
     """A second run into the same output directory with sigma8 raised from
@@ -147,7 +147,7 @@ def test_shell_cls_cache_ignores_changed_sigma8(tmp_path, masks, monkeypatch):
 @pytest.mark.xfail(
     strict=True,
     raises=AssertionError,
-    reason="#384: downgraded mask cache ignores changes to input mask",
+    reason="#381: downgraded mask cache ignores changes to input mask",
 )
 def test_mask_cache_ignores_changed_input_mask(tmp_path, masks, monkeypatch):
     """A second run into the same output directory with a half-sky input mask

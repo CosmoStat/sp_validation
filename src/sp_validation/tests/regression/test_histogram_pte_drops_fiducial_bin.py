@@ -24,7 +24,7 @@ if CODE_ROOT != ROOT:
 DROPPED_BIN = pytest.mark.xfail(
     strict=True,
     raises=AssertionError,
-    reason="#380: histogram PTE drops the fiducial bin's mass",
+    reason="#378: histogram PTE drops the fiducial bin's mass",
 )
 
 SITES = [
