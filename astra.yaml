@@ -144,33 +144,44 @@ decisions:
   spin2_sign_convention:
     label: e2 sign convention per estimator
     rationale: >-
-      The catalogue's e2 reaches TreeCorr unchanged (real_space.calculate_2pcf
-      passes the calibrated g2 as g2), and is multiplied by -1 before every
-      NaMaster field, map or catalogue based: develop's pseudo_cl.py reads
-      pol_factor as a boolean and flips when True; the tomography branch's
-      pseudo_cl.py, which the merge adopts, multiplies by pol_factor itself and
-      its constructor asserts pol_factor in (-1, 1) with default -1. The GLASS
-      mock writer stores e2 = -Im(g) of the GLASS shear and the mock pseudo-Cl
-      flips it back the same way, so mocks follow the data convention. No
-      rationale is recorded at the sites; the flip is what converts the
-      catalogue's sign convention to HEALPix's. A wrong sign on one estimator
-      rotates E into B there and nowhere else. [LINT] the papers/cosmo_val
-      config key pol_factor: true is read by no committed pseudo-Cl producer
-      (the twopoint.smk rules build CosmologyValidation without it, so the
-      constructor default applies: generic-producers-bypass-cv-init-params),
-      and after the merge the same True passes the tomography assertion as +1,
-      a no-flip. Values: cosmo_val.pol_factor = True;
+      e2 reaches TreeCorr without a sign change
+      (real_space.calculate_2pcf_version passes the calibrated g2 as g2) and is
+      multiplied by -1 before every NaMaster signal field, map or catalogue
+      based. develop's pseudo_cl.py reads pol_factor as a boolean and flips
+      when True; the tomography branch's pseudo_cl.py, which the merge adopts,
+      multiplies e2 by pol_factor itself, and that branch's CosmologyValidation
+      constructor (cosmo_val/core.py) asserts pol_factor in (-1, 1) with
+      default -1. The GLASS mock writer stores e2 = -Im(g) of the GLASS shear,
+      and the mock pseudo-Cl code (glass_mock.py,
+      workflow/scripts/run_glass_mock_pseudo_cl.py) negates it again before
+      NaMaster, so mocks follow the data convention. No rationale is recorded
+      at the tagged sites; NaMaster's NmtField documentation gives it: NaMaster
+      uses HEALPix's polarization convention, and ellipticities in the IAU
+      convention need e2 negated. A wrong sign on the NaMaster side mixes E
+      into B in the pseudo-Cl spectra and in the B-mode PTEs and SACC parts
+      built from them; the TreeCorr input is separate and unaffected. [LINT]
+      the papers/cosmo_val config key pol_factor: true reaches only the
+      cv_runner rules, which compute no pseudo-Cl, through
+      common.cv_init_params; the pseudo-Cl producers generate_pseudo_cl.py and
+      generate_pseudo_cl_cov.py build CosmologyValidation without it, so the
+      constructor default applies (generic-producers-bypass-cv-init-params,
+      CosmoStat/sp_validation #381). After the merge those cv_runner rules pass
+      the same True to a constructor that accepts it as +1, a no-flip.
+      Values:
+      cosmo_val.pol_factor = True;
       generate_pseudo_cl.py#pol_factor = absent.
     default: flip_for_namaster_only
     options:
       flip_for_namaster_only:
-        label: e2 as stored for TreeCorr; e2 negated for every NaMaster field
+        label: No e2 sign change for TreeCorr; e2 negated in every NaMaster signal field
       no_flip:
-        label: e2 as stored everywhere
+        label: No e2 sign change for any estimator
         excluded: true
         excluded_reason: >-
-          Rotates E into B in harmonic space; the catalogue convention is the
-          one TreeCorr expects.
+          NaMaster uses HEALPix's polarization convention, and its NmtField
+          documentation says IAU-convention ellipticities need e2 negated; a
+          pure-E field stored as the GLASS writer stores it (e2 = -Im g) shows
+          BB comparable to EE in NaMaster without the flip.
 
 analyses:
 
@@ -620,10 +631,11 @@ analyses:
   # ═════════════════════════════════════════════════════════════════════════
   shear_field:
     description: >-
-      The shear field every two-point statistic correlates, and the survey
+      The shear field the two-point statistics correlate, and the survey
       numbers the analytic covariances take from it: which catalogue columns
-      and weights, the mean subtraction and response, the area, and the
-      effective density and shape noise.
+      and weights, the mean subtraction and response (applied to the
+      real-space field; pseudo-Cl takes the configured e1/e2 as they are), the
+      area, and the effective density and shape noise.
     inputs:
       - id: shear_catalogue
         from: ../shear_catalogue
@@ -631,7 +643,7 @@ analyses:
       - id: calibrated_shear_field
         type: data
         format: fits
-        description: Positions, (e - c)/R and weights of the analysed version, as TreeCorr and NaMaster receive them.
+        description: Positions, (e - c)/R and weights of the analysed version as TreeCorr receives them; NaMaster receives the configured e1/e2 and weights.
         inputs: [shear_catalogue]
         decisions: [fiducial_columns, mean_subtraction_and_response]
       - id: survey_numbers
@@ -644,20 +656,22 @@ analyses:
       fiducial_columns:
         label: Catalogue versions, shear columns and weight the statistics read
         rationale: >-
-          A version is a cat_config entry; a requested <version>_leak_corr is a
-          deep copy of its parent with shear.e1_col/e2_col replaced by
-          e1_col_corrected/e2_col_corrected, inheriting the path, weight, n(z),
-          footprint and covariance survey numbers (CosmologyValidation
-          constructor; common.catalogue_entry, base_version). SP_v1.4.6.3
-          reads e1/e2 with w_des, and its corrected columns are
-          e1_leak_corrected/e2_leak_corrected, so the Paper II fiducial
-          SP_v1.4.6.3_leak_corr is the leakage-corrected shear field under
-          w_des. papers/cosmo_val measures SP_v1.4.6.3 and its corrected
+          A version is a cat_config entry; a requested <version>_leak_corr with
+          no entry of its own is a deep copy of its parent with
+          shear.e1_col/e2_col replaced by e1_col_corrected/e2_col_corrected,
+          inheriting the path, weight, n(z), footprint and covariance survey
+          numbers (CosmologyValidation constructor; common.catalogue_entry,
+          base_version). SP_v1.4.6.3 reads e1/e2 with w_des, and its corrected
+          columns are e1_leak_corrected/e2_leak_corrected, so the Paper II
+          fiducial SP_v1.4.6.3_leak_corr is the leakage-corrected shear field
+          under w_des. papers/cosmo_val measures SP_v1.4.6.3 and its corrected
           variant; papers/bmodes compares v1.4.5, v1.4.6.3, v1.4.8 and
           v1.4.11.3, each with its corrected variant. The columns and weight
-          are the shear field and pair weights of xi+-, COSEBIs, pure E/B,
-          pseudo-Cl and tau. [LINT] the SACC assembly takes tracers and
-          metadata from the first part only (assembly-first-part-tracers).
+          feed xi+-, COSEBIs, pure E/B, pseudo-Cl and tau: the weight is
+          TreeCorr's per-object weight in real space and the per-object weight
+          of the NaMaster catalogue fields and shear maps. [LINT] the SACC
+          assembly takes tracers and metadata from the first part only
+          (assembly-first-part-tracers, CosmoStat/sp_validation #385).
           Values:
           cosmo_val/config/config.yaml#versions = ["SP_v1.4.6.3", "SP_v1.4.6.3_leak_corr"];
           cosmo_val/config/config.yaml#fiducial.version = SP_v1.4.6.3_leak_corr;
@@ -672,21 +686,38 @@ analyses:
             label: SP_v1.4.6.3, e1/e2 with w_des (the comparison version)
           iv_weighted:
             label: w_iv instead of w_des
-            description: The SP_v1.4.6.3_uncal_w_iv entry; changes n_eff and every statistic.
+            description: >-
+              cat_config's inverse-variance entry, SP_v1.4.6_uncal_w_iv, reads
+              v1.4.6's e1_uncal/e2_uncal with w_iv; no entry pairs
+              SP_v1.4.6.3's columns with w_iv. The weight changes n_eff and
+              every shear statistic.
       mean_subtraction_and_response:
-        label: Survey-mean subtraction and scalar response before correlating
+        label: Survey-mean subtraction and scalar response in the real-space shear field
         rationale: >-
           cosmo_val estimates c as the w-weighted mean of e/R per component
-          over the whole version (survey.additive_bias) and correlates g =
-          (e - c)/R, with R the entry's scalar shear.R, 1.0 for every
-          ShapePipe entry, and the catalogue-averaged R11/R22 columns for DES
-          (_calibrated_g). The same g feeds xi+-, the aperture-mass
-          dispersion and, through the mask on the tomography branch, every
-          bin: the mean is global, not per bin. Removing a constant spin-2
-          offset removes its contribution to large-scale xi+. [LINT] c is
-          estimated in calibrated units and subtracted in raw units, which
-          centres the field only when R = 1 (additive-bias-response-units).
-          No rationale is recorded for the weighted mean.
+          over the whole version, with R the entry's scalar shear.R
+          (calculate_additive_bias, survey.additive_bias), and the real-space
+          statistics correlate g = (e - c)/R (_calibrated_g); for DES, g
+          divides by the catalogue means of the R11/R22 columns instead.
+          SP_v1.4.6.3 sets R 1.0, so its g is e minus its w_des-weighted mean.
+          xi+- (and through it COSEBIs and pure E/B) and the aperture-mass
+          dispersion read this g; on the tomography branch g is formed before
+          the bin masks are applied, so the mean is global, not per bin. The
+          pseudo-Cl fields take the configured e1/e2 columns with no mean
+          subtracted and no response applied, and tau's galaxy field subtracts
+          its own w-weighted mean of the raw columns inside shear_psf_leakage.
+          A uniform offset c adds |c|^2 to xi+ at every separation; subtracting
+          the mean removes it. The user guide
+          (docs/source/using_the_catalogues.md) gives the reason for treating
+          the survey-mean shear as zero: over the UNIONS area it is an
+          excellent approximation to zero. CosmoStat/sp_validation #156 prefers
+          weighting that mean with the weights the statistics use, which w (the
+          entry's w_col) does. [LINT] c is the mean of e/R but is subtracted
+          from e before the division by R, so for a scalar R other than 1 the
+          field keeps a mean of c(R - 1)/R, and the pseudo-Cl and tau fields
+          ignore shear.R (additive-bias-response-units,
+          scalar-response-ignored-outside-real-space, CosmoStat/sp_validation
+          #382).
         default: global_weighted_mean_scalar_r
         options:
           global_weighted_mean_scalar_r:
@@ -700,18 +731,21 @@ analyses:
       survey_area:
         label: Survey area from the configured mask, else catalogue occupancy
         rationale: >-
-          CosmologyValidation.area sums the configured mask map's values
-          times the pixel area when the entry has a top-level mask key, and
-          otherwise counts HEALPix pixels at nside_mask holding at least one
-          galaxy (calculate_area, survey.area_from_coords). SP_v1.4.6.3 names
-          the nside-4096 footprint map, whose integral is 2894.03 deg^2, the
-          entry's cov_th.A. The area enters n_eff and the OneCovariance survey
-          inputs. [LINT] the occupancy fallback at the default nside_mask 8192
-          is about 37% low on the fiducial catalogue
+          CosmologyValidation.area sums the configured mask map's values times
+          the pixel area when the entry has a top-level mask key, and otherwise
+          counts HEALPix pixels at nside_mask holding at least one galaxy
+          (calculate_area, calculate_area_from_binned_catalog;
+          survey.area_from_coords implements the same count for
+          compute_survey_stats). SP_v1.4.6.3 names the nside-4096 footprint
+          map, whose integral is 2894.03 deg^2, the entry's cov_th.A. The area
+          enters n_eff_gal, and both reach the OneCovariance survey inputs.
+          [LINT] the occupancy fallback at the default nside_mask 8192 would be
+          about 37% low on the fiducial catalogue, where 63% of interior
+          footprint pixels hold a galaxy
           (occupancy-area-underestimate-nside-mask), mask values are summed
           as-is so an UNSEEN pixel would contribute a huge negative area
           (mask-area-unseen-sentinel), and area_from_coords' docstring says
-          occupancy overestimates the area.
+          occupancy overestimates the area (CosmoStat/sp_validation #387).
           Values: cosmo_val.nside_mask = 8192.
         default: mask_integral
         options:
@@ -723,31 +757,48 @@ analyses:
             label: Count mask > 0 pixels, excluding UNSEEN
             description: Not implemented.
       covariance_survey_inputs:
-        label: Survey numbers the analytic covariances take, and their conventions
+        label: Survey numbers CosmoCov and OneCovariance take, and their conventions
         rationale: >-
           CosmoCov reads the entry's static cov_th block verbatim
-          (covariance.smk get_cat_params): area A in deg^2, n_e the Kish
-          effective density (Sum w)^2/(A Sum w^2) in arcmin^-2, and sigma_e
-          the summed-component dispersion sqrt(Sum w^2 (e1^2 + e2^2)/Sum w^2),
-          which matches CosmoCov's per-component noise sigma_e^2/(2n). Nothing
-          regenerates cov_th from the catalogue; #320 refreshed it by hand.
-          OneCovariance instead receives the live area, n_eff_gal and the
-          per-component dispersion sqrt(0.5(<e1^2> + <e2^2>)) with w^2 weights
-          (survey.n_eff_density, ellipticity_dispersion,
-          effective_survey_stats; _modify_onecov_config). Both dispersions are
-          raw second moments of the configured columns, uncentred and not
-          divided by R. On the tomography branch each bin's n_eff divides its
-          Kish count by the full-version area. Shape noise scales the
-          Gaussian covariance as sigma_e^2/n_e and area as 1/A: these are the
-          main levers on every xi error bar. [LINT] several cat_config entries
-          (v1.4.12.3, v1.4.13.3, v1.6.6) carry v1.4.6.1's cov_th verbatim.
+          (covariance.smk get_cat_params, through common.catalogue_entry, so a
+          _leak_corr version takes its parent's): area A in deg^2, n_e the Kish
+          effective count (Sum w)^2/Sum w^2 divided by A in arcmin^2, and
+          sigma_e the summed-component dispersion sqrt(Sum w^2 (e1^2 +
+          e2^2)/Sum w^2) that survey.effective_survey_stats computes. No
+          workflow rule regenerates cov_th:
+          CosmologyValidation.compute_survey_stats(overwrite_config=True)
+          recomputes A, n_e and sigma_e and writes them to cat_config, and
+          nothing committed calls it. OneCovariance instead receives the live
+          area, n_eff_gal and the per-component dispersion sqrt(0.5(<e1^2> +
+          <e2^2>)) with w^2 weights (survey.n_eff_density,
+          survey.ellipticity_dispersion; _modify_onecov_config, called from
+          calculate_pseudo_cl_onecovariance, which no workflow rule runs). Both
+          dispersions are uncentred second moments of ellipticity columns, not
+          divided by R; OneCovariance's comes from the analysed version's
+          configured columns. On the tomography branch each bin's n_eff divides
+          its Kish count by the full-version area. CosmoCov's source takes the
+          per-component shape noise as sigma_e^2/(2 n), which matches the
+          summed-component convention, and its Gaussian terms carry a 1/A
+          factor, so these numbers set the shape-noise and area scaling of the
+          analytic xi covariance handed to inference. The tau covariance
+          (shear_psf_leakage CovTauTh) computes its own A and n_e from the
+          galaxy catalogue. [LINT] in the tomography cat_config, which the
+          merge adopts, SP_v1.3.6 and SP_v1.4.6 are each defined twice, and
+          SP_v1.3.6, SP_v1.6.6 and the second, live SP_v1.4.6 block carry
+          SP_v1.4.6.1's cov_th verbatim (A 2405.39 deg^2, n_e 6.128, sigma_e
+          0.3796) (tomo-cat-config-duplicate-keys).
         default: static_cov_th_summed_sigma
         options:
           static_cov_th_summed_sigma:
-            label: Hand-maintained cov_th (summed-component sigma_e) for CosmoCov; live per-component numbers for OneCovariance
+            label: >-
+              Static cov_th from cat_config (summed-component sigma_e) for
+              CosmoCov; live per-component numbers for OneCovariance
           measured_per_run:
             label: Survey numbers generated from catalogue and mask as a workflow product
-            description: Not implemented for CosmoCov.
+            description: >-
+              No workflow rule produces them;
+              compute_survey_stats(overwrite_config=True) writes them into
+              cat_config when called by hand.
 
   # ═════════════════════════════════════════════════════════════════════════
   real_space:
