@@ -70,11 +70,9 @@ You can view all available options with:
 python scripts/cosmosis_fitting.py --help
 ``` 
 
-The `pseudo_cl` rule writes the data vector as a SACC part, while
-`cosmosis_fitting.py` expects a pseudo-$C_\ell$ FITS input. Its covariance rule
-writes FITS, but the requested data-vector FITS path has no producer; supply a
-compatible FITS file separately for standalone use.
+For the pseudo-$C_\ell$ inputs, `pseudo_cl_cov` writes the covariance FITS;
+the data-vector FITS (`--cl-file`) has to be supplied separately.
 
-The published UNIONS v1.4 chains used a separate configuration. The committed
-templates have different fiducial priors for $m_1$, $\Delta z$, $\alpha$,
-$A_\mathrm{IA}$, and $\Omega_b$.
+The published UNIONS v1.4 chains were run from a separate configuration whose
+priors on $m_1$, $\Delta z$, $\alpha$, $A_\mathrm{IA}$ and $\Omega_b$ differ
+from the committed templates.

@@ -39,10 +39,9 @@ def _load_cat(path, w_cols):
     @sc [decision:shear_bias_simulations.mbias_estimator]
 
     Reads the ``e1``/``e2`` columns, which the image-sim calibration writes as
-    ``g = R^-1 g_uncal`` with each branch's own response matrix; additive
-    correction is disabled.
-    These are not the raw ``e1_uncal``/``e2_uncal``
-    columns that sit alongside them in the same catalogue. The bias this
+    ``g = R^-1 g_uncal`` with each branch's own response matrix and no
+    additive correction -- not the raw ``e1_uncal``/``e2_uncal`` columns that
+    sit alongside them in the same catalogue. The bias this
     estimator measures is the *residual* m/c left after the chain's own
     metacalibration, not the raw pre-calibration bias.
 
@@ -189,13 +188,13 @@ class ImageSimMBias:
 
             m = <(e_+ - e_-) / (2 g_in) - 1> ,   c = <(e_+ + e_-) / 2> ,
 
-        cancels intrinsic shape only when both branches share the same
-        calibration response.
-        Each branch has its own response matrix, so
-        response noise does not cancel; the bootstrap resamples calibrated
-        ellipticities but not response estimates, so sigma(m) omits that term.
-        The additive term c is a *sum*, so intrinsic shape remains and its error
-        stays shape-noise limited.
+        cancels the intrinsic shape object-by-object in the multiplicative term
+        to the extent the two branches share a response. Each branch is
+        calibrated with its own response matrix, so the cancellation is not
+        exact, and the bootstrap resamples calibrated ellipticities but not the
+        response estimates, so sigma(m) omits response noise. (The additive
+        term c is a *sum*, so intrinsic shape does not cancel there and its
+        error stays shape-noise limited.)
 
         With ``pair_match=False`` the +g and -g sims are *not* matched: every
         object of each catalogue is used, so the per-object cancellation is

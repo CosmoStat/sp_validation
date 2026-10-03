@@ -184,7 +184,7 @@ def main():
     num = config["num"]
     cat_name = config.get("catalog_name", "shape_catalog_cut_ngmix.fits")
     branches = list(config.get("branches", _DEFAULT_BRANCHES))
-    w_col = config["w_col"]  # required, like the estimator; null -> unit weights
+    w_col = config["w_col"]  # required; null -> unit weights
     out_dir = config.get("diagnostics_dir", f"{grids_dir}/diagnostics")
 
     # Colour per branch from a palette, so any branch list plots (no hard-coded
