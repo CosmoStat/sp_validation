@@ -28,6 +28,8 @@ import healsparse as hsp
 from cs_util.plots import FootprintPlotter
 
 from sp_validation import catalog_builders as sp_joint
+from sp_validation.grammar import MASK_LABELS
+from sp_validation.masks import catalogue_cuts
 from sp_validation.plots import hsp_map_logical_or
 
 # -
@@ -46,28 +48,22 @@ obj._params["verbose"] = True
 # Read configuration file and set parameters
 config = obj.read_config_set_params("config_mask.yaml")
 
-# Get data sections
-config_data = {key: config[key] for key in ["dat", "dat_ext"] if key in config}
-
 # Get names of possible mask names
-all_masks_bits = {}
-for bit in obj._labels_struct:
-    all_masks_bits[obj.get_mask_col_name(bit)] = bit
+all_masks_bits = {obj.get_mask_col_name(bit): bit for bit in MASK_LABELS}
 
 # Identify masks specified in the config file
 bits = 0
 auxiliary_masks = []
 auxiliary_labels = []
-for section, mask_list in config_data.items():
-    for mask_params in mask_list:
-        # Check bit-coded masks
-        if mask_params["col_name"] in all_masks_bits:
-            bits = bits | all_masks_bits[mask_params["col_name"]]
+for mask_params in catalogue_cuts(config):
+    # Check bit-coded masks
+    if mask_params["col_name"] in all_masks_bits:
+        bits = bits | all_masks_bits[mask_params["col_name"]]
 
-        # Check auxiliary masks
-        if "npoint3" == mask_params["col_name"]:
-            auxiliary_masks.append(obj._params["aux_mask_files"])
-            auxiliary_labels.append("npoint3")
+    # Check auxiliary masks
+    if "npoint3" == mask_params["col_name"]:
+        auxiliary_masks.append(obj._params["aux_mask_files"])
+        auxiliary_labels.append("npoint3")
 
 # Update bits for following function call
 obj._params["bits"] = bits

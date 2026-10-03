@@ -1,15 +1,15 @@
-"""Pure E/B data vector claim (paper Figure 1).
+"""Pure E/B data vector figure (paper Figure 1).
 
 Fiducial catalog only: pure E/B/ambiguous decomposition of ξ± with B-modes
 consistent with zero at the fiducial scale cuts. Writes evidence.json with PTE
-values including the joint B-mode test (fiducial blind, config.fiducial.blind).
+values including the joint B-mode test.
 
 CLI:
     python pure_eb_data_vector.py \
         --config config.yaml \
-        --pure-eb-data <version>_<blind>_pure_eb_semianalytic.npz \
+        --pure-eb-data <version>_pure_eb.npz \
         --reporting-cov <cov_reporting_ng>/covariance_processed.txt \
-        --out <output_dir> [--specs spec.md ...]
+        --out <output_dir>
 """
 
 import argparse
@@ -34,7 +34,7 @@ def _extract_sigma(covariance, block_index, block_size):
     return np.sqrt(np.clip(np.diag(covariance[block_slice, block_slice]), 0, None))
 
 
-def _compute_joint_pte(xip_B, xim_B, cov_xip_B, cov_xim_B, cov_cross, n_samples=None):
+def _compute_joint_pte(xip_B, xim_B, cov_xip_B, cov_xim_B, cov_cross):
     """Compute joint PTE for combined B-mode data vector [xip_B, xim_B]."""
     data_joint = np.concatenate([xip_B, xim_B])
     n_xip, n_xim = len(xip_B), len(xim_B)
@@ -45,12 +45,12 @@ def _compute_joint_pte(xip_B, xim_B, cov_xip_B, cov_xim_B, cov_cross, n_samples=
     cov_joint[:n_xip, n_xip:] = cov_cross
     cov_joint[n_xip:, :n_xip] = cov_cross.T
 
-    chi2, pte, dof = compute_chi2_pte(data_joint, cov_joint, n_samples=n_samples)
+    chi2, pte, dof = compute_chi2_pte(data_joint, cov_joint)
     return pte, chi2, dof
 
 
 def _load_pure_eb_data(pure_eb_path, cov_path):
-    """Load pure E/B decomposition, the 6-block MC covariance, and the
+    """Load pure E/B decomposition, the 6-block covariance, and the
     reporting-grid CosmoCov ξ± covariance used for the total-curve error bars."""
     dataset = np.load(pure_eb_path)
     theta = dataset["theta"]
@@ -217,8 +217,7 @@ def _create_pure_eb_figure(
     return fig
 
 
-def main(config, pure_eb_path, cov_path, out_dir, specs=()):
-    blind = config["fiducial"]["blind"]
+def main(config, pure_eb_path, cov_path, out_dir):
     version = config["fiducial"]["version"]
     fiducial_xip_scale_cut = tuple(config["fiducial"]["fiducial_xip_scale_cut"])
     fiducial_xim_scale_cut = tuple(config["fiducial"]["fiducial_xim_scale_cut"])
@@ -242,9 +241,6 @@ def main(config, pure_eb_path, cov_path, out_dir, specs=()):
     cov_pure_eb = data["cov_pure_eb"]
     xip_B, xim_B = data["xip_B"], data["xim_B"]
 
-    # Hartlap correction: MC-propagated covariance uses n_samples from config
-    n_samples = int(config["covariance"]["n_samples"])
-
     # Extract B-mode covariance blocks
     cov_xip_B_full = cov_pure_eb[2 * nbins : 3 * nbins, 2 * nbins : 3 * nbins]
     cov_xim_B_full = cov_pure_eb[3 * nbins : 4 * nbins, 3 * nbins : 4 * nbins]
@@ -265,10 +261,10 @@ def main(config, pure_eb_path, cov_path, out_dir, specs=()):
 
     # Compute PTEs at fiducial scale cuts
     chi2_xip_fid, pte_xip_fid, dof_xip_fid = compute_chi2_pte(
-        xip_B[mask_xip], cov_xip_B_cut, n_samples=n_samples
+        xip_B[mask_xip], cov_xip_B_cut
     )
     chi2_xim_fid, pte_xim_fid, dof_xim_fid = compute_chi2_pte(
-        xim_B[mask_xim], cov_xim_B_cut, n_samples=n_samples
+        xim_B[mask_xim], cov_xim_B_cut
     )
     pte_joint_fid, chi2_joint_fid, dof_joint_fid = _compute_joint_pte(
         xip_B[mask_xip],
@@ -276,29 +272,25 @@ def main(config, pure_eb_path, cov_path, out_dir, specs=()):
         cov_xip_B_cut,
         cov_xim_B_cut,
         cov_cross_cut,
-        n_samples=n_samples,
     )
 
     # Compute PTEs at full range
-    _, pte_xip_full, _ = compute_chi2_pte(xip_B, cov_xip_B_full, n_samples=n_samples)
-    _, pte_xim_full, _ = compute_chi2_pte(xim_B, cov_xim_B_full, n_samples=n_samples)
+    _, pte_xip_full, _ = compute_chi2_pte(xip_B, cov_xip_B_full)
+    _, pte_xim_full, _ = compute_chi2_pte(xim_B, cov_xim_B_full)
     pte_joint_full, chi2_joint_full, dof_joint_full = _compute_joint_pte(
         xip_B,
         xim_B,
         cov_xip_B_full,
         cov_xim_B_full,
         cov_cross_full,
-        n_samples=n_samples,
     )
 
     print(
-        f"Blind {blind} PTEs (fiducial): xi+^B={pte_xip_fid:.3f}, xi-^B={pte_xim_fid:.3f}, joint={pte_joint_fid:.3f}"
+        f"PTEs (fiducial): xi+^B={pte_xip_fid:.3f}, xi-^B={pte_xim_fid:.3f}, joint={pte_joint_fid:.3f}"
     )
 
     # Write evidence.json (based on leak-corrected fiducial data only)
     evidence_data = {
-        "spec_id": "pure_eb_data_vector",
-        **({"spec_path": specs[0]} if specs else {}),
         "generated": datetime.now().isoformat(),
         "evidence": {
             "fiducial": {
@@ -319,7 +311,6 @@ def main(config, pure_eb_path, cov_path, out_dir, specs=()):
                 "dof_joint_B": int(dof_joint_full),
             },
             "version": version,
-            "blind": blind,
         },
         "output": {"figure": "figure.png"},
     }
@@ -342,8 +333,7 @@ def _from_cli(argv=None):
     ap.add_argument(
         "--pure-eb-data",
         required=True,
-        help="Fiducial <version>_<blind>_pure_eb_semianalytic.npz "
-        "(decomposed ξ± + 6-block MC covariance)",
+        help="Fiducial <version>_pure_eb.npz (decomposed ξ± + 6-block covariance)",
     )
     ap.add_argument(
         "--reporting-cov",
@@ -352,16 +342,10 @@ def _from_cli(argv=None):
         "(covariance_processed.txt) for the total ξ± error bars",
     )
     ap.add_argument("--out", required=True, help="Output directory (lc {output})")
-    ap.add_argument(
-        "--specs",
-        nargs="*",
-        default=[],
-        help="Optional spec markdown paths recorded in evidence.json for provenance",
-    )
     a = ap.parse_args(argv)
     with open(a.config) as f:
         config = yaml.safe_load(f)
-    main(config, a.pure_eb_data, a.reporting_cov, a.out, specs=a.specs)
+    main(config, a.pure_eb_data, a.reporting_cov, a.out)
 
 
 if __name__ == "__main__":

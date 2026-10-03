@@ -1,0 +1,29 @@
+# Machine-independent profile: the container model, and nothing else. Use it
+# anywhere that is not candide (a laptop, a workstation, another cluster):
+#
+#     snakemake --profile workflow/profiles/default -s workflow/Snakefile \
+#         <target> --configfile <run config> -j 4
+#
+# On candide use workflow/profiles/candide. Either way, `apptainer` on PATH and
+# `snakemake` installed host-side (workflow/README.md); never run from inside
+# an apptainer shell.
+
+# --- mirrored in workflow/profiles/candide/config.yaml ----------------------
+software-deployment-method: apptainer
+
+# Every trigger but software-env, which hashes the image *path*: that path is
+# per person (~/.cache/sp_validation/...) and switches between SIF and sandbox,
+# so it would rerun everything without the stack having changed.
+# "code" watches rule bodies and `script:` files, not `src/`.
+rerun-triggers: ["mtime", "params", "input", "code"]
+
+# A job's write can take more than 5 s to show on the launching host (candide's
+# /home does); a shorter wait reads a finished job as failed and re-runs it.
+latency-wait: 60
+# --- end mirrored -----------------------------------------------------------
+
+# `--cleanenv` so a job's environment is the image's, not your shell's.
+# Snakemake runs each job with `--home <working directory>`, so apptainer mounts
+# that directory and not your home: bind /home, and add `--bind` for any other
+# disk your inputs, outputs or checkout live on.
+apptainer-args: "--cleanenv --bind /home"

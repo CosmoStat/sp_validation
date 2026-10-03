@@ -206,6 +206,26 @@ def test_objectwise_leakage_and_plot_smoke(tmp_path, monkeypatch):
     assert (tmp_path / "output" / "leakage_coefficients_tomo.png").exists()
 
 
+def test_leakage_object_reads_the_selected_rows(tmp_path):
+    """The object-wise reader keeps the rows a galaxy mask selects."""
+    pytest.importorskip("shear_psf_leakage")
+    from sp_validation.cosmo_val import CosmologyValidation
+    from sp_validation.cosmo_val.core import _LeakageObject
+
+    version, params = _objectwise_config(tmp_path)
+    cv = CosmologyValidation(versions=[version], npatch=1, **params)
+    obj = object.__new__(_LeakageObject)
+    obj.entries = cv.cc[version]
+
+    mask = cv._get_galaxy_mask(version, 2)
+    obj.read_data(selection=mask)
+    assert len(obj._dat) == mask.sum()
+    assert np.all(obj._dat["tomo_bin"] == 2)
+
+    with pytest.raises(ValueError, match="different length"):
+        obj.read_data(selection=mask[1:])
+
+
 class _ObjectwiseControlFlow(PSFSystematicsMixin):
     """Two versions, one of which lacks a catalogue column."""
 
@@ -240,3 +260,36 @@ def test_version_missing_a_column_stays_dropped():
     assert set(cv.leakage_coeff) == {"good"}
     cv.calculate_objectwise_leakage(tomography=True)
     assert "tomo_bin_1" in cv.leakage_coeff["good"]
+
+
+@pytest.mark.parametrize(
+    "cov_estimate_method, expected",
+    [("sim", 500), ("jk", 150), ("th", None)],
+)
+def test_rho_tau_fit_debiases_estimated_covariances(
+    monkeypatch, cov_estimate_method, expected
+):
+    """Simulation and jackknife covariances get Hartlap-debiased; theory does not.
+
+    The debiasing count is the number of simulations (``n_sim_cov``) or of
+    jackknife patches the covariance was estimated from.
+    """
+    from sp_validation.cosmo_val import psf_systematics
+
+    seen = {}
+
+    def fake_get_samples(*args, apply_debias, **kwargs):
+        seen["apply_debias"] = apply_debias
+        return None, None, None
+
+    monkeypatch.setattr(psf_systematics, "get_samples", fake_get_samples)
+    cv = SimpleNamespace(
+        cov_estimate_method=cov_estimate_method,
+        n_sim_cov=500,
+        rho_tau_method="lsq",
+        psf_fitter=None,
+        basename=lambda version, tomo_bin_a="all": version,
+    )
+    cv.get_samples = PSFSystematicsMixin.get_samples.__get__(cv)
+    cv.get_samples("v", {"patch_number": 150}, "all")
+    assert seen["apply_debias"] == expected

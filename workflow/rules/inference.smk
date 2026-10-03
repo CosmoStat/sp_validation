@@ -1,4 +1,4 @@
-# Imports from Snakefile: FIDUCIAL, COSMO_INFERENCE, COSMO_VAL, covariance_path, build_redshift_path, fiducial_binning_suffix
+# Imports from Snakefile: FIDUCIAL, COSMO_INFERENCE, COSMO_VAL, covariance_path, redshift_path, fiducial_binning_suffix, pseudo_cl_tag
 # NOTE: dormant subsystem. The file-name plumbing (config-driven paths + the
 # producer-tagged pseudo-Cl names) is fixed and the DAG is valid, but it has not
 # been run end-to-end. Reviving it still needs the FITS-CONTENT plumbing
@@ -34,14 +34,8 @@ GLASS_MOCK_CONFIG_PATTERN = str(
 
 # Fiducial harmonic-binning tag the pseudo-Cl producer (twopoint.smk) stamps
 # into the filename. These are NOT inference_prep wildcards, so the consumer
-# reads them from config to reconstruct the exact name the producer emits
-# (canonical: blind=A, powspace, nbins=32 — see twopoint.smk pseudo_cl_all).
-HARMONIC_FIDUCIAL = config["harmonic"]["fiducial"]
-PSEUDO_CL_TAG = (
-    f"blind={HARMONIC_FIDUCIAL['blind']}"
-    f"_{HARMONIC_FIDUCIAL['binning']}"
-    f"_nbins={HARMONIC_FIDUCIAL['nbins']}"
-)
+# reads them from config to reconstruct the exact name the producer emits.
+PSEUDO_CL_TAG = pseudo_cl_tag(config)
 
 
 def pseudo_cl_assets(version):
@@ -58,31 +52,31 @@ def pseudo_cl_assets(version):
 rule inference_prep:
     input:
         # Processed covariance matrix - use centralized covariance_path()
-        cov_matrix=lambda w: covariance_path(w.version, w.blind, min_sep=w.min_sep, max_sep=w.max_sep, nbins=w.nbins),
+        cov_matrix=lambda w: covariance_path(w.version, min_sep=w.min_sep, max_sep=w.max_sep, nbins=w.nbins),
         # Xi FITS files
         xi_plus=str(COSMO_VAL / "xi_plus_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
         xi_minus=str(COSMO_VAL / "xi_minus_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
-        # n(z) file (using new location with base version mapping)
-        nz_file=lambda w: build_redshift_path(w.version, w.blind),
+        # n(z) file: the catalogue entry's
+        nz_file=lambda w: redshift_path(w.version),
         # rho/tau stats
-        rho_stats=str(COSMO_VAL / "rho_tau_stats/rho_stats_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
-        tau_stats=str(COSMO_VAL / "rho_tau_stats/tau_stats_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
+        rho_stats=lambda w: cv_rho_stats(w.version, w),
+        tau_stats=lambda w: cv_tau_stats(w.version, w),
         # tau covariance (tracked as dependency)
-        tau_cov=str(COSMO_VAL / "rho_tau_stats/cov_tau_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}_th.npy"),
+        tau_cov=lambda w: cv_cov_tau(w.version, w),
         pseudo_cl=lambda w: pseudo_cl_assets(w.version)[0],
         pseudo_cl_cov=lambda w: pseudo_cl_assets(w.version)[1],
     output:
         fits_file=str(
             COSMO_INFERENCE_PROD
-            / "data/{version}_{blind}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}/cosmosis_{version}_{blind}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"
+            / "data/{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}/cosmosis_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"
         ),
         config_file=str(
             COSMO_INFERENCE_PROD
-            / "cosmosis_config/output/cosmosis_pipeline_{version}_{blind}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.ini"
+            / "cosmosis_config/output/cosmosis_pipeline_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.ini"
         )
     params:
-        cosmosis_root="{version}_{blind}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}",
-        data_dir=f"{CHAINS_DIR}/{{version}}_{{blind}}_minsep={{min_sep}}_maxsep={{max_sep}}_nbins={{nbins}}_npatch={{npatch}}",
+        cosmosis_root="{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}",
+        data_dir=f"{CHAINS_DIR}/{{version}}_minsep={{min_sep}}_maxsep={{max_sep}}_nbins={{nbins}}_npatch={{npatch}}",
         output_root=str(COSMO_INFERENCE_PROD),
     threads: 1
     resources:
@@ -113,12 +107,12 @@ rule inference_fiducial:
     input:
         # Use the same output patterns as inference_prep with FIDUCIAL params
         rules.inference_prep.output.fits_file.format(
-            version=FIDUCIAL["version"], blind=FIDUCIAL["blind"],
+            version=FIDUCIAL["version"],
             min_sep=FIDUCIAL["min_sep"], max_sep=FIDUCIAL["max_sep"],
             nbins=FIDUCIAL["nbins"], npatch=FIDUCIAL["npatch"]
         ),
         rules.inference_prep.output.config_file.format(
-            version=FIDUCIAL["version"], blind=FIDUCIAL["blind"],
+            version=FIDUCIAL["version"],
             min_sep=FIDUCIAL["min_sep"], max_sep=FIDUCIAL["max_sep"],
             nbins=FIDUCIAL["nbins"], npatch=FIDUCIAL["npatch"]
         )
@@ -133,14 +127,14 @@ rule inference_prep_glass_mock:
     input:
         xi=f"{GLASS_MOCK_DATA_DIR}/xi_glass_mock_{{mock_id}}_4096_nbins=20.fits",
         # Use centralized covariance_path() with fiducial mock version
-        cov_matrix=covariance_path(FIDUCIAL["mock_version"], "A"),
+        cov_matrix=covariance_path(FIDUCIAL["mock_version"]),
         # n(z) file
-        nz_file=build_redshift_path(FIDUCIAL["mock_version"], "A"),
+        nz_file=redshift_path(FIDUCIAL["mock_version"]),
         # Rho/tau stats: rho from real data, tau sampled
-        rho_stats=str(COSMO_VAL / f"rho_tau_stats/rho_stats_{FIDUCIAL['mock_version']}{fiducial_binning_suffix()}.fits"),
+        rho_stats=cv_rho_stats(FIDUCIAL["mock_version"]),
         tau_stats="results/glass_mock_rhotau_samples/{mock_id}/tau_stats_sampled.fits",
         # Tau covariance (real data)
-        tau_cov=str(COSMO_VAL / f"rho_tau_stats/cov_tau_{FIDUCIAL['mock_version']}{fiducial_binning_suffix()}_th.npy"),
+        tau_cov=cv_cov_tau(FIDUCIAL["mock_version"]),
         # C_ell data for dual config generation
         cl_file=f"{GLASS_MOCK_DATA_DIR}/cl_glass_mock_{{mock_id}}_4096.npy",
         cl_cov=pseudo_cl_assets(FIDUCIAL["mock_version"])[1],

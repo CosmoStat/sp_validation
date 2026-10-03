@@ -8,7 +8,6 @@ per-version leakage product paths are built inside shear_psf_leakage.
 """
 
 from cv_runner import _unbuffer_streams, make_cv, touch_sentinels
-from snakemake.script import snakemake
 
 _unbuffer_streams()
 cv = make_cv(snakemake)

@@ -1,0 +1,160 @@
+# Config file for masking and calibration, ShapePipe v2 catalogues.
+#
+# ShapePipe v2 replaces the single IMAFLAGS_ISO column with per-reason boolean
+# mask columns MASK_<bit>_<label>, where True means MASKED. They are therefore
+# cut with `kind: equal, value: False` (keep the un-masked objects):
+#
+# Reason bits of the ShapePipe r-band default bitmask:
+#
+#   MASK_1_Faint_star_halos     faint star halos (bit 0; value 1)
+#   MASK_2_Bright_star_halos    bright star halos (bit 1; value 2)
+#   MASK_4_Stars                star bodies (bit 2; value 4)
+#   MASK_8_Manual               manual galaxy mask
+#   MASK_64_r                   r-band coverage
+#   MASK_1024_Maximask          MaxiMask
+#
+# Per-band coverage flags and Pan-STARRS:
+#
+#   MASK_16_u, MASK_32_g, MASK_64_r, MASK_128_i, MASK_256_z
+#                               u, g, r, i, HSC z-band coverage
+#   MASK_2048_z2                no Pan-STARRS z-band (z2) coverage
+#
+# The default selection (see sp_validation.galaxy.DEFAULT_MASK_COLUMNS) is
+# bits 1 + 2 + 4 + 8 + 64 + 1024, whose OR matches mask_r, the r-band
+# mask, on covered granules (verified on the P3 sky area); footprint-edge
+# granules without mask_r coverage can differ. The other coverage flags and bit 2048 are listed
+# here but commented out, since ORing all of them masks essentially
+# everything.
+
+# General parameters (can also given on command line)
+params:
+  input_path: unions_shapepipe_comprehensive_2025_v2.0.hdf5
+  cmatrices: False
+  sky_regions: False
+  verbose: True
+
+# Masks
+## Cuts on catalogue columns, in the v2 grammar (sp_validation.grammar)
+dat:
+  # SExtractor flags: keep 0 (clean), 1 (neighbours), 2 (deblended); drop
+  # 3 (both) and above. Same as the image-sims config, so data and sims
+  # select identically (shapepipe#885).
+  - col_name: FLAGS
+    label: SE FLAGS
+    kind: smaller_equal
+    value: 2
+
+  # Duplicate objects
+  - col_name: overlap
+    label: tile overlap
+    kind: equal
+    value: True
+
+  # ShapePipe masks (boolean, True = masked)
+  - col_name: MASK_4_Stars
+    label: "star bodies"
+    kind: equal
+    value: False
+  # Star-halo bits follow the UNIONS mask producer schema.
+  - col_name: MASK_1_Faint_star_halos
+    label: "faint star halos"
+    kind: equal
+    value: False
+  - col_name: MASK_2_Bright_star_halos
+    label: "bright star halos"
+    kind: equal
+    value: False
+  - col_name: MASK_8_Manual
+    label: "manual mask"
+    kind: equal
+    value: False
+  - col_name: MASK_1024_Maximask
+    label: "maximask"
+    kind: equal
+    value: False
+
+  # r-band coverage. Required for the OR above to reproduce mask_r.
+  - col_name: MASK_64_r
+    label: "r-band imaging"
+    kind: equal
+    value: False
+
+  # Other per-band coverage flags and Pan-STARRS z2; enable as required.
+  # Cutting on all of them at once leaves essentially no objects.
+  # - col_name: MASK_16_u
+  #   label: "u coverage"
+  #   kind: equal
+  #   value: False
+  # - col_name: MASK_2048_z2
+  #   label: "no PS-z2"
+  #   kind: equal
+  #   value: False
+  #
+  # v1.X also applied a rough pointing-coverage cut, 'npoint3' >= 3, from an
+  # external post-processing catalogue. ShapePipe v2 emits no such column and
+  # no mask bit encodes it, so that cut has no v2 counterpart; add it back
+  # here if an external pointing-coverage map is ever joined onto the
+  # catalogue.
+
+  # Number of epochs
+  - col_name: N_EPOCH
+    label: r"$n_{\rm epoch}$"
+    kind: greater_equal
+    value: 2
+
+  # Magnitude range
+  - col_name: mag
+    label: mag range
+    kind: range
+    value: [15, 30]
+
+  # ngmix flags
+  - col_name: NGMIX_MCAL_TYPES_FAIL
+    label: "ngmix moments failure"
+    kind: equal
+    value: 0
+
+  # Objects ngmix never fit. ShapePipe's make_cat pre-fills the NGMIX_*
+  # columns with sentinels (G1/G2 = -10, T/FLUX = 0) and overwrites them only
+  # for objects present in the ngmix output, so a never-fit object also keeps
+  # NGMIX_MCAL_FLAGS = 0 and is not caught by any flag cut. In
+  # final_cat_smk-g7.hdf5 that is 18,983 of 1,851,100 objects (1.03%);
+  # admitting them gives mean e1 = -0.107 (std 1.03) against -0.004 (std
+  # 0.22). The -10 cuts below do reject them today, but only because make_cat
+  # happens to use the same literal for the PSF columns: that is an exact
+  # float equality against a sentinel ShapePipe may change, so state the
+  # condition directly. Mirrors the guard in
+  # sp_validation.galaxy.classification_galaxy_ngmix.
+  - col_name: NGMIX_N_EPOCH
+    label: "ngmix never fit"
+    kind: greater_equal
+    value: 1
+
+  # invalid PSF ellipticities
+  - col_name: NGMIX_G1_PSF_ORIG_NOSHEAR
+    label: "bad PSF ellipticity comp 1"
+    kind: not_equal
+    value: -10
+  - col_name: NGMIX_G2_PSF_ORIG_NOSHEAR
+    label: "bad PSF ellipticity comp 2"
+    kind: not_equal
+    value: -10
+
+# Metacal parameters
+metacal:
+  # Ellipticity dispersion
+  sigma_eps_prior: 0.34
+
+  # Signal-to-noise range
+  gal_snr_min: 10
+  gal_snr_max: 500
+
+  # Relative-size (hlr / hlr_psf) range
+  gal_rel_size_min: 0.707
+  gal_rel_size_max: 3
+
+  # Correct relative size for ellipticity?
+  gal_size_corr_ell: False
+
+  # Weight for global response matrix, None for unweighted mean
+  global_R_weight: w

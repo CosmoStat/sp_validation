@@ -138,8 +138,6 @@ def save_area_summary(
 
 def main():
     """Main processing function."""
-    # Snakemake script execution only (no interactive mode)
-    from snakemake.script import snakemake
 
     # Get parameters from Snakemake
     source_mask_path = snakemake.input.mask

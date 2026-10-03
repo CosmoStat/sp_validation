@@ -9,12 +9,17 @@ GLASS_MOCK_DIR = "/n09data/guerrini/glass_mock_v1.4.6/results"
 GLASS_MOCK_IDS = [f"{i:05d}" for i in range(1, 101)]
 MOCK_RESULTS = "results/glass_mock"
 
+# Mock ξ± are measured on the data's integration grid, node for node, so the
+# E/B transforms see the same θ sampling on mocks and data.
+MOCK_XI_GRID = XI_GRIDS["integration"]
+MOCK_XI = f"{MOCK_RESULTS}/gg_glass_mock_{{mock_id}}_{xi_binning('integration')}.fits"
+
 wildcard_constraints:
     cl_nbins=r"\d+",
 
 
 rule glass_mock_xi_fine:
-    """Fine-binned treecorr ξ± for one GLASS mock (1000 bins, 0.5–500 arcmin).
+    """Treecorr ξ± for one GLASS mock on the data's integration grid.
 
     Required for config-space COSEBIS and pure E/B on mocks.
     ~35M galaxies → ~30 min on 48 cores.
@@ -22,11 +27,11 @@ rule glass_mock_xi_fine:
     input:
         catalog=f"{GLASS_MOCK_DIR}/unions_glass_sim_{{mock_id}}_4096.fits",
     output:
-        gg=f"{MOCK_RESULTS}/gg_glass_mock_{{mock_id}}_nbins=1000.fits",
+        gg=MOCK_XI,
     params:
-        min_sep=0.5,
-        max_sep=500.0,
-        nbins=1000,
+        min_sep=MOCK_XI_GRID["min_sep"],
+        max_sep=MOCK_XI_GRID["max_sep"],
+        nbins=MOCK_XI_GRID["nbins"],
     threads: 24
     resources:
         mem_mb=20000,
@@ -63,10 +68,7 @@ rule glass_mock_pseudo_cl:
 rule glass_mock_all_xi:
     """Aggregator: fine-binned ξ± for 5 mocks."""
     input:
-        expand(
-            f"{MOCK_RESULTS}/gg_glass_mock_{{mock_id}}_nbins=1000.fits",
-            mock_id=GLASS_MOCK_IDS,
-        ),
+        expand(MOCK_XI, mock_id=GLASS_MOCK_IDS),
 
 
 rule glass_mock_all_pseudo_cl:
@@ -93,7 +95,7 @@ rule mock_cosebis_scatter:
     Byte-order conversion for numba compatibility handled internally.
     """
     input:
-        xi=f"{MOCK_RESULTS}/gg_glass_mock_{{mock_id}}_nbins=1000.fits",
+        xi=MOCK_XI,
     params:
         nmodes=config["fiducial"]["nmodes"],
         theta_min=config["cosebis"]["theta_min"],
@@ -117,11 +119,14 @@ rule mock_cosebis_bias_test:
             f"{MOCK_RESULTS}/cosebis_glass_mock_{{mock_id}}.npz",
             mock_id=GLASS_MOCK_IDS,
         ),
-        xi_ref=f"{MOCK_RESULTS}/gg_glass_mock_00001_nbins=1000.fits",
-        cov=str(
-            Path("/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/data/covariance")
-            / "covariance_SP_v1.4.6_leak_corr_A_g_minsep=0.5_maxsep=500.0_nbins=1000_masked"
-            / "covariance_SP_v1.4.6_leak_corr_A_g_minsep=0.5_maxsep=500.0_nbins=1000_masked_processed.txt"
+        xi_ref=MOCK_XI.format(mock_id="00001"),
+        cov=covariance_path(
+            "SP_v1.4.6_leak_corr",
+            "g",
+            MOCK_XI_GRID["min_sep"],
+            MOCK_XI_GRID["max_sep"],
+            MOCK_XI_GRID["nbins"],
+            "_masked",
         ),
     params:
         nmodes=config["fiducial"]["nmodes"],
