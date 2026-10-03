@@ -2170,7 +2170,10 @@ analyses:
           each requested real-space or harmonic configuration when
           --use-rho-tau is set without --mock. m1 rescales the theory
           amplitude, so changing its prior can affect inferred S8; (1 + m1)^2
-          is 11% larger at m1 = -0.0057 than at m1 = -0.057.
+          is 11% larger at m1 = -0.0057 than at m1 = -0.057. [LINT] the two
+          committed templates differ by exactly a factor of ten in the m1 mean,
+          with the same width, which looks like a dropped digit in
+          priors_psf.ini (#391).
           Values:
           priors_psf.ini#shear_calibration_parameters.m1 = gaussian -0.0057 0.014;
           priors.ini#shear_calibration_parameters.m1 = gaussian -0.057 0.014;
