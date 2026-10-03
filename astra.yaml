@@ -474,9 +474,10 @@ analyses:
       The multiplicative and additive bias measured on the image simulations
       (workflow/image_sims, sp_validation.image_sims). Each sheared branch is
       run through ShapePipe and the data calibration script, then the +g and
-      -g branches are differenced. The science keys are required run keys
-      with no committed value; the committed defaults are the estimator's
-      code and the image-simulation mask config.
+      -g branches are differenced. The science keys, mask_config among them,
+      are required run keys with no committed value; the defaults recorded
+      here are the estimator's code and the values the workflow template
+      (workflow/image_sims/config.yaml) suggests.
     inputs:
       - id: image_simulations
         from: ../image_simulations
@@ -491,44 +492,66 @@ analyses:
       mbias_estimator:
         label: Paired finite-difference m and c on calibrated ellipticities
         rationale: >-
-          ImageSimMBias reads each branch's calibrated e1/e2 (inv(R) applied
-          with that branch's own global response), matches the +g and -g
-          catalogues by nearest neighbour within match_radius_deg, and averages
-          m = (e+ - e-)/(2 g_in) - 1 and c = (e+ + e-)/2 over pairs with the
-          mean of the two objects' weights; pair_match False differences the
-          two branch means instead. Only the diagonal components are measured
-          and the unsheared branch is loaded but unused. The headline m is the
-          residual after metacal, not the raw response bias. Pairing cancels
-          intrinsic shape in m. [LINT] R is estimated on each branch's full
-          selected sample while m is measured on the matched intersection
-          (imsim-paired-intersection-bias). pair_match and match_radius_deg
-          have no committed value; the template suggests true and 0.0002 deg.
+          ImageSimMBias reads each branch's calibrated e1/e2: inv(R) applied
+          with that branch's own global response R = <R_shear> + R_sel,
+          estimated on the branch's full selected sample. With pair_match true
+          it matches each -g object to its nearest +g object within
+          match_radius_deg, which does not guarantee one-to-one pairs, and
+          averages m = (e+ - e-)/(2 g_in) - 1 and c = (e+ + e-)/2 over the
+          pairs, each weighted by the mean of its two objects' weights;
+          pair_match false differences and sums the two branches' weighted
+          means instead. Only the diagonal components are measured: m1 and c1
+          come from e1 of the g1-sheared pair, m2 and c2 from e2 of the
+          g2-sheared pair, and the unsheared branch is loaded but does not
+          enter m or c. The headline m is the residual after metacalibration,
+          not the raw response bias. Pairing cancels intrinsic shape in m only
+          to the extent the two branches share a response, since each is
+          calibrated with its own. [LINT] m is measured on the matched pairs
+          while each branch's R comes from its full selected sample, so the
+          pairs' selection response is not the one removed
+          (imsim-paired-intersection-bias, CosmoStat/sp_validation #386): in a
+          synthetic fixture with true m = 0, paired m is +0.042 while
+          pair_match false on the same catalogues gives +0.002 +- 0.007. The
+          size of this bias on the SKiLLS m has not been measured. pair_match
+          and match_radius_deg have no committed value; the template suggests
+          true and 0.0002 deg.
           Values:
           image_sims/config.yaml#image_sims.pair_match = absent;
           image_sims/config.yaml#image_sims.match_radius_deg = absent.
         default: paired_difference
         options:
           paired_difference:
-            label: Object-paired +g/-g difference, calibrated e, per-branch R
+            label: Matched +g/-g pair difference, calibrated e, per-branch R
           unpaired_means:
             label: Difference of branch means (pair_match False)
           raw_response_bias:
             label: m from the uncalibrated ellipticities
-            description: Not implemented; the estimator reads e1/e2 only.
+            description: >-
+              Not implemented; the estimator reads the calibrated e1/e2, not
+              e1_uncal/e2_uncal.
       mbias_sim_selection:
         label: Selection and calibration applied to the simulated catalogues
         rationale: >-
-          The simulations run mask_v1.X.9_im_sim.yaml, composed from the data
+          The run key mask_config selects the calibration config; the template
+          suggests mask_v1.X.9_im_sim.yaml. That file is composed from the data
           config mask_v1.X.9.yaml by an overlay that drops IMAFLAGS_ISO and the
-          healsparse mask bits, which the simulated tiles do not carry: FLAGS
-          <= 2, N_EPOCH >= 1, 15 <= mag <= 30, 5 < SNR < 500, 0.25 < T/Tpsf <
-          10, an unweighted global response and no additive-bias subtraction,
-          because in constant-shear simulations the mean shear is the signal
-          (#226, #227). Unit weights are the primary scheme (the "none" entry
-          of w_cols). The measured m therefore describes the v1.X.9 selection
-          under unit weights, while the fiducial SP_v1.4.6.3 catalogue carries
-          the v1.X.6 selection (SNR > 10, 0.707 < T/Tpsf < 3) and is analysed
-          under w_des. mask_config and w_cols are required run keys.
+          healsparse mask-bit cuts, which the simulated tiles do not carry, and
+          sets an unweighted global response and no additive-bias subtraction.
+          Its cuts are FLAGS <= 2, overlap, N_EPOCH >= 1, 15 <= mag <= 30, no
+          ngmix failure, valid PSF ellipticities, 5 < SNR < 500 and 0.25 <
+          T/Tpsf < 10. Additive-bias subtraction is off because subtracting
+          each catalogue's mean shear removes the injected constant shear and
+          drives m to -1 (#226). The response is unweighted and the template's
+          w_cols leads with "none" (unit weights; the first w_cols entry is the
+          headline result) because w_des weights on the simulations are
+          dominated by a few objects, and #227 closed on using no weights in
+          the simulation m-bias. A measured m therefore applies to objects
+          passing the v1.X.9 cuts (the matched pairs among them when pair_match
+          is true) under the first w_cols scheme, while the SP_v1.4.6.3 FITS
+          header records the mask_v1.X.6.yaml selection (among it FLAGS = 0,
+          N_EPOCH >= 2, SNR > 10 and 0.707 < T/Tpsf < 3) with a response
+          weighted by w, and cosmo_val analyses that catalogue under w_des.
+          mask_config and w_cols are required run keys.
           Values:
           mask_v1.X.9_im_sim.yaml#dat.0.value = 2;
           mask_v1.X.9_im_sim.yaml#dat.2.value = 1;
@@ -547,27 +570,43 @@ analyses:
             label: mask_v1.X.9_im_sim.yaml, unit weights, no additive correction
           fiducial_matched:
             label: Simulation cuts matching the analysed catalogue's selection and weights
-            description: No image-simulation config with the v1.X.6 cuts exists.
+            description: >-
+              No image-simulation config with the v1.X.6 cuts exists
+              (mask_v1.X.4_im_sim.yaml has SNR > 10 but 0.5 < T/Tpsf < 3). A
+              w_des entry in w_cols gives the analysis weighting, which #227
+              found dominated by a few objects on the simulations.
       mbias_uncertainty:
         label: Object bootstrap with the response held fixed
         rationale: >-
-          Errors are the standard deviation of n_bootstrap paired resamples
-          drawn once from a generator seeded with bootstrap_seed and shared
-          across weight schemes; the response is not re-estimated per
-          resample. [LINT] response-estimation noise is omitted, which
-          understates sigma(m) by 1.5 to 1.9 on the runs on disk
-          (imsim-bootstrap-fixed-response). Both keys are required run keys;
-          the template suggests 500 and 42.
+          Errors are the standard deviation of m and c over n_bootstrap
+          resamples. With pair_match true each resample draws matched pairs
+          with replacement; with pair_match false the +g and -g catalogues are
+          resampled independently. For each shear pair the indices come from a
+          generator seeded with bootstrap_seed and are reused across weight
+          schemes. Only calibrated ellipticities are resampled, so the response
+          is not re-estimated per resample. [LINT] the reported error omits
+          response-estimation noise (imsim-bootstrap-fixed-response,
+          CosmoStat/sp_validation #386): in a synthetic ensemble the repeat-run
+          scatter of m is 1.96 (m1) and 1.89 (m2) times the reported error, and
+          on one SKiLLS tile on disk (imsims-ab grid_1, tile 233.293)
+          re-estimating the mean shear response in each resample raises
+          sigma(m1) from 0.027 to 0.039 and sigma(m2) from 0.022 to 0.042,
+          still without selection-response noise. Both keys are required run
+          keys; the template suggests 500 and 42.
           Values:
           image_sims/config.yaml#image_sims.n_bootstrap = absent;
           image_sims/config.yaml#image_sims.bootstrap_seed = absent.
         default: object_bootstrap_fixed_response
         options:
           object_bootstrap_fixed_response:
-            label: Paired object bootstrap, R fixed
+            label: Object bootstrap (paired when pair_match is true), R fixed
           tile_jackknife:
             label: Leave-one-tile-out jackknife
-            description: Not implemented (CosmoStat/sp_validation #346).
+            description: >-
+              Not implemented; CosmoStat/sp_validation #346 proposes it because
+              tile-level systematics can correlate objects within a tile. A
+              jackknife that keeps each branch's full-sample R would still omit
+              response noise.
 
   # ═════════════════════════════════════════════════════════════════════════
   shear_field:
