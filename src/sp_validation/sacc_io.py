@@ -1187,10 +1187,10 @@ def sacc_to_twopoint_fits(
     path : str
         Output FITS path (overwritten).
     rho_stats_hdu, tau_stats_hdu : astropy.io.fits.BinTableHDU, optional
-        The rho-stats / tau-stats sidecar HDUs, copied verbatim into the output.
-        The SACC covariance diagonal gives the ``varrho_*`` values; the sidecars
-        carry the remaining table fields. Required together to write the ρ/τ
-        product. When omitted, a pure ξ (± Cℓ) product is written.
+        The rho-stats / tau-stats sidecar HDUs, copied verbatim into the output
+        (their ``varrho_*`` columns equal the diagonal of the SACC ρ covariance).
+        Required together to write the ρ/τ product. When omitted, a pure ξ
+        (± Cℓ) product is written.
     n_bins : int, optional
         Number of source tomographic bins. Must be ``1``: this converter emits
         the single-bin 2pt-FITS today's CosmoSIS pipeline consumes. Tomographic
@@ -1324,9 +1324,8 @@ def _build_rho_tau(rho_stats_hdu, tau_stats_hdu, theta, use_rho_tau):
 
     Mirrors ``tau_to_fits`` / ``rho_to_fits``: τ_0/τ_2 read their ``tau_k_p``
     columns onto the shared ξ θ grid (consistency step); RHO_STATS is copied
-    verbatim from the sidecar with its θ column forced onto the ξ grid. The
-    SACC ρ covariance diagonal supplies the ``varrho_*`` values; the sidecar
-    preserves the complete ``RHO_STATS`` table.
+    verbatim from the sidecar with its θ column forced onto the ξ grid,
+    ``varrho_*`` columns included; those equal the SACC ρ covariance diagonal.
     """
     if not use_rho_tau:
         return (), None
