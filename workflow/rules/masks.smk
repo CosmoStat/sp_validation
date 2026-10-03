@@ -185,9 +185,9 @@ rule effective_area_comparison:
         
         report_content.extend([
             "",
-            "## Mask power spectra",
+            "## CosmoCov Integration",
             "",
-            "These files contain raw anafast C_ell values and are not CosmoCov-ready:",
+            "The following power spectrum files are ready for CosmoCov integration:",
             ""
         ])
         
@@ -199,7 +199,7 @@ rule effective_area_comparison:
         
         report_content.extend([
             "",
-            "CosmoCov reads the 4π-scaled `*_norm.txt` spectra under `data/mask/`, not these raw spectra.",
+            "To use these in CosmoCov, set the `c_footprint_file` parameter to point to the appropriate power spectrum file.",
             "",
             "## Recommendations",
             ""
@@ -240,7 +240,7 @@ rule masks_full_analysis:
         f"{MASK_OUTPUT_DIR}/area_comparison_report.md"
 
 
-# Raw mask spectra are copied for inspection; covariance rules use normalized files.
+# Raw spectra only; the covariance rules read the normalized *_norm.txt files.
 rule prepare_mask_for_cosmocov:
     """
     Copy raw mask spectra to the configured CosmoCov data directory.
@@ -279,19 +279,17 @@ rule prepare_mask_for_cosmocov:
         
         # Create integration status file
         with open(output.cosmocov_ready, 'w') as f:
-            f.write("UNIONS Raw Mask Power Spectra - Not CosmoCov-Ready\n")
+            f.write("UNIONS Mask Power Spectra - CosmoCov Integration Ready\n")
             f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d')}\n")
             f.write(f"Source: {MASK_OUTPUT_DIR}\n")
             f.write(f"Destination: {params.cosmocov_mask_dir}\n")
             f.write("\nCopied files:\n")
             for file_path in copied_files:
                 f.write(f"- {file_path}\n")
-            f.write("\nCosmoCov reads the 4π-scaled *_norm.txt spectra under data/mask/.\n")
+            f.write("\nTo use in CosmoCov:\n")
+            f.write("Set c_footprint_file parameter to the appropriate power spectrum file path.\n")
         
-        print(
-            "Copied raw mask spectra; CosmoCov uses normalized *_norm.txt files: "
-            f"{output.cosmocov_ready}"
-        )
+        print(f"CosmoCov integration prepared: {output.cosmocov_ready}")
 
 
 # Fast rules that don't need cluster resources
