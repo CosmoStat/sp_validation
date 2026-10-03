@@ -133,9 +133,13 @@ def test_config_change_breaks_reference():
 @pytest.mark.skipif(not HAVE_GLASS, reason="GLASS not installed in this image")
 @pytest.mark.xfail(
     reason=(
-        "With GLASS installed, glass_mock imports cosmology.compat.camb, which "
-        "is absent from the image. That raises ModuleNotFoundError, not the "
-        "expected AttributeError, so pytest reports a failure rather than an xfail."
+        "glass_mock map path is incompatible with the installed glass/cosmology "
+        "API: cosmology.Cosmology.from_camb returns a CambCosmology lacking "
+        "comoving_distance, which glass.distance_grid / MultiPlaneConvergence "
+        "require. The map path was never exercised before GLASS was added to the "
+        "image. Fix = pin a compatible glass+cosmology pair (or adapt the API "
+        "calls) and verify in the fresh image; then drop this xfail. "
+        "See fiber shapepipe/sp_validation glass-cosmology-api-pin."
     ),
     strict=False,
     raises=AttributeError,

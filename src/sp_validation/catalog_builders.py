@@ -859,10 +859,10 @@ class ApplyHspMasks(BaseCat):
         obj.write_hdf5_file(dat_ext)
 
     def append_masks(self, dat, masks):
-        """Build mask columns for the ``data_ext`` extension.
+        """Build the mask columns for ``dat``.
 
-        Return an array containing only the mask columns; the caller writes it
-        as the ``data_ext`` dataset beside the input.
+        Return a new array holding only the mask columns, row-aligned with
+        ``dat``; the input columns are not included.
 
         Parameters
         ----------
