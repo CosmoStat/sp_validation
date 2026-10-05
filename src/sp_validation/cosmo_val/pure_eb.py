@@ -7,6 +7,7 @@ correlation functions (xi+/xi- pure-mode decomposition) for catalog versions.
 
 import numpy as np
 
+from ..angular_binning import validate_nested_grids
 from ..b_modes import (
     calculate_eb_statistics,
     calculate_pure_eb_correlation,
@@ -26,9 +27,9 @@ class PureEBMixin:
         min_sep=None,
         max_sep=None,
         nbins=None,
-        min_sep_int=0.08,
-        max_sep_int=300,
-        nbins_int=1000,
+        min_sep_int=None,
+        max_sep_int=None,
+        nbins_int=None,
         npatch=None,
         compute_tomography=False,
         cov_path_int=None,
@@ -48,7 +49,8 @@ class PureEBMixin:
         min_sep, max_sep, nbins : float, float, int, optional
             Reporting binning. Default to the values in self.treecorr_config.
         min_sep_int, max_sep_int, nbins_int : float, float, int, optional
-            Integration binning (default: 0.08-300 arcmin, 1000 bins). It must
+            Integration binning (the configured grid, otherwise 0.08–300 arcmin,
+            1000 bins). It must
             extend beyond the reporting range on both sides.
         npatch : int, optional
             Jackknife patch count. Defaults to self.npatch.
@@ -83,11 +85,16 @@ class PureEBMixin:
         reporting_edges = np.geomspace(
             reporting["min_sep"], reporting["max_sep"], reporting["nbins"] + 1
         )
+        integration = self._integration_binning(
+            min_sep_int, max_sep_int, nbins_int, default=(0.08, 300, 1000)
+        )
+        if self.integration is not None:
+            validate_nested_grids(reporting, integration)
         ggs_int = self.calculate_2pcf_version(
             version,
             npatch=npatch,
             compute_tomography=compute_tomography,
-            **self._binning(min_sep_int, max_sep_int, nbins_int),
+            **integration,
         )
 
         results = {}
@@ -119,9 +126,9 @@ class PureEBMixin:
         min_sep=None,
         max_sep=None,
         nbins=None,
-        min_sep_int=0.08,
-        max_sep_int=300,
-        nbins_int=1000,
+        min_sep_int=None,
+        max_sep_int=None,
+        nbins_int=None,
         npatch=None,
         compute_tomography=False,
         cov_path_int=None,
@@ -150,7 +157,7 @@ class PureEBMixin:
             Binning parameters for reporting scale. Uses treecorr_config if None.
         min_sep_int, max_sep_int, nbins_int : float, float, int
             Binning parameters for integration scale
-            (default: 0.08-300 arcmin, 1000 bins)
+            (the configured grid, otherwise 0.08–300 arcmin, 1000 bins)
         npatch : int, optional
             Number of patches for jackknife covariance. Uses self.npatch if None.
         compute_tomography : bool, optional
@@ -182,6 +189,12 @@ class PureEBMixin:
         output_dir = output_dir or self.cc["paths"]["output"]
         npatch = npatch or self.npatch
 
+        integration = self._integration_binning(
+            min_sep_int, max_sep_int, nbins_int, default=(0.08, 300, 1000)
+        )
+        min_sep_int, max_sep_int, nbins_int = (
+            integration[k] for k in ("min_sep", "max_sep", "nbins")
+        )
         var_method = "jackknife" if cov_path_int is None else "analytic"
 
         # Use treecorr_config defaults for reporting scale binning
