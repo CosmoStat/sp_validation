@@ -697,6 +697,9 @@ def test_calculate_pseudo_cl_catalog_end_to_end(cv, tmp_path, monkeypatch):
     s = sacc_io.load(out_path, allow_unblinded=True)
     ell, ee, bb, eb, window = sacc_io.get_pseudo_cl(s, SACC_BIN)
     assert window is not None  # the shared BandpowerWindow rides the part
+    readback = cv._load_pseudo_cl(out_path, ("all", "all"))
+    npt.assert_array_equal(readback["BE"], eb)
+    assert not np.shares_memory(readback["BE"], readback["EB"])
     assert saved["nside"] is None
     window_ells, unwindowed_weights = bandpower_window_from_workspace(
         saved["workspace"]

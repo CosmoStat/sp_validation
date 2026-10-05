@@ -1224,12 +1224,12 @@ class PseudoClMixin:
 
     @staticmethod
     def _load_pseudo_cl_sacc(out_path):
-        """Read a pseudo-Cl SACC part into the ELL/EE/EB/BB dict."""
+        """Read the single-field auto-spectrum, whose BE equals EB."""
         # Readback of a part this producer just wrote — a legitimate pre-blind
         # consumer, so the fail-closed load is opted out of.
         s = sacc_io.load(out_path, allow_unblinded=True)
         ell, ee, bb, eb, _window = sacc_io.get_pseudo_cl(s, SACC_BIN)
-        return {"ELL": ell, "EE": ee, "EB": eb, "BB": bb}
+        return {"ELL": ell, "EE": ee, "EB": eb, "BE": eb.copy(), "BB": bb}
 
     def pseudo_cl_to_sacc_part(
         self, version, out_path, ell_eff, cl_all, wsp, nside=None
