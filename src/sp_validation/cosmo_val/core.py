@@ -2,6 +2,7 @@
 import copy
 import itertools
 import os
+import re
 from pathlib import Path
 
 import colorama
@@ -10,7 +11,7 @@ import yaml
 from cs_util.cosmo import get_cosmo
 from shear_psf_leakage import leakage, run_object, run_scale
 
-from .. import io
+from .. import blinding, io
 from ..b_modes import (
     _get_pte_from_scale_cut,
     covariance_label,
@@ -386,6 +387,9 @@ class CosmologyValidation(
         self.catalog_config_path = Path(catalog_config)
         with self.catalog_config_path.open("r") as file:
             self.cc = cc = yaml.load(file, Loader=yaml.FullLoader)
+        # The config as written, before virtual versions and resolved paths:
+        # what each catalogue's blind is checked against.
+        self._config_as_read = copy.deepcopy(cc)
 
         def resolve_paths_for_version(ver):
             """Resolve relative paths for a version using its subdir."""
@@ -467,6 +471,8 @@ class CosmologyValidation(
         # B-mode results storage for summarize_bmodes()
         self._pure_eb_results = {}
         self._cosebis_results = {}
+        # The sealed ξ± parts calculate_2pcf_version made, by (version, grid).
+        self.xi_parts = {}
 
     def _output_path(self, *parts):
         """Absolute path under the catalog config's output directory.
@@ -578,6 +584,36 @@ class CosmologyValidation(
             self._results_objectwise = self.init_results(objectwise=True)
         return self._results_objectwise
 
+    def blind(self, version):
+        """The blind every SACC this object writes for ``version`` is saved
+        under, as the catalogue config declares it."""
+        entry = version
+        while entry not in self._config_as_read:
+            base = re.sub(r"_leak_corr$", "", entry)
+            if base == entry:
+                base = self._split_seed_variant(entry)[0] or entry
+            if base == entry:
+                raise ValueError(f"no catalogue {version} in the catalogue config")
+            entry = base
+        catalogues = self._config_as_read
+        return blinding.open_blind(blinding.blind_of(catalogues, entry), catalogues)
+
+    def _refuse_blinded_tomography(self, version):
+        """Refuse to measure tomographic shear signal on a blinded catalogue.
+
+        Only the ``("all", "all")`` pair is born as a SACC part, whose tracer
+        carries the n(z) the blind's theory shifts it by. The tomographic ξ±,
+        ⟨M_ap²⟩ and pseudo-Cℓ are TreeCorr objects and FITS tables with no
+        per-bin tracer, so on a blinded catalogue they would hold true values.
+        """
+        blind = self.blind(version)
+        if blind.name != blinding.NONE.name:
+            raise blinding.BlindingError(
+                f"{version} is blinded under {blind.name}, and blinding covers "
+                "its non-tomographic pair only; tomographic shear statistics are "
+                "measured on public (`blind: none`) catalogues"
+            )
+
     def basename(
         self,
         version,
@@ -634,8 +670,7 @@ class CosmologyValidation(
         Applies additive-bias subtraction and the multiplicative response:
         ``g = (e − c) / R``. For DES the response is the catalog-averaged
         per-component ``R11``/``R22`` (column names in the config); for every
-        other version it is the scalar ``R`` from the config. Used identically
-        by :meth:`calculate_2pcf` and :meth:`calculate_aperture_mass_dispersion`.
+        other version it is the scalar ``R`` from the config.
 
         Must be called inside a ``self.results[ver].temporarily_read_data()``
         context, since it reads ``dat_shear`` columns.

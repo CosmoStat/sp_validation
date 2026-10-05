@@ -84,6 +84,12 @@ def plot_pseudo_cl_spectrum(datasets, spectrum, output_path):
     plt.close(fig)
 
 
+def _spectra(part):
+    """The ELL/EE/EB/BE/BB dict of a single-field pseudo-Cl part, whose BE is EB."""
+    ell, ee, bb, eb, _window = sacc_io.get_pseudo_cl(part, SACC_BIN)
+    return {"ELL": ell, "EE": ee, "EB": eb, "BE": eb.copy(), "BB": bb}
+
+
 class PseudoClMixin:
     # ---------------- Pseudo-Cl properties ---------------- #
     @property
@@ -114,10 +120,14 @@ class PseudoClMixin:
         Compute the pseudo-Cl of a `CosmologyValidation` inputs with tomography.
 
         With ``compute_tomography=False`` the single ``("all", "all")`` pair is
-        computed and written as a SACC part, by default to
-        ``pseudo_cl_{ver}.sacc``; ``out_path`` overrides that destination (one
-        version only). With ``compute_tomography=True`` every tomographic bin
-        pair is written to its own FITS file and ``out_path`` is not accepted.
+        computed and written as a SACC part sealed under the version's blind,
+        by default to ``pseudo_cl_{ver}.sacc``; ``out_path`` overrides that
+        destination (one version only). An existing part is reused only if it
+        was sealed under the blind declared now. With
+        ``compute_tomography=True`` every tomographic bin pair is written to its
+        own FITS file and ``out_path`` is not accepted; tomographic pairs are
+        measured only on a public catalogue
+        (:meth:`_refuse_blinded_tomography`).
         """
         if out_path is not None:
             if compute_tomography:
@@ -149,6 +159,7 @@ class PseudoClMixin:
                 self._pseudo_cls[ver] = {}
 
             if compute_tomography:
+                self._refuse_blinded_tomography(ver)
                 tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
 
                 if tomo_bin_ids is None or tomo_bin_pairs is None:
@@ -174,13 +185,18 @@ class PseudoClMixin:
                 pair_out_path = out_path or self._output_path_pseudo_cl(
                     ver, tomo_bin_pair=(bin_key1, bin_key2)
                 )
-                if os.path.exists(pair_out_path) and not self.force_run:
+                held = (
+                    self._load_pseudo_cl(ver, pair_out_path, (bin_key1, bin_key2))
+                    if os.path.exists(pair_out_path) and not self.force_run
+                    else None
+                )
+                if held is not None:
                     self.print_done(
                         f"Skipping Pseudo-Cl's calculation, {pair_out_path} exists"
                     )
                     self._pseudo_cls[ver][f"tomo_bin_{bin_key1}_tomo_bin_{bin_key2}"][
                         "pseudo_cl"
-                    ] = self._load_pseudo_cl(pair_out_path, (bin_key1, bin_key2))
+                    ] = held
                     continue
 
                 if self.cell_method == "map":
@@ -289,13 +305,11 @@ class PseudoClMixin:
 
         self.print_cyan("Saving pseudo-Cl's...")
         tomo_bin_pair = (tomo_bin_a, tomo_bin_b)
-        self._save_pseudo_cl(
-            ver, out_path, tomo_bin_pair, ell_eff, cl_shear, wsp, nside=nside
-        )
-
         self._pseudo_cls[ver][f"tomo_bin_{tomo_bin_a}_tomo_bin_{tomo_bin_b}"][
             "pseudo_cl"
-        ] = self._load_pseudo_cl(out_path, tomo_bin_pair)
+        ] = self._save_pseudo_cl(
+            ver, out_path, tomo_bin_pair, ell_eff, cl_shear, wsp, nside=nside
+        )
 
     def calculate_pseudo_cl_catalog(self, ver, out_path, tomo_bin_a, tomo_bin_b):
         assert (tomo_bin_a == "all" and tomo_bin_b == "all") or (
@@ -314,11 +328,9 @@ class PseudoClMixin:
 
         self.print_cyan("Saving pseudo-Cl's...")
         tomo_bin_pair = (tomo_bin_a, tomo_bin_b)
-        self._save_pseudo_cl(ver, out_path, tomo_bin_pair, ell_eff, cl_shear, wsp)
-
         self._pseudo_cls[ver][f"tomo_bin_{tomo_bin_a}_tomo_bin_{tomo_bin_b}"][
             "pseudo_cl"
-        ] = self._load_pseudo_cl(out_path, tomo_bin_pair)
+        ] = self._save_pseudo_cl(ver, out_path, tomo_bin_pair, ell_eff, cl_shear, wsp)
 
     def calculate_pseudo_cl_inka_cov(
         self, compute_tomography=True, load_all_block=False
@@ -1206,28 +1218,32 @@ class PseudoClMixin:
     def _save_pseudo_cl(
         self, ver, out_path, tomo_bin_pair, ell_eff, cl_all, wsp, nside=None
     ):
-        """Write one pair as SACC or FITS, forwarding ``nside`` for map spectra."""
-        if tuple(tomo_bin_pair) == ("all", "all"):
-            self.pseudo_cl_to_sacc_part(
-                ver, out_path, ell_eff, cl_all, wsp, nside=nside
-            )
-        else:
-            self.save_pseudo_cl(ell_eff, cl_all, out_path)
+        """Write one pair as SACC or FITS and return its spectra as written.
 
-    def _load_pseudo_cl(self, out_path, tomo_bin_pair):
-        """Read one bin pair's pseudo-Cl product written by ``_save_pseudo_cl``."""
+        Forwards ``nside`` for map spectra. The ``("all", "all")`` spectra are
+        those of the part as sealed under the version's blind.
+        """
         if tuple(tomo_bin_pair) == ("all", "all"):
-            return self._load_pseudo_cl_sacc(out_path)
+            return _spectra(
+                self.pseudo_cl_to_sacc_part(
+                    ver, out_path, ell_eff, cl_all, wsp, nside=nside
+                )
+            )
+        self.save_pseudo_cl(ell_eff, cl_all, out_path)
         return fits.getdata(out_path)
 
-    @staticmethod
-    def _load_pseudo_cl_sacc(out_path):
-        """Read the single-field auto-spectrum, whose BE equals EB."""
-        # Readback of a part this producer just wrote — a legitimate pre-blind
-        # consumer, so the fail-closed load is opted out of.
-        s = sacc_io.load(out_path, allow_unblinded=True)
-        ell, ee, bb, eb, _window = sacc_io.get_pseudo_cl(s, SACC_BIN)
-        return {"ELL": ell, "EE": ee, "EB": eb, "BE": eb.copy(), "BB": bb}
+    def _load_pseudo_cl(self, ver, out_path, tomo_bin_pair):
+        """One bin pair's pseudo-Cl product written by ``_save_pseudo_cl``.
+
+        ``None`` for an ``("all", "all")`` part sealed under a blind other than
+        the one ``ver`` declares now, which must be measured again.
+        """
+        if tuple(tomo_bin_pair) != ("all", "all"):
+            return fits.getdata(out_path)
+        part = sacc_io.load(out_path)
+        if sacc_io.stamp(part) != self.blind(ver).name:
+            return None
+        return _spectra(part)
 
     def pseudo_cl_to_sacc_part(
         self, version, out_path, ell_eff, cl_all, wsp, nside=None
@@ -1237,7 +1253,8 @@ class PseudoClMixin:
         ``cl_all`` is NaMaster's decoupled ``(4, nbp)`` array (EE, EB, BE, BB).
         Map-based callers pass ``nside`` so the window includes ``pw²(ℓ)``;
         catalogue-based callers leave it unset because their spectra have no
-        HEALPix pixel window. No covariance is attached here.
+        HEALPix pixel window. No covariance is attached here. Returns the part
+        as sealed under the version's blind.
         """
         s = pseudo_cl_to_sacc(
             self.sacc_nz(version),
@@ -1247,7 +1264,7 @@ class PseudoClMixin:
             wsp,
             nside=nside,
         )
-        sacc_io.save(s, out_path, type="data")
+        return sacc_io.save(s, out_path, blind=self.blind(version))
 
     def save_pseudo_cl(self, ell_eff, pseudo_cl, out_path):
         """

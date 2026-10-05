@@ -1,12 +1,27 @@
 """DAG properties, checked through the host launcher (see conftest.py)."""
 
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
 
 import pytest
-from conftest import REPO, VERSIONS, _load_module, on_candide, parse_jobs
+import yaml
+from conftest import REPO, UNDECLARED, VERSIONS, _load_module, on_candide, parse_jobs
+
+
+@pytest.fixture(scope="module")
+def forced(toy):
+    """``snakemake -F -n all`` on the toy: its output and every job it schedules."""
+    result = toy.snakemake("-F", "-n", "all")
+    assert result.returncode == 0, result.stdout
+    return result.stdout, parse_jobs(result.stdout)
+
+
+@pytest.fixture(scope="module")
+def grids(toy):
+    return toy.common.xi_grids(toy.config, toy.config["fiducial"])
 
 
 def test_assemble_resolves(toy):
@@ -37,13 +52,24 @@ def test_assemble_resolves(toy):
         }, job.input
 
 
-def test_one_integration_grid(toy):
-    """COSEBIs and pure-E/B share the integration-grid part and its covariance."""
-    result = toy.snakemake("-n", "assemble_sacc_all")
-    assert result.returncode == 0, result.stdout
-    jobs = parse_jobs(result.stdout)
-    grids = toy.common.xi_grids(toy.config, toy.config["fiducial"])
+def test_xi_leaves_a_measurement_only_as_a_part(toy, forced, grids):
+    """No job reads or writes a ξ± text dump; the ξ± figures draw the parts."""
+    jobs = forced[1]
+    dumps = [
+        f for j in jobs for f in j.input + j.output if re.search(r"_xi_.*\.txt$", f)
+    ]
+    assert not dumps, dumps
+    reporting = toy.common.grid_binning(grids["reporting"])
+    for rule in ("cv_plot_2pcf", "cv_ratio_xi_sys_xi"):
+        (job,) = [j for j in jobs if j.rule == rule]
+        assert {Path(f).name for f in job.input if "_xi_" in Path(f).name} == {
+            f"{v}_xi_{reporting}.sacc" for v in VERSIONS
+        }, job.input
 
+
+def test_one_integration_grid(toy, forced, grids):
+    """COSEBIs and pure-E/B share the integration-grid part and its covariance."""
+    jobs = forced[1]
     tag = toy.common.grid_binning(grids["integration"])
     for version in VERSIONS:
         by_rule = {
@@ -53,6 +79,47 @@ def test_one_integration_grid(toy):
         covariance = str(toy.covariances[version, "g"])
         assert by_rule["cv_cosebis"] == {part, covariance}, by_rule["cv_cosebis"]
         assert by_rule["cv_pure_eb"] == {part, covariance}, by_rule["cv_pure_eb"]
+
+
+def test_a_blind_flip_reruns_the_catalogues_parts(toy, grids, tmp_path):
+    """A part's params carry its catalogue's blind, so declaring the catalogue
+    public reruns the part and nothing else does."""
+    env = toy.env | {"COSMO_VAL": str(tmp_path / "cosmo_val")}
+    reporting = toy.common.grid_binning(grids["reporting"])
+    part = tmp_path / "cosmo_val" / f"{VERSIONS[0]}_xi_{reporting}.sacc"
+    # Records the job's params; the output itself must exist to be touched.
+    touched = toy.snakemake("--touch", str(part), env=env)
+    assert touched.returncode == 0, touched.stdout
+    part.parent.mkdir(exist_ok=True)
+    part.touch()
+
+    def scheduled():
+        result = toy.snakemake("-n", str(part), env=env)
+        assert result.returncode == 0, result.stdout
+        return [j.rule for j in parse_jobs(result.stdout)], result.stdout
+
+    rules, output = scheduled()
+    assert rules == [], output
+    cat_config = toy.root / "cosmo_val" / "cat_config.yaml"
+    declared = cat_config.read_text()
+    flipped = yaml.safe_load(declared)
+    flipped[VERSIONS[0]]["blind"] = "none"
+    cat_config.write_text(yaml.safe_dump(flipped))
+    try:
+        rules, output = scheduled()
+    finally:
+        cat_config.write_text(declared)
+    assert rules == ["xi"], output
+    assert "params have changed" in output.lower(), output
+
+
+def test_a_launch_stops_on_a_catalogue_declaring_no_blind(toy):
+    result = toy.snakemake(
+        "-n", "assemble_sacc_all", config=[f'versions=["{UNDECLARED}"]']
+    )
+    assert result.returncode != 0, result.stdout
+    assert "declares no `blind:`" in result.stdout, result.stdout
+    assert "rule assemble_sacc" not in result.stdout
 
 
 @pytest.mark.parametrize("named", [True, False], ids=["named", "unnamed"])

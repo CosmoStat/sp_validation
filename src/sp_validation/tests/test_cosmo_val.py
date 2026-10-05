@@ -15,6 +15,7 @@ import numpy as np
 import pytest
 import yaml
 
+from sp_validation import sacc_io
 from sp_validation.cosmo_val import CosmologyValidation
 
 # These tests load real UNIONS catalogues from the cluster filesystem. Skip them
@@ -77,6 +78,7 @@ class TestCosmologyValidation:
             },
             "paths": {"output": str(output_dir)},
             base_version: {
+                "blind": "none",
                 "subdir": str(base_dir),
                 "pipeline": "SP",
                 "shear": {
@@ -192,6 +194,24 @@ class TestCosmologyValidation:
         assert cv.versions == [seed_version]
         assert seed_version in cv.cc
         assert cv.cc[seed_version]["shear"]["path"].endswith("shear_seed_007.fits")
+
+    def test_blind_is_checked_against_the_config_as_written(self, tmp_path):
+        """A twin entry reading the same shear file under another blind is
+        refused, though the selected entry's paths were resolved; a seeded
+        leak-corrected variant takes its base entry's blind."""
+        params, base_version = self._make_seed_config(
+            tmp_path, shear_filename="shear_seed_1234.fits"
+        )
+        config = yaml.safe_load(open(params["catalog_config"]))
+        cv = CosmologyValidation(versions=[f"{base_version}_seed7_leak_corr"], **params)
+        assert cv.blind(f"{base_version}_seed7_leak_corr").name == "none"
+
+        config["Twin"] = {**config[base_version], "blind": "y3"}
+        with open(params["catalog_config"], "w") as f:
+            yaml.dump(config, f, sort_keys=False)
+        cv = CosmologyValidation(versions=[base_version], **params)
+        with pytest.raises(ValueError, match="different blinds"):
+            cv.blind(base_version)
 
     def test_seed_leak_corr_materializes_seed_first(self, tmp_path):
         """_seed<N>_leak_corr should clone the seed variant before leak fixes."""
@@ -376,6 +396,7 @@ class TestCosmologyValidation:
             "e2_col": "HSM_G2_PSF",
         }
         version_cfg = {
+            "blind": "none",
             "subdir": str(cat_dir),
             "pipeline": "SP",
             "colour": "tab:blue",
@@ -416,13 +437,15 @@ class TestCosmologyValidation:
         return params, version
 
     def test_calculate_2pcf_runs_on_synthetic_catalog(self, tmp_path):
-        """calculate_2pcf wires catalog+config into treecorr GGCorrelation.
+        """calculate_2pcf_version wires catalog+config into a ξ± part.
 
-        Smoke-integration: assert the xi+/- data vector is computed with the
-        configured number of angular bins and is finite. Numerical values are
-        deliberately not asserted (could be tightened to allclose vs. a
-        committed reference later for value-drift coverage).
+        Smoke-integration: the part's ξ± has the configured number of angular
+        bins and is finite, and the part reads back with the binning's edges,
+        by which scale cuts select bins. Numerical values are deliberately not
+        asserted.
         """
+        from sp_validation.b_modes import log_bin_edges
+
         pytest.importorskip("treecorr")
         params, version = self._write_synthetic_catalogs(tmp_path)
 
@@ -436,14 +459,16 @@ class TestCosmologyValidation:
             **params,
         )
 
-        ggs = cv.calculate_2pcf_version(version)
+        cv.calculate_2pcf_version(version)
+        gg = sacc_io.xi_correlation(cv.xi_parts[version, "reporting"])
 
-        # treecorr GGCorrelation with xi+/- on the configured angular grid
-        # LG:Hardcoded to be non-tomographic for now
-        assert ggs["tomo_bin_all_tomo_bin_all"].xip.shape == (nbins,)
-        assert ggs["tomo_bin_all_tomo_bin_all"].xim.shape == (nbins,)
-        assert np.all(np.isfinite(ggs["tomo_bin_all_tomo_bin_all"].xip))
-        assert np.all(np.isfinite(ggs["tomo_bin_all_tomo_bin_all"].xim))
+        edges = log_bin_edges(5.0, 100.0, nbins)
+        np.testing.assert_allclose(gg.left_edges, edges[0], rtol=1e-12)
+        np.testing.assert_allclose(gg.right_edges, edges[1], rtol=1e-12)
+        assert gg.xip.shape == (nbins,)
+        assert gg.xim.shape == (nbins,)
+        assert np.all(np.isfinite(gg.xip))
+        assert np.all(np.isfinite(gg.xim))
         # The additive-bias subtraction in the pipeline must have run.
         assert version in cv.c1 and version in cv.c2
 
@@ -460,8 +485,6 @@ class TestCosmologyValidation:
 
         import sacc
 
-        from sp_validation import sacc_io
-
         script = Path(__file__).resolve().parents[3] / "workflow/scripts/run_2pcf.py"
         spec = importlib.util.spec_from_file_location("run_2pcf_part", script)
         run_2pcf = importlib.util.module_from_spec(spec)
@@ -469,7 +492,7 @@ class TestCosmologyValidation:
 
         params, version = self._write_synthetic_catalogs(tmp_path)
         part = tmp_path / "part.sacc"
-        gg = run_2pcf.run_2pcf(
+        written = run_2pcf.run_2pcf(
             ver=version,
             min_sep=5.0,
             max_sep=100.0,
@@ -480,37 +503,33 @@ class TestCosmologyValidation:
             sacc_out=str(part),
         )
 
-        cov = sacc_io.load(str(part), allow_unblinded=True).covariance
-        if npatch > 1:
-            assert isinstance(cov, sacc.covariance.FullCovariance)
-            np.testing.assert_array_equal(cov.dense, gg.cov)
-        else:
-            assert isinstance(cov, sacc.covariance.DiagonalCovariance)
-            np.testing.assert_array_equal(
-                cov.diag, np.concatenate([gg.varxip, gg.varxim])
-            )
+        cov = sacc_io.load(str(part)).covariance
+        assert isinstance(
+            cov,
+            sacc.covariance.FullCovariance
+            if npatch > 1
+            else sacc.covariance.DiagonalCovariance,
+        )
+        np.testing.assert_array_equal(cov.dense, written.covariance.dense)
+        assert np.all(np.diag(cov.dense) > 0)
 
-    def test_a_patched_xi_dump_reads_back(self, tmp_path):
-        """calculate_2pcf_version reads back the dump a patched measurement wrote.
-
-        The ξ± figure rules re-enter calculate_2pcf on the reporting grid, which
-        has patches, and are handed the dump rule xi wrote (to its precision).
-        """
+    def test_a_held_part_is_drawn_without_measuring(self, tmp_path, monkeypatch):
+        """The ξ± figure rules hand calculate_2pcf_version the reporting parts
+        rule xi wrote; it draws them and never reads the catalogue."""
         params, version = self._write_synthetic_catalogs(tmp_path)
-        binning = dict(npatch=4, min_sep=5.0, max_sep=100.0, nbins=6)
-        pair = "tomo_bin_all_tomo_bin_all"
-        measured = CosmologyValidation(
-            versions=[version], **params
-        ).calculate_2pcf_version(version, **binning)[pair]
-        dumps = list(Path(params["output_dir"]).glob(f"xi_{version}_*.txt"))
-        assert len(dumps) == 1
-        read = CosmologyValidation(versions=[version], **params).calculate_2pcf_version(
-            version, **binning
-        )[pair]
-        for column in ("meanr", "npairs", "xip", "xim", "varxip", "varxim"):
-            np.testing.assert_allclose(
-                getattr(read, column), getattr(measured, column), rtol=1e-4
-            )
+        measuring = CosmologyValidation(versions=[version], npatch=4, **params)
+        measuring.calculate_2pcf_version(version)
+        held = measuring.xi_parts[version, "reporting"]
+
+        cv = CosmologyValidation(versions=[version], npatch=4, **params)
+        cv.xi_parts[version, "reporting"] = held
+
+        def no_catalogue(*args, **kwargs):
+            raise AssertionError("measured instead of drawing the held part")
+
+        monkeypatch.setattr(cv, "_shear_columns", no_catalogue)
+        drawn = cv.calculate_2pcf()[version]["tomo_bin_all_tomo_bin_all"]
+        np.testing.assert_array_equal(drawn.xip, sacc_io.xi_correlation(held).xip)
 
     def test_calculate_2pcf_is_reproducible_across_machines(
         self, tmp_path, monkeypatch
@@ -519,11 +538,12 @@ class TestCosmologyValidation:
         import treecorr
         import treecorr.field
 
-        patches = []
+        patches, measured = [], []
         process = treecorr.GGCorrelation.process
 
         def recording_process(gg, cat, *args, **kwargs):
             patches.append(np.array(cat.patch))
+            measured.append(gg)
             return process(gg, cat, *args, **kwargs)
 
         monkeypatch.setattr(treecorr.GGCorrelation, "process", recording_process)
@@ -552,7 +572,9 @@ class TestCosmologyValidation:
             ]
             xi[tree] = np.concatenate([gg.xip, gg.xim])
             var[tree] = np.concatenate([gg.varxip, gg.varxim])
-            counts[tree] = {key: result.npairs for key, result in gg.results.items()}
+            counts[tree] = {
+                key: result.npairs for key, result in measured[-1].results.items()
+            }
 
         np.testing.assert_array_equal(patches[0], patches[1])
         assert counts["a"].keys() == counts["b"].keys()
@@ -607,6 +629,27 @@ class TestCosmologyValidation:
             cross_pair_catalogs[1][2], expected_centers, rtol=0, atol=1e-14
         )
 
+    def test_a_blinded_catalogue_refuses_tomographic_signal(self, tmp_path):
+        """Blinding shifts the ("all", "all") parts only, so a blinded
+        catalogue's tomographic ξ± and pseudo-Cℓ are refused before measuring."""
+        from sp_validation import blinding
+
+        params, version = self._write_synthetic_catalogs(
+            tmp_path, n_gal=400, with_tomography=True
+        )
+        config = yaml.safe_load(open(params["catalog_config"]))
+        config["paths"]["blinds"] = str(tmp_path / "blinds")
+        config[version]["blind"] = "toy"
+        with open(params["catalog_config"], "w") as f:
+            yaml.dump(config, f, sort_keys=False)
+        blinding.init("toy", config)
+        cv = CosmologyValidation(versions=[version], npatch=1, **params)
+
+        with pytest.raises(blinding.BlindingError, match="tomographic"):
+            cv.calculate_2pcf_version(version, compute_tomography=True)
+        with pytest.raises(blinding.BlindingError, match="tomographic"):
+            cv.calculate_pseudo_cl(compute_tomography=True)
+
     def test_treecorr_runs_on_the_cpus_the_process_holds(self, tmp_path):
         """By default TreeCorr takes the process's CPU affinity, not the node's count."""
         import treecorr
@@ -657,17 +700,14 @@ class TestCosmologyValidation:
 
         The ξ± it measures equal the committed ``pure_eb_xi`` (``test_b_modes``
         pins the operator on the same ξ±, so a failure names the step that
-        moved), and the jackknife covariance of the modes is the jackknife ξ±
-        covariance through the operator: for a linear estimator that equals
-        TreeCorr's per-patch jackknife of the modes themselves.
+        moved), and the covariance of the modes is the jackknife ξ± covariance
+        of its integration-grid part through the operator.
 
         ξ±: exact binning (bin_slop = angle_slop = 0) makes ξ± a plain pair sum,
-        independent of the tree and so of the jackknife patches, whose k-means
-        centres this test does not fix.
+        independent of the tree and so of the jackknife patches.
         """
         pytest.importorskip("treecorr")
         pytest.importorskip("cosmo_numba")
-        import treecorr
 
         from sp_validation import b_modes
 
@@ -720,25 +760,9 @@ class TestCosmologyValidation:
         cov = np.asarray(results["cov"])
         assert cov.shape == (6 * nbins, 6 * nbins)
         assert results["npatch"] == npatch
-        # The integration-grid ξ± again, measured on the jackknife patches the
-        # first measurement wrote (its columns-only dump carries no patches).
-        for dump in Path(params["output_dir"]).glob(f"xi_{version}_*.txt"):
-            dump.unlink()
-        gg_int = cv.calculate_2pcf_version(
-            version,
-            npatch=npatch,
-            min_sep=integration["min_sep_int"],
-            max_sep=integration["max_sep_int"],
-            nbins=integration["nbins_int"],
-        )["tomo_bin_all_tomo_bin_all"]
-        jackknife_of_modes = treecorr.estimate_multi_cov(
-            [gg_int],
-            "jackknife",
-            func=lambda corrs: operator @ np.concatenate([corrs[0].xip, corrs[0].xim]),
-            cross_patch_weight="match",
-        )
+        cov_xi = sacc_io.xi_correlation(cv.xi_parts[version, "integration"]).cov
         np.testing.assert_allclose(
-            cov, jackknife_of_modes, rtol=0, atol=1e-10 * np.abs(cov).max()
+            cov, operator @ cov_xi @ operator.T, rtol=0, atol=1e-10 * np.abs(cov).max()
         )
 
     def test_plot_2pcf_writes_the_non_tomographic_figures(self, tmp_path):
@@ -867,3 +891,31 @@ class TestCosmologyValidation:
         params, version = self._write_synthetic_catalogs(tmp_path)
         with pytest.raises(ValueError, match="pol_factor"):
             CosmologyValidation(versions=[version], pol_factor=pol_factor, **params)
+
+
+def test_map2_transform_is_treecorrs_calculate_map_sq():
+    """⟨M_ap²⟩, ⟨M_×²⟩ from the ξ± transform equal TreeCorr's own sum."""
+    import treecorr
+
+    from sp_validation.cosmo_val.real_space import _map2_transform
+
+    rng = np.random.default_rng(1)
+    n = 5000
+    cat = treecorr.Catalog(
+        ra=rng.uniform(0, 5, n),
+        dec=rng.uniform(0, 5, n),
+        g1=rng.normal(0, 0.3, n),
+        g2=rng.normal(0, 0.3, n),
+        ra_units="deg",
+        dec_units="deg",
+    )
+    gg = treecorr.GGCorrelation(
+        min_sep=0.5, max_sep=200, nbins=200, sep_units="arcmin", bin_slop=0
+    )
+    gg.process(cat)
+    radii = np.geomspace(1, 60, 8)
+    mapsq, _, mxsq, _, _ = gg.calculateMapSq(R=radii, m2_uform="Schneider")
+    ours = _map2_transform(radii, gg.meanr, gg.bin_size) @ np.r_[gg.xip, gg.xim]
+    treecorrs = np.r_[mapsq, mxsq]
+    atol = 1e-12 * np.max(np.abs(treecorrs))
+    np.testing.assert_allclose(ours, treecorrs, rtol=1e-12, atol=atol)

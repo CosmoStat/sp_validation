@@ -25,6 +25,35 @@ Runs stay modular, not monolithic: a paper or run composes these rules with
 Snakemake's `module` directive under its own config and an output `prefix`, so
 each namespaces cleanly under `results/<name>/`.
 
+## Blinding
+
+Every entry of `cosmo_val/cat_config.yaml` declares `blind: none` or
+`blind: <name>`; an entry without one stops the launch. `_leak_corr` versions
+take their entry's blind, and entries reading one shear file declare one blind.
+
+A blind is a secret record, `<paths.blinds>/<name>.blind.json` (seed, envelope,
+fiducial), drawn once with
+`spv-container exec python -m sp_validation.blinding init <name>` and never
+committed. On a blinded catalogue, ξ± and Cℓ_EE are shifted by
+t(hidden) − t(fiducial) before they are first written: Smokescreen draws the
+hidden point (S8 and Ωm) from the seed, and the theory `t` is
+`sp_validation.blinding.shear`. Cℓ_BB and Cℓ_EB get zero shift; ρ/τ are saved
+with `blinding.no_signal`. Another statistic passes its own theory,
+`theory(params, s) -> array the length of s.mean` (see
+`src/sp_validation/blinding.py`).
+
+A measurement calculates, then saves: one function computes the signal, saves
+it with `sacc_io.save(s, path, blind=...)` (or `sacc_io.seal`), and returns the
+concealed part, so raw signal never leaves it
+(`CosmologyValidation.calculate_2pcf_version` is the pattern). Statistics computed from
+parts (COSEBIs, pure-E/B, the assembled `{version}.sacc`) are saved with
+`derived_from=parts` and carry their inputs' stamp, `s.metadata["blind"]`.
+
+Producer rules carry the catalogue's blind in `params.blind`, so unblinding is
+flipping the declaration to `blind: none` and rerunning: Snakemake reruns
+exactly the parts it touches, and assembly refuses a part whose stamp is not the
+catalogue's declared blind.
+
 ## Running on the cluster — the candide profile
 
 `profiles/candide/config.yaml` is the committed SLURM profile: it hands

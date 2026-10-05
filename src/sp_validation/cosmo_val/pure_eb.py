@@ -36,10 +36,12 @@ class PureEBMixin:
         """
         Calculate the pure E/B modes for the given catalog version.
 
-        ξ± is measured on the fine integration grid only; the reporting
-        binning (the instance's treecorr_config unless overridden) enters as
-        bin edges, snapped onto the fine edges, into which
-        :func:`~sp_validation.b_modes.pure_eb_operator` averages the modes.
+        ξ± is measured on the fine integration grid only, as the version's
+        sealed part (:meth:`calculate_2pcf_version`), so a blinded catalogue's
+        modes are concealed. The reporting binning (the instance's treecorr_config
+        unless overridden) enters as bin edges, snapped onto the fine edges,
+        into which :func:`~sp_validation.b_modes.pure_eb_operator` averages
+        the modes.
 
         Parameters
         ----------
@@ -57,8 +59,8 @@ class PureEBMixin:
             instead of the non-tomographic pair. Defaults to False.
         cov_path_int : str, optional
             Analytic ξ± covariance on the integration grid. Without it the
-            covariance is the jackknife of the integration-grid ξ±. One file
-            holds one pair's covariance, so it cannot be combined with
+            covariance is the jackknife the integration-grid part carries. One
+            file holds one pair's covariance, so it cannot be combined with
             ``compute_tomography``.
 
         Returns
@@ -79,6 +81,10 @@ class PureEBMixin:
                 "tomographic bin pair."
             )
 
+        integration = self._binning(min_sep_int, max_sep_int, nbins_int)
+        integration_edges = np.geomspace(
+            integration["min_sep"], integration["max_sep"], integration["nbins"] + 1
+        )
         reporting = self._binning(min_sep, max_sep, nbins)
         reporting_edges = np.geomspace(
             reporting["min_sep"], reporting["max_sep"], reporting["nbins"] + 1
@@ -87,7 +93,10 @@ class PureEBMixin:
             version,
             npatch=npatch,
             compute_tomography=compute_tomography,
-            **self._binning(min_sep_int, max_sep_int, nbins_int),
+            grid="integration",
+            min_sep=integration["min_sep"],
+            max_sep=integration["max_sep"],
+            nbins=integration["nbins"],
         )
 
         results = {}
@@ -95,14 +104,13 @@ class PureEBMixin:
             if cov_path_int is not None:
                 cov_xi, cov_npatch = np.loadtxt(cov_path_int), None
             else:
-                cov_xi = gg_int.estimate_cov("jackknife", cross_patch_weight="match")
-                cov_npatch = gg_int.npatch1
+                cov_xi, cov_npatch = gg_int.cov, gg_int.npatch1
             results[bin_key] = calculate_pure_eb_correlation(
                 gg_int.meanr,
                 gg_int.xip,
                 gg_int.xim,
                 gg_int.weight,
-                np.append(gg_int.left_edges, gg_int.right_edges[-1]),
+                integration_edges,
                 cov_xi,
                 reporting_edges,
                 npatch=cov_npatch,

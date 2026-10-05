@@ -160,6 +160,7 @@ def _write_synthetic_config(tmp_path):
             "star": {**psf_cfg},
             "psf": psf_cfg,
             "patch_number": 150,
+            "blind": "none",
         },
     }
     config_path = tmp_path / "config.yaml"
@@ -694,10 +695,10 @@ def test_calculate_pseudo_cl_catalog_end_to_end(cv, tmp_path, monkeypatch):
     cv.calculate_pseudo_cl_catalog(ver, out_path, tomo_bin_a="all", tomo_bin_b="all")
 
     assert os.path.exists(out_path)
-    s = sacc_io.load(out_path, allow_unblinded=True)
+    s = sacc_io.load(out_path)
     ell, ee, bb, eb, window = sacc_io.get_pseudo_cl(s, SACC_BIN)
     assert window is not None  # the shared BandpowerWindow rides the part
-    readback = cv._load_pseudo_cl(out_path, ("all", "all"))
+    readback = cv._load_pseudo_cl(ver, out_path, ("all", "all"))
     npt.assert_array_equal(readback["BE"], eb)
     assert not np.shares_memory(readback["BE"], readback["EB"])
     assert saved["nside"] is None
@@ -796,7 +797,7 @@ def test_calculate_pseudo_cl_map_sacc_pixel_window(cv, monkeypatch):
     out_path = cv._output_path(f"pseudo_cl_map_{ver}.sacc")
     cv.calculate_pseudo_cl_map(ver, NSIDE, out_path, "all", "all")
 
-    s = sacc_io.load(out_path, allow_unblinded=True)
+    s = sacc_io.load(out_path)
     _ell, _ee, _bb, _eb, window = sacc_io.get_pseudo_cl(s, SACC_BIN)
     assert saved["nside"] == NSIDE
     window_ells, unwindowed_weights = bandpower_window_from_workspace(

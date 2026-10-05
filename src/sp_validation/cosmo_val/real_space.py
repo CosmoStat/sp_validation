@@ -13,6 +13,11 @@ import treecorr
 
 from sp_validation.statistics import jackknife_patch_centers
 
+from .. import sacc_io
+from .sacc_writers import xi_to_sacc
+
+ALL_PAIR = "tomo_bin_all_tomo_bin_all"
+
 
 class RealSpaceMixin:
     def calculate_2pcf_version(
@@ -20,52 +25,49 @@ class RealSpaceMixin:
         ver,
         npatch=None,
         compute_tomography=False,
+        *,
+        grid="reporting",
+        out=None,
         **treecorr_config,
     ):
-        """
-        Calculate the two-point correlation function (2PCF) ξ± for a single catalog
-        version with TreeCorr.
+        """ξ± of one catalogue version on one binning, for each bin pair.
 
-        This is the per-version child function. Use :meth:`calculate_2pcf` to run over every
-        version in ``self.versions`` in one call.
-
-        By default the class instance's `npatch` and `treecorr_config` entries are
-        used to initialize the TreeCorr Catalog and GGCorrelation objects, but may
-        be overridden by passing keyword arguments.
+        The non-tomographic ``("all", "all")`` pair is born as its SACC part,
+        sealed under the version's blind (:func:`sp_validation.sacc_io.seal`)
+        before it is kept in ``self.xi_parts[ver, grid]``, returned or written,
+        so on a blinded catalogue its true values never leave this method. A
+        part already held for ``(ver, grid)`` is reused when no ``npatch``,
+        binning or ``out`` is asked for, so the figure rules draw the parts they
+        are handed. Tomographic pairs are measured only on a public catalogue
+        (:meth:`_refuse_blinded_tomography`). Use :meth:`calculate_2pcf` to run
+        over every version in ``self.versions``.
 
         Parameters:
-            ver (str): The catalog version to process.
-
-            npatch (int, optional): The number of patches to use for the
-            calculation. Defaults to the instance's `npatch` attribute.
-
-            compute_tomography (bool, optional): Whether to compute tomographic
-            correlations. Defaults to False.
-
-            **treecorr_config: Additional TreeCorr configuration parameters that
-            will override the instance's default `treecorr_config`. For example,
-            `min_sep=1`.
+            ver (str): The catalogue version to measure.
+            npatch (int, optional): Jackknife patches; the instance's
+                ``npatch`` by default. With patches the part carries the
+                jackknife covariance, without them the shot-noise diagonal.
+                Seeded patch centres come from the full catalogue and are
+                shared by every bin pair.
+            compute_tomography (bool, optional): Measure the tomographic bin
+                pairs instead of ``("all", "all")``.
+            grid (str): The grid tag the part's points carry.
+            out (str, optional): Where to write the part as well.
+            **treecorr_config: Overrides of the instance's ``treecorr_config``,
+                e.g. ``min_sep=1``.
 
         Returns:
-            dict: Mapping of ``"tomo_bin_{b1}_tomo_bin_{b2}"`` to the corresponding
-            treecorr.GGCorrelation object. For the non-tomographic case the single
-            key is ``"tomo_bin_all_tomo_bin_all"``.
-
-        Notes:
-            - The non-tomographic pair is written to the columns-only TreeCorr
-              dump ``xi_{basename}.txt``. If that file already exists, the pair is
-              read back from it instead of being recomputed.
-            - Seeded patch centres are computed once from the full catalogue and
-              shared by every tomographic bin pair.
+            dict: ``"tomo_bin_{b1}_tomo_bin_{b2}"`` → ξ± shaped like a TreeCorr
+            ``GGCorrelation``: the part's
+            :func:`~sp_validation.sacc_io.xi_correlation` view for
+            ``("all", "all")``, the TreeCorr object for a tomographic pair.
         """
-
-        npatch = npatch or self.npatch
-        treecorr_config = {
-            **self._binning(**treecorr_config),
-            "var_method": "jackknife" if int(npatch) > 1 else "shot",
-        }
+        reuse = npatch is None and out is None and not treecorr_config
+        npatch = int(npatch or self.npatch)
+        blind = self.blind(ver)
 
         if compute_tomography:
+            self._refuse_blinded_tomography(ver)
             tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
             if tomo_bin_ids is None or tomo_bin_pairs is None:
                 raise ValueError(f"Version {ver} does not have tomography information.")
@@ -77,24 +79,26 @@ class RealSpaceMixin:
             tomo_bin_pairs = [("all", "all")]
 
         ggs = {f"tomo_bin_{b1}_tomo_bin_{b2}": None for b1, b2 in tomo_bin_pairs}
-        to_compute = []
-        for bin1, bin2 in tomo_bin_pairs:
-            if (bin1, bin2) == ("all", "all"):
-                out_fname = self._xi_txt_path(ver, treecorr_config, npatch)
-                if os.path.exists(out_fname):
-                    self.print_done(f"Skipping 2PCF calculation, {out_fname} exists")
-                    gg = treecorr.GGCorrelation(treecorr_config)
-                    gg.read(out_fname)
-                    ggs["tomo_bin_all_tomo_bin_all"] = gg
-                    continue
-            to_compute.append((bin1, bin2))
+        held = self.xi_parts.get((ver, grid)) if reuse else None
+        if ALL_PAIR in ggs and held is not None:
+            ggs[ALL_PAIR] = sacc_io.xi_correlation(held)
+        to_compute = [
+            (b1, b2)
+            for b1, b2 in tomo_bin_pairs
+            if ggs[f"tomo_bin_{b1}_tomo_bin_{b2}"] is None
+        ]
 
         if to_compute:
+            jackknife = npatch > 1
+            gg_config = {
+                **self._binning(**treecorr_config),
+                "var_method": "jackknife" if jackknife else "shot",
+            }
             cols = self._shear_columns(ver, compute_tomography)
             patch_centers = self._patch_centers(cols, npatch)
 
             for bin1, bin2 in to_compute:
-                gg = treecorr.GGCorrelation(treecorr_config)
+                gg = treecorr.GGCorrelation(gg_config)
 
                 cat_gal1 = self._bin_catalog(cols, bin1, npatch, patch_centers)
                 cat_gal2 = (
@@ -105,28 +109,34 @@ class RealSpaceMixin:
 
                 gg.process(cat_gal1, cat2=cat_gal2)
 
-                if (bin1, bin2) == ("all", "all"):
-                    # Columns only. The covariance matrix lives in the SACC part;
-                    # a per-patch ξ± realisation is an unblinded data vector
-                    # nothing reads; and TreeCorr cannot read back a text file
-                    # carrying the matrix without the per-patch results.
-                    gg.write(
-                        self._xi_txt_path(ver, treecorr_config, npatch),
-                        write_patch_results=False,
-                        write_cov=False,
-                    )
-
-                ggs[f"tomo_bin_{bin1}_tomo_bin_{bin2}"] = gg
+                if (bin1, bin2) != ("all", "all"):
+                    ggs[f"tomo_bin_{bin1}_tomo_bin_{bin2}"] = gg
+                    continue
+                s = xi_to_sacc(
+                    self.sacc_nz(ver),
+                    {**self.sacc_metadata(ver), "npatch": npatch},
+                    gg.meanr,
+                    gg.xip,
+                    gg.xim,
+                    grid=grid,
+                    theta_nom=gg.rnom,
+                    npairs=gg.npairs,
+                    weight=gg.weight,
+                    covariance=gg.cov if jackknife else None,
+                    variances=(
+                        None if jackknife else np.concatenate([gg.varxip, gg.varxim])
+                    ),
+                )
+                if out:
+                    part = sacc_io.save(s, out, blind=blind)
+                else:
+                    part = sacc_io.seal(s, blind)
+                self.xi_parts[ver, grid] = part
+                ggs[ALL_PAIR] = sacc_io.xi_correlation(part)
 
         self.print_done(f"Done 2PCF for {ver}.")
 
         return ggs
-
-    def _xi_txt_path(self, ver, treecorr_config, npatch):
-        """Path of the non-tomographic ξ± TreeCorr dump for a version."""
-        return self._output_path(
-            f"xi_{self.basename(ver, treecorr_config=treecorr_config, npatch=npatch)}.txt"
-        )
 
     def _shear_columns(self, ver, compute_tomography):
         """Positions, calibrated shears, weights and bin labels of a version.
@@ -204,7 +214,7 @@ class RealSpaceMixin:
 
         Returns:
             dict: ``self.cat_ggs``, mapping each version to its
-            ``{"tomo_bin_{b1}_tomo_bin_{b2}": treecorr.GGCorrelation}`` dict.
+            ``{"tomo_bin_{b1}_tomo_bin_{b2}": ξ±}`` dict.
         """
         self.cat_ggs = {}
         for ver in self.versions:
@@ -223,56 +233,41 @@ class RealSpaceMixin:
         theta_max=200,
         nbins=500,
         nbins_map=15,
-        npatch=25,
+        npatch=None,
         compute_tomography=False,
     ):
-        self._map2 = {}
-        theta_map = np.geomspace(theta_min * 5, theta_max / 2, nbins_map)
-        self._map2["theta_map"] = theta_map
+        """⟨M_ap²⟩ and ⟨M_×²⟩ of every version and bin pair, from its ξ±.
 
-        treecorr_config = self._binning(theta_min, theta_max, nbins)
+        Both are linear in ξ± (TreeCorr's ``calculateMapSq`` sum, Schneider et
+        al. 2002 filter), so they and their covariance T·C·Tᵀ come from the ξ±
+        of :meth:`calculate_2pcf_version` on a fine grid: for ``("all",
+        "all")`` its sealed part, concealed on a blinded catalogue, whose shift,
+        the same in every patch, leaves C unchanged.
+        """
+        theta_map = np.geomspace(theta_min * 5, theta_max / 2, nbins_map)
+        self._map2 = {"theta_map": theta_map}
+        bin_size = np.log(theta_max / theta_min) / nbins
 
         for ver in self.versions:
-            if compute_tomography:
-                tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
-                if tomo_bin_ids is None or tomo_bin_pairs is None:
-                    raise ValueError(
-                        f"Version {ver} does not have tomography information."
-                    )
-                self.print_magenta(
-                    f"Computing MAP for {ver} with {len(tomo_bin_pairs)} bins."
-                )
-            else:
-                self.print_magenta(f"Computing non-tomographic MAP for {ver}.")
-
-                tomo_bin_pairs = [("all", "all")]
-
-            self._map2.setdefault(ver, {})
-            cols = self._shear_columns(ver, compute_tomography)
-            patch_centers = self._patch_centers(cols, npatch)
-
-            for bin1, bin2 in tomo_bin_pairs:
-                gg = treecorr.GGCorrelation(treecorr_config)
-
-                cat_gal1 = self._bin_catalog(cols, bin1, npatch, patch_centers)
-                cat_gal2 = (
-                    self._bin_catalog(cols, bin2, npatch, patch_centers)
-                    if bin1 != bin2
-                    else None
-                )
-
-                gg.process(cat_gal1, cat2=cat_gal2)
-
-                mapsq, mapsq_im, mxsq, mxsq_im, varmapsq = gg.calculateMapSq(
-                    R=theta_map,
-                    m2_uform="Schneider",
-                )
-                self._map2[ver][f"tomo_bin_{bin1}_tomo_bin_{bin2}"] = {
+            ggs = self.calculate_2pcf_version(
+                ver,
+                npatch=npatch,
+                compute_tomography=compute_tomography,
+                grid="aperture_mass",
+                min_sep=theta_min,
+                max_sep=theta_max,
+                nbins=nbins,
+            )
+            self._map2[ver] = {}
+            for key, gg in ggs.items():
+                transform = _map2_transform(theta_map, gg.meanr, bin_size)
+                mapsq, mxsq = np.split(transform @ np.concatenate([gg.xip, gg.xim]), 2)
+                variances = np.split(np.diag(transform @ gg.cov @ transform.T), 2)
+                self._map2[ver][key] = {
                     "mapsq": mapsq,
-                    "mapsq_im": mapsq_im,
                     "mxsq": mxsq,
-                    "mxsq_im": mxsq_im,
-                    "varmapsq": varmapsq,
+                    "varmapsq": variances[0],
+                    "varmxsq": variances[1],
                 }
             self.print_done(f"Done aperture-mass dispersion for {ver}.")
 
@@ -712,13 +707,11 @@ class RealSpaceMixin:
 
         y_plus = map2["mapsq"] * scale
         y_minus = map2["mxsq"] * scale
-        # Both E- and B-mode share the same variance estimate.
-        yerr = np.sqrt(map2["varmapsq"]) * scale
 
         ax_plus.errorbar(
             jittered_theta,
             y_plus,
-            yerr=yerr,
+            yerr=np.sqrt(map2["varmapsq"]) * scale,
             color=color,
             alpha=alpha,
             fmt="o",
@@ -729,7 +722,7 @@ class RealSpaceMixin:
         ax_minus.errorbar(
             jittered_theta,
             y_minus,
-            yerr=yerr,
+            yerr=np.sqrt(map2["varmxsq"]) * scale,
             color=color,
             alpha=alpha,
             fmt="o",
@@ -781,3 +774,23 @@ class RealSpaceMixin:
             )
             if idx == 0:
                 ax.axhspan(-threshold, threshold, color="black", alpha=0.1)
+
+
+def _map2_transform(radii, theta, bin_size):
+    """The matrix taking [ξ+, ξ−] on a log grid to [⟨M_ap²⟩, ⟨M_×²⟩] at ``radii``.
+
+    TreeCorr's ``calculateMapSq`` sum with the Schneider et al. (2002) filter:
+    ⟨M_ap²⟩, ⟨M_×²⟩ = Σ s² (T+ ξ+ ± T− ξ−) dlnθ / 2, s = θ/R, T± zero for s ≥ 2.
+    """
+    s = np.minimum(np.outer(1.0 / radii, theta), 2.0)
+    ssq = s * s
+    tp = 12.0 / (5.0 * np.pi) * (2.0 - 15.0 * ssq) * np.arccos(s / 2.0)
+    tp += (
+        s
+        * np.sqrt(4.0 - ssq)
+        * (120.0 + ssq * (2320.0 + ssq * (-754.0 + ssq * (132.0 - 9.0 * ssq))))
+        / (100.0 * np.pi)
+    )
+    tm = 3.0 / (70.0 * np.pi) * s * ssq * (4.0 - ssq) ** 3.5
+    tp, tm = (x * ssq * 0.5 * bin_size for x in (tp, tm))
+    return np.block([[tp, tm], [tp, -tm]])
