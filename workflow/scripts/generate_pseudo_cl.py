@@ -127,7 +127,7 @@ def generate_pseudo_cl(
     # Pseudo-Cls only (no covariance), born directly at the final out_path.
     cv.calculate_pseudo_cl(compute_tomography=False, out_path=out_path)
 
-    ell = cv.pseudo_cls[version]["pseudo_cl"]["ELL"]
+    ell = cv.pseudo_cls[version]["tomo_bin_all_tomo_bin_all"]["pseudo_cl"]["ELL"]
     print(f"Generated pseudo-Cl with {len(ell)} ell bins")
     print(f"ell range: [{ell.min():.1f}, {ell.max():.1f}]")
     return out_path
