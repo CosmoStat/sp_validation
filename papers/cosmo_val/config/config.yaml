@@ -24,6 +24,7 @@ cosmo_val:
   theta_min: 1.0
   theta_max: 250.0
   nbins: 20
+  b_target: 0.01
   theta_min_plot: 0.8
   theta_max_plot: 260.0
   ylim_alpha: [-0.01, 0.05]

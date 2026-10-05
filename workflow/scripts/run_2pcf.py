@@ -45,6 +45,7 @@ def run_2pcf(
     output_dir,
     sacc_out=None,
     grid="reporting",
+    b_target=0.01,
 ):
     """Measure ξ±(θ) for ``ver`` and write its reporting SACC part.
 
@@ -68,6 +69,7 @@ def run_2pcf(
         output_dir=output_dir,
         # so the SACC provenance metadata stamps the npatch actually measured
         npatch=npatch,
+        b_target=b_target,
     )
     gg = cv.calculate_2pcf_version(
         ver,
@@ -113,6 +115,7 @@ def _from_snakemake(smk):
         cat_config=p["cat_config"],
         output_dir=p["output_dir"],
         grid=p.get("grid", "reporting"),
+        b_target=p.get("b_target", 0.01),
         # The SACC part goes exactly where the rule declares it; the .txt
         # byproduct still lands under the resolved output dir.
         sacc_out=smk.output["sacc"],
@@ -145,6 +148,7 @@ def _from_cli(argv=None):
     ap.add_argument(
         "--grid", default="reporting", help="SACC grid tag for the measured points"
     )
+    ap.add_argument("--b-target", type=float, default=0.01)
     a = ap.parse_args(argv)
     run_2pcf(
         ver=a.ver,
@@ -155,6 +159,7 @@ def _from_cli(argv=None):
         cat_config=a.cat_config,
         output_dir=a.out,
         grid=a.grid,
+        b_target=a.b_target,
     )
 
 
