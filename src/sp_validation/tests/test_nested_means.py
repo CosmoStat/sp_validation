@@ -167,7 +167,7 @@ def test_sacc_fine_product_drives_the_reporting_producer(tmp_path):
         fine_xi=fine_path,
         sacc_out=report_path,
     )
-    expected = rebin_gg_means(fine, report)
+    expected = rebin_gg_means(fine, {**report, "sep_units": "arcmin"})
     for name in FIELDS:
         np.testing.assert_array_equal(getattr(measured, name), getattr(expected, name))
     part = sacc_io.load(report_path, allow_unblinded=True)
