@@ -106,10 +106,20 @@ class Toy:
     def snakemake(self, *args, cwd=None, env=None, timeout=300):
         """Run the host Snakemake in the toy's paper directory, or in ``cwd``.
 
-        ``env`` replaces the toy's environment.
+        ``env`` replaces the toy's environment. The workflow profile is off: it
+        enables apptainer, which CI runners lack.
         """
         return subprocess.run(
-            [sys.executable, "-m", "snakemake", "--cores", "1", *args],
+            [
+                sys.executable,
+                "-m",
+                "snakemake",
+                "--cores",
+                "1",
+                "--workflow-profile",
+                "none",
+                *args,
+            ],
             cwd=cwd or self.rundir,
             env=env or self.env,
             text=True,

@@ -59,8 +59,6 @@ def test_glass_rules_share_suite(toy, tmp_path, suite):
 
     result = toy.snakemake(
         "-n",
-        "--workflow-profile",
-        "none",
         "-s",
         str(toy.root / "workflow" / "Snakefile"),
         "covariance_glass_mock",
