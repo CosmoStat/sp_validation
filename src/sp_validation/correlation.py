@@ -1,6 +1,24 @@
 """Layout-independent full-sample means with patched covariance measurements."""
 
+import json
+from pathlib import Path
+
 import treecorr
+
+
+def measurement_matches(path, config):
+    """Whether a cached product records these settings and unpatched means."""
+    metadata = Path(str(path) + ".json")
+    if not Path(path).exists() or not metadata.exists():
+        return False
+    return json.loads(metadata.read_text()) == {"means": "unpatched", "config": config}
+
+
+def write_measurement_metadata(path, config):
+    """Record the full configuration and mean source beside a cached product."""
+    Path(str(path) + ".json").write_text(
+        json.dumps({"means": "unpatched", "config": config}) + "\n"
+    )
 
 
 def _unpatched_catalog(cat):

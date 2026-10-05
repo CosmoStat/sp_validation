@@ -11,7 +11,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import treecorr
 
-from sp_validation.correlation import process_gg
+from sp_validation.correlation import (
+    measurement_matches,
+    process_gg,
+    write_measurement_metadata,
+)
 from sp_validation.statistics import jackknife_patch_centers
 
 
@@ -54,8 +58,8 @@ class RealSpaceMixin:
 
         Notes:
             - The non-tomographic pair is written to a columns-only TreeCorr
-              dump tagged with its mean source and bin_slop. Unpatched runs can
-              reuse this file; patched runs remeasure to retain covariance.
+              dump with a configuration/mean-source JSON sidecar. Unpatched
+              runs can reuse it; patched runs remeasure to retain covariance.
             - Full-sample means use an unpatched tree; patches supply covariance.
             - Seeded patch centres are computed once from the full catalogue and
               shared by every tomographic bin pair.
@@ -86,7 +90,7 @@ class RealSpaceMixin:
                 if (
                     int(npatch) == 1
                     and not self.force_run
-                    and os.path.exists(out_fname)
+                    and measurement_matches(out_fname, treecorr_config)
                 ):
                     self.print_done(f"Skipping 2PCF calculation, {out_fname} exists")
                     gg = treecorr.GGCorrelation(treecorr_config)
@@ -119,6 +123,9 @@ class RealSpaceMixin:
                         write_patch_results=False,
                         write_cov=False,
                     )
+                    write_measurement_metadata(
+                        self._xi_txt_path(ver, treecorr_config, npatch), treecorr_config
+                    )
 
                 ggs[f"tomo_bin_{bin1}_tomo_bin_{bin2}"] = gg
 
@@ -128,9 +135,8 @@ class RealSpaceMixin:
 
     def _xi_txt_path(self, ver, treecorr_config, npatch):
         """Path of the non-tomographic ξ± TreeCorr dump for a version."""
-        base = self.basename(ver, treecorr_config=treecorr_config, npatch=npatch)
         return self._output_path(
-            f"xi_{base}_means=unpatched_bin_slop={treecorr_config['bin_slop']}.txt"
+            f"xi_{self.basename(ver, treecorr_config=treecorr_config, npatch=npatch)}.txt"
         )
 
     def _shear_columns(self, ver, compute_tomography):

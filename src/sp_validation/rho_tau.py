@@ -6,10 +6,16 @@ from tempfile import TemporaryDirectory
 
 import numpy as np
 from astropy.io import fits
+from astropy.table import Table
 from shear_psf_leakage.rho_tau_cov import CovTauTh
 from shear_psf_leakage.rho_tau_stat import RhoStat, TauStat
 
 from sp_validation import grammar, io
+from sp_validation.correlation import (
+    measure_with_patches,
+    measurement_matches,
+    write_measurement_metadata,
+)
 
 # SquareRootScale lives in sp_validation.plots; re-exported here so that
 # `from sp_validation.rho_tau import SquareRootScale` keeps working.
@@ -20,6 +26,56 @@ from sp_validation.statistics import jackknife_patch_centers
 def _extract_xip(correlations):
     """Return flattened array of xip values from a list of correlations."""
     return np.array([corr.xip for corr in correlations]).flatten()
+
+
+def _compute_stats_with_patches(
+    handler, kind, catalog_id, filename, save_cov=False, means=None
+):
+    """Publish unpatched ρ/τ means with the patched variances and covariance.
+
+    The handlers expose catalogue mappings and FITS tables, rather than their
+    internal GG objects. The measurement callback uses those same catalogues
+    for both passes and saves joint covariance only on the patched pass.
+    Cached means avoid repeating the full-sample pass across covariance draws.
+    """
+    catalogs = handler.catalogs.catalogs_dict
+    config = handler._treecorr_config
+    selected = {
+        key: cat for key, cat in catalogs.items() if key.endswith(f"_{catalog_id}")
+    }
+    attribute = f"{kind}_stats"
+    compute = getattr(handler, f"compute_{kind}_stats")
+
+    def measure(cats):
+        patched = any(cat.npatch > 1 for cat in cats.values())
+        handler.catalogs.catalogs_dict = cats
+        handler._treecorr_config = {
+            **config,
+            "var_method": config.get("var_method", "shot") if patched else "shot",
+        }
+        try:
+            compute(
+                catalog_id,
+                filename,
+                save_cov=save_cov and patched,
+                func=_extract_xip if save_cov and patched else None,
+                var_method="jackknife" if patched else "shot",
+            )
+            return getattr(handler, attribute).copy()
+        finally:
+            handler.catalogs.catalogs_dict = catalogs
+            handler._treecorr_config = config
+
+    means, patched = measure_with_patches(measure, selected, means=means)
+    table = Table(patched)
+    for name in table.colnames:
+        if not name.startswith("var"):
+            table[name] = means[name]
+    setattr(handler, attribute, table)
+    getattr(handler, f"save_{kind}_stats")(filename)
+    getattr(handler, f"load_{kind}_stats")(filename)
+    write_measurement_metadata(Path(handler.catalogs._output) / filename, config)
+    return means
 
 
 class _CatalogueLoader:
@@ -287,7 +343,7 @@ def get_rho_tau(
     )
 
     with _CatalogueLoader(config[version], params) as load:
-        rho_stats_exists = rho_path.exists()
+        rho_stats_exists = measurement_matches(rho_path, treecorr_config)
         cov_exists = True if not cov_rho else cov_rho_path.exists()
         need_compute = (not rho_stats_exists) or (not cov_exists) or force_run
 
@@ -297,12 +353,8 @@ def get_rho_tau(
                 load("psf"), catalog_id=catalog_id, mask=mask_star
             )
 
-            rho_stat_handler.compute_rho_stats(
-                catalog_id,
-                rho_path.name,
-                save_cov=cov_rho,
-                func=_extract_xip if cov_rho else None,
-                var_method="jackknife" if cov_rho else None,
+            _compute_stats_with_patches(
+                rho_stat_handler, "rho", catalog_id, rho_path.name, save_cov=cov_rho
             )
             rho_stat_handler.load_rho_stats(rho_path.name)
         else:
@@ -319,7 +371,7 @@ def get_rho_tau(
             verbose=True,
         )
 
-        if tau_path.exists() and not force_run:
+        if measurement_matches(tau_path, treecorr_config) and not force_run:
             print(
                 f"Skipping tau statistics computation, file {tau_path} already exists."
             )
@@ -338,7 +390,7 @@ def get_rho_tau(
                 load("shear"), cat_type="gal", catalog_id=version, mask=mask_gal
             )
 
-            tau_stat_handler.compute_tau_stats(version, tau_path.name, var_method=None)
+            _compute_stats_with_patches(tau_stat_handler, "tau", version, tau_path.name)
 
     print(f"Time to compute rho and tau statistics: {time.time() - start_time:.2f} s")
     return rho_stat_handler, tau_stat_handler
@@ -425,7 +477,13 @@ def get_jackknife_cov(
     tau_filename = f"tau_stats_{base_tau}.fits"
     tau_cov_path = Path(outdir) / f"cov_tau_{base_tau}_jk.npy"
 
-    if tau_cov_path.exists() and not force_run:
+    if (
+        tau_cov_path.exists()
+        and (Path(outdir) / f"cov_rho_{base_rho}_jk.npy").exists()
+        and measurement_matches(Path(outdir) / rho_filename, treecorr_config)
+        and measurement_matches(Path(outdir) / tau_filename, treecorr_config)
+        and not force_run
+    ):
         print(f"Skipping covariance computation, file {tau_cov_path} already exists.")
         rho_stat_handler = RhoStat(
             output=outdir, treecorr_config=treecorr_config, verbose=False
@@ -447,6 +505,7 @@ def get_jackknife_cov(
         return rho_stat_handler, tau_stat_handler
 
     params = get_params_rho_tau(config[version])
+    params["patch_number"] = npatch
 
     rho_stat_handler = RhoStat(
         output=outdir, treecorr_config=treecorr_config, verbose=False
@@ -475,6 +534,7 @@ def get_jackknife_cov(
             for kind in ("rho", "tau")
         ]
 
+    rho_means = tau_means = None
     with _CatalogueLoader(config[version], params) as load:
         for i in range(ncov):
             if not all(os.path.exists(chunk) for chunk in chunks(i)):
@@ -521,21 +581,21 @@ def get_jackknife_cov(
                 )
 
                 # Compute and save rho stats
-                rho_stat_handler.compute_rho_stats(
+                rho_means = _compute_stats_with_patches(
+                    rho_stat_handler,
+                    "rho",
                     catalog_id(i),
                     rho_filename,
                     save_cov=True,
-                    func=_extract_xip,
-                    var_method="jackknife",
+                    means=rho_means,
                 )
-
-                # function to extract the tau_+
-                tau_stat_handler.compute_tau_stats(
+                tau_means = _compute_stats_with_patches(
+                    tau_stat_handler,
+                    "tau",
                     catalog_id(i),
                     tau_filename,
                     save_cov=True,
-                    func=_extract_xip,
-                    var_method="jackknife",
+                    means=tau_means,
                 )
 
                 # Update the keys in the dictionaries
