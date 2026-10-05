@@ -69,6 +69,9 @@ _OPTIONAL_KEYS = {
     # `config:` sets the cluster's image -- a machine-specific path belongs
     # with the machine, not in this shared file.
     "sif",
+    # Exposures from another realization than the tiles (non-grid sims only;
+    # default: num). See EXP_NUM below and config.yaml.
+    "exp_num",
 }
 # Structural keys: paths/identifiers the run must supply (no sensible default).
 _STRUCTURAL_KEYS = {
