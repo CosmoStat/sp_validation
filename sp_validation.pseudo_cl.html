@@ -191,23 +191,80 @@ is the field/binning <code class="docutils literal notranslate"><span class="pre
 </dl>
 </dd></dl>
 <dl class="py function">
-<dt class="sig sig-object py" id="sp_validation.pseudo_cl.get_n_gal_map">
-<span class="sig-name descname"><span class="pre">get_n_gal_map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nside</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ra</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weights</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/pseudo_cl.html#get_n_gal_map"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.pseudo_cl.get_n_gal_map" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.pseudo_cl.get_n_gal_map'">¶</a></dt>
-<dd><p>Weighted galaxy number-density HEALPix map plus pixel bookkeeping.</p>
-<p>Bins <code class="docutils literal notranslate"><span class="pre">(ra,</span> <span class="pre">dec)</span></code> (degrees) onto an <code class="docutils literal notranslate"><span class="pre">nside</span></code> HEALPix grid. With
-<code class="docutils literal notranslate"><span class="pre">weights=None</span></code> each object counts as 1 (galaxy counts); pass per-object
-<code class="docutils literal notranslate"><span class="pre">weights</span></code> for a weight-summed occupancy map.</p>
+<dt class="sig sig-object py" id="sp_validation.pseudo_cl.get_pixels">
+<span class="sig-name descname"><span class="pre">get_pixels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ra</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nside</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/pseudo_cl.html#get_pixels"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.pseudo_cl.get_pixels" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.pseudo_cl.get_pixels'">¶</a></dt>
+<dd><p>Get the HEALPix pixel indices for given RA and Dec.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p><ul class="simple">
-<li><p><strong>n_gal</strong> (<em>np.ndarray</em>) – Map of summed weights (or counts) per pixel, shape <code class="docutils literal notranslate"><span class="pre">(npix,)</span></code>.</p></li>
-<li><p><strong>unique_pix</strong> (<em>np.ndarray</em>) – Sorted unique occupied pixel indices.</p></li>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ra</strong> (<em>np.ndarray</em>) – Right ascension in degrees.</p></li>
+<li><p><strong>dec</strong> (<em>np.ndarray</em>) – Declination in degrees.</p></li>
+<li><p><strong>nside</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – HEALPix nside parameter.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>unique_pix</strong> (<em>np.ndarray</em>) – Sorted unique pixel indices.</p></li>
 <li><p><strong>idx</strong> (<em>np.ndarray</em>) – First-occurrence indices into the input from <code class="docutils literal notranslate"><span class="pre">np.unique</span></code>.</p></li>
 <li><p><strong>idx_rep</strong> (<em>np.ndarray</em>) – Inverse map: pixel-group index for each input object.</p></li>
 </ul>
 </p>
 </dd>
 </dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.pseudo_cl.get_n_gal_map">
+<span class="sig-name descname"><span class="pre">get_n_gal_map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nside</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ra</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weights</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unique_pix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idx_rep</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/pseudo_cl.html#get_n_gal_map"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.pseudo_cl.get_n_gal_map" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.pseudo_cl.get_n_gal_map'">¶</a></dt>
+<dd><p>Weighted galaxy number-density HEALPix map plus pixel bookkeeping.</p>
+<p>Bins <code class="docutils literal notranslate"><span class="pre">(ra,</span> <span class="pre">dec)</span></code> (degrees) onto an <code class="docutils literal notranslate"><span class="pre">nside</span></code> HEALPix grid. With
+<code class="docutils literal notranslate"><span class="pre">weights=None</span></code> each object counts as 1 (galaxy counts); pass per-object
+<code class="docutils literal notranslate"><span class="pre">weights</span></code> for a weight-summed occupancy map.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>n_gal</strong> – Map of summed weights (or counts) per pixel, shape <code class="docutils literal notranslate"><span class="pre">(npix,)</span></code>.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.pseudo_cl.get_shear_map">
+<span class="sig-name descname"><span class="pre">get_shear_map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ra</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nside</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unique_pix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idx_rep</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_gal_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/pseudo_cl.html#get_shear_map"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.pseudo_cl.get_shear_map" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.pseudo_cl.get_shear_map'">¶</a></dt>
+<dd><p>Weighted shear HEALPix maps plus pixel bookkeeping.</p>
+<p>Bins <code class="docutils literal notranslate"><span class="pre">(ra,</span> <span class="pre">dec)</span></code> (degrees) onto an <code class="docutils literal notranslate"><span class="pre">nside</span></code> HEALPix grid. The shear
+components <code class="docutils literal notranslate"><span class="pre">(e1,</span> <span class="pre">e2)</span></code> are weighted by <code class="docutils literal notranslate"><span class="pre">w</span></code> and summed per pixel. If
+<code class="docutils literal notranslate"><span class="pre">unique_pix</span></code>, <code class="docutils literal notranslate"><span class="pre">idx</span></code>, and <code class="docutils literal notranslate"><span class="pre">idx_rep</span></code> are provided, they are used to
+avoid recomputing the pixel indices.
+If <code class="docutils literal notranslate"><span class="pre">n_gal_map</span></code> is provided, it is used to normalize the shear maps by the galaxy density.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><ul class="simple">
+<li><p><strong>e1_map</strong> (<em>np.ndarray</em>) – Weighted sum of E1 per pixel, shape <code class="docutils literal notranslate"><span class="pre">(npix,)</span></code>.</p></li>
+<li><p><strong>e2_map</strong> (<em>np.ndarray</em>) – Weighted sum of E2 per pixel, shape <code class="docutils literal notranslate"><span class="pre">(npix,)</span></code>.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.pseudo_cl.get_variance_map">
+<span class="sig-name descname"><span class="pre">get_variance_map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nside</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ra</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unique_pix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idx_rep</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/pseudo_cl.html#get_variance_map"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.pseudo_cl.get_variance_map" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.pseudo_cl.get_variance_map'">¶</a></dt>
+<dd><p>Compute the variance map of the shear components.</p>
+<p>The variance is computed as the weighted variance of the shear components in each pixel.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>variance_map</strong> – Variance map of the shear components, shape <code class="docutils literal notranslate"><span class="pre">(npix,)</span></code>.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.pseudo_cl.get_noise_bias_analytical">
+<span class="sig-name descname"><span class="pre">get_noise_bias_analytical</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ra</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lmax</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nside</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1024</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unique_pix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idx_rep</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/pseudo_cl.html#get_noise_bias_analytical"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.pseudo_cl.get_noise_bias_analytical" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.pseudo_cl.get_noise_bias_analytical'">¶</a></dt>
+<dd><p>Compute the analytical noise bias for shear power spectrum.</p>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.pseudo_cl.apply_random_rotation">
@@ -232,17 +289,193 @@ is the field/binning <code class="docutils literal notranslate"><span class="pre
 </dl>
 </dd></dl>
 <dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.pseudo_cl.get_noise_realisation">
+<span class="sig-name descname"><span class="pre">get_noise_realisation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ra</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nside</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unique_pix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idx_rep</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_gal_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rng</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/pseudo_cl.html#get_noise_realisation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.pseudo_cl.get_noise_realisation" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.pseudo_cl.get_noise_realisation'">¶</a></dt>
+<dd><p>Generate a random noise realisation of the shear maps by applying a random rotation to the ellipticity components.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ra</strong> (<em>np.ndarray</em>) – Right ascension and declination of the sources.</p></li>
+<li><p><strong>dec</strong> (<em>np.ndarray</em>) – Right ascension and declination of the sources.</p></li>
+<li><p><strong>e1</strong> (<em>np.ndarray</em>) – Ellipticity components.</p></li>
+<li><p><strong>e2</strong> (<em>np.ndarray</em>) – Ellipticity components.</p></li>
+<li><p><strong>w</strong> (<em>np.ndarray</em>) – Weights of the sources.</p></li>
+<li><p><strong>nside</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – HEALPix resolution.</p></li>
+<li><p><strong>unique_pix</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – Pixel indices and bookkeeping arrays. If not provided, they will be computed.</p></li>
+<li><p><strong>idx</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – Pixel indices and bookkeeping arrays. If not provided, they will be computed.</p></li>
+<li><p><strong>idx_rep</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – Pixel indices and bookkeeping arrays. If not provided, they will be computed.</p></li>
+<li><p><strong>n_gal_map</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – Galaxy number density map. If not provided, it will be computed.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>noise_map_e1, noise_map_e2</strong> – Noise map for ellipticity components.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.pseudo_cl.get_noise_bias_from_gaussian_real">
+<span class="sig-name descname"><span class="pre">get_noise_bias_from_gaussian_real</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ra</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nside</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nrandom_cell</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">binning</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ell_step</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_ell_bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">power</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unique_pix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idx_rep</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_gal_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wsp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">42</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/pseudo_cl.html#get_noise_bias_from_gaussian_real"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.pseudo_cl.get_noise_bias_from_gaussian_real" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.pseudo_cl.get_noise_bias_from_gaussian_real'">¶</a></dt>
+<dd><p>Compute the power spectrum of the noise bias from random realisations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ra</strong> (<em>np.ndarray</em>) – Right ascension and declination of the sources.</p></li>
+<li><p><strong>dec</strong> (<em>np.ndarray</em>) – Right ascension and declination of the sources.</p></li>
+<li><p><strong>e1</strong> (<em>np.ndarray</em>) – Ellipticity components.</p></li>
+<li><p><strong>e2</strong> (<em>np.ndarray</em>) – Ellipticity components.</p></li>
+<li><p><strong>w</strong> (<em>np.ndarray</em>) – Weights of the sources.</p></li>
+<li><p><strong>nside</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – HEALPix resolution.</p></li>
+<li><p><strong>nrandom_cell</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of random cells to use for the noise estimation.</p></li>
+<li><p><strong>binning</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Binning scheme and parameters.</p></li>
+<li><p><strong>ell_step</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Binning scheme and parameters.</p></li>
+<li><p><strong>n_ell_bins</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Binning scheme and parameters.</p></li>
+<li><p><strong>power</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Binning scheme and parameters.</p></li>
+<li><p><strong>unique_pix</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – Pixel indices and bookkeeping arrays. If not provided, they will be computed.</p></li>
+<li><p><strong>idx</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – Pixel indices and bookkeeping arrays. If not provided, they will be computed.</p></li>
+<li><p><strong>idx_rep</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – Pixel indices and bookkeeping arrays. If not provided, they will be computed.</p></li>
+<li><p><strong>n_gal_map</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – Galaxy number density map. If not provided, it will be computed.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>noise_bias_cl</strong> – Power spectrum of the noise bias.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.pseudo_cl.get_noise_bias">
+<span class="sig-name descname"><span class="pre">get_noise_bias</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ra</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nside</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">noise_bias_method</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">binning</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">ell_step</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_ell_bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">power</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nrandom_cell</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">42</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/pseudo_cl.html#get_noise_bias"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.pseudo_cl.get_noise_bias" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.pseudo_cl.get_noise_bias'">¶</a></dt>
+<dd><p>Compute the noise bias from object positions and ellipticities.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ra</strong> (<em>np.ndarray</em>) – Right ascension and declination of the sources.</p></li>
+<li><p><strong>dec</strong> (<em>np.ndarray</em>) – Right ascension and declination of the sources.</p></li>
+<li><p><strong>e1</strong> (<em>np.ndarray</em>) – Ellipticity components.</p></li>
+<li><p><strong>e2</strong> (<em>np.ndarray</em>) – Ellipticity components.</p></li>
+<li><p><strong>w</strong> (<em>np.ndarray</em>) – Weights of the sources.</p></li>
+<li><p><strong>nside</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – HEALPix resolution.</p></li>
+<li><p><strong>noise_bias_method</strong> (<em>{'randoms'</em><em>, </em><em>'analytic'}</em>) – Method used to estimate the noise bias.</p></li>
+<li><p><strong>binning</strong> (<em>{'linear'</em><em>, </em><em>'logspace'</em><em>, </em><em>'powspace'}</em>) – Binning scheme.</p></li>
+<li><p><strong>ell_step</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>optional</em>) – Bin width in ell for <code class="docutils literal notranslate"><span class="pre">'linear'</span></code> binning.</p></li>
+<li><p><strong>n_ell_bins</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>optional</em>) – Number of ell bins for <code class="docutils literal notranslate"><span class="pre">'logspace'</span></code> / <code class="docutils literal notranslate"><span class="pre">'powspace'</span></code> binning.</p></li>
+<li><p><strong>power</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em>) – Exponent for <code class="docutils literal notranslate"><span class="pre">'powspace'</span></code> binning.</p></li>
+<li><p><strong>nrandom_cell</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>optional</em>) – Number of random cells to use for the noise estimation. (only for the <cite>randoms</cite> method)</p></li>
+<li><p><strong>seed</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>optional</em>) – Random seed for reproducibility. (only for the <cite>randoms</cite> method)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>noise_bias_cl</strong> – Power spectrum of the noise bias.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.pseudo_cl.get_field_and_workspace_from_map">
+<span class="sig-name descname"><span class="pre">get_field_and_workspace_from_map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">b</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask_a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e1_map_a</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e2_map_a</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask_b</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e1_map_b</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e2_map_b</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pol_factor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_wsp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/pseudo_cl.html#get_field_and_workspace_from_map"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.pseudo_cl.get_field_and_workspace_from_map" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.pseudo_cl.get_field_and_workspace_from_map'">¶</a></dt>
+<dd><p>Compute a NaMaster field and workspace object from the input maps.</p>
+<p>If the shear maps are None, returns field objects but only the workspace objects is relevant and contains the mixing matrix.
+If the second mask and shear maps (indexed b) are provided, the mixing matrix is computed between the two fields.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>b</strong> (<em>nmt.NmtBin</em>) – NaMaster binning object.</p></li>
+<li><p><strong>mask_a</strong> (<em>np.ndarray</em>) – Field mask for the first map.</p></li>
+<li><p><strong>e1_map_a</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – E1 map for the first field.</p></li>
+<li><p><strong>e2_map_a</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – E2 map for the first field.</p></li>
+<li><p><strong>mask_b</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – Field mask for the second map.</p></li>
+<li><p><strong>e1_map_b</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – E1 map for the second field.</p></li>
+<li><p><strong>e2_map_b</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – E2 map for the second field.</p></li>
+<li><p><strong>pol_factor</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em>) – Polarization factor to apply to the E2 map.</p></li>
+<li><p><strong>return_wsp</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – If True, return the NaMaster workspace object containing the mixing matrix.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>field_a</strong> (<em>nmt.NmtField</em>) – NaMaster field object for the first map.</p></li>
+<li><p><strong>field_b</strong> (<em>nmt.NmtField</em>) – NaMaster field object for the second map (if provided, same than the first map otherwise).</p></li>
+<li><p><strong>wsp</strong> (<em>nmt.NmtWorkspace</em>) – NaMaster workspace object containing the mixing matrix.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.pseudo_cl.get_field_and_workspace_from_catalog">
+<span class="sig-name descname"><span class="pre">get_field_and_workspace_from_catalog</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">b</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ra_a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dec_a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e1_a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e2_a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w_a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ra_b</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dec_b</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e1_b</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e2_b</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w_b</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pol_factor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_wsp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">same_bin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/pseudo_cl.html#get_field_and_workspace_from_catalog"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.pseudo_cl.get_field_and_workspace_from_catalog" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.pseudo_cl.get_field_and_workspace_from_catalog'">¶</a></dt>
+<dd><p>Create a NaMaster field and workspace from the input catalog.</p>
+<p>If the second catalog is provided, the mixing matrix is computed between the two fields.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>b</strong> (<em>nmt.NmtBin</em>) – NaMaster binning object.</p></li>
+<li><p><strong>ra_a</strong> (<em>np.ndarray</em>) – Right ascension of sources in the first catalog.</p></li>
+<li><p><strong>dec_a</strong> (<em>np.ndarray</em>) – Declination of sources in the first catalog.</p></li>
+<li><p><strong>e1_a</strong> (<em>np.ndarray</em>) – E1 shear component of sources in the first catalog.</p></li>
+<li><p><strong>e2_a</strong> (<em>np.ndarray</em>) – E2 shear component of sources in the first catalog.</p></li>
+<li><p><strong>w_a</strong> (<em>np.ndarray</em>) – Weights of sources in the first catalog.</p></li>
+<li><p><strong>ra_b</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – Right ascension of sources in the second catalog.</p></li>
+<li><p><strong>dec_b</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – Declination of sources in the second catalog.</p></li>
+<li><p><strong>e1_b</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – E1 shear component of sources in the second catalog.</p></li>
+<li><p><strong>e2_b</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – E2 shear component of sources in the second catalog.</p></li>
+<li><p><strong>w_b</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – Weights of sources in the second catalog.</p></li>
+<li><p><strong>pol_factor</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em>) – Polarization factor to apply to the E2 component.</p></li>
+<li><p><strong>return_wsp</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – If True, return the NaMaster workspace object containing the mixing matrix.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>field_a</strong> (<em>nmt.NmtFieldCatalog</em>) – NaMaster field object for the first catalog.</p></li>
+<li><p><strong>field_b</strong> (<em>nmt.NmtFieldCatalog</em>) – NaMaster field object for the second catalog (if provided, same as the first catalog otherwise).</p></li>
+<li><p><strong>wsp</strong> (<em>nmt.NmtWorkspace</em>) – NaMaster workspace object containing the mixing matrix.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.pseudo_cl.compute_cl_from_field_and_workspace">
+<span class="sig-name descname"><span class="pre">compute_cl_from_field_and_workspace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field_a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field_b</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wsp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/pseudo_cl.html#compute_cl_from_field_and_workspace"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.pseudo_cl.compute_cl_from_field_and_workspace" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.pseudo_cl.compute_cl_from_field_and_workspace'">¶</a></dt>
+<dd><p>Compute the angular power spectrum from the input NaMaster field and workspace</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>field_a</strong> (<em>nmt.NmtField</em>) – NaMaster field object for the first catalog.</p></li>
+<li><p><strong>field_b</strong> (<em>nmt.NmtField</em>) – NaMaster field object for the second catalog.</p></li>
+<li><p><strong>wsp</strong> (<em>nmt.NmtWorkspace</em>) – NaMaster workspace object containing the mixing matrix.</p></li>
+<li><p><strong>b</strong> (<em>nmt.NmtBin</em>) – NaMaster binning object.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>cl_coupled</strong> (<em>np.ndarray</em>) – Coupled angular power spectrum.</p></li>
+<li><p><strong>cl_decoupled</strong> (<em>np.ndarray</em>) – Decoupled angular power spectrum.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.pseudo_cl.get_pseudo_cls_map">
-<span class="sig-name descname"><span class="pre">get_pseudo_cls_map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shear_map</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nside</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">binning</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">pol_factor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wsp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ell_step</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_ell_bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">power</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/pseudo_cl.html#get_pseudo_cls_map"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.pseudo_cl.get_pseudo_cls_map" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.pseudo_cl.get_pseudo_cls_map'">¶</a></dt>
+<span class="sig-name descname"><span class="pre">get_pseudo_cls_map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shear_map_a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask_a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nside</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">binning</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">shear_map_b</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask_b</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pol_factor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wsp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ell_step</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_ell_bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">power</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/pseudo_cl.html#get_pseudo_cls_map"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.pseudo_cl.get_pseudo_cls_map" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.pseudo_cl.get_pseudo_cls_map'">¶</a></dt>
 <dd><p>Map-based pseudo-Cl for a complex shear map.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>shear_map</strong> (<em>np.ndarray</em>) – Complex shear map (<code class="docutils literal notranslate"><span class="pre">e1</span> <span class="pre">+</span> <span class="pre">1j</span> <span class="pre">*</span> <span class="pre">e2</span></code>).</p></li>
-<li><p><strong>mask</strong> (<em>np.ndarray</em>) – Field mask (the galaxy number-density map).</p></li>
+<li><p><strong>shear_map_a</strong> (<em>np.ndarray</em>) – Complex shear map (<code class="docutils literal notranslate"><span class="pre">e1</span> <span class="pre">+</span> <span class="pre">1j</span> <span class="pre">*</span> <span class="pre">e2</span></code>).</p></li>
+<li><p><strong>mask_a</strong> (<em>np.ndarray</em>) – Field mask (the galaxy number-density map).</p></li>
 <li><p><strong>nside</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – HEALPix resolution; fixes the harmonic geometry.</p></li>
 <li><p><strong>binning</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Binning scheme passed to <a class="reference internal" href="#sp_validation.pseudo_cl.make_namaster_bin" title="sp_validation.pseudo_cl.make_namaster_bin"><code class="xref py py-func docutils literal notranslate"><span class="pre">make_namaster_bin()</span></code></a>.</p></li>
-<li><p><strong>pol_factor</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code> flip the sign of the imaginary (e2) component.</p></li>
+<li><p><strong>shear_map_b</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – Complex shear map for the second field (<code class="docutils literal notranslate"><span class="pre">e1</span> <span class="pre">+</span> <span class="pre">1j</span> <span class="pre">*</span> <span class="pre">e2</span></code>).</p></li>
+<li><p><strong>mask_b</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – Field mask for the second field (the galaxy number-density map).</p></li>
+<li><p><strong>pol_factor</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em>) – Polarization factor to apply to the E2 component.</p></li>
 <li><p><strong>wsp</strong> (<em>nmt.NmtWorkspace</em><em>, </em><em>optional</em>) – Reuse a coupling workspace; built from the field if <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
 <li><p><strong>ell_step</strong> (<em>optional</em>) – Binning-scheme parameters forwarded to <a class="reference internal" href="#sp_validation.pseudo_cl.make_namaster_bin" title="sp_validation.pseudo_cl.make_namaster_bin"><code class="xref py py-func docutils literal notranslate"><span class="pre">make_namaster_bin()</span></code></a>.</p></li>
 <li><p><strong>n_ell_bins</strong> (<em>optional</em>) – Binning-scheme parameters forwarded to <a class="reference internal" href="#sp_validation.pseudo_cl.make_namaster_bin" title="sp_validation.pseudo_cl.make_namaster_bin"><code class="xref py py-func docutils literal notranslate"><span class="pre">make_namaster_bin()</span></code></a>.</p></li>
@@ -261,7 +494,7 @@ is the field/binning <code class="docutils literal notranslate"><span class="pre
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.pseudo_cl.get_pseudo_cls_catalog">
-<span class="sig-name descname"><span class="pre">get_pseudo_cls_catalog</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catalog</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">params</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nside</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">binning</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">pol_factor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wsp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ell_step</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_ell_bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">power</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/pseudo_cl.html#get_pseudo_cls_catalog"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.pseudo_cl.get_pseudo_cls_catalog" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.pseudo_cl.get_pseudo_cls_catalog'">¶</a></dt>
+<span class="sig-name descname"><span class="pre">get_pseudo_cls_catalog</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catalog</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">params</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nside</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">binning</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">tomo_bin_a</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'all'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tomo_bin_b</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'all'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pol_factor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wsp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ell_step</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_ell_bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">power</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/pseudo_cl.html#get_pseudo_cls_catalog"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.pseudo_cl.get_pseudo_cls_catalog" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.pseudo_cl.get_pseudo_cls_catalog'">¶</a></dt>
 <dd><p>Catalog-based pseudo-Cl via NaMaster’s <code class="docutils literal notranslate"><span class="pre">NmtFieldCatalog</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -271,7 +504,9 @@ is the field/binning <code class="docutils literal notranslate"><span class="pre
 <code class="docutils literal notranslate"><span class="pre">e2_col</span></code>).</p></li>
 <li><p><strong>nside</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – HEALPix resolution; fixes the harmonic geometry.</p></li>
 <li><p><strong>binning</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Binning scheme passed to <a class="reference internal" href="#sp_validation.pseudo_cl.make_namaster_bin" title="sp_validation.pseudo_cl.make_namaster_bin"><code class="xref py py-func docutils literal notranslate"><span class="pre">make_namaster_bin()</span></code></a>.</p></li>
-<li><p><strong>pol_factor</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code> flip the sign of the e2 component.</p></li>
+<li><p><strong>tomo_bin_a</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> or </em><em>None</em><em>, </em><em>optional</em>) – Tomographic bin IDs for the two fields.</p></li>
+<li><p><strong>tomo_bin_b</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> or </em><em>None</em><em>, </em><em>optional</em>) – Tomographic bin IDs for the two fields.</p></li>
+<li><p><strong>pol_factor</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>optional</em>) – Polarization factor to apply to the E2 component.</p></li>
 <li><p><strong>wsp</strong> (<em>nmt.NmtWorkspace</em><em>, </em><em>optional</em>) – Reuse a coupling workspace; built from the field if <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
 <li><p><strong>ell_step</strong> (<em>optional</em>) – Binning-scheme parameters forwarded to <a class="reference internal" href="#sp_validation.pseudo_cl.make_namaster_bin" title="sp_validation.pseudo_cl.make_namaster_bin"><code class="xref py py-func docutils literal notranslate"><span class="pre">make_namaster_bin()</span></code></a>.</p></li>
 <li><p><strong>n_ell_bins</strong> (<em>optional</em>) – Binning-scheme parameters forwarded to <a class="reference internal" href="#sp_validation.pseudo_cl.make_namaster_bin" title="sp_validation.pseudo_cl.make_namaster_bin"><code class="xref py py-func docutils literal notranslate"><span class="pre">make_namaster_bin()</span></code></a>.</p></li>
@@ -289,9 +524,46 @@ is the field/binning <code class="docutils literal notranslate"><span class="pre
 </dl>
 </dd></dl>
 <dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.pseudo_cl.get_fiducial_cl">
+<span class="sig-name descname"><span class="pre">get_fiducial_cl</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dndz</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lmax</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cosmo</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">backend</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'camb'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/pseudo_cl.html#get_fiducial_cl"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.pseudo_cl.get_fiducial_cl" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.pseudo_cl.get_fiducial_cl'">¶</a></dt>
+<dd><p>Get the fiducial Cl’s using the redshift distribution.
+Cosmology is determined by the input cosmo object.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.pseudo_cl.get_pseudo_cl_iNKA_covariance">
+<span class="sig-name descname"><span class="pre">get_pseudo_cl_iNKA_covariance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_cl_a1_b1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_cl_a1_b2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_cl_a2_b1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_cl_a2_b2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field_a1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field_a2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field_b1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field_b2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wsp_a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wsp_b</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/pseudo_cl.html#get_pseudo_cl_iNKA_covariance"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.pseudo_cl.get_pseudo_cl_iNKA_covariance" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.pseudo_cl.get_pseudo_cl_iNKA_covariance'">¶</a></dt>
+<dd><p>Compute the iNKA covariance for pseudo-Cl.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>input_cl_a1_b1</strong> (<em>np.ndarray</em>) – Input Cl for field a1 and b1.</p></li>
+<li><p><strong>input_cl_a1_b2</strong> (<em>np.ndarray</em>) – Input Cl for field a1 and b2.</p></li>
+<li><p><strong>input_cl_a2_b1</strong> (<em>np.ndarray</em>) – Input Cl for field a2 and b1.</p></li>
+<li><p><strong>input_cl_a2_b2</strong> (<em>np.ndarray</em>) – Input Cl for field a2 and b2.</p></li>
+<li><p><strong>field_a1</strong> (<em>nmt.NmtField</em>) – NaMaster field object for the first catalog (a1).</p></li>
+<li><p><strong>field_a2</strong> (<em>nmt.NmtField</em>) – NaMaster field object for the second catalog (a2).</p></li>
+<li><p><strong>field_b1</strong> (<em>nmt.NmtField</em>) – NaMaster field object for the first catalog (b1).</p></li>
+<li><p><strong>field_b2</strong> (<em>nmt.NmtField</em>) – NaMaster field object for the second catalog (b2).</p></li>
+<li><p><strong>wsp_a</strong> (<em>nmt.NmtWorkspace</em>) – NaMaster workspace object containing the mixing matrix for fields a.</p></li>
+<li><p><strong>wsp_b</strong> (<em>nmt.NmtWorkspace</em>) – NaMaster workspace object containing the mixing matrix for fields b.</p></li>
+<li><p><strong>b</strong> (<em>nmt.NmtBin</em>) – NaMaster binning object.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>cov_matrix</strong> – Covariance matrix of the pseudo-Cl, shape <code class="docutils literal notranslate"><span class="pre">(n_bins,</span> <span class="pre">n_bins)</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.pseudo_cl.bandpower_window_from_workspace">
-<span class="sig-name descname"><span class="pre">bandpower_window_from_workspace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">wsp</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/pseudo_cl.html#bandpower_window_from_workspace"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.pseudo_cl.bandpower_window_from_workspace" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.pseudo_cl.bandpower_window_from_workspace'">¶</a></dt>
+<span class="sig-name descname"><span class="pre">bandpower_window_from_workspace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">wsp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nside</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/pseudo_cl.html#bandpower_window_from_workspace"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.pseudo_cl.bandpower_window_from_workspace" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.pseudo_cl.bandpower_window_from_workspace'">¶</a></dt>
 <dd><p>Extract the bandpower window matrix <code class="docutils literal notranslate"><span class="pre">W</span></code> for a spin-2×spin-2 workspace.</p>
+<p>For HEALPix-map spectra, supply <code class="docutils literal notranslate"><span class="pre">nside</span></code> to include the pixel window
+<code class="docutils literal notranslate"><span class="pre">pw²(ℓ)</span></code> in the measured spectrum. Catalogue-based spectra have no pixel
+window and must leave <code class="docutils literal notranslate"><span class="pre">nside</span></code> unset.</p>
 <p>NaMaster’s <code class="docutils literal notranslate"><span class="pre">get_bandpower_windows()</span></code> returns a four-index array
 <code class="docutils literal notranslate"><span class="pre">(n_cl_out,</span> <span class="pre">n_bpw,</span> <span class="pre">n_cl_in,</span> <span class="pre">n_ell)</span></code> describing how each output bandpower
 is built from the input multipoles across the EE/EB/BE/BB spectra. SACC’s
@@ -304,7 +576,8 @@ diagonal EE←EE block (equal to BB←BB and EB←EB, verified identical).</p>
 <li><p><strong>window_ells</strong> (<em>np.ndarray</em>) – Multipoles the window spans, <code class="docutils literal notranslate"><span class="pre">arange(n_ell)</span></code> — the <code class="docutils literal notranslate"><span class="pre">ell</span></code> axis of
 <code class="docutils literal notranslate"><span class="pre">compute_coupled_cell</span></code>.</p></li>
 <li><p><strong>window_weights</strong> (<em>np.ndarray</em>) – <code class="docutils literal notranslate"><span class="pre">W</span></code> of shape <code class="docutils literal notranslate"><span class="pre">(n_ell,</span> <span class="pre">n_bpw)</span></code> — one column per bandpower, the layout
-<a class="reference internal" href="sp_validation.sacc_io.html#sp_validation.sacc_io.add_pseudo_cl" title="sp_validation.sacc_io.add_pseudo_cl"><code class="xref py py-func docutils literal notranslate"><span class="pre">sp_validation.sacc_io.add_pseudo_cl()</span></code></a> expects.</p></li>
+<a class="reference internal" href="sp_validation.sacc_io.html#sp_validation.sacc_io.add_pseudo_cl" title="sp_validation.sacc_io.add_pseudo_cl"><code class="xref py py-func docutils literal notranslate"><span class="pre">sp_validation.sacc_io.add_pseudo_cl()</span></code></a> expects. If <code class="docutils literal notranslate"><span class="pre">nside</span></code> is
+given, this includes <code class="docutils literal notranslate"><span class="pre">pw²(ℓ)</span></code> on the window’s multipole grid.</p></li>
 </ul>
 </p>
 </dd>
@@ -333,10 +606,22 @@ diagonal EE←EE block (equal to BB←BB and EB←EB, verified identical).</p>
 <ul>
 <li><a :data-current="activeSection === '#sp_validation.pseudo_cl.pseudo_cl_geometry'" class="reference internal" href="#sp_validation.pseudo_cl.pseudo_cl_geometry"><code class="docutils literal notranslate"><span class="pre">pseudo_cl_geometry()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.pseudo_cl.make_namaster_bin'" class="reference internal" href="#sp_validation.pseudo_cl.make_namaster_bin"><code class="docutils literal notranslate"><span class="pre">make_namaster_bin()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.pseudo_cl.get_pixels'" class="reference internal" href="#sp_validation.pseudo_cl.get_pixels"><code class="docutils literal notranslate"><span class="pre">get_pixels()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.pseudo_cl.get_n_gal_map'" class="reference internal" href="#sp_validation.pseudo_cl.get_n_gal_map"><code class="docutils literal notranslate"><span class="pre">get_n_gal_map()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.pseudo_cl.get_shear_map'" class="reference internal" href="#sp_validation.pseudo_cl.get_shear_map"><code class="docutils literal notranslate"><span class="pre">get_shear_map()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.pseudo_cl.get_variance_map'" class="reference internal" href="#sp_validation.pseudo_cl.get_variance_map"><code class="docutils literal notranslate"><span class="pre">get_variance_map()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.pseudo_cl.get_noise_bias_analytical'" class="reference internal" href="#sp_validation.pseudo_cl.get_noise_bias_analytical"><code class="docutils literal notranslate"><span class="pre">get_noise_bias_analytical()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.pseudo_cl.apply_random_rotation'" class="reference internal" href="#sp_validation.pseudo_cl.apply_random_rotation"><code class="docutils literal notranslate"><span class="pre">apply_random_rotation()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.pseudo_cl.get_noise_realisation'" class="reference internal" href="#sp_validation.pseudo_cl.get_noise_realisation"><code class="docutils literal notranslate"><span class="pre">get_noise_realisation()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.pseudo_cl.get_noise_bias_from_gaussian_real'" class="reference internal" href="#sp_validation.pseudo_cl.get_noise_bias_from_gaussian_real"><code class="docutils literal notranslate"><span class="pre">get_noise_bias_from_gaussian_real()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.pseudo_cl.get_noise_bias'" class="reference internal" href="#sp_validation.pseudo_cl.get_noise_bias"><code class="docutils literal notranslate"><span class="pre">get_noise_bias()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.pseudo_cl.get_field_and_workspace_from_map'" class="reference internal" href="#sp_validation.pseudo_cl.get_field_and_workspace_from_map"><code class="docutils literal notranslate"><span class="pre">get_field_and_workspace_from_map()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.pseudo_cl.get_field_and_workspace_from_catalog'" class="reference internal" href="#sp_validation.pseudo_cl.get_field_and_workspace_from_catalog"><code class="docutils literal notranslate"><span class="pre">get_field_and_workspace_from_catalog()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.pseudo_cl.compute_cl_from_field_and_workspace'" class="reference internal" href="#sp_validation.pseudo_cl.compute_cl_from_field_and_workspace"><code class="docutils literal notranslate"><span class="pre">compute_cl_from_field_and_workspace()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.pseudo_cl.get_pseudo_cls_map'" class="reference internal" href="#sp_validation.pseudo_cl.get_pseudo_cls_map"><code class="docutils literal notranslate"><span class="pre">get_pseudo_cls_map()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.pseudo_cl.get_pseudo_cls_catalog'" class="reference internal" href="#sp_validation.pseudo_cl.get_pseudo_cls_catalog"><code class="docutils literal notranslate"><span class="pre">get_pseudo_cls_catalog()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.pseudo_cl.get_fiducial_cl'" class="reference internal" href="#sp_validation.pseudo_cl.get_fiducial_cl"><code class="docutils literal notranslate"><span class="pre">get_fiducial_cl()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.pseudo_cl.get_pseudo_cl_iNKA_covariance'" class="reference internal" href="#sp_validation.pseudo_cl.get_pseudo_cl_iNKA_covariance"><code class="docutils literal notranslate"><span class="pre">get_pseudo_cl_iNKA_covariance()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.pseudo_cl.bandpower_window_from_workspace'" class="reference internal" href="#sp_validation.pseudo_cl.bandpower_window_from_workspace"><code class="docutils literal notranslate"><span class="pre">bandpower_window_from_workspace()</span></code></a></li>
 </ul>
 </div>
