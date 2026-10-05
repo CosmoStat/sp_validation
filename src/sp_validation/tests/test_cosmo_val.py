@@ -469,7 +469,7 @@ class TestCosmologyValidation:
 
         params, version = self._write_synthetic_catalogs(tmp_path)
         part = tmp_path / "part.sacc"
-        gg = run_2pcf.run_2pcf(
+        kwargs = dict(
             ver=version,
             min_sep=5.0,
             max_sep=100.0,
@@ -479,16 +479,19 @@ class TestCosmologyValidation:
             output_dir=params["output_dir"],
             sacc_out=str(part),
         )
-
-        cov = sacc_io.load(str(part), allow_unblinded=True).covariance
-        if npatch > 1:
-            assert isinstance(cov, sacc.covariance.FullCovariance)
-            np.testing.assert_array_equal(cov.dense, gg.cov)
-        else:
-            assert isinstance(cov, sacc.covariance.DiagonalCovariance)
-            np.testing.assert_array_equal(
-                cov.diag, np.concatenate([gg.varxip, gg.varxim])
-            )
+        # The second producer call encounters its own columns-only text cache.
+        for _ in range(2):
+            gg = run_2pcf.run_2pcf(**kwargs)
+            cov = sacc_io.load(str(part), allow_unblinded=True).covariance
+            if npatch > 1:
+                assert gg.results
+                assert isinstance(cov, sacc.covariance.FullCovariance)
+                np.testing.assert_array_equal(cov.dense, gg.cov)
+            else:
+                assert isinstance(cov, sacc.covariance.DiagonalCovariance)
+                np.testing.assert_array_equal(
+                    cov.diag, np.concatenate([gg.varxip, gg.varxim])
+                )
 
     def test_a_patched_xi_dump_remeasures_covariance(self, tmp_path):
         """Columns-only dumps cannot supply the dense jackknife covariance."""
