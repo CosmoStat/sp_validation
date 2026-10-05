@@ -11,7 +11,16 @@ def measurement_matches(path, config):
     metadata = Path(str(path) + ".json")
     if not Path(path).exists() or not metadata.exists():
         return False
-    return json.loads(metadata.read_text()) == {"means": "unpatched", "config": config}
+    recorded = json.loads(metadata.read_text())
+    previous_config = recorded.get("config", {})
+    if config.get("min_top") is not None:
+        # With the root depth pinned, threads affect reduction round-off,
+        # not the approximation. A plotting job can reuse a multi-core product.
+        config = {k: v for k, v in config.items() if k != "num_threads"}
+        previous_config = {
+            k: v for k, v in previous_config.items() if k != "num_threads"
+        }
+    return recorded.get("means") == "unpatched" and previous_config == config
 
 
 def write_measurement_metadata(path, config):

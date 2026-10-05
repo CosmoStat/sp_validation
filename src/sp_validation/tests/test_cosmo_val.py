@@ -509,6 +509,28 @@ class TestCosmologyValidation:
             )
         assert read.results
 
+    def test_xi_plotting_reads_the_published_columns_without_remeasurement(
+        self, tmp_path, monkeypatch
+    ):
+        params, version = self._write_synthetic_catalogs(tmp_path)
+        cv = CosmologyValidation(
+            [version], npatch=4, theta_min=5, theta_max=100, nbins=6, **params
+        )
+        pair = "tomo_bin_all_tomo_bin_all"
+        measured = cv.calculate_2pcf_version(version, num_threads=1)[pair]
+
+        def no_catalogue_read(*args):
+            raise AssertionError("plotting must reuse its declared measurement input")
+
+        monkeypatch.setattr(cv, "_shear_columns", no_catalogue_read)
+        cached = cv.calculate_2pcf_version(version, read_cached=True)[pair]
+        for column in ("xip", "xim", "meanr", "meanlogr", "weight", "npairs"):
+            np.testing.assert_array_equal(
+                getattr(cached, column), getattr(measured, column)
+            )
+        np.testing.assert_allclose(cached.varxip, measured.varxip, rtol=1e-15)
+        assert not cached.results
+
     def test_calculate_2pcf_is_reproducible_across_machines(
         self, tmp_path, monkeypatch
     ):

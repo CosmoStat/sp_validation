@@ -25,6 +25,7 @@ class RealSpaceMixin:
         ver,
         npatch=None,
         compute_tomography=False,
+        read_cached=False,
         **treecorr_config,
     ):
         """
@@ -47,6 +48,10 @@ class RealSpaceMixin:
             compute_tomography (bool, optional): Whether to compute tomographic
             correlations. Defaults to False.
 
+            read_cached (bool, optional): Reuse columns-only dumps for plotting,
+            including patched runs. They carry the published means and variances,
+            but no patch results for dense or derived jackknife covariance.
+
             **treecorr_config: Additional TreeCorr configuration parameters that
             will override the instance's default `treecorr_config`. For example,
             `min_sep=1`.
@@ -59,7 +64,8 @@ class RealSpaceMixin:
         Notes:
             - The non-tomographic pair is written to a columns-only TreeCorr
               dump with a configuration/mean-source JSON sidecar. Unpatched
-              runs can reuse it; patched runs remeasure to retain covariance.
+              runs can reuse it; patched measurements remeasure to retain
+              covariance. Plotting can opt into reading the saved columns.
             - Full-sample means use an unpatched tree; patches supply covariance.
             - Seeded patch centres are computed once from the full catalogue and
               shared by every tomographic bin pair.
@@ -88,7 +94,7 @@ class RealSpaceMixin:
             if (bin1, bin2) == ("all", "all"):
                 out_fname = self._xi_txt_path(ver, treecorr_config, npatch)
                 if (
-                    int(npatch) == 1
+                    (int(npatch) == 1 or read_cached)
                     and not self.force_run
                     and measurement_matches(out_fname, treecorr_config)
                 ):
@@ -122,6 +128,7 @@ class RealSpaceMixin:
                         self._xi_txt_path(ver, treecorr_config, npatch),
                         write_patch_results=False,
                         write_cov=False,
+                        precision=17,
                     )
                     write_measurement_metadata(
                         self._xi_txt_path(ver, treecorr_config, npatch), treecorr_config
@@ -194,6 +201,7 @@ class RealSpaceMixin:
         self,
         npatch=None,
         compute_tomography=False,
+        read_cached=False,
         **treecorr_config,
     ):
         """
@@ -210,6 +218,9 @@ class RealSpaceMixin:
             compute_tomography (bool, optional): Whether to compute tomographic
             correlations. Defaults to False.
 
+            read_cached (bool, optional): Reuse columns-only dumps for plotting;
+            defaults to False so patched measurements retain resampling state.
+
             **treecorr_config: Additional TreeCorr configuration parameters passed
             through to each per-version call.
 
@@ -223,6 +234,7 @@ class RealSpaceMixin:
                 ver,
                 npatch=npatch,
                 compute_tomography=compute_tomography,
+                read_cached=read_cached,
                 **treecorr_config,
             )
 
@@ -306,7 +318,7 @@ class RealSpaceMixin:
         Writes ``xi_pm_tomography_{tomography}.png`` and
         ``xi_pm_theta_tomography_{tomography}.png`` under the output directory.
         """
-        self.calculate_2pcf(compute_tomography=tomography)
+        self.calculate_2pcf(compute_tomography=tomography, read_cached=True)
 
         for times_theta in (False, True):
             prefix = r"$\theta\,$" if times_theta else ""
@@ -347,7 +359,7 @@ class RealSpaceMixin:
                 "xi_psf_sys; construct CosmologyValidation with "
                 "compute_tomography=True"
             )
-        self.calculate_2pcf(compute_tomography=tomography)
+        self.calculate_2pcf(compute_tomography=tomography, read_cached=True)
 
         y_label = r"$\xi^{{\rm PSF, sys}}_{0} / \xi_{0}$"
         self.plot_2pcf_tomography(
