@@ -132,6 +132,7 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.b_modes.html">sp_validation.b_modes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.blinding.html">sp_validation.blinding</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.calibration.html">sp_validation.calibration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.catalog.html">sp_validation.catalog</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.catalog_builders.html">sp_validation.catalog_builders</a></li>
@@ -220,7 +221,7 @@
 </span><span id="line-18"><span class="kn">from</span><span class="w"> </span><span class="nn">shear_psf_leakage.rho_tau_stat</span><span class="w"> </span><span class="kn">import</span> <span class="n">PSFErrorFit</span>
 </span><span id="line-19"><span class="kn">from</span><span class="w"> </span><span class="nn">uncertainties</span><span class="w"> </span><span class="kn">import</span> <span class="n">ufloat</span>
 </span><span id="line-20">
-</span><span id="line-21"><span class="kn">from</span><span class="w"> </span><span class="nn">..</span><span class="w"> </span><span class="kn">import</span> <span class="n">sacc_io</span>
+</span><span id="line-21"><span class="kn">from</span><span class="w"> </span><span class="nn">..</span><span class="w"> </span><span class="kn">import</span> <span class="n">blinding</span><span class="p">,</span> <span class="n">sacc_io</span>
 </span><span id="line-22"><span class="kn">from</span><span class="w"> </span><span class="nn">..io</span><span class="w"> </span><span class="kn">import</span> <span class="n">open_entry</span>
 </span><span id="line-23"><span class="kn">from</span><span class="w"> </span><span class="nn">..rho_tau</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
 </span><span id="line-24">    <span class="n">get_rho_tau_w_cov</span><span class="p">,</span>
@@ -343,7 +344,7 @@
 </span><span id="line-134">    <span class="k">def</span><span class="w"> </span><span class="nf">rho_tau_to_sacc_part</span><span class="p">(</span>
 </span><span id="line-135">        <span class="bp">self</span><span class="p">,</span> <span class="n">version</span><span class="p">,</span> <span class="n">out_dir</span><span class="p">,</span> <span class="n">base</span><span class="p">,</span> <span class="n">rho_stat_handler</span><span class="p">,</span> <span class="n">tau_stat_handler</span>
 </span><span id="line-136">    <span class="p">):</span>
-</span><span id="line-137"><span class="w">        </span><span class="sd">"""Write the ρ/τ SACC part for one version.</span>
+</span><span id="line-137"><span class="w">        </span><span class="sd">"""Write the ρ/τ SACC part for one version, under the version's blind.</span>
 </span><span id="line-138">
 </span><span id="line-139"><span class="sd">        ρ_0…ρ_5 autos and τ_0/τ_2/τ_5 leakage from the handler tables. The</span>
 </span><span id="line-140"><span class="sd">        ``CovTauTh`` theory covariance ``cov_tau_{base}_th.npy`` is passed as</span>
@@ -366,7 +367,7 @@
 </span><span id="line-157">            <span class="n">tau_cov_th</span><span class="o">=</span><span class="n">tau_cov_th</span><span class="p">,</span>
 </span><span id="line-158">        <span class="p">)</span>
 </span><span id="line-159">        <span class="n">out_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">out_dir</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"rho_tau_</span><span class="si">{</span><span class="n">base</span><span class="si">}</span><span class="s2">.sacc"</span><span class="p">)</span>
-</span><span id="line-160">        <span class="n">sacc_io</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">out_path</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">"data"</span><span class="p">)</span></div>
+</span><span id="line-160">        <span class="n">sacc_io</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">out_path</span><span class="p">,</span> <span class="n">blind</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">blind</span><span class="p">(</span><span class="n">version</span><span class="p">),</span> <span class="n">theory</span><span class="o">=</span><span class="n">blinding</span><span class="o">.</span><span class="n">no_signal</span><span class="p">)</span></div>
 
 </span><span id="line-161">
 <div class="viewcode-block" id="PSFSystematicsMixin.calculate_rho_tau_fits">

@@ -100,6 +100,7 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html">sp_validation.b_modes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.blinding.html">sp_validation.blinding</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.calibration.html">sp_validation.calibration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html">sp_validation.catalog</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog_builders.html">sp_validation.catalog_builders</a></li>
@@ -179,6 +180,8 @@
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.init_results"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.init_results()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.results"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.results</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.results_objectwise"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.results_objectwise</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.blind"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.blind()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._refuse_blinded_tomography"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._refuse_blinded_tomography()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.basename"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.basename()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._binning"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._binning()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._read_shear_cols"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._read_shear_cols()</span></code></a></li>
@@ -208,6 +211,7 @@
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html">sp_validation.cosmo_val.pseudo_cl</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl._apply_pixel_window_to_fiducial_cl"><code class="docutils literal notranslate"><span class="pre">_apply_pixel_window_to_fiducial_cl()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.plot_pseudo_cl_spectrum"><code class="docutils literal notranslate"><span class="pre">plot_pseudo_cl_spectrum()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl._spectra"><code class="docutils literal notranslate"><span class="pre">_spectra()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin</span></code></a></li>
 </ul>
 </li>
@@ -221,6 +225,7 @@
 </li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.real_space.html">sp_validation.cosmo_val.real_space</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="sp_validation.cosmo_val.real_space.html#sp_validation.cosmo_val.real_space.RealSpaceMixin"><code class="docutils literal notranslate"><span class="pre">RealSpaceMixin</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.cosmo_val.real_space.html#sp_validation.cosmo_val.real_space._map2_transform"><code class="docutils literal notranslate"><span class="pre">_map2_transform()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.sacc_writers.html">sp_validation.cosmo_val.sacc_writers</a><ul>
@@ -271,6 +276,33 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html#sp_validation.b_modes._cosebis_result_to_dict"><code class="docutils literal notranslate"><span class="pre">_cosebis_result_to_dict()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html#sp_validation.b_modes.save_cosebis_results"><code class="docutils literal notranslate"><span class="pre">save_cosebis_results()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html#sp_validation.b_modes.plot_cosebis_covariance_matrix"><code class="docutils literal notranslate"><span class="pre">plot_cosebis_covariance_matrix()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="sp_validation.blinding.html">sp_validation.blinding</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.blinding.html#sp_validation.blinding.BlindingError"><code class="docutils literal notranslate"><span class="pre">BlindingError</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.blinding.html#sp_validation.blinding.Blind"><code class="docutils literal notranslate"><span class="pre">Blind</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.blinding.html#sp_validation.blinding.Blind.name"><code class="docutils literal notranslate"><span class="pre">Blind.name</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.blinding.html#sp_validation.blinding.Blind.path"><code class="docutils literal notranslate"><span class="pre">Blind.path</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.blinding.html#sp_validation.blinding.Blind.record"><code class="docutils literal notranslate"><span class="pre">Blind.record()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.blinding.html#sp_validation.blinding._shear_file"><code class="docutils literal notranslate"><span class="pre">_shear_file()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.blinding.html#sp_validation.blinding.blind_of"><code class="docutils literal notranslate"><span class="pre">blind_of()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.blinding.html#sp_validation.blinding.registry"><code class="docutils literal notranslate"><span class="pre">registry()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.blinding.html#sp_validation.blinding.open_blind"><code class="docutils literal notranslate"><span class="pre">open_blind()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.blinding.html#sp_validation.blinding.conceal"><code class="docutils literal notranslate"><span class="pre">conceal()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.blinding.html#sp_validation.blinding.init"><code class="docutils literal notranslate"><span class="pre">init()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.blinding.html#sp_validation.blinding.fiducial"><code class="docutils literal notranslate"><span class="pre">fiducial()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.blinding.html#sp_validation.blinding.no_signal"><code class="docutils literal notranslate"><span class="pre">no_signal()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.blinding.html#sp_validation.blinding.shear"><code class="docutils literal notranslate"><span class="pre">shear()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.blinding.html#sp_validation.blinding.cosmology"><code class="docutils literal notranslate"><span class="pre">cosmology()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.blinding.html#sp_validation.blinding._cosmology"><code class="docutils literal notranslate"><span class="pre">_cosmology()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.blinding.html#sp_validation.blinding._ell"><code class="docutils literal notranslate"><span class="pre">_ell()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.blinding.html#sp_validation.blinding._lensing"><code class="docutils literal notranslate"><span class="pre">_lensing()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.blinding.html#sp_validation.blinding._shear_cl"><code class="docutils literal notranslate"><span class="pre">_shear_cl()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.blinding.html#sp_validation.blinding._xi"><code class="docutils literal notranslate"><span class="pre">_xi()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.blinding.html#sp_validation.blinding._cl"><code class="docutils literal notranslate"><span class="pre">_cl()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.blinding.html#sp_validation.blinding.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="sp_validation.calibration.html">sp_validation.calibration</a><ul>
@@ -623,7 +655,11 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.sacc_io.html#sp_validation.sacc_io.get_nz"><code class="docutils literal notranslate"><span class="pre">get_nz()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.sacc_io.html#sp_validation.sacc_io._get_pm"><code class="docutils literal notranslate"><span class="pre">_get_pm()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.sacc_io.html#sp_validation.sacc_io.get_xi"><code class="docutils literal notranslate"><span class="pre">get_xi()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="sp_validation.sacc_io.html#sp_validation.sacc_io.get_xi_weight"><code class="docutils literal notranslate"><span class="pre">get_xi_weight()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.sacc_io.html#sp_validation.sacc_io._XiView"><code class="docutils literal notranslate"><span class="pre">_XiView</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.sacc_io.html#sp_validation.sacc_io._XiView.cov"><code class="docutils literal notranslate"><span class="pre">_XiView.cov</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.sacc_io.html#sp_validation.sacc_io.xi_correlation"><code class="docutils literal notranslate"><span class="pre">xi_correlation()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.sacc_io.html#sp_validation.sacc_io.get_pseudo_cl"><code class="docutils literal notranslate"><span class="pre">get_pseudo_cl()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.sacc_io.html#sp_validation.sacc_io.get_cosebis"><code class="docutils literal notranslate"><span class="pre">get_cosebis()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.sacc_io.html#sp_validation.sacc_io.get_pure_eb"><code class="docutils literal notranslate"><span class="pre">get_pure_eb()</span></code></a></li>
@@ -637,7 +673,8 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.sacc_io.html#sp_validation.sacc_io.merge"><code class="docutils literal notranslate"><span class="pre">merge()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.sacc_io.html#sp_validation.sacc_io._grid_groups"><code class="docutils literal notranslate"><span class="pre">_grid_groups()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.sacc_io.html#sp_validation.sacc_io._check_grid_consistency"><code class="docutils literal notranslate"><span class="pre">_check_grid_consistency()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="sp_validation.sacc_io.html#sp_validation.sacc_io.update_statistic"><code class="docutils literal notranslate"><span class="pre">update_statistic()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.sacc_io.html#sp_validation.sacc_io.stamp"><code class="docutils literal notranslate"><span class="pre">stamp()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.sacc_io.html#sp_validation.sacc_io.seal"><code class="docutils literal notranslate"><span class="pre">seal()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.sacc_io.html#sp_validation.sacc_io.save"><code class="docutils literal notranslate"><span class="pre">save()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.sacc_io.html#sp_validation.sacc_io.load"><code class="docutils literal notranslate"><span class="pre">load()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.sacc_io.html#sp_validation.sacc_io._twopoint_hdu"><code class="docutils literal notranslate"><span class="pre">_twopoint_hdu()</span></code></a></li>

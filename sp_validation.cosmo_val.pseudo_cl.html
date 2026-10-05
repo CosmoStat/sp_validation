@@ -100,6 +100,7 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html">sp_validation.b_modes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.blinding.html">sp_validation.blinding</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.calibration.html">sp_validation.calibration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html">sp_validation.catalog</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog_builders.html">sp_validation.catalog_builders</a></li>
@@ -173,6 +174,11 @@ must remain unchanged.</p>
 <p><code class="docutils literal notranslate"><span class="pre">datasets</span></code> maps a version to <code class="docutils literal notranslate"><span class="pre">{"ell",</span> <span class="pre">"cl",</span> <span class="pre">"cov",</span> <span class="pre">"style"}</span></code>, where
 <code class="docutils literal notranslate"><span class="pre">style</span></code> carries the <code class="docutils literal notranslate"><span class="pre">marker</span></code> and <code class="docutils literal notranslate"><span class="pre">colour</span></code> the version is drawn with.</p>
 </dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.cosmo_val.pseudo_cl._spectra">
+<span class="sig-name descname"><span class="pre">_spectra</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">part</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmo_val/pseudo_cl.html#_spectra"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmo_val.pseudo_cl._spectra" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.pseudo_cl._spectra'">¶</a></dt>
+<dd><p>The ELL/EE/EB/BE/BB dict of a single-field pseudo-Cl part, whose BE is EB.</p>
+</dd></dl>
 <dl class="py class">
 <dt class="sig sig-object py" id="sp_validation.cosmo_val.pseudo_cl.PseudoClMixin">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">PseudoClMixin</span></span><a class="reference internal" href="_modules/sp_validation/cosmo_val/pseudo_cl.html#PseudoClMixin"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin'">¶</a></dt>
@@ -190,10 +196,14 @@ must remain unchanged.</p>
 <span class="sig-name descname"><span class="pre">calculate_pseudo_cl</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">compute_tomography</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmo_val/pseudo_cl.html#PseudoClMixin.calculate_pseudo_cl"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.calculate_pseudo_cl" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.calculate_pseudo_cl'">¶</a></dt>
 <dd><p>Compute the pseudo-Cl of a <cite>CosmologyValidation</cite> inputs with tomography.</p>
 <p>With <code class="docutils literal notranslate"><span class="pre">compute_tomography=False</span></code> the single <code class="docutils literal notranslate"><span class="pre">("all",</span> <span class="pre">"all")</span></code> pair is
-computed and written as a SACC part, by default to
-<code class="docutils literal notranslate"><span class="pre">pseudo_cl_{ver}.sacc</span></code>; <code class="docutils literal notranslate"><span class="pre">out_path</span></code> overrides that destination (one
-version only). With <code class="docutils literal notranslate"><span class="pre">compute_tomography=True</span></code> every tomographic bin
-pair is written to its own FITS file and <code class="docutils literal notranslate"><span class="pre">out_path</span></code> is not accepted.</p>
+computed and written as a SACC part sealed under the version’s blind,
+by default to <code class="docutils literal notranslate"><span class="pre">pseudo_cl_{ver}.sacc</span></code>; <code class="docutils literal notranslate"><span class="pre">out_path</span></code> overrides that
+destination (one version only). An existing part is reused only if it
+was sealed under the blind declared now. With
+<code class="docutils literal notranslate"><span class="pre">compute_tomography=True</span></code> every tomographic bin pair is written to its
+own FITS file and <code class="docutils literal notranslate"><span class="pre">out_path</span></code> is not accepted; tomographic pairs are
+measured only on a public catalogue
+(<code class="xref py py-meth docutils literal notranslate"><span class="pre">_refuse_blinded_tomography()</span></code>).</p>
 </dd></dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.calculate_pseudo_cl_map">
@@ -337,17 +347,16 @@ a tomographic pair is a FITS table under <code class="docutils literal notransla
 <dl class="py method">
 <dt class="sig sig-object py" id="sp_validation.cosmo_val.pseudo_cl.PseudoClMixin._save_pseudo_cl">
 <span class="sig-name descname"><span class="pre">_save_pseudo_cl</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ver</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tomo_bin_pair</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ell_eff</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cl_all</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wsp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nside</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmo_val/pseudo_cl.html#PseudoClMixin._save_pseudo_cl"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin._save_pseudo_cl" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin._save_pseudo_cl'">¶</a></dt>
-<dd><p>Write one pair as SACC or FITS, forwarding <code class="docutils literal notranslate"><span class="pre">nside</span></code> for map spectra.</p>
+<dd><p>Write one pair as SACC or FITS and return its spectra as written.</p>
+<p>Forwards <code class="docutils literal notranslate"><span class="pre">nside</span></code> for map spectra. The <code class="docutils literal notranslate"><span class="pre">("all",</span> <span class="pre">"all")</span></code> spectra are
+those of the part as sealed under the version’s blind.</p>
 </dd></dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="sp_validation.cosmo_val.pseudo_cl.PseudoClMixin._load_pseudo_cl">
-<span class="sig-name descname"><span class="pre">_load_pseudo_cl</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">out_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tomo_bin_pair</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmo_val/pseudo_cl.html#PseudoClMixin._load_pseudo_cl"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin._load_pseudo_cl" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin._load_pseudo_cl'">¶</a></dt>
-<dd><p>Read one bin pair’s pseudo-Cl product written by <code class="docutils literal notranslate"><span class="pre">_save_pseudo_cl</span></code>.</p>
-</dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.cosmo_val.pseudo_cl.PseudoClMixin._load_pseudo_cl_sacc">
-<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">_load_pseudo_cl_sacc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">out_path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmo_val/pseudo_cl.html#PseudoClMixin._load_pseudo_cl_sacc"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin._load_pseudo_cl_sacc" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin._load_pseudo_cl_sacc'">¶</a></dt>
-<dd><p>Read the single-field auto-spectrum, whose BE equals EB.</p>
+<span class="sig-name descname"><span class="pre">_load_pseudo_cl</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ver</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tomo_bin_pair</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmo_val/pseudo_cl.html#PseudoClMixin._load_pseudo_cl"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin._load_pseudo_cl" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin._load_pseudo_cl'">¶</a></dt>
+<dd><p>One bin pair’s pseudo-Cl product written by <code class="docutils literal notranslate"><span class="pre">_save_pseudo_cl</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">None</span></code> for an <code class="docutils literal notranslate"><span class="pre">("all",</span> <span class="pre">"all")</span></code> part sealed under a blind other than
+the one <code class="docutils literal notranslate"><span class="pre">ver</span></code> declares now, which must be measured again.</p>
 </dd></dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.pseudo_cl_to_sacc_part">
@@ -356,7 +365,8 @@ a tomographic pair is a FITS table under <code class="docutils literal notransla
 <p><code class="docutils literal notranslate"><span class="pre">cl_all</span></code> is NaMaster’s decoupled <code class="docutils literal notranslate"><span class="pre">(4,</span> <span class="pre">nbp)</span></code> array (EE, EB, BE, BB).
 Map-based callers pass <code class="docutils literal notranslate"><span class="pre">nside</span></code> so the window includes <code class="docutils literal notranslate"><span class="pre">pw²(ℓ)</span></code>;
 catalogue-based callers leave it unset because their spectra have no
-HEALPix pixel window. No covariance is attached here.</p>
+HEALPix pixel window. No covariance is attached here. Returns the part
+as sealed under the version’s blind.</p>
 </dd></dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.save_pseudo_cl">
@@ -476,6 +486,7 @@ modest (e.g. +/-0.25) to avoid washing out to white or black.</p></li>
 <ul>
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.pseudo_cl._apply_pixel_window_to_fiducial_cl'" class="reference internal" href="#sp_validation.cosmo_val.pseudo_cl._apply_pixel_window_to_fiducial_cl"><code class="docutils literal notranslate"><span class="pre">_apply_pixel_window_to_fiducial_cl()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.pseudo_cl.plot_pseudo_cl_spectrum'" class="reference internal" href="#sp_validation.cosmo_val.pseudo_cl.plot_pseudo_cl_spectrum"><code class="docutils literal notranslate"><span class="pre">plot_pseudo_cl_spectrum()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.cosmo_val.pseudo_cl._spectra'" class="reference internal" href="#sp_validation.cosmo_val.pseudo_cl._spectra"><code class="docutils literal notranslate"><span class="pre">_spectra()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin'" class="reference internal" href="#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin</span></code></a><ul>
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.pseudo_cls'" class="reference internal" href="#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.pseudo_cls"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin.pseudo_cls</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.pseudo_cls_onecov'" class="reference internal" href="#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.pseudo_cls_onecov"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin.pseudo_cls_onecov</span></code></a></li>
@@ -506,7 +517,6 @@ modest (e.g. +/-0.25) to avoid washing out to white or black.</p></li>
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin._output_path_iNKA_block_cov'" class="reference internal" href="#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin._output_path_iNKA_block_cov"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin._output_path_iNKA_block_cov()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin._save_pseudo_cl'" class="reference internal" href="#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin._save_pseudo_cl"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin._save_pseudo_cl()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin._load_pseudo_cl'" class="reference internal" href="#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin._load_pseudo_cl"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin._load_pseudo_cl()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin._load_pseudo_cl_sacc'" class="reference internal" href="#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin._load_pseudo_cl_sacc"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin._load_pseudo_cl_sacc()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.pseudo_cl_to_sacc_part'" class="reference internal" href="#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.pseudo_cl_to_sacc_part"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin.pseudo_cl_to_sacc_part()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.save_pseudo_cl'" class="reference internal" href="#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.save_pseudo_cl"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin.save_pseudo_cl()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin._save_iNKA_covariance'" class="reference internal" href="#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin._save_iNKA_covariance"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin._save_iNKA_covariance()</span></code></a></li>

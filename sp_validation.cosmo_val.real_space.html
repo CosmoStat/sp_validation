@@ -100,6 +100,7 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html">sp_validation.b_modes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.blinding.html">sp_validation.blinding</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.calibration.html">sp_validation.calibration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html">sp_validation.catalog</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog_builders.html">sp_validation.catalog_builders</a></li>
@@ -162,52 +163,44 @@ measurement, and the per-bin-pair plots of both. It depends on TreeCorr.</p>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <dl class="py method">
 <dt class="sig sig-object py" id="sp_validation.cosmo_val.real_space.RealSpaceMixin.calculate_2pcf_version">
-<span class="sig-name descname"><span class="pre">calculate_2pcf_version</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ver</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">npatch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compute_tomography</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">treecorr_config</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmo_val/real_space.html#RealSpaceMixin.calculate_2pcf_version"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmo_val.real_space.RealSpaceMixin.calculate_2pcf_version" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.real_space.RealSpaceMixin.calculate_2pcf_version'">¶</a></dt>
-<dd><p>Calculate the two-point correlation function (2PCF) ξ± for a single catalog
-version with TreeCorr.</p>
-<p>This is the per-version child function. Use <a class="reference internal" href="#sp_validation.cosmo_val.real_space.RealSpaceMixin.calculate_2pcf" title="sp_validation.cosmo_val.real_space.RealSpaceMixin.calculate_2pcf"><code class="xref py py-meth docutils literal notranslate"><span class="pre">calculate_2pcf()</span></code></a> to run over every
-version in <code class="docutils literal notranslate"><span class="pre">self.versions</span></code> in one call.</p>
-<p>By default the class instance’s <cite>npatch</cite> and <cite>treecorr_config</cite> entries are
-used to initialize the TreeCorr Catalog and GGCorrelation objects, but may
-be overridden by passing keyword arguments.</p>
+<span class="sig-name descname"><span class="pre">calculate_2pcf_version</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ver</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">npatch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compute_tomography</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'reporting'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">treecorr_config</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmo_val/real_space.html#RealSpaceMixin.calculate_2pcf_version"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmo_val.real_space.RealSpaceMixin.calculate_2pcf_version" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.real_space.RealSpaceMixin.calculate_2pcf_version'">¶</a></dt>
+<dd><p>ξ± of one catalogue version on one binning, for each bin pair.</p>
+<p>The non-tomographic <code class="docutils literal notranslate"><span class="pre">("all",</span> <span class="pre">"all")</span></code> pair is born as its SACC part,
+sealed under the version’s blind (<a class="reference internal" href="sp_validation.sacc_io.html#sp_validation.sacc_io.seal" title="sp_validation.sacc_io.seal"><code class="xref py py-func docutils literal notranslate"><span class="pre">sp_validation.sacc_io.seal()</span></code></a>)
+before it is kept in <code class="docutils literal notranslate"><span class="pre">self.xi_parts[ver,</span> <span class="pre">grid]</span></code>, returned or written,
+so on a blinded catalogue its true values never leave this method. A
+part already held for <code class="docutils literal notranslate"><span class="pre">(ver,</span> <span class="pre">grid)</span></code> is reused when no <code class="docutils literal notranslate"><span class="pre">npatch</span></code>,
+binning or <code class="docutils literal notranslate"><span class="pre">out</span></code> is asked for, so the figure rules draw the parts they
+are handed. Tomographic pairs are measured only on a public catalogue
+(<code class="xref py py-meth docutils literal notranslate"><span class="pre">_refuse_blinded_tomography()</span></code>). Use <a class="reference internal" href="#sp_validation.cosmo_val.real_space.RealSpaceMixin.calculate_2pcf" title="sp_validation.cosmo_val.real_space.RealSpaceMixin.calculate_2pcf"><code class="xref py py-meth docutils literal notranslate"><span class="pre">calculate_2pcf()</span></code></a> to run
+over every version in <code class="docutils literal notranslate"><span class="pre">self.versions</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>ver</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – The catalog version to process.</p></li>
-<li><p><strong>npatch</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>optional</em>) – The number of patches to use for the</p></li>
-<li><p><strong>attribute.</strong> (<em>calculation. Defaults to the instance's npatch</em>)</p></li>
-<li><p><strong>compute_tomography</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – Whether to compute tomographic</p></li>
-<li><p><strong>False.</strong> (<em>correlations. Defaults to</em>)</p></li>
-<li><p><strong>**treecorr_config</strong> – Additional TreeCorr configuration parameters that</p></li>
-<li><p><strong>example</strong> (<em>will override the instance's default treecorr_config. For</em>)</p></li>
+<li><p><strong>ver</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – The catalogue version to measure.</p></li>
+<li><p><strong>npatch</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>optional</em>) – Jackknife patches; the instance’s
+<code class="docutils literal notranslate"><span class="pre">npatch</span></code> by default. With patches the part carries the
+jackknife covariance, without them the shot-noise diagonal.
+Seeded patch centres come from the full catalogue and are
+shared by every bin pair.</p></li>
+<li><p><strong>compute_tomography</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – Measure the tomographic bin
+pairs instead of <code class="docutils literal notranslate"><span class="pre">("all",</span> <span class="pre">"all")</span></code>.</p></li>
+<li><p><strong>grid</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – The grid tag the part’s points carry.</p></li>
+<li><p><strong>out</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Where to write the part as well.</p></li>
+<li><p><strong>**treecorr_config</strong> – Overrides of the instance’s <code class="docutils literal notranslate"><span class="pre">treecorr_config</span></code>,
+e.g. <code class="docutils literal notranslate"><span class="pre">min_sep=1</span></code>.</p></li>
 </ul>
 </dd>
-</dl>
-<p>:param :
-:param <cite>min_sep=1</cite>.:</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Mapping of <code class="docutils literal notranslate"><span class="pre">"tomo_bin_{b1}_tomo_bin_{b2}"</span></code> to the corresponding
-treecorr.GGCorrelation object. For the non-tomographic case the single
-key is <code class="docutils literal notranslate"><span class="pre">"tomo_bin_all_tomo_bin_all"</span></code>.</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">"tomo_bin_{b1}_tomo_bin_{b2}"</span></code> → ξ± shaped like a TreeCorr
+<code class="docutils literal notranslate"><span class="pre">GGCorrelation</span></code>: the part’s
+<a class="reference internal" href="sp_validation.sacc_io.html#sp_validation.sacc_io.xi_correlation" title="sp_validation.sacc_io.xi_correlation"><code class="xref py py-func docutils literal notranslate"><span class="pre">xi_correlation()</span></code></a> view for
+<code class="docutils literal notranslate"><span class="pre">("all",</span> <span class="pre">"all")</span></code>, the TreeCorr object for a tomographic pair.</p>
 </dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
 </dd>
 </dl>
-<p class="rubric">Notes</p>
-<ul class="simple">
-<li><p>The non-tomographic pair is written to the columns-only TreeCorr
-dump <code class="docutils literal notranslate"><span class="pre">xi_{basename}.txt</span></code>. If that file already exists, the pair is
-read back from it instead of being recomputed.</p></li>
-<li><p>Seeded patch centres are computed once from the full catalogue and
-shared by every tomographic bin pair.</p></li>
-</ul>
-</dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.cosmo_val.real_space.RealSpaceMixin._xi_txt_path">
-<span class="sig-name descname"><span class="pre">_xi_txt_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ver</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">treecorr_config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">npatch</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmo_val/real_space.html#RealSpaceMixin._xi_txt_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmo_val.real_space.RealSpaceMixin._xi_txt_path" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.real_space.RealSpaceMixin._xi_txt_path'">¶</a></dt>
-<dd><p>Path of the non-tomographic ξ± TreeCorr dump for a version.</p>
 </dd></dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="sp_validation.cosmo_val.real_space.RealSpaceMixin._shear_columns">
@@ -247,7 +240,7 @@ in <code class="docutils literal notranslate"><span class="pre">self.cat_ggs</sp
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">self.cat_ggs</span></code>, mapping each version to its
-<code class="docutils literal notranslate"><span class="pre">{"tomo_bin_{b1}_tomo_bin_{b2}":</span> <span class="pre">treecorr.GGCorrelation}</span></code> dict.</p>
+<code class="docutils literal notranslate"><span class="pre">{"tomo_bin_{b1}_tomo_bin_{b2}":</span> <span class="pre">ξ±}</span></code> dict.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
@@ -256,8 +249,14 @@ in <code class="docutils literal notranslate"><span class="pre">self.cat_ggs</sp
 </dd></dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="sp_validation.cosmo_val.real_space.RealSpaceMixin.calculate_aperture_mass_dispersion">
-<span class="sig-name descname"><span class="pre">calculate_aperture_mass_dispersion</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">theta_min</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theta_max</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">200</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nbins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">500</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nbins_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">15</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">npatch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compute_tomography</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmo_val/real_space.html#RealSpaceMixin.calculate_aperture_mass_dispersion"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmo_val.real_space.RealSpaceMixin.calculate_aperture_mass_dispersion" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.real_space.RealSpaceMixin.calculate_aperture_mass_dispersion'">¶</a></dt>
-<dd></dd></dl>
+<span class="sig-name descname"><span class="pre">calculate_aperture_mass_dispersion</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">theta_min</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theta_max</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">200</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nbins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">500</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nbins_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">15</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">npatch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compute_tomography</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmo_val/real_space.html#RealSpaceMixin.calculate_aperture_mass_dispersion"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmo_val.real_space.RealSpaceMixin.calculate_aperture_mass_dispersion" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.real_space.RealSpaceMixin.calculate_aperture_mass_dispersion'">¶</a></dt>
+<dd><p>⟨M_ap²⟩ and ⟨M_×²⟩ of every version and bin pair, from its ξ±.</p>
+<p>Both are linear in ξ± (TreeCorr’s <code class="docutils literal notranslate"><span class="pre">calculateMapSq</span></code> sum, Schneider et
+al. 2002 filter), so they and their covariance T·C·Tᵀ come from the ξ±
+of <a class="reference internal" href="#sp_validation.cosmo_val.real_space.RealSpaceMixin.calculate_2pcf_version" title="sp_validation.cosmo_val.real_space.RealSpaceMixin.calculate_2pcf_version"><code class="xref py py-meth docutils literal notranslate"><span class="pre">calculate_2pcf_version()</span></code></a> on a fine grid: for <code class="docutils literal notranslate"><span class="pre">("all",</span>
+<span class="pre">"all")</span></code> its sealed part, concealed on a blinded catalogue, whose shift,
+the same in every patch, leaves C unchanged.</p>
+</dd></dl>
 <dl class="py property">
 <dt class="sig sig-object py" id="sp_validation.cosmo_val.real_space.RealSpaceMixin.map2">
 <span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">map2</span></span><a class="headerlink" href="#sp_validation.cosmo_val.real_space.RealSpaceMixin.map2" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.real_space.RealSpaceMixin.map2'">¶</a></dt>
@@ -363,6 +362,13 @@ argument. The error bar propagates the variances of both ξ^{PSF, sys}
 and ξ±; the first version also draws the <code class="docutils literal notranslate"><span class="pre">±threshold</span></code> band.</p>
 </dd></dl>
 </dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.cosmo_val.real_space._map2_transform">
+<span class="sig-name descname"><span class="pre">_map2_transform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">radii</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theta</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bin_size</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmo_val/real_space.html#_map2_transform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmo_val.real_space._map2_transform" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.real_space._map2_transform'">¶</a></dt>
+<dd><p>The matrix taking [ξ+, ξ−] on a log grid to [⟨M_ap²⟩, ⟨M_×²⟩] at <code class="docutils literal notranslate"><span class="pre">radii</span></code>.</p>
+<p>TreeCorr’s <code class="docutils literal notranslate"><span class="pre">calculateMapSq</span></code> sum with the Schneider et al. (2002) filter:
+⟨M_ap²⟩, ⟨M_×²⟩ = Σ s² (T+ ξ+ ± T− ξ−) dlnθ / 2, s = θ/R, T± zero for s ≥ 2.</p>
+</dd></dl>
 </section>
 </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
 <div class="mr-auto">
@@ -386,7 +392,6 @@ and ξ±; the first version also draws the <code class="docutils literal notrans
 <ul>
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.real_space.RealSpaceMixin'" class="reference internal" href="#sp_validation.cosmo_val.real_space.RealSpaceMixin"><code class="docutils literal notranslate"><span class="pre">RealSpaceMixin</span></code></a><ul>
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.real_space.RealSpaceMixin.calculate_2pcf_version'" class="reference internal" href="#sp_validation.cosmo_val.real_space.RealSpaceMixin.calculate_2pcf_version"><code class="docutils literal notranslate"><span class="pre">RealSpaceMixin.calculate_2pcf_version()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.cosmo_val.real_space.RealSpaceMixin._xi_txt_path'" class="reference internal" href="#sp_validation.cosmo_val.real_space.RealSpaceMixin._xi_txt_path"><code class="docutils literal notranslate"><span class="pre">RealSpaceMixin._xi_txt_path()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.real_space.RealSpaceMixin._shear_columns'" class="reference internal" href="#sp_validation.cosmo_val.real_space.RealSpaceMixin._shear_columns"><code class="docutils literal notranslate"><span class="pre">RealSpaceMixin._shear_columns()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.real_space.RealSpaceMixin._patch_centers'" class="reference internal" href="#sp_validation.cosmo_val.real_space.RealSpaceMixin._patch_centers"><code class="docutils literal notranslate"><span class="pre">RealSpaceMixin._patch_centers()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.real_space.RealSpaceMixin._bin_catalog'" class="reference internal" href="#sp_validation.cosmo_val.real_space.RealSpaceMixin._bin_catalog"><code class="docutils literal notranslate"><span class="pre">RealSpaceMixin._bin_catalog()</span></code></a></li>
@@ -401,6 +406,7 @@ and ξ±; the first version also draws the <code class="docutils literal notrans
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.real_space.RealSpaceMixin._ratio_xi_sys_xi_x_y_plot_function'" class="reference internal" href="#sp_validation.cosmo_val.real_space.RealSpaceMixin._ratio_xi_sys_xi_x_y_plot_function"><code class="docutils literal notranslate"><span class="pre">RealSpaceMixin._ratio_xi_sys_xi_x_y_plot_function()</span></code></a></li>
 </ul>
 </li>
+<li><a :data-current="activeSection === '#sp_validation.cosmo_val.real_space._map2_transform'" class="reference internal" href="#sp_validation.cosmo_val.real_space._map2_transform"><code class="docutils literal notranslate"><span class="pre">_map2_transform()</span></code></a></li>
 </ul>
 </div>
 </aside>

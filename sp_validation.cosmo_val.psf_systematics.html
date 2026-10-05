@@ -100,6 +100,7 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html">sp_validation.b_modes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.blinding.html">sp_validation.blinding</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.calibration.html">sp_validation.calibration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html">sp_validation.catalog</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog_builders.html">sp_validation.catalog_builders</a></li>
@@ -189,7 +190,7 @@ written per version (<code class="docutils literal notranslate"><span class="pre
 <dl class="py method">
 <dt class="sig sig-object py" id="sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.rho_tau_to_sacc_part">
 <span class="sig-name descname"><span class="pre">rho_tau_to_sacc_part</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">version</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">base</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rho_stat_handler</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tau_stat_handler</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmo_val/psf_systematics.html#PSFSystematicsMixin.rho_tau_to_sacc_part"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.rho_tau_to_sacc_part" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.rho_tau_to_sacc_part'">¶</a></dt>
-<dd><p>Write the ρ/τ SACC part for one version.</p>
+<dd><p>Write the ρ/τ SACC part for one version, under the version’s blind.</p>
 <p>ρ_0…ρ_5 autos and τ_0/τ_2/τ_5 leakage from the handler tables. The
 <code class="docutils literal notranslate"><span class="pre">CovTauTh</span></code> theory covariance <code class="docutils literal notranslate"><span class="pre">cov_tau_{base}_th.npy</span></code> is passed as
 <code class="docutils literal notranslate"><span class="pre">tau_cov_th</span></code> when it exists; without it the τ block falls back —

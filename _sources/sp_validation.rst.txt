@@ -22,6 +22,7 @@ Submodules
    :maxdepth: 4
 
    sp_validation.b_modes
+   sp_validation.blinding
    sp_validation.calibration
    sp_validation.catalog
    sp_validation.catalog_builders

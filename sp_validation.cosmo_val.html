@@ -100,6 +100,7 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html">sp_validation.b_modes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.blinding.html">sp_validation.blinding</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.calibration.html">sp_validation.calibration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html">sp_validation.catalog</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog_builders.html">sp_validation.catalog_builders</a></li>
@@ -367,6 +368,21 @@ whole-survey n(z) is their sum, as
 <span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">results_objectwise</span></span><a class="headerlink" href="#sp_validation.cosmo_val.CosmologyValidation.results_objectwise" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.CosmologyValidation.results_objectwise'">¶</a></dt>
 <dd></dd></dl>
 <dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.cosmo_val.CosmologyValidation.blind">
+<span class="sig-name descname"><span class="pre">blind</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">version</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmo_val/core.html#CosmologyValidation.blind"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmo_val.CosmologyValidation.blind" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.CosmologyValidation.blind'">¶</a></dt>
+<dd><p>The blind every SACC this object writes for <code class="docutils literal notranslate"><span class="pre">version</span></code> is saved
+under, as the catalogue config declares it.</p>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.cosmo_val.CosmologyValidation._refuse_blinded_tomography">
+<span class="sig-name descname"><span class="pre">_refuse_blinded_tomography</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">version</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmo_val/core.html#CosmologyValidation._refuse_blinded_tomography"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmo_val.CosmologyValidation._refuse_blinded_tomography" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.CosmologyValidation._refuse_blinded_tomography'">¶</a></dt>
+<dd><p>Refuse to measure tomographic shear signal on a blinded catalogue.</p>
+<p>Only the <code class="docutils literal notranslate"><span class="pre">("all",</span> <span class="pre">"all")</span></code> pair is born as a SACC part, whose tracer
+carries the n(z) the blind’s theory shifts it by. The tomographic ξ±,
+⟨M_ap²⟩ and pseudo-Cℓ are TreeCorr objects and FITS tables with no
+per-bin tracer, so on a blinded catalogue they would hold true values.</p>
+</dd></dl>
+<dl class="py method">
 <dt class="sig sig-object py" id="sp_validation.cosmo_val.CosmologyValidation.basename">
 <span class="sig-name descname"><span class="pre">basename</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">version</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tomo_bin_a</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'all'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tomo_bin_b</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">treecorr_config</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">npatch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmo_val/core.html#CosmologyValidation.basename"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmo_val.CosmologyValidation.basename" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.CosmologyValidation.basename'">¶</a></dt>
 <dd></dd></dl>
@@ -396,8 +412,7 @@ key is requested).</p>
 <p>Applies additive-bias subtraction and the multiplicative response:
 <code class="docutils literal notranslate"><span class="pre">g</span> <span class="pre">=</span> <span class="pre">(e</span> <span class="pre">−</span> <span class="pre">c)</span> <span class="pre">/</span> <span class="pre">R</span></code>. For DES the response is the catalog-averaged
 per-component <code class="docutils literal notranslate"><span class="pre">R11</span></code>/<code class="docutils literal notranslate"><span class="pre">R22</span></code> (column names in the config); for every
-other version it is the scalar <code class="docutils literal notranslate"><span class="pre">R</span></code> from the config. Used identically
-by <code class="xref py py-meth docutils literal notranslate"><span class="pre">calculate_2pcf()</span></code> and <code class="xref py py-meth docutils literal notranslate"><span class="pre">calculate_aperture_mass_dispersion()</span></code>.</p>
+other version it is the scalar <code class="docutils literal notranslate"><span class="pre">R</span></code> from the config.</p>
 <p>Must be called inside a <code class="docutils literal notranslate"><span class="pre">self.results[ver].temporarily_read_data()</span></code>
 context, since it reads <code class="docutils literal notranslate"><span class="pre">dat_shear</span></code> columns.</p>
 </dd></dl>
@@ -526,6 +541,8 @@ Example: {version1: {‘ids’: tomo_bin_ids1, ‘pairs’: tomo_bin_pairs1}, �
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation.init_results"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.init_results()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation.results"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.results</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation.results_objectwise"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.results_objectwise</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation.blind"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.blind()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation._refuse_blinded_tomography"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._refuse_blinded_tomography()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation.basename"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.basename()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation._binning"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._binning()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation._read_shear_cols"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._read_shear_cols()</span></code></a></li>
@@ -549,6 +566,7 @@ Example: {version1: {‘ids’: tomo_bin_ids1, ‘pairs’: tomo_bin_pairs1}, �
 <li class="toctree-l1"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html">sp_validation.cosmo_val.pseudo_cl</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl._apply_pixel_window_to_fiducial_cl"><code class="docutils literal notranslate"><span class="pre">_apply_pixel_window_to_fiducial_cl()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.plot_pseudo_cl_spectrum"><code class="docutils literal notranslate"><span class="pre">plot_pseudo_cl_spectrum()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl._spectra"><code class="docutils literal notranslate"><span class="pre">_spectra()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin</span></code></a><ul>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.pseudo_cls"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin.pseudo_cls</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.pseudo_cls_onecov"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin.pseudo_cls_onecov</span></code></a></li>
@@ -579,7 +597,6 @@ Example: {version1: {‘ids’: tomo_bin_ids1, ‘pairs’: tomo_bin_pairs1}, �
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin._output_path_iNKA_block_cov"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin._output_path_iNKA_block_cov()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin._save_pseudo_cl"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin._save_pseudo_cl()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin._load_pseudo_cl"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin._load_pseudo_cl()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin._load_pseudo_cl_sacc"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin._load_pseudo_cl_sacc()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.pseudo_cl_to_sacc_part"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin.pseudo_cl_to_sacc_part()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.save_pseudo_cl"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin.save_pseudo_cl()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin._save_iNKA_covariance"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin._save_iNKA_covariance()</span></code></a></li>
@@ -647,7 +664,6 @@ Example: {version1: {‘ids’: tomo_bin_ids1, ‘pairs’: tomo_bin_pairs1}, �
 <li class="toctree-l1"><a class="reference internal" href="sp_validation.cosmo_val.real_space.html">sp_validation.cosmo_val.real_space</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.real_space.html#sp_validation.cosmo_val.real_space.RealSpaceMixin"><code class="docutils literal notranslate"><span class="pre">RealSpaceMixin</span></code></a><ul>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.real_space.html#sp_validation.cosmo_val.real_space.RealSpaceMixin.calculate_2pcf_version"><code class="docutils literal notranslate"><span class="pre">RealSpaceMixin.calculate_2pcf_version()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.real_space.html#sp_validation.cosmo_val.real_space.RealSpaceMixin._xi_txt_path"><code class="docutils literal notranslate"><span class="pre">RealSpaceMixin._xi_txt_path()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.real_space.html#sp_validation.cosmo_val.real_space.RealSpaceMixin._shear_columns"><code class="docutils literal notranslate"><span class="pre">RealSpaceMixin._shear_columns()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.real_space.html#sp_validation.cosmo_val.real_space.RealSpaceMixin._patch_centers"><code class="docutils literal notranslate"><span class="pre">RealSpaceMixin._patch_centers()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.real_space.html#sp_validation.cosmo_val.real_space.RealSpaceMixin._bin_catalog"><code class="docutils literal notranslate"><span class="pre">RealSpaceMixin._bin_catalog()</span></code></a></li>
@@ -662,6 +678,7 @@ Example: {version1: {‘ids’: tomo_bin_ids1, ‘pairs’: tomo_bin_pairs1}, �
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.real_space.html#sp_validation.cosmo_val.real_space.RealSpaceMixin._ratio_xi_sys_xi_x_y_plot_function"><code class="docutils literal notranslate"><span class="pre">RealSpaceMixin._ratio_xi_sys_xi_x_y_plot_function()</span></code></a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.real_space.html#sp_validation.cosmo_val.real_space._map2_transform"><code class="docutils literal notranslate"><span class="pre">_map2_transform()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="sp_validation.cosmo_val.sacc_writers.html">sp_validation.cosmo_val.sacc_writers</a><ul>
@@ -722,6 +739,8 @@ Example: {version1: {‘ids’: tomo_bin_ids1, ‘pairs’: tomo_bin_pairs1}, �
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.CosmologyValidation.init_results'" class="reference internal" href="#sp_validation.cosmo_val.CosmologyValidation.init_results"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.init_results()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.CosmologyValidation.results'" class="reference internal" href="#sp_validation.cosmo_val.CosmologyValidation.results"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.results</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.CosmologyValidation.results_objectwise'" class="reference internal" href="#sp_validation.cosmo_val.CosmologyValidation.results_objectwise"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.results_objectwise</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.cosmo_val.CosmologyValidation.blind'" class="reference internal" href="#sp_validation.cosmo_val.CosmologyValidation.blind"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.blind()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.cosmo_val.CosmologyValidation._refuse_blinded_tomography'" class="reference internal" href="#sp_validation.cosmo_val.CosmologyValidation._refuse_blinded_tomography"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._refuse_blinded_tomography()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.CosmologyValidation.basename'" class="reference internal" href="#sp_validation.cosmo_val.CosmologyValidation.basename"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.basename()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.CosmologyValidation._binning'" class="reference internal" href="#sp_validation.cosmo_val.CosmologyValidation._binning"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._binning()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.CosmologyValidation._read_shear_cols'" class="reference internal" href="#sp_validation.cosmo_val.CosmologyValidation._read_shear_cols"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._read_shear_cols()</span></code></a></li>

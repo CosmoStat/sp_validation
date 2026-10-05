@@ -100,6 +100,7 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html">sp_validation.b_modes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.blinding.html">sp_validation.blinding</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.calibration.html">sp_validation.calibration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html">sp_validation.catalog</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog_builders.html">sp_validation.catalog_builders</a></li>
@@ -501,10 +502,26 @@ because the blocks are passed to <code class="docutils literal notranslate"><spa
 <span class="sig-name descname"><span class="pre">get_xi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bins</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#get_xi"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.get_xi" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.get_xi'">¶</a></dt>
 <dd><p>Return <code class="docutils literal notranslate"><span class="pre">(theta,</span> <span class="pre">xip,</span> <span class="pre">xim)</span></code> for one tracer pair and grid.</p>
 </dd></dl>
+<dl class="py class">
+<dt class="sig sig-object py" id="sp_validation.sacc_io._XiView">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">_XiView</span></span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#_XiView"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io._XiView" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io._XiView'">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/types.html#types.SimpleNamespace" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">SimpleNamespace</span></code></a></p>
+<p>What <a class="reference internal" href="#sp_validation.sacc_io.xi_correlation" title="sp_validation.sacc_io.xi_correlation"><code class="xref py py-func docutils literal notranslate"><span class="pre">xi_correlation()</span></code></a> returns; <code class="docutils literal notranslate"><span class="pre">cov</span></code> is sliced out when first read.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="sp_validation.sacc_io._XiView.cov">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cov</span></span><a class="headerlink" href="#sp_validation.sacc_io._XiView.cov" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io._XiView.cov'">¶</a></dt>
+<dd></dd></dl>
+</dd></dl>
 <dl class="py function">
-<dt class="sig sig-object py" id="sp_validation.sacc_io.get_xi_weight">
-<span class="sig-name descname"><span class="pre">get_xi_weight</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bins</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#get_xi_weight"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.get_xi_weight" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.get_xi_weight'">¶</a></dt>
-<dd><p>Return the TreeCorr pair weights stored with <a class="reference internal" href="#sp_validation.sacc_io.add_xi" title="sp_validation.sacc_io.add_xi"><code class="xref py py-func docutils literal notranslate"><span class="pre">add_xi()</span></code></a>’s ξ+ points.</p>
+<dt class="sig sig-object py" id="sp_validation.sacc_io.xi_correlation">
+<span class="sig-name descname"><span class="pre">xi_correlation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0,</span> <span class="pre">0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#xi_correlation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.xi_correlation" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.xi_correlation'">¶</a></dt>
+<dd><p>One ξ± series of <code class="docutils literal notranslate"><span class="pre">s</span></code>, shaped like the TreeCorr <code class="docutils literal notranslate"><span class="pre">GGCorrelation</span></code> it came from.</p>
+<p>Carries <code class="docutils literal notranslate"><span class="pre">meanr</span></code>, <code class="docutils literal notranslate"><span class="pre">rnom</span></code>, <code class="docutils literal notranslate"><span class="pre">xip</span></code>, <code class="docutils literal notranslate"><span class="pre">xim</span></code>, <code class="docutils literal notranslate"><span class="pre">varxip</span></code>, <code class="docutils literal notranslate"><span class="pre">varxim</span></code>,
+<code class="docutils literal notranslate"><span class="pre">cov</span></code>, <code class="docutils literal notranslate"><span class="pre">npairs</span></code>, <code class="docutils literal notranslate"><span class="pre">weight</span></code>, <code class="docutils literal notranslate"><span class="pre">left_edges</span></code>, <code class="docutils literal notranslate"><span class="pre">right_edges</span></code> and
+<code class="docutils literal notranslate"><span class="pre">npatch1</span></code>, so code written against a measurement reads a part unchanged.
+<code class="docutils literal notranslate"><span class="pre">grid</span></code> may be left out when the pair’s ξ± lies on one grid. The edges are
+the log-binning edges about the nominal centres (<code class="docutils literal notranslate"><span class="pre">theta_nom</span></code>), and <code class="docutils literal notranslate"><span class="pre">cov</span></code>
+is the series’ block of the part’s covariance.</p>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.sacc_io.get_pseudo_cl">
@@ -624,9 +641,8 @@ requires either <strong>all</strong> inputs to carry a covariance or <strong>non
 raises otherwise (cross-statistic covariance assembly beyond
 block-diagonal is out of scope here; see <code class="docutils literal notranslate"><span class="pre">assemble_covariance</span></code>).</p>
 <p>Metadata must be consistent: keys present in several inputs must carry
-equal values (a <code class="docutils literal notranslate"><span class="pre">type:</span> <span class="pre">data</span></code> file cannot merge with a <code class="docutils literal notranslate"><span class="pre">type:</span> <span class="pre">mock</span></code>
-file), and the union lands on the result. This deliberately replaces the
-library’s clash behaviour, which mangles clashing keys by appending
+equal values, and the union lands on the result. This deliberately replaces
+the library’s clash behaviour, which mangles clashing keys by appending
 labels.</p>
 <p>Grid consistency follows tagging semantics: the <code class="docutils literal notranslate"><span class="pre">grid</span></code> tag declares
 which binning a set of points lives on, so all same-length theta (or
@@ -687,70 +703,39 @@ window (equal window ells and weight matrix); series without windows
 (foreign files) skip the window check.</p>
 </dd></dl>
 <dl class="py function">
-<dt class="sig sig-object py" id="sp_validation.sacc_io.update_statistic">
-<span class="sig-name descname"><span class="pre">update_statistic</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sub</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#update_statistic"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.update_statistic" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.update_statistic'">¶</a></dt>
-<dd><p>Overwrite the values of <code class="docutils literal notranslate"><span class="pre">s</span></code>’s points that match <code class="docutils literal notranslate"><span class="pre">sub</span></code>’s, in place.</p>
-<p>The merge-back half of the extract → conceal → merge blinding flow
-(PRD #241 §4): each point of <code class="docutils literal notranslate"><span class="pre">sub</span></code> is matched to exactly one point of
-<code class="docutils literal notranslate"><span class="pre">s</span></code> by <code class="docutils literal notranslate"><span class="pre">(data_type,</span> <span class="pre">tracers,</span> <span class="pre">tags)</span></code>, and that point’s <em>value</em> is
-replaced. Nothing else changes — insertion order, tags, windows and the
-covariance are untouched (blinding shifts the mean only), so <code class="docutils literal notranslate"><span class="pre">sub</span></code>’s
-own covariance (e.g. the sub-block <code class="docutils literal notranslate"><span class="pre">extract</span></code> attaches) is deliberately
-not consulted. A <code class="docutils literal notranslate"><span class="pre">sub</span></code> point with no match, or with several, raises
-<code class="docutils literal notranslate"><span class="pre">ValueError</span></code>.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>s</strong> (<em>sacc.Sacc</em>) – Target, mutated in place.</p></li>
-<li><p><strong>sub</strong> (<em>sacc.Sacc</em>) – The replacement block, e.g. <code class="docutils literal notranslate"><span class="pre">extract(s,</span> <span class="pre">...)</span></code> after concealment.</p></li>
-</ul>
-</dd>
-</dl>
+<dt class="sig sig-object py" id="sp_validation.sacc_io.stamp">
+<span class="sig-name descname"><span class="pre">stamp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#stamp"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.stamp" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.stamp'">¶</a></dt>
+<dd><p>The blind <code class="docutils literal notranslate"><span class="pre">s</span></code> was saved under: its <code class="docutils literal notranslate"><span class="pre">blind</span></code> metadata, <code class="docutils literal notranslate"><span class="pre">none</span></code> if absent.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io.seal">
+<span class="sig-name descname"><span class="pre">seal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">blind</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#seal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.seal" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.seal'">¶</a></dt>
+<dd><p>What <a class="reference internal" href="#sp_validation.sacc_io.save" title="sp_validation.sacc_io.save"><code class="xref py py-func docutils literal notranslate"><span class="pre">save()</span></code></a> writes for a birth, kept in memory: a copy of <code class="docutils literal notranslate"><span class="pre">s</span></code>
+concealed under <code class="docutils literal notranslate"><span class="pre">blind</span></code> with <code class="docutils literal notranslate"><span class="pre">theory</span></code> and stamped with its name.</p>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.sacc_io.save">
-<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#save"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.save" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.save'">¶</a></dt>
-<dd><p>Write <code class="docutils literal notranslate"><span class="pre">s</span></code> to <code class="docutils literal notranslate"><span class="pre">path</span></code> (FITS), overwriting any existing file.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>s</strong> (<em>sacc.Sacc</em>) – Data set to write; its metadata is stamped in place.</p></li>
-<li><p><strong>type</strong> (<em>{'data'</em><em>, </em><em>'mock'}</em>) – Provenance of the underlying catalogue, stored as the required
-<code class="docutils literal notranslate"><span class="pre">type</span></code> metadata tag (PRD #241 §4, “Mocks vs data”). The caller —
-the pipeline computing the data vector — knows whether its input
-catalogue is a mock; there is deliberately no default. <code class="docutils literal notranslate"><span class="pre">load</span></code>
-refuses <code class="docutils literal notranslate"><span class="pre">type='data'</span></code> files that are not blinded.</p></li>
+<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">blind</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">derived_from</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#save"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.save" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.save'">¶</a></dt>
+<dd><p>Write <code class="docutils literal notranslate"><span class="pre">s</span></code> to <code class="docutils literal notranslate"><span class="pre">path</span></code> (FITS) and return what was written.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">save(s,</span> <span class="pre">path,</span> <span class="pre">blind=b)</span></code>: a birth. <code class="docutils literal notranslate"><span class="pre">b</span></code> is a
+<a class="reference internal" href="sp_validation.blinding.html#sp_validation.blinding.Blind" title="sp_validation.blinding.Blind"><code class="xref py py-class docutils literal notranslate"><span class="pre">sp_validation.blinding.Blind</span></code></a>; unless it is <code class="docutils literal notranslate"><span class="pre">none</span></code>, every row
+of <code class="docutils literal notranslate"><span class="pre">s</span></code> is shifted by t(hidden) − t(fiducial), t being <code class="docutils literal notranslate"><span class="pre">theory</span></code>
+(<a class="reference internal" href="sp_validation.blinding.html#module-sp_validation.blinding" title="sp_validation.blinding"><code class="xref py py-mod docutils literal notranslate"><span class="pre">sp_validation.blinding</span></code></a> describes a theory; the default is
+<a class="reference internal" href="sp_validation.blinding.html#sp_validation.blinding.shear" title="sp_validation.blinding.shear"><code class="xref py py-func docutils literal notranslate"><span class="pre">sp_validation.blinding.shear()</span></code></a>). The output is stamped with
+<code class="docutils literal notranslate"><span class="pre">b</span></code>’s name.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">save(s,</span> <span class="pre">path,</span> <span class="pre">derived_from=parts)</span></code>: a derivation (COSEBIs, pure-E/B,
+an assembly); the parts must share one <a class="reference internal" href="#sp_validation.sacc_io.stamp" title="sp_validation.sacc_io.stamp"><code class="xref py py-func docutils literal notranslate"><span class="pre">stamp()</span></code></a>, which <code class="docutils literal notranslate"><span class="pre">s</span></code> takes,
+unshifted. With <code class="docutils literal notranslate"><span class="pre">blind=b</span></code> too, that stamp must be <code class="docutils literal notranslate"><span class="pre">b</span></code>’s name.</p></li>
 </ul>
-</dd>
-</dl>
+<p>A measurement computes its signal and saves (or seals) it in the same
+function, returning the sealed part, so on a blinded catalogue its raw
+signal never leaves that function.</p>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.sacc_io.load">
-<span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">allow_unblinded</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#load"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.load" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.load'">¶</a></dt>
-<dd><p>Load a Sacc from <code class="docutils literal notranslate"><span class="pre">path</span></code> (FITS), failing closed on unblinded data.</p>
-<p>Every sacc_io file carries a <code class="docutils literal notranslate"><span class="pre">type:</span> <span class="pre">data|mock</span></code> metadata tag (stamped by
-<code class="docutils literal notranslate"><span class="pre">save</span></code>); blinded files are additionally stamped <code class="docutils literal notranslate"><span class="pre">concealed=True</span></code> by
-Smokescreen. A <code class="docutils literal notranslate"><span class="pre">type='data'</span></code> file without that stamp is real, unblinded
-data, and loading it raises — skipping the blind can never silently
-expose the measured vector (PRD #241 §4). Mocks load freely, blinded or
-not.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – File to load.</p></li>
-<li><p><strong>allow_unblinded</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – Escape hatch for the two legitimate consumers of unblinded data:
-the blinding step itself (which must read the true vector to conceal
-it) and the unblinding/verification tooling. Nothing else — no
-analysis, plotting or inference code — may pass <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The loaded data set.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>sacc.Sacc</p>
-</dd>
-</dl>
+<span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#load"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.load" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.load'">¶</a></dt>
+<dd><p>Load the SACC at <code class="docutils literal notranslate"><span class="pre">path</span></code>.</p>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.sacc_io._twopoint_hdu">
@@ -1068,7 +1053,11 @@ Gaussian+non-Gaussian column (<code class="docutils literal notranslate"><span c
 <li><a :data-current="activeSection === '#sp_validation.sacc_io.get_nz'" class="reference internal" href="#sp_validation.sacc_io.get_nz"><code class="docutils literal notranslate"><span class="pre">get_nz()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.sacc_io._get_pm'" class="reference internal" href="#sp_validation.sacc_io._get_pm"><code class="docutils literal notranslate"><span class="pre">_get_pm()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.sacc_io.get_xi'" class="reference internal" href="#sp_validation.sacc_io.get_xi"><code class="docutils literal notranslate"><span class="pre">get_xi()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.sacc_io.get_xi_weight'" class="reference internal" href="#sp_validation.sacc_io.get_xi_weight"><code class="docutils literal notranslate"><span class="pre">get_xi_weight()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io._XiView'" class="reference internal" href="#sp_validation.sacc_io._XiView"><code class="docutils literal notranslate"><span class="pre">_XiView</span></code></a><ul>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io._XiView.cov'" class="reference internal" href="#sp_validation.sacc_io._XiView.cov"><code class="docutils literal notranslate"><span class="pre">_XiView.cov</span></code></a></li>
+</ul>
+</li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io.xi_correlation'" class="reference internal" href="#sp_validation.sacc_io.xi_correlation"><code class="docutils literal notranslate"><span class="pre">xi_correlation()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.sacc_io.get_pseudo_cl'" class="reference internal" href="#sp_validation.sacc_io.get_pseudo_cl"><code class="docutils literal notranslate"><span class="pre">get_pseudo_cl()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.sacc_io.get_cosebis'" class="reference internal" href="#sp_validation.sacc_io.get_cosebis"><code class="docutils literal notranslate"><span class="pre">get_cosebis()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.sacc_io.get_pure_eb'" class="reference internal" href="#sp_validation.sacc_io.get_pure_eb"><code class="docutils literal notranslate"><span class="pre">get_pure_eb()</span></code></a></li>
@@ -1082,7 +1071,8 @@ Gaussian+non-Gaussian column (<code class="docutils literal notranslate"><span c
 <li><a :data-current="activeSection === '#sp_validation.sacc_io.merge'" class="reference internal" href="#sp_validation.sacc_io.merge"><code class="docutils literal notranslate"><span class="pre">merge()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.sacc_io._grid_groups'" class="reference internal" href="#sp_validation.sacc_io._grid_groups"><code class="docutils literal notranslate"><span class="pre">_grid_groups()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.sacc_io._check_grid_consistency'" class="reference internal" href="#sp_validation.sacc_io._check_grid_consistency"><code class="docutils literal notranslate"><span class="pre">_check_grid_consistency()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.sacc_io.update_statistic'" class="reference internal" href="#sp_validation.sacc_io.update_statistic"><code class="docutils literal notranslate"><span class="pre">update_statistic()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io.stamp'" class="reference internal" href="#sp_validation.sacc_io.stamp"><code class="docutils literal notranslate"><span class="pre">stamp()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io.seal'" class="reference internal" href="#sp_validation.sacc_io.seal"><code class="docutils literal notranslate"><span class="pre">seal()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.sacc_io.save'" class="reference internal" href="#sp_validation.sacc_io.save"><code class="docutils literal notranslate"><span class="pre">save()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.sacc_io.load'" class="reference internal" href="#sp_validation.sacc_io.load"><code class="docutils literal notranslate"><span class="pre">load()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.sacc_io._twopoint_hdu'" class="reference internal" href="#sp_validation.sacc_io._twopoint_hdu"><code class="docutils literal notranslate"><span class="pre">_twopoint_hdu()</span></code></a></li>
