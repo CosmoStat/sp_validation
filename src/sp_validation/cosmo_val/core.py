@@ -146,6 +146,8 @@ class CosmologyValidation(
         Maximum angular separation in arcminutes for correlation function binning.
     nbins : int, default 20
         Number of angular bins for TreeCorr real-space correlation functions.
+    b_target : float, default 0.01
+        Maximum logarithmic-bin tolerance, with bin_slop capped at 1 per grid.
     var_method : {'jackknife', 'sample', 'bootstrap', 'marked_bootstrap'}, default 'jackknife'
         TreeCorr variance estimation method.
     npatch : int, default 20
@@ -311,7 +313,9 @@ class CosmologyValidation(
         cosmo_params=None,
         compute_tomography=False,
         force_run=False,
+        b_target=0.01,
     ):
+        self.b_target = b_target
         self.rho_tau_method = rho_tau_method
         self.cov_estimate_method = cov_estimate_method
         self.compute_cov_rho = compute_cov_rho
@@ -382,6 +386,8 @@ class CosmologyValidation(
             # node's count, whatever share of it the job holds.
             "num_threads": len(os.sched_getaffinity(0)),
         }
+
+        self.treecorr_config = self._binning()
 
         self.catalog_config_path = Path(catalog_config)
         with self.catalog_config_path.open("r") as file:
@@ -603,13 +609,16 @@ class CosmologyValidation(
         None falls back to the instance's treecorr_config value for that key;
         any further keys in `extra` override on top.
         """
-        return {
+        config = {
             **self.treecorr_config,
             "min_sep": min_sep or self.treecorr_config["min_sep"],
             "max_sep": max_sep or self.treecorr_config["max_sep"],
             "nbins": nbins or self.treecorr_config["nbins"],
             **extra,
         }
+        bin_size = np.log(config["max_sep"] / config["min_sep"]) / config["nbins"]
+        config["bin_slop"] = extra.get("bin_slop", min(1, self.b_target / bin_size))
+        return config
 
     def _read_shear_cols(self, ver, *keys):
         """Read shear-catalog columns by their config-key names.
