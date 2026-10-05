@@ -889,7 +889,7 @@ def _from_cli(argv=None):
         default=None,
         help=(
             "Explicit path to the fiducial 1000-bin integration xi_pm text file "
-            "reproduced by lc (e.g. SP_v1.4.6.3_leak_corr_xi_minsep=0.5_maxsep=300.0_"
+            "reproduced by lc (e.g. xi_SP_v1.4.6.3_leak_corr_tomo_bin_all_minsep=0.5_maxsep=300.0_"
             "nbins=1000_npatch=1.txt), overriding the --cosmo-val-dir pattern lookup "
             "for --fiducial-version."
         ),
@@ -946,7 +946,7 @@ def _from_cli(argv=None):
             if is_fiducial and a.fiducial_xi_path
             else os.path.join(
                 a.cosmo_val_dir,
-                f"{ver}_xi_minsep={min_sep_int}_maxsep={max_sep_int}"
+                f"xi_{ver}_tomo_bin_all_minsep={min_sep_int}_maxsep={max_sep_int}"
                 f"_nbins={nbins_int}_npatch={npatch}.txt",
             )
         )

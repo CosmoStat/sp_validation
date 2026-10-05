@@ -33,6 +33,8 @@ cosmo_val:
   cov_estimate_method: th
   compute_cov_rho: true
   n_cov: 100
+  # simulations behind a cov_estimate_method: sim rho/tau covariance (Hartlap)
+  n_sim_cov: 300
   var_method: jackknife
   quantile: 0.1587
   ylim_xi_sys_ratio: [-0.02, 0.5]
@@ -43,7 +45,8 @@ cosmo_val:
   power: 0.5
   n_ell_bins: 32
   ell_step: 10
-  pol_factor: true
+  # e2 multiplier (±1) applied before NaMaster; -1 flips the e2 sign
+  pol_factor: -1
   noise_bias_method: analytic
   cell_seed: 8192
   path_onecovariance: "/home/guerrini/OneCovariance/"

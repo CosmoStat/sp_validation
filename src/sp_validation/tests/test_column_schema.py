@@ -61,6 +61,11 @@ NOT_COLUMNS = {
     "C22",
     "SNR",
     "T",
+    # NaMaster field/workspace dicts keyed by bin; cosmology parameter dicts
+    "W{}",
+    "H0",
+    # GLASS mock catalogues, which are not ShapePipe products
+    "TOM_BIN_ID",
 }
 
 #: An f-string template needs this many literal characters to count as

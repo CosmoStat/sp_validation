@@ -39,17 +39,17 @@ def test_glass_rules_share_suite(toy, tmp_path, suite):
         (data_dir / f"cl_glass_mock_{seed:05d}_4096.npy").touch()
 
     version = config["fiducial"]["mock_version"]
-    suffix = toy.common.fiducial_binning_suffix(config["fiducial"])
     tag = toy.common.pseudo_cl_tag(config)
+    base = toy.common.cv_basename(version, config["fiducial"])
     dependencies = [
         toy.root / "data" / "nz_SP_v0.1_A.txt",
         toy.cosmo_val / f"pseudo_cl_cov_{version}_{tag}.fits",
         *[
             toy.cosmo_val / "rho_tau_stats" / name
             for name in (
-                f"rho_stats_{version}{suffix}.fits",
-                f"tau_stats_{version}{suffix}.fits",
-                f"cov_tau_{version}{suffix}_th.npy",
+                f"rho_stats_{base}.fits",
+                f"tau_stats_{base}.fits",
+                f"cov_tau_{base}_th.npy",
             )
         ],
     ]

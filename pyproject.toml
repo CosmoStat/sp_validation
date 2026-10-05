@@ -70,6 +70,8 @@ dependencies = [
     "jupyterlab",
     "jupytext>=1.15",
     "lenspack",
+    # Sacha's fork of OneCovariance with the bug fix for numpy>2
+    "levin @ git+https://github.com/sachaguer/OneCovariance.git@main",
     "lmfit",
     "numpy>=2.0",
     "opencv-python-headless",
@@ -133,18 +135,16 @@ docs = [
 ]
 # GLASS mock generation (sp_validation.glass_mock). Kept optional: the core
 # library and its import guard resolve without GLASS (the production container
-# ships it via the ``glass`` extra). Pinned set (verified 2026-06-13, fiber
-# glass-cosmology-api-pin): glass 2025.1 is the unique version with the flat API
-# the map path uses AND the legacy ``cosmo.dc``/``xm``/``ef`` interface that
-# ``cosmology`` 2022.10.9 (its newest release) provides — newer glass calls
-# ``comoving_distance``, which no ``cosmology`` release exposes. ``matter_cls``
-# lives in the separate ``glass.ext.camb`` package (absent from glass core
-# >=2024.2), so it is pinned explicitly.
+# ships it via the ``glass`` extra). glass reads its cosmology through the
+# Cosmology API (``comoving_distance``, ``H_over_H0``, ...); ``glass_mock``
+# supplies it from CAMB via ``cosmology.compat.camb``. ``matter_cls`` lives in the
+# separate ``glass.ext.camb`` package (absent from glass core >=2024.2), so it is
+# pinned explicitly.
 glass = [
-    "glass==2025.3",
+    "glass==2026.2",
     "glass.ext.camb==2023.6",
-    "cosmology==2022.10.9",
-    # fitsio: make_unions_glass_sim.py writes the mock catalogue as FITS.
+    "cosmology.compat.camb==0.2.0",
+    # fitsio: make_glass_sim.py writes the mock catalogue as FITS.
     "fitsio",
 ]
 # Cosmo-inference workflow runners (workflow/scripts/*). Kept optional: the core

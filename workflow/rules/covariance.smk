@@ -212,17 +212,14 @@ rule covariance_glass_mock:
         "../scripts/compute_glass_mock_covariance.py"
 
 
-# fiducial_binning_suffix() defined in Snakefile
-
-
 rule generate_glass_mock_rhotau_samples:
     """Generate sampled tau statistics for glass mocks.
 
     Only tau is sampled; inference_prep_glass_mock uses real rho data.
     """
     input:
-        cov_tau=str(COSMO_VAL / f"rho_tau_stats/cov_tau_{FIDUCIAL['mock_version']}{fiducial_binning_suffix()}_th.npy"),
-        ref_tau=str(COSMO_VAL / f"rho_tau_stats/tau_stats_{FIDUCIAL['mock_version']}{fiducial_binning_suffix()}.fits"),
+        cov_tau=cv_cov_tau(FIDUCIAL["mock_version"]),
+        ref_tau=cv_tau_stats(FIDUCIAL["mock_version"]),
     output:
         tau="results/glass_mock_rhotau_samples/{mock_id}/tau_stats_sampled.fits",
     params:

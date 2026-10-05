@@ -1208,3 +1208,48 @@ SP_v1.6.6:
     e2_col: e2
     path: unions_shapepipe_star_2024_v1.6.a.fits
   patch_number: 150
+
+GLASS_mock_validation:
+  subdir: /n09data/guerrini/glass_mock_test/results/
+  pipeline: SP
+  colour: violet
+  getdist_colour: 0.0, 0.5, 1.0
+  ls: dashed
+  marker: '*'
+  cov_th:
+    A: 2405.3892055695346
+    n_e: 6.128201234871523
+    n_psf: 0.752316232272063
+    sigma_e: 0.379587601488189
+  mask: /n09data/guerrini/glass_mock_test/mask_nside_1024.fits
+  psf:
+    PSF_flag: HSM_FLAG_PSF
+    PSF_size: HSM_T_PSF
+    star_flag: HSM_FLAG_STAR
+    star_size: HSM_T_STAR
+    hdu: 1
+    path: /n17data/UNIONS/WL/v1.6.x/unions_shapepipe_psf_2024_v1.6.a.fits
+    ra_col: RA
+    dec_col: DEC
+    e1_PSF_col: HSM_G1_PSF
+    e1_star_col: HSM_G1_STAR
+    e2_PSF_col: HSM_G2_PSF
+    e2_star_col: HSM_G2_STAR
+  shear:
+    R: 1.0
+    path: tomo_test_2_glass_sim_00001_1024.fits
+    redshift_path: /home/guerrini/sp_validation_cosmostat/config/glass_mock/test_data/redshift_distribution_tomo.txt
+    w_col: w
+    e1_col: e1
+    e1_PSF_col: e1_PSF
+    e2_col: e2
+    e2_PSF_col: e2_PSF
+    cols: RA,Dec
+    tomo_bin_col: TOM_BIN_ID
+  star:
+    ra_col: RA
+    dec_col: Dec
+    e1_col: e1
+    e2_col: e2
+    path: /n17data/UNIONS/WL/v1.6.x/unions_shapepipe_star_2024_v1.6.a.fits
+  patch_number: 150

@@ -152,9 +152,11 @@ def test_paper_pseudo_cl_reader(tmp_path):
     assert np.array_equal(data["BB"], cl_all[3])
 
 
-def test_pseudo_cl_to_sacc_real_namaster(tmp_path):
-    """A real small-nside NaMaster workspace's window survives the writer."""
+def test_pseudo_cl_to_sacc_real_namaster_pixel_window(tmp_path):
+    """The SACC window gains pw²(ℓ) only when a map nside is supplied."""
     pytest.importorskip("pymaster")
+    import healpy as hp
+
     from sp_validation.pseudo_cl import get_pseudo_cls_map
 
     nside = 32
@@ -169,8 +171,18 @@ def test_pseudo_cl_to_sacc_real_namaster(tmp_path):
     ell_r, ee, bb, eb, window = sio.get_pseudo_cl(s2, (0, 0))
     assert np.array_equal(ell_r, ell_eff)
     assert np.array_equal(ee, cl_all[0]) and np.array_equal(bb, cl_all[3])
-    # window columns correspond to the bandpowers, one per ell_eff
+    # With nside unset, the workspace window carries no pixel window.
     assert window.weight.shape[1] == len(ell_eff)
+
+    mapped = sw.pseudo_cl_to_sacc({0: _nz()}, META, ell_eff, cl_all, wsp, nside=nside)
+    mapped_window = mapped.get_bandpower_windows(mapped.indices(sio.CL_EE))
+    pw2 = hp.pixwin(nside, lmax=window.weight.shape[0] - 1) ** 2
+    nonzero = np.abs(window.weight) > 1e-20
+    np.testing.assert_allclose(
+        mapped_window.weight[nonzero] / window.weight[nonzero],
+        np.broadcast_to(pw2[:, None], window.weight.shape)[nonzero],
+        rtol=1e-12,
+    )
 
 
 def test_cosebis_to_sacc(tmp_path):
