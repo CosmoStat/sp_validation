@@ -1246,6 +1246,7 @@ SP_v1.6.6:
   patch_number: 150
 
 GLASS_mock_validation:
+  blind: none
   subdir: /n09data/guerrini/glass_mock_test/results/
   pipeline: SP
   colour: violet

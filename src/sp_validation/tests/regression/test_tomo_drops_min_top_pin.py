@@ -24,7 +24,11 @@ def _cosmology_validation(tmp_path):
     cfg = {
         "paths": {"output": str(tmp_path / "out")},
         "nz": {"subdir": str(tmp_path), "dndz": {"path": "nz.txt"}},
-        "synthetic": {"subdir": str(tmp_path), "shear": {"path": "cat.fits"}},
+        "synthetic": {
+            "blind": "none",
+            "subdir": str(tmp_path),
+            "shear": {"path": "cat.fits"},
+        },
     }
     cfg_path = tmp_path / "cat_config.yaml"
     cfg_path.write_text(yaml.safe_dump(cfg))

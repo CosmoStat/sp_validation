@@ -64,6 +64,8 @@ NOT_COLUMNS = {
     # NaMaster field/workspace dicts keyed by bin; cosmology parameter dicts
     "W{}",
     "H0",
+    "A_IA",
+    "S8",
     # GLASS mock catalogues, which are not ShapePipe products
     "TOM_BIN_ID",
 }

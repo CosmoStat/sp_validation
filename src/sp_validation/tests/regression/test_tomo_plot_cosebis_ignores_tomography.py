@@ -47,6 +47,7 @@ def _make_cv(tmp_path):
     out.mkdir()
     cfg = {
         VER: {
+            "blind": "none",
             "subdir": str(tmp_path),
             "shear": {
                 "path": str(cat),
