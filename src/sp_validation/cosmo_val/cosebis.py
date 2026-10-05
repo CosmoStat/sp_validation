@@ -61,7 +61,8 @@ class CosebisMixin:
             Number of COSEBIs modes to compute. Defaults to 10.
         cov_path : str, optional
             Path to theoretical covariance matrix. When provided, enables analytic
-            covariance calculation.
+            covariance calculation for a single pair. Cannot be combined with
+            ``compute_tomography=True``.
         scale_cuts : list of tuples, optional
             Explicit list of (min_theta, max_theta) scale cuts to evaluate.
             Overrides evaluate_all_scale_cuts when provided.
@@ -90,6 +91,12 @@ class CosebisMixin:
             keys and results dictionaries as values.
         """
         self.print_start(f"Computing {version} COSEBIs")
+
+        if cov_path is not None and compute_tomography:
+            raise ValueError(
+                "cov_path holds a single ξ± covariance; it cannot serve every "
+                "tomographic bin pair."
+            )
 
         # Set up parameters with defaults
         npatch = npatch or self.npatch
