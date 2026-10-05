@@ -1335,15 +1335,16 @@ class PseudoClMixin:
                                 bin_key_b2,
                             ),
                         )
-                        block = fits.open(block_path)[f"COVAR_{pa}_{pb}"].data
-
                         sl_a = slice(index_a * n_ell, (index_a + 1) * n_ell)
                         sl_b = slice(index_b * n_ell, (index_b + 1) * n_ell)
 
-                        full_cov[sl_a, sl_b] = block
-
-                        if index_a != index_b:
-                            full_cov[sl_b, sl_a] = block.T
+                        with fits.open(block_path) as block_cov:
+                            full_cov[sl_a, sl_b] = block_cov[f"COVAR_{pa}_{pb}"].data
+                            if index_a != index_b:
+                                # Cov(P_b, Q_a) = Cov(Q_a, P_b).T.
+                                full_cov[sl_b, sl_a] = block_cov[
+                                    f"COVAR_{pb}_{pa}"
+                                ].data.T
 
                     covar.append(fits.ImageHDU(full_cov, name=f"COVAR_{pa}_{pb}"))
 
