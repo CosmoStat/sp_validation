@@ -490,14 +490,10 @@ class TestCosmologyValidation:
                 cov.diag, np.concatenate([gg.varxip, gg.varxim])
             )
 
-    def test_a_patched_xi_dump_reads_back(self, tmp_path):
-        """calculate_2pcf_version reads back the dump a patched measurement wrote.
-
-        The ξ± figure rules re-enter calculate_2pcf on the reporting grid, which
-        has patches, and are handed the dump rule xi wrote (to its precision).
-        """
+    def test_a_patched_xi_dump_remeasures_covariance(self, tmp_path):
+        """Columns-only dumps cannot supply the dense jackknife covariance."""
         params, version = self._write_synthetic_catalogs(tmp_path)
-        binning = dict(npatch=4, min_sep=5.0, max_sep=100.0, nbins=6)
+        binning = dict(npatch=4, min_sep=5.0, max_sep=100.0, nbins=6, num_threads=1)
         pair = "tomo_bin_all_tomo_bin_all"
         measured = CosmologyValidation(
             versions=[version], **params
@@ -507,10 +503,11 @@ class TestCosmologyValidation:
         read = CosmologyValidation(versions=[version], **params).calculate_2pcf_version(
             version, **binning
         )[pair]
-        for column in ("meanr", "npairs", "xip", "xim", "varxip", "varxim"):
-            np.testing.assert_allclose(
-                getattr(read, column), getattr(measured, column), rtol=1e-4
+        for column in ("meanr", "npairs", "xip", "xim", "varxip", "varxim", "cov"):
+            np.testing.assert_array_equal(
+                getattr(read, column), getattr(measured, column)
             )
+        assert read.results
 
     def test_calculate_2pcf_is_reproducible_across_machines(
         self, tmp_path, monkeypatch
@@ -523,7 +520,8 @@ class TestCosmologyValidation:
         process = treecorr.GGCorrelation.process
 
         def recording_process(gg, cat, *args, **kwargs):
-            patches.append(np.array(cat.patch))
+            if cat.npatch > 1:
+                patches.append(np.array(cat.patch))
             return process(gg, cat, *args, **kwargs)
 
         monkeypatch.setattr(treecorr.GGCorrelation, "process", recording_process)
@@ -606,6 +604,197 @@ class TestCosmologyValidation:
         np.testing.assert_allclose(
             cross_pair_catalogs[1][2], expected_centers, rtol=0, atol=1e-14
         )
+
+    @pytest.mark.parametrize("b_target", [0.01, 0.02])
+    def test_bin_slop_follows_the_grid(self, tmp_path, b_target):
+        params, version = self._write_synthetic_catalogs(tmp_path)
+        cv = CosmologyValidation(
+            [version],
+            theta_min=1,
+            theta_max=250,
+            nbins=20,
+            b_target=b_target,
+            **params,
+        )
+        expected = b_target / (np.log(250) / 20)
+        assert cv.treecorr_config["bin_slop"] == pytest.approx(expected)
+        assert cv._binning()["bin_slop"] == pytest.approx(expected)
+        assert cv._binning(0.08, 300, 1000)["bin_slop"] == 1
+        assert cv._binning(bin_slop=0)["bin_slop"] == 0
+        assert "angle_slop" not in cv.treecorr_config
+
+    @pytest.mark.parametrize("tomography", [False, True])
+    def test_published_means_are_layout_independent(
+        self, tmp_path, monkeypatch, tomography
+    ):
+        """Both auto- and cross-bin means ignore the covariance patch layout."""
+        import treecorr
+
+        from sp_validation.statistics import jackknife_patch_centers
+
+        params, version = self._write_synthetic_catalogs(
+            tmp_path,
+            n_gal=4000,
+            with_tomography=tomography,
+            coherent_shear=True,
+        )
+        cv = CosmologyValidation(
+            [version], npatch=8, theta_min=5, theta_max=200, nbins=8, **params
+        )
+        # Small trees exercise cell aggregation without a large catalogue.
+        cv.treecorr_config.update(min_top=2, num_threads=1)
+        cols = cv._shear_columns(version, tomography)
+        cat = cv._bin_catalog(cols, "all", 1)
+        centers = jackknife_patch_centers(cat, 8)
+        angle = np.deg2rad(0.35)
+        rotation = np.array(
+            [
+                [np.cos(angle), -np.sin(angle), 0],
+                [np.sin(angle), np.cos(angle), 0],
+                [0, 0, 1],
+            ]
+        )
+        layouts = [centers, centers @ rotation.T]
+        assert not np.array_equal(
+            cv._bin_catalog(cols, "all", 8, layouts[0]).patch,
+            cv._bin_catalog(cols, "all", 8, layouts[1]).patch,
+        )
+        measured = []
+        for centers in layouts:
+            monkeypatch.setattr(cv, "_patch_centers", lambda *args, c=centers: c)
+            measured.append(
+                cv.calculate_2pcf_version(version, compute_tomography=tomography)
+            )
+        for pair in measured[0]:
+            a, b = measured[0][pair], measured[1][pair]
+            for column in (
+                "xip",
+                "xim",
+                "xip_im",
+                "xim_im",
+                "meanr",
+                "meanlogr",
+                "weight",
+                "npairs",
+            ):
+                np.testing.assert_array_equal(getattr(a, column), getattr(b, column))
+            assert not np.array_equal(a.cov, b.cov)
+            # Covariance is still exactly the direct patched measurement.
+            bin1, bin2 = (
+                (1, 2)
+                if pair == "tomo_bin_1_tomo_bin_2"
+                else (
+                    (1, 1)
+                    if pair == "tomo_bin_1_tomo_bin_1"
+                    else (2, 2)
+                    if pair == "tomo_bin_2_tomo_bin_2"
+                    else ("all", "all")
+                )
+            )
+            direct = treecorr.GGCorrelation(cv._binning())
+            direct.process(
+                cv._bin_catalog(cols, bin1, 8, layouts[0]),
+                cat2=(
+                    cv._bin_catalog(cols, bin2, 8, layouts[0]) if bin1 != bin2 else None
+                ),
+            )
+            np.testing.assert_array_equal(a.cov, direct.cov)
+            np.testing.assert_array_equal(a.estimate_cov("jackknife"), direct.cov)
+
+    def test_rho_tau_means_are_layout_independent(self, tmp_path, monkeypatch):
+        from sp_validation import rho_tau
+
+        params, version = self._write_synthetic_catalogs(
+            tmp_path,
+            n_gal=1200,
+            n_star=1000,
+            with_psf=True,
+        )
+        cv = CosmologyValidation(
+            [version], npatch=8, theta_min=5, theta_max=200, nbins=8, **params
+        )
+        cv.treecorr_config["num_threads"] = 1
+        cv.cc[version]["patch_number"] = 8
+        from shear_psf_leakage.rho_tau_stat import Catalogs
+
+        from sp_validation.statistics import jackknife_patch_centers
+
+        cols = cv._shear_columns(version, False)
+        centers = jackknife_patch_centers(cv._bin_catalog(cols, "all", 1), 8)
+        angle = np.deg2rad(0.35)
+        rotation = np.array(
+            [
+                [np.cos(angle), -np.sin(angle), 0],
+                [np.sin(angle), np.cos(angle), 0],
+                [0, 0, 1],
+            ]
+        )
+        build = Catalogs.build_catalog
+        outputs = []
+        for i, layout in enumerate((centers, centers @ rotation.T)):
+
+            def with_layout(self, *args, layout=layout, **kwargs):
+                kwargs["patch_centers"] = layout
+                return build(self, *args, **kwargs)
+
+            monkeypatch.setattr(Catalogs, "build_catalog", with_layout)
+            out = tmp_path / f"rho_tau_{i}"
+            out.mkdir()
+            rho, tau = rho_tau.get_jackknife_cov(
+                cv.cc,
+                version,
+                cv.treecorr_config,
+                str(out),
+                "test",
+                "test",
+                npatch=8,
+                ncov=1,
+            )
+            outputs.append(
+                (
+                    rho.rho_stats.copy(),
+                    tau.tau_stats.copy(),
+                    np.load(out / "cov_tau_test_jk.npy"),
+                )
+            )
+        for i in (0, 1):
+            for column in outputs[0][i].dtype.names:
+                if not column.startswith("var"):
+                    np.testing.assert_array_equal(
+                        outputs[0][i][column], outputs[1][i][column]
+                    )
+        assert not np.array_equal(outputs[0][2], outputs[1][2])
+        assert not np.array_equal(
+            outputs[0][1]["vartau_0_p"], outputs[1][1]["vartau_0_p"]
+        )
+
+    def test_aperture_mass_means_are_layout_independent(self, tmp_path, monkeypatch):
+        from sp_validation.statistics import jackknife_patch_centers
+
+        params, version = self._write_synthetic_catalogs(tmp_path, n_gal=3000)
+        cv = CosmologyValidation([version], npatch=8, **params)
+        cv.treecorr_config.update(min_top=2, num_threads=1)
+        cols = cv._shear_columns(version, False)
+        cat = cv._bin_catalog(cols, "all", 1)
+        centers = jackknife_patch_centers(cat, 8)
+        angle = np.deg2rad(0.35)
+        rotation = np.array(
+            [
+                [np.cos(angle), -np.sin(angle), 0],
+                [np.sin(angle), np.cos(angle), 0],
+                [0, 0, 1],
+            ]
+        )
+        measured = []
+        for layout in (centers, centers @ rotation.T):
+            monkeypatch.setattr(cv, "_patch_centers", lambda *args, c=layout: c)
+            cv.calculate_aperture_mass_dispersion(
+                theta_min=5, theta_max=200, nbins=30, npatch=8
+            )
+            measured.append(cv.map2[version]["tomo_bin_all_tomo_bin_all"])
+        for key in ("mapsq", "mapsq_im", "mxsq", "mxsq_im"):
+            np.testing.assert_array_equal(measured[0][key], measured[1][key])
+        assert not np.array_equal(measured[0]["varmapsq"], measured[1]["varmapsq"])
 
     def test_treecorr_runs_on_the_cpus_the_process_holds(self, tmp_path):
         """By default TreeCorr takes the process's CPU affinity, not the node's count."""
