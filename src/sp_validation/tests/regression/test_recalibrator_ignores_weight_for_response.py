@@ -48,7 +48,7 @@ def _write_catalogue(path):
 @pytest.mark.xfail(
     strict=True,
     raises=AssertionError,
-    reason="assay:response-normalization: recalibration averages response unweighted",
+    reason="#395: recalibration averages response unweighted",
 )
 @pytest.mark.parametrize("weight_type", ["des", "iv"])
 def test_recalibrated_weighted_shear_uses_weighted_response(tmp_path, weight_type):

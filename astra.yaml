@@ -377,7 +377,7 @@ analyses:
           above that counterfactual. This is a normalization inconsistency
           between weightings, not a measured bias against true shear: whether
           the published image-simulation m = -0.057 absorbs it is not
-          established (response-weight-mismatch).
+          established (#395).
           Values:
           mask_v2.0.yaml#metacal.global_R_weight = w;
           mask_v1.X.6.yaml#metacal.global_R_weight = w;
@@ -493,7 +493,8 @@ analyses:
       -g branches are differenced. The science keys, mask_config among them,
       are required run keys with no committed value; the defaults recorded
       here are the estimator's code and the values the workflow template
-      (workflow/image_sims/config.yaml) suggests.
+      (workflow/image_sims/config.yaml) suggests, until a fiducial run config
+      is committed (#396).
     inputs:
       - id: image_simulations
         from: ../image_simulations
@@ -568,7 +569,8 @@ analyses:
           SP_v1.4.6.3 FITS header records the mask_v1.X.6.yaml selection (among
           it FLAGS = 0, N_EPOCH >= 2, SNR > 10 and 0.707 < T/Tpsf < 3) with a
           response weighted by w, and cosmo_val analyses that catalogue under
-          w_des. mask_config and w_cols are required run keys.
+          w_des (#395). mask_config and w_cols are required run keys with no
+          committed value (#396).
           Values:
           mask_v1.X.9_im_sim.yaml#dat.0.value = 2;
           mask_v1.X.9_im_sim.yaml#dat.2.value = 1;
@@ -1048,8 +1050,8 @@ analyses:
           functionals it names pair counts, because the pair-count-weighted
           mean of fine-bin xi-hat is the reporting-bin xi-hat (Asgari et al.
           2019 App. A); uniform weights are indistinguishable for the integral
-          term and wrong for the local term. The code uses the pair weight,
-          which generalises pair counts to weighted pairs: with exact binning
+          term and wrong for the local term. The pair weight meets the ruling's
+          own criterion for weighted pairs, where pair counts do not: with exact binning
           it reproduces TreeCorr's own coarse-bin xi+- and meanr, where npairs
           misses by about 3% on a weighted synthetic catalogue; on UNIONS
           weight/npairs is flat to 0.2% across fine bins, so the two move the

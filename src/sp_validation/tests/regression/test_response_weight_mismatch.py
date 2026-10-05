@@ -77,7 +77,7 @@ def _synthetic_catalogue():
 @pytest.mark.xfail(
     strict=True,
     raises=AssertionError,
-    reason="assay:response-normalization: global response and statistic weights differ",
+    reason="#395: global response and statistic weights differ",
 )
 def test_w_des_weighted_shear_unbiased_with_committed_global_response_weight():
     """Protect multiplicative calibration of production w_des statistics.

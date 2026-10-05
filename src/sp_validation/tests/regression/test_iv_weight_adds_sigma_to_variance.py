@@ -42,7 +42,7 @@ def _catalogue():
 @pytest.mark.xfail(
     strict=True,
     raises=AssertionError,
-    reason="assay:response-normalization: shape-error sigma is added to a variance",
+    reason="#395: shape-error sigma is added to a variance",
 )
 @pytest.mark.parametrize("mask", [None, np.array([False, True])], ids=["all", "masked"])
 def test_iv_weights_square_both_shape_error_standard_deviations(mask):
@@ -64,7 +64,7 @@ def test_iv_weights_square_both_shape_error_standard_deviations(mask):
 @pytest.mark.xfail(
     strict=True,
     raises=AssertionError,
-    reason="assay:response-normalization: shape-error sigma biases weighted response",
+    reason="#395: shape-error sigma biases weighted response",
 )
 def test_global_shear_response_uses_squared_shape_error_weights():
     """Protect the applied response from the same dimensional weight error.

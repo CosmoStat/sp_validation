@@ -106,7 +106,7 @@ def test_selection_response_is_centered_difference_of_noshear_means():
 @pytest.mark.xfail(
     strict=True,
     reason=(
-        "assay:response-weight-mismatch: _selection_response ignores the "
+        "#395: _selection_response ignores the "
         "configured response weight that _total_response applies to R_shear"
     ),
 )
