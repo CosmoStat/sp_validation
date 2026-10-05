@@ -519,13 +519,11 @@ class PseudoClMixin:
                         wsp = wsp_dict[f"W{bin_key1}xW{bin_key2}"]
                         noise_bias_cl = wsp.decouple_cell(noise_bias_cl)
 
-                        # And then unbin it
+                        # Unbin, then continue the white noise below lmin at the
+                        # lowest band's value
                         noise_bias_cl = b.unbin_cell(noise_bias_cl)
-
-                        # Force the bins not part of the mask to be zero
                         lowest_ell = b.get_ell_list(0)[0]
-                        for i in range(4):
-                            noise_bias_cl[i, :lowest_ell] = 0
+                        noise_bias_cl[:, :lowest_ell] = noise_bias_cl[:, [lowest_ell]]
 
                 else:
                     noise_bias_cl = np.zeros((4, 2 * nside))
