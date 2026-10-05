@@ -34,8 +34,8 @@ def _compute_stats_with_patches(
     """Publish unpatched ρ/τ means with the patched variances and covariance.
 
     The handlers expose catalogue mappings and FITS tables, rather than their
-    internal GG objects. The measurement callback uses those same catalogues
-    for both passes and saves joint covariance only on the patched pass.
+    internal GG objects. The shared measurement mechanism uses the configured
+    bin_slop for means and TreeCorr's default for the patched covariance pass.
     Cached means avoid repeating the full-sample pass across covariance draws.
     """
     catalogs = handler.catalogs.catalogs_dict
@@ -46,12 +46,14 @@ def _compute_stats_with_patches(
     attribute = f"{kind}_stats"
     compute = getattr(handler, f"compute_{kind}_stats")
 
-    def measure(cats):
+    def measure(cats, measurement_config):
         patched = any(cat.npatch > 1 for cat in cats.values())
         handler.catalogs.catalogs_dict = cats
         handler._treecorr_config = {
-            **config,
-            "var_method": config.get("var_method", "shot") if patched else "shot",
+            **measurement_config,
+            "var_method": measurement_config.get("var_method", "shot")
+            if patched
+            else "shot",
         }
         try:
             compute(
@@ -66,7 +68,7 @@ def _compute_stats_with_patches(
             handler.catalogs.catalogs_dict = catalogs
             handler._treecorr_config = config
 
-    means, patched = measure_with_patches(measure, selected, means=means)
+    means, patched = measure_with_patches(measure, selected, config, means=means)
     table = Table(patched)
     for name in table.colnames:
         if not name.startswith("var"):

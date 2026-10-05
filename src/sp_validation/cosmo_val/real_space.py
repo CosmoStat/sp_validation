@@ -66,7 +66,8 @@ class RealSpaceMixin:
               dump with a configuration/mean-source JSON sidecar. Unpatched
               runs can reuse it; patched measurements remeasure to retain
               covariance. Plotting can opt into reading the saved columns.
-            - Full-sample means use an unpatched tree; patches supply covariance.
+            - Full-sample means use ``bin_slop`` from the configured means pass.
+              The patched covariance pass omits it and uses TreeCorr's default.
             - Seeded patch centres are computed once from the full catalogue and
               shared by every tomographic bin pair.
         """

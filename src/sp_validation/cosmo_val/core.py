@@ -147,7 +147,8 @@ class CosmologyValidation(
     nbins : int, default 20
         Number of angular bins for TreeCorr real-space correlation functions.
     b_target : float, default 0.01
-        Maximum logarithmic-bin tolerance, with bin_slop capped at 1 per grid.
+        Maximum logarithmic-bin tolerance for full-sample means, with bin_slop
+        capped at 1 per grid. Patched covariance passes use TreeCorr's default.
     var_method : {'jackknife', 'sample', 'bootstrap', 'marked_bootstrap'}, default 'jackknife'
         TreeCorr variance estimation method.
     npatch : int, default 20
@@ -377,10 +378,9 @@ class CosmologyValidation(
             "nbins": nbins,
             "var_method": var_method,
             "cross_patch_weight": "match" if var_method == "jackknife" else "simple",
-            # min_top sets the depth of TreeCorr's root cells, hence which pairs
-            # bin_slop approximates. Left unset, TreeCorr derives it from its
-            # thread count (max(3, ceil(log2 n))) and ξ± depends on the machine.
-            # 6 is what TreeCorr derives on candide's 48- and 64-CPU nodes.
+            # min_top fixes TreeCorr's root-cell depth, which controls the pairs
+            # bin_slop approximates. Its default depends on thread count and would
+            # make ξ± depend on the machine; 6 is used on candide's 48/64-CPU nodes.
             "min_top": 6,
             # The CPUs this process may use; TreeCorr's own default is the
             # node's count, whatever share of it the job holds.
@@ -604,10 +604,12 @@ class CosmologyValidation(
         )
 
     def _binning(self, min_sep=None, max_sep=None, nbins=None, **extra):
-        """treecorr_config with min_sep/max_sep/nbins overridden.
+        """Means-pass TreeCorr config with min_sep/max_sep/nbins overridden.
 
         None falls back to the instance's treecorr_config value for that key;
-        any further keys in `extra` override on top.
+        any further keys in `extra` override on top. The shared two-pass
+        measurement removes ``bin_slop`` from the patched config, leaving
+        TreeCorr's default for covariance and resampling products.
         """
         config = {
             **self.treecorr_config,
@@ -617,6 +619,8 @@ class CosmologyValidation(
             **extra,
         }
         bin_size = np.log(config["max_sep"] / config["min_sep"]) / config["nbins"]
+        # This is the means tolerance; measure_with_patches drops it for the
+        # patched covariance pass so TreeCorr uses its standard default there.
         config["bin_slop"] = extra.get("bin_slop", min(1, self.b_target / bin_size))
         return config
 

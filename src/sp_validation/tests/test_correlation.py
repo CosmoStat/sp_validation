@@ -1,22 +1,31 @@
-"""Two-pass measurement contracts, including unpatched single-pass use."""
+"""Two-pass measurement contracts, including tolerance and cache settings."""
+
+import json
 
 import numpy as np
 import treecorr
 
-from sp_validation.correlation import measure_with_patches, process_gg
+from sp_validation.correlation import (
+    measure_with_patches,
+    measurement_matches,
+    process_gg,
+    write_measurement_metadata,
+)
 
 
 def test_unpatched_measurement_is_one_pass():
     cat = treecorr.Catalog(x=[0, 1, 2], y=[0, 0, 1], g1=[0.1] * 3, g2=[0.2] * 3)
+    config = {"bin_slop": 0.04}
     calls = []
 
-    def measure(catalogs):
-        calls.append(catalogs)
+    def measure(catalogs, measurement_config):
+        calls.append((catalogs, measurement_config))
         return object()
 
-    means, covariance = measure_with_patches(measure, {"a": cat})
+    means, covariance = measure_with_patches(measure, {"a": cat}, config)
     assert len(calls) == 1
     assert means is covariance
+    assert calls[0][1] == config
 
 
 def test_covariance_draws_reuse_means_and_preserve_catalog_aliases():
@@ -28,18 +37,83 @@ def test_covariance_draws_reuse_means_and_preserve_catalog_aliases():
         npatch=2,
         rng=np.random.default_rng(1),
     )
+    config = {"bin_slop": 0.05}
     calls = []
 
-    def measure(catalogs):
+    def measure(catalogs, measurement_config):
         assert catalogs["a"] is catalogs["b"]
-        calls.append(catalogs["a"].npatch)
+        calls.append((catalogs["a"].npatch, dict(measurement_config)))
         return object()
 
     catalogs = {"a": cat, "b": cat}
-    means, _ = measure_with_patches(measure, catalogs)
-    reused, _ = measure_with_patches(measure, catalogs, means=means)
-    assert calls == [2, 1, 2]
+    means, _ = measure_with_patches(measure, catalogs, config)
+    reused, _ = measure_with_patches(measure, catalogs, config, means=means)
+    assert [npatch for npatch, _ in calls] == [2, 1, 2]
+    assert "bin_slop" not in calls[0][1]
+    assert calls[1][1]["bin_slop"] == config["bin_slop"]
+    assert "bin_slop" not in calls[2][1]
     assert reused is means
+
+
+def test_patched_gg_uses_default_slop_and_means_use_policy(monkeypatch):
+    rng = np.random.default_rng(2)
+    cat = treecorr.Catalog(
+        x=rng.random(100),
+        y=rng.random(100),
+        g1=rng.normal(size=100),
+        g2=rng.normal(size=100),
+        npatch=2,
+        rng=np.random.default_rng(1),
+    )
+    config = dict(
+        min_sep=0.01,
+        max_sep=1,
+        nbins=8,
+        min_top=3,
+        num_threads=1,
+        bin_slop=0.04,
+        var_method="jackknife",
+    )
+    original = treecorr.GGCorrelation
+    default_config = {key: value for key, value in config.items() if key != "bin_slop"}
+    default_slop = original(default_config).bin_slop
+    observed = []
+
+    def recording_correlation(measurement_config):
+        gg = original(measurement_config)
+        observed.append((dict(measurement_config), gg.bin_slop))
+        return gg
+
+    monkeypatch.setattr(treecorr, "GGCorrelation", recording_correlation)
+    process_gg(config, cat)
+
+    assert len(observed) == 2
+    assert observed[0][1] == default_slop
+    assert observed[1][1] == config["bin_slop"]
+    assert observed[0][1] != observed[1][1]
+
+
+def test_measurement_metadata_records_both_tolerance_settings(tmp_path):
+    path = tmp_path / "measurement.txt"
+    path.write_text("cached columns\n")
+    config = dict(
+        min_sep=0.01,
+        max_sep=1,
+        nbins=8,
+        min_top=6,
+        num_threads=8,
+        bin_slop=0.04,
+    )
+
+    write_measurement_metadata(path, config)
+    metadata_path = tmp_path / "measurement.txt.json"
+    metadata = json.loads(metadata_path.read_text())
+    assert metadata["configs"]["means"]["bin_slop"] == config["bin_slop"]
+    assert "bin_slop" not in metadata["configs"]["patched"]
+    assert measurement_matches(path, {**config, "num_threads": 12})
+
+    metadata_path.write_text(json.dumps({"means": "unpatched", "config": config}))
+    assert not measurement_matches(path, config)
 
 
 def test_unpatched_gg_matches_direct_measurement():

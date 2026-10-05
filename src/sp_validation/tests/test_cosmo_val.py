@@ -716,7 +716,9 @@ class TestCosmologyValidation:
                     else ("all", "all")
                 )
             )
-            direct = treecorr.GGCorrelation(cv._binning())
+            covariance_config = cv._binning()
+            covariance_config.pop("bin_slop")
+            direct = treecorr.GGCorrelation(covariance_config)
             direct.process(
                 cv._bin_catalog(cols, bin1, 8, layouts[0]),
                 cat2=(
