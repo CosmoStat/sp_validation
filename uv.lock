@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'linux'",
@@ -285,6 +285,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/7f/fa/fa911c7fd056413434aea4b72b8ab48c6a2bb41772a13ac51a66d2c51664/blosc2-4.14.1-cp314-cp314t-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:5d37f2c76272fb6d0ffee3afbbaa4cd73438abd7e2c119d6152bcdf1d47434b3", size = 6700115, upload-time = "2026-09-30T10:49:13.112Z" },
     { url = "https://files.pythonhosted.org/packages/b1/a7/0e5888db787cdde0fd4140cba6b09551834e7a6b6578c9296b91f7bf899d/blosc2-4.14.1-cp315-cp315t-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:8e0ad358a9fb38d41b0bd1dd08b00f1384774940abd053a74f7e8a80af095a07", size = 6285934, upload-time = "2026-09-30T10:49:23.108Z" },
     { url = "https://files.pythonhosted.org/packages/2f/c1/cbcd754fb615c9cccb08a854d1a6f728e7a640680098dbdcf762b566544a/blosc2-4.14.1-cp315-cp315t-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:6a2208f001580d497a050aba1a4083d5ba54adbe1e166cee4faf4731f0e96c9a", size = 6697746, upload-time = "2026-09-30T10:49:25.052Z" },
+]
+
+[[package]]
+name = "cached-property"
+version = "2.0.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/76/4b/3d870836119dbe9a5e3c9a61af8cc1a8b69d75aea564572e385882d5aefb/cached_property-2.0.1.tar.gz", hash = "sha256:484d617105e3ee0e4f1f58725e72a8ef9e93deee462222dbd51cd91230897641", size = 10574, upload-time = "2024-10-25T15:43:55.667Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/11/0e/7d8225aab3bc1a0f5811f8e1b557aa034ac04bdf641925b30d3caf586b28/cached_property-2.0.1-py3-none-any.whl", hash = "sha256:f617d70ab1100b7bcf6e42228f9ddcb78c676ffa167278d9f730d1c2fba69ccb", size = 7428, upload-time = "2024-10-25T15:43:54.711Z" },
 ]
 
 [[package]]
@@ -600,15 +609,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "cosmology"
-version = "2022.10.9"
+name = "cosmology-compat-camb"
+version = "0.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c9/38/04099bb2b6a626bd69a3f117afc60f2c47c08899e0730e0e48c898bf4745/cosmology-2022.10.9.tar.gz", hash = "sha256:0c2857c9bf1fdd09f1f11ab5765df0389a4101f3a900fa11251c3f37696f02d4", size = 8488, upload-time = "2022-10-10T10:18:16.229Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/08/2e/a637aae1677d02337be371c9a7b7e9d5051199bb58a2386781230adcee45/cosmology_compat_camb-0.2.0.tar.gz", hash = "sha256:e36fda04a78e16fc1a5c4aa22c30ec1bf64bbe0b092aa1b894ca746ce5e5551b", size = 4562, upload-time = "2025-05-08T10:31:43.226Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2e/2c/c80db37593ad593e3f6c60705fbdf690b33f22c89edd5507d2731346cd87/cosmology-2022.10.9-py3-none-any.whl", hash = "sha256:3903658c2474177a1a1c75771ae14458d93200c516f8fc6c3f4d776f3287b288", size = 9341, upload-time = "2022-10-10T10:18:14.928Z" },
+    { url = "https://files.pythonhosted.org/packages/2e/42/1a657f9b3540f355f34af735d8643aae1480620689a72423fe69aeeb78e5/cosmology_compat_camb-0.2.0-py3-none-any.whl", hash = "sha256:eb6e74290bb6a6a60a47d1338fc233ba1697058ed7f01a01de1180dbee1bd75d", size = 3903, upload-time = "2025-05-08T10:31:41.997Z" },
 ]
 
 [[package]]
@@ -869,6 +878,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/f7/9c/16649913bf14c73e0a9453782e148362ff2657067deff6aa9c7ebcddcc31/deprecated-3.0.0.tar.gz", hash = "sha256:16850204d3a1e6bb0acd06bff48d96e8b0a0d25d1c52f71705405a0f4894192d", size = 166912, upload-time = "2026-09-26T13:58:10.675Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/83/ae/676feae8e4644a6d7169951a97f61c56f416c73f67bf1761f2461d75cc81/deprecated-3.0.0-py3-none-any.whl", hash = "sha256:58204cf4a7f6270d547af5c278ee7a6bb56045a4b3d8441a1cd11660f41b7939", size = 21912, upload-time = "2026-09-26T13:58:09.458Z" },
+]
+
+[[package]]
+name = "deprecation"
+version = "2.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "packaging" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/5a/d3/8ae2869247df154b64c1884d7346d412fed0c49df84db635aab2d1c40e62/deprecation-2.1.0.tar.gz", hash = "sha256:72b3bde64e5d778694b0cf68178aed03d15e15477116add3fb773e581f9518ff", size = 173788, upload-time = "2020-04-20T14:23:38.738Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/02/c3/253a89ee03fc9b9682f1541728eb66db7db22148cd94f89ab22528cd1e1b/deprecation-2.1.0-py2.py3-none-any.whl", hash = "sha256:a10811591210e1fb0e768a8c25517cabeabcba6f0bf96564f8ff45189f90b14a", size = 11178, upload-time = "2020-04-20T14:23:36.581Z" },
 ]
 
 [[package]]
@@ -1150,7 +1171,7 @@ dependencies = [
 
 [[package]]
 name = "glass"
-version = "2025.3"
+version = "2026.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "array-api-compat" },
@@ -1159,9 +1180,9 @@ dependencies = [
     { name = "healpy" },
     { name = "transformcl" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/61/18/6d1387d74f597aacde573ffa9e7d28faa23c74414f69f56bffe9d3ccffaf/glass-2025.3.tar.gz", hash = "sha256:1f55bd5e85dc4eb3964bc6cf9a61e8da0cba4b3ecd60531d58384a27debcda3d", size = 274314, upload-time = "2025-12-12T16:38:18.096Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c1/c3/3b7d18cca8d0fa41dbb646ce16935804b380dcf766e7385799f44829b419/glass-2026.2.tar.gz", hash = "sha256:cf5ef6cb76b4738f8dc05ddfc18c359c558bb36e9cd09ca0115fa3ca3deb491f", size = 66236, upload-time = "2026-06-04T15:18:39.155Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6e/99/25a79eb65032d54868b4fc85fd105741858f493c391e9663954c15398e80/glass-2025.3-py3-none-any.whl", hash = "sha256:1cd0cd21aa25f76917235812164a9aa666032222ffb7bacfae766cd12f62b26b", size = 58522, upload-time = "2025-12-12T16:38:16.557Z" },
+    { url = "https://files.pythonhosted.org/packages/7c/d1/55ea5e63e81db82806e92ba9f9c2b7277c0c2afe57bf8c1d3763e18005b2/glass-2026.2-py3-none-any.whl", hash = "sha256:0af0b5cd8708040925699c307076fb1c79bbb7e6cba4522764bcc21dd3bdadb8", size = 63746, upload-time = "2026-06-04T15:18:37.895Z" },
 ]
 
 [[package]]
@@ -1192,6 +1213,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/98/36/190d32caa363ef25d685f422ed1bbf93ff1140fb22fd4d90f24cec209977/google_crc32c-1.9.0-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:dee799544cae42a42b17a88e38b59cf2c271051dc001da2117a8ff240ffa0548", size = 36495, upload-time = "2026-09-24T21:38:14.211Z" },
     { url = "https://files.pythonhosted.org/packages/c5/f8/7e33845d6b90ce1cf37cfabf25cb859277c7d3533ef1b6b1e1ca58581549/google_crc32c-1.9.0-cp315-cp315-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:f97c3806dcea41c29c04965347b0e12481561b75e0045dc7a4f69d75dec5d9b1", size = 38359, upload-time = "2026-09-24T21:38:14.983Z" },
     { url = "https://files.pythonhosted.org/packages/36/ff/556b2423f449a7515af6b8222a4d7833cbe09ff3e8d2f0b80471f5f6d02e/google_crc32c-1.9.0-cp315-cp315-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:0abe7e202c25909869c35672ab0f2fe748a7acf276eb78577332a7c38999740f", size = 36858, upload-time = "2026-09-24T21:38:15.799Z" },
+]
+
+[[package]]
+name = "gsl"
+version = "0.0.3"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/01/36/a8a99ab67918beb6ee8722fb6c27512796a5ff8ed4c10036f787eef51569/gsl-0.0.3.tar.gz", hash = "sha256:85a6071e00a284510c963b97ab74ef8a3e7d1786c5f52dc2ff444cbb7d94ee3c", size = 44404, upload-time = "2018-05-30T09:02:51.203Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ee/1e/14d4c4657bc7130b900c65033861ee0db508d2d9206f4223f5da7c855acc/gsl-0.0.3-py3-none-any.whl", hash = "sha256:081c77375bf65cb759a3e5129275b8806be18648452f50f7c420f40dac60529a", size = 39432, upload-time = "2018-05-30T09:02:49.93Z" },
 ]
 
 [[package]]
@@ -1293,6 +1323,26 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/d3/bd/3e9cf5e8b14909a4d569f292eb9a4e565fc318a1381041a2c1b8cc1b6119/healsparse-1.15.0.tar.gz", hash = "sha256:1c6c99bfac8a7237d6b24420ac8104b3a9063972c2c5574c02c2da1ae8b5c3b4", size = 135636, upload-time = "2026-09-11T15:07:31.739Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b1/c0/13b3c0482824fa5ff1a4710e505658848d68ea955eba4dd37c6cd29862cc/healsparse-1.15.0-py3-none-any.whl", hash = "sha256:71e75706bb5b8fe31344990e461f58d7ea9dd72aa236f0bdd270f63033bf8a1a", size = 69817, upload-time = "2026-09-11T15:07:30.778Z" },
+]
+
+[[package]]
+name = "hmf"
+version = "3.7.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "astropy" },
+    { name = "cached-property" },
+    { name = "camb" },
+    { name = "click" },
+    { name = "deprecation" },
+    { name = "numpy" },
+    { name = "rich" },
+    { name = "scipy" },
+    { name = "tomli-w" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/75/af/4cfddf1687501059bf933aeac3e0650b480e514debb9434e2c3d5c948354/hmf-3.7.2.tar.gz", hash = "sha256:3dd18fc49a8335af2cc015864f4b7f683cd05f9a598b2e70742924b46790df74", size = 2522789, upload-time = "2026-10-04T21:55:43.106Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5b/e5/ca23219486c8d21fffebcb1c85e4402a9354f5fcb9973e6d7c4e4dd76ff3/hmf-3.7.2-py3-none-any.whl", hash = "sha256:ac159e65ba22e91b83778ab57aa64478ae34017e0a6a71fcb143f3562b7e26c4", size = 116689, upload-time = "2026-10-04T21:55:41.607Z" },
 ]
 
 [[package]]
@@ -2019,6 +2069,24 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/73/de/18cfc64028334a1907d44ba2b40e233a2c7a06d7c1e827acfd1785c0b293/lenspack-1.0.0.tar.gz", hash = "sha256:e528a5409473eb996b39695cccb744db067341eb5fac6f240cd8d0aa669c85ec", size = 32632, upload-time = "2020-09-04T08:33:53.267Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/1b/3d/a93a1332b1412301ddb454f206507b5e0b3679e012471fbbb075ca3b0845/lenspack-1.0.0-py3-none-any.whl", hash = "sha256:f9c632697516bb681e16b3eff66a7210d6355926179b95aa7060c8936c2259cc", size = 37746, upload-time = "2020-09-04T08:33:50.114Z" },
+]
+
+[[package]]
+name = "levin"
+version = "0.0.1"
+source = { git = "https://github.com/sachaguer/OneCovariance.git?rev=main#70265be3a4bffcfded7b9251a3c4cbe8159d793f" }
+dependencies = [
+    { name = "astropy" },
+    { name = "future" },
+    { name = "gsl" },
+    { name = "healpy" },
+    { name = "hmf" },
+    { name = "matplotlib" },
+    { name = "numpy" },
+    { name = "pip" },
+    { name = "pyyaml" },
+    { name = "scipy" },
+    { name = "wget" },
 ]
 
 [[package]]
@@ -2907,6 +2975,15 @@ dependencies = [
     { name = "tifffile" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/b8/02/5bf3639f5b77e9b183011c08541c5039ba3d04f5316c70312b48a8e003a9/pims-0.7.tar.gz", hash = "sha256:55907a4c301256086d2aa4e34a5361b9109f24e375c2071e1117b9491e82946b", size = 87779, upload-time = "2024-06-10T19:20:42.842Z" }
+
+[[package]]
+name = "pip"
+version = "26.2.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ae/15/4500e320e6b101ec3b719ae85b697d9940b6cda672bc555bd6016fc60c6f/pip-26.2.1.tar.gz", hash = "sha256:f6ad667e89a1fe78046c8f13232b247200f5258d7828f3f7883d660878e0813f", size = 1848877, upload-time = "2026-08-04T22:51:14.148Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f3/6e/1736e5b4ae2b778ef2f81c47d797de9f891d4d8acb047a24ca37a60294dd/pip-26.2.1-py3-none-any.whl", hash = "sha256:71138adf1f4ca900cdb7d289c21b7494329f2332b6d85f0e1c42108c0384ed3e", size = 1816632, upload-time = "2026-08-04T22:51:12.472Z" },
+]
 
 [[package]]
 name = "platformdirs"
@@ -3821,6 +3898,7 @@ dependencies = [
     { name = "jupyterlab" },
     { name = "jupytext" },
     { name = "lenspack" },
+    { name = "levin" },
     { name = "lmfit" },
     { name = "matplotlib" },
     { name = "numba" },
@@ -3864,7 +3942,7 @@ docs = [
     { name = "sphinxcontrib-bibtex" },
 ]
 glass = [
-    { name = "cosmology" },
+    { name = "cosmology-compat-camb" },
     { name = "fitsio" },
     { name = "glass" },
     { name = "glass-ext-camb" },
@@ -3888,7 +3966,7 @@ requires-dist = [
     { name = "clmm" },
     { name = "colorama" },
     { name = "cosmo-numba", git = "https://github.com/cailmdaley/cosmo-numba.git?rev=a64cb2ed13e595a16ad056a128ef24594b811504" },
-    { name = "cosmology", marker = "extra == 'glass'", specifier = "==2022.10.9" },
+    { name = "cosmology-compat-camb", marker = "extra == 'glass'", specifier = "==0.2.0" },
     { name = "cosmosis", marker = "extra == 'workflow'", specifier = ">=3.25" },
     { name = "cryptography" },
     { name = "cs-util", git = "https://github.com/CosmoStat/cs_util.git?rev=develop" },
@@ -3896,7 +3974,7 @@ requires-dist = [
     { name = "fast-pt", marker = "extra == 'workflow'", specifier = ">=3.2,<4" },
     { name = "fitsio", marker = "extra == 'glass'" },
     { name = "getdist", git = "https://github.com/benabed/getdist.git?rev=113cd22a9a0d013b6f72fe734be81f260f3d3be5" },
-    { name = "glass", marker = "extra == 'glass'", specifier = "==2025.3" },
+    { name = "glass", marker = "extra == 'glass'", specifier = "==2026.2" },
     { name = "glass-ext-camb", marker = "extra == 'glass'", specifier = "==2023.6" },
     { name = "h5py" },
     { name = "healpy" },
@@ -3907,6 +3985,7 @@ requires-dist = [
     { name = "jupyterlab" },
     { name = "jupytext", specifier = ">=1.15" },
     { name = "lenspack" },
+    { name = "levin", git = "https://github.com/sachaguer/OneCovariance.git?rev=main" },
     { name = "lmfit" },
     { name = "matplotlib" },
     { name = "mpi4py", marker = "extra == 'workflow'" },
@@ -4217,6 +4296,15 @@ wheels = [
 ]
 
 [[package]]
+name = "tomli-w"
+version = "1.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/19/75/241269d1da26b624c0d5e110e8149093c759b7a286138f4efd61a60e75fe/tomli_w-1.2.0.tar.gz", hash = "sha256:2dd14fac5a47c27be9cd4c976af5a12d87fb1f0b4512f81d69cce3b35ae25021", size = 7184, upload-time = "2025-01-15T12:07:24.262Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c7/18/c86eb8e0202e32dd3df50d43d7ff9854f8e0603945ff398974c1d91ac1ef/tomli_w-1.2.0-py3-none-any.whl", hash = "sha256:188306098d013b691fcadc011abd66727d3c414c571bb01b1a174ba8c983cf90", size = 6675, upload-time = "2025-01-15T12:07:22.074Z" },
+]
+
+[[package]]
 name = "toolz"
 version = "1.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -4421,6 +4509,12 @@ sdist = { url = "https://files.pythonhosted.org/packages/d8/cb/a5abcc2891249f393
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d5/d2/cc4dc1271e464942db7ee278baae2daa99ee77cb2af744025c04da585a3e/websocket_client-1.9.2-py3-none-any.whl", hash = "sha256:e1a673830a9c7bfa47b1cd3d5e4178f4c9651d80a4eab02c9c23a1c3ec6250ce", size = 95786, upload-time = "2026-08-31T14:08:39.899Z" },
 ]
+
+[[package]]
+name = "wget"
+version = "3.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/47/6a/62e288da7bcda82b935ff0c6cfe542970f04e29c756b0e147251b2fb251f/wget-3.2.zip", hash = "sha256:35e630eca2aa50ce998b9b1a127bb26b30dfee573702782aa982f875e3f16061", size = 10857, upload-time = "2015-10-22T15:26:37.51Z" }
 
 [[package]]
 name = "widgetsnbextension"

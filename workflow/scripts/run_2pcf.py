@@ -14,7 +14,8 @@ orchestration:
 
 The measurement is binning-agnostic: the reporting and the fine integration
 grids are the same compute with different ``--min-sep/--max-sep/--nbins``.
-``CosmologyValidation.calculate_2pcf`` writes the ``.txt`` dump (a raw
+``CosmologyValidation.calculate_2pcf_version`` measures the non-tomographic
+``("all", "all")`` pair and writes its ``xi_{basename}.txt`` dump (a raw
 byproduct); the ξ± data product is born as SACC here, a *part* named by its
 binning and tagged with its ``--grid``. The part carries the covariance the
 measurement estimated: the dense jackknife covariance when it had patches, the
@@ -68,13 +69,14 @@ def run_2pcf(
         # so the SACC provenance metadata stamps the npatch actually measured
         npatch=npatch,
     )
-    gg = cv.calculate_2pcf(
-        ver=ver,
+    gg = cv.calculate_2pcf_version(
+        ver,
         npatch=npatch,
+        compute_tomography=False,
         min_sep=min_sep,
         max_sep=max_sep,
         nbins=nbins,
-    )
+    )["tomo_bin_all_tomo_bin_all"]
 
     # Born-as-SACC ξ± part. theta = meanr; theta_nom = rnom.
     jackknife = gg.var_method == "jackknife"

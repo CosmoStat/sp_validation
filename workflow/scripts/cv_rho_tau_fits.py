@@ -13,5 +13,10 @@ from cv_runner import _unbuffer_streams, make_cv, touch_sentinels
 _unbuffer_streams()
 cv = make_cv(snakemake)
 if cv.rho_tau_method != "none":
-    cv.plot_rho_tau_fits()
+    cv.plot_rho_tau_fits(
+        tomography=False,
+        savefig_contours="contours_tau_stat.png",
+        savefig_xi_psf_sys="xi_psf_sys",
+        show=False,
+    )
 touch_sentinels(snakemake)

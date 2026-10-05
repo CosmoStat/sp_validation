@@ -511,7 +511,7 @@ def _from_cli(argv=None):
     }
     xi_integration_path = os.path.join(
         a.cosmo_val_dir,
-        f"{version}_xi_minsep={min_sep_int}_maxsep={max_sep_int}"
+        f"xi_{version}_tomo_bin_all_minsep={min_sep_int}_maxsep={max_sep_int}"
         f"_nbins={nbins_int}_npatch={npatch}.txt",
     )
     pseudo_cl_path = os.path.join(
