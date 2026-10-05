@@ -11,6 +11,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import treecorr
 
+from sp_validation.correlation import (
+    measurement_matches,
+    process_gg,
+    write_measurement_metadata,
+)
 from sp_validation.statistics import jackknife_patch_centers
 
 
@@ -20,6 +25,7 @@ class RealSpaceMixin:
         ver,
         npatch=None,
         compute_tomography=False,
+        read_cached=False,
         **treecorr_config,
     ):
         """
@@ -42,6 +48,10 @@ class RealSpaceMixin:
             compute_tomography (bool, optional): Whether to compute tomographic
             correlations. Defaults to False.
 
+            read_cached (bool, optional): Reuse columns-only dumps for plotting,
+            including patched runs. They carry the published means and variances,
+            but no patch results for dense or derived jackknife covariance.
+
             **treecorr_config: Additional TreeCorr configuration parameters that
             will override the instance's default `treecorr_config`. For example,
             `min_sep=1`.
@@ -52,9 +62,12 @@ class RealSpaceMixin:
             key is ``"tomo_bin_all_tomo_bin_all"``.
 
         Notes:
-            - The non-tomographic pair is written to the columns-only TreeCorr
-              dump ``xi_{basename}.txt``. If that file already exists, the pair is
-              read back from it instead of being recomputed.
+            - The non-tomographic pair is written to a columns-only TreeCorr
+              dump with a configuration/mean-source JSON sidecar. Unpatched
+              runs can reuse it; patched measurements remeasure to retain
+              covariance. Plotting can opt into reading the saved columns.
+            - Full-sample means use ``bin_slop`` from the configured means pass.
+              The patched covariance pass omits it and uses TreeCorr's default.
             - Seeded patch centres are computed once from the full catalogue and
               shared by every tomographic bin pair.
         """
@@ -81,7 +94,11 @@ class RealSpaceMixin:
         for bin1, bin2 in tomo_bin_pairs:
             if (bin1, bin2) == ("all", "all"):
                 out_fname = self._xi_txt_path(ver, treecorr_config, npatch)
-                if os.path.exists(out_fname):
+                if (
+                    (int(npatch) == 1 or read_cached)
+                    and not self.force_run
+                    and measurement_matches(out_fname, treecorr_config)
+                ):
                     self.print_done(f"Skipping 2PCF calculation, {out_fname} exists")
                     gg = treecorr.GGCorrelation(treecorr_config)
                     gg.read(out_fname)
@@ -94,8 +111,6 @@ class RealSpaceMixin:
             patch_centers = self._patch_centers(cols, npatch)
 
             for bin1, bin2 in to_compute:
-                gg = treecorr.GGCorrelation(treecorr_config)
-
                 cat_gal1 = self._bin_catalog(cols, bin1, npatch, patch_centers)
                 cat_gal2 = (
                     self._bin_catalog(cols, bin2, npatch, patch_centers)
@@ -103,7 +118,7 @@ class RealSpaceMixin:
                     else None
                 )
 
-                gg.process(cat_gal1, cat2=cat_gal2)
+                gg = process_gg(treecorr_config, cat_gal1, cat_gal2)
 
                 if (bin1, bin2) == ("all", "all"):
                     # Columns only. The covariance matrix lives in the SACC part;
@@ -114,6 +129,10 @@ class RealSpaceMixin:
                         self._xi_txt_path(ver, treecorr_config, npatch),
                         write_patch_results=False,
                         write_cov=False,
+                        precision=17,
+                    )
+                    write_measurement_metadata(
+                        self._xi_txt_path(ver, treecorr_config, npatch), treecorr_config
                     )
 
                 ggs[f"tomo_bin_{bin1}_tomo_bin_{bin2}"] = gg
@@ -183,6 +202,7 @@ class RealSpaceMixin:
         self,
         npatch=None,
         compute_tomography=False,
+        read_cached=False,
         **treecorr_config,
     ):
         """
@@ -199,6 +219,9 @@ class RealSpaceMixin:
             compute_tomography (bool, optional): Whether to compute tomographic
             correlations. Defaults to False.
 
+            read_cached (bool, optional): Reuse columns-only dumps for plotting;
+            defaults to False so patched measurements retain resampling state.
+
             **treecorr_config: Additional TreeCorr configuration parameters passed
             through to each per-version call.
 
@@ -212,6 +235,7 @@ class RealSpaceMixin:
                 ver,
                 npatch=npatch,
                 compute_tomography=compute_tomography,
+                read_cached=read_cached,
                 **treecorr_config,
             )
 
@@ -230,7 +254,12 @@ class RealSpaceMixin:
         theta_map = np.geomspace(theta_min * 5, theta_max / 2, nbins_map)
         self._map2["theta_map"] = theta_map
 
-        treecorr_config = self._binning(theta_min, theta_max, nbins)
+        treecorr_config = self._binning(
+            theta_min,
+            theta_max,
+            nbins,
+            var_method="jackknife" if int(npatch) > 1 else "shot",
+        )
 
         for ver in self.versions:
             if compute_tomography:
@@ -252,8 +281,6 @@ class RealSpaceMixin:
             patch_centers = self._patch_centers(cols, npatch)
 
             for bin1, bin2 in tomo_bin_pairs:
-                gg = treecorr.GGCorrelation(treecorr_config)
-
                 cat_gal1 = self._bin_catalog(cols, bin1, npatch, patch_centers)
                 cat_gal2 = (
                     self._bin_catalog(cols, bin2, npatch, patch_centers)
@@ -261,7 +288,7 @@ class RealSpaceMixin:
                     else None
                 )
 
-                gg.process(cat_gal1, cat2=cat_gal2)
+                gg = process_gg(treecorr_config, cat_gal1, cat_gal2)
 
                 mapsq, mapsq_im, mxsq, mxsq_im, varmapsq = gg.calculateMapSq(
                     R=theta_map,
@@ -292,7 +319,7 @@ class RealSpaceMixin:
         Writes ``xi_pm_tomography_{tomography}.png`` and
         ``xi_pm_theta_tomography_{tomography}.png`` under the output directory.
         """
-        self.calculate_2pcf(compute_tomography=tomography)
+        self.calculate_2pcf(compute_tomography=tomography, read_cached=True)
 
         for times_theta in (False, True):
             prefix = r"$\theta\,$" if times_theta else ""
@@ -333,7 +360,7 @@ class RealSpaceMixin:
                 "xi_psf_sys; construct CosmologyValidation with "
                 "compute_tomography=True"
             )
-        self.calculate_2pcf(compute_tomography=tomography)
+        self.calculate_2pcf(compute_tomography=tomography, read_cached=True)
 
         y_label = r"$\xi^{{\rm PSF, sys}}_{0} / \xi_{0}$"
         self.plot_2pcf_tomography(

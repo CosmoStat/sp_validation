@@ -16,6 +16,7 @@ cv = CosmologyValidation(
     theta_max=float(params["max_sep"]),
     nbins=int(params["nbins"]),
     npatch=int(params["npatch"]),
+    b_target=params.get("b_target", 0.01),
     catalog_config=params["cat_config"],
     output_dir=params["output_dir"],
 )

@@ -146,6 +146,9 @@ class CosmologyValidation(
         Maximum angular separation in arcminutes for correlation function binning.
     nbins : int, default 20
         Number of angular bins for TreeCorr real-space correlation functions.
+    b_target : float, default 0.01
+        Maximum logarithmic-bin tolerance for full-sample means, with bin_slop
+        capped at 1 per grid. Patched covariance passes use TreeCorr's default.
     var_method : {'jackknife', 'sample', 'bootstrap', 'marked_bootstrap'}, default 'jackknife'
         TreeCorr variance estimation method.
     npatch : int, default 20
@@ -311,7 +314,9 @@ class CosmologyValidation(
         cosmo_params=None,
         compute_tomography=False,
         force_run=False,
+        b_target=0.01,
     ):
+        self.b_target = b_target
         self.rho_tau_method = rho_tau_method
         self.cov_estimate_method = cov_estimate_method
         self.compute_cov_rho = compute_cov_rho
@@ -373,15 +378,16 @@ class CosmologyValidation(
             "nbins": nbins,
             "var_method": var_method,
             "cross_patch_weight": "match" if var_method == "jackknife" else "simple",
-            # min_top sets the depth of TreeCorr's root cells, hence which pairs
-            # bin_slop approximates. Left unset, TreeCorr derives it from its
-            # thread count (max(3, ceil(log2 n))) and ξ± depends on the machine.
-            # 6 is what TreeCorr derives on candide's 48- and 64-CPU nodes.
+            # min_top fixes TreeCorr's root-cell depth, which controls the pairs
+            # bin_slop approximates. Its default depends on thread count and would
+            # make ξ± depend on the machine; 6 is used on candide's 48/64-CPU nodes.
             "min_top": 6,
             # The CPUs this process may use; TreeCorr's own default is the
             # node's count, whatever share of it the job holds.
             "num_threads": len(os.sched_getaffinity(0)),
         }
+
+        self.treecorr_config = self._binning()
 
         self.catalog_config_path = Path(catalog_config)
         with self.catalog_config_path.open("r") as file:
@@ -598,18 +604,25 @@ class CosmologyValidation(
         )
 
     def _binning(self, min_sep=None, max_sep=None, nbins=None, **extra):
-        """treecorr_config with min_sep/max_sep/nbins overridden.
+        """Means-pass TreeCorr config with min_sep/max_sep/nbins overridden.
 
         None falls back to the instance's treecorr_config value for that key;
-        any further keys in `extra` override on top.
+        any further keys in `extra` override on top. The shared two-pass
+        measurement removes ``bin_slop`` from the patched config, leaving
+        TreeCorr's default for covariance and resampling products.
         """
-        return {
+        config = {
             **self.treecorr_config,
             "min_sep": min_sep or self.treecorr_config["min_sep"],
             "max_sep": max_sep or self.treecorr_config["max_sep"],
             "nbins": nbins or self.treecorr_config["nbins"],
             **extra,
         }
+        bin_size = np.log(config["max_sep"] / config["min_sep"]) / config["nbins"]
+        # This is the means tolerance; measure_with_patches drops it for the
+        # patched covariance pass so TreeCorr uses its standard default there.
+        config["bin_slop"] = extra.get("bin_slop", min(1, self.b_target / bin_size))
+        return config
 
     def _read_shear_cols(self, ver, *keys):
         """Read shear-catalog columns by their config-key names.
