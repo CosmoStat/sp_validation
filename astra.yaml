@@ -2627,7 +2627,7 @@ analyses:
           the mock goodness of fit
         rationale: >-
           inference_prep_glass_mock pairs each mock's precomputed 20-bin xi
-          (xi_glass_mock_*_nbins=20 in glass_mock_data_dir) with the real rho
+          (xi_glass_mock_*_nbins=20 in glass_mocks.data_dir) with the real rho
           statistics and a tau_0+, tau_2+, tau_5+ vector drawn from N(0, C_tau)
           of the real data, seeded by the mock id
           (generate_glass_mock_rhotau_samples.py), whose docstring gives the
