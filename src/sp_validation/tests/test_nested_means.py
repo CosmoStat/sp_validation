@@ -170,14 +170,14 @@ def test_sacc_fine_product_drives_the_reporting_producer(tmp_path):
     expected = rebin_gg_means(fine, {**report, "sep_units": "arcmin"})
     for name in FIELDS:
         np.testing.assert_array_equal(getattr(measured, name), getattr(expected, name))
-    part = sacc_io.load(report_path, allow_unblinded=True)
+    part = sacc_io.load(str(report_path), allow_unblinded=True)
     np.testing.assert_array_equal(part.covariance.dense, measured.cov)
     np.testing.assert_array_equal(
         sacc_io.get_xi_aux(part, (0, 0), grid="reporting")["meanlogr"],
         measured.meanlogr,
     )
     # A raw-catalogue covariance cannot be paired with a concealed mean input.
-    part = sacc_io.load(fine_path, allow_unblinded=True)
+    part = sacc_io.load(str(fine_path), allow_unblinded=True)
     part.metadata["concealed"] = True
     sacc_io.save(part, fine_path, type="data")
     with pytest.raises(ValueError, match="pre-blinding"):
