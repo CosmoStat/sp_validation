@@ -12,17 +12,19 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import numpy as np
 import treecorr
-from astropy.io import fits
 from cs_util import plots as cs_plots
 from shear_psf_leakage import leakage
 from shear_psf_leakage import plots as psfleak_plots
 from shear_psf_leakage.rho_tau_stat import PSFErrorFit
 from uncertainties import ufloat
 
+from .. import sacc_io
+from ..io import open_entry
 from ..rho_tau import (
     get_rho_tau_w_cov,
     get_samples,
 )
+from .sacc_writers import rho_tau_to_sacc
 
 
 # TODO: Reorganise the order of functions so it is more readable
@@ -65,11 +67,18 @@ class PSFSystematicsMixin:
     @property
     def xi_psf_sys(self):
         if not hasattr(self, "_xi_psf_sys"):
-            self.calculate_rho_tau_fits()
+            self.calculate_rho_tau_fits(tomography=False)
+            if self.compute_tomography:
+                self.calculate_rho_tau_fits(tomography=True)
         return self._xi_psf_sys
 
     # --- calculate functions ---
     def calculate_rho_tau_stats(self, tomography=True):
+        """Measure ρ/τ statistics per version and tomographic bin.
+
+        Without ``tomography`` the single bin is ``"all"``, and its SACC part is
+        written per version (``rho_tau_to_sacc_part``).
+        """
         out_dir = f"{self.cc['paths']['output']}/rho_tau_stats"
         if not os.path.exists(out_dir):
             os.mkdir(out_dir)
@@ -113,10 +122,42 @@ class PSFSystematicsMixin:
                     cov_rho=self.compute_cov_rho,
                     npatch=self.npatch,
                 )
+                if not tomography:
+                    self.rho_tau_to_sacc_part(
+                        ver, out_dir, base_tau, rho_stat_handler, tau_stat_handler
+                    )
         self.print_done("Rho stats finished")
 
         self._rho_stat_handler = rho_stat_handler
         self._tau_stat_handler = tau_stat_handler
+
+    def rho_tau_to_sacc_part(
+        self, version, out_dir, base, rho_stat_handler, tau_stat_handler
+    ):
+        """Write the ρ/τ SACC part for one version.
+
+        ρ_0…ρ_5 autos and τ_0/τ_2/τ_5 leakage from the handler tables. The
+        ``CovTauTh`` theory covariance ``cov_tau_{base}_th.npy`` is passed as
+        ``tau_cov_th`` when it exists; without it the τ block falls back —
+        loudly — to a variance diagonal.
+        """
+        tau_cov_path = os.path.join(out_dir, f"cov_tau_{base}_th.npy")
+        tau_cov_th = np.load(tau_cov_path) if os.path.exists(tau_cov_path) else None
+        if tau_cov_th is None:
+            self.print_magenta(
+                f"No τ theory covariance at {tau_cov_path}; writing ρ/τ SACC part "
+                "with a diagonal placeholder covariance (τ inference block is a "
+                "variance diagonal, not CovTauTh)."
+            )
+        s = rho_tau_to_sacc(
+            self.sacc_nz(version),
+            self.sacc_metadata(version),
+            rho_stat_handler.rho_stats,
+            tau_stat_handler.tau_stats,
+            tau_cov_th=tau_cov_th,
+        )
+        out_path = os.path.join(out_dir, f"rho_tau_{base}.sacc")
+        sacc_io.save(s, out_path, type="data")
 
     def calculate_rho_tau_fits(self, tomography=True, track_result=True):
         assert self.rho_tau_method != "none"
@@ -290,9 +331,10 @@ class PSFSystematicsMixin:
                 )
 
     # --- utility functions ---
+    # The masks index the rows of the catalogue entry as open_entry reads them,
+    # which are the rows rho_tau._CatalogueLoader hands to shear_psf_leakage.
     def _get_galaxy_mask(self, ver, tomo_bin_id):
-        # HDU 1 is the table LeakageObject.read_data reads, so masks align by row
-        cat_gal = fits.getdata(self.cc[ver]["shear"]["path"], ext=1)
+        cat_gal = open_entry(self.cc[ver]["shear"])
         if tomo_bin_id != "all":
             gal_mask = cat_gal[self.cc[ver]["shear"]["tomo_bin_col"]] == tomo_bin_id
         else:
@@ -300,9 +342,7 @@ class PSFSystematicsMixin:
         return gal_mask
 
     def _get_star_mask(self, ver):
-        cat_star = fits.getdata(
-            self.cc[ver]["psf"]["path"], hdu=self.cc[ver]["psf"]["hdu"]
-        )
+        cat_star = open_entry(self.cc[ver]["psf"])
         PSF_flag = self.cc[ver]["psf"].get("PSF_flag")
         star_flag = self.cc[ver]["psf"].get("star_flag")
         if PSF_flag is not None:
@@ -331,7 +371,7 @@ class PSFSystematicsMixin:
         params["dec_units"] = "deg"
 
         params["w_col"] = self.cc[ver]["shear"]["w_col"]
-        params["patch_number"] = self.cc[ver].get("patch_number", 100)
+        params["patch_number"] = self.cc[ver]["patch_number"]
 
         return params
 
@@ -341,8 +381,8 @@ class PSFSystematicsMixin:
         # Set parameters
         params_in["input_path_shear"] = self.cc[ver]["shear"]["path"]
         params_in["input_path_PSF"] = self.cc[ver]["star"]["path"]
-        params_in["dndz_path"] = (
-            f"{self.cc['nz']['dndz']['path']}_{self.cc[ver]['pipeline']}_{self.cc['nz']['dndz']['blind']}.txt"
+        params_in["dndz_path"] = self.cc["nz"]["dndz"]["path"].format(
+            pipeline=self.cc[ver]["pipeline"]
         )
         params_in["output_dir"] = f"{self.cc['paths']['output']}/leakage_{ver}"
 
@@ -406,7 +446,11 @@ class PSFSystematicsMixin:
         self.psf_error_nwalkers = nwalkers
 
     def get_samples(self, version, params, tomo_bin_id, track_result=False):
-        npatch = params["patch_number"] if self.cov_estimate_method == "jk" else None
+        # Hartlap debiasing of the inverse covariance: the number of jackknife
+        # patches or of simulations the covariance was estimated from.
+        n_realisations = {"jk": params["patch_number"], "sim": self.n_sim_cov}.get(
+            self.cov_estimate_method
+        )
 
         base_rho = self.basename(version)
         base_tau = self.basename(version, tomo_bin_a=tomo_bin_id)
@@ -424,7 +468,7 @@ class PSFSystematicsMixin:
             base_rho,
             base_tau,
             cov_type=self.cov_estimate_method,
-            apply_debias=npatch,
+            apply_debias=n_realisations,
             sampler=self.rho_tau_method,
             nsamples=n_samples,
             nwalkers=n_walkers,
@@ -901,9 +945,13 @@ class PSFSystematicsMixin:
 
         else:
             filenames = [f"tau_stats_{self.basename(ver)}.fits" for ver in versions]
-            cov_paths = [
-                f"cov_tau_{self.basename(ver)}_{cov_type}.npy" for ver in versions
-            ]
+            cov_paths = (
+                None
+                if cov_type is None
+                else [
+                    f"cov_tau_{self.basename(ver)}_{cov_type}.npy" for ver in versions
+                ]
+            )
             self.tau_stat_handler.plot_tau_stats(
                 filenames,
                 colors,
@@ -996,7 +1044,7 @@ class PSFSystematicsMixin:
             sample_list,
             names=["x0", "x1", "x2"],
             labels=[r"\alpha", r"\beta", r"\eta"],
-            savefig=savefig_contours,
+            savefig=savefig,
             legend_labels=versions,
             legend_loc="upper right",
             contour_colors=colors,

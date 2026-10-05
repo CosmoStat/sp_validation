@@ -2,7 +2,7 @@
 """Compute the COSEBIS B-mode PTE matrix over the full scale-cut pair grid.
 
 Reconciliation of the ASTRA ``cosebis_pte_per_cut`` output: the Snakemake DAG
-*scattered* one JSON per (version, blind, i_min, i_max) cut via this script and
+*scattered* one JSON per (version, i_min, i_max) cut via this script and
 gathered them downstream. The spec describes the gathered NPZ that scatter never
 materialised. Here a single CLI loops the same ``_pte_scale_cut_pairs()`` grid,
 runs the *identical* per-pair COSEBI computation (same theta grid, nmodes, NaN-on-
@@ -23,7 +23,7 @@ from sp_validation.b_modes import calculate_cosebis
 
 def _pte_scale_cut_pairs():
     """(i_min, i_max) index pairs for the PTE matrix, excluding the polynomial-
-    root-unstable subsets. Mirrors _pte_scale_cut_pairs() in claims.smk."""
+    root-unstable subsets. Mirrors _pte_scale_cut_pairs() in figures.smk."""
     unstable = {(9, 10), (10, 11), (11, 12), (13, 14)}
     return [
         (i, j) for i in range(20) for j in range(i + 1, 21) if (i, j) not in unstable
@@ -79,15 +79,14 @@ def _compute_pair(gg, cov_path, nmodes, theta_min, theta_max):
     }
 
 
-def main(config, xi_integration, cov_integration, out_dir, version=None, blind=None):
+def main(config, xi_integration, cov_integration, out_dir, version=None):
     t_start = time.time()
     fid = config["fiducial"]
-    # Version/blind tag only the output filename + provenance record; the theta
+    # Version tags only the output filename + provenance record; the theta
     # grid, nmodes and per-pair COSEBI compute are version-independent (they read
     # from config["fiducial"]), so a sweep call over a non-fiducial catalog stays
     # bit-identical to the fiducial call save for the xi/cov inputs and the tag.
     version = version if version is not None else fid["version"]
-    blind = blind if blind is not None else fid["blind"]
     nmodes = int(fid["nmodes"])  # 20 for full computation
 
     min_sep_int = fid["min_sep_int"]
@@ -146,11 +145,10 @@ def main(config, xi_integration, cov_integration, out_dir, version=None, blind=N
 
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    npz_path = out_dir / f"cosebis_ptes_{version}_{blind}.npz"
+    npz_path = out_dir / f"cosebis_ptes_{version}.npz"
     np.savez(
         npz_path,
         version=version,
-        blind=blind,
         nmodes=nmodes,
         mode_subsets=np.array([6, 20]),
         theta_grid=theta_grid,
@@ -177,7 +175,7 @@ def _from_cli(argv=None):
     import yaml
 
     ap = argparse.ArgumentParser(
-        description="Gathered COSEBI B-mode PTE matrix over the scale-cut pair grid (fiducial version + blind)."
+        description="Gathered COSEBI B-mode PTE matrix over the scale-cut pair grid (fiducial version)."
     )
     ap.add_argument(
         "--config", required=True, help="Absolute path to bmodes config.yaml"
@@ -199,11 +197,6 @@ def _from_cli(argv=None):
         help="Catalog version tag (default: config.fiducial.version). Overridden "
         "by the version sweep to name the non-fiducial output NPZ.",
     )
-    ap.add_argument(
-        "--blind",
-        default=None,
-        help="Blind tag (default: config.fiducial.blind)",
-    )
     a = ap.parse_args(argv)
     with open(a.config) as f:
         config = yaml.safe_load(f)
@@ -213,7 +206,6 @@ def _from_cli(argv=None):
         a.cov_integration,
         a.out,
         version=a.version,
-        blind=a.blind,
     )
 
 

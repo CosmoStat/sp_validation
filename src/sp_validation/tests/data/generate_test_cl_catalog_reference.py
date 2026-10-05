@@ -4,10 +4,10 @@ from pathlib import Path
 import IPython
 import numpy as np
 import yaml
-from astropy.io import fits
 from astropy.table import Table
 
 from sp_validation.cosmo_val import CosmologyValidation
+from sp_validation.io import open_entry
 from sp_validation.rho_tau import get_params_rho_tau
 
 ipython = IPython.get_ipython()
@@ -65,7 +65,7 @@ psf_cfg = {
     "star_flag": "w",
 }
 config_data = {
-    "nz": {"subdir": str(nz_dir), "dndz": {"blind": "A", "path": "dndz"}},
+    "nz": {"subdir": str(nz_dir), "dndz": {"path": "dndz_{pipeline}_A.txt"}},
     "paths": {"output": str(output_dir)},
     version: {
         "subdir": str(cat_dir),
@@ -73,6 +73,7 @@ config_data = {
         "shear": shear_cfg,
         "star": {**psf_cfg},
         "psf": psf_cfg,
+        "patch_number": 150,
     },
 }
 
@@ -93,8 +94,8 @@ cv = CosmologyValidation(
 cv._test_version = version
 
 ver = cv._test_version
-params = get_params_rho_tau(cv.cc[ver], survey=ver)
-cat_gal = fits.getdata(cv.cc[ver]["shear"]["path"])
+params = get_params_rho_tau(cv.cc[ver])
+cat_gal = open_entry(cv.cc[ver]["shear"])
 
 cat_gal_tomo_bin_1 = cat_gal[cat_gal[params["tomo_bin_col"]] == 1]
 cat_gal_tomo_bin_2 = cat_gal[cat_gal[params["tomo_bin_col"]] == 2]

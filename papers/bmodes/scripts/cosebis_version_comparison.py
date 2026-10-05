@@ -1,4 +1,4 @@
-"""COSEBIS version comparison claim.
+"""COSEBIS version comparison figure.
 
 Visualizes B-mode COSEBIS across catalog versions.
 Produces figures at fiducial scale cut and full range.
@@ -148,11 +148,11 @@ def _create_stacked_bmode_figure(
 
 
 def _xi_integration(results_dir, ver):
-    return f"{results_dir}/{ver}_xi_minsep=0.5_maxsep=300.0_nbins=1000_npatch=1.txt"
+    return f"{results_dir}/xi_{ver}_tomo_bin_all_minsep=0.5_maxsep=300.0_nbins=1000_npatch=1.txt"
 
 
-def _cov_integration(cov_dir, ver, blind):
-    base = f"covariance_{ver}_{blind}_g_minsep=0.5_maxsep=300.0_nbins=1000_masked"
+def _cov_integration(cov_dir, ver):
+    base = f"covariance_{ver}_g_minsep=0.5_maxsep=300.0_nbins=1000_masked"
     return f"{cov_dir}/{base}/{base}_processed.txt"
 
 
@@ -165,12 +165,11 @@ def main(
     fiducial_xi_path=None,
     fiducial_cov_path=None,
 ):
-    # Leak-corrected, non-ecut versions (matches VERSIONS_LEAK_CORR in claims.smk)
+    # Leak-corrected versions (matches VERSIONS_LEAK_CORR in figures.smk)
     versions = [v for v in config["versions"] if "_leak_corr" in v and "_ecut" not in v]
     nmodes = config["fiducial"]["nmodes"]
     plotting_config = config["plotting"]
     version_labels = plotting_config["version_labels"]
-    blind = config["fiducial"]["blind"]
 
     # Fiducial version whose inputs may be overridden with explicit lc paths
     fiducial_version = fiducial_version or config["fiducial"]["version"]
@@ -186,7 +185,7 @@ def main(
     cov_paths_list = [
         fiducial_cov_path
         if v == fiducial_version and fiducial_cov_path
-        else _cov_integration(cov_dir, v, blind)
+        else _cov_integration(cov_dir, v)
         for v in versions
     ]
 
@@ -342,7 +341,6 @@ def main(
             evidence_versions[f"{version}_{key}"] = val
 
     evidence_data = {
-        "spec_id": "cosebis_version_comparison",
         "generated": datetime.now().isoformat(),
         "evidence": {
             "scale_cuts": scale_cuts,

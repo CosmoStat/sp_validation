@@ -1,0 +1,121 @@
+# Catalogue columns sp_validation reads by fixed name: the canonical schema.
+#
+# The names are ShapePipe v2's. sp_validation code reads only these names
+# (src/sp_validation/tests/test_column_schema.py keeps code and file in step);
+# the docs page "Catalogue columns" is generated from this file.
+#
+# Columns not listed here are named by configuration, not by code: the cosmo_val
+# cat_config `*_col` keys (shear e1/e2/weight, PSF and star shapes and sizes),
+# the `col_name` of every masking cut, `mask_columns` (the mask columns below
+# are its default), and parameter lists.
+#
+# A catalogue in another naming convention is read by giving its config a
+# `column_map` of {canonical name: name in the file}; one `*` on each side maps
+# a family at once ({"NGMIX_*": "MYFIT_*"}). ShapePipe v1 products (releases
+# up to v1.6.x) need no map: sp_validation.grammar detects and presents them
+# under these names.
+#
+# Layout: {kind: {about: ..., columns: {canonical name: meaning}}}.
+
+galaxy:
+  about: >-
+    ShapePipe galaxy catalogue: the campaign catalogue
+    (`final_cat_<campaign>.hdf5`) and the comprehensive catalogue merged from
+    it. Read by the calibration pipeline (`scripts/calibration`, `catalog_builders`).
+  columns:
+    RA: Right ascension [deg].
+    DEC: Declination [deg] (campaign catalogue).
+    XWIN_WORLD: SExtractor windowed right ascension [deg]; tile-overlap cut.
+    YWIN_WORLD: SExtractor windowed declination [deg]; tile-overlap cut.
+    TILE_ID: Tile the object was detected on.
+    FLAGS: SExtractor extraction flags.
+    MAG_AUTO: SExtractor magnitude.
+    N_EPOCH: Number of exposures covering the object.
+    MASK_1_Faint_star_halos: Mask bit 1 (faint-star halo); True = masked.
+    MASK_2_Bright_star_halos: Mask bit 2 (bright-star halo); True = masked.
+    MASK_4_Stars: Mask bit 4 (star body); True = masked.
+    MASK_8_Manual: Mask bit 8 (manual mask); True = masked.
+    MASK_64_r: Mask bit 64 (no r-band coverage); True = masked.
+    MASK_1024_Maximask: Mask bit 1024 (MaxiMask artefact); True = masked.
+    NGMIX_N_EPOCH: Number of epochs ngmix fit; 0 = never fit.
+    NGMIX_MCAL_FLAGS: ngmix metacal fit flags.
+    NGMIX_MCAL_TYPES_FAIL: Number of metacal types whose fit failed.
+    NGMIX_G1_ERR_NOSHEAR: Error on g1 of the unsheared fit; inverse-variance weight.
+    NGMIX_G2_ERR_NOSHEAR: Error on g2 of the unsheared fit; inverse-variance weight.
+    NGMIX_G1_PSF_ORIG_NOSHEAR: g1 of the original PSF; -10 = no PSF fit.
+    NGMIX_G2_PSF_ORIG_NOSHEAR: g2 of the original PSF.
+    NGMIX_T_PSF_ORIG_NOSHEAR: Size T of the original PSF.
+    NGMIX_G1_NOSHEAR: Ellipticity g1, unsheared image.
+    NGMIX_G2_NOSHEAR: Ellipticity g2, unsheared image.
+    NGMIX_T_NOSHEAR: Galaxy size T = 2 sigma^2, unsheared image.
+    NGMIX_T_ERR_NOSHEAR: Error on T, unsheared image.
+    NGMIX_FLUX_NOSHEAR: Flux, unsheared image.
+    NGMIX_FLUX_ERR_NOSHEAR: Error on the flux, unsheared image.
+    NGMIX_FLAGS_NOSHEAR: Fit flags, unsheared image.
+    NGMIX_T_PSF_RECONV_NOSHEAR: Size T of the reconvolution PSF, unsheared image.
+    NGMIX_G1_1P: Ellipticity g1, image sheared by +h along g1.
+    NGMIX_G2_1P: Ellipticity g2, image sheared by +h along g1.
+    NGMIX_T_1P: Galaxy size T = 2 sigma^2, image sheared by +h along g1.
+    NGMIX_T_ERR_1P: Error on T, image sheared by +h along g1.
+    NGMIX_FLUX_1P: Flux, image sheared by +h along g1.
+    NGMIX_FLUX_ERR_1P: Error on the flux, image sheared by +h along g1.
+    NGMIX_FLAGS_1P: Fit flags, image sheared by +h along g1.
+    NGMIX_T_PSF_RECONV_1P: Size T of the reconvolution PSF, image sheared by +h along g1.
+    NGMIX_G1_1M: Ellipticity g1, image sheared by -h along g1.
+    NGMIX_G2_1M: Ellipticity g2, image sheared by -h along g1.
+    NGMIX_T_1M: Galaxy size T = 2 sigma^2, image sheared by -h along g1.
+    NGMIX_T_ERR_1M: Error on T, image sheared by -h along g1.
+    NGMIX_FLUX_1M: Flux, image sheared by -h along g1.
+    NGMIX_FLUX_ERR_1M: Error on the flux, image sheared by -h along g1.
+    NGMIX_FLAGS_1M: Fit flags, image sheared by -h along g1.
+    NGMIX_T_PSF_RECONV_1M: Size T of the reconvolution PSF, image sheared by -h along g1.
+    NGMIX_G1_2P: Ellipticity g1, image sheared by +h along g2.
+    NGMIX_G2_2P: Ellipticity g2, image sheared by +h along g2.
+    NGMIX_T_2P: Galaxy size T = 2 sigma^2, image sheared by +h along g2.
+    NGMIX_T_ERR_2P: Error on T, image sheared by +h along g2.
+    NGMIX_FLUX_2P: Flux, image sheared by +h along g2.
+    NGMIX_FLUX_ERR_2P: Error on the flux, image sheared by +h along g2.
+    NGMIX_FLAGS_2P: Fit flags, image sheared by +h along g2.
+    NGMIX_T_PSF_RECONV_2P: Size T of the reconvolution PSF, image sheared by +h along g2.
+    NGMIX_G1_2M: Ellipticity g1, image sheared by -h along g2.
+    NGMIX_G2_2M: Ellipticity g2, image sheared by -h along g2.
+    NGMIX_T_2M: Galaxy size T = 2 sigma^2, image sheared by -h along g2.
+    NGMIX_T_ERR_2M: Error on T, image sheared by -h along g2.
+    NGMIX_FLUX_2M: Flux, image sheared by -h along g2.
+    NGMIX_FLUX_ERR_2M: Error on the flux, image sheared by -h along g2.
+    NGMIX_FLAGS_2M: Fit flags, image sheared by -h along g2.
+    NGMIX_T_PSF_RECONV_2M: Size T of the reconvolution PSF, image sheared by -h along g2.
+
+comprehensive:
+  about: >-
+    Columns a comprehensive catalogue carries beyond the galaxy columns, as
+    post-processing writes them. Read when calibrating it
+    (`calibrate_comprehensive_cat.py`, `catalog_builders`).
+  columns:
+    Dec: Declination [deg].
+    mag: Magnitude.
+    MAGERR_AUTO: SExtractor magnitude error.
+    FLUX_RADIUS: SExtractor half-light radius [pixel].
+    w_iv: Inverse-variance shape weight.
+    e1_PSF: PSF ellipticity e1 at the galaxy position.
+    e2_PSF: PSF ellipticity e2 at the galaxy position.
+    fwhm_PSF: PSF FWHM at the galaxy position.
+
+star:
+  about: >-
+    ShapePipe star/PSF catalogue (`full_starcat_<campaign>.hdf5`, or FITS).
+    Rho/tau statistics read their star columns by cat_config keys instead.
+  columns:
+    RA: Right ascension [deg].
+    DEC: Declination [deg].
+    HSM_G1_PSF: PSF model ellipticity g1 (HSM).
+    HSM_G2_PSF: PSF model ellipticity g2 (HSM).
+
+shear:
+  about: >-
+    Calibrated shear catalogue, as sp_validation writes it and cosmo_val reads
+    it. Shapes and weights are named by the cat_config `*_col` keys; these
+    are read by fixed name.
+  columns:
+    RA: Right ascension [deg].
+    Dec: Declination [deg].
