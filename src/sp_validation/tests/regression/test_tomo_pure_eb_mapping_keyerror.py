@@ -48,6 +48,7 @@ class _TomoCV(PureEBMixin):
 
     versions = ["v"]
     npatch = 32
+    integration = None
     treecorr_config = {"min_sep": 2.0, "max_sep": 60.0, "nbins": 3}
 
     def __init__(self, output):
@@ -63,6 +64,13 @@ class _TomoCV(PureEBMixin):
             "max_sep": max_sep or self.treecorr_config["max_sep"],
             "nbins": nbins or self.treecorr_config["nbins"],
         }
+
+    def _integration_binning(self, min_sep, max_sep, nbins, *, default):
+        return self._binning(
+            default[0] if min_sep is None else min_sep,
+            default[1] if max_sep is None else max_sep,
+            default[2] if nbins is None else nbins,
+        )
 
     def calculate_2pcf_version(self, version, npatch, compute_tomography, **config):
         return {
