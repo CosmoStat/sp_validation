@@ -90,6 +90,7 @@ def _load_module(path, name, env):
 container = _load_module(
     REPO / "src" / "sp_validation" / "container.py", "spv_container", {}
 )
+paths = _load_module(REPO / "workflow" / "common.py", "test_workflow_paths", {})
 
 
 @dataclasses.dataclass
@@ -142,7 +143,7 @@ def _cat_config(catalogue):
 
 @pytest.fixture(scope="session")
 def toy(tmp_path_factory):
-    root = tmp_path_factory.mktemp("toy")
+    root = paths._plain(tmp_path_factory.mktemp("toy"))
     skip = shutil.ignore_patterns(".snakemake", "__pycache__", "tests")
     shutil.copytree(REPO / "workflow", root / "workflow", ignore=skip)
     shutil.copytree(

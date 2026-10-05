@@ -48,6 +48,14 @@ compare_revision = _container.compare_revision
 image_revision = _container.image_revision
 resolve_image = _container.resolve_image
 
+_binning = importlib.util.module_from_spec(
+    importlib.util.spec_from_file_location(
+        "_spv_angular_binning", REPO_SRC / "sp_validation" / "angular_binning.py"
+    )
+)
+_binning.__loader__.exec_module(_binning)
+validate_nested_grids = _binning.validate_nested_grids
+
 # Every job inherits this launch's environment (the slurm executor submits with
 # --export=ALL), and the Snakemake each job step starts keeps its source cache
 # under XDG_CACHE_HOME, which a login shell may point at node-local storage.
@@ -320,6 +328,9 @@ def xi_grids(config, fiducial):
             grid[key] = float(grid[key])
         for key in ("nbins", "npatch"):
             grid[key] = int(grid[key])
+    validate_nested_grids(grids["reporting"], grids["integration"])
+    if grids["integration"]["npatch"] != 1:
+        raise ValueError("the integration grid supplying ξ± means must use npatch=1")
     return grids
 
 
@@ -418,6 +429,7 @@ CV_INIT_KEYS = (
     "n_cov",
     "n_sim_cov",
     "b_target",
+    "integration",
     "theta_min",
     "theta_max",
     "nbins",

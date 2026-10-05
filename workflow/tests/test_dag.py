@@ -37,6 +37,22 @@ def test_assemble_resolves(toy):
         }, job.input
 
 
+def test_reporting_xi_depends_on_the_fine_product(toy):
+    result = toy.snakemake("-n", "assemble_sacc_all")
+    assert result.returncode == 0, result.stdout
+    jobs = [job for job in parse_jobs(result.stdout) if job.rule == "xi"]
+    grids = toy.common.xi_grids(toy.config, toy.config["fiducial"])
+    fine_tag = toy.common.grid_binning(grids["integration"])
+    reporting_tag = toy.common.grid_binning(grids["reporting"])
+    for version in VERSIONS:
+        fine_part = str(toy.cosmo_val / f"{version}_xi_{fine_tag}.sacc")
+        report_part = str(toy.cosmo_val / f"{version}_xi_{reporting_tag}.sacc")
+        reporting = next(job for job in jobs if report_part in job.output)
+        integration = next(job for job in jobs if fine_part in job.output)
+        assert fine_part in reporting.input
+        assert fine_part not in integration.input
+
+
 def test_one_integration_grid(toy):
     """COSEBIs and pure-E/B share the integration-grid part and its covariance."""
     result = toy.snakemake("-n", "assemble_sacc_all")
@@ -83,7 +99,7 @@ def test_outputs_stay_in_the_output_roots(toy, named):
 def test_every_spelling_of_an_output_root_declares_the_same_paths(toy, tmp_path, root):
     """Snakemake keys its persistence records by path string, so a symlinked
     spelling of an output root declares the tree's resolved paths."""
-    tree = Path(toy.env[root]).resolve()
+    tree = toy.common._plain(toy.env[root])
     link = tmp_path / "link"
     link.symlink_to(tree, target_is_directory=True)
     result = toy.snakemake("-n", "all", env={**toy.env, root: str(link)})

@@ -21,9 +21,9 @@ class CosebisMixin:
     def calculate_cosebis(
         self,
         version,
-        min_sep_int=0.5,
-        max_sep_int=500,
-        nbins_int=1000,
+        min_sep_int=None,
+        max_sep_int=None,
+        nbins_int=None,
         npatch=None,
         nmodes=10,
         cov_path=None,
@@ -48,13 +48,13 @@ class CosebisMixin:
             The catalog version to compute the COSEBIs for.
         min_sep_int : float, optional
             Minimum separation for integration binning (fine binning for COSEBIs).
-            Defaults to 0.5 arcmin.
+            Defaults to the configured integration grid, or 0.5 arcmin.
         max_sep_int : float, optional
             Maximum separation for integration binning (fine binning for COSEBIs).
-            Defaults to 500 arcmin.
+            Defaults to the configured integration grid, or 500 arcmin.
         nbins_int : int, optional
             Number of bins for integration binning (fine binning for COSEBIs).
-            Defaults to 1000.
+            Defaults to the configured integration grid, or 1000.
         npatch : int, optional
             Number of patches for the jackknife resampling. Defaults to self.npatch.
         nmodes : int, optional
@@ -102,7 +102,12 @@ class CosebisMixin:
         npatch = npatch or self.npatch
 
         # Always use integration binning for COSEBIs calculation (fine binning)
-        treecorr_config = self._binning(min_sep_int, max_sep_int, nbins_int)
+        treecorr_config = self._integration_binning(
+            min_sep_int, max_sep_int, nbins_int, default=(0.5, 500, 1000)
+        )
+        min_sep_int, max_sep_int, nbins_int = (
+            treecorr_config[k] for k in ("min_sep", "max_sep", "nbins")
+        )
 
         # Calculate single fine-binned correlation function for COSEBIs
         print(
@@ -171,9 +176,9 @@ class CosebisMixin:
         self,
         version=None,
         output_dir=None,
-        min_sep_int=0.5,
-        max_sep_int=500,
-        nbins_int=1000,  # Integration binning
+        min_sep_int=None,
+        max_sep_int=None,
+        nbins_int=None,  # Integration binning
         npatch=None,
         nmodes=10,
         cov_path=None,
@@ -201,7 +206,7 @@ class CosebisMixin:
             Output directory for plots. Defaults to self.cc['paths']['output'].
         min_sep_int, max_sep_int, nbins_int : float, float, int
             Integration binning parameters for correlation function
-            (default: 0.5, 500, 1000)
+            (the configured grid, otherwise 0.5, 500, 1000)
         npatch : int, optional
             Number of patches for jackknife covariance. Defaults to instance value.
         nmodes : int
@@ -233,6 +238,13 @@ class CosebisMixin:
 
         # Determine variance method based on whether theoretical covariance is used
         var_method = "analytic" if cov_path is not None else "jackknife"
+
+        integration = self._integration_binning(
+            min_sep_int, max_sep_int, nbins_int, default=(0.5, 500, 1000)
+        )
+        min_sep_int, max_sep_int, nbins_int = (
+            integration[k] for k in ("min_sep", "max_sep", "nbins")
+        )
 
         # Create output filename with integration parameters to match Snakemake
         out_stub = (

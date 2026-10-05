@@ -34,9 +34,10 @@ fiducial:
     B: SP_v1.4.6.3_B_leak_corr
     C: SP_v1.4.6.3_C_leak_corr
 
-  min_sep_int: 0.5
-  max_sep_int: 300.0
-  nbins_int: 1000
+  # k=34, with outward-rounded 0.08–300 arcmin coverage.
+  min_sep_int: 0.07939053012074941
+  max_sep_int: 301.3330747561176
+  nbins_int: 1015
 
   # COSEBIS parameters
   # Compute 20 modes, evaluate PTEs for both 6 and 20

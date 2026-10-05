@@ -33,7 +33,11 @@ CONFIG = {
         "theta_max": 250.0,
         "nbins": 20,
         "npatch": 100,
-        "integration": {"min_sep": 0.08, "max_sep": 300, "nbins": 1000},
+        "integration": {
+            "min_sep": 0.07939053012074941,
+            "max_sep": 301.3330747561176,
+            "nbins": 1015,
+        },
         "cosebis": {"nmodes": 20, "scale_cuts": [[12, 83]]},
     }
 }
@@ -42,9 +46,9 @@ FIDUCIAL = {
     "max_sep": 250.0,
     "nbins": 20,
     "npatch": 1,
-    "min_sep_int": 0.5,
-    "max_sep_int": 300,
-    "nbins_int": 1000,
+    "min_sep_int": 0.07939053012074941,
+    "max_sep_int": 301.3330747561176,
+    "nbins_int": 1015,
 }
 
 
@@ -55,11 +59,19 @@ def test_tag_is_built_from_canonical_values():
     `max_sep: 300` that reached the tag as "300" would have the consumer ask
     for a path the producer never writes.
     """
-    grids = common.xi_grids(CONFIG, FIDUCIAL)
-    # Counts stay integers, so no "nbins=1000.0" creeps into a name.
+    config = {
+        "cosmo_val": {
+            "theta_min": 1,
+            "theta_max": 256,
+            "nbins": 8,
+            "npatch": 100,
+            "integration": {"min_sep": 0.0625, "max_sep": 512, "nbins": 52},
+        }
+    }
+    grids = common.xi_grids(config, FIDUCIAL)
     assert (
         common.grid_binning(grids["integration"])
-        == "minsep=0.08_maxsep=300.0_nbins=1000_npatch=1"
+        == "minsep=0.0625_maxsep=512.0_nbins=52_npatch=1"
     )
 
 
@@ -88,4 +100,15 @@ def test_workflow_without_cosmo_val_falls_back_to_fiducial():
     """papers/bmodes carries no cosmo_val block; its grids come from FIDUCIAL."""
     grids = common.xi_grids({}, FIDUCIAL)
     assert grids["reporting"]["npatch"] == 1
-    assert grids["integration"]["min_sep"] == 0.5
+    assert grids["integration"]["min_sep"] == FIDUCIAL["min_sep_int"]
+
+
+def test_workflow_rejects_an_incompatible_integration_grid():
+    config = {
+        "cosmo_val": {
+            **CONFIG["cosmo_val"],
+            "integration": {"min_sep": 0.08, "max_sep": 300, "nbins": 1000},
+        }
+    }
+    with pytest.raises(ValueError, match="must nest"):
+        common.xi_grids(config, FIDUCIAL)

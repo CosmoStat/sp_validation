@@ -11,6 +11,7 @@ from cs_util.cosmo import get_cosmo
 from shear_psf_leakage import leakage, run_object, run_scale
 
 from .. import io
+from ..angular_binning import validate_nested_grids
 from ..b_modes import (
     _get_pte_from_scale_cut,
     covariance_label,
@@ -146,6 +147,10 @@ class CosmologyValidation(
         Maximum angular separation in arcminutes for correlation function binning.
     nbins : int, default 20
         Number of angular bins for TreeCorr real-space correlation functions.
+    integration : dict, optional
+        Unpatched fine ξ± grid (min_sep, max_sep, nbins) supplying the published
+        reporting means. Its bins must nest into the constructor's reporting
+        grid. Without it, reporting means use an unpatched reporting pass.
     b_target : float, default 0.01
         Maximum logarithmic-bin tolerance for full-sample means, with bin_slop
         capped at 1 per grid. Patched covariance passes use TreeCorr's default.
@@ -315,6 +320,7 @@ class CosmologyValidation(
         compute_tomography=False,
         force_run=False,
         b_target=0.01,
+        integration=None,
     ):
         self.b_target = b_target
         self.rho_tau_method = rho_tau_method
@@ -388,6 +394,18 @@ class CosmologyValidation(
         }
 
         self.treecorr_config = self._binning()
+        self.integration = None
+        if integration is not None:
+            if integration.get("npatch", 1) != 1:
+                raise ValueError(
+                    "the integration grid supplying ξ± means must use npatch=1"
+                )
+            self.integration = {
+                "min_sep": float(integration["min_sep"]),
+                "max_sep": float(integration["max_sep"]),
+                "nbins": int(integration["nbins"]),
+            }
+            validate_nested_grids(self.treecorr_config, self.integration)
 
         self.catalog_config_path = Path(catalog_config)
         with self.catalog_config_path.open("r") as file:
@@ -623,6 +641,15 @@ class CosmologyValidation(
         # patched covariance pass so TreeCorr uses its standard default there.
         config["bin_slop"] = extra.get("bin_slop", min(1, self.b_target / bin_size))
         return config
+
+    def _integration_binning(self, min_sep, max_sep, nbins, *, default):
+        """Configured fine grid, with a statistic's standalone fallback bounds."""
+        grid = self.integration or dict(zip(("min_sep", "max_sep", "nbins"), default))
+        return self._binning(
+            grid["min_sep"] if min_sep is None else min_sep,
+            grid["max_sep"] if max_sep is None else max_sep,
+            grid["nbins"] if nbins is None else nbins,
+        )
 
     def _read_shear_cols(self, ver, *keys):
         """Read shear-catalog columns by their config-key names.

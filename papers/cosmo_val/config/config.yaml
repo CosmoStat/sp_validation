@@ -81,9 +81,11 @@ cosmo_val:
 
   # The fine ξ± grid both B-mode statistics (COSEBIs, pure-E/B) integrate over.
   integration:
-    min_sep: 0.08
-    max_sep: 300
-    nbins: 1000
+    # k=34; reporting edges are fine edges 312, 346, ..., 992.
+    # Coverage 0.08–300 arcmin is rounded outward to whole fine bins.
+    min_sep: 0.07939053012074941
+    max_sep: 301.3330747561176
+    nbins: 1015
 
   # COSEBIs on the integration grid: mode count and the scale cuts scanned.
   cosebis:
@@ -103,9 +105,9 @@ fiducial:
   min_sep: 1.0
   max_sep: 250.0
   nbins: 20
-  min_sep_int: 0.5
-  max_sep_int: 300.0
-  nbins_int: 1000
+  min_sep_int: 0.07939053012074941
+  max_sep_int: 301.3330747561176
+  nbins_int: 1015
   nmodes: 20
   mock_version: SP_v1.4.6.3
   fiducial_min_scale: 12

@@ -3,7 +3,11 @@
 import json
 from pathlib import Path
 
+import numpy as np
 import treecorr
+
+from sp_validation.angular_binning import validate_nested_grids
+from sp_validation.b_modes import _reporting_binning
 
 
 def _measurement_configs(config):
@@ -64,7 +68,7 @@ def measure_with_patches(measure, catalogs, config, means=None):
     its explicit ``bin_slop``. The patched pass omits ``bin_slop`` so TreeCorr
     uses its standard default. A cached ``means`` can be reused for repeated
     covariance draws of the same catalogue. With no patches, one means-config
-    measurement supplies both products.
+    measurement supplies both products unless supplied means are reused.
     """
     configs = _measurement_configs(config)
     if all(cat.npatch == 1 for cat in catalogs.values()):
@@ -84,13 +88,39 @@ def measure_with_patches(measure, catalogs, config, means=None):
     return means, patched
 
 
-def process_gg(config, cat1, cat2=None):
-    """Measure GG means with ``config`` and patched resampling at TreeCorr's default.
+def rebin_gg_means(fine, config):
+    """Pair-weighted fine ξ± means on exactly nested reporting edges.
 
-    The shared two-pass mechanism omits ``bin_slop`` only from the patched
-    configuration. Covariance estimates, including joint and derived-statistic
-    jackknives, retain TreeCorr's per-patch results. Published pair counts,
-    weights, separations and complex correlations come from the means pass.
+    The same operator used by pure-E/B averages the complex correlations and
+    separations. Pair counts and weights are sums over the corresponding fine
+    bins. This object supplies means only, not a covariance or patch results.
+    """
+    reporting = treecorr.GGCorrelation({**config, "var_method": "shot"})
+    if fine.sep_units != reporting.sep_units:
+        raise ValueError("fine and reporting ξ± must use the same separation units")
+    validate_nested_grids(
+        config, dict(min_sep=fine.min_sep, max_sep=fine.max_sep, nbins=fine.nbins)
+    )
+    fine_edges = np.append(fine.left_edges, fine.right_edges[-1])
+    report_edges = np.append(reporting.left_edges, reporting.right_edges[-1])
+    operator, edges = _reporting_binning(fine.weight, fine_edges, report_edges)
+    for name in ("xip", "xim", "xip_im", "xim_im", "meanr", "meanlogr"):
+        getattr(reporting, name)[:] = operator @ getattr(fine, name)
+    indices = np.searchsorted(fine_edges, edges)
+    for i, (lo, hi) in enumerate(zip(indices[:-1], indices[1:])):
+        reporting.weight[i] = np.sum(fine.weight[lo:hi])
+        reporting.npairs[i] = np.sum(fine.npairs[lo:hi])
+    return reporting
+
+
+def process_gg(config, cat1, cat2=None, means=None):
+    """Measure GG means and patched resampling products at distinct tolerances.
+
+    The configured ``bin_slop`` applies to unpatched means; the shared
+    two-pass mechanism omits it from the patched configuration so TreeCorr's
+    default sets the covariance and resampling tolerance. Supplied ``means``
+    replace the unpatched reporting pass, for example with pair-weighted fine-grid
+    means. The patched covariance is materialized before the means fields change.
     """
     catalogs = {"cat1": cat1}
     if cat2 is not None:
@@ -104,10 +134,9 @@ def process_gg(config, cat1, cat2=None):
         gg.process(cats["cat1"], cat2=cats.get("cat2"))
         return gg
 
-    means, gg = measure_with_patches(measure, catalogs, config)
+    means, gg = measure_with_patches(measure, catalogs, config, means=means)
     if means is not gg:
-        # TreeCorr estimates covariance lazily from fields that the means pass
-        # replaces below, so freeze the patched-pass estimates first.
+        # Freeze the patched covariance and variances before replacing means.
         _ = gg.varxip, gg.varxim, gg.cov
         for name in (
             "xip",
