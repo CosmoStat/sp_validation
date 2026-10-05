@@ -11,9 +11,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import treecorr
 
+from sp_validation.angular_binning import validate_nested_grids
 from sp_validation.correlation import (
     measurement_matches,
     process_gg,
+    rebin_gg_means,
     write_measurement_metadata,
 )
 from sp_validation.statistics import jackknife_patch_centers
@@ -26,6 +28,7 @@ class RealSpaceMixin:
         npatch=None,
         compute_tomography=False,
         read_cached=False,
+        fine_correlations=None,
         **treecorr_config,
     ):
         """
@@ -52,6 +55,11 @@ class RealSpaceMixin:
             including patched runs. They carry the published means and variances,
             but no patch results for dense or derived jackknife covariance.
 
+            fine_correlations (dict, optional): Unpatched fine-grid GG objects
+            keyed by bin pair, measured from the same catalogue selections.
+            With a configured integration grid these supply the reporting means;
+            otherwise the fine grid is measured once by this method.
+
             **treecorr_config: Additional TreeCorr configuration parameters that
             will override the instance's default `treecorr_config`. For example,
             `min_sep=1`.
@@ -66,8 +74,11 @@ class RealSpaceMixin:
               dump with a configuration/mean-source JSON sidecar. Unpatched
               runs can reuse it; patched measurements remeasure to retain
               covariance. Plotting can opt into reading the saved columns.
-            - Full-sample means use ``bin_slop`` from the configured means pass.
-              The patched covariance pass omits it and uses TreeCorr's default.
+            - With ``integration`` configured, reporting means are pair-weighted
+              fine-grid means on exactly nested edges. Other measurements use
+              the configured unpatched means pass.
+            - ``b_target`` applies only to means. The patched covariance pass
+              omits ``bin_slop`` so TreeCorr uses its default.
             - Seeded patch centres are computed once from the full catalogue and
               shared by every tomographic bin pair.
         """
@@ -77,6 +88,20 @@ class RealSpaceMixin:
             **self._binning(**treecorr_config),
             "var_method": "jackknife" if int(npatch) > 1 else "shot",
         }
+
+        integration = self.integration
+        use_fine = integration is not None and any(
+            treecorr_config[key] != integration[key]
+            for key in ("min_sep", "max_sep", "nbins")
+        )
+        cache_config = dict(treecorr_config)
+        if use_fine:
+            validate_nested_grids(treecorr_config, integration)
+            cache_config["integration"] = integration
+        elif fine_correlations is not None:
+            raise ValueError(
+                "fine_correlations needs a configured reporting/integration grid pair"
+            )
 
         if compute_tomography:
             tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
@@ -97,7 +122,8 @@ class RealSpaceMixin:
                 if (
                     (int(npatch) == 1 or read_cached)
                     and not self.force_run
-                    and measurement_matches(out_fname, treecorr_config)
+                    and fine_correlations is None
+                    and measurement_matches(out_fname, cache_config)
                 ):
                     self.print_done(f"Skipping 2PCF calculation, {out_fname} exists")
                     gg = treecorr.GGCorrelation(treecorr_config)
@@ -107,6 +133,10 @@ class RealSpaceMixin:
             to_compute.append((bin1, bin2))
 
         if to_compute:
+            if use_fine and fine_correlations is None:
+                fine_correlations = self.calculate_2pcf_version(
+                    ver, npatch=1, compute_tomography=compute_tomography, **integration
+                )
             cols = self._shear_columns(ver, compute_tomography)
             patch_centers = self._patch_centers(cols, npatch)
 
@@ -118,7 +148,25 @@ class RealSpaceMixin:
                     else None
                 )
 
-                gg = process_gg(treecorr_config, cat_gal1, cat_gal2)
+                means = None
+                if use_fine:
+                    pair = f"tomo_bin_{bin1}_tomo_bin_{bin2}"
+                    if pair not in fine_correlations:
+                        raise ValueError(f"missing fine-grid correlation for {pair}")
+                    fine = fine_correlations[pair]
+                    if fine.npatch1 != 1 or fine.npatch2 != 1:
+                        raise ValueError(
+                            "fine-grid means must come from unpatched catalogues"
+                        )
+                    actual = dict(
+                        min_sep=fine.min_sep, max_sep=fine.max_sep, nbins=fine.nbins
+                    )
+                    if actual != integration:
+                        raise ValueError(
+                            "fine correlation does not match the configured integration grid"
+                        )
+                    means = rebin_gg_means(fine, treecorr_config)
+                gg = process_gg(treecorr_config, cat_gal1, cat_gal2, means=means)
 
                 if (bin1, bin2) == ("all", "all"):
                     # Columns only. The covariance matrix lives in the SACC part;
@@ -132,7 +180,7 @@ class RealSpaceMixin:
                         precision=17,
                     )
                     write_measurement_metadata(
-                        self._xi_txt_path(ver, treecorr_config, npatch), treecorr_config
+                        self._xi_txt_path(ver, treecorr_config, npatch), cache_config
                     )
 
                 ggs[f"tomo_bin_{bin1}_tomo_bin_{bin2}"] = gg

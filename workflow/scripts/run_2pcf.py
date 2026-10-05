@@ -12,8 +12,10 @@ orchestration:
         --cat-config /path/to/cosmo_val/cat_config.yaml \
         --out <output_dir>
 
-The measurement is binning-agnostic: the reporting and the fine integration
-grids are the same compute with different ``--min-sep/--max-sep/--nbins``.
+The integration job measures unpatched ξ± once. A configured reporting job
+consumes that SACC part, averages its means with pair weights on exactly nested
+edges, and measures the reporting covariance. Without a fine input, a standalone
+job uses unpatched reporting means.
 ``CosmologyValidation.calculate_2pcf_version`` measures the non-tomographic
 ``("all", "all")`` pair and writes its ``xi_{basename}.txt`` dump (a raw
 byproduct); the ξ± data product is born as SACC here, a *part* named by its
@@ -29,6 +31,8 @@ import argparse
 import os
 
 import numpy as np
+import sacc
+import treecorr
 
 from sp_validation import sacc_io
 from sp_validation.cosmo_val import CosmologyValidation
@@ -46,6 +50,8 @@ def run_2pcf(
     sacc_out=None,
     grid="reporting",
     b_target=0.01,
+    integration=None,
+    fine_xi=None,
 ):
     """Measure ξ±(θ) for ``ver`` and write its reporting SACC part.
 
@@ -58,11 +64,19 @@ def run_2pcf(
     Snakemake-declared output); it defaults to a binning-derived name under
     the resolved output directory for the CLI path.
 
+    ``integration`` and ``fine_xi`` together select the fine-grid mean source;
+    this measurement producer consumes the unblinded intermediate before the
+    data products enter blinding.
+
     Returns
     -------
     treecorr.GGCorrelation
         The measured correlation object (also the source of the SACC part).
     """
+    if (integration is None) != (fine_xi is None):
+        raise ValueError(
+            "supply the configured integration grid and its fine ξ± part together"
+        )
     cv = CosmologyValidation(
         versions=[ver],
         catalog_config=cat_config,
@@ -70,11 +84,45 @@ def run_2pcf(
         # so the SACC provenance metadata stamps the npatch actually measured
         npatch=npatch,
         b_target=b_target,
+        theta_min=min_sep,
+        theta_max=max_sep,
+        nbins=nbins,
+        integration=integration,
     )
+    fine_correlations = None
+    if fine_xi is not None:
+        # This is a raw-catalogue measurement producer, before blinding.
+        # A concealed input cannot be mixed with its raw-catalogue covariance.
+        part = sacc.Sacc.load_fits(os.fspath(fine_xi))
+        if part.metadata.get("concealed", False):
+            raise ValueError(
+                "reporting measurement requires a pre-blinding fine ξ± product"
+            )
+        if (
+            part.metadata.get("catalogue_version") != ver
+            or part.metadata.get("npatch") != 1
+        ):
+            raise ValueError(
+                "fine ξ± must be the same catalogue version measured with npatch=1"
+            )
+        fine = treecorr.GGCorrelation(cv._binning(**cv.integration, var_method="shot"))
+        theta, xip, xim = sacc_io.get_xi(part, (0, 0), grid="integration")
+        fields = sacc_io.get_xi_aux(part, (0, 0), grid="integration")
+        if fields["theta_nom"].shape != fine.rnom.shape or not np.allclose(
+            fields["theta_nom"], fine.rnom, rtol=1e-12, atol=0
+        ):
+            raise ValueError(
+                "fine ξ± product does not match the configured integration grid"
+            )
+        for name, values in {"meanr": theta, "xip": xip, "xim": xim, **fields}.items():
+            if name != "theta_nom":
+                getattr(fine, name)[:] = values
+        fine_correlations = {"tomo_bin_all_tomo_bin_all": fine}
     gg = cv.calculate_2pcf_version(
         ver,
         npatch=npatch,
         compute_tomography=False,
+        fine_correlations=fine_correlations,
         min_sep=min_sep,
         max_sep=max_sep,
         nbins=nbins,
@@ -92,6 +140,9 @@ def run_2pcf(
         theta_nom=gg.rnom,
         npairs=gg.npairs,
         weight=gg.weight,
+        meanlogr=gg.meanlogr,
+        xip_im=gg.xip_im,
+        xim_im=gg.xim_im,
         covariance=gg.cov if jackknife else None,
         variances=None if jackknife else np.concatenate([gg.varxip, gg.varxim]),
     )
@@ -116,6 +167,8 @@ def _from_snakemake(smk):
         output_dir=p["output_dir"],
         grid=p.get("grid", "reporting"),
         b_target=p.get("b_target", 0.01),
+        integration=p.get("integration"),
+        fine_xi=smk.input.fine_xi[0] if smk.input.fine_xi else None,
         # The SACC part goes exactly where the rule declares it; the .txt
         # byproduct still lands under the resolved output dir.
         sacc_out=smk.output["sacc"],
@@ -149,7 +202,21 @@ def _from_cli(argv=None):
         "--grid", default="reporting", help="SACC grid tag for the measured points"
     )
     ap.add_argument("--b-target", type=float, default=0.01)
+    ap.add_argument("--fine-xi", help="Unpatched integration-grid SACC part")
+    ap.add_argument("--min-sep-int", type=float)
+    ap.add_argument("--max-sep-int", type=float)
+    ap.add_argument("--nbins-int", type=int)
     a = ap.parse_args(argv)
+    integration_args = (a.min_sep_int, a.max_sep_int, a.nbins_int)
+    if a.fine_xi is not None and any(value is None for value in integration_args):
+        ap.error("--fine-xi requires --min-sep-int, --max-sep-int and --nbins-int")
+    if a.fine_xi is None and any(value is not None for value in integration_args):
+        ap.error("integration-grid arguments require --fine-xi")
+    integration = (
+        dict(zip(("min_sep", "max_sep", "nbins"), integration_args))
+        if a.fine_xi
+        else None
+    )
     run_2pcf(
         ver=a.ver,
         min_sep=a.min_sep,
@@ -160,6 +227,8 @@ def _from_cli(argv=None):
         output_dir=a.out,
         grid=a.grid,
         b_target=a.b_target,
+        integration=integration,
+        fine_xi=a.fine_xi,
     )
 
 

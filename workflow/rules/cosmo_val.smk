@@ -6,7 +6,7 @@
 # each diagnostic is a rule, and the rules are linked by the SACC parts and
 # products they write under COSMO_VAL (= cosmo_val/output):
 #
-#   catalogue ──→ xi (one job per grid: reporting, integration)
+#   catalogue ──→ xi integration ──→ xi reporting (means + patched covariance)
 #                   ├─ integration part ─┬──→ pure_eb (part, npz, figures)
 #                   │                    └──→ cosebis (part, npz, figures)
 #                   └─ reporting .txt ──→ 2pcf plot, ratio_xi_sys_xi

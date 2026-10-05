@@ -13,6 +13,18 @@ def xi_binning(grid):
     return grid_binning(XI_GRIDS[grid])
 
 
+def is_named_reporting(w):
+    """The configured reporting grid, independently of covariance patch count."""
+    return all(float(w[key]) == XI_GRIDS["reporting"][key] for key in ("min_sep", "max_sep", "nbins"))
+
+
+def xi_fine_input(w):
+    """Only the named reporting measurement consumes the named fine product."""
+    if not is_named_reporting(w):
+        return []
+    return [str(COSMO_VAL / f"{w.version}_xi_{xi_binning('integration')}.sacc")]
+
+
 rule xi:
     """TreeCorr ξ±(θ) for one version on one angular grid.
 
@@ -21,6 +33,7 @@ rule xi:
     """
     input:
         catalog=get_shear_catalog,
+        fine_xi=xi_fine_input,
     output:
         txt=str(COSMO_VAL / "xi_{version}_tomo_bin_all_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.txt"),
         sacc=str(COSMO_VAL / "{version}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc"),
@@ -35,6 +48,7 @@ rule xi:
         output_dir=str(COSMO_VAL),
         grid=lambda w: grid_of(XI_GRIDS, w),
         b_target=config.get("cosmo_val", {}).get("b_target", 0.01),
+        integration=lambda w: XI_GRIDS["integration"] if is_named_reporting(w) else None,
     resources:
         # The fine integration grid needs more memory and wall time than the
         # ~20-bin reporting one; scale on nbins rather than splitting the rule.

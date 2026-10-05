@@ -212,6 +212,9 @@ def add_xi(
     theta_nom=None,
     npairs=None,
     weight=None,
+    meanlogr=None,
+    xip_im=None,
+    xim_im=None,
 ):
     """Add a real-space shear 2PCF (ξ+ then ξ−) for one tracer pair.
 
@@ -234,18 +237,27 @@ def add_xi(
         Nominal bin centres — TreeCorr ``rnom`` — stored as ``theta_nom``.
     npairs, weight : array_like, optional
         TreeCorr pair counts and weights, stored per point.
+    meanlogr, xip_im, xim_im : array_like, optional
+        Auxiliary separation and imaginary means for lossless fine-grid rebinning.
     """
     _check_ascending("theta", theta)
     tracers = _pair(bins)
-    optional = {"theta_nom": theta_nom, "npairs": npairs, "weight": weight}
+    optional = {
+        "theta_nom": theta_nom,
+        "npairs": npairs,
+        "weight": weight,
+        "meanlogr": meanlogr,
+    }
     extras = {key: arr for key, arr in optional.items() if arr is not None}
-    for dtype, xi in ((XI_PLUS, xip), (XI_MINUS, xim)):
+    for dtype, xi, imaginary in ((XI_PLUS, xip, xip_im), (XI_MINUS, xim, xim_im)):
         for n, th in enumerate(theta):
             tags = {
                 "theta": float(th),
                 "grid": grid,
                 **{key: float(arr[n]) for key, arr in extras.items()},
             }
+            if imaginary is not None:
+                tags["xi_im"] = float(imaginary[n])
             s.add_data_point(dtype, tracers, float(xi[n]), **tags)
 
 
@@ -583,6 +595,18 @@ def get_xi(s, bins, *, grid):
 def get_xi_weight(s, bins, *, grid):
     """Return the TreeCorr pair weights stored with :func:`add_xi`'s ξ+ points."""
     return _tag(s, XI_PLUS, _pair(bins), "weight", grid=grid)
+
+
+def get_xi_aux(s, bins, *, grid):
+    """Full-precision auxiliary means needed to rebin an integration ξ± part."""
+    tracers = _pair(bins)
+    fields = {
+        name: _tag(s, XI_PLUS, tracers, name, grid=grid)
+        for name in ("theta_nom", "meanlogr", "weight", "npairs")
+    }
+    fields["xip_im"] = _tag(s, XI_PLUS, tracers, "xi_im", grid=grid)
+    fields["xim_im"] = _tag(s, XI_MINUS, tracers, "xi_im", grid=grid)
+    return fields
 
 
 def get_pseudo_cl(s, bins):

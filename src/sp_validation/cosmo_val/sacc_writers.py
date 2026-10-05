@@ -38,6 +38,9 @@ def xi_to_sacc(
     theta_nom=None,
     npairs=None,
     weight=None,
+    meanlogr=None,
+    xip_im=None,
+    xim_im=None,
     variances=None,
     covariance=None,
 ):
@@ -58,6 +61,9 @@ def xi_to_sacc(
         theta_nom=theta_nom,
         npairs=npairs,
         weight=weight,
+        meanlogr=meanlogr,
+        xip_im=xip_im,
+        xim_im=xim_im,
     )
     if covariance is not None and variances is not None:
         raise ValueError("give xi_to_sacc a dense covariance or variances, not both")
