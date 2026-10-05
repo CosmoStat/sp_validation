@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import treecorr
 
+from sp_validation.correlation import process_gg
 from sp_validation.statistics import jackknife_patch_centers
 
 
@@ -52,9 +53,10 @@ class RealSpaceMixin:
             key is ``"tomo_bin_all_tomo_bin_all"``.
 
         Notes:
-            - The non-tomographic pair is written to the columns-only TreeCorr
-              dump ``xi_{basename}.txt``. If that file already exists, the pair is
-              read back from it instead of being recomputed.
+            - The non-tomographic pair is written to a columns-only TreeCorr
+              dump tagged with its mean source and bin_slop. Unpatched runs can
+              reuse this file; patched runs remeasure to retain covariance.
+            - Full-sample means use an unpatched tree; patches supply covariance.
             - Seeded patch centres are computed once from the full catalogue and
               shared by every tomographic bin pair.
         """
@@ -81,7 +83,11 @@ class RealSpaceMixin:
         for bin1, bin2 in tomo_bin_pairs:
             if (bin1, bin2) == ("all", "all"):
                 out_fname = self._xi_txt_path(ver, treecorr_config, npatch)
-                if os.path.exists(out_fname):
+                if (
+                    int(npatch) == 1
+                    and not self.force_run
+                    and os.path.exists(out_fname)
+                ):
                     self.print_done(f"Skipping 2PCF calculation, {out_fname} exists")
                     gg = treecorr.GGCorrelation(treecorr_config)
                     gg.read(out_fname)
@@ -94,8 +100,6 @@ class RealSpaceMixin:
             patch_centers = self._patch_centers(cols, npatch)
 
             for bin1, bin2 in to_compute:
-                gg = treecorr.GGCorrelation(treecorr_config)
-
                 cat_gal1 = self._bin_catalog(cols, bin1, npatch, patch_centers)
                 cat_gal2 = (
                     self._bin_catalog(cols, bin2, npatch, patch_centers)
@@ -103,7 +107,7 @@ class RealSpaceMixin:
                     else None
                 )
 
-                gg.process(cat_gal1, cat2=cat_gal2)
+                gg = process_gg(treecorr_config, cat_gal1, cat_gal2)
 
                 if (bin1, bin2) == ("all", "all"):
                     # Columns only. The covariance matrix lives in the SACC part;
@@ -124,8 +128,9 @@ class RealSpaceMixin:
 
     def _xi_txt_path(self, ver, treecorr_config, npatch):
         """Path of the non-tomographic ξ± TreeCorr dump for a version."""
+        base = self.basename(ver, treecorr_config=treecorr_config, npatch=npatch)
         return self._output_path(
-            f"xi_{self.basename(ver, treecorr_config=treecorr_config, npatch=npatch)}.txt"
+            f"xi_{base}_means=unpatched_bin_slop={treecorr_config['bin_slop']}.txt"
         )
 
     def _shear_columns(self, ver, compute_tomography):
@@ -230,7 +235,12 @@ class RealSpaceMixin:
         theta_map = np.geomspace(theta_min * 5, theta_max / 2, nbins_map)
         self._map2["theta_map"] = theta_map
 
-        treecorr_config = self._binning(theta_min, theta_max, nbins)
+        treecorr_config = self._binning(
+            theta_min,
+            theta_max,
+            nbins,
+            var_method="jackknife" if int(npatch) > 1 else "shot",
+        )
 
         for ver in self.versions:
             if compute_tomography:
@@ -252,8 +262,6 @@ class RealSpaceMixin:
             patch_centers = self._patch_centers(cols, npatch)
 
             for bin1, bin2 in tomo_bin_pairs:
-                gg = treecorr.GGCorrelation(treecorr_config)
-
                 cat_gal1 = self._bin_catalog(cols, bin1, npatch, patch_centers)
                 cat_gal2 = (
                     self._bin_catalog(cols, bin2, npatch, patch_centers)
@@ -261,7 +269,7 @@ class RealSpaceMixin:
                     else None
                 )
 
-                gg.process(cat_gal1, cat2=cat_gal2)
+                gg = process_gg(treecorr_config, cat_gal1, cat_gal2)
 
                 mapsq, mapsq_im, mxsq, mxsq_im, varmapsq = gg.calculateMapSq(
                     R=theta_map,
