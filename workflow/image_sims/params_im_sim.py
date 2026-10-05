@@ -27,11 +27,11 @@ np.set_printoptions(precision=3, formatter={"float": "{: .3g}".format})
 
 # Survey parameters
 
-## Field or patch name -- derived from the run directory, which is named
+## Campaign name -- derived from the run directory, which is named
 ## after the simulation (e.g. '1z2z_grid_1'), so one shared params file
 ## serves every sim.
-name = os.path.basename(os.getcwd())
-print("Field name = {}".format(name))
+campaign = os.path.basename(os.getcwd())
+print("Campaign name = {}".format(campaign))
 
 ## Area of a tile in deg^2
 area_tile = 0.25
@@ -49,11 +49,15 @@ shape = "ngmix"
 data_dir = "."
 
 ### Tile IDs
-path_tile_ID = f"{data_dir}/tiles_{name}.txt"
+path_tile_ID = f"{data_dir}/tiles_{campaign}.txt"
 
 ### Weak-lensing galaxy catalog name
-galaxy_cat_path = f"{data_dir}/final_cat_{name}.hdf5"
+galaxy_cat_path = f"{data_dir}/final_cat_{campaign}.hdf5"
 print(f"Galaxy catalogue = {galaxy_cat_path}")
+
+### Galaxy catalogue column map {canonical name: name in the file}; `None` if
+### the catalogue carries the ShapePipe v2 names
+galaxy_column_map = None
 
 ## Parameter list; optional, set to `None` if not required
 param_list_path = f"{data_dir}/cfis/final_cat.param"
@@ -63,6 +67,9 @@ star_cat_path = None
 
 # HDU number of star and PSF catalogue
 hdu_star_cat = 1
+
+### Star catalogue column map, as galaxy_column_map
+star_column_map = None
 
 ### External mask; optional, set to `None` if not required
 mask_external_path = None
@@ -98,9 +105,6 @@ stats_file_name = "stats_file.txt"
 col_name_ra = "XWIN_WORLD"
 col_name_dec = "YWIN_WORLD"
 
-### Memory mode, set to None unless very large file
-mmap_mode = None
-
 ## Output
 
 ### Output file format extension: '.fits' or '.hdf5'
@@ -125,10 +129,14 @@ add_cols = [
 ## Pre-calibration catalogue, including masked objects and mask flags.
 ## ShapePipe-v2 (post-#761) ngmix grammar: ellipticity in named scalar
 ## components NGMIX_G{1,2}_*, PSF size split into NGMIX_T_PSF_ORIG/RECONV.
-## IMAFLAGS_ISO (present in the data-path params) is omitted: the simulation
-## pipeline runs no imaging-flag masking stage, so the column does not exist.
+## The MASK_<bit>_<label> columns (present in the data-path params) are omitted: the
+## simulation pipeline runs no imaging-flag masking stage, so they do not
+## exist -- hence the empty mask_columns below.
 ## NGMIX_MCAL_TYPES_FAIL is kept -- it is the metacal moments-failure flag the
 ## calibration mask cuts on, identically to the data path.
+## No mask columns to OR: no masking stage in the simulation pipeline
+mask_columns = []
+
 add_cols_pre_cal = [
     "TILE_ID",
     "NUMBER",
@@ -156,7 +164,7 @@ for key in (
 
 add_cols_pre_cal_format["TILE_ID"] = "A7"
 add_cols_pre_cal_format["NUMBER"] = "J"
-# Metacal bitmasks hold ngmix flag bits 0-15; bit 15 overflows signed 16-bit I.
+# Metacal bitmasks need int32: ngmix bit 15 overflows signed int16.
 add_cols_pre_cal_format["NGMIX_MCAL_FLAGS"] = "J"
 
 # Create key names for metacal information

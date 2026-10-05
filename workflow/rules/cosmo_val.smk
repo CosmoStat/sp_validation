@@ -49,18 +49,6 @@ CV_BINNING = (
 )
 
 
-def cv_rho_stats(version):
-    return str(
-        COSMO_VAL / "rho_tau_stats" / f"rho_stats_{cv_basename(version, CV_FIDUCIAL)}.fits"
-    )
-
-
-def cv_tau_stats(version):
-    return str(
-        COSMO_VAL / "rho_tau_stats" / f"tau_stats_{cv_basename(version, CV_FIDUCIAL)}.fits"
-    )
-
-
 def _pure_eb_stub(version):
     """Shared stem of the pure-E/B diagnostic products (npz + figures)."""
     eb = XI_GRIDS["integration"]
@@ -210,7 +198,7 @@ CV_INIT = cv_init_params(config)
 rule cv_plot_rho_stats:
     """Overlay rho statistics across all versions."""
     input:
-        rho=[cv_rho_stats(v) for v in CV_VERSIONS],
+        rho=[cv_rho_stats(v, CV_FIDUCIAL) for v in CV_VERSIONS],
     output:
         sentinel=str(CV_SENTINELS / "plot_rho_stats.done"),
     params:
@@ -224,7 +212,7 @@ rule cv_plot_rho_stats:
 rule cv_plot_tau_stats:
     """Overlay tau statistics across all versions."""
     input:
-        tau=[cv_tau_stats(v) for v in CV_VERSIONS],
+        tau=[cv_tau_stats(v, CV_FIDUCIAL) for v in CV_VERSIONS],
     output:
         sentinel=str(CV_SENTINELS / "plot_tau_stats.done"),
     params:
@@ -238,8 +226,8 @@ rule cv_plot_tau_stats:
 rule cv_rho_tau_fits:
     """Fit the PSF-error model (alpha/beta/eta) and propagate to xi_psf_sys."""
     input:
-        rho=[cv_rho_stats(v) for v in CV_VERSIONS],
-        tau=[cv_tau_stats(v) for v in CV_VERSIONS],
+        rho=[cv_rho_stats(v, CV_FIDUCIAL) for v in CV_VERSIONS],
+        tau=[cv_tau_stats(v, CV_FIDUCIAL) for v in CV_VERSIONS],
     output:
         sentinel=str(CV_SENTINELS / "rho_tau_fits.done"),
     params:
@@ -270,6 +258,9 @@ rule cv_footprints:
 
 rule cv_objectwise_leakage:
     """Object-wise PSF-leakage regression vs scale-dependent alpha (all versions)."""
+    input:
+        rho=[cv_rho_stats(v, CV_FIDUCIAL) for v in CV_VERSIONS],
+        tau=[cv_tau_stats(v, CV_FIDUCIAL) for v in CV_VERSIONS],
     output:
         sentinel=str(CV_SENTINELS / "objectwise_leakage.done"),
     params:
@@ -335,8 +326,8 @@ rule cv_ratio_xi_sys_xi:
     """Ratio of PSF systematics (xi_psf_sys) to the cosmic-shear signal (xi+)."""
     input:
         xi=[cv_xi_sacc(v, "reporting") for v in CV_VERSIONS],
-        rho=[cv_rho_stats(v) for v in CV_VERSIONS],
-        tau=[cv_tau_stats(v) for v in CV_VERSIONS],
+        rho=[cv_rho_stats(v, CV_FIDUCIAL) for v in CV_VERSIONS],
+        tau=[cv_tau_stats(v, CV_FIDUCIAL) for v in CV_VERSIONS],
     output:
         ratio=str(COSMO_VAL / "ratio_xi_sys_xi.png"),
     params:

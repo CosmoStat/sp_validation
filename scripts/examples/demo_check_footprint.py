@@ -55,7 +55,7 @@ obj.update_params()
 # -
 
 # Read catalogue
-# dat = obj.read_cat(load_into_memory=False, mode="r")
+# dat = obj.read_cat(load_into_memory=False)
 hdu_list = fits.open(obj._params["input_path"])
 dat = hdu_list[hdu].data
 

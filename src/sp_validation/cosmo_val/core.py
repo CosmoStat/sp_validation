@@ -1,5 +1,6 @@
 # %%
 import copy
+import itertools
 import os
 import re
 from pathlib import Path
@@ -8,9 +9,9 @@ import colorama
 import numpy as np
 import yaml
 from cs_util.cosmo import get_cosmo
-from shear_psf_leakage import run_object, run_scale
+from shear_psf_leakage import leakage, run_object, run_scale
 
-from .. import blinding
+from .. import blinding, io
 from ..b_modes import (
     _get_pte_from_scale_cut,
     covariance_label,
@@ -24,6 +25,47 @@ from .pseudo_cl import PseudoClMixin
 from .psf_systematics import PSFSystematicsMixin
 from .pure_eb import PureEBMixin
 from .real_space import RealSpaceMixin
+
+
+class _LeakageScale(run_scale.LeakageScale):
+    """``LeakageScale`` reading its catalogues through ``sp_validation.io``.
+
+    ``entries`` holds the version's cat_config ``shear`` and ``star`` blocks.
+    """
+
+    entries = None
+
+    def read_data(self, shear=True, psf=True):
+        if shear:
+            self.dat_shear = leakage.cut_data(
+                io.open_entry(self.entries["shear"]),
+                self._params["cut"],
+                self._params["verbose"],
+            )
+        if psf:
+            self.dat_PSF = self.handle_close_objects(
+                io.open_entry(self.entries["star"])
+            )
+
+
+class _LeakageObject(run_object.LeakageObject):
+    """``LeakageObject`` reading its catalogue through ``sp_validation.io``."""
+
+    entries = None
+
+    def read_data(self, selection=None):
+        """Read the shear entry, keeping the rows ``selection`` marks.
+
+        ``selection`` is an optional boolean array over the rows of
+        ``io.open_entry(entries["shear"])``, in that order.
+        """
+        dat = io.open_entry(self.entries["shear"])
+        if selection is not None:
+            if len(selection) != len(dat):
+                raise ValueError("Selection array has different length than catalogue")
+            dat = dat[selection]
+        self._dat = dat
+
 
 # %%
 BMODE_COLUMNS = {
@@ -88,8 +130,13 @@ class CosmologyValidation(
         Output directory. If None, the catalog config's paths.output.
     rho_tau_method : {'lsq', 'mcmc'}, default 'lsq'
         Fitting method for PSF leakage systematics parameters.
-    cov_estimate_method : {'th', 'jk'}, default 'th'
-        Covariance estimation: 'th' for semi-analytic theory, 'jk' for jackknife.
+    cov_estimate_method : {'th', 'jk', 'sim'}, default 'th'
+        Covariance estimation: 'th' for semi-analytic theory, 'jk' for jackknife,
+        'sim' for a covariance measured on simulations.
+    n_sim_cov : int, default 300
+        Number of simulations the 'sim' rho/tau covariance was measured on.
+        The covariance file does not record it; it sets the Hartlap debiasing
+        of the inverse covariance in the PSF-leakage fits.
     compute_cov_rho : bool, default True
         Whether to compute covariance for rho statistics during PSF analysis.
     n_cov : int, default 100
@@ -124,7 +171,7 @@ class CosmologyValidation(
         Number of ell bins for pseudo-C_ell analysis (used with binning='powspace').
     ell_step : int, default 10
         Bin width in ell for linear binning (used with binning='linear').
-    pol_factor : bool, default True
+    pol_factor : int, default -1
         Apply polarization correction factor in pseudo-C_ell calculations.
     nrandom_cell : int, default 10
         Number of random realizations for C_ell error estimation.
@@ -133,6 +180,10 @@ class CosmologyValidation(
         noise debiasing, making those realizations reproducible run-to-run.
     cosmo_params : dict, optional
         Cosmological parameters to pass to get_cosmo(). If None, uses Planck 2018.
+    compute_tomography : bool, default False
+        Whether to compute tomographic correlation functions and pseudo-C_ell.
+    force_run : bool, default False
+        If True, forces re-computation of results even if cached outputs exist.
 
     Attributes
     ----------
@@ -234,6 +285,7 @@ class CosmologyValidation(
         cov_estimate_method="th",
         compute_cov_rho=True,
         n_cov=100,
+        n_sim_cov=300,
         theta_min=0.1,
         theta_max=250,
         nbins=20,
@@ -250,7 +302,7 @@ class CosmologyValidation(
         power=1 / 2,
         n_ell_bins=32,
         ell_step=10,
-        pol_factor=True,
+        pol_factor=-1,
         cell_method="map",
         noise_bias_method="analytic",
         fiducial_input_inka="coupled",
@@ -258,11 +310,14 @@ class CosmologyValidation(
         cell_seed=8192,
         path_onecovariance=None,
         cosmo_params=None,
+        compute_tomography=False,
+        force_run=False,
     ):
         self.rho_tau_method = rho_tau_method
         self.cov_estimate_method = cov_estimate_method
         self.compute_cov_rho = compute_cov_rho
         self.n_cov = n_cov
+        self.n_sim_cov = n_sim_cov
         self.theta_min = theta_min
         self.theta_max = theta_max
         self.npatch = npatch
@@ -278,7 +333,12 @@ class CosmologyValidation(
         self.power = power
         self.n_ell_bins = n_ell_bins
         self.ell_step = ell_step
+
+        # bool is an int subclass: True would pass `in (-1, 1)` and mean "no flip"
+        if isinstance(pol_factor, bool) or pol_factor not in (-1, 1):
+            raise ValueError(f"pol_factor must be -1 or 1, got {pol_factor!r}")
         self.pol_factor = pol_factor
+
         self.nrandom_cell = nrandom_cell
         self.cell_seed = cell_seed
         self.cell_method = cell_method
@@ -286,6 +346,8 @@ class CosmologyValidation(
         self.fiducial_input_inka = fiducial_input_inka
         self.nside_mask = nside_mask
         self.path_onecovariance = path_onecovariance
+        self.compute_tomography = compute_tomography
+        self.force_run = force_run
 
         assert self.cell_method in ["map", "catalog"], (
             "cell_method must be 'map' or 'catalog'"
@@ -425,7 +487,8 @@ class CosmologyValidation(
     def sacc_nz(self, version):
         """Single-bin ``nz`` mapping ``{0: (z, nz)}`` for the SACC writers.
 
-        The round is single-bin, so the whole survey n(z) is bin 0.
+        The SACC parts carry the ("all", "all") pair only, so the whole-survey
+        n(z) of :meth:`get_redshift` is bin 0.
         """
         return {0: tuple(self.get_redshift(version))}
 
@@ -438,7 +501,12 @@ class CosmologyValidation(
         }
 
     def get_redshift(self, version):
-        """Load redshift distribution for a catalog version.
+        """Load the whole-survey redshift distribution of a catalog version.
+
+        The ``redshift_path`` file holds z in column 0 and one n(z) column per
+        tomographic bin (a single column for a non-tomographic version); the
+        whole-survey n(z) is their sum, as
+        ``read_redshift_distribution(version, is_tomography=False)`` returns it.
 
         Parameters
         ----------
@@ -452,7 +520,7 @@ class CosmologyValidation(
         nz : ndarray
             n(z) probability density
         """
-        return np.loadtxt(self.cc[version]["shear"]["redshift_path"], unpack=True)
+        return self.read_redshift_distribution(version, is_tomography=False)
 
     def _write_catalog_config(self):
         with self.catalog_config_path.open("w") as file:
@@ -489,17 +557,18 @@ class CosmologyValidation(
         # Branch is loop-invariant: pick the leakage class and its parameter
         # builder once, then apply per version.
         make_leakage, set_params = (
-            (run_object.LeakageObject, self.set_params_leakage_object)
+            (_LeakageObject, self.set_params_leakage_object)
             if objectwise
-            else (run_scale.LeakageScale, self.set_params_leakage_scale)
+            else (_LeakageScale, self.set_params_leakage_scale)
         )
 
         results = {}
         for ver in self.versions:
-            leakage = results[ver] = make_leakage()
-            leakage._params.update(set_params(ver))
-            leakage.check_params()
-            leakage.prepare_output()
+            obj = results[ver] = make_leakage()
+            obj.entries = self.cc[ver]
+            obj._params.update(set_params(ver))
+            obj.check_params()
+            obj.prepare_output()
 
         return results
 
@@ -529,11 +598,36 @@ class CosmologyValidation(
         catalogues = self._config_as_read
         return blinding.open_blind(blinding.blind_of(catalogues, entry), catalogues)
 
-    def basename(self, version, treecorr_config=None, npatch=None):
+    def _refuse_blinded_tomography(self, version):
+        """Refuse to measure tomographic shear signal on a blinded catalogue.
+
+        Only the ``("all", "all")`` pair is born as a SACC part, whose tracer
+        carries the n(z) the blind's theory shifts it by. The tomographic ξ±,
+        ⟨M_ap²⟩ and pseudo-Cℓ are TreeCorr objects and FITS tables with no
+        per-bin tracer, so on a blinded catalogue they would hold true values.
+        """
+        blind = self.blind(version)
+        if blind.name != blinding.NONE.name:
+            raise blinding.BlindingError(
+                f"{version} is blinded under {blind.name}, and blinding covers "
+                "its non-tomographic pair only; tomographic shear statistics are "
+                "measured on public (`blind: none`) catalogues"
+            )
+
+    def basename(
+        self,
+        version,
+        tomo_bin_a="all",
+        tomo_bin_b=None,
+        treecorr_config=None,
+        npatch=None,
+    ):
         cfg = treecorr_config or self.treecorr_config
         patches = npatch or self.npatch
+        tomo_bin_a_str = f"tomo_bin_{tomo_bin_a}"
+        tomo_bin_b_str = f"_tomo_bin_{tomo_bin_b}" if tomo_bin_b is not None else ""
         return (
-            f"{version}_minsep={cfg['min_sep']}"
+            f"{version}_{tomo_bin_a_str}{tomo_bin_b_str}_minsep={cfg['min_sep']}"
             f"_maxsep={cfg['max_sep']}"
             f"_nbins={cfg['nbins']}"
             f"_npatch={patches}"
@@ -596,8 +690,9 @@ class CosmologyValidation(
     def summarize_bmodes(self, fiducial_scale_cut=(12, 83), versions=None):
         """Print and return B-mode PTE summary across all statistics.
 
-        Collects PTEs from pure E/B, COSEBIs, and pseudo-Cl at the specified
-        fiducial scale cut. Statistics that haven't been computed show '--'.
+        Collects the PTEs of the non-tomographic ``("all", "all")`` pair from
+        pure E/B, COSEBIs, and pseudo-Cl at the specified fiducial scale cut.
+        Statistics that haven't been computed show '--'.
 
         Parameters
         ----------
@@ -614,47 +709,105 @@ class CosmologyValidation(
         versions = versions or self.versions
         summary = {}
         cov_methods = set()
+        pair = "tomo_bin_all_tomo_bin_all"
 
         for ver in versions:
             row = {}
 
             # Pure E/B PTEs from stored results
-            if ver in self._pure_eb_results:
-                res = self._pure_eb_results[ver]
-                edges = (res["left_edges"], res["right_edges"])
+            pure_eb = self._pure_eb_results.get(ver, {}).get(pair)
+            if pure_eb is not None:
+                edges = (pure_eb["left_edges"], pure_eb["right_edges"])
                 try:
                     for stat in ("xip_B", "xim_B", "combined"):
                         row[stat] = _get_pte_from_scale_cut(
-                            res["pte_matrices"][stat], edges, fiducial_scale_cut
+                            pure_eb["pte_matrices"][stat], edges, fiducial_scale_cut
                         )
-                except (KeyError, RuntimeError):
+                except RuntimeError:
+                    # The scale cut selects no bin of this grid.
                     pass
-                cov_methods.add(covariance_label(res["npatch"]))
+                cov_methods.add(covariance_label(pure_eb["npatch"]))
 
             # COSEBIs PTE from stored results
-            if ver in self._cosebis_results:
-                cosebis_res = self._cosebis_results[ver]
-                has_multi_scale_cuts = all(isinstance(k, tuple) for k in cosebis_res)
-                if has_multi_scale_cuts:
-                    key = find_conservative_scale_cut_key(
-                        cosebis_res, fiducial_scale_cut
-                    )
-                    row["COSEBIS"] = cosebis_res[key]["pte_B"]
-                elif "pte_B" in cosebis_res:
-                    row["COSEBIS"] = cosebis_res["pte_B"]
+            cosebis = self._cosebis_results.get(ver, {}).get(pair)
+            if cosebis is not None:
+                if all(isinstance(k, tuple) for k in cosebis):
+                    key = find_conservative_scale_cut_key(cosebis, fiducial_scale_cut)
+                    row["COSEBIS"] = cosebis[key]["pte_B"]
+                else:
+                    row["COSEBIS"] = cosebis["pte_B"]
 
-            # Pseudo-Cl BB PTE (_pseudo_cls is lazy; check existence without
-            # triggering computation)
-            if hasattr(self, "_pseudo_cls") and ver in self._pseudo_cls:
-                try:
-                    cl_bb = self.pseudo_cls[ver]["pseudo_cl"]["BB"]
-                    cov_bb = self.pseudo_cls[ver]["cov"]["COVAR_BB_BB"].data
-                    _, _, row["C_l_BB"] = chi2_and_pte(cl_bb, cov_bb)
-                    cov_methods.add("Gaussian (NaMaster)")
-                except (KeyError, AttributeError):
-                    pass
+            # Pseudo-Cl BB PTE, once both the spectrum and its covariance are
+            # loaded (_pseudo_cls is lazy; read it without triggering computation)
+            pseudo_cl = getattr(self, "_pseudo_cls", {}).get(ver, {}).get(pair, {})
+            if "pseudo_cl" in pseudo_cl and "cov" in pseudo_cl:
+                cl_bb = pseudo_cl["pseudo_cl"]["BB"]
+                cov_bb = pseudo_cl["cov"]["COVAR_BB_BB"].data
+                _, _, row["C_l_BB"] = chi2_and_pte(cl_bb, cov_bb)
+                cov_methods.add("Gaussian (NaMaster)")
 
             summary[ver] = row
 
         print_bmode_summary(summary, fiducial_scale_cut, cov_methods)
         return summary
+
+    def _get_tomo_bins(self, version):
+        """
+        Return the tomo_bin_ids for a given version. If the version does not have tomography, return None.
+
+        Returns
+        -------
+        tomo_bin_ids : list or None
+            List of unique tomographic bin IDs for the version, or None if no tomography is available
+        tomo_bin_pairs : list of tuples or None
+            List of unique pairs of tomographic bin IDs (including self-pairs) for the version, or None if no tomography is available
+        """
+        if "tomo_bin_col" in self.cc[version]["shear"]:
+            self.print_cyan(
+                f"Extracting tomography information from version {version}."
+            )
+            cat_gal = io.open_entry(self.cc[version]["shear"])
+            tomo_bin = cat_gal[self.cc[version]["shear"]["tomo_bin_col"]]
+            tomo_bin_ids = np.unique(tomo_bin)
+            tomo_bin_ids = tomo_bin_ids[
+                tomo_bin_ids > 0
+            ]  # Exclude zero or negative bins
+            self.print_cyan(
+                f"Found {len(tomo_bin_ids)} tomographic bins for version {version}: {tomo_bin_ids}."
+            )
+
+            tomo_bin_pairs = list(
+                itertools.combinations_with_replacement(tomo_bin_ids, 2)
+            )
+            return tomo_bin_ids, tomo_bin_pairs
+        else:
+            self.print_cyan(f"Version {version} does not have tomography information.")
+            return None, None
+
+    def _get_tomo_bins_for_versions(self, versions, tomography):
+        """
+        Return a dictionary of tomo_bin_ids and tomo_bin_pairs for each version in versions.
+
+        Parameters
+        ----------
+        versions : list of str
+            List of catalog version identifiers
+        tomography : bool
+            If True, assumes tomography else returns the format for non-tomographic versions.
+
+        Returns
+        -------
+        dict
+            Dictionary with version as key and a dictionary containing 'ids' and 'pairs' as values.
+            Example: {version1: {'ids': tomo_bin_ids1, 'pairs': tomo_bin_pairs1}, ...}
+        """
+        tomo_bins = {}
+        for ver in versions:
+            if tomography:
+                tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
+            else:
+                tomo_bin_ids, tomo_bin_pairs = ["all"], [("all", "all")]
+
+            tomo_bins[ver] = {"ids": tomo_bin_ids, "pairs": tomo_bin_pairs}
+
+        return tomo_bins

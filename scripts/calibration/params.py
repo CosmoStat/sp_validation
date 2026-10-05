@@ -25,9 +25,9 @@ np.set_printoptions(precision=3, formatter={"float": "{: .3g}".format})
 
 # Survey parameters
 
-## Field or patch name. Put None if n/a
-name = "P7"
-print("Field name = {}".format(name))
+## Campaign name (the tile list processed by ShapePipe); required, it names
+## the ShapePipe v2 products (final_cat_<campaign>.hdf5, ...)
+campaign = "W3"
 
 ## Area of a tile in deg^2
 area_tile = 0.25
@@ -44,20 +44,29 @@ shape = "ngmix"
 data_dir = "."
 
 ### Tile IDs
-path_tile_ID = f"{data_dir}/tiles_{name}.txt"
+path_tile_ID = f"{data_dir}/tiles_{campaign}.txt"
 
-### Weak-lensing galaxy catalog name
-galaxy_cat_path = f"{data_dir}/final_cat_{name}.hdf5"
+### Weak-lensing galaxy catalog name (FITS or HDF5; sp_validation.io)
+galaxy_cat_path = f"{data_dir}/final_cat_{campaign}.hdf5"
 print(f"Galaxy catalogue = {galaxy_cat_path}")
+
+### Galaxy catalogue column map {canonical name: name in the file}, for a
+### catalogue not in the ShapePipe v2 names (config/columns/shapepipe_v2.yaml);
+### set to `None` if not required
+galaxy_column_map = None
 
 ## Parameter list; optional, set to `None` if not required
 param_list_path = f"{data_dir}/cfis/final_cat.param"
 
 ### Star and PSF catalog name; optional, set to `None` if not required
-star_cat_path = f"{data_dir}/full_starcat-0000000.fits"
+star_cat_path = f"{data_dir}/full_starcat_{campaign}.hdf5"
 
-# HDU number of star and PSF catalogue
+# HDU number of star and PSF catalogue; only used for a FITS star catalogue,
+# ignored for HDF5
 hdu_star_cat = 1
+
+### Star catalogue column map, as galaxy_column_map
+star_column_map = None
 
 ### External mask; optional, set to `None` if not required
 mask_external_path = None
@@ -97,9 +106,6 @@ stats_file_name = "stats_file.txt"
 col_name_ra = "XWIN_WORLD"
 col_name_dec = "YWIN_WORLD"
 
-### Memory mode, set to None unless very large file
-mmap_mode = None
-
 ## Output
 
 ### Output file format extension: '.fits' or '.hdf5'
@@ -108,24 +114,37 @@ output_format = ".hdf5"
 ### Additional output columns
 add_cols = [
     "FLUX_RADIUS",
-    "FWHM_IMAGE",
-    "FWHM_WORLD",
     "MAGERR_AUTO",
-    "MAG_WIN",
-    "MAGERR_WIN",
-    "FLUX_AUTO",
-    "FLUXERR_AUTO",
-    "FLUX_APER",
-    "FLUXERR_APER",
     "NGMIX_T_NOSHEAR",
     "NGMIX_T_PSF_RECONV_NOSHEAR",
+]
+
+## ShapePipe v2 mask columns OR'd together for the galaxy selection cut:
+## the reason bits of the r-band default bitmask, whose OR reproduces mask_r
+mask_columns = [
+    "MASK_4_Stars",
+    "MASK_1_Faint_star_halos",
+    "MASK_2_Bright_star_halos",
+    "MASK_8_Manual",
+    "MASK_64_r",
+    "MASK_1024_Maximask",
 ]
 
 ## Pre-calibration catalogue, including masked objects and mask flags
 add_cols_pre_cal = [
     "TILE_ID",
     "NUMBER",
-    "IMAFLAGS_ISO",
+    "MASK_1_Faint_star_halos",
+    "MASK_2_Bright_star_halos",
+    "MASK_4_Stars",
+    "MASK_8_Manual",
+    "MASK_16_u",
+    "MASK_32_g",
+    "MASK_64_r",
+    "MASK_128_i",
+    "MASK_256_z",
+    "MASK_1024_Maximask",
+    "MASK_2048_z2",
     "FLAGS",
     "NGMIX_MCAL_FLAGS",
     "NGMIX_MCAL_TYPES_FAIL",
@@ -141,7 +160,6 @@ add_cols_pre_cal = [
 add_cols_pre_cal_format = {}
 for key in (
     "NUMBER",
-    "IMAFLAGS_ISO",
     "FLAGS",
     "NGMIX_MCAL_TYPES_FAIL",
     "N_EPOCH",
@@ -149,9 +167,12 @@ for key in (
 ):
     add_cols_pre_cal_format[key] = "I"
 
+for key in mask_columns:
+    add_cols_pre_cal_format[key] = "L"
+
 add_cols_pre_cal_format["TILE_ID"] = "A7"
 add_cols_pre_cal_format["NUMBER"] = "J"
-# Metacal bitmasks hold ngmix flag bits 0-15; bit 15 overflows signed 16-bit I.
+# Metacal bitmasks need int32: ngmix bit 15 overflows signed int16.
 add_cols_pre_cal_format["NGMIX_MCAL_FLAGS"] = "J"
 
 # Create key names for metacal information

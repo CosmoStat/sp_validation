@@ -38,25 +38,29 @@ config = obj.read_config_set_params("config_mask.P37.yaml")
 # !pwd
 
 # Get data. Set load_into_memory to False for very large files
-dat, dat_ext = obj.read_cat(load_into_memory=False)
+dat = obj.read_cat(load_into_memory=False)
 
 if False:
     n_max = 1_000_000
     print(f"MKDEBUG testing only first {n_max} objects")
     dat = dat[:n_max]
-    dat_ext = dat_ext[:n_max]
 
 # ## Masking
 
 # +
 # List of masks to apply
+# (column names as declared in config/calibration/mask_v2.0.yaml)
 masks_to_apply = [
     "overlap",
-    "IMAFLAGS_ISO",
+    "MASK_4_Stars",
+    "MASK_1_Faint_star_halos",
+    "MASK_2_Bright_star_halos",
+    "MASK_8_Manual",
+    "MASK_64_r",
+    "MASK_1024_Maximask",
     "NGMIX_MCAL_TYPES_FAIL",
     "NGMIX_G1_PSF_ORIG_NOSHEAR",
     "NGMIX_G2_PSF_ORIG_NOSHEAR",
-    "8_Manual",
 ]
 
 # List of masks not to apply and not to copy to minimal catalogue
@@ -68,7 +72,6 @@ masks_not_to_include = []
 masks, labels = sp_joint.get_masks_from_config(
     config,
     dat,
-    dat_ext,
     masks_to_apply=masks_to_apply,
     verbose=obj._params["verbose"],
 )
@@ -117,9 +120,9 @@ for mask in masks:
     del mask
 
 
-def strip_h5py_metadata_dtype(dat_dtype, dat_ext_dtype):
+def strip_h5py_metadata_dtype(dat_dtype):
     cleaned_fields = []
-    for name, dt in dat_dtype.descr + dat_ext_dtype.descr:
+    for name, dt in dat_dtype.descr:
         # If dt is a tuple (e.g., ('S7', {'h5py_encoding': 'ascii'}))
         if isinstance(dt, tuple):
             cleaned_fields.append((name, dt[0]))  # keep only the base dtype string
@@ -132,26 +135,19 @@ def strip_h5py_metadata_dtype(dat_dtype, dat_ext_dtype):
 # Remove mask columns that were applied earlier
 
 # Columns to keep
-names_to_keep = [
-    name
-    for name in dat.dtype.names + dat_ext.dtype.names
-    if name not in masks_not_to_include
-]
+names_to_keep = [name for name in dat.dtype.names if name not in masks_not_to_include]
 
 # Remove metadata from the dtype (in particular, encoding for TILE_ID)
-clean_dtype_descr = strip_h5py_metadata_dtype(dat.dtype, dat_ext.dtype)
+clean_dtype_descr = strip_h5py_metadata_dtype(dat.dtype)
 
 new_dtype = [(name, dt) for name, dt in clean_dtype_descr if name in names_to_keep]
 
 # Create a new structured array
 new_dat = np.zeros(len(dat[mask_combined._mask]), dtype=new_dtype)
 
-# Copy relevant columns and lines from each source array
+# Copy relevant columns and lines
 for name in names_to_keep:
-    if name in dat.dtype.names:
-        new_dat[name] = dat[name][mask_combined._mask]
-    else:
-        new_dat[name] = dat_ext[name][mask_combined._mask]
+    new_dat[name] = dat[name][mask_combined._mask]
 
 # +
 # Add information to FITS header
@@ -188,7 +184,6 @@ from scipy import stats
 
 
 def correlation_matrix(masks, confidence_level=0.9):
-
     n_key = len(masks)
     print(n_key)
 
@@ -232,7 +227,6 @@ plt.savefig("correlation_matrix.png")
 
 
 def confusion_matrix(prediction, observation):
-
     result = {}
 
     result["true_pos"] = sum(prediction & observation)
@@ -308,4 +302,4 @@ plt.show(block=False)
 plt.savefig("confusion_matrix.png")
 # -
 
-obj.close_hd5()
+obj.close_cat()

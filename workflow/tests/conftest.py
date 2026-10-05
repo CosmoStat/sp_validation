@@ -109,9 +109,19 @@ class Toy:
         """Run the host Snakemake in the toy's paper directory, or in ``cwd``.
 
         ``config`` adds ``KEY=VALUE`` overrides. ``env`` replaces the toy's
-        environment.
+        environment. The workflow profile is off: it enables apptainer, which CI
+        runners lack.
         """
-        cmd = [sys.executable, "-m", "snakemake", "--cores", "1", *args]
+        cmd = [
+            sys.executable,
+            "-m",
+            "snakemake",
+            "--cores",
+            "1",
+            "--workflow-profile",
+            "none",
+            *args,
+        ]
         if config:
             cmd += ["--config", *config]
         return subprocess.run(

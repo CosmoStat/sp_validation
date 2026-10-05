@@ -528,17 +528,17 @@ Example for glass mock v0 (mock data):
   python /n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/scripts/cosmosis_fitting.py \\
     --mock \\
     --cosmosis-root "glass_mock_v0_00001" \\
-    --data-dir "/n09data/guerrini/glass_mock_chains/glass_mock_v0_00001" \\
+    --data-dir "/n09data/guerrini/glass_mock_chains/glass_mock_v1.4.6.3_v2/glass_mock_v0_00001" \\
     --nz-file "/n17data/sguerrini/UNIONS/WL/nz/v1.4.6/nz_SP_v1.4.6_A.txt" \\
     --output-root "/home/guerrini/sp_validation/cosmo_inference" \\
-    --output-basename "glass_mocks/v0/glass_mock_00001" \\
-    --xi "/n09data/guerrini/glass_mock_v1.4.6/results/xi_glass_mock_00001_4096_nbins=20.fits" \\
+    --output-basename "glass_mocks/glass_mock_v1.4.6.3_v2/v0/glass_mock_00001" \\
+    --xi "/n09data/guerrini/glass_mock_v1.4.6.3_v2/results/xi_glass_mock_00001_4096_nbins=20.fits" \\
     --cov-xi "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/data/covariance/covariance_SP_v1.4.6_A_ng_minsep=1.0_maxsep=250.0_nbins=20_masked/covariance_SP_v1.4.6_A_ng_minsep=1.0_maxsep=250.0_nbins=20_masked_processed.txt" \\
     --use-rho-tau \\
     --rho-stats "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val/output/rho_tau_stats/rho_stats_SP_v1.4.6_minsep=1.0_maxsep=250.0_nbins=20_npatch=1.fits" \\
     --tau-stats "/n17data/cdaley/unions/pure_eb/results/glass_mock_rhotau_samples/00001/tau_stats_sampled.fits" \\
     --cov-tau "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val/output/rho_tau_stats/cov_tau_SP_v1.4.6_minsep=1.0_maxsep=250.0_nbins=20_npatch=1_th.npy" \\
-    --cl-file "/n09data/guerrini/glass_mock_v1.4.6/results/cl_glass_mock_00001_4096.npy" \\
+    --cl-file "/n09data/guerrini/glass_mock_v1.4.6.3_v2/results/cl_glass_mock_00001_4096.npy" \\
     --cov-cl "/home/guerrini/sp_validation/cosmo_val/output/pseudo_cl_cov_g_ng_iNKA_SP_v1.4.6.fits"
         """,
         formatter_class=argparse.RawDescriptionHelpFormatter,

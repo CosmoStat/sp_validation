@@ -48,7 +48,7 @@ def test_assemble_resolves(toy):
             f"pseudo_cl_cov_{version}_{harmonic}.fits",
             f"{version}_cosebis.sacc",
             f"{version}_pure_eb.sacc",
-            f"rho_tau_{version}_{reporting}.sacc",
+            f"rho_tau_{version}_tomo_bin_all_{reporting}.sacc",
         }, job.input
 
 

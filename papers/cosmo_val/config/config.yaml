@@ -33,6 +33,8 @@ cosmo_val:
   cov_estimate_method: th
   compute_cov_rho: true
   n_cov: 100
+  # simulations behind a cov_estimate_method: sim rho/tau covariance (Hartlap)
+  n_sim_cov: 300
   var_method: jackknife
   quantile: 0.1587
   ylim_xi_sys_ratio: [-0.02, 0.5]
@@ -43,7 +45,8 @@ cosmo_val:
   power: 0.5
   n_ell_bins: 32
   ell_step: 10
-  pol_factor: true
+  # e2 multiplier (±1) applied before NaMaster; -1 flips the e2 sign
+  pol_factor: -1
   noise_bias_method: analytic
   cell_seed: 8192
   path_onecovariance: "/home/guerrini/OneCovariance/"
@@ -127,7 +130,6 @@ harmonic:
 # Cosmological inference data-product locations (dormant subsystem).
 inference:
   chains_dir: "/n09data/guerrini/output_chains"
-  glass_mock_data_dir: "/n09data/guerrini/glass_mock_v1.4.6/results"
   glass_mock_chains_dir: "/n09data/guerrini/glass_mock_chains"
 
 cosebis:
@@ -139,8 +141,11 @@ pixel_mask:
   target_nsides: [2048, 4096, 8192]
   source_file: "/n17data/UNIONS/WL/masks/mask_r_nside131072.hsp"
 
+# GLASS mock suite: catalogues and precomputed xi/Cl (Sacha's pipeline).
+# Generated outputs are labelled by the parent directory's suite name.
 glass_mocks:
-  version: "v0"
+  data_dir: "/n09data/guerrini/glass_mock_v1.4.6.3_v2/results"
+  version: "v0"  # Inference product version, independent of the suite.
   seed_range: [1, 350]
 
 tools:

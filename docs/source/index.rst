@@ -27,7 +27,7 @@ Four main tasks make up a run, usually in sequence:
    PSF leakage. The output is a calibrated shear catalogue. See
    :doc:`run_validation`.
 #. **Post-processing.** Turn the calibrated catalogue into science-ready
-   catalogues: masking, galaxy-sample selection, and merging of per-patch
+   catalogues: masking, galaxy-sample selection, and merging of per-campaign
    catalogues. See :doc:`post_processing`.
 #. **Cosmology validation.** Run detailed diagnostics on the calibrated
    catalogue: rho- and tau-statistics, E-/B-mode decomposition, and comparison

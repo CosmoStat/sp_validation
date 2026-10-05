@@ -402,18 +402,37 @@ CV_SENTINELS = COSMO_VAL / "snakemake_sentinels"
 
 
 def cv_basename(version, fiducial=None):
-    """Reproduce CosmologyValidation.basename() for a version.
+    """Reproduce CosmologyValidation.basename() for a version's ("all", "all") pair.
 
-    Mirrors the f-string in cosmo_val.py so rule outputs match exactly what the
-    method writes. Uses fiducial binning (min_sep/max_sep/nbins/npatch).
+    Mirrors the f-string of ``CosmologyValidation.basename(version)`` so rule
+    outputs match exactly what the method writes. Uses fiducial binning
+    (min_sep/max_sep/nbins/npatch).
     """
     fiducial = fiducial or FIDUCIAL
     return (
-        f"{version}_minsep={fiducial['min_sep']}"
+        f"{version}_tomo_bin_all_minsep={fiducial['min_sep']}"
         f"_maxsep={fiducial['max_sep']}"
         f"_nbins={fiducial['nbins']}"
         f"_npatch={fiducial['npatch']}"
     )
+
+
+def cv_rho_stats(version, fiducial=None):
+    """ρ-statistics FITS that CosmologyValidation writes for a version."""
+    base = cv_basename(version, fiducial)
+    return str(COSMO_VAL / "rho_tau_stats" / f"rho_stats_{base}.fits")
+
+
+def cv_tau_stats(version, fiducial=None):
+    """τ-statistics FITS that CosmologyValidation writes for a version."""
+    base = cv_basename(version, fiducial)
+    return str(COSMO_VAL / "rho_tau_stats" / f"tau_stats_{base}.fits")
+
+
+def cv_cov_tau(version, fiducial=None):
+    """Theoretical τ covariance that CosmologyValidation writes for a version."""
+    base = cv_basename(version, fiducial)
+    return str(COSMO_VAL / "rho_tau_stats" / f"cov_tau_{base}_th.npy")
 
 
 # CosmologyValidation constructor kwargs read from config["cosmo_val"]. Every
@@ -424,6 +443,7 @@ CV_INIT_KEYS = (
     "cov_estimate_method",
     "compute_cov_rho",
     "n_cov",
+    "n_sim_cov",
     "theta_min",
     "theta_max",
     "nbins",

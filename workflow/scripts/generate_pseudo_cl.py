@@ -125,7 +125,7 @@ def generate_pseudo_cl(
     cv = CosmologyValidation(**cv_kwargs)
 
     # Pseudo-Cls only (no covariance), born directly at the final out_path.
-    cv.calculate_pseudo_cl(out_path=out_path)
+    cv.calculate_pseudo_cl(compute_tomography=False, out_path=out_path)
 
     ell = cv.pseudo_cls[version]["pseudo_cl"]["ELL"]
     print(f"Generated pseudo-Cl with {len(ell)} ell bins")

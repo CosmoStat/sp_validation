@@ -14,8 +14,11 @@ orchestration:
 
 The measurement is binning-agnostic: the reporting and the fine integration
 grids are the same compute with different ``--min-sep/--max-sep/--nbins``. The
-ξ± is born as a SACC part, named by its binning, tagged with its ``--grid`` and
-sealed under the catalogue's blind by ``CosmologyValidation.calculate_2pcf``.
+non-tomographic ``("all", "all")`` ξ± is born as a SACC part, named by its
+binning, tagged with its ``--grid`` and sealed under the catalogue's blind by
+``CosmologyValidation.calculate_2pcf_version``. The part carries the covariance
+the measurement estimated: the dense jackknife covariance when it had patches,
+the shot-noise ``varxip``/``varxim`` diagonal when it had none.
 
 ``output_dir`` is passed explicitly so lc can point each run at its own
 ``{output}`` tree.
@@ -62,15 +65,16 @@ def run_2pcf(
         output_dir or cv.cc["paths"]["output"],
         f"{ver}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc",
     )
-    part = cv.calculate_2pcf(
+    cv.calculate_2pcf_version(
         ver,
-        grid=grid,
         npatch=npatch,
+        grid=grid,
         out=out_path,
         min_sep=min_sep,
         max_sep=max_sep,
         nbins=nbins,
     )
+    part = cv.xi_parts[ver, grid]
     print(f"Wrote {grid} ξ± SACC part: {out_path}")
     return part
 

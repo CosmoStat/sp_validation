@@ -7,7 +7,6 @@ correlation functions (xi+/xi- pure-mode decomposition) for catalog versions.
 
 import numpy as np
 
-from .. import sacc_io
 from ..b_modes import (
     calculate_eb_statistics,
     calculate_pure_eb_correlation,
@@ -31,14 +30,15 @@ class PureEBMixin:
         max_sep_int=300,
         nbins_int=1000,
         npatch=None,
+        compute_tomography=False,
         cov_path_int=None,
     ):
         """
         Calculate the pure E/B modes for the given catalog version.
 
         ξ± is measured on the fine integration grid only, as the version's
-        sealed part (:meth:`calculate_2pcf`), so a blinded catalogue's modes
-        are concealed. The reporting binning (the instance's treecorr_config
+        sealed part (:meth:`calculate_2pcf_version`), so a blinded catalogue's
+        modes are concealed. The reporting binning (the instance's treecorr_config
         unless overridden) enters as bin edges, snapped onto the fine edges,
         into which :func:`~sp_validation.b_modes.pure_eb_operator` averages
         the modes.
@@ -54,52 +54,69 @@ class PureEBMixin:
             extend beyond the reporting range on both sides.
         npatch : int, optional
             Jackknife patch count. Defaults to self.npatch.
+        compute_tomography : bool, optional
+            Whether to compute the pure E/B modes for every tomographic bin pair
+            instead of the non-tomographic pair. Defaults to False.
         cov_path_int : str, optional
             Analytic ξ± covariance on the integration grid. Without it the
-            covariance is the jackknife the integration-grid part carries.
+            covariance is the jackknife the integration-grid part carries. One
+            file holds one pair's covariance, so it cannot be combined with
+            ``compute_tomography``.
 
         Returns
         -------
         dict
-            The results of :func:`~sp_validation.b_modes.calculate_pure_eb_correlation`:
-            the six pure-mode arrays, their covariance ``cov`` and its
-            ``npatch`` record (``None`` for an analytic covariance), the
-            reporting grid and the integration-grid ξ±.
+            Mapping of ``"tomo_bin_{b1}_tomo_bin_{b2}"`` (the single key
+            ``"tomo_bin_all_tomo_bin_all"`` without tomography) to the results of
+            :func:`~sp_validation.b_modes.calculate_pure_eb_correlation`: the six
+            pure-mode arrays, their covariance ``cov`` and its ``npatch`` record
+            (``None`` for an analytic covariance), the reporting grid and the
+            integration-grid ξ±.
         """
         self.print_start(f"Computing {version} pure E/B")
 
-        reporting = self._binning(min_sep, max_sep, nbins)
-        integration = self._binning(min_sep_int, max_sep_int, nbins_int)
-        gg_int = sacc_io.xi_correlation(
-            self.calculate_2pcf(
-                version,
-                grid="integration",
-                npatch=npatch,
-                min_sep=integration["min_sep"],
-                max_sep=integration["max_sep"],
-                nbins=integration["nbins"],
+        if cov_path_int is not None and compute_tomography:
+            raise ValueError(
+                "cov_path_int holds a single ξ± covariance; it cannot serve every "
+                "tomographic bin pair."
             )
+
+        integration = self._binning(min_sep_int, max_sep_int, nbins_int)
+        integration_edges = np.geomspace(
+            integration["min_sep"], integration["max_sep"], integration["nbins"] + 1
         )
-
-        if cov_path_int is not None:
-            cov_xi, npatch = np.loadtxt(cov_path_int), None
-        else:
-            cov_xi, npatch = gg_int.cov, gg_int.npatch1
-
-        return calculate_pure_eb_correlation(
-            gg_int.meanr,
-            gg_int.xip,
-            gg_int.xim,
-            gg_int.weight,
-            np.geomspace(
-                integration["min_sep"], integration["max_sep"], integration["nbins"] + 1
-            ),
-            cov_xi,
-            np.geomspace(
-                reporting["min_sep"], reporting["max_sep"], reporting["nbins"] + 1
-            ),
+        reporting = self._binning(min_sep, max_sep, nbins)
+        reporting_edges = np.geomspace(
+            reporting["min_sep"], reporting["max_sep"], reporting["nbins"] + 1
+        )
+        ggs_int = self.calculate_2pcf_version(
+            version,
             npatch=npatch,
+            compute_tomography=compute_tomography,
+            grid="integration",
+            min_sep=integration["min_sep"],
+            max_sep=integration["max_sep"],
+            nbins=integration["nbins"],
         )
+
+        results = {}
+        for bin_key, gg_int in ggs_int.items():
+            if cov_path_int is not None:
+                cov_xi, cov_npatch = np.loadtxt(cov_path_int), None
+            else:
+                cov_xi, cov_npatch = gg_int.cov, gg_int.npatch1
+            results[bin_key] = calculate_pure_eb_correlation(
+                gg_int.meanr,
+                gg_int.xip,
+                gg_int.xim,
+                gg_int.weight,
+                integration_edges,
+                cov_xi,
+                reporting_edges,
+                npatch=cov_npatch,
+            )
+
+        return results
 
     def plot_pure_eb(
         self,
@@ -114,13 +131,14 @@ class PureEBMixin:
         max_sep_int=300,
         nbins_int=1000,
         npatch=None,
+        compute_tomography=False,
         cov_path_int=None,
         results=None,
     ):
         """
         Generate comprehensive pure E/B mode analysis plots.
 
-        Creates four types of plots for each version:
+        Creates four types of plots for each version and bin pair:
         1. Integration vs Reporting comparison
         2. E/B/Ambiguous correlation functions
         3. 2D PTE heatmaps
@@ -143,13 +161,17 @@ class PureEBMixin:
             (default: 0.08-300 arcmin, 1000 bins)
         npatch : int, optional
             Number of patches for jackknife covariance. Uses self.npatch if None.
+        compute_tomography : bool, optional
+            Whether to compute and plot every tomographic bin pair instead of the
+            non-tomographic pair. Defaults to False.
         cov_path_int : str, optional
             Analytic ξ± covariance on the integration grid; the jackknife is
             used without it.
         results : dict or list, optional
-            Precalculated results to avoid recomputation. Can be a single results dict
-            for one version, or a list of results dicts for multiple versions.
-            If None (default), results will be calculated using calculate_pure_eb.
+            Precalculated :meth:`calculate_pure_eb` results (``{bin_key: result}``)
+            to avoid recomputation: a single such dict for one version, or a list
+            of them for multiple versions. If None (default), results will be
+            calculated using calculate_pure_eb.
 
         Notes
         -----
@@ -199,16 +221,8 @@ class PureEBMixin:
             results_list = [None] * len(versions)
 
         for idx, version in enumerate(versions):
-            # Generate standardized output filename stub
-            out_stub = (
-                f"{output_dir}/{version}_eb_minsep={min_sep}_"
-                f"maxsep={max_sep}_nbins={nbins}_minsepint={min_sep_int}_"
-                f"maxsepint={max_sep_int}_nbinsint={nbins_int}_npatch={npatch}_"
-                f"varmethod={var_method}"
-            )
-
             # Get or calculate results for this version
-            version_results = results_list[idx] or self.calculate_pure_eb(
+            bin_results = results_list[idx] or self.calculate_pure_eb(
                 version,
                 min_sep=min_sep,
                 max_sep=max_sep,
@@ -217,45 +231,61 @@ class PureEBMixin:
                 max_sep_int=max_sep_int,
                 nbins_int=nbins_int,
                 npatch=npatch,
+                compute_tomography=compute_tomography,
                 cov_path_int=cov_path_int,
             )
+            self._pure_eb_results[version] = {}
 
-            # Calculate E/B statistics for all bin combinations
-            version_results = calculate_eb_statistics(version_results)
+            for bin_key, version_results in bin_results.items():
+                # Generate standardized output filename stub
+                out_stub = (
+                    f"{output_dir}/{version}_{bin_key}_eb_minsep={min_sep}_"
+                    f"maxsep={max_sep}_nbins={nbins}_minsepint={min_sep_int}_"
+                    f"maxsepint={max_sep_int}_nbinsint={nbins_int}_npatch={npatch}_"
+                    f"varmethod={var_method}"
+                )
+                label = (
+                    version
+                    if bin_key == "tomo_bin_all_tomo_bin_all"
+                    else f"{version} {bin_key}"
+                )
 
-            # Integration vs Reporting comparison plot
-            plot_integration_vs_reporting(
-                version_results,
-                out_stub + "_integration_vs_reporting.png",
-                version,
-            )
+                # Calculate E/B statistics for all bin combinations
+                version_results = calculate_eb_statistics(version_results)
 
-            # E/B/Ambiguous correlation functions plot
-            plot_pure_eb_correlations(
-                version_results,
-                out_stub + "_xis.png",
-                version,
-                fiducial_xip_scale_cut=fiducial_xip_scale_cut,
-                fiducial_xim_scale_cut=fiducial_xim_scale_cut,
-            )
+                # Integration vs Reporting comparison plot
+                plot_integration_vs_reporting(
+                    version_results,
+                    out_stub + "_integration_vs_reporting.png",
+                    label,
+                )
 
-            # 2D PTE heatmaps plot
-            plot_pte_2d_heatmaps(
-                version_results,
-                version,
-                out_stub + "_ptes.png",
-                fiducial_xip_scale_cut=fiducial_xip_scale_cut,
-                fiducial_xim_scale_cut=fiducial_xim_scale_cut,
-            )
+                # E/B/Ambiguous correlation functions plot
+                plot_pure_eb_correlations(
+                    version_results,
+                    out_stub + "_xis.png",
+                    label,
+                    fiducial_xip_scale_cut=fiducial_xip_scale_cut,
+                    fiducial_xim_scale_cut=fiducial_xim_scale_cut,
+                )
 
-            # Covariance matrix plot
-            plot_eb_covariance_matrix(
-                version_results["cov"],
-                covariance_label(version_results["npatch"]),
-                out_stub + "_covariance.png",
-                version,
-            )
+                # 2D PTE heatmaps plot
+                plot_pte_2d_heatmaps(
+                    version_results,
+                    label,
+                    out_stub + "_ptes.png",
+                    fiducial_xip_scale_cut=fiducial_xip_scale_cut,
+                    fiducial_xim_scale_cut=fiducial_xim_scale_cut,
+                )
 
-            # Save data products and store on instance
-            save_pure_eb_results(version_results, out_stub + "_data.npz")
-            self._pure_eb_results[version] = version_results
+                # Covariance matrix plot
+                plot_eb_covariance_matrix(
+                    version_results["cov"],
+                    covariance_label(version_results["npatch"]),
+                    out_stub + "_covariance.png",
+                    label,
+                )
+
+                # Save data products and store on instance
+                save_pure_eb_results(version_results, out_stub + "_data.npz")
+                self._pure_eb_results[version][bin_key] = version_results
