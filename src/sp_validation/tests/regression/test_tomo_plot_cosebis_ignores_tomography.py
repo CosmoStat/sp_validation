@@ -67,7 +67,7 @@ def _make_cv(tmp_path):
         catalog_config=str(cfg_path),
         output_dir=str(out),
         compute_tomography=True,
-        npatch=1,
+        npatch=4,
     )
     cv.treecorr_config["num_threads"] = 2
     # Hand the table straight in, bypassing the leakage-correction reader.
@@ -76,16 +76,15 @@ def _make_cv(tmp_path):
     }
     cv._c1 = {VER: 0.0}
     cv._c2 = {VER: 0.0}
-    cov = tmp_path / "cov.txt"
-    np.savetxt(cov, np.eye(2 * NBINS) * 1e-6)
+    # Each bin pair takes its own jackknife covariance; a single cov_path cannot
+    # serve every pair.
     params = dict(
         version=VER,
         min_sep_int=1.0,
         max_sep_int=30.0,
         nbins_int=NBINS,
-        npatch=1,
+        npatch=4,
         nmodes=1,
-        cov_path=str(cov),
     )
     return cv, params
 
