@@ -45,7 +45,7 @@ with `blinding.no_signal`. Another statistic passes its own theory,
 A measurement calculates, then saves: one function computes the signal, saves
 it with `sacc_io.save(s, path, blind=...)` (or `sacc_io.seal`), and returns the
 concealed part, so raw signal never leaves it
-(`CosmologyValidation.calculate_2pcf` is the pattern). Statistics computed from
+(`CosmologyValidation.calculate_2pcf_version` is the pattern). Statistics computed from
 parts (COSEBIs, pure-E/B, the assembled `{version}.sacc`) are saved with
 `derived_from=parts` and carry their inputs' stamp, `s.metadata["blind"]`.
 

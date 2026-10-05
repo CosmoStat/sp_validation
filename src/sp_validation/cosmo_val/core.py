@@ -471,7 +471,7 @@ class CosmologyValidation(
         # B-mode results storage for summarize_bmodes()
         self._pure_eb_results = {}
         self._cosebis_results = {}
-        # The sealed ξ± parts calculate_2pcf returned, by (version, grid).
+        # The sealed ξ± parts calculate_2pcf_version made, by (version, grid).
         self.xi_parts = {}
 
     def _output_path(self, *parts):
