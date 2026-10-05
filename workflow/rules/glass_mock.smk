@@ -5,9 +5,9 @@
 # Pre-computed 20-bin ξ± and 32-bin Cℓ from Sacha's pipeline are too coarse
 # or bypass the MCM — these rules run the full pipeline on mock catalogs.
 
-GLASS_MOCK_DIR = "/n09data/guerrini/glass_mock_v1.4.6/results"
+# GLASS_MOCK_DIR and GLASS_MOCK_SUITE defined in Snakefile.
 GLASS_MOCK_IDS = [f"{i:05d}" for i in range(1, 101)]
-MOCK_RESULTS = "results/glass_mock"
+MOCK_RESULTS = f"results/glass_mock/{GLASS_MOCK_SUITE}"
 
 # Mock ξ± are measured on the data's integration grid, node for node, so the
 # E/B transforms see the same θ sampling on mocks and data.
@@ -66,13 +66,13 @@ rule glass_mock_pseudo_cl:
 
 
 rule glass_mock_all_xi:
-    """Aggregator: fine-binned ξ± for 5 mocks."""
+    """Aggregator: fine-binned ξ± for the first 100 mocks."""
     input:
         expand(MOCK_XI, mock_id=GLASS_MOCK_IDS),
 
 
 rule glass_mock_all_pseudo_cl:
-    """Aggregator: pseudo-Cℓ for 5 mocks at a given nbins."""
+    """Aggregator: pseudo-Cℓ for the first 100 mocks at a given nbins."""
     input:
         expand(
             f"{MOCK_RESULTS}/pseudo_cl_glass_mock_{{mock_id}}_powspace_nbins={{cl_nbins}}.fits",
@@ -82,7 +82,7 @@ rule glass_mock_all_pseudo_cl:
 
 
 rule glass_mock_validation:
-    """Aggregator: all mock validation inputs (ξ± + pseudo-Cℓ for 5 mocks)."""
+    """Aggregator: all mock validation inputs (ξ± + pseudo-Cℓ for 100 mocks)."""
     input:
         rules.glass_mock_all_xi.input,
         rules.glass_mock_all_pseudo_cl.input,
@@ -109,7 +109,7 @@ rule mock_cosebis_scatter:
 
 
 rule mock_cosebis_bias_test:
-    """Gather: 25-mock COSEBIS bias test figure + evidence.
+    """Gather: 100-mock COSEBIS bias test figure + evidence.
 
     Collects per-mock COSEBIS from scatter jobs, propagates CosmoCov ξ±
     covariance to COSEBIS space, tests mean B_n = 0 at σ/√N precision.
@@ -121,7 +121,7 @@ rule mock_cosebis_bias_test:
         ),
         xi_ref=MOCK_XI.format(mock_id="00001"),
         cov=covariance_path(
-            "SP_v1.4.6_leak_corr",
+            FIDUCIAL["version"],
             "g",
             MOCK_XI_GRID["min_sep"],
             MOCK_XI_GRID["max_sep"],
@@ -133,8 +133,8 @@ rule mock_cosebis_bias_test:
         theta_min=config["cosebis"]["theta_min"],
         theta_max=config["cosebis"]["theta_max"],
     output:
-        figure="results/tapestry/mock_cosebis_bias_test/figure.png",
-        evidence="results/tapestry/mock_cosebis_bias_test/evidence.json",
+        figure=f"results/tapestry/mock_cosebis_bias_test/{GLASS_MOCK_SUITE}/figure.png",
+        evidence=f"results/tapestry/mock_cosebis_bias_test/{GLASS_MOCK_SUITE}/evidence.json",
     script:
         "../scripts/mock_cosebis_bias_test.py"
 

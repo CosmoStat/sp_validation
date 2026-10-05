@@ -15,7 +15,6 @@ COSMO_INFERENCE_RUNDIR = str(COSMO_INFERENCE)
 # External chain/mock locations are deployment-specific, so they live in config.
 INFERENCE = config["inference"]
 CHAINS_DIR = INFERENCE["chains_dir"]            # CosmoSIS chain output root (real data)
-GLASS_MOCK_DATA_DIR = INFERENCE["glass_mock_data_dir"]    # precomputed mock xi/Cl products
 GLASS_MOCK_CHAINS_DIR = INFERENCE["glass_mock_chains_dir"]  # mock chain output root
 
 PSEUDO_CL_DIR = COSMO_VAL  # producer (twopoint.smk) writes pseudo_cl* here
@@ -24,12 +23,12 @@ GLASS_MOCK_SEED_RANGE = config["glass_mocks"]["seed_range"]
 
 GLASS_MOCK_FITS_PATTERN = str(
     COSMO_INFERENCE_PROD
-    / f"data/glass_mocks/{GLASS_MOCK_VERSION}/glass_mock_{{mock_id}}"
+    / f"data/glass_mocks/{GLASS_MOCK_SUITE}/{GLASS_MOCK_VERSION}/glass_mock_{{mock_id}}"
     / f"cosmosis_glass_mock_{GLASS_MOCK_VERSION}_{{mock_id}}.fits"
 )
 GLASS_MOCK_CONFIG_PATTERN = str(
     COSMO_INFERENCE_PROD
-    / f"cosmosis_config/output/cosmosis_pipeline_glass_mocks_{GLASS_MOCK_VERSION}_glass_mock_{{mock_id}}.ini"
+    / f"cosmosis_config/output/{GLASS_MOCK_SUITE}/cosmosis_pipeline_glass_mocks_{GLASS_MOCK_VERSION}_glass_mock_{{mock_id}}.ini"
 )
 
 # Fiducial harmonic-binning tag the pseudo-Cl producer (twopoint.smk) stamps
@@ -125,7 +124,7 @@ rule inference_glass_mocks:
 
 rule inference_prep_glass_mock:
     input:
-        xi=f"{GLASS_MOCK_DATA_DIR}/xi_glass_mock_{{mock_id}}_4096_nbins=20.fits",
+        xi=f"{GLASS_MOCK_DIR}/xi_glass_mock_{{mock_id}}_4096_nbins=20.fits",
         # Use centralized covariance_path() with fiducial mock version
         cov_matrix=covariance_path(FIDUCIAL["mock_version"]),
         # n(z) file
@@ -136,16 +135,16 @@ rule inference_prep_glass_mock:
         # Tau covariance (real data)
         tau_cov=str(COSMO_VAL / f"rho_tau_stats/cov_tau_{FIDUCIAL['mock_version']}{fiducial_binning_suffix()}_th.npy"),
         # C_ell data for dual config generation
-        cl_file=f"{GLASS_MOCK_DATA_DIR}/cl_glass_mock_{{mock_id}}_4096.npy",
+        cl_file=f"{GLASS_MOCK_DIR}/cl_glass_mock_{{mock_id}}_4096.npy",
         cl_cov=pseudo_cl_assets(FIDUCIAL["mock_version"])[1],
     output:
         fits_file=GLASS_MOCK_FITS_PATTERN,
         config_file=GLASS_MOCK_CONFIG_PATTERN,
     params:
         cosmosis_root=f"glass_mock_{GLASS_MOCK_VERSION}_{{mock_id}}",
-        data_dir=f"{GLASS_MOCK_CHAINS_DIR}/glass_mock_{GLASS_MOCK_VERSION}_{{mock_id}}",
+        data_dir=f"{GLASS_MOCK_CHAINS_DIR}/{GLASS_MOCK_SUITE}/glass_mock_{GLASS_MOCK_VERSION}_{{mock_id}}",
         output_root=str(COSMO_INFERENCE_PROD),
-        output_basename=f"glass_mocks/{GLASS_MOCK_VERSION}/glass_mock_{{mock_id}}",
+        output_basename=f"glass_mocks/{GLASS_MOCK_SUITE}/{GLASS_MOCK_VERSION}/glass_mock_{{mock_id}}",
     threads: 1
     resources:
         mem_mb=8000,

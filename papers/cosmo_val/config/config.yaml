@@ -127,7 +127,6 @@ harmonic:
 # Cosmological inference data-product locations (dormant subsystem).
 inference:
   chains_dir: "/n09data/guerrini/output_chains"
-  glass_mock_data_dir: "/n09data/guerrini/glass_mock_v1.4.6/results"
   glass_mock_chains_dir: "/n09data/guerrini/glass_mock_chains"
 
 cosebis:
@@ -139,8 +138,11 @@ pixel_mask:
   target_nsides: [2048, 4096, 8192]
   source_file: "/n17data/UNIONS/WL/masks/mask_r_nside131072.hsp"
 
+# GLASS mock suite: catalogues and precomputed xi/Cl (Sacha's pipeline).
+# Generated outputs are labelled by the parent directory's suite name.
 glass_mocks:
-  version: "v0"
+  data_dir: "/n09data/guerrini/glass_mock_v1.4.6.3_v2/results"
+  version: "v0"  # Inference product version, independent of the suite.
   seed_range: [1, 350]
 
 tools:
