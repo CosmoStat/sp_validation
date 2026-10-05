@@ -493,30 +493,32 @@ def get_jackknife_cov(
                         rho_stat_handler.catalogs.catalogs_dict
                     )
 
-                    # Build the catalog of galaxies. PSF was computed above
-                    tau_stat_handler.build_cat_to_compute_tau(
-                        load("shear"),
-                        cat_type="gal",
-                        catalog_id=catalog_id(i),
-                        mask=mask_gal,
+                catalogs = rho_stat_handler.catalogs
+                centers = jackknife_patch_centers(
+                    catalogs.catalogs_dict[f"psf_{catalog_id(i)}"],
+                    catalogs._params["patch_number"],
+                    seed=i,
+                    init="kmeans++",
+                )
+                # Fresh catalogues keep TreeCorr's cached patches consistent with
+                # this draw's shared star/galaxy layout.
+                stars = catalogs.read_shear_cat(
+                    path_gal=None, path_psf=load("psf"), hdu=1
+                )
+                for cat_type in ("psf", "psf_error", "psf_size_error"):
+                    catalogs.build_catalog(
+                        cat=stars,
+                        cat_type=cat_type,
+                        key=f"{cat_type}_{catalog_id(i)}",
+                        patch_centers=centers,
+                        mask=mask_star,
                     )
-
-                else:
-                    print(f"Computing the patch centers for patch {i + 1}/{ncov}")
-
-                    npatch = rho_stat_handler.catalogs._params["patch_number"]
-                    centers = jackknife_patch_centers(
-                        rho_stat_handler.catalogs.catalogs_dict[f"psf_{catalog_id(i)}"],
-                        npatch,
-                    )
-
-                    # Update the patch centers of the catalogs
-                    for key, cat in rho_stat_handler.catalogs.catalogs_dict.items():
-                        cat._centers = centers
-                        field = cat.getNField(
-                            max_top=int.bit_length(npatch) - 1, coords="spherical"
-                        )
-                        cat._patch = field.kmeans_assign_patches(centers)
+                tau_stat_handler.build_cat_to_compute_tau(
+                    load("shear"),
+                    cat_type="gal",
+                    catalog_id=catalog_id(i),
+                    mask=mask_gal,
+                )
 
                 # Compute and save rho stats
                 rho_stat_handler.compute_rho_stats(

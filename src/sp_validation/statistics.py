@@ -17,7 +17,7 @@ from scipy import stats
 PATCH_MIN_TOP = 6
 
 
-def jackknife_patch_centers(cat, npatch, seed=0):
+def jackknife_patch_centers(cat, npatch, seed=0, init="tree"):
     """Seeded k-means jackknife patch centres for a TreeCorr catalogue.
 
     Seeding the k-means does not by itself fix the patches. TreeCorr starts the
@@ -35,6 +35,9 @@ def jackknife_patch_centers(cat, npatch, seed=0):
         Number of patches.
     seed : int, optional
         Seed for the k-means initialisation.
+    init : str, optional
+        TreeCorr initialisation method. Use ``kmeans++`` for draws that sample
+        different seeded starting centres rather than the same tree cells.
 
     Returns
     -------
@@ -46,7 +49,7 @@ def jackknife_patch_centers(cat, npatch, seed=0):
         max_top=int.bit_length(npatch) - 1,
         coords="spherical",
     )
-    _, centers = field.run_kmeans(npatch, rng=np.random.default_rng(seed))
+    _, centers = field.run_kmeans(npatch, init=init, rng=np.random.default_rng(seed))
     return centers
 
 
