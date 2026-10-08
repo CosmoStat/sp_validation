@@ -13,6 +13,8 @@ from collections import Counter
 import healpy as hp
 import numpy as np
 
+from .statistics import jackknife_weighted_mean
+
 
 def get_area(dd, area_tile, verbose=False):
     """Get area.
@@ -293,6 +295,42 @@ def additive_bias(e1, e2, w, R):
     c1 = float(np.average(e1 / R, weights=w))
     c2 = float(np.average(e2 / R, weights=w))
     return c1, c2
+
+
+def additive_bias_errors(e1, e2, w, R, patch=None):
+    """Errors of the additive-bias estimates of :func:`additive_bias`.
+
+    Parameters
+    ----------
+    e1, e2 : array of float
+        Ellipticity components (before response correction).
+    w : array of float
+        Per-galaxy weights.
+    R : float
+        Multiplicative shear response.
+    patch : array of int, optional
+        Jackknife patch index of each galaxy; if ``None``, no jackknife error.
+
+    Returns
+    -------
+    dict
+        ``"sn"``: shape-noise errors ``(dc1, dc2)``,
+        ``sqrt(sum w^2 (e/R - c)^2) / sum w``, which is ``sigma_e / sqrt(n)``
+        for unit weights; ``"jk"``: delete-one-patch jackknife errors
+        ``(dc1, dc2)``, or ``None`` without ``patch``.
+    """
+    w = np.asarray(w, dtype=float)
+    errors = {"sn": [], "jk": [] if patch is not None else None}
+    for e in (e1, e2):
+        e = np.asarray(e, dtype=float) / R
+        c = np.average(e, weights=w)
+        errors["sn"].append(float(np.sqrt(np.sum(w**2 * (e - c) ** 2)) / np.sum(w)))
+        if patch is not None:
+            errors["jk"].append(jackknife_weighted_mean(e, w, patch)[1])
+    errors["sn"] = tuple(errors["sn"])
+    if patch is not None:
+        errors["jk"] = tuple(errors["jk"])
+    return errors
 
 
 def effective_survey_stats(e1, e2, w, area_deg2):

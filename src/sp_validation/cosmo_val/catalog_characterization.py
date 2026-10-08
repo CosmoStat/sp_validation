@@ -14,11 +14,14 @@ from pathlib import Path
 import healpy as hp
 import matplotlib.pyplot as plt
 import numpy as np
+import treecorr
 from cs_util import plots as cs_plots
+from uncertainties import ufloat
 
 from ..io import open_entry
 from ..survey import (
     additive_bias,
+    additive_bias_errors,
     area_from_coords,
     effective_survey_stats,
     n_eff_density,
@@ -412,6 +415,105 @@ class CatalogCharacterizationMixin:
                 e1, e2, w = self._read_shear_cols(ver, "e1_col", "e2_col", "w_col")
                 self._c1[ver], self._c2[ver] = additive_bias(e1, e2, w, R)
         self.print_done("Finished additive bias calculation.")
+
+    def calculate_additive_bias_errors(self, npatch=None):
+        """Shape-noise and jackknife errors of the additive bias.
+
+        The jackknife deletes one patch at a time; patches are the seeded
+        k-means patches of the 2PCF (``_patch_centers``), so it includes
+        spatially correlated contributions such as cosmic shear and PSF
+        residuals.
+
+        Parameters
+        ----------
+        npatch : int, optional
+            Number of jackknife patches; default ``self.npatch``. With
+            ``npatch <= 1`` only the shape-noise errors are computed.
+        """
+        npatch = int(npatch or self.npatch)
+        self.print_start(f"Calculating additive bias errors ({npatch} patches):")
+        self._c_err = {}
+        for ver in self.versions:
+            self.print_magenta(ver)
+            R = self.cc[ver]["shear"]["R"]
+            with self.results[ver].temporarily_read_data():
+                e1, e2, w = self._read_shear_cols(ver, "e1_col", "e2_col", "w_col")
+                patch = None
+                if npatch > 1:
+                    cols = {
+                        "ra": np.asarray(self.results[ver].dat_shear["RA"]),
+                        "dec": np.asarray(self.results[ver].dat_shear["Dec"]),
+                        "w": np.asarray(w),
+                    }
+                    patch = treecorr.Catalog(
+                        ra=cols["ra"],
+                        dec=cols["dec"],
+                        ra_units=self.treecorr_config["ra_units"],
+                        dec_units=self.treecorr_config["dec_units"],
+                        patch_centers=self._patch_centers(cols, npatch),
+                    ).patch
+                self._c_err[ver] = additive_bias_errors(e1, e2, w, R, patch=patch)
+        self.print_done("Finished additive bias errors.")
+
+    def print_additive_bias(self, npatch=None, out_base="c_non_tomographic", labels=None):
+        """Write the additive bias with its errors to text and LaTeX tables.
+
+        The text table ``<out_base>.txt`` lists c with shape-noise (sn) and
+        jackknife (jk) errors; the LaTeX table ``<out_base>.tex`` lists c in
+        units of 1e-4 with jackknife errors (shape-noise errors without
+        jackknife). LaTeX rows are labelled by ``labels``, else the config's
+        ``label``, else the version name.
+
+        Parameters
+        ----------
+        npatch : int, optional
+            Number of jackknife patches; see
+            :meth:`calculate_additive_bias_errors`.
+        out_base : str, optional
+            Output file name base in the output directory.
+        labels : dict, optional
+            LaTeX row label per version.
+        """
+        if not hasattr(self, "_c_err"):
+            self.calculate_additive_bias_errors(npatch=npatch)
+
+        def fmt(value, error, latex=False):
+            return f"${ufloat(value, error):.1uL}$" if latex else f"{ufloat(value, error):.1u}"
+
+        out_path = self._output_path(f"{out_base}.txt")
+        with open(out_path, "w") as f:
+            print(
+                f"{'# Version':30s} {'c_1 (sn)':25s} {'c_2 (sn)':25s}"
+                + f" {'c_1 (jk)':25s} {'c_2 (jk)':25s}",
+                file=f,
+            )
+            for ver in self.versions:
+                err = self._c_err[ver]
+                row = [fmt(self.c1[ver], err["sn"][0]), fmt(self.c2[ver], err["sn"][1])]
+                if err["jk"] is not None:
+                    row += [fmt(self.c1[ver], err["jk"][0]), fmt(self.c2[ver], err["jk"][1])]
+                print(f"{ver:30s} " + " ".join(f"{r:25s}" for r in row), file=f)
+        self.print_done(f"Additive bias table written to {out_path}")
+
+        lines = [
+            r"\begin{tabular}{lcc}",
+            r"\toprule",
+            r"version & $c_1 / 10^{-4}$ & $c_2 / 10^{-4}$ \\",
+            r"\midrule",
+        ]
+        for ver in self.versions:
+            err = self._c_err[ver]["jk"] or self._c_err[ver]["sn"]
+            label = (labels or {}).get(ver) or self.cc[ver].get("label", ver)
+            label = label.replace("_", r"\_")
+            lines.append(
+                f"{label} & {fmt(self.c1[ver] * 1e4, err[0] * 1e4, latex=True)}"
+                + f" & {fmt(self.c2[ver] * 1e4, err[1] * 1e4, latex=True)} \\\\"
+            )
+        lines += [r"\bottomrule", r"\end{tabular}"]
+        out_path = self._output_path(f"{out_base}.tex")
+        with open(out_path, "w") as f:
+            print("\n".join(lines), file=f)
+        self.print_done(f"Additive bias table written to {out_path}")
 
     @property
     def c1(self):

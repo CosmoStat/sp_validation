@@ -657,10 +657,17 @@ class CosmologyValidation(
         ``dat_shear`` directly.
 
         Returns one array per key (a bare array, not a 1-tuple, when a single
-        key is requested).
+        key is requested). A column name ``one`` gives unit values, e.g.
+        ``w_col: one`` for unweighted statistics.
         """
+        dat = self.results[ver].dat_shear
         cols = tuple(
-            self.results[ver].dat_shear[self.cc[ver]["shear"][key]] for key in keys
+            (
+                np.ones(len(dat))
+                if self.cc[ver]["shear"][key] == "one"
+                else dat[self.cc[ver]["shear"][key]]
+            )
+            for key in keys
         )
         return cols[0] if len(cols) == 1 else cols
 
