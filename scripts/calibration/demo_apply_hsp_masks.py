@@ -38,7 +38,6 @@ if trace_mem:
 obj = sp_joint.ApplyHspMasks()
 
 
-
 # +
 # Set parameters
 base = "unions_shapepipe_comprehensive"
