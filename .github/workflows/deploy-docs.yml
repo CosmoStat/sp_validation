@@ -1,11 +1,11 @@
 name: Build and deploy API documentation
 
 # Build the Sphinx docs inside the published image — which already carries the
-# full scientific stack autodoc must import — installing the *checked-out*
-# package on top so the docs reflect the code under review, not the code baked
-# into the image.
+# full scientific stack autodoc must import — syncing the *checked-out* uv.lock
+# (plus its `docs` extra) and package on top, so the docs reflect the code under
+# review and never re-resolve against PyPI.
 #
-#   pull_request → build only, as a check (no deploy)
+#   pull_request → build only, as a check (no deploy), when docs inputs change
 #   push: develop → build + deploy to GitHub Pages
 on:
   push:
@@ -14,6 +14,12 @@ on:
   pull_request:
     branches:
       - develop
+    paths:
+      - "docs/**"
+      - "src/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/workflows/deploy-docs.yml"
   workflow_dispatch:
 
 jobs:
@@ -37,8 +43,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
+      # Exactly what uv.lock pins: --frozen never re-resolves, and --inexact
+      # keeps the image's packages outside this closure (the ShapePipe stack,
+      # the glass/workflow extras) instead of pruning them. Both land in the
+      # image's venv (UV_PROJECT_ENVIRONMENT). The project isn't uv-packaged, so
+      # the checkout goes in by hand, replacing the copy baked into the image.
       - name: Install documentation dependencies
-        run: uv pip install --no-cache-dir '.[docs]'
+        run: |
+          uv sync --frozen --inexact --no-cache --no-install-project --extra docs
+          uv pip install --no-cache --no-deps -e .
 
       # Builds on every event; a failing build fails the PR check. Deploy is
       # gated to develop pushes below.

@@ -307,7 +307,6 @@ def test_metacal_R_matrix_recovers_injected_response():
         mask,
         masking_type="gal",
         step=0.01,
-        prefix="NGMIX",
         size_corr_ell=False,  # avoid the in-place T mutation; clean linear cut
         global_R_weight=None,  # unweighted mean over objects
     )
@@ -327,7 +326,6 @@ def test_metacal_R_matrix_recovers_injected_response():
         np.ones(n2, dtype=bool),
         masking_type="gal",
         step=0.01,
-        prefix="NGMIX",
         size_corr_ell=False,
         global_R_weight=None,
     )
@@ -353,7 +351,6 @@ def test_metacal_R_matrix_step_normalization():
         np.ones(n, dtype=bool),
         masking_type="gal",
         step=0.02,
-        prefix="NGMIX",
         size_corr_ell=False,
         global_R_weight=None,
     )

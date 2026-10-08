@@ -9,6 +9,26 @@ env:
   BRANCH: ${{ github.ref }}
 
 jobs:
+  # The workflow's DAG properties, checked through the host launcher: Snakemake
+  # on the image's Python with sp_validation absent, as on a user's machine.
+  workflow-dag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+
+      - name: DAG tests
+        run: >-
+          uv run --isolated --no-project --python 3.12
+          --with snakemake --with snakemake-executor-plugin-slurm
+          --with pytest
+          pytest workflow/tests -m "not candide"
+
   build-and-push-image:
     runs-on: 
       - ubuntu-latest

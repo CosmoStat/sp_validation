@@ -11,7 +11,7 @@ params:
   verbose: True
 
 # Masks
-## Using columns in 'dat' group (ShapePipe flags)
+## Cuts on catalogue columns, in the v2 grammar (sp_validation.grammar)
 dat:
   # SExtractor flags
   - col_name: FLAGS
@@ -44,17 +44,17 @@ dat:
     value: [15, 30]
 
   # ngmix flags
-  - col_name: NGMIX_MOM_FAIL
+  - col_name: NGMIX_MCAL_TYPES_FAIL
     label: "ngmix moments failure"
     kind: equal
     value: 0
 
   # invalid PSF ellipticities
-  - col_name: NGMIX_ELL_PSFo_NOSHEAR_0
+  - col_name: NGMIX_G1_PSF_ORIG_NOSHEAR
     label: "bad PSF ellipticity comp 1"
     kind: not_equal
     value: -10
-  - col_name: NGMIX_ELL_PSFo_NOSHEAR_1
+  - col_name: NGMIX_G2_PSF_ORIG_NOSHEAR
     label: "bad PSF ellipticity comp 2"
     kind: not_equal
     value: -10
@@ -86,41 +86,41 @@ dat:
     col_name2: MAG_GAAP_0p7_z2
     value: -99
 
-## Using columns in 'dat_ext' group (post-processing flags)
-dat_ext:
+  # Healsparse mask bits and post-processing columns (the comprehensive
+  # HDF5's data_ext dataset)
 
   # Stars
-  - col_name: 4_Stars
+  - col_name: MASK_4_Stars
     label: "Stars"
     kind: equal
     value: False
 
   # Manual mask
-  - col_name: 8_Manual
+  - col_name: MASK_8_Manual
     label: "manual mask"
     kind: equal
     value: False
 
   # u-band footprint
-  - col_name: 16_u
+  - col_name: MASK_16_u
     label: "u-band imaging"
     kind: equal
     value: False
 
   # g-band footprint
-  - col_name: 32_g
+  - col_name: MASK_32_g
     label: "g-band imaging"
     kind: equal
     value: False
 
   # r-band footprint
-  - col_name: 64_r
+  - col_name: MASK_64_r
     label: "r-band imaging"
     kind: equal
     value: False
 
   # i-band footprint
-  - col_name: 128_i
+  - col_name: MASK_128_i
     label: "i-band imaging"
     kind: equal
     value: False
@@ -131,8 +131,8 @@ dat_ext:
   # Each bit is only required where its own band has a magnitude: asking for
   # both at once keeps only the overlap of the two surveys, which costs ~85% of
   # the sample. Pairs with the MAG_GAAP_0p7_z / _z2 two-band cut in `dat`.
-  - col_name: 256_z
-    col_name2: 2048_z2
+  - col_name: MASK_256_z
+    col_name2: MASK_2048_z2
     mag_col: MAG_GAAP_0p7_z
     mag_col2: MAG_GAAP_0p7_z2
     label: "z-band imaging"
@@ -140,7 +140,7 @@ dat_ext:
     value: -99
 
   # Maximask
-  - col_name: 1024_Maximask
+  - col_name: MASK_1024_Maximask
     label: "maximask"
     kind: equal
     value: False

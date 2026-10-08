@@ -1,15 +1,11 @@
 """Generate pseudo-Cls (data vector only, no covariance).
 
 Dual-mode. Under Snakemake (``script:`` directive) the injected ``snakemake``
-object supplies the parameters and the native product is renamed to the tagged
-output filename the rule declares; as a standalone CLI (argparse) the same
-compute runs from explicit flags and the primitive's native
-``pseudo_cl_{ver}.fits`` is left in place under ``--out`` (no rename — each
-lc/ASTRA recipe gets its own output directory, so the untagged native name is
-unambiguous and the primitives' skip-if-exists never collides across nbins
-runs). The CLI form is what the lightcone/ASTRA recipe calls, so the
-measurement is driven directly (no nested Snakemake) with lc handling
-orchestration:
+object supplies the parameters; as a standalone CLI (argparse) the same compute
+runs from explicit flags. Either way the part is born at its final path, as
+SACC (EE/BB/EB with a shared bandpower window). The CLI form is what the
+lightcone/ASTRA recipe calls, driving the measurement directly (no nested
+Snakemake) with lc handling orchestration:
 
     python generate_pseudo_cl.py \
         --ver SP_v1.4.6.3_leak_corr \
@@ -28,41 +24,35 @@ import argparse
 import json
 import os
 
-from astropy.io import fits
-
 from sp_validation.cosmo_val import CosmologyValidation
 
 
 def generate_pseudo_cl(
     version: str,
-    output_dir: str,
+    out_path: str,
     cat_config: str,
     nside: int = 1024,
     npatch: int = 1,
-    blind: str = None,
     cosmo_params: dict = None,
     binning: str = "linear",
     nbins: int = None,
     power: float = 0.5,
 ):
-    """Generate a pseudo-Cl data vector into ``output_dir``.
+    """Generate a pseudo-Cl data vector, born as a SACC part at ``out_path``.
 
     Parameters
     ----------
     version : str
         Catalog version (e.g., "SP_v1.4.6_leak_corr")
-    output_dir : str
-        Directory the pseudo-Cl FITS file is written into. The primitive writes
-        its native ``pseudo_cl_{version}.fits`` here; callers that need a tagged
-        filename rename it themselves (see ``_from_snakemake``).
+    out_path : str
+        Exact destination the SACC part is born at — its final (possibly tagged)
+        name.
     cat_config : str
         Path to catalog configuration YAML
     nside : int
         HEALPix nside for map-based estimation
     npatch : int
         Number of jackknife patches
-    blind : str, optional
-        Blind identifier (A, B, or C) to override n(z) path
     cosmo_params : dict, optional
         Cosmological parameters. Keys: Omega_m, sigma_8, n_s, h, Omega_b.
         If None, uses Planck 2018 defaults.
@@ -76,11 +66,11 @@ def generate_pseudo_cl(
     Returns
     -------
     str
-        Path to the primitive's native ``pseudo_cl_{version}.fits`` product.
+        ``out_path`` (the SACC part written).
     """
+    output_dir = os.path.dirname(out_path)
     os.makedirs(output_dir, exist_ok=True)
 
-    blind_str = f" blind={blind}" if blind else ""
     if binning == "linear":
         # For linear binning, nbins determines ell_step such that we cover 2-2048
         ell_step = max(1, (2048 - 2) // nbins)
@@ -91,7 +81,7 @@ def generate_pseudo_cl(
         bin_str = f"nbins={nbins}, power={power}"
 
     print(f"\n{'=' * 60}")
-    print(f"Generating pseudo-Cl for {version}{blind_str}")
+    print(f"Generating pseudo-Cl for {version}")
     print(f"Binning: {binning} ({bin_str})")
     if cosmo_params:
         print(
@@ -120,7 +110,6 @@ def generate_pseudo_cl(
         nside=nside,
         cell_method="catalog",
         nrandom_cell=100,
-        blind=blind,
         cosmo_params=cosmo_params,
         npatch=npatch,
         theta_min=1.0,
@@ -135,39 +124,28 @@ def generate_pseudo_cl(
 
     cv = CosmologyValidation(**cv_kwargs)
 
-    # Calculate pseudo-Cls only (no covariance)
-    cv.calculate_pseudo_cl()
+    # Pseudo-Cls only (no covariance), born directly at the final out_path.
+    cv.calculate_pseudo_cl(compute_tomography=False, out_path=out_path)
 
-    # Report on the native product (renamed by the Snakemake caller, if any)
-    src_cl = os.path.join(output_dir, f"pseudo_cl_{version}.fits")
-    if os.path.exists(src_cl):
-        with fits.open(src_cl) as hdul:
-            data = hdul["PSEUDO_CELL"].data
-            n_ell = len(data["ELL"])
-            print(f"Generated pseudo-Cl with {n_ell} ell bins")
-            print(f"ell range: [{data['ELL'].min():.1f}, {data['ELL'].max():.1f}]")
-    return src_cl
+    ell = cv.pseudo_cls[version]["tomo_bin_all_tomo_bin_all"]["pseudo_cl"]["ELL"]
+    print(f"Generated pseudo-Cl with {len(ell)} ell bins")
+    print(f"ell range: [{ell.min():.1f}, {ell.max():.1f}]")
+    return out_path
 
 
 def _from_snakemake(smk):
     p = smk.params
-    output_cl = smk.output.pseudo_cl
-    src_cl = generate_pseudo_cl(
+    generate_pseudo_cl(
         version=p["version"],
-        output_dir=os.path.dirname(output_cl),
+        out_path=smk.output.pseudo_cl,
         cat_config=p["cat_config"],
         nside=int(p["nside"]),
         npatch=int(p["npatch"]),
-        blind=p.get("blind", None),
         cosmo_params=p.get("cosmo_params", None),
         binning=p["binning"],
         nbins=int(p["nbins"]),
         power=float(p.get("power", 0.5)),
     )
-    # Snakemake declares a tagged output filename; rename the native product to it.
-    if os.path.exists(src_cl) and src_cl != output_cl:
-        os.rename(src_cl, output_cl)
-        print(f"Saved to: {output_cl}")
 
 
 def _from_cli(argv=None):
@@ -206,9 +184,6 @@ def _from_cli(argv=None):
         help="Power for powspace binning (0.5 = sqrt spacing)",
     )
     ap.add_argument(
-        "--blind", choices=["A", "B", "C"], default=None, help="Blind identifier"
-    )
-    ap.add_argument(
         "--cosmo-json",
         default=None,
         help="Path to a Planck18-style cosmology JSON; omit for Planck18 defaults",
@@ -220,13 +195,15 @@ def _from_cli(argv=None):
         with open(a.cosmo_json) as f:
             cosmo_params = json.load(f)
 
+    # lc/ASTRA path: --out is a per-recipe directory, so the untagged name is
+    # unambiguous there.
+    out_path = os.path.join(a.out, f"pseudo_cl_{a.ver}.sacc")
     generate_pseudo_cl(
         version=a.ver,
-        output_dir=a.out,
+        out_path=out_path,
         cat_config=a.cat_config,
         nside=a.nside,
         npatch=a.npatch,
-        blind=a.blind,
         cosmo_params=cosmo_params,
         binning=a.binning,
         nbins=a.nbins,

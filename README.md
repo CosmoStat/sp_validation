@@ -5,7 +5,7 @@ Validation of weak-lensing catalogues (galaxy and star shapes and other paramete
 [![docs](https://img.shields.io/badge/docs-sphinx-blue)](https://cosmostat.github.io/sp_validation/)
 [![CI](https://github.com/CosmoStat/sp_validation/actions/workflows/deploy-image.yml/badge.svg)](https://github.com/CosmoStat/sp_validation/actions/workflows/deploy-image.yml)
 [![container](https://img.shields.io/badge/container-ghcr.io-2496ED?logo=docker&logoColor=white)](https://github.com/CosmoStat/sp_validation/pkgs/container/sp_validation)
-[![python](https://img.shields.io/badge/python-3.11%2B-blue?logo=python&logoColor=white)](https://www.python.org/downloads/)
+[![python](https://img.shields.io/badge/python-3.12%2B-blue?logo=python&logoColor=white)](https://www.python.org/downloads/)
 [![license](https://img.shields.io/badge/license-MIT-blue)](https://github.com/CosmoStat/sp_validation/blob/develop/LICENCE.txt)
 [![code style: ruff](https://img.shields.io/badge/code%20style-ruff-261230?logo=ruff&logoColor=white)](https://github.com/astral-sh/ruff)
 [![contribute](https://img.shields.io/badge/contribute-read-lightgrey)](https://github.com/CosmoStat/sp_validation/blob/develop/CONTRIBUTING.md)

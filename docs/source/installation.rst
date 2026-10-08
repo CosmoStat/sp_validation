@@ -82,6 +82,6 @@ For a narrower install, ``.[test]`` adds only the test extras and ``.[docs]`` on
 
 .. note::
 
-   ``sp_validation`` requires Python 3.11 or newer and pulls in a large scientific stack: ``treecorr``, ``pyccl``, ``healpy``, ``pymaster``, and others.
+   ``sp_validation`` requires Python 3.12 or newer and pulls in a large scientific stack: ``treecorr``, ``pyccl``, ``healpy``, ``pymaster``, and others.
    A bare development install builds these from source, which is slow and platform-sensitive.
    For most users the container is the more reliable path.

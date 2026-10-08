@@ -16,6 +16,7 @@ from astropy.io import fits
 from shear_psf_leakage import leakage, run_object
 
 from sp_validation import catalog as sp_cat
+from sp_validation.io import read_catalogue
 from sp_validation.statistics import jackknif_weighted_average2
 
 
@@ -685,7 +686,9 @@ def get_calibrate_no_leakage_e_from_cat(path_cat_gal, weight_type="des", verbose
     """
     e1, e2 = get_calibrate_e_from_cat(path_cat_gal, weight_type, verbose)
 
-    cat_gal = fits.getdata(path_cat_gal)
+    cat_gal = read_catalogue(
+        path_cat_gal, columns=["alpha_1", "alpha_2", "e1_PSF", "e2_PSF"]
+    )
     e1_noleak = e1 - cat_gal["alpha_1"] * cat_gal["e1_PSF"]
     e2_noleak = e2 - cat_gal["alpha_2"] * cat_gal["e2_PSF"]
 
@@ -723,13 +726,13 @@ class metacal:
     data :
         input galaxy catalogue
     mask : array of bool
-        mask according to galaxy selection, e.g. spread_model
+        pre-selection mask, e.g. flag, magnitude and footprint cuts; the
+        size-based galaxy selection (``rel_size_min`` < T/Tpsf <
+        ``rel_size_max``) is applied here
     masking_type : string, optional, default='gal'
         masking type, one in 'gal', 'gal_mom', 'star'
     step : float, optional, default=0.01
         step h in finite differences
-    prefix : string, optional, default='NGMIX'
-        to specify columns in input catalogue
     snr_min : float, optional, default=10
         signal-to-noise minimum
     snr_max; float, optional, default=500
@@ -756,7 +759,6 @@ class metacal:
         mask,
         masking_type="gal",
         step=0.01,
-        prefix="NGMIX",
         snr_min=10,
         snr_max=500,
         rel_size_min=0.5,
@@ -790,8 +792,6 @@ class metacal:
 
         self._verbose = verbose
 
-        self._prefix = prefix
-
         self._read_data(data, mask)
         self._compute_calibration()
 
@@ -807,19 +807,7 @@ class metacal:
         ns = {}
 
         masked_data = data[mask]
-        if self._prefix == "NGMIX":
-            m1, p1, m2, p2, ns = self._read_data_ngmix(
-                masked_data,
-                m1,
-                p1,
-                m2,
-                p2,
-                ns,
-            )
-        else:
-            raise ValueError(
-                f"Unsupported shape prefix '{self._prefix}'; only 'NGMIX' is supported"
-            )
+        m1, p1, m2, p2, ns = self._read_data_ngmix(masked_data, m1, p1, m2, p2, ns)
 
         self.m1 = m1
         self.p1 = p1
@@ -840,35 +828,22 @@ class metacal:
             if self._verbose:
                 print("Extracting {}".format(name_shear))
 
-            dict_tmp["flag"] = masked_data[f"{self._prefix}_FLAGS_{name_shear}"]
+            dict_tmp["flag"] = masked_data[f"NGMIX_FLAGS_{name_shear}"]
 
             # Either ngmix grammar (see first_present)
             for comp in (0, 1):
                 dict_tmp[f"g{comp + 1}"] = masked_data[
-                    first_present(
-                        masked_data,
-                        f"{self._prefix}_G{comp + 1}_{name_shear}",
-                        f"{self._prefix}_ELL_{name_shear}_{comp}",
-                    )
+                    f"NGMIX_G{comp + 1}_{name_shear}"
                 ]
 
             for key in ("flux", "flux_err", "T", "T_err"):
-                dict_tmp[key] = masked_data[
-                    f"{self._prefix}_{key.upper()}_{name_shear}"
-                ]
+                dict_tmp[key] = masked_data[f"NGMIX_{key.upper()}_{name_shear}"]
 
-            dict_tmp["Tpsf"] = masked_data[
-                first_present(
-                    masked_data,
-                    f"{self._prefix}_T_PSF_RECONV_{name_shear}",
-                    f"{self._prefix}_Tpsf_{name_shear}",
-                )
-            ]
+            dict_tmp["Tpsf"] = masked_data[f"NGMIX_T_PSF_RECONV_{name_shear}"]
 
         ns["C11"], ns["C22"], ns["w"] = self.get_variance_ivweights(
             masked_data,
             self._sigma_eps,
-            self._prefix,
             mask=None,
         )
 
@@ -884,7 +859,7 @@ class metacal:
         return m1, p1, m2, p2, ns
 
     @staticmethod
-    def get_variance_ivweights(data, sigma_eps, prefix="NGMIX", mask=None):
+    def get_variance_ivweights(data, sigma_eps, mask=None):
         """Get Variance IVWEIGHTS.
 
         Compute variance and inverse-variance weights.
@@ -895,8 +870,6 @@ class metacal:
             input data
         sigma_eps : float
             ellipticity dispersion
-        prefix : str, optional
-            shape measurement identifier; default is "NGMIX"
         mask : list, optional
             indicates valid objects with ``True`` values; default is ``None`` = use all objects
             type has to be bool
@@ -911,16 +884,8 @@ class metacal:
             weight
 
         """
-        C11 = data[
-            first_present(
-                data, f"{prefix}_G1_ERR_NOSHEAR", f"{prefix}_ELL_ERR_NOSHEAR_0"
-            )
-        ]
-        C22 = data[
-            first_present(
-                data, f"{prefix}_G2_ERR_NOSHEAR", f"{prefix}_ELL_ERR_NOSHEAR_1"
-            )
-        ]
+        C11 = data["NGMIX_G1_ERR_NOSHEAR"]
+        C22 = data["NGMIX_G2_ERR_NOSHEAR"]
         if mask is not None:
             C11 = C11[mask]
             C22 = C22[mask]

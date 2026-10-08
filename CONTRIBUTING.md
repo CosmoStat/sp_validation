@@ -74,7 +74,7 @@ toolchain (`autoconf`, `automake`, `libtool`, `pkg-config`) available.
 ```bash
 pytest                       # full suite
 pytest -m "not slow"         # skip the slow tests
-pytest src/sp_validation/tests/test_cosmology.py::test_name   # a single test
+pytest src/sp_validation/tests/test_cosmo_val.py::test_name   # a single test
 ```
 
 Tests live in `src/sp_validation/tests/`. The default options (configured in

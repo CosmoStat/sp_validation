@@ -36,7 +36,7 @@ config = obj.read_config_set_params("config_mask.yaml")
 
 # %%
 # Get data. Set load_into_memory to False for very large files
-dat, dat_ext = obj.read_cat(load_into_memory=False)
+dat = obj.read_cat(load_into_memory=False)
 
 # %%
 n_test = -1
@@ -44,7 +44,6 @@ n_test = -1
 if n_test > 0:
     print(f"MKDEBUG testing only first {n_test} objects")
     dat = dat[:n_test]
-    dat_ext = dat_ext[:n_test]
     test = "_test"
 else:
     test = ""
@@ -68,7 +67,7 @@ hsp_obj._params["verbose"] = True
 
 # %%
 # Load and initialise masks
-masks, labels = sp_joint.get_masks_from_config(config, dat, dat_ext, verbose=True)
+masks, labels = sp_joint.get_masks_from_config(config, dat, verbose=True)
 
 mask_combined = sp_joint.Mask.from_list(
     masks,

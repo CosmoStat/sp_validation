@@ -16,14 +16,12 @@ import os
 
 import h5py
 import numpy as np
-import tqdm
 from astropy import coordinates as coords
 from astropy import units as u
 from astropy.io import fits
 from cs_util import cat
 
 from sp_validation import format, io
-from sp_validation.survey import get_footprint
 from sp_validation.version import __version__
 
 
@@ -183,7 +181,6 @@ def check_matching(
     keys_2,
     thresh,
     stats_file,
-    name=None,
     verbose=False,
 ):
     """Check matching.
@@ -207,28 +204,20 @@ def check_matching(
     -------
     ind : array of int
         index list of d2 of objects that were matched to d1
-    mask_area_tiles : array of int
-        index list of tiles in footprint
+    n_tot : int
+        number of objects in d1
 
     """
-    if name is not None:
-        # Filter stars outside footprint for efficiency
-        mask_area_tiles = get_footprint(name, d1[keys_1[0]], d1[keys_1[1]])
-        if len(np.where(mask_area_tiles)[0]) == 0:
-            raise ValueError(f"Error: no object found in field '{name}'")
-    else:
-        mask_area_tiles = np.arange(len(d1))
-
     # Match stars from exposure (PSF) catalogue to total catalogue
     ind = match_stars2(
         d2[keys_2[0]],
         d2[keys_2[1]],
-        d1[keys_1[0]][mask_area_tiles],
-        d1[keys_1[1]][mask_area_tiles],
+        d1[keys_1[0]],
+        d1[keys_1[1]],
         thresh=thresh,
     )
 
-    n_tot = len(d1[keys_1[0]][mask_area_tiles])
+    n_tot = len(d1[keys_1[0]])
     msg = (
         "Number of matched stars from exposures to total catalogue = "
         + f"{len(ind)}/{n_tot} = {len(ind) / n_tot:.1%}"
@@ -244,7 +233,7 @@ def check_matching(
     )
     io.print_stats(msg, stats_file, verbose=verbose)
 
-    return ind, mask_area_tiles, n_tot
+    return ind, n_tot
 
 
 def check_invalid(dd, key, val, stats_file, name=None, verbose=False):
@@ -386,58 +375,6 @@ def match_stars2(ra_gal, dec_gal, ra_star, dec_star, thresh=0.0002):
     return ind_stars
 
 
-def read_shape_catalog(
-    input_path,
-    w_name="w",
-):
-    """Read Shape Catalog.
-
-    Read catalogue with galaxy shapes = shear estimates.
-
-    Parameters
-    ----------
-    input_path : str
-        input file path
-    w_name : str, optional
-        name of weight column, default is "w"
-
-    Returns
-    -------
-    ra : array of float
-        right ascension in degrees
-    dec : array of float
-        declination in degrees
-    g1 : array of float
-        uncalibrated shear estimate component 1
-    g2 : array of float
-        uncalibrated shear estimate component 2
-    w : array of float
-        weight
-    mag : array of float
-        magnitude
-    snr : array of float
-        signal-to-noise ratio
-    """
-    dat = fits.open(input_path)
-
-    hdu_no = 1
-
-    ra = dat[hdu_no].data["RA"]
-    dec = dat[hdu_no].data["Dec"]
-
-    g1 = dat[hdu_no].data["e1_uncal"]
-    g2 = dat[hdu_no].data["e2_uncal"]
-    w = dat[hdu_no].data[w_name]
-    mag = dat[hdu_no].data["mag"]
-
-    if "snr" in dat[hdu_no].data.dtype.names:
-        snr = dat[hdu_no].data["snr"]
-    else:
-        snr = None
-
-    return ra, dec, g1, g2, w, mag, snr
-
-
 def write_shape_catalog(
     output_path,
     ra,
@@ -467,6 +404,13 @@ def write_shape_catalog(
     """Write Shape Catalog.
 
     Write catalogue with galaxy shapes = shear estimates.
+
+    @sc [label:convention] metacal-flag-width
+    The data and image-simulation parameter files supply FITS ``J`` (int32)
+    for metacal bitmasks, so ngmix flag bits (including ``ZERO_DOF`` = 2**15,
+    which overflows signed 16-bit ``I``) survive FITS/HDF5 output; ``JointCat``
+    never narrows integers.
+    The number of failed metacal types is a count in [0, 5], not a bitmask.
 
     Parameters
     ----------
@@ -785,73 +729,6 @@ def read_param_file(path, verbose=False):
             print("Removed {n} duplicate entries")
 
     return param_list_unique
-
-
-def read_hdf5_file(file_path, name, stats_file, check_only=False, param_path=None):
-    """Read HDF5 File.
-
-    Read hdf5 file and return contained data.
-
-    Parameters
-    ----------
-    file_path : str
-        input file path
-    name : str
-        patch name
-    stats_file : file handler
-        summary statistics output file handler
-    check_only : bool, optional
-        If True only check, not return data
-
-    Returns
-    -------
-    dict
-        data
-
-    """
-    param_list = read_param_file(param_path, verbose=True) if param_path else None
-
-    with h5py.File(file_path, "r") as hdf5_file:
-        # Find patch group in hierarchical structure
-        if f"patches/{name}" not in hdf5_file:
-            raise KeyError(f"Entry patches/{name} not found in file {file_path}")
-        patch_group = hdf5_file[f"patches/{name}"]
-
-        # Get size of data array
-        num_rows = sum(patch_group[ID].shape[0] for ID in patch_group)
-        # num_cols = patch_group[next(iter(patch_group))].shape[1]
-        num_cols = len(param_list)
-
-        print(
-            f"Estimating {num_cols * num_rows * 8 / 1024**3:.1f}"
-            + f" Gb memory for the ({num_cols} x {num_rows}) data array ..."
-        )
-        # data_comb = np.memmap(output_file, dtype=patch_group[next(iter(patch_group))].dtype,
-        #              mode="w+", shape=(num_rows, num_cols))
-
-        data_list = []
-        ID_pbl = set()
-        for ID in tqdm.tqdm(patch_group):
-            # Get data for this ID from file
-            data = patch_group[ID][()]
-
-            # Restrict to parameter list if given
-            data = data[param_list] if param_list is not None else data
-
-            if not check_only:
-                # Add new to existing data
-                data_list.append(data)
-
-        print("Combine tile catalogues")
-        data_comb = np.concatenate(data_list, axis=0)
-        print("Done")
-
-    # Print problematic tile IDs
-    for ID in ID_pbl:
-        print("Tile IDs with missing keys:", file=stats_file)
-        print(ID, file=stats_file)
-
-    return data_comb
 
 
 def get_maked_col(dat, col, mask):

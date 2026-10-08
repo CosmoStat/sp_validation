@@ -18,7 +18,7 @@ This is the form the lightcone/ASTRA recipe calls:
         --config /path/to/config.yaml \
         --pte-intermediate-dir /abs/.../paper_plots/intermediate \
         --cosebis-pte-dir /abs/.../tapestry/cosebis_pte_matrix/pte_values \
-        --blind A --out <output_dir>
+        --out <output_dir>
 """
 
 import argparse
@@ -39,15 +39,19 @@ from plotting_utils import (
     make_pte_norm,
 )
 
+from sp_validation.b_modes import bins_from_scale_cut
+
 plt.style.use(PAPER_MPLSTYLE)
 
 
 def resolve_fiducial_bin_window(edges, theta_min, theta_max):
-    """Return the first and last reporting bins inside a scale-cut window."""
-    left, right = edges[:-1], edges[1:]
-    inside = (left >= theta_min * (1.0 - 1e-2)) & (right <= theta_max * (1.0 + 1e-2))
-    bins = np.flatnonzero(inside)
-    return int(bins[0]), int(bins[-1])
+    """Return the first and last reporting bins of a pure-E/B scale cut.
+
+    The cut snaps to the nearest reporting edges, as everywhere pure-E/B PTEs
+    are read (``sp_validation.b_modes.bins_from_scale_cut``).
+    """
+    start, stop = bins_from_scale_cut(edges[:-1], edges[1:], (theta_min, theta_max))
+    return start, stop - 1
 
 
 def _path_matches_version(path, version):
@@ -76,7 +80,7 @@ def _resolve_overrides(version, fiducial_overrides):
     the sweep versions on the *same* gathered-NPZ provenance (adapted back to the
     per-pair PTE matrix by ``_cosebis_matrix_from_npz``) rather than the old
     per-pair-JSON scatter tree. Pure E/B has no such split — the sweep emits the
-    old-tree ``{ver}_{blind}_pure_eb_ptes.npz`` name, so non-fiducial versions
+    old-tree ``{ver}_pure_eb_ptes.npz`` name, so non-fiducial versions
     read it straight from the ``--pte-intermediate-dir`` file list (override None).
     Either element may be None.
     """
@@ -112,12 +116,10 @@ def load_cosebis_pte_matrix(
 ):
     """Load COSEBIS PTE values from JSON files into matrix.
 
-    Uses fiducial blind only (data vectors identical across blinds).
-
     Parameters
     ----------
     pte_files : list of str
-        Paths to PTE JSON files for fiducial blind.
+        Paths to PTE JSON files.
     version : str
         Version to filter for.
     config : dict
@@ -174,12 +176,10 @@ def load_cosebis_pte_matrix(
 def load_pure_eb_pte_matrices(pte_files, version, override_path=None):
     """Load Pure E/B PTE matrices from npz files.
 
-    Uses fiducial blind only (data vectors identical across blinds).
-
     Parameters
     ----------
     pte_files : list of str
-        Paths to pure_eb_ptes.npz files for fiducial blind.
+        Paths to pure_eb_ptes.npz files.
     version : str
         Version to filter for.
 
@@ -193,22 +193,25 @@ def load_pure_eb_pte_matrices(pte_files, version, override_path=None):
         Angular scale grid.
     pte_combined : ndarray or None
         PTE matrix for combined ξ_tot^B, or None if not available.
+    edges : ndarray or None
+        The reporting edges the matrices are indexed on, or None for a file
+        that does not record them.
     """
-    if override_path is not None:
-        data = np.load(override_path)
-        pte_combined = data["pte_combined"] if "pte_combined" in data else None
-        return data["pte_xip_B"], data["pte_xim_B"], data["theta"], pte_combined
-
-    for pte_file in pte_files:
+    if override_path is None:
         # Filter to this version (exact match, no substring false positives)
-        if not _path_matches_version(pte_file, version):
-            continue
+        matching = [p for p in pte_files if _path_matches_version(p, version)]
+        if not matching:
+            raise ValueError(f"No PTE file found for version {version}")
+        override_path = matching[0]
 
-        data = np.load(pte_file)
-        pte_combined = data["pte_combined"] if "pte_combined" in data else None
-        return data["pte_xip_B"], data["pte_xim_B"], data["theta"], pte_combined
-
-    raise ValueError(f"No PTE file found for version {version}")
+    data = np.load(override_path)
+    pte_combined = data["pte_combined"] if "pte_combined" in data else None
+    edges = (
+        np.append(data["left_edges"], data["right_edges"][-1])
+        if "left_edges" in data
+        else None
+    )
+    return data["pte_xip_B"], data["pte_xim_B"], data["theta"], pte_combined, edges
 
 
 def _load_version_pte_data(
@@ -219,12 +222,19 @@ def _load_version_pte_data(
     Returns
     -------
     dict with keys: pte_xip_B, pte_xim_B, pte_combined (or None),
-        pte_cosebis, pte_cosebis_20, theta_pure_eb, theta_cosebis.
+        pte_cosebis, pte_cosebis_20, theta_pure_eb, edges_pure_eb,
+        theta_cosebis.
     """
     pure_eb_override, cosebis_override = _resolve_overrides(version, fiducial_overrides)
-    pte_xip_B, pte_xim_B, theta_pure_eb, pte_combined = load_pure_eb_pte_matrices(
-        pure_eb_pte_files, version, override_path=pure_eb_override
+    pte_xip_B, pte_xim_B, theta_pure_eb, pte_combined, edges_pure_eb = (
+        load_pure_eb_pte_matrices(
+            pure_eb_pte_files, version, override_path=pure_eb_override
+        )
     )
+    if edges_pure_eb is None:
+        # A PTE file without saved edges was binned on the nominal grid.
+        fid = config["fiducial"]
+        edges_pure_eb = np.geomspace(fid["min_sep"], fid["max_sep"], fid["nbins"] + 1)
     pte_cosebis, theta_cosebis = load_cosebis_pte_matrix(
         cosebis_pte_files,
         version,
@@ -246,6 +256,7 @@ def _load_version_pte_data(
         "pte_cosebis": pte_cosebis,
         "pte_cosebis_20": pte_cosebis_20,
         "theta_pure_eb": theta_pure_eb,
+        "edges_pure_eb": edges_pure_eb,
         "theta_cosebis": theta_cosebis,
     }
 
@@ -368,12 +379,12 @@ def extract_full_range_ptes(
 ):
     """Extract full-range PTEs from npz and JSON files.
 
-    Takes minimum PTE across blinds for each statistic.
+    Takes minimum PTE across matching files for each statistic.
 
     Parameters
     ----------
     pure_eb_pte_files : list
-        All Pure E/B PTE npz files (includes all blinds).
+        All Pure E/B PTE npz files.
     cosebis_pte_files : list
         All COSEBIS PTE JSON files.
     version : str
@@ -382,11 +393,11 @@ def extract_full_range_ptes(
     Returns
     -------
     ptes : dict
-        Full-range PTEs for xip, xim, and cosebis (fiducial blind).
+        Full-range PTEs for xip, xim, and cosebis.
     """
     pure_eb_override, cosebis_override = _resolve_overrides(version, fiducial_overrides)
 
-    # Get full-range PTEs from pure E/B (fiducial blind)
+    # Get full-range PTEs from pure E/B
     xip_ptes = []
     xim_ptes = []
     combined_ptes = []
@@ -428,7 +439,7 @@ def extract_full_range_ptes(
             ptes["cosebis_20"] = pte20
         return ptes
 
-    # Old tree: pte_000_020.json for full theta range, min across blinds.
+    # Old tree: pte_000_020.json for full theta range.
     cosebis_ptes_6 = []
     cosebis_ptes_20 = []
     for pte_file in cosebis_pte_files:
@@ -474,7 +485,7 @@ def create_3panel_composite(
     version : str
         Catalog version string (fiducial).
     pure_eb_pte_files : list
-        All Pure E/B PTE npz files (includes all blinds).
+        All Pure E/B PTE npz files.
     cosebis_pte_files : list
         All COSEBIS PTE JSON files.
     xip_fid, xim_fid : tuple
@@ -526,13 +537,9 @@ def create_3panel_composite(
     cosebis_fid_start = np.argmin(np.abs(theta_cosebis[:-1] - cosebis_fid[0]))
     cosebis_fid_stop = np.argmin(np.abs(theta_cosebis[1:] - cosebis_fid[1])) + 1
 
-    reporting_edges = np.geomspace(
-        config["fiducial"]["min_sep"],
-        config["fiducial"]["max_sep"],
-        config["fiducial"]["nbins"] + 1,
-    )
-    xip_start, xip_stop = resolve_fiducial_bin_window(reporting_edges, *xip_fid)
-    xim_start, xim_stop = resolve_fiducial_bin_window(reporting_edges, *xim_fid)
+    edges_pure_eb = matrices["edges_pure_eb"]
+    xip_start, xip_stop = resolve_fiducial_bin_window(edges_pure_eb, *xip_fid)
+    xim_start, xim_stop = resolve_fiducial_bin_window(edges_pure_eb, *xim_fid)
 
     # Create subplot axes
     ax_xip = fig.add_subplot(gs[0, 0])
@@ -625,7 +632,7 @@ def create_9panel_composite(
     versions : list of str
         Catalog version strings in display order.
     pure_eb_pte_files : list
-        All Pure E/B PTE npz files (includes all blinds).
+        All Pure E/B PTE npz files.
     cosebis_pte_files : list
         All COSEBIS PTE JSON files.
     xip_fid, xim_fid : tuple
@@ -684,13 +691,9 @@ def create_9panel_composite(
         cosebis_fid_start = np.argmin(np.abs(theta_cosebis[:-1] - cosebis_fid[0]))
         cosebis_fid_stop = np.argmin(np.abs(theta_cosebis[1:] - cosebis_fid[1])) + 1
 
-        reporting_edges = np.geomspace(
-            config["fiducial"]["min_sep"],
-            config["fiducial"]["max_sep"],
-            config["fiducial"]["nbins"] + 1,
-        )
-        xip_start, xip_stop = resolve_fiducial_bin_window(reporting_edges, *xip_fid)
-        xim_start, xim_stop = resolve_fiducial_bin_window(reporting_edges, *xim_fid)
+        edges_pure_eb = matrices["edges_pure_eb"]
+        xip_start, xip_stop = resolve_fiducial_bin_window(edges_pure_eb, *xip_fid)
+        xim_start, xim_stop = resolve_fiducial_bin_window(edges_pure_eb, *xim_fid)
 
         # Create subplot axes for this row
         ax_xip = fig.add_subplot(gs[row_idx, 0])
@@ -789,7 +792,6 @@ def main(
     pure_eb_pte_files,
     cosebis_pte_files,
     output_dir,
-    spec_path=None,
     fiducial_overrides=None,
 ):
     # Both corrected and uncorrected versions (exclude ecut variants)
@@ -915,16 +917,12 @@ def main(
                     fiducial_overrides,
                 )
                 theta_co = matrices["theta_cosebis"]
-                reporting_edges = np.geomspace(
-                    config["fiducial"]["min_sep"],
-                    config["fiducial"]["max_sep"],
-                    config["fiducial"]["nbins"] + 1,
-                )
+                edges_pure_eb = matrices["edges_pure_eb"]
                 xip_start, xip_stop = resolve_fiducial_bin_window(
-                    reporting_edges, *xip_fid
+                    edges_pure_eb, *xip_fid
                 )
                 xim_start, xim_stop = resolve_fiducial_bin_window(
-                    reporting_edges, *xim_fid
+                    edges_pure_eb, *xim_fid
                 )
                 cos_start = np.argmin(np.abs(theta_co[:-1] - cosebis_fid[0]))
                 cos_stop = np.argmin(np.abs(theta_co[1:] - cosebis_fid[1])) + 1
@@ -964,8 +962,6 @@ def main(
 
     # Build evidence
     evidence_data = {
-        "spec_id": "config_space_pte_matrices",
-        "spec_path": spec_path or "papers/bmodes/config/config_space_pte_matrices.md",
         "generated": datetime.now().isoformat(),
         "evidence": {
             "versions": {},
@@ -1016,7 +1012,7 @@ def main(
 
 
 def _versions_config_space(config):
-    """Reproduce VERSIONS_CONFIG_SPACE_PTES from the Snakemake claims.smk:
+    """Reproduce VERSIONS_CONFIG_SPACE_PTES from the Snakemake figures.smk:
     leak-corrected (non-ecut) versions plus their uncorrected counterparts."""
     leak_corr = [
         v for v in config["versions"] if "_leak_corr" in v and "_ecut" not in v
@@ -1032,13 +1028,11 @@ def _from_snakemake(smk):
     else:
         pure_eb_pte_files = list(pure_eb_pte_files)
     cosebis_pte_files = list(smk.input["cosebis_pte_files"])
-    spec_paths = smk.input["specs"]
     main(
         config=smk.config,
         pure_eb_pte_files=pure_eb_pte_files,
         cosebis_pte_files=cosebis_pte_files,
         output_dir=Path(smk.output["evidence"]).parent,
-        spec_path=spec_paths[0],
     )
 
 
@@ -1050,16 +1044,15 @@ def _from_cli(argv=None):
     ap.add_argument(
         "--pte-intermediate-dir",
         required=True,
-        help="Directory holding {version}_{blind}_pure_eb_ptes.npz",
+        help="Directory holding {version}_pure_eb_ptes.npz",
     )
     ap.add_argument(
         "--cosebis-pte-dir",
         required=True,
         help="COSEBI PTE source dir. lc cosebis_ptes sweep: gathered "
-        "cosebis_ptes_{version}_{blind}.npz per version (auto-detected, preferred). "
-        "Old tree fallback: {version}/{blind}/pte_{i:03d}_{j:03d}.json scatter.",
+        "cosebis_ptes_{version}.npz per version (auto-detected, preferred). "
+        "Old tree fallback: {version}/pte_{i:03d}_{j:03d}.json scatter.",
     )
-    ap.add_argument("--blind", default="A", help="Fiducial blind (paper: A)")
     ap.add_argument("--out", required=True, help="Output directory (lc {output})")
     ap.add_argument(
         "--fiducial-version",
@@ -1071,7 +1064,7 @@ def _from_cli(argv=None):
         "--fiducial-pure-eb-pte-path",
         default=None,
         help="lc pure_eb PTE NPZ for the fiducial version "
-        "(same format as old-tree {version}_{blind}_pure_eb_ptes.npz)",
+        "(same format as old-tree {version}_pure_eb_ptes.npz)",
     )
     ap.add_argument(
         "--fiducial-cosebis-pte-path",
@@ -1092,8 +1085,7 @@ def _from_cli(argv=None):
 
     versions = _versions_config_space(config)
     pure_eb_pte_files = [
-        os.path.join(a.pte_intermediate_dir, f"{v}_{a.blind}_pure_eb_ptes.npz")
-        for v in versions
+        os.path.join(a.pte_intermediate_dir, f"{v}_pure_eb_ptes.npz") for v in versions
     ]
     pure_eb_pte_files = [p for p in pure_eb_pte_files if os.path.exists(p)]
 
@@ -1101,18 +1093,14 @@ def _from_cli(argv=None):
     # version, same layout as the fiducial single-output) so fiducial and sweep
     # versions share provenance; fall back to the old per-pair-JSON scatter tree.
     cosebis_by_version = {
-        v: os.path.join(a.cosebis_pte_dir, f"cosebis_ptes_{v}_{a.blind}.npz")
+        v: os.path.join(a.cosebis_pte_dir, f"cosebis_ptes_{v}.npz")
         for v in versions
-        if os.path.exists(
-            os.path.join(a.cosebis_pte_dir, f"cosebis_ptes_{v}_{a.blind}.npz")
-        )
+        if os.path.exists(os.path.join(a.cosebis_pte_dir, f"cosebis_ptes_{v}.npz"))
     }
     cosebis_pte_files = (
         []
         if cosebis_by_version
-        else sorted(
-            glob.glob(os.path.join(a.cosebis_pte_dir, "*", a.blind, "pte_*.json"))
-        )
+        else sorted(glob.glob(os.path.join(a.cosebis_pte_dir, "*", "pte_*.json")))
     )
 
     fiducial_overrides = None

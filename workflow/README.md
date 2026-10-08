@@ -25,6 +25,35 @@ Runs stay modular, not monolithic: a paper or run composes these rules with
 Snakemake's `module` directive under its own config and an output `prefix`, so
 each namespaces cleanly under `results/<name>/`.
 
+## Blinding
+
+Every entry of `cosmo_val/cat_config.yaml` declares `blind: none` or
+`blind: <name>`; an entry without one stops the launch. `_leak_corr` versions
+take their entry's blind, and entries reading one shear file declare one blind.
+
+A blind is a secret record, `<paths.blinds>/<name>.blind.json` (seed, envelope,
+fiducial), drawn once with
+`spv-container exec python -m sp_validation.blinding init <name>` and never
+committed. On a blinded catalogue, ξ± and Cℓ_EE are shifted by
+t(hidden) − t(fiducial) before they are first written: Smokescreen draws the
+hidden point (S8 and Ωm) from the seed, and the theory `t` is
+`sp_validation.blinding.shear`. Cℓ_BB and Cℓ_EB get zero shift; ρ/τ are saved
+with `blinding.no_signal`. Another statistic passes its own theory,
+`theory(params, s) -> array the length of s.mean` (see
+`src/sp_validation/blinding.py`).
+
+A measurement calculates, then saves: one function computes the signal, saves
+it with `sacc_io.save(s, path, blind=...)` (or `sacc_io.seal`), and returns the
+concealed part, so raw signal never leaves it
+(`CosmologyValidation.calculate_2pcf_version` is the pattern). Statistics computed from
+parts (COSEBIs, pure-E/B, the assembled `{version}.sacc`) are saved with
+`derived_from=parts` and carry their inputs' stamp, `s.metadata["blind"]`.
+
+Producer rules carry the catalogue's blind in `params.blind`, so unblinding is
+flipping the declaration to `blind: none` and rerunning: Snakemake reruns
+exactly the parts it touches, and assembly refuses a part whose stamp is not the
+catalogue's declared blind.
+
 ## Running on the cluster — the candide profile
 
 `profiles/candide/config.yaml` is the committed SLURM profile: it hands
@@ -61,9 +90,14 @@ override, e.g. the image-sims `SIF`).
 A few rules shell out to a host toolchain (CosmoCov, ImageMagick) and keep
 `container: None`; each says why in its own docstring.
 
-`OMP_NUM_THREADS` is not set by the profile either: the slurm executor's
-`--export=ALL` propagates the driver's env, not a profile flag, so a rule that
-needs it pinned sets it itself. Per-rule `mem_mb` / `runtime` stay on the rules.
+The slurm executor submits with `--export=ALL`, so every job starts with the
+launching shell's environment. `OMP_NUM_THREADS` is therefore not a profile
+setting: a rule that needs it pinned sets it itself. A path in that
+environment reaches nodes where it may not exist. For Snakemake's own cache
+this is handled (the launch drops `XDG_CACHE_HOME`, and the profile keeps the
+source cache off the shared filesystem), so a login shell that points it at
+`/scratch` is fine; keep any other path you export on a shared disk. Per-rule
+`mem_mb` / `runtime` stay on the rules.
 
 ### Off candide — the default profile
 
@@ -81,6 +115,22 @@ Snakemake cannot compose profiles, so both files carry that block (marked
 `GENERIC` in each) — change one, change the other. `apptainer-args` is not part
 of it: expect to edit the default profile's `--bind` list for your machine.
 
+### GLASS mock suite
+
+Set `glass_mocks.data_dir` in the paper config to the suite's `results` directory.
+Both paper configs use `/n09data/guerrini/glass_mock_v1.4.6.3_v2/results`, the suite supplying Paper II's 350 mocks.
+Catalogue measurements, mock covariance, and inference preparation all read this key.
+Generated mock products carry the parent directory's suite name (`glass_mock_v1.4.6.3_v2`) in their output paths, so suites don't share products.
+`glass_mocks.version` labels the inference product version within a suite; `seed_range` selects the covariance and inference seeds.
+The fine-grid measurement aggregators use the first 100 mocks.
+Sampled tau statistics depend on the real catalogue, not the mock suite, and retain their catalogue-derived inputs and output paths.
+
+```bash
+snakemake -n --profile workflow/profiles/default -s workflow/Snakefile \
+    covariance_glass_mock glass_mock_all_xi inference_glass_mocks \
+    --configfile papers/bmodes/config/config.yaml
+```
+
 ### Which `sp_validation` a rule imports: the launched checkout
 
 The image is the frozen *dependency stack*; the `sp_validation` that runs is
@@ -93,6 +143,19 @@ This is the default because the alternative is incoherent: Snakemake's
 rule executes new script code against an old `import sp_validation` — the two
 halves of one commit, split.
 
+The catalogue config is the launched checkout's `cosmo_val/cat_config.yaml`.
+`COSMO_VAL` defaults to the launched checkout's `cosmo_val/output`, so writing
+into another checkout's products means naming it; `COSMO_INFERENCE` defaults to
+the shared candide tree, which holds the CosmoCov covariances and only its owner
+can write. Anyone else launches with `COSMO_INFERENCE=<tree>` of their own,
+holding a link to the shared tree's `data/mask/` (the one input the covariance
+rules take from it); the CosmoCov chain then runs there:
+
+```bash
+mkdir -p <tree>/data
+ln -s /n17data/cdaley/unions/code/sp_validation/cosmo_inference/data/mask <tree>/data/
+```
+
 **Caveat:** `rerun-triggers: code` watches rule bodies and `script:` files, not
 `src/`. Editing a module under `src/` does not by itself mark outputs stale —
 force with `-F` or `--forcerun <rule>`.
@@ -103,8 +166,7 @@ To reproduce a run from the image alone, opt out:
 snakemake --profile workflow/profiles/candide --config checkout_pythonpath=false <target>
 ```
 
-Either way the checkout has to sit under one of the profile's bind mounts to be
-visible inside the job.
+Either way the checkout has to sit on a disk the jobs see (next section).
 
 Most of the time this default is all you need. Reach for a different *image*
 only when the dependency stack changed — a new package, a lockfile bump — not
@@ -118,29 +180,36 @@ directory. `/automnt/nXXdataN` works only from a node that does *not* own that
 disk. On the owning node the disk is mounted directly at `/nXXdataN` and there
 is no `/automnt/nXXdataN` entry at all, so a job that lands there dies about one
 second after the allocation starts, before any log file is written. This is why
-`n17` is in the profile's exclude list. Every canonical path in `common.py`
-already uses the plain form; keep new paths the same.
+`n17` is in the profile's exclude list. `common.py` spells the launched
+checkout, `COSMO_VAL` and `COSMO_INFERENCE` in the plain form whatever spelling
+it is given (a symlink, a relative path, `/automnt`), and Snakemake matches a
+target by its path string, so name file targets in the plain form too; keep new
+paths the same. A job sees a plain path only on a disk the profile binds by
+name — `/home`, `/n17data`, `/n23data1`, `/n09data` (the `/automnt` bind does
+not serve it) — so the checkout and both output roots sit on one of those. To
+work on another disk, add it to both bind lists: the candide profile's
+`apptainer-args` and `container.DEFAULT_BINDS`.
 
 ### Run Snakemake from the host, never from inside the container
 
-`snakemake` is a thin host-side tool, pinned once per machine:
+`snakemake` is a thin host-side tool, installed once per machine on the
+image's Python:
 
 ```bash
-uv tool install snakemake==9.23.1 --with snakemake-executor-plugin-slurm
+uv tool install --python 3.12 snakemake --with snakemake-executor-plugin-slurm
 ```
 
-(match the version to `snakemake` in this repo's `uv.lock`). Run every
-`snakemake` command directly on the host — do not `apptainer shell` first.
+Any Snakemake version works, but it must run on the image's Python (3.12): a
+`script:` job loads the host's `snakemake` package into the image's interpreter,
+since the image carries none.
+
+Run every `snakemake` command directly on the host — do not `apptainer shell`
+first.
 Snakemake itself never touches the science stack; it only reads rule
 definitions and submits jobs. Each job carries its own `apptainer exec`
 wrapping from the profile (see above), so the container is where the science
 code runs, not where the orchestrator runs — one container per job, never a
 nested one.
-
-Check for a stray `~/.local/bin/snakemake` (any host-side `pip install --user
-snakemake` leaves one): Apptainer passes your `PATH` and mounts your `$HOME` by
-default, so it can silently shadow the one `uv tool install` set up. `which
-snakemake` should resolve under `uv tool dir`, not `~/.local/bin`.
 
 ### The container image — one per person
 
@@ -181,7 +250,7 @@ job either gets the whole old image or the whole new one; jobs already running
 hold the old file open and finish against it unharmed.
 
 ```bash
-salloc -p comp -c 4 --time=01:00:00 --exclude=n17,n09,n36 --no-shell   # note the job id
+salloc -p comp -c 4 --time=01:00:00 --exclude=n17,n36 --no-shell   # note the job id
 srun --jobid=<id> spv-container pull
 scancel <id>
 ```
@@ -267,11 +336,20 @@ For the image-sims workflow, set `image_sims: {sif: ...}` in your run config.
 Either way the image has to sit under one of the profile's bind mounts to be
 visible.
 
-One trap to know: the `script:` directive bind-mounts the host orchestrator's
-`snakemake` into the job and *appends* it to `sys.path`, so a `snakemake`
-importable inside the image wins the lookup. If `script:` rules start failing
-with `ModuleNotFoundError: No module named 'snakemake.iocontainers'` or similar,
-an in-image snakemake older than the host's is the first thing to check.
+### Checking the workflow itself
+
+`workflow/tests/` checks DAG properties through the host launcher, on a toy
+checkout and — on candide — on the real papers:
+
+```bash
+uv run --isolated --no-project --python 3.12 --with snakemake \
+    --with snakemake-executor-plugin-slurm --with pytest \
+    pytest workflow/tests
+```
+
+CI runs the same suite with `-m "not candide"`. `test_container_smoke`
+submits one real SLURM job through the candide profile, so it runs only where
+`sbatch` exists — a candide login node — and skips on compute nodes.
 
 ### `snakemake` in `script:` files
 

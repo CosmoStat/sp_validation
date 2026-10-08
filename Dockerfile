@@ -1,5 +1,5 @@
 # Development image with more bells and whistles
-FROM ghcr.io/cosmostat/shapepipe:im_sims
+FROM ghcr.io/cosmostat/shapepipe:develop
 
 # liblapack-dev: cosmosis's MultiNest links -llapack, and the base image ships
 # only the runtime liblapack.so.3 (no dev symlink). The gsl/cfitsio/fftw3 dev
@@ -26,6 +26,8 @@ RUN apt-get update -y --quiet --fix-missing && \
     rm -rf /var/lib/apt/lists/*
 
 # TinyTeX pinned to a TeX Live year (frozen tlnet-final mirror); bump both once a year.
+# The packages serve matplotlib's usetex figures; sfmath gives them sans-serif
+# maths (`\usepackage[cm]{sfmath}`).
 ENV TEXLIVE_YEAR=2025 \
     TINYTEX_VERSION=2026.02 \
     TINYTEX_DIR=/opt \
@@ -46,6 +48,7 @@ RUN set -eux; \
         amsmath \
         amsfonts \
         geometry \
+        sfmath \
         xcolor; \
     tlmgr path add; \
     latex --version >/dev/null; dvipng --version >/dev/null
@@ -69,9 +72,8 @@ WORKDIR /sp_validation
 # our lock — instead of pruning them. Copy the lock + manifest first so this
 # layer caches independently of source edits. Extras: test (CI unit suite),
 # glass (GLASS map-level mock — pulls glass.ext.camb + the cosmology wrapper),
-# workflow (Snakemake + mpi4py runners). cs_util 0.2.2 (with cs_util.size) and a
-# numba-safe numpy 2.4.6 come straight from the lock, so the old ad-hoc snakemake
-# and cs_util `--upgrade` layers are gone.
+# workflow (mpi4py, CosmoSIS and the other rule-script runners). cs_util and a
+# numba-safe numpy come straight from the lock.
 COPY pyproject.toml uv.lock /sp_validation/
 
 # cosmosis builds MPI-enabled polychord/multinest only when MPIFC is set: its
