@@ -42,13 +42,14 @@ apptainer-args: >-
 #   * ``slurm_account``: the slurm executor's guess fails on candide (its
 #     ``sacct`` call errors) and warns on every launch.
 #
-#   * The excludes are the flaky nodes: n17 (mount issues), n36.
+#   * The excludes are the flaky nodes: n17 (mount issues), n36, n09; and
+#     n34, n35 (grid_3 image-sims jobs filled n35's /tmp on 2026-09-30).
 default-resources:
   slurm_account: "cusers"
   slurm_partition: "comp,pscomp"
   runtime: "60m"
   cpus_per_task: 12
-  slurm_extra: "'--exclude=n17,n36'"
+  slurm_extra: "'--exclude=n09,n17,n34,n35,n36'"
 
 # Snakemake refuses a real run on a remote executor without a job bound.
 jobs: 100
