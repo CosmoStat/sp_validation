@@ -60,7 +60,8 @@ default-resources:
   slurm_partition: "comp,pscomp"
   runtime: "60m"
   cpus_per_task: 12
-  slurm_extra: "'--exclude=n17,n09,n36'"
+  # n35: grid_3 image-sims jobs filled its /tmp (2026-09-30); never use it.
+  slurm_extra: "'--exclude=n17,n09,n35,n36'"
 
 # Retry a job once on transient node failure, and keep the SLURM logs of
 # successful jobs (candide debugging).
