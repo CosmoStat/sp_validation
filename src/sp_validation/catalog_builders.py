@@ -159,7 +159,7 @@ class BaseCat(object):
             input HDF5 file
 
         """
-        author = os.getenv("USER")
+        author = os.getenv("USER", "unknown")
         software_name = "sp_validation"
         software_version = version(software_name)
         date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
