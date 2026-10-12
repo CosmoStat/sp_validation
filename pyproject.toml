@@ -136,7 +136,7 @@ docs = [
 # separate ``glass.ext.camb`` package (absent from glass core >=2024.2), so it is
 # pinned explicitly.
 glass = [
-    "glass==2026.2",
+    "glass==2026.4",
     "glass.ext.camb==2023.6",
     "cosmology.compat.camb==0.2.0",
     # fitsio: make_glass_sim.py writes the mock catalogue as FITS.
