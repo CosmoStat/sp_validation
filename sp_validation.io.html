@@ -176,7 +176,7 @@ that knows how a catalogue’s rows are stored on disk.</p>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>plot_dir</strong> (<em>string</em>) – directory name</p></li>
 <li><p><strong>plot_subdirs</strong> (<em>array</em><em> of </em><em>string</em>) – subdirectory names</p></li>
-<li><p><strong>verbose</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em><em>, </em><em>default=False</em>) – verbose output if True</p></li>
+<li><p><strong>verbose</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.15)"><em>bool</em></a><em>, </em><em>optional</em><em>, </em><em>default=False</em>) – verbose output if True</p></li>
 </ul>
 </dd>
 </dl>
@@ -205,7 +205,7 @@ that knows how a catalogue’s rows are stored on disk.</p>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>msg</strong> (<em>string</em>) – message</p></li>
 <li><p><strong>stats_file</strong> (<em>file handler</em>) – statistics output file</p></li>
-<li><p><strong>verbose</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em><em>, </em><em>default=False</em>) – print message to stdout if True</p></li>
+<li><p><strong>verbose</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.15)"><em>bool</em></a><em>, </em><em>optional</em><em>, </em><em>default=False</em>) – print message to stdout if True</p></li>
 </ul>
 </dd>
 </dl>
@@ -245,7 +245,7 @@ count, with the name of one chunk (for error messages).</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="sp_validation.io.Catalogue">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">Catalogue</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hdu</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/io.html#Catalogue"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.io.Catalogue" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.io.Catalogue'">¶</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>An open catalogue file, presented as row chunks in the v2 grammar.</p>
 <p>The container is detected from the file contents (<code class="docutils literal notranslate"><span class="pre">h5py.is_hdf5</span></code>), not
 from its extension. Supported layouts:</p>
@@ -265,10 +265,10 @@ memory stay valid after closing.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/os.html#os.PathLike" title="(in Python v3.14)"><em>os.PathLike</em></a>) – catalogue file</p></li>
-<li><p><strong>hdu</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>optional</em>) – FITS HDU to read; ignored for HDF5. Default is <code class="docutils literal notranslate"><span class="pre">None</span></code>, the first
+<li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/os.html#os.PathLike" title="(in Python v3.15)"><em>os.PathLike</em></a>) – catalogue file</p></li>
+<li><p><strong>hdu</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a><em>, </em><em>optional</em>) – FITS HDU to read; ignored for HDF5. Default is <code class="docutils literal notranslate"><span class="pre">None</span></code>, the first
 table HDU</p></li>
-<li><p><strong>column_map</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>, </em><em>optional</em>) – <code class="docutils literal notranslate"><span class="pre">{v2</span> <span class="pre">name:</span> <span class="pre">name</span> <span class="pre">in</span> <span class="pre">the</span> <span class="pre">file}</span></code> for a catalogue in another naming
+<li><p><strong>column_map</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.15)"><em>dict</em></a><em>, </em><em>optional</em>) – <code class="docutils literal notranslate"><span class="pre">{v2</span> <span class="pre">name:</span> <span class="pre">name</span> <span class="pre">in</span> <span class="pre">the</span> <span class="pre">file}</span></code> for a catalogue in another naming
 convention, applied by <code class="docutils literal notranslate"><span class="pre">grammar.adapt</span></code> (patterns such as
 <code class="docutils literal notranslate"><span class="pre">{"NGMIX_*":</span> <span class="pre">"MYFIT_*"}</span></code> allowed). Default is <code class="docutils literal notranslate"><span class="pre">None</span></code></p></li>
 </ul>
@@ -286,7 +286,7 @@ convention, applied by <code class="docutils literal notranslate"><span class="p
 <p>Each column’s dtype is promoted across every chunk (<code class="docutils literal notranslate"><span class="pre">group_dtype</span></code>).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#KeyError" title="(in Python v3.14)"><strong>KeyError</strong></a> – if a chunk lacks one of <code class="docutils literal notranslate"><span class="pre">columns</span></code>, naming the chunk</p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#KeyError" title="(in Python v3.15)"><strong>KeyError</strong></a> – if a chunk lacks one of <code class="docutils literal notranslate"><span class="pre">columns</span></code>, naming the chunk</p>
 </dd>
 </dl>
 </dd></dl>
@@ -314,15 +314,15 @@ memory is the output plus one chunk.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>columns</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – v2-grammar columns to read; default is <code class="docutils literal notranslate"><span class="pre">None</span></code> (all)</p></li>
-<li><p><strong>key_column</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – for a chunked catalogue, name of an integer column to add, holding
+<li><p><strong>columns</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.15)"><em>list</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a><em>, </em><em>optional</em>) – v2-grammar columns to read; default is <code class="docutils literal notranslate"><span class="pre">None</span></code> (all)</p></li>
+<li><p><strong>key_column</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a><em>, </em><em>optional</em>) – for a chunked catalogue, name of an integer column to add, holding
 for each row the leading integer of its chunk’s name. ShapePipe
 star catalogues name each chunk by its exposure number
 (<code class="docutils literal notranslate"><span class="pre">"2086324"</span></code>, or <code class="docutils literal notranslate"><span class="pre">"2110000p"</span></code> with the CFIS processed-exposure
 suffix), which this keeps (<code class="docutils literal notranslate"><span class="pre">key_column="EXPID"</span></code>). An unchunked
 catalogue has no chunk names and gets no column. Default is
 <code class="docutils literal notranslate"><span class="pre">None</span></code></p></li>
-<li><p><strong>verbose</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – report progress if <code class="docutils literal notranslate"><span class="pre">True</span></code></p></li>
+<li><p><strong>verbose</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.15)"><em>bool</em></a><em>, </em><em>optional</em>) – report progress if <code class="docutils literal notranslate"><span class="pre">True</span></code></p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -333,8 +333,8 @@ catalogue has no chunk names and gets no column. Default is
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
 <dd class="field-even"><ul class="simple">
-<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#KeyError" title="(in Python v3.14)"><strong>KeyError</strong></a> – if a chunk lacks one of <code class="docutils literal notranslate"><span class="pre">columns</span></code></p></li>
-<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – if <code class="docutils literal notranslate"><span class="pre">key_column</span></code> collides with a column, or a chunk name does
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#KeyError" title="(in Python v3.15)"><strong>KeyError</strong></a> – if a chunk lacks one of <code class="docutils literal notranslate"><span class="pre">columns</span></code></p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.15)"><strong>ValueError</strong></a> – if <code class="docutils literal notranslate"><span class="pre">key_column</span></code> collides with a column, or a chunk name does
 not begin with an integer</p></li>
 </ul>
 </dd>
@@ -432,7 +432,7 @@ a flat <code class="docutils literal notranslate"><span class="pre">tiles/&lt;ti
 <dd class="field-odd"><p>h5py.Group</p>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – if the file is empty, or a level holds more than one sub-group</p>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.15)"><strong>ValueError</strong></a> – if the file is empty, or a level holds more than one sub-group</p>
 </dd>
 </dl>
 </dd></dl>
@@ -477,9 +477,9 @@ as-is here and this reader deliberately handles both.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>tables</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – row-chunk tables (h5py Datasets, or their <code class="docutils literal notranslate"><span class="pre">grammar.adapt</span></code> views),
+<li><p><strong>tables</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.15)"><em>list</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.15)"><em>dict</em></a>) – row-chunk tables (h5py Datasets, or their <code class="docutils literal notranslate"><span class="pre">grammar.adapt</span></code> views),
 optionally keyed by dataset name for error messages</p></li>
-<li><p><strong>columns</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – columns to keep; default is <code class="docutils literal notranslate"><span class="pre">None</span></code> (all columns of the first table)</p></li>
+<li><p><strong>columns</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.15)"><em>list</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a><em>, </em><em>optional</em>) – columns to keep; default is <code class="docutils literal notranslate"><span class="pre">None</span></code> (all columns of the first table)</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -489,7 +489,7 @@ optionally keyed by dataset name for error messages</p></li>
 <dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v2.5)">numpy.dtype</a></p>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#KeyError" title="(in Python v3.14)"><strong>KeyError</strong></a> – if a table lacks one of the columns, naming the tables that do</p>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#KeyError" title="(in Python v3.15)"><strong>KeyError</strong></a> – if a table lacks one of the columns, naming the tables that do</p>
 </dd>
 </dl>
 </dd></dl>
@@ -507,11 +507,11 @@ catalogue truncated by an interrupted merge job or file transfer.</p>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>hdf5_file</strong> (<em>h5py.File</em>) – open input file</p></li>
 <li><p><strong>group</strong> (<em>h5py.Group</em>) – group holding the per-unit datasets</p></li>
-<li><p><strong>file_path</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – input file path, for the error message</p></li>
+<li><p><strong>file_path</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a>) – input file path, for the error message</p></li>
 </ul>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – if the number of datasets differs from the declared count</p>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.15)"><strong>ValueError</strong></a> – if the number of datasets differs from the declared count</p>
 </dd>
 </dl>
 </dd></dl>
@@ -571,7 +571,7 @@ catalogue truncated by an interrupted merge job or file transfer.</p>
 </div><footer class="py-6 border-t border-border md:py-0">
 <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
 <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 05 Oct, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 12 Oct, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>
 </div>
 </footer>

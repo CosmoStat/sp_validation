@@ -159,7 +159,7 @@ object-wise) for catalogue validation.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">PSFSystematicsMixin</span></span><a class="reference internal" href="_modules/sp_validation/cosmo_val/psf_systematics.html#PSFSystematicsMixin"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin'">¶</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <dl class="py property">
 <dt class="sig sig-object py" id="sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.rho_stat_handler">
 <span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">rho_stat_handler</span></span><a class="headerlink" href="#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.rho_stat_handler" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.rho_stat_handler'">¶</a></dt>
@@ -292,8 +292,8 @@ table are used.</p></li>
 <li><p><strong>cov_tau</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – The covariance matrix for the tau statistics; its leading block is
 the tau_0,+ covariance. If None, the variances in the tau-statistics
 table are used.</p></li>
-<li><p><strong>n_samples</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>optional</em>) – Number of Gaussian draws for the error.</p></li>
-<li><p><strong>seed</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> or </em><em>np.random.Generator</em><em>, </em><em>optional</em>) – Seed (or generator) for the draws, so that errors are reproducible.</p></li>
+<li><p><strong>n_samples</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a><em>, </em><em>optional</em>) – Number of Gaussian draws for the error.</p></li>
+<li><p><strong>seed</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a><em> or </em><em>np.random.Generator</em><em>, </em><em>optional</em>) – Seed (or generator) for the draws, so that errors are reproducible.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -317,7 +317,7 @@ least-squares affine fit alpha(theta) = c + m theta, with its error
 from the fit covariance (errors taken as absolute).</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.15)">dict</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -336,10 +336,10 @@ deviation over Gaussian draws of rho_0, tau_0_a and tau_0_b.</p>
 <li><p><strong>cov_rho</strong> (<em>np.ndarray</em>) – The covariance matrix for the rho statistics.</p></li>
 <li><p><strong>cov_tau_a</strong> (<em>np.ndarray</em>) – The covariance matrix for the tau statistics for tomographic bin a.</p></li>
 <li><p><strong>cov_tau_b</strong> (<em>np.ndarray</em>) – The covariance matrix for the tau statistics for tomographic bin b.</p></li>
-<li><p><strong>n_samples</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>optional</em>) – Number of Gaussian draws for the error.</p></li>
-<li><p><strong>same_bin</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – True when a and b are the same bin: tau_0_a and tau_0_b are then one
+<li><p><strong>n_samples</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a><em>, </em><em>optional</em>) – Number of Gaussian draws for the error.</p></li>
+<li><p><strong>same_bin</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.15)"><em>bool</em></a><em>, </em><em>optional</em>) – True when a and b are the same bin: tau_0_a and tau_0_b are then one
 measurement, and each draw uses a single tau sample (tau^2 / rho).</p></li>
-<li><p><strong>seed</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> or </em><em>np.random.Generator</em><em>, </em><em>optional</em>) – Seed (or generator) for the draws, so that errors are reproducible.</p></li>
+<li><p><strong>seed</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a><em> or </em><em>np.random.Generator</em><em>, </em><em>optional</em>) – Seed (or generator) for the draws, so that errors are reproducible.</p></li>
 </ul>
 </dd>
 </dl>
@@ -351,12 +351,12 @@ measurement, and each draw uses a single tau sample (tau^2 / rho).</p></li>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>versions</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>, </em><em>optional</em>) – List of versions to plot. If None, all versions are plotted.</p></li>
-<li><p><strong>abs</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – If True, plot the absolute values of the Rho statistics.</p></li>
-<li><p><strong>offset</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em>) – Offset to apply to the versions for better visualisation.</p></li>
-<li><p><strong>savefig</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – If provided, save the figure to this file.</p></li>
-<li><p><strong>show</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – If True, show the figure.</p></li>
-<li><p><strong>close</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – If True, close the figure after saving or showing.</p></li>
+<li><p><strong>versions</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.15)"><em>list</em></a><em>, </em><em>optional</em>) – List of versions to plot. If None, all versions are plotted.</p></li>
+<li><p><strong>abs</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.15)"><em>bool</em></a><em>, </em><em>optional</em>) – If True, plot the absolute values of the Rho statistics.</p></li>
+<li><p><strong>offset</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.15)"><em>float</em></a><em>, </em><em>optional</em>) – Offset to apply to the versions for better visualisation.</p></li>
+<li><p><strong>savefig</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a><em>, </em><em>optional</em>) – If provided, save the figure to this file.</p></li>
+<li><p><strong>show</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.15)"><em>bool</em></a><em>, </em><em>optional</em>) – If True, show the figure.</p></li>
+<li><p><strong>close</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.15)"><em>bool</em></a><em>, </em><em>optional</em>) – If True, close the figure after saving or showing.</p></li>
 </ul>
 </dd>
 </dl>
@@ -372,16 +372,16 @@ measurement, and each draw uses a single tau sample (tau^2 / rho).</p></li>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>versions</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>, </em><em>optional</em>) – List of versions to plot. If None, all versions are plotted.</p></li>
-<li><p><strong>colors</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>, </em><em>optional</em>) – List of colors for each version. If None, default colors are used.</p></li>
-<li><p><strong>savefig_contours</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – If provided, save the contour plot to this file.</p></li>
-<li><p><strong>savefig_xi_psf_sys</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – If provided, save the xi_psf_sys samples plot to this file.</p></li>
-<li><p><strong>nsamples_to_plot</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>optional</em>) – Number of xi_psf_sys samples to plot. Default is 100.</p></li>
-<li><p><strong>offset</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em>) – Offset to apply to the versions for better visualisation.</p></li>
-<li><p><strong>alpha</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em>) – Alpha value for the xi_psf_sys samples plot. Default is 0.3.</p></li>
-<li><p><strong>times_theta</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – If True, plot the xi_psf_sys multiplied by theta.</p></li>
-<li><p><strong>show</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – If True, show the figure.</p></li>
-<li><p><strong>close</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – If True, close the figure after saving or showing.</p></li>
+<li><p><strong>versions</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.15)"><em>list</em></a><em>, </em><em>optional</em>) – List of versions to plot. If None, all versions are plotted.</p></li>
+<li><p><strong>colors</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.15)"><em>list</em></a><em>, </em><em>optional</em>) – List of colors for each version. If None, default colors are used.</p></li>
+<li><p><strong>savefig_contours</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a><em>, </em><em>optional</em>) – If provided, save the contour plot to this file.</p></li>
+<li><p><strong>savefig_xi_psf_sys</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a><em>, </em><em>optional</em>) – If provided, save the xi_psf_sys samples plot to this file.</p></li>
+<li><p><strong>nsamples_to_plot</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a><em>, </em><em>optional</em>) – Number of xi_psf_sys samples to plot. Default is 100.</p></li>
+<li><p><strong>offset</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.15)"><em>float</em></a><em>, </em><em>optional</em>) – Offset to apply to the versions for better visualisation.</p></li>
+<li><p><strong>alpha</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.15)"><em>float</em></a><em>, </em><em>optional</em>) – Alpha value for the xi_psf_sys samples plot. Default is 0.3.</p></li>
+<li><p><strong>times_theta</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.15)"><em>bool</em></a><em>, </em><em>optional</em>) – If True, plot the xi_psf_sys multiplied by theta.</p></li>
+<li><p><strong>show</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.15)"><em>bool</em></a><em>, </em><em>optional</em>) – If True, show the figure.</p></li>
+<li><p><strong>close</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.15)"><em>bool</em></a><em>, </em><em>optional</em>) – If True, close the figure after saving or showing.</p></li>
 </ul>
 </dd>
 </dl>
@@ -506,7 +506,7 @@ the tomographic bin. Saved to <code class="docutils literal notranslate"><span c
 </div><footer class="py-6 border-t border-border md:py-0">
 <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
 <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 05 Oct, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 12 Oct, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>
 </div>
 </footer>
