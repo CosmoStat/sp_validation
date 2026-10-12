@@ -32,7 +32,7 @@ obj = sp_joint.CalibrateCat()
 
 # %%
 # Read configuration file and set parameters
-config = obj.read_config_set_params("config_for_compr_mask.yaml")
+config = obj.read_config_set_params("config_mask.yaml")
 
 # %%
 # Get data. Set load_into_memory to False for very large files
