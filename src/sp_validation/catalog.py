@@ -235,8 +235,9 @@ def check_invalid(dd, key, val, stats_file, name=None, verbose=False):
     for i in range(len(key)):
         w = dd[key[i]] == val[i]
         n_inv_psf = len(np.where(w)[0])
-        msg = "Invalid {} found for {}/{} = {:.1g}% objects".format(
-            name[i], n_inv_psf, n_all, n_inv_psf / n_all
+        msg = (
+            f"Invalid {name[i]} found for {n_inv_psf}/{n_all}"
+            + f" = {n_inv_psf / n_all:.3%} objects"
         )
         io.print_stats(msg, stats_file, verbose=verbose)
 
@@ -523,6 +524,10 @@ def write_shape_catalog(
         fields = []
         for col, _ in col_info_arr:
             arr = np.asarray(col.array)
+            if str(col.format) == "L":
+                # astropy holds FITS logicals as the characters 'T'/'F'
+                # (84/70); write booleans, not those codes.
+                arr = arr == ord("T")
             if arr.ndim == 2:
                 for idx in range(arr.shape[1]):
                     fields.append((f"{col.name}_{idx}", arr[:, idx]))
