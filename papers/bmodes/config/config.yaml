@@ -144,4 +144,4 @@ glass_mocks:
 
 # External tools
 tools:
-  cosmocov_executable: "/n23data1/n06data/lgoh/scratch/UNIONS/CosmoCov/covs/cov"
+  onecov_executable: "/home/guerrini/OneCovariance/covariance.py"

@@ -111,7 +111,7 @@ rule mock_cosebis_scatter:
 rule mock_cosebis_bias_test:
     """Gather: 100-mock COSEBIS bias test figure + evidence.
 
-    Collects per-mock COSEBIS from scatter jobs, propagates CosmoCov ξ±
+    Collects per-mock COSEBIS from scatter jobs, propagates OneCovariance ξ±
     covariance to COSEBIS space, tests mean B_n = 0 at σ/√N precision.
     """
     input:

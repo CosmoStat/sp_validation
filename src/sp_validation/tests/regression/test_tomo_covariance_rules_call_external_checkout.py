@@ -1,4 +1,4 @@
-"""Exercise real covariance rules without catalogues or CosmoCov.
+"""Exercise real covariance rules without catalogues or OneCovariance.
 
 These tests pass on develop: it uses checkout-local scripts and launch-relative
 outputs. They guard against the external paths introduced on the tomography
@@ -13,7 +13,6 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 
-import numpy as np
 import pytest
 
 import sp_validation
@@ -82,7 +81,6 @@ def covariance_rules(tmp_path):
     snakefile.write_text(
         f"""
 from pathlib import Path
-from snakemake.io import apply_wildcards
 import json
 COSMO_INFERENCE = Path({str(tmp_path / "cosmo_inference")!r})
 COSMO_VAL = Path({str(tmp_path / "cosmo_val")!r})
@@ -92,14 +90,12 @@ GLASS_MOCK_SUITE = "glass_mock_v1.4.6"
 PLANCK18 = dict.fromkeys(
     ["Omega_m", "Omega_v", "sigma_8", "n_s", "h", "Omega_b"], 0.0
 )
-BLOCK_PAIRS = []
 DEFAULT_MASK_SUFFIX = ""
 FIDUCIAL = dict.fromkeys([
     "mock_version", "version", "blind", "min_sep", "max_sep", "nbins",
     "min_sep_int", "max_sep_int", "nbins_int",
 ], "synthetic")
 config = {{
-    "tools": {{"cosmocov_executable": "unused"}},
     "glass_mocks": {{"seed_range": [1, 1]}},
 }}
 def fiducial_binning_suffix():
@@ -108,6 +104,11 @@ def covariance_path(*args, **kwargs):
     return "unused-fiducial-input"
 def covariance_dir(*args, **kwargs):
     return "unused-covariance-directory"
+def covariance_base(*args, **kwargs):
+    return "unused-covariance-base"
+def cov_output(suffix):
+    return str(COSMO_INFERENCE / ("covariance_{{version}}_{{gaussian}}_minsep={{min_sep}}"
+        "_maxsep={{max_sep}}_nbins={{nbins}}{{mask_suffix}}{{tomo_suffix}}" + suffix))
 def redshift_path(*args, **kwargs):
     return "unused-redshift-input"
 def build_redshift_path(*args, **kwargs):
@@ -117,12 +118,12 @@ def cv_cov_tau(*args, **kwargs):
 def cv_tau_stats(*args, **kwargs):
     return "unused-tau-statistics"
 wildcard_constraints:
-    mask_suffix="(?:_masked)?"
+    mask_suffix="(?:_masked)?",
+    tomo_suffix="(?:_tomo)?"
 include: {str(source)!r}
 manifest = {{}}
 for name in [
-    "covariance_process", "generate_glass_mock_rhotau_samples",
-    "covariance_glass_mock",
+    "generate_glass_mock_rhotau_samples", "covariance_glass_mock",
 ]:
     registered = workflow.get_rule(name)
     manifest[name] = {{
@@ -130,63 +131,13 @@ for name in [
         "basedir": str(registered.basedir),
         "output": list(map(str, registered.output)),
     }}
-synthetic_wildcards = dict(
-    version="synthetic", blind="A", gaussian="ng", min_sep="1", max_sep="2",
-    nbins="1", mask_suffix="",
-)
-manifest["covariance_process"]["synthetic_matrix"] = apply_wildcards(
-    workflow.get_rule("covariance_process").output[0], synthetic_wildcards
-)
 Path("rules.json").write_text(json.dumps(manifest, indent=2))
 """
-    )
-    # Upper-triangle dump: columns 8 and 9 contain Gaussian and non-Gaussian
-    # terms. Their sum is the positive-definite matrix [[3, .25], [.25, 6]].
-    raw = np.array(
-        [
-            [0, 0, 0, 0, 0, 0, 0, 0, 2, 1],
-            [0, 1, 0, 0, 0, 0, 0, 0, 0.25, 0],
-            [1, 1, 0, 0, 0, 0, 0, 0, 4, 2],
-        ]
     )
     parsed = _run_snakemake(case, "--list-rules")
     assert parsed.returncode == 0, parsed.stdout + parsed.stderr
     case.manifest = json.loads((tmp_path / "rules.json").read_text())
-    case.matrix = Path(case.manifest["covariance_process"]["synthetic_matrix"])
-    raw_path = Path(str(case.matrix).replace("_processed.txt", ".txt"))
-    raw_path.parent.mkdir(parents=True)
-    np.savetxt(raw_path, raw)
     return case
-
-
-@pytest.mark.slow
-def test_covariance_postprocessing_runs_from_launched_checkout(covariance_rules):
-    """Process a synthetic CosmoCov dump without relying on another checkout.
-
-    The three input rows give G+NG = [[3, .25], [.25, 6]], reflecting the supplied
-    off-diagonal element, and G = [[2, .25], [.25, 4]]. Snakemake executes the
-    actual rule with existing raw input, so no survey data or expensive
-    covariance calculation is needed. A missing external entry point is a
-    workflow defect. Develop passes because its processor is checkout-local;
-    this guards against the tomography merge reintroducing an external script.
-    """
-    case = covariance_rules
-    result = _run_snakemake(case, "--printshellcmds", str(case.matrix))
-    log = result.stdout + result.stderr
-    diagnosis = next(
-        (line for line in log.splitlines() if "can't open file" in line), log[-2500:]
-    )
-    assert result.returncode == 0, (
-        f"covariance_process returned {result.returncode}; expected exit 0 and "
-        f"matrix [[3.0, 0.25], [0.25, 6.0]]; {diagnosis}"
-    )
-    np.testing.assert_allclose(
-        np.loadtxt(case.matrix), [[3, 0.25], [0.25, 6]], rtol=0, atol=0
-    )
-    gaussian = Path(str(case.matrix).replace("_processed.txt", "_processed_g.txt"))
-    np.testing.assert_allclose(
-        np.loadtxt(gaussian), [[2, 0.25], [0.25, 4]], rtol=0, atol=0
-    )
 
 
 def test_tau_sampling_selects_script_in_launched_checkout(covariance_rules):

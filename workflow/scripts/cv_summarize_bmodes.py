@@ -43,7 +43,7 @@ for i, version in enumerate(p["versions"]):
     # this table wants.
     cosebis = np.load(snakemake.input["cosebis"][i])
     row["COSEBIS"] = float(cosebis["pte_B"])
-    cov_methods.add("COSEBIs: analytic (CosmoCov ξ± through the COSEBIs kernel)")
+    cov_methods.add("COSEBIs: analytic (OneCovariance ξ± through the COSEBIs kernel)")
 
     if p["include_pseudo_cl"]:
         from astropy.io import fits

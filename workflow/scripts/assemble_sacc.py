@@ -7,7 +7,7 @@ Each part is a single-statistic SACC; they load in CANONICAL order and are
 rebuilt into one Sacc with a single ``BlockDiagonalCovariance``.
 
 Every part must carry a covariance block. ξ± reporting and pseudo-Cℓ take
-theirs from the analytic inputs — the CosmoCov ``.txt`` (``--xi-cov``) and the
+theirs from the analytic inputs — the OneCovariance ξ± matrix (``--xi-cov``) and the
 NaMaster covariance FITS (``--pseudo-cl-cov``) — which replace any estimate the
 part was born with; the pseudo-Cℓ cross-spectrum blocks (EE↔BB, …) are dropped,
 matching what the B-mode PTE reads today.
@@ -178,7 +178,7 @@ def _from_cli(argv=None):
         ap.add_argument(
             f"--{name.replace('_', '-')}", default=None, help=f"{name} part"
         )
-    ap.add_argument("--xi-cov", default=None, help="CosmoCov ξ covariance .txt")
+    ap.add_argument("--xi-cov", default=None, help="OneCovariance ξ± covariance matrix (.dat)")
     ap.add_argument(
         "--pseudo-cl-cov", default=None, help="NaMaster pseudo-Cℓ covariance FITS"
     )

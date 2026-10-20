@@ -10,15 +10,15 @@
 #                   ├─ integration part ─┬──→ pure_eb (part, npz, figures)
 #                   │                    └──→ cosebis (part, npz, figures)
 #                   └─ reporting part ──→ 2pcf plot, ratio_xi_sys_xi
-#   CosmoCov ξ±, integration grid ──→ pure_eb, cosebis (their covariances)
+#   OneCov ξ±, integration grid ──→ pure_eb, cosebis (their covariances)
 #   catalogue ──→ pseudo_cl (part) ──┬─→ pseudo-Cl figures
-#   CosmoCov ξ±, reporting grid ─────┤
+#   OneCov ξ±, reporting grid ───────┤
 #   rho/tau (part + FITS) ───────────┼─→ summarize_bmodes (reads the products)
 #                                    └─→ assemble_sacc ──→ {version}.sacc
 #
 # The B-mode rules and the ξ± figures are ingests: they work from the parts and
 # the covariance inputs, never from a catalogue, so a blinded part keeps
-# everything downstream blinded. The analytic covariances (CosmoCov ξ±,
+# everything downstream blinded. The analytic covariances (OneCovariance ξ±,
 # NaMaster pseudo-Cℓ) are what assembly puts in the terminal file, replacing
 # the estimates a part was born with.
 #
@@ -80,7 +80,7 @@ def cv_pure_eb_figures(version):
 
 
 def _grid_cov(version, grid, gaussian):
-    """CosmoCov-processed ξ± covariance on a named grid's own binning."""
+    """OneCovariance ξ± covariance on a named grid's own binning."""
     binning = XI_GRIDS[grid]
     return covariance_path(
         version,
@@ -93,7 +93,7 @@ def _grid_cov(version, grid, gaussian):
 
 
 def cv_xi_cov_integration(version):
-    """CosmoCov gaussian ξ± covariance on the integration grid.
+    """OneCovariance Gaussian ξ± covariance on the integration grid.
 
     The one analytic covariance both B-mode statistics take: the pure-E/B Monte
     Carlo draws from it and COSEBIs carry it through their kernel. Gaussian
@@ -150,7 +150,7 @@ def cv_pseudo_cl_cov(version):
 
 
 def cv_xi_cov(version):
-    """CosmoCov ξ± covariance on the reporting grid, the terminal file's."""
+    """OneCovariance ξ± covariance on the reporting grid, the terminal file's."""
     return _grid_cov(version, "reporting", "ng")
 
 
@@ -406,7 +406,7 @@ rule cv_pure_eb:
 rule cv_cosebis:
     """COSEBIs E/B decomposition for one version, from its integration-grid part.
 
-    The modes come from the part; the covariance is the CosmoCov ξ± covariance
+    The modes come from the part; the covariance is the OneCovariance ξ± covariance
     on the same grid through the same kernel as the modes.
     """
     input:
