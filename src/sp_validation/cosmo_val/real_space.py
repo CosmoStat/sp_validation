@@ -6,7 +6,6 @@ measurement, and the per-bin-pair plots of both. It depends on TreeCorr.
 """
 
 import os
-import re
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -15,29 +14,7 @@ import treecorr
 from sp_validation.statistics import jackknife_patch_centers
 
 from .. import sacc_io
-from .sacc_writers import xi_to_sacc
-
-ALL_PAIR = "tomo_bin_all_tomo_bin_all"
-
-from .. import sacc_io
-
-# calculate_2pcf_version keys its results "tomo_bin_{b1}_tomo_bin_{b2}"; this
-# reads the bin pair back out ("all" for the non-tomographic single pair).
-_PAIR_KEY = re.compile(r"tomo_bin_(.+?)_tomo_bin_(.+)")
-
-
-def _sacc_bin_index(ggs):
-    """Map each catalog tomographic bin id to its 0-based SACC bin index.
-
-    The catalog numbers its bins however the ``tomo_bin_col`` column does
-    (1-based in practice, and the single id ``"all"`` for a non-tomographic
-    run), while SACC tracers are ``source_{i}`` counted from zero. The map is
-    built from the ids actually present, in ascending order, so it never
-    assumes the catalog starts at 1 or numbers its bins without gaps.
-    """
-    ids = {b for key in ggs for b in _PAIR_KEY.fullmatch(key).groups()}
-    order = sorted(ids, key=lambda b: 0 if b == "all" else int(b))
-    return {b: i for i, b in enumerate(order)}
+from .sacc_writers import xi_pairs_to_sacc
 
 
 class RealSpaceMixin:
@@ -53,23 +30,28 @@ class RealSpaceMixin:
     ):
         """ξ± of one catalogue version on one binning, for each bin pair.
 
-        The non-tomographic ``("all", "all")`` pair is born as its SACC part,
-        sealed under the version's blind (:func:`sp_validation.sacc_io.seal`)
-        before it is kept in ``self.xi_parts[ver, grid]``, returned or written,
-        so on a blinded catalogue its true values never leave this method. A
-        part already held for ``(ver, grid)`` is reused when no ``npatch``,
-        binning or ``out`` is asked for, so the figure rules draw the parts they
-        are handed. Tomographic pairs are measured only on a public catalogue
-        (:meth:`_refuse_blinded_tomography`). Use :meth:`calculate_2pcf` to run
-        over every version in ``self.versions``.
+        The measured pairs are born as one SACC part — the ``("all", "all")``
+        pair, or every tomographic bin pair with one ``source_i`` tracer and
+        n(z) per bin — sealed under the version's blind
+        (:func:`sp_validation.sacc_io.seal`) before it is kept in
+        ``self.xi_parts[ver, grid]`` (``self.xi_tomo_parts`` for tomography),
+        returned or written, so on a blinded catalogue its true values never
+        leave this method. A part already held for ``(ver, grid)`` is reused
+        when no ``npatch``, binning or ``out`` is asked for, so the figure rules
+        draw the parts they are handed. Use :meth:`calculate_2pcf` to run over
+        every version in ``self.versions``.
+
+        Tomographic bin ids map to SACC bins in ascending order, so bin ``i``
+        takes column ``i + 1`` of the ``redshift_path`` file, and pairs go in
+        as ``(0, 0), (0, 1), …, (n-1, n-1)`` — OneCovariance's bin-pair order.
 
         Parameters:
             ver (str): The catalogue version to measure.
             npatch (int, optional): Jackknife patches; the instance's
                 ``npatch`` by default. With patches the part carries the
-                jackknife covariance, without them the shot-noise diagonal.
-                Seeded patch centres come from the full catalogue and are
-                shared by every bin pair.
+                jackknife covariance (across bin pairs too), without them the
+                shot-noise diagonal. Seeded patch centres come from the full
+                catalogue and are shared by every bin pair.
             compute_tomography (bool, optional): Measure the tomographic bin
                 pairs instead of ``("all", "all")``.
             grid (str): The grid tag the part's points carry.
@@ -78,38 +60,30 @@ class RealSpaceMixin:
                 e.g. ``min_sep=1``.
 
         Returns:
-            dict: ``"tomo_bin_{b1}_tomo_bin_{b2}"`` → ξ± shaped like a TreeCorr
-            ``GGCorrelation``: the part's
-            :func:`~sp_validation.sacc_io.xi_correlation` view for
-            ``("all", "all")``, the TreeCorr object for a tomographic pair.
+            dict: ``"tomo_bin_{b1}_tomo_bin_{b2}"`` → the part's
+            :func:`~sp_validation.sacc_io.xi_correlation` view of that pair,
+            shaped like a TreeCorr ``GGCorrelation``.
         """
         reuse = npatch is None and out is None and not treecorr_config
         npatch = int(npatch or self.npatch)
         blind = self.blind(ver)
+        parts = self.xi_tomo_parts if compute_tomography else self.xi_parts
 
         if compute_tomography:
-            self._refuse_blinded_tomography(ver)
             tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
             if tomo_bin_ids is None or tomo_bin_pairs is None:
                 raise ValueError(f"Version {ver} does not have tomography information.")
+            index = {b: i for i, b in enumerate(sorted(tomo_bin_ids))}
             self.print_magenta(
                 f"Computing tomographic ξ± for {ver} with {len(tomo_bin_pairs)} bins."
             )
         else:
             self.print_magenta(f"Computing non-tomographic ξ± for {ver}.")
             tomo_bin_pairs = [("all", "all")]
+            index = {"all": 0}
 
-        ggs = {f"tomo_bin_{b1}_tomo_bin_{b2}": None for b1, b2 in tomo_bin_pairs}
-        held = self.xi_parts.get((ver, grid)) if reuse else None
-        if ALL_PAIR in ggs and held is not None:
-            ggs[ALL_PAIR] = sacc_io.xi_correlation(held)
-        to_compute = [
-            (b1, b2)
-            for b1, b2 in tomo_bin_pairs
-            if ggs[f"tomo_bin_{b1}_tomo_bin_{b2}"] is None
-        ]
-
-        if to_compute:
+        part = parts.get((ver, grid)) if reuse else None
+        if part is None:
             jackknife = npatch > 1
             gg_config = {
                 **self._binning(**treecorr_config),
@@ -118,7 +92,8 @@ class RealSpaceMixin:
             cols = self._shear_columns(ver, compute_tomography)
             patch_centers = self._patch_centers(cols, npatch)
 
-            for bin1, bin2 in to_compute:
+            measured = []
+            for bin1, bin2 in tomo_bin_pairs:
                 gg = treecorr.GGCorrelation(gg_config)
 
                 cat_gal1 = self._bin_catalog(cols, bin1, npatch, patch_centers)
@@ -129,31 +104,60 @@ class RealSpaceMixin:
                 )
 
                 gg.process(cat_gal1, cat2=cat_gal2)
+                measured.append(((index[bin1], index[bin2]), gg))
 
-                if (bin1, bin2) != ("all", "all"):
-                    ggs[f"tomo_bin_{bin1}_tomo_bin_{bin2}"] = gg
-                    continue
-                s = xi_to_sacc(
-                    self.sacc_nz(ver),
-                    {**self.sacc_metadata(ver), "npatch": npatch},
-                    gg.meanr,
-                    gg.xip,
-                    gg.xim,
-                    grid=grid,
-                    theta_nom=gg.rnom,
-                    npairs=gg.npairs,
-                    weight=gg.weight,
-                    covariance=gg.cov if jackknife else None,
-                    variances=(
-                        None if jackknife else np.concatenate([gg.varxip, gg.varxim])
-                    ),
+            nz = self.sacc_nz(ver, tomography=compute_tomography)
+            if len(nz) != len(index):
+                raise ValueError(
+                    f"{ver}: the n(z) file has {len(nz)} distribution column(s) "
+                    f"but the catalogue has {len(index)} tomographic bin(s); "
+                    "every bin needs its own n(z)"
                 )
-                if out:
-                    part = sacc_io.save(s, out, blind=blind)
-                else:
-                    part = sacc_io.seal(s, blind)
-                self.xi_parts[ver, grid] = part
-                ggs[ALL_PAIR] = sacc_io.xi_correlation(part)
+            correlations = [gg for _, gg in measured]
+            covariance = variances = None
+            if not jackknife:
+                variances = np.concatenate(
+                    [np.concatenate([gg.varxip, gg.varxim]) for gg in correlations]
+                )
+            elif len(correlations) == 1:
+                covariance = correlations[0].cov
+            else:
+                # [ξ+; ξ−] per correlation, in list order: the part's pair-major
+                # order, with the cross-pair covariance a per-pair gg.cov drops.
+                covariance = treecorr.estimate_multi_cov(correlations, "jackknife")
+            s = xi_pairs_to_sacc(
+                nz,
+                {**self.sacc_metadata(ver), "npatch": npatch},
+                [
+                    (
+                        bins,
+                        {
+                            "theta": gg.meanr,
+                            "xip": gg.xip,
+                            "xim": gg.xim,
+                            "theta_nom": gg.rnom,
+                            "npairs": gg.npairs,
+                            "weight": gg.weight,
+                        },
+                    )
+                    for bins, gg in measured
+                ],
+                grid=grid,
+                covariance=covariance,
+                variances=variances,
+            )
+            if out:
+                part = sacc_io.save(s, out, blind=blind)
+            else:
+                part = sacc_io.seal(s, blind)
+            parts[ver, grid] = part
+
+        ggs = {
+            f"tomo_bin_{b1}_tomo_bin_{b2}": sacc_io.xi_correlation(
+                part, bins=(index[b1], index[b2]), grid=grid
+            )
+            for b1, b2 in tomo_bin_pairs
+        }
 
         self.print_done(f"Done 2PCF for {ver}.")
 
@@ -212,8 +216,8 @@ class RealSpaceMixin:
 
     def calculate_2pcf(
         self,
-        compute_tomography=False,
         npatch=None,
+        compute_tomography=False,
         **treecorr_config,
     ):
         """
@@ -241,122 +245,12 @@ class RealSpaceMixin:
         for ver in self.versions:
             self.cat_ggs[ver] = self.calculate_2pcf_version(
                 ver,
-                compute_tomography=compute_tomography,
                 npatch=npatch,
+                compute_tomography=compute_tomography,
                 **treecorr_config,
             )
 
         return self.cat_ggs
-
-    def save_2pcf_sacc(
-        self,
-        ver,
-        sacc_path,
-        ggs=None,
-        *,
-        type,
-        grid="reporting",
-        metadata=None,
-    ):
-        """Write the measured ξ± for ``ver`` to ``sacc_path`` as a SACC file.
-
-        Serialises the TreeCorr output of :meth:`calculate_2pcf_version` (or of
-        :meth:`calculate_2pcf`, via ``self.cat_ggs``) into the standard layout
-        of :mod:`sp_validation.sacc_io`: the ``source_{i}`` n(z) tracers, one
-        ξ+/ξ− block per tomographic bin pair, and the covariance.
-
-        Insertion order is load-bearing. ``sacc_io.add_xi`` writes one bin pair
-        as ``[ξ+; ξ−]``, so the data vector is *pair-major*, and the covariance
-        is tied to it by position alone. Both the ξ insertion and the
-        covariance therefore iterate the same ``pairs`` list, sorted by SACC
-        bin index — never recomputed independently.
-
-        The covariance follows what the measurement can support, read off the
-        correlations themselves (``var_method``) rather than off ``npatch``,
-        which the caller may have overridden per call:
-
-        - jackknife (npatch > 1): ``treecorr.estimate_multi_cov`` over the
-          correlations in ``pairs`` order. TreeCorr concatenates each one as
-          ``[ξ+; ξ−]``, which is exactly the pair-major insertion order, so
-          the result is one contiguous block spanning every ξ point —
-          including the cross-pair covariance, which a per-pair ``gg.cov``
-          would drop.
-        - shot noise (npatch == 1): the ``varxip``/``varxim`` diagonal, stored
-          as a SACC ``DiagonalCovariance``.
-
-        Parameters
-        ----------
-        ver : str
-            Catalog version, used for the n(z) lookup and stamped as metadata.
-        sacc_path : str
-            Path to the SACC product.
-        ggs : dict, optional
-            ``{"tomo_bin_{b1}_tomo_bin_{b2}": treecorr.GGCorrelation}`` as
-            returned by :meth:`calculate_2pcf_version`. Defaults to
-            ``self.cat_ggs[ver]``, i.e. the last :meth:`calculate_2pcf` run.
-        type : {'data', 'mock'}
-            Provenance of the input catalog, required by ``sacc_io.save``.
-            No default: only the caller knows whether it ran on a mock, and
-            ``sacc_io.load`` refuses unblinded ``type='data'`` files.
-        grid : str, optional
-            The ``grid`` tag on every point (default ``'reporting'``). Use
-            ``'integration'`` for the fine grid COSEBIs / pure-EB integrate
-            over, which shares this data type and tracer pair and is told
-            apart by nothing else.
-        metadata : dict, optional
-            Extra key/value pairs stored on the file, merged over the
-            version/npatch/blind stamped here.
-
-        Returns
-        -------
-        sacc.Sacc
-            The written data set.
-        """
-        ggs = self.cat_ggs[ver] if ggs is None else ggs
-        if not ggs:
-            raise ValueError(f"{ver}: no ξ± measurements to write")
-
-        index = _sacc_bin_index(ggs)
-        pairs = sorted(
-            ggs, key=lambda key: [index[b] for b in _PAIR_KEY.fullmatch(key).groups()]
-        )
-
-        z, *nz_cols = self.get_redshift(ver)
-        if len(nz_cols) != len(index):
-            raise ValueError(
-                f"{ver}: the n(z) file has {len(nz_cols)} distribution "
-                f"column(s) but the measurement covers {len(index)} "
-                f"tomographic bin(s) — every source bin needs its own n(z)"
-            )
-
-        s = sacc_io.new_sacc(
-            [(z, nz) for nz in nz_cols],
-            metadata={
-                "version": ver,
-                "npatch": int(ggs[pairs[0]].npatch1),
-                **({"blind": self.blind} if self.blind is not None else {}),
-                **(metadata or {}),
-            },
-        )
-
-        for key in pairs:
-            gg = ggs[key]
-            bins = tuple(index[b] for b in _PAIR_KEY.fullmatch(key).groups())
-            sacc_io.add_xi(
-                s,
-                bins,
-                gg.meanr,
-                gg.xip,
-                gg.xim,
-                grid=grid,
-                theta_nom=gg.rnom,
-                npairs=gg.npairs,
-                weight=gg.weight,
-            )
-
-        sacc_io.save(s, sacc_path, type=type)
-        self.print_done(f"Wrote ξ± SACC for {ver} to {sacc_path}.")
-        return s
 
     def calculate_aperture_mass_dispersion(
         self,
@@ -371,9 +265,9 @@ class RealSpaceMixin:
 
         Both are linear in ξ± (TreeCorr's ``calculateMapSq`` sum, Schneider et
         al. 2002 filter), so they and their covariance T·C·Tᵀ come from the ξ±
-        of :meth:`calculate_2pcf_version` on a fine grid: for ``("all",
-        "all")`` its sealed part, concealed on a blinded catalogue, whose shift,
-        the same in every patch, leaves C unchanged.
+        of :meth:`calculate_2pcf_version` on a fine grid: its sealed part, for
+        every bin pair concealed on a blinded catalogue, whose shift, the same
+        in every patch, leaves C unchanged.
         """
         theta_map = np.geomspace(theta_min * 5, theta_max / 2, nbins_map)
         self._map2 = {"theta_map": theta_map}

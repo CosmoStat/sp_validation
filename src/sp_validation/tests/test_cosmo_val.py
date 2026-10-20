@@ -592,6 +592,7 @@ class TestCosmologyValidation:
         params, version = self._write_synthetic_catalogs(
             tmp_path, n_gal=400, with_tomography=True
         )
+        self._use_tomographic_nz(params, version, tmp_path)
         cv = CosmologyValidation(versions=[version], npatch=4, **params)
         cols = cv._shear_columns(version, compute_tomography=True)
         full_catalog = treecorr.Catalog(
@@ -629,9 +630,96 @@ class TestCosmologyValidation:
             cross_pair_catalogs[1][2], expected_centers, rtol=0, atol=1e-14
         )
 
-    def test_a_blinded_catalogue_refuses_tomographic_signal(self, tmp_path):
-        """Blinding shifts the ("all", "all") parts only, so a blinded
-        catalogue's tomographic ξ± and pseudo-Cℓ are refused before measuring."""
+    @staticmethod
+    def _use_tomographic_nz(params, version, tmp_path, nbin=2):
+        """Point ``version`` at an n(z) file with one column per tomographic bin."""
+        z = np.linspace(0.05, 3.0, 31)
+        columns = [np.exp(-(((z - 0.4 - 0.5 * i) / 0.3) ** 2)) for i in range(nbin)]
+        nz_path = tmp_path / "nz_tomo.txt"
+        np.savetxt(nz_path, np.column_stack([z, *columns]))
+        config = yaml.safe_load(open(params["catalog_config"]))
+        config[version]["shear"]["redshift_path"] = str(nz_path)
+        with open(params["catalog_config"], "w") as f:
+            yaml.dump(config, f, sort_keys=False)
+        return z, columns
+
+    def test_tomographic_xi_is_one_part_with_a_tracer_per_bin(self, tmp_path):
+        """Every bin pair goes into one sealed part: source_i carries column i + 1
+        of the n(z) file, pairs are pair-major in OneCovariance's order, and the
+        jackknife covariance spans the pairs."""
+        params, version = self._write_synthetic_catalogs(
+            tmp_path, n_gal=600, with_tomography=True
+        )
+        z, columns = self._use_tomographic_nz(params, version, tmp_path)
+        cv = CosmologyValidation(versions=[version], npatch=4, **params)
+
+        ggs = cv.calculate_2pcf_version(version, compute_tomography=True)
+
+        part = cv.xi_tomo_parts[version, "reporting"]
+        assert sacc_io.stamp(part) == "none"
+        assert sorted(ggs) == [
+            "tomo_bin_1_tomo_bin_1",
+            "tomo_bin_1_tomo_bin_2",
+            "tomo_bin_2_tomo_bin_2",
+        ]
+        for i, column in enumerate(columns):
+            z_read, nz_read = sacc_io.get_nz(part, i)
+            np.testing.assert_allclose(z_read, z)
+            np.testing.assert_allclose(nz_read, column)
+        nbins = cv.treecorr_config["nbins"]
+        pairs = [dp.tracers for dp in part.data[:: 2 * nbins]]
+        assert pairs == [
+            ("source_0", "source_0"),
+            ("source_0", "source_1"),
+            ("source_1", "source_1"),
+        ]
+        np.testing.assert_allclose(
+            ggs["tomo_bin_1_tomo_bin_2"].xip,
+            sacc_io.get_xi(part, (0, 1), grid="reporting")[1],
+        )
+        cov = part.covariance.dense
+        assert cov.shape == (6 * nbins, 6 * nbins)
+        assert np.any(cov[: 2 * nbins, 2 * nbins : 4 * nbins] != 0)
+
+    def test_tomographic_xi_needs_an_nz_per_bin(self, tmp_path):
+        """A single-column n(z) cannot describe two bins; the part is refused."""
+        params, version = self._write_synthetic_catalogs(
+            tmp_path, n_gal=400, with_tomography=True
+        )
+        cv = CosmologyValidation(versions=[version], npatch=1, **params)
+        with pytest.raises(ValueError, match="n\\(z\\)"):
+            cv.calculate_2pcf_version(version, compute_tomography=True)
+
+    def test_a_blinded_catalogue_conceals_tomographic_xi(self, tmp_path):
+        """On a blinded catalogue every tomographic pair is sealed under the
+        blind, so the ξ± handed back differs from the public measurement."""
+        pytest.importorskip("smokescreen")
+        from sp_validation import blinding
+
+        params, version = self._write_synthetic_catalogs(
+            tmp_path, n_gal=400, with_tomography=True
+        )
+        self._use_tomographic_nz(params, version, tmp_path)
+        public = CosmologyValidation(
+            versions=[version], npatch=1, **params
+        ).calculate_2pcf_version(version, compute_tomography=True)
+
+        config = yaml.safe_load(open(params["catalog_config"]))
+        config["paths"]["blinds"] = str(tmp_path / "blinds")
+        config[version]["blind"] = "toy"
+        with open(params["catalog_config"], "w") as f:
+            yaml.dump(config, f, sort_keys=False)
+        blinding.init("toy", config)
+        cv = CosmologyValidation(versions=[version], npatch=1, **params)
+        blinded = cv.calculate_2pcf_version(version, compute_tomography=True)
+
+        assert sacc_io.stamp(cv.xi_tomo_parts[version, "reporting"]) == "toy"
+        for key in public:
+            assert not np.allclose(blinded[key].xip, public[key].xip)
+
+    def test_a_blinded_catalogue_refuses_tomographic_pseudo_cl(self, tmp_path):
+        """Blinding covers the tomographic ξ± parts but not the pseudo-Cℓ FITS
+        tables, so a blinded catalogue's tomographic pseudo-Cℓ are refused."""
         from sp_validation import blinding
 
         params, version = self._write_synthetic_catalogs(
@@ -645,8 +733,6 @@ class TestCosmologyValidation:
         blinding.init("toy", config)
         cv = CosmologyValidation(versions=[version], npatch=1, **params)
 
-        with pytest.raises(blinding.BlindingError, match="tomographic"):
-            cv.calculate_2pcf_version(version, compute_tomography=True)
         with pytest.raises(blinding.BlindingError, match="tomographic"):
             cv.calculate_pseudo_cl(compute_tomography=True)
 
@@ -884,6 +970,11 @@ class TestCosmologyValidation:
         assert bin_id == 0
         np.testing.assert_allclose(z_read, z)
         np.testing.assert_allclose(nz_read, nz_bins.sum(axis=0))
+
+        tomographic = cv.sacc_nz(version, tomography=True)
+        assert sorted(tomographic) == [0, 1, 2]
+        for i, nz_bin in enumerate(nz_bins):
+            np.testing.assert_allclose(tomographic[i][1], nz_bin)
 
     @pytest.mark.parametrize("pol_factor", [True, False, 0, 2])
     def test_pol_factor_must_be_plus_or_minus_one(self, tmp_path, pol_factor):

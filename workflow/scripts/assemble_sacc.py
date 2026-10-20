@@ -19,7 +19,10 @@ import numpy as np
 
 from sp_validation import sacc_io
 from sp_validation.blinding import Blind
-from sp_validation.cosmo_val.sacc_writers import assemble_analysis_sacc
+from sp_validation.cosmo_val.sacc_writers import (
+    assemble_analysis_sacc,
+    onecov_xi_covariance,
+)
 
 # NaMaster iNKA covariance FITS: per-spectrum HDU names, in SACC insertion order.
 _CL_HDUS = ("COVAR_EE_EE", "COVAR_BB_BB", "COVAR_EB_EB")
@@ -74,7 +77,7 @@ def _attach_cov(part, name, xi_cov, pseudo_cl_cov):
             f"--{_INJECTED[name].replace('_', '-')}, which was not supplied"
         )
     block = (
-        np.loadtxt(supplied)
+        onecov_xi_covariance(part, sacc_io.read_onecov_matrix(supplied))
         if name == "xi_reporting"
         else _pseudo_cl_cov_block(supplied)
     )
@@ -178,7 +181,9 @@ def _from_cli(argv=None):
         ap.add_argument(
             f"--{name.replace('_', '-')}", default=None, help=f"{name} part"
         )
-    ap.add_argument("--xi-cov", default=None, help="OneCovariance ξ± covariance matrix (.dat)")
+    ap.add_argument(
+        "--xi-cov", default=None, help="OneCovariance ξ± covariance matrix (.dat)"
+    )
     ap.add_argument(
         "--pseudo-cl-cov", default=None, help="NaMaster pseudo-Cℓ covariance FITS"
     )
