@@ -1,0 +1,542 @@
+"""Tests for the catalogue reader on ShapePipe v2 campaign products, and the mask cut."""
+
+import tempfile
+import unittest
+from pathlib import Path
+
+import h5py
+import numpy as np
+import numpy.testing as npt
+
+from sp_validation import galaxy, io
+from sp_validation.catalog_builders import JointCat
+from sp_validation.masks import Mask
+
+#: Columns ShapePipe v2's ``MergeStarCatPSFEX`` writes into
+#: ``full_starcat_<campaign>.hdf5`` (one dataset per exposure).
+STAR_CAT_COLUMNS = (
+    "X",
+    "Y",
+    "RA",
+    "DEC",
+    "HSM_G1_PSF",
+    "HSM_G2_PSF",
+    "HSM_T_PSF",
+    "HSM_G1_STAR",
+    "HSM_G2_STAR",
+    "HSM_T_STAR",
+    "HSM_FLAG_PSF",
+    "HSM_FLAG_STAR",
+    "MAG",
+    "SNR",
+    "ACCEPTED",
+    "CCD_NB",
+)
+
+GAL_DTYPE = np.dtype(
+    [
+        ("RA", "f8"),
+        ("Dec", "f8"),
+        ("MAG_AUTO", "f4"),
+        ("MASK_4_Stars", "?"),
+        ("MASK_1_Faint_star_halos", "?"),
+        ("MASK_2_Bright_star_halos", "?"),
+        ("MASK_8_Manual", "?"),
+        ("MASK_64_r", "?"),
+        ("MASK_1024_Maximask", "?"),
+    ]
+)
+
+
+def make_galaxy_data(n_obj, offset=0):
+    dat = np.zeros(n_obj, dtype=GAL_DTYPE)
+    dat["RA"] = np.arange(n_obj) + offset
+    dat["Dec"] = np.arange(n_obj) + offset + 0.5
+    dat["MAG_AUTO"] = 22.0
+    return dat
+
+
+def write_campaign(path, layout, tiles):
+    """Write a campaign hdf5 file in the nested or flat layout."""
+    with h5py.File(path, "w") as f:
+        if layout == "nested":
+            group = f.create_group("patches").create_group("CAMPAIGN")
+        else:
+            group = f.create_group("tiles")
+        for tile_id, dat in tiles.items():
+            group.create_dataset(tile_id, data=dat)
+        f.attrs["n_tiles"] = len(tiles)
+
+
+class TestCampaignReader(unittest.TestCase):
+    """Campaign galaxy catalogue reader."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self._dir = Path(self._tmp.name)
+        self._tiles = {
+            "000.000": make_galaxy_data(3),
+            "001.000": make_galaxy_data(2, offset=100),
+        }
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _expected(self):
+        """Expected concatenation: datasets in sorted-key order."""
+        return np.concatenate([self._tiles[key] for key in sorted(self._tiles)])
+
+    def test_nested_layout(self):
+        path = self._dir / "final_cat_CAMPAIGN.hdf5"
+        write_campaign(path, "nested", self._tiles)
+
+        dat = io.read_catalogue(path, verbose=False)
+
+        self.assertEqual(len(dat), 5)
+        npt.assert_array_equal(dat["RA"], self._expected()["RA"])
+
+    def test_flat_layout(self):
+        path = self._dir / "final_cat_CAMPAIGN.hdf5"
+        write_campaign(path, "flat", self._tiles)
+
+        dat = io.read_catalogue(path, verbose=False)
+
+        self.assertEqual(len(dat), 5)
+        npt.assert_array_equal(dat["RA"], self._expected()["RA"])
+
+    def test_layouts_agree(self):
+        nested = self._dir / "nested.hdf5"
+        flat = self._dir / "flat.hdf5"
+        write_campaign(nested, "nested", self._tiles)
+        write_campaign(flat, "flat", self._tiles)
+
+        npt.assert_array_equal(
+            io.read_catalogue(nested, verbose=False),
+            io.read_catalogue(flat, verbose=False),
+        )
+
+    def test_param_list_restriction(self):
+        path = self._dir / "final_cat_CAMPAIGN.hdf5"
+        write_campaign(path, "flat", self._tiles)
+
+        dat = io.read_catalogue(path, columns=["RA", "Dec"], verbose=False)
+
+        self.assertEqual(tuple(dat.dtype.names), ("RA", "Dec"))
+
+    def test_missing_column_raises(self):
+        path = self._dir / "final_cat_CAMPAIGN.hdf5"
+        write_campaign(path, "flat", self._tiles)
+
+        with self.assertRaises(KeyError) as ctx:
+            io.read_catalogue(path, columns=["RA", "NOT_A_COLUMN"], verbose=False)
+        self.assertIn("NOT_A_COLUMN", str(ctx.exception))
+
+    def test_row_order_is_tile_name_order(self):
+        """Keys inserted out of order still concatenate in name order."""
+        path = self._dir / "unordered.hdf5"
+        tiles = {
+            "222.000": make_galaxy_data(2, offset=200),
+            "000.000": make_galaxy_data(2, offset=0),
+            "111.000": make_galaxy_data(2, offset=100),
+        }
+        with h5py.File(path, "w") as f:
+            group = f.create_group("tiles")
+            for tile_id, dat in tiles.items():
+                group.create_dataset(tile_id, data=dat)
+            f.attrs["n_tiles"] = len(tiles)
+
+        dat = io.read_catalogue(path, verbose=False)
+
+        npt.assert_array_equal(dat["RA"], [0, 1, 100, 101, 200, 201])
+
+    def test_truncated_file_raises(self):
+        """n_tiles attribute larger than the number of datasets is fatal."""
+        path = self._dir / "truncated.hdf5"
+        write_campaign(path, "flat", self._tiles)
+        with h5py.File(path, "a") as f:
+            f.attrs["n_tiles"] = 10
+
+        with self.assertRaises(ValueError) as ctx:
+            io.read_catalogue(path, verbose=False)
+        self.assertIn("incomplete", str(ctx.exception))
+
+    def test_column_missing_from_later_tile_raises_clear_error(self):
+        """A column absent from a non-first tile is named, with its dataset."""
+        path = self._dir / "ragged.hdf5"
+        with h5py.File(path, "w") as f:
+            group = f.create_group("tiles")
+            group.create_dataset("000.000", data=make_galaxy_data(2))
+            group.create_dataset(
+                "001.000", data=np.zeros(2, dtype=[("RA", "f8"), ("Dec", "f8")])
+            )
+
+        with self.assertRaises(KeyError) as ctx:
+            io.read_catalogue(path, columns=["RA", "MAG_AUTO"], verbose=False)
+        message = str(ctx.exception)
+        self.assertIn("MAG_AUTO", message)
+        self.assertIn("001.000", message)
+
+    def test_dtype_promoted_across_tiles(self):
+        """A per-tile dtype difference within a campaign is not truncated."""
+        narrow = np.zeros(2, dtype=[("N_EPOCH", "i2"), ("TILE_ID", "S7"), ("RA", "f4")])
+        narrow["N_EPOCH"] = [1, 2]
+        narrow["TILE_ID"] = [b"123.456", b"123.457"]
+        narrow["RA"] = [1.5, 2.5]
+
+        wide = np.zeros(2, dtype=[("N_EPOCH", "i4"), ("TILE_ID", "S12"), ("RA", "f8")])
+        wide["N_EPOCH"] = [70000, 3]
+        wide["TILE_ID"] = [b"999888.7776", b"123.458"]
+        wide["RA"] = [3.123456789, 4.0]
+
+        path = self._dir / "final_cat_MIX.hdf5"
+        write_campaign(path, "flat", {"000.000": narrow, "000.001": wide})
+        param_list = ["N_EPOCH", "TILE_ID", "RA"]
+
+        dat = io.read_catalogue(str(path), columns=param_list, verbose=False)
+
+        self.assertEqual(dat.dtype["N_EPOCH"], np.dtype("i4"))
+        self.assertEqual(dat.dtype["TILE_ID"], np.dtype("S12"))
+        self.assertEqual(dat.dtype["RA"], np.dtype("f8"))
+        npt.assert_array_equal(dat["N_EPOCH"], [1, 2, 70000, 3])
+        npt.assert_array_equal(
+            dat["TILE_ID"],
+            [b"123.456", b"123.457", b"999888.7776", b"123.458"],
+        )
+        self.assertEqual(dat["RA"][2], 3.123456789)
+
+        # Catalogue.dtype must report the same promoted dtype, since the merge
+        # preallocates from it.
+        with io.Catalogue(str(path)) as catalogue:
+            n_rows, dtype_out = len(catalogue), catalogue.dtype(param_list)
+        self.assertEqual(n_rows, 4)
+        self.assertEqual(dtype_out, dat.dtype)
+
+    def test_iter_chunks(self):
+        """The streaming reader yields one restricted tile at a time."""
+        path = self._dir / "final_cat_CAMPAIGN.hdf5"
+        write_campaign(path, "nested", self._tiles)
+
+        with io.Catalogue(str(path)) as catalogue:
+            tiles = list(catalogue.iter_chunks(["RA"]))
+
+        self.assertEqual([len(tile) for tile in tiles], [3, 2])
+        for tile in tiles:
+            self.assertEqual(tile.dtype.names, ("RA",))
+        npt.assert_array_equal(
+            np.concatenate([tile["RA"] for tile in tiles]),
+            self._expected()["RA"],
+        )
+
+    def test_ambiguous_layout_raises(self):
+        path = self._dir / "ambiguous.hdf5"
+        with h5py.File(path, "w") as f:
+            f.create_group("tiles")
+            f.create_group("other")
+
+        with self.assertRaises(ValueError):
+            io.read_catalogue(path, verbose=False)
+
+
+class TestStarCatalogueReader(unittest.TestCase):
+    """Campaign star catalogue reader."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self._dir = Path(self._tmp.name)
+
+        dtype = np.dtype([(name, "f8") for name in STAR_CAT_COLUMNS])
+        self._exposures = {
+            "2110000p": np.zeros(4, dtype=dtype),
+            "2110001p": np.ones(6, dtype=dtype),
+        }
+
+        self._path = self._dir / "full_starcat_CAMPAIGN.hdf5"
+        with h5py.File(self._path, "w") as f:
+            f.attrs["n_exposures"] = len(self._exposures)
+            group = f.create_group("exposures")
+            for exp, dat in self._exposures.items():
+                group.create_dataset(exp, data=dat)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_read_hdf5(self):
+        dat = io.read_catalogue(self._path, key_column="EXPID")
+
+        self.assertEqual(len(dat), 10)
+        # the reader appends EXPID to the ShapePipe star columns
+        self.assertEqual(tuple(dat.dtype.names), STAR_CAT_COLUMNS + ("EXPID",))
+        npt.assert_array_equal(dat["MAG"][:4], np.zeros(4))
+        npt.assert_array_equal(dat["MAG"][4:], np.ones(6))
+
+    def test_expid_records_exposure_provenance(self):
+        """Test that EXPID keeps the exposure each star came from.
+
+        The star catalogue holds one dataset per exposure, named by the
+        exposure number; concatenating them otherwise throws that number
+        away, leaving no way to group stars by exposure downstream (for
+        per-exposure PSF residuals, say). The name may be bare
+        ("2086324", as the smk-g7 products write it) or carry the CFIS
+        processed-exposure suffix ("2110000p").
+        """
+        dat = io.read_catalogue(self._path, key_column="EXPID")
+
+        self.assertEqual(dat.dtype["EXPID"].kind, "i")
+        npt.assert_array_equal(dat["EXPID"][:4], np.full(4, 2110000))
+        npt.assert_array_equal(dat["EXPID"][4:], np.full(6, 2110001))
+
+    def test_truncated_star_catalogue_is_rejected(self):
+        """Test that n_exposures is validated against the datasets found.
+
+        A merge job killed part-way through leaves a readable file with
+        fewer exposures than it declares. Without this check that shows
+        up only as a quietly short star sample, never as an error. The
+        galaxy reader already validates n_tiles this way.
+        """
+        path = self._dir / "truncated.hdf5"
+        with h5py.File(path, "w") as f:
+            f.attrs["n_exposures"] = 7  # but only two datasets written
+            group = f.create_group("exposures")
+            for exp, dat in self._exposures.items():
+                group.create_dataset(exp, data=dat)
+
+        with self.assertRaises(ValueError) as ctx:
+            io.read_catalogue(path, key_column="EXPID")
+        self.assertIn("n_exposures", str(ctx.exception))
+
+    def test_missing_n_exposures_attr_is_allowed(self):
+        """Test that a product carrying no n_exposures still reads.
+
+        Older products declare no count; that is not a defect.
+        """
+        path = self._dir / "no_attr.hdf5"
+        with h5py.File(path, "w") as f:
+            group = f.create_group("exposures")
+            for exp, dat in self._exposures.items():
+                group.create_dataset(exp, data=dat)
+
+        self.assertEqual(len(io.read_catalogue(path, key_column="EXPID")), 10)
+
+    def test_read_fits(self):
+        from astropy.io import fits
+
+        fits_path = self._dir / "full_starcat-0000000.fits"
+        dat = np.concatenate(list(self._exposures.values()))
+        fits.BinTableHDU(data=dat).writeto(fits_path)
+
+        out = io.read_catalogue(str(fits_path), key_column="EXPID")
+
+        self.assertEqual(len(out), 10)
+        npt.assert_array_equal(np.asarray(out["MAG"]), dat["MAG"])
+
+
+class TestMaskCut(unittest.TestCase):
+    """Mask-column galaxy selection cut."""
+
+    def setUp(self):
+        self._dat = make_galaxy_data(5)
+
+    def test_default_columns(self):
+        self._dat["MASK_4_Stars"][0] = True
+        self._dat["MASK_1024_Maximask"][3] = True
+
+        npt.assert_array_equal(
+            galaxy.mask_cut(self._dat),
+            np.array([False, True, True, False, True]),
+        )
+
+    def test_explicit_column_list(self):
+        self._dat["MASK_4_Stars"][0] = True
+        self._dat["MASK_8_Manual"][1] = True
+
+        npt.assert_array_equal(
+            galaxy.mask_cut(self._dat, ["MASK_8_Manual"]),
+            np.array([True, False, True, True, True]),
+        )
+
+    def test_empty_column_list_keeps_everything(self):
+        self._dat["MASK_4_Stars"][:] = True
+
+        npt.assert_array_equal(
+            galaxy.mask_cut(self._dat, []), np.ones(len(self._dat), dtype=bool)
+        )
+
+    def test_missing_column_raises(self):
+        with self.assertRaises(KeyError) as ctx:
+            galaxy.mask_cut(self._dat, ["MASK_16_u"])
+        self.assertIn("MASK_16_u", str(ctx.exception))
+
+    def test_catalogue_without_mask_columns_raises(self):
+        dat = np.zeros(3, dtype=[("FLAGS", "i2")])
+
+        with self.assertRaises(KeyError):
+            galaxy.mask_cut(dat)
+
+    def test_float_and_int_mask_columns(self):
+        """Test that float and int mask columns cut like bool ones.
+
+        ShapePipe's writer can emit the mask columns as float64
+        {0.0, 1.0} rather than bool, so the cut
+        must decide on the value, not on the dtype.
+        """
+        for dtype in ("f8", "i4"):
+            dat = np.zeros(
+                4, dtype=[(col, dtype) for col in galaxy.DEFAULT_MASK_COLUMNS]
+            )
+            dat["MASK_4_Stars"][0] = 1
+            dat["MASK_1024_Maximask"][2] = 1
+
+            npt.assert_array_equal(
+                galaxy.mask_cut(dat),
+                np.array([False, True, False, True]),
+                err_msg=f"mask column dtype {dtype}",
+            )
+
+    def test_nan_mask_value_is_masked_and_warns(self):
+        """Test that a NaN mask value drops the object, loudly.
+
+        NaN means the masking stage recorded no verdict. mask_cut drops the
+        object, as the config-driven cut ``kind: equal, value: False`` does,
+        and warns: a nonzero count means the input product is defective.
+        """
+        dat = np.zeros(3, dtype=[(col, "f8") for col in galaxy.DEFAULT_MASK_COLUMNS])
+        dat["MASK_4_Stars"][0] = np.nan
+        dat["MASK_4_Stars"][1] = 1.0
+
+        with self.assertWarns(RuntimeWarning) as ctx:
+            keep = galaxy.mask_cut(dat)
+
+        # row 0 NaN -> masked, row 1 masked, row 2 clean -> kept
+        npt.assert_array_equal(keep, np.array([False, False, True]))
+        self.assertIn("NaN", str(ctx.warning))
+        config_keep = Mask(
+            "MASK_4_Stars", "stars", kind="equal", value=False, dat=dat
+        )._mask
+        npt.assert_array_equal(config_keep, keep)
+
+    def test_no_warning_when_no_nan(self):
+        dat = np.zeros(2, dtype=[(col, "f8") for col in galaxy.DEFAULT_MASK_COLUMNS])
+
+        import warnings
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", RuntimeWarning)
+            npt.assert_array_equal(galaxy.mask_cut(dat), np.array([True, True]))
+
+
+class TestCampaignMerge(unittest.TestCase):
+    """Merge of several campaign catalogues into a joint catalogue."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self._dir = Path(self._tmp.name)
+
+        self._paths = []
+        for name, layout, n_obj in (("W3", "nested", 3), ("SGC", "flat", 2)):
+            path = self._dir / f"final_cat_{name}.hdf5"
+            write_campaign(path, layout, {"000.000": make_galaxy_data(n_obj)})
+            self._paths.append(str(path))
+
+        self._obj = JointCat()
+        self._obj._params["verbose"] = False
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_campaign_name(self):
+        self.assertEqual(JointCat.campaign_name("/some/dir/final_cat_W3.hdf5"), "W3")
+
+    def test_merge(self):
+        dat = self._obj.merge_catalogues(self._paths)
+
+        self.assertEqual(len(dat), 5)
+        self.assertIn("campaign", dat.dtype.names)
+        npt.assert_array_equal(dat["campaign"], np.array([b"W3"] * 3 + [b"SGC"] * 2))
+        npt.assert_array_equal(dat["RA"][:3], np.arange(3))
+
+    def test_merge_promotes_column_widths(self):
+        """A wider string/int column in a later file is not truncated."""
+        dtype_narrow = np.dtype([("RA", "f8"), ("TILE_ID", "S7"), ("N", "i4")])
+        dtype_wide = np.dtype([("RA", "f8"), ("TILE_ID", "S12"), ("N", "i8")])
+
+        narrow = np.zeros(1, dtype=dtype_narrow)
+        narrow["TILE_ID"] = b"123.456"
+        narrow["N"] = 7
+        wide = np.zeros(1, dtype=dtype_wide)
+        wide["TILE_ID"] = b"999888.7776"
+        wide["N"] = 2**40
+
+        path_a = self._dir / "final_cat_AA.hdf5"
+        path_b = self._dir / "final_cat_BBBBBBBB.hdf5"
+        write_campaign(path_a, "flat", {"000.000": narrow})
+        write_campaign(path_b, "flat", {"000.000": wide})
+
+        for paths in ([path_a, path_b], [path_b, path_a]):
+            dat = self._obj.merge_catalogues([str(path) for path in paths])
+            by_campaign = {name: row for name, row in zip(dat["campaign"], dat)}
+            self.assertEqual(by_campaign[b"BBBBBBBB"]["TILE_ID"], b"999888.7776")
+            self.assertEqual(by_campaign[b"BBBBBBBB"]["N"], 2**40)
+            self.assertEqual(by_campaign[b"AA"]["TILE_ID"], b"123.456")
+
+    def test_merge_reduce_mem_keeps_integers(self):
+        """reduce_mem leaves integer columns at their input width."""
+        dat = np.zeros(3, dtype=[("RA", "f8"), ("N_EPOCH", "i4"), ("w", "f8")])
+        dat["N_EPOCH"] = [3, 200, 300000]
+        dat["w"] = [0.5, 1.0, 2.0]
+        path = self._dir / "final_cat_Y.hdf5"
+        write_campaign(path, "flat", {"000.000": dat})
+
+        self._obj._params["reduce_mem"] = True
+        out = self._obj.merge_catalogues([str(path)])
+
+        npt.assert_array_equal(out["N_EPOCH"], [3, 200, 300000])
+        self.assertEqual(out.dtype["N_EPOCH"], np.dtype("i4"))
+        self.assertEqual(out.dtype["RA"], np.dtype("f8"))  # RA keeps precision
+        self.assertEqual(out.dtype["w"], np.dtype("f4"))
+
+    def test_merge_reduce_mem_float_overflow_raises(self):
+        """A float64 value beyond float32 range is refused, not stored as inf."""
+        dat = np.zeros(2, dtype=[("RA", "f8"), ("w", "f8")])
+        dat["w"] = [1.0, 1e300]
+        path = self._dir / "final_cat_Z.hdf5"
+        write_campaign(path, "flat", {"000.000": dat})
+
+        self._obj._params["reduce_mem"] = True
+        with self.assertRaises(ValueError) as ctx:
+            self._obj.merge_catalogues([str(path)])
+        self.assertIn("'w'", str(ctx.exception))
+
+    def test_merge_rejects_multidimensional_column(self):
+        dat = np.zeros(2, dtype=[("RA", "f8"), ("XY", "f8", (2,))])
+        path = self._dir / "final_cat_M.hdf5"
+        write_campaign(path, "flat", {"000.000": dat})
+
+        with self.assertRaises(ValueError) as ctx:
+            self._obj.merge_catalogues([str(path)])
+        self.assertIn("multi-dimensional", str(ctx.exception))
+
+    def test_merge_incompatible_columns_raises(self):
+        other = self._dir / "final_cat_X.hdf5"
+        dat = np.zeros(2, dtype=[("RA", "f8")])
+        write_campaign(other, "flat", {"000.000": dat})
+
+        with self.assertRaises(ValueError):
+            self._obj.merge_catalogues(self._paths + [str(other)])
+
+    def test_no_input_raises(self):
+        with self.assertRaises(ValueError):
+            self._obj.get_input_paths()
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+class TestGroupDtype(unittest.TestCase):
+    def test_missing_column_names_the_tables_lacking_it(self):
+        full = np.zeros(2, dtype=[("RA", "f8"), ("SPREAD_MODEL", "f4")])
+        tiles = {"t0": full, "t1": full[["RA"]], "t2": full}
+        with self.assertRaisesRegex(KeyError, r"1 of 3 tables.*'t1'.*SPREAD_MODEL"):
+            io.group_dtype(tiles)
+        dtype = io.group_dtype(tiles, columns=["RA"])
+        self.assertEqual(dtype.names, ("RA",))

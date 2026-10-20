@@ -1,12 +1,9 @@
 versions: [
   "SP_v1.4.5", "SP_v1.4.5_leak_corr",
   "SP_v1.4.6.3", "SP_v1.4.6.3_leak_corr",
-  "SP_v1.4.6_ecut07", "SP_v1.4.6_ecut07_leak_corr",
   "SP_v1.4.8", "SP_v1.4.8_leak_corr",
-  "SP_v1.4.11.3", "SP_v1.4.11.3_leak_corr",
-  "SP_v1.4.11.3_ecut07", "SP_v1.4.11.3_ecut07_leak_corr"
+  "SP_v1.4.11.3", "SP_v1.4.11.3_leak_corr"
 ]
-# IV weight variants removed — one-off test (see fiber v1-4-11-2-iv-weights-harmonic-b-2a2ed88b)
 ellipticity_suffix: "_leak_corrected"
 
 # grid search parameters
@@ -23,13 +20,19 @@ nbins_int: [100, 200, 300, 500]
 # fiducial parameters
 fiducial:
   version: SP_v1.4.6.3_leak_corr
-  blind: A
   npatch: 1
   min_sep: 1.0
   max_sep: 250.0
   nbins: 20
 
   mock_version: SP_v1.4.6.3
+
+  # The mock version's catalogue under each n(z) realisation: entries identical
+  # but for shear.redshift_path, compared by bb_covariance_nz_independence.
+  nz_realisations:
+    A: SP_v1.4.6.3_A_leak_corr
+    B: SP_v1.4.6.3_B_leak_corr
+    C: SP_v1.4.6.3_C_leak_corr
 
   min_sep_int: 0.5
   max_sep_int: 300.0
@@ -55,14 +58,9 @@ fiducial:
 
 var_method: jackknife
 
-# covariance settings for semi-analytical E/B mode covariance
 covariance:
   # Use masked covariance by default when true
   default_masked: true
-  # Enable semi-analytical covariance propagation
-  use_semianalytic: true
-  # Number of Monte Carlo samples for covariance propagation (used by pure E/B mode analysis)
-  n_samples: 2000
   # Cosmology: imported from cs_util.cosmo.PLANCK18 (astropy Planck18)
   # Mask Cl paths: defined in covariance.smk (MASK_CLS_FILES)
 
@@ -79,21 +77,18 @@ cl:
 
 # Harmonic pseudo-Cl fiducial binning — the tag the producer (twopoint.smk
 # pseudo_cl / pseudo_cl_cov) stamps into the filename, which the inference
-# consumer reconstructs to request the exact file. Canonical: A / powspace / 32.
+# consumer reconstructs to request the exact file. Canonical: powspace / 32.
 harmonic:
   fiducial:
-    blind: A
     binning: powspace
     nbins: 32
 
 # Cosmological inference data-product locations (dormant subsystem). Output
 # products land beside the code (workflow/common.py COSMO_INFERENCE); only the
-# external chain/mock directories are configured here.
+# external chain directories are configured here.
 inference:
   # CosmoSIS chain output root for real-data runs.
   chains_dir: "/n09data/guerrini/output_chains"
-  # Precomputed GLASS mock xi/Cl products (Sacha's pipeline).
-  glass_mock_data_dir: "/n09data/guerrini/glass_mock_v1.4.6/results"
   # CosmoSIS chain output root for GLASS mock runs.
   glass_mock_chains_dir: "/n09data/guerrini/glass_mock_chains"
 
@@ -133,11 +128,6 @@ plotting:
     fiducial_line_color: "black"
     fiducial_line_width: 1.0
 
-# Pure E/B mode analysis
-pure_eb:
-  # Number of parallel chunks for MC covariance estimation
-  n_chunks: 20
-
 # pixel mask processing for survey geometry and CosmoCov integration
 pixel_mask:
   # Target nside values for downgrading (balance accuracy vs computational cost)
@@ -145,25 +135,13 @@ pixel_mask:
   # Source mask file for downgrading
   source_file: "/n17data/UNIONS/WL/masks/mask_r_nside131072.hsp"
 
-# GLASS mock covariance computation
+# GLASS mock suite: catalogues and precomputed xi/Cl (Sacha's pipeline).
+# Generated outputs are labelled by the parent directory's suite name.
 glass_mocks:
-  version: "v0"
+  data_dir: "/n09data/guerrini/glass_mock_v1.4.6.3_v2/results"
+  version: "v0"  # Inference product version, independent of the suite.
   seed_range: [1, 350]
 
 # External tools
 tools:
   cosmocov_executable: "/n23data1/n06data/lgoh/scratch/UNIONS/CosmoCov/covs/cov"
-
-# Ellipticity cut investigation
-ecut:
-  versions_for_comparison:
-    - SP_v1.4.6.3_leak_corr
-    - SP_v1.4.6_ecut07_leak_corr
-    - SP_v1.4.11.3_leak_corr
-    - SP_v1.4.11.3_ecut07_leak_corr
-  version_labels:
-    SP_v1.4.6.3_leak_corr: "v1.4.6.3"
-    SP_v1.4.6_ecut07_leak_corr: "v1.4.6 $|e|<0.7$"
-    SP_v1.4.11.3_leak_corr: "v1.4.11.3"
-    SP_v1.4.11.3_ecut07_leak_corr: "v1.4.11.3 $|e|<0.7$"
-  fiducial_for_comparison: "SP_v1.4.6.3_leak_corr"

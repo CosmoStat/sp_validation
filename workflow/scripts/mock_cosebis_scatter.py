@@ -12,8 +12,7 @@ theta_min = snakemake.params.theta_min
 theta_max = snakemake.params.theta_max
 out_path = snakemake.output.cosebis
 
-gg = treecorr.GGCorrelation(min_sep=0.5, max_sep=500, nbins=1000, sep_units="arcmin")
-gg.read(xi_path)
+gg = treecorr.GGCorrelation.from_file(xi_path)
 
 start, stop = scale_cut_to_bins(gg, theta_min, theta_max)
 inds = np.arange(start, stop)

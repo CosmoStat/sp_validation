@@ -52,10 +52,7 @@ print(f"Loaded {n_mocks} mock COSEBIS results, {nmodes} modes each")
 # Analytic COSEBIS covariance from ξ± covariance
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-gg_ref = treecorr.GGCorrelation(
-    min_sep=0.5, max_sep=500, nbins=1000, sep_units="arcmin"
-)
-gg_ref.read(xi_ref_path)
+gg_ref = treecorr.GGCorrelation.from_file(xi_ref_path)
 
 start, stop = scale_cut_to_bins(gg_ref, theta_min, theta_max)
 theta_cut = gg_ref.meanr[start:stop].astype(float)

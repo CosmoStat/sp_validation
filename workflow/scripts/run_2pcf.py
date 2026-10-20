@@ -12,19 +12,20 @@ orchestration:
         --cat-config /path/to/cosmo_val/cat_config.yaml \
         --out <output_dir> --type mock
 
-``CosmologyValidation.calculate_2pcf`` does the TreeCorr work and
-``save_2pcf_sacc`` writes the result as a SACC file. Both live on the class:
-serialising needs the version's n(z) and its tomographic bin map, so this
-script only names the file — from the ``sacc_name`` param under Snakemake, from
-``--sacc`` on the CLI (defaulting to the untagged ``xi_{ver}.sacc``, since each
-lc recipe gets its own output tree). The *directory* is not this script's to
-choose: ``save_2pcf_sacc`` joins the name onto the version's output directory,
-so the SACC lands beside every other product of the run. Under Snakemake that
-directory comes from the catalog config; on the CLI ``--out`` overrides it, so
-lc can point each run at its own ``{output}`` tree.
+The measurement is binning-agnostic: the reporting and the fine integration
+grids are the same compute with different ``--min-sep/--max-sep/--nbins``. The
+non-tomographic ``("all", "all")`` ξ± is born as a SACC part, named by its
+binning, tagged with its ``--grid`` and sealed under the catalogue's blind by
+``CosmologyValidation.calculate_2pcf_version``. The part carries the covariance
+the measurement estimated: the dense jackknife covariance when it had patches,
+the shot-noise ``varxip``/``varxim`` diagonal when it had none.
+
+``output_dir`` is passed explicitly so lc can point each run at its own
+``{output}`` tree.
 """
 
 import argparse
+import os
 
 from sp_validation.cosmo_val import CosmologyValidation
 
@@ -38,41 +39,45 @@ def run_2pcf(
     nbins,
     cat_config,
     output_dir,
-    sacc_path,
-    data_type="data",
+    sacc_out=None,
+    grid="reporting",
 ):
-    """Measure ξ±(θ) for ``ver`` and write it as the SACC file ``sacc_name``.
+    """Measure ξ±(θ) for ``ver`` and write its sealed SACC part.
 
     Parameters mirror the TreeCorr reporting/integration grids: ``min_sep`` /
     ``max_sep`` in arcmin, ``nbins`` logarithmic bins, ``npatch`` spatial
     patches (1 for the paper fiducial). ``cat_config`` is an absolute path to
     the catalog configuration; ``output_dir`` overrides
-    ``cat_config['paths']['output']`` so products land where lc expects, and
-    is left ``None`` under Snakemake so the directory comes from the catalog
-    config. ``sacc_name`` is a bare filename — ``save_2pcf_sacc`` joins it onto
-    whichever of the two that resolves to.
+    ``cat_config['paths']['output']``. ``sacc_out`` is the exact destination for
+    the part (the Snakemake-declared output); it defaults to a binning-derived
+    name under the resolved output directory for the CLI path.
 
-    ``data_type`` is the ``'data'``/``'mock'`` provenance stamp SACC requires.
-    It defaults to ``'data'`` because that is the fail-safe direction: a mock
-    mislabelled as data is merely refused by ``sacc_io.load`` until it carries
-    a blinding stamp, whereas real data mislabelled as a mock would load
-    unblinded. Callers running on mocks pass ``'mock'`` explicitly.
+    Returns
+    -------
+    sacc.Sacc
+        The part as written.
     """
     cv = CosmologyValidation(
         versions=[ver],
         catalog_config=cat_config,
         output_dir=output_dir,
     )
-    ggs = cv.calculate_2pcf(
-        compute_tomography=compute_tomography,
+    out_path = sacc_out or os.path.join(
+        output_dir or cv.cc["paths"]["output"],
+        f"{ver}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc",
+    )
+    cv.calculate_2pcf_version(
+        ver,
         npatch=npatch,
+        grid=grid,
+        out=out_path,
         min_sep=min_sep,
         max_sep=max_sep,
         nbins=nbins,
     )
-    # calculate_2pcf keys its result by version; save_2pcf_sacc takes the
-    # per-version {pair: GGCorrelation} dict.
-    cv.save_2pcf_sacc(ver, sacc_path, ggs[ver], type=data_type)
+    part = cv.xi_parts[ver, grid]
+    print(f"Wrote {grid} ξ± SACC part: {out_path}")
+    return part
 
 
 def _from_snakemake(smk):
@@ -84,10 +89,11 @@ def _from_snakemake(smk):
         min_sep=float(p["min_sep"]),
         max_sep=float(p["max_sep"]),
         nbins=int(p["nbins"]),
-        cat_config=p.get("cat_config", "./cat_config.yaml"),
-        output_dir=None,
-        sacc_path=p["sacc_path"],
-        data_type=p.get("data_type", "data"),
+        npatch=int(p["npatch"]),
+        cat_config=p["cat_config"],
+        output_dir=p["output_dir"],
+        grid=p.get("grid", "reporting"),
+        sacc_out=smk.output["sacc"],
     )
 
 
@@ -120,15 +126,7 @@ def _from_cli(argv=None):
     )
     ap.add_argument("--out", required=True, help="Output directory (lc {output})")
     ap.add_argument(
-        "--sacc",
-        required=True,
-        help="Path to SACC file, written under --out (default: xi_{ver}.sacc)",
-    )
-    ap.add_argument(
-        "--type",
-        choices=("data", "mock"),
-        default="data",
-        help="Catalog provenance stamped on the SACC file, default=%(default)s",
+        "--grid", default="reporting", help="SACC grid tag for the measured points"
     )
     a = ap.parse_args(argv)
 
@@ -141,8 +139,7 @@ def _from_cli(argv=None):
         npatch=a.npatch,
         cat_config=a.cat_config,
         output_dir=a.out,
-        sacc_path=a.sacc,
-        data_type=a.type,
+        grid=a.grid,
     )
 
 

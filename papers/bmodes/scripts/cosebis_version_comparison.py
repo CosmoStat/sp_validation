@@ -1,4 +1,4 @@
-"""COSEBIS version comparison claim.
+"""COSEBIS version comparison figure.
 
 Visualizes B-mode COSEBIS across catalog versions.
 Produces figures at fiducial scale cut and full range.
@@ -13,7 +13,6 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-import treecorr
 from plotting_utils import (
     ERRORBAR_DEFAULTS,
     FIG_WIDTH_FULL,
@@ -26,6 +25,7 @@ from plotting_utils import (
     version_label,
 )
 
+from sp_validation import sacc_io
 from sp_validation.b_modes import calculate_cosebis
 
 plt.style.use(PAPER_MPLSTYLE)
@@ -148,11 +148,11 @@ def _create_stacked_bmode_figure(
 
 
 def _xi_integration(results_dir, ver):
-    return f"{results_dir}/{ver}_xi_minsep=0.5_maxsep=300.0_nbins=1000_npatch=1.txt"
+    return f"{results_dir}/{ver}_xi_minsep=0.5_maxsep=300.0_nbins=1000_npatch=1.sacc"
 
 
-def _cov_integration(cov_dir, ver, blind):
-    base = f"covariance_{ver}_{blind}_g_minsep=0.5_maxsep=300.0_nbins=1000_masked"
+def _cov_integration(cov_dir, ver):
+    base = f"covariance_{ver}_g_minsep=0.5_maxsep=300.0_nbins=1000_masked"
     return f"{cov_dir}/{base}/{base}_processed.txt"
 
 
@@ -165,12 +165,11 @@ def main(
     fiducial_xi_path=None,
     fiducial_cov_path=None,
 ):
-    # Leak-corrected, non-ecut versions (matches VERSIONS_LEAK_CORR in claims.smk)
+    # Leak-corrected versions (matches VERSIONS_LEAK_CORR in figures.smk)
     versions = [v for v in config["versions"] if "_leak_corr" in v and "_ecut" not in v]
     nmodes = config["fiducial"]["nmodes"]
     plotting_config = config["plotting"]
     version_labels = plotting_config["version_labels"]
-    blind = config["fiducial"]["blind"]
 
     # Fiducial version whose inputs may be overridden with explicit lc paths
     fiducial_version = fiducial_version or config["fiducial"]["version"]
@@ -186,7 +185,7 @@ def main(
     cov_paths_list = [
         fiducial_cov_path
         if v == fiducial_version and fiducial_cov_path
-        else _cov_integration(cov_dir, v, blind)
+        else _cov_integration(cov_dir, v)
         for v in versions
     ]
 
@@ -212,10 +211,6 @@ def main(
         "fiducial": fiducial_scale_cut,
         "full": full_scale_cut,
     }
-
-    min_sep_int = float(config["fiducial"]["min_sep_int"])
-    max_sep_int = float(config["fiducial"]["max_sep_int"])
-    nbins_int = int(config["fiducial"]["nbins_int"])
 
     # Color/marker assignment: pair by parent version if ecut versions present
     has_ecut = any("_ecut" in v for v in versions)
@@ -252,13 +247,7 @@ def main(
                 marker = MARKER_STYLES[i] if i < len(MARKER_STYLES) else "o"
                 fillstyle = "full"
 
-            gg = treecorr.GGCorrelation(
-                min_sep=min_sep_int,
-                max_sep=max_sep_int,
-                nbins=nbins_int,
-                sep_units="arcmin",
-            )
-            gg.read(xi_path)
+            gg = sacc_io.xi_correlation(sacc_io.load(xi_path))
 
             results = calculate_cosebis(
                 gg,
@@ -342,7 +331,6 @@ def main(
             evidence_versions[f"{version}_{key}"] = val
 
     evidence_data = {
-        "spec_id": "cosebis_version_comparison",
         "generated": datetime.now().isoformat(),
         "evidence": {
             "scale_cuts": scale_cuts,
@@ -370,7 +358,7 @@ def _from_cli(argv=None):
     ap.add_argument(
         "--results-dir",
         required=True,
-        help="COSMO_VAL output dir with per-version integration-grid xi_pm .txt dumps",
+        help="COSMO_VAL output dir with per-version integration-grid ξ± SACC parts",
     )
     ap.add_argument(
         "--cov-dir",

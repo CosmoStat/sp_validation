@@ -1,10 +1,28 @@
 # Two-point data-vector rules: xi, rho/tau, and pseudo-Cl products.
 
-# LG: currently calculates the unblinded 2PCF. Don't look!
+# ---------------------------------------------------------------------------
+# ξ± angular grids
+# ---------------------------------------------------------------------------
+# The table itself lives in common.py, where it can be built from a plain config
+# dict and tested; these are the workflow's bindings to it.
+XI_GRIDS = xi_grids(config, FIDUCIAL)
+
+
+def xi_binning(grid):
+    """The `minsep=..._maxsep=..._nbins=..._npatch=...` tag of a named grid."""
+    return grid_binning(XI_GRIDS[grid])
+
+
 rule xi:
-    """ξ±(θ) two-point correlation for one catalog version, as a SACC file."""
+    """TreeCorr ξ±(θ) for one version on one angular grid, as its sealed SACC part.
+
+    One rule for every grid: outputs are named by their binning, so a request
+    binds the wildcards and the grid label resolves from them.
+    """
+    input:
+        catalog=get_shear_catalog,
     output:
-        sacc=str(COSMO_VAL / "xi_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}{tomo_suffix}.sacc"),
+        sacc=str(COSMO_VAL / "{version}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc"),
     threads: 24
     params:
         ver="{version}",
@@ -13,63 +31,27 @@ rule xi:
         min_sep="{min_sep}",
         max_sep="{max_sep}",
         nbins="{nbins}",
+        npatch="{npatch}",
         cat_config=CAT_CONFIG,
-        sacc_path=output.sacc,
-        data_type="data"
+        output_dir=str(COSMO_VAL),
+        grid=lambda w: grid_of(XI_GRIDS, w),
+        blind=lambda w: blind_of(w.version),
     resources:
-        mem_mb=30000,
+        # The fine integration grid needs more memory and wall time than the
+        # ~20-bin reporting one; scale on nbins rather than splitting the rule.
+        mem_mb=lambda w: 40000 if int(w.nbins) > 100 else 30000,
         disk_mb=20000,
-        runtime=360,
+        runtime=lambda w: 600 if int(w.nbins) > 100 else 360,
     script:
         "../scripts/run_2pcf.py"
 
 
-rule xi_highres:
-    """High-resolution xi for COSEBIS integration."""
-    container: None
-    output:
-        txt=str(COSMO_VAL / f"{FIDUCIAL['version']}_xi_minsep={FIDUCIAL['min_sep_int']}_maxsep={FIDUCIAL['max_sep_int']}_nbins=10000_npatch=1.txt"),
-        xi_plus=str(COSMO_VAL / f"xi_plus_{FIDUCIAL['version']}_minsep={FIDUCIAL['min_sep_int']}_maxsep={FIDUCIAL['max_sep_int']}_nbins=10000_npatch=1.fits"),
-        xi_minus=str(COSMO_VAL / f"xi_minus_{FIDUCIAL['version']}_minsep={FIDUCIAL['min_sep_int']}_maxsep={FIDUCIAL['max_sep_int']}_nbins=10000_npatch=1.fits"),
-    resources:
-        tasks=30,
-        cpus_per_task=12,
-        nodes=6,
-        mem_mb_per_cpu=2000,
-        runtime=2880,
-        slurm_extra="'--exclude=n17,n09,n36 --partition=pscomp'",
-        mpi="/softs/openmpi/5.0.5-slurm-CentOS8/bin/mpiexec",
-    shell:
-        "{resources.mpi} -n {resources.tasks} "
-        "apptainer exec "
-        "--bind /home,/n09data,/n17data,/n23data1,/softs "
-        "--env LD_LIBRARY_PATH=/softs/openmpi/5.0.5-slurm-CentOS8/lib "
-        "/n17data/cdaley/containers/containers "
-        "python /automnt/n17data/cdaley/unions/pure_eb/code/sp_validation/workflow/scripts/run_2pcf_highres.py"
-
-
-rule run_cosmo_val:
-    """Full CosmoVal diagnostic suite."""
-    output:
-        sentinel=str(COSMO_VAL / "run_cosmo_val.done"),
-    threads: 24
-    resources:
-        mem_mb=60000,
-        disk_mb=20000,
-        runtime=360,
-    shell:
-        """
-        export PYTHONPATH="/home/cdaley/.local/lib/python3.12/site-packages:${{PYTHONPATH:-}}"
-        cd /n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val \
-        && python run_cosmo_val.py \
-        && touch {output.sentinel}
-        """
-
-
 rule rho_tau_stats:
     output:
-        rho_stats=str(COSMO_VAL / "rho_tau_stats/rho_stats_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
-        tau_stats=str(COSMO_VAL / "rho_tau_stats/tau_stats_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
+        rho_stats=str(COSMO_VAL / "rho_tau_stats/rho_stats_{version}_tomo_bin_all_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
+        tau_stats=str(COSMO_VAL / "rho_tau_stats/tau_stats_{version}_tomo_bin_all_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
+        # Born-as-SACC ρ/τ part, written alongside the FITS.
+        rho_tau=str(COSMO_VAL / "rho_tau_stats/rho_tau_{version}_tomo_bin_all_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc"),
     threads: 48
     params:
         ver="{version}",
@@ -77,29 +59,29 @@ rule rho_tau_stats:
         max_sep="{max_sep}",
         nbins="{nbins}",
         npatch="{npatch}",
+        cat_config=CAT_CONFIG,
+        output_dir=str(COSMO_VAL),
+        blind=lambda w: blind_of(w.version),
     resources:
-        mem_mb=30000,
+        mem_mb=64000,
         disk_mb=20000,
+        runtime=360,
     script:
         "../scripts/run_rho_tau.py"
 
 
 # Pseudo-Cl generation for harmonic-space data vectors and COSEBIS validation.
-BASE_VERSIONS = [v.replace("_leak_corr", "") for v in config["versions"]]
 
 wildcard_constraints:
     binning="linear|logspace|powspace",
 
 
 rule pseudo_cl:
-    """Generate pseudo-Cl data vector with configurable binning."""
+    """Generate pseudo-Cl data vector (born as SACC) with configurable binning."""
     output:
-        pseudo_cl=str(COSMO_VAL / "pseudo_cl_{version}_blind={blind}_{binning}_nbins={nbins}.fits"),
-    wildcard_constraints:
-        blind="[ABC]",
+        pseudo_cl=str(COSMO_VAL / "pseudo_cl_{version}_{binning}_nbins={nbins}.sacc"),
     params:
         version="{version}",
-        blind="{blind}",
         cat_config=CAT_CONFIG,
         nside=1024,
         npatch=1,
@@ -107,6 +89,7 @@ rule pseudo_cl:
         binning="{binning}",
         nbins=lambda w: int(w.nbins),
         power=0.5,
+        blind=lambda w: blind_of(w.version),
     resources:
         mem_mb=32000,
         runtime=120,
@@ -118,12 +101,9 @@ rule pseudo_cl:
 rule pseudo_cl_cov:
     """Generate pseudo-Cl covariance with configurable binning."""
     output:
-        pseudo_cl_cov=str(COSMO_VAL / "pseudo_cl_cov_{version}_blind={blind}_{binning}_nbins={nbins}.fits"),
-    wildcard_constraints:
-        blind="[ABC]",
+        pseudo_cl_cov=str(COSMO_VAL / "pseudo_cl_cov_{version}_{binning}_nbins={nbins}.fits"),
     params:
         version="{version}",
-        blind="{blind}",
         cat_config=CAT_CONFIG,
         nside=1024,
         npatch=1,
@@ -146,7 +126,7 @@ rule pseudo_cl_all:
     """Generate pseudo-Cls for all versions."""
     input:
         expand(
-            str(COSMO_VAL / "pseudo_cl_{version}_blind=A_powspace_nbins=32.fits"),
+            str(COSMO_VAL / "pseudo_cl_{version}_powspace_nbins=32.sacc"),
             version=PSEUDO_CL_VERSIONS,
         ),
 
@@ -155,7 +135,7 @@ rule pseudo_cl_cov_all:
     """Generate pseudo-Cl covariances for all versions."""
     input:
         expand(
-            str(COSMO_VAL / "pseudo_cl_cov_{version}_blind=A_powspace_nbins=32.fits"),
+            str(COSMO_VAL / "pseudo_cl_cov_{version}_powspace_nbins=32.fits"),
             version=PSEUDO_CL_VERSIONS,
         ),
 
@@ -164,7 +144,6 @@ rule pseudo_cl_fine_all:
     """Generate fine pseudo-Cls for COSEBIS."""
     input:
         expand(
-            str(COSMO_VAL / "pseudo_cl_{version}_blind={blind}_linear_nbins=2040.fits"),
+            str(COSMO_VAL / "pseudo_cl_{version}_linear_nbins=2040.sacc"),
             version=config["versions"],
-            blind=BLINDS,
         ),

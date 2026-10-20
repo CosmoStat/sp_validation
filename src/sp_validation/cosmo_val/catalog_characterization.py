@@ -14,9 +14,9 @@ from pathlib import Path
 import healpy as hp
 import matplotlib.pyplot as plt
 import numpy as np
-from astropy.io import fits
 from cs_util import plots as cs_plots
 
+from ..io import open_entry
 from ..survey import (
     additive_bias,
     area_from_coords,
@@ -75,16 +75,12 @@ class CatalogCharacterizationMixin:
         if not os.path.exists(catalog_path):
             raise FileNotFoundError(f"Shear catalog not found: {catalog_path}")
 
-        data = fits.getdata(catalog_path, memmap=True)
+        weight_column = weights_key_override or shear_cfg["w_col"]
+        data = open_entry(shear_cfg)
         n_rows = len(data)
 
         e1 = np.asarray(data[shear_cfg["e1_col"]], dtype=float)
         e2 = np.asarray(data[shear_cfg["e2_col"]], dtype=float)
-
-        weight_column = weights_key_override or shear_cfg["w_col"]
-        if weight_column not in data.columns.names:
-            raise KeyError(f"Weight column '{weight_column}' missing in {catalog_path}")
-
         w = np.asarray(data[weight_column], dtype=float)
 
         if mask_path is not None:
@@ -104,7 +100,7 @@ class CatalogCharacterizationMixin:
         elif cov_th.get("A") is not None:
             area_deg2 = float(cov_th["A"])
         elif nside is not None:
-            area_deg2 = self._area_from_catalog(catalog_path, nside)
+            area_deg2 = self._area_from_catalog(shear_cfg, nside)
         else:
             raise ValueError(
                 f"Unable to determine survey area for {ver}. Provide mask_path or nside."
@@ -131,10 +127,12 @@ class CatalogCharacterizationMixin:
 
         return results
 
-    def _area_from_catalog(self, catalog_path, nside):
-        data = fits.getdata(catalog_path, memmap=True)
-        ra = np.asarray(data["RA"], dtype=float)
-        dec = np.asarray(data["Dec"], dtype=float)
+    def _area_from_catalog(self, shear_cfg, nside):
+        ra_col = shear_cfg.get("ra_col", "RA")
+        dec_col = shear_cfg.get("dec_col", "Dec")
+        data = open_entry(shear_cfg)
+        ra = np.asarray(data[ra_col], dtype=float)
+        dec = np.asarray(data[dec_col], dtype=float)
         return area_from_coords(ra, dec, nside)
 
     def _area_from_mask(self, mask_map_path):
