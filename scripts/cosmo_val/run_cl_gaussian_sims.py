@@ -521,13 +521,13 @@ def concatenate_spectra(cl_sample, tomo_bin_ids, pol_index):
 
 
 def get_covariance_from_simulated_spectra(
-    n_sims, version, tomography, tomo_bin_ids, pol, out_dir
+    n_sims, version, tomography, tomo_bin_ids, pol, out_dir, seed
 ):
-    """Compute the covariance of the EE signal from the simulated spectra."""
+    """Compute the covariance of one polarization from the seed's spectra."""
     cl_samples = []
     pol_index = pol_to_pol_index_dict[pol]
     for sim_id in range(n_sims):
-        out_file = f"{out_dir}/cl_sample_{sim_id}_{version}_tomography_{tomography}.npz"
+        out_file = f"{out_dir}/cl_sample_{sim_id}_{version}_tomography_{tomography}_seed_{seed}.npz"
         if not os.path.exists(out_file):
             raise FileNotFoundError(f"Simulation output file {out_file} not found.")
         data = np.load(out_file, allow_pickle=True)
@@ -695,7 +695,7 @@ if __name__ == "__main__":
         )
 
         covariance_matrix = get_covariance_from_simulated_spectra(
-            n_sims, version, tomography, tomo_bin_ids, "EE", out_dir
+            n_sims, version, tomography, tomo_bin_ids, "EE", out_dir, seed
         )
 
         np.save(outpath_cov, covariance_matrix)
@@ -708,7 +708,7 @@ if __name__ == "__main__":
             )
 
             covariance_matrix = get_covariance_from_simulated_spectra(
-                n_sims, version, tomography, tomo_bin_ids, "EB", out_dir
+                n_sims, version, tomography, tomo_bin_ids, "EB", out_dir, seed
             )
 
             np.save(outpath_cov, covariance_matrix)
@@ -721,7 +721,7 @@ if __name__ == "__main__":
             )
 
             covariance_matrix = get_covariance_from_simulated_spectra(
-                n_sims, version, tomography, tomo_bin_ids, "BB", out_dir
+                n_sims, version, tomography, tomo_bin_ids, "BB", out_dir, seed
             )
 
             np.save(outpath_cov, covariance_matrix)

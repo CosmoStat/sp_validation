@@ -12,65 +12,85 @@ orchestration:
         --cat-config /path/to/cosmo_val/cat_config.yaml \
         --out <output_dir>
 
-``CosmologyValidation.calculate_2pcf`` does the TreeCorr work and returns the
-ξ± ``GGCorrelation`` objects in memory; it no longer writes the ``.txt`` dump
-or the ξ+/ξ- FITS files. ``output_dir`` is still passed explicitly (rather than
-via the ``COSMO_VAL`` env hook) so the patch-centre file lands in each run's own
+The measurement is binning-agnostic: the reporting and the fine integration
+grids are the same compute with different ``--min-sep/--max-sep/--nbins``. The
+non-tomographic ``("all", "all")`` ξ± is born as a SACC part, named by its
+binning, tagged with its ``--grid`` and sealed under the catalogue's blind by
+``CosmologyValidation.calculate_2pcf_version``. The part carries the covariance
+the measurement estimated: the dense jackknife covariance when it had patches,
+the shot-noise ``varxip``/``varxim`` diagonal when it had none.
+
+``output_dir`` is passed explicitly so lc can point each run at its own
 ``{output}`` tree.
 """
 
 import argparse
+import os
 
 from sp_validation.cosmo_val import CosmologyValidation
 
 
 def run_2pcf(
     ver,
-    npatch,
-    compute_tomography,
     min_sep,
     max_sep,
     nbins,
+    npatch,
     cat_config,
     output_dir,
+    sacc_out=None,
+    grid="reporting",
 ):
-    """Measure ξ±(θ) for ``ver``.
+    """Measure ξ±(θ) for ``ver`` and write its sealed SACC part.
 
     Parameters mirror the TreeCorr reporting/integration grids: ``min_sep`` /
     ``max_sep`` in arcmin, ``nbins`` logarithmic bins, ``npatch`` spatial
     patches (1 for the paper fiducial). ``cat_config`` is an absolute path to
     the catalog configuration; ``output_dir`` overrides
-    ``cat_config['paths']['output']`` so products land where lc expects.
+    ``cat_config['paths']['output']``. ``sacc_out`` is the exact destination for
+    the part (the Snakemake-declared output); it defaults to a binning-derived
+    name under the resolved output directory for the CLI path.
+
+    Returns
+    -------
+    sacc.Sacc
+        The part as written.
     """
     cv = CosmologyValidation(
         versions=[ver],
         catalog_config=cat_config,
         output_dir=output_dir,
     )
-    return cv.calculate_2pcf(
+    out_path = sacc_out or os.path.join(
+        output_dir or cv.cc["paths"]["output"],
+        f"{ver}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc",
+    )
+    cv.calculate_2pcf_version(
+        ver,
         npatch=npatch,
-        compute_tomography=compute_tomography,
+        grid=grid,
+        out=out_path,
         min_sep=min_sep,
         max_sep=max_sep,
         nbins=nbins,
     )
+    part = cv.xi_parts[ver, grid]
+    print(f"Wrote {grid} ξ± SACC part: {out_path}")
+    return part
 
 
 def _from_snakemake(smk):
     p = smk.params
     run_2pcf(
         ver=p["ver"],
-        npatch=int(p["npatch"]),
-        compute_tomography=p.get("compute_tomography", False),
         min_sep=float(p["min_sep"]),
         max_sep=float(p["max_sep"]),
         nbins=int(p["nbins"]),
-        # cat_config / output_dir were previously resolved via an os.chdir into
-        # the cosmo_val dir + the COSMO_VAL env var; expose them as optional
-        # params so the rule can pass them explicitly, falling back to the
-        # class defaults (./cat_config.yaml, COSMO_VAL env) otherwise.
-        cat_config=p.get("cat_config", "./cat_config.yaml"),
-        output_dir=p.get("output_dir", None),
+        npatch=int(p["npatch"]),
+        cat_config=p["cat_config"],
+        output_dir=p["output_dir"],
+        grid=p.get("grid", "reporting"),
+        sacc_out=smk.output["sacc"],
     )
 
 
@@ -82,11 +102,6 @@ def _from_cli(argv=None):
         "--ver",
         required=True,
         help="Catalog version key in cat_config, e.g. SP_v1.4.6.3_leak_corr",
-    )
-    ap.add_argument(
-        "--tomo",
-        action="store_true",
-        help="Compute tomographic ξ±(θ) measurement. True or False.",
     )
     ap.add_argument(
         "--min-sep", type=float, required=True, help="Min separation [arcmin]"
@@ -102,16 +117,19 @@ def _from_cli(argv=None):
         "--cat-config", required=True, help="Absolute path to cat_config.yaml"
     )
     ap.add_argument("--out", required=True, help="Output directory (lc {output})")
+    ap.add_argument(
+        "--grid", default="reporting", help="SACC grid tag for the measured points"
+    )
     a = ap.parse_args(argv)
     run_2pcf(
         ver=a.ver,
-        npatch=a.npatch,
-        compute_tomography=a.tomo,
         min_sep=a.min_sep,
         max_sep=a.max_sep,
         nbins=a.nbins,
+        npatch=a.npatch,
         cat_config=a.cat_config,
         output_dir=a.out,
+        grid=a.grid,
     )
 
 

@@ -1,71 +1,58 @@
-# BLOCK_PAIRS, PLANCK18, COSMOLOGY_PARAMS defined in Snakefile
-import os
-
-def get_cat_params(w):
-    """Extract covariance parameters (sigma_e, n_eff, area) from catalog config.
-
-    Returns (sigma_e, (n_e_lens, n_e_clust), (A_lens, A_ggl, A_clust)).
-    For probe == "wl" the clustering/ggl slots are empty strings.
-    """
-    base_version = w.version.replace("_leak_corr", "")
-    if base_version not in config:
-        raise KeyError(f"Catalog configuration not found for {base_version}")
-    cov_th = config[base_version]["cov_th"]
-    if w.probe == "wl":
-        return cov_th["sigma_e"], (cov_th["n_e"], ""), (cov_th["A"], "", "")
-    return (
-        cov_th["sigma_e"],
-        (cov_th["n_e_lens"], cov_th["n_e_clust"]),
-        (cov_th["A_lens"], cov_th["A_ggl"], cov_th["A_clust"]),
-    )
-
-# covariance_dir(), covariance_base(), covariance_path() defined in Snakefile
-# Additional wildcard constraints defined locally for pseudo-Cl rules (line 327)
+# PLANCK18, COSMOLOGY_PARAMS defined in Snakefile
+# cov_output(), covariance_dir(), covariance_base(), covariance_path() defined in Snakefile
 
 # DEFAULT_MASK_SUFFIX defined in Snakefile
 # Footprint mask power spectra (nside=4096, from comprehensive catalog with spatial cuts only)
 MASK_CLS_BASE = str(COSMO_INFERENCE / "data/mask")
 MASK_CLS_FILES = {
-    "footprint_lens": "mask_cls_footprint_nside_4096_norm.txt",
-    "footprint_ggl": "mask_cls_footprint_nside_4096_norm.txt",
-    "footprint_clust": "mask_cls_footprint_nside_4096_norm.txt",
-    "footprint_lens_starhalo": "mask_cls_footprint_starhalo_nside_4096_norm.txt",
+    "footprint": f"{MASK_CLS_BASE}/mask_cls_footprint_nside_4096_norm.txt",
+    "footprint_starhalo": f"{MASK_CLS_BASE}/mask_cls_footprint_starhalo_nside_4096_norm.txt",
 }
 
-# v1.4.8 uses the star-halo footprint; all other versions use the standard footprint
-STARHALO_VERSIONS = {"v1.4.8"}
+# SP_v1.4.8 uses the star-halo footprint; every other catalogue the standard one.
+STARHALO_CATALOGUES = {"SP_v1.4.8"}
+
+
+def get_mask_cls_path(version):
+    """Return absolute mask Cl path for the requested catalog version."""
+    starhalo = base_version(version) in STARHALO_CATALOGUES
+    return MASK_CLS_FILES["footprint_starhalo" if starhalo else "footprint"]
+
+
+# ---------------------------------------------------------------------------
+# OneCovariance: real-space ξ± covariance for cosmic shear, optionally
+# tomographic. Named by covariance_base() in common.py.
+# ---------------------------------------------------------------------------
+
+def get_onecov_cat_params(version):
+    """OneCovariance survey parameters (sigma_e, n_e, area) of ``version``'s
+    catalogue entry. Tomographic values are comma-separated strings, one entry
+    per bin."""
+    cov_th = catalogue_entry(version)["cov_th"]
+    return cov_th["sigma_e"], cov_th["n_e"], cov_th["A"]
+
+
+def _onecov_args(w):
+    """covariance_base() arguments of one job, from its wildcards."""
+    return (
+        w.version, w.gaussian, w.min_sep, w.max_sep, w.nbins,
+        w.mask_suffix, w.tomo_suffix,
+    )
+
+
+def _onecov_tool(key, default=None):
+    """``config["tools"][key]``, read when a job runs rather than at parse time."""
+    def lookup(w):
+        value = config.get("tools", {}).get(key, default)
+        if value is None:
+            raise ValueError(f"Set tools.{key} in the workflow config to run OneCovariance.")
+        return value
+    return lookup
+
 
 # Number of cores to use to execute OneCovariance
 ONECOV_THREADS = 8
 
-def get_mask_cls_file(version, kind="lens"):
-    """Return the mask Cl *filename* (OneCov wants dir and file separately)."""
-    version_dir = version.replace("_leak_corr", "").replace("SP_", "")
-    version_dir = re.sub(r"_ecut\d+", "", version_dir)
-    if kind == "lens" and version_dir in STARHALO_VERSIONS:
-        return MASK_CLS_FILES["footprint_lens_starhalo"]
-    return MASK_CLS_FILES[f"footprint_{kind}"]
-
-
-def _onecov_mask_params(w):
-    """Resolve OneCov mask settings for one job.
-
-    Returns dict with keys: dir, lens, ggl, clust. Empty strings when the
-    job is unmasked or the probe doesn't use a given field.
-    """
-    if w.mask_suffix != "_masked":
-        return {"dir": "", "lens": "", "ggl": "", "clust": ""}
-    out = {
-        "dir": MASK_CLS_BASE,
-        "lens": get_mask_cls_file(w.version, "lens"),
-        "ggl": "",
-        "clust": "",
-    }
-    if w.probe in ("ggl", "3x2pt"):
-        out["ggl"] = get_mask_cls_file(w.version, "ggl")
-    if w.probe == "3x2pt":
-        out["clust"] = get_mask_cls_file(w.version, "clust")
-    return out
 
 rule cosmology_params:
     """Generate cosmology parameters JSON from sp_validation.
@@ -91,28 +78,58 @@ with open('{output}', 'w') as f:
 "
         """
 
-rule covariance_ini_onecov:
+
+rule covariance_glass_mock:
     input:
-        # Ensures planck18.json exists before get_planck18() is called below.
-        cosmo=COSMOLOGY_PARAMS,
+        xi=expand(
+            f"{GLASS_MOCK_DIR}/xi_glass_mock_{{seed:05d}}_4096_nbins=20.fits",
+            seed=range(config["glass_mocks"]["seed_range"][0], config["glass_mocks"]["seed_range"][1] + 1),
+        ),
+        cl=expand(
+            f"{GLASS_MOCK_DIR}/cl_glass_mock_{{seed:05d}}_4096.npy",
+            seed=range(config["glass_mocks"]["seed_range"][0], config["glass_mocks"]["seed_range"][1] + 1),
+        ),
+    output:
+        xi_covariance=f"results/covariance/{GLASS_MOCK_SUITE}/xi_covariance.npy",
+        cl_covariance=f"results/covariance/{GLASS_MOCK_SUITE}/cl_covariance.npy",
+        combined_covariance=f"results/covariance/{GLASS_MOCK_SUITE}/combined_covariance.npy",
+        correlation_plot=f"results/covariance/{GLASS_MOCK_SUITE}/combined_correlation.png",
+        xi_mean=f"results/covariance/{GLASS_MOCK_SUITE}/xi_mean.npy",
+        cl_mean=f"results/covariance/{GLASS_MOCK_SUITE}/cl_mean.npy",
+        combined_mean=f"results/covariance/{GLASS_MOCK_SUITE}/combined_mean.npy",
+    script:
+        "../scripts/compute_glass_mock_covariance.py"
+
+
+rule generate_glass_mock_rhotau_samples:
+    """Generate sampled tau statistics for glass mocks.
+
+    Only tau is sampled; inference_prep_glass_mock uses real rho data.
+    """
+    input:
+        cov_tau=cv_cov_tau(FIDUCIAL["mock_version"]),
+        ref_tau=cv_tau_stats(FIDUCIAL["mock_version"]),
+    output:
+        tau="results/glass_mock_rhotau_samples/{mock_id}/tau_stats_sampled.fits",
+    params:
+        mock_id="{mock_id}",
+        output_dir="results/glass_mock_rhotau_samples",
+    threads: 1
+    script:
+        "../scripts/generate_glass_mock_rhotau_samples.py"
+
+
+rule covariance_ini:
+    input:
+        nz_file=lambda w: redshift_path(w.version),
+        mask=lambda w: [] if w.mask_suffix != "_masked" else [get_mask_cls_path(w.version)],
     output:
         cov_output(".ini"),
     params:
-        outdir=lambda w: covariance_dir(
-            w.version, w.blind, w.gaussian, w.min_sep, w.max_sep, w.nbins,
-            w.probe, w.mask_suffix, w.tomo_suffix, resolve_version=False,
-        ),
-        out_filename=lambda w: covariance_base(
-            w.version, w.blind, w.gaussian, w.min_sep, w.max_sep, w.nbins,
-            w.probe, w.mask_suffix, w.tomo_suffix, resolve_version=False,
-        ) + ".dat",
-        out_plot_filename=lambda w: covariance_base(
-            w.version, w.blind, w.gaussian, w.min_sep, w.max_sep, w.nbins,
-            w.probe, w.mask_suffix, w.tomo_suffix, resolve_version=False,
-        ) + "_corr_plot.pdf",
+        outdir=lambda w: covariance_dir(*_onecov_args(w)),
+        out_filename=lambda w: covariance_base(*_onecov_args(w)) + ".dat",
+        out_plot_filename=lambda w: covariance_base(*_onecov_args(w)) + "_corr_plot.pdf",
         ng_value=lambda w: "1" if w.gaussian == "ng" else "0",
-        do_ggl=lambda w: str(w.probe in ("ggl", "3x2pt")),
-        do_clustering=lambda w: str(w.probe == "3x2pt"),
         omega_m=PLANCK18["Omega_m"],
         omega_v=PLANCK18["Omega_v"],
         sigma_8=PLANCK18["sigma_8"],
@@ -120,34 +137,19 @@ rule covariance_ini_onecov:
         h=PLANCK18["h"],
         omega_b=PLANCK18["Omega_b"],
         hmcode_logT_AGN=7.75,
-        sigma_e_param=lambda w: get_cat_params(w)[0],
-        n_e_lens_line=lambda w: (
-            f"n_eff_lensing = {get_cat_params(w)[1][0]}"),
-        n_e_clust_line=lambda w: (""
-        if w.probe == "wl"
-        else f"n_eff_clust = {get_cat_params(w)[1][1]}"),
-        area_lens_line=lambda w: (
-            f"survey_area_lensing_in_deg2 = {get_cat_params(w)[2][0]}"),
-        area_ggl_line=lambda w: (
-        ""
-        if w.probe == "wl"
-        else f"survey_area_ggl_in_deg2 = {get_cat_params(w)[2][1]}"
+        sigma_e_param=lambda w: get_onecov_cat_params(w.version)[0],
+        n_e=lambda w: get_onecov_cat_params(w.version)[1],
+        area=lambda w: get_onecov_cat_params(w.version)[2],
+        # OneCovariance takes directory and file separately.
+        mask_dir=lambda w: MASK_CLS_BASE if w.mask_suffix == "_masked" else "",
+        mask_file=lambda w: (
+            os.path.basename(get_mask_cls_path(w.version))
+            if w.mask_suffix == "_masked"
+            else ""
         ),
-        area_clust_line=lambda w: (
-        ""
-        if w.probe == "wl"
-        else f"survey_area_clust_in_deg2 = {get_cat_params(w)[2][2]}"
-        ),
-        mask_dir=lambda w: _onecov_mask_params(w)["dir"],
-        mask_lens=lambda w: _onecov_mask_params(w)["lens"],
-        mask_ggl=lambda w: _onecov_mask_params(w)["ggl"],
-        mask_clust=lambda w: _onecov_mask_params(w)["clust"],
-        nz_dir=lambda w: build_redshift_dir(w.version),
-        nz_lens=lambda w: build_redshift_path_lens(w.version, w.blind),
-        nz_clust=lambda w: (
-            "" if w.probe == "wl"
-            else build_redshift_path_source(w.version, w.blind)
-        ),
+        nz_dir=lambda w: os.path.dirname(redshift_path(w.version)),
+        nz_file=lambda w: os.path.basename(redshift_path(w.version)),
+        num_cores=ONECOV_THREADS,
     threads: 1
     shell:
         """
@@ -164,10 +166,8 @@ sn_only = False
 [observables]
 cosmic_shear = True
 est_shear = xi_pm
-clustering = {params.do_clustering}
-ggl = {params.do_ggl}
-est_ggl = gamma_t
-est_clust = w
+clustering = False
+ggl = False
 
 [output settings]
 directory = {params.outdir}
@@ -188,22 +188,15 @@ integration_intervals = 400
 
 [survey specs]
 mask_directory = {params.mask_dir}
-mask_file_lensing = {params.mask_lens}
-mask_file_clust = {params.mask_clust}
-mask_file_ggl = {params.mask_ggl}
+mask_file_lensing = {params.mask_file}
 ellipticity_dispersion = {params.sigma_e_param}
-{params.area_lens_line}
-{params.area_clust_line}
-{params.area_ggl_line}
-{params.n_e_lens_line}
-{params.n_e_clust_line}
+survey_area_lensing_in_deg2 = {params.area}
+n_eff_lensing = {params.n_e}
 
 [redshift]
 zlens_directory = {params.nz_dir}
-zlens_file = {params.nz_lens}
-zclust_file = {params.nz_clust}
+zlens_file = {params.nz_file}
 value_loc_in_lensbin = mid
-value_loc_in_clustbin = mid
 
 [cosmo]
 sigma8 = {params.sigma_8}
@@ -259,28 +252,26 @@ transfer_model = CAMB
 small_k_damping_for1h = damped
 
 [misc]
-num_cores = {ONECOV_THREADS}
+num_cores = {params.num_cores}
 
 EOF
         """
 
-rule covariance_onecov:
+
+rule covariance_run:
+    """Run OneCovariance on its generated .ini.
+
+    `container: None` on purpose: OneCovariance runs from a host checkout under
+    environment-modules, set by tools.onecov_executable.
+    """
     input:
-        rules.covariance_ini_onecov.output,
+        rules.covariance_ini.output,
     output:
-        cov_output(".dat")
+        cov_output(".dat"),
     params:
-        outdir=lambda w: covariance_dir(
-            w.version, w.blind, w.gaussian, w.min_sep, w.max_sep, w.nbins,
-            w.probe, w.mask_suffix, w.tomo_suffix, resolve_version=False,
-        ),
-        ini_path=lambda w: covariance_path(
-            w.version, w.blind, w.gaussian, w.min_sep, w.max_sep, w.nbins,
-            w.probe, w.mask_suffix, w.tomo_suffix, suffix=".ini",
-            resolve_version=False,
-        ),
-        onecov=config["tools"]["onecov_executable"],
-        python_executable=config["tools"]["python_executable"],
+        outdir=lambda w: covariance_dir(*_onecov_args(w)),
+        onecov=_onecov_tool("onecov_executable"),
+        python_executable=_onecov_tool("python_executable", "python"),
     container:
         None
     threads: ONECOV_THREADS
@@ -293,110 +284,49 @@ rule covariance_onecov:
         module load openmpi
 
         cd {params.outdir}
-        {params.python_executable} {params.onecov} {params.ini_path}
+        {params.python_executable} {params.onecov} {input}
         """
 
 
-# Glass-mock roots. Env/config-overridable for the same reason as COSMO_*.
-GLASS_MOCK_RESULTS = config.get("glass_mocks", {}).get(
-    "results_dir", "/n09data/guerrini/glass_mock_v1.4.6/results"
-)
-GLASS_MOCK_COV_DIR = config.get("glass_mocks", {}).get(
-    "covariance_dir",
-    "/automnt/n17data/cdaley/unions/analyses/shear_2d/bmodes_2d/results/covariance/glass_mock_v1.4.6",
-)
-
-rule covariance_glass_mock:
-    input:
-        xi=expand(
-            GLASS_MOCK_RESULTS + "/xi_glass_mock_{seed:05d}_4096_nbins=20.fits",
-            seed=range(
-                config["glass_mocks"]["seed_range"][0],
-                config["glass_mocks"]["seed_range"][1] + 1,
-            ),
-        ),
-        cl=expand(
-            GLASS_MOCK_RESULTS + "/cl_glass_mock_{seed:05d}_4096.npy",
-            seed=range(
-                config["glass_mocks"]["seed_range"][0],
-                config["glass_mocks"]["seed_range"][1] + 1,
-            ),
-        ),
-    output:
-        xi_covariance=f"{GLASS_MOCK_COV_DIR}/xi_covariance.npy",
-        cl_covariance=f"{GLASS_MOCK_COV_DIR}/cl_covariance.npy",
-        combined_covariance=f"{GLASS_MOCK_COV_DIR}/combined_covariance.npy",
-        correlation_plot=f"{GLASS_MOCK_COV_DIR}/combined_correlation.png",
-        xi_mean=f"{GLASS_MOCK_COV_DIR}/xi_mean.npy",
-        cl_mean=f"{GLASS_MOCK_COV_DIR}/cl_mean.npy",
-        combined_mean=f"{GLASS_MOCK_COV_DIR}/combined_mean.npy",
-    script:
-        "../scripts/compute_glass_mock_covariance.py"
-
-rule generate_glass_mock_rhotau_samples:
-    """Generate sampled tau statistics for glass mocks.
-
-    Only tau is sampled; inference_prep_glass_mock uses real rho data.
-    """
-    input:
-        cov_tau=str(
-            COSMO_VAL
-            / f"rho_tau_stats/cov_tau_{FIDUCIAL['mock_version']}{fiducial_binning_suffix()}_th.npy"
-        ),
-        ref_tau=str(
-            COSMO_VAL
-            / f"rho_tau_stats/tau_stats_{FIDUCIAL['mock_version']}{fiducial_binning_suffix()}.fits"
-        ),
-    output:
-        tau="results/glass_mock_rhotau_samples/{mock_id}/tau_stats_sampled.fits",
-    params:
-        mock_id="{mock_id}",
-        output_dir="results/glass_mock_rhotau_samples",
-        # Resolved relative to this .smk file instead of a hard-coded checkout.
-        script=workflow.source_path(
-            "../scripts/generate_glass_mock_rhotau_samples.py"
-        ),
-    threads: 1
-    shell:
-        """
-        python {params.script} \
-            --cov-tau {input.cov_tau} \
-            --ref-tau {input.ref_tau} \
-            --output-dir {params.output_dir} \
-            --mock-ids {params.mock_id}
-        """
-
-
-def fiducial_covariance_outputs(mask_suffix="", probe=None, tomo_suffix=""):
-    """Return processed covariance files for fiducial version/blind."""
-    probe = probe or DEFAULT_PROBE
-    path = covariance_path(
-        FIDUCIAL["version"], FIDUCIAL["blind"], FIDUCIAL["gaussian"],
+def fiducial_covariance_outputs(mask_suffix="", tomo_suffix=""):
+    """Return the covariance matrices for the fiducial version: non-Gaussian on
+    the reporting grid, Gaussian on the integration grid."""
+    ng_path = covariance_path(
+        FIDUCIAL["version"], "ng",
         FIDUCIAL["min_sep"], FIDUCIAL["max_sep"], FIDUCIAL["nbins"],
-        probe, mask_suffix, tomo_suffix,
+        mask_suffix, tomo_suffix,
     )
-    return path
+    g_path = covariance_path(
+        FIDUCIAL["version"], "g",
+        FIDUCIAL["min_sep_int"], FIDUCIAL["max_sep_int"], FIDUCIAL["nbins_int"],
+        mask_suffix, tomo_suffix,
+    )
+    return [ng_path, g_path]
+
 
 rule covariance:
     input:
-        fiducial_covariance_outputs(mask_suffix=DEFAULT_MASK_SUFFIX, probe=DEFAULT_PROBE),
+        fiducial_covariance_outputs(mask_suffix=DEFAULT_MASK_SUFFIX)
+
 
 rule covariance_masked:
     input:
-        fiducial_covariance_outputs(mask_suffix="_masked", probe=DEFAULT_PROBE),
+        fiducial_covariance_outputs(mask_suffix="_masked")
+
 
 rule covariance_unmasked:
     input:
-        fiducial_covariance_outputs(mask_suffix="", probe=DEFAULT_PROBE),
+        fiducial_covariance_outputs(mask_suffix="")
 
-rule covariance_3x2pt:
+
+rule covariance_tomo:
     input:
-        fiducial_covariance_outputs(mask_suffix="", 
-                                    probe="3x2pt"),
+        fiducial_covariance_outputs(mask_suffix=DEFAULT_MASK_SUFFIX, tomo_suffix="_tomo")
 
-# ruleorder: covariance_ini_onecov > covariance_onecov > covariance
+
+ruleorder: covariance_ini > covariance_run > covariance
 
 localrules:
     cosmology_params,
-    covariance_ini_onecov,
+    covariance_ini,
     generate_glass_mock_rhotau_samples,

@@ -11,6 +11,7 @@
 """
 
 import re
+import warnings
 
 import numpy as np
 import regions
@@ -27,6 +28,113 @@ from tqdm import tqdm
 # T = 2 sigma^2 as if it were sigma; the cs_util version carries the
 # required square root: FWHM = 2.35482 sqrt(T / 2)
 from sp_validation import io
+from sp_validation.grammar import mask_column
+
+#: All mask columns written by ShapePipe v2 (bool, ``True`` = masked), one per
+#: bit of the UNIONS healsparse mask product (``grammar.MASK_LABELS``; v2 does
+#: not write bit 512). Post-processed v1 comprehensive catalogues carry the same
+#: columns, presented under these names by ``sp_validation.grammar``.
+#:
+#: The r-band default bitmask uses bits 1 (faint star halos), 2 (bright star
+#: halos), 4 (star bodies), 8 (manual galaxy mask), 64 (r-band coverage) and
+#: 1024 (MaxiMask). The per-band coverage flags are 16 (u), 32 (g), 64 (r),
+#: 128 (i) and 256 (HSC z); 2048 is ``True`` where Pan-STARRS z-band (z2)
+#: coverage is absent.
+MASK_COLUMNS = tuple(
+    mask_column(bit) for bit in (1, 2, 4, 8, 16, 32, 64, 128, 256, 1024, 2048)
+)
+
+#: Mask columns OR'd together for the default galaxy selection. This set is
+#: the ShapePipe r-band default bitmask: their OR matches ``mask_r`` on covered
+#: granules (verified on the P3 sky area), with differences at footprint edges
+#: without map coverage.
+#: Deliberately not a blanket OR over MASK_COLUMNS: the other coverage flags
+#: (bits 16, 32, 128, 256) and bit 2048 would mask essentially the whole
+#: catalogue.
+DEFAULT_MASK_COLUMNS = tuple(mask_column(bit) for bit in (4, 1, 2, 8, 64, 1024))
+
+
+def _column_names(dd):
+    """Return the column names of a structured array or mapping."""
+    dtype = getattr(dd, "dtype", None)
+    if dtype is not None and dtype.names is not None:
+        return tuple(dtype.names)
+    return tuple(dd.keys())
+
+
+def mask_cut(dd, mask_columns=None):
+    """Mask Cut.
+
+    Return a boolean mask that is ``True`` for objects *not* flagged by any
+    of the requested ShapePipe mask columns.
+
+    Parameters
+    ----------
+    dd : numpy.ndarray or dict
+        input catalogue
+    mask_columns : list of str, optional
+        mask columns to OR together; default is ``DEFAULT_MASK_COLUMNS``
+
+    Returns
+    -------
+    numpy.ndarray
+        boolean mask, ``True`` = keep
+
+    Raises
+    ------
+    KeyError
+        if any requested mask column is absent from the catalogue
+
+    """
+    columns = list(DEFAULT_MASK_COLUMNS if mask_columns is None else mask_columns)
+    if not columns:
+        # No masking requested (e.g. the image simulations, which run no
+        # imaging-flag masking stage and carry no mask columns).
+        return np.ones(len(dd[_column_names(dd)[0]]), dtype=bool)
+
+    available = _column_names(dd)
+    missing = [col for col in columns if col not in available]
+    if missing:
+        raise KeyError(
+            f"Mask column(s) {missing} not found in catalogue."
+            + " ShapePipe v2 catalogues carry the boolean columns"
+            + f" {list(MASK_COLUMNS)}, as do comprehensive catalogues whose"
+            + " data_ext holds the healsparse mask bits (read through"
+            + " sp_validation.grammar). Available columns:"
+            + f" {sorted(available)}"
+        )
+
+    masked = np.zeros(len(dd[columns[0]]), dtype=bool)
+    n_undefined = 0
+    for col in columns:
+        values = np.asarray(dd[col])
+        if values.dtype == bool:
+            flagged = values
+        else:
+            # ShapePipe's writer can emit the mask columns as float64
+            # {0, 1} rather than bool, so decide on the value (threshold at
+            # 0.5, so integer, float and bool columns behave identically),
+            # and count NaNs rather than let them pass unremarked.
+            values = values.astype(float)
+            undefined = np.isnan(values)
+            n_undefined += int(undefined.sum())
+            flagged = undefined | (values > 0.5)
+        masked |= flagged
+
+    if n_undefined:
+        # NaN means the masking stage recorded no verdict for this object.
+        # Treat it as masked, as the config-driven cuts (``kind: equal,
+        # value: False``) do, and say so: a nonzero count means the input
+        # product is defective.
+        warnings.warn(
+            f"{n_undefined} NaN value(s) in mask column(s) {columns};"
+            + " treated as masked. The mask columns of a complete"
+            + " ShapePipe product hold only 0 and 1.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+
+    return ~masked
 
 
 def classification_galaxy_overlap_ra_dec(dd, ra_key="XWIN_WORLD", dec_key="YWIN_WORLD"):
@@ -141,10 +249,17 @@ def classification_galaxy_base(
     gal_mag_faint=26,
     flags_keep=None,
     n_epoch_min=1,
+    mask_columns=None,
 ):
     """Classification Galaxy Base.
 
     Return mask corresponding to basic classification for galaxies.
+
+    Parameters
+    ----------
+    mask_columns : list of str, optional
+        ShapePipe mask columns OR'd together to reject masked objects;
+        default is ``DEFAULT_MASK_COLUMNS``
 
     """
     # SExtractor flags
@@ -172,7 +287,7 @@ def classification_galaxy_base(
         & cut_flags
         & (dd["MAG_AUTO"] <= gal_mag_faint)
         & (dd["MAG_AUTO"] >= gal_mag_bright)
-        & (dd["IMAFLAGS_ISO"] == 0)
+        & mask_cut(dd, mask_columns)
         & (dd["N_EPOCH"] >= n_epoch_min)
     )
 
@@ -189,8 +304,19 @@ def classification_galaxy_ngmix(
 
     Return mask corresponding to ngmix classification of galaxies
     """
+    # NGMIX_N_EPOCH == 0 marks objects ngmix never fit: ShapePipe's make_cat
+    # pre-fills every NGMIX_* column with sentinels (G1/G2 = -10, T/FLUX = 0)
+    # and only overwrites them for objects present in the ngmix output, so a
+    # never-fit object keeps NGMIX_MCAL_FLAGS == 0 and passes a flag-only cut.
+    # In final_cat_smk-g7.hdf5 this is 18,983 / 1,851,100 objects (1.03%);
+    # admitting them drags mean e1 to -0.096 (std 0.98) from +0.0001 (std
+    # 0.24). The coadd N_EPOCH cut in classification_galaxy_base does not
+    # catch them (18,750 of the 18,983 have N_EPOCH >= 1). Cut on N_EPOCH
+    # explicitly rather than relying on the -10 sentinel comparison below,
+    # which is an exact float equality against a value ShapePipe may change.
     m_gal_ngmix = (
         cut_common
+        & (dd["NGMIX_N_EPOCH"] > 0)
         & (dd["NGMIX_MCAL_FLAGS"] == 0)
         & (dd["NGMIX_G1_PSF_ORIG_NOSHEAR"] != -10)
         & (dd["NGMIX_MCAL_TYPES_FAIL"] == 0)

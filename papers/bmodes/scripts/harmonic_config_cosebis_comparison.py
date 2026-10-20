@@ -20,7 +20,6 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-import treecorr
 import yaml
 from astropy.io import fits
 from cosmo_numba.B_modes.cosebis import COSEBIS
@@ -32,7 +31,9 @@ from plotting_utils import (
     iter_version_figures,
     version_label,
 )
+from pseudo_cl_io import load_pseudo_cl_data
 
+from sp_validation import sacc_io
 from sp_validation.b_modes import calculate_cosebis
 
 plt.style.use(PAPER_MPLSTYLE)
@@ -107,11 +108,10 @@ def _compute_harmonic_cosebis(
     pseudo_cl_path, pseudo_cov_path, nmodes, theta_min, theta_max
 ):
     """Compute COSEBIS from pseudo-C_ell and propagate covariance."""
-    with fits.open(pseudo_cl_path) as hdul:
-        data = hdul["PSEUDO_CELL"].data
-        ell = np.asarray(data["ELL"], dtype=float)
-        cl_ee = np.asarray(data["EE"], dtype=float)
-        cl_bb = np.asarray(data["BB"], dtype=float)
+    data = load_pseudo_cl_data(pseudo_cl_path)
+    ell = np.asarray(data["ELL"], dtype=float)
+    cl_ee = np.asarray(data["EE"], dtype=float)
+    cl_bb = np.asarray(data["BB"], dtype=float)
 
     cosebis_obj = COSEBIS(theta_min, theta_max, nmodes)
 
@@ -139,17 +139,7 @@ def _compute_config_cosebis(xi_path, cov_path, nmodes, scale_cut, config):
 
     Returns (En, Bn, cov).
     """
-    min_sep_int = float(config["fiducial"]["min_sep_int"])
-    max_sep_int = float(config["fiducial"]["max_sep_int"])
-    nbins_int = int(config["fiducial"]["nbins_int"])
-
-    gg = treecorr.GGCorrelation(
-        min_sep=min_sep_int,
-        max_sep=max_sep_int,
-        nbins=nbins_int,
-        sep_units="arcmin",
-    )
-    gg.read(xi_path)
+    gg = sacc_io.xi_correlation(sacc_io.load(xi_path))
 
     results = calculate_cosebis(
         gg, nmodes=nmodes, scale_cuts=[scale_cut], cov_path=cov_path
@@ -510,12 +500,12 @@ def _make_version_comparison_figure(
     return fig
 
 
-def main(config, inputs, scale_cut, output_dir, paper_figure_name=None, spec_path=None):
+def main(config, inputs, scale_cut, output_dir, paper_figure_name=None):
     """Harmonic-vs-config COSEBI cross-check for one angular range.
 
     ``inputs`` is a dict mirroring ``snakemake.input``: per-version keys
     ``pseudo_cl_{ver}`` / ``pseudo_cl_cov_{ver}`` / ``xi_{ver}`` / ``cov_{ver}``
-    (all absolute paths) plus ``specs``. All artifacts land under ``output_dir``;
+    (all absolute paths). All artifacts land under ``output_dir``;
     ``paper_figure_name`` (when set) is the combined 2×2 paper PDF filename.
     """
     nmodes = int(config["fiducial"]["nmodes"])
@@ -765,9 +755,6 @@ def main(config, inputs, scale_cut, output_dir, paper_figure_name=None, spec_pat
 
     # --- Evidence ---
     evidence = {
-        "spec_id": "harmonic_config_cosebis_comparison",
-        "spec_path": spec_path
-        or "papers/bmodes/config/harmonic_config_cosebis_comparison.md",
         "generated": datetime.now().isoformat(),
         "evidence": {
             "nmodes": nmodes,
@@ -807,18 +794,17 @@ def _versions_all_for_plots(config):
     return leak_corr + uncorrected
 
 
-def _cov_integration_path(cov_dir, version, blind, min_sep, max_sep, nbins):
+def _cov_integration_path(cov_dir, version, min_sep, max_sep, nbins):
     """Reproduce common.covariance_path for the Gaussian integration-grid,
     masked covariance (suffix _processed.txt)."""
     base = (
-        f"covariance_{version}_{blind}_g"
-        f"_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_masked"
+        f"covariance_{version}_g_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_masked"
     )
     return os.path.join(cov_dir, base, f"{base}_processed.txt")
 
 
 def _angular_ranges(config):
-    """Reproduce claims.smk _COSEBIS_ANGULAR_RANGES."""
+    """Reproduce figures.smk _COSEBIS_ANGULAR_RANGES."""
     return {
         "full": (
             float(config["cosebis"]["theta_min"]),
@@ -839,7 +825,6 @@ def _from_snakemake(smk):
             if "paper_figure" in smk.output.keys()
             else None
         ),
-        spec_path=smk.input["specs"][0],
     )
 
 
@@ -857,15 +842,15 @@ def _from_cli(argv=None):
     ap.add_argument(
         "--cosmo-val-dir",
         required=True,
-        help="COSMO_VAL output dir (pseudo_cl / pseudo_cl_cov FITS + xi_integration txt)",
+        help=(
+            "COSMO_VAL output dir (pseudo_cl SACC parts, pseudo_cl_cov FITS "
+            "+ xi_integration SACC part)"
+        ),
     )
     ap.add_argument(
         "--covariance-dir",
         required=True,
         help="COSMO_INFERENCE data/covariance dir (Gaussian integration covariances)",
-    )
-    ap.add_argument(
-        "--blind", default="A", help="Blind for pseudo-Cl / covariance (paper: A)"
     )
     ap.add_argument("--out", required=True, help="Output directory (lc {output})")
     ap.add_argument(
@@ -883,8 +868,9 @@ def _from_cli(argv=None):
         "--fiducial-pseudo-cl-path",
         default=None,
         help=(
-            "Explicit path to the fiducial 96-bin pseudo-Cl FITS reproduced by lc "
-            "(from lc's cl_bandpowers_fine; e.g. pseudo_cl_SP_v1.4.6.3_leak_corr.fits), "
+            "Explicit path to the fiducial 96-bin pseudo-Cl SACC part reproduced "
+            "by lc (from lc's cl_bandpowers_fine; e.g. "
+            "pseudo_cl_SP_v1.4.6.3_leak_corr.sacc), "
             "overriding the --cosmo-val-dir pattern lookup for --fiducial-version."
         ),
     )
@@ -892,9 +878,9 @@ def _from_cli(argv=None):
         "--fiducial-xi-path",
         default=None,
         help=(
-            "Explicit path to the fiducial 1000-bin integration xi_pm text file "
+            "Explicit path to the fiducial 1000-bin integration ξ± SACC part "
             "reproduced by lc (e.g. SP_v1.4.6.3_leak_corr_xi_minsep=0.5_maxsep=300.0_"
-            "nbins=1000_npatch=1.txt), overriding the --cosmo-val-dir pattern lookup "
+            "nbins=1000_npatch=1.sacc), overriding the --cosmo-val-dir pattern lookup "
             "for --fiducial-version."
         ),
     )
@@ -925,7 +911,7 @@ def _from_cli(argv=None):
     npatch = fid["npatch"]
 
     versions = _versions_all_for_plots(config)
-    inputs = {"specs": ["papers/bmodes/config/harmonic_config_cosebis_comparison.md"]}
+    inputs = {}
     for ver in versions:
         is_fiducial = ver == a.fiducial_version
 
@@ -934,7 +920,7 @@ def _from_cli(argv=None):
             if is_fiducial and a.fiducial_pseudo_cl_path
             else os.path.join(
                 a.cosmo_val_dir,
-                f"pseudo_cl_{ver}_blind={a.blind}_powspace_nbins={cosebis_nbins}.fits",
+                f"pseudo_cl_{ver}_powspace_nbins={cosebis_nbins}.sacc",
             )
         )
         # 96-bin pseudo-Cl covariance is intentionally NOT lc-repointed: lc did not
@@ -943,7 +929,7 @@ def _from_cli(argv=None):
         # version.
         inputs[f"pseudo_cl_cov_{ver}"] = os.path.join(
             a.cosmo_val_dir,
-            f"pseudo_cl_cov_{ver}_blind={a.blind}_powspace_nbins={cosebis_nbins}.fits",
+            f"pseudo_cl_cov_{ver}_powspace_nbins={cosebis_nbins}.fits",
         )
         inputs[f"xi_{ver}"] = (
             a.fiducial_xi_path
@@ -951,14 +937,14 @@ def _from_cli(argv=None):
             else os.path.join(
                 a.cosmo_val_dir,
                 f"{ver}_xi_minsep={min_sep_int}_maxsep={max_sep_int}"
-                f"_nbins={nbins_int}_npatch={npatch}.txt",
+                f"_nbins={nbins_int}_npatch={npatch}.sacc",
             )
         )
         inputs[f"cov_{ver}"] = (
             a.fiducial_cov_path
             if is_fiducial and a.fiducial_cov_path
             else _cov_integration_path(
-                a.covariance_dir, ver, a.blind, min_sep_int, max_sep_int, nbins_int
+                a.covariance_dir, ver, min_sep_int, max_sep_int, nbins_int
             )
         )
 
@@ -970,7 +956,6 @@ def _from_cli(argv=None):
         scale_cut=scale_cut,
         output_dir=a.out,
         paper_figure_name=f"harmonic_config_cosebis_{a.angular_range}.pdf",
-        spec_path=inputs["specs"][0],
     )
 
 
