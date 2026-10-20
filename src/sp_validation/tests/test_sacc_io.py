@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 
 from sp_validation import sacc_io as sio
+from sp_validation.blinding import NONE
 
 
 # --------------------------------------------------------------------------- #
@@ -64,7 +65,7 @@ def _cosebi_block(s, tr):
 # --------------------------------------------------------------------------- #
 def _roundtrip(s, tmp_path, name="rt"):
     path = tmp_path / f"{name}.sacc"
-    sio.save(s, str(path), type="mock")
+    sio.save(s, str(path), blind=NONE)
     return sio.load(str(path))
 
 
@@ -100,6 +101,7 @@ def test_xi_roundtrip(tmp_path):
     assert np.array_equal(th, theta)
     assert np.array_equal(p, xip)
     assert np.array_equal(m, xim)
+    assert np.array_equal(sio.xi_correlation(s2, grid="reporting").weight, weight)
     # extra tags survive
     idx = s2.indices(sio.XI_PLUS, ("source_0", "source_0"), grid="reporting")
     tags = s2.data[idx[0]].tags
@@ -465,7 +467,7 @@ def test_end_to_end_one_file_layout(tmp_path):
         s,
         [(xi_c, _spd(len(xi_c), 1)), (co, _spd(len(co), 2)), (xi_f, fine_block)],
     )
-    sio.save(s, str(tmp_path / f"{version}.sacc"), type="mock")
+    sio.save(s, str(tmp_path / f"{version}.sacc"), blind=NONE)
 
     a = sio.load(str(tmp_path / f"{version}.sacc"))
 
@@ -504,7 +506,7 @@ def test_one_file_layout_diagonal_fine_fallback(tmp_path):
     xi_f = _xi_block(s, tr, grid="integration")
     variances = np.concatenate([np.arange(1, 51) * 1e-12, np.arange(1, 51) * 2e-12])
     sio.assemble_covariance(s, [(xi_c, _spd(len(xi_c), 1)), (xi_f, np.diag(variances))])
-    sio.save(s, str(tmp_path / "vDIAG.sacc"), type="mock")
+    sio.save(s, str(tmp_path / "vDIAG.sacc"), blind=NONE)
     a = sio.load(str(tmp_path / "vDIAG.sacc"))
     assert np.array_equal(np.diag(a.covariance.dense[np.ix_(xi_f, xi_f)]), variances)
 
@@ -613,79 +615,9 @@ def test_tomographic_xi_covariance_one_contiguous_block():
 
 
 # --------------------------------------------------------------------------- #
-# 12. type stamping + fail-closed load (data/mock x concealed/not; escape
-#     hatch for the blinding/unblinding tooling)
-# --------------------------------------------------------------------------- #
-def _saved(tmp_path, name, *, type, concealed=None):
-    s = _base_sacc()
-    _add_xi(s)
-    if concealed is not None:
-        s.metadata["concealed"] = concealed
-    path = str(tmp_path / f"{name}.sacc")
-    sio.save(s, path, type=type)
-    return path
-
-
-def test_load_mock_unconcealed(tmp_path):
-    s = sio.load(_saved(tmp_path, "m0", type="mock"))
-    assert s.metadata["type"] == "mock"
-
-
-def test_load_mock_concealed(tmp_path):
-    s = sio.load(_saved(tmp_path, "m1", type="mock", concealed=True))
-    assert s.metadata["concealed"]
-
-
-def test_load_data_concealed(tmp_path):
-    s = sio.load(_saved(tmp_path, "d1", type="data", concealed=True))
-    assert s.metadata["type"] == "data"
-
-
-def test_load_data_unconcealed_fails_closed(tmp_path):
-    path = _saved(tmp_path, "d0", type="data")
-    with pytest.raises(ValueError, match="unblinded"):
-        sio.load(path)
-    # concealed=False is as unblinded as no stamp at all
-    path_f = _saved(tmp_path, "d0f", type="data", concealed=False)
-    with pytest.raises(ValueError, match="unblinded"):
-        sio.load(path_f)
-
-
-def test_load_data_unconcealed_escape_hatch(tmp_path):
-    s = sio.load(_saved(tmp_path, "d0h", type="data"), allow_unblinded=True)
-    assert s.metadata["type"] == "data"
-
-
-def test_save_requires_valid_type(tmp_path):
-    s = _base_sacc()
-    with pytest.raises(TypeError):
-        sio.save(s, str(tmp_path / "x.sacc"))  # type is required
-    with pytest.raises(ValueError, match="'data' or 'mock'"):
-        sio.save(s, str(tmp_path / "x.sacc"), type="simulation")
-
-
-def test_save_refuses_type_restamp(tmp_path):
-    s = _base_sacc()
-    sio.save(s, str(tmp_path / "x.sacc"), type="mock")
-    with pytest.raises(ValueError, match="re-stamp"):
-        sio.save(s, str(tmp_path / "x.sacc"), type="data")
-
-
-def test_load_requires_type_tag(tmp_path):
-    import sacc as sacc_lib
-
-    s = _base_sacc()  # never stamped
-    path = str(tmp_path / "untyped.sacc")
-    s.save_fits(path, overwrite=True)
-    with pytest.raises(KeyError):
-        sio.load(path)
-    assert sacc_lib.Sacc.load_fits(path) is not None  # raw loader still works
-
-
-# --------------------------------------------------------------------------- #
 # 13. merge(): per-statistic files combine into one; shared tracers stored
 #     once; covariance block-diagonal (all-or-none); metadata union with
-#     loud conflicts. update_statistic(): value-only merge-back.
+#     loud conflicts.
 # --------------------------------------------------------------------------- #
 def _xi_sacc(metadata=None):
     s = sio.new_sacc({0: _nz(0)}, metadata=metadata)
@@ -702,18 +634,18 @@ def _cosebi_sacc(metadata=None):
 
 
 def test_merge_per_statistic_files(tmp_path):
-    meta = {"version": "vM", "type": "mock"}
+    meta = {"version": "vM", "survey": "UNIONS"}
     s_xi, s_co = _xi_sacc(meta), _cosebi_sacc(meta)
     merged = sio.merge([s_xi, s_co])
     # shared tracers stored once; all points present, xi first
     assert set(merged.tracers) == {"source_0", sio.PSF_TRACER}
     assert len(merged.mean) == len(s_xi.mean) + len(s_co.mean)
     assert np.array_equal(merged.mean, np.concatenate([s_xi.mean, s_co.mean]))
-    assert merged.metadata["version"] == "vM" and merged.metadata["type"] == "mock"
+    assert merged.metadata["version"] == "vM" and merged.metadata["survey"] == "UNIONS"
     # inputs untouched
     assert s_xi.metadata["version"] == "vM"
     # readers work on the merged file after a round-trip
-    sio.save(merged, str(tmp_path / "vM.sacc"), type="mock")
+    sio.save(merged, str(tmp_path / "vM.sacc"), blind=NONE)
     merged_rt = sio.load(str(tmp_path / "vM.sacc"))
     _, p, _ = sio.get_xi(merged_rt, (0, 0), grid="reporting")
     assert np.array_equal(p, np.arange(6) * 1e-5)
@@ -748,7 +680,7 @@ def test_merge_block_diagonal_covariance_stays_block_diagonal(tmp_path):
     assert type(s_xi.covariance).__name__ == "BlockDiagonalCovariance"
     merged = sio.merge([s_xi, s_co])
     assert type(merged.covariance).__name__ == "BlockDiagonalCovariance"
-    sio.save(merged, str(tmp_path / "vBLK.sacc"), type="mock")
+    sio.save(merged, str(tmp_path / "vBLK.sacc"), blind=NONE)
     merged_rt = sio.load(str(tmp_path / "vBLK.sacc"))
     assert type(merged_rt.covariance).__name__ == "BlockDiagonalCovariance"
     n_xi = len(s_xi.mean)
@@ -768,50 +700,10 @@ def test_merge_mixed_covariance_fails():
 
 
 def test_merge_conflicting_metadata_fails():
-    s_xi = _xi_sacc({"type": "data"})
-    s_co = _cosebi_sacc({"type": "mock"})
+    s_xi = _xi_sacc({"survey": "UNIONS"})
+    s_co = _cosebi_sacc({"survey": "KiDS"})
     with pytest.raises(ValueError, match="conflicting metadata"):
         sio.merge([s_xi, s_co])
-
-
-def test_update_statistic_values_only():
-    s = _multi_statistic_sacc()
-    tr = ("source_0", "source_0")
-    xi, cl, co = _xi_block(s, tr), _cl_block(s, tr), _cosebi_block(s, tr)
-    cov = [(xi, _spd(len(xi), 1)), (cl, _spd(len(cl), 2)), (co, _spd(len(co), 3))]
-    sio.assemble_covariance(s, cov)
-    dense_before = s.covariance.dense.copy()
-    mean_before = s.mean.copy()
-
-    # extract -> shift (a stand-in for conceal) -> merge back
-    sub = sio.extract(s, data_type=sio.XI_PLUS, tracers=tr)
-    for point in sub.data:
-        point.value += 1e-4
-    sio.update_statistic(s, sub)
-
-    idx_p = s.indices(sio.XI_PLUS, tr)
-    assert np.allclose(s.mean[idx_p], mean_before[idx_p] + 1e-4)
-    untouched = np.setdiff1d(np.arange(len(s.mean)), idx_p)
-    assert np.array_equal(s.mean[untouched], mean_before[untouched])
-    # covariance and insertion order untouched
-    assert np.array_equal(s.covariance.dense, dense_before)
-
-
-def test_update_statistic_requires_unique_match():
-    s = _xi_sacc()
-    sub = sio.extract(s, data_type=sio.XI_PLUS, tracers=("source_0", "source_0"))
-    missing = sub.copy()
-    missing.data[0].tags["theta"] = 999.0  # matches nothing in s
-    with pytest.raises(ValueError, match="0 points"):
-        sio.update_statistic(s, missing)
-
-
-def test_update_statistic_rejects_duplicate_sub_points():
-    s = _xi_sacc()
-    sub = sio.extract(s, data_type=sio.XI_PLUS, tracers=("source_0", "source_0"))
-    sub.data[1].tags = dict(sub.data[0].tags)  # two sub points -> one target
-    with pytest.raises(ValueError, match="same target"):
-        sio.update_statistic(s, sub)
 
 
 def test_merge_rejects_divergent_shared_tracer():

@@ -34,12 +34,7 @@ CONFIG = {
         "nbins": 20,
         "npatch": 100,
         "integration": {"min_sep": 0.08, "max_sep": 300, "nbins": 1000},
-        "cosebis": {
-            "min_sep_int": 0.9,
-            "max_sep_int": 300,
-            "nbins_int": 1000,
-            "npatch": 100,
-        },
+        "cosebis": {"nmodes": 20, "scale_cuts": [[12, 83]]},
     }
 }
 FIDUCIAL = {
@@ -61,15 +56,11 @@ def test_tag_is_built_from_canonical_values():
     for a path the producer never writes.
     """
     grids = common.xi_grids(CONFIG, FIDUCIAL)
-    assert common.grid_binning(grids["integration"]).endswith(
-        "minsep=0.08_maxsep=300.0_nbins=1000_npatch=1"
-    )
-    assert (
-        common.grid_binning(grids["cosebis"])
-        == "minsep=0.9_maxsep=300.0_nbins=1000_npatch=100"
-    )
     # Counts stay integers, so no "nbins=1000.0" creeps into a name.
-    assert "nbins=1000_" in common.grid_binning(grids["cosebis"])
+    assert (
+        common.grid_binning(grids["integration"])
+        == "minsep=0.08_maxsep=300.0_nbins=1000_npatch=1"
+    )
 
 
 def test_grid_lookup_round_trips_through_the_tag():
@@ -86,14 +77,6 @@ def test_grid_lookup_round_trips_through_the_tag():
         assert common.grid_of(grids, {k: str(v) for k, v in binning.items()}) == name
 
 
-def test_covariance_mode_follows_the_patches():
-    """Patched grids get a jackknife block, unpatched ones none."""
-    grids = common.xi_grids(CONFIG, FIDUCIAL)
-    assert grids["reporting"]["cov"] == "jackknife"
-    assert grids["cosebis"]["cov"] == "jackknife"
-    assert grids["integration"]["cov"] == "none"
-
-
 def test_unnamed_binning_is_a_reporting_measurement():
     """The paper's convergence-check binning belongs to no named grid."""
     grids = common.xi_grids(CONFIG, FIDUCIAL)
@@ -106,4 +89,3 @@ def test_workflow_without_cosmo_val_falls_back_to_fiducial():
     grids = common.xi_grids({}, FIDUCIAL)
     assert grids["reporting"]["npatch"] == 1
     assert grids["integration"]["min_sep"] == 0.5
-    assert "cosebis" not in grids

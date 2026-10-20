@@ -113,6 +113,35 @@ def _substitutions(scratch, cosmosis_dir, *, fits_file=None, sacc_file=None):
 
 def _from_snakemake(smk):
     p = smk.params
+    if hasattr(smk.input, "sacc"):
+        # inference_prep: keep conversion and both configs in the same container
+        # job, with both templates as tracked inputs rather than rule params.
+        from sp_validation import sacc_io
+
+        Path(smk.output.fits_file).parent.mkdir(parents=True, exist_ok=True)
+        sacc_io.sacc_to_twopoint_fits(
+            sacc_io.load(smk.input.sacc), smk.output.fits_file, n_bins=1
+        )
+        for template, output, data_file in (
+            (
+                smk.input.template_2pt,
+                smk.output.config_file_2pt,
+                {"fits_file": smk.output.fits_file},
+            ),
+            (
+                smk.input.template_sacc,
+                smk.output.config_file_sacc,
+                {"sacc_file": smk.input.sacc},
+            ),
+        ):
+            generate_inference_config(
+                template,
+                output,
+                _substitutions(
+                    scratch=p["scratch"], cosmosis_dir=p["cosmosis_dir"], **data_file
+                ),
+            )
+        return
     generate_inference_config(
         template_path=smk.input[0]
         if not hasattr(smk.input, "template")

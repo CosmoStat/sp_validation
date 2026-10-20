@@ -1,6 +1,6 @@
 # Imports from common (via `from common import *`): FIDUCIAL, COSMO_INFERENCE,
-# COSMO_VAL, WORKFLOW_SCRIPTS, covariance_path, build_redshift_path,
-# fiducial_binning_suffix. cv_analysis_sacc arrives from cosmo_val.smk (resolved
+# COSMO_VAL, REPO_ROOT, covariance_path, redshift_path, pseudo_cl_tag.
+# cv_analysis_sacc arrives from cosmo_val.smk (resolved
 # lazily at DAG time, since that file is included after this one).
 #
 # Two paths live here:
@@ -8,6 +8,7 @@
 #     emits the converter 2pt-FITS + both engine inis (2pt_like, sacc_like).
 #   * glass-mock rules — still cosmosis_fitting.py-based (their SACC migration is
 #     out of scope); the pseudo-Cl file-name plumbing they depend on stays below.
+
 
 # Output root for CosmoSIS data products + configs. COSMO_INFERENCE (common.py)
 # already resolves to THIS repo's cosmo_inference dir, so the products land
@@ -18,7 +19,6 @@ COSMO_INFERENCE_RUNDIR = str(COSMO_INFERENCE)
 
 # External chain/mock locations are deployment-specific, so they live in config.
 INFERENCE = config["inference"]
-GLASS_MOCK_DATA_DIR = INFERENCE["glass_mock_data_dir"]    # precomputed mock xi/Cl products
 CHAINS_DIR = INFERENCE["chains_dir"]  # CosmoSIS chain output root (real data)
 GLASS_MOCK_CHAINS_DIR = INFERENCE["glass_mock_chains_dir"]  # mock chain output root
 
@@ -28,14 +28,17 @@ GLASS_MOCK_SEED_RANGE = config["glass_mocks"]["seed_range"]
 
 GLASS_MOCK_FITS_PATTERN = str(
     COSMO_INFERENCE_PROD
-    / f"data/glass_mocks/{GLASS_MOCK_VERSION}/glass_mock_{{mock_id}}"
+    / f"data/glass_mocks/{GLASS_MOCK_SUITE}/{GLASS_MOCK_VERSION}/glass_mock_{{mock_id}}"
     / f"cosmosis_glass_mock_{GLASS_MOCK_VERSION}_{{mock_id}}.fits"
 )
 GLASS_MOCK_CONFIG_PATTERN = str(
     COSMO_INFERENCE_PROD
-    / f"cosmosis_config/cosmosis_pipeline_glass_mocks_{GLASS_MOCK_VERSION}_glass_mock_{{mock_id}}.ini"
+    / f"cosmosis_config/output/{GLASS_MOCK_SUITE}/cosmosis_pipeline_glass_mocks_{GLASS_MOCK_VERSION}_glass_mock_{{mock_id}}.ini"
 )
 
+# Fiducial harmonic-binning tag the pseudo-Cl producer (twopoint.smk) stamps
+# into the filename. These are NOT inference_prep wildcards, so the consumer
+# reads them from config to reconstruct the exact name the producer emits.
 PSEUDO_CL_TAG = pseudo_cl_tag(config)
 
 
@@ -65,13 +68,10 @@ def pseudo_cl_assets(version):
 # is tracked separately.
 # ---------------------------------------------------------------------------
 # Generated per-version configs land in the (env-overridable) output root.
-INFERENCE_CONFIG_OUT = COSMO_INFERENCE_PROD / "cosmosis_config"
-# The ini TEMPLATES are source files: anchor them on the running checkout (repo
-# root = the workflow dir's parent, via WORKFLOW_SCRIPTS), NOT on the output root
-# — so a template edit in this checkout drives the DAG even when COSMO_INFERENCE
-# points elsewhere. In a normal (non-worktree) run the two roots coincide.
+INFERENCE_CONFIG_OUT = COSMO_INFERENCE_PROD / "cosmosis_config" / "output"
+# Templates belong to the launched checkout, not the product output root.
 INFERENCE_TEMPLATE_DIR = (
-    Path(os.path.dirname(WORKFLOW_SCRIPTS)).parent / "cosmo_inference" / "cosmosis_config"
+    REPO_ROOT / "cosmo_inference" / "cosmosis_config" / "templates"
 )
 
 
@@ -113,44 +113,9 @@ rule inference_prep:
     resources:
         mem_mb=8000,
         runtime=10,
-    run:
-        import os
-        import sys
-
-        from sp_validation import sacc_io
-        from sp_validation.sacc_io import sacc_to_twopoint_fits
-
-        os.makedirs(os.path.dirname(output.fits_file), exist_ok=True)
-
-        # (a) converter 2pt-FITS — pure ξ (A_ia scope; no rho/tau sidecars).
-        sacc_to_twopoint_fits(sacc_io.load(input.sacc), output.fits_file, n_bins=1)
-
-        # (b) + (c) the two generated pipeline inis, from the template inputs.
-        # WORKFLOW_SCRIPTS (common.py) is the absolute generic-workflow scripts dir.
-        sys.path.insert(0, WORKFLOW_SCRIPTS)
-        from generate_inference_config import (
-            _substitutions,
-            generate_inference_config,
-        )
-
-        generate_inference_config(
-            input.template_2pt,
-            output.config_file_2pt,
-            _substitutions(
-                scratch=params.scratch,
-                cosmosis_dir=params.cosmosis_dir,
-                fits_file=output.fits_file,
-            ),
-        )
-        generate_inference_config(
-            input.template_sacc,
-            output.config_file_sacc,
-            _substitutions(
-                scratch=params.scratch,
-                cosmosis_dir=params.cosmosis_dir,
-                sacc_file=input.sacc,
-            ),
-        )
+    # script jobs run in the workflow's container; run blocks execute on the host.
+    script:
+        "../scripts/generate_inference_config.py"
 
 
 rule inference_fiducial:
@@ -168,27 +133,27 @@ rule inference_glass_mocks:
 
 rule inference_prep_glass_mock:
     input:
-        xi=f"{GLASS_MOCK_DATA_DIR}/xi_glass_mock_{{mock_id}}_4096_nbins=20.fits",
+        xi=f"{GLASS_MOCK_DIR}/xi_glass_mock_{{mock_id}}_4096_nbins=20.fits",
         # Use centralized covariance_path() with fiducial mock version
-        cov_matrix=covariance_path(FIDUCIAL["mock_version"], "A"),
+        cov_matrix=covariance_path(FIDUCIAL["mock_version"]),
         # n(z) file
-        nz_file=build_redshift_path(FIDUCIAL["mock_version"], "A"),
+        nz_file=redshift_path(FIDUCIAL["mock_version"]),
         # Rho/tau stats: rho from real data, tau sampled
-        rho_stats=str(COSMO_VAL / f"rho_tau_stats/rho_stats_{FIDUCIAL['mock_version']}{fiducial_binning_suffix()}.fits"),
+        rho_stats=cv_rho_stats(FIDUCIAL["mock_version"]),
         tau_stats="results/glass_mock_rhotau_samples/{mock_id}/tau_stats_sampled.fits",
         # Tau covariance (real data)
-        tau_cov=str(COSMO_VAL / f"rho_tau_stats/cov_tau_{FIDUCIAL['mock_version']}{fiducial_binning_suffix()}_th.npy"),
+        tau_cov=cv_cov_tau(FIDUCIAL["mock_version"]),
         # C_ell data for dual config generation
-        cl_file=f"{GLASS_MOCK_DATA_DIR}/cl_glass_mock_{{mock_id}}_4096.npy",
+        cl_file=f"{GLASS_MOCK_DIR}/cl_glass_mock_{{mock_id}}_4096.npy",
         cl_cov=pseudo_cl_assets(FIDUCIAL["mock_version"])[1],
     output:
         fits_file=GLASS_MOCK_FITS_PATTERN,
         config_file=GLASS_MOCK_CONFIG_PATTERN,
     params:
         cosmosis_root=f"glass_mock_{GLASS_MOCK_VERSION}_{{mock_id}}",
-        data_dir=f"{GLASS_MOCK_CHAINS_DIR}/glass_mock_{GLASS_MOCK_VERSION}_{{mock_id}}",
+        data_dir=f"{GLASS_MOCK_CHAINS_DIR}/{GLASS_MOCK_SUITE}/glass_mock_{GLASS_MOCK_VERSION}_{{mock_id}}",
         output_root=str(COSMO_INFERENCE_PROD),
-        output_basename=f"glass_mocks/{GLASS_MOCK_VERSION}/glass_mock_{{mock_id}}",
+        output_basename=f"glass_mocks/{GLASS_MOCK_SUITE}/{GLASS_MOCK_VERSION}/glass_mock_{{mock_id}}",
     threads: 1
     resources:
         mem_mb=8000,

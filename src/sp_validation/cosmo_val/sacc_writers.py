@@ -7,9 +7,6 @@ statistic into a single-statistic SACC — a *part* — carrying that statistic'
 own covariance as its one block. :func:`assemble_analysis_sacc` rebuilds the
 single ``{version}.sacc`` analysis file from these parts.
 
-The integration-grid ξ± part is an intermediate consumed by COSEBIs and
-pure-E/B; it is blinded at birth but does not join ``{version}.sacc``.
-
 Everything here is single-bin today (``bins=(0, 0)``); the interface is
 tomography-native so a future round supplies real bin pairs unchanged.
 """
@@ -71,14 +68,16 @@ def xi_to_sacc(
     return s
 
 
-def pseudo_cl_to_sacc(nz, metadata, ell_eff, cl_all, wsp, covariance=None):
+def pseudo_cl_to_sacc(nz, metadata, ell_eff, cl_all, wsp, covariance=None, nside=None):
     """One pseudo-Cℓ part: EE/BB/EB with the shared bandpower window.
 
     ``cl_all`` is NaMaster's decoupled ``(4, nbp)`` array (EE, EB, BE, BB); the
-    window comes from :func:`bandpower_window_from_workspace`. ``covariance``,
-    when given, is the dense ``[EE; BB; EB]``-ordered block matching insertion.
+    window comes from :func:`bandpower_window_from_workspace`. Supply ``nside``
+    only for HEALPix-map spectra, whose measured spectrum includes ``pw²(ℓ)``;
+    catalogue-based spectra have no pixel window. ``covariance``, when given,
+    is the dense ``[EE; BB; EB]``-ordered block matching insertion.
     """
-    window_ells, window_weights = bandpower_window_from_workspace(wsp)
+    window_ells, window_weights = bandpower_window_from_workspace(wsp, nside)
     s = sio.new_sacc(nz, metadata)
     sio.add_pseudo_cl(
         s,

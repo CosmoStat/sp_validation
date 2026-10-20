@@ -41,7 +41,7 @@ obj._params
 
 # %%
 # Get data. Set load_into_memory to False for very large files
-dat, dat_ext = obj.read_cat(load_into_memory=False)
+dat = obj.read_cat(load_into_memory=False)
 
 # %%
 n_test = -1
@@ -49,14 +49,13 @@ n_test = -1
 if n_test > 0:
     print(f"MKDEBUG testing only first {n_test} objects")
     dat = dat[:n_test]
-    dat_ext = dat_ext[:n_test]
 
 
 # ## Masking
 
 # %%
 # ### Pre-processing ShapePipe flags
-masks, labels = sp_joint.get_masks_from_config(config, dat, dat_ext, verbose=True)
+masks, labels = sp_joint.get_masks_from_config(config, dat, verbose=True)
 
 mask_combined = sp_joint.Mask.from_list(
     masks,
@@ -179,15 +178,7 @@ else:
 add_cols = [
     "w_iv",
     "FLUX_RADIUS",
-    "FWHM_IMAGE",
-    "FWHM_WORLD",
     "MAGERR_AUTO",
-    "MAG_WIN",
-    "MAGERR_WIN",
-    "FLUX_AUTO",
-    "FLUXERR_AUTO",
-    "FLUX_APER",
-    "FLUXERR_APER",
     "NGMIX_T_NOSHEAR",
     "NGMIX_T_PSF_RECONV_NOSHEAR",
     "fwhm_PSF",
@@ -327,6 +318,6 @@ plt.show(block=False)
 plt.savefig("confusion_matrix.png")
 
 
-obj.close_hd5()
+obj.close_cat()
 
 # %%

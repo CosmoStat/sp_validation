@@ -12,16 +12,14 @@ post-cut point count. Equality is exact (Δχ²=0, Δtheory=0), so the tests ass
 Environment
 -----------
 Both engines are pure-python CosmoSIS module files (no CAMB, no compiled CSL
-modules), so they run in the shared venv with ``cosmosis`` installed. They need a
-checkout of the CosmoSIS Standard Library, located via the ``CSL_DIR`` env var;
-the module is skipped when cosmosis is absent (CI image) or ``CSL_DIR`` is unset
-or missing. Recipe::
+modules). The container supplies CosmoSIS and the UNIONS CSL checkout via
+``CSL_DIR``; outside it this module skips if either is absent. Recipe::
 
     git clone --depth 1 https://github.com/joezuntz/cosmosis-standard-library CSL
     CSL_DIR=/path/to/CSL  pytest ... test_sacc_like.py
 
-The pyproject ``cosmosis`` extra pins ``cosmosis>=3.25`` for the engine itself;
-the CI image does not install it, so this module is inert there.
+The pyproject ``cosmosis`` extra provides ``cosmosis>=3.25`` for a minimal
+likelihood environment; the container gets it through the ``workflow`` extra.
 """
 
 import importlib.util
@@ -47,6 +45,7 @@ if not _CSL_DIR or not Path(_CSL_DIR, "likelihood", "sacc").is_dir():
 from cosmosis.datablock import DataBlock, option_section  # noqa: E402
 
 from sp_validation import sacc_io  # noqa: E402
+from sp_validation.blinding import NONE  # noqa: E402
 
 # Reuse the angular-bin count from the converter tests so the two suites' single-
 # bin shapes stay in lockstep. (The χ²-dynamics builders here need a covariance
@@ -219,7 +218,7 @@ def _write_pair(tmp_path, seed=0, name="probe", *, xip=None):
     """
     s, _theta = _realistic_sacc(seed, xip=xip)
     sacc_path = str(tmp_path / f"{name}.sacc")
-    sacc_io.save(s, sacc_path, type="mock")
+    sacc_io.save(s, sacc_path, blind=NONE)
     fits_path = str(tmp_path / f"{name}_2pt.fits")
     sacc_io.sacc_to_twopoint_fits(sacc_io.load(sacc_path), fits_path, n_bins=1)
     return sacc_path, fits_path
@@ -367,7 +366,7 @@ def test_ordering_guard_raises_pair_major_tomographic(tmp_path, m_shim):
         sacc_io.add_xi(s, pair, theta, xip, xim, grid="reporting")
     s.add_covariance(np.eye(len(s.mean)))
     sacc_path = str(tmp_path / "pair_major.sacc")
-    sacc_io.save(s, sacc_path, type="mock")
+    sacc_io.save(s, sacc_path, blind=NONE)
 
     with pytest.raises(ValueError, match="ordering"):
         m_shim.setup(_as_option_block(_shim_opts(sacc_path)))
@@ -410,7 +409,7 @@ def test_theta_conversion_scoped_to_real_types(tmp_path, m_shim):
     s.add_covariance(np.eye(len(s.mean)))
 
     sacc_path = str(tmp_path / "with_cosebis.sacc")
-    sacc_io.save(s, sacc_path, type="mock")
+    sacc_io.save(s, sacc_path, blind=NONE)
 
     # data_sets keeps the cosebis in (so we can check its tags survive); cosebi's
     # section/category resolve from sacc_like's default_sections, so build_data
@@ -470,7 +469,7 @@ def test_save_theory_writes_arcmin_and_reexecute_stable(tmp_path, m_shim):
     """
     s, theta = _realistic_sacc(seed=5)
     sacc_path = str(tmp_path / "in.sacc")
-    sacc_io.save(s, sacc_path, type="mock")
+    sacc_io.save(s, sacc_path, blind=NONE)
     input_theta = np.array(
         [p.tags["theta"] for p in sacc_io.load(sacc_path).data if "theta" in p.tags]
     )
@@ -551,7 +550,7 @@ def test_realdata_shim_equals_2pt_like(tmp_path, m_shim, m_2pt):
     s.add_covariance(xi_cov)
 
     sacc_path = str(tmp_path / "real_xi.sacc")
-    sacc_io.save(s, sacc_path, type="mock")
+    sacc_io.save(s, sacc_path, blind=NONE)
     fits_path = str(tmp_path / "real_xi_2pt.fits")
     sacc_io.sacc_to_twopoint_fits(sacc_io.load(sacc_path), fits_path, n_bins=1)
 

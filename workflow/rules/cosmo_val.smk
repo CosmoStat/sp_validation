@@ -6,22 +6,21 @@
 # each diagnostic is a rule, and the rules are linked by the SACC parts and
 # products they write under COSMO_VAL (= cosmo_val/output):
 #
-#   catalogue ──→ xi (one job per grid: reporting, integration, cosebis)
-#                   │
-#                   ├─ reporting part ──┬─→ pure_eb (part, npz, figures)
-#                   ├─ integration part ┘        │
-#                   ├─ cosebis part ─────→ cosebis (part, npz, figures)
-#                   └─ reporting .txt ──→ 2pcf plot, ratio_xi_sys_xi
+#   catalogue ──→ xi (one job per grid: reporting, integration)
+#                   ├─ integration part ─┬──→ pure_eb (part, npz, figures)
+#                   │                    └──→ cosebis (part, npz, figures)
+#                   └─ reporting part ──→ 2pcf plot, ratio_xi_sys_xi
+#   CosmoCov ξ±, integration grid ──→ pure_eb, cosebis (their covariances)
 #   catalogue ──→ pseudo_cl (part) ──┬─→ pseudo-Cl figures
-#   CosmoCov ──→ covariance ─────────┤
+#   CosmoCov ξ±, reporting grid ─────┤
 #   rho/tau (part + FITS) ───────────┼─→ summarize_bmodes (reads the products)
 #                                    └─→ assemble_sacc ──→ {version}.sacc
 #
-# The B-mode rules are ingests: pure_eb, cosebis, the pseudo-Cl figures and the
-# summary all work from the parts and the covariance inputs, never from a
-# catalogue, so a blinded part keeps everything downstream blinded. The
-# analytic covariances (CosmoCov ξ±, NaMaster pseudo-Cℓ) are what assembly puts
-# in the terminal file, replacing the estimates a part was born with.
+# The B-mode rules and the ξ± figures are ingests: they work from the parts and
+# the covariance inputs, never from a catalogue, so a blinded part keeps
+# everything downstream blinded. The analytic covariances (CosmoCov ξ±,
+# NaMaster pseudo-Cℓ) are what assembly puts in the terminal file, replacing
+# the estimates a part was born with.
 #
 # Methods that only emit figures, or whose figure paths derive from internal
 # handler state (rho/tau plots, rho_tau_fits, objectwise leakage, 2pcf
@@ -50,37 +49,16 @@ CV_BINNING = (
 )
 
 
-def cv_xi_txt(version):
-    """Path to the 2pcf data vector calculate_2pcf writes for a version.
-
-    Mirrors the out_fname f-string in cosmo_val.calculate_2pcf:
-    {ver}_xi_minsep=..._maxsep=..._nbins=..._npatch=...txt
-    """
-    return str(COSMO_VAL / f"{version}_xi_{xi_binning('reporting')}.txt")
-
-
-def cv_rho_stats(version):
-    return str(
-        COSMO_VAL / "rho_tau_stats" / f"rho_stats_{cv_basename(version, CV_FIDUCIAL)}.fits"
-    )
-
-
-def cv_tau_stats(version):
-    return str(
-        COSMO_VAL / "rho_tau_stats" / f"tau_stats_{cv_basename(version, CV_FIDUCIAL)}.fits"
-    )
-
-
 def _pure_eb_stub(version):
     """Shared stem of the pure-E/B diagnostic products (npz + figures)."""
-    eb = CV["integration"]
+    eb = XI_GRIDS["integration"]
     return str(
         COSMO_VAL
         / (
             f"{version}_eb_minsep={CV['theta_min']}_maxsep={CV['theta_max']}"
             f"_nbins={CV['nbins']}_minsepint={eb['min_sep']}"
             f"_maxsepint={eb['max_sep']}_nbinsint={eb['nbins']}"
-            f"_npatch={CV['npatch']}_varmethod=semi-analytic"
+            f"_npatch={CV['npatch']}_varmethod=analytic"
         )
     )
 
@@ -101,39 +79,43 @@ def cv_pure_eb_figures(version):
     }
 
 
+def _grid_cov(version, grid, gaussian):
+    """CosmoCov-processed ξ± covariance on a named grid's own binning."""
+    binning = XI_GRIDS[grid]
+    return covariance_path(
+        version,
+        gaussian=gaussian,
+        min_sep=binning["min_sep"],
+        max_sep=binning["max_sep"],
+        nbins=binning["nbins"],
+        mask_suffix=DEFAULT_MASK_SUFFIX,
+    )
+
+
 def cv_xi_cov_integration(version):
     """CosmoCov gaussian ξ± covariance on the integration grid.
 
-    The covariance model the pure-E/B Monte Carlo draws from; gaussian because
-    the draws only need the scatter a Gaussian field would give.
+    The one analytic covariance both B-mode statistics take: the pure-E/B Monte
+    Carlo draws from it and COSEBIs carry it through their kernel. Gaussian
+    because B-modes only need the scatter a Gaussian field would give.
     """
-    integ = CV["integration"]
-    return covariance_path(
-        version,
-        FIDUCIAL["blind"],
-        gaussian="g",
-        min_sep=integ["min_sep"],
-        max_sep=integ["max_sep"],
-        nbins=integ["nbins"],
-        mask_suffix=DEFAULT_MASK_SUFFIX,
-    )
+    return _grid_cov(version, "integration", "g")
 
 
 def _cosebis_stub(version):
     """Shared stem of the COSEBIs diagnostic products (npz + figures).
 
-    varmethod names where the covariance came from, and these products are the
-    propagated one — which also keeps them clear of the paths plot_cosebis
-    builds for its own byproducts, so nothing overwrites a declared output.
+    Named by the grid, where the covariance came from (varmethod), the mode
+    count and the fiducial scale cut.
     """
-    cb = CV["cosebis"]
+    integ = XI_GRIDS["integration"]
     fsc = CV["fiducial_scale_cut"]
     return str(
         COSMO_VAL
         / (
-            f"{version}_cosebis_minsep={cb['min_sep_int']}"
-            f"_maxsep={cb['max_sep_int']}_nbins={cb['nbins_int']}"
-            f"_npatch={cb['npatch']}_varmethod=propagated_nmodes={cb['nmodes']}"
+            f"{version}_cosebis_minsep={integ['min_sep']}"
+            f"_maxsep={integ['max_sep']}_nbins={integ['nbins']}"
+            f"_varmethod=analytic_nmodes={CV['cosebis']['nmodes']}"
             f"_scalecut={fsc[0]}-{fsc[1]}"
         )
     )
@@ -158,8 +140,8 @@ _PSEUDO_CL_TAG = pseudo_cl_tag(config)
 
 
 def cv_pseudo_cl_analysis_sacc(version):
-    """Analysis pseudo-Cl SACC part: the harmonic block of the analysis file."""
-    return str(COSMO_VAL / f"{pseudo_cl_analysis_stem(config, version)}.sacc")
+    """Tagged pseudo-Cl SACC part: the harmonic block of the analysis file."""
+    return str(COSMO_VAL / f"pseudo_cl_{version}_{_PSEUDO_CL_TAG}.sacc")
 
 
 def cv_pseudo_cl_cov(version):
@@ -168,16 +150,8 @@ def cv_pseudo_cl_cov(version):
 
 
 def cv_xi_cov(version):
-    """CosmoCov-processed ξ± covariance, on the reporting grid's own binning."""
-    return covariance_path(
-        version,
-        FIDUCIAL["blind"],
-        gaussian="ng",
-        min_sep=CV["theta_min"],
-        max_sep=CV["theta_max"],
-        nbins=CV["nbins"],
-        mask_suffix=DEFAULT_MASK_SUFFIX,
-    )
+    """CosmoCov ξ± covariance on the reporting grid, the terminal file's."""
+    return _grid_cov(version, "reporting", "ng")
 
 
 def cv_cosebis_sacc(version):
@@ -207,34 +181,28 @@ def cv_analysis_sacc(version):
     return str(COSMO_VAL / f"{version}.sacc")
 
 
-# Common params block shared by every cosmo_val rule: the cv constructor kwargs
-# plus the run directory the object must be instantiated in.
-def cv_params(version_list=None):
-    return dict(
-        cv_init=cv_init_params(config, version_list=version_list),
-        rundir=CV_RUNDIR,
-    )
+# The CosmologyValidation constructor kwargs every cv_runner rule passes.
+CV_INIT = cv_init_params(config)
 
 
 # ---------------------------------------------------------------------------
 # PSF diagnostics: rho/tau statistics and the PSF-error fit
 # ---------------------------------------------------------------------------
-# The rho/tau FITS and the xi data vector are produced by the generic compute
-# rules `rho_tau_stats` and `xi` already defined in workflow/rules/twopoint.smk
-# (same filename convention, same CosmologyValidation methods). The cosmo_val
-# suite consumes those outputs rather than re-declaring colliding rules. The
-# helper paths cv_rho_stats / cv_tau_stats / cv_xi_txt resolve to exactly the
-# files those rules write, so requesting them triggers the existing compute.
+# The rho/tau FITS and the ξ± parts are produced by the generic compute rules
+# `rho_tau_stats` and `xi` in workflow/rules/twopoint.smk. The cosmo_val suite
+# consumes those outputs rather than re-declaring colliding rules: the helper
+# paths cv_rho_stats / cv_tau_stats / cv_xi_sacc resolve to exactly the files
+# those rules write, so requesting them triggers the existing compute.
 
 
 rule cv_plot_rho_stats:
     """Overlay rho statistics across all versions."""
     input:
-        rho=[cv_rho_stats(v) for v in CV_VERSIONS],
+        rho=[cv_rho_stats(v, CV_FIDUCIAL) for v in CV_VERSIONS],
     output:
         sentinel=str(CV_SENTINELS / "plot_rho_stats.done"),
     params:
-        **cv_params(),
+        cv_init=CV_INIT,
     resources:
         runtime=20,
     script:
@@ -244,11 +212,11 @@ rule cv_plot_rho_stats:
 rule cv_plot_tau_stats:
     """Overlay tau statistics across all versions."""
     input:
-        tau=[cv_tau_stats(v) for v in CV_VERSIONS],
+        tau=[cv_tau_stats(v, CV_FIDUCIAL) for v in CV_VERSIONS],
     output:
         sentinel=str(CV_SENTINELS / "plot_tau_stats.done"),
     params:
-        **cv_params(),
+        cv_init=CV_INIT,
     resources:
         runtime=20,
     script:
@@ -258,12 +226,12 @@ rule cv_plot_tau_stats:
 rule cv_rho_tau_fits:
     """Fit the PSF-error model (alpha/beta/eta) and propagate to xi_psf_sys."""
     input:
-        rho=[cv_rho_stats(v) for v in CV_VERSIONS],
-        tau=[cv_tau_stats(v) for v in CV_VERSIONS],
+        rho=[cv_rho_stats(v, CV_FIDUCIAL) for v in CV_VERSIONS],
+        tau=[cv_tau_stats(v, CV_FIDUCIAL) for v in CV_VERSIONS],
     output:
         sentinel=str(CV_SENTINELS / "rho_tau_fits.done"),
     params:
-        **cv_params(),
+        cv_init=CV_INIT,
     resources:
         mem_mb=16000,
         runtime=120,
@@ -280,7 +248,7 @@ rule cv_footprints:
     output:
         sentinel=str(CV_SENTINELS / "footprints.done"),
     params:
-        **cv_params(),
+        cv_init=CV_INIT,
     resources:
         mem_mb=16000,
         runtime=60,
@@ -290,10 +258,13 @@ rule cv_footprints:
 
 rule cv_objectwise_leakage:
     """Object-wise PSF-leakage regression vs scale-dependent alpha (all versions)."""
+    input:
+        rho=[cv_rho_stats(v, CV_FIDUCIAL) for v in CV_VERSIONS],
+        tau=[cv_tau_stats(v, CV_FIDUCIAL) for v in CV_VERSIONS],
     output:
         sentinel=str(CV_SENTINELS / "objectwise_leakage.done"),
     params:
-        **cv_params(),
+        cv_init=CV_INIT,
     threads: 12
     resources:
         mem_mb=30000,
@@ -307,7 +278,7 @@ rule cv_weights:
     output:
         weight_hist=str(COSMO_VAL / "weight_hist.png"),
     params:
-        **cv_params(),
+        cv_init=CV_INIT,
     resources:
         mem_mb=16000,
         runtime=30,
@@ -329,7 +300,7 @@ rule cv_additive_bias:
     output:
         additive_bias=str(COSMO_VAL / "additive_bias.json"),
     params:
-        **cv_params(),
+        cv_init=CV_INIT,
     resources:
         mem_mb=16000,
         runtime=30,
@@ -338,13 +309,13 @@ rule cv_additive_bias:
 
 
 rule cv_plot_2pcf:
-    """n_pairs / xi± overlay across versions."""
+    """n_pairs / xi± overlay across versions, from the reporting parts."""
     input:
-        xi=[cv_xi_txt(v) for v in CV_VERSIONS],
+        xi=[cv_xi_sacc(v, "reporting") for v in CV_VERSIONS],
     output:
         sentinel=str(CV_SENTINELS / "plot_2pcf.done"),
     params:
-        **cv_params(),
+        cv_init=CV_INIT,
     resources:
         runtime=20,
     script:
@@ -354,14 +325,14 @@ rule cv_plot_2pcf:
 rule cv_ratio_xi_sys_xi:
     """Ratio of PSF systematics (xi_psf_sys) to the cosmic-shear signal (xi+)."""
     input:
-        xi=[cv_xi_txt(v) for v in CV_VERSIONS],
-        rho=[cv_rho_stats(v) for v in CV_VERSIONS],
-        tau=[cv_tau_stats(v) for v in CV_VERSIONS],
+        xi=[cv_xi_sacc(v, "reporting") for v in CV_VERSIONS],
+        rho=[cv_rho_stats(v, CV_FIDUCIAL) for v in CV_VERSIONS],
+        tau=[cv_tau_stats(v, CV_FIDUCIAL) for v in CV_VERSIONS],
     output:
         ratio=str(COSMO_VAL / "ratio_xi_sys_xi.png"),
     params:
         offset=0.1,
-        **cv_params(),
+        cv_init=CV_INIT,
     resources:
         mem_mb=16000,
         runtime=120,
@@ -384,9 +355,7 @@ def cv_pseudo_cl_figures():
 rule cv_plot_pseudo_cl:
     """The EE/EB/BB pseudo-Cl figures, from the analysis parts."""
     input:
-        pseudo_cl=[
-            blindable_part(cv_pseudo_cl_analysis_sacc(v)) for v in CV_VERSIONS
-        ],
+        pseudo_cl=[cv_pseudo_cl_analysis_sacc(v) for v in CV_VERSIONS],
         pseudo_cl_cov=[cv_pseudo_cl_cov(v) for v in CV_VERSIONS],
     output:
         **cv_pseudo_cl_figures(),
@@ -395,7 +364,6 @@ rule cv_plot_pseudo_cl:
         # Style is per catalogue, so the derived variants take their parent's.
         markers=[CATALOG_CONFIG[base_version(v)]["marker"] for v in CV_VERSIONS],
         colours=[CATALOG_CONFIG[base_version(v)]["colour"] for v in CV_VERSIONS],
-        rundir=CV_RUNDIR,
     resources:
         mem_mb=8000,
         runtime=20,
@@ -407,76 +375,54 @@ rule cv_plot_pseudo_cl:
 # Pure E/B modes and COSEBIs (per version), then the B-mode summary
 # ---------------------------------------------------------------------------
 
-# On a data run these re-derive their E-mode vector from the *blinded* ξ± parts,
-# so they are born blinded; the commitment binds only there.
-def cv_cosebis_inputs(w):
-    return {
-        "xi": blindable_part(cv_xi_sacc(w.version, "cosebis")),
-        **commitment_input(w.version),
-    }
-
-
-def cv_pure_eb_inputs(w):
-    return {
-        "xi_reporting": blindable_part(cv_xi_sacc(w.version, "reporting")),
-        "xi_integration": blindable_part(cv_xi_sacc(w.version, "integration")),
-        "cov_integration": cv_xi_cov_integration(w.version),
-        **commitment_input(w.version),
-    }
-
-
 rule cv_pure_eb:
-    """Pure E/B-mode decomposition for one version, from its ξ± parts.
+    """Pure E/B-mode decomposition for one version, from its integration-grid part.
 
-    The modes come from the two parts; the covariance is Monte Carlo from the
-    integration-grid covariance model, so no patched estimator run is involved.
+    The modes are a fixed linear operator on the part's ξ±; the covariance is
+    the integration-grid ξ± covariance pushed exactly through it.
     """
     input:
-        unpack(cv_pure_eb_inputs),
+        xi_integration=lambda w: cv_xi_sacc(w.version, "integration"),
+        cov_integration=lambda w: cv_xi_cov_integration(w.version),
     output:
         npz=cv_pure_eb_npz("{version}"),
         sacc=cv_pure_eb_sacc("{version}"),
         **cv_pure_eb_figures("{version}"),
     params:
         version="{version}",
-        type=CV.get("type", "data"),
         min_sep=CV["theta_min"],
         max_sep=CV["theta_max"],
         nbins=CV["nbins"],
-        n_samples=CV.get("n_mc_samples", 1000),
-        cosmo_params=CV["cosmo_params"],
+        integration=XI_GRIDS["integration"],
         fiducial_scale_cut=CV["fiducial_scale_cut"],
-        rundir=CV_RUNDIR,
-    threads: 24
     resources:
-        mem_mb=40000,
-        runtime=360,
+        mem_mb=8000,
+        runtime=20,
     script:
         "../scripts/cv_pure_eb.py"
 
 
 rule cv_cosebis:
-    """COSEBIs E/B decomposition for one version, from its ξ± part.
+    """COSEBIs E/B decomposition for one version, from its integration-grid part.
 
-    Values, covariance and PTEs all come from the part: the COSEBIs covariance
-    is the part's ξ± covariance through the same kernel as the modes.
+    The modes come from the part; the covariance is the CosmoCov ξ± covariance
+    on the same grid through the same kernel as the modes.
     """
     input:
-        unpack(cv_cosebis_inputs),
+        xi=lambda w: cv_xi_sacc(w.version, "integration"),
+        cov=lambda w: cv_xi_cov_integration(w.version),
     output:
         npz=cv_cosebis_npz("{version}"),
         sacc=cv_cosebis_sacc("{version}"),
         **cv_cosebis_figures("{version}"),
     params:
         version="{version}",
-        type=CV.get("type", "data"),
-        min_sep=CV["cosebis"]["min_sep_int"],
-        max_sep=CV["cosebis"]["max_sep_int"],
-        nbins=CV["cosebis"]["nbins_int"],
+        min_sep=XI_GRIDS["integration"]["min_sep"],
+        max_sep=XI_GRIDS["integration"]["max_sep"],
+        nbins=XI_GRIDS["integration"]["nbins"],
         nmodes=CV["cosebis"]["nmodes"],
         scale_cuts=CV["cosebis"]["scale_cuts"],
         fiducial_scale_cut=CV["fiducial_scale_cut"],
-        rundir=CV_RUNDIR,
     threads: 24
     resources:
         mem_mb=48000,
@@ -491,7 +437,7 @@ rule cv_summarize_bmodes:
         pure_eb=[cv_pure_eb_npz(v) for v in CV_VERSIONS],
         cosebis=[cv_cosebis_npz(v) for v in CV_VERSIONS],
         pseudo_cl=(
-            [blindable_part(cv_pseudo_cl_analysis_sacc(v)) for v in CV_VERSIONS]
+            [cv_pseudo_cl_analysis_sacc(v) for v in CV_VERSIONS]
             if CV.get("include_pseudo_cl", False) else []
         ),
         pseudo_cl_cov=(
@@ -503,11 +449,7 @@ rule cv_summarize_bmodes:
     params:
         versions=CV_VERSIONS,
         fiducial_scale_cut=CV["fiducial_scale_cut"],
-        min_sep=CV["theta_min"],
-        max_sep=CV["theta_max"],
-        nbins=CV["nbins"],
         include_pseudo_cl=CV.get("include_pseudo_cl", False),
-        rundir=CV_RUNDIR,
     resources:
         mem_mb=8000,
         runtime=20,
@@ -529,18 +471,15 @@ def cv_assemble_inputs(version):
 
     Each part's filename carries enough to bind its producing rule's wildcards.
     """
-    # blindable_part binds the raw-signal parts to their blinded siblings on a
-    # data run. COSEBIs, pure-E/B and ρ/τ are stamped concealed by their own
-    # writers, so they bind by name either way.
     parts = dict(
-        xi_reporting=blindable_part(cv_xi_sacc(version, "reporting")),
+        xi_reporting=cv_xi_sacc(version, "reporting"),
         xi_cov=cv_xi_cov(version),
         cosebis=cv_cosebis_sacc(version),
         pure_eb=cv_pure_eb_sacc(version),
         rho_tau=cv_rho_tau_sacc(version),
     )
     if CV.get("include_pseudo_cl", False):
-        parts["pseudo_cl"] = blindable_part(cv_pseudo_cl_analysis_sacc(version))
+        parts["pseudo_cl"] = cv_pseudo_cl_analysis_sacc(version)
         parts["pseudo_cl_cov"] = cv_pseudo_cl_cov(version)
     return parts
 
@@ -553,7 +492,7 @@ rule assemble_sacc:
         sacc=cv_analysis_sacc("{version}"),
     params:
         version="{version}",
-        type=CV.get("type", "data"),
+        blind=lambda w: blind_of(w.version),
         # The statistics this rule wired, so a typo'd input keyword cannot
         # silently drop one.
         expected=lambda w: [

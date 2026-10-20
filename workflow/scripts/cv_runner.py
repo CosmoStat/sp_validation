@@ -7,7 +7,7 @@ owns, and (3) verifies the declared outputs landed. This module carries the
 common machinery so each rule script stays a few readable lines.
 
 The in-memory ``cv`` object is re-instantiated per rule. The DAG links rules
-through the *real* data products each method writes (rho/tau FITS, xi text,
+through the *real* data products each method writes (rho/tau FITS, ξ± parts,
 pseudo-Cl FITS, E/B npz, leakage pkl); the lazy ``cv`` properties that aren't
 persisted (``c1``/``c2``, ``xi_psf_sys``, ``rho_tau_fits``) are recomputed in
 whichever rule needs them, which is cheap next to the science compute they
@@ -28,16 +28,20 @@ def _unbuffer_streams():
 def make_cv(snakemake):
     """Build a CosmologyValidation from a rule's ``snakemake.params``.
 
-    ``params["cv_init"]`` is the kwargs dict assembled by common.cv_init_params.
-    The object is created with the run directory as cwd so it finds
-    ``cat_config.yaml`` and writes under ``output/`` exactly as interactive runs
-    do.
+    ``params["cv_init"]`` is the kwargs dict assembled by common.cv_init_params,
+    which names the catalogue config and the output directory explicitly.
     """
     from sp_validation.cosmo_val import CosmologyValidation
 
-    rundir = snakemake.params["rundir"]
-    os.chdir(rundir)
     return CosmologyValidation(**dict(snakemake.params["cv_init"]))
+
+
+def take_reporting_parts(cv, paths):
+    """Hand ``cv`` the reporting ξ± parts at ``paths``, one per version, in order."""
+    from sp_validation import sacc_io
+
+    for version, path in zip(cv.versions, paths, strict=True):
+        cv.xi_parts[version, "reporting"] = sacc_io.load(path)
 
 
 def verify_outputs(snakemake):

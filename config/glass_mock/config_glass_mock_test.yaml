@@ -1,0 +1,42 @@
+# Config file to generate a GLASS mock.
+# Example config file, uncomment and modify the inplace value if needed.
+
+# To run this configuration run the script `make_glass_sim.py`
+# Options:
+# -s, --seed: Random seed
+# -N, --number: Mock Number for labelling
+# -t, --test: Run in test mode
+# -cb, --camb: get Camb C_ell
+# -v, --validation: Run some validation checks
+# -c, --config: Path to the configuration file to generate the simulation (Required)
+
+# --- Cosmological parameters (CAMB) ---
+#h: 0.7
+#Om: 0.30966
+#Ob: 0.04897
+#ns: 0.9665
+#sigma8: 0.8102
+#mnu: 0.06
+#log_T_AGN: 7.8
+#As_init: 2.1e-9 #seed As before sigma8 rescaling
+#kmax: 20.0
+
+# --- Resolution ---
+nside: 32
+dx: 200.0
+zmax: 3
+
+# --- galaxy population (downstream of map generation) ---
+nbins: 6
+n_arcmin2: [4.0, 3.8, 4.2, 3.95, 4.05, 4.0] # number density in arcmin^-2. Input can be a float or a list (a number density for each bin)
+sigma_e: 0.2684 # intrinsic ellipticity dispersion. Input can be a float or a list (a shape noise for each bin)
+bias: 1.2 # galaxy bias. Input can be a float or a list (a galaxy bias for each bin)
+phz_sigma_0: 0.03
+#ia_bias: null # Intrinsic alignment amplitude. Warning: this feature has not been robustly tested.
+
+# --- Runtime options ---
+limber: True
+mask_path: /n09data/guerrini/glass_mock_v1.4.6_rerun/mask_nside4096.fits
+nz_path: /home/guerrini/sp_validation_cosmostat/config/glass_mock/test_data/redshift_distribution_tomo.txt
+output_path: /n09data/guerrini/glass_mock_test/
+output_prefix: unions

@@ -16,7 +16,7 @@ import pytest
 
 _REPO = Path(__file__).resolve().parents[3]
 _SCRIPT = _REPO / "workflow" / "scripts" / "generate_inference_config.py"
-_CONFIG_DIR = _REPO / "cosmo_inference" / "cosmosis_config"
+_CONFIG_DIR = _REPO / "cosmo_inference" / "cosmosis_config" / "templates"
 _SACC_TEMPLATE = _CONFIG_DIR / "cosmosis_pipeline_A_ia_sacc.ini"
 _FITS_TEMPLATE = _CONFIG_DIR / "cosmosis_pipeline_A_ia.ini"
 
@@ -128,6 +128,50 @@ def test_all_placeholders_resolve(tmp_path):
             for key in parser[section]:
                 value = parser[section][key]  # raises if a placeholder is unresolved
                 assert "%(" not in value, f"[{section}] {key} = {value}"
+
+
+def test_inference_prep_script_writes_all_three_products(tmp_path):
+    """The container script consumes a sealed SACC and both tracked templates."""
+    from types import SimpleNamespace
+
+    import numpy as np
+    from astropy.io import fits
+
+    from sp_validation import sacc_io
+    from sp_validation.blinding import NONE
+
+    z = np.linspace(0.01, 2, 100)
+    s = sacc_io.new_sacc({0: (z, np.exp(-z))})
+    theta = np.geomspace(1, 100, 5)
+    sacc_io.add_xi(s, (0, 0), theta, theta * 1e-5, theta * 2e-6, grid="reporting")
+    s.add_covariance(np.eye(10))
+    source = str(tmp_path / "analysis.sacc")
+    sacc_io.save(s, source, blind=NONE)
+    output = SimpleNamespace(
+        fits_file=str(tmp_path / "data" / "analysis.fits"),
+        config_file_2pt=str(tmp_path / "configs" / "2pt.ini"),
+        config_file_sacc=str(tmp_path / "configs" / "sacc.ini"),
+    )
+    gen._from_snakemake(
+        SimpleNamespace(
+            input=SimpleNamespace(
+                sacc=source,
+                template_2pt=_FITS_TEMPLATE,
+                template_sacc=_SACC_TEMPLATE,
+            ),
+            output=output,
+            params={"scratch": "/chains/test", "cosmosis_dir": "/csl"},
+        )
+    )
+    with fits.open(output.fits_file) as hdul:
+        np.testing.assert_array_equal(hdul["XI_PLUS"].data["VALUE"], theta * 1e-5)
+    assert (
+        _read_interpolated(output.config_file_2pt)["2pt_like"]["data_file"]
+        == output.fits_file
+    )
+    assert (
+        _read_interpolated(output.config_file_sacc)["sacc_like"]["data_file"] == source
+    )
 
 
 def test_no_default_section_raises(tmp_path):

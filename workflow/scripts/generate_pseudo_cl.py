@@ -24,7 +24,6 @@ import argparse
 import json
 import os
 
-from sp_validation import sacc_io
 from sp_validation.cosmo_val import CosmologyValidation
 
 
@@ -34,7 +33,6 @@ def generate_pseudo_cl(
     cat_config: str,
     nside: int = 1024,
     npatch: int = 1,
-    blind: str = None,
     cosmo_params: dict = None,
     binning: str = "linear",
     nbins: int = None,
@@ -48,15 +46,13 @@ def generate_pseudo_cl(
         Catalog version (e.g., "SP_v1.4.6_leak_corr")
     out_path : str
         Exact destination the SACC part is born at — its final (possibly tagged)
-        name. Skip-if-exists keys on it, so no two rules share a basename.
+        name.
     cat_config : str
         Path to catalog configuration YAML
     nside : int
         HEALPix nside for map-based estimation
     npatch : int
         Number of jackknife patches
-    blind : str, optional
-        Blind identifier (A, B, or C) to override n(z) path
     cosmo_params : dict, optional
         Cosmological parameters. Keys: Omega_m, sigma_8, n_s, h, Omega_b.
         If None, uses Planck 2018 defaults.
@@ -75,7 +71,6 @@ def generate_pseudo_cl(
     output_dir = os.path.dirname(out_path)
     os.makedirs(output_dir, exist_ok=True)
 
-    blind_str = f" blind={blind}" if blind else ""
     if binning == "linear":
         # For linear binning, nbins determines ell_step such that we cover 2-2048
         ell_step = max(1, (2048 - 2) // nbins)
@@ -86,7 +81,7 @@ def generate_pseudo_cl(
         bin_str = f"nbins={nbins}, power={power}"
 
     print(f"\n{'=' * 60}")
-    print(f"Generating pseudo-Cl for {version}{blind_str}")
+    print(f"Generating pseudo-Cl for {version}")
     print(f"Binning: {binning} ({bin_str})")
     if cosmo_params:
         print(
@@ -115,7 +110,6 @@ def generate_pseudo_cl(
         nside=nside,
         cell_method="catalog",
         nrandom_cell=100,
-        blind=blind,
         cosmo_params=cosmo_params,
         npatch=npatch,
         theta_min=1.0,
@@ -131,14 +125,11 @@ def generate_pseudo_cl(
     cv = CosmologyValidation(**cv_kwargs)
 
     # Pseudo-Cls only (no covariance), born directly at the final out_path.
-    cv.calculate_pseudo_cl(out_path=out_path)
+    cv.calculate_pseudo_cl(compute_tomography=False, out_path=out_path)
 
-    if os.path.exists(out_path):
-        # Readback of the part just written — a legitimate pre-blind consumer.
-        s = sacc_io.load(out_path, allow_unblinded=True)
-        ell = sacc_io.get_pseudo_cl(s, (0, 0))[0]
-        print(f"Generated pseudo-Cl with {len(ell)} ell bins")
-        print(f"ell range: [{ell.min():.1f}, {ell.max():.1f}]")
+    ell = cv.pseudo_cls[version]["tomo_bin_all_tomo_bin_all"]["pseudo_cl"]["ELL"]
+    print(f"Generated pseudo-Cl with {len(ell)} ell bins")
+    print(f"ell range: [{ell.min():.1f}, {ell.max():.1f}]")
     return out_path
 
 
@@ -150,7 +141,6 @@ def _from_snakemake(smk):
         cat_config=p["cat_config"],
         nside=int(p["nside"]),
         npatch=int(p["npatch"]),
-        blind=p.get("blind", None),
         cosmo_params=p.get("cosmo_params", None),
         binning=p["binning"],
         nbins=int(p["nbins"]),
@@ -194,9 +184,6 @@ def _from_cli(argv=None):
         help="Power for powspace binning (0.5 = sqrt spacing)",
     )
     ap.add_argument(
-        "--blind", choices=["A", "B", "C"], default=None, help="Blind identifier"
-    )
-    ap.add_argument(
         "--cosmo-json",
         default=None,
         help="Path to a Planck18-style cosmology JSON; omit for Planck18 defaults",
@@ -217,7 +204,6 @@ def _from_cli(argv=None):
         cat_config=a.cat_config,
         nside=a.nside,
         npatch=a.npatch,
-        blind=a.blind,
         cosmo_params=cosmo_params,
         binning=a.binning,
         nbins=a.nbins,

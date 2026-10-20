@@ -1,0 +1,41 @@
+# Config file to generate a GLASS mock.
+# Example config file, uncomment and modify the inplace value if needed.
+
+# To run this configuration run the script `make_glass_sim.py`
+# Options:
+# -s, --seed: Random seed
+# -N, --number: Mock Number for labelling
+# -t, --test: Run in test mode
+# -cb, --camb: get Camb C_ell
+# -c, --config: Path to the configuration file to generate the simulation (Required)
+
+# --- Cosmological parameters (CAMB) ---
+#h: 0.6766
+#Om: 0.30966
+#Ob: 0.04897
+#ns: 0.9665
+#sigma8: 0.8102
+#mnu: 0.06
+#log_T_AGN: 7.8
+#As_init: 2.1e-9 #seed As before sigma8 rescaling
+#kmax: 20.0
+
+# --- Resolution ---
+nside: 1024
+dx: 120.0
+zmax: 3.0
+
+# --- galaxy population (downstream of map generation) ---
+nbins: 6
+n_arcmin2: [1, 1.02, 1.05, 0.85, 0.9, 1.2]
+sigma_e: 0.2684
+bias: 1.2
+phz_sigma_0: 0.03
+#ia_bias: null
+
+# --- Runtime options ---
+limber: True
+mask_path: /n09data/guerrini/glass_mock_v1.4.6_rerun/mask_nside4096.fits
+nz_path: /home/guerrini/sp_validation_cosmostat/config/glass_mock/test_data/redshift_distribution_tomo.txt
+output_path: /n09data/guerrini/glass_mock_test/
+output_prefix: tomo_test_2

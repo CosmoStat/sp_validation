@@ -37,3 +37,37 @@ class GalaxyTestCase(TestCase):
         npt.assert_allclose(sigma_to_fwhm(1.0), 2.3548200450, rtol=1e-6)
         # the old linear form would give 4.0 here
         npt.assert_allclose(T_to_fwhm(2.0), sigma_to_fwhm(1.0))
+
+    def test_never_fit_objects_are_rejected(self):
+        """Test that NGMIX_N_EPOCH == 0 objects are cut.
+
+        ShapePipe's make_cat pre-fills the NGMIX_* columns with
+        sentinels (G1/G2 = -10, T/FLUX = 0) and overwrites them only
+        for objects present in the ngmix output. An object ngmix never
+        fit therefore keeps NGMIX_MCAL_FLAGS == 0 and passes a
+        flag-only selection, carrying e1 = -10 into the shear
+        statistics. In final_cat_smk-g7.hdf5 that is 18,983 of
+        1,851,100 objects (1.03%).
+        """
+        import numpy as np
+
+        from sp_validation.galaxy import classification_galaxy_ngmix
+
+        # row 0: never fit (sentinels, flags clean); row 1: a good fit
+        dd = {
+            "NGMIX_N_EPOCH": np.array([0.0, 3.0]),
+            "NGMIX_MCAL_FLAGS": np.array([0.0, 0.0]),
+            "NGMIX_G1_PSF_ORIG_NOSHEAR": np.array([-10.0, 0.02]),
+            "NGMIX_MCAL_TYPES_FAIL": np.array([0.0, 0.0]),
+            "NGMIX_G1_NOSHEAR": np.array([-10.0, 0.1]),
+        }
+        cut_common = np.array([True, True])
+
+        keep = classification_galaxy_ngmix(dd, cut_common)
+        npt.assert_array_equal(keep, [False, True])
+
+        # the N_EPOCH cut must stand on its own: even if the -10
+        # sentinel were to change, the never-fit row stays rejected
+        dd["NGMIX_G1_PSF_ORIG_NOSHEAR"] = np.array([-99.0, 0.02])
+        keep = classification_galaxy_ngmix(dd, cut_common)
+        npt.assert_array_equal(keep, [False, True])

@@ -18,6 +18,7 @@ import argparse
 import numpy as np
 
 from sp_validation import sacc_io
+from sp_validation.blinding import Blind
 from sp_validation.cosmo_val.sacc_writers import assemble_analysis_sacc
 
 # NaMaster iNKA covariance FITS: per-spectrum HDU names, in SACC insertion order.
@@ -91,12 +92,15 @@ def assemble_sacc(
     part_paths,
     out_path,
     *,
+    blind,
     expected=None,
     xi_cov=None,
     pseudo_cl_cov=None,
-    allow_unblinded=False,
 ):
     """Assemble ``{version}.sacc`` from the per-statistic ``part_paths`` mapping.
+
+    Every part must be stamped with ``blind``, the catalogue's declared blind,
+    so a stale part from before a flip is refused.
 
     Parameters
     ----------
@@ -108,10 +112,10 @@ def assemble_sacc(
     expected : sequence of str, optional
         Statistics that must be present, from the caller's config toggles. A
         typo'd input keyword would otherwise silently drop a statistic.
+    blind : str
+        The name of the blind ``version`` is declared under.
     xi_cov, pseudo_cl_cov
         Covariance sourcing — see the module docstring.
-    allow_unblinded : bool, optional
-        Passed to :func:`sacc_io.load` for every part; ``True`` only for mocks.
     """
     if expected is not None:
         unknown = [name for name in expected if name not in CANONICAL]
@@ -132,14 +136,12 @@ def assemble_sacc(
         path = part_paths.get(name)
         if path is None:
             continue
-        part = sacc_io.load(path, allow_unblinded=allow_unblinded)
-        parts.append(_attach_cov(part, name, xi_cov, pseudo_cl_cov))
+        parts.append(_attach_cov(sacc_io.load(path), name, xi_cov, pseudo_cl_cov))
     if not parts:
         raise ValueError(f"no parts found for {version}: {part_paths}")
-    # Through sacc_io.gather, the one terminal seam: it fails closed unless every
-    # blindable part shares one blind, and stamps that blind on the result.
-    s = sacc_io.gather(parts, assemble=assemble_analysis_sacc)
-    sacc_io.save(s, out_path, type=s.metadata["type"])
+    s = sacc_io.save(
+        assemble_analysis_sacc(parts), out_path, derived_from=parts, blind=Blind(blind)
+    )
     print(f"Assembled {len(parts)} parts -> {out_path}")
     return s
 
@@ -156,10 +158,10 @@ def _from_snakemake(smk):
         version=p["version"],
         part_paths=part_paths,
         out_path=str(smk.output[0]),
+        blind=p["blind"],
         expected=list(p["expected"]),
         xi_cov=getattr(inp, "xi_cov", None),
         pseudo_cl_cov=getattr(inp, "pseudo_cl_cov", None),
-        allow_unblinded=(p.get("type", "data") == "mock"),
     )
 
 
@@ -170,11 +172,7 @@ def _from_cli(argv=None):
     ap.add_argument("--version", required=True, help="Catalogue version")
     ap.add_argument("--out", required=True, help="Output {version}.sacc path")
     ap.add_argument(
-        "--type",
-        choices=("data", "mock"),
-        default="data",
-        help="Run type. 'mock' reads parts freely; 'data' fails closed on "
-        "unblinded parts (only concealed/blinded parts load).",
+        "--blind", required=True, help="The blind the catalogue is declared under"
     )
     for name in CANONICAL:
         ap.add_argument(
@@ -190,9 +188,9 @@ def _from_cli(argv=None):
         version=a.version,
         part_paths=part_paths,
         out_path=a.out,
+        blind=a.blind,
         xi_cov=a.xi_cov,
         pseudo_cl_cov=a.pseudo_cl_cov,
-        allow_unblinded=(a.type == "mock"),
     )
 
 

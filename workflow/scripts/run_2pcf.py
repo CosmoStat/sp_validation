@@ -13,25 +13,21 @@ orchestration:
         --out <output_dir>
 
 The measurement is binning-agnostic: the reporting and the fine integration
-grids are the same compute with different ``--min-sep/--max-sep/--nbins``.
-``CosmologyValidation.calculate_2pcf`` writes the ``.txt`` dump (a raw
-byproduct); the ξ± data product is born as SACC here, a *part* named by its
-binning and tagged with its ``--grid``. The part carries the covariance its
-grid configures (``--cov``): the dense jackknife estimate from the patches, the
-TreeCorr ``varxip``/``varxim`` diagonal, or none.
+grids are the same compute with different ``--min-sep/--max-sep/--nbins``. The
+non-tomographic ``("all", "all")`` ξ± is born as a SACC part, named by its
+binning, tagged with its ``--grid`` and sealed under the catalogue's blind by
+``CosmologyValidation.calculate_2pcf_version``. The part carries the covariance
+the measurement estimated: the dense jackknife covariance when it had patches,
+the shot-noise ``varxip``/``varxim`` diagonal when it had none.
 
-``output_dir`` is passed explicitly (rather than via the ``COSMO_VAL`` env hook)
-so lc can point each run at its own ``{output}`` tree.
+``output_dir`` is passed explicitly so lc can point each run at its own
+``{output}`` tree.
 """
 
 import argparse
 import os
 
-import numpy as np
-
-from sp_validation import sacc_io
 from sp_validation.cosmo_val import CosmologyValidation
-from sp_validation.cosmo_val.sacc_writers import xi_to_sacc
 
 
 def run_2pcf(
@@ -44,69 +40,43 @@ def run_2pcf(
     output_dir,
     sacc_out=None,
     grid="reporting",
-    run_type="data",
-    cov="none",
 ):
-    """Measure ξ±(θ) for ``ver`` and write its born-as-SACC part.
+    """Measure ξ±(θ) for ``ver`` and write its sealed SACC part.
 
     Parameters mirror the TreeCorr reporting/integration grids: ``min_sep`` /
     ``max_sep`` in arcmin, ``nbins`` logarithmic bins, ``npatch`` spatial
     patches (1 for the paper fiducial). ``cat_config`` is an absolute path to
     the catalog configuration; ``output_dir`` overrides
-    ``cat_config['paths']['output']`` so the ``.txt`` byproduct lands where lc
-    expects. ``sacc_out`` is the exact destination for the SACC part (the
-    Snakemake-declared output); it defaults to a binning-derived name under
-    the resolved output directory for the CLI path. ``cov`` is the grid's
-    covariance mode — ``"jackknife"`` (needs ``npatch`` > 1), ``"diagonal"`` or
-    ``"none"``. ``run_type`` (``"data"`` or ``"mock"``) is stamped as the part's
-    SACC ``type``.
+    ``cat_config['paths']['output']``. ``sacc_out`` is the exact destination for
+    the part (the Snakemake-declared output); it defaults to a binning-derived
+    name under the resolved output directory for the CLI path.
 
     Returns
     -------
-    treecorr.GGCorrelation
-        The measured correlation object (also the source of the SACC part).
+    sacc.Sacc
+        The part as written.
     """
     cv = CosmologyValidation(
         versions=[ver],
         catalog_config=cat_config,
         output_dir=output_dir,
-        # so the SACC provenance metadata stamps the npatch actually measured
-        npatch=npatch,
-    )
-    gg = cv.calculate_2pcf(
-        ver=ver,
-        npatch=npatch,
-        min_sep=min_sep,
-        max_sep=max_sep,
-        nbins=nbins,
-    )
-
-    if cov == "jackknife" and int(npatch) < 2:
-        raise ValueError(f"cov='jackknife' needs patches; got npatch={npatch}")
-
-    # Born-as-SACC ξ± part. theta = meanr; theta_nom = rnom.
-    s = xi_to_sacc(
-        cv.sacc_nz(ver),
-        cv.sacc_metadata(ver),
-        gg.meanr,
-        gg.xip,
-        gg.xim,
-        grid=grid,
-        theta_nom=gg.rnom,
-        npairs=gg.npairs,
-        weight=gg.weight,
-        covariance=gg.cov if cov == "jackknife" else None,
-        variances=(
-            np.concatenate([gg.varxip, gg.varxim]) if cov == "diagonal" else None
-        ),
     )
     out_path = sacc_out or os.path.join(
         output_dir or cv.cc["paths"]["output"],
         f"{ver}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc",
     )
-    sacc_io.save(s, out_path, type=run_type)
+    cv.calculate_2pcf_version(
+        ver,
+        npatch=npatch,
+        grid=grid,
+        out=out_path,
+        min_sep=min_sep,
+        max_sep=max_sep,
+        nbins=nbins,
+    )
+    part = cv.xi_parts[ver, grid]
     print(f"Wrote {grid} ξ± SACC part: {out_path}")
-    return gg
+    return part
 
 
 def _from_snakemake(smk):
@@ -117,18 +87,10 @@ def _from_snakemake(smk):
         max_sep=float(p["max_sep"]),
         nbins=int(p["nbins"]),
         npatch=int(p["npatch"]),
-        # cat_config / output_dir were previously resolved via an os.chdir into
-        # the cosmo_val dir + the COSMO_VAL env var; expose them as optional
-        # params so the rule can pass them explicitly, falling back to the
-        # class defaults (./cat_config.yaml, COSMO_VAL env) otherwise.
-        cat_config=p.get("cat_config", "./cat_config.yaml"),
-        output_dir=p.get("output_dir", None),
+        cat_config=p["cat_config"],
+        output_dir=p["output_dir"],
         grid=p.get("grid", "reporting"),
-        cov=p.get("cov", "none"),
-        # The SACC part goes exactly where the rule declares it; the .txt
-        # byproduct still lands under the resolved output dir.
         sacc_out=smk.output["sacc"],
-        run_type=p["type"],
     )
 
 
@@ -158,18 +120,6 @@ def _from_cli(argv=None):
     ap.add_argument(
         "--grid", default="reporting", help="SACC grid tag for the measured points"
     )
-    ap.add_argument(
-        "--cov",
-        default="none",
-        choices=["jackknife", "diagonal", "none"],
-        help="Covariance the part carries",
-    )
-    ap.add_argument(
-        "--run-type",
-        default="data",
-        choices=("data", "mock"),
-        help="Campaign run type stamped as the part's SACC `type`",
-    )
     a = ap.parse_args(argv)
     run_2pcf(
         ver=a.ver,
@@ -180,8 +130,6 @@ def _from_cli(argv=None):
         cat_config=a.cat_config,
         output_dir=a.out,
         grid=a.grid,
-        run_type=a.run_type,
-        cov=a.cov,
     )
 
 

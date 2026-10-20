@@ -8,10 +8,14 @@ point with each per-statistic block correctly placed. One real small-nside
 NaMaster round-trip proves the pseudo-Cℓ window survives the writer path.
 """
 
+import importlib.util
+from pathlib import Path
+
 import numpy as np
 import pytest
 
 from sp_validation import sacc_io as sio
+from sp_validation.blinding import NONE
 from sp_validation.cosmo_val import sacc_writers as sw
 
 
@@ -31,7 +35,7 @@ def _theta(n=6):
 
 def _roundtrip(s, tmp_path, name):
     p = tmp_path / f"{name}.sacc"
-    sio.save(s, str(p), type="mock")
+    sio.save(s, str(p), blind=NONE)
     return sio.load(str(p))
 
 
@@ -114,9 +118,46 @@ def test_pseudo_cl_to_sacc_window_and_rows(tmp_path):
     assert window.weight.shape == (24, nbp)
 
 
-def test_pseudo_cl_to_sacc_real_namaster(tmp_path):
-    """A real small-nside NaMaster workspace's window survives the writer."""
+def _paper_pseudo_cl_reader():
+    # A paper script, not a package module: load it by path.
+    path = Path(__file__).resolve().parents[3] / "papers/bmodes/scripts/pseudo_cl_io.py"
+    spec = importlib.util.spec_from_file_location("pseudo_cl_io", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.load_pseudo_cl_data
+
+
+def test_paper_pseudo_cl_reader(tmp_path):
+    """The B-mode paper's reader maps NaMaster's EE/EB/BE/BB rows by name."""
+    ell = np.array([30.0, 60.0, 90.0])
+    cl_all = np.vstack(
+        [np.arange(3) * 1e-9, np.arange(3) * 2e-9, np.zeros(3), np.arange(3) * 3e-9]
+    )
+
+    class _Workspace:
+        def get_bandpower_windows(self):
+            window = np.zeros((4, 3, 4, 12))
+            for component in range(4):
+                for band in range(3):
+                    window[component, band, component, band * 4 : (band + 1) * 4] = 1.0
+            return window
+
+    part = sw.pseudo_cl_to_sacc({0: _nz()}, META, ell, cl_all, _Workspace())
+    path = tmp_path / "pseudo_cl.sacc"
+    sio.save(part, str(path), blind=NONE)
+
+    data = _paper_pseudo_cl_reader()(path)
+    assert np.array_equal(data["ELL"], ell)
+    assert np.array_equal(data["EE"], cl_all[0])
+    assert np.array_equal(data["EB"], cl_all[1])
+    assert np.array_equal(data["BB"], cl_all[3])
+
+
+def test_pseudo_cl_to_sacc_real_namaster_pixel_window(tmp_path):
+    """The SACC window gains pw²(ℓ) only when a map nside is supplied."""
     pytest.importorskip("pymaster")
+    import healpy as hp
+
     from sp_validation.pseudo_cl import get_pseudo_cls_map
 
     nside = 32
@@ -131,8 +172,18 @@ def test_pseudo_cl_to_sacc_real_namaster(tmp_path):
     ell_r, ee, bb, eb, window = sio.get_pseudo_cl(s2, (0, 0))
     assert np.array_equal(ell_r, ell_eff)
     assert np.array_equal(ee, cl_all[0]) and np.array_equal(bb, cl_all[3])
-    # window columns correspond to the bandpowers, one per ell_eff
+    # With nside unset, the workspace window carries no pixel window.
     assert window.weight.shape[1] == len(ell_eff)
+
+    mapped = sw.pseudo_cl_to_sacc({0: _nz()}, META, ell_eff, cl_all, wsp, nside=nside)
+    mapped_window = mapped.get_bandpower_windows(mapped.indices(sio.CL_EE))
+    pw2 = hp.pixwin(nside, lmax=window.weight.shape[0] - 1) ** 2
+    nonzero = np.abs(window.weight) > 1e-20
+    np.testing.assert_allclose(
+        mapped_window.weight[nonzero] / window.weight[nonzero],
+        np.broadcast_to(pw2[:, None], window.weight.shape)[nonzero],
+        rtol=1e-12,
+    )
 
 
 def test_cosebis_to_sacc(tmp_path):
@@ -311,7 +362,7 @@ def test_assemble_from_reloaded_parts(tmp_path):
     parts = _make_parts(nz)
     reloaded = []
     for i, part in enumerate(parts):
-        sio.save(part, str(tmp_path / f"part{i}.sacc"), type="mock")
+        sio.save(part, str(tmp_path / f"part{i}.sacc"), blind=NONE)
         reloaded.append(sio.load(str(tmp_path / f"part{i}.sacc")))
     s = sw.assemble_analysis_sacc(reloaded)
     assert type(s.covariance).__name__ == "BlockDiagonalCovariance"
