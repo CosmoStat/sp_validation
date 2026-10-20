@@ -13,6 +13,8 @@ from astropy.io import fits
 from getdist import MCSamples, plots
 from shear_psf_leakage.rho_tau_stat import PSFErrorFit, RhoStat, TauStat
 
+from sp_validation import sacc_io
+
 plt.style.use("./matplotlib_config/paper.mplstyle")
 
 plt.rcParams["text.usetex"] = True
@@ -127,15 +129,12 @@ for idx, (ver, color, marker, sample) in enumerate(
     xi_psf_sys_quant = np.quantile(xi_psf_sys_samples, quantiles, axis=0)
     theta = psf_fitter.rho_stat_handler.rho_stats["theta"]
 
-    if os.path.exists(
+    xi_part = (
         base_dir
-        + f"/../{ver}_xi_minsep={theta_min}_maxsep={theta_max}_nbins={nbins}_npatch=1.txt"
-    ):
-        xip = np.loadtxt(
-            base_dir
-            + f"/../{ver}_xi_minsep={theta_min}_maxsep={theta_max}_nbins={nbins}_npatch=1.txt",
-            usecols=3,
-        )[:nbins]  ## This will need modifications as the pipeline evolved
+        + f"/../{ver}_xi_minsep={theta_min}_maxsep={theta_max}_nbins={nbins}_npatch=1.sacc"
+    )
+    if os.path.exists(xi_part):
+        xip = sacc_io.xi_correlation(sacc_io.load(xi_part)).xip
 
     ratio_mean = xi_psf_sys_mean / xip
     ratio_quant = xi_psf_sys_quant / xip
@@ -275,15 +274,12 @@ for idx, (ver, color, marker, sample) in enumerate(
     xi_psf_sys_quant = np.quantile(xi_psf_sys_samples, quantiles, axis=0)
     theta = psf_fitter.rho_stat_handler.rho_stats["theta"]
 
-    if os.path.exists(
+    xi_part = (
         base_dir
-        + f"/../{ver}_xi_minsep={theta_min}_maxsep={theta_max}_nbins={nbins}_npatch=1.txt"
-    ):
-        xip = np.loadtxt(
-            base_dir
-            + f"/../{ver}_xi_minsep={theta_min}_maxsep={theta_max}_nbins={nbins}_npatch=1.txt",
-            usecols=3,
-        )[:nbins]  ## This will need modifications as the pipeline evolved
+        + f"/../{ver}_xi_minsep={theta_min}_maxsep={theta_max}_nbins={nbins}_npatch=1.sacc"
+    )
+    if os.path.exists(xi_part):
+        xip = sacc_io.xi_correlation(sacc_io.load(xi_part)).xip
 
     ratio_mean = xi_psf_sys_mean / xip
     ratio_quant = xi_psf_sys_quant / xip

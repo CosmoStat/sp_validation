@@ -177,12 +177,13 @@ def _located_elsewhere(source: Path, key: str, value: str) -> bool:
     """Whether a path-shaped value names nothing the config itself locates.
 
     ``paths.output`` in the catalogue config is where cosmo_val writes, created
-    by the run. A calibration ``params.input_path`` with no directory is opened
+    by the run, and ``paths.blinds`` the blind registry ``blinding init``
+    creates. A calibration ``params.input_path`` with no directory is opened
     relative to its consumer's run directory (the image-sim run, or the
     catalogue directory ``scripts/masking.py`` prefixes).
     """
     if source.name == "cat_config.yaml":
-        return key == "paths.output"
+        return key in ("paths.output", "paths.blinds")
     return (
         source.parent.name == "calibration"
         and key == "params.input_path"

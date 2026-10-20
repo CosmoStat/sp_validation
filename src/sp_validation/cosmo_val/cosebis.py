@@ -10,6 +10,7 @@ import numpy as np
 from ..b_modes import (
     calculate_cosebis,
     find_conservative_scale_cut_key,
+    log_bin_edges,
     plot_cosebis_covariance_matrix,
     plot_cosebis_modes,
     plot_cosebis_scale_cut_heatmap,
@@ -98,13 +99,8 @@ class CosebisMixin:
                 "tomographic bin pair."
             )
 
-        # Set up parameters with defaults
-        npatch = npatch or self.npatch
-
-        # Always use integration binning for COSEBIs calculation (fine binning)
-        treecorr_config = self._binning(min_sep_int, max_sep_int, nbins_int)
-
-        # Calculate single fine-binned correlation function for COSEBIs
+        # Calculate single fine-binned correlation function for COSEBIs, as the
+        # sealed part: on a blinded catalogue the COSEBIs are concealed with it.
         print(
             f"Computing fine-binned 2PCF with {nbins_int} bins from {min_sep_int} to "
             f"{max_sep_int} arcmin"
@@ -114,7 +110,10 @@ class CosebisMixin:
             version,
             npatch=npatch,
             compute_tomography=compute_tomography,
-            **treecorr_config,
+            grid="integration",
+            min_sep=min_sep_int,
+            max_sep=max_sep_int,
+            nbins=nbins_int,
         )
         results = {
             bin_key: None for bin_key in ggs.keys()
@@ -270,7 +269,6 @@ class CosebisMixin:
         else:
             results_tomo = {"tomo_bin_all_tomo_bin_all": results}
 
-        ggs_temp = None
         for bin_key, bin_results in results_tomo.items():
             bin_stub = (
                 out_stub
@@ -300,18 +298,12 @@ class CosebisMixin:
             )
 
             if multiple_scale_cuts and len(bin_results) > 1:
-                if ggs_temp is None:
-                    treecorr_config_temp = self._binning(min_sep, max_sep, nbins)
-                    ggs_temp = self.calculate_2pcf_version(
-                        version,
-                        npatch=npatch,
-                        compute_tomography=compute_tomography,
-                        **treecorr_config_temp,
-                    )
-                gg_temp = ggs_temp[bin_key]
+                binning = self._binning(min_sep, max_sep, nbins)
                 plot_cosebis_scale_cut_heatmap(
                     bin_results,
-                    (gg_temp.left_edges, gg_temp.right_edges),
+                    log_bin_edges(
+                        binning["min_sep"], binning["max_sep"], binning["nbins"]
+                    ),
                     version,
                     bin_stub + "_scalecut_ptes.png",
                     fiducial_scale_cut=fiducial_scale_cut,

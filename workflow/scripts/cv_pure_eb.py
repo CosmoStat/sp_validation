@@ -2,10 +2,10 @@
 
 A consumer of the integration-grid ξ± part plus a ξ± covariance on that grid —
 nothing here touches a catalogue. The estimator is one fixed linear operator
-on the fine ξ± (b_modes.pure_eb_operator), averaged into the reporting bins with
-the part's TreeCorr pair weights into reporting bins snapped onto the fine
-edges, so its covariance is the supplied ξ± covariance pushed
-exactly through that operator.
+on the fine ξ± (b_modes.pure_eb_operator), averaged with the part's TreeCorr
+pair weights into reporting bins snapped onto the fine edges, so its covariance
+is the supplied ξ± covariance pushed exactly through that operator. The
+pure-E/B part is a derivation of the ξ± part and carries its blind stamp.
 """
 
 import numpy as np
@@ -30,17 +30,16 @@ version = p["version"]
 fiducial_scale_cut = tuple(p["fiducial_scale_cut"])
 
 part = sacc_io.load(snakemake.input["xi_integration"])
-theta_int, xip_int, xim_int = sacc_io.get_xi(part, (0, 0), grid="integration")
-weight_int = sacc_io.get_xi_weight(part, (0, 0), grid="integration")
+gg_int = sacc_io.xi_correlation(part, grid="integration")
 # A part stores bin centres; the edges come from the grid it was measured on.
 grid = p["integration"]
 edges_int = np.geomspace(grid["min_sep"], grid["max_sep"], grid["nbins"] + 1)
 
 results = calculate_pure_eb_correlation(
-    theta_int,
-    xip_int,
-    xim_int,
-    weight_int,
+    gg_int.meanr,
+    gg_int.xip,
+    gg_int.xim,
+    gg_int.weight,
     edges_int,
     np.loadtxt(snakemake.input["cov_integration"]),
     np.geomspace(p["min_sep"], p["max_sep"], p["nbins"] + 1),
@@ -73,15 +72,16 @@ plot_eb_covariance_matrix(
 
 save_pure_eb_results(results, snakemake.output["npz"])
 
-# The part inherits the ξ± part's provenance; `type` is re-stamped on save.
-metadata = {k: v for k, v in part.metadata.items() if k != "type"}
-s = pure_eb_to_sacc(
-    {0: sacc_io.get_nz(part, 0)},
-    metadata,
-    results["theta"],
-    {key: results[key] for key in sacc_io.PURE_KEYS},
-    covariance=results["cov"],
+sacc_io.save(
+    pure_eb_to_sacc(
+        {0: sacc_io.get_nz(part, 0)},
+        part.metadata,
+        results["theta"],
+        {key: results[key] for key in sacc_io.PURE_KEYS},
+        covariance=results["cov"],
+    ),
+    snakemake.output["sacc"],
+    derived_from=[part],
 )
-sacc_io.save(s, snakemake.output["sacc"], type="data")
 
 verify_outputs(snakemake)

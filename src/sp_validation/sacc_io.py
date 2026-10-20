@@ -85,7 +85,9 @@ Optionality: a file's contents are flexible about which components of
               itself is not a dependency.
 """
 
+import functools
 import os
+import types
 
 import numpy as np
 import sacc
@@ -580,9 +582,69 @@ def get_xi(s, bins, *, grid):
     return _get_pm(s, XI_PLUS, XI_MINUS, _pair(bins), grid=grid)
 
 
-def get_xi_weight(s, bins, *, grid):
-    """Return the TreeCorr pair weights stored with :func:`add_xi`'s ξ+ points."""
-    return _tag(s, XI_PLUS, _pair(bins), "weight", grid=grid)
+class _XiView(types.SimpleNamespace):
+    """What :func:`xi_correlation` returns; ``cov`` is sliced out when first read."""
+
+    @functools.cached_property
+    def cov(self):
+        return (
+            None if self._covariance is None else self._covariance.get_block(self._rows)
+        )
+
+
+def xi_correlation(s, bins=(0, 0), grid=None):
+    """One ξ± series of ``s``, shaped like the TreeCorr ``GGCorrelation`` it came from.
+
+    Carries ``meanr``, ``rnom``, ``xip``, ``xim``, ``varxip``, ``varxim``,
+    ``cov``, ``npairs``, ``weight``, ``left_edges``, ``right_edges`` and
+    ``npatch1``, so code written against a measurement reads a part unchanged.
+    ``grid`` may be left out when the pair's ξ± lies on one grid. The edges are
+    the log-binning edges about the nominal centres (``theta_nom``), and ``cov``
+    is the series' block of the part's covariance.
+    """
+    tracers = _pair(bins)
+    if grid is None:
+        grids = {s.data[i].tags.get("grid") for i in _indices(s, XI_PLUS, tracers)}
+        if len(grids) > 1:
+            raise ValueError(
+                f"ξ± of {tracers} lies on grids {sorted(grids)}; pass grid="
+            )
+        (grid,) = grids
+    tags = {} if grid is None else {"grid": grid}
+    plus, minus = (_indices(s, t, tracers, **tags) for t in (XI_PLUS, XI_MINUS))
+    rows = np.concatenate([plus, minus])
+
+    def tag(name):
+        values = [s.data[i].tags.get(name) for i in plus]
+        return None if None in values else np.array(values, float)
+
+    covariance = s.covariance
+    if covariance is None:
+        variances = np.full(len(rows), np.nan)
+    elif isinstance(covariance, sacc.covariance.DiagonalCovariance):
+        variances = np.asarray(covariance.diag)[rows]
+    else:
+        variances = np.diagonal(covariance.dense)[rows]
+    rnom = tag("theta_nom")
+    edges = (None, None)
+    if rnom is not None and len(rnom) > 1:
+        half_bin = np.log(rnom[-1] / rnom[0]) / (len(rnom) - 1) / 2
+        edges = (rnom * np.exp(-half_bin), rnom * np.exp(half_bin))
+    return _XiView(
+        meanr=tag("theta"),
+        rnom=rnom,
+        xip=s.mean[plus],
+        xim=s.mean[minus],
+        varxip=variances[: len(plus)],
+        varxim=variances[len(plus) :],
+        npairs=tag("npairs"),
+        weight=tag("weight"),
+        left_edges=edges[0],
+        right_edges=edges[1],
+        npatch1=int(s.metadata.get("npatch", 1)),
+        _covariance=covariance,
+        _rows=rows,
+    )
 
 
 def get_pseudo_cl(s, bins):
@@ -766,9 +828,8 @@ def merge(saccs):
     block-diagonal is out of scope here; see ``assemble_covariance``).
 
     Metadata must be consistent: keys present in several inputs must carry
-    equal values (a ``type: data`` file cannot merge with a ``type: mock``
-    file), and the union lands on the result. This deliberately replaces the
-    library's clash behaviour, which mangles clashing keys by appending
+    equal values, and the union lands on the result. This deliberately replaces
+    the library's clash behaviour, which mangles clashing keys by appending
     labels.
 
     Grid consistency follows tagging semantics: the ``grid`` tag declares
@@ -910,106 +971,76 @@ def _check_grid_consistency(s, angle):
                     )
 
 
-def update_statistic(s, sub):
-    """Overwrite the values of ``s``'s points that match ``sub``'s, in place.
-
-    The merge-back half of the extract → conceal → merge blinding flow
-    (PRD #241 §4): each point of ``sub`` is matched to exactly one point of
-    ``s`` by ``(data_type, tracers, tags)``, and that point's *value* is
-    replaced. Nothing else changes — insertion order, tags, windows and the
-    covariance are untouched (blinding shifts the mean only), so ``sub``'s
-    own covariance (e.g. the sub-block ``extract`` attaches) is deliberately
-    not consulted. A ``sub`` point with no match, or with several, raises
-    ``ValueError``.
-
-    Parameters
-    ----------
-    s : sacc.Sacc
-        Target, mutated in place.
-    sub : sacc.Sacc
-        The replacement block, e.g. ``extract(s, ...)`` after concealment.
-    """
-    claimed = set()
-    for point in sub.data:
-        idx = s.indices(point.data_type, point.tracers, **point.tags)
-        if len(idx) != 1:
-            raise ValueError(
-                f"update_statistic: {len(idx)} points in the target match "
-                f"({point.data_type}, {point.tracers}, {point.tags}) — need "
-                "exactly one"
-            )
-        if idx[0] in claimed:
-            raise ValueError(
-                f"update_statistic: two sub points match the same target "
-                f"point ({point.data_type}, {point.tracers}, {point.tags})"
-            )
-        claimed.add(idx[0])
-        s.data[idx[0]].value = point.value
+# --------------------------------------------------------------------------- #
+# Saving: a birth is concealed under its catalogue's blind, a derivation
+# inherits its inputs' stamp
+# --------------------------------------------------------------------------- #
+STAMP_KEY = "blind"
 
 
-def save(s, path, *, type):
-    """Write ``s`` to ``path`` (FITS), overwriting any existing file.
+def stamp(s):
+    """The blind ``s`` was saved under: its ``blind`` metadata, ``none`` if absent."""
+    return s.metadata.get(STAMP_KEY, "none")
 
-    Parameters
-    ----------
-    s : sacc.Sacc
-        Data set to write; its metadata is stamped in place.
-    type : {'data', 'mock'}
-        Provenance of the underlying catalogue, stored as the required
-        ``type`` metadata tag (PRD #241 §4, "Mocks vs data"). The caller —
-        the pipeline computing the data vector — knows whether its input
-        catalogue is a mock; there is deliberately no default. ``load``
-        refuses ``type='data'`` files that are not blinded.
-    """
-    if type not in ("data", "mock"):
-        raise ValueError(f"type must be 'data' or 'mock'; got {type!r}")
-    if s.metadata.get("type", type) != type:
+
+def seal(s, blind, theory=None):
+    """What :func:`save` writes for a birth, kept in memory: a copy of ``s``
+    concealed under ``blind`` with ``theory`` and stamped with its name."""
+    if STAMP_KEY in s.metadata:
         raise ValueError(
-            f"Sacc metadata already carries type={s.metadata['type']!r}; "
-            f"refusing to re-stamp as {type!r}"
+            "this SACC already carries a blind stamp, so it is not a birth; "
+            "save it with derived_from=[its input parts]"
         )
-    s.metadata["type"] = type
-    s.save_fits(path, overwrite=True)
+    if blind.name == "none":
+        out = s.copy()
+    else:
+        from .blinding import conceal
+
+        out = conceal(s, blind, theory)
+    out.metadata[STAMP_KEY] = blind.name
+    return out
 
 
-def load(path, *, allow_unblinded=False):
-    """Load a Sacc from ``path`` (FITS), failing closed on unblinded data.
+def save(s, path, *, blind=None, theory=None, derived_from=None):
+    """Write ``s`` to ``path`` (FITS) and return what was written.
 
-    Every sacc_io file carries a ``type: data|mock`` metadata tag (stamped by
-    ``save``); blinded files are additionally stamped ``concealed=True`` by
-    Smokescreen. A ``type='data'`` file without that stamp is real, unblinded
-    data, and loading it raises — skipping the blind can never silently
-    expose the measured vector (PRD #241 §4). Mocks load freely, blinded or
-    not.
+    - ``save(s, path, blind=b)``: a birth. ``b`` is a
+      :class:`sp_validation.blinding.Blind`; unless it is ``none``, every row
+      of ``s`` is shifted by t(hidden) − t(fiducial), t being ``theory``
+      (:mod:`sp_validation.blinding` describes a theory; the default is
+      :func:`sp_validation.blinding.shear`). The output is stamped with
+      ``b``'s name.
+    - ``save(s, path, derived_from=parts)``: a derivation (COSEBIs, pure-E/B,
+      an assembly); the parts must share one :func:`stamp`, which ``s`` takes,
+      unshifted. With ``blind=b`` too, that stamp must be ``b``'s name.
 
-    Parameters
-    ----------
-    path : str
-        File to load.
-    allow_unblinded : bool, optional
-        Escape hatch for the two legitimate consumers of unblinded data:
-        the blinding step itself (which must read the true vector to conceal
-        it) and the unblinding/verification tooling. Nothing else — no
-        analysis, plotting or inference code — may pass ``True``.
-
-    Returns
-    -------
-    sacc.Sacc
-        The loaded data set.
+    A measurement computes its signal and saves (or seals) it in the same
+    function, returning the sealed part, so on a blinded catalogue its raw
+    signal never leaves that function.
     """
-    s = sacc.Sacc.load_fits(path)
-    if (
-        s.metadata["type"] == "data"
-        and not s.metadata.get("concealed", False)
-        and not allow_unblinded
-    ):
-        raise ValueError(
-            f"{path} holds real data (type='data') without the "
-            "concealed=True blinding stamp — refusing to load an unblinded "
-            "data vector. Only the blinding/unblinding tooling may pass "
-            "allow_unblinded=True."
-        )
-    return s
+    if derived_from is not None:
+        stamps = {stamp(p) for p in derived_from}
+        if len(stamps) != 1:
+            raise ValueError(f"input parts carry different blinds: {sorted(stamps)}")
+        (name,) = stamps
+        if blind is not None and blind.name != name:
+            raise ValueError(
+                f"parts are stamped {name}, but the catalogue is declared under "
+                f"{blind.name}"
+            )
+        out = s.copy()
+        out.metadata[STAMP_KEY] = name
+    elif blind is not None:
+        out = seal(s, blind, theory)
+    else:
+        raise ValueError("save needs blind= (a birth) or derived_from= (a derivation)")
+    out.save_fits(str(path), overwrite=True)
+    return out
+
+
+def load(path):
+    """Load the SACC at ``path``."""
+    return sacc.Sacc.load_fits(str(path))
 
 
 # =============================================================================

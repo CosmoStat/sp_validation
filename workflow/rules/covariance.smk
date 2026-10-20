@@ -193,21 +193,21 @@ rule covariance_cat:
 rule covariance_glass_mock:
     input:
         xi=expand(
-            "/n09data/guerrini/glass_mock_v1.4.6/results/xi_glass_mock_{seed:05d}_4096_nbins=20.fits",
+            f"{GLASS_MOCK_DIR}/xi_glass_mock_{{seed:05d}}_4096_nbins=20.fits",
             seed=range(config["glass_mocks"]["seed_range"][0], config["glass_mocks"]["seed_range"][1] + 1),
         ),
         cl=expand(
-            "/n09data/guerrini/glass_mock_v1.4.6/results/cl_glass_mock_{seed:05d}_4096.npy",
+            f"{GLASS_MOCK_DIR}/cl_glass_mock_{{seed:05d}}_4096.npy",
             seed=range(config["glass_mocks"]["seed_range"][0], config["glass_mocks"]["seed_range"][1] + 1),
         ),
     output:
-        xi_covariance="results/covariance/glass_mock_v1.4.6/xi_covariance.npy",
-        cl_covariance="results/covariance/glass_mock_v1.4.6/cl_covariance.npy",
-        combined_covariance="results/covariance/glass_mock_v1.4.6/combined_covariance.npy",
-        correlation_plot="results/covariance/glass_mock_v1.4.6/combined_correlation.png",
-        xi_mean="results/covariance/glass_mock_v1.4.6/xi_mean.npy",
-        cl_mean="results/covariance/glass_mock_v1.4.6/cl_mean.npy",
-        combined_mean="results/covariance/glass_mock_v1.4.6/combined_mean.npy",
+        xi_covariance=f"results/covariance/{GLASS_MOCK_SUITE}/xi_covariance.npy",
+        cl_covariance=f"results/covariance/{GLASS_MOCK_SUITE}/cl_covariance.npy",
+        combined_covariance=f"results/covariance/{GLASS_MOCK_SUITE}/combined_covariance.npy",
+        correlation_plot=f"results/covariance/{GLASS_MOCK_SUITE}/combined_correlation.png",
+        xi_mean=f"results/covariance/{GLASS_MOCK_SUITE}/xi_mean.npy",
+        cl_mean=f"results/covariance/{GLASS_MOCK_SUITE}/cl_mean.npy",
+        combined_mean=f"results/covariance/{GLASS_MOCK_SUITE}/combined_mean.npy",
     script:
         "../scripts/compute_glass_mock_covariance.py"
 
