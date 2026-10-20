@@ -178,7 +178,9 @@ def _from_cli(argv=None):
         ap.add_argument(
             f"--{name.replace('_', '-')}", default=None, help=f"{name} part"
         )
-    ap.add_argument("--xi-cov", default=None, help="OneCovariance ξ± covariance matrix (.dat)")
+    ap.add_argument(
+        "--xi-cov", default=None, help="OneCovariance ξ± covariance matrix (.dat)"
+    )
     ap.add_argument(
         "--pseudo-cl-cov", default=None, help="NaMaster pseudo-Cℓ covariance FITS"
     )
