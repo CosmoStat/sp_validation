@@ -12,6 +12,12 @@ for ver, path in zip(cv.versions, snakemake.output.products, strict=True):
     data = dict(
         theta=cv.psf_fitter.rho_stat_handler.rho_stats["theta"],
         flat_samples=flat_samples,
+        theta_edges=np.geomspace(
+            cv.treecorr_config["min_sep"],
+            cv.treecorr_config["max_sep"],
+            cv.treecorr_config["nbins"] + 1,
+        ),
+        theta_unit="arcmin",
     )
     for component, samples in (("plus", plus), ("minus", minus)):
         data[f"samples_{component}"] = samples
