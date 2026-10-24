@@ -138,8 +138,44 @@ def test_cached_plot_dag_has_no_compute_jobs(tmp_path, monkeypatch, pseudo_cl):
         "covariance_run",
     ):
         assert f"rule {forbidden}:" not in log
-    # A plot-only restyle must fail closed, not silently rebuild from a catalogue.
-    (common.COSMO_VAL / "weight_hist.npz").unlink()
-    missing = subprocess.run(command, text=True, capture_output=True, timeout=120)
-    assert missing.returncode != 0
-    assert "MissingInputException" in missing.stdout + missing.stderr
+    # Existing PNGs must never hide a missing cache when allowed-rules prunes
+    # a plot job. Populate *all* figures, then remove each cache in turn.
+    figures = [
+        *ns["CV_FOOTPRINT_FIGURES"],
+        *ns["cv_pure_eb_figures"](version).values(),
+        *ns["cv_cosebis_figures"](version).values(),
+        *[
+            str(common.COSMO_VAL / name)
+            for name in (
+                "weight_hist.png",
+                "leakage_coefficients.png",
+                "ratio_xi_sys_xi.png",
+                "xi_pm_tomography_False.png",
+                "xi_pm_theta_tomography_False.png",
+                "rho_tau_stats/rho_stats.png",
+                "rho_tau_stats/tau_stats.png",
+                "rho_tau_stats/contours_tau_stat.png",
+                "rho_tau_stats/xi_psf_sys_tomography_False_sample.png",
+                "rho_tau_stats/xi_psf_sys_tomography_False_mean_and_std.png",
+            )
+        ],
+        ns["cv_xi_cov"](version).removesuffix(".dat") + "_corr_plot.pdf",
+        ns["cv_xi_cov_integration"](version).removesuffix(".dat") + "_corr_plot.pdf",
+    ]
+    if pseudo_cl:
+        figures += [
+            str(common.COSMO_VAL / f"cell_{name}.png") for name in ("ee", "eb", "bb")
+        ]
+    for figure in figures:
+        path = Path(figure)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("existing figure")
+    for product in products:
+        path = Path(product)
+        path.unlink()
+        missing = subprocess.run(command, text=True, capture_output=True, timeout=120)
+        log = missing.stdout + missing.stderr
+        assert missing.returncode != 0, f"Missing cache {product} was ignored:\n{log}"
+        assert "MissingInputException" in log
+        assert "existing figure" == Path(figures[0]).read_text()
+        path.touch()
