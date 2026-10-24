@@ -41,7 +41,9 @@ results = cosebis_scan_from_xi(
 fiducial_key = find_conservative_scale_cut_key(results, fiducial_scale_cut)
 fiducial = results[fiducial_key]
 
-save_cosebis_results(results, snakemake.output["npz"], fiducial_scale_cut, edges)
+save_cosebis_results(
+    results, snakemake.output["npz"], fiducial_scale_cut, edges, derived_from=[part]
+)
 
 s = cosebis_to_sacc({0: sacc_io.get_nz(part, 0)}, part.metadata, fiducial, fiducial_key)
 sacc_io.save(s, snakemake.output["sacc"], derived_from=[part])

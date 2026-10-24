@@ -540,6 +540,7 @@ rule cv_plot_pure_eb:
         **cv_pure_eb_figures("{version}"),
     params:
         version="{version}",
+        blind=lambda w: blind_of(w.version),
         fiducial_scale_cut=CV["fiducial_scale_cut"],
     script:
         "../scripts/cv_plot_pure_eb.py"
@@ -554,6 +555,7 @@ rule cv_plot_cosebis:
         **cv_cosebis_figures("{version}"),
     params:
         version="{version}",
+        blind=lambda w: blind_of(w.version),
         fiducial_scale_cut=CV["fiducial_scale_cut"],
     script:
         "../scripts/cv_plot_cosebis.py"

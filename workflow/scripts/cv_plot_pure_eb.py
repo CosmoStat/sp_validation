@@ -10,7 +10,7 @@ from sp_validation.b_modes import (
 )
 
 p = snakemake.params
-results = load_pure_eb_results(snakemake.input.npz)
+results = load_pure_eb_results(snakemake.input.npz, blind=p.blind)
 kwargs = dict(
     fiducial_xip_scale_cut=tuple(p.fiducial_scale_cut),
     fiducial_xim_scale_cut=tuple(p.fiducial_scale_cut),
