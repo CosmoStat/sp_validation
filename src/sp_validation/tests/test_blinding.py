@@ -180,11 +180,23 @@ def test_saved_blind_is_secret_free(tmp_path, capfd):
     s = _small_xi()
     path = tmp_path / "sealed.sacc"
     blind = bd.init("secret-free", {"paths": {"blinds": str(tmp_path / "blinds")}})
-    written = sio.save(s, path, blind=blind)
-    seed = blind.record()["seed"]
+    params_seen = []
+
+    def theory(params, vector):
+        params_seen.append(dict(params))
+        return bd.shear(params, vector)
+
+    written = sio.save(s, path, blind=blind, theory=theory)
+    record = blind.record()
+    hidden = next(p for p in params_seen if p != record["fiducial"])
     captured = capfd.readouterr()
-    assert seed.encode() not in path.read_bytes()
-    assert seed not in captured.out + captured.err
+    secrets = [record["seed"]]
+    for key in ("S8", "Omega_m"):
+        value = hidden[key]
+        secrets.extend((repr(value), f"{value:.4f}", f"{value:.3f}"))
+    for secret in secrets:
+        assert secret.encode() not in path.read_bytes()
+        assert secret not in captured.out + captured.err
     assert written.metadata == {**s.metadata, "blind": blind.name}
     loaded = sio.load(path)
     assert loaded.metadata == written.metadata
