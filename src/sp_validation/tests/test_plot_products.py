@@ -249,6 +249,58 @@ def test_pure_eb_plot_cache_is_complete(tmp_path):
     assert_figures(*outputs)
 
 
+def test_cosebis_transform_caches_selected_bins(tmp_path, monkeypatch):
+    from cosmo_numba.B_modes import cosebis
+
+    class SyntheticKernel:
+        def __init__(self, **kwargs):
+            pass
+
+        def cosebis_from_xipm(self, theta, xip, xim, **kwargs):
+            return np.ones(2), np.zeros(2)
+
+        def cosebis_covariance_from_xipm_covariance(self, theta, cov):
+            return np.eye(4)
+
+    monkeypatch.setattr(cosebis, "COSEBIS", SyntheticKernel)
+    edges = b_modes.log_bin_edges(0.08, 300, 1000)
+    theta = np.sqrt(edges[0] * edges[1])
+    results = b_modes.cosebis_scan_from_xi(
+        theta,
+        np.zeros(1000),
+        np.zeros(1000),
+        np.eye(2000),
+        *edges,
+        nmodes=2,
+        scale_cuts=[(12, 83)],
+    )
+    np.testing.assert_array_equal(results[12, 83]["bin_indices"], [609, 843])
+    path = tmp_path / "cuts.npz"
+    b_modes.save_cosebis_results(
+        results,
+        path,
+        (12, 83),
+        edges,
+        derived_from=[SimpleNamespace(metadata={"blind": "toy"})],
+    )
+    loaded, _ = b_modes.load_cosebis_results(path, blind="toy")
+    np.testing.assert_array_equal(loaded[12, 83]["bin_indices"], [609, 843])
+
+
+def test_cosebis_heatmap_uses_stored_inward_bins(tmp_path, monkeypatch):
+    # Nearest edges would put this at (0, 2); the transform selected (1, 2).
+    result = {(1.1, 7.9): dict(chi2_E=4.0, pte_B=0.7, bin_indices=[1, 2])}
+    edges = (np.array([1.0, 2.0, 4.0]), np.array([2.0, 4.0, 8.0]))
+    b_modes.plot_cosebis_scale_cut_heatmap(
+        result, edges, "synthetic", tmp_path / "cut.png", (1.1, 7.9)
+    )
+    ax = plt.gcf().axes[1]
+    matrix = ax.images[0].get_array()
+    assert matrix[1, 1] == pytest.approx(0.7)
+    assert np.ma.count(matrix) == 1
+    assert ax.patches[0].get_xy() == (1, 1)
+
+
 def test_cosebis_preserves_all_cuts_for_plotting(tmp_path):
     edges = np.array([1.0, 2.0, 4.0, 8.0])
     results = {
@@ -259,9 +311,10 @@ def test_cosebis_preserves_all_cuts_for_plotting(tmp_path):
             chi2_E=5.0,
             chi2_B=0.05,
             pte_B=0.9,
+            bin_indices=np.array([i, j]),
         )
         for i, lo in enumerate(edges[:-1])
-        for hi in edges[i + 1 :]
+        for j, hi in enumerate(edges[i + 1 :], start=i + 1)
     }
     path = tmp_path / "sealed_cosebis.npz"
     parent = SimpleNamespace(metadata={"blind": "toy"})
