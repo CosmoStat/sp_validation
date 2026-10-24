@@ -68,6 +68,46 @@ def test_derived_script_checks_before_reading_signal(
     assert not list(part_path.parent.glob("*.png"))
 
 
-def test_expect_names_both_stamps(part_path):
+@pytest.mark.parametrize("as_name", [False, True])
+@pytest.mark.parametrize("stamp", ["none", "toy"])
+def test_load_checks_expected_blind(part_path, as_name, stamp):
+    part = sacc_io.load(part_path)
+    part.metadata["blind"] = stamp
+    part.save_fits(str(part_path), overwrite=True)
+    expected = "toy" if as_name else blinding.Blind("toy")
+    if stamp == "none":
+        with pytest.raises(ValueError, match="stamped none.*toy"):
+            sacc_io.load(part_path, blind=expected)
+    else:
+        assert sacc_io.stamp(sacc_io.load(part_path, blind=expected)) == "toy"
+
+
+@pytest.mark.parametrize("script, function, args", [
+    ("pure_eb_modes.py", "_load_xi", ("xi", "toy")),
+    ("cl_data_vector.py", "_load_pseudo_cl_data", ("cl", "cov", "toy")),
+    ("pseudo_cl_io.py", "load_pseudo_cl_data", ("cl", "toy")),
+    ("plot_cosebis_filter_overlay.py", "load_bb_data", ("cl", "cov", "toy")),
+    ("harmonic_space_pte_matrices.py", "compute_pte_matrix", ("cl", "cov")),
+    ("harmonic_config_cosebis_comparison.py", "_compute_harmonic_cosebis",
+     ("cl", "cov", 6, 1, 100, "toy")),
+    ("harmonic_config_cosebis_comparison.py", "_compute_config_cosebis",
+     ("xi", "cov", 6, (1, 100), {}, "toy")),
+    ("bb_covariance_nz_independence.py", "load_cosebis_diagonals",
+     ("xi", "cov", 6, 1, 100, 0.1, 300, 100, "toy")),
+])
+def test_paper_readers_check_before_signal(
+    part_path, monkeypatch, script, function, args
+):
+    paper_scripts = SCRIPTS.parents[1] / "papers" / "bmodes" / "scripts"
+    monkeypatch.syspath_prepend(str(paper_scripts))
+    module = runpy.run_path(str(paper_scripts / script))
+    load = sacc_io.load
+
+    def load_input(path, blind=None):
+        assert blind == "toy"
+        return load(part_path, blind=blind)
+
+    monkeypatch.setattr(sacc_io, "load", load_input)
+    kwargs = {"blind": "toy"} if function == "compute_pte_matrix" else {}
     with pytest.raises(ValueError, match="stamped none.*toy"):
-        sacc_io.expect(sacc_io.load(part_path), blinding.Blind("toy"))
+        module[function](*args, **kwargs)

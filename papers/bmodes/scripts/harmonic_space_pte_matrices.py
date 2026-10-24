@@ -38,7 +38,8 @@ def _pseudo_cl_cov(results_dir, ver, nbins=32):
 
 
 def compute_pte_matrix(
-    pseudo_cl_path, pseudo_cl_cov_path, fiducial_ell_min=None, fiducial_ell_max=None
+    pseudo_cl_path, pseudo_cl_cov_path, fiducial_ell_min=None, fiducial_ell_max=None,
+    *, blind,
 ):
     """Compute PTE matrix for all ell-bin cut combinations.
 
@@ -63,7 +64,7 @@ def compute_pte_matrix(
         Summary statistics.
     """
     # Load pseudo-Cl data
-    data = load_pseudo_cl_data(pseudo_cl_path)
+    data = load_pseudo_cl_data(pseudo_cl_path, blind)
     ell = data["ELL"]
     cl_bb = data["BB"]
     n_ell = len(ell)
@@ -348,6 +349,8 @@ def main(
     fiducial_version_override=None,
     fiducial_pseudo_cl_path=None,
     fiducial_pseudo_cl_cov_path=None,
+    *,
+    blinds,
 ):
     versions = [v for v in config["versions"] if "_ecut" not in v]
     fiducial_version = config["fiducial"]["version"]
@@ -404,6 +407,7 @@ def main(
             version_to_cov[version],
             fiducial_ell_min=fiducial_ell_min,
             fiducial_ell_max=fiducial_ell_max,
+            blind=blinds[version],
         )
 
         all_stats[version] = stats
@@ -545,6 +549,8 @@ def _from_cli(argv=None):
         help="Explicit path to fiducial pseudo-Cl covariance FITS produced by lc "
         "(overrides pattern reconstruction for --fiducial-version)",
     )
+    ap.add_argument("--blinds", type=json.loads, required=True,
+                    help="JSON mapping of catalogue versions to declared blinds")
     a = ap.parse_args(argv)
     with open(a.config) as f:
         config = yaml.safe_load(f)
@@ -555,8 +561,16 @@ def _from_cli(argv=None):
         fiducial_version_override=a.fiducial_version,
         fiducial_pseudo_cl_path=a.fiducial_pseudo_cl_path,
         fiducial_pseudo_cl_cov_path=a.fiducial_pseudo_cl_cov_path,
+        blinds=a.blinds,
     )
 
 
 if __name__ == "__main__":
-    _from_cli()
+    if "snakemake" in globals():
+        smk = snakemake  # noqa: F821
+        main(
+            smk.config, Path(smk.input["pseudo_cl"][0]).parent,
+            Path(smk.output["evidence"]).parent, blinds=smk.params["blinds"],
+        )
+    else:
+        _from_cli()

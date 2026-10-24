@@ -18,8 +18,7 @@ p = snakemake.params
 
 spectra = {}
 for i, version in enumerate(p["versions"]):
-    part = sacc_io.load(snakemake.input["pseudo_cl"][i])
-    sacc_io.expect(part, p["blinds"][i])
+    part = sacc_io.load(snakemake.input["pseudo_cl"][i], blind=p["blinds"][i])
     ell, ee, bb, eb, _window = sacc_io.get_pseudo_cl(part, (0, 0))
     with fits.open(snakemake.input["pseudo_cl_cov"][i]) as hdul:
         covs = {

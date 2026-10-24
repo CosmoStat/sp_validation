@@ -1044,9 +1044,12 @@ def save(s, path, *, blind=None, theory=None, derived_from=None):
     return out
 
 
-def load(path):
-    """Load the SACC at ``path``."""
-    return sacc.Sacc.load_fits(str(path))
+def load(path, blind=None):
+    """Load a SACC, checking its stamp against ``blind`` when supplied."""
+    part = sacc.Sacc.load_fits(str(path))
+    if blind is not None:
+        expect(part, blind)
+    return part
 
 
 # =============================================================================

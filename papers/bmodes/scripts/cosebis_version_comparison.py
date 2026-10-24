@@ -164,6 +164,8 @@ def main(
     fiducial_version=None,
     fiducial_xi_path=None,
     fiducial_cov_path=None,
+    *,
+    blinds,
 ):
     # Leak-corrected versions (matches VERSIONS_LEAK_CORR in figures.smk)
     versions = [v for v in config["versions"] if "_leak_corr" in v and "_ecut" not in v]
@@ -247,7 +249,7 @@ def main(
                 marker = MARKER_STYLES[i] if i < len(MARKER_STYLES) else "o"
                 fillstyle = "full"
 
-            gg = sacc_io.xi_correlation(sacc_io.load(xi_path))
+            gg = sacc_io.xi_correlation(sacc_io.load(xi_path, blind=blinds[version]))
 
             results = calculate_cosebis(
                 gg,
@@ -384,6 +386,8 @@ def _from_cli(argv=None):
         help="Explicit path to the fiducial version's Gaussian integration "
         "covariance (e.g. lc output), overriding the canonical-tree path pattern",
     )
+    ap.add_argument("--blinds", type=json.loads, required=True,
+                    help="JSON mapping of catalogue versions to declared blinds")
     a = ap.parse_args(argv)
     with open(a.config) as f:
         config = yaml.safe_load(f)
@@ -395,8 +399,17 @@ def _from_cli(argv=None):
         fiducial_version=a.fiducial_version,
         fiducial_xi_path=a.fiducial_xi_path,
         fiducial_cov_path=a.fiducial_cov_path,
+        blinds=a.blinds,
     )
 
 
 if __name__ == "__main__":
-    _from_cli()
+    if "snakemake" in globals():
+        smk = snakemake  # noqa: F821
+        main(
+            smk.config, Path(smk.input["xi_integration"][0]).parent,
+            smk.params["cov_base_dir"], Path(smk.output["evidence"]).parent,
+            blinds=smk.params["blinds"],
+        )
+    else:
+        _from_cli()

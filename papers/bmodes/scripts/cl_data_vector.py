@@ -44,9 +44,9 @@ def _compute_pte_with_cuts(data, covariance, ell, ell_min, ell_max):
     return pte, chi2, dof
 
 
-def _load_pseudo_cl_data(pseudo_cl_path, pseudo_cl_cov_path):
+def _load_pseudo_cl_data(pseudo_cl_path, pseudo_cl_cov_path, blind):
     """Load pseudo-Cl data from SACC and covariance from FITS."""
-    data = load_pseudo_cl_data(pseudo_cl_path)
+    data = load_pseudo_cl_data(pseudo_cl_path, blind)
 
     ell = data["ELL"]
     cl_eb = data["EB"]
@@ -203,6 +203,8 @@ def main(
     fiducial_version=None,
     fiducial_pseudo_cl_path=None,
     fiducial_pseudo_cl_cov_path=None,
+    *,
+    blinds,
 ):
     version = config["fiducial"]["version"]
     version_labels = config["plotting"]["version_labels"]
@@ -232,7 +234,7 @@ def main(
             fiducial_pseudo_cl_cov_path,
         )
         ell, cl_bb, cl_eb, cov_bb, cov_eb, sigma_bb, sigma_eb = _load_pseudo_cl_data(
-            pseudo_cl_path, pseudo_cl_cov_path
+            pseudo_cl_path, pseudo_cl_cov_path, blinds[ver]
         )
 
         # Create figure with appropriate title
@@ -271,7 +273,7 @@ def main(
         fiducial_pseudo_cl_cov_path,
     )
     ell, cl_bb, cl_eb, cov_bb, cov_eb, sigma_bb, sigma_eb = _load_pseudo_cl_data(
-        pseudo_cl_path, pseudo_cl_cov_path
+        pseudo_cl_path, pseudo_cl_cov_path, blinds[version]
     )
 
     # Compute PTEs (null tests) using full ell range
@@ -358,6 +360,8 @@ def _from_cli(argv=None):
             "(lc output). Requires --fiducial-version and --fiducial-pseudo-cl-path."
         ),
     )
+    ap.add_argument("--blinds", type=json.loads, required=True,
+                    help="JSON mapping of catalogue versions to declared blinds")
     a = ap.parse_args(argv)
     with open(a.config) as f:
         config = yaml.safe_load(f)
@@ -368,8 +372,17 @@ def _from_cli(argv=None):
         fiducial_version=a.fiducial_version,
         fiducial_pseudo_cl_path=a.fiducial_pseudo_cl_path,
         fiducial_pseudo_cl_cov_path=a.fiducial_pseudo_cl_cov_path,
+        blinds=a.blinds,
     )
 
 
 if __name__ == "__main__":
-    _from_cli()
+    if "snakemake" in globals():
+        smk = snakemake  # noqa: F821
+        version = smk.config["fiducial"]["version"]
+        main(
+            smk.config, Path(smk.input[f"pseudo_cl_{version}"]).parent,
+            Path(smk.output["evidence"]).parent, blinds=smk.params["blinds"],
+        )
+    else:
+        _from_cli()
