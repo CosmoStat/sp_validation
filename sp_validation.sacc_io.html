@@ -708,6 +708,11 @@ window (equal window ells and weight matrix); series without windows
 <dd><p>The blind <code class="docutils literal notranslate"><span class="pre">s</span></code> was saved under: its <code class="docutils literal notranslate"><span class="pre">blind</span></code> metadata, <code class="docutils literal notranslate"><span class="pre">none</span></code> if absent.</p>
 </dd></dl>
 <dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io.expect">
+<span class="sig-name descname"><span class="pre">expect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">part</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">blind</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#expect"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.expect" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.expect'">¶</a></dt>
+<dd><p>Refuse a part from a different blind before consuming its signal.</p>
+</dd></dl>
+<dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.sacc_io.seal">
 <span class="sig-name descname"><span class="pre">seal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">blind</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#seal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.seal" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.seal'">¶</a></dt>
 <dd><p>What <a class="reference internal" href="#sp_validation.sacc_io.save" title="sp_validation.sacc_io.save"><code class="xref py py-func docutils literal notranslate"><span class="pre">save()</span></code></a> writes for a birth, kept in memory: a copy of <code class="docutils literal notranslate"><span class="pre">s</span></code>
@@ -734,8 +739,8 @@ signal never leaves that function.</p>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.sacc_io.load">
-<span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#load"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.load" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.load'">¶</a></dt>
-<dd><p>Load the SACC at <code class="docutils literal notranslate"><span class="pre">path</span></code>.</p>
+<span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">blind</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#load"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.load" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.load'">¶</a></dt>
+<dd><p>Load a SACC, checking its stamp against <code class="docutils literal notranslate"><span class="pre">blind</span></code> when supplied.</p>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.sacc_io._twopoint_hdu">
@@ -1072,6 +1077,7 @@ Gaussian+non-Gaussian column (<code class="docutils literal notranslate"><span c
 <li><a :data-current="activeSection === '#sp_validation.sacc_io._grid_groups'" class="reference internal" href="#sp_validation.sacc_io._grid_groups"><code class="docutils literal notranslate"><span class="pre">_grid_groups()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.sacc_io._check_grid_consistency'" class="reference internal" href="#sp_validation.sacc_io._check_grid_consistency"><code class="docutils literal notranslate"><span class="pre">_check_grid_consistency()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.sacc_io.stamp'" class="reference internal" href="#sp_validation.sacc_io.stamp"><code class="docutils literal notranslate"><span class="pre">stamp()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io.expect'" class="reference internal" href="#sp_validation.sacc_io.expect"><code class="docutils literal notranslate"><span class="pre">expect()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.sacc_io.seal'" class="reference internal" href="#sp_validation.sacc_io.seal"><code class="docutils literal notranslate"><span class="pre">seal()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.sacc_io.save'" class="reference internal" href="#sp_validation.sacc_io.save"><code class="docutils literal notranslate"><span class="pre">save()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.sacc_io.load'" class="reference internal" href="#sp_validation.sacc_io.load"><code class="docutils literal notranslate"><span class="pre">load()</span></code></a></li>
@@ -1098,7 +1104,7 @@ Gaussian+non-Gaussian column (<code class="docutils literal notranslate"><span c
 </div><footer class="py-6 border-t border-border md:py-0">
 <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
 <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 19 Oct, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 24 Oct, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>
 </div>
 </footer>
