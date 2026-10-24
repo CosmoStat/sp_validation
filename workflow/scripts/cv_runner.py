@@ -50,15 +50,6 @@ def prepare_cached_psf(cv):
     )
 
 
-def take_reporting_parts(cv, paths):
-    """Hand ``cv`` the reporting ξ± parts at ``paths``, one per version, in order."""
-    from sp_validation import sacc_io
-
-    for version, path in zip(cv.versions, paths, strict=True):
-        part = sacc_io.load(path, blind=cv.blind(version))
-        cv.xi_parts[version, "reporting"] = part
-
-
 def verify_outputs(snakemake):
     """Fail loudly if any declared output is missing after the method ran."""
     missing = [str(o) for o in snakemake.output if not Path(o).exists()]
