@@ -361,6 +361,7 @@ rule cv_plot_pseudo_cl:
         **cv_pseudo_cl_figures(),
     params:
         versions=CV_VERSIONS,
+        blinds=[blind_of(v) for v in CV_VERSIONS],
         # Style is per catalogue, so the derived variants take their parent's.
         markers=[CATALOG_CONFIG[base_version(v)]["marker"] for v in CV_VERSIONS],
         colours=[CATALOG_CONFIG[base_version(v)]["colour"] for v in CV_VERSIONS],
@@ -390,6 +391,7 @@ rule cv_pure_eb:
         **cv_pure_eb_figures("{version}"),
     params:
         version="{version}",
+        blind=lambda w: blind_of(w.version),
         min_sep=CV["theta_min"],
         max_sep=CV["theta_max"],
         nbins=CV["nbins"],
@@ -417,6 +419,7 @@ rule cv_cosebis:
         **cv_cosebis_figures("{version}"),
     params:
         version="{version}",
+        blind=lambda w: blind_of(w.version),
         min_sep=XI_GRIDS["integration"]["min_sep"],
         max_sep=XI_GRIDS["integration"]["max_sep"],
         nbins=XI_GRIDS["integration"]["nbins"],
@@ -448,6 +451,7 @@ rule cv_summarize_bmodes:
         summary_json=str(COSMO_VAL / "bmode_summary.json"),
     params:
         versions=CV_VERSIONS,
+        blinds=[blind_of(v) for v in CV_VERSIONS],
         fiducial_scale_cut=CV["fiducial_scale_cut"],
         include_pseudo_cl=CV.get("include_pseudo_cl", False),
     resources:

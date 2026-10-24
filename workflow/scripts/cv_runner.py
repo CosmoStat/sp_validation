@@ -41,7 +41,8 @@ def take_reporting_parts(cv, paths):
     from sp_validation import sacc_io
 
     for version, path in zip(cv.versions, paths, strict=True):
-        cv.xi_parts[version, "reporting"] = sacc_io.load(path)
+        part = sacc_io.load(path, blind=cv.blind(version))
+        cv.xi_parts[version, "reporting"] = part
 
 
 def verify_outputs(snakemake):

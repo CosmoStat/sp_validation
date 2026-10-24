@@ -77,7 +77,7 @@ def _shear_file(entry):
     shear = entry.get("shear") if isinstance(entry, dict) else None
     if not isinstance(shear, dict) or "path" not in shear:
         return None
-    return os.path.normpath(os.path.join(str(entry.get("subdir", "")), shear["path"]))
+    return os.path.realpath(os.path.join(str(entry.get("subdir", "")), shear["path"]))
 
 
 def blind_of(catalogues, entry):

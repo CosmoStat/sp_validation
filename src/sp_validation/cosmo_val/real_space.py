@@ -81,6 +81,7 @@ class RealSpaceMixin:
         ggs = {f"tomo_bin_{b1}_tomo_bin_{b2}": None for b1, b2 in tomo_bin_pairs}
         held = self.xi_parts.get((ver, grid)) if reuse else None
         if ALL_PAIR in ggs and held is not None:
+            sacc_io.expect(held, blind)
             ggs[ALL_PAIR] = sacc_io.xi_correlation(held)
         to_compute = [
             (b1, b2)
