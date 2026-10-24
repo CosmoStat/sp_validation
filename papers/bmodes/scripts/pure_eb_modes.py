@@ -25,9 +25,9 @@ from sp_validation.b_modes import calculate_pure_eb_correlation
 from sp_validation.sacc_io import PURE_KEYS
 
 
-def _load_xi(path, blind):
+def _load_xi(path):
     """``(meanr, xip, xim, weight)`` from a ξ± SACC part."""
-    gg = sacc_io.xi_correlation(sacc_io.load(path, blind=blind))
+    gg = sacc_io.xi_correlation(sacc_io.load(path))
     return gg.meanr, gg.xip, gg.xim, gg.weight
 
 
@@ -41,11 +41,9 @@ def pure_eb_modes(
     max_sep_int,
     nbins_int,
     out_path,
-    *,
-    blind,
 ):
     results = calculate_pure_eb_correlation(
-        *_load_xi(xi_integration, blind),
+        *_load_xi(xi_integration),
         np.geomspace(min_sep_int, max_sep_int, nbins_int + 1),
         np.loadtxt(cov_integration),
         np.geomspace(min_sep, max_sep, nbins + 1),
@@ -78,13 +76,11 @@ def _from_snakemake(smk):
         p["max_sep_int"],
         p["nbins_int"],
         smk.output[0],
-        blind=p["blind"],
     )
 
 
 def _from_cli(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("--blind", required=True)
     ap.add_argument("--xi-integration", required=True)
     ap.add_argument("--cov-integration", required=True)
     ap.add_argument("--min-sep", type=float, default=1.0)
@@ -105,7 +101,6 @@ def _from_cli(argv=None):
         a.max_sep_int,
         a.nbins_int,
         a.out,
-        blind=a.blind,
     )
 
 

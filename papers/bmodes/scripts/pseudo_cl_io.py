@@ -3,12 +3,12 @@
 from sp_validation import sacc_io
 
 
-def load_pseudo_cl_data(path, blind):
+def load_pseudo_cl_data(path):
     """Return a pseudo-Cℓ part's spectra as ``{"ELL", "EE", "EB", "BB"}`` arrays.
 
     The bandpower covariance is a separate FITS product (``pseudo_cl_cov``).
     """
-    ell, ee, bb, eb, _window = sacc_io.get_pseudo_cl(sacc_io.load(str(path), blind=blind), (0, 0))
+    ell, ee, bb, eb, _window = sacc_io.get_pseudo_cl(sacc_io.load(str(path)), (0, 0))
     missing = [name for name, values in (("BB", bb), ("EB", eb)) if values is None]
     if missing:
         raise ValueError(

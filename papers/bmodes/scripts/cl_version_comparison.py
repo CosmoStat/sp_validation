@@ -76,8 +76,6 @@ def main(
     fiducial_version=None,
     fiducial_pseudo_cl_path=None,
     fiducial_pseudo_cl_cov_path=None,
-    *,
-    blinds,
 ):
     # Scale cuts (Guerrini et al. fiducial ell range)
     ell_min_cut = int(config["cl"]["fiducial_ell_min"])
@@ -130,7 +128,7 @@ def main(
             fiducial_pseudo_cl_cov_path,
         )
 
-        data = load_pseudo_cl_data(pseudo_cl_path, blinds[version])
+        data = load_pseudo_cl_data(pseudo_cl_path)
         ell = data["ELL"]
         cl_bb = data["BB"]
         cl_eb = data["EB"]
@@ -405,8 +403,6 @@ def _from_cli(argv=None):
             "(lc output). Requires --fiducial-version and --fiducial-pseudo-cl-path."
         ),
     )
-    ap.add_argument("--blinds", type=json.loads, required=True,
-                    help="JSON mapping of catalogue versions to declared blinds")
     a = ap.parse_args(argv)
     with open(a.config) as f:
         config = yaml.safe_load(f)
@@ -417,16 +413,8 @@ def _from_cli(argv=None):
         fiducial_version=a.fiducial_version,
         fiducial_pseudo_cl_path=a.fiducial_pseudo_cl_path,
         fiducial_pseudo_cl_cov_path=a.fiducial_pseudo_cl_cov_path,
-        blinds=a.blinds,
     )
 
 
 if __name__ == "__main__":
-    if "snakemake" in globals():
-        smk = snakemake  # noqa: F821
-        main(
-            smk.config, Path(smk.input["pseudo_cl"][0]).parent,
-            Path(smk.output["evidence"]).parent, blinds=smk.params["blinds"],
-        )
-    else:
-        _from_cli()
+    _from_cli()

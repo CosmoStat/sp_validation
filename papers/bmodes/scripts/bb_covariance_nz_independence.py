@@ -75,7 +75,6 @@ def load_cosebis_diagonals(
     min_sep_int,
     max_sep_int,
     nbins_int,
-    blind,
 ):
     """Compute COSEBIS covariance diagonals from config-space covariance.
 
@@ -83,7 +82,7 @@ def load_cosebis_diagonals(
     Returns E_n and B_n covariance diagonals.
     """
     # Load fine-binned 2PCF (need the binning info for COSEBIS calculation)
-    gg = sacc_io.xi_correlation(sacc_io.load(xi_integration_path, blind=blind))
+    gg = sacc_io.xi_correlation(sacc_io.load(xi_integration_path))
 
     # Compute COSEBIS with this realisation's covariance
     results = calculate_cosebis(
@@ -248,7 +247,6 @@ def main(
     theta_max,
     figure_path,
     evidence_path,
-    blind,
 ):
     """Run the BB-covariance n(z)-independence cross-check.
 
@@ -286,13 +284,12 @@ def main(
             min_sep_int,
             max_sep_int,
             nbins_int,
-            blind,
         )
         for label, path in cov_integration_paths.items()
     }
 
     # Ell bin centers from the pseudo-Cl SACC part
-    ell_eff = load_pseudo_cl_data(pseudo_cl_path, blind)["ELL"]
+    ell_eff = load_pseudo_cl_data(pseudo_cl_path)["ELL"]
 
     def ratios_to_reference(data, modes):
         return {
@@ -439,7 +436,6 @@ def _from_snakemake(smk):
         theta_max=smk.params.theta_max,
         figure_path=smk.output.figure,
         evidence_path=smk.output.evidence,
-        blind=smk.params["blind"],
     )
 
 
@@ -481,7 +477,6 @@ def _from_cli(argv=None):
         help="COSMO_INFERENCE data/covariance dir (Gaussian integration covariances)",
     )
     ap.add_argument("--out", required=True, help="Output directory (lc {output})")
-    ap.add_argument("--blind", required=True)
     a = ap.parse_args(argv)
 
     with open(a.config) as f:
@@ -535,7 +530,6 @@ def _from_cli(argv=None):
         theta_max=config["cosebis"]["theta_max"],
         figure_path=str(out_dir / "figure.png"),
         evidence_path=str(out_dir / "evidence.json"),
-        blind=a.blind,
     )
 
 

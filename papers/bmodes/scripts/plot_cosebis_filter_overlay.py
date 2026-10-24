@@ -26,9 +26,9 @@ from pseudo_cl_io import load_pseudo_cl_data
 plt.style.use(PAPER_MPLSTYLE)
 
 
-def load_bb_data(pseudo_cl_path, pseudo_cov_path, blind):
+def load_bb_data(pseudo_cl_path, pseudo_cov_path):
     """Load BB bandpower data and errorbars."""
-    data = load_pseudo_cl_data(pseudo_cl_path, blind)
+    data = load_pseudo_cl_data(pseudo_cl_path)
     ell = np.asarray(data["ELL"], dtype=float)
     bb = np.asarray(data["BB"], dtype=float)
 
@@ -170,9 +170,7 @@ def main():
     theta_max_fid = config["fiducial"]["fiducial_max_scale"]
     nmodes = 6
 
-    ell_32, bb, sigma_bb = load_bb_data(
-        pseudo_cl_path, pseudo_cov_path, snakemake.params["blind"]  # noqa: F821
-    )
+    ell_32, bb, sigma_bb = load_bb_data(pseudo_cl_path, pseudo_cov_path)
 
     ell_dense = np.logspace(np.log10(8), np.log10(2500), 2000)
 

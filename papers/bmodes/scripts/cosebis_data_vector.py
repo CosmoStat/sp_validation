@@ -135,7 +135,7 @@ def _create_single_panel_bmode_figure(datasets, nmodes, scale_cuts, title=None):
     return fig
 
 
-def main(config, xi_integration, cov_integration, out_dir, *, blind):
+def main(config, xi_integration, cov_integration, out_dir):
     version = config["fiducial"]["version"]
     nmodes = config["fiducial"]["nmodes"]
 
@@ -157,7 +157,7 @@ def main(config, xi_integration, cov_integration, out_dir, *, blind):
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # Load the fiducial fine-binned 2PCF once (integration grid)
-    gg = sacc_io.xi_correlation(sacc_io.load(xi_integration, blind=blind))
+    gg = sacc_io.xi_correlation(sacc_io.load(xi_integration))
 
     # Compute the E_n / B_n data vectors + T^T C_xi T mode covariance at both
     # scale cuts. Same calculate_cosebis call as the original per-version loop.
@@ -232,21 +232,12 @@ def _from_cli(argv=None):
         required=True,
         help="Fiducial 1000-bin Gaussian covariance (processed .txt) for the T^T C_xi T transform",
     )
-    ap.add_argument("--blind", required=True)
     ap.add_argument("--out", required=True, help="Output directory (lc {output})")
     a = ap.parse_args(argv)
     with open(a.config) as f:
         config = yaml.safe_load(f)
-    main(config, a.xi_integration, a.cov_integration, a.out, blind=a.blind)
+    main(config, a.xi_integration, a.cov_integration, a.out)
 
 
 if __name__ == "__main__":
-    if "snakemake" in globals():
-        smk = snakemake  # noqa: F821
-        version = smk.config["fiducial"]["version"]
-        main(
-            smk.config, smk.input[f"xi_{version}"], smk.input[f"cov_{version}"],
-            Path(smk.output["evidence"]).parent, blind=smk.params["blinds"][version],
-        )
-    else:
-        _from_cli()
+    _from_cli()

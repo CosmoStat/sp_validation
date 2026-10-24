@@ -146,10 +146,7 @@ def test_paper_pseudo_cl_reader(tmp_path):
     path = tmp_path / "pseudo_cl.sacc"
     sio.save(part, str(path), blind=NONE)
 
-    reader = _paper_pseudo_cl_reader()
-    with pytest.raises(ValueError, match="stamped none.*toy"):
-        reader(path, "toy")
-    data = reader(path, "none")
+    data = _paper_pseudo_cl_reader()(path)
     assert np.array_equal(data["ELL"], ell)
     assert np.array_equal(data["EE"], cl_all[0])
     assert np.array_equal(data["EB"], cl_all[1])

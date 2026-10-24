@@ -79,7 +79,7 @@ def _compute_pair(gg, cov_path, nmodes, theta_min, theta_max):
     }
 
 
-def main(config, xi_integration, cov_integration, out_dir, version=None, *, blind):
+def main(config, xi_integration, cov_integration, out_dir, version=None):
     t_start = time.time()
     fid = config["fiducial"]
     # Version tags only the output filename + provenance record; the theta
@@ -89,7 +89,7 @@ def main(config, xi_integration, cov_integration, out_dir, version=None, *, blin
     version = version if version is not None else fid["version"]
     nmodes = int(fid["nmodes"])  # 20 for full computation
 
-    gg = sacc_io.xi_correlation(sacc_io.load(xi_integration, blind=blind))
+    gg = sacc_io.xi_correlation(sacc_io.load(xi_integration))
 
     # Reporting theta grid (nbins+1 = 21 edges): geomspace(1', 250', 21)
     theta_grid = np.geomspace(fid["min_sep"], fid["max_sep"], fid["nbins"] + 1)
@@ -183,7 +183,6 @@ def _from_cli(argv=None):
         required=True,
         help="Fiducial 1000-bin Gaussian covariance (processed .txt)",
     )
-    ap.add_argument("--blind", required=True)
     ap.add_argument("--out", required=True, help="Output directory (lc {output})")
     ap.add_argument(
         "--version",
@@ -200,17 +199,8 @@ def _from_cli(argv=None):
         a.cov_integration,
         a.out,
         version=a.version,
-        blind=a.blind,
     )
 
 
 if __name__ == "__main__":
-    if "snakemake" in globals():
-        smk = snakemake  # noqa: F821
-        main(
-            smk.config, smk.input["xi_integration"], smk.input["cov_integration"],
-            Path(smk.output["pte_json"]).parent, version=smk.wildcards.version,
-            blind=smk.params["blind"],
-        )
-    else:
-        _from_cli()
+    _from_cli()

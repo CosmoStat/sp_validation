@@ -138,8 +138,6 @@ rule cosebis_version_comparison:
     params:
         version_labels=VERSION_LABELS,
         versions=VERSIONS_LEAK_CORR,
-        blinds={v: blind_of(v) for v in VERSIONS_LEAK_CORR},
-        cov_base_dir=str(COSMO_INFERENCE / "data/covariance"),
     output:
         evidence=f"{TAPESTRY_DIR}/cosebis_version_comparison/evidence.json",
         figure_stacked=f"{TAPESTRY_DIR}/cosebis_version_comparison/figure_stacked.png",
@@ -165,7 +163,6 @@ rule cosebis_data_vector:
         **{f"cov_{ver}": _cov_integration_path(ver) for ver in VERSIONS_ALL_FOR_PLOTS},
     params:
         cov_base_dir=str(COSMO_INFERENCE / "data/covariance"),
-        blinds={v: blind_of(v) for v in VERSIONS_ALL_FOR_PLOTS},
     output:
         evidence=f"{TAPESTRY_DIR}/cosebis_data_vector/evidence.json",
         paper_figure=f"{PAPER_FIGURES_DIR}/cosebis_data_vector.pdf",
@@ -187,7 +184,6 @@ rule pure_eb_modes:
         "results/paper_plots/intermediate/{version}_pure_eb.npz",
     params:
         **FIDUCIAL_BINNING,
-        blind=lambda w: blind_of(w.version),
     resources:
         mem_mb=8000,
         runtime=20,
@@ -289,7 +285,6 @@ rule cl_data_vector:
         **{f"pseudo_cl_{ver}": _pseudo_cl_path(ver) for ver in VERSIONS_ALL_FOR_PLOTS},
         **{f"pseudo_cl_cov_{ver}": _pseudo_cl_cov_path(ver) for ver in VERSIONS_ALL_FOR_PLOTS},
     params:
-        blinds={v: blind_of(v) for v in VERSIONS_ALL_FOR_PLOTS},
         ell_min_cut=config["cl"]["fiducial_ell_min"],
         ell_max_cut=config["cl"]["fiducial_ell_max"],
     output:
@@ -310,7 +305,6 @@ rule cl_version_comparison:
     params:
         version_labels=VERSION_LABELS,
         versions=VERSIONS_LEAK_CORR,
-        blinds={v: blind_of(v) for v in VERSIONS_LEAK_CORR},
         ell_min_cut=config["cl"]["fiducial_ell_min"],
         ell_max_cut=config["cl"]["fiducial_ell_max"],
     output:
@@ -334,7 +328,6 @@ rule compute_cosebis_pte:
         pte_json=f"{TAPESTRY_DIR}/cosebis_pte_matrix/pte_values/{{version}}/pte_{{i_min}}_{{i_max}}.json",
     params:
         nmodes=FIDUCIAL["nmodes"],
-        blind=lambda w: blind_of(w.version),
     wildcard_constraints:
         i_min=r"\d{3}",
         i_max=r"\d{3}",
@@ -394,7 +387,6 @@ rule harmonic_space_pte_matrices:
         pseudo_cl_cov=[_pseudo_cl_cov_path(ver) for ver in VERSIONS_CONFIG_SPACE_PTES],
     params:
         version_labels=VERSION_LABELS,
-        blinds={v: blind_of(v) for v in VERSIONS_CONFIG_SPACE_PTES},
     output:
         evidence=f"{TAPESTRY_DIR}/harmonic_space_pte_matrices/evidence.json",
         figure_fiducial=f"{TAPESTRY_DIR}/harmonic_space_pte_matrices/figure_fiducial.png",
@@ -432,7 +424,6 @@ rule bb_covariance_nz_independence:
         # Pseudo-Cl data vector for ell bin centers
         pseudo_cl=_pseudo_cl_path(MOCK_VERSION),
     params:
-        blind=blind_of(MOCK_VERSION),
         nmodes=FIDUCIAL["nmodes"],
         theta_min=config["cosebis"]["theta_min"],
         theta_max=config["cosebis"]["theta_max"],
@@ -473,7 +464,6 @@ rule harmonic_config_cosebis_comparison:
         **{f"xi_{ver}": _xi_integration_path(ver) for ver in VERSIONS_ALL_FOR_PLOTS},
         **{f"cov_{ver}": _cov_integration_path(ver) for ver in VERSIONS_ALL_FOR_PLOTS},
     params:
-        blinds={v: blind_of(v) for v in VERSIONS_ALL_FOR_PLOTS},
         scale_cut=lambda wildcards: _COSEBIS_ANGULAR_RANGES[wildcards.angular_range],
     output:
         evidence=f"{TAPESTRY_DIR}/harmonic_config_cosebis_comparison_{{angular_range}}/evidence.json",
@@ -497,8 +487,6 @@ rule cosebis_filter_overlay:
     input:
         pseudo_cl=_pseudo_cl_path(FIDUCIAL_VERSION),
         pseudo_cl_cov=_pseudo_cl_cov_path(FIDUCIAL_VERSION),
-    params:
-        blind=blind_of(FIDUCIAL_VERSION),
     output:
         evidence=f"{TAPESTRY_DIR}/cosebis_filter_overlay/evidence.json",
         figure=f"{TAPESTRY_DIR}/cosebis_filter_overlay/figure.png",

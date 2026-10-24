@@ -105,10 +105,10 @@ def _build_transforms(cosebis_obj, ell):
 
 
 def _compute_harmonic_cosebis(
-    pseudo_cl_path, pseudo_cov_path, nmodes, theta_min, theta_max, blind
+    pseudo_cl_path, pseudo_cov_path, nmodes, theta_min, theta_max
 ):
     """Compute COSEBIS from pseudo-C_ell and propagate covariance."""
-    data = load_pseudo_cl_data(pseudo_cl_path, blind)
+    data = load_pseudo_cl_data(pseudo_cl_path)
     ell = np.asarray(data["ELL"], dtype=float)
     cl_ee = np.asarray(data["EE"], dtype=float)
     cl_bb = np.asarray(data["BB"], dtype=float)
@@ -134,12 +134,12 @@ def _compute_harmonic_cosebis(
     return ce_harm, cb_harm, cov_harmonic
 
 
-def _compute_config_cosebis(xi_path, cov_path, nmodes, scale_cut, config, blind):
+def _compute_config_cosebis(xi_path, cov_path, nmodes, scale_cut, config):
     """Compute COSEBIS from fine-binned xi_pm for a single scale cut.
 
     Returns (En, Bn, cov).
     """
-    gg = sacc_io.xi_correlation(sacc_io.load(xi_path, blind=blind))
+    gg = sacc_io.xi_correlation(sacc_io.load(xi_path))
 
     results = calculate_cosebis(
         gg, nmodes=nmodes, scale_cuts=[scale_cut], cov_path=cov_path
@@ -500,7 +500,7 @@ def _make_version_comparison_figure(
     return fig
 
 
-def main(config, inputs, scale_cut, output_dir, paper_figure_name=None, *, blinds):
+def main(config, inputs, scale_cut, output_dir, paper_figure_name=None):
     """Harmonic-vs-config COSEBI cross-check for one angular range.
 
     ``inputs`` is a dict mirroring ``snakemake.input``: per-version keys
@@ -571,7 +571,6 @@ def main(config, inputs, scale_cut, output_dir, paper_figure_name=None, *, blind
             nmodes,
             scale_cut,
             config,
-            blinds[ver],
         )
 
         # Harmonic-space
@@ -581,7 +580,6 @@ def main(config, inputs, scale_cut, output_dir, paper_figure_name=None, *, blind
             nmodes,
             scale_cut[0],
             scale_cut[1],
-            blinds[ver],
         )
         harm = {
             "En": ce_h,
@@ -630,7 +628,6 @@ def main(config, inputs, scale_cut, output_dir, paper_figure_name=None, *, blind
                 nmodes,
                 other_cut,
                 config,
-                blinds[ver],
             )
             ce_h_other, cb_h_other, cov_h_other = _compute_harmonic_cosebis(
                 pseudo_cl_paths[pseudo_cl_key],
@@ -638,7 +635,6 @@ def main(config, inputs, scale_cut, output_dir, paper_figure_name=None, *, blind
                 nmodes,
                 other_cut[0],
                 other_cut[1],
-                blinds[ver],
             )
             harm_other = {
                 "En": ce_h_other,
@@ -823,7 +819,6 @@ def _from_snakemake(smk):
         config=smk.config,
         inputs=dict(smk.input.items()),
         scale_cut=tuple(smk.params.scale_cut),
-        blinds=smk.params["blinds"],
         output_dir=Path(smk.output["evidence"]).parent,
         paper_figure_name=(
             Path(smk.output["paper_figure"]).name
@@ -901,8 +896,6 @@ def _from_cli(argv=None):
             "input always reads from the old tree, even for the fiducial version."
         ),
     )
-    ap.add_argument("--blinds", type=json.loads, required=True,
-                    help="JSON mapping of catalogue versions to declared blinds")
     a = ap.parse_args(argv)
 
     with open(a.config) as f:
@@ -963,7 +956,6 @@ def _from_cli(argv=None):
         scale_cut=scale_cut,
         output_dir=a.out,
         paper_figure_name=f"harmonic_config_cosebis_{a.angular_range}.pdf",
-        blinds=a.blinds,
     )
 
 

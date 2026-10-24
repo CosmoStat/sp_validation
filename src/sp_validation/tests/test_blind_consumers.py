@@ -80,34 +80,3 @@ def test_load_checks_expected_blind(part_path, as_name, stamp):
             sacc_io.load(part_path, blind=expected)
     else:
         assert sacc_io.stamp(sacc_io.load(part_path, blind=expected)) == "toy"
-
-
-@pytest.mark.parametrize("script, function, args", [
-    ("pure_eb_modes.py", "_load_xi", ("xi", "toy")),
-    ("cl_data_vector.py", "_load_pseudo_cl_data", ("cl", "cov", "toy")),
-    ("pseudo_cl_io.py", "load_pseudo_cl_data", ("cl", "toy")),
-    ("plot_cosebis_filter_overlay.py", "load_bb_data", ("cl", "cov", "toy")),
-    ("harmonic_space_pte_matrices.py", "compute_pte_matrix", ("cl", "cov")),
-    ("harmonic_config_cosebis_comparison.py", "_compute_harmonic_cosebis",
-     ("cl", "cov", 6, 1, 100, "toy")),
-    ("harmonic_config_cosebis_comparison.py", "_compute_config_cosebis",
-     ("xi", "cov", 6, (1, 100), {}, "toy")),
-    ("bb_covariance_nz_independence.py", "load_cosebis_diagonals",
-     ("xi", "cov", 6, 1, 100, 0.1, 300, 100, "toy")),
-])
-def test_paper_readers_check_before_signal(
-    part_path, monkeypatch, script, function, args
-):
-    paper_scripts = SCRIPTS.parents[1] / "papers" / "bmodes" / "scripts"
-    monkeypatch.syspath_prepend(str(paper_scripts))
-    module = runpy.run_path(str(paper_scripts / script))
-    load = sacc_io.load
-
-    def load_input(path, blind=None):
-        assert blind == "toy"
-        return load(part_path, blind=blind)
-
-    monkeypatch.setattr(sacc_io, "load", load_input)
-    kwargs = {"blind": "toy"} if function == "compute_pte_matrix" else {}
-    with pytest.raises(ValueError, match="stamped none.*toy"):
-        module[function](*args, **kwargs)
