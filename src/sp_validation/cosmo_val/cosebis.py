@@ -297,13 +297,13 @@ class CosebisMixin:
                 plot_results, version, var_method, bin_stub + "_covariance.png"
             )
 
+            # Stored bin indices refer to the integration grid, including when
+            # the requested cuts were generated from a coarser reporting grid.
+            edges = log_bin_edges(min_sep_int, max_sep_int, nbins_int)
             if multiple_scale_cuts and len(bin_results) > 1:
-                binning = self._binning(min_sep, max_sep, nbins)
                 plot_cosebis_scale_cut_heatmap(
                     bin_results,
-                    log_bin_edges(
-                        binning["min_sep"], binning["max_sep"], binning["nbins"]
-                    ),
+                    edges,
                     version,
                     bin_stub + "_scalecut_ptes.png",
                     fiducial_scale_cut=fiducial_scale_cut,
@@ -313,6 +313,7 @@ class CosebisMixin:
                 bin_results,
                 bin_stub + "_data.npz",
                 fiducial_scale_cut,
+                edges,
                 derived_from=[self.xi_parts[version, "integration"]],
             )
         self._cosebis_results[version] = results_tomo
