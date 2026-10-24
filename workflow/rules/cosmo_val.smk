@@ -664,6 +664,27 @@ rule cosmo_val_plots:
         list(cv_pseudo_cl_figures().values()) if CV.get("include_pseudo_cl", False) else [],
         [cv_xi_cov(v).removesuffix(".dat") + "_corr_plot.pdf" for v in CV_VERSIONS],
         [cv_xi_cov_integration(v).removesuffix(".dat") + "_corr_plot.pdf" for v in CV_VERSIONS],
+        # Direct dependencies are intentional. With --allowed-rules Snakemake
+        # can prune a plot whose figure exists even when its cache is missing.
+        # The aggregate must validate caches independently of those plot jobs.
+        caches=[
+            *rules.cv_plot_rho_stats.input.stats,
+            *rules.cv_plot_tau_stats.input.stats,
+            *rules.cv_plot_tau_stats.input.covariances,
+            *rules.cv_plot_rho_tau_fits.input.products,
+            *rules.cv_plot_footprints.input.maps,
+            rules.cv_plot_objectwise_leakage.input.coefficients,
+            rules.cv_plot_weights.input.histograms,
+            *rules.cv_plot_2pcf.input.xi,
+            *[cv_pure_eb_npz(v) for v in CV_VERSIONS],
+            *[cv_cosebis_npz(v) for v in CV_VERSIONS],
+            *[cv_xi_cov(v) for v in CV_VERSIONS],
+            *[cv_xi_cov_integration(v) for v in CV_VERSIONS],
+            *([cv_pseudo_cl_analysis_sacc(v) for v in CV_VERSIONS]
+              if CV.get("include_pseudo_cl", False) else []),
+            *([cv_pseudo_cl_cov(v) for v in CV_VERSIONS]
+              if CV.get("include_pseudo_cl", False) else []),
+        ],
 
 
 rule cosmo_val_all:
