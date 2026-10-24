@@ -11,7 +11,7 @@ Snakemake is in. The ``candide`` tests need candide itself; CI deselects them.
 
 The ``toy`` fixture is a disposable checkout: copies of ``workflow/`` and
 ``papers/cosmo_val/``, this checkout's ``src/`` symlinked in, a blinded and an
-undeclared catalogue, stand-ins for the processed CosmoCov covariances (their
+undeclared catalogue, stand-ins for the OneCovariance covariances (their
 inputs live on candide), and both output roots in tmp. The host never opens a
 blind, so there is no blind record.
 """
@@ -103,7 +103,7 @@ class Toy:
     env: dict
     config: dict
     common: object
-    covariances: dict  # (version, "g" | "ng") -> the processed CosmoCov file
+    covariances: dict  # (version, "g" | "ng") -> the OneCovariance matrix
 
     def snakemake(self, *args, config=(), cwd=None, env=None, timeout=300):
         """Run the host Snakemake in the toy's paper directory, or in ``cwd``.
@@ -209,7 +209,7 @@ def toy(tmp_path_factory):
     )
     common = _load_module(root / "workflow" / "common.py", "toy_common", env)
 
-    # The processed CosmoCov covariances the cosmo_val rules read, in place.
+    # The OneCovariance covariances the cosmo_val rules read, in place.
     grids = common.xi_grids(config, config["fiducial"])
     mask = "_masked" if config["covariance"].get("default_masked") else ""
     covariances = {}

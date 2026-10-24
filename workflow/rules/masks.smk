@@ -2,13 +2,14 @@
 Snakemake rules for UNIONS pixel mask processing and analysis.
 
 NOTE: This subsystem is exploratory/infrastructure. The outputs are NOT currently
-wired into the main covariance workflow, which uses pre-computed mask Cls from
-MASK_CLS_FILES in covariance.smk. See covariance.md spec for details.
+wired into the main covariance workflow, which gives OneCovariance each
+catalogue's footprint map (its cat_config `mask:` key). See covariance.md spec
+for details.
 
 This file contains rules for:
 - Processing HealSparse masks to individual nside values (parallelizable)
 - Calculating effective survey areas
-- Computing mask power spectra for CosmoCov integration
+- Computing mask power spectra for the OneCovariance survey mask
 - Generating comparison plots and analysis
 """
 from datetime import datetime
@@ -18,7 +19,6 @@ from datetime import datetime
 # Paths from config and Snakefile
 SOURCE_MASK_FILE = config["pixel_mask"]["source_file"]
 MASK_OUTPUT_DIR = "output/masks"
-COSMOCOV_MASK_DIR = str(COSMO_INFERENCE / "data/masks")
 
 # Get target nside values from config (no fallbacks)
 target_nsides = config["pixel_mask"]["target_nsides"]
@@ -92,7 +92,7 @@ rule combine_area_summaries:
 rule mask_power_spectrum:
     """Calculate angular power spectrum for a single mask.
 
-    Loads downgraded HEALPix mask, computes C_ell, exports for CosmoCov.
+    Loads downgraded HEALPix mask, computes C_ell, exports for OneCovariance.
     """
     input:
         mask=f"{MASK_OUTPUT_DIR}/mask_nside{{nside}}.fits"
@@ -185,9 +185,9 @@ rule effective_area_comparison:
         
         report_content.extend([
             "",
-            "## CosmoCov Integration",
+            "## OneCovariance Integration",
             "",
-            "The following power spectrum files are ready for CosmoCov integration:",
+            "The following power spectrum files are ready for OneCovariance:",
             ""
         ])
         
@@ -199,7 +199,7 @@ rule effective_area_comparison:
         
         report_content.extend([
             "",
-            "To use these in CosmoCov, set the `c_footprint_file` parameter to point to the appropriate power spectrum file.",
+            "To use one in OneCovariance, put it in `mask_directory` and name it in `mask_file_lensing`.",
             "",
             "## Recommendations",
             ""
@@ -240,62 +240,9 @@ rule masks_full_analysis:
         f"{MASK_OUTPUT_DIR}/area_comparison_report.md"
 
 
-# Integration with existing covariance workflow
-rule prepare_mask_for_cosmocov:
-    """
-    Prepare mask power spectra for integration with CosmoCov covariance calculations.
-    
-    This rule creates copies of mask power spectra in the CosmoCov data directory.
-    """
-    input:
-        power_spectra=expand(f"{MASK_OUTPUT_DIR}/power_spectra/cl_mask_nside{{nside}}.txt", nside=target_nsides),
-        report=f"{MASK_OUTPUT_DIR}/area_comparison_report.md"
-    output:
-        cosmocov_ready=f"{MASK_OUTPUT_DIR}/cosmocov_integration_ready.txt"
-    params:
-        cosmocov_mask_dir=COSMOCOV_MASK_DIR
-    threads: 1
-    resources:
-        mem_mb=500,
-        runtime=2
-    run:
-        import os
-        import shutil
-        from pathlib import Path
-        
-        # Create CosmoCov mask directory if it doesn't exist
-        cosmocov_dir = Path(params.cosmocov_mask_dir)
-        cosmocov_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Copy power spectrum files to CosmoCov directory
-        copied_files = []
-        for ps_file in input.power_spectra:
-            src_path = Path(ps_file)
-            dst_path = cosmocov_dir / src_path.name
-            
-            shutil.copy2(src_path, dst_path)
-            copied_files.append(str(dst_path))
-            print(f"Copied {src_path.name} to CosmoCov directory")
-        
-        # Create integration status file
-        with open(output.cosmocov_ready, 'w') as f:
-            f.write("UNIONS Mask Power Spectra - CosmoCov Integration Ready\n")
-            f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d')}\n")
-            f.write(f"Source: {MASK_OUTPUT_DIR}\n")
-            f.write(f"Destination: {params.cosmocov_mask_dir}\n")
-            f.write("\nCopied files:\n")
-            for file_path in copied_files:
-                f.write(f"- {file_path}\n")
-            f.write("\nTo use in CosmoCov:\n")
-            f.write("Set c_footprint_file parameter to the appropriate power spectrum file path.\n")
-        
-        print(f"CosmoCov integration prepared: {output.cosmocov_ready}")
-
-
 # Fast rules that don't need cluster resources
 localrules:
     combine_area_summaries,
     effective_area_comparison,
-    prepare_mask_for_cosmocov,
     masks_only,
     masks_full_analysis,

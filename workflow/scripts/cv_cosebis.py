@@ -1,6 +1,6 @@
 """Rule cv_cosebis: COSEBIs E/B decomposition for one version.
 
-A consumer of the integration-grid ξ± part and the CosmoCov ξ± covariance on
+A consumer of the integration-grid ξ± part and the OneCovariance ξ± covariance on
 the same grid — nothing here touches a catalogue. The covariance goes through
 the same linear kernel as the modes to give the COSEBIs covariance; it is
 analytic, so no Hartlap debiasing applies. The COSEBIs part is a derivation of

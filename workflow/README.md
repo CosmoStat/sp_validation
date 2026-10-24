@@ -87,7 +87,7 @@ itself — no rule writes its own `apptainer exec` call. The image name comes
 from the `container:` directive in `workflow/Snakefile` (or a rule's own
 override, e.g. the image-sims `SIF`).
 
-A few rules shell out to a host toolchain (CosmoCov, ImageMagick) and keep
+A few rules shell out to a host toolchain (OneCovariance, ImageMagick) and keep
 `container: None`; each says why in its own docstring.
 
 The slurm executor submits with `--export=ALL`, so every job starts with the
@@ -146,10 +146,10 @@ halves of one commit, split.
 The catalogue config is the launched checkout's `cosmo_val/cat_config.yaml`.
 `COSMO_VAL` defaults to the launched checkout's `cosmo_val/output`, so writing
 into another checkout's products means naming it; `COSMO_INFERENCE` defaults to
-the shared candide tree, which holds the CosmoCov covariances and only its owner
+the shared candide tree, which holds the covariances and only its owner
 can write. Anyone else launches with `COSMO_INFERENCE=<tree>` of their own,
 holding a link to the shared tree's `data/mask/` (the one input the covariance
-rules take from it); the CosmoCov chain then runs there:
+rules take from it); the OneCovariance rules then run there:
 
 ```bash
 mkdir -p <tree>/data
