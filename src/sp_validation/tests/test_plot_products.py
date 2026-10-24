@@ -301,6 +301,50 @@ def test_cosebis_heatmap_uses_stored_inward_bins(tmp_path, monkeypatch):
     assert ax.patches[0].get_xy() == (1, 1)
 
 
+def test_notebook_cosebis_cache_and_heatmap_use_integration_edges(
+    tmp_path, monkeypatch
+):
+    from sp_validation.cosmo_val import cosebis as module
+
+    class CV(module.CosebisMixin):
+        versions = ["synthetic"]
+        cc = {"paths": {"output": str(tmp_path)}}
+        treecorr_config = {"npatch": 1}
+        xi_parts = {
+            ("synthetic", "integration"): SimpleNamespace(metadata={"blind": "toy"})
+        }
+        _cosebis_results = {}
+
+        def _binning(self, *args):
+            return dict(min_sep=1.0, max_sep=8.0, nbins=3)
+
+    edges = b_modes.log_bin_edges(1.0, 8.0, 10)
+    results = {
+        cut: dict(
+            En=np.ones(2),
+            Bn=np.zeros(2),
+            cov=np.eye(4),
+            chi2_E=2.0,
+            chi2_B=0.0,
+            pte_B=1.0,
+            bin_indices=indices,
+        )
+        for cut, indices in [((1.0, 8.0), [0, 10]), ((1.0, 4.0), [0, 6])]
+    }
+    monkeypatch.setattr(module, "plot_cosebis_modes", lambda *args, **kwargs: None)
+    monkeypatch.setattr(module, "plot_cosebis_covariance_matrix", lambda *args: None)
+
+    def heatmap(data, used_edges, *args, **kwargs):
+        np.testing.assert_array_equal(used_edges, edges)
+
+    monkeypatch.setattr(module, "plot_cosebis_scale_cut_heatmap", heatmap)
+    CV().plot_cosebis(results=results, min_sep_int=1.0, max_sep_int=8.0, nbins_int=10)
+    _, cached_edges = b_modes.load_cosebis_results(
+        next(tmp_path.glob("*.npz")), blind="toy"
+    )
+    np.testing.assert_array_equal(cached_edges, edges)
+
+
 def test_cosebis_preserves_all_cuts_for_plotting(tmp_path):
     edges = np.array([1.0, 2.0, 4.0, 8.0])
     results = {
