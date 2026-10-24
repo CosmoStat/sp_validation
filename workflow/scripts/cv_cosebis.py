@@ -28,6 +28,7 @@ version = p["version"]
 fiducial_scale_cut = tuple(p["fiducial_scale_cut"])
 
 part = sacc_io.load(snakemake.input["xi"])
+sacc_io.expect(part, p["blind"])
 theta, xip, xim = sacc_io.get_xi(part, (0, 0), grid="integration")
 edges = log_bin_edges(p["min_sep"], p["max_sep"], p["nbins"])
 

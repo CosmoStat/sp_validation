@@ -983,6 +983,15 @@ def stamp(s):
     return s.metadata.get(STAMP_KEY, "none")
 
 
+def expect(part, blind):
+    """Refuse a part from a different blind before consuming its signal."""
+    name = blind if isinstance(blind, str) else blind.name
+    if stamp(part) != name:
+        raise ValueError(
+            f"part is stamped {stamp(part)}, but the catalogue is declared under {name}"
+        )
+
+
 def seal(s, blind, theory=None):
     """What :func:`save` writes for a birth, kept in memory: a copy of ``s``
     concealed under ``blind`` with ``theory`` and stamped with its name."""
@@ -1023,13 +1032,10 @@ def save(s, path, *, blind=None, theory=None, derived_from=None):
         if len(stamps) != 1:
             raise ValueError(f"input parts carry different blinds: {sorted(stamps)}")
         (name,) = stamps
-        if blind is not None and blind.name != name:
-            raise ValueError(
-                f"parts are stamped {name}, but the catalogue is declared under "
-                f"{blind.name}"
-            )
         out = s.copy()
         out.metadata[STAMP_KEY] = name
+        if blind is not None:
+            expect(out, blind)
     elif blind is not None:
         out = seal(s, blind, theory)
     else:
