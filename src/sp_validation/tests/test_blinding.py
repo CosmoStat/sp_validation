@@ -92,7 +92,7 @@ def test_seal_refuses_a_sacc_already_stamped():
         sio.seal(sealed, bd.NONE)
 
 
-def test_entries_reading_one_file_declare_one_blind():
+def test_entries_reading_one_file_declare_one_blind(tmp_path):
     catalogues = {
         "paths": {"blinds": "/blinds"},
         "Y3": {"blind": "y3", "subdir": "/d", "shear": {"path": "y3.fits"}},
@@ -102,3 +102,14 @@ def test_entries_reading_one_file_declare_one_blind():
     catalogues["TWIN"]["shear"]["path"] = "/d/sub/../y3.fits"
     with pytest.raises(ValueError, match="different blinds"):
         bd.blind_of(catalogues, "TWIN")
+
+    physical = tmp_path / "y3.fits"
+    physical.touch()
+    alias = tmp_path / "alias.fits"
+    alias.symlink_to(physical)
+    catalogues["Y3"]["shear"]["path"] = str(physical)
+    catalogues["TWIN"]["shear"]["path"] = str(alias)
+    with pytest.raises(ValueError, match="different blinds"):
+        bd.blind_of(catalogues, "TWIN")
+    catalogues["TWIN"]["blind"] = "y3"
+    assert bd.blind_of(catalogues, "TWIN") == "y3"
