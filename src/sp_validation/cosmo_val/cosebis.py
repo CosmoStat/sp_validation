@@ -310,6 +310,9 @@ class CosebisMixin:
                 )
 
             save_cosebis_results(
-                bin_results, bin_stub + "_data.npz", fiducial_scale_cut
+                bin_results,
+                bin_stub + "_data.npz",
+                fiducial_scale_cut,
+                derived_from=[self.xi_parts[version, "integration"]],
             )
         self._cosebis_results[version] = results_tomo

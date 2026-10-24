@@ -231,8 +231,11 @@ def test_pure_eb_plot_cache_is_complete(tmp_path):
     result.update({k: np.ones(n) * 1e-6 for k in b_modes._EB_KEYS})
     result = b_modes.calculate_eb_statistics(result)
     path = tmp_path / "sealed_eb.npz"
-    b_modes.save_pure_eb_results(result, path)
-    loaded = b_modes.load_pure_eb_results(path)
+    parent = SimpleNamespace(metadata={"blind": "toy"})
+    b_modes.save_pure_eb_results(result, path, derived_from=[parent])
+    loaded = b_modes.load_pure_eb_results(path, blind="toy")
+    with np.load(path, allow_pickle=False) as cache:
+        assert cache["blind"].item() == "toy"
     assert loaded["npatch"] is None
     for key in ("theta_int", "xip_int", "xim_int", "xip", "var_xip", "cov"):
         np.testing.assert_array_equal(result[key], loaded[key])
@@ -261,8 +264,13 @@ def test_cosebis_preserves_all_cuts_for_plotting(tmp_path):
         for hi in edges[i + 1 :]
     }
     path = tmp_path / "sealed_cosebis.npz"
-    b_modes.save_cosebis_results(results, path, (1.0, 8.0), (edges[:-1], edges[1:]))
-    loaded, loaded_edges = b_modes.load_cosebis_results(path)
+    parent = SimpleNamespace(metadata={"blind": "toy"})
+    b_modes.save_cosebis_results(
+        results, path, (1.0, 8.0), (edges[:-1], edges[1:]), derived_from=[parent]
+    )
+    loaded, loaded_edges = b_modes.load_cosebis_results(path, blind="toy")
+    with np.load(path, allow_pickle=False) as cache:
+        assert cache["blind"].item() == "toy"
     assert loaded.keys() == results.keys()
     np.testing.assert_array_equal(loaded_edges, (edges[:-1], edges[1:]))
     with np.load(path, allow_pickle=False) as cache:

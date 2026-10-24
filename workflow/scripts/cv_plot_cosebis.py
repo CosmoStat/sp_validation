@@ -9,7 +9,7 @@ from sp_validation.b_modes import (
 )
 
 p = snakemake.params
-results, edges = load_cosebis_results(snakemake.input.npz)
+results, edges = load_cosebis_results(snakemake.input.npz, blind=p.blind)
 cut = tuple(p.fiducial_scale_cut)
 fiducial = results[find_conservative_scale_cut_key(results, cut)]
 plot_cosebis_modes(fiducial, p.version, snakemake.output.figure_modes, cut)

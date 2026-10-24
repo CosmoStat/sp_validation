@@ -1285,7 +1285,7 @@ def plot_cosebis_modes(results, version, output_path, fiducial_scale_cut=None):
     plt.savefig(output_path, dpi=300, bbox_inches="tight")
 
 
-def save_pure_eb_results(results, output_path):
+def save_pure_eb_results(results, output_path, *, derived_from):
     """
     Save pure E/B mode data vectors and covariance to .npz.
 
@@ -1312,40 +1312,45 @@ def save_pure_eb_results(results, output_path):
     if results["npatch"] is not None:
         save_dict["npatch"] = np.array(results["npatch"])
 
-    np.savez(output_path, **save_dict)
+    from . import sacc_io
+
+    sacc_io.save_npz(save_dict, output_path, derived_from=derived_from)
     print(f"Saved pure E/B results to {output_path}")
 
 
-def load_pure_eb_results(path):
-    """Read a sealed plot cache without transforms or catalogue access."""
-    with np.load(path, allow_pickle=False) as data:
-        results = {k: data[k] for k in data.files if not k.startswith("pte_matrices_")}
-        results["pte_matrices"] = {
-            k.removeprefix("pte_matrices_"): data[k]
-            for k in data.files
-            if k.startswith("pte_matrices_")
-        }
+def load_pure_eb_results(path, *, blind):
+    """Read a sealed plot cache only after checking the expected blind."""
+    from . import sacc_io
+
+    data = sacc_io.load_npz(path, blind=blind)
+    results = {k: v for k, v in data.items() if not k.startswith("pte_matrices_")}
+    results["pte_matrices"] = {
+        k.removeprefix("pte_matrices_"): v
+        for k, v in data.items()
+        if k.startswith("pte_matrices_")
+    }
     results["npatch"] = int(results["npatch"]) if "npatch" in results else None
     return results
 
 
-def load_cosebis_results(path):
-    """Read all cached scale cuts and their integration-bin edges."""
-    with np.load(path, allow_pickle=False) as data:
-        results = {}
-        for lo, hi in data["scale_cuts"]:
-            # Match the writer's scalar formatting (including integer cuts).
-            suffix = next(
-                k.removeprefix("En")
-                for k in data.files
-                if k.startswith("En_")
-                and tuple(map(float, k[3:].split("_"))) == (lo, hi)
-            )
-            results[lo, hi] = {
-                k: data[k + suffix]
-                for k in ("En", "Bn", "cov", "chi2_E", "chi2_B", "pte_B")
-            }
-        edges = data["left_edges"], data["right_edges"]
+def load_cosebis_results(path, *, blind):
+    """Read cached scale cuts after checking their inherited blind stamp."""
+    from . import sacc_io
+
+    data = sacc_io.load_npz(path, blind=blind)
+    results = {}
+    for lo, hi in data["scale_cuts"]:
+        # Match the writer's scalar formatting (including integer cuts).
+        suffix = next(
+            k.removeprefix("En")
+            for k in data
+            if k.startswith("En_") and tuple(map(float, k[3:].split("_"))) == (lo, hi)
+        )
+        results[lo, hi] = {
+            k: data[k + suffix]
+            for k in ("En", "Bn", "cov", "chi2_E", "chi2_B", "pte_B")
+        }
+    edges = data["left_edges"], data["right_edges"]
     return results, edges
 
 
@@ -1361,7 +1366,9 @@ def _cosebis_result_to_dict(r, suffix=""):
     }
 
 
-def save_cosebis_results(results, output_path, fiducial_scale_cut=None, edges=None):
+def save_cosebis_results(
+    results, output_path, fiducial_scale_cut=None, edges=None, *, derived_from
+):
     """
     Save COSEBIs data vectors and covariance to .npz.
 
@@ -1403,7 +1410,9 @@ def save_cosebis_results(results, output_path, fiducial_scale_cut=None, edges=No
 
     if edges is not None:
         save_dict["left_edges"], save_dict["right_edges"] = edges
-    np.savez(output_path, **save_dict)
+    from . import sacc_io
+
+    sacc_io.save_npz(save_dict, output_path, derived_from=derived_from)
     print(f"Saved COSEBIs results to {output_path}")
 
 

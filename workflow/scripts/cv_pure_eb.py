@@ -41,7 +41,7 @@ results = calculate_pure_eb_correlation(
 )
 results = calculate_eb_statistics(results)
 
-save_pure_eb_results(results, snakemake.output["npz"])
+save_pure_eb_results(results, snakemake.output["npz"], derived_from=[part])
 
 sacc_io.save(
     pure_eb_to_sacc(

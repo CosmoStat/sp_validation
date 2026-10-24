@@ -11,6 +11,22 @@ from sp_validation import blinding, sacc_io
 SCRIPTS = Path(__file__).resolve().parents[3] / "workflow" / "scripts"
 
 
+@pytest.mark.parametrize("loader", ["load_pure_eb_results", "load_cosebis_results"])
+@pytest.mark.parametrize("stamp", [None, "wrong"])
+def test_npz_consumers_refuse_missing_or_wrong_blind(tmp_path, loader, stamp):
+    import numpy as np
+
+    from sp_validation import b_modes
+
+    path = tmp_path / "cosmological.npz"
+    data = dict(scale_cuts=np.empty((0, 2)), left_edges=[], right_edges=[])
+    if stamp is not None:
+        data["blind"] = stamp
+    np.savez(path, **data)
+    with pytest.raises(ValueError, match="stamp"):
+        getattr(b_modes, loader)(path, blind="expected")
+
+
 @pytest.fixture
 def part_path(tmp_path):
     part = sacc_io.new_sacc({0: ([0.1, 1.0], [1.0, 1.0])})
