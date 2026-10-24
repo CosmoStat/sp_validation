@@ -122,7 +122,8 @@ def test_smokescreen_draw_stays_in_envelope(tmp_path):
         assert np.all(hidden <= fid + envelope)
 
 
-def test_multitracer_shift_matches_single_pair_theories(up):
+def test_multitracer_shift_matches_single_pair_theories(up, monkeypatch):
+    import pyccl as ccl
     from smokescreen.datavector import draw_param_shifts
 
     record = up.record()
@@ -143,7 +144,27 @@ def test_multitracer_shift_matches_single_pair_theories(up):
             s, pair, ell, 0 * ell, 0 * ell, 0 * ell,
             window_ells=ell, window_weights=np.eye(3),
         )
+    # Observe CCL's actual inputs independently of blinding's pair selection.
+    make_tracer, angular_cl = ccl.WeakLensingTracer, ccl.angular_cl
+    nz_by_tracer, seen = {}, []
+
+    def tracer(*args, **kwargs):
+        result = make_tracer(*args, **kwargs)
+        nz_by_tracer[id(result)] = np.asarray(kwargs["dndz"][1]).copy()
+        return result
+
+    def spectrum(cosmo, a, b, ell, **kwargs):
+        seen.append((nz_by_tracer[id(a)], nz_by_tracer[id(b)]))
+        return angular_cl(cosmo, a, b, ell, **kwargs)
+
+    monkeypatch.setattr(ccl, "WeakLensingTracer", tracer)
+    monkeypatch.setattr(ccl, "angular_cl", spectrum)
     shifted = bd.conceal(s, up)
+    for a, b in pairs:
+        nz_a, nz_b = s.tracers[f"source_{a}"].nz, s.tracers[f"source_{b}"].nz
+        # Each pair reaches angular_cl at fiducial and hidden points, for ξ and Cℓ.
+        assert sum(np.array_equal(x, nz_a) and np.array_equal(y, nz_b)
+                   for x, y in seen) == 4
     for a, b in pairs:
         rows = s.indices(tracers=(f"source_{a}", f"source_{b}"))
         single = s.copy()
