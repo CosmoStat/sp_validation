@@ -1,22 +1,24 @@
-"""Rule cv_rho_tau_fits: PSF-error model fit and xi_psf_sys contours.
+"""Fit PSF parameters and persist all non-cosmological plot arrays."""
 
-Conditional in the original driver on rho_tau_method != "none". Reads
-rho_stats/tau_stats FITS (declared inputs), runs the MCMC fit
-(calculate_rho_tau_fits via plot_rho_tau_fits), and writes contour /
-xi_psf_sys figures into the leakage output dir. Sentinel-tracked: figure paths
-derive from internal handler state. The fitted xi_psf_sys it produces is
-recomputed (not persisted) by the cv_ratio_xi_sys_xi rule.
-"""
+import numpy as np
+from cv_runner import make_cv, prepare_cached_psf, verify_outputs
 
-from cv_runner import _unbuffer_streams, make_cv, touch_sentinels
-
-_unbuffer_streams()
 cv = make_cv(snakemake)
-if cv.rho_tau_method != "none":
-    cv.plot_rho_tau_fits(
-        tomography=False,
-        savefig_contours="contours_tau_stat.png",
-        savefig_xi_psf_sys="xi_psf_sys",
-        show=False,
+prepare_cached_psf(cv)
+for ver, path in zip(cv.versions, snakemake.output.products, strict=True):
+    params = cv.set_params_rho_tau(ver, cv.results[ver]._params, cv.cc[ver]["psf"])
+    flat_samples = cv.get_samples(ver, params, "all")
+    plus, minus = cv.get_xi_psf_sys_samples(ver, params, "all", "all")
+    data = dict(
+        theta=cv.psf_fitter.rho_stat_handler.rho_stats["theta"],
+        flat_samples=flat_samples,
     )
-touch_sentinels(snakemake)
+    for component, samples in (("plus", plus), ("minus", minus)):
+        data[f"samples_{component}"] = samples
+        data[f"mean_{component}"] = samples.mean(axis=0)
+        data[f"var_{component}"] = samples.var(axis=0)
+        data[f"quantiles_{component}"] = np.quantile(
+            samples, [1 - cv.quantile, cv.quantile], axis=0
+        )
+    np.savez_compressed(path, **data)
+verify_outputs(snakemake)

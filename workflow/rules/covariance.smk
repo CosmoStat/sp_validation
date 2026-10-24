@@ -123,7 +123,6 @@ rule covariance_ini:
     params:
         outdir=lambda w: covariance_dir(*_onecov_args(w)),
         out_filename=lambda w: covariance_base(*_onecov_args(w)) + ".dat",
-        out_plot_filename=lambda w: covariance_base(*_onecov_args(w)) + "_corr_plot.pdf",
         ng_value=lambda w: "1" if w.gaussian == "ng" else "0",
         omega_m=PLANCK18["Omega_m"],
         omega_v=PLANCK18["Omega_v"],
@@ -173,7 +172,7 @@ directory = {params.outdir}
 file = {params.out_filename}
 style = matrix
 save_configs = False
-corrmatrix_plot = {params.out_plot_filename}
+corrmatrix_plot = False
 
 [covTHETAspace settings]
 theta_min = {wildcards.min_sep}
@@ -285,6 +284,17 @@ rule covariance_run:
         cd {params.outdir}
         {params.python_executable} {params.onecov} {input}
         """
+
+
+rule covariance_plot:
+    """Render the correlation matrix from cached OneCovariance output only."""
+    input:
+        matrix=cov_output(".dat"),
+        plot_code=str(REPO_ROOT / "src/sp_validation/cosmo_val/diagnostic_plots.py"),
+    output:
+        figure=cov_output("_corr_plot.pdf"),
+    script:
+        "../scripts/covariance_plot.py"
 
 
 def fiducial_covariance_outputs(mask_suffix="", tomo_suffix=""):

@@ -1,13 +1,12 @@
-"""Rule cv_footprints: plot per-version survey footprints.
+"""Build one sparse count map per catalogue; no figures."""
 
-Leaf rule. Reads the shear catalog (RA/Dec) for each version; writes
-footprint_{version}_{region}.png. Sentinel output keeps the DAG trackable
-because region names are internal to FootprintPlotter.
-"""
+from cv_runner import make_cv, verify_outputs
 
-from cv_runner import _unbuffer_streams, make_cv, touch_sentinels
+from sp_validation.cosmo_val.diagnostic_products import save_footprint
 
-_unbuffer_streams()
 cv = make_cv(snakemake)
-cv.plot_footprints()
-touch_sentinels(snakemake)
+for (_, count_map), path in zip(
+    cv.footprint_maps(), snakemake.output.maps, strict=True
+):
+    save_footprint(count_map, path)
+verify_outputs(snakemake)

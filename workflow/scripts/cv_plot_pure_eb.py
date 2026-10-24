@@ -21,6 +21,8 @@ plot_integration_vs_reporting(
 plot_pure_eb_correlations(results, snakemake.output.figure_xis, p.version, **kwargs)
 plot_pte_2d_heatmaps(results, p.version, snakemake.output.figure_ptes, **kwargs)
 plot_eb_covariance_matrix(
-    results["cov"], covariance_label(results["npatch"]),
-    snakemake.output.figure_covariance, p.version,
+    results["cov"],
+    covariance_label(results["npatch"]),
+    snakemake.output.figure_covariance,
+    p.version,
 )
