@@ -28,7 +28,9 @@ from sp_validation.masks import Mask, get_masks_from_config
 
 N = 4000
 CONFIG_DIR = Path(__file__).resolve().parents[3] / "config" / "calibration"
-BITS = (1, 2, 4, 8, 64, 1024)  # the bits v1 post-processing wrote
+# The bits v1 post-processing wrote; the ugriz catalogue adds 16, 32, 128, 256
+# and 2048 (u, g, i, z, z2 footprints).
+BITS = (1, 2, 4, 8, 16, 32, 64, 128, 256, 1024, 2048)
 
 
 def _twins():
@@ -149,7 +151,14 @@ def test_mask_cut_is_identical(comprehensive):
 def test_config_selection_is_identical(comprehensive, config_name):
     config = yaml.safe_load((CONFIG_DIR / config_name).read_text())
     available = set(comprehensive["v2"].dtype.names)
-    cuts = [cut for cut in config["dat"] if cut["col_name"] in available]
+    # A cut is testable when every column it reads is in the twin catalogue
+    # (two-band kinds also read col_name2 and magnitudes)
+    columns = ("col_name", "col_name2", "mag_col", "mag_col2")
+    cuts = [
+        cut
+        for cut in config["dat"]
+        if all(cut[key] in available for key in columns if key in cut)
+    ]
     if not cuts:
         pytest.skip(f"{config_name} cuts on no column of the twin catalogue")
     config = {"dat": cuts}
