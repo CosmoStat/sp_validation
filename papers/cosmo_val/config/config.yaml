@@ -127,10 +127,13 @@ harmonic:
     binning: powspace
     nbins: 32
 
-# Cosmological inference data-product locations (dormant subsystem).
+# Cosmological inference data-product locations + tooling.
 inference:
   chains_dir: "/n09data/guerrini/output_chains"
   glass_mock_chains_dir: "/n09data/guerrini/glass_mock_chains"
+  # UNIONS CSL bundled in the workflow container (Dockerfile's CSL_DIR).
+  # Fills COSMOSIS_DIR and the native likelihood shim's csl_dir.
+  csl_dir: "/opt/cosmosis-standard-library"
 
 cosebis:
   theta_min: 1.0
