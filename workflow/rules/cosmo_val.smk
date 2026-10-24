@@ -388,7 +388,6 @@ rule cv_pure_eb:
     output:
         npz=cv_pure_eb_npz("{version}"),
         sacc=cv_pure_eb_sacc("{version}"),
-        **cv_pure_eb_figures("{version}"),
     params:
         version="{version}",
         blind=lambda w: blind_of(w.version),
@@ -416,7 +415,6 @@ rule cv_cosebis:
     output:
         npz=cv_cosebis_npz("{version}"),
         sacc=cv_cosebis_sacc("{version}"),
-        **cv_cosebis_figures("{version}"),
     params:
         version="{version}",
         blind=lambda w: blind_of(w.version),
@@ -432,6 +430,34 @@ rule cv_cosebis:
         runtime=600,
     script:
         "../scripts/cv_cosebis.py"
+
+
+rule cv_plot_pure_eb:
+    """Render pure E/B figures without rerunning the transform."""
+    input:
+        npz=lambda w: cv_pure_eb_npz(w.version),
+        plot_code=str(REPO_ROOT / "src/sp_validation/b_modes.py"),
+    output:
+        **cv_pure_eb_figures("{version}"),
+    params:
+        version="{version}",
+        fiducial_scale_cut=CV["fiducial_scale_cut"],
+    script:
+        "../scripts/cv_plot_pure_eb.py"
+
+
+rule cv_plot_cosebis:
+    """Render COSEBIs figures without rerunning the transform."""
+    input:
+        npz=lambda w: cv_cosebis_npz(w.version),
+        plot_code=str(REPO_ROOT / "src/sp_validation/b_modes.py"),
+    output:
+        **cv_cosebis_figures("{version}"),
+    params:
+        version="{version}",
+        fiducial_scale_cut=CV["fiducial_scale_cut"],
+    script:
+        "../scripts/cv_plot_cosebis.py"
 
 
 rule cv_summarize_bmodes:

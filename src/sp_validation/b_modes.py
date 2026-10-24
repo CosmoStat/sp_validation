@@ -1310,12 +1310,13 @@ def save_pure_eb_results(results, output_path):
     output_path : str
         Output .npz file path
     """
-    # Data vectors and covariance
+    # Include the sealed fine/reporting vectors and variances used by the
+    # comparison figures, not just the transformed modes.
     save_dict = {
-        key: results[key] for key in ("theta", "left_edges", "right_edges", "cov")
+        key: value
+        for key, value in results.items()
+        if key not in ("pte_matrices", "npatch") and value is not None
     }
-    for key in _EB_KEYS:
-        save_dict[key] = results[key]
 
     # PTE matrices
     for key, matrix in results.get("pte_matrices", {}).items():
@@ -1327,6 +1328,40 @@ def save_pure_eb_results(results, output_path):
 
     np.savez(output_path, **save_dict)
     print(f"Saved pure E/B results to {output_path}")
+
+
+def load_pure_eb_results(path):
+    """Read a sealed plot cache without transforms or catalogue access."""
+    with np.load(path, allow_pickle=False) as data:
+        results = {k: data[k] for k in data.files if not k.startswith("pte_matrices_")}
+        results["pte_matrices"] = {
+            k.removeprefix("pte_matrices_"): data[k]
+            for k in data.files
+            if k.startswith("pte_matrices_")
+        }
+    results["npatch"] = int(results["npatch"]) if "npatch" in results else None
+    return results
+
+
+def load_cosebis_results(path):
+    """Read all cached scale cuts and their integration-bin edges."""
+    with np.load(path, allow_pickle=False) as data:
+        results = {}
+        for lo, hi in data["scale_cuts"]:
+            suffix = f"_{lo}_{hi}"
+            # Match the writer's scalar formatting (including integer cuts).
+            suffix = next(
+                k.removeprefix("En")
+                for k in data.files
+                if k.startswith("En_")
+                and tuple(map(float, k[3:].split("_"))) == (lo, hi)
+            )
+            results[lo, hi] = {
+                k: data[k + suffix]
+                for k in ("En", "Bn", "cov", "chi2_E", "chi2_B", "pte_B")
+            }
+        edges = data["left_edges"], data["right_edges"]
+    return results, edges
 
 
 def _cosebis_result_to_dict(r, suffix=""):
@@ -1341,7 +1376,7 @@ def _cosebis_result_to_dict(r, suffix=""):
     }
 
 
-def save_cosebis_results(results, output_path, fiducial_scale_cut=None):
+def save_cosebis_results(results, output_path, fiducial_scale_cut=None, edges=None):
     """
     Save COSEBIs data vectors and covariance to .npz.
 
@@ -1359,10 +1394,14 @@ def save_cosebis_results(results, output_path, fiducial_scale_cut=None):
     is_multi = all(isinstance(k, tuple) for k in results)
 
     if is_multi and fiducial_scale_cut is not None:
-        # Select the single best-matching scale cut
+        # Keep the untagged fiducial entries for summary consumers, and every
+        # scanned cut for the plot-only heatmap.
         key = find_conservative_scale_cut_key(results, fiducial_scale_cut)
         save_dict = _cosebis_result_to_dict(results[key])
         save_dict["scale_cut"] = np.array(key)
+        for sc, r in results.items():
+            save_dict.update(_cosebis_result_to_dict(r, f"_{sc[0]}_{sc[1]}"))
+        save_dict["scale_cuts"] = np.array(list(results.keys()))
     elif is_multi:
         # Save all scale cuts with tagged keys
         save_dict = {}
@@ -1375,6 +1414,8 @@ def save_cosebis_results(results, output_path, fiducial_scale_cut=None):
         if "scale_cut" in results:
             save_dict["scale_cut"] = np.array(results["scale_cut"])
 
+    if edges is not None:
+        save_dict["left_edges"], save_dict["right_edges"] = edges
     np.savez(output_path, **save_dict)
     print(f"Saved COSEBIs results to {output_path}")
 

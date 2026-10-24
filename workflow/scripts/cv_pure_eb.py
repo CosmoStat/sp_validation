@@ -15,11 +15,6 @@ from sp_validation import sacc_io
 from sp_validation.b_modes import (
     calculate_eb_statistics,
     calculate_pure_eb_correlation,
-    covariance_label,
-    plot_eb_covariance_matrix,
-    plot_integration_vs_reporting,
-    plot_pte_2d_heatmaps,
-    plot_pure_eb_correlations,
     save_pure_eb_results,
 )
 from sp_validation.cosmo_val.sacc_writers import pure_eb_to_sacc
@@ -45,30 +40,6 @@ results = calculate_pure_eb_correlation(
     np.geomspace(p["min_sep"], p["max_sep"], p["nbins"] + 1),
 )
 results = calculate_eb_statistics(results)
-
-plot_integration_vs_reporting(
-    results, snakemake.output["figure_integration_vs_reporting"], version
-)
-plot_pure_eb_correlations(
-    results,
-    snakemake.output["figure_xis"],
-    version,
-    fiducial_xip_scale_cut=fiducial_scale_cut,
-    fiducial_xim_scale_cut=fiducial_scale_cut,
-)
-plot_pte_2d_heatmaps(
-    results,
-    version,
-    snakemake.output["figure_ptes"],
-    fiducial_xip_scale_cut=fiducial_scale_cut,
-    fiducial_xim_scale_cut=fiducial_scale_cut,
-)
-plot_eb_covariance_matrix(
-    results["cov"],
-    covariance_label(results["npatch"]),
-    snakemake.output["figure_covariance"],
-    version,
-)
 
 save_pure_eb_results(results, snakemake.output["npz"])
 
