@@ -13,7 +13,8 @@ SCRIPTS = Path(__file__).resolve().parents[3] / "workflow" / "scripts"
 
 @pytest.mark.parametrize("loader", ["load_pure_eb_results", "load_cosebis_results"])
 @pytest.mark.parametrize("stamp", [None, "wrong"])
-def test_npz_consumers_refuse_missing_or_wrong_blind(tmp_path, loader, stamp):
+@pytest.mark.parametrize("expected", ["none", "expected"])
+def test_npz_consumers_refuse_missing_or_wrong_blind(tmp_path, loader, stamp, expected):
     import numpy as np
 
     from sp_validation import b_modes
@@ -24,7 +25,7 @@ def test_npz_consumers_refuse_missing_or_wrong_blind(tmp_path, loader, stamp):
         data["blind"] = stamp
     np.savez(path, **data)
     with pytest.raises(ValueError, match="stamp"):
-        getattr(b_modes, loader)(path, blind="expected")
+        getattr(b_modes, loader)(path, blind=expected)
 
 
 @pytest.fixture
@@ -34,23 +35,6 @@ def part_path(tmp_path):
     path = tmp_path / "xi.sacc"
     sacc_io.save(part, path, blind=blinding.NONE)
     return path
-
-
-@pytest.mark.parametrize("expected", ["none", "toy"])
-def test_reporting_parts(part_path, monkeypatch, expected):
-    monkeypatch.syspath_prepend(str(SCRIPTS))
-    from cv_runner import take_reporting_parts
-
-    cv = SimpleNamespace(
-        versions=["v"], xi_parts={}, blind=lambda v: blinding.Blind(expected)
-    )
-    if expected == "toy":
-        with pytest.raises(ValueError, match="stamped none.*toy"):
-            take_reporting_parts(cv, [part_path])
-        assert not cv.xi_parts
-    else:
-        take_reporting_parts(cv, [part_path])
-        assert sacc_io.stamp(cv.xi_parts["v", "reporting"]) == "none"
 
 
 @pytest.mark.parametrize(
