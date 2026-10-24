@@ -114,7 +114,9 @@ def test_smokescreen_draw_stays_in_envelope(tmp_path):
     for seed in [record["seed"], *range(1000)]:
         # An identity theory observes the actual draw, without cosmology work.
         delta = concealing_factor(
-            record["fiducial"], record["envelope"], seed=seed,
+            record["fiducial"],
+            record["envelope"],
+            seed=seed,
             theory_fn=lambda p: np.array([p[k] for k in keys]),
         )
         hidden = fid + delta
@@ -131,18 +133,26 @@ def test_multitracer_shift_matches_single_pair_theories(up, monkeypatch):
     fid = record["fiducial"]
     hidden = {k: value + shifts.get(k, 0.0) for k, value in fid.items()}
     z = np.linspace(0.0, 3.0, 100)
-    s = sio.new_sacc({
-        i: (z, np.exp(-0.5 * ((z - centre) / 0.2) ** 2))
-        for i, centre in enumerate((0.5, 1.1))
-    })
+    s = sio.new_sacc(
+        {
+            i: (z, np.exp(-0.5 * ((z - centre) / 0.2) ** 2))
+            for i, centre in enumerate((0.5, 1.1))
+        }
+    )
     pairs = ((0, 0), (0, 1), (1, 1))
     for pair in pairs:
         theta = np.array([10.0, 50.0])
         sio.add_xi(s, pair, theta, 0 * theta, 0 * theta, grid="reporting")
         ell = np.array([50.0, 100.0, 200.0])
         sio.add_pseudo_cl(
-            s, pair, ell, 0 * ell, 0 * ell, 0 * ell,
-            window_ells=ell, window_weights=np.eye(3),
+            s,
+            pair,
+            ell,
+            0 * ell,
+            0 * ell,
+            0 * ell,
+            window_ells=ell,
+            window_weights=np.eye(3),
         )
     # Observe CCL's actual inputs independently of blinding's pair selection.
     make_tracer, angular_cl = ccl.WeakLensingTracer, ccl.angular_cl
@@ -163,15 +173,18 @@ def test_multitracer_shift_matches_single_pair_theories(up, monkeypatch):
     for a, b in pairs:
         nz_a, nz_b = s.tracers[f"source_{a}"].nz, s.tracers[f"source_{b}"].nz
         # Each pair reaches angular_cl at fiducial and hidden points, for ξ and Cℓ.
-        assert sum(np.array_equal(x, nz_a) and np.array_equal(y, nz_b)
-                   for x, y in seen) == 4
+        assert (
+            sum(np.array_equal(x, nz_a) and np.array_equal(y, nz_b) for x, y in seen)
+            == 4
+        )
     for a, b in pairs:
         rows = s.indices(tracers=(f"source_{a}", f"source_{b}"))
         single = s.copy()
         single.keep_indices(rows)
         expected = bd.shear(hidden, single) - bd.shear(fid, single)
-        np.testing.assert_allclose(shifted.mean[rows] - s.mean[rows], expected,
-                                   rtol=1e-12, atol=0)
+        np.testing.assert_allclose(
+            shifted.mean[rows] - s.mean[rows], expected, rtol=1e-12, atol=0
+        )
         for kind in (sio.XI_PLUS, sio.XI_MINUS, sio.CL_EE):
             assert np.any(expected[single.indices(kind)] != 0)
 

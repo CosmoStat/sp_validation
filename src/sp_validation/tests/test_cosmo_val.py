@@ -679,7 +679,9 @@ class TestCosmologyValidation:
                 cv.calculate_2pcf_version(version)
         else:
             result = cv.calculate_2pcf_version(version)
-            np.testing.assert_array_equal(result["tomo_bin_all_tomo_bin_all"].xip, [1.0])
+            np.testing.assert_array_equal(
+                result["tomo_bin_all_tomo_bin_all"].xip, [1.0]
+            )
 
     def test_treecorr_runs_on_the_cpus_the_process_holds(self, tmp_path):
         """By default TreeCorr takes the process's CPU affinity, not the node's count."""

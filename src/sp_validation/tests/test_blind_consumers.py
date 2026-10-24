@@ -37,10 +37,13 @@ def test_reporting_parts(part_path, monkeypatch, expected):
         assert sacc_io.stamp(cv.xi_parts["v", "reporting"]) == "none"
 
 
-@pytest.mark.parametrize("script, input_key, reader", [
-    ("cv_cosebis.py", "xi", "get_xi"),
-    ("cv_pure_eb.py", "xi_integration", "xi_correlation"),
-])
+@pytest.mark.parametrize(
+    "script, input_key, reader",
+    [
+        ("cv_cosebis.py", "xi", "get_xi"),
+        ("cv_pure_eb.py", "xi_integration", "xi_correlation"),
+    ],
+)
 @pytest.mark.parametrize("expected", ["none", "toy"])
 def test_derived_script_checks_before_reading_signal(
     part_path, monkeypatch, script, input_key, reader, expected
