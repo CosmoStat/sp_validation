@@ -213,6 +213,8 @@ class PseudoClMixin:
         self.print_done("Done pseudo-Cl's")
 
     def calculate_pseudo_cl_map(self, ver, nside, out_path, tomo_bin_a, tomo_bin_b):
+        if (tomo_bin_a, tomo_bin_b) != ("all", "all"):
+            self._refuse_blinded_tomography(ver)
         assert (tomo_bin_a == "all" and tomo_bin_b == "all") or (
             isinstance(tomo_bin_a, (int, np.integer))
             and isinstance(tomo_bin_b, (int, np.integer))
@@ -312,6 +314,8 @@ class PseudoClMixin:
         )
 
     def calculate_pseudo_cl_catalog(self, ver, out_path, tomo_bin_a, tomo_bin_b):
+        if (tomo_bin_a, tomo_bin_b) != ("all", "all"):
+            self._refuse_blinded_tomography(ver)
         assert (tomo_bin_a == "all" and tomo_bin_b == "all") or (
             isinstance(tomo_bin_a, (int, np.integer))
             and isinstance(tomo_bin_b, (int, np.integer))

@@ -48,7 +48,7 @@ for i, version in enumerate(p["versions"]):
     if p["include_pseudo_cl"]:
         from astropy.io import fits
 
-        part = sacc_io.load(snakemake.input["pseudo_cl"][i])
+        part = sacc_io.load(snakemake.input["pseudo_cl"][i], blind=p["blinds"][i])
         _ell, _ee, bb, _eb, _window = sacc_io.get_pseudo_cl(part, (0, 0))
         with fits.open(snakemake.input["pseudo_cl_cov"][i]) as hdul:
             cov_bb = np.asarray(hdul["COVAR_BB_BB"].data, float)

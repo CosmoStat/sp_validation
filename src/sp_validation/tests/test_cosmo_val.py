@@ -649,6 +649,39 @@ class TestCosmologyValidation:
             cv.calculate_2pcf_version(version, compute_tomography=True)
         with pytest.raises(blinding.BlindingError, match="tomographic"):
             cv.calculate_pseudo_cl(compute_tomography=True)
+        # Direct producers must refuse before opening even a missing catalogue.
+        cv.cc[version]["shear"]["path"] = str(tmp_path / "missing.fits")
+        out = tmp_path / "tomographic.fits"
+        with pytest.raises(blinding.BlindingError, match="tomographic"):
+            cv.calculate_pseudo_cl_map(version, 16, out, 1, 2)
+        with pytest.raises(blinding.BlindingError, match="tomographic"):
+            cv.calculate_pseudo_cl_catalog(version, out, 1, 2)
+        assert not out.exists()
+
+    @pytest.mark.parametrize("stamp", ["none", "toy"])
+    def test_held_xi_matches_declared_blind(self, tmp_path, stamp):
+        from sp_validation import blinding, sacc_io
+
+        params, version = self._write_synthetic_catalogs(tmp_path)
+        config = yaml.safe_load(open(params["catalog_config"]))
+        config["paths"]["blinds"] = str(tmp_path / "blinds")
+        config[version]["blind"] = "toy"
+        with open(params["catalog_config"], "w") as f:
+            yaml.dump(config, f)
+        blinding.init("toy", config)
+        cv = CosmologyValidation(versions=[version], npatch=1, **params)
+        part = sacc_io.new_sacc({0: ([0.1, 1.0], [1.0, 1.0])})
+        sacc_io.add_xi(part, (0, 0), [10.0], [1.0], [0.5], grid="reporting")
+        part.metadata["blind"] = stamp
+        cv.xi_parts[version, "reporting"] = part
+        if stamp == "none":
+            with pytest.raises(ValueError, match="stamped none.*toy"):
+                cv.calculate_2pcf_version(version)
+        else:
+            result = cv.calculate_2pcf_version(version)
+            np.testing.assert_array_equal(
+                result["tomo_bin_all_tomo_bin_all"].xip, [1.0]
+            )
 
     def test_treecorr_runs_on_the_cpus_the_process_holds(self, tmp_path):
         """By default TreeCorr takes the process's CPU affinity, not the node's count."""

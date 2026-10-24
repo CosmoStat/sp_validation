@@ -136,7 +136,8 @@ def assemble_sacc(
         path = part_paths.get(name)
         if path is None:
             continue
-        parts.append(_attach_cov(sacc_io.load(path), name, xi_cov, pseudo_cl_cov))
+        part = sacc_io.load(path, blind=blind)
+        parts.append(_attach_cov(part, name, xi_cov, pseudo_cl_cov))
     if not parts:
         raise ValueError(f"no parts found for {version}: {part_paths}")
     s = sacc_io.save(
