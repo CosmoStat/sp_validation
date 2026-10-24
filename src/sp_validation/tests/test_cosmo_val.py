@@ -649,6 +649,14 @@ class TestCosmologyValidation:
             cv.calculate_2pcf_version(version, compute_tomography=True)
         with pytest.raises(blinding.BlindingError, match="tomographic"):
             cv.calculate_pseudo_cl(compute_tomography=True)
+        # Direct producers must refuse before opening even a missing catalogue.
+        cv.cc[version]["shear"]["path"] = str(tmp_path / "missing.fits")
+        out = tmp_path / "tomographic.fits"
+        with pytest.raises(blinding.BlindingError, match="tomographic"):
+            cv.calculate_pseudo_cl_map(version, 16, out, 1, 2)
+        with pytest.raises(blinding.BlindingError, match="tomographic"):
+            cv.calculate_pseudo_cl_catalog(version, out, 1, 2)
+        assert not out.exists()
 
     def test_treecorr_runs_on_the_cpus_the_process_holds(self, tmp_path):
         """By default TreeCorr takes the process's CPU affinity, not the node's count."""
