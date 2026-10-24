@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import treecorr
 
+from sp_validation.correlation import process_gg
 from sp_validation.statistics import jackknife_patch_centers
 
 from .. import sacc_io
@@ -56,6 +57,10 @@ class RealSpaceMixin:
             **treecorr_config: Overrides of the instance's ``treecorr_config``,
                 e.g. ``min_sep=1``.
 
+        Full-sample means use an unpatched pass with the configured ``bin_slop``.
+        Patched covariance uses TreeCorr's default tolerance.
+        No unsealed text cache is written; figures reuse the sealed SACC part.
+
         Returns:
             dict: ``"tomo_bin_{b1}_tomo_bin_{b2}"`` → ξ± shaped like a TreeCorr
             ``GGCorrelation``: the part's
@@ -99,8 +104,6 @@ class RealSpaceMixin:
             patch_centers = self._patch_centers(cols, npatch)
 
             for bin1, bin2 in to_compute:
-                gg = treecorr.GGCorrelation(gg_config)
-
                 cat_gal1 = self._bin_catalog(cols, bin1, npatch, patch_centers)
                 cat_gal2 = (
                     self._bin_catalog(cols, bin2, npatch, patch_centers)
@@ -108,7 +111,9 @@ class RealSpaceMixin:
                     else None
                 )
 
-                gg.process(cat_gal1, cat2=cat_gal2)
+                # Publish unpatched means; retain the default-tolerance patched
+                # covariance before sealing the part under its catalogue's blind.
+                gg = process_gg(gg_config, cat_gal1, cat_gal2)
 
                 if (bin1, bin2) != ("all", "all"):
                     ggs[f"tomo_bin_{bin1}_tomo_bin_{bin2}"] = gg

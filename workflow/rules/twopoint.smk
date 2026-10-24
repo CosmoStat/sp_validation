@@ -33,6 +33,7 @@ rule xi:
         cat_config=CAT_CONFIG,
         output_dir=str(COSMO_VAL),
         grid=lambda w: grid_of(XI_GRIDS, w),
+        b_target=config.get("cosmo_val", {}).get("b_target", 0.01),
         blind=lambda w: blind_of(w.version),
     resources:
         # The fine integration grid needs more memory and wall time than the
@@ -59,6 +60,7 @@ rule rho_tau_stats:
         npatch="{npatch}",
         cat_config=CAT_CONFIG,
         output_dir=str(COSMO_VAL),
+        b_target=config.get("cosmo_val", {}).get("b_target", 0.01),
         blind=lambda w: blind_of(w.version),
     resources:
         mem_mb=64000,
