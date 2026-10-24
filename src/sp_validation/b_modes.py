@@ -501,6 +501,7 @@ def cosebis_scan_from_xi(
             "pte_B": 1 - stats.chi2.cdf(chi2_B, nmodes),
             "scale_cut": (min_theta, max_theta),
             "inds": inds,
+            "bin_indices": np.array([start_bin, stop_bin]),
         }
 
         print(f"COSEBIs results [{min_theta:.1f}-{max_theta:.1f} arcmin]:")
@@ -925,8 +926,8 @@ def plot_cosebis_scale_cut_heatmap(
     # A sparse scan must not be assigned to the first N triangular cells.
     snr_matrix = np.full((nbins, nbins), np.nan)
     pte_matrix = np.full((nbins, nbins), np.nan)
-    for scale_cut, result in cosebis_results.items():
-        start, stop = bins_from_scale_cut(left_edges, right_edges, scale_cut)
+    for result in cosebis_results.values():
+        start, stop = result["bin_indices"]
         snr_matrix[start, stop - 1] = np.sqrt(result["chi2_E"])
         pte_matrix[start, stop - 1] = result["pte_B"]
 
@@ -983,10 +984,10 @@ def plot_cosebis_scale_cut_heatmap(
 
     # Add fiducial scale cut cross-hatching if provided
     if fiducial_scale_cut is not None:
-        min_scale, max_scale = fiducial_scale_cut
-        start_bin, stop_bin = bins_from_edges(
-            left_edges, right_edges, min_scale, max_scale
+        fiducial_key = find_conservative_scale_cut_key(
+            cosebis_results, fiducial_scale_cut
         )
+        start_bin, stop_bin = cosebis_results[fiducial_key]["bin_indices"]
 
         if stop_bin > start_bin and start_bin < nbins and stop_bin > 0:
             # Add cross-hatching at the fiducial scale cut matrix element
@@ -1348,7 +1349,7 @@ def load_cosebis_results(path, *, blind):
         )
         results[lo, hi] = {
             k: data[k + suffix]
-            for k in ("En", "Bn", "cov", "chi2_E", "chi2_B", "pte_B")
+            for k in ("En", "Bn", "cov", "chi2_E", "chi2_B", "pte_B", "bin_indices")
         }
     edges = data["left_edges"], data["right_edges"]
     return results, edges
@@ -1363,6 +1364,7 @@ def _cosebis_result_to_dict(r, suffix=""):
         f"chi2_E{suffix}": np.array(r["chi2_E"]),
         f"chi2_B{suffix}": np.array(r["chi2_B"]),
         f"pte_B{suffix}": np.array(r["pte_B"]),
+        f"bin_indices{suffix}": np.asarray(r["bin_indices"]),
     }
 
 
