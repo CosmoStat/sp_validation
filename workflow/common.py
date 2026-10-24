@@ -88,8 +88,8 @@ CAT_CONFIG = str(REPO_ROOT / "cosmo_val" / "cat_config.yaml")
 # Fiducial cosmology: Planck 2018 (astropy Planck18, Table 2 + BAO)
 # Source of truth: cs_util.cosmo.PLANCK18
 # Regenerate with: snakemake results/cosmology/planck18.json
-# Resolved relative to the run directory at configure() time.
-COSMOLOGY_PARAMS = "results/cosmology/planck18.json"
+# Use the committed fiducial independently of the driver's working directory.
+COSMOLOGY_PARAMS = str(REPO_ROOT / "papers/cosmo_val/results/cosmology/planck18.json")
 
 # Wildcard constraints shared by every Snakefile that composes these rules.
 # Patterns must match all expected values; overly restrictive patterns cause
