@@ -921,28 +921,14 @@ def plot_cosebis_scale_cut_heatmap(
     left_edges, right_edges = edges
     nbins = len(left_edges)
 
-    # Initialize matrices
-    snrs = [np.sqrt(result["chi2_E"]) for result in cosebis_results.values()]
-    ptes = [result["pte_B"] for result in cosebis_results.values()]
-
-    rows = [start for start in range(nbins) for stop in range(start, nbins)]
-    columns = [stop for start in range(nbins) for stop in range(start, nbins)]
-
+    # Place only the cuts actually scanned, using their binning metadata.
+    # A sparse scan must not be assigned to the first N triangular cells.
     snr_matrix = np.full((nbins, nbins), np.nan)
     pte_matrix = np.full((nbins, nbins), np.nan)
-    for row, column, snr, pte in zip(rows, columns, snrs, ptes):
-        snr_matrix[row, column] = snr
-        pte_matrix[row, column] = pte
-
-    # Fill matrices from COSEBIs results
-    for i in range(len(left_edges)):
-        for j in range(i, len(right_edges)):
-            scale_cut = (left_edges[i], right_edges[j])
-            result = cosebis_results.get(scale_cut)
-
-            if result is not None:
-                snr_matrix[i, j] = np.sqrt(result["chi2_E"])
-                pte_matrix[i, j] = result["pte_B"]
+    for scale_cut, result in cosebis_results.items():
+        start, stop = bins_from_scale_cut(left_edges, right_edges, scale_cut)
+        snr_matrix[start, stop - 1] = np.sqrt(result["chi2_E"])
+        pte_matrix[start, stop - 1] = result["pte_B"]
 
     # Create 1x2 subplot layout
     fig, axs = plt.subplots(1, 2, figsize=(15, 7))
@@ -1348,7 +1334,6 @@ def load_cosebis_results(path):
     with np.load(path, allow_pickle=False) as data:
         results = {}
         for lo, hi in data["scale_cuts"]:
-            suffix = f"_{lo}_{hi}"
             # Match the writer's scalar formatting (including integer cuts).
             suffix = next(
                 k.removeprefix("En")
@@ -1388,8 +1373,10 @@ def save_cosebis_results(results, output_path, fiducial_scale_cut=None, edges=No
     output_path : str
         Output .npz file path
     fiducial_scale_cut : tuple, optional
-        If results has multiple scale cuts, save only this one.
-        If None and results has multiple scale cuts, saves all.
+        If given, also save untagged entries for this fiducial cut (used by
+        summary consumers). All scanned cuts are always retained.
+    edges : tuple of arrays, optional
+        Integration-bin left/right edges used by the scale-cut heatmap.
     """
     is_multi = all(isinstance(k, tuple) for k in results)
 
