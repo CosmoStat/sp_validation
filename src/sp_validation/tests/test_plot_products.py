@@ -143,7 +143,8 @@ def test_footprint_every_region_from_one_map(tmp_path, monkeypatch):
     loaded = load_footprint(cache)
     calls = []
 
-    def draw(self, data, region, outpath):
+    def draw(self, data, region, outpath, colorbar_label):
+        assert colorbar_label == "Galaxies per pixel (NSIDE=16)"
         np.testing.assert_array_equal(data.valid_pixels, count_map.valid_pixels)
         calls.append(region)
         Path(outpath).write_bytes(b"rendered" * 100)
