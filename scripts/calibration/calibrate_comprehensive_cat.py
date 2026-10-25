@@ -178,11 +178,14 @@ for key in add_cols:
 
 # %%
 # Never copy stale unsquared IV weights from a comprehensive input.
-add_cols_data["w_iv"] = gal_metacal.ns["w_iv"][mask_metacal]
+if gal_metacal.weight_scheme != "iv":
+    add_cols_data["w_iv"] = gal_metacal.ns["w_iv"][mask_metacal]
+add_cols_format = {}
 if "TILE_ID" in dat.dtype.names:
-    add_cols_data["TILE_ID"] = cat.get_col(
-        dat, "TILE_ID", mask_combined._mask, mask_metacal
-    )
+    add_cols_data["TILE_ID"] = np.asarray(
+        cat.get_col(dat, "TILE_ID", mask_combined._mask, mask_metacal)
+    ).astype(str)
+    add_cols_format["TILE_ID"] = f"{max(map(len, add_cols_data['TILE_ID']))}A"
 
 # Additional post-processing columns to write to output cat
 add_cols_post = [
@@ -236,6 +239,7 @@ cat.write_shape_catalog(
     c_err=c_err,
     w_type=gal_metacal.weight_scheme or "des",
     add_cols=add_cols_data,
+    add_cols_format=add_cols_format,
     add_header=header,
 )
 

@@ -56,6 +56,12 @@ def test_iv_weights_square_both_shape_error_standard_deviations(mask):
     np.testing.assert_allclose(actual, expected, rtol=1e-12, atol=0)
 
 
+def test_returned_covariance_diagonals_are_variances():
+    c11, c22, _ = metacal.get_variance_ivweights(_catalogue(), 0.34)
+    np.testing.assert_allclose(c11, np.array([0.05, 0.20]) ** 2)
+    np.testing.assert_allclose(c22, np.array([0.10, 0.30]) ** 2)
+
+
 def test_global_shear_response_uses_squared_shape_error_weights():
     """Protect the applied response from the same dimensional weight error.
 
