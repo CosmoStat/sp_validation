@@ -109,7 +109,7 @@ def plot_rho_tau_fits(products, styles, contours, samples, summary):
         close=True,
     )
     for path, draw_samples in ((samples, True), (summary, False)):
-        fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+        fig, axes = plt.subplots(1, 2, figsize=(14, 6), layout="constrained")
         for ver, data in products.items():
             theta, colour = data["theta"], styles[ver]["colour"]
             for ax, component, sign in zip(axes, ("plus", "minus"), ("+", "-")):
@@ -128,7 +128,7 @@ def plot_rho_tau_fits(products, styles, contours, samples, summary):
                     ax.fill_between(theta, lo, hi, color=colour, alpha=0.3)
                 ax.set(
                     xscale="log",
-                    yscale="log",
+                    yscale="linear",
                     xlabel=r"$\theta$ [arcmin]",
                     ylabel=rf"$\xi^{{\rm PSF,sys}}_{sign}(\theta)$",
                 )
