@@ -18,3 +18,15 @@ def test_xi_panels_use_constrained_layout(tmp_path, monkeypatch):
     plots.plot_2pcf({"toy": gg}, {"toy": {"marker": "o", "colour": "C0"}},
                     [tmp_path / "xi.png", tmp_path / "theta_xi.png"])
     assert all(fig.get_constrained_layout() for fig in figures if hasattr(fig, "axes"))
+
+
+def test_tau_panels_use_constrained_layout(tmp_path, monkeypatch):
+    figures = []
+    monkeypatch.setattr(plt, "close", lambda fig: figures.append(fig))
+    table = {"theta": np.array([1., 10.])}
+    for i in (0, 2, 5):
+        table[f"tau_{i}_p"] = np.zeros(2)
+        table[f"vartau_{i}_p"] = np.ones(2)
+    plots.plot_psf_stats({"toy": table}, {"toy": {"colour": "C0"}},
+                         tmp_path / "tau.png", "tau")
+    assert all(fig.get_constrained_layout() for fig in figures if hasattr(fig, "axes"))

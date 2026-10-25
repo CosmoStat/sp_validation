@@ -216,6 +216,7 @@ def plot_psf_stats(tables, styles, output, kind, covariances=()):
         3,
         figsize=(15, 10 if kind == "rho" else 6),
         squeeze=False,
+        layout="constrained",
     )
     for i, stat in enumerate(indices):
         ax = axes.flat[i]
