@@ -1,6 +1,7 @@
 # DES case-d validation
 
 These are observed results on Martin's four unblinded image-simulation grids.
+[Tests and production-driver smoke](tests.md): 26 focused tests pass; the fast suite has 553 passes and four failures also reproduced on unchanged develop.
 Each grid contains five external-shear branches and 39 shared tile labels.
 The injected shear is 0.025 from the existing manifest-derived m config; the metacal step is 0.01.
 The measured code revision is recorded in each linked JSON file.
