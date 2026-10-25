@@ -16,7 +16,8 @@ check at load rejects an unknown key (typo) and a missing science key (see
 
 The five simulations per grid are the reference ``1z2z`` (no input shear) plus
 the ``+/-`` shear pairs ``1p2z``/``1m2z`` (g1) and ``1z2p``/``1z2m`` (g2); the
-m-bias estimator matches each to the reference by RA/Dec.
+modern m-bias estimator uses full populations with separately normalized
+branch weights (pair_match: false), matching the stored response.
 """
 
 import os

@@ -58,6 +58,7 @@ def _load_cat(path, w_cols):
                 validate_weight_scheme(hdul[0].header["WGHTSCH"], col)
         data = hdul[1].data
         cat = {
+            "weight_scheme": hdul[0].header.get("WGHTSCH"),
             "ra": data["RA"].copy(),
             "dec": data["Dec"].copy(),
             "e1": data["e1"].copy(),
@@ -102,10 +103,9 @@ class ImageSimMBias:
           (required); ``"none"`` (or a ``null`` entry) means unit weights,
           any other entry is a FITS column name. The **first** entry is the
           primary result surfaced at the top level of ``run()``'s output. Our
-          fiducial run leads with the unweighted scheme (``["none", ...]``),
-          per the #227 verdict that shape weights are excluded from sim
-          calibration; the unweighted m also avoids the ``cov(w, e)`` residual
-          weighted estimators carry on constant-shear sims.
+          modern production run uses the weight matching the stored response
+          (DES case d: ``["w_des"]``) and ``pair_match=False``.
+          Symmetric pair weights with a full-population response are refused.
         - w_col : str or None, *deprecated* single weight scheme; accepted for
           back-compat and used as ``[w_col]`` only when ``w_cols`` is absent.
         - n_bootstrap : int, number of bootstrap resamples for errors (required)
@@ -165,6 +165,12 @@ class ImageSimMBias:
             if verbose:
                 print(f"  Loading {path}")
             self.cats[name] = _load_cat(path, self.w_cols)
+            if self.pair_match and self.cats[name]["weight_scheme"] is not None:
+                raise ValueError(
+                    "Modern response products require pair_match=False: headline m "
+                    "uses full populations and separately normalized branch weights; "
+                    "symmetric pair weights do not match the stored response."
+                )
             if verbose:
                 print(f"    {len(self.cats[name]['ra'])} objects")
 
