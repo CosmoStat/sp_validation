@@ -19,13 +19,27 @@ def test_modern_headline_uses_branch_weights(tmp_path):
             e2=[0.0, 0.0],
             w_des=[1.0, 3.0] if sign == 1 else [3.0, 1.0],
         )
+        arrays["e1_uncal"] = arrays["e1"]
+        arrays["e2_uncal"] = arrays["e2"]
         table = fits.BinTableHDU.from_columns(
             [fits.Column(name=k, array=v, format="D") for k, v in arrays.items()]
+            + [fits.Column(name="TILE_ID", array=["a", "b"], format="1A")]
+        )
+        jk = fits.BinTableHDU.from_columns(
+            [
+                fits.Column(name="TILE_ID", array=["b", "a"], format="1A"),
+                *[
+                    fits.Column(name=f"R_{i}{j}", array=[float(i == j)] * 2, format="D")
+                    for i in (1, 2)
+                    for j in (1, 2)
+                ],
+            ],
+            name="R_JK",
         )
         primary = fits.PrimaryHDU()
         primary.header["WGHTSCH"] = "des"
         primary.header["RAPPLIED"] = True
-        fits.HDUList([primary, table]).writeto(directory / "cat.fits")
+        fits.HDUList([primary, table, jk]).writeto(directory / "cat.fits")
     cfg = dict(
         grids_dir=str(tmp_path),
         num=1,

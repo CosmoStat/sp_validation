@@ -22,24 +22,28 @@ def summarize(root, output):
         x = [r["grid"] for r in results]
         y = [r["m"][f"m{comp}"] for r in results]
         ax.plot(
-            x,
-            [v["martin_paired"] for v in y],
+            [i - 0.08 for i in x],
+            [100 * v["new_paired"] for v in y],
             "o",
-            ms=9,
             mfc="none",
-            label="Martin paired case d",
+            label="Matched, symmetric pair weights (diagnostic)",
         )
-        ax.plot(x, [v["new_paired"] for v in y], "x", label="New paired reproduction")
+        ax.plot(
+            x,
+            [100 * v["intersection_branch_weighted"] for v in y],
+            "x",
+            label="Matched, separate branch weights (diagnostic)",
+        )
         ax.errorbar(
             [i + 0.08 for i in x],
-            [v["new_unpaired"] for v in y],
-            yerr=[v["unpaired_fixed_W_tile_jk_error"] for v in y],
+            [100 * v["new_unpaired"] for v in y],
+            yerr=[100 * v["unpaired_fixed_W_tile_jk_error"] for v in y],
             fmt=".",
             capsize=3,
-            label="New unpaired, fixed-W tile JK",
+            label="Full populations, branch weights + tile JK",
         )
         ax.axhline(0, color="k", lw=0.7)
-        ax.set(xlabel="Simulation grid", ylabel=f"Residual m{comp}", xticks=x)
+        ax.set(xlabel="Simulation grid", ylabel=f"Residual m{comp} [%]", xticks=x)
         ax.legend(fontsize=8)
     fig.tight_layout()
     fig.savefig(output / "m_comparison.png", dpi=160)
@@ -102,10 +106,16 @@ The paired reproduction matches cuts (including FLAGS≤2), 20×20 table, right-
 Across all 20 external-shear products, max |R_new−R_Martin| = {max_r:.3g}, max relative W difference = {max_w:.3g}, and max paired-m difference = {max_m:.3g}.
 The comparison uses `/n23data1/mkilbing/imsim_wdes_response/grid_*/des_d/results/m_bias_results.yaml`, specifically `weights.w_des`, not its unweighted top-level headline.
 
-The unpaired estimator deliberately uses each external branch's full selected population, with its own weights and response.
+The production `ImageSimMBias` headline uses each external branch's full selected population, with its own weights and response.
+Modern products refuse `pair_match: true`.
+The saved `production_m` includes the full (m1,c1,m2,c2) shared-tile covariance and deleted estimates.
 Its errors delete the same tile on both external branches and recalibrate R for each deletion, conditional on the fixed W table.
 These errors are not conditional fixed-response object-bootstrap errors.
-The paired comparison remains diagnostic because matching changes the population without recalibrating its selection response.
+The three-estimator figure holds the full-population responses fixed in every comparison.
+Most of the paired–full gap is already present within the matched population when only the weight prescription changes.
+Symmetric pair weights drop the branch-weight-change contribution from the numerator while case-d R retains it; the paired result is diagnostic, not consistent headline m.
+Population restriction gives a smaller, mixed-sign correction.
+Detection/blending selection may still contribute to the negative full-population m; this comparison does not isolate it.
 Squaring IV errors changes exported w_iv but cannot change pure-DES W/R/m; IV proxies are not used.
 No mean shear is subtracted from these constant-shear simulations.
 These runs validate agreement with Martin's implementation, not a new fiducial residual-m calibration for blinded v2 data.

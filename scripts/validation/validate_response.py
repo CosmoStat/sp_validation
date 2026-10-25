@@ -22,6 +22,7 @@ from astropy.io import fits
 
 from sp_validation import calibration, catalog_builders, io
 from sp_validation.catalog import match_catalogs_radec
+from sp_validation.image_sims import ImageSimMBias
 from sp_validation.response_diagnostics import pair_products, plot_response
 
 
@@ -72,9 +73,7 @@ def run(grid, output):
         gm = calibration.metacal_from_config(data, pre, cm)
         shear, raw, w, selected, _, _ = calibration.get_calibrated_m_c(gm, False)
         tiles = np.char.strip(np.asarray(data["TILE_ID"][pre]).astype(str))
-        labels, jk, _ = gm.response_jackknife(tiles)
         cut = data[pre][selected]
-        groups = tiles[selected]
         outdir = output / label
         outdir.mkdir(exist_ok=True)
         path = outdir / "shape_catalog_cut_ngmix.fits"
@@ -106,20 +105,10 @@ def run(grid, output):
                             f"{prefix}{'_' if prefix == 'R' else ''}{i + 1}{j + 1}"
                         ] = val[i, j]
         calibration.save_response_product(path, gm, tiles)
-        means = np.array(
-            [
-                np.average(raw[:, groups != t], axis=1, weights=w[groups != t])
-                for t in labels
-            ]
-        )
-        g_jk = np.linalg.solve(jk["total"], means[..., None])[..., 0]
         products[name] = dict(
             g=shear,
             raw=raw,
             w=w,
-            groups=groups,
-            labels=labels,
-            g_jk=g_jk,
             ra=cut["RA"],
             dec=cut["Dec"],
         )
@@ -186,6 +175,18 @@ def run(grid, output):
             )
     with open(reference / "results/m_bias_results.yaml") as fh:
         martin = yaml.safe_load(fh)["weights"]["w_des"]
+    estimator = ImageSimMBias(
+        {
+            **cfg,
+            "grids_dir": str(output),
+            "num": grid,
+            "w_cols": ["w_des"],
+            "pair_match": False,
+        }
+    )
+    estimator.load_catalogs(False)
+    production = estimator.run(False)
+    summary["production_m"] = production
     summary["m"] = {}
     for comp, (p, m) in enumerate((("1p2z", "1m2z"), ("1z2p", "1z2m"))):
         plus, minus = products[p], products[m]
@@ -202,13 +203,17 @@ def run(grid, output):
         paired = np.average(
             (plus["g"][comp, ip] - minus["g"][comp, im]) / (2 * g_in) - 1, weights=pairw
         )
-        np.testing.assert_array_equal(plus["labels"], minus["labels"])
-        m_jk = (plus["g_jk"][:, comp] - minus["g_jk"][:, comp]) / (2 * g_in) - 1
-        error = np.sqrt((len(m_jk) - 1) / len(m_jk) * np.sum((m_jk - m_jk.mean()) ** 2))
+        intersection = (
+            np.average(plus["g"][comp, ip], weights=plus["w"][ip])
+            - np.average(minus["g"][comp, im], weights=minus["w"][im])
+        ) / (2 * g_in) - 1
+        np.testing.assert_allclose(production[f"m{comp + 1}"], unpaired, atol=1e-14)
+        error = production[f"m{comp + 1}_err"]
         summary["m"][f"m{comp + 1}"] = dict(
             martin_paired=martin[f"m{comp + 1}"],
             new_paired=float(paired),
             new_unpaired=float(unpaired),
+            intersection_branch_weighted=float(intersection),
             unpaired_fixed_W_tile_jk_error=float(error),
         )
     summary["seconds"] = time.monotonic() - start

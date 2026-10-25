@@ -51,6 +51,8 @@ NOT_COLUMNS = {
     "ORDER",
     "RAPPLIED",
     "RJ_{}{}",
+    "R_{}{}",  # derived response-product matrix, not parent shape columns
+    "R_JK",  # response-product FITS extension name
     "RLEGACY",
     "SW_{}",
     "WGHTSCH",
