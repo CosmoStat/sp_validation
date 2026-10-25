@@ -83,6 +83,8 @@ def plot_pseudo_cl_spectrum(datasets, spectrum, output_path):
     threshold = np.median(positive) if positive.size else 1.0
     ax[1].set_yscale("symlog", linthresh=threshold)
     ax[1].yaxis.get_major_locator().set_params(numticks=7)
+    ticks = ax[1].get_yticks()
+    ax[1].set_yticks([t for t in ticks if t == 0 or abs(t) >= 100 * threshold])
     ax[1].axhline(0, color="grey", linewidth=0.5)
     plt.suptitle(f"Pseudo-Cl {spectrum} (Gaussian covariance)")
     plt.legend()
