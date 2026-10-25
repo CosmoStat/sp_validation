@@ -54,9 +54,12 @@ def save_response_product(path, gm, groups=None):
     groups are aligned to the preselected parent, never only the ns selection.
     """
     if gm._legacy_response:
+        with fits.open(path, mode="update") as hdus:
+            hdus[0].header["RLEGACY"] = (True, "Historical R/c and unsquared IV policy")
         return
     with fits.open(path, mode="update") as hdus:
         hdr = hdus[0].header
+        hdr["MEANSUB"] = getattr(gm, "subtract_mean_shear", False)
         hdr["WGHTSCH"] = gm.weight_scheme
         hdr["RAPPLIED"] = True
         hdr["MCSTEP"] = gm._step
@@ -71,6 +74,8 @@ def save_response_product(path, gm, groups=None):
         for b in response.BRANCHES:
             hdr[f"N_{b}"] = gm.branch_counts[b]
             hdr[f"SW_{b}"] = gm.branch_weight_sums[b]
+            if hasattr(gm, "branch_migration"):
+                hdr[f"MIG_{b}"] = gm.branch_migration[b]
         if hasattr(gm, "W"):
             es, er, w, count = gm.W
             hdus.append(fits.ImageHDU(w, name="W_DES"))
@@ -199,6 +204,7 @@ def get_calibrated_m_c(gal_metacal, additive_correction=True):
                 np.sqrt(np.sum(w**2 * (g_uncorr[comp] - c[comp]) ** 2)) / w.sum()
             )
 
+    gal_metacal.subtract_mean_shear = additive_correction
     gal_metacal.c_e = c
     gal_metacal.c_g = np.linalg.solve(gal_metacal.R, c)
 
@@ -744,8 +750,9 @@ def get_calibrate_e_from_cat(path_cat_gal, weight_type="des", verbose=False):
     c_corr = np.linalg.inv(R) @ c
     g_cal = np.linalg.inv(R) @ g
 
-    for comp in (0, 1):
-        g_cal[comp] -= c_corr[comp]
+    if hdu_gal[0].header.get("MEANSUB", True):
+        for comp in (0, 1):
+            g_cal[comp] -= c_corr[comp]
 
     hdu_gal.close()
     return g_cal[0], g_cal[1]
@@ -1020,7 +1027,7 @@ class metacal:
         """Case d: fit W once, evaluate each branch's own SNR/size."""
         ma = self.mask_dict["ns"]
         self.branches = {
-            b: np.array([getattr(self, b)["g1"], getattr(self, b)["g2"]])
+            b: (getattr(self, b)["g1"], getattr(self, b)["g2"])
             for b in response.BRANCHES
         }
         self.weight_metadata = dict(
@@ -1034,11 +1041,8 @@ class metacal:
         if self.weight_scheme == "iv":
             self.branch_weights = {b: self.ns["w_iv"] for b in response.BRANCHES}
         else:
-            quantities = {}
-            for b in response.BRANCHES:
-                d = getattr(self, b)
-                quantities[b] = (d["flux"] / d["flux_err"], d["T"] / d["Tpsf"])
-            snr, size = quantities["ns"]
+            snr = self.ns["flux"] / self.ns["flux_err"]
+            size = self.ns["T"] / self.ns["Tpsf"]
             self.W = fit_w_des(
                 dict(
                     snr=snr[ma],
@@ -1054,10 +1058,21 @@ class metacal:
                 self._rel_size_min,
                 self._rel_size_max,
             )
-            self.branch_weights = {
-                b: response.evaluate_w(self.W, *quantities[b])
-                for b in response.BRANCHES
-            }
+            ns_cell = (
+                response.cell_index(snr, self.W[0]),
+                response.cell_index(size, self.W[1]),
+            )
+            self.branch_weights = {}
+            self.branch_migration = {}
+            for b in response.BRANCHES:
+                d = getattr(self, b)
+                s, r = d["flux"] / d["flux_err"], d["T"] / d["Tpsf"]
+                self.branch_weights[b] = response.evaluate_w(self.W, s, r)
+                selected = self.mask_dict[b]
+                moved = (response.cell_index(s, self.W[0]) != ns_cell[0]) | (
+                    response.cell_index(r, self.W[1]) != ns_cell[1]
+                )
+                self.branch_migration[b] = float(np.mean(moved[selected]))
             self.ns["w_des"] = self.branch_weights["ns"]
         self.ns["w"] = self.branch_weights["ns"]
         self.branch_counts = {b: len(self.mask_dict[b]) for b in response.BRANCHES}
@@ -1125,7 +1140,7 @@ class metacal:
             [self.ns, self.m1, self.p1, self.m2, self.p2],
             ["ns", "m1", "p1", "m2", "p2"],
         ):
-            Tr_tmp = data["T"].copy()
+            Tr_tmp = data["T"] if self._legacy_response else data["T"].copy()
             if self._size_corr_ell:
                 Tr_tmp *= (1 - (data["g1"] ** 2 + data["g2"] ** 2)) / (
                     1 + (data["g1"] ** 2 + data["g2"] ** 2)

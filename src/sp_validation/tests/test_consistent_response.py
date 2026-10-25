@@ -168,6 +168,55 @@ def test_spatial_jackknife_shared_selection_and_covariance():
     assert cov[4, 4] > 0
 
 
+def test_end_to_end_cell_migration_and_sheared_only_row():
+    d, _, _ = catalogue()
+    for branch in ("NOSHEAR", "1P", "1M", "2P", "2M"):
+        d[f"NGMIX_G1_{branch}"][40:] += np.tile([0.15, -0.15], 20)
+    d["NGMIX_FLUX_1P"][:40:2] = 100
+    d["NGMIX_FLUX_1M"][1:40:2] = 100
+    # A common-parent row absent from S_ns still gets a defined branch W.
+    d["NGMIX_FLUX_NOSHEAR"][0] = 9
+    gm = calibration.metacal(
+        d,
+        np.ones(len(d), bool),
+        weight_scheme="des",
+        size_corr_ell=False,
+        des_num_bins=2,
+    )
+    assert 0 not in gm.mask_dict["ns"]
+    assert 0 in gm.mask_dict["p1"]
+    assert gm.branch_weights["p1"][0] > 0
+    assert gm.branch_migration["p1"] > 0
+    manual = []
+    for key in ("p1", "m1"):
+        idx = gm.mask_dict[key]
+        manual.append(
+            np.average(
+                np.array([gm.ns["g1"][idx], gm.ns["g2"][idx]]),
+                weights=gm.branch_weights[key][idx],
+                axis=1,
+            )
+        )
+    np.testing.assert_allclose(gm.R_selection[:, 0], (manual[0] - manual[1]) / 0.02)
+    frozen = {b: gm.branch_weights["ns"] for b in response.BRANCHES}
+    res = response.responses(gm.branches, gm.mask_dict, frozen, gm.R_shear, 0.01)
+    assert abs(res["selection"][0, 0] - gm.R_selection[0, 0]) > 0.1
+
+
+def test_coherent_spatial_errors_exceed_independent_object_errors():
+    d, _, _ = catalogue()
+    groups = np.repeat(np.arange(4), 20)
+    for comp in (1, 2):
+        for sign, step in (("P", 0.01), ("M", -0.01)):
+            d[f"NGMIX_G{comp}_{comp}{sign}"] += step * groups * 0.1
+    gm = calibration.metacal(
+        d, np.ones(len(d), bool), weight_scheme="iv", size_corr_ell=False
+    )
+    _, _, spatial = gm.response_jackknife(groups)
+    _, _, objects = gm.response_jackknife(np.arange(len(d)))
+    assert spatial[0, 0] > 10 * objects[0, 0]
+
+
 def test_mismatched_config_and_recalibration_refusal(tmp_path):
     d, _, _ = catalogue()
     with pytest.raises(ValueError, match="disagrees"):
@@ -177,6 +226,24 @@ def test_mismatched_config_and_recalibration_refusal(tmp_path):
     fits.HDUList([fits.PrimaryHDU(header=hdr), fits.BinTableHDU()]).writeto(path)
     with pytest.raises(ValueError, match="parent five-branch"):
         calibration.get_calibrate_e_from_cat(path)
+
+
+def test_downstream_c_is_calibrated_not_raw():
+    from types import SimpleNamespace
+
+    from sp_validation.cosmo_val.core import CosmologyValidation
+
+    e = np.array([[0.12, -0.04], [0.08, 0.16]])
+    cg = np.array([0.02, -0.03])
+    obj = SimpleNamespace(
+        _read_shear_cols=lambda *args: e,
+        cc={"external": {"shear": {"R": 0.8}}},
+        c1={"external": cg[0]},
+        c2={"external": cg[1]},
+    )
+    result = CosmologyValidation._calibrated_g(obj, "external")
+    np.testing.assert_allclose(result, e / 0.8 - cg[:, None])
+    assert not np.allclose(result, (e - cg[:, None]) / 0.8)
 
 
 def test_persistence_and_downstream_no_double_R(tmp_path):

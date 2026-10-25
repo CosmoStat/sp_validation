@@ -50,6 +50,11 @@ def _synthetic_catalogue():
     intrinsic = np.empty((2, ntot))
     for k in range(len(POPULATIONS)):
         half = rng.normal(0, 0.25, size=(2, N_PER_POP // 2))
+        # Choose exact second moments so production W recovers the original
+        # regression's externally assigned 1:3 weights, in distinct cells.
+        r, target_w = POPULATIONS[k]
+        noise = r**2 / target_w - 0.5 * r**2 * np.sum(GAMMA**2)
+        half *= np.sqrt(noise / np.mean(half**2))
         intrinsic[:, k * N_PER_POP : (k + 1) * N_PER_POP] = np.concatenate(
             [half, -half], axis=1
         )
@@ -64,7 +69,7 @@ def _synthetic_catalogue():
     for name, (d1, d2) in shifts.items():
         data[f"NGMIX_G1_{name}"] = g_ns[0] + response * d1
         data[f"NGMIX_G2_{name}"] = g_ns[1] + response * d2
-        data[f"NGMIX_FLUX_{name}"] = 50.0
+        data[f"NGMIX_FLUX_{name}"] = np.repeat([30.0, 100.0], N_PER_POP)
         data[f"NGMIX_FLUX_ERR_{name}"] = 1.0  # SNR 50: inside all cuts.
         data[f"NGMIX_T_{name}"] = 1.5
         data[f"NGMIX_T_PSF_RECONV_{name}"] = 1.0  # Size ratio inside all cuts.
@@ -105,8 +110,10 @@ def test_w_des_weighted_shear_unbiased_with_committed_global_response_weight():
         sigma_eps=config["sigma_eps_prior"],
         weight_scheme=config["weight_scheme"],
     )
-    # Use the actual production W fit/evaluation, not externally assigned W.
-    w_des = gal.ns["w_des"]
+    # Keep the original externally specified statistic weights and assert the
+    # production W fit/evaluation reproduces them end to end.
+    np.testing.assert_allclose(gal.ns["w_des"], w_des, rtol=1e-12)
+    np.testing.assert_allclose(np.diag(gal.R), 0.825, atol=1e-12)
     assert len(gal.mask_dict["ns"]) == len(data)
     np.testing.assert_allclose(gal.R_selection, 0, atol=1e-12)
     g_corr, _, _, mask, _, _ = calibration.get_calibrated_m_c(

@@ -62,7 +62,7 @@ def responses(branches, masks, weights, rg, step, keep=None):
         w = weights[b][idx]
         if not len(idx) or not np.isfinite(w).all() or w.sum() <= 0:
             raise ValueError(f"Empty or invalid weighted population: {b}")
-        return np.average(data[:, idx], axis=1, weights=w)
+        return np.array([np.average(x[idx], weights=w) for x in data])
 
     ns = masks["ns"]
     k = np.ones(len(ns), bool) if keep is None else keep[ns]
@@ -88,7 +88,7 @@ def jackknife(branches, masks, weights, rg, step, groups):
     Covariance order: shear, selection, total, joint (row-major), c_e, c_g.
     Port of response_jackknife from Martin's b268fd64, extended to c/cov.
     """
-    if len(groups) != branches["ns"].shape[1]:
+    if len(groups) != len(branches["ns"][0]):
         raise ValueError("Spatial groups must align to the common parent rows")
     labels, group_index = np.unique(groups, return_inverse=True)
     if len(labels) < 2:

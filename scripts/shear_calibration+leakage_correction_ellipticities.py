@@ -8,7 +8,8 @@
 
 import numpy as np
 from astropy.table import Table
-from calibration import fill_cat_gal, get_alpha_leakage_per_object
+
+from sp_validation.calibration import fill_cat_gal, get_alpha_leakage_per_object
 
 
 class ResponseMatrix:
@@ -56,7 +57,13 @@ def process_matched_catalogue(
         Weight type for alpha leakage computation
     """
 
-    # Reading catalogue
+    raise ValueError(
+        "A matched cut catalogue lacks the five-branch selection/weight "
+        "response for its changed population. Calibrate the parent with "
+        "metacal_from_config before using a matched sample diagnostically."
+    )
+
+    # Historical incomplete recipe below is not executed.
     table = Table.read(input_path)
 
     names = [name for name in table.colnames if len(table[name].shape) <= 1]
