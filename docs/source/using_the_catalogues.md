@@ -146,7 +146,8 @@ The `sp_validation` library performs every step below for you:
 catalogue for multiplicative and additive bias, and
 {func}`sp_validation.calibration.get_calibrate_e_from_cat` does the same from a
 catalogue on disk when its stored weight identity matches.
-Unknown/mismatched selection-response metadata is refused (except an explicitly zero selection-response diagnostic).
+Unknown/mismatched selection-response metadata is refused, as are changed row counts or weight sums.
+Even a historically zero selection response does not establish that it stays zero after new cuts.
 Neither function reconstructs missing five-branch inputs after new cuts.
 ```
 

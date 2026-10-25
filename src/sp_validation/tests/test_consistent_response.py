@@ -228,6 +228,47 @@ def test_mismatched_config_and_recalibration_refusal(tmp_path):
         calibration.get_calibrate_e_from_cat(path)
 
 
+def test_recalibration_requires_unchanged_population_with_nonzero_selection(tmp_path):
+    path = tmp_path / "compatible.fits"
+    truth = np.repeat([0.02, -0.02], 4)
+    raw = 0.9 * truth
+    zeros = np.zeros(8)
+    cols = [
+        fits.Column(name="e1_uncal", array=raw, format="D"),
+        fits.Column(name="e2_uncal", array=zeros, format="D"),
+        fits.Column(name="w_des", array=np.ones(8), format="D"),
+    ]
+    for i in (1, 2):
+        for j in (1, 2):
+            cols.append(
+                fits.Column(
+                    name=f"R_g{i}{j}",
+                    array=np.full(8, 0.8 if i == j else 0),
+                    format="D",
+                )
+            )
+    hdr = fits.Header(
+        {
+            "R_S11": 0.1,
+            "R_S12": 0.0,
+            "R_S21": 0.0,
+            "R_S22": 0.1,
+            "WGHTSCH": "des",
+            "N_ns": 8,
+            "SW_ns": 8.0,
+        }
+    )
+    fits.HDUList(
+        [fits.PrimaryHDU(header=hdr), fits.BinTableHDU.from_columns(cols)]
+    ).writeto(path)
+    g1, _ = calibration.get_calibrate_e_from_cat(path)
+    np.testing.assert_allclose(g1, truth)
+    with fits.open(path, mode="update") as hdus:
+        hdus[0].header["N_ns"] = 9
+    with pytest.raises(ValueError, match="population/weights"):
+        calibration.get_calibrate_e_from_cat(path)
+
+
 def test_downstream_c_is_calibrated_not_raw():
     from types import SimpleNamespace
 

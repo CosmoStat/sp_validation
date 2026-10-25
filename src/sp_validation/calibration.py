@@ -715,13 +715,22 @@ def get_calibrate_e_from_cat(path_cat_gal, weight_type="des", verbose=False):
     )
 
     stored_scheme = hdu_gal[0].header.get("WGHTSCH")
-    if stored_scheme != weight_type and np.any(R_select != 0):
+    if stored_scheme != weight_type:
         hdu_gal.close()
         raise ValueError(
             "Selection response cannot be reused with unknown/mismatched "
             "weights; recalibrate from the parent five-branch catalogue"
         )
-    # Zero-selection synthetic/diagnostic products can be recomputed exactly.
+    hdr = hdu_gal[0].header
+    weights = cat_gal["w_" + weight_type]
+    if hdr.get("N_ns") != len(cat_gal) or not np.isclose(
+        hdr.get("SW_ns", np.nan), weights.sum(), rtol=1e-12
+    ):
+        hdu_gal.close()
+        raise ValueError(
+            "Stored selection response does not describe this "
+            "population/weights; use the parent five-branch catalogue"
+        )
     if verbose:
         print("R_select\n", R_select)
 

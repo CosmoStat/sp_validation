@@ -9,7 +9,7 @@ from sp_validation.calibration import get_calibrate_e_from_cat
 G_TRUE = 0.02
 
 
-def _write_catalogue(path):
+def _write_catalogue(path, weight_type):
     # Opposite weight preferences: (response, w_des, w_iv).
     # Intrinsic +/- pairs and patches +/-g make the global additive bias zero.
     response, w_des, w_iv, intrinsic, shear = [], [], [], [], []
@@ -35,7 +35,14 @@ def _write_catalogue(path):
         fits.Column(name="R_g21", array=zeros, format="D"),
         fits.Column(name="R_g22", array=response, format="D"),
     ]
-    header = fits.Header()
+    # The response is valid for this unchanged population and weight identity.
+    header = fits.Header(
+        {
+            "WGHTSCH": weight_type,
+            "N_ns": len(response),
+            "SW_ns": np.sum(w_des if weight_type == "des" else w_iv),
+        }
+    )
     for key in ("R_S11", "R_S12", "R_S21", "R_S22"):
         header[key] = 0.0
     with fits.HDUList(
@@ -56,7 +63,7 @@ def test_recalibrated_weighted_shear_uses_weighted_response(tmp_path, weight_typ
     iv: 0.75) recovers g; the unweighted response 1.0 gives 1.25*g or 0.75*g.
     """
     path = tmp_path / "cat.fits"
-    weights, in_patch = _write_catalogue(path)
+    weights, in_patch = _write_catalogue(path, weight_type)
     w = weights[weight_type]
     g1, _ = get_calibrate_e_from_cat(str(path), weight_type=weight_type)
     g_hat = np.average(g1[in_patch], weights=w[in_patch])
