@@ -287,6 +287,70 @@ def test_downstream_c_is_calibrated_not_raw():
     assert not np.allclose(result, (e - cg[:, None]) / 0.8)
 
 
+@pytest.mark.parametrize("adapter", ["xi", "pseudo_cl", "rho_tau", "leakage"])
+def test_calibrated_matrix_shear_passes_reader_adapters_once(
+    tmp_path, monkeypatch, adapter
+):
+    from types import SimpleNamespace
+
+    from sp_validation.cosmo_val import core
+    from sp_validation.rho_tau import _CatalogueLoader
+
+    d, _, _ = catalogue()
+    gm = calibration.metacal(
+        d,
+        np.ones(len(d), bool),
+        weight_scheme="des",
+        size_corr_ell=False,
+        des_num_bins=2,
+    )
+    g, _, w, _, _, _ = calibration.get_calibrated_m_c(gm, False)
+    path = tmp_path / "matrix_calibrated.fits"
+    cols = [
+        fits.Column(name="e1", array=g[0], format="D"),
+        fits.Column(name="e2", array=g[1], format="D"),
+        fits.Column(name="w_des", array=w, format="D"),
+    ]
+    fits.HDUList([fits.PrimaryHDU(), fits.BinTableHDU.from_columns(cols)]).writeto(path)
+    calibration.save_response_product(path, gm)
+    entry = dict(path=path, w_col="w_des", e1_col="e1", e2_col="e2", R=1.0)
+
+    def read(block):
+        if adapter == "rho_tau":
+            loader = _CatalogueLoader({"shear": block}, {})
+            filename = loader("shear")  # ordinary FITS is passed through
+            with fits.open(filename) as hdus:
+                return np.array([hdus[1].data["e1"], hdus[1].data["e2"]])
+        if adapter == "leakage":
+            obj = core._LeakageObject.__new__(core._LeakageObject)
+            obj.entries = {"shear": block}
+            obj.read_data()
+            return np.array([obj._dat["e1"], obj._dat["e2"]])
+        if adapter == "xi":
+            monkeypatch.setattr(core.leakage, "cut_data", lambda data, *args: data)
+            obj = core._LeakageScale.__new__(core._LeakageScale)
+            obj.entries = {"shear": block}
+            obj._params = {"cut": None, "verbose": False}
+            obj.read_data(shear=True, psf=False)
+            return np.array([obj.dat_shear["e1"], obj.dat_shear["e2"]])
+        obj = SimpleNamespace(
+            cc={"SP": {"shear": block}},
+            results={"SP": SimpleNamespace(dat_shear=io.open_entry(block))},
+        )
+        return np.array(
+            core.CosmologyValidation._read_shear_cols(obj, "SP", "e1_col", "e2_col")
+        )
+
+    np.testing.assert_allclose(read(entry), g)
+    for wrong in (
+        dict(entry, w_col="w_iv"),
+        dict(entry, R=0.8),
+        dict(entry, R11="R_g11"),
+    ):
+        with pytest.raises(ValueError):
+            read(wrong)
+
+
 def test_persistence_and_downstream_no_double_R(tmp_path):
     d, _, _ = catalogue()
     gm = calibration.metacal(
