@@ -278,6 +278,7 @@ def test_downstream_c_is_calibrated_not_raw():
     cg = np.array([0.02, -0.03])
     obj = SimpleNamespace(
         _read_shear_cols=lambda *args: e,
+        _component_responses=lambda ver: (0.8, 0.8),
         cc={"external": {"shear": {"R": 0.8}}},
         c1={"external": cg[0]},
         c2={"external": cg[1]},

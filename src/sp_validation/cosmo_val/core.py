@@ -676,12 +676,20 @@ class CosmologyValidation(
         context, since it reads ``dat_shear`` columns.
         """
         e1, e2 = self._read_shear_cols(ver, "e1_col", "e2_col")
+        R1, R2 = self._component_responses(ver)
+        return e1 / R1 - self.c1[ver], e2 / R2 - self.c2[ver]
+
+    def _component_responses(self, ver):
+        """Resolve responses identically for mean-c production and subtraction.
+
+        Called within the catalogue's temporarily_read_data context.
+        """
         if ver == "DES":
             R1 = np.average(self.results[ver].dat_shear[self.cc[ver]["shear"]["R11"]])
             R2 = np.average(self.results[ver].dat_shear[self.cc[ver]["shear"]["R22"]])
         else:
             R1 = R2 = self.cc[ver]["shear"]["R"]
-        return e1 / R1 - self.c1[ver], e2 / R2 - self.c2[ver]
+        return R1, R2
 
     @property
     def colors(self):

@@ -407,10 +407,10 @@ class CatalogCharacterizationMixin:
         self._c2 = {}
         for ver in self.versions:
             self.print_magenta(ver)
-            R = self.cc[ver]["shear"]["R"]
             with self.results[ver].temporarily_read_data():
                 e1, e2, w = self._read_shear_cols(ver, "e1_col", "e2_col", "w_col")
-                self._c1[ver], self._c2[ver] = additive_bias(e1, e2, w, R)
+                R1, R2 = self._component_responses(ver)
+                self._c1[ver], self._c2[ver] = additive_bias(e1 / R1, e2 / R2, w, 1)
         self.print_done("Finished additive bias calculation.")
 
     @property
