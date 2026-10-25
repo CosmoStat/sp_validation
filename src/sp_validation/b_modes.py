@@ -851,7 +851,17 @@ def plot_pure_eb_correlations(
         ax.set(xscale="log", xlabel=r"$\theta$ [arcmin]")
         ax.axhline(0, alpha=0.3, color="k", linestyle="--", linewidth=0.5)
         ax.legend(loc="upper left")
-        ax.set_ylim(-0.5, 2)
+    # Include every displayed mode and its error bars, symmetric about zero.
+    bounds = []
+    for xi_type, var_attr in (("xip", "var_xip"), ("xim", "var_xim")):
+        bounds.extend(theta * (np.abs(results[xi_type])
+                      + np.sqrt(results[var_attr])) / scale_factor)
+        for mode in ("E", "B", "amb"):
+            key = f"{xi_type}_{mode}"
+            bounds.extend(theta * (np.abs(results[key])
+                          + results[f"std_{key}"]) / scale_factor)
+    limit = 1.1 * np.nanmax(bounds)
+    axs[0].set_ylim(-limit, limit)
 
     # Save the axis limits after data plotting but before adding gray regions
     original_xlims = [ax.get_xlim() for ax in axs]
