@@ -8,6 +8,8 @@
 
 """
 
+import warnings
+
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
@@ -16,6 +18,7 @@ from astropy.io import fits
 from shear_psf_leakage import leakage, run_object
 
 from sp_validation import catalog as sp_cat
+from sp_validation import response
 from sp_validation.io import read_catalogue
 from sp_validation.statistics import jackknif_weighted_average2
 
@@ -98,11 +101,17 @@ def get_calibrated_m_c(gal_metacal, additive_correction=True):
     c_err = np.zeros(2)
 
     for comp in (0, 1):
-        c[comp] = np.mean(g_uncorr[comp])
+        if getattr(gal_metacal, "_legacy_response", False):
+            c[comp] = np.mean(g_uncorr[comp])
+            c_err[comp] = np.std(g_uncorr[comp])
+        else:
+            c[comp] = np.average(g_uncorr[comp], weights=w)
+            c_err[comp] = (
+                np.sqrt(np.sum(w**2 * (g_uncorr[comp] - c[comp]) ** 2)) / w.sum()
+            )
 
-        # MKDEBUG TODO: Use std of mean instead,
-        # which is consistent with jackknife
-        c_err[comp] = np.std(g_uncorr[comp])
+    gal_metacal.c_e = c
+    gal_metacal.c_g = np.linalg.solve(gal_metacal.R, c)
 
     # Shear estimate corrected for additive bias
     g_corr_mc = np.copy(g_corr)
@@ -176,7 +185,6 @@ def cut_to_bins(df, key, num_bins, type="log", x_min=None, x_max=None):
 
 
 def fill_cat_gal(cat_gal, dat, g_uncorr, gal_metacal, mask1, mask2, purpose="weights"):
-
     cat_gal["e1_uncal"] = g_uncorr[0]
     cat_gal["e2_uncal"] = g_uncorr[1]
     cat_gal["R_g11"] = gal_metacal.R11
@@ -261,46 +269,31 @@ def get_w_des(
         DES weights
 
     """
-    df_gal = build_df(cat_gal)
-
-    # Create logarithmic bins in size and SNR
-    cut_to_bins(
-        df_gal,
-        "snr",
-        num_bins,
-        type="log",
-        x_min=snr_min,
-        x_max=snr_max,
+    table = fit_w_des(
+        cat_gal, num_bins, snr_min, snr_max, size_ratio_min, size_ratio_max
     )
-    cut_to_bins(
-        df_gal,
-        "size_ratio",
-        num_bins,
-        type="log",
-        x_min=size_ratio_min,
-        x_max=size_ratio_max,
+    return response.evaluate_w(table, cat_gal["snr"], cat_gal["size_ratio"])
+
+
+def fit_w_des(
+    cat_gal,
+    num_bins=20,
+    snr_min=None,
+    snr_max=None,
+    size_ratio_min=None,
+    size_ratio_max=None,
+):
+    """Fit once on raw no-shear shapes; evaluate via response.evaluate_w."""
+    return response.fit_w(
+        np.asarray(cat_gal["snr"]),
+        np.asarray(cat_gal["size_ratio"]),
+        np.array([cat_gal["e1_uncal"], cat_gal["e2_uncal"]]),
+        0.5 * (np.asarray(cat_gal["R_g11"]) + np.asarray(cat_gal["R_g22"])),
+        create_bins(cat_gal["snr"], num_bins, x_min=snr_min, x_max=snr_max),
+        create_bins(
+            cat_gal["size_ratio"], num_bins, x_min=size_ratio_min, x_max=size_ratio_max
+        ),
     )
-
-    # Compute shape noise and the shear response in each bin
-    for i in range(num_bins):
-        for j in range(num_bins):
-            bin_mask = (df_gal["snr_log_bins"] == i) & (
-                df_gal["size_ratio_log_bins"] == j
-            )
-            ngal = np.sum(bin_mask)
-            if ngal == 0:
-                print(f"Zero galaxies in snr/size_ratio bin ({i},{j})")
-            shape_noise = 0.5 * (
-                np.sum(df_gal[bin_mask]["e1_uncal"] ** 2) / ngal
-                + np.sum(df_gal[bin_mask]["e2_uncal"] ** 2) / ngal
-            )
-            response = 0.5 * (
-                np.average(df_gal[bin_mask]["R_g11"])
-                + np.average(df_gal[bin_mask]["R_g22"])
-            )
-            df_gal.loc[bin_mask, "w_des"] = response**2 / shape_noise
-
-    return np.array(df_gal["w_des"])
 
 
 def get_alpha_leakage_per_object(cat_gal, num_bins, weight_type="des"):
@@ -522,7 +515,6 @@ def get_quantities_binned(
     which=["response", "number", "leakage"],
     verbose=True,
 ):
-
     if verbose:
         print("Compute binned quantities")
 
@@ -627,6 +619,14 @@ def get_calibrate_e_from_cat(path_cat_gal, weight_type="des", verbose=False):
         ]
     )
 
+    stored_scheme = hdu_gal[0].header.get("WGHTSCH")
+    if stored_scheme != weight_type and np.any(R_select != 0):
+        hdu_gal.close()
+        raise ValueError(
+            "Selection response cannot be reused with unknown/mismatched "
+            "weights; recalibrate from the parent five-branch catalogue"
+        )
+    # Zero-selection synthetic/diagnostic products can be recomputed exactly.
     if verbose:
         print("R_select\n", R_select)
 
@@ -640,7 +640,9 @@ def get_calibrate_e_from_cat(path_cat_gal, weight_type="des", verbose=False):
     R_shear = np.zeros((2, 2))
     for iidx in range(2):
         for jidx in range(2):
-            R_shear[iidx, jidx] = np.mean(cat_gal[f"R_g{iidx + 1}{jidx + 1}"])
+            R_shear[iidx, jidx] = np.average(
+                cat_gal[f"R_g{iidx + 1}{jidx + 1}"], weights=cat_gal["w_" + weight_type]
+            )
 
     if verbose:
         print("R_shear\n", R_shear)
@@ -656,6 +658,7 @@ def get_calibrate_e_from_cat(path_cat_gal, weight_type="des", verbose=False):
     for comp in (0, 1):
         g_cal[comp] -= c_corr[comp]
 
+    hdu_gal.close()
     return g_cal[0], g_cal[1]
 
 
@@ -741,8 +744,30 @@ class metacal:
         global_R_weight=None,
         sigma_eps=0.34,
         verbose=False,
+        weight_scheme=None,
+        legacy_response=False,
+        des_num_bins=20,
+        w_col=None,
     ):
-
+        if weight_scheme is not None and global_R_weight is not None:
+            raise ValueError("Use weight_scheme, not both response weight knobs")
+        if weight_scheme is None and not legacy_response:
+            if global_R_weight == "w":
+                warnings.warn(
+                    "global_R_weight=w is deprecated; use weight_scheme=iv",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+                weight_scheme = "iv"
+            elif global_R_weight not in (None, "None"):
+                raise ValueError("Use weight_scheme=des or iv")
+            else:
+                legacy_response = True  # Historical unweighted diagnostic API.
+        self.weight_scheme = weight_scheme
+        self._legacy_response = legacy_response
+        self._des_num_bins = des_num_bins
+        if w_col is not None:
+            response.validate_weight_scheme(weight_scheme, w_col)
         self._masking_type = masking_type
         self._step = step
 
@@ -819,7 +844,9 @@ class metacal:
             masked_data,
             self._sigma_eps,
             mask=None,
+            legacy=self._legacy_response,
         )
+        ns["w_iv"] = ns["w"]
 
         self._n_input = len(masked_data)
         self._n_after_gal_mask = len(dict_tmp["flag"])
@@ -833,7 +860,7 @@ class metacal:
         return m1, p1, m2, p2, ns
 
     @staticmethod
-    def get_variance_ivweights(data, sigma_eps, mask=None):
+    def get_variance_ivweights(data, sigma_eps, mask=None, legacy=False):
         """Get Variance IVWEIGHTS.
 
         Compute variance and inverse-variance weights.
@@ -860,6 +887,9 @@ class metacal:
         """
         C11 = data["NGMIX_G1_ERR_NOSHEAR"]
         C22 = data["NGMIX_G2_ERR_NOSHEAR"]
+        if not legacy:
+            C11 = C11**2
+            C22 = C22**2
         if mask is not None:
             C11 = C11[mask]
             C22 = C22[mask]
@@ -883,10 +913,90 @@ class metacal:
             raise ValueError(f"Invalid masking type '{self._masking_type}'")
 
         self._shear_response()
-        self._selection_response()
-        self._total_response()
+        if self._legacy_response:
+            self._selection_response()
+            self._total_response()
+        else:
+            self._prepare_weights()
+            result = self.response_estimates()
+            self.R_shear_global = result["shear"]
+            self.R_selection = result["selection"]
+            self.R = result["total"]
+            self.R_joint = result["joint"]
+            self.c_e, self.c_g = result["c_e"], result["c_g"]
         # self._shear_response_std(stat_operator=lambda x:
         # jackknif_weighted_average(x, np.ones_like(x)))
+
+    def _prepare_weights(self):
+        """Case d: fit W once, evaluate each branch's own SNR/size."""
+        ma = self.mask_dict["ns"]
+        self.branches = {
+            b: np.array([getattr(self, b)["g1"], getattr(self, b)["g2"]])
+            for b in response.BRANCHES
+        }
+        self.weight_metadata = dict(
+            scheme=self.weight_scheme,
+            step=self._step,
+            estimator="split",
+            W_policy="fixed",
+            iv_policy="frozen no-shear (Martin case 1)",
+            c_units="c_e raw; c_g calibrated",
+        )
+        if self.weight_scheme == "iv":
+            self.branch_weights = {b: self.ns["w_iv"] for b in response.BRANCHES}
+        else:
+            quantities = {}
+            for b in response.BRANCHES:
+                d = getattr(self, b)
+                quantities[b] = (d["flux"] / d["flux_err"], d["T"] / d["Tpsf"])
+            snr, size = quantities["ns"]
+            self.W = fit_w_des(
+                dict(
+                    snr=snr[ma],
+                    size_ratio=size[ma],
+                    e1_uncal=self.ns["g1"][ma],
+                    e2_uncal=self.ns["g2"][ma],
+                    R_g11=self.R11,
+                    R_g22=self.R22,
+                ),
+                self._des_num_bins,
+                self._snr_min,
+                self._snr_max,
+                self._rel_size_min,
+                self._rel_size_max,
+            )
+            self.branch_weights = {
+                b: response.evaluate_w(self.W, *quantities[b])
+                for b in response.BRANCHES
+            }
+            self.ns["w_des"] = self.branch_weights["ns"]
+        self.ns["w"] = self.branch_weights["ns"]
+        self.branch_counts = {b: len(self.mask_dict[b]) for b in response.BRANCHES}
+        self.branch_weight_sums = {
+            b: self.branch_weights[b][self.mask_dict[b]].sum()
+            for b in response.BRANCHES
+        }
+
+    def response_estimates(self, keep=None):
+        return response.responses(
+            self.branches,
+            self.mask_dict,
+            self.branch_weights,
+            self.R_shear,
+            self._step,
+            keep,
+        )
+
+    def response_jackknife(self, groups):
+        """Delete-one spatial groups on preselected parent rows, fixed W."""
+        return response.jackknife(
+            self.branches,
+            self.mask_dict,
+            self.branch_weights,
+            self.R_shear,
+            self._step,
+            np.asarray(groups),
+        )
 
     def add_cuts(self, snr_min=10, snr_max=500, rel_size_min=0.5, rel_size_max=3.0):
         """Add Cuts.
@@ -926,7 +1036,7 @@ class metacal:
             [self.ns, self.m1, self.p1, self.m2, self.p2],
             ["ns", "m1", "p1", "m2", "p2"],
         ):
-            Tr_tmp = data["T"]
+            Tr_tmp = data["T"].copy()
             if self._size_corr_ell:
                 Tr_tmp *= (1 - (data["g1"] ** 2 + data["g2"] ** 2)) / (
                     1 + (data["g1"] ** 2 + data["g2"] ** 2)
@@ -1099,7 +1209,6 @@ class metacal:
 def mask_gal_size(
     T, Tpsf, rel_size_min, rel_size_max, size_corr_ell=False, g1=None, g2=None
 ):
-
     Tr_tmp = T
     if size_corr_ell:
         Tr_tmp *= (1 - g1**2 + g2**2) / (1 + g1**2 + g2**2)
@@ -1110,7 +1219,6 @@ def mask_gal_size(
 
 
 def mask_gal_SNR(SNR, snr_min, snr_max):
-
     mask = (SNR > snr_min) & (SNR < snr_max)
 
     return mask
