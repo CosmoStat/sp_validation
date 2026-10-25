@@ -173,22 +173,25 @@ Axel Guinot</p>
 bit of the UNIONS healsparse mask product (<code class="docutils literal notranslate"><span class="pre">grammar.MASK_LABELS</span></code>; v2 does
 not write bit 512). Post-processed v1 comprehensive catalogues carry the same
 columns, presented under these names by <code class="docutils literal notranslate"><span class="pre">sp_validation.grammar</span></code>.</p>
-<p>The r-band default bitmask uses bits 1 (faint star halos), 2 (bright star
-halos), 4 (star bodies), 8 (manual galaxy mask), 64 (r-band coverage) and
-1024 (MaxiMask). The per-band coverage flags are 16 (u), 32 (g), 64 (r),
+<p>The default external-mask cut uses bits 4 (star bodies), 8 (manual galaxy
+mask), 64 (r-band coverage) and 1024 (MaxiMask); star-halo bits 1 and 2 are
+deliberately excluded. The per-band coverage flags are 16 (u), 32 (g), 64 (r),
 128 (i) and 256 (HSC z); 2048 is <code class="docutils literal notranslate"><span class="pre">True</span></code> where Pan-STARRS z-band (z2)
 coverage is absent.</p>
 </dd></dl>
 <dl class="py data">
 <dt class="sig sig-object py" id="sp_validation.galaxy.DEFAULT_MASK_COLUMNS">
-<span class="sig-name descname"><span class="pre">DEFAULT_MASK_COLUMNS</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">('MASK_4_Stars',</span> <span class="pre">'MASK_1_Faint_star_halos',</span> <span class="pre">'MASK_2_Bright_star_halos',</span> <span class="pre">'MASK_8_Manual',</span> <span class="pre">'MASK_64_r',</span> <span class="pre">'MASK_1024_Maximask')</span></span><a class="headerlink" href="#sp_validation.galaxy.DEFAULT_MASK_COLUMNS" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.galaxy.DEFAULT_MASK_COLUMNS'">¶</a></dt>
-<dd><p>Mask columns OR’d together for the default galaxy selection. This set is
-the ShapePipe r-band default bitmask: their OR matches <code class="docutils literal notranslate"><span class="pre">mask_r</span></code> on covered
-granules (verified on the P3 sky area), with differences at footprint edges
-without map coverage.
+<span class="sig-name descname"><span class="pre">DEFAULT_MASK_COLUMNS</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">('MASK_4_Stars',</span> <span class="pre">'MASK_8_Manual',</span> <span class="pre">'MASK_64_r',</span> <span class="pre">'MASK_1024_Maximask')</span></span><a class="headerlink" href="#sp_validation.galaxy.DEFAULT_MASK_COLUMNS" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.galaxy.DEFAULT_MASK_COLUMNS'">¶</a></dt>
+<dd><p>star bodies,
+manual masks, r-band coverage and MaxiMask. Star-halo bits are excluded.
 Deliberately not a blanket OR over MASK_COLUMNS: the other coverage flags
 (bits 16, 32, 128, 256) and bit 2048 would mask essentially the whole
 catalogue.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Mask columns OR’d together for the default galaxy selection</p>
+</dd>
+</dl>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.galaxy._column_names">
