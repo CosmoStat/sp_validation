@@ -920,16 +920,19 @@ def plot_cosebis_scale_cut_heatmap(
         (min_scale, max_scale) for cross-hatching
     """
     left_edges, right_edges = edges
-    nbins = len(left_edges)
+    starts = sorted({int(r["bin_indices"][0]) for r in cosebis_results.values()})
+    stops = sorted({int(r["bin_indices"][1]) for r in cosebis_results.values()})
+    nx, ny = len(starts), len(stops)
 
     # Place only the cuts actually scanned, using their binning metadata.
     # A sparse scan must not be assigned to the first N triangular cells.
-    snr_matrix = np.full((nbins, nbins), np.nan)
-    pte_matrix = np.full((nbins, nbins), np.nan)
+    snr_matrix = np.full((nx, ny), np.nan)
+    pte_matrix = np.full((nx, ny), np.nan)
     for result in cosebis_results.values():
         start, stop = result["bin_indices"]
-        snr_matrix[start, stop - 1] = np.sqrt(result["chi2_E"])
-        pte_matrix[start, stop - 1] = result["pte_B"]
+        i, j = starts.index(start), stops.index(stop)
+        snr_matrix[i, j] = np.sqrt(result["chi2_E"])
+        pte_matrix[i, j] = result["pte_B"]
 
     # Create 1x2 subplot layout
     fig, axs = plt.subplots(1, 2, figsize=(15, 7))
@@ -951,11 +954,11 @@ def plot_cosebis_scale_cut_heatmap(
         cmap=mako_cmap,
         vmin=0,
         vmax=snr_max,
-        extent=[0, nbins, 0, nbins],
+        extent=[0, nx, 0, ny],
     )
     axs[0].set_title(r"E-mode SNR: $\sqrt{\chi^2_E}$")
-    axs[0].set_xlabel("Lower scale cut")
-    axs[0].set_ylabel("Upper scale cut")
+    axs[0].set_xlabel("Lower scale cut [arcmin]")
+    axs[0].set_ylabel("Upper scale cut [arcmin]")
 
     # Right plot: B-mode PTE with contours
     pte_plot_data = pte_matrix.T
@@ -966,18 +969,10 @@ def plot_cosebis_scale_cut_heatmap(
         cmap=vlag_cmap,
         vmin=0,
         vmax=1,
-        extent=[0, nbins, 0, nbins],
+        extent=[0, nx, 0, ny],
     )
 
-    # Add contours to PTE plot
-    cs = axs[1].contour(
-        pte_plot_data,
-        levels=[0.05, 0.95],
-        colors="black",
-        linewidths=1,
-        extent=[0, nbins, 0, nbins],
-    )
-    axs[1].clabel(cs, inline=True, fontsize=8)
+    # Sparse discrete cuts do not support interpolated significance contours.
 
     axs[1].set_title("B-mode PTE")
     axs[1].set_xlabel("Lower scale cut")
@@ -989,10 +984,10 @@ def plot_cosebis_scale_cut_heatmap(
         )
         start_bin, stop_bin = cosebis_results[fiducial_key]["bin_indices"]
 
-        if stop_bin > start_bin and start_bin < nbins and stop_bin > 0:
-            # Add cross-hatching at the fiducial scale cut matrix element
-            rect_x = start_bin
-            rect_y = stop_bin - 1
+        if start_bin in starts and stop_bin in stops:
+            # Mark the cached selected cut.
+            rect_x = starts.index(start_bin)
+            rect_y = stops.index(stop_bin)
             rect_width = 1
             rect_height = 1
 
@@ -1012,15 +1007,10 @@ def plot_cosebis_scale_cut_heatmap(
                 )
 
     # Set angular scale ticks
-    tick_indices = np.arange(0, nbins)
-    x_tick_labels = [
-        f"{left_edges[i]:.1f}" for i in tick_indices if i < len(left_edges)
-    ]
-    y_tick_labels = [
-        f"{right_edges[i]:.1f}" for i in tick_indices if i < len(right_edges)
-    ]
-    x_tick_positions = tick_indices + 0.5
-    y_tick_positions = tick_indices + 0.5
+    x_tick_labels = [f"{left_edges[i]:.2f}" for i in starts]
+    y_tick_labels = [f"{right_edges[i - 1]:.2f}" for i in stops]
+    x_tick_positions = np.arange(nx) + 0.5
+    y_tick_positions = np.arange(ny) + 0.5
 
     for ax in axs:
         ax.set_xticks(x_tick_positions[: len(x_tick_labels)])
@@ -1270,7 +1260,10 @@ def plot_cosebis_modes(results, version, output_path, fiducial_scale_cut=None):
     plt.legend()
     plt.xlabel("n (mode)")
     plt.ylabel("E_n, B_n")
-    plt.ylim(-0.5e-10, 3e-10)
+    errors = np.sqrt(np.diag(results["cov"]))
+    values = np.concatenate([results["En"], results["Bn"]])
+    limit = 1.1 * np.nanmax(np.abs(values) + errors)
+    plt.ylim(-limit, limit)
 
     # Add scale cut information to title - use actual scale cut from results
     scale_info = ""

@@ -296,9 +296,12 @@ def test_cosebis_heatmap_uses_stored_inward_bins(tmp_path, monkeypatch):
     )
     ax = plt.gcf().axes[1]
     matrix = ax.images[0].get_array()
-    assert matrix[1, 1] == pytest.approx(0.7)
+    assert matrix.shape == (1, 1)
+    assert matrix[0, 0] == pytest.approx(0.7)
     assert np.ma.count(matrix) == 1
-    assert ax.patches[0].get_xy() == (1, 1)
+    assert ax.patches[0].get_xy() == (0, 0)
+    assert ax.get_xticklabels()[0].get_text() == "2.00"
+    assert ax.get_yticklabels()[0].get_text() == "4.00"
 
 
 def test_notebook_cosebis_cache_and_heatmap_use_integration_edges(
