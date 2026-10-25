@@ -35,23 +35,21 @@ from sp_validation.grammar import mask_column
 #: not write bit 512). Post-processed v1 comprehensive catalogues carry the same
 #: columns, presented under these names by ``sp_validation.grammar``.
 #:
-#: The r-band default bitmask uses bits 1 (faint star halos), 2 (bright star
-#: halos), 4 (star bodies), 8 (manual galaxy mask), 64 (r-band coverage) and
-#: 1024 (MaxiMask). The per-band coverage flags are 16 (u), 32 (g), 64 (r),
+#: The default external-mask cut uses bits 4 (star bodies), 8 (manual galaxy
+#: mask), 64 (r-band coverage) and 1024 (MaxiMask); star-halo bits 1 and 2 are
+#: deliberately excluded. The per-band coverage flags are 16 (u), 32 (g), 64 (r),
 #: 128 (i) and 256 (HSC z); 2048 is ``True`` where Pan-STARRS z-band (z2)
 #: coverage is absent.
 MASK_COLUMNS = tuple(
     mask_column(bit) for bit in (1, 2, 4, 8, 16, 32, 64, 128, 256, 1024, 2048)
 )
 
-#: Mask columns OR'd together for the default galaxy selection. This set is
-#: the ShapePipe r-band default bitmask: their OR matches ``mask_r`` on covered
-#: granules (verified on the P3 sky area), with differences at footprint edges
-#: without map coverage.
+#: Mask columns OR'd together for the default galaxy selection: star bodies,
+#: manual masks, r-band coverage and MaxiMask. Star-halo bits are excluded.
 #: Deliberately not a blanket OR over MASK_COLUMNS: the other coverage flags
 #: (bits 16, 32, 128, 256) and bit 2048 would mask essentially the whole
 #: catalogue.
-DEFAULT_MASK_COLUMNS = tuple(mask_column(bit) for bit in (4, 1, 2, 8, 64, 1024))
+DEFAULT_MASK_COLUMNS = tuple(mask_column(bit) for bit in (4, 8, 64, 1024))
 
 
 def _column_names(dd):
