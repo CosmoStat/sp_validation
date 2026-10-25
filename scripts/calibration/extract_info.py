@@ -291,9 +291,11 @@ if not do_selection_calibration:
         print("No selection and calibration; exiting here")
     sys.exit(0)
 else:
-    if verbose:
-        print("Continuing with selection and calibration")
-    os.makedirs(os.path.join(output_dir, plot_dir), exist_ok=True)
+    raise ValueError(
+        "Direct extraction calibration has no shared weight_scheme/selection "
+        "configuration. Run calibrate_comprehensive_cat.py with mask_v2.0.yaml "
+        "on the comprehensive five-branch product instead."
+    )
 
 # ## 4. Select galaxies
 

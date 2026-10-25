@@ -371,6 +371,15 @@ def open_entry(entry):
     The block's ``path``, optional ``hdu`` and optional ``column_map`` go to
     ``open_catalogue``.
     """
+    if "w_col" in entry and not h5py.is_hdf5(entry["path"]):
+        with fits.open(entry["path"], memmap=True) as hdus:
+            header = hdus[0].header
+            if header.get("RAPPLIED", False):
+                from sp_validation.response import validate_weight_scheme
+
+                validate_weight_scheme(header["WGHTSCH"], entry["w_col"])
+                if entry.get("R", 1) != 1:
+                    raise ValueError("Response already applied: cat_config R must be 1")
     return open_catalogue(
         entry["path"], hdu=entry.get("hdu"), column_map=entry.get("column_map")
     )

@@ -51,6 +51,11 @@ def _load_cat(path, w_cols):
     scheme in a multi-weight run.
     """
     with fits.open(path) as hdul:
+        if hdul[0].header.get("RAPPLIED", False):
+            from sp_validation.response import validate_weight_scheme
+
+            for col in w_cols:
+                validate_weight_scheme(hdul[0].header["WGHTSCH"], col)
         data = hdul[1].data
         cat = {
             "ra": data["RA"].copy(),

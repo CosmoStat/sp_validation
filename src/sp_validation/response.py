@@ -88,11 +88,53 @@ def jackknife(branches, masks, weights, rg, step, groups):
     Covariance order: shear, selection, total, joint (row-major), c_e, c_g.
     Port of response_jackknife from Martin's b268fd64, extended to c/cov.
     """
-    labels = np.unique(groups)
+    if len(groups) != branches["ns"].shape[1]:
+        raise ValueError("Spatial groups must align to the common parent rows")
+    labels, group_index = np.unique(groups, return_inverse=True)
     if len(labels) < 2:
         raise ValueError("Response jackknife requires at least two spatial groups")
-    draws = [responses(branches, masks, weights, rg, step, groups != g) for g in labels]
-    estimates = {key: np.asarray([d[key] for d in draws]) for key in draws[0]}
+
+    # Fixed-W sufficient sums: O(N) rather than rereading N rows K times.
+    def deleted_sum(values, index):
+        sums = np.bincount(index, weights=values, minlength=len(labels))
+        return sums.sum() - sums
+
+    den = {}
+    for b in masks:
+        idx = masks[b]
+        den[b] = deleted_sum(weights[b][idx], group_index[idx])
+        if np.any(den[b] <= 0):
+            raise ValueError(f"Empty weighted population after spatial deletion: {b}")
+
+    def means(data, b):
+        idx = masks[b]
+        return np.array(
+            [
+                deleted_sum(x[idx] * weights[b][idx], group_index[idx]) / den[b]
+                for x in data
+            ]
+        ).T
+
+    ns = masks["ns"]
+    shear = np.empty((len(labels), 2, 2))
+    selection = np.empty_like(shear)
+    joint = np.empty_like(shear)
+    for i in range(2):
+        for j in range(2):
+            shear[:, i, j] = (
+                deleted_sum(rg[i, j] * weights["ns"][ns], group_index[ns]) / den["ns"]
+            )
+    for j, (p, m) in enumerate((("p1", "m1"), ("p2", "m2"))):
+        selection[:, :, j] = (means(branches["ns"], p) - means(branches["ns"], m)) / (
+            2 * step
+        )
+        joint[:, :, j] = (means(branches[p], p) - means(branches[m], m)) / (2 * step)
+    total = shear + selection
+    ce = means(branches["ns"], "ns")
+    cg = np.linalg.solve(total, ce[..., None])[..., 0]
+    estimates = dict(
+        shear=shear, selection=selection, total=total, joint=joint, c_e=ce, c_g=cg
+    )
     vectors = np.concatenate(
         [estimates[k].reshape(len(labels), -1) for k in estimates], axis=1
     )

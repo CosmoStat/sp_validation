@@ -23,6 +23,95 @@ from sp_validation.io import read_catalogue
 from sp_validation.statistics import jackknif_weighted_average2
 
 
+def metacal_from_config(data, mask, cm, verbose=False):
+    """One calibration entry point; old release configs are explicitly legacy.
+
+    Missing weight_scheme preserves their historical R/c/unsquared IV policy.
+    New production configurations must declare des or iv and matching w_col.
+    """
+    modern = "weight_scheme" in cm
+    return metacal(
+        data,
+        mask,
+        snr_min=cm["gal_snr_min"],
+        snr_max=cm["gal_snr_max"],
+        rel_size_min=cm["gal_rel_size_min"],
+        rel_size_max=cm["gal_rel_size_max"],
+        size_corr_ell=cm["gal_size_corr_ell"],
+        sigma_eps=cm["sigma_eps_prior"],
+        global_R_weight=None if modern else cm.get("global_R_weight"),
+        weight_scheme=cm.get("weight_scheme"),
+        legacy_response=not modern,
+        des_num_bins=cm.get("des_num_bins", 20),
+        w_col=cm.get("w_col"),
+        verbose=verbose,
+    )
+
+
+def save_response_product(path, gm, groups=None):
+    """Attach matrix definitions, fixed W, and spatial response/c covariance.
+
+    groups are aligned to the preselected parent, never only the ns selection.
+    """
+    if gm._legacy_response:
+        return
+    with fits.open(path, mode="update") as hdus:
+        hdr = hdus[0].header
+        hdr["WGHTSCH"] = gm.weight_scheme
+        hdr["RAPPLIED"] = True
+        hdr["MCSTEP"] = gm._step
+        hdr["WPOLICY"] = "fixed"
+        hdr["IVPOLICY"] = "frozen ns; case 1"
+        hdr["CMUNITS"] = "raw ellipticity"
+        for i in range(2):
+            hdr[f"CE_{i + 1}"] = gm.c_e[i]
+            hdr[f"CG_{i + 1}"] = gm.c_g[i]
+            for j in range(2):
+                hdr[f"RJ_{i + 1}{j + 1}"] = gm.R_joint[i, j]
+        for b in response.BRANCHES:
+            hdr[f"N_{b}"] = gm.branch_counts[b]
+            hdr[f"SW_{b}"] = gm.branch_weight_sums[b]
+        if hasattr(gm, "W"):
+            es, er, w, count = gm.W
+            hdus.append(fits.ImageHDU(w, name="W_DES"))
+            hdus.append(fits.ImageHDU(count, name="W_COUNT"))
+            hdus.append(fits.ImageHDU(np.array([es, er]), name="W_EDGES"))
+        if groups is not None:
+            labels, estimates, cov = gm.response_jackknife(groups)
+            labels = np.asarray(labels).astype(str)
+            columns = [
+                fits.Column(
+                    name="TILE_ID", array=labels, format=f"{max(map(len, labels))}A"
+                )
+            ]
+            for key, prefix in [
+                ("total", "R"),
+                ("joint", "RJ"),
+                ("shear", "RG"),
+                ("selection", "RS"),
+            ]:
+                for i in range(2):
+                    for j in range(2):
+                        columns.append(
+                            fits.Column(
+                                name=f"{prefix}_{i + 1}{j + 1}",
+                                array=estimates[key][:, i, j],
+                                format="D",
+                            )
+                        )
+            for key in ("c_e", "c_g"):
+                for i in range(2):
+                    columns.append(
+                        fits.Column(
+                            name=f"{key}{i + 1}", array=estimates[key][:, i], format="D"
+                        )
+                    )
+            hdus.append(fits.BinTableHDU.from_columns(columns, name="R_JK"))
+            cov_hdu = fits.ImageHDU(cov, name="R_COV")
+            cov_hdu.header["ORDER"] = "shear,selection,total,joint,c_e,c_g; row-major"
+            hdus.append(cov_hdu)
+
+
 def get_calibrated_quantities(gal_metacal):
     """Get Calibrated Quantities.
 

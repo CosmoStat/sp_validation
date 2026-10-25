@@ -668,7 +668,7 @@ class CosmologyValidation(
         """Calibrated shear components ``(g1, g2)`` for a catalog version.
 
         Applies additive-bias subtraction and the multiplicative response:
-        ``g = (e − c) / R``. For DES the response is the catalog-averaged
+        ``g = e / R − c_g``. Stored c is in calibrated shear units. For DES the response is the catalog-averaged
         per-component ``R11``/``R22`` (column names in the config); for every
         other version it is the scalar ``R`` from the config.
 
@@ -681,7 +681,7 @@ class CosmologyValidation(
             R2 = np.average(self.results[ver].dat_shear[self.cc[ver]["shear"]["R22"]])
         else:
             R1 = R2 = self.cc[ver]["shear"]["R"]
-        return (e1 - self.c1[ver]) / R1, (e2 - self.c2[ver]) / R2
+        return e1 / R1 - self.c1[ver], e2 / R2 - self.c2[ver]
 
     @property
     def colors(self):
