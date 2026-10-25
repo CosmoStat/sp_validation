@@ -242,6 +242,10 @@ def test_pure_eb_plot_cache_is_complete(tmp_path):
     outputs = [tmp_path / f"eb{i}.png" for i in range(4)]
     b_modes.plot_integration_vs_reporting(loaded, outputs[0], "synthetic")
     b_modes.plot_pure_eb_correlations(loaded, outputs[1], "synthetic")
+    lo, hi = plt.gcf().axes[0].get_ylim()
+    assert lo == -hi
+    assert hi > np.max(theta * (loaded["xip"]
+                    + np.sqrt(loaded["var_xip"])) / 1e-4)
     b_modes.plot_pte_2d_heatmaps(loaded, "synthetic", outputs[2])
     b_modes.plot_eb_covariance_matrix(
         loaded["cov"], "analytic", outputs[3], "synthetic"
