@@ -51,7 +51,7 @@ def plot_pseudo_cl_spectrum(datasets, spectrum, output_path):
     ``datasets`` maps a version to ``{"ell", "cl", "cov", "style"}``, where
     ``style`` carries the ``marker`` and ``colour`` the version is drawn with.
     """
-    fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(8, 8))
+    fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(8, 8), layout="constrained")
     minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
 
     for panel, scaled in ((ax[0], True), (ax[1], False)):
@@ -77,7 +77,13 @@ def plot_pseudo_cl_spectrum(datasets, spectrum, output_path):
         panel.xaxis.set_ticks(minor_ticks, minor=True)
 
     ax[1].set_xlabel(r"$\ell$")
-    ax[1].set_yscale("log")
+    # A signed scale preserves negative spectra and both ends of error bars.
+    amplitudes = np.concatenate([np.abs(d["cl"]) for d in datasets.values()])
+    positive = amplitudes[np.isfinite(amplitudes) & (amplitudes > 0)]
+    threshold = np.median(positive) if positive.size else 1.0
+    ax[1].set_yscale("symlog", linthresh=threshold)
+    ax[1].yaxis.get_major_locator().set_params(numticks=7)
+    ax[1].axhline(0, color="grey", linewidth=0.5)
     plt.suptitle(f"Pseudo-Cl {spectrum} (Gaussian covariance)")
     plt.legend()
     plt.savefig(output_path)
