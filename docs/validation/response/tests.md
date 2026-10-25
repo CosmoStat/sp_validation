@@ -3,12 +3,14 @@
 All scientific execution used allocation **1037389** on n09 with `srun --jobid=1037389 -n 1 -c 4` inside `~/.cache/sp_validation/sp_validation.sif`.
 `TMPDIR` was `/n17data/cdaley/tmp`; no scientific stack was imported on the login node.
 
-The focused response suite passes **26 tests** (17.29 s): the three imported regression files, analytic split/joint/full-matrix/c tests, pure cell migration and sheared-only rows, spatial covariance against brute-force deletions, coherent-group errors versus object deletions, all four downstream reader adapters, and pair tensors against brute force.
+The focused response/image-sim suite passes **34 tests** (14.72 s): the three imported regression files, analytic split/joint/full-matrix/c tests, pure cell migration and sheared-only rows, spatial covariance against brute-force deletions, coherent-group errors versus object deletions, all four downstream reader adapters, and pair tensors against brute force.
+Review regressions cover full-population versus symmetric-pair headline m, the actual DES c producer followed by its consumer (R11=0.8, R22=0.7), and shared-tile m/c covariance with deleted matrix responses on both external branches.
 The original regression assertions remain; fixtures now supply compatible weight/population metadata and production-fitted DES weights reproduce the original specified 1:3 population weights.
 No xfail remains in those three regression files.
 Fixed-W errors are tested; W refitting is deliberately not implemented.
 
-The final full `pytest -m 'not slow' -p no:cacheprovider --no-cov -q` run at `2f3dd142` returned **553 passed, 4 failed, 2 skipped, 7 deselected, 2 xfailed, 1 xpassed**, in **162.01 s**.
+The final full `pytest -m 'not slow' -p no:cacheprovider --no-cov -q` run after the review fixes returned **556 passed, 4 failed, 2 skipped, 7 deselected, 2 xfailed, 1 xpassed**, in **174.13 s**.
+Current logs: `/n17data/cdaley/tmp/review-focused-final.log` and `/n17data/cdaley/tmp/review-fast-final.log`.
 All four failures were independently reproduced on unchanged develop, as detailed below.
 The xfail/xpass results are outside the three imported regressions.
 

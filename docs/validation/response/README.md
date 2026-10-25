@@ -1,10 +1,11 @@
 # DES case-d validation
 
 These are observed results on Martin's four unblinded image-simulation grids.
-[Tests and production-driver smoke](tests.md): 26 focused tests pass; the fast suite has 553 passes and four failures also reproduced on unchanged develop.
 Each grid contains five external-shear branches and 39 shared tile labels.
 The injected shear is 0.025 from the existing manifest-derived m config; the metacal step is 0.01.
-The measured code revision is recorded in each linked JSON file.
+The parent revision and committed production implementation are recorded in each linked JSON file.
+[Tests](tests.md): 34 focused tests pass; the final fast suite has 556 passes and the four known develop failures.
+[Production versus previous validation](production_comparison.json): all m/error differences are below 5×10⁻¹⁶.
 
 | Grid | Martin paired (m1, m2) | New paired (m1, m2) | New unpaired m1 | New unpaired m2 |
 | --- | --- | --- | --- | --- |
@@ -17,10 +18,16 @@ The paired reproduction matches cuts (including FLAGS≤2), 20×20 table, right-
 Across all 20 external-shear products, max |R_new−R_Martin| = 7.04e-16, max relative W difference = 5.88e-15, and max paired-m difference = 4.22e-16.
 The comparison uses `/n23data1/mkilbing/imsim_wdes_response/grid_*/des_d/results/m_bias_results.yaml`, specifically `weights.w_des`, not its unweighted top-level headline.
 
-The unpaired estimator deliberately uses each external branch's full selected population, with its own weights and response.
+The production `ImageSimMBias` headline uses each external branch's full selected population, with its own weights and response.
+Modern products refuse `pair_match: true`.
+The saved `production_m` includes the full (m1,c1,m2,c2) shared-tile covariance and deleted estimates.
 Its errors delete the same tile on both external branches and recalibrate R for each deletion, conditional on the fixed W table.
 These errors are not conditional fixed-response object-bootstrap errors.
-The paired comparison remains diagnostic because matching changes the population without recalibrating its selection response.
+The three-estimator figure holds the full-population responses fixed in every comparison.
+Most of the paired–full gap is already present within the matched population when only the weight prescription changes.
+Symmetric pair weights drop the branch-weight-change contribution from the numerator while case-d R retains it; the paired result is diagnostic, not consistent headline m.
+Population restriction gives a smaller, mixed-sign correction.
+Detection/blending selection may still contribute to the negative full-population m; this comparison does not isolate it.
 Squaring IV errors changes exported w_iv but cannot change pure-DES W/R/m; IV proxies are not used.
 No mean shear is subtracted from these constant-shear simulations.
 These runs validate agreement with Martin's implementation, not a new fiducial residual-m calibration for blinded v2 data.
@@ -45,10 +52,10 @@ The two diagonal products are shown separately, without imposing isotropy.
 
 | Grid | Wall time [s] | Peak RSS [MiB] | Max diagonal pair/global deviation |
 | --- | --- | --- | --- |
-| 1 | 41.5 | 1503 | 1.18% |
-| 2 | 43.8 | 1587 | 0.53% |
-| 3 | 51.5 | 1578 | 0.41% |
-| 4 | 34.4 | 1288 | 0.68% |
+| 1 | 44.0 | 1492 | 1.18% |
+| 2 | 45.8 | 1578 | 0.53% |
+| 3 | 45.8 | 1567 | 0.41% |
+| 4 | 34.8 | 1278 | 0.68% |
 
 Wall time/RSS include five calibrations, fixed-W tile covariance, plotting, scalar pair counting and matching on four allocated cores.
 Per-branch timings are in [grid 1](grid_1.json), [grid 2](grid_2.json), [grid 3](grid_3.json), [grid 4](grid_4.json).

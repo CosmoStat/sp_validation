@@ -1,0 +1,94 @@
+[
+  {
+    "grid": 1,
+    "deltas_m1_err1_m2_err2": [
+      0.0,
+      -2.636779683484747e-16,
+      0.0,
+      4.40619762898109e-16
+    ],
+    "previously_validated_m": {
+      "m1": {
+        "martin_paired": 0.00348820297962268,
+        "new_paired": 0.003488202979622524,
+        "new_unpaired": -0.011565675168847545,
+        "unpaired_fixed_W_tile_jk_error": 0.009560106448413026
+      },
+      "m2": {
+        "martin_paired": 0.010282266965094908,
+        "new_paired": 0.010282266965094992,
+        "new_unpaired": -0.005698634094236321,
+        "unpaired_fixed_W_tile_jk_error": 0.009516914742684592
+      }
+    }
+  },
+  {
+    "grid": 2,
+    "deltas_m1_err1_m2_err2": [
+      0.0,
+      2.896988204881268e-16,
+      -2.220446049250313e-16,
+      -4.336808689942018e-18
+    ],
+    "previously_validated_m": {
+      "m1": {
+        "martin_paired": -0.011310352963609818,
+        "new_paired": -0.011310352963609663,
+        "new_unpaired": -0.02012103663794018,
+        "unpaired_fixed_W_tile_jk_error": 0.007458425913052285
+      },
+      "m2": {
+        "martin_paired": -0.0032628791514131405,
+        "new_paired": -0.003262879151413142,
+        "new_unpaired": -0.01889483133862857,
+        "unpaired_fixed_W_tile_jk_error": 0.006948360742478037
+      }
+    }
+  },
+  {
+    "grid": 3,
+    "deltas_m1_err1_m2_err2": [
+      0.0,
+      1.1449174941446927e-16,
+      -2.220446049250313e-16,
+      3.5388358909926865e-16
+    ],
+    "previously_validated_m": {
+      "m1": {
+        "martin_paired": -0.010498506259655942,
+        "new_paired": -0.010498506259655855,
+        "new_unpaired": -0.02521378674889241,
+        "unpaired_fixed_W_tile_jk_error": 0.0064053671685438615
+      },
+      "m2": {
+        "martin_paired": -0.0014968842415114222,
+        "new_paired": -0.0014968842415112502,
+        "new_unpaired": -0.011696684940546653,
+        "unpaired_fixed_W_tile_jk_error": 0.007920388806707448
+      }
+    }
+  },
+  {
+    "grid": 4,
+    "deltas_m1_err1_m2_err2": [
+      0.0,
+      1.2836953722228372e-16,
+      2.220446049250313e-16,
+      -6.071532165918825e-17
+    ],
+    "previously_validated_m": {
+      "m1": {
+        "martin_paired": 0.002463384320469206,
+        "new_paired": 0.002463384320469628,
+        "new_unpaired": -0.015901651907911374,
+        "unpaired_fixed_W_tile_jk_error": 0.006715327119157457
+      },
+      "m2": {
+        "martin_paired": -0.00046246053100977466,
+        "new_paired": -0.0004624605310094179,
+        "new_unpaired": -0.017761153998073098,
+        "unpaired_fixed_W_tile_jk_error": 0.010663778114005349
+      }
+    }
+  }
+]
