@@ -337,6 +337,12 @@ class TestMaskCut(unittest.TestCase):
         self._dat = make_galaxy_data(5)
 
     def test_default_columns(self):
+        self.assertEqual(
+            galaxy.DEFAULT_MASK_COLUMNS,
+            ("MASK_4_Stars", "MASK_8_Manual", "MASK_64_r", "MASK_1024_Maximask"),
+        )
+        self.assertNotIn("MASK_1_Faint_star_halos", galaxy.DEFAULT_MASK_COLUMNS)
+        self.assertNotIn("MASK_2_Bright_star_halos", galaxy.DEFAULT_MASK_COLUMNS)
         self._dat["MASK_4_Stars"][0] = True
         self._dat["MASK_1024_Maximask"][3] = True
 
