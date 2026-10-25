@@ -183,7 +183,7 @@ def plot_ratio_xi_sys_xi(
 def plot_2pcf(correlations, styles, outputs):
     """Draw sealed reporting xi±, both plain and theta-weighted."""
     for times_theta, output in enumerate(outputs):
-        fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+        fig, axes = plt.subplots(1, 2, figsize=(14, 6), layout="constrained")
         for ver, gg in correlations.items():
             factor = gg.meanr if times_theta else 1
             for ax, xi, var, sign in zip(
