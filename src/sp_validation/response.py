@@ -1,7 +1,7 @@
 """Weighted metacal response primitives.
 
 Definitions: Martin Kilbinger's 6 October 2026 slide, p14 (S1), and
-/n23data1/mkilbing/imsim_wdes_response/wdes_response.py, case d.
+scripts/validation/wdes_response/wdes_response.py, case d.
 Spatial deletion follows his response_jackknife, with fixed-W
 comparisons and retained-sample refits in calibration.metacal.
 No detection response is inferred from aligned metacal branches.

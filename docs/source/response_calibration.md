@@ -1,7 +1,7 @@
 # Response, weights and additive bias
 
 The applied estimator follows Martin Kilbinger's **Separate** definition on slide S1 (6 October 2026, PDF p14, [shared deck](https://docs.google.com/presentation/d/1BdPlRCf742AcpfJVrAe_c3-OOp1ARiwuU9RMNflb0U8/edit)).
-DES weights follow **case d** in `/n23data1/mkilbing/imsim_wdes_response/wdes_response.py`, functions `w_table`, `eval_table`, `responses`.
+DES weights follow **case d** in [`scripts/validation/wdes_response/wdes_response.py`](../../scripts/validation/wdes_response/wdes_response.py), functions `w_table`, `eval_table`, `responses`.
 Neither split nor joint response on aligned metacal rows includes detection response.
 
 For branch b, define A_b(x) = sum(S_b w_b x) / sum(S_b w_b).

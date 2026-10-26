@@ -35,6 +35,20 @@ def _git(repo, *args):
         return None
 
 
+def _repo_provenance(repo):
+    """Branch and commit of ``repo``. A code snapshot taken by ``spv run`` or
+    ``sp run`` has no .git; its ``snapshot.json`` records the checkout it was
+    copied from, including whether that checkout had uncommitted changes."""
+    snap = os.path.join(repo, "snapshot.json")
+    if os.path.isfile(snap):
+        with open(snap) as fh:
+            info = yaml.safe_load(fh) or {}
+        return {"branch": info.get("branch"), "commit": info.get("head"),
+                "dirty": info.get("dirty"), "snapshot_of": info.get("source")}
+    return {"branch": _git(repo, "rev-parse", "--abbrev-ref", "HEAD"),
+            "commit": _git(repo, "rev-parse", "HEAD")}
+
+
 def _sif_revision():
     """``org.opencontainers.image.revision`` from the running image's OCI labels.
 
@@ -84,16 +98,8 @@ mbias_cfg = {
     "output_path": params.results,
     "provenance": {
         "manifest_sha256": manifest_sha256,
-        "sp_validation": {
-            "branch": _git(
-                params.sp_validation_repo, "rev-parse", "--abbrev-ref", "HEAD"
-            ),
-            "commit": _git(params.sp_validation_repo, "rev-parse", "HEAD"),
-        },
-        "shapepipe": {
-            "branch": _git(params.shapepipe_repo, "rev-parse", "--abbrev-ref", "HEAD"),
-            "commit": _git(params.shapepipe_repo, "rev-parse", "HEAD"),
-        },
+        "sp_validation": _repo_provenance(params.sp_validation_repo),
+        "shapepipe": _repo_provenance(params.shapepipe_repo),
         "container": {
             "sif": params.sif,
             "ghcr_revision": _sif_revision(),

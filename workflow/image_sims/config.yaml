@@ -10,29 +10,20 @@
 
 image_sims:
 
-  # --- container --------------------------------------------------------
-  # One image for the whole chain: the sp_validation image is built FROM the
-  # ShapePipe image, so it carries both stacks. CI builds it from the uv lock --
-  # an unlocked build drifts NumPy past numba's ceiling and the ngmix stage dies
-  # ("Numba needs NumPy 2.4 or less").
-  #
-  # `null` means the workflow's one image: your own .sif if you have pulled one
-  # with `spv-container pull`, else the registry tag for Snakemake to autopull
-  # (workflow/README.md).  Neither is repeated here.
-  # Override with a local .sif path, or with a branch tag
-  # (docker://ghcr.io/cosmostat/sp_validation:<sanitized-branch>) to run a
-  # branch's own CI image.
-  sif: null
-
-  # --- repositories -----------------------------------------------------
+  # --- repositories (REQUIRED in the run config; no default) -------------
   # Bound into the image; both repos' src go on PYTHONPATH so this branch's
-  # code wins over the baked copies.
-  shapepipe_repo: /n17data/cdaley/unions/code/shapepipe
-  sp_validation_repo: /n17data/cdaley/unions/code/sp_validation
+  # code wins over the baked copies. Per-user checkouts, so there is nothing
+  # sensible to default to -- a default here would silently run someone else's
+  # code. A run config that omits one fails at parse, naming it.
+  #
+  # shapepipe_repo: /path/to/shapepipe
+  # sp_validation_repo: /path/to/sp_validation
 
   # --- data and run directories ----------------------------------------
-  # grids_base is the run/output root: one sub-directory per simulation.
-  grids_base: /n17data/cdaley/unions/scratch-wf/imsims-run/grids
+  # grids_base is the run/output root (one sub-directory per simulation), and
+  # is REQUIRED in the run config -- it is where this user's campaign writes.
+  #
+  # grids_base: /path/to/grids
   input_sims_base: /n09data/hervas/skills_out
   psf_dict: /home/hervas/fhervas/workdir_skills/input/psf_files/Full_psf_dict.pickle
 
@@ -43,21 +34,51 @@ image_sims:
   # sheared branches.  Injected shear is NOT set here -- it is parsed from each
   # branch's basic_info.txt by im_manifest.  [operational]
   branches: ["1z2z", "1p2z", "1m2z", "1z2p", "1z2m"]
-  # Tiles to process: an explicit list, the one tile-input mechanism.
+  # Tiles to process: an explicit list, the one tile-input mechanism.  Leave
+  # out tiles without data: a tile with no detections fails its branch's
+  # ShapePipe campaign, and so im_shapepipe.  In SKiLLS the coadds of grid_1
+  # 248.288, grid_2 259.285, grid_3 265.285 and grid_4 281.281/282.281 are
+  # all zeros, and 1m2z_2's 257.289 is truncated.
   tile_ids: ["233.293", "237.292", "238.292"]
 
   # --- calibration ------------------------------------------------------
   shape: ngmix           # [operational]
-  # ShapePipe cfis configs (final_cat.param etc.); default is
-  # {shapepipe_repo}/example/cfis_image_sims once #766 lands.  [operational]
-  config_dir: /n17data/cdaley/unions/scratch-wf/imsims-run/grids/_cfis_image_sims
-  psf_model: psfex       # [operational]
-  n_smp: -1              # [operational]
-  # Extract/calibrate scripts run from the sp_validation repo checkout (branch
-  # code, not the baked copies).  Point elsewhere for a different checkout.
+
+  # --- ShapePipe processing (ShapePipe's own Snakemake workflow) ---------
+  # im_shapepipe runs `{shapepipe_repo}/workflow/bin/sp run` once per branch
+  # with input_type: image_sims, so shapepipe_repo must be a checkout carrying
+  # that workflow mode.  The config chain is the checkout's
+  # workflow/config/cfis_image_sims -- change processing there, not here.
+  # PSF model, as ShapePipe's workflow spells it: `fake` (the true simulation
+  # PSF; the star-free *_grid_N sims) or `psfex` / `mccd` (the sims with
+  # stars: non-grid *_N, tiles from N = 1..4 with exp_num: 5; *_star_grid has
+  # inputs for 1z2z only and gives no m).  [operational]
+  psf_model: fake
+  # ShapePipe profile (shapepipe_repo/profiles/<name>) that submits the
+  # campaign's SLURM jobs.  [operational]
+  sp_profile: candide
+  # Concurrent SLURM jobs per branch campaign (`sp run --jobs`); the profile's
+  # `sp_campaign` resource caps how many branch campaigns run at once, so the
+  # cluster sees up to that many times this.  [operational]
+  sp_jobs: 50
+  # Rolling exposure-store reclamation (ShapePipe `clean:`): an exposure's
+  # store (~8 GB) is deleted once every tile reading it has its vignets.
   # [operational]
-  extract_script: /n17data/cdaley/unions/code/sp_validation/scripts/calibration/extract_info.py
-  calibrate_script: /n17data/cdaley/unions/code/sp_validation/scripts/calibration/calibrate_comprehensive_cat.py
+  clean_exposures: true
+  # Where each tile's ShapePipe vignette store lives (ShapePipe run-config
+  # `tile_store_root`, bound to /local/scratch by `sp run`).  null keeps the
+  # profile's node-local store -- on candide the node's 31 GB /tmp, which
+  # dense star-sim tiles (~5 GB each) and failed groups' orphans fill, failing
+  # every later tile group on that node.  Set a shared directory for the star
+  # sims (all branches and runs can share one root).  [operational]
+  tile_store_root: null
+  # Extract/calibrate scripts default to the sp_validation_repo checkout above
+  # (as compute_m_bias_image_sims.py already did), so branch code runs rather
+  # than the copies baked into the image. Set one only to point at a DIFFERENT
+  # checkout.
+  #
+  # extract_script: /other/checkout/scripts/calibration/extract_info.py
+  # calibrate_script: /other/checkout/scripts/calibration/calibrate_comprehensive_cat.py
 
   # DES sims must apply the same fixed table as the data they calibrate.
   # Supply a named modern calibration FITS product (W_DES/W_EDGES/W_COUNT,

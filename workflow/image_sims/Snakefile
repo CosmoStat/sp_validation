@@ -4,20 +4,15 @@ Run the sp_validation-side chain (merge -> extract -> calibrate -> m-bias),
 optionally including the ShapePipe pipeline stage, without pulling in the
 cosmology-validation config the top-level ``workflow/Snakefile`` requires.
 
-The one drive command on candide, with the committed SLURM profile owning
-scheduling and container wrapping:
+Launch it with ``workflow/bin/spv run -c my_run.yaml`` (``-n`` for a dry run),
+which snapshots the code, sets the temporary directories and passes the profile;
+see ``spv --help``. ``configfile:`` below loads the operational defaults (the
+main config), so ``my_run.yaml`` need only carry the science knobs and any
+override; Snakemake deep-merges the two.
 
-    snakemake --profile workflow/profiles/candide \\
-        -s workflow/image_sims/Snakefile \\
-        im_mbias --configfile my_run.yaml
-
-``configfile:`` below loads the operational defaults, so ``my_run.yaml`` need
-only carry the science knobs (and any operational override); Snakemake
-deep-merges the two.  Off-cluster, drop ``--profile`` and add ``-j N``.
-
-Put targets *before* ``--configfile``: it takes one-or-more paths, so a target
-after it is swallowed as a config path ("No such file: im_mbias").  Always
-dry-run first with ``-n``.
+Driving snakemake directly also works: put targets *before* ``--configfile``
+(it takes one-or-more paths, so a target after it is swallowed as a config
+path), and on candide set TMPDIR/APPTAINER_TMPDIR yourself.
 
 The same rules are also included in the main workflow under
 ``if "image_sims" in config``.
@@ -34,7 +29,9 @@ sys.path.insert(0, os.path.realpath(os.path.join(str(workflow.basedir), "..")))
 import common
 
 
-configfile: "workflow/image_sims/config.yaml"
+# Next to this file, not relative to the working directory: spv runs snakemake
+# from the campaign's state directory, out of a code snapshot.
+configfile: os.path.join(str(workflow.basedir), "config.yaml")
 
 
 include: "../rules/image_sims.smk"
