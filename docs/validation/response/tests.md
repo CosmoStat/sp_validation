@@ -1,5 +1,25 @@
 # Tests and production checks
 
+## Round 4: independent data-table policy
+
+All scientific work used allocation **1037411**, four cores on n09, the prescribed container/binds and `TMPDIR=/n17data/cdaley/tmp`.
+Outputs and logs are `/n17data/cdaley/scratch/response-pr/round4/`; no scientific stack ran on the login node.
+The self-built m/c values and all deleted estimates reproduce round 3 exactly on every grid (`baseline_checks.json`).
+The Gaussian toy, independent/pooled tables and release-compatibility scan are described in [README.md](README.md#independent-training-and-self-weighting-round-4).
+
+The final `python -m pytest -m 'not slow' --no-cov -q` returned **573 passed, 4 failed, 2 skipped, 7 deselected, 2 xfailed, 1 xpassed**, in **175.26 s** (`fast-suite-final.log`).
+The four failures are the same path/schema and two temporary-directory cleanup failures independently reproduced on unchanged develop below; none was suppressed.
+The focused suite passed **19 tests** (`focused-final.log`).
+Four new regressions verify that external-table weights never train on simulation shapes; their shared-tile deletions match rebuilding each retained sample with the same external product; products without coordinate metadata are refused; the image-sim default requires a named product and preserves an explicit self-built diagnostic; and config staging replaces an old symlink without modifying its shared target.
+The external-table test also exercises the catalogue driver's config-to-FITS-header path, including the named-product mapping, then saves and checks the fixed-external policy, product name, table and calibrated deleted means (`external-final.log`: **4 passed**).
+
+The image-sim Snakemake diagnostic-config dry-run parses and schedules `im_init`; the default external config with no product fails at DAG parse with the intended error.
+The container lacks Snakemake itself, so these two non-scientific DAG checks append the installed host Snakemake Python 3.12 site-packages to `sys.path`, without changing the image or scientific package stack.
+`workflow-smoke.log` and `workflow-requires-product.log` record them; the latter's nonzero exit is expected.
+`ruff check` and pre-commit pass on the changed Python files.
+
+## Rounds 2–3
+
 All round-2 and round-3 scientific execution used allocation **1037411** on n09, with `srun --jobid=1037411 -n 1 -c 4` inside `~/.cache/sp_validation/sp_validation.sif`.
 `TMPDIR` was `/n17data/cdaley/tmp`; no scientific stack was imported on the login node.
 

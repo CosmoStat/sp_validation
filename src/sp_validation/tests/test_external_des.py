@@ -9,7 +9,7 @@ import pytest
 import yaml
 from astropy.io import fits
 
-from sp_validation import calibration, response
+from sp_validation import calibration, catalog_builders, response
 from sp_validation.image_sim_config import calibration_config
 from sp_validation.tests.test_consistent_response import catalogue
 
@@ -52,7 +52,13 @@ def test_external_table_never_trains_on_sim_shapes_and_uses_fixed_jk(tmp_path):
         np.testing.assert_allclose(jk["c_g"][j], retained.c_g, atol=1e-13)
         assert gm.refit_weights(keep) is gm.branch_weights
     path = tmp_path / "sim.fits"
-    fits.HDUList([fits.PrimaryHDU()]).writeto(path)
+    header = fits.Header()
+    # Exercise the catalogue driver's config-to-header path with the named
+    # product mapping, before attaching the response and weight extensions.
+    catalog_builders.CalibrateCat().add_params_to_FITS_header(
+        header, cm=dict(weight_scheme="des", des_weight_product=product)
+    )
+    fits.HDUList([fits.PrimaryHDU(header=header)]).writeto(path)
     calibration.save_response_product(path, gm, groups)
     with fits.open(path) as f:
         assert f[0].header["WPOLICY"] == "fixed-external"
