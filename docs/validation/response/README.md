@@ -89,6 +89,20 @@ The full-sample m values are unchanged.
 ![DES refit/fixed uncertainties](refit_w_errors.png)
 ![Full-population IV and DES m](iv_des_m.png)
 
+## Paper I calibration provenance
+
+**Observed:** Paper I, `analyses/shear_2d/unions_release/unions_shear_catalog_paper/draft_corrected.tex`, section “Residual multiplicative bias from image simulations” (lines 678–688), reports total m = −0.0572 ± 0.0047 and an additional realistic-placement blending contribution of approximately −0.02.
+Its grid validation includes WCS-offset and FLAGS=0 selection effects; the total error was conservatively tripled to 0.0141 for Papers III/IV.
+The text does not specify paired versus full-population m or its numerator weights.
+Martin's retained `v2.0/image_sims/grids_1/results/m_bias_config.yaml` and `grids/results/m_bias_config.yaml` use `pair_match: true` and `w_cols: [none, w_iv]` (unweighted headline), but neither identifies itself as the run producing Paper I's number.
+Thus those configs establish a paired/unweighted recipe, not verified provenance for that exact published estimate.
+
+**Inferred comparison:** subtracting the approximately −0.02 blending contribution implies a Paper-I grid component near −0.0372, not −0.0572.
+The new full-population DES grid averages are m1 = −0.01919 ± 0.00465 and m2 = −0.01357 ± 0.00535 with primary refit-W errors; they are about 1.8 and 2.4 percentage points less negative than that approximate component.
+These inverse-variance combination errors assume independent grids; no significance for the historical/new difference is assigned.
+This is a comparison of different pipeline/cut choices (the current grids include FLAGS≤2), not an isolated measurement of an estimator change.
+No historical weight/pairing assignment beyond the evidence above is made, and no new fiducial residual m is adopted.
+
 ## Response distributions and spatial diagnostics
 
 ![Per-object R_g](response_distributions.png)

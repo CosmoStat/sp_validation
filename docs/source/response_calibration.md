@@ -77,9 +77,11 @@ It matches Martin's cuts, table and paired weighting first, then reports the unp
 Squared IV changes exported IV weights but not pure-DES R or m.
 Residual m from simulations remains a separate result, not an extra correction silently applied to catalogue e.
 
-## Review questions
+## Decisions from validation
 
 1. IV uses each branch's measured shape variances; the [four-grid measurement](../validation/response/README.md#exact-inverse-variance-mode) shows that freezing them biases m upward by 0.23–0.36 percentage points.
 2. Stage 1 measures the scalar pair/global shear-response error on public v1.4.6.3 and the four grids with shared-patch covariance; #23 remains Refs for a separate stage-2 total-response investigation, without an asserted tolerance.
 3. Spatial uncertainties refit W; fixed-W understates every grid/component's m error by more than 10%.
-4. Is there a retained config/result identifying the weights and selection behind the historical m = −0.057?
+4. Paper I's −0.0572 includes an approximately −0.02 realistic-placement blending contribution, implying a grid component near −0.0372.
+   Retained Martin configs establish a paired/unweighted recipe but do not identify the exact published run; the text does not specify its weights/pairing.
+   The new full-population DES grid result is less negative, but pipeline/cut differences prevent attributing that difference solely to the estimator; [provenance and comparison](../validation/response/README.md#paper-i-calibration-provenance).
