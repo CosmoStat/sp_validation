@@ -1216,9 +1216,17 @@ class metacal:
             for b in response.BRANCHES
         }
 
-    def response_jackknife(self, groups, refit_w=False):
-        """Delete common spatial groups; optionally propagate fitted-W noise."""
+    def response_jackknife(self, groups, refit_w=False, *, reference=False):
+        """Delete spatial groups, optionally refitting W from retained cell sums.
+
+        reference=True keeps the original K full-parent rescans for validation.
+        Both paths use the full-sample edges and retained-count pooling rule.
+        """
         if refit_w and self.weight_scheme == "des" and self._des_weight_product is None:
+            if not reference:
+                from sp_validation.des_jackknife import accumulate
+
+                return accumulate(self, groups).jackknife()
             groups = np.asarray(groups)
             if len(groups) != len(self.ns["g1"]):
                 raise ValueError("Spatial groups must align to the common parent rows")
