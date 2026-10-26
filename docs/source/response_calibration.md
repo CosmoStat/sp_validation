@@ -19,6 +19,41 @@ The artificial metacal step h defaults to 0.01; it is distinct from the manifest
 | c_e / c_g | Raw c_e = A_ns(e); calibrated c_g = inverse(R_total) c_e |
 | Applied shear | inverse(R_total) e − c_g; omit c_g subtraction for constant-shear simulations |
 
+## Separate normalisation
+
+Each weighted mean is divided by its own sum of weights, over its own selection and with its own weights.
+For the selection and joint responses, with the metacal branches j± of component j:
+
+```math
+R^{\rm sel}_{ij} = \frac{1}{2h} \left[
+  \frac{\sum_{S_{j+}} w^{(j+)} e_i^{(\rm ns)}}{\sum_{S_{j+}} w^{(j+)}}
+  - \frac{\sum_{S_{j-}} w^{(j-)} e_i^{(\rm ns)}}{\sum_{S_{j-}} w^{(j-)}}
+\right],
+\qquad
+R^{\rm joint}_{ij} = \frac{1}{2h} \left[
+  \frac{\sum_{S_{j+}} w^{(j+)} e_i^{(j+)}}{\sum_{S_{j+}} w^{(j+)}}
+  - \frac{\sum_{S_{j-}} w^{(j-)} e_i^{(j-)}}{\sum_{S_{j-}} w^{(j-)}}
+\right].
+```
+
+Here S_b is the selection made on branch b and w^(b) the weight evaluated on branch b (DES table at that branch's SNR and size, or IV from its G_ERR).
+The two denominators differ, since shear moves objects across the cuts and changes their weights.
+R_sel differs from R_joint only in the numerator ellipticity: no-shear for R_sel, the branch's own for R_joint.
+
+The reason is that the estimator applied to data is the ratio ⟨e⟩_w = Σ w e / Σ w.
+Its response is the derivative of the ratio, which has a normalisation term:
+
+```math
+\frac{\partial \langle e \rangle_w}{\partial g}
+= \frac{1}{\sum w} \frac{\partial \sum w e}{\partial g}
+- \langle e \rangle_w \, \frac{1}{\sum w} \frac{\partial \sum w}{\partial g}.
+```
+
+The finite differences of separately normalised means include both terms, so R is the response of the same weighted mean that it calibrates.
+A common denominator for both branches drops the second term.
+Symmetric pair weights 0.5(w₊ + w₋) on matched objects remove the change of the weight from the numerator, while R keeps it; this is why modern products refuse `pair_match: true`.
+The image-simulation m uses the same rule: ⟨e⟩₊ and ⟨e⟩₋ are each normalised by their own population and weights.
+
 ## Configuration and compatibility
 
 ```yaml
