@@ -2,7 +2,7 @@ import numpy as np
 import yaml
 
 W = "/n23data1/mkilbing/imsim_wdes_response/grid_%d/%s/results/m_bias_results.yaml"
-O = "/n17data/mkilbing/astro/Runs/shapepipe/CFIS/v2.0/image_sims/new_workflow/grid_%d/results/m_bias_results.yaml"
+ORIG = "/n17data/mkilbing/astro/Runs/shapepipe/CFIS/v2.0/image_sims/new_workflow/grid_%d/results/m_bias_results.yaml"
 
 
 def get(y, meth, w):
@@ -12,7 +12,7 @@ def get(y, meth, w):
 # check iv reproduces original
 for g in (1, 2, 3, 4):
     a = yaml.safe_load(open(W % (g, "iv")))
-    b = yaml.safe_load(open(O % g))
+    b = yaml.safe_load(open(ORIG % g))
     d = max(
         abs(get(a, m, "w_iv")[k] - get(b, m, "w_iv")[k])
         for m in ("split", "joint")

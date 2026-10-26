@@ -38,15 +38,15 @@ import numpy as np
 from astropy.io import fits
 import matplotlib.pylab as plt
 
-plt.rcParams['font.size'] = 20
+plt.rcParams["font.size"] = 20
 
 # Optional: to compute the example shear–shear correlation functions
 import treecorr
 
 # Catalogue name base and version
-cat_base = 'unions_shapepipe'
+cat_base = "unions_shapepipe"
 year = 2022
-version = 'v1.0'
+version = "v1.0"
 ```
 
 ## 1. Base calibrated catalogue
@@ -65,23 +65,23 @@ cuts, recalibrate using the extended catalogue (Section 2).
 ### Open the file and inspect it
 
 ```python
-cat_name = f'{cat_base}_{year}_{version}.fits'
-print(f'Opening base catalogue {cat_name}...')
+cat_name = f"{cat_base}_{year}_{version}.fits"
+print(f"Opening base catalogue {cat_name}...")
 hdu_list = fits.open(cat_name)
 data = hdu_list[1].data
 
-data.dtype.names   # column names
-len(data)          # number of objects
-hdu_list[0].header # primary header (global calibration quantities)
-hdu_list[1].header # table header (column units)
+data.dtype.names  # column names
+len(data)  # number of objects
+hdu_list[0].header  # primary header (global calibration quantities)
+hdu_list[1].header  # table header (column units)
 ```
 
 ### Example 1: magnitude distribution
 
 ```python
-plt.hist(data['mag'], bins=100, range=(19, 26))
-plt.xlabel('$r$-band magnitude')
-_ = plt.ylabel('frequency')
+plt.hist(data["mag"], bins=100, range=(19, 26))
+plt.xlabel("$r$-band magnitude")
+_ = plt.ylabel("frequency")
 ```
 
 ### Example 2: shear–shear correlation function
@@ -90,18 +90,18 @@ Build a TreeCorr configuration, taking the coordinate units straight from the
 FITS header so RA and Dec are interpreted correctly:
 
 ```python
-coord_unit = hdu_list[1].header['TUNIT1']
-if coord_unit != hdu_list[1].header['TUNIT2']:
-    raise ValueError('Units for RA and Dec should be equal')
+coord_unit = hdu_list[1].header["TUNIT1"]
+if coord_unit != hdu_list[1].header["TUNIT2"]:
+    raise ValueError("Units for RA and Dec should be equal")
 
-sep_unit = 'arcmin'
+sep_unit = "arcmin"
 TreeCorrConfig = {
-    'ra_units': coord_unit,
-    'dec_units': coord_unit,
-    'min_sep': '1',
-    'max_sep': '200',
-    'sep_units': sep_unit,
-    'nbins': 20,
+    "ra_units": coord_unit,
+    "dec_units": coord_unit,
+    "min_sep": "1",
+    "max_sep": "200",
+    "sep_units": sep_unit,
+    "nbins": 20,
 }
 ```
 
@@ -110,11 +110,11 @@ minutes):
 
 ```python
 cat_gal = treecorr.Catalog(
-    ra=data['RA'],
-    dec=data['Dec'],
-    g1=data['e1'],
-    g2=data['e2'],
-    w=data['w'],
+    ra=data["RA"],
+    dec=data["Dec"],
+    g1=data["e1"],
+    g2=data["e2"],
+    w=data["w"],
     ra_units=coord_unit,
     dec_units=coord_unit,
 )
@@ -124,12 +124,12 @@ gg.process(cat_gal, cat_gal)
 
 ```python
 plt.figure(figsize=(14, 8))
-plt.errorbar(gg.meanr, gg.xip, yerr=np.sqrt(gg.varxip), label=r'$\xi_+$')
-plt.errorbar(gg.meanr, gg.xim, yerr=np.sqrt(gg.varxim), label=r'$\xi_-$')
+plt.errorbar(gg.meanr, gg.xip, yerr=np.sqrt(gg.varxip), label=r"$\xi_+$")
+plt.errorbar(gg.meanr, gg.xim, yerr=np.sqrt(gg.varxim), label=r"$\xi_-$")
 plt.loglog()
 plt.legend()
-plt.xlabel(rf'$\theta$ [{sep_unit}]')
-_ = plt.ylabel(r'$\xi_\pm(\theta)$')
+plt.xlabel(rf"$\theta$ [{sep_unit}]")
+_ = plt.ylabel(r"$\xi_\pm(\theta)$")
 ```
 
 ## 2. Extended catalogue
@@ -154,13 +154,13 @@ Neither function reconstructs missing five-branch inputs after new cuts.
 ### Open the file
 
 ```python
-cat_ext_name = f'{cat_base}_extended_{year}_{version}.fits'
-print(f'Opening catalogue {cat_ext_name}...')
+cat_ext_name = f"{cat_base}_extended_{year}_{version}.fits"
+print(f"Opening catalogue {cat_ext_name}...")
 hdu_list_ext = fits.open(cat_ext_name)
 data_ext = hdu_list_ext[1].data
 
 data_ext.dtype.names  # column names
-len(data_ext)         # number of objects
+len(data_ext)  # number of objects
 ```
 
 ### Step 1 — Select the (sub-)sample
@@ -178,7 +178,7 @@ mask = np.full(len(data_ext), True)
 # mask = data_ext['mag'] < 23.5        # r-band magnitude cut
 
 n_kept, n_all = np.count_nonzero(mask), len(data_ext)
-print(f'Keeping {n_kept}/{n_all} = {n_kept / n_all * 100:.1f}% objects')
+print(f"Keeping {n_kept}/{n_all} = {n_kept / n_all * 100:.1f}% objects")
 data_ext_sub = data_ext[mask]
 ```
 
@@ -192,11 +192,11 @@ for the full sample):
 ```python
 c = np.empty(2)
 for comp in (0, 1):
-    c[comp] = np.average(data_ext_sub[f'e{comp+1}_uncal'], weights=data_ext_sub['w'])
+    c[comp] = np.average(data_ext_sub[f"e{comp + 1}_uncal"], weights=data_ext_sub["w"])
 
-print('Additive bias')
+print("Additive bias")
 for comp in (0, 1):
-    print(f'c_{comp+1} = {c[comp]:.3g}')
+    print(f"c_{comp + 1} = {c[comp]:.3g}")
 ```
 
 **Multiplicative bias.** In metacalibration this is a 2×2 matrix
@@ -210,9 +210,11 @@ ensemble $R_g$ is computed *after* the sub-sample selection:
 R_g = np.empty((2, 2))
 for idx in (0, 1):
     for jdx in (0, 1):
-        R_g[idx, jdx] = np.average(data_ext_sub[f'R_g{idx+1}{jdx+1}'], weights=data_ext_sub['w'])
+        R_g[idx, jdx] = np.average(
+            data_ext_sub[f"R_g{idx + 1}{jdx + 1}"], weights=data_ext_sub["w"]
+        )
 
-print('Shear response matrix R_g =')
+print("Shear response matrix R_g =")
 print(np.matrix(R_g))
 ```
 
@@ -225,13 +227,13 @@ The following arithmetic is valid only for the original, unchanged population wi
 R_s = np.empty((2, 2))
 for idx in (0, 1):
     for jdx in (0, 1):
-        R_s[idx][jdx] = hdu_list_ext[0].header[f'R_S{idx+1}{jdx+1}']
+        R_s[idx][jdx] = hdu_list_ext[0].header[f"R_S{idx + 1}{jdx + 1}"]
 
-print('Selection response matrix R_s =')
+print("Selection response matrix R_s =")
 print(np.matrix(R_s))
 
 R = R_g + R_s
-print('Total response matrix R =')
+print("Total response matrix R =")
 print(np.matrix(R))
 ```
 
@@ -241,10 +243,12 @@ The observed and true shear are related by $\gamma^\mathrm{obs} = R\,\gamma + c$
 Subtract the additive term and multiply by the inverse total response:
 
 ```python
-e_uncal_minus_c = np.array([
-    data_ext['e1_uncal'] - c[0],
-    data_ext['e2_uncal'] - c[1],
-])
+e_uncal_minus_c = np.array(
+    [
+        data_ext["e1_uncal"] - c[0],
+        data_ext["e2_uncal"] - c[1],
+    ]
+)
 e_cal = np.linalg.inv(R).dot(e_uncal_minus_c)
 ```
 
@@ -253,5 +257,5 @@ shears computed by hand should match those in the base catalogue:
 
 ```python
 print(e_cal[:, 0:3])
-print(data['e1'][0:3], data['e2'][0:3])
+print(data["e1"][0:3], data["e2"][0:3])
 ```
