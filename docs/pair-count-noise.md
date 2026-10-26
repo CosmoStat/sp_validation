@@ -13,6 +13,7 @@ The cache is independent of cosmology and contains no shapes, signals or blind r
 The reader projects fields directly from the lazy catalogue chunks, including compound HDF5 datasets, rather than materialising rows containing shape fields.
 It is a separate rule so covariance-only reruns need no shape measurement or access to a blind.
 Its `threads`, memory and runtime can be overridden just like `xi` (large catalogues may need more than the default 40 GB).
+For the full v2 catalogue, use `--set-resources covariance_pair_counts:mem_mb=128000 covariance_pair_counts:runtime=1440`, alongside the run's existing resource overrides; the two NN passes can peak above the ξ rule's memory usage.
 
 For unordered auto pairs in bin b, the NPZ stores:
 
