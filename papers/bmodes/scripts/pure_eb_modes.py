@@ -1,6 +1,6 @@
 """Pure E/B modes and their exact covariance for one version.
 
-Reads the fine-grid ξ± (TreeCorr text dump, with its pair weights) and the
+Reads the fine-grid ξ± SACC part (with its TreeCorr pair weights) and the
 Gaussian ξ± covariance on the same grid, and applies
 ``sp_validation.b_modes.calculate_pure_eb_correlation``: the fixed-operator
 pure-E/B estimator averaged into the reporting bins, with covariance
@@ -8,7 +8,7 @@ pure-E/B estimator averaged into the reporting bins, with covariance
 pure-mode plot / PTE.
 
     python pure_eb_modes.py \
-        --xi-integration <xi 1000-bin .txt> \
+        --xi-integration <xi 1000-bin part .sacc> \
         --cov-integration <Gaussian ξ± covariance, same grid> \
         --min-sep 1.0 --max-sep 250.0 --nbins 20 \
         --min-sep-int 0.5 --max-sep-int 300.0 --nbins-int 1000 \
@@ -20,18 +20,15 @@ import os
 
 import numpy as np
 
+from sp_validation import sacc_io
 from sp_validation.b_modes import calculate_pure_eb_correlation
 from sp_validation.sacc_io import PURE_KEYS
 
 
-def _load_xi(path, nbins):
-    """``(meanr, xip, xim, weight)`` from a TreeCorr text dump.
-
-    TreeCorr's ASCII header is
-    r_nom meanr meanlogr xip xim xip_im xim_im sigma_xip sigma_xim weight npairs.
-    """
-    data = np.loadtxt(path, comments="#", max_rows=nbins)
-    return data[:, 1], data[:, 3], data[:, 4], data[:, 9]
+def _load_xi(path):
+    """``(meanr, xip, xim, weight)`` from a ξ± SACC part."""
+    gg = sacc_io.xi_correlation(sacc_io.load(path))
+    return gg.meanr, gg.xip, gg.xim, gg.weight
 
 
 def pure_eb_modes(
@@ -46,7 +43,7 @@ def pure_eb_modes(
     out_path,
 ):
     results = calculate_pure_eb_correlation(
-        *_load_xi(xi_integration, nbins_int),
+        *_load_xi(xi_integration),
         np.geomspace(min_sep_int, max_sep_int, nbins_int + 1),
         np.loadtxt(cov_integration),
         np.geomspace(min_sep, max_sep, nbins + 1),

@@ -29,6 +29,10 @@ import common
 common.configure(config)
 from common import *
 
+# Sacha's suite holds catalogues and precomputed xi/Cl in <suite>/results.
+GLASS_MOCK_DIR = config["glass_mocks"]["data_dir"]
+GLASS_MOCK_SUITE = Path(GLASS_MOCK_DIR).parent.name
+
 # The one image every rule runs in; see common.resolve_container.
 container: common.resolve_container(config.get("container"))
 

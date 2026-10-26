@@ -20,7 +20,6 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-import treecorr
 import yaml
 from astropy.io import fits
 from cosmo_numba.B_modes.cosebis import COSEBIS
@@ -34,6 +33,7 @@ from plotting_utils import (
 )
 from pseudo_cl_io import load_pseudo_cl_data
 
+from sp_validation import sacc_io
 from sp_validation.b_modes import calculate_cosebis
 
 plt.style.use(PAPER_MPLSTYLE)
@@ -139,17 +139,7 @@ def _compute_config_cosebis(xi_path, cov_path, nmodes, scale_cut, config):
 
     Returns (En, Bn, cov).
     """
-    min_sep_int = float(config["fiducial"]["min_sep_int"])
-    max_sep_int = float(config["fiducial"]["max_sep_int"])
-    nbins_int = int(config["fiducial"]["nbins_int"])
-
-    gg = treecorr.GGCorrelation(
-        min_sep=min_sep_int,
-        max_sep=max_sep_int,
-        nbins=nbins_int,
-        sep_units="arcmin",
-    )
-    gg.read(xi_path)
+    gg = sacc_io.xi_correlation(sacc_io.load(xi_path))
 
     results = calculate_cosebis(
         gg, nmodes=nmodes, scale_cuts=[scale_cut], cov_path=cov_path
@@ -854,7 +844,7 @@ def _from_cli(argv=None):
         required=True,
         help=(
             "COSMO_VAL output dir (pseudo_cl SACC parts, pseudo_cl_cov FITS "
-            "+ xi_integration txt)"
+            "+ xi_integration SACC part)"
         ),
     )
     ap.add_argument(
@@ -888,9 +878,9 @@ def _from_cli(argv=None):
         "--fiducial-xi-path",
         default=None,
         help=(
-            "Explicit path to the fiducial 1000-bin integration xi_pm text file "
+            "Explicit path to the fiducial 1000-bin integration ξ± SACC part "
             "reproduced by lc (e.g. SP_v1.4.6.3_leak_corr_xi_minsep=0.5_maxsep=300.0_"
-            "nbins=1000_npatch=1.txt), overriding the --cosmo-val-dir pattern lookup "
+            "nbins=1000_npatch=1.sacc), overriding the --cosmo-val-dir pattern lookup "
             "for --fiducial-version."
         ),
     )
@@ -947,7 +937,7 @@ def _from_cli(argv=None):
             else os.path.join(
                 a.cosmo_val_dir,
                 f"{ver}_xi_minsep={min_sep_int}_maxsep={max_sep_int}"
-                f"_nbins={nbins_int}_npatch={npatch}.txt",
+                f"_nbins={nbins_int}_npatch={npatch}.sacc",
             )
         )
         inputs[f"cov_{ver}"] = (

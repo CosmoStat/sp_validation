@@ -25,6 +25,35 @@ Runs stay modular, not monolithic: a paper or run composes these rules with
 Snakemake's `module` directive under its own config and an output `prefix`, so
 each namespaces cleanly under `results/<name>/`.
 
+## Blinding
+
+Every entry of `cosmo_val/cat_config.yaml` declares `blind: none` or
+`blind: <name>`; an entry without one stops the launch. `_leak_corr` versions
+take their entry's blind, and entries reading one shear file declare one blind.
+
+A blind is a secret record, `<paths.blinds>/<name>.blind.json` (seed, envelope,
+fiducial), drawn once with
+`spv-container exec python -m sp_validation.blinding init <name>` and never
+committed. On a blinded catalogue, ξ± and Cℓ_EE are shifted by
+t(hidden) − t(fiducial) before they are first written: Smokescreen draws the
+hidden point (S8 and Ωm) from the seed, and the theory `t` is
+`sp_validation.blinding.shear`. Cℓ_BB and Cℓ_EB get zero shift; ρ/τ are saved
+with `blinding.no_signal`. Another statistic passes its own theory,
+`theory(params, s) -> array the length of s.mean` (see
+`src/sp_validation/blinding.py`).
+
+A measurement calculates, then saves: one function computes the signal, saves
+it with `sacc_io.save(s, path, blind=...)` (or `sacc_io.seal`), and returns the
+concealed part, so raw signal never leaves it
+(`CosmologyValidation.calculate_2pcf_version` is the pattern). Statistics computed from
+parts (COSEBIs, pure-E/B, the assembled `{version}.sacc`) are saved with
+`derived_from=parts` and carry their inputs' stamp, `s.metadata["blind"]`.
+
+Producer rules carry the catalogue's blind in `params.blind`, so unblinding is
+flipping the declaration to `blind: none` and rerunning: Snakemake reruns
+exactly the parts it touches, and assembly refuses a part whose stamp is not the
+catalogue's declared blind.
+
 ## Running on the cluster — the candide profile
 
 `profiles/candide/config.yaml` is the committed SLURM profile: it hands
@@ -58,7 +87,7 @@ itself — no rule writes its own `apptainer exec` call. The image name comes
 from the `container:` directive in `workflow/Snakefile` (or a rule's own
 override, e.g. the image-sims `SIF`).
 
-A few rules shell out to a host toolchain (CosmoCov, ImageMagick) and keep
+A few rules shell out to a host toolchain (OneCovariance, ImageMagick) and keep
 `container: None`; each says why in its own docstring.
 
 The slurm executor submits with `--export=ALL`, so every job starts with the
@@ -86,6 +115,22 @@ Snakemake cannot compose profiles, so both files carry that block (marked
 `GENERIC` in each) — change one, change the other. `apptainer-args` is not part
 of it: expect to edit the default profile's `--bind` list for your machine.
 
+### GLASS mock suite
+
+Set `glass_mocks.data_dir` in the paper config to the suite's `results` directory.
+Both paper configs use `/n09data/guerrini/glass_mock_v1.4.6.3_v2/results`, the suite supplying Paper II's 350 mocks.
+Catalogue measurements, mock covariance, and inference preparation all read this key.
+Generated mock products carry the parent directory's suite name (`glass_mock_v1.4.6.3_v2`) in their output paths, so suites don't share products.
+`glass_mocks.version` labels the inference product version within a suite; `seed_range` selects the covariance and inference seeds.
+The fine-grid measurement aggregators use the first 100 mocks.
+Sampled tau statistics depend on the real catalogue, not the mock suite, and retain their catalogue-derived inputs and output paths.
+
+```bash
+snakemake -n --profile workflow/profiles/default -s workflow/Snakefile \
+    covariance_glass_mock glass_mock_all_xi inference_glass_mocks \
+    --configfile papers/bmodes/config/config.yaml
+```
+
 ### Which `sp_validation` a rule imports: the launched checkout
 
 The image is the frozen *dependency stack*; the `sp_validation` that runs is
@@ -101,10 +146,10 @@ halves of one commit, split.
 The catalogue config is the launched checkout's `cosmo_val/cat_config.yaml`.
 `COSMO_VAL` defaults to the launched checkout's `cosmo_val/output`, so writing
 into another checkout's products means naming it; `COSMO_INFERENCE` defaults to
-the shared candide tree, which holds the CosmoCov covariances and only its owner
+the shared candide tree, which holds the covariances and only its owner
 can write. Anyone else launches with `COSMO_INFERENCE=<tree>` of their own,
 holding a link to the shared tree's `data/mask/` (the one input the covariance
-rules take from it); the CosmoCov chain then runs there:
+rules take from it); the OneCovariance rules then run there:
 
 ```bash
 mkdir -p <tree>/data

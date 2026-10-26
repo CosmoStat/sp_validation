@@ -19,5 +19,5 @@ cv = CosmologyValidation(
     catalog_config=params["cat_config"],
     output_dir=params["output_dir"],
 )
-cv.calculate_rho_tau_stats()
+cv.calculate_rho_tau_stats(tomography=False)
 verify_outputs(snakemake)

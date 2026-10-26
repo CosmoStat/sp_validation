@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import copy
+import os
 import sys
 from optparse import OptionParser
 
@@ -40,7 +41,7 @@ def params_default():
         parameter values
     """
 
-    p_def = param(survey="v1")
+    p_def = param(campaigns=None)
 
     return p_def
 
@@ -66,7 +67,13 @@ def parse_options(p_def):
 
     # I/O
     parser.add_option("-i", "--input", dest="input", type="string", help="input file")
-    parser.add_option("-s", "--survey", dest="survey", type="string", help="survey")
+    parser.add_option(
+        "-c",
+        "--campaigns",
+        dest="campaigns",
+        type="string",
+        help="campaigns separated by '+'",
+    )
 
     options, args = parser.parse_args()
 
@@ -87,8 +94,8 @@ def check_options(options):
         Result of option check. False if invalid option value.
     """
 
-    if not options.input and not options.survey:
-        print("Either input or survey need to be specified")
+    if not options.input and not options.campaigns:
+        print("Either input or campaigns need to be specified")
         return False
 
     return True
@@ -148,13 +155,13 @@ def main(argv=None):
     # Get input file paths
     print("Retrieving input file paths")
     input_files = []
-    if param.survey == "v1":
-        n_patch = 7
-        patches = [f"P{x}" for x in np.arange(n_patch) + 1]
-        for patch in patches:
-            path = f"{patch}/sp_output/tile_id_gal_counts_{sh}.txt"
+    if param.campaigns:
+        campaigns = param.campaigns.split("+")
+        for campaign in campaigns:
+            path = f"{campaign}/sp_output/tile_id_gal_counts_{sh}.txt"
             input_files.append(path)
     else:
+        campaigns = [os.path.dirname(param.input) or "."]
         input_files = [param.input]
 
     print(f"Found {len(input_files)} input files")
@@ -166,11 +173,11 @@ def main(argv=None):
     n_gal_arr = []
     n_shape_arr = []
 
-    for patch, input_path in zip(patches, input_files):
-        dat[patch] = np.loadtxt(input_path)
-        n_det = dat[patch][:, 1]
-        n_gal = dat[patch][:, 2]
-        n_shape = dat[patch][:, 3]
+    for campaign, input_path in zip(campaigns, input_files):
+        dat[campaign] = np.loadtxt(input_path)
+        n_det = dat[campaign][:, 1]
+        n_gal = dat[campaign][:, 2]
+        n_shape = dat[campaign][:, 3]
 
         n_det_arr.extend(n_det)
         n_gal_arr.extend(n_gal)
@@ -178,11 +185,11 @@ def main(argv=None):
 
     # Write tile IDs with number of shapes > 0
     print("Writing tile IDs with n_shapes>0")
-    for patch in patches:
-        out_path = f"{patch}/sp_output/found_ID_wshapes.txt"
+    for campaign in campaigns:
+        out_path = f"{campaign}/sp_output/found_ID_wshapes.txt"
         with open(out_path, "w") as f_out:
-            mask_n_shape = dat[patch][:, 3] > 0
-            tile_ID_masked = dat[patch][mask_n_shape, 0]
+            mask_n_shape = dat[campaign][:, 3] > 0
+            tile_ID_masked = dat[campaign][mask_n_shape, 0]
             for ID in tile_ID_masked:
                 print(f"{ID:07.3f}", file=f_out)
 

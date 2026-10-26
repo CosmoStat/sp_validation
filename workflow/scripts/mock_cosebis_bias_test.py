@@ -1,6 +1,6 @@
 """Gather: mock COSEBIS bias test from pre-computed per-mock results.
 
-Loads per-mock COSEBIS B_n from scatter jobs, propagates CosmoCov ξ±
+Loads per-mock COSEBIS B_n from scatter jobs, propagates OneCovariance ξ±
 covariance to COSEBIS space, tests mean B_n = 0 at σ/√N precision.
 
 Two-panel figure:

@@ -1,13 +1,13 @@
 """Generate pseudo-Cl covariances (no data vector).
 
 Dual-mode. Under Snakemake (``script:`` directive) the injected ``snakemake``
-object supplies the parameters and the native product is renamed to the tagged
-output filename the rule declares; as a standalone CLI (argparse) the same
-compute runs from explicit flags and the primitive's native
-``pseudo_cl_cov_{ver}.fits`` is left in place under ``--out`` (no rename — each
-lc/ASTRA recipe gets its own output directory, so the untagged native name is
-unambiguous and the primitives' skip-if-exists never collides across nbins
-runs). The CLI form is what the lightcone/ASTRA recipe calls, so the
+object supplies the parameters, the covariance is computed in a private
+working directory and moved to the tagged output filename the rule declares;
+as a standalone CLI (argparse) the same compute runs from explicit flags and
+the native ``pseudo_cl/pseudo_cl_cov_non_tomo_{ver}_from_iNKA_…fits`` (with its
+``iNKA_block_{ver}/`` block) is left in place under ``--out`` (each lc/ASTRA
+recipe gets its own output directory, so the methods' skip-if-exists never
+reuses another configuration's covariance). The CLI form is what the lightcone/ASTRA recipe calls, so the
 measurement is driven directly (no nested Snakemake) with lc handling
 orchestration:
 
@@ -25,8 +25,11 @@ See generate_pseudo_cl.py for data vector generation.
 """
 
 import argparse
+import gc
 import json
 import os
+import shutil
+import tempfile
 
 from astropy.io import fits
 
@@ -51,9 +54,10 @@ def generate_pseudo_cl_cov(
     version : str
         Catalog version (e.g., "SP_v1.4.6_leak_corr")
     output_dir : str
-        Directory the covariance FITS file is written into. The primitive writes
-        its native ``pseudo_cl_cov_{version}.fits`` here; callers that need a
-        tagged filename rename it themselves (see ``_from_snakemake``).
+        Output directory of the ``CosmologyValidation`` run. The covariance is
+        written to its native path under ``output_dir/pseudo_cl/``; callers
+        that need a tagged filename move it themselves (see
+        ``_from_snakemake``).
     cat_config : str
         Path to catalog configuration YAML
     nside : int
@@ -73,7 +77,7 @@ def generate_pseudo_cl_cov(
     Returns
     -------
     str
-        Path to the primitive's native ``pseudo_cl_cov_{version}.fits`` product.
+        Path to the native non-tomographic iNKA covariance FITS.
     """
     os.makedirs(output_dir, exist_ok=True)
 
@@ -129,39 +133,47 @@ def generate_pseudo_cl_cov(
 
     cv = CosmologyValidation(**cv_kwargs)
 
-    # Calculate covariance only
+    # Covariance of the ("all", "all") pair only
     print("Calculating covariance...")
-    cv.calculate_pseudo_cl_eb_cov()
+    cv.calculate_pseudo_cl_inka_cov(compute_tomography=False)
 
-    # Report on the native product (renamed by the Snakemake caller, if any)
-    src_cov = os.path.join(output_dir, f"pseudo_cl_cov_{version}.fits")
+    # Report on the native product (moved by the Snakemake caller, if any)
+    src_cov = cv._output_path_pseudo_cl_cov(version, "iNKA", tomography=False)
     if os.path.exists(src_cov):
         with fits.open(src_cov) as hdul:
             # CV outputs covariance blocks as COVAR_XX_YY extensions
-            cov = hdul["COVAR_BB_BB"].data
-            n_ell = int(len(cov) ** 0.5)
-            print(f"Generated covariance matrix: {n_ell}x{n_ell}")
+            n_row, n_col = hdul["COVAR_BB_BB"].data.shape
+            print(f"Generated BB covariance block: {n_row}x{n_col}")
     return src_cov
 
 
 def _from_snakemake(smk):
     p = smk.params
     output_cov = smk.output.pseudo_cl_cov
-    src_cov = generate_pseudo_cl_cov(
-        version=p["version"],
-        output_dir=os.path.dirname(output_cov),
-        cat_config=p["cat_config"],
-        nside=int(p["nside"]),
-        npatch=int(p["npatch"]),
-        cosmo_params=p.get("cosmo_params", None),
-        binning=p["binning"],
-        nbins=int(p["nbins"]),
-        power=float(p.get("power", 0.5)),
-    )
-    # Snakemake declares a tagged output filename; rename the native product to it.
-    if os.path.exists(src_cov) and src_cov != output_cov:
-        os.rename(src_cov, output_cov)
-        print(f"Saved to: {output_cov}")
+    out_dir = os.path.dirname(output_cov)
+    os.makedirs(out_dir, exist_ok=True)
+    # The iNKA blocks and the merged covariance are cached under names that
+    # carry the binning only, so the job computes in a directory of its own and
+    # never picks up a block another configuration left behind. On NFS, files
+    # still held open at exit leave .nfs placeholders that block the removal,
+    # so a leftover work directory is tolerated rather than failing the job.
+    with tempfile.TemporaryDirectory(
+        dir=out_dir, prefix=".pseudo_cl_cov_", ignore_cleanup_errors=True
+    ) as work:
+        src_cov = generate_pseudo_cl_cov(
+            version=p["version"],
+            output_dir=work,
+            cat_config=p["cat_config"],
+            nside=int(p["nside"]),
+            npatch=int(p["npatch"]),
+            cosmo_params=p.get("cosmo_params", None),
+            binning=p["binning"],
+            nbins=int(p["nbins"]),
+            power=float(p.get("power", 0.5)),
+        )
+        shutil.move(src_cov, output_cov)
+        gc.collect()
+    print(f"Saved to: {output_cov}")
 
 
 def _from_cli(argv=None):

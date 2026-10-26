@@ -9,5 +9,5 @@ from cv_runner import _unbuffer_streams, make_cv, touch_sentinels
 
 _unbuffer_streams()
 cv = make_cv(snakemake)
-cv.plot_rho_stats()
+cv.plot_rho_stats(savefig="rho_stats.png", show=False)
 touch_sentinels(snakemake)

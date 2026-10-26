@@ -33,20 +33,32 @@ def _plain(path):
 REPO_ROOT = _plain(__file__).parents[1]
 REPO_SRC = REPO_ROOT / "src"
 
-# The container model lives in the package (``sp_validation/container.py``).
-# Taken from *this checkout's* src/, so the workflow and the ``spv-container``
-# CLI can never disagree about which image to run.
-_container = importlib.util.module_from_spec(
-    importlib.util.spec_from_file_location(
-        "_spv_container", REPO_SRC / "sp_validation" / "container.py"
-    )
-)
-sys.modules["_spv_container"] = _container
-_container.__loader__.exec_module(_container)
 
+def _load_checkout_module(name):
+    """Load ``sp_validation/<name>.py``, a stdlib-only module, from this checkout.
+
+    By path, since the host Snakemake has no sp_validation installed; from
+    *this checkout's* src/, so the workflow and the package never disagree.
+    """
+    alias = f"_spv_{name}"
+    module = importlib.util.module_from_spec(
+        importlib.util.spec_from_file_location(
+            alias, REPO_SRC / "sp_validation" / f"{name}.py"
+        )
+    )
+    sys.modules[alias] = module
+    module.__loader__.exec_module(module)
+    return module
+
+
+# The container model, shared with the ``spv-container`` CLI.
+_container = _load_checkout_module("container")
 compare_revision = _container.compare_revision
 image_revision = _container.image_revision
 resolve_image = _container.resolve_image
+
+# Each catalogue's declared blind (``blinding.blind_of``).
+_blinding = _load_checkout_module("blinding")
 
 # Every job inherits this launch's environment (the slurm executor submits with
 # --export=ALL), and the Snakemake each job step starts keeps its source cache
@@ -72,7 +84,6 @@ COSMO_INFERENCE = _plain(
 # The catalogue config of the launched checkout: the one file both the host
 # (CATALOG_CONFIG, loaded in configure) and every job read catalogues from.
 CAT_CONFIG = str(REPO_ROOT / "cosmo_val" / "cat_config.yaml")
-BLOCK_PAIRS = [("++", "1"), ("--", "2"), ("+-", "3")]
 
 # Fiducial cosmology: Planck 2018 (astropy Planck18, Table 2 + BAO)
 # Source of truth: cs_util.cosmo.PLANCK18
@@ -86,12 +97,16 @@ COSMOLOGY_PARAMS = "results/cosmology/planck18.json"
 WILDCARD_CONSTRAINTS = {
     "version": r"SP_v[\d.]+(_[ABC])?(_w_iv)?(_ecut\d+)?(_leak_corr)?",
     "nbins": r"\d+",
+    # Without this, npatch greedily swallows a trailing {tomo_suffix}.
+    "npatch": r"\d+",
     "min_sep": r"[0-9.]+",
     "max_sep": r"[0-9.]+",
     "gaussian": r"(g|ng)",
     "block_pm": r"(\+\+|--|\+-)",
     "block_i": r"[123]",
     "mask_suffix": r"(_masked)?",
+    # Empty means non-tomographic, so existing paths are unchanged.
+    "tomo_suffix": r"(_tomo)?",
     "mock_id": r"\d{5}",
     "nside": r"\d+",
 }
@@ -193,6 +208,16 @@ def configure(workflow_config):
     )
     with open(COSMOLOGY_PARAMS) as f:
         PLANCK18 = json.load(f)
+    # A run catalogue that declares no blind stops the launch before any job.
+    fiducial = (FIDUCIAL.get(k) for k in ("version", "mock_version"))
+    for version in [*workflow_config.get("versions", []), *filter(None, fiducial)]:
+        blind_of(version)
+
+
+def blind_of(version):
+    """``version``'s declared blind: a producer's ``params.blind``, so flipping
+    it reruns exactly the jobs it touches."""
+    return _blinding.blind_of(CATALOG_CONFIG, catalogue_name(version))
 
 
 def fiducial_binning_suffix(fiducial=None):
@@ -204,6 +229,25 @@ def fiducial_binning_suffix(fiducial=None):
     )
 
 
+# Covariance naming, one scheme for every OneCovariance product. Rule outputs
+# use the template with wildcards left in braces; covariance_base() formats it,
+# so the two stay in sync by construction. An empty {tomo_suffix} is the
+# non-tomographic covariance.
+COV_BASE_TEMPLATE = (
+    "covariance_{version}_{gaussian}"
+    "_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}"
+    "{mask_suffix}{tomo_suffix}"
+)
+
+
+def cov_output(suffix):
+    """Wildcard-bearing covariance path: ``<BASE>/<BASE>{suffix}``."""
+    return str(
+        COSMO_INFERENCE
+        / f"data/covariance/{COV_BASE_TEMPLATE}/{COV_BASE_TEMPLATE}{suffix}"
+    )
+
+
 def covariance_base(
     version,
     gaussian="ng",
@@ -211,32 +255,44 @@ def covariance_base(
     max_sep=None,
     nbins=None,
     mask_suffix=None,
+    tomo_suffix=None,
     fiducial=None,
     default_mask_suffix=None,
 ):
-    """Construct covariance base name."""
+    """Construct covariance base name (concrete values, no wildcards)."""
     fiducial = fiducial or FIDUCIAL
+    gaussian = gaussian if gaussian is not None else fiducial["gaussian"]
     min_sep = min_sep if min_sep is not None else fiducial["min_sep"]
     max_sep = max_sep if max_sep is not None else fiducial["max_sep"]
     nbins = nbins if nbins is not None else fiducial["nbins"]
-    mask_suffix = (
-        mask_suffix
-        if mask_suffix is not None
-        else (
+    if mask_suffix is None:
+        mask_suffix = (
             DEFAULT_MASK_SUFFIX if default_mask_suffix is None else default_mask_suffix
         )
-    )
-    return (
-        f"covariance_{version}_{gaussian}"
-        f"_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}"
+    return COV_BASE_TEMPLATE.format(
+        version=version,
+        gaussian=gaussian,
+        min_sep=min_sep,
+        max_sep=max_sep,
+        nbins=nbins,
+        mask_suffix=mask_suffix,
+        tomo_suffix=tomo_suffix or "",
     )
 
 
 def covariance_dir(
-    version, gaussian="ng", min_sep=None, max_sep=None, nbins=None, mask_suffix=None
+    version,
+    gaussian="ng",
+    min_sep=None,
+    max_sep=None,
+    nbins=None,
+    mask_suffix=None,
+    tomo_suffix=None,
 ):
     """Construct covariance directory path."""
-    base = covariance_base(version, gaussian, min_sep, max_sep, nbins, mask_suffix)
+    base = covariance_base(
+        version, gaussian, min_sep, max_sep, nbins, mask_suffix, tomo_suffix
+    )
     return str(COSMO_INFERENCE / f"data/covariance/{base}")
 
 
@@ -247,10 +303,13 @@ def covariance_path(
     max_sep=None,
     nbins=None,
     mask_suffix=None,
-    suffix="_processed.txt",
+    tomo_suffix=None,
+    suffix=".dat",
 ):
-    """Construct covariance file path."""
-    base = covariance_base(version, gaussian, min_sep, max_sep, nbins, mask_suffix)
+    """Construct covariance file path; by default the OneCovariance matrix."""
+    base = covariance_base(
+        version, gaussian, min_sep, max_sep, nbins, mask_suffix, tomo_suffix
+    )
     return str(COSMO_INFERENCE / f"data/covariance/{base}/{base}{suffix}")
 
 
@@ -260,12 +319,17 @@ def base_version(version):
     return re.sub(r"_ecut\d+", "", re.sub(r"_leak_corr$", "", version))
 
 
-def catalogue_entry(version):
-    """The catalogue-config entry describing ``version`` (its own, or the one
-    its ``_leak_corr`` variant derives from)."""
+def catalogue_name(version):
+    """The name of the catalogue-config entry describing ``version`` (its own,
+    or the one its ``_leak_corr`` / ``_seed<N>`` variant derives from)."""
     if version in CATALOG_CONFIG:
-        return CATALOG_CONFIG[version]
-    return CATALOG_CONFIG[re.sub(r"_leak_corr$", "", version)]
+        return version
+    return re.sub(r"_seed\d+$", "", re.sub(r"_leak_corr$", "", version))
+
+
+def catalogue_entry(version):
+    """The catalogue-config entry describing ``version``."""
+    return CATALOG_CONFIG[catalogue_name(version)]
 
 
 def redshift_path(version):
@@ -375,18 +439,37 @@ CV_SENTINELS = COSMO_VAL / "snakemake_sentinels"
 
 
 def cv_basename(version, fiducial=None):
-    """Reproduce CosmologyValidation.basename() for a version.
+    """Reproduce CosmologyValidation.basename() for a version's ("all", "all") pair.
 
-    Mirrors the f-string in cosmo_val.py so rule outputs match exactly what the
-    method writes. Uses fiducial binning (min_sep/max_sep/nbins/npatch).
+    Mirrors the f-string of ``CosmologyValidation.basename(version)`` so rule
+    outputs match exactly what the method writes. Uses fiducial binning
+    (min_sep/max_sep/nbins/npatch).
     """
     fiducial = fiducial or FIDUCIAL
     return (
-        f"{version}_minsep={fiducial['min_sep']}"
+        f"{version}_tomo_bin_all_minsep={fiducial['min_sep']}"
         f"_maxsep={fiducial['max_sep']}"
         f"_nbins={fiducial['nbins']}"
         f"_npatch={fiducial['npatch']}"
     )
+
+
+def cv_rho_stats(version, fiducial=None):
+    """ρ-statistics FITS that CosmologyValidation writes for a version."""
+    base = cv_basename(version, fiducial)
+    return str(COSMO_VAL / "rho_tau_stats" / f"rho_stats_{base}.fits")
+
+
+def cv_tau_stats(version, fiducial=None):
+    """τ-statistics FITS that CosmologyValidation writes for a version."""
+    base = cv_basename(version, fiducial)
+    return str(COSMO_VAL / "rho_tau_stats" / f"tau_stats_{base}.fits")
+
+
+def cv_cov_tau(version, fiducial=None):
+    """Theoretical τ covariance that CosmologyValidation writes for a version."""
+    base = cv_basename(version, fiducial)
+    return str(COSMO_VAL / "rho_tau_stats" / f"cov_tau_{base}_th.npy")
 
 
 # CosmologyValidation constructor kwargs read from config["cosmo_val"]. Every
@@ -397,6 +480,7 @@ CV_INIT_KEYS = (
     "cov_estimate_method",
     "compute_cov_rho",
     "n_cov",
+    "n_sim_cov",
     "theta_min",
     "theta_max",
     "nbins",

@@ -1,9 +1,10 @@
 """Rule cv_cosebis: COSEBIs E/B decomposition for one version.
 
-A consumer of the integration-grid ξ± part and the CosmoCov ξ± covariance on
+A consumer of the integration-grid ξ± part and the OneCovariance ξ± covariance on
 the same grid — nothing here touches a catalogue. The covariance goes through
 the same linear kernel as the modes to give the COSEBIs covariance; it is
-analytic, so no Hartlap debiasing applies.
+analytic, so no Hartlap debiasing applies. The COSEBIs part is a derivation of
+the ξ± part and carries its blind stamp.
 """
 
 import numpy as np
@@ -26,7 +27,7 @@ p = snakemake.params
 version = p["version"]
 fiducial_scale_cut = tuple(p["fiducial_scale_cut"])
 
-part = sacc_io.load(snakemake.input["xi"])
+part = sacc_io.load(snakemake.input["xi"], blind=p["blind"])
 theta, xip, xim = sacc_io.get_xi(part, (0, 0), grid="integration")
 edges = log_bin_edges(p["min_sep"], p["max_sep"], p["nbins"])
 
@@ -62,9 +63,7 @@ plot_cosebis_scale_cut_heatmap(
 
 save_cosebis_results(results, snakemake.output["npz"], fiducial_scale_cut)
 
-# The part inherits the ξ± part's provenance; `type` is re-stamped on save.
-metadata = {k: v for k, v in part.metadata.items() if k != "type"}
-s = cosebis_to_sacc({0: sacc_io.get_nz(part, 0)}, metadata, fiducial, fiducial_key)
-sacc_io.save(s, snakemake.output["sacc"], type="data")
+s = cosebis_to_sacc({0: sacc_io.get_nz(part, 0)}, part.metadata, fiducial, fiducial_key)
+sacc_io.save(s, snakemake.output["sacc"], derived_from=[part])
 
 verify_outputs(snakemake)
