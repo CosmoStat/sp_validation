@@ -1,10 +1,11 @@
 # Image-simulation m-bias workflow configuration.
 #
 # OPERATIONAL keys default here and nowhere else -- the .smk reads them bare, so
-# this file is their single home. SCIENCE keys have no default anywhere and
-# appear below only as commented template lines: they fix the estimator's
-# behaviour, so each run must state them in a run config layered on top. A run
-# config that omits one fails at DAG parse, naming the key; an unknown key under
+# this file is their single home. Run-specific SCIENCE keys appear below as
+# commented template lines and must be stated in a layered run config.
+# DES has one shared production policy: use an independent named data table;
+# sample-fitted tables require the explicit diagnostic override below.
+# A run missing a required science key fails at DAG parse; an unknown key under
 # `image_sims:` fails as a typo.
 
 image_sims:
@@ -57,6 +58,18 @@ image_sims:
   # [operational]
   extract_script: /n17data/cdaley/unions/code/sp_validation/scripts/calibration/extract_info.py
   calibrate_script: /n17data/cdaley/unions/code/sp_validation/scripts/calibration/calibrate_comprehensive_cat.py
+
+  # DES sims must apply the same fixed table as the data they calibrate.
+  # Supply a named modern calibration FITS product (W_DES/W_EDGES/W_COUNT,
+  # with coordinate metadata), not a released catalogue with only w_des.
+  # No public v1.4.6.3 table with verified compatible edges is available.
+  # This intentionally blocks a DES production run until its data product is set.
+  des_weight_source: external
+  des_weight_product: null
+  # des_weight_product:
+  #   name: <data-calibration-name>
+  #   path: /absolute/path/to/shape_catalog_cut_ngmix.fits
+  # des_weight_source: self   # explicitly sample-fitted diagnostic, not production
 
   # --- science knobs (REQUIRED in the run config; no default) -----------
   # Copy these into your run config and set them.  There is deliberately no

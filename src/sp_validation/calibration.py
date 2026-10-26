@@ -44,9 +44,49 @@ def metacal_from_config(data, mask, cm, verbose=False):
         legacy_response=not modern,
         des_num_bins=cm.get("des_num_bins", 20),
         des_min_count=cm.get("des_min_count", 3),
+        des_weight_product=cm.get("des_weight_product"),
         w_col=cm.get("w_col"),
         verbose=verbose,
     )
+
+
+def load_des_weight_product(product):
+    """Read a named, independent calibration product, never refitting its W.
+
+    Use modern response products, whose headers declare the coordinate
+    definitions. Historical released weights alone do not specify such a table.
+    The product's edges and pooling rule are authoritative, not the sim cuts.
+    """
+    if (
+        not isinstance(product, dict)
+        or not product.get("name")
+        or not product.get("path")
+    ):
+        raise ValueError("des_weight_product needs a name and a FITS path")
+    with fits.open(product["path"]) as hdus:
+        hdr = hdus[0].header
+        if (
+            hdr.get("WGHTSCH") != "des"
+            or hdr.get("WSNRCOL") != "FLUX/FLUX_ERR"
+            or hdr.get("WSIZDEF") != "T/T_PSF_RECONV"
+        ):
+            raise ValueError(
+                "Incompatible DES product: regenerate with coordinate metadata"
+            )
+        es, er = np.array(hdus["W_EDGES"].data, dtype=float)
+        w = np.array(hdus["W_DES"].data, dtype=float)
+        count = np.array(hdus["W_COUNT"].data)
+        if (
+            w.shape != (len(es) - 1, len(er) - 1)
+            or count.shape != w.shape
+            or not np.all(np.diff(es) > 0)
+            or not np.all(np.diff(er) > 0)
+            or not np.isfinite(w).all()
+            or np.any(w < 0)
+            or not np.any(w > 0)
+        ):
+            raise ValueError("Invalid DES table or edges in calibration product")
+        return (es, er, w, count), hdr["DESNMIN"]
 
 
 def save_response_product(path, gm, groups=None):
@@ -64,7 +104,13 @@ def save_response_product(path, gm, groups=None):
         hdr["WGHTSCH"] = gm.weight_scheme
         hdr["RAPPLIED"] = True
         hdr["MCSTEP"] = gm._step
-        hdr["WPOLICY"] = "refit" if gm.weight_scheme == "des" else "not applicable"
+        hdr["WPOLICY"] = (
+            "fixed-external"
+            if gm._des_weight_product is not None
+            else "refit"
+            if gm.weight_scheme == "des"
+            else "not applicable"
+        )
         hdr["IVPOLICY"] = "branch variances"
         hdr["CMUNITS"] = "raw ellipticity"
         for i in range(2):
@@ -80,6 +126,12 @@ def save_response_product(path, gm, groups=None):
         if hasattr(gm, "W"):
             hdr["DESNMIN"] = (gm._des_min_count, "Minimum DES training count")
             hdr["DESMERGE"] = "concentric square; pooled moments"
+            hdr["WSNRCOL"] = "FLUX/FLUX_ERR"
+            hdr["WSIZDEF"] = "T/T_PSF_RECONV"
+            hdr["WSOURCE"] = "external" if gm._des_weight_product else "self"
+            if gm._des_weight_product:
+                hdr["WPRODUCT"] = gm._des_weight_product["name"]
+                hdr["WPRODPTH"] = gm._des_weight_product["path"]
             es, er, w, count = gm.W
             hdus.append(fits.ImageHDU(w, name="W_DES"))
             hdus.append(fits.ImageHDU(count, name="W_COUNT"))
@@ -860,6 +912,7 @@ class metacal:
         legacy_response=False,
         des_num_bins=20,
         des_min_count=3,
+        des_weight_product=None,
         w_col=None,
     ):
         if weight_scheme is not None and global_R_weight is not None:
@@ -880,6 +933,11 @@ class metacal:
         self._legacy_response = legacy_response
         self._des_num_bins = des_num_bins
         self._des_min_count = des_min_count
+        self._des_weight_product = des_weight_product
+        if des_weight_product is not None:
+            if weight_scheme != "des" or legacy_response:
+                raise ValueError("des_weight_product requires modern weight_scheme=des")
+            self.W, self._des_min_count = load_des_weight_product(des_weight_product)
         if w_col is not None:
             response.validate_weight_scheme(weight_scheme, w_col)
         self._masking_type = masking_type
@@ -1077,22 +1135,23 @@ class metacal:
         else:
             snr = self.ns["flux"] / self.ns["flux_err"]
             size = self.ns["T"] / self.ns["Tpsf"]
-            self.W = fit_w_des(
-                dict(
-                    snr=snr[ma],
-                    size_ratio=size[ma],
-                    e1_uncal=self.ns["g1"][ma],
-                    e2_uncal=self.ns["g2"][ma],
-                    R_g11=self.R11,
-                    R_g22=self.R22,
-                ),
-                self._des_num_bins,
-                self._snr_min,
-                self._snr_max,
-                self._rel_size_min,
-                self._rel_size_max,
-                min_count=self._des_min_count,
-            )
+            if self._des_weight_product is None:
+                self.W = fit_w_des(
+                    dict(
+                        snr=snr[ma],
+                        size_ratio=size[ma],
+                        e1_uncal=self.ns["g1"][ma],
+                        e2_uncal=self.ns["g2"][ma],
+                        R_g11=self.R11,
+                        R_g22=self.R22,
+                    ),
+                    self._des_num_bins,
+                    self._snr_min,
+                    self._snr_max,
+                    self._rel_size_min,
+                    self._rel_size_max,
+                    min_count=self._des_min_count,
+                )
             ns_cell = (
                 response.cell_index(snr, self.W[0]),
                 response.cell_index(size, self.W[1]),
@@ -1132,7 +1191,7 @@ class metacal:
         Edges and cuts stay fixed; cell moments and membership of the training
         sample change. Artificial branches never train their own table.
         """
-        if self.weight_scheme != "des":
+        if self.weight_scheme != "des" or self._des_weight_product is not None:
             return self.branch_weights
         idx = self.mask_dict["ns"]
         retained = keep[idx]
@@ -1159,7 +1218,7 @@ class metacal:
 
     def response_jackknife(self, groups, refit_w=False):
         """Delete common spatial groups; optionally propagate fitted-W noise."""
-        if refit_w and self.weight_scheme == "des":
+        if refit_w and self.weight_scheme == "des" and self._des_weight_product is None:
             groups = np.asarray(groups)
             if len(groups) != len(self.ns["g1"]):
                 raise ValueError("Spatial groups must align to the common parent rows")

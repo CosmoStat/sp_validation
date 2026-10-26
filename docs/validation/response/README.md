@@ -8,7 +8,8 @@ The earlier validation JSONs record their parent revisions; sparse-cell pooling 
 [Tests](tests.md) record the fast suite and production FITS-to-m/c checks.
 The primary DES table uses the minimum-count rule below with **N_min = 3**.
 [Previous fixed-W production comparison](production_comparison.json): all m/error differences were below 5×10⁻¹⁶.
-The primary uncertainties below now refit W within each spatial deletion.
+The self-built diagnostic uncertainties below refit W within each spatial deletion.
+Independent-table production uncertainties hold that external W fixed.
 
 | Grid | Full-population m1 ± refit-W error | Full-population m2 ± refit-W error |
 | --- | --- | --- |
@@ -200,6 +201,41 @@ The release has no NGMIX_T_PSF_RECONV_NOSHEAR column with which to verify the al
 [Compatibility scan](self_weight_public_compatibility.json) records this check over all 61,378,891 released objects.
 No reconstructed public table is substituted for (d).
 
+### Production decision
+
+**Decision:** DES image sims must use a named, independent data-calibration table, fixed across all external shears and all artificial metacal branches.
+Evaluate that table at each artificial branch's own SNR and size, retaining case-d migration and weight response.
+The toy demonstrates a finite-sample systematic that a self-fitted 40 deg² simulation need not share with a dense data table; the observed grid shifts are large enough to matter for residual calibration.
+This justifies removing self-training from the production estimator without claiming that it explains the entire residual m.
+The leave-one-grid-out numbers above are an independence diagnostic, not a replacement fiducial m for data: their tables still vary with external-shear label, whereas production holds one data table fixed.
+An m for a particular data release must be remeasured using that release's actual table.
+
+`workflow/image_sims/config.yaml` now defaults to `des_weight_source: external`.
+A DES run must supply a named product; there is deliberately no fallback to self-training or a reconstructed v1.4.6.3 table.
+For example, layer the following into the run config, replacing the placeholders with the **same modern calibration product used for the data**:
+
+```yaml
+image_sims:
+  des_weight_source: external
+  des_weight_product:
+    name: <data-calibration-name>
+    path: /absolute/path/to/shape_catalog_cut_ngmix.fits
+```
+
+The staged mask config passes `metacal.des_weight_product` to the common calibration API.
+Modern saved FITS products carry W_DES, W_EDGES, W_COUNT and explicit FLUX/FLUX_ERR and T/T_PSF_RECONV definitions; incompatible or historical products without that metadata are refused.
+The source table's edges and N_min are authoritative.
+All simulation branches evaluate that same table without retraining on simulation shapes, including during tile deletions.
+Products record `WPOLICY=fixed-external`, the product name/path and coordinate definitions; m errors still delete shared tiles and recalibrate response and numerator, with W fixed.
+The default blocks a DES workflow without a named product before image processing rather than silently choosing a different estimator.
+`des_weight_source: self` explicitly enables the self-built diagnostic with refit-W errors.
+Direct real-data calibration and historical legacy configurations retain their existing behavior.
+
+**N_min stays 3.**
+It remains the small-cell stability rule for fitting data tables and self-built diagnostics, not a remedy for self-weighting bias.
+Raising it to make these sparse simulations resemble a denser data table would change their estimator unnecessarily.
+No new fiducial residual m is adopted from this round.
+
 ## Paper I calibration provenance
 
 **Observed:** Paper I, `analyses/shear_2d/unions_release/unions_shear_catalog_paper/draft_corrected.tex`, section “Residual multiplicative bias from image simulations” (lines 678–688), reports total m = −0.0572 ± 0.0047 and an additional realistic-placement blending contribution of approximately −0.02.
@@ -289,4 +325,8 @@ For round 3, use allocation 1037411 and output root `/n17data/cdaley/scratch/res
 Run `scripts/validation/round3_sparse.py --sample N --output <root>` for each of 1, 2, 3, 4, public; its default ladder includes all eight thresholds.
 `--counts 3 5` selects a follow-up sub-ladder; the archived follow-up outputs live under `<root>/low-count/`.
 Run `scripts/validation/summarize_round3.py <root> docs/validation/response --chosen 3` for the merged tables, covariance summaries and figures.
-Modern DES defaults to N_min=3; refit-W covariance is primary and fixed-W remains conditional.
+For self-built DES diagnostics, N_min=3 and refit-W covariance remain primary.
+For round 4, use allocation 1037411 and output root `/n17data/cdaley/scratch/response-pr/round4/` with the same container prefix above.
+Run `scripts/validation/round4_self_weight.py --task toy --output <root>`, then `--task public`, then `--task 1`, `2`, `3`, `4`.
+Run `scripts/validation/summarize_round4.py <root> docs/validation/response` for the tables, covariance products and exact round-3 baseline checks.
+Independent-table image-sim production uses fixed-W shared-tile covariance, conditional on its named data product.
