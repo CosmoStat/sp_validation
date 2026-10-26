@@ -1,6 +1,7 @@
 # DES case-d validation
 
-These are observed results on Martin's four unblinded image-simulation grids.
+These are observed self-built-table diagnostics on Martin's four unblinded image-simulation grids.
+Round 4 below tests independent training; self-built weights are no longer the image-sim production default.
 Each grid contains five external-shear branches, with 39, 42, 32 and 35 shared tile labels on grids 1–4.
 The injected shear is 0.025 from the existing manifest-derived m config; the metacal step is 0.01.
 The earlier validation JSONs record their parent revisions; sparse-cell pooling was introduced in commit `354d0898`.
@@ -134,6 +135,70 @@ The [round-2 unregularized covariance](refit_w_results.json) remains as the spar
 ![DES count ladder: refit-W solid, conditional fixed-W dashed](refit_w_errors.png)
 ![Training occupancy, sparse-cell shares and W sampling noise](occupancy.png)
 ![Full-population IV and unregularized DES m, N_min=0](iv_des_m.png)
+
+## Independent training and self-weighting (round 4)
+
+**Observed toy result:** fitting W from the galaxies it weights produces m ≈ −1/N_cell; independent training removes that effect in this controlled Gaussian model.
+The toy has unit response, Gaussian intrinsic ellipticity with per-component σ=0.25, 400 equally occupied cells and no PSF, noise bias, selection or cell migration.
+Each of 200 trials uses identical intrinsic shapes at external shears ±0.025; the independent case uses a second intrinsic-shape draw for training.
+Metacal shifts do not change cell membership, so case-d split response is exactly the identity.
+Errors below are Monte Carlo standard errors, not galaxy errors or spatial jackknifes.
+
+| N per cell | Self-built m | Independent-table m |
+| --- | ---: | ---: |
+| 3 | −0.33216 ± 0.00192 | +0.00357 ± 0.00386 |
+| 10 | −0.09850 ± 0.00045 | +0.00056 ± 0.00045 |
+| 100 | −0.009870 ± 0.000048 | −0.000008 ± 0.000036 |
+| 1000 | −0.0009991 ± 0.0000052 | −0.0000036 ± 0.0000035 |
+
+[All toy counts and Monte Carlo errors](self_weight_toy.json) include N=30 and 300.
+A one-cell catalogue would cancel its common weight exactly; multiple independently fitted cells are essential to this test.
+**Interpretation:** the anticorrelation between each cell's mean shape and its estimated inverse second moment is sufficient to generate a negative finite-sample bias without any physical measurement bias.
+The effect is not proportional to the relative scatter of W itself: that scatter scales as N^(-1/2), while this toy's mean bias scales as N^(-1).
+
+**Observed grid comparison:** all entries below are m × 10³, with shared-tile jackknife errors, N_min=3 and unchanged cuts, bin edges and case-d response.
+(a) fits each external branch's own table; (b) trains on the other three grids; (c) pools all four.
+For (b)/(c), training pools the same external-shear label across grids and uses only each catalogue's no-artificial-shear metacal branch.
+No +/− external-shear averaging is introduced.
+Errors refit the target grid's retained training population in (a)/(c); the other grids are held fixed.
+(b) uses fixed-W errors because its training galaxies are external to the target.
+These errors are conditional on the external training populations, not a joint resampling of all four grids.
+The (a) values and every deleted estimate exactly reproduce the round-3 N_min=3 baseline.
+
+| Grid | Component | (a) Self | (b) Other three | (c) Pooled four | (d) Release |
+| --- | --- | ---: | ---: | ---: | --- |
+| 1 | m1 | -11.82 ± 10.96 | -4.48 ± 7.88 | -6.21 ± 8.30 | Not verified |
+| 1 | m2 | -4.92 ± 11.12 | -7.42 ± 9.14 | -6.50 ± 8.90 | Not verified |
+| 2 | m1 | -22.09 ± 9.22 | -18.78 ± 6.34 | -19.92 ± 6.44 | Not verified |
+| 2 | m2 | -18.78 ± 8.23 | -8.83 ± 6.86 | -11.28 ± 6.77 | Not verified |
+| 3 | m1 | -24.99 ± 7.14 | -12.88 ± 5.31 | -16.44 ± 5.21 | Not verified |
+| 3 | m2 | -11.73 ± 8.89 | -9.22 ± 6.66 | -10.29 ± 6.59 | Not verified |
+| 4 | m1 | -15.56 ± 6.67 | -1.89 ± 8.03 | -4.36 ± 6.85 | Not verified |
+| 4 | m2 | -18.47 ± 9.76 | -4.53 ± 10.72 | -8.13 ± 10.24 | Not verified |
+
+Paired differences below subtract the identical tile deletion in (b) from the refitted deletion in (a), retaining their covariance; units are again 10⁻³.
+
+| Grid | Δm1 (a−b) | Δm2 (a−b) |
+| --- | ---: | ---: |
+| 1 | -7.34 ± 6.57 | +2.50 ± 8.22 |
+| 2 | -3.31 ± 7.44 | -9.95 ± 4.77 |
+| 3 | -12.11 ± 6.58 | -2.51 ± 7.53 |
+| 4 | -13.67 ± 8.11 | -13.94 ± 6.55 |
+
+[Grid 1](independent_grid_1.json), [2](independent_grid_2.json), [3](independent_grid_3.json), [4](independent_grid_4.json) save (m1,c1,m2,c2), all covariance matrices, labels and deleted estimates.
+Seven of eight self-minus-independent shifts are negative; pooling gives an intermediate value in all eight comparisons.
+Individual shifts are mostly only 0.3–2.1 times their paired error.
+No combined significance is assigned: leave-one-grid-out training populations overlap, and these conditional errors do not include cross-grid training covariance.
+**Inference:** the toy confirms the proposed mechanism, and the grids support a contribution from it, but these measurements neither attribute all the negative m to self-weighting nor isolate its exact fraction from changes in the noisy table realization.
+In particular grid-2 m1 remains −0.01878 with independent training.
+
+**Release compatibility:** case (d) was not measured.
+The public v1.4.6.3 FITS contains released w_des values but no saved W_DES/W_EDGES product.
+Using released snr and NGMIX_T_NOSHEAR/NGMIX_Tpsf_NOSHEAR with the simulations' 20×20 log edges (10–500, 0.707–3), **379 cells are nonconstant in released w_des**, with maximum within-cell relative range 0.99962.
+Thus those coordinates/edges do not recover the actual release table; a moment-reconstructed table would be a different estimator.
+The release has no NGMIX_T_PSF_RECONV_NOSHEAR column with which to verify the alternative naming directly.
+[Compatibility scan](self_weight_public_compatibility.json) records this check over all 61,378,891 released objects.
+No reconstructed public table is substituted for (d).
 
 ## Paper I calibration provenance
 
