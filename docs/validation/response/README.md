@@ -28,11 +28,38 @@ Most of the paired–full gap is already present within the matched population w
 Symmetric pair weights drop the branch-weight-change contribution from the numerator while case-d R retains it; the paired result is diagnostic, not consistent headline m.
 Population restriction gives a smaller, mixed-sign correction.
 Detection/blending selection may still contribute to the negative full-population m; this comparison does not isolate it.
-Squaring IV errors changes exported w_iv but cannot change pure-DES W/R/m; IV proxies are not used.
+Squaring IV errors changes exported w_iv but cannot change pure-DES W/R/m.
+IV now uses measured errors on each artificial branch, not proxies or frozen no-shear errors.
 No mean shear is subtracted from these constant-shear simulations.
 These runs validate agreement with Martin's implementation, not a new fiducial residual-m calibration for blinded v2 data.
 
 ![Residual m](m_comparison.png)
+
+## Exact inverse-variance mode
+
+**Observed:** ShapePipe's ngmix writer exports `sqrt(g_cov[0,0])` and `sqrt(g_cov[1,1])` on all five branches (`code/shapepipe/src/shapepipe/modules/ngmix_package/ngmix.py:758–759`).
+The simulation `product/tiles/*/*/final_cat-*.fits` files retain all ten G_ERR columns.
+The merged HDF5 and comprehensive FITS retain only the two no-shear errors.
+The validation joins the missing columns by tile and NUMBER, checks the existing no-shear shape/error columns against the source, and applies each branch's own `1/(2 sigma_eps² + G1_ERR² + G2_ERR²)`.
+Extraction now carries all ten errors; modern IV refuses incomplete inputs rather than silently freezing weights.
+
+| Grid | Exact IV m1 | Exact IV m2 | Exact − frozen m1 | Exact − frozen m2 |
+| --- | ---: | ---: | ---: | ---: |
+| 1 | −0.016086 ± 0.009589 | −0.004624 ± 0.011047 | −0.002788 ± 0.000276 | −0.002947 ± 0.000217 |
+| 2 | −0.028511 ± 0.008738 | −0.017730 ± 0.008303 | −0.003371 ± 0.000566 | −0.003556 ± 0.000562 |
+| 3 | −0.011107 ± 0.006234 | −0.022330 ± 0.007302 | −0.002624 ± 0.000259 | −0.003081 ± 0.000280 |
+| 4 | −0.012291 ± 0.010830 | −0.014956 ± 0.014468 | −0.002338 ± 0.000356 | −0.003309 ± 0.000330 |
+
+All errors delete the same 39 parent tiles on both external branches and recalibrate the response.
+Errors on differences use paired deletions, not errors added in quadrature.
+[Full IV covariance and deleted estimates](iv_results.json) use the order (m1,c1,m2,c2).
+Inverse-variance grid averages are m1 = −0.01612 ± 0.00414 and m2 = −0.01699 ± 0.00465; these component averages do not assume the two components are independent.
+
+**Decision:** retain IV as a supported science mode with exact branch variances.
+Freezing the errors omits a measured weight-response contribution and biases m upward by 0.23–0.36 percentage points relative to that estimator; it does not remove the remaining negative residual.
+The common full-population estimator is used for both IV and DES.
+**ShapePipe change:** retain all branch G_ERR columns in the final-catalogue merge allow-list; ngmix and tile-final writers already supply them.
+No issue was filed.
 
 ## Response distributions and spatial diagnostics
 

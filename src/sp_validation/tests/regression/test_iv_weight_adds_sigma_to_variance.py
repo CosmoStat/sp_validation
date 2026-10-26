@@ -15,6 +15,8 @@ def _catalogue():
                 "FLAGS",
                 "G1",
                 "G2",
+                "G1_ERR",
+                "G2_ERR",
                 "FLUX",
                 "FLUX_ERR",
                 "T",
@@ -22,7 +24,6 @@ def _catalogue():
                 "T_PSF_RECONV",
             )
         )
-    fields.extend((f"NGMIX_G{i}_ERR_NOSHEAR", "f8") for i in (1, 2))
     data = np.zeros(2, dtype=fields)
     for shear in ("NOSHEAR", "1M", "1P", "2M", "2P"):
         data[f"NGMIX_FLUX_{shear}"] = 50.0
@@ -30,8 +31,9 @@ def _catalogue():
         data[f"NGMIX_T_{shear}"] = 1.0
         data[f"NGMIX_T_PSF_RECONV_{shear}"] = 1.0
     # ERR columns store sqrt(diag(g_cov)), not diag(g_cov).
-    data["NGMIX_G1_ERR_NOSHEAR"] = [0.05, 0.20]
-    data["NGMIX_G2_ERR_NOSHEAR"] = [0.10, 0.30]
+    for shear in ("NOSHEAR", "1M", "1P", "2M", "2P"):
+        data[f"NGMIX_G1_ERR_{shear}"] = [0.05, 0.20]
+        data[f"NGMIX_G2_ERR_{shear}"] = [0.10, 0.30]
     # Exactly diagonal per-object shear responses 0.6 I and 1.0 I.
     for component in (1, 2):
         data[f"NGMIX_G{component}_{component}P"] = [0.006, 0.010]

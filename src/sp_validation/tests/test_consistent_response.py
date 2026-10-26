@@ -16,6 +16,8 @@ def catalogue(n=80):
                 "FLAGS",
                 "G1",
                 "G2",
+                "G1_ERR",
+                "G2_ERR",
                 "FLUX",
                 "FLUX_ERR",
                 "T",
@@ -23,7 +25,6 @@ def catalogue(n=80):
                 "T_PSF_RECONV",
             )
         ]
-    fields += [(f"NGMIX_G{i}_ERR_NOSHEAR", "f8") for i in (1, 2)]
     d = np.zeros(n, dtype=fields)
     matrix = np.array([[0.8, 0.12], [-0.06, 0.9]])
     intrinsic = np.tile([[0.2, -0.2], [0.1, -0.1]], (1, n // 2))

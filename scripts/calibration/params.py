@@ -152,8 +152,6 @@ add_cols_pre_cal = [
     "NGMIX_N_EPOCH",
     "NGMIX_G1_PSF_ORIG_NOSHEAR",
     "NGMIX_G2_PSF_ORIG_NOSHEAR",
-    "NGMIX_G1_ERR_NOSHEAR",
-    "NGMIX_G2_ERR_NOSHEAR",
 ]
 
 ### Set flag columns as integer format
@@ -178,7 +176,18 @@ add_cols_pre_cal_format["NGMIX_MCAL_FLAGS"] = "J"
 # Create key names for metacal information
 prefix = "NGMIX"
 suffixes = ["1M", "1P", "2M", "2P", "NOSHEAR"]
-centers = ["FLAGS", "G1", "G2", "FLUX", "FLUX_ERR", "T", "T_ERR", "T_PSF_RECONV"]
+centers = [
+    "FLAGS",
+    "G1",
+    "G2",
+    "G1_ERR",
+    "G2_ERR",
+    "FLUX",
+    "FLUX_ERR",
+    "T",
+    "T_ERR",
+    "T_PSF_RECONV",
+]
 for center in centers:
     for suffix in suffixes:
         add_cols_pre_cal.append(f"{prefix}_{center}_{suffix}")

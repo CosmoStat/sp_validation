@@ -64,7 +64,7 @@ def save_response_product(path, gm, groups=None):
         hdr["RAPPLIED"] = True
         hdr["MCSTEP"] = gm._step
         hdr["WPOLICY"] = "fixed"
-        hdr["IVPOLICY"] = "frozen ns; case 1"
+        hdr["IVPOLICY"] = "branch variances"
         hdr["CMUNITS"] = "raw ellipticity"
         for i in range(2):
             hdr[f"CE_{i + 1}"] = gm.c_e[i]
@@ -954,6 +954,17 @@ class metacal:
         ns["w_iv"] = ns["w"]
 
         self._n_input = len(masked_data)
+        if self.weight_scheme == "iv" and not self._legacy_response:
+            for name, branch in zip(("1M", "1P", "2M", "2P"), (m1, p1, m2, p2)):
+                required = [f"NGMIX_G{i}_ERR_{name}" for i in (1, 2)]
+                if not all(key in masked_data.dtype.names for key in required):
+                    raise ValueError(
+                        "IV response needs per-branch G1_ERR/G2_ERR; regenerate "
+                        "the comprehensive catalogue from the tile final catalogues"
+                    )
+                branch["w_iv"] = self.get_variance_ivweights(
+                    masked_data, self._sigma_eps, branch=name
+                )[2]
         self._n_after_gal_mask = len(dict_tmp["flag"])
         if self._verbose:
             print(f"Number of objects on metacal input = {self._n_input}")
@@ -965,7 +976,9 @@ class metacal:
         return m1, p1, m2, p2, ns
 
     @staticmethod
-    def get_variance_ivweights(data, sigma_eps, mask=None, legacy=False):
+    def get_variance_ivweights(
+        data, sigma_eps, mask=None, legacy=False, branch="NOSHEAR"
+    ):
         """Get Variance IVWEIGHTS.
 
         Compute variance and inverse-variance weights.
@@ -990,8 +1003,8 @@ class metacal:
             weight
 
         """
-        C11 = data["NGMIX_G1_ERR_NOSHEAR"]
-        C22 = data["NGMIX_G2_ERR_NOSHEAR"]
+        C11 = data[f"NGMIX_G1_ERR_{branch}"]
+        C22 = data[f"NGMIX_G2_ERR_{branch}"]
         if not legacy:
             C11 = C11**2
             C22 = C22**2
@@ -1044,11 +1057,13 @@ class metacal:
             step=self._step,
             estimator="split",
             W_policy="fixed",
-            iv_policy="frozen no-shear (Martin case 1)",
+            iv_policy="branch measurement variances",
             c_units="c_e raw; c_g calibrated",
         )
         if self.weight_scheme == "iv":
-            self.branch_weights = {b: self.ns["w_iv"] for b in response.BRANCHES}
+            self.branch_weights = {
+                b: getattr(self, b)["w_iv"] for b in response.BRANCHES
+            }
         else:
             snr = self.ns["flux"] / self.ns["flux_err"]
             size = self.ns["T"] / self.ns["Tpsf"]

@@ -13,7 +13,7 @@ The artificial metacal step h defaults to 0.01; it is distinct from the manifest
 | --- | --- |
 | W per cell | mean(trace R_g/2)^2 / mean((e1²+e2²)/2), unweighted raw no-shear moments |
 | DES weights | Fit W once on S_ns; evaluate that same table at each branch's own SNR and T/Tpsf |
-| IV weights | 1/(2 sigma_eps² + G1_ERR² + G2_ERR²); frozen no-shear weights on all branches (Martin case 1) |
+| IV weights | 1/(2 sigma_eps² + G1_ERR² + G2_ERR²), using each branch's own measured errors |
 | R_shear | A_ns((e_j+ − e_j−)/(2h)), all four elements |
 | R_sel | (A_j+(e_ns) − A_j−(e_ns))/(2h); includes cuts, weight changes and cell migration |
 | R_total / R_joint | Apply R_shear + R_sel; save joint = (A_j+(e_j+) − A_j−(e_j−))/(2h) as a diagnostic |
@@ -40,7 +40,9 @@ External/historical catalogues without these metadata keep their existing interp
 
 At the Python API, `global_R_weight='w'` is deprecated and maps to `weight_scheme='iv'`, including squared G_ERR and weighted selection means.
 Old versioned release configurations, identified by the absence of `weight_scheme` at the config entry point, explicitly use the legacy response/c and unsquared-IV policy rather than reinterpret a historical release.
-Extraction still writes corrected `w_iv` using the public variance helper; a legacy calibration intentionally reconstructs the historical IV internally.
+Extraction carries all ten branch G_ERR columns and writes corrected `w_iv` using the public variance helper; a legacy calibration intentionally reconstructs the historical IV internally.
+Modern IV rejects inputs missing sheared-branch errors: regenerate from the tile-final catalogues, whose ngmix errors are already present.
+The merge allow-list must retain those columns too.
 The optional direct-calibration tail of `extract_info.py` refuses because it lacks a shared weight/selection configuration; use the comprehensive product and calibration driver.
 
 DES cells are right-closed, including internal boundaries.
@@ -72,7 +74,7 @@ Residual m from simulations remains a separate result, not an extra correction s
 
 ## Review questions
 
-1. Should frozen-no-shear IV (case 1) stay a science mode, or be diagnostic-only until sheared shape variances exist?
+1. IV uses each branch's measured shape variances; the [four-grid measurement](../validation/response/README.md#exact-inverse-variance-mode) shows that freezing them biases m upward by 0.23–0.36 percentage points.
 2. What scale-dependent/anisotropic calibration budget should the complete two-point response meet?
 3. Is W a deliberately fixed calibration object, or should errors include a W refit in each spatial sample?
 4. Is there a retained config/result identifying the weights and selection behind the historical m = −0.057?
