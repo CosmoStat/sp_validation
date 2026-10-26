@@ -1,5 +1,21 @@
 # Tests and production checks
 
+## Production-scale refit-W cell sums
+
+Allocation **1037457** on n23 ran all scientific checks in the prescribed container with `TMPDIR=/n17data/cdaley/tmp`; it has been released.
+The [README](README.md#production-scale-refit-w-jackknife) records the full 350M-row/10k-group benchmark, memory budget and unchanged defaults.
+`cell_sum_agreement.json` records all-grid maximum absolute differences against the retained full-rescan implementation, including every deleted W, response/c, image-sim m/c and covariance.
+All are below 1e-12 with zero relative tolerance; the largest is 2.27e-13 in W.
+The synthetic regression empties a cell on deletion while artificial branches still evaluate it, exercising retained-count pooling at N_min=0,3,10,1000, branch migration, sheared-only rows, small chunks and R_g/selection alignment.
+The five new regressions and four existing round-2 tests pass (**9 passed**, 10.96 s).
+
+The final `python -m pytest -m 'not slow' --no-cov -q` returned **579 passed, 4 failed, 2 skipped, 7 deselected, 2 xfailed, 1 xpassed**, in **259.73 s**.
+The four failures match the previously documented develop failures below: two configured-path/schema checks and the two rho/tau temporary-directory cleanup errors (`Errno 39` under `/n17data/cdaley/tmp`), after their reader assertions.
+None was suppressed or counted as passing.
+`ruff check`, formatting and commit hooks pass on the changed Python files.
+Logs are `/n17data/cdaley/scratch/response-pr/production-scale/{agreement-final,focused,fast-suite-final}.log`; benchmark JSONs and logs are in the same directory.
+The PR body was not edited.
+
 ## Round 4: independent data-table policy
 
 All scientific work used allocation **1037411**, four cores on n09, the prescribed container/binds and `TMPDIR=/n17data/cdaley/tmp`.
