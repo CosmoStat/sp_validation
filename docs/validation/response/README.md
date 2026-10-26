@@ -4,7 +4,8 @@ These are observed results on Martin's four unblinded image-simulation grids.
 Each grid contains five external-shear branches, with 39, 42, 32 and 35 shared tile labels on grids 1–4.
 The injected shear is 0.025 from the existing manifest-derived m config; the metacal step is 0.01.
 The parent revision and committed production implementation are recorded in each linked JSON file.
-[Tests](tests.md): 34 focused tests pass; the final fast suite has 556 passes and the four known develop failures.
+[Tests](tests.md): the final fast suite has **563 passes** and the **four known develop failures**.
+All four production FITS-to-m/c checks reproduce the direct refit-W results to `atol=1e-13`.
 [Previous fixed-W production comparison](production_comparison.json): all m/error differences were below 5×10⁻¹⁶.
 The primary uncertainties below now refit W within each spatial deletion.
 
@@ -97,28 +98,48 @@ The full-sample m values are unchanged.
 
 ## Two-point response: stage 1 only
 
-The pair diagnostic measures all 16 products of R_g elements with DES pair weights in eight coarse bins from 1–120 arcmin, using the no-external-shear simulation branch.
-The map above uses the same sample's mean R_g across tiles.
-The first panel shows the diagonal pair products relative to global weighted products; the second shows products involving off-diagonal elements minus their global products.
-The two diagonal products are shown separately, without imposing isotropy.
+**Stage 1 is measured on the full public v1.4.6.3 release and all four unblinded grids, with shared-patch jackknife errors.**
+The angular bins cover the science range 1–250 arcmin (20 logarithmic bins, matching the release ξ± reporting products).
+Define r_i = (R_g11,i + R_g22,i)/2 and R_global = sum(w_i r_i)/sum(w_i), using the selected sample's science DES weights, not the historical IV-weighted FITS header.
+The measured curve is f(θ) = δR_2pt/R_global² = sum_pairs(w_i w_j r_i r_j)/sum_pairs(w_i w_j)/R_global² − 1.
+Public selection is the released cut catalogue (61,378,891 objects); grid selection is the current calibration's no-external-shear branch.
+Thus selection and weight *values* affect both the pair and global averages, including their spatial weighting.
 
-![Shear-only pair/global comparison, grid 1](pair_response.png)
+Delete one identical spatial patch from both terms, recompute their ratio, then use (K−1)/K covariance across deletions.
+This propagates pair/global covariance rather than attaching only pair-product errors.
+These stage-1 errors condition on the supplied science weights; the calibration m uncertainty from refitting W is measured separately above.
+The release uses its existing 100 sky patches; the simulations use shared tile labels (39, 42, 32, 35).
+Synthetic constant-r and spatially varying-r tests compare the curve and every deletion against explicit pair sums.
 
-| Grid | Wall time [s] | Peak RSS [MiB] | Max diagonal pair/global deviation |
-| --- | --- | --- | --- |
-| 1 | 44.0 | 1492 | 1.18% |
-| 2 | 45.8 | 1578 | 0.53% |
-| 3 | 45.8 | 1567 | 0.41% |
-| 4 | 34.8 | 1278 | 0.68% |
+![Stage-1 response and conditional ξ shifts, with response jackknife errors](stage1_response_jackknife.png)
 
-Wall time/RSS include five calibrations, fixed-W tile covariance, plotting, scalar pair counting and matching on four allocated cores.
-Per-branch timings are in [grid 1](grid_1.json), [grid 2](grid_2.json), [grid 3](grid_3.json), [grid 4](grid_4.json).
-The original comprehensive catalogues are read in their existing locations; no catalogue is committed here.
+| Sample | Max absolute f(θ) | Spatial groups |
+| --- | ---: | ---: |
+| Public v1.4.6.3 | 0.1000% | 100 |
+| Grid 1 | 1.1692% | 39 |
+| Grid 2 | 0.9568% | 42 |
+| Grid 3 | 1.0001% | 32 |
+| Grid 4 | 1.3539% | 35 |
 
-**No total-response adequacy verdict is justified.**
-The measured scale dependence is shear-only; selection/weight derivatives and a calibration budget agreed with Martin are still missing.
-This implements stage 1 and leaves #23 open.
-No Appendix-A mixed derivatives or blinded v2 signal were measured.
+For the public release, representative curve values are −0.1000 ± 0.0246% at 1.16 arcmin, −0.0886 ± 0.0254% at 10.58 arcmin, −0.0587 ± 0.0478% at 55.44 arcmin and −0.0163 ± 0.1715% at 220.33 arcmin.
+Every bin, its error, the full covariance and the delete-one curves are in [stage1_results.json](stage1_results.json) and `stage1_{public,1,2,3,4}.npz`.
+The full-release measurement took 1592.0 s and 39.9 GiB peak RSS on four allocated cores.
+The grids use exact angular binning (`bin_slop=0`); the full release uses `bin_slop=0.05`.
+Halving the release slop from 0.1 to 0.05 changes f by at most 0.00623 percentage points (0.254 of its jackknife error).
+Across the grids, exact-versus-0.1 binning differences reach 0.0386 percentage points and 0.206 times the jackknife error; those maxima need not occur in the same bin.
+The [per-sample numerical comparison](stage1_precision.json) records both the absolute and error-normalized maxima; these are numerical comparisons, not an added stochastic error term.
+The original catalogues stay in place; only response summaries are committed.
+
+**Conditional interpretation:** replacing the scalar shear-response product by this pair response multiplies globally calibrated ξ± by 1/(1+f), giving fractional shift −f/(1+f).
+On the release this is +0.0163–0.1001%; using the existing public ξ± measurements and their jackknife statistical errors gives a maximum |Δξ+/σ+| = 0.0142 and |Δξ−/σ−| = 0.0074 per bin.
+The lower panel propagates the response-curve error through that mapping, holding those existing ξ values/errors fixed.
+These are conditional shear-response shifts, not a measured total-response correction or a joint cosmological significance.
+
+**Stage 1 leaves out** selection/weight *derivatives*, detection response, anisotropic tensor mixing and the Appendix-A mixed finite differences of the normalized pair estimator.
+Per-object R_g cannot supply those derivatives; no per-object R_sel is manufactured.
+No total-response adequacy verdict or tolerance is asserted.
+#23 remains **Refs**, with stage 2 a separate later investigation; no blinded v2 signal was measured.
+The earlier all-16-element, eight-bin grid-1 diagnostic remains available as [pair_response.png](pair_response.png), but does not replace this scale-dependent curve with errors.
 
 ## Reproduction
 
@@ -136,5 +157,6 @@ Repeat for grids 2–4, then run `scripts/validation/summarize_response.py` on a
 For round 2, use allocation 1037411 and output root `/n17data/cdaley/scratch/response-pr/round2/`.
 Run `scripts/validation/round2_weights.py --grid N --output <root>` for the exact-IV and fixed/refit-W measurements.
 Add `--production-check` to round-trip the refit-W means through FITS and `ImageSimMBias`.
+Run `scripts/validation/round2_pairs.py --sample public --output <root>` and repeat with `--sample 1`, `2`, `3`, `4` for the stage-1 curves.
 Run `scripts/validation/summarize_round2.py <root> docs/validation/response` for the comparison figures.
 Refit-W covariance is primary because its measured m errors exceed fixed-W by 15–380%.

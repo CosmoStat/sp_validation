@@ -67,6 +67,8 @@ The returned c_err is a weighted error of the raw mean (legacy mode keeps histor
 `response_diagnostics.plot_response` plots weighted/unweighted per-object R_g, spatial delete-one R_sel/total/joint, split−joint differences, and patch-mean R_g maps.
 R_sel is an ensemble derivative, never a per-object response.
 `pair_products` measures the angle-binned, pair-weighted products of all four per-object R_g elements and compares them to global weighted products.
+`scalar_pair_response` measures <r_i r_j>_ww/<r>_w²−1 with r=trace(R_g)/2, recomputing both terms for the same spatial deletion.
+The [public-release and four-grid curves](../validation/response/README.md#two-point-response-stage-1-only) cover 1–250 arcmin with their paired-difference covariance.
 This is **stage 1 of #23**: it omits selection/weight derivatives and cannot certify total two-point response adequacy.
 No Appendix-A mixed derivative, A14 normalization or cosmological signal is calculated by this diagnostic.
 
@@ -78,6 +80,6 @@ Residual m from simulations remains a separate result, not an extra correction s
 ## Review questions
 
 1. IV uses each branch's measured shape variances; the [four-grid measurement](../validation/response/README.md#exact-inverse-variance-mode) shows that freezing them biases m upward by 0.23–0.36 percentage points.
-2. What scale-dependent/anisotropic calibration budget should the complete two-point response meet?
+2. Stage 1 measures the scalar pair/global shear-response error on public v1.4.6.3 and the four grids with shared-patch covariance; #23 remains Refs for a separate stage-2 total-response investigation, without an asserted tolerance.
 3. Spatial uncertainties refit W; fixed-W understates every grid/component's m error by more than 10%.
 4. Is there a retained config/result identifying the weights and selection behind the historical m = −0.057?

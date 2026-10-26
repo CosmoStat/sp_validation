@@ -44,6 +44,73 @@ def pair_products(ra, dec, weight, rg, min_sep=1, max_sep=120, nbins=8):
     )
 
 
+def scalar_pair_response(
+    ra,
+    dec,
+    weight,
+    r,
+    *,
+    patch=None,
+    patch_centers=None,
+    min_sep=1,
+    max_sep=250,
+    nbins=20,
+    bin_slop=0.1,
+):
+    """Stage-1 <r_i r_j>_ww / <r>_w**2 - 1, r = trace(R_g)/2.
+
+    Delete the identical patch from pair and global statistics, then form each
+    ratio. This includes covariance of the pair and global response, unlike
+    an error bar on the pair product alone. Science selection and weights are
+    fixed inputs; selection/weight derivatives and anisotropic mixing aren't
+    measured here. No ellipticity correlation is computed.
+    """
+    import treecorr
+
+    cat = treecorr.Catalog(
+        ra=ra,
+        dec=dec,
+        ra_units="deg",
+        dec_units="deg",
+        w=weight,
+        k=r,
+        patch=patch,
+        patch_centers=patch_centers,
+    )
+    corr = treecorr.KKCorrelation(
+        min_sep=min_sep,
+        max_sep=max_sep,
+        nbins=nbins,
+        sep_units="arcmin",
+        bin_slop=bin_slop,
+        var_method="jackknife",
+        cross_patch_weight="simple",
+    )
+    corr.process(cat, num_threads=4)
+    pairs, _ = treecorr.build_multi_cov_design_matrix(
+        [corr], "jackknife", cross_patch_weight="simple"
+    )
+    group = cat.patch
+    den = np.bincount(group, weights=weight, minlength=cat.npatch)
+    num = np.bincount(group, weights=weight * r, minlength=cat.npatch)
+    global_deleted = (num.sum() - num) / (den.sum() - den)
+    global_r = num.sum() / den.sum()
+    deleted = pairs / global_deleted[:, None] ** 2 - 1
+    delta = deleted - deleted.mean(axis=0)
+    covariance = (len(deleted) - 1) / len(deleted) * delta.T @ delta
+    return dict(
+        theta=np.exp(corr.meanlogr),
+        pair=corr.xi,
+        global_r=global_r,
+        fraction=corr.xi / global_r**2 - 1,
+        deleted=deleted,
+        global_deleted=global_deleted,
+        covariance=covariance,
+        error=np.sqrt(np.diag(covariance)),
+        pair_weight=corr.weight,
+    )
+
+
 def plot_response(gm, parent_groups, ra, dec, output):
     """Weighted/unweighted R_g, spatial split/joint samples, and patch map."""
     import matplotlib.pyplot as plt
