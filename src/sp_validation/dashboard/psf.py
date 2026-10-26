@@ -242,7 +242,7 @@ def alpha_estimates(leakage, rt, out):
         prev = None
         for yi, g in zip(y, groups):
             if g != prev:
-                ax.text(1.0, yi + 0.42, g, transform=ax.get_yaxis_transform(),
+                ax.text(0.98, yi + 0.42, g, transform=ax.get_yaxis_transform(),
                         ha="right", va="bottom", fontsize=7.5, color=S.INK_MUTED)
                 prev = g
         ax.set_ylim(y.min() - 0.7, y.max() + 0.9)

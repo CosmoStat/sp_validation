@@ -11,6 +11,7 @@ one catalogue version; the figure functions never see the directory layout.
 
 import glob
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -52,23 +53,29 @@ class RunProducts:
 
     @property
     def pure_eb(self):
-        return _one(self.cv / f"{self.version}_eb_*_data.npz")
+        return _one(self.cv / f"{self.version}_eb_minsep=*_data.npz")
 
     @property
     def cosebis(self):
-        return _one(self.cv / f"{self.version}_cosebis_*_data.npz")
+        return _one(self.cv / f"{self.version}_cosebis_minsep=*_data.npz")
 
     @property
     def pseudo_cl_cov(self):
-        return _one(self.cv / f"pseudo_cl_cov_{self.version}_*.fits")
+        prefix = f"pseudo_cl_cov_{self.version}_"
+        binning = re.compile(r"(powspace|logspace|linear)_nbins=\d+\.fits")
+        matches = [p for p in self.cv.glob(prefix + "*.fits")
+                   if binning.fullmatch(p.name[len(prefix):])]
+        if len(matches) != 1:
+            raise FileNotFoundError(f"expected one {prefix}<binning>.fits, found {matches}")
+        return matches[0]
 
     @property
     def psf_fit(self):
-        return _one(self.cv / f"psf_fit_{self.version}_*.npz")
+        return _one(self.cv / f"psf_fit_{self.version}_minsep=*.npz")
 
     @property
     def tau_cov(self):
-        return _one(self.cv / "rho_tau_stats" / f"cov_tau_{self.version}_*.npy")
+        return _one(self.cv / "rho_tau_stats" / f"cov_tau_{self.version}_tomo_bin_all_*.npy")
 
     @property
     def leakage(self):
@@ -84,8 +91,8 @@ class RunProducts:
         return _maybe(
             Path(self.run_dir)
             / "cosmo_inference/data/covariance"
-            / f"covariance_{self.version}_ng_*_masked"
-            / f"covariance_{self.version}_ng_*_masked.dat"
+            / f"covariance_{self.version}_ng_minsep=*_masked"
+            / f"covariance_{self.version}_ng_minsep=*_masked.dat"
         )
 
     @property

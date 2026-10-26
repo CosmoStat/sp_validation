@@ -56,8 +56,8 @@ EXCLUDED_SHADE = {"color": INK, "alpha": 0.07, "lw": 0, "zorder": 0}
 
 # Width classes (inches) and their resolutions: about 1600 px for the full
 # column, about 2x the displayed size for the row of three and phones.
-WIDTH = {"full": 7.2, "half": 3.6, "third": 3.4}
-DPI = {"full": 220, "half": 220, "third": 220}
+WIDTH = {"full": 7.2, "half": 3.6, "third": 3.0}
+DPI = {"full": 220, "half": 220, "third": 250}
 
 RC = {
     "figure.facecolor": RAG,

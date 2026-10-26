@@ -250,15 +250,6 @@ def _edge_label(ax, x, y, box, text, side):
         if y[i] - y0 < 0.08 * (y1 - y0):
             ax.text(x[i], y0, text, ha="center", va="top", fontsize=7,
                     color=S.INK_MUTED, clip_on=False)
-            return
-        i = np.flatnonzero(ok)[np.argmax(y[ok])]
-        placed = ax.__dict__.setdefault("_top_labels", [])
-        if y1 - y[i] < 0.08 * (y1 - y0) and all(
-            abs(x[i] - p) > 0.07 * (x1 - x0) for p in placed
-        ):
-            placed.append(x[i])
-            ax.text(x[i], y1, text, ha="center", va="bottom", fontsize=7,
-                    color=S.INK_MUTED, clip_on=False)
 
 
 def _scale_bar(ax, part, length=10):
@@ -270,10 +261,10 @@ def _scale_bar(ax, part, length=10):
 
 
 def draw_map(ax, part, pixels, values, nside, cmap, norm, resolution=None,
-             labels=True, scale_bar=False):
+             labels=True, scale_bar=False, grid_color=S.RULE):
     resolution = resolution or max(hp.nside2resol(nside, arcmin=True) / 60 / 2, 0.03)
     img = raster(part, pixels, values, nside, resolution)
-    graticule(ax, part, label=labels)
+    graticule(ax, part, color=grid_color, label=labels)
     im = ax.imshow(img, origin="lower", extent=(*part.xlim, *part.ylim),
                    cmap=cmap, norm=norm, interpolation="nearest", zorder=2,
                    rasterized=True)
@@ -313,10 +304,15 @@ def coverage(footprint, nside_out):
     return out, counts / ratio
 
 
+def median_quantity(maps, name, nside_out, footprint=None):
+    """Median over pixels of one map quantity."""
+    return float(np.median(quantity(maps, name, nside_out, footprint)[1]))
+
+
 def quantity(maps, name, nside_out, footprint=None):
     """Pixels and values of one named map quantity at ``nside_out``."""
     nside = int(maps["nside"])
-    keys = [k for k in maps if k.startswith(("n_", "sum_"))]
+    keys = [k for k in maps if k.startswith(("n_", "sum_")) and np.ndim(maps[k]) == 1]
     pix, sums = coarsen(maps["pixels"], {k: maps[k] for k in keys}, nside, nside_out)
     area = hp.nside2pixarea(nside_out, degrees=True) * 3600
     if name == "n_eff":
@@ -344,6 +340,9 @@ def quantity(maps, name, nside_out, footprint=None):
         keep = sums["n_star"] >= 5
     else:
         raise KeyError(name)
+    # Drop sparsely filled pixels (footprint edges), whose means are noise.
+    n = sums["n_star" if name in ("de1", "de2", "dT_over_T") else "n_gal"]
+    keep &= n >= 0.3 * np.median(n[n > 0])
     return pix[keep], values[keep]
 
 
@@ -396,8 +395,8 @@ FIELD_SETS = {
     "galaxies": [
         ("sigma_e", 256, r"$\sigma_e$ per component", False),
         ("mean_w", 256, r"$\langle w \rangle$", False),
-        ("e1", 128, r"$\langle e_1 \rangle$", True),
-        ("e2", 128, r"$\langle e_2 \rangle$", True),
+        ("e1", 64, r"$\langle e_1 \rangle$", True),
+        ("e2", 64, r"$\langle e_2 \rangle$", True),
     ],
     "psf": [
         ("fwhm_psf", 256, r"PSF FWHM at galaxies [arcsec]", False),
@@ -408,7 +407,7 @@ FIELD_SETS = {
 }
 
 
-def field_maps(maps, out, which, footprint=None):
+def field_maps(maps, out, which, footprint=None, layout="wide"):
     """2 x 2 small multiples of map quantities over the main footprint part.
 
     Diverging quantities use a symmetric range about zero; all ranges are
@@ -417,8 +416,12 @@ def field_maps(maps, out, which, footprint=None):
     gal_pix = maps["pixels"][maps["n_gal"] > 0]
     parts = make_parts(gal_pix, int(maps["nside"]))
     with S.figure_style():
-        fig = plt.figure(figsize=(7.2, 7.2 * _aspect(parts) + 1.0))
-        gs = fig.add_gridspec(2, 2, hspace=0.08, wspace=0.04)
+        if layout == "wide":
+            fig = plt.figure(figsize=(7.2, 7.2 * _aspect(parts) + 1.0))
+            gs = fig.add_gridspec(2, 2, hspace=0.08, wspace=0.04)
+        else:
+            fig = plt.figure(figsize=(3.6, 4 * (3.6 * _aspect(parts) + 0.6)))
+            gs = fig.add_gridspec(4, 1, hspace=0.06)
         for cell, (name, nside, label, symmetric) in zip(gs, FIELD_SETS[which]):
             pix, val = quantity(maps, name, nside, footprint)
             # Restrict star-based maps to the galaxy footprint.
@@ -431,6 +434,6 @@ def field_maps(maps, out, which, footprint=None):
             for ax, part in zip(axes, parts):
                 im = draw_map(ax, part, pix, val, nside,
                               DIVERGING if symmetric else SEQUENTIAL, norm,
-                              labels=False)
+                              labels=False, grid_color="#ddd2bb")
             _colorbar(fig, im, axes, label, symmetric)
-        return S.save(fig, out, "full")
+        return S.save(fig, out, "full" if layout == "wide" else "half")

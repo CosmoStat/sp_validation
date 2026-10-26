@@ -19,7 +19,7 @@ from sp_validation.b_modes import bins_from_scale_cut
 from . import style as S
 
 XI_SCALE = 1e-4
-THIRD_HEIGHT = 3.55
+THIRD_HEIGHT = 3.3
 
 
 def _theta_ticks(ax):
@@ -86,7 +86,7 @@ def pure_eb(pe, out, scale_cut, ptes, blind=None):
         ("_amb", "v", S.COLOR_AMB, 0.55, True, "amb."),
     ]
     with S.figure_style():
-        fig, axes = plt.subplots(2, 1, figsize=(3.4, THIRD_HEIGHT), sharex=True)
+        fig, axes = plt.subplots(2, 1, figsize=(3.0, THIRD_HEIGHT), sharex=True)
         theta = pe["theta"]
         start, stop = bins_from_scale_cut(pe["left_edges"], pe["right_edges"],
                                           scale_cut)
@@ -155,7 +155,7 @@ def cosebis(co, out, full_cut=(1.0, 250.0)):
     ]
     n = np.arange(1, co["nmodes"] + 1)
     with S.figure_style():
-        fig, axes = plt.subplots(2, 1, figsize=(3.4, THIRD_HEIGHT), sharex=True,
+        fig, axes = plt.subplots(2, 1, figsize=(3.0, THIRD_HEIGHT), sharex=True,
                                  sharey=True)
         extent = 0
         for ax, (cut, marker, filled, color) in zip(axes, rows):
@@ -209,7 +209,7 @@ def pseudo_cl(cl, out, ell_cut):
     ]
     ell = cl["ell"]
     with S.figure_style():
-        fig, axes = plt.subplots(2, 1, figsize=(3.4, THIRD_HEIGHT), sharex=True,
+        fig, axes = plt.subplots(2, 1, figsize=(3.0, THIRD_HEIGHT), sharex=True,
                                  sharey=True)
         extent = 0
         for ax, (key, marker, filled, color, label) in zip(axes, rows):
