@@ -50,8 +50,18 @@ def measure_pair_counts(
     The adjacent two-column .txt has nominal log-bin centres in arcmin,
     never mean pair separations: OneCovariance must not rebin W²/Q.
     """
+    # Catalogue.read materialises whole compound HDF5 chunks before selecting
+    # columns. Index the public lazy chunk tables field-by-field instead, so
+    # shapes are never loaded, for either FITS or any supported HDF5 layout.
+    columns = (ra_col, dec_col, w_col)
     with Catalogue(str(catalogue)) as cat:
-        data = cat.read(columns=(ra_col, dec_col, w_col))
+        data = np.empty(len(cat), dtype=cat.dtype(columns))
+        start = 0
+        for table in cat.chunks.values():
+            end = start + len(table)
+            for name in columns:
+                data[name][start:end] = table[name]
+            start = end
     weights = np.asarray(data[w_col], dtype=float)
     if (
         not np.all(np.isfinite(weights))

@@ -10,6 +10,7 @@ This changes neither blinding nor the mixed, sample-variance, non-Gaussian or SS
 `covariance_pair_counts` reads only the configured RA, Dec and weight columns of the same selected shear catalogue as `xi`.
 It counts on each requested covariance grid, using TreeCorr NN correlations with weights `w` and `w²`, spherical coordinates, logarithmic bins and `min_top=6`, matching `xi`.
 The cache is independent of cosmology and contains no shapes, signals or blind records.
+The reader projects fields directly from the lazy catalogue chunks, including compound HDF5 datasets, rather than materialising rows containing shape fields.
 It is a separate rule so covariance-only reruns need no shape measurement or access to a blind.
 Its `threads`, memory and runtime can be overridden just like `xi` (large catalogues may need more than the default 40 GB).
 
@@ -41,7 +42,8 @@ No area rescaling or post-run whole-covariance scaling is applied.
 
 The normalization test checks the uniform-field expectation analytically, including non-unit equal weights and both dispersion conventions.
 A four-object positions-only catalogue checks TreeCorr's unordered convention against explicit pair enumeration.
-DAG tests verify the cache-to-ini dependency and analytic opt-out.
+HDF5 tests forbid whole-dataset or shape-column reads for single, chunked and joined layouts.
+DAG tests verify the cache-to-ini dependency, analytic opt-out, dispersion boundary and tomographic default/refusal behavior.
 
 ## Existing products
 

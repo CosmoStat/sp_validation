@@ -1,12 +1,28 @@
 """The covariance depends on a shape-free cache by default in cosmo_val."""
 
+from contextlib import contextmanager
 from pathlib import Path
 
 import yaml
 from conftest import VERSIONS, parse_jobs
 
 
-def _ini(toy):
+@contextmanager
+def _implicit_noise_setting(toy):
+    # Snakemake recursively merges CLI config; omitting a nested CLI key does
+    # not remove the explicit setting in the paper template.
+    path = toy.rundir / "config" / "config.yaml"
+    original = path.read_text()
+    config = yaml.safe_load(original)
+    config["covariance"].pop("shape_noise", None)
+    path.write_text(yaml.safe_dump(config))
+    try:
+        yield
+    finally:
+        path.write_text(original)
+
+
+def _ini(toy, tomo_suffix=""):
     # Unmasked target: no site-specific footprint needed by this test.
     (toy.root / "data" / "nz_SP_v0.1_A.txt").touch()
     grid = toy.common.xi_grids(toy.config, toy.config["fiducial"])["integration"]
@@ -17,14 +33,15 @@ def _ini(toy):
         grid["max_sep"],
         grid["nbins"],
         "",
-        "",
+        tomo_suffix,
         suffix=".ini",
     )
 
 
 def test_pair_count_dependency_and_ini(toy):
     target = _ini(toy)
-    result = toy.snakemake("-n", target, config=['covariance={"default_masked":false}'])
+    with _implicit_noise_setting(toy):
+        result = toy.snakemake("-n", target)
     assert result.returncode == 0, result.stdout
     jobs = parse_jobs(result.stdout)
     (pair,) = [j for j in jobs if j.rule == "covariance_pair_counts"]
@@ -68,3 +85,22 @@ def test_analytic_flag_removes_pair_dependency(toy):
     assert not any(j.rule == "covariance_pair_counts" for j in jobs)
     (ini,) = [j for j in jobs if j.rule == "covariance_ini"]
     assert not any("_pairs_" in p for p in ini.input)
+
+
+def test_implicit_tomographic_default_stays_analytic(toy):
+    with _implicit_noise_setting(toy):
+        result = toy.snakemake("-n", _ini(toy, "_tomo"))
+    assert result.returncode == 0, result.stdout
+    jobs = parse_jobs(result.stdout)
+    assert any(j.rule == "covariance_ini" for j in jobs)
+    assert not any(j.rule == "covariance_pair_counts" for j in jobs)
+
+
+def test_explicit_tomographic_pair_counts_refused(toy):
+    result = toy.snakemake(
+        "-n",
+        _ini(toy, "_tomo"),
+        config=['covariance={"shape_noise":"pair_counts","default_masked":false}'],
+    )
+    assert result.returncode != 0
+    assert "non-tomographic xi only" in result.stdout

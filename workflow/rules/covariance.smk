@@ -51,7 +51,7 @@ def _onecov_tool(key, default=None):
 
 def _pair_noise_enabled(w):
     """Default to measured noise for non-tomographic cosmo_val runs only."""
-    default = "pair_counts" if "cosmo_val" in config else "analytic"
+    default = "pair_counts" if "cosmo_val" in config and not w.tomo_suffix else "analytic"
     mode = config.get("covariance", {}).get("shape_noise", default)
     if mode not in ("pair_counts", "analytic"):
         raise ValueError("covariance.shape_noise must be pair_counts or analytic")
