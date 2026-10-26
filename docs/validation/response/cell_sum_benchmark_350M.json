@@ -1,0 +1,21 @@
+{
+  "rows": 350000000,
+  "groups": 10000,
+  "cells": 400,
+  "chunk_size": 500000,
+  "selected": {
+    "ns": 273267900,
+    "p1": 273267974,
+    "m1": 273267383,
+    "p2": 273267780,
+    "m2": 273267417
+  },
+  "generation_seconds": 155.42875046399786,
+  "accumulation_seconds": 276.4523996720018,
+  "deletion_seconds": 1.3732271659973776,
+  "jackknife_seconds": 277.82562683799915,
+  "process_seconds": 433.254377301997,
+  "parent_peak_rss_gib": 73.91197204589844,
+  "peak_rss_gib": 73.91197204589844,
+  "statistic_storage_gib": 0.95367431640625
+}

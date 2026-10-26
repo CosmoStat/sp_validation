@@ -138,6 +138,55 @@ The [round-2 unregularized covariance](refit_w_results.json) remains as the spar
 ![Training occupancy, sparse-cell shares and W sampling noise](occupancy.png)
 ![Full-population IV and unregularized DES m, N_min=0](iv_des_m.png)
 
+## Production-scale refit-W jackknife
+
+**Refit-W now uses per-group, per-cell sufficient sums, not one parent rescan per tile.**
+A bounded-chunk sweep over each of the five branches accumulates counts, shape sums, no-shear shape sums for selection response, per-object R_g sums and the no-shear training moments.
+Each deletion subtracts its group from the totals, refits W, and recomputes every normalized numerator and response from the retained cell sums.
+The 20×20 logarithmic edges come from the configured full-sample cuts and stay fixed; neither cell membership nor edges depend on the fitted W.
+Pooling is re-evaluated on retained counts, using integral-image square-window queries with extended-precision moment prefixes to avoid sparse-window cancellation.
+Work is O(N) accumulation passes plus O(K × cells) deletion work for this fixed grid; storage is O(K × cells), with 500,000-row scratch chunks and no full-parent inverse group map.
+The original full-rescan implementation remains available as `response_jackknife(..., refit_w=True, reference=True)` for validation, not production-scale use.
+
+[All-grid agreement](cell_sum_agreement.json) compares all 20 external-shear products (including no external shear), every deleted W table, response/c estimate, and image-sim (m1,c1,m2,c2) deletion/covariance against that reference at N_min=3.
+Maximum absolute differences are **2.27e-13 in W**, **2.42e-14 in response matrices**, **7.70e-16 in calibrated c**, **2.00e-14 in image-sim m/c**, and **4.25e-16 across the response and m/c covariances**.
+Every comparison uses `rtol=0, atol=1e-12`.
+Synthetic regressions explicitly empty a training cell on deletion while retained artificial branches still occupy it, verifying the newly pooled weight and all recalibrated estimates at N_min=0,3,10,1000.
+
+### Runtime and memory
+
+The resident synthetic benchmark ran on Candide n23, allocation **1037457**, inside the prescribed SIF/binds with `TMPDIR=/n17data/cdaley/tmp`.
+The full-scale run allocated eight cores with numerical-library threads capped at one; the smaller run allocated four.
+Both use 10,000 groups, 400 cells, distinct branch shapes/coordinates/selections, cell migration and approximately 78% selected rows per branch.
+Peak RSS includes the synthetic parent and its generation temporaries, not just the jackknife.
+
+| Parent rows | Groups | Accumulation | Deletions + covariance | Jackknife wall time | Process peak RSS |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 35,000,000 | 10,000 | 30.69 s | 1.43 s | **32.12 s** | **8.21 GiB** |
+| 350,000,000 | 10,000 | 276.45 s | 1.37 s | **277.83 s (4m38s)** | **73.91 GiB** |
+
+[35M results](cell_sum_benchmark_35M.json) and [350M results](cell_sum_benchmark_350M.json) include generation time and selected counts.
+Including synthetic generation, the full-scale timed process takes 433.25 s (7m13s); it does not read FITS or perform the preceding calibration.
+The 35M extrapolation, scaling accumulation by ten and holding deletion work fixed, is **308.36 s (5m08s)** at 350M/10k, compared with the directly measured 277.83 s.
+The sufficient-statistic arrays occupy **0.954 GiB** at either row count, plus bounded chunk scratch and small deletion outputs; budget approximately **1.1 GiB of additional jackknife working memory** above the existing parent.
+The full-scale process high-water RSS was already reached during generation, so its equal parent/jackknife peak values do not measure that incremental working memory separately.
+
+**No default changes.**
+At the measured kernel rate, adding refit-W to the reported Nibi baseline (5h21, 361 GB) would cost roughly five minutes and about 1.1 GiB of working storage, comfortably inside 12 h / 450 GB.
+This is a capacity estimate, not an end-to-end Nibi measurement: hardware, real selections, catalogue I/O and preceding calibration differ.
+Refit-W remains primary for self-built data tables and diagnostics; independent-table image-sim production still holds its external W fixed.
+
+Reproduce with the existing container prefix and allocation, setting `OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1`:
+
+```bash
+python scripts/validation/check_refit_cell_sums.py --output <agreement.json>
+python scripts/validation/benchmark_refit_cell_sums.py \
+  --rows 350000000 --groups 10000 --output <benchmark.json>
+```
+
+Logs and full outputs are under `/n17data/cdaley/scratch/response-pr/production-scale/`.
+The allocation is released after validation; allocate a fresh one for reproduction.
+
 ## Independent training and self-weighting (round 4)
 
 **Observed toy result:** fitting W from the galaxies it weights produces m ≈ −1/N_cell; independent training removes that effect in this controlled Gaussian model.
