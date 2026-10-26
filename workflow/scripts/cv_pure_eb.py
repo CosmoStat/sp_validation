@@ -29,7 +29,7 @@ p = snakemake.params
 version = p["version"]
 fiducial_scale_cut = tuple(p["fiducial_scale_cut"])
 
-part = sacc_io.load(snakemake.input["xi_integration"])
+part = sacc_io.load(snakemake.input["xi_integration"], blind=p["blind"])
 gg_int = sacc_io.xi_correlation(part, grid="integration")
 # A part stores bin centres; the edges come from the grid it was measured on.
 grid = p["integration"]

@@ -83,7 +83,9 @@ class RealSpaceMixin:
             index = {"all": 0}
 
         part = parts.get((ver, grid)) if reuse else None
-        if part is None:
+        if part is not None:
+            sacc_io.expect(part, blind)
+        else:
             jackknife = npatch > 1
             gg_config = {
                 **self._binning(**treecorr_config),

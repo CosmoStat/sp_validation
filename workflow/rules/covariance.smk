@@ -2,21 +2,12 @@
 # cov_output(), covariance_dir(), covariance_base(), covariance_path() defined in Snakefile
 
 # DEFAULT_MASK_SUFFIX defined in Snakefile
-# Footprint mask power spectra (nside=4096, from comprehensive catalog with spatial cuts only)
-MASK_CLS_BASE = str(COSMO_INFERENCE / "data/mask")
-MASK_CLS_FILES = {
-    "footprint": f"{MASK_CLS_BASE}/mask_cls_footprint_nside_4096_norm.txt",
-    "footprint_starhalo": f"{MASK_CLS_BASE}/mask_cls_footprint_starhalo_nside_4096_norm.txt",
-}
-
-# SP_v1.4.8 uses the star-halo footprint; every other catalogue the standard one.
-STARHALO_CATALOGUES = {"SP_v1.4.8"}
 
 
-def get_mask_cls_path(version):
-    """Return absolute mask Cl path for the requested catalog version."""
-    starhalo = base_version(version) in STARHALO_CATALOGUES
-    return MASK_CLS_FILES["footprint_starhalo" if starhalo else "footprint"]
+def get_footprint_path(version):
+    """Healpix FITS footprint map of ``version``'s catalogue entry, which
+    OneCovariance reads as ``mask_file_lensing``."""
+    return catalogue_entry(version)["mask"]
 
 
 # ---------------------------------------------------------------------------
@@ -29,7 +20,11 @@ def get_onecov_cat_params(version):
     catalogue entry. Tomographic values are comma-separated strings, one entry
     per bin."""
     cov_th = catalogue_entry(version)["cov_th"]
-    return cov_th["sigma_e"], cov_th["n_e"], cov_th["A"]
+    # cov_th.sigma_e sums both components; OneCovariance takes it per component.
+    sigma_e = ", ".join(
+        repr(float(s) / 2**0.5) for s in str(cov_th["sigma_e"]).split(",")
+    )
+    return sigma_e, cov_th["n_e"], cov_th["A"]
 
 
 def _onecov_args(w):
@@ -122,7 +117,7 @@ rule generate_glass_mock_rhotau_samples:
 rule covariance_ini:
     input:
         nz_file=lambda w: redshift_path(w.version),
-        mask=lambda w: [] if w.mask_suffix != "_masked" else [get_mask_cls_path(w.version)],
+        mask=lambda w: [] if w.mask_suffix != "_masked" else [get_footprint_path(w.version)],
     output:
         cov_output(".ini"),
     params:
@@ -141,9 +136,13 @@ rule covariance_ini:
         n_e=lambda w: get_onecov_cat_params(w.version)[1],
         area=lambda w: get_onecov_cat_params(w.version)[2],
         # OneCovariance takes directory and file separately.
-        mask_dir=lambda w: MASK_CLS_BASE if w.mask_suffix == "_masked" else "",
+        mask_dir=lambda w: (
+            os.path.dirname(get_footprint_path(w.version))
+            if w.mask_suffix == "_masked"
+            else ""
+        ),
         mask_file=lambda w: (
-            os.path.basename(get_mask_cls_path(w.version))
+            os.path.basename(get_footprint_path(w.version))
             if w.mask_suffix == "_masked"
             else ""
         ),

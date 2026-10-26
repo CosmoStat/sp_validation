@@ -2,8 +2,9 @@
 Snakemake rules for UNIONS pixel mask processing and analysis.
 
 NOTE: This subsystem is exploratory/infrastructure. The outputs are NOT currently
-wired into the main covariance workflow, which uses pre-computed mask Cls from
-MASK_CLS_FILES in covariance.smk. See covariance.md spec for details.
+wired into the main covariance workflow, which gives OneCovariance each
+catalogue's footprint map (its cat_config `mask:` key). See covariance.md spec
+for details.
 
 This file contains rules for:
 - Processing HealSparse masks to individual nside values (parallelizable)

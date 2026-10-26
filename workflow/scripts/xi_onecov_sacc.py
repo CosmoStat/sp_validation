@@ -31,7 +31,7 @@ def xi_onecov_sacc(xi_path, cov_path, out_path, *, blind):
     sacc.Sacc
         The data set as written.
     """
-    part = sacc_io.load(xi_path)
+    part = sacc_io.load(xi_path, blind=blind)
     s = part.copy()
     s.add_covariance(
         onecov_xi_covariance(part, sacc_io.read_onecov_matrix(cov_path)),

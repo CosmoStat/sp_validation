@@ -4,7 +4,7 @@
 # mask columns MASK_<bit>_<label>, where True means MASKED. They are therefore
 # cut with `kind: equal, value: False` (keep the un-masked objects):
 #
-# Reason bits of the ShapePipe r-band default bitmask:
+# ShapePipe mask reason bits:
 #
 #   MASK_1_Faint_star_halos     faint star halos (bit 0; value 1)
 #   MASK_2_Bright_star_halos    bright star halos (bit 1; value 2)
@@ -19,12 +19,11 @@
 #                               u, g, r, i, HSC z-band coverage
 #   MASK_2048_z2                no Pan-STARRS z-band (z2) coverage
 #
-# The default selection (see sp_validation.galaxy.DEFAULT_MASK_COLUMNS) is
-# bits 1 + 2 + 4 + 8 + 64 + 1024, whose OR matches mask_r, the r-band
-# mask, on covered granules (verified on the P3 sky area); footprint-edge
-# granules without mask_r coverage can differ. The other coverage flags and bit 2048 are listed
-# here but commented out, since ORing all of them masks essentially
-# everything.
+# The default external-mask cut (see sp_validation.galaxy.DEFAULT_MASK_COLUMNS)
+# uses bits 4 + 8 + 64 + 1024: star bodies, manual masks, r-band coverage and
+# MaxiMask. It excludes star-halo bits 1 and 2. Other coverage flags and bit
+# 2048 are listed here but commented out, since ORing all of them masks
+# essentially everything.
 
 # General parameters (can also given on command line)
 params:
@@ -55,15 +54,6 @@ dat:
     label: "star bodies"
     kind: equal
     value: False
-  # Star-halo bits follow the UNIONS mask producer schema.
-  - col_name: MASK_1_Faint_star_halos
-    label: "faint star halos"
-    kind: equal
-    value: False
-  - col_name: MASK_2_Bright_star_halos
-    label: "bright star halos"
-    kind: equal
-    value: False
   - col_name: MASK_8_Manual
     label: "manual mask"
     kind: equal
@@ -73,7 +63,7 @@ dat:
     kind: equal
     value: False
 
-  # r-band coverage. Required for the OR above to reproduce mask_r.
+  # r-band coverage.
   - col_name: MASK_64_r
     label: "r-band imaging"
     kind: equal
