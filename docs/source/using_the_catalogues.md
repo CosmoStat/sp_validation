@@ -134,18 +134,21 @@ _ = plt.ylabel(r'$\xi_\pm(\theta)$')
 
 ## 2. Extended catalogue
 
-This catalogue must be **calibrated before use**. It carries the information
-needed for calibration with the method of *metacalibration*
-([arXiv:1702.02600](https://arxiv.org/abs/1702.02600)). Cuts may be applied
-*before* calibration.
+This catalogue must be **calibrated before use**.
+A cut catalogue containing only per-object R_g and one global selection response does **not** contain enough information to recalibrate a changed sample or weight scheme.
+Use the parent five-branch comprehensive catalogue and `calibration.metacal_from_config` with matching cuts and `weight_scheme: des` (or `iv`).
+See [Response definitions](response_calibration.md).
+The historical recipe below is retained only to explain the released columns; its reuse of global R_s after new cuts is not a valid new calibration.
 
 ```{tip}
 The `sp_validation` library performs every step below for you:
 {func}`sp_validation.calibration.get_calibrated_m_c` calibrates an in-memory
 catalogue for multiplicative and additive bias, and
 {func}`sp_validation.calibration.get_calibrate_e_from_cat` does the same from a
-catalogue on disk. The worked example here is kept for understanding what those
-functions compute.
+catalogue on disk when its stored weight identity matches.
+Unknown/mismatched selection-response metadata is refused, as are changed row counts or weight sums.
+Even a historically zero selection response does not establish that it stays zero after new cuts.
+Neither function reconstructs missing five-branch inputs after new cuts.
 ```
 
 ### Open the file
@@ -207,16 +210,16 @@ ensemble $R_g$ is computed *after* the sub-sample selection:
 R_g = np.empty((2, 2))
 for idx in (0, 1):
     for jdx in (0, 1):
-        R_g[idx, jdx] = np.mean(data_ext_sub[f'R_g{idx+1}{jdx+1}'])
+        R_g[idx, jdx] = np.average(data_ext_sub[f'R_g{idx+1}{jdx+1}'], weights=data_ext_sub['w'])
 
 print('Shear response matrix R_g =')
 print(np.matrix(R_g))
 ```
 
 The selection response was pre-computed for the *entire* sample and cannot be
-obtained per galaxy, so this catalogue version reuses the global
-$R_\mathrm{s}$ for sub-samples too. Since $|R_\mathrm{s}| < |R_g|$ the resulting
-error is small.
+obtained per galaxy.
+Do not reuse it for a new selection or weight identity: its small magnitude does not bound the error introduced by doing so.
+The following arithmetic is valid only for the original, unchanged population with matching calibration weights.
 
 ```python
 R_s = np.empty((2, 2))
