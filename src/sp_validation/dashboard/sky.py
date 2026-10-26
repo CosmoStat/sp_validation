@@ -403,20 +403,19 @@ def _robust_limits(values, symmetric=False, q=(1, 99)):
 
 
 def _colorbar(fig, im, ax, label, symmetric):
-    cbar = fig.colorbar(
+    cbar = S.colorbar(
+        fig,
         im,
-        ax=ax,
+        ax,
+        label,
         orientation="horizontal",
         fraction=0.05,
         pad=0.02,
         aspect=28,
         extend="both",
     )
-    cbar.outline.set_linewidth(0.5)
-    cbar.ax.tick_params(labelsize=7.5, length=2, top=False)
     cbar.locator = mpl.ticker.MaxNLocator(5, symmetric=symmetric)
     cbar.update_ticks()
-    cbar.set_label(label, fontsize=8.5)
     return cbar
 
 

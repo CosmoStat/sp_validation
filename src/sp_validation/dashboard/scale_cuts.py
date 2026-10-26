@@ -70,7 +70,7 @@ def _heatmap(ax, pte, lo_labels, hi_labels, fid, label, cmap, norm):
                 (i - 0.5, j - 0.5), 1, 1, fill=False, edgecolor=S.INK, lw=1.6, zorder=5
             )
         )
-    S.label_box(ax, label, loc="lower right", fontsize=9)
+    S.label_box(ax, label, loc="lower right")
     return mesh
 
 
@@ -184,4 +184,4 @@ def _cosebis_cuts(ax, co, cmap, norm, threshold=S.PTE_THRESHOLD):
     ax.set_xticklabels([f"${t:g}$" for t in ticks])
     ax.tick_params(which="both", top=False, right=False, left=False)
     ax.set_xlabel(r"$B_n$ PTE ($n \leq %d$)" % co["nmodes"])
-    S.label_box(ax, "COSEBIs", loc="lower right", fontsize=9)
+    S.label_box(ax, "COSEBIs", loc="lower right")

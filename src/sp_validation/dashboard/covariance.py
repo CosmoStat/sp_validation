@@ -41,11 +41,11 @@ def correlation(cov, blocks, out, label):
         ax.set_yticks(centres)
         ax.set_yticklabels(names, fontsize=8.5)
         ax.tick_params(which="both", length=0, top=False, right=False)
-        ax.set_title(label, loc="left", fontsize=9.5)
-        cbar = fig.colorbar(image, ax=ax, shrink=0.92, aspect=22, pad=0.03)
+        S.header(ax, label)
+        cbar = S.colorbar(
+            fig, image, ax, "correlation coefficient", shrink=0.92, aspect=22, pad=0.03
+        )
         cbar.set_ticks([-1, -0.5, 0, 0.5, 1])
-        cbar.outline.set_linewidth(0.6)
-        cbar.set_label("correlation coefficient")
         return S.save(fig, out, "half")
 
 

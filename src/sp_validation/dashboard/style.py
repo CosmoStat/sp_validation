@@ -181,6 +181,38 @@ def blind_stamp(fig, blind, where="top"):
     )
 
 
+def header(ax, text, side="left"):
+    """Panel header above the frame: the panel's subject on the left in ink,
+    a qualifier (a cut, a sign convention) on the right in muted ink."""
+    if side == "left":
+        ax.set_title(text, loc="left", fontsize=9, color=INK, pad=4)
+    else:
+        ax.set_title(text, loc="right", fontsize=8.5, color=INK_MUTED, pad=4)
+
+
+def colorbar(fig, mappable, ax, label, **kwargs):
+    """Colour bar in the house style: thin outline, small ticks, ink label."""
+    cbar = fig.colorbar(mappable, ax=ax, **kwargs)
+    cbar.outline.set_linewidth(0.6)
+    cbar.ax.tick_params(
+        labelsize=8, length=2.5, width=0.6, which="both", direction="out"
+    )
+    cbar.set_label(label, fontsize=9)
+    if cbar.solids is not None:
+        cbar.solids.set_edgecolor("face")
+    return cbar
+
+
+def frame_only(ax):
+    """Frame without mirrored ticks, for images (heatmaps, maps, matrices)."""
+    ax.tick_params(which="both", top=False, right=False)
+
+
+def theta_ticks(ax):
+    ax.set_xticks([1, 10, 100])
+    ax.set_xticklabels(["$1$", "$10$", "$100$"])
+
+
 def zero_line(ax):
     ax.axhline(0, color=INK, ls=(0, (4, 3)), lw=0.7, alpha=0.6, zorder=1)
 
@@ -240,14 +272,11 @@ def pte_norm(threshold=PTE_THRESHOLD):
 
 
 def pte_colorbar(fig, mappable, ax, threshold=PTE_THRESHOLD, **kwargs):
-    cbar = fig.colorbar(mappable, ax=ax, spacing="proportional", **kwargs)
+    cbar = colorbar(fig, mappable, ax, "PTE", spacing="proportional", **kwargs)
     ticks = [threshold, 0.5, 1 - threshold]
     cbar.set_ticks(ticks)
     cbar.set_ticklabels([f"${t:g}$" for t in ticks])
     cbar.minorticks_off()
-    cbar.outline.set_linewidth(0.6)
-    cbar.solids.set_edgecolor("face")
-    cbar.set_label("PTE")
     return cbar
 
 

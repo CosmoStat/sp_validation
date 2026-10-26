@@ -232,12 +232,10 @@ def rho_stats(rt, out):
             ax.set_xticklabels(["$1$", "$10$", "$100$"])
             ax.set_xlabel(r"$\theta$ [arcmin]")
             ax.legend(loc="upper right", ncol=3, handletextpad=0.2, columnspacing=0.8)
-            ax.set_title(label, loc="left", fontsize=9)
+            S.header(ax, label)
         axes[0].set_ylabel(r"$|\rho_{k,+}(\theta)|$")
         axes[0].set_ylim(top=axes[0].get_ylim()[1] * 8)
-        axes[1].set_title(
-            r"open markers: $\rho < 0$", loc="right", fontsize=8.5, color=S.INK_MUTED
-        )
+        S.header(axes[1], r"open markers: $\rho < 0$", side="right")
         return S.save(fig, out, "full")
 
 

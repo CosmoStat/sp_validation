@@ -146,13 +146,7 @@ def cosebis(datasets, out, full_cut=(1.0, 250.0)):
                 )
             S.zero_line(ax)
             ax.set_ylabel(r"$B_n / \sigma_n$")
-            ax.set_title(
-                rf"${cut[0]:g}' < \theta < {cut[1]:g}'$",
-                loc="right",
-                fontsize=8.5,
-                color=S.INK_MUTED,
-                pad=3,
-            )
+            S.header(ax, rf"${cut[0]:g}' < \theta < {cut[1]:g}'$", side="right")
         axes[-1].set_xlim(0.4, nmodes + 0.6)
         axes[-1].set_xticks(modes)
         axes[-1].set_xlabel(r"COSEBI mode $n$")
@@ -160,7 +154,7 @@ def cosebis(datasets, out, full_cut=(1.0, 250.0)):
         return S.save(fig, out, "full")
 
 
-def pseudo_cl(datasets, out, ell_cut):
+def cl(datasets, out, ell_cut):
     """C_ℓ^BB/σ and C_ℓ^EB/σ across versions."""
     n = len(datasets)
     colors = version_colors(n)

@@ -33,31 +33,42 @@ def summary(cells):
     }
 
 
-def weights(cells, out):
-    """Weight on the SNR x size-ratio grid, and the distinct-weight spectrum."""
+def _tt(text):
+    """Catalogue column names in typewriter mathtext."""
+    return r"$\mathtt{" + text.replace("_", r"\_") + "}$"
+
+
+def weights(cells, out, layout="wide"):
+    """Galaxy weight over the SNR x size-ratio grid it is defined on.
+
+    Colour is each cell's weight; the axis labels name the catalogue columns
+    binned and the colour-bar label defines the weight.
+    """
     snr, size = cells["snr_edges"], cells["size_ratio_edges"]
-    count = cells["count"].astype(float)
-    frac = count / count.sum()
+    count = cells["count"]
     w = np.where(count > 0, cells["w_min"], np.nan)
-    values, mult = cells["w_values"], cells["w_multiplicity"]
     log_fmt = mpl.ticker.FuncFormatter(lambda v, _: f"${v:g}$")
     with S.figure_style():
-        fig, ax = plt.subplot_mosaic(
-            [["top", ".", "spec"], ["grid", "side", "spec"]],
-            figsize=(7.2, 3.5),
-            width_ratios=(4, 0.7, 4.2),
-            height_ratios=(0.8, 4),
-        )
-        g = ax["grid"]
+        wide = layout == "wide"
+        fig, g = plt.subplots(figsize=(7.2, 3.7) if wide else (3.6, 4.4))
         mesh = g.pcolormesh(
-            snr, size, w.T, cmap=SEQUENTIAL, edgecolors=S.RAG, linewidth=0.25
+            snr, size, w.T, cmap=SEQUENTIAL, edgecolors=S.RAG, linewidth=0.3
         )
         g.set_xscale("log")
         g.set_yscale("log")
         g.set_xlim(snr[0], snr[-1])
         g.set_ylim(size[0], size[-1])
-        g.set_xlabel("signal-to-noise")
-        g.set_ylabel(r"size ratio $T_{\rm gal} / T_{\rm PSF}$")
+        sep = ":  " if wide else "\n"
+        g.set_xlabel(
+            "signal-to-noise ratio"
+            + sep
+            + _tt("snr = NGMIX_FLUX_NOSHEAR / NGMIX_FLUX_ERR_NOSHEAR"),
+            fontsize=10 if wide else 7.5,
+        )
+        g.set_ylabel(
+            "size ratio" + sep + _tt("NGMIX_T_NOSHEAR / NGMIX_T_PSF_RECONV_NOSHEAR"),
+            fontsize=8.5 if wide else 7.5,
+        )
         g.xaxis.set_major_formatter(log_fmt)
         g.xaxis.set_minor_formatter(
             mpl.ticker.FuncFormatter(lambda v, _: f"${v:g}$" if v in (30, 300) else "")
@@ -65,56 +76,30 @@ def weights(cells, out):
         g.yaxis.set_major_formatter(log_fmt)
         g.yaxis.set_minor_formatter(
             mpl.ticker.FuncFormatter(
-                lambda v, _: f"${v:g}$" if v in (0.8, 1.5, 2) else ""
+                lambda v, _: f"${v:g}$" if v in (0.8, 1.5, 2, 3) else ""
             )
         )
-        g.tick_params(which="both", top=False, right=False)
-        cbar = fig.colorbar(
-            mesh, ax=g, location="bottom", aspect=30, pad=0.02, fraction=0.06
+        S.frame_only(g)
+        S.header(
+            g,
+            rf"{_tt('w_des')}: one weight per cell"
+            + (
+                rf", ${count.shape[0]} \times {count.shape[1]}$ log-spaced cells"
+                if wide
+                else ""
+            ),
         )
-        cbar.set_label(r"cell weight $w = R^2 / \sigma_e^2$")
-        cbar.outline.set_linewidth(0.5)
-
-        # Marginal shares of galaxies along each grid axis.
-        bar = dict(color=S.NEUTRAL_LIGHT, edgecolor=S.RAG, linewidth=0.3)
-        ax["top"].bar(
-            snr[:-1], 100 * frac.sum(1), width=np.diff(snr), align="edge", **bar
+        S.colorbar(
+            fig,
+            mesh,
+            g,
+            r"$w = \bar R^{2} / \sigma_e^{2}$" + "\n"
+            r"$\bar R = \frac{1}{2}\langle R_{11} + R_{22}\rangle$ (metacal),"
+            "\n"
+            r"$\sigma_e^{2} = \frac{1}{2}\langle e_1^{2} + e_2^{2}\rangle$"
+            " (uncalibrated), per cell",
+            aspect=22,
+            pad=0.02,
+            location="right" if wide else "bottom",
         )
-        ax["top"].set_xscale("log")
-        ax["top"].set_xlim(g.get_xlim())
-        ax["side"].barh(
-            size[:-1], 100 * frac.sum(0), height=np.diff(size), align="edge", **bar
-        )
-        ax["side"].set_yscale("log")
-        ax["side"].set_ylim(g.get_ylim())
-        for name, axis in (("top", "x"), ("side", "y")):
-            m = ax[name]
-            m.tick_params(
-                axis=axis,
-                which="both",
-                labelbottom=False,
-                labelleft=False,
-                bottom=False,
-                left=False,
-                top=False,
-                right=False,
-            )
-            for side in ("top", "right"):
-                m.spines[side].set_visible(False)
-            m.tick_params(which="both", top=False, right=False, labelsize=7)
-            m.locator_params(axis="y" if name == "top" else "x", nbins=2)
-        ax["top"].set_ylabel("%", fontsize=8)
-        ax["side"].set_xlabel("%", fontsize=8)
-
-        spec = ax["spec"]
-        share = mult / mult.sum()
-        spec.vlines(values, 0, share * 100, color=S.INK, lw=0.5, alpha=0.85)
-        spec.set_xlabel(r"weight $w$")
-        spec.set_ylabel("galaxies at this weight [%]")
-        spec.set_ylim(0, None)
-        spec.set_xlim(0, values.max() * 1.03)
-        spec.tick_params(which="both", top=False, right=False)
-        spec.set_title(
-            f"{len(values)} distinct values, one per cell", loc="left", fontsize=9
-        )
-        return S.save(fig, out, "full")
+        return S.save(fig, out, "full" if wide else "half")

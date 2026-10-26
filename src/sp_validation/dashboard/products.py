@@ -60,7 +60,8 @@ class RunProducts:
         return _one(self.cv / f"{self.version}_cosebis_minsep=*_data.npz")
 
     @property
-    def pseudo_cl_cov(self):
+    def cl_cov(self):
+        """NaMaster covariance of the C_ell band powers."""
         prefix = f"pseudo_cl_cov_{self.version}_"
         binning = re.compile(r"(powspace|logspace|linear)_nbins=\d+\.fits")
         matches = [
@@ -208,7 +209,7 @@ def powspace_edges(ell_eff, lmin=None, lmax=2048, power=0.5):
     return lo, hi
 
 
-def load_pseudo_cl(sacc_path, cov_path, blind):
+def load_cl(sacc_path, cov_path, blind):
     """Band powers, their multipole edges, and the NaMaster covariance blocks."""
     from astropy.io import fits
 
