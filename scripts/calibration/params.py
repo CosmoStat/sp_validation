@@ -152,6 +152,8 @@ add_cols_pre_cal = [
     "NGMIX_N_EPOCH",
     "NGMIX_G1_PSF_ORIG_NOSHEAR",
     "NGMIX_G2_PSF_ORIG_NOSHEAR",
+    "NGMIX_G1_ERR_NOSHEAR",
+    "NGMIX_G2_ERR_NOSHEAR",
 ]
 
 ### Set flag columns as integer format
@@ -180,8 +182,6 @@ centers = [
     "FLAGS",
     "G1",
     "G2",
-    "G1_ERR",
-    "G2_ERR",
     "FLUX",
     "FLUX_ERR",
     "T",

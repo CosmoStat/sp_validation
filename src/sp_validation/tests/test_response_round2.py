@@ -7,6 +7,24 @@ from sp_validation import calibration, response
 from sp_validation.tests.test_consistent_response import catalogue
 
 
+def test_extraction_carries_available_branch_errors_but_allows_historical_des():
+    data, _, _ = catalogue()
+    carried = response.branch_error_columns(data)
+    assert len(carried) == 8
+    for key, value in carried.items():
+        np.testing.assert_array_equal(value, data[key])
+    historical = data[[k for k in data.dtype.names if k not in carried]]
+    assert response.branch_error_columns(historical) == {}
+    # Requiring these columns for DES would break existing merged inputs.
+    calibration.metacal(
+        historical,
+        np.ones(len(historical), bool),
+        weight_scheme="des",
+        size_corr_ell=False,
+        des_num_bins=2,
+    )
+
+
 def test_iv_branch_variances_and_normalization():
     data, _, _ = catalogue()
     data["NGMIX_G1_ERR_1P"] = np.linspace(0.1, 0.8, len(data))

@@ -42,7 +42,8 @@ These runs validate agreement with Martin's implementation, not a new fiducial r
 The simulation `product/tiles/*/*/final_cat-*.fits` files retain all ten G_ERR columns.
 The merged HDF5 and comprehensive FITS retain only the two no-shear errors.
 The validation joins the missing columns by tile and NUMBER, checks the existing no-shear shape/error columns against the source, and applies each branch's own `1/(2 sigma_eps² + G1_ERR² + G2_ERR²)`.
-Extraction now carries all ten errors; modern IV refuses incomplete inputs rather than silently freezing weights.
+Extraction retains all available branch errors, including with older params files; historical merged inputs without them remain usable for DES.
+Modern IV refuses incomplete inputs rather than silently freezing weights.
 
 | Grid | Exact IV m1 | Exact IV m2 | Exact − frozen m1 | Exact − frozen m2 |
 | --- | ---: | ---: | ---: | ---: |

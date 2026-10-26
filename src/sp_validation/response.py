@@ -11,6 +11,20 @@ import numpy as np
 BRANCHES = ("ns", "p1", "m1", "p2", "m2")
 
 
+def branch_error_columns(data):
+    """Carry available sheared G_ERRs through extraction without requiring them.
+
+    Historical merged products omitted them. DES can still use those products;
+    modern IV independently requires a complete set and never freezes weights.
+    """
+    return {
+        key: data[key]
+        for shear in ("1P", "1M", "2P", "2M")
+        for i in (1, 2)
+        if (key := f"NGMIX_G{i}_ERR_{shear}") in data.dtype.names
+    }
+
+
 def cell_index(x, edges):
     """Right-closed cells; out-of-range finite values use nearest edge cell."""
     return np.clip(np.searchsorted(edges, x, side="left") - 1, 0, len(edges) - 2)
