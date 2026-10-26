@@ -150,9 +150,49 @@ def measure(grid, output):
     )
 
 
+def check_production(grid, output):
+    """Exercise FITS R_JK refit-W means through the production m estimator."""
+    from sp_validation.image_sims import ImageSimMBias
+
+    directory = output / f"production_grid_{grid}"
+    with open(BASE / f"grid_{grid}/results/m_bias_config.yaml") as f:
+        cfg = yaml.safe_load(f)
+    for name in ("1z2z",) + EXTERNAL:
+        gm, tiles = load(grid, name, "des")
+        label = f"{name}_grid_{grid}"
+        path = directory / label / "shape_catalog_cut_ngmix.fits"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        source = (
+            Path("/n23data1/mkilbing/imsim_wdes_response")
+            / f"grid_{grid}/des_d/{label}/{path.name}"
+        )
+        with fits.open(source) as hdus:
+            fits.HDUList([hdus[0].copy(), hdus[1].copy()]).writeto(path, overwrite=True)
+        calibration.get_calibrated_m_c(gm, False)
+        calibration.save_response_product(path, gm, tiles)
+    estimator = ImageSimMBias(
+        {**cfg, "grids_dir": str(directory), "w_cols": ["w_des"], "pair_match": False}
+    )
+    estimator.load_catalogs(False)
+    result = estimator.run(False)
+    direct = json.loads((output / f"weights_grid_{grid}.json").read_text())["des_refit"]
+    for j, key in enumerate(("m1", "c1", "m2", "c2")):
+        np.testing.assert_allclose(result[key], direct["value"][j], atol=1e-13)
+        np.testing.assert_allclose(result[key + "_err"], direct["error"][j], atol=1e-13)
+    np.testing.assert_allclose(
+        result["mc_covariance"], direct["covariance"], atol=1e-13
+    )
+    (output / f"production_grid_{grid}.json").write_text(json.dumps(result, indent=2))
+    print("production matches direct refit-W:", grid, flush=True)
+
+
 if __name__ == "__main__":
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--grid", type=int, required=True)
     p.add_argument("--output", type=Path, required=True)
+    p.add_argument("--production-check", action="store_true")
     a = p.parse_args()
-    measure(a.grid, a.output)
+    if a.production_check:
+        check_production(a.grid, a.output)
+    else:
+        measure(a.grid, a.output)

@@ -88,6 +88,10 @@ def _load_cat(path, w_cols):
                 [[jk[f"R_{i}{j}"] for j in (1, 2)] for i in (1, 2)]
             ).transpose(2, 0, 1)
             cat["W_policy"] = hdul[0].header.get("WPOLICY", "unknown")
+            if cat["W_policy"] == "refit":
+                # These means include each deletion's refitted numerator weights,
+                # not merely a refitted response applied to fixed-W means.
+                cat["jk_g"] = np.array([jk["c_g1"], jk["c_g2"]]).T
         return cat
 
 
@@ -347,6 +351,10 @@ class ImageSimMBias:
                     cat = self.cats[name]
                     w = cat["w"][scheme]
                     means.append(np.average(cat[f"e{comp + 1}"], weights=w))
+                    if cat["W_policy"] == "refit":
+                        by_label = dict(zip(cat["jk_labels"], cat["jk_g"], strict=True))
+                        jk_means.append(np.array([by_label[t][comp] for t in labels]))
+                        continue
                     by_label = dict(zip(cat["jk_labels"], cat["jk_R"], strict=True))
                     calibrated = []
                     for tile in labels:

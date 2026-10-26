@@ -63,7 +63,7 @@ def save_response_product(path, gm, groups=None):
         hdr["WGHTSCH"] = gm.weight_scheme
         hdr["RAPPLIED"] = True
         hdr["MCSTEP"] = gm._step
-        hdr["WPOLICY"] = "fixed"
+        hdr["WPOLICY"] = "refit" if gm.weight_scheme == "des" else "not applicable"
         hdr["IVPOLICY"] = "branch variances"
         hdr["CMUNITS"] = "raw ellipticity"
         for i in range(2):
@@ -82,7 +82,9 @@ def save_response_product(path, gm, groups=None):
             hdus.append(fits.ImageHDU(count, name="W_COUNT"))
             hdus.append(fits.ImageHDU(np.array([es, er]), name="W_EDGES"))
         if groups is not None:
-            labels, estimates, cov = gm.response_jackknife(groups)
+            labels, estimates, cov = gm.response_jackknife(
+                groups, refit_w=gm.weight_scheme == "des"
+            )
             labels = np.asarray(labels).astype(str)
             columns = [
                 fits.Column(
@@ -952,8 +954,6 @@ class metacal:
             legacy=self._legacy_response,
         )
         ns["w_iv"] = ns["w"]
-
-        self._n_input = len(masked_data)
         if self.weight_scheme == "iv" and not self._legacy_response:
             for name, branch in zip(("1M", "1P", "2M", "2P"), (m1, p1, m2, p2)):
                 required = [f"NGMIX_G{i}_ERR_{name}" for i in (1, 2)]
@@ -965,6 +965,8 @@ class metacal:
                 branch["w_iv"] = self.get_variance_ivweights(
                     masked_data, self._sigma_eps, branch=name
                 )[2]
+
+        self._n_input = len(masked_data)
         self._n_after_gal_mask = len(dict_tmp["flag"])
         if self._verbose:
             print(f"Number of objects on metacal input = {self._n_input}")
@@ -1115,8 +1117,68 @@ class metacal:
             keep,
         )
 
-    def response_jackknife(self, groups):
-        """Delete-one spatial groups on preselected parent rows, fixed W."""
+    def refit_weights(self, keep):
+        """Refit DES W on retained S_ns, evaluate it on every parent branch.
+
+        Edges and cuts stay fixed; cell moments and membership of the training
+        sample change. Artificial branches never train their own table.
+        """
+        if self.weight_scheme != "des":
+            return self.branch_weights
+        idx = self.mask_dict["ns"]
+        retained = keep[idx]
+        selected = idx[retained]
+        snr = self.ns["flux"] / self.ns["flux_err"]
+        size = self.ns["T"] / self.ns["Tpsf"]
+        table = response.fit_w(
+            snr[selected],
+            size[selected],
+            np.asarray(self.branches["ns"])[:, selected],
+            0.5 * (self.R11[retained] + self.R22[retained]),
+            self.W[0],
+            self.W[1],
+        )
+        return {
+            b: response.evaluate_w(
+                table,
+                getattr(self, b)["flux"] / getattr(self, b)["flux_err"],
+                getattr(self, b)["T"] / getattr(self, b)["Tpsf"],
+            )
+            for b in response.BRANCHES
+        }
+
+    def response_jackknife(self, groups, refit_w=False):
+        """Delete common spatial groups; optionally propagate fitted-W noise."""
+        if refit_w and self.weight_scheme == "des":
+            groups = np.asarray(groups)
+            if len(groups) != len(self.ns["g1"]):
+                raise ValueError("Spatial groups must align to the common parent rows")
+            labels = np.unique(groups)
+            if len(labels) < 2:
+                raise ValueError(
+                    "Response jackknife requires at least two spatial groups"
+                )
+            samples = []
+            for label in labels:
+                keep = groups != label
+                weights = self.refit_weights(keep)
+                samples.append(
+                    response.responses(
+                        self.branches,
+                        self.mask_dict,
+                        weights,
+                        self.R_shear,
+                        self._step,
+                        keep,
+                    )
+                )
+            estimates = {key: np.array([s[key] for s in samples]) for key in samples[0]}
+            vectors = np.concatenate(
+                [x.reshape(len(labels), -1) for x in estimates.values()], axis=1
+            )
+            delta = vectors - vectors.mean(axis=0)
+            cov = (len(labels) - 1) / len(labels) * delta.T @ delta
+            return labels, estimates, cov
         return response.jackknife(
             self.branches,
             self.mask_dict,

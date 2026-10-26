@@ -6,7 +6,8 @@ import pytest
 from sp_validation.image_sims import ImageSimMBias
 
 
-def test_shared_tile_deletions_recalibrate_both_branches():
+@pytest.mark.parametrize("refit", [False, True])
+def test_shared_tile_deletions_recalibrate_both_branches(refit):
     estimator = ImageSimMBias(
         dict(
             shear_amplitude=0.025,
@@ -40,7 +41,21 @@ def test_shared_tile_deletions_recalibrate_both_branches():
                 jk_R=deleted_R,
                 w={"w_des": np.array([1.0, 2.0, 3.0, 4.0])},
                 weight_scheme="des",
-                W_policy="fixed",
+                W_policy="refit" if refit else "fixed",
+                jk_g=np.array(
+                    [
+                        np.linalg.solve(
+                            deleted_R[j],
+                            np.average(
+                                raw[:, tiles != label],
+                                axis=1,
+                                weights=np.array([1.0, 2.0, 3.0, 4.0])[tiles != label]
+                                ** 2,
+                            ),
+                        )
+                        for j, label in enumerate(labels)
+                    ]
+                ),
             )
         draws, held_R = [], []
         for label in sorted(labels):
@@ -52,7 +67,11 @@ def test_shared_tile_deletions_recalibrate_both_branches():
                     cat["raw"][:, keep], axis=1, weights=cat["w"]["w_des"][keep]
                 )
                 index = list(labels).index(label)
-                means.append(np.linalg.solve(cat["jk_R"][index], mean)[comp])
+                means.append(
+                    cat["jk_g"][index, comp]
+                    if refit
+                    else np.linalg.solve(cat["jk_R"][index], mean)[comp]
+                )
                 fixed.append(
                     np.average(
                         cat[f"e{comp + 1}"][keep], weights=cat["w"]["w_des"][keep]

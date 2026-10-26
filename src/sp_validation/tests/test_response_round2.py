@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from sp_validation import calibration
+from sp_validation import calibration, response
 from sp_validation.tests.test_consistent_response import catalogue
 
 
@@ -27,6 +27,42 @@ def test_iv_branch_variances_and_normalization():
     ) / 0.02
     np.testing.assert_allclose(gm.R_selection[:, 0], expected)
     assert abs(expected[0]) > 0.01
+
+
+def test_refit_w_jackknife_matches_retained_training_sample():
+    data, _, _ = catalogue()
+    # Unequal group noise at the same SNR changes fitted W on deletion.
+    for b in ("NOSHEAR", "1P", "1M", "2P", "2M"):
+        data[f"NGMIX_G1_{b}"][:20] += 0.3
+    gm = calibration.metacal(
+        data,
+        np.ones(len(data), bool),
+        weight_scheme="des",
+        size_corr_ell=False,
+        des_num_bins=2,
+    )
+    groups = np.repeat(np.arange(4), 20)
+    labels, jk, cov = gm.response_jackknife(groups, refit_w=True)
+    for j, label in enumerate(labels):
+        keep = groups != label
+        retained = data[keep]
+        other = calibration.metacal(
+            retained,
+            np.ones(len(retained), bool),
+            weight_scheme="des",
+            size_corr_ell=False,
+            des_num_bins=2,
+        )
+        np.testing.assert_allclose(jk["c_g"][j], other.c_g, atol=1e-13)
+        np.testing.assert_allclose(jk["total"][j], other.R, atol=1e-13)
+    fixed = gm.response_jackknife(groups)[1]
+    assert np.max(abs(jk["c_g"] - fixed["c_g"])) > 1e-3
+    vectors = np.concatenate([x.reshape(len(labels), -1) for x in jk.values()], axis=1)
+    delta = vectors - vectors.mean(axis=0)
+    np.testing.assert_allclose(cov, 0.75 * delta.T @ delta)
+    weights = gm.refit_weights(np.ones(len(data), bool))
+    for b in response.BRANCHES:
+        np.testing.assert_allclose(weights[b], gm.branch_weights[b])
 
 
 def test_iv_missing_branch_errors_requires_reextraction():

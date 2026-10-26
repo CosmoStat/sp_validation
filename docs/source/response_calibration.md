@@ -57,8 +57,11 @@ A row selected only on a sheared branch still receives a fixed-table weight.
 R_JK deletes each shared TILE_ID from every branch and recomputes the selected population and its denominator.
 R_COV uses (K−1)/K times the sum of outer products of centered delete-one estimates.
 Its ordering is row-major R_shear, R_sel, R_total, R_joint, c_e, c_g (20 elements).
-The primary uncertainty is conditional on **fixed W**, matching Martin's case-d comparison.
-Whether to refit W in each spatial deletion remains an open question for Martin; this PR does not implement that policy.
+The primary DES uncertainty **refits W** on each retained no-shear sample, then evaluates that table on all five artificial branches.
+The [four-grid comparison](../validation/response/README.md#fitted-weight-uncertainty) finds 15–380% larger m errors than fixed-W errors, including a sparse-cell sensitivity on grid 4.
+`response_jackknife(groups, refit_w=True)` implements this; `refit_w=False` retains the conditional fixed-W comparison.
+The writer uses refit-W for DES and stores the corresponding calibrated deleted means in `R_JK.c_g1,c_g2`.
+The m estimator uses those means so the numerator weights, as well as the response, change in each deletion.
 The returned c_err is a weighted error of the raw mean (legacy mode keeps historical scatter); correlated response/c uncertainty belongs in R_COV.
 
 `response_diagnostics.plot_response` plots weighted/unweighted per-object R_g, spatial delete-one R_sel/total/joint, split−joint differences, and patch-mean R_g maps.
@@ -76,5 +79,5 @@ Residual m from simulations remains a separate result, not an extra correction s
 
 1. IV uses each branch's measured shape variances; the [four-grid measurement](../validation/response/README.md#exact-inverse-variance-mode) shows that freezing them biases m upward by 0.23–0.36 percentage points.
 2. What scale-dependent/anisotropic calibration budget should the complete two-point response meet?
-3. Is W a deliberately fixed calibration object, or should errors include a W refit in each spatial sample?
+3. Spatial uncertainties refit W; fixed-W understates every grid/component's m error by more than 10%.
 4. Is there a retained config/result identifying the weights and selection behind the historical m = −0.057?
