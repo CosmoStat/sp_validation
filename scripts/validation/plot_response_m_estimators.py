@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Plot residual m by grid for the four response estimators."""
+"""Plot residual m by grid, including the production v2 data table."""
 
 import json
 from pathlib import Path
@@ -16,6 +16,7 @@ def load(name):
 
 paired = load("production_comparison.json")
 iv = load("iv_results.json")
+v2 = load("v2_data_table.json")["grids"]
 vals = {
     k: [[], []]
     for k in (
@@ -23,6 +24,7 @@ vals = {
         "Self-fitted, refit-W",
         "Other three grids",
         "IV exact",
+        "(d) v2 data table",
     )
 }
 errs = {k: [[], []] for k in vals}
@@ -32,6 +34,7 @@ for i in range(1, 5):
     indep = load(f"independent_grid_{i}.json")["b"]
     prod = paired[i - 1]["previously_validated_m"]
     ivdata = iv[str(i)]["iv_exact"]
+    data_table = v2[str(i)]
     sources = [
         (
             "Paired (Martin)",
@@ -54,12 +57,19 @@ for i in range(1, 5):
             [ivdata["error"][0], ivdata["error"][2]],
         ),
     ]
+    sources.append(
+        (
+            "(d) v2 data table",
+            [data_table["value"][0], data_table["value"][2]],
+            [data_table["error"][0], data_table["error"][2]],
+        )
+    )
     for name, v, e in sources:
         for c in range(2):
             vals[name][c].append(v[c])
             errs[name][c].append(e[c])
 
-colors = ["#555555", "#d55e00", "#0072b2", "#009e73"]
+colors = ["#555555", "#d55e00", "#0072b2", "#009e73", "#cc79a7"]
 x = np.arange(1, 5)
 fig, axes = plt.subplots(1, 2, figsize=(11, 4.6), sharex=True)
 for c, ax in enumerate(axes):
@@ -67,7 +77,7 @@ for c, ax in enumerate(axes):
         y = np.array(vals[name][c]) * 1e3
         e = np.array(errs[name][c]) * 1e3
         ax.errorbar(
-            x + (j - 1.5) * 0.13,
+            x + (j - 2) * 0.13,
             y,
             yerr=e,
             fmt="o",

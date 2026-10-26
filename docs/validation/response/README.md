@@ -38,7 +38,7 @@ These runs validate agreement with Martin's implementation, not a new fiducial r
 
 ![Self-fitted tables, N_min=0, fixed-W errors; valid for the weight-decomposition argument only](m_comparison.png)
 
-![Residual m per grid for four estimators; bands are inverse-variance grid means](m_estimators.png)
+![Residual m per grid including the v2 data table; bands are inverse-variance grid means](m_estimators.png)
 
 ## Exact inverse-variance mode
 
@@ -216,16 +216,16 @@ Errors refit the target grid's retained training population in (a)/(c); the othe
 These errors are conditional on the external training populations, not a joint resampling of all four grids.
 The (a) values and every deleted estimate exactly reproduce the round-3 N_min=3 baseline.
 
-| Grid | Component | (a) Self | (b) Other three | (c) Pooled four | (d) Release |
-| --- | --- | ---: | ---: | ---: | --- |
-| 1 | m1 | -11.82 ± 10.96 | -4.48 ± 7.88 | -6.21 ± 8.30 | Not verified |
-| 1 | m2 | -4.92 ± 11.12 | -7.42 ± 9.14 | -6.50 ± 8.90 | Not verified |
-| 2 | m1 | -22.09 ± 9.22 | -18.78 ± 6.34 | -19.92 ± 6.44 | Not verified |
-| 2 | m2 | -18.78 ± 8.23 | -8.83 ± 6.86 | -11.28 ± 6.77 | Not verified |
-| 3 | m1 | -24.99 ± 7.14 | -12.88 ± 5.31 | -16.44 ± 5.21 | Not verified |
-| 3 | m2 | -11.73 ± 8.89 | -9.22 ± 6.66 | -10.29 ± 6.59 | Not verified |
-| 4 | m1 | -15.56 ± 6.67 | -1.89 ± 8.03 | -4.36 ± 6.85 | Not verified |
-| 4 | m2 | -18.47 ± 9.76 | -4.53 ± 10.72 | -8.13 ± 10.24 | Not verified |
+| Grid | Component | (a) Self | (b) Other three | (c) Pooled four | (d) v2 data table |
+| --- | --- | ---: | ---: | ---: | ---: |
+| 1 | m1 | -11.82 ± 10.96 | -4.48 ± 7.88 | -6.21 ± 8.30 | -2.44 ± 7.75 |
+| 1 | m2 | -4.92 ± 11.12 | -7.42 ± 9.14 | -6.50 ± 8.90 | -3.68 ± 8.21 |
+| 2 | m1 | -22.09 ± 9.22 | -18.78 ± 6.34 | -19.92 ± 6.44 | -15.54 ± 6.28 |
+| 2 | m2 | -18.78 ± 8.23 | -8.83 ± 6.86 | -11.28 ± 6.77 | -12.40 ± 6.66 |
+| 3 | m1 | -24.99 ± 7.14 | -12.88 ± 5.31 | -16.44 ± 5.21 | -12.01 ± 5.38 |
+| 3 | m2 | -11.73 ± 8.89 | -9.22 ± 6.66 | -10.29 ± 6.59 | -9.86 ± 5.87 |
+| 4 | m1 | -15.56 ± 6.67 | -1.89 ± 8.03 | -4.36 ± 6.85 | -2.73 ± 6.64 |
+| 4 | m2 | -18.47 ± 9.76 | -4.53 ± 10.72 | -8.13 ± 10.24 | -5.50 ± 10.64 |
 
 Paired differences below subtract the identical tile deletion in (b) from the refitted deletion in (a), retaining their covariance; units are again 10⁻³.
 
@@ -243,13 +243,50 @@ No combined significance is assigned: leave-one-grid-out training populations ov
 **Inference:** the toy confirms the proposed mechanism, and the grids support a contribution from it, but these measurements neither attribute all the negative m to self-weighting nor isolate its exact fraction from changes in the noisy table realization.
 In particular grid-2 m1 remains −0.01878 with independent training.
 
-**Release compatibility:** case (d) was not measured.
+**Historical release compatibility:** the v1.4.6.3 table was not measured; column (d) instead uses the actual v2 product described below.
 The public v1.4.6.3 FITS contains released w_des values but no saved W_DES/W_EDGES product.
 Using released snr and NGMIX_T_NOSHEAR/NGMIX_Tpsf_NOSHEAR with the simulations' 20×20 log edges (10–500, 0.707–3), **379 cells are nonconstant in released w_des**, with maximum within-cell relative range 0.99962.
 Thus those coordinates/edges do not recover the actual release table; a moment-reconstructed table would be a different estimator.
 The release has no NGMIX_T_PSF_RECONV_NOSHEAR column with which to verify the alternative naming directly.
 [Compatibility scan](self_weight_public_compatibility.json) records this check over all 61,378,891 released objects.
 No reconstructed public table is substituted for (d).
+
+### Residual m now: production v2 data table
+
+**Observed:** the production `ImageSimMBias` path with `des_weight_source: external`, `pair_match: false` and the named v2 table gives inverse-variance grid means (m1, m2) = **(−9.18 ± 3.18, −8.89 ± 3.65) × 10⁻³**.
+W stays fixed across all external and artificial shears and every shared-tile deletion; R and the normalized numerator are recalibrated.
+The 39, 42, 32 and 35 tile labels match column (b) exactly.
+The paired (d−b) differences are:
+
+| Grid | Δm1 (d−b), ×10⁻³ | Δm2 (d−b), ×10⁻³ |
+| --- | ---: | ---: |
+| 1 | +2.04 ± 2.02 | +3.74 ± 2.94 |
+| 2 | +3.24 ± 2.49 | −3.57 ± 2.28 |
+| 3 | +0.87 ± 1.97 | −0.64 ± 2.44 |
+| 4 | −0.84 ± 2.34 | −0.97 ± 3.00 |
+
+Inverse-variance averaging these paired differences gives (+1.29 ± 1.09, −0.80 ± 1.31) × 10⁻³.
+These use the covariance of identical tile deletions, not quadrature errors; as for (b), the grid combination conditions on external training sets and omits their overlap covariance.
+Subtracting the separately weighted grid means gives (+1.97, −0.77) × 10⁻³ instead, because their weights differ.
+[Full production covariance, deletions, clipping counts and paired differences](v2_data_table.json) record all components in (m1,c1,m2,c2) order.
+
+**Compatibility:** the product declares `WGHTSCH=des`, `WSNRCOL=FLUX/FLUX_ERR`, `WSIZDEF=T/T_PSF_RECONV`, `DESNMIN=3`, `DESMERGE=concentric square; pooled moments`, and `PRODTYPE=DES_W_ONLY`.
+Its 20×20 logarithmic edges are SNR 10–500 and size 0.707–3, identical to the sims and the repository's v2 configuration `config/calibration/mask_v2.0.yaml`; both configurations use uncorrected T/T_PSF_RECONV and branch-specific FLUX/FLUX_ERR.
+The common catalogue cuts are FLAGS≤2, overlap=True, N_EPOCH≥2, magnitude 15–30, no metacal-type failures and valid PSF ellipticities.
+V2 additionally applies its survey mask bits and an explicit NGMIX_N_EPOCH≥1 guard; the simulation spatial preselection is not the same survey footprint.
+The product records its training-config hash `deaa13b23dd248ef1cd13641ea8ab6619162c9b3af3e5fac3b76a74685603519`; the FITS alone does not encode all those preselection cuts.
+That original training YAML is not available in this checkout, so the full preselection comparison is against the repository's v2 configuration, not a hash-verified copy of the training YAML.
+**0% of selected sim galaxies lie outside the edges on each grid, on every external and artificial branch**, so no science-weighted object is clipped.
+Before branch SNR/size selection, the out-of-edge fractions across all five external × five artificial branches are 62.53%, 63.86%, 63.30%, 61.93% for grids 1–4; those objects are rejected by the cuts.
+
+**Table provenance:** `/n17data/cdaley/scratch/response-pr/v2-table/des_weight_product-d533a078.fits`, named `v2-d533a078`, fitted on 73,023,642 no-shear v2 rows at commit `d533a078ed6998683e92e6f24191d0baa8419fa9`.
+SHA256: `1e551a3645e98d5c3037f2d2175cfa1c7675b8d804e19ca13bf4f178de3ff016`.
+All 400 cells have at least 3,274 training rows; none is pooled.
+All 20 saved simulation products have `WPOLICY=fixed-external` and W_DES arrays exactly equal to the source table.
+This weight-only calibration product contains no cosmological signal.
+
+Reproduce on a fresh allocation with the container prefix below: `python scripts/validation/v2_data_table.py N` for grids 1–4, then `python scripts/validation/summarize_v2_table.py` and `python scripts/validation/plot_response_m_estimators.py`.
+The measured products and logs live in `/n17data/cdaley/scratch/response-pr/v2-production/` (allocation 1037488).
 
 ### Production decision
 
