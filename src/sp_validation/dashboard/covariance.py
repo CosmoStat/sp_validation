@@ -23,8 +23,14 @@ def correlation(cov, blocks, out, label):
     starts = np.concatenate(([0], np.cumsum(sizes)))
     with S.figure_style():
         fig, ax = plt.subplots(figsize=(3.6, 3.25))
-        image = ax.imshow(corr, cmap=S.correlation_cmap(), vmin=-1, vmax=1,
-                          interpolation="nearest", origin="upper")
+        image = ax.imshow(
+            corr,
+            cmap=S.correlation_cmap(),
+            vmin=-1,
+            vmax=1,
+            interpolation="nearest",
+            origin="upper",
+        )
         for edge in starts[1:-1]:
             ax.axhline(edge - 0.5, color=S.RAG, lw=0.5, alpha=0.8)
             ax.axvline(edge - 0.5, color=S.RAG, lw=0.5, alpha=0.8)
@@ -48,11 +54,7 @@ def xi_blocks(n):
 
 
 def pure_eb_blocks(n):
-    return [
-        (rf"$\xi_{s}^{{{m}}}$", n)
-        for m in ("E", "B", r"\rm amb")
-        for s in "+-"
-    ]
+    return [(rf"$\xi_{s}^{{{m}}}$", n) for m in ("E", "B", r"\rm amb") for s in "+-"]
 
 
 def cosebis_blocks(n):

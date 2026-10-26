@@ -63,10 +63,15 @@ class RunProducts:
     def pseudo_cl_cov(self):
         prefix = f"pseudo_cl_cov_{self.version}_"
         binning = re.compile(r"(powspace|logspace|linear)_nbins=\d+\.fits")
-        matches = [p for p in self.cv.glob(prefix + "*.fits")
-                   if binning.fullmatch(p.name[len(prefix):])]
+        matches = [
+            p
+            for p in self.cv.glob(prefix + "*.fits")
+            if binning.fullmatch(p.name[len(prefix) :])
+        ]
         if len(matches) != 1:
-            raise FileNotFoundError(f"expected one {prefix}<binning>.fits, found {matches}")
+            raise FileNotFoundError(
+                f"expected one {prefix}<binning>.fits, found {matches}"
+            )
         return matches[0]
 
     @property
@@ -75,7 +80,9 @@ class RunProducts:
 
     @property
     def tau_cov(self):
-        return _one(self.cv / "rho_tau_stats" / f"cov_tau_{self.version}_tomo_bin_all_*.npy")
+        return _one(
+            self.cv / "rho_tau_stats" / f"cov_tau_{self.version}_tomo_bin_all_*.npy"
+        )
 
     @property
     def leakage(self):
@@ -97,7 +104,9 @@ class RunProducts:
 
     @property
     def field_maps(self):
-        return _maybe(Path(self.extra_dir or self.cv) / f"field_maps_{self.version}.npz")
+        return _maybe(
+            Path(self.extra_dir or self.cv) / f"field_maps_{self.version}.npz"
+        )
 
     @property
     def weight_cells(self):
@@ -246,8 +255,14 @@ def load_rho_tau(sacc_path, tau_cov_path, psf_fit_path):
         var = np.diag(tau_cov)[i * n : (i + 1) * n]
         tau[k]["var_p"] = var
     fit = dict(np.load(psf_fit_path))
-    return {"theta": theta, "theta_tau": theta_tau, "rho": rho, "tau": tau,
-            "tau_cov": tau_cov, "fit": fit}
+    return {
+        "theta": theta,
+        "theta_tau": theta_tau,
+        "rho": rho,
+        "tau": tau,
+        "tau_cov": tau_cov,
+        "fit": fit,
+    }
 
 
 def load_json(path):

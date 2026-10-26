@@ -29,8 +29,8 @@ SEQUENTIAL = LinearSegmentedColormap.from_list(
     "parchment_teal", ["#f3ead6", "#9cc3b5", "#3F8278", "#1d4a44", "#0f2421"]
 )
 DIVERGING = LinearSegmentedColormap.from_list(
-    "cobalt_cinnabar", ["#22386e", "#3D5BA0", "#a9b6d6", "#efe6d2", "#e4ab9f",
-                        "#BC4538", "#6e2119"]
+    "cobalt_cinnabar",
+    ["#22386e", "#3D5BA0", "#a9b6d6", "#efe6d2", "#e4ab9f", "#BC4538", "#6e2119"],
 )
 
 
@@ -69,7 +69,8 @@ class Zenithal:
         d0 = self.dec0 * DEG
         with np.errstate(invalid="ignore", divide="ignore"):
             sin_d = np.cos(c) * np.sin(d0) + np.where(
-                rho > 0, y * np.sin(c) * np.cos(d0) / rho, 0)
+                rho > 0, y * np.sin(c) * np.cos(d0) / rho, 0
+            )
             dec = np.arcsin(np.clip(sin_d, -1, 1))
             ra = self.ra0 * DEG + np.arctan2(
                 x * np.sin(c), rho * np.cos(d0) * np.cos(c) - y * np.sin(d0) * np.sin(c)
@@ -163,8 +164,13 @@ def make_parts(pixels, nside, nest=True, margin=1.5):
             angle = (angle + 90) % 180 - 90  # keep RA increasing to the left
             proj = Zenithal(ra0, dec0, -angle)
             x, y = proj.forward(ra, dec)
-        parts.append(Part(proj, (x.min() - margin, x.max() + margin),
-                          (y.min() - margin, y.max() + margin)))
+        parts.append(
+            Part(
+                proj,
+                (x.min() - margin, x.max() + margin),
+                (y.min() - margin, y.max() + margin),
+            )
+        )
     return parts
 
 
@@ -202,7 +208,7 @@ def raster(part, pixels, values, nside, resolution, nest=True):
 
 def graticule(ax, part, step_ra=None, step_dec=10, color=S.RULE, label=True):
     """Draw RA/Dec lines across the part and label them along the frame."""
-    ra_c, dec_c = part.projection.ra0, part.projection.dec0
+    dec_c = part.projection.dec0
     span = max(part.width, part.height)
     step_ra = step_ra or (30 if abs(dec_c) > 65 else 15 if span > 25 else 10)
     decs = np.arange(-90 + step_dec, 90, step_dec)
@@ -243,31 +249,72 @@ def _edge_label(ax, x, y, box, text, side):
         i = np.flatnonzero(ok)[np.argmin(x[ok])]
         if x[i] - x0 > 0.08 * (x1 - x0):
             return
-        ax.text(x0, y[i], text, ha="right", va="center", fontsize=7,
-                color=S.INK_MUTED, clip_on=False)
+        ax.text(
+            x0,
+            y[i],
+            text,
+            ha="right",
+            va="center",
+            fontsize=7,
+            color=S.INK_MUTED,
+            clip_on=False,
+        )
     else:
         i = np.flatnonzero(ok)[np.argmin(y[ok])]
         if y[i] - y0 < 0.08 * (y1 - y0):
-            ax.text(x[i], y0, text, ha="center", va="top", fontsize=7,
-                    color=S.INK_MUTED, clip_on=False)
+            ax.text(
+                x[i],
+                y0,
+                text,
+                ha="center",
+                va="top",
+                fontsize=7,
+                color=S.INK_MUTED,
+                clip_on=False,
+            )
 
 
 def _scale_bar(ax, part, length=10):
     x1 = part.xlim[1] - 0.04 * part.width
     y0 = part.ylim[0] + 0.05 * part.height
     ax.plot([x1 - length, x1], [y0, y0], color=S.INK, lw=1.2, solid_capstyle="butt")
-    ax.text(x1 - length / 2, y0 + 0.012 * part.height + 0.3, rf"${length}^\circ$",
-            ha="center", va="bottom", fontsize=7, color=S.INK)
+    ax.text(
+        x1 - length / 2,
+        y0 + 0.012 * part.height + 0.3,
+        rf"${length}^\circ$",
+        ha="center",
+        va="bottom",
+        fontsize=7,
+        color=S.INK,
+    )
 
 
-def draw_map(ax, part, pixels, values, nside, cmap, norm, resolution=None,
-             labels=True, scale_bar=False, grid_color=S.RULE):
+def draw_map(
+    ax,
+    part,
+    pixels,
+    values,
+    nside,
+    cmap,
+    norm,
+    resolution=None,
+    labels=True,
+    scale_bar=False,
+    grid_color=S.RULE,
+):
     resolution = resolution or max(hp.nside2resol(nside, arcmin=True) / 60 / 2, 0.03)
     img = raster(part, pixels, values, nside, resolution)
     graticule(ax, part, color=grid_color, label=labels)
-    im = ax.imshow(img, origin="lower", extent=(*part.xlim, *part.ylim),
-                   cmap=cmap, norm=norm, interpolation="nearest", zorder=2,
-                   rasterized=True)
+    im = ax.imshow(
+        img,
+        origin="lower",
+        extent=(*part.xlim, *part.ylim),
+        cmap=cmap,
+        norm=norm,
+        interpolation="nearest",
+        zorder=2,
+        rasterized=True,
+    )
     ax.set_xlim(part.xlim)
     ax.set_ylim(part.ylim)
     ax.set_aspect("equal")
@@ -281,8 +328,9 @@ def map_grid(fig, spec, parts):
     """Axes for every part inside ``spec``: main part above, others below."""
     if len(parts) == 1:
         return [fig.add_subplot(spec)]
-    heights = [parts[0].height] + [p.height * parts[0].width / max(p.width,
-                                    parts[0].width) for p in parts[1:]]
+    heights = [parts[0].height] + [
+        p.height * parts[0].width / max(p.width, parts[0].width) for p in parts[1:]
+    ]
     sub = spec.subgridspec(len(parts), 1, height_ratios=heights, hspace=0.05)
     return [fig.add_subplot(sub[i]) for i in range(len(parts))]
 
@@ -355,8 +403,15 @@ def _robust_limits(values, symmetric=False, q=(1, 99)):
 
 
 def _colorbar(fig, im, ax, label, symmetric):
-    cbar = fig.colorbar(im, ax=ax, orientation="horizontal", fraction=0.05,
-                        pad=0.02, aspect=28, extend="both")
+    cbar = fig.colorbar(
+        im,
+        ax=ax,
+        orientation="horizontal",
+        fraction=0.05,
+        pad=0.02,
+        aspect=28,
+        extend="both",
+    )
     cbar.outline.set_linewidth(0.5)
     cbar.ax.tick_params(labelsize=7.5, length=2, top=False)
     cbar.locator = mpl.ticker.MaxNLocator(5, symmetric=symmetric)
@@ -375,19 +430,28 @@ def footprint_map(maps, footprint, out, nside=512, stats=None):
         axes = map_grid(fig, gs[0], parts)
         norm = mpl.colors.Normalize(*_robust_limits(val, q=(0.5, 99.5)))
         for i, (ax, part) in enumerate(zip(axes, parts)):
-            im = draw_map(ax, part, pix, val, nside, SEQUENTIAL, norm,
-                          scale_bar=i == 0)
+            im = draw_map(ax, part, pix, val, nside, SEQUENTIAL, norm, scale_bar=i == 0)
         _colorbar(fig, im, axes, r"$n_{\rm eff}$ [arcmin$^{-2}$]", False)
         if stats:
-            axes[0].text(0.0, 1.0, stats, transform=axes[0].transAxes, ha="left",
-                         va="top", fontsize=8.5, color=S.INK_MUTED, linespacing=1.5)
+            axes[0].text(
+                0.0,
+                1.0,
+                stats,
+                transform=axes[0].transAxes,
+                ha="left",
+                va="top",
+                fontsize=8.5,
+                color=S.INK_MUTED,
+                linespacing=1.5,
+            )
         return S.save(fig, out, "full")
 
 
 def _aspect(parts):
     main = parts[0]
-    h = main.height + sum(p.height * main.width / max(p.width, main.width)
-                          for p in parts[1:])
+    h = main.height + sum(
+        p.height * main.width / max(p.width, main.width) for p in parts[1:]
+    )
     return h / main.width
 
 
@@ -400,7 +464,12 @@ FIELD_SETS = {
     ],
     "psf": [
         ("fwhm_psf", 256, r"PSF FWHM at galaxies [arcsec]", False),
-        ("dT_over_T", 128, r"stars: $\langle (T_\star - T_{\rm PSF})/T_\star \rangle$", True),
+        (
+            "dT_over_T",
+            128,
+            r"stars: $\langle (T_\star - T_{\rm PSF})/T_\star \rangle$",
+            True,
+        ),
         ("de1", 128, r"stars: $\langle e_{1,\star} - e_{1,{\rm PSF}} \rangle$", True),
         ("de2", 128, r"stars: $\langle e_{2,\star} - e_{2,{\rm PSF}} \rangle$", True),
     ],
@@ -425,15 +494,26 @@ def field_maps(maps, out, which, footprint=None, layout="wide"):
         for cell, (name, nside, label, symmetric) in zip(gs, FIELD_SETS[which]):
             pix, val = quantity(maps, name, nside, footprint)
             # Restrict star-based maps to the galaxy footprint.
-            inside = np.isin(pix, np.unique(gal_pix // (int(maps["nside"]) // nside) ** 2))
+            inside = np.isin(
+                pix, np.unique(gal_pix // (int(maps["nside"]) // nside) ** 2)
+            )
             pix, val = pix[inside], val[inside]
             lo, hi = _robust_limits(val, symmetric)
-            norm = (TwoSlopeNorm(0, lo, hi) if symmetric
-                    else mpl.colors.Normalize(lo, hi))
+            norm = (
+                TwoSlopeNorm(0, lo, hi) if symmetric else mpl.colors.Normalize(lo, hi)
+            )
             axes = map_grid(fig, cell, parts)
             for ax, part in zip(axes, parts):
-                im = draw_map(ax, part, pix, val, nside,
-                              DIVERGING if symmetric else SEQUENTIAL, norm,
-                              labels=False, grid_color="#ddd2bb")
+                im = draw_map(
+                    ax,
+                    part,
+                    pix,
+                    val,
+                    nside,
+                    DIVERGING if symmetric else SEQUENTIAL,
+                    norm,
+                    labels=False,
+                    grid_color="#ddd2bb",
+                )
             _colorbar(fig, im, axes, label, symmetric)
         return S.save(fig, out, "full" if layout == "wide" else "half")

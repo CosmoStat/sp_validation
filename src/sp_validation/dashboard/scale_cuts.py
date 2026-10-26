@@ -38,23 +38,38 @@ def _heatmap(ax, pte, lo_labels, hi_labels, fid, label, cmap, norm):
     """Triangular PTE heatmap on bin indices; ``fid`` is ``(i, j)`` inclusive."""
     n = pte.shape[0]
     grid = np.arange(n + 1) - 0.5
-    mesh = ax.pcolormesh(grid, grid, pte.T, cmap=cmap, norm=norm,
-                         edgecolors="face", linewidth=0, rasterized=True)
+    mesh = ax.pcolormesh(
+        grid,
+        grid,
+        pte.T,
+        cmap=cmap,
+        norm=norm,
+        edgecolors="face",
+        linewidth=0,
+        rasterized=True,
+    )
     ax.set_facecolor("#e4dccb")
     ax.set_aspect("equal")
     ax.set_xlim(-0.5, n - 0.5)
     ax.set_ylim(-0.5, n - 0.5)
     ticks = _tick_subset(n)
     ax.set_xticks(ticks)
-    ax.set_xticklabels([f"${lo_labels[t]}$" for t in ticks], rotation=45,
-                       ha="right", rotation_mode="anchor")
+    ax.set_xticklabels(
+        [f"${lo_labels[t]}$" for t in ticks],
+        rotation=45,
+        ha="right",
+        rotation_mode="anchor",
+    )
     ax.set_yticks(ticks)
     ax.set_yticklabels([f"${hi_labels[t]}$" for t in ticks])
     ax.tick_params(which="both", top=False, right=False, length=2.5)
     if fid is not None:
         i, j = fid
-        ax.add_patch(Rectangle((i - 0.5, j - 0.5), 1, 1, fill=False,
-                               edgecolor=S.INK, lw=1.6, zorder=5))
+        ax.add_patch(
+            Rectangle(
+                (i - 0.5, j - 0.5), 1, 1, fill=False, edgecolor=S.INK, lw=1.6, zorder=5
+            )
+        )
     S.label_box(ax, label, loc="lower right", fontsize=9)
     return mesh
 
@@ -65,8 +80,7 @@ def _fmt_angle(v):
 
 def config_space(pe, out, scale_cut, layout="wide"):
     """ξ+^B, ξ−^B and joint ξ±^B PTEs over all reporting-bin scale cuts."""
-    start, stop = bins_from_scale_cut(pe["left_edges"], pe["right_edges"],
-                                      scale_cut)
+    start, stop = bins_from_scale_cut(pe["left_edges"], pe["right_edges"], scale_cut)
     fid = (start, stop - 1)
     lo = [_fmt_angle(v) for v in pe["left_edges"]]
     hi = [_fmt_angle(v) for v in pe["right_edges"]]
@@ -82,15 +96,20 @@ def config_space(pe, out, scale_cut, layout="wide"):
         else:
             fig, axes = plt.subplots(3, 1, figsize=(3.6, 9.6), sharex=True)
         for ax, (key, label) in zip(axes, panels):
-            mesh = _heatmap(ax, pe["pte_matrices"][key], lo, hi, fid, label,
-                            cmap, norm)
+            mesh = _heatmap(ax, pe["pte_matrices"][key], lo, hi, fid, label, cmap, norm)
         for ax in axes if layout == "wide" else axes[-1:]:
             ax.set_xlabel(r"$\theta_{\min}$ [arcmin]")
         for ax in axes[:1] if layout == "wide" else axes:
             ax.set_ylabel(r"$\theta_{\max}$ [arcmin]")
-        S.pte_colorbar(fig, mesh, axes, shrink=0.9 if layout == "wide" else 0.5,
-                       aspect=25, pad=0.02,
-                       location="right" if layout == "wide" else "bottom")
+        S.pte_colorbar(
+            fig,
+            mesh,
+            axes,
+            shrink=0.9 if layout == "wide" else 0.5,
+            aspect=25,
+            pad=0.02,
+            location="right" if layout == "wide" else "bottom",
+        )
         return S.save(fig, out, "full" if layout == "wide" else "half")
 
 
@@ -105,17 +124,25 @@ def harmonic_and_cosebis(cl, co, out, ell_cut, layout="wide"):
     with S.figure_style():
         if layout == "wide":
             fig, (ax_cl, ax_co) = plt.subplots(
-                1, 2, figsize=(7.2, 3.0), width_ratios=(1, 1.15))
+                1, 2, figsize=(7.2, 3.0), width_ratios=(1, 1.15)
+            )
         else:
-            fig, (ax_cl, ax_co) = plt.subplots(2, 1, figsize=(3.6, 6.6),
-                                               height_ratios=(1.25, 1))
+            fig, (ax_cl, ax_co) = plt.subplots(
+                2, 1, figsize=(3.6, 6.6), height_ratios=(1.25, 1)
+            )
         mesh = _heatmap(ax_cl, pte, lo, hi, fid, r"$C_\ell^{BB}$", cmap, norm)
         ax_cl.set_xlabel(r"$\ell_{\min}$")
         ax_cl.set_ylabel(r"$\ell_{\max}$")
         _cosebis_cuts(ax_co, co, cmap, norm)
-        S.pte_colorbar(fig, mesh, [ax_cl, ax_co], aspect=25, pad=0.02,
-                       shrink=0.9 if layout == "wide" else 0.6,
-                       location="right" if layout == "wide" else "bottom")
+        S.pte_colorbar(
+            fig,
+            mesh,
+            [ax_cl, ax_co],
+            aspect=25,
+            pad=0.02,
+            shrink=0.9 if layout == "wide" else 0.6,
+            location="right" if layout == "wide" else "bottom",
+        )
         return S.save(fig, out, "full" if layout == "wide" else "half")
 
 
@@ -129,12 +156,25 @@ def _cosebis_cuts(ax, co, cmap, norm, threshold=S.PTE_THRESHOLD):
         p = co["cuts"][cut]["pte_B"]
         is_fid = cut == co["fiducial"]
         ax.hlines(yi, 0, 1, color=S.RULE, lw=0.6, zorder=1)
-        ax.scatter([p], [yi], s=46 if is_fid else 30, color=cmap(norm(p)),
-                   edgecolor=S.INK, linewidth=1.4 if is_fid else 0.6, zorder=3,
-                   marker="s" if is_fid else "o")
-        ax.text(min(p + 0.035, 0.97), yi + 0.18, f"${S.fmt_pte(p)}$",
-                fontsize=7.5, color=S.INK_MUTED, va="bottom",
-                ha="left" if p < 0.85 else "right")
+        ax.scatter(
+            [p],
+            [yi],
+            s=46 if is_fid else 30,
+            color=cmap(norm(p)),
+            edgecolor=S.INK,
+            linewidth=1.4 if is_fid else 0.6,
+            zorder=3,
+            marker="s" if is_fid else "o",
+        )
+        ax.text(
+            min(p + 0.035, 0.97),
+            yi + 0.18,
+            f"${S.fmt_pte(p)}$",
+            fontsize=7.5,
+            color=S.INK_MUTED,
+            va="bottom",
+            ha="left" if p < 0.85 else "right",
+        )
     ax.set_yticks(y)
     ax.set_yticklabels([rf"${c[0]:g}'\!-\!{c[1]:g}'$" for c in cuts])
     ax.set_xlim(0, 1)

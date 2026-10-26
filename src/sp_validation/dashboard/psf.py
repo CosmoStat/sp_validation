@@ -56,11 +56,16 @@ def tau_fit(rt, out):
             p = _power_of_ten(np.concatenate([tau + sigma, tau - sigma]))
             scale = 10.0**p
             S.zero_line(ax)
-            ax.fill_between(theta, lo / scale, hi / scale, color=MODEL, alpha=0.3,
-                            lw=0)
+            ax.fill_between(theta, lo / scale, hi / scale, color=MODEL, alpha=0.3, lw=0)
             ax.plot(theta, med / scale, color=MODEL, lw=1.1)
-            ax.errorbar(theta, tau / scale, yerr=sigma / scale, marker="o",
-                        color=S.INK, **S.DATA_VECTOR_MARK)
+            ax.errorbar(
+                theta,
+                tau / scale,
+                yerr=sigma / scale,
+                marker="o",
+                color=S.INK,
+                **S.DATA_VECTOR_MARK,
+            )
             S.theta_axis(ax)
             ax.set_xticks([1, 10, 100])
             ax.set_xticklabels(["$1$", "$10$", "$100$"])
@@ -68,10 +73,23 @@ def tau_fit(rt, out):
             ax.set_ylabel(rf"$\tau_{{{k},+}} \times 10^{{{-p}}}$")
             S.label_box(ax, rf"$\tau_{{{k}}}$", loc="upper right")
         handles = [
-            Line2D([], [], ls="none", marker="o", color=S.INK, markersize=3.5,
-                   label=r"measured $\tau_{k,+}$"),
-            Line2D([], [], color=MODEL, lw=4, alpha=0.4,
-                   label=r"$\alpha, \beta, \eta$ posterior (68%)"),
+            Line2D(
+                [],
+                [],
+                ls="none",
+                marker="o",
+                color=S.INK,
+                markersize=3.5,
+                label=r"measured $\tau_{k,+}$",
+            ),
+            Line2D(
+                [],
+                [],
+                color=MODEL,
+                lw=4,
+                alpha=0.4,
+                label=r"$\alpha, \beta, \eta$ posterior (68%)",
+            ),
         ]
         fig.legend(handles=handles, loc="outside upper center", ncol=2)
         return S.save(fig, out, "full")
@@ -99,29 +117,52 @@ def posterior(rt, out, markers=(0, 1, 1)):
                     continue
                 if i == j:
                     x = samples[:, i]
-                    ax.hist(x, bins=40, range=lims[i], histtype="stepfilled",
-                            color=MODEL, alpha=0.25)
-                    ax.hist(x, bins=40, range=lims[i], histtype="step",
-                            color=MODEL, lw=0.9)
+                    ax.hist(
+                        x,
+                        bins=40,
+                        range=lims[i],
+                        histtype="stepfilled",
+                        color=MODEL,
+                        alpha=0.25,
+                    )
+                    ax.hist(
+                        x, bins=40, range=lims[i], histtype="step", color=MODEL, lw=0.9
+                    )
                     lo, med, hi = np.percentile(x, [16, 50, 84])
                     ax.set_title(
                         rf"${PARAMS[i]} = {med:.3g}^{{+{hi - med:.2g}}}"
-                        rf"_{{-{med - lo:.2g}}}$", fontsize=7.5)
+                        rf"_{{-{med - lo:.2g}}}$",
+                        fontsize=7.5,
+                    )
                     ax.set_yticks([])
                     if markers[i] is not None:
                         ax.axvline(markers[i], color=S.INK_MUTED, lw=0.7, ls=":")
                 else:
-                    h, xe, ye = np.histogram2d(samples[:, j], samples[:, i],
-                                               bins=40, range=[lims[j], lims[i]])
+                    h, xe, ye = np.histogram2d(
+                        samples[:, j], samples[:, i], bins=40, range=[lims[j], lims[i]]
+                    )
                     h = gaussian_filter(h, 1.0)
                     levels = _contour_levels(h)
                     xc, yc = (xe[1:] + xe[:-1]) / 2, (ye[1:] + ye[:-1]) / 2
-                    ax.contourf(xc, yc, h.T, levels=[levels[0], h.max()],
-                                colors=[MODEL], alpha=0.18)
-                    ax.contourf(xc, yc, h.T, levels=[levels[1], h.max()],
-                                colors=[MODEL], alpha=0.38)
-                    ax.contour(xc, yc, h.T, levels=levels, colors=[MODEL],
-                               linewidths=0.7)
+                    ax.contourf(
+                        xc,
+                        yc,
+                        h.T,
+                        levels=[levels[0], h.max()],
+                        colors=[MODEL],
+                        alpha=0.18,
+                    )
+                    ax.contourf(
+                        xc,
+                        yc,
+                        h.T,
+                        levels=[levels[1], h.max()],
+                        colors=[MODEL],
+                        alpha=0.38,
+                    )
+                    ax.contour(
+                        xc, yc, h.T, levels=levels, colors=[MODEL], linewidths=0.7
+                    )
                     for v, axis in ((markers[j], ax.axvline), (markers[i], ax.axhline)):
                         if v is not None:
                             axis(v, color=S.INK_MUTED, lw=0.7, ls=":")
@@ -154,25 +195,49 @@ def rho_stats(rt, out):
                 rho = rt["rho"][k]["p"]
                 sig = rt["rho"][k]["sigma_p"]
                 pos = rho > 0
-                ax.errorbar(theta, np.abs(rho), yerr=sig, color=c, ls="-",
-                            lw=0.7, marker="none", elinewidth=0.6, capsize=0,
-                            alpha=0.9)
-                ax.plot(theta[pos], rho[pos], "o", color=c, ms=3.4,
-                        mec=c, label=rf"$\rho_{k}$")
-                ax.plot(theta[~pos], -rho[~pos], "o", color=c, ms=3.4,
-                        mfc=S.RAG, mec=c, mew=0.9)
+                ax.errorbar(
+                    theta,
+                    np.abs(rho),
+                    yerr=sig,
+                    color=c,
+                    ls="-",
+                    lw=0.7,
+                    marker="none",
+                    elinewidth=0.6,
+                    capsize=0,
+                    alpha=0.9,
+                )
+                ax.plot(
+                    theta[pos],
+                    rho[pos],
+                    "o",
+                    color=c,
+                    ms=3.4,
+                    mec=c,
+                    label=rf"$\rho_{k}$",
+                )
+                ax.plot(
+                    theta[~pos],
+                    -rho[~pos],
+                    "o",
+                    color=c,
+                    ms=3.4,
+                    mfc=S.RAG,
+                    mec=c,
+                    mew=0.9,
+                )
             ax.set_yscale("log")
             S.theta_axis(ax)
             ax.set_xticks([1, 10, 100])
             ax.set_xticklabels(["$1$", "$10$", "$100$"])
             ax.set_xlabel(r"$\theta$ [arcmin]")
-            ax.legend(loc="upper right", ncol=3, handletextpad=0.2,
-                      columnspacing=0.8)
+            ax.legend(loc="upper right", ncol=3, handletextpad=0.2, columnspacing=0.8)
             ax.set_title(label, loc="left", fontsize=9)
         axes[0].set_ylabel(r"$|\rho_{k,+}(\theta)|$")
         axes[0].set_ylim(top=axes[0].get_ylim()[1] * 8)
-        axes[1].set_title(r"open markers: $\rho < 0$", loc="right", fontsize=8.5,
-                          color=S.INK_MUTED)
+        axes[1].set_title(
+            r"open markers: $\rho < 0$", loc="right", fontsize=8.5, color=S.INK_MUTED
+        )
         return S.save(fig, out, "full")
 
 
@@ -182,8 +247,7 @@ def xi_sys_ratio(rt, xi, out, reference=0.1):
     theta = fit["theta"]
     with S.figure_style():
         fig, axes = plt.subplots(1, 2, figsize=(7.2, 2.5))
-        for ax, comp, key, sign in zip(axes, ("plus", "minus"), ("xip", "xim"),
-                                       "+-"):
+        for ax, comp, key, sign in zip(axes, ("plus", "minus"), ("xip", "xim"), "+-"):
             ratio = fit[f"samples_{comp}"] / xi[key][None, :]
             lo, med, hi = np.percentile(ratio, [16, 50, 84], axis=0)
             for r in (-reference, reference):
@@ -233,8 +297,16 @@ def alpha_estimates(leakage, rt, out):
                 y[i:] -= 0.6
         ax.axvline(0, color=S.INK, lw=0.7, ls=(0, (4, 3)), alpha=0.6)
         for yi, (label, group, v, em, ep) in zip(y, rows):
-            ax.errorbar([v], [yi], xerr=[[em], [ep]], fmt="o", color=S.INK,
-                        ms=3.6, elinewidth=0.9, capsize=1.8)
+            ax.errorbar(
+                [v],
+                [yi],
+                xerr=[[em], [ep]],
+                fmt="o",
+                color=S.INK,
+                ms=3.6,
+                elinewidth=0.9,
+                capsize=1.8,
+            )
         ax.set_yticks(y)
         ax.set_yticklabels([r[0] for r in rows])
         ax.tick_params(axis="y", length=0, right=False)
@@ -242,8 +314,16 @@ def alpha_estimates(leakage, rt, out):
         prev = None
         for yi, g in zip(y, groups):
             if g != prev:
-                ax.text(0.98, yi + 0.42, g, transform=ax.get_yaxis_transform(),
-                        ha="right", va="bottom", fontsize=7.5, color=S.INK_MUTED)
+                ax.text(
+                    0.98,
+                    yi + 0.42,
+                    g,
+                    transform=ax.get_yaxis_transform(),
+                    ha="right",
+                    va="bottom",
+                    fontsize=7.5,
+                    color=S.INK_MUTED,
+                )
                 prev = g
         ax.set_ylim(y.min() - 0.7, y.max() + 0.9)
         ax.set_xlabel("PSF leakage coefficient")

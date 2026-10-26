@@ -88,8 +88,9 @@ def pure_eb(pe, out, scale_cut, ptes, blind=None):
     with S.figure_style():
         fig, axes = plt.subplots(2, 1, figsize=(3.0, THIRD_HEIGHT), sharex=True)
         theta = pe["theta"]
-        start, stop = bins_from_scale_cut(pe["left_edges"], pe["right_edges"],
-                                          scale_cut)
+        start, stop = bins_from_scale_cut(
+            pe["left_edges"], pe["right_edges"], scale_cut
+        )
         shade = (pe["left_edges"][start], pe["right_edges"][stop - 1])
         values = []
         for ax, xi, sign in zip(axes, ("xip", "xim"), "+-"):
@@ -113,9 +114,7 @@ def pure_eb(pe, out, scale_cut, ptes, blind=None):
             S.shade_outside(ax, *shade)
             ax.set_ylabel(r"$\theta\,\xi \times 10^{4}$")
             S.label_box(ax, rf"$\xi_{sign}$", loc="upper left")
-            _pte_header(
-                ax, rf"$\xi_{sign}^B$ PTE ${S.fmt_pte(ptes.get(xi + '_B'))}$"
-            )
+            _pte_header(ax, rf"$\xi_{sign}^B$ PTE ${S.fmt_pte(ptes.get(xi + '_B'))}$")
         axes[-1].set_xlabel(r"$\theta$ [arcmin]")
         # Shared y range from the in-cut points, so the excluded large-scale
         # ambiguous modes don't set the scale.
@@ -127,16 +126,30 @@ def pure_eb(pe, out, scale_cut, ptes, blind=None):
         for ax in axes:
             ax.set_ylim(lo - pad, hi + 2.5 * pad)
         handles = [
-            Line2D([], [], ls="none", marker=m, color=c, alpha=a,
-                   markersize=4, label=lab)
+            Line2D(
+                [], [], ls="none", marker=m, color=c, alpha=a, markersize=4, label=lab
+            )
             for _, m, c, a, _, lab in series
         ]
-        fig.legend(handles=handles, loc="outside upper center", ncol=4,
-                   handletextpad=0.1, columnspacing=0.9, borderaxespad=0.1)
+        fig.legend(
+            handles=handles,
+            loc="outside upper center",
+            ncol=4,
+            handletextpad=0.1,
+            columnspacing=0.9,
+            borderaxespad=0.1,
+        )
         if "combined" in ptes:
-            fig.text(0.99, 0.003, rf"joint $\xi_\pm^B$ PTE "
-                     rf"${S.fmt_pte(ptes['combined'])}$", ha="right", va="bottom",
-                     fontsize=8, color=S.INK_MUTED)
+            fig.text(
+                0.99,
+                0.003,
+                rf"joint $\xi_\pm^B$ PTE "
+                rf"${S.fmt_pte(ptes['combined'])}$",
+                ha="right",
+                va="bottom",
+                fontsize=8,
+                color=S.INK_MUTED,
+            )
         if blind:
             S.blind_stamp(fig, blind, where="bottom")
         return S.save(fig, out, "third")
@@ -155,8 +168,9 @@ def cosebis(co, out, full_cut=(1.0, 250.0)):
     ]
     n = np.arange(1, co["nmodes"] + 1)
     with S.figure_style():
-        fig, axes = plt.subplots(2, 1, figsize=(3.0, THIRD_HEIGHT), sharex=True,
-                                 sharey=True)
+        fig, axes = plt.subplots(
+            2, 1, figsize=(3.0, THIRD_HEIGHT), sharex=True, sharey=True
+        )
         extent = 0
         for ax, (cut, marker, filled, color) in zip(axes, rows):
             r = co["cuts"][cut]
@@ -164,13 +178,22 @@ def cosebis(co, out, full_cut=(1.0, 250.0)):
             extent = max(extent, np.max(np.abs(y)) + 1)
             S.zero_line(ax)
             ax.errorbar(
-                n, y, yerr=np.ones_like(y), marker=marker, color=color,
+                n,
+                y,
+                yerr=np.ones_like(y),
+                marker=marker,
+                color=color,
                 markerfacecolor=color if filled else "none",
-                markeredgecolor=color, **S.DATA_VECTOR_MARK,
+                markeredgecolor=color,
+                **S.DATA_VECTOR_MARK,
             )
             ax.set_ylabel(r"$B_n / \sigma_n$")
-            S.label_box(ax, rf"${cut[0]:g}' < \theta < {cut[1]:g}'$",
-                        loc="upper left", fontsize=8.5)
+            S.label_box(
+                ax,
+                rf"${cut[0]:g}' < \theta < {cut[1]:g}'$",
+                loc="upper left",
+                fontsize=8.5,
+            )
             _pte_header(ax, rf"$B_n$ PTE ${S.fmt_pte(r['pte_B'])}$")
         lim = np.ceil(extent + 0.6)
         axes[0].set_ylim(-lim, lim + 1.2)
@@ -184,8 +207,11 @@ def cosebis(co, out, full_cut=(1.0, 250.0)):
 
 def _spacer_legend(fig):
     """Reserve the legend band the pure E/B figure uses, keeping rows aligned."""
-    fig.legend(handles=[Line2D([], [], ls="none", label=" ")],
-               loc="outside upper center", handlelength=0)
+    fig.legend(
+        handles=[Line2D([], [], ls="none", label=" ")],
+        loc="outside upper center",
+        handlelength=0,
+    )
 
 
 def _cl_cut_mask(cl, ell_cut):
@@ -194,8 +220,9 @@ def _cl_cut_mask(cl, ell_cut):
 
 def cl_pte(cl, key, ell_cut=None):
     """χ² PTE of one spectrum against zero, over bins inside ``ell_cut``."""
-    mask = np.ones(len(cl["ell"]), bool) if ell_cut is None else _cl_cut_mask(
-        cl, ell_cut)
+    mask = (
+        np.ones(len(cl["ell"]), bool) if ell_cut is None else _cl_cut_mask(cl, ell_cut)
+    )
     d = cl[key][mask]
     cov = cl["cov"][f"{key}_{key}"][np.ix_(mask, mask)]
     return float(stats.chi2.sf(d @ np.linalg.solve(cov, d), mask.sum()))
@@ -209,17 +236,23 @@ def pseudo_cl(cl, out, ell_cut):
     ]
     ell = cl["ell"]
     with S.figure_style():
-        fig, axes = plt.subplots(2, 1, figsize=(3.0, THIRD_HEIGHT), sharex=True,
-                                 sharey=True)
+        fig, axes = plt.subplots(
+            2, 1, figsize=(3.0, THIRD_HEIGHT), sharex=True, sharey=True
+        )
         extent = 0
         for ax, (key, marker, filled, color, label) in zip(axes, rows):
             y = cl[key] / cl[f"sigma_{key}"]
             extent = max(extent, np.max(np.abs(y)) + 1)
             S.zero_line(ax)
             ax.errorbar(
-                ell, y, yerr=np.ones_like(y), marker=marker, color=color,
+                ell,
+                y,
+                yerr=np.ones_like(y),
+                marker=marker,
+                color=color,
                 markerfacecolor=color if filled else "none",
-                markeredgecolor=color, **S.DATA_VECTOR_MARK,
+                markeredgecolor=color,
+                **S.DATA_VECTOR_MARK,
             )
             ax.set_xscale("function", functions=(np.sqrt, np.square))
             ax.set_ylabel(r"$C_\ell / \sigma$")

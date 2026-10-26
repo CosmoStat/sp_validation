@@ -193,9 +193,7 @@ def main(argv=None):
     parser.add_argument("--nside", type=int, default=512)
     parser.add_argument("--weight-bins", type=int, default=20)
     parser.add_argument("--snr-range", type=float, nargs=2, default=(10.0, 500.0))
-    parser.add_argument(
-        "--size-ratio-range", type=float, nargs=2, default=(0.707, 3.0)
-    )
+    parser.add_argument("--size-ratio-range", type=float, nargs=2, default=(0.707, 3.0))
     parser.add_argument("--chunk", type=int, default=4_000_000)
     args = parser.parse_args(argv)
 

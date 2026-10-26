@@ -33,19 +33,26 @@ def test_zenithal_round_trip(rotation):
 
 
 def test_zenithal_ra_increases_to_the_left():
-    x, _ = Zenithal(200.0, 40.0).forward(np.array([199.0, 201.0]), np.array([40.0, 40.0]))
+    x, _ = Zenithal(200.0, 40.0).forward(
+        np.array([199.0, 201.0]), np.array([40.0, 40.0])
+    )
     assert x[1] < x[0]
 
 
 def test_footprint_parts_separates_patch_and_strip():
     nside = 256
-    patch = hp.query_disc(nside, hp.ang2vec(220, 55, lonlat=True), np.radians(10),
-                          nest=True)
+    patch = hp.query_disc(
+        nside, hp.ang2vec(220, 55, lonlat=True), np.radians(10), nest=True
+    )
     ra = np.mod(np.linspace(-30, 60, 4000), 360)
-    strip = np.unique(np.concatenate([
-        hp.ang2pix(nside, ra, np.full_like(ra, d), lonlat=True, nest=True)
-        for d in np.arange(30, 34, 0.2)
-    ]))
+    strip = np.unique(
+        np.concatenate(
+            [
+                hp.ang2pix(nside, ra, np.full_like(ra, d), lonlat=True, nest=True)
+                for d in np.arange(30, 34, 0.2)
+            ]
+        )
+    )
     parts = footprint_parts(np.concatenate([patch, strip]), nside)
     assert len(parts) == 2
     assert parts[0].sum() == len(patch)

@@ -44,11 +44,14 @@ def weights(cells, out):
     with S.figure_style():
         fig, ax = plt.subplot_mosaic(
             [["top", ".", "spec"], ["grid", "side", "spec"]],
-            figsize=(7.2, 3.5), width_ratios=(4, 0.7, 4.2), height_ratios=(0.8, 4),
+            figsize=(7.2, 3.5),
+            width_ratios=(4, 0.7, 4.2),
+            height_ratios=(0.8, 4),
         )
         g = ax["grid"]
-        mesh = g.pcolormesh(snr, size, w.T, cmap=SEQUENTIAL, edgecolors=S.RAG,
-                            linewidth=0.25)
+        mesh = g.pcolormesh(
+            snr, size, w.T, cmap=SEQUENTIAL, edgecolors=S.RAG, linewidth=0.25
+        )
         g.set_xscale("log")
         g.set_yscale("log")
         g.set_xlim(snr[0], snr[-1])
@@ -56,32 +59,46 @@ def weights(cells, out):
         g.set_xlabel("signal-to-noise")
         g.set_ylabel(r"size ratio $T_{\rm gal} / T_{\rm PSF}$")
         g.xaxis.set_major_formatter(log_fmt)
-        g.xaxis.set_minor_formatter(mpl.ticker.FuncFormatter(
-            lambda v, _: f"${v:g}$" if v in (30, 300) else ""))
+        g.xaxis.set_minor_formatter(
+            mpl.ticker.FuncFormatter(lambda v, _: f"${v:g}$" if v in (30, 300) else "")
+        )
         g.yaxis.set_major_formatter(log_fmt)
-        g.yaxis.set_minor_formatter(mpl.ticker.FuncFormatter(
-            lambda v, _: f"${v:g}$" if v in (0.8, 1.5, 2) else ""))
+        g.yaxis.set_minor_formatter(
+            mpl.ticker.FuncFormatter(
+                lambda v, _: f"${v:g}$" if v in (0.8, 1.5, 2) else ""
+            )
+        )
         g.tick_params(which="both", top=False, right=False)
-        cbar = fig.colorbar(mesh, ax=g, location="bottom", aspect=30, pad=0.02,
-                            fraction=0.06)
+        cbar = fig.colorbar(
+            mesh, ax=g, location="bottom", aspect=30, pad=0.02, fraction=0.06
+        )
         cbar.set_label(r"cell weight $w = R^2 / \sigma_e^2$")
         cbar.outline.set_linewidth(0.5)
 
         # Marginal shares of galaxies along each grid axis.
         bar = dict(color=S.NEUTRAL_LIGHT, edgecolor=S.RAG, linewidth=0.3)
-        ax["top"].bar(snr[:-1], 100 * frac.sum(1), width=np.diff(snr), align="edge",
-                      **bar)
+        ax["top"].bar(
+            snr[:-1], 100 * frac.sum(1), width=np.diff(snr), align="edge", **bar
+        )
         ax["top"].set_xscale("log")
         ax["top"].set_xlim(g.get_xlim())
-        ax["side"].barh(size[:-1], 100 * frac.sum(0), height=np.diff(size),
-                        align="edge", **bar)
+        ax["side"].barh(
+            size[:-1], 100 * frac.sum(0), height=np.diff(size), align="edge", **bar
+        )
         ax["side"].set_yscale("log")
         ax["side"].set_ylim(g.get_ylim())
         for name, axis in (("top", "x"), ("side", "y")):
             m = ax[name]
-            m.tick_params(axis=axis, which="both", labelbottom=False,
-                          labelleft=False, bottom=False, left=False, top=False,
-                          right=False)
+            m.tick_params(
+                axis=axis,
+                which="both",
+                labelbottom=False,
+                labelleft=False,
+                bottom=False,
+                left=False,
+                top=False,
+                right=False,
+            )
             for side in ("top", "right"):
                 m.spines[side].set_visible(False)
             m.tick_params(which="both", top=False, right=False, labelsize=7)
@@ -97,6 +114,7 @@ def weights(cells, out):
         spec.set_ylim(0, None)
         spec.set_xlim(0, values.max() * 1.03)
         spec.tick_params(which="both", top=False, right=False)
-        spec.set_title(f"{len(values)} distinct values, one per cell", loc="left",
-                       fontsize=9)
+        spec.set_title(
+            f"{len(values)} distinct values, one per cell", loc="left", fontsize=9
+        )
         return S.save(fig, out, "full")

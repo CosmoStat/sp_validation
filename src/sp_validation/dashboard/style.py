@@ -153,8 +153,15 @@ def note(ax, text, loc="lower right", color=INK_MUTED, fontsize=8):
     x, ha = (0.04, "left") if "left" in loc else (0.96, "right")
     y, va = (0.95, "top") if "upper" in loc else (0.05, "bottom")
     ax.text(
-        x, y, text, transform=ax.transAxes, ha=ha, va=va, color=color,
-        fontsize=fontsize, zorder=10,
+        x,
+        y,
+        text,
+        transform=ax.transAxes,
+        ha=ha,
+        va=va,
+        color=color,
+        fontsize=fontsize,
+        zorder=10,
     )
 
 
@@ -163,8 +170,14 @@ def blind_stamp(fig, blind, where="top"):
     y, va = (1.0, "top") if where == "top" else (0.0, "bottom")
     x, ha = (1.0, "right") if where == "top" else (0.0, "left")
     fig.text(
-        x, y, f"BLINDED · {blind}", ha=ha, va=va, fontsize=6.5,
-        family="monospace", color=CINNABAR,
+        x,
+        y,
+        f"BLINDED · {blind}",
+        ha=ha,
+        va=va,
+        fontsize=6.5,
+        family="monospace",
+        color=CINNABAR,
     )
 
 
