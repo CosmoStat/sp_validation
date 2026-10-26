@@ -1,7 +1,6 @@
 # DES case-d validation
 
-These are observed self-built-table diagnostics on Martin's four unblinded image-simulation grids.
-Round 4 below tests independent training; self-built weights are no longer the image-sim production default.
+These are observed diagnostics on Martin's four unblinded image-simulation grids. Image-sim production uses an independent data-calibration table; the grid measurements compare self-fitted and independent training.
 Each grid contains five external-shear branches, with 39, 42, 32 and 35 shared tile labels on grids 1–4.
 The injected shear is 0.025 from the existing manifest-derived m config; the metacal step is 0.01.
 The earlier validation JSONs record their parent revisions; sparse-cell pooling was introduced in commit `354d0898`.
@@ -20,7 +19,7 @@ Independent-table production uncertainties hold that external W fixed.
 
 With `des_min_count: 0`, the paired reproduction matches cuts (including FLAGS≤2), 20×20 table, right-closed interior cells, pair matching radius and symmetric pair weights.
 Across all 20 external-shear products, max |R_new−R_Martin| = 7.04e-16, max relative W difference = 5.88e-15, and max paired-m difference = 4.22e-16.
-The comparison uses `/n23data1/mkilbing/imsim_wdes_response/grid_*/des_d/results/m_bias_results.yaml`, specifically `weights.w_des`, not its unweighted top-level headline.
+The comparison uses `/n23data1/mkilbing/imsim_wdes_response/grid_*/des_d/results/m_bias_results.yaml`, specifically `weights.w_des`, not its unweighted top-level headline. Part of the roughly 1.5 percentage-point paired/full gap comes from self-weighting bias, which symmetric pair weights cancel; with an independent table, the gap is about 0.7 percentage points.
 
 The production `ImageSimMBias` headline uses each external branch's full selected population, with its own weights and response.
 Modern products refuse `pair_match: true`.
@@ -37,7 +36,9 @@ IV now uses measured errors on each artificial branch, not proxies or frozen no-
 No mean shear is subtracted from these constant-shear simulations.
 These runs validate agreement with Martin's implementation, not a new fiducial residual-m calibration for blinded v2 data.
 
-![Three-estimator diagnostic before sparse-cell pooling, N_min=0 (conditional fixed-W errors)](m_comparison.png)
+![Self-fitted tables, N_min=0, fixed-W errors; valid for the weight-decomposition argument only](m_comparison.png)
+
+![Residual m per grid for four estimators; bands are inverse-variance grid means](m_estimators.png)
 
 ## Exact inverse-variance mode
 
@@ -245,10 +246,7 @@ Martin's retained `v2.0/image_sims/grids_1/results/m_bias_config.yaml` and `grid
 Thus those configs establish a paired/unweighted recipe, not verified provenance for that exact published estimate.
 
 **Inferred comparison:** subtracting the approximately −0.02 blending contribution implies a Paper-I grid component near −0.0372, not −0.0572.
-The minimum-count full-population DES grid averages are m1 = −0.01927 ± 0.00401 and m2 = −0.01434 ± 0.00466 with primary refit-W errors; they are about 1.8 and 2.3 percentage points less negative than that approximate component.
-These inverse-variance combination errors assume independent grids; no significance for the historical/new difference is assigned.
-This is a comparison of different pipeline/cut choices (the current grids include FLAGS≤2), not an isolated measurement of an estimator change.
-No historical weight/pairing assignment beyond the evidence above is made, and no new fiducial residual m is adopted.
+The current four-estimator comparison (units 10⁻³) gives inverse-variance means (assuming independent grids): self-fitted, refit-W (−19.3 ± 4.0, −14.3 ± 4.7); other-three-grid training (−11.2 ± 3.3, −8.1 ± 3.9); exact IV (−16.1 ± 4.1, −17.0 ± 4.7). The paired Martin estimates are (+3.5,+10.3), (−11.3,−3.3), (−10.5,−1.5), (+2.5,−0.5) for grids 1–4. The consistent independent-table estimator leaves m near −1%, not fully explained; the toy self-weighting bias predicts a contribution of about −0.004 to −0.005, comparable to the observed self-vs-independent shift. IV has no fitted table yet remains near −1.6%. Detection/blending selection is not tested. These grids use FLAGS≤2 and do not isolate the historical estimator change. No fiducial residual m is adopted: it must be measured with the data release’s own table.
 
 ## Response distributions and spatial diagnostics
 
@@ -274,6 +272,8 @@ The release uses its existing 100 sky patches; the simulations use shared tile l
 Synthetic constant-r and spatially varying-r tests compare the curve and every deletion against explicit pair sums.
 
 ![Stage-1 response and conditional ξ shifts, with response jackknife errors](stage1_response_jackknife.png)
+
+The stage-1 grid curves show a coherent oscillation below 3′, likely an artefact of regular grid placement; it is absent from the smooth public-release curve.
 
 | Sample | Max absolute f(θ) | Spatial groups |
 | --- | ---: | ---: |
