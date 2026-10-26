@@ -40,6 +40,7 @@ from sp_validation.glass_mock import (
 
 camb = pytest.importorskip("camb")
 
+
 def _have(module):
     """True if ``module`` is importable. False if it or a parent is missing."""
     try:
