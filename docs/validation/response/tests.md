@@ -1,10 +1,12 @@
 # Tests and production checks
 
-All round-2 scientific execution used allocation **1037411** on n09, with `srun --jobid=1037411 -n 1 -c 4` inside `~/.cache/sp_validation/sp_validation.sif`.
+All round-2 and round-3 scientific execution used allocation **1037411** on n09, with `srun --jobid=1037411 -n 1 -c 4` inside `~/.cache/sp_validation/sp_validation.sif`.
 `TMPDIR` was `/n17data/cdaley/tmp`; no scientific stack was imported on the login node.
 
-The final `python -m pytest -m 'not slow' --no-cov -q` run returned **563 passed, 4 failed, 2 skipped, 7 deselected, 2 xfailed, 1 xpassed**, in **174.94 s**.
-The log is `/n17data/cdaley/scratch/response-pr/round2/fast-suite-final.log`.
+The final `python -m pytest -m 'not slow' --no-cov -q` run returned **568 passed, 4 failed, 2 skipped, 7 deselected, 2 xfailed, 1 xpassed**, in **172.16 s**, with the chosen default N_min=3.
+The log is `/n17data/cdaley/scratch/response-pr/round3/fast-suite-final.log`.
+The five new sparse-table cases all pass: pooled moments bound the pathological fixture's W, repeated/deletion/reordered fits are deterministic, fully populated tables are bitwise unchanged, windows grow to the threshold (including a smaller-than-threshold total sample), and production refits match rebuilding the retained sample and save the pooling metadata.
+The column-schema test recognizes `DESNMIN` and `DESMERGE` as FITS headers, not catalogue columns.
 The four failures match the independently reproduced develop failures below; none was suppressed or counted as passing.
 The xfail/xpass results are outside the three imported response regressions.
 
@@ -29,8 +31,11 @@ Baseline logs are `/n17data/cdaley/scratch/response-pr/baseline-failures.log`, `
 
 The four-grid round trip uses the committed `save_response_product` and `ImageSimMBias`, not a separate error estimator.
 Each grid's five external branches save refit-W `R_JK` responses and calibrated deleted means in FITS, then the normal production m reader computes the shared-tile (m1,c1,m2,c2) covariance.
-All full-population m/c values, errors and covariance elements agree with the direct refit-W calculation to `atol=1e-13`.
+All four round-2 N_min=0 full-population m/c values, errors and covariance elements agree with the direct refit-W calculation to `atol=1e-13`.
 Logs and results are `/n17data/cdaley/scratch/response-pr/round2/production_{1,2,3,4}.log` and `production_grid_{1,2,3,4}.json`.
+Grid 4 also passes the same production FITS-to-m/c check with the chosen N_min=3; the fixture writes its newly calibrated e1/e2 and weights instead of retaining the old table's catalogue columns.
+Its log is `/n17data/cdaley/scratch/response-pr/round3/production4.log`, with [saved production results](sparse_production_grid_4.json).
+All m/c values, refit-W errors and covariance elements match the direct minimum-count measurement within 1e-13.
 This catches the distinction between changing only R and changing both R and the numerator weights when W is refitted.
 
 The earlier actual `scripts/calibration/calibrate_comprehensive_cat.py` driver smoke remains under `/n17data/cdaley/scratch/response-pr/driver-smoke/`.

@@ -43,6 +43,8 @@ NOT_COLUMNS = {
     "CE_{}",
     "CG_{}",
     "CMUNITS",
+    "DESMERGE",
+    "DESNMIN",
     "IVPOLICY",
     "MCSTEP",
     "MEANSUB",
