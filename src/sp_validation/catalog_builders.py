@@ -1085,14 +1085,18 @@ def compute_weights_gatti(
         purpose="weights",
     )
 
-    cat_gal["w_des"] = calibration.get_w_des(
-        cat_gal,
-        num_bins,
-        snr_min=snr_min,
-        snr_max=snr_max,
-        size_ratio_min=size_ratio_min,
-        size_ratio_max=size_ratio_max,
-    )
+    if gal_metacal.weight_scheme == "des":
+        cat_gal["w_des"] = gal_metacal.ns["w_des"][mask_metacal]
+    else:
+        cat_gal["w_des"] = calibration.get_w_des(
+            cat_gal,
+            num_bins,
+            snr_min=snr_min,
+            snr_max=snr_max,
+            size_ratio_min=size_ratio_min,
+            size_ratio_max=size_ratio_max,
+        )
+    cat_gal["w_iv"] = gal_metacal.ns["w_iv"][mask_metacal]
 
 
 def compute_PSF_leakage(

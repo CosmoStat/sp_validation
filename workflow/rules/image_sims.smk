@@ -16,7 +16,8 @@ check at load rejects an unknown key (typo) and a missing science key (see
 
 The five simulations per grid are the reference ``1z2z`` (no input shear) plus
 the ``+/-`` shear pairs ``1p2z``/``1m2z`` (g1) and ``1z2p``/``1z2m`` (g2); the
-m-bias estimator matches each to the reference by RA/Dec.
+modern m-bias estimator uses full populations with separately normalized
+branch weights (pair_match: false), matching the stored response.
 """
 
 import os
@@ -54,6 +55,8 @@ _OPERATIONAL_KEYS = {
     "n_smp",
     "extract_script",
     "calibrate_script",
+    "des_weight_source",
+    "des_weight_product",
 }
 # Structural keys: paths/identifiers the run must supply (no sensible default).
 _STRUCTURAL_KEYS = {
@@ -90,6 +93,18 @@ if _missing_structural:
         "image_sims: missing required key(s) "
         f"{_missing_structural} -- set them in the run config"
     )
+
+if "w_des" in IMSIM["w_cols"]:
+    if IMSIM["des_weight_source"] not in ("external", "self"):
+        raise ValueError("image_sims: des_weight_source must be external or self")
+    _product = IMSIM["des_weight_product"]
+    if IMSIM["des_weight_source"] == "external" and (
+        not isinstance(_product, dict) or not _product.get("name") or not _product.get("path")
+    ):
+        raise ValueError(
+            "DES image sims require des_weight_product with name and path; "
+            "des_weight_source: self is diagnostic only"
+        )
 
 # --- container ------------------------------------------------------------
 # Every compute rule carries ``container: SIF`` rather than inheriting a
@@ -256,8 +271,8 @@ rule im_init:
     and the raw SKiLLS image inputs.
 
     ``params_im_sim.py`` derives the field name from the directory basename, so
-    the same template serves every sim; ``config_mask.yaml`` and ``cfis`` are
-    symlinks the downstream calibration and merge steps read from cwd.
+    the same template serves every sim; ``config_mask.yaml`` is a staged copy
+    with the image-sim DES-table policy, and ``cfis`` is a symlink.
 
     ``input_tiles``/``input_exp`` are top-level symlinks to the raw SKiLLS tile
     and exposure images; ShapePipe's ``get_images_runner`` resolves them via
@@ -271,6 +286,12 @@ rule im_init:
         # silently leaving stale params.py behind after a grammar change).
         template=PARAMS_TEMPLATE,
         mask_src=os.path.join(SPV_REPO, MASK_CONFIG),
+        weight_product=(
+            [IMSIM["des_weight_product"]["path"]]
+            if "w_des" in IMSIM["w_cols"]
+            and IMSIM["des_weight_source"] == "external"
+            and IMSIM["des_weight_product"] else []
+        ),
     output:
         params=f"{GRIDS_BASE}/{{sim}}/params.py",
         mask=f"{GRIDS_BASE}/{{sim}}/config_mask.yaml",
@@ -280,13 +301,22 @@ rule im_init:
         cfis=lambda wc: f"{GRIDS_BASE}/{wc.sim}/cfis",
         sim_tiles=lambda wc: f"{INPUT_SIMS_BASE}/{wc.sim}/images/SP_tiles",
         sim_exp=lambda wc: f"{INPUT_SIMS_BASE}/{wc.sim}/images/SP_exp",
+        source=IMSIM["des_weight_source"],
+        product_name=(IMSIM["des_weight_product"] or {}).get("name", "-"),
+        product_path=(IMSIM["des_weight_product"] or {}).get("path", "-"),
+        w_cols=IMSIM["w_cols"],
+    container:
+        SIF
     shell:
         # cfis / input_tiles / input_exp are stable read-only symlinks (used by
         # get_images, merge, extract); created here but not tracked as outputs,
         # which snakemake will not accept for a symlink/directory.
         "mkdir -p $(dirname {output.params}) && "
         "cp {input.template} {output.params} && "
-        "ln -sf {input.mask_src} {output.mask} && "
+        "{_ENV_PREFIX} python {SPV_REPO}/scripts/calibration/stage_image_sim_config.py "
+        "--input {input.mask_src:q} --output {output.mask:q} "
+        "--w-cols {params.w_cols} --source {params.source:q} "
+        "--product-name {params.product_name:q} --product-path {params.product_path:q} && "
         "ln -sfT {params.config_dir} {params.cfis} && "
         "ln -sfT {params.sim_tiles} {params.run_dir}/input_tiles && "
         "ln -sfT {params.sim_exp} {params.run_dir}/input_exp"

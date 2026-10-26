@@ -22,7 +22,7 @@ from astropy.io import fits
 
 import sp_validation.catalog as cat
 from sp_validation import catalog_builders as sp_joint
-from sp_validation.calibration import get_calibrated_m_c, metacal
+from sp_validation.calibration import get_calibrated_m_c, metacal_from_config
 
 # Initialize calibration class instance
 obj = sp_joint.CalibrateCat()
@@ -95,17 +95,7 @@ if obj._params["sky_regions"]:
 
 cm = config["metacal"]
 
-gal_metacal = metacal(
-    dat,
-    mask_combined._mask,
-    snr_min=cm["gal_snr_min"],
-    snr_max=cm["gal_snr_max"],
-    rel_size_min=cm["gal_rel_size_min"],
-    rel_size_max=cm["gal_rel_size_max"],
-    size_corr_ell=cm["gal_size_corr_ell"],
-    sigma_eps=cm["sigma_eps_prior"],
-    verbose=True,
-)
+gal_metacal = metacal_from_config(dat, mask_combined._mask, cm, verbose=True)
 # -
 
 g_corr_mc, g_uncorr, w, mask_metacal, c, c_err = get_calibrated_m_c(gal_metacal)

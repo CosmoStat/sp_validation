@@ -25,7 +25,6 @@ from cs_util import cat as cs_cat
 import sp_validation.catalog as cat
 from sp_validation import calibration
 from sp_validation import catalog_builders as sp_joint
-from sp_validation.calibration import metacal
 
 # %%
 # Initialize calibration class instance
@@ -81,17 +80,8 @@ if obj._params["sky_regions"]:
 cm = config["metacal"]
 
 # %%
-gal_metacal = metacal(
-    dat,
-    mask_combined._mask,
-    snr_min=cm["gal_snr_min"],
-    snr_max=cm["gal_snr_max"],
-    rel_size_min=cm["gal_rel_size_min"],
-    rel_size_max=cm["gal_rel_size_max"],
-    size_corr_ell=cm["gal_size_corr_ell"],
-    sigma_eps=cm["sigma_eps_prior"],
-    global_R_weight=cm["global_R_weight"],
-    verbose=True,
+gal_metacal = calibration.metacal_from_config(
+    dat, mask_combined._mask, cm, verbose=True
 )
 
 # %%
@@ -176,7 +166,6 @@ else:
 # %%
 # Additional data columns to write to output cat
 add_cols = [
-    "w_iv",
     "FLUX_RADIUS",
     "MAGERR_AUTO",
     "NGMIX_T_NOSHEAR",
@@ -188,6 +177,16 @@ for key in add_cols:
     add_cols_data[key] = cat.get_col(dat, key, mask_combined._mask, mask_metacal)
 
 # %%
+# Never copy stale unsquared IV weights from a comprehensive input.
+if gal_metacal.weight_scheme != "iv":
+    add_cols_data["w_iv"] = gal_metacal.ns["w_iv"][mask_metacal]
+add_cols_format = {}
+if "TILE_ID" in dat.dtype.names:
+    add_cols_data["TILE_ID"] = np.asarray(
+        cat.get_col(dat, "TILE_ID", mask_combined._mask, mask_metacal)
+    ).astype(str)
+    add_cols_format["TILE_ID"] = f"{max(map(len, add_cols_data['TILE_ID']))}A"
+
 # Additional post-processing columns to write to output cat
 add_cols_post = [
     "R_g11",
@@ -227,7 +226,7 @@ cat.write_shape_catalog(
     output_shape_cat_path,
     ra,
     dec,
-    cat_gal["w_des"],
+    cat_gal["w_des"] if gal_metacal._legacy_response else w,
     mag=mag,
     snr=cat_gal["snr"],
     g=g_corr_mc,
@@ -238,12 +237,20 @@ cat.write_shape_catalog(
     R_select=gal_metacal.R_selection,
     c=c,
     c_err=c_err,
-    w_type="des",
+    w_type=gal_metacal.weight_scheme or "des",
     add_cols=add_cols_data,
+    add_cols_format=add_cols_format,
     add_header=header,
 )
 
 # %%
+groups = (
+    np.asarray(dat["TILE_ID"][mask_combined._mask])
+    if "TILE_ID" in dat.dtype.names
+    else None
+)
+calibration.save_response_product(output_shape_cat_path, gal_metacal, groups)
+
 # Write mask information to ASCII file
 with open("masks.txt", "w") as f_out:
     for my_mask in masks:

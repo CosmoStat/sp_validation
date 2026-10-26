@@ -1,10 +1,11 @@
 # Image-simulation m-bias workflow configuration.
 #
 # OPERATIONAL keys default here and nowhere else -- the .smk reads them bare, so
-# this file is their single home. SCIENCE keys have no default anywhere and
-# appear below only as commented template lines: they fix the estimator's
-# behaviour, so each run must state them in a run config layered on top. A run
-# config that omits one fails at DAG parse, naming the key; an unknown key under
+# this file is their single home. Run-specific SCIENCE keys appear below as
+# commented template lines and must be stated in a layered run config.
+# DES has one shared production policy: use an independent named data table;
+# sample-fitted tables require the explicit diagnostic override below.
+# A run missing a required science key fails at DAG parse; an unknown key under
 # `image_sims:` fails as a typo.
 
 image_sims:
@@ -58,6 +59,18 @@ image_sims:
   extract_script: /n17data/cdaley/unions/code/sp_validation/scripts/calibration/extract_info.py
   calibrate_script: /n17data/cdaley/unions/code/sp_validation/scripts/calibration/calibrate_comprehensive_cat.py
 
+  # DES sims must apply the same fixed table as the data they calibrate.
+  # Supply a named modern calibration FITS product (W_DES/W_EDGES/W_COUNT,
+  # with coordinate metadata), not a released catalogue with only w_des.
+  # No public v1.4.6.3 table with verified compatible edges is available.
+  # This intentionally blocks a DES production run until its data product is set.
+  des_weight_source: external
+  des_weight_product: null
+  # des_weight_product:
+  #   name: <data-calibration-name>
+  #   path: /absolute/path/to/shape_catalog_cut_ngmix.fits
+  # des_weight_source: self   # explicitly sample-fitted diagnostic, not production
+
   # --- science knobs (REQUIRED in the run config; no default) -----------
   # Copy these into your run config and set them.  There is deliberately no
   # default: each fixes the estimator's scientific behaviour, so a run must
@@ -66,11 +79,8 @@ image_sims:
   #
   # mask_config: config/calibration/mask_v1.X.9_im_sim.yaml  # relative to sp_validation_repo
   # match_radius_deg: 0.0002   # RA/Dec pair-match radius, degrees
-  # w_cols: [none, w_iv]       # weight schemes to compute in one run; "none"
-  #                            # (or null) = unit weights (#227); first entry is
-  #                            # the primary/headline result -- lead with "none"
-  #                            # for the fiducial unweighted estimator.  The
-  #                            # deprecated scalar `w_col` is still accepted.
-  # pair_match: true           # match +g/-g object-by-object (per-object cancellation)
+  # w_cols: [w_des]           # must match the calibration's weight_scheme: des
+  # pair_match: false         # full populations, branch-specific normalization;
+  #                           # modern products refuse symmetric pair weighting
   # n_bootstrap: 500           # bootstrap resamples for the errors
   # bootstrap_seed: 42         # seed for the bootstrap RNG (makes errors reproducible)
