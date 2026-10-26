@@ -9,6 +9,7 @@ Usage: python diff_jk.py <out dir> <scheme a> <scheme b> [...]
 Pairs are (a, b): prints m_b - m_a per weight column, method and component,
 and writes them to <out dir>/diff_<b>_<a>.yaml.
 """
+
 import os
 import sys
 
@@ -35,7 +36,10 @@ def samples(out_root, scheme):
                 res = mb._m_c_pair(name_p, name_m, comp, verbose=False, method=method)
                 # _jackknife_pair calls m then c for each w_col in order
                 for k, w_col in enumerate(mb.w_cols):
-                    out[(method, w_col, comp + 1)] = (res[w_col]["m"], got[-2 * len(mb.w_cols) + 2 * k])
+                    out[(method, w_col, comp + 1)] = (
+                        res[w_col]["m"],
+                        got[-2 * len(mb.w_cols) + 2 * k],
+                    )
         return out
     finally:
         image_sims._jackknife_std = orig

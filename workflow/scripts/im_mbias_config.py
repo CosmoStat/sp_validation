@@ -43,10 +43,16 @@ def _repo_provenance(repo):
     if os.path.isfile(snap):
         with open(snap) as fh:
             info = yaml.safe_load(fh) or {}
-        return {"branch": info.get("branch"), "commit": info.get("head"),
-                "dirty": info.get("dirty"), "snapshot_of": info.get("source")}
-    return {"branch": _git(repo, "rev-parse", "--abbrev-ref", "HEAD"),
-            "commit": _git(repo, "rev-parse", "HEAD")}
+        return {
+            "branch": info.get("branch"),
+            "commit": info.get("head"),
+            "dirty": info.get("dirty"),
+            "snapshot_of": info.get("source"),
+        }
+    return {
+        "branch": _git(repo, "rev-parse", "--abbrev-ref", "HEAD"),
+        "commit": _git(repo, "rev-parse", "HEAD"),
+    }
 
 
 def _sif_revision():

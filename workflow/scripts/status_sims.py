@@ -32,16 +32,28 @@ from pathlib import Path
 # (exp_psf), chunks ngmix into tile_ngmix_1..N and merges the chunks
 # (tile_merge_cats). Pass --layout to force one; `auto` reads what is on disk.
 NATIVE_TILE_STAGES = [
-    "tile_get_images", "tile_uncompress", "tile_find_exposures",
-    "tile_merge_headers", "tile_detect", "tile_fake_psf", "tile_vignets",
-    "tile_ngmix", "tile_make_cat",
+    "tile_get_images",
+    "tile_uncompress",
+    "tile_find_exposures",
+    "tile_merge_headers",
+    "tile_detect",
+    "tile_fake_psf",
+    "tile_vignets",
+    "tile_ngmix",
+    "tile_make_cat",
 ]
 NATIVE_EXP_STAGES = ["exp_get_images", "exp_split"]
 
 UNIFIED_TILE_STAGES = [
-    "tile_get_images", "tile_uncompress", "tile_find_exposures",
-    "tile_merge_headers", "tile_detect", "tile_vignets",
-    "tile_ngmix", "tile_merge_cats", "tile_make_cat",
+    "tile_get_images",
+    "tile_uncompress",
+    "tile_find_exposures",
+    "tile_merge_headers",
+    "tile_detect",
+    "tile_vignets",
+    "tile_ngmix",
+    "tile_merge_cats",
+    "tile_make_cat",
 ]
 UNIFIED_EXP_STAGES = ["exp_get_images", "exp_split", "exp_psf"]
 
@@ -91,8 +103,7 @@ def unit_records(unit_dir: Path):
         # creates the declared log path even for a job its cone never reached.
         # Counting those as failures turned one dead tile into a column of Xs
         # across every downstream stage (run_report calls them "not run").
-        failed |= {p.stem for p in ldir.glob("*.json")
-                   if p.stat().st_size > 0}
+        failed |= {p.stem for p in ldir.glob("*.json") if p.stat().st_size > 0}
     tomb = unit_dir / "cleaned.json"
     if tomb.exists():
         try:
@@ -167,8 +178,11 @@ def detect_layout(run_dir: Path) -> str:
         for unit_dir in units_of(run_dir, kind):
             done, failed = unit_records(unit_dir)
             names = done | failed
-            if any(_CHUNK_RE.match(m) for m in names) or "tile_merge_cats" in names \
-                    or "exp_psf" in names:
+            if (
+                any(_CHUNK_RE.match(m) for m in names)
+                or "tile_merge_cats" in names
+                or "exp_psf" in names
+            ):
                 return "unified"
             if "tile_fake_psf" in names:
                 return "native"
@@ -225,8 +239,7 @@ def stage_failures(unit_dir: Path, stage: str, n_chunks: int = 1) -> list:
     return out or ["no reason recorded"]
 
 
-def report_failures(run_dir: Path, kind: str, stages: list,
-                    n_chunks: int = 1) -> None:
+def report_failures(run_dir: Path, kind: str, stages: list, n_chunks: int = 1) -> None:
     """Every failed unit with its reasons, then the same grouped by reason."""
     units = units_of(run_dir, kind)
 
@@ -261,15 +274,15 @@ def report_failures(run_dir: Path, kind: str, stages: list,
     if not shared:
         return
     print("  by reason:")
-    for (stage, _), (reason, hit) in sorted(shared.items(),
-                                            key=lambda kv: -len(kv[1][1])):
+    for (stage, _), (reason, hit) in sorted(
+        shared.items(), key=lambda kv: -len(kv[1][1])
+    ):
         print(f"    {len(hit):>4}x {STAGE_ABBR[stage]:<8} {short_paths(reason)}")
         print(f"         {', '.join(hit[:8])}" + (" ..." if len(hit) > 8 else ""))
     print()
 
 
-def report_finished(run_dir: Path, kind: str, stages: list,
-                    n_chunks: int = 1) -> None:
+def report_finished(run_dir: Path, kind: str, stages: list, n_chunks: int = 1) -> None:
     """--very-short: the abbreviated header, and ONE row below it -- how many
     units have COMPLETED each step -- instead of one row per unit."""
     units = units_of(run_dir, kind)
@@ -283,8 +296,10 @@ def report_finished(run_dir: Path, kind: str, stages: list,
         # of full numbers and looks untouched -- the opposite of the pre-
         # tombstone behaviour, where it printed zeros and looked emptied.
         what = "store deleted" if n_cleaned == len(units) else "stores deleted"
-        print(f"  {n_cleaned}/{len(units)} RECLAIMED ({what}); the row below is "
-              f"what ran, read back from cleaned.json")
+        print(
+            f"  {n_cleaned}/{len(units)} RECLAIMED ({what}); the row below is "
+            f"what ran, read back from cleaned.json"
+        )
 
     header = f"{'':<12}" + "".join(f"{STAGE_ABBR[s]:>8}" for s in stages)
     print(header)
@@ -300,8 +315,9 @@ def report_finished(run_dir: Path, kind: str, stages: list,
     print(row)
 
 
-def report_units(run_dir: Path, kind: str, stages: list, *, short: bool = False,
-                 n_chunks: int = 1) -> None:
+def report_units(
+    run_dir: Path, kind: str, stages: list, *, short: bool = False, n_chunks: int = 1
+) -> None:
     units = units_of(run_dir, kind)
     if not units:
         print(f"No {kind} units found under {run_dir / kind}")
@@ -332,8 +348,10 @@ def report_units(run_dir: Path, kind: str, stages: list, *, short: bool = False,
     print(f"{len(units)} {kind} total")
     for s in stages:
         c = counts[s]
-        print(f"  {STAGE_ABBR[s]:<8} complete={c['complete']:<4} failed={c['failed']:<4} "
-              f"not-yet-run={c['missing']}")
+        print(
+            f"  {STAGE_ABBR[s]:<8} complete={c['complete']:<4} failed={c['failed']:<4} "
+            f"not-yet-run={c['missing']}"
+        )
     print()
 
 
@@ -393,23 +411,29 @@ def report_merged(products_dir: Path, cats: list) -> None:
     """
     merged = sorted(products_dir.glob("final_cat_*.hdf5"))
     if not merged:
-        print(f"merged hdf5: none in {products_dir} "
-              f"(run merge_final_cats, or create_final_cat.py -I -c <run config>)")
+        print(
+            f"merged hdf5: none in {products_dir} "
+            f"(run merge_final_cats, or create_final_cat.py -I -c <run config>)"
+        )
         return
 
     for path in merged:
         try:
             import h5py
         except ImportError:
-            print(f"merged hdf5: {path.name} ({path.stat().st_size / 1e6:.0f} MB)"
-                  "  -- install h5py to check its contents")
+            print(
+                f"merged hdf5: {path.name} ({path.stat().st_size / 1e6:.0f} MB)"
+                "  -- install h5py to check its contents"
+            )
             return
         try:
             with h5py.File(path, "r") as fh:
                 groups = {}
+
                 def walk(name, obj):
                     if isinstance(obj, h5py.Dataset):
                         groups[name] = obj.shape[0]
+
                 fh.visititems(walk)
         except OSError as exc:
             print(f"merged hdf5: {path.name} UNREADABLE ({exc})")
@@ -421,6 +445,7 @@ def report_merged(products_dir: Path, cats: list) -> None:
         for c in cats:
             try:
                 from astropy.io import fits
+
                 with fits.open(c, memmap=True) as hdus:
                     src_rows += hdus[1].header["NAXIS2"]
             except Exception:
@@ -433,8 +458,10 @@ def report_merged(products_dir: Path, cats: list) -> None:
             note = f"  MISMATCH: {len(cats)} final_cat files on disk"
         elif src_rows >= 0 and n_rows != src_rows:
             note = f"  MISMATCH: {src_rows:,} rows in the per-tile catalogues"
-        print(f"merged hdf5: {path.name}  {n_tiles} tiles, {n_rows:,} rows, "
-              f"{size:.0f} MB{note}")
+        print(
+            f"merged hdf5: {path.name}  {n_tiles} tiles, {n_rows:,} rows, "
+            f"{size:.0f} MB{note}"
+        )
 
     n_file = products_dir / "n_tiles_final.txt"
     if n_file.exists():
@@ -446,14 +473,19 @@ def report_merged(products_dir: Path, cats: list) -> None:
 def _expand(config: dict) -> dict:
     """Expand $name and ${name} in every value, from the top-level scalar keys,
     repeatedly (as ShapePipe's run_config.py does for an sp run config)."""
-    scalars = {k: v for k, v in config.items()
-               if isinstance(v, (str, int, float)) and not isinstance(v, bool)}
+    scalars = {
+        k: v
+        for k, v in config.items()
+        if isinstance(v, (str, int, float)) and not isinstance(v, bool)
+    }
 
     def sub(value, depth=0):
         if isinstance(value, str):
-            out = re.sub(r"\$\{(\w+)\}|\$(\w+)",
-                         lambda m: str(scalars.get(m.group(1) or m.group(2),
-                                                   m.group(0))), value)
+            out = re.sub(
+                r"\$\{(\w+)\}|\$(\w+)",
+                lambda m: str(scalars.get(m.group(1) or m.group(2), m.group(0))),
+                value,
+            )
             return out if out == value or depth >= 5 else sub(out, depth + 1)
         if isinstance(value, dict):
             return {k: sub(v, depth) for k, v in value.items()}
@@ -473,35 +505,59 @@ def run_dirs_from_config(path: Path):
     outputs = config.get("outputs") or {}
     run_dir = outputs.get("run_dir")
     if not run_dir or "$" in str(run_dir):
-        raise ValueError(f"{path}: outputs.run_dir is unset or unexpanded "
-                         f"({run_dir!r})")
+        raise ValueError(
+            f"{path}: outputs.run_dir is unset or unexpanded ({run_dir!r})"
+        )
     return Path(run_dir), Path(outputs.get("products_dir") or run_dir)
 
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("run_dir", type=Path, nargs="?",
-                   help="run directory; omit when passing -c")
-    p.add_argument("-c", "--config", type=Path,
-                   help="ShapePipe run config (sp_*.yaml): read outputs.run_dir "
-                        "and outputs.products_dir from it, $name/${name} expanded")
-    p.add_argument("-s", "--short", action="store_true",
-                   help="per-tile/per-exposure table only, no aggregate "
-                        "'N units total' / per-stage count summary")
-    p.add_argument("-S", "--very-short", action="store_true",
-                   help="no per-unit table at all -- just 'N/M finished' "
-                        "for tiles and exposures, once each (overrides -s)")
-    p.add_argument("-p", "--products", type=Path,
-                   help="products root, when it is neither the run dir nor a "
-                        "product/ sibling of it")
-    p.add_argument("--du", action="store_true",
-                   help="also measure the run directory on disk (a full walk; "
-                        "slow on a live campaign, instant on a reclaimed one)")
-    p.add_argument("--layout", choices=("auto", "native", "unified"),
-                   default="auto",
-                   help="stage set to report: the sp_validation native "
-                        "prototype, the unified ShapePipe workflow, or auto "
-                        "(default) to read it off the run dir")
+    p.add_argument(
+        "run_dir", type=Path, nargs="?", help="run directory; omit when passing -c"
+    )
+    p.add_argument(
+        "-c",
+        "--config",
+        type=Path,
+        help="ShapePipe run config (sp_*.yaml): read outputs.run_dir "
+        "and outputs.products_dir from it, $name/${name} expanded",
+    )
+    p.add_argument(
+        "-s",
+        "--short",
+        action="store_true",
+        help="per-tile/per-exposure table only, no aggregate "
+        "'N units total' / per-stage count summary",
+    )
+    p.add_argument(
+        "-S",
+        "--very-short",
+        action="store_true",
+        help="no per-unit table at all -- just 'N/M finished' "
+        "for tiles and exposures, once each (overrides -s)",
+    )
+    p.add_argument(
+        "-p",
+        "--products",
+        type=Path,
+        help="products root, when it is neither the run dir nor a "
+        "product/ sibling of it",
+    )
+    p.add_argument(
+        "--du",
+        action="store_true",
+        help="also measure the run directory on disk (a full walk; "
+        "slow on a live campaign, instant on a reclaimed one)",
+    )
+    p.add_argument(
+        "--layout",
+        choices=("auto", "native", "unified"),
+        default="auto",
+        help="stage set to report: the sp_validation native "
+        "prototype, the unified ShapePipe workflow, or auto "
+        "(default) to read it off the run dir",
+    )
     args = p.parse_args(argv)
 
     if args.config:

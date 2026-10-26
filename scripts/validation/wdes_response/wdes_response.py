@@ -130,9 +130,7 @@ def responses(gm, wts, keep=None):
     for a, comp in enumerate(("g1", "g2")):
         for b, (p, m) in enumerate((("p1", "m1"), ("p2", "m2"))):
             R_sel[a, b] = (mean(gm.ns, p, comp) - mean(gm.ns, m, comp)) / h2
-            R_joint[a, b] = (
-                mean(branch[p], p, comp) - mean(branch[m], m, comp)
-            ) / h2
+            R_joint[a, b] = (mean(branch[p], p, comp) - mean(branch[m], m, comp)) / h2
     return R_shear + R_sel, R_joint, R_shear, R_sel
 
 
@@ -170,10 +168,17 @@ def run_branch(sim_dir, out_root):
     )
     cat_gal = {}
     sp_joint.compute_weights_gatti(
-        cat_gal, g_uncorr, gm, dat, mask_combined, mask_metacal,
+        cat_gal,
+        g_uncorr,
+        gm,
+        dat,
+        mask_combined,
+        mask_metacal,
         num_bins=N_BINS,
-        snr_min=cm["gal_snr_min"], snr_max=cm["gal_snr_max"],
-        size_ratio_min=cm["gal_rel_size_min"], size_ratio_max=cm["gal_rel_size_max"],
+        snr_min=cm["gal_snr_min"],
+        snr_max=cm["gal_snr_max"],
+        size_ratio_min=cm["gal_rel_size_min"],
+        size_ratio_max=cm["gal_rel_size_max"],
     )
 
     dat_m = dat[mask_combined._mask]
@@ -181,8 +186,13 @@ def run_branch(sim_dir, out_root):
 
     # w_des table from the no-shear sample, checked against the catalogue's
     edges_s, edges_r, table = w_table(
-        cat_gal["snr"], cat_gal["size_ratio"], g_uncorr[0], g_uncorr[1],
-        cat_gal["R_g11"], cat_gal["R_g22"], cm,
+        cat_gal["snr"],
+        cat_gal["size_ratio"],
+        g_uncorr[0],
+        g_uncorr[1],
+        cat_gal["R_g11"],
+        cat_gal["R_g22"],
+        cm,
     )
     snr_ns, size_ns = snr_size(dat_m, "NOSHEAR")
     w_c, bad_c = eval_table(snr_ns, size_ns, edges_s, edges_r, table)
@@ -203,15 +213,20 @@ def run_branch(sim_dir, out_root):
 
     # w_iv per branch: C from a fit on the no-shear selection
     sig2 = 2 * cm["sigma_eps_prior"] ** 2
-    C_ns = np.asarray(dat_m["NGMIX_G1_ERR_NOSHEAR"] + dat_m["NGMIX_G2_ERR_NOSHEAR"], float)
+    C_ns = np.asarray(
+        dat_m["NGMIX_G1_ERR_NOSHEAR"] + dat_m["NGMIX_G2_ERR_NOSHEAR"], float
+    )
     w_iv_ns = 1 / (sig2 + C_ns)
     dev = np.max(np.abs(w_iv_ns / gm.ns["w"] - 1))
     print(f"  w_iv check: max rel dev = {dev:.2e}", flush=True)
     if dev > 1e-12:
         raise ValueError(f"{name}: w_iv from G_ERR does not reproduce gm.ns['w']")
     coef, resid = fit_lnC(snr_ns[ma], size_ns[ma], C_ns[ma])
-    print(f"  ln C fit (deg {DEG_C}) on S_ns: rms resid {resid.std():.4f},"
-          f" coef {np.array2string(coef, precision=4)}", flush=True)
+    print(
+        f"  ln C fit (deg {DEG_C}) on S_ns: rms resid {resid.std():.4f},"
+        f" coef {np.array2string(coef, precision=4)}",
+        flush=True,
+    )
     with np.errstate(invalid="ignore"):
         f_ns = eval_lnC(snr_ns, size_ns, coef)
     no_ns = ~np.isfinite(f_ns)
@@ -225,15 +240,21 @@ def run_branch(sim_dir, out_root):
         C_b = np.where(no_ns, np.exp(f_b), C_ns * np.exp(f_b - f_ns))
         w_iv_d[b] = 1 / (sig2 + C_b)
         sel = gm.mask_dict[b]
-        print(f"  iv_d {b}: {int(no_ns[sel].sum())} objects on S_{b} without"
-              " valid no-shear snr/size, fit value used", flush=True)
+        print(
+            f"  iv_d {b}: {int(no_ns[sel].sum())} objects on S_{b} without"
+            " valid no-shear snr/size, fit value used",
+            flush=True,
+        )
         if not np.all(np.isfinite(w_iv_d[b][sel])):
             raise ValueError(f"{name}: non-finite iv_d weight on S_{b}")
         ratio = w_iv_d[b][sel] / w_iv_ns[sel] - 1
         comp = "g1" if b in ("p1", "m1") else "g2"
         rho = np.corrcoef(ratio, gm.ns[comp][sel])[0, 1]
-        print(f"  iv_d {b}: w/w_ns - 1 median {np.median(ratio):+.2e}"
-              f" rms {ratio.std():.2e}, corr with {comp}_ns {rho:+.3f}", flush=True)
+        print(
+            f"  iv_d {b}: w/w_ns - 1 median {np.median(ratio):+.2e}"
+            f" rms {ratio.std():.2e}, corr with {comp}_ns {rho:+.3f}",
+            flush=True,
+        )
 
     # w_iv per branch: change of C from the mean C per w_des box
     i_s, i_r = cell_index(snr_ns[ma], size_ns[ma], edges_s, edges_r, like_pandas=True)
@@ -260,9 +281,11 @@ def run_branch(sim_dir, out_root):
         ratio = w_iv_box[b][sel] / w_iv_ns[sel] - 1
         comp = "g1" if b in ("p1", "m1") else "g2"
         rho = np.corrcoef(ratio, gm.ns[comp][sel])[0, 1]
-        print(f"  iv_box {b}: {n_moved} of {len(sel)} change box, {n_empty} in empty"
-              f" box; w/w_ns - 1 rms {ratio.std():.2e}, corr with {comp}_ns {rho:+.3f}",
-              flush=True)
+        print(
+            f"  iv_box {b}: {n_moved} of {len(sel)} change box, {n_empty} in empty"
+            f" box; w/w_ns - 1 rms {ratio.std():.2e}, corr with {comp}_ns {rho:+.3f}",
+            flush=True,
+        )
 
     schemes = {
         "iv": {b: gm.ns["w"] for b in BRANCHES},
@@ -280,8 +303,11 @@ def run_branch(sim_dir, out_root):
         RJ_disk = np.array([[hdr[f"RJ_{i}{j}"] for j in (1, 2)] for i in (1, 2)])
         e_uncal_disk = np.array([hdul[1].data["e1_uncal"], hdul[1].data["e2_uncal"]])
     R_iv, RJ_iv, _, _ = responses(gm, schemes["iv"])
-    print(f"  iv check: |R - R_disk| = {np.max(np.abs(R_iv - R_disk)):.2e},"
-          f" |RJ - RJ_disk| = {np.max(np.abs(RJ_iv - RJ_disk)):.2e}", flush=True)
+    print(
+        f"  iv check: |R - R_disk| = {np.max(np.abs(R_iv - R_disk)):.2e},"
+        f" |RJ - RJ_disk| = {np.max(np.abs(RJ_iv - RJ_disk)):.2e}",
+        flush=True,
+    )
     if np.max(np.abs(R_iv - R_disk)) > 1e-8 or np.max(np.abs(RJ_iv - RJ_disk)) > 1e-8:
         raise ValueError(f"{name}: iv response does not reproduce the catalogue")
     if np.max(np.abs(e_uncal_disk - g_uncorr)) > 1e-10:
@@ -291,14 +317,19 @@ def run_branch(sim_dir, out_root):
     for scheme, wts in schemes.items():
         R, RJ, R_sh, R_se = responses(gm, wts)
         n_eff = {
-            b: float(wts[b][gm.mask_dict[b]].sum() ** 2
-                     / (wts[b][gm.mask_dict[b]] ** 2).sum())
+            b: float(
+                wts[b][gm.mask_dict[b]].sum() ** 2
+                / (wts[b][gm.mask_dict[b]] ** 2).sum()
+            )
             for b in BRANCHES
         }
-        print(f"  {scheme}: R_shear diag {R_sh[0,0]:.4f} {R_sh[1,1]:.4f}"
-              f"  R_sel diag {R_se[0,0]:+.4f} {R_se[1,1]:+.4f}"
-              f"  RJ diag {RJ[0,0]:.4f} {RJ[1,1]:.4f}"
-              f"  N_eff(ns) {n_eff['ns']:.0f} of {len(ma)}", flush=True)
+        print(
+            f"  {scheme}: R_shear diag {R_sh[0, 0]:.4f} {R_sh[1, 1]:.4f}"
+            f"  R_sel diag {R_se[0, 0]:+.4f} {R_se[1, 1]:+.4f}"
+            f"  RJ diag {RJ[0, 0]:.4f} {RJ[1, 1]:.4f}"
+            f"  N_eff(ns) {n_eff['ns']:.0f} of {len(ma)}",
+            flush=True,
+        )
         R_jk = np.empty((len(labels_jk), 2, 2))
         RJ_jk = np.empty((len(labels_jk), 2, 2))
         for k, t in enumerate(labels_jk):
@@ -318,17 +349,28 @@ def run_branch(sim_dir, out_root):
                     h0[f"R_G{i}{j}"] = R_sh[i - 1, j - 1]
                     h0[f"R_S{i}{j}"] = R_se[i - 1, j - 1]
             h0["RWEIGHT"] = (scheme, "weighting of the response (wdes_response.py)")
-            cols = [fits.Column(name="TILE_ID", array=labels_jk,
-                                format=f"{max(len(t) for t in labels_jk)}A")]
+            cols = [
+                fits.Column(
+                    name="TILE_ID",
+                    array=labels_jk,
+                    format=f"{max(len(t) for t in labels_jk)}A",
+                )
+            ]
             for key, resp in (("R", R_jk), ("RJ", RJ_jk)):
                 for i in (1, 2):
                     for j in (1, 2):
-                        cols.append(fits.Column(name=f"{key}_{i}{j}",
-                                                array=resp[:, i - 1, j - 1], format="D"))
+                        cols.append(
+                            fits.Column(
+                                name=f"{key}_{i}{j}",
+                                array=resp[:, i - 1, j - 1],
+                                format="D",
+                            )
+                        )
             jk = fits.BinTableHDU.from_columns(cols, name="R_JK")
             hdus = fits.HDUList([hdul[0], hdul[1], jk])
-            hdus.writeto(os.path.join(out_dir, "shape_catalog_cut_ngmix.fits"),
-                         overwrite=True)
+            hdus.writeto(
+                os.path.join(out_dir, "shape_catalog_cut_ngmix.fits"), overwrite=True
+            )
 
 
 def main():

@@ -1,6 +1,8 @@
 """Write an m-bias config for one grid and response weighting, from the
 workflow's own config with only the paths changed."""
+
 import sys
+
 import yaml
 
 grid, scheme, out_root = sys.argv[1], sys.argv[2], sys.argv[3]
