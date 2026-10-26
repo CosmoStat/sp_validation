@@ -2,7 +2,8 @@
 
 Definitions: Martin Kilbinger's 6 October 2026 slide, p14 (S1), and
 /n23data1/mkilbing/imsim_wdes_response/wdes_response.py, case d.
-Spatial deletion follows his b268fd64 response_jackknife; W stays fixed.
+Spatial deletion follows his b268fd64 response_jackknife, with fixed-W
+comparisons and retained-sample refits in calibration.metacal.
 No detection response is inferred from aligned metacal branches.
 """
 
@@ -33,7 +34,7 @@ def cell_index(x, edges):
 def evaluate_w(table, snr, size):
     """Evaluate one fixed table, including rows absent from the training sample.
 
-    Empty/invalid cells and nonfinite coordinates get zero weight.
+    Unpooled empty/invalid cells and nonfinite coordinates get zero weight.
     """
     es, er, values, _ = table
     w = values[cell_index(snr, es), cell_index(size, er)].copy()

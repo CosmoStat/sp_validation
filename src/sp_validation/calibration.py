@@ -43,14 +43,14 @@ def metacal_from_config(data, mask, cm, verbose=False):
         weight_scheme=cm.get("weight_scheme"),
         legacy_response=not modern,
         des_num_bins=cm.get("des_num_bins", 20),
-        des_min_count=cm.get("des_min_count", 0),
+        des_min_count=cm.get("des_min_count", 3),
         w_col=cm.get("w_col"),
         verbose=verbose,
     )
 
 
 def save_response_product(path, gm, groups=None):
-    """Attach matrix definitions, fixed W, and spatial response/c covariance.
+    """Attach matrix definitions, fitted W, and spatial response/c covariance.
 
     groups are aligned to the preselected parent, never only the ns selection.
     """
@@ -78,6 +78,8 @@ def save_response_product(path, gm, groups=None):
             if hasattr(gm, "branch_migration"):
                 hdr[f"MIG_{b}"] = gm.branch_migration[b]
         if hasattr(gm, "W"):
+            hdr["DESNMIN"] = (gm._des_min_count, "Minimum DES training count")
+            hdr["DESMERGE"] = "concentric square; pooled moments"
             es, er, w, count = gm.W
             hdus.append(fits.ImageHDU(w, name="W_DES"))
             hdus.append(fits.ImageHDU(count, name="W_COUNT"))
@@ -857,7 +859,7 @@ class metacal:
         weight_scheme=None,
         legacy_response=False,
         des_num_bins=20,
-        des_min_count=0,
+        des_min_count=3,
         w_col=None,
     ):
         if weight_scheme is not None and global_R_weight is not None:

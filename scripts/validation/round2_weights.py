@@ -21,7 +21,7 @@ EXTERNAL = ("1p2z", "1m2z", "1z2p", "1z2m")
 SUFFIX = dict(ns="NOSHEAR", p1="1P", m1="1M", p2="2P", m2="2M")
 
 
-def load(grid, name, scheme, exact=True):
+def load(grid, name, scheme, exact=True, min_count=None):
     directory = BASE / f"grid_{grid}/{name}_grid_{grid}"
     with open(directory / "config_mask.yaml") as f:
         cfg = yaml.safe_load(f)
@@ -61,6 +61,8 @@ def load(grid, name, scheme, exact=True):
     cm = cfg["metacal"].copy()
     cm.pop("global_R_weight", None)
     cm.update(weight_scheme=scheme, w_col=f"w_{scheme}", des_num_bins=20)
+    if min_count is not None:
+        cm["des_min_count"] = min_count
     gm = calibration.metacal_from_config(data, pre, cm)
     tiles = np.char.strip(np.asarray(data["TILE_ID"][pre]).astype(str))
     return gm, tiles
@@ -166,9 +168,14 @@ def check_production(grid, output):
             Path("/n23data1/mkilbing/imsim_wdes_response")
             / f"grid_{grid}/des_d/{label}/{path.name}"
         )
+        calibrated, raw, weights, *_ = calibration.get_calibrated_m_c(gm, False)
         with fits.open(source) as hdus:
-            fits.HDUList([hdus[0].copy(), hdus[1].copy()]).writeto(path, overwrite=True)
-        calibration.get_calibrated_m_c(gm, False)
+            product = fits.HDUList([hdus[0].copy(), hdus[1].copy()])
+            for i in (0, 1):
+                np.testing.assert_allclose(product[1].data[f"e{i + 1}_uncal"], raw[i])
+                product[1].data[f"e{i + 1}"] = calibrated[i]
+            product[1].data["w_des"] = weights
+            product.writeto(path, overwrite=True)
         calibration.save_response_product(path, gm, tiles)
     estimator = ImageSimMBias(
         {**cfg, "grids_dir": str(directory), "w_cols": ["w_des"], "pair_match": False}

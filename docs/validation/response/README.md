@@ -3,20 +3,20 @@
 These are observed results on Martin's four unblinded image-simulation grids.
 Each grid contains five external-shear branches, with 39, 42, 32 and 35 shared tile labels on grids 1–4.
 The injected shear is 0.025 from the existing manifest-derived m config; the metacal step is 0.01.
-The parent revision and committed production implementation are recorded in each linked JSON file.
-[Tests](tests.md): the final fast suite has **563 passes** and the **four known develop failures**.
-All four production FITS-to-m/c checks reproduce the direct refit-W results to `atol=1e-13`.
+The earlier validation JSONs record their parent revisions; sparse-cell pooling was introduced in commit `354d0898`.
+[Tests](tests.md) record the fast suite and production FITS-to-m/c checks.
+The primary DES table uses the minimum-count rule below with **N_min = 3**.
 [Previous fixed-W production comparison](production_comparison.json): all m/error differences were below 5×10⁻¹⁶.
 The primary uncertainties below now refit W within each spatial deletion.
 
-| Grid | Martin paired (m1, m2) | New paired (m1, m2) | New unpaired m1 | New unpaired m2 |
-| --- | --- | --- | --- | --- |
-| 1 | +0.003488, +0.010282 | +0.003488, +0.010282 | -0.011566 ± 0.010969 | -0.005699 ± 0.011536 |
-| 2 | -0.011310, -0.003263 | -0.011310, -0.003263 | -0.020121 ± 0.013565 | -0.018895 ± 0.008158 |
-| 3 | -0.010499, -0.001497 | -0.010499, -0.001497 | -0.025214 ± 0.007499 | -0.011697 ± 0.009114 |
-| 4 | +0.002463, -0.000462 | +0.002463, -0.000462 | -0.015902 ± 0.008226 | -0.017761 ± 0.051197 |
+| Grid | Full-population m1 ± refit-W error | Full-population m2 ± refit-W error |
+| --- | --- | --- |
+| 1 | -0.011818 ± 0.010959 | -0.004920 ± 0.011124 |
+| 2 | -0.022088 ± 0.009219 | -0.018779 ± 0.008230 |
+| 3 | -0.024994 ± 0.007144 | -0.011730 ± 0.008891 |
+| 4 | -0.015556 ± 0.006673 | -0.018473 ± 0.009761 |
 
-The paired reproduction matches cuts (including FLAGS≤2), 20×20 table, right-closed interior cells, pair matching radius and symmetric pair weights.
+With `des_min_count: 0`, the paired reproduction matches cuts (including FLAGS≤2), 20×20 table, right-closed interior cells, pair matching radius and symmetric pair weights.
 Across all 20 external-shear products, max |R_new−R_Martin| = 7.04e-16, max relative W difference = 5.88e-15, and max paired-m difference = 4.22e-16.
 The comparison uses `/n23data1/mkilbing/imsim_wdes_response/grid_*/des_d/results/m_bias_results.yaml`, specifically `weights.w_des`, not its unweighted top-level headline.
 
@@ -35,7 +35,7 @@ IV now uses measured errors on each artificial branch, not proxies or frozen no-
 No mean shear is subtracted from these constant-shear simulations.
 These runs validate agreement with Martin's implementation, not a new fiducial residual-m calibration for blinded v2 data.
 
-![Three-estimator diagnostic (conditional fixed-W errors)](m_comparison.png)
+![Three-estimator diagnostic before sparse-cell pooling, N_min=0 (conditional fixed-W errors)](m_comparison.png)
 
 ## Exact inverse-variance mode
 
@@ -64,30 +64,76 @@ The common full-population estimator is used for both IV and DES.
 **ShapePipe change:** retain all branch G_ERR columns in the final-catalogue merge allow-list; ngmix and tile-final writers already supply them.
 No issue was filed.
 
-## Fitted-weight uncertainty
+## Sparse cells and fitted-weight uncertainty
 
-**Decision:** refit-W is primary; fixed-W is a conditional comparison.
-The DES table edges and all cuts stay fixed.
-For each retained no-shear sample, refit its cell moments once, evaluate that table on all five artificial branches, and recompute both the normalized numerator and R.
-FITS `R_JK` saves these calibrated deleted means as `c_g1,c_g2`; the production m estimator consumes them rather than applying a refitted R to fixed-W means.
+**Decision:** use `des_min_count: 3` and make refit-W errors primary.
+A cell with at least three valid no-shear training objects retains Martin's W = mean(trace R/2)² / mean(|e|²/2), exactly.
+For a cell below that threshold, grow a concentric square in the fixed logarithmic SNR × size cell grid, one cell-index radius at a time, clipping at the table boundaries.
+Use the first square reaching N_min and pool its response sums, ellipticity second-moment sums and counts; do not average its cell weights.
+If the entire training sample has fewer than N_min objects, use its pooled moments.
+This is the smallest neighbourhood within that deterministic square-window family, not a search over arbitrary rectangles.
+The same fitted table supplies every artificial branch, including newly occupied cells.
+Every spatial deletion repeats the training-count test and pooling on its retained no-shear population, keeping edges and cuts fixed.
+Original unmerged training counts remain in `W_COUNT`; FITS headers record `DESNMIN` and `DESMERGE`.
+`des_min_count: 0` preserves the exact unregularized comparison, and historical legacy calibration is unchanged.
 
-| Grid | Fixed-W σ(m1) | Refit-W σ(m1) | Ratio | Fixed-W σ(m2) | Refit-W σ(m2) | Ratio |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | 0.009560 | 0.010969 | 1.147 | 0.009517 | 0.011536 | 1.212 |
-| 2 | 0.007458 | 0.013565 | 1.819 | 0.006948 | 0.008158 | 1.174 |
-| 3 | 0.006405 | 0.007499 | 1.171 | 0.007920 | 0.009114 | 1.151 |
-| 4 | 0.006715 | 0.008226 | 1.225 | 0.010664 | 0.051197 | 4.801 |
+The [complete ladder](sparse_ladder.md) reports m, fixed/refit errors, occupancy shares at every threshold, public-release affected fractions and sampling noise.
+It covers N_min = 0, 3, 5, 10, 30, 100, 300, 1000 on every grid; full covariance and deletions are in `sparse_grid_{1,2,3,4}.json`, ordered (m1,c1,m2,c2).
+All four N_min=0 baselines reproduce the round-2 values, errors, covariance and deletions within 1e-13.
 
-Every m error increases by more than 10%; fixing W understates this estimator's sampling uncertainty.
-The grid-4 m2 increase is observed, not a numerical inversion failure: deletion of tile 275.282 gives m2 = −0.06974 and contributes 93.9% of the jackknife variance.
-In the negative external-g2 sample, its most changed cell drops from three training objects to two, and W rises from 83.8 to 7730.4; the refitted response is finite but changes substantially.
-This identifies a sparse-table sensitivity rather than evidence for a precisely calibrated grid-4 m2.
-No clipping, smoothing or alternative table definition was introduced to hide that uncertainty.
-The full-sample m values are unchanged.
-[Fixed/refit covariance and all deletions](refit_w_results.json) preserve the evidence in (m1,c1,m2,c2) order.
+**The first stable error plateau is N_min = 3–10.**
+Across all eight m errors, changing 3 to either 5 or 10 changes the refit-W error by at most **6.78%**.
+N_min≤2 cannot fix the observed two-object deletion cell; 3 is the smallest integer that can.
+Grid-4 σ(m2) falls from 0.051197 to **0.009761**; its largest single deletion now contributes **13.8%**, rather than 93.9%, of the variance.
+For tile 275.282, the offending cell's W goes from 83.8 to **27.2** after deletion, rather than to 7730.4.
+N_min=3 leaves that full-sample three-object cell unchanged.
+Higher thresholds increasingly alter the estimator rather than just removing the one-/two-object tail: at N_min=10 grid-4 m1 shifts by 0.66σ, and at 100 grid-3 m1 shifts by 0.86σ.
+Those larger changes are unnecessary on the observed plateau.
+No hard W cap or shrinkage parameter is added.
+This is an empirical stability decision for these grids, not a guarantee that every three-object W is precise.
 
-![DES refit/fixed uncertainties](refit_w_errors.png)
-![Full-population IV and DES m](iv_des_m.png)
+| Grid | Δm1 (chosen − N_min=0) | Δm2 | Δm1 / chosen σ(m1) | Δm2 / chosen σ(m2) |
+| --- | ---: | ---: | ---: | ---: |
+| 1 | -0.000253 | +0.000779 | -0.023 | +0.070 |
+| 2 | -0.001967 | +0.000115 | -0.213 | +0.014 |
+| 3 | +0.000220 | -0.000033 | +0.031 | -0.004 |
+| 4 | +0.000346 | -0.000712 | +0.052 | -0.073 |
+
+The largest m shift is **0.213 of its primary error**; the other seven are below 0.073σ.
+[Paired-deletion errors on these shifts](sparse_shifts.json) retain the covariance with the unregularized estimator.
+
+### Occupancy and weight noise
+
+The 20×20 tables have 400 occupied cells on every no-external-shear grid and 399 on the public release.
+The fixed log edges are SNR 10–500 and T/T_PSF 0.707–3; release training uses all 61,378,891 released cut objects, without reselecting or copying the catalogue.
+Counts below are valid training counts before any merging; weight shares use the reconstructed N_min=0 table.
+The JSON also records each of the four externally sheared training samples per grid, since those train the m measurement.
+
+| Sample | Training objects | Min / median / max occupied-cell count | Objects in cells below 3 | Their weight share (%) |
+| --- | ---: | --- | ---: | ---: |
+| Grid 1 | 98,608 | 1 / 159.5 / 888 | 4 | 0.0494 |
+| Grid 2 | 103,131 | 3 / 172.5 / 909 | 0 | 0 |
+| Grid 3 | 103,517 | 2 / 170.5 / 933 | 2 | 0.0024 |
+| Grid 4 | 80,615 | 2 / 130 / 700 | 6 | 0.0137 |
+| Public v1.4.6.3 | 61,378,891 | 1 / 63,814 / 1,308,682 | 3 | 0.00000498 |
+
+On the release the chosen rule affects three objects, **0.00000489%** of the population, carrying **0.00000498%** of reconstructed DES weight or **0.00000332%** of the actual released weight.
+Its three under-threshold cells include one empty cell, whose evaluation weight can change without affecting a released object.
+At N_min=10, 30, 100, 300 the affected release populations are 54, 193, 966, 2253 objects; their reconstructed weight shares are 0.000217%, 0.000680%, 0.003152%, 0.006512%.
+
+Within each grid's cells having at least 100 parent objects, 300 bootstrap draws at each resampled count measure SD(W)/mean(W), with fixed seed 425 and equal weighting of cells.
+The median across cells is **189–199% at count 2**, **124–130% at 3**, **45–46% at 10**, **23–24% at 30**, **12–13% at 100**, **6.9–7.2% at 300**, and **3.8–3.9% at 1000**.
+The large-count scaling is approximately N^(-1/2); at very small counts the nonlinear ratio has a much larger tail.
+Thus individual sparse-cell W estimates remain noisy even on the selected plateau; the decision uses the measured stability of m and its refitted uncertainty, not a claim of small per-cell W error.
+
+Refit-W remains primary because it propagates the fitted-table uncertainty and its covariance with response and numerator, not because it must exceed fixed-W in every component.
+For each deletion, refit once and recompute both the normalized numerator and R on every branch.
+FITS `R_JK` saves the calibrated deleted means as `c_g1,c_g2`; the production m estimator consumes them rather than applying a refitted R to fixed-W means.
+The [round-2 unregularized covariance](refit_w_results.json) remains as the sparse-cell failure comparison.
+
+![DES count ladder: refit-W solid, conditional fixed-W dashed](refit_w_errors.png)
+![Training occupancy, sparse-cell shares and W sampling noise](occupancy.png)
+![Full-population IV and unregularized DES m, N_min=0](iv_des_m.png)
 
 ## Paper I calibration provenance
 
@@ -98,7 +144,7 @@ Martin's retained `v2.0/image_sims/grids_1/results/m_bias_config.yaml` and `grid
 Thus those configs establish a paired/unweighted recipe, not verified provenance for that exact published estimate.
 
 **Inferred comparison:** subtracting the approximately −0.02 blending contribution implies a Paper-I grid component near −0.0372, not −0.0572.
-The new full-population DES grid averages are m1 = −0.01919 ± 0.00465 and m2 = −0.01357 ± 0.00535 with primary refit-W errors; they are about 1.8 and 2.4 percentage points less negative than that approximate component.
+The minimum-count full-population DES grid averages are m1 = −0.01927 ± 0.00401 and m2 = −0.01434 ± 0.00466 with primary refit-W errors; they are about 1.8 and 2.3 percentage points less negative than that approximate component.
 These inverse-variance combination errors assume independent grids; no significance for the historical/new difference is assigned.
 This is a comparison of different pipeline/cut choices (the current grids include FLAGS≤2), not an isolated measurement of an estimator change.
 No historical weight/pairing assignment beyond the evidence above is made, and no new fiducial residual m is adopted.
@@ -113,6 +159,7 @@ No historical weight/pairing assignment beyond the evidence above is made, and n
 ## Two-point response: stage 1 only
 
 **Stage 1 is measured on the full public v1.4.6.3 release and all four unblinded grids, with shared-patch jackknife errors.**
+The grid curves below retain their round-2 N_min=0 weights; the public curve uses the actual released weights, not a recalibrated catalogue.
 The angular bins cover the science range 1–250 arcmin (20 logarithmic bins, matching the release ξ± reporting products).
 Define r_i = (R_g11,i + R_g22,i)/2 and R_global = sum(w_i r_i)/sum(w_i), using the selected sample's science DES weights, not the historical IV-weighted FITS header.
 The measured curve is f(θ) = δR_2pt/R_global² = sum_pairs(w_i w_j r_i r_j)/sum_pairs(w_i w_j)/R_global² − 1.
@@ -173,4 +220,8 @@ Run `scripts/validation/round2_weights.py --grid N --output <root>` for the exac
 Add `--production-check` to round-trip the refit-W means through FITS and `ImageSimMBias`.
 Run `scripts/validation/round2_pairs.py --sample public --output <root>` and repeat with `--sample 1`, `2`, `3`, `4` for the stage-1 curves.
 Run `scripts/validation/summarize_round2.py <root> docs/validation/response` for the comparison figures.
-Refit-W covariance is primary because its measured m errors exceed fixed-W by 15–380%.
+For round 3, use allocation 1037411 and output root `/n17data/cdaley/scratch/response-pr/round3/`.
+Run `scripts/validation/round3_sparse.py --sample N --output <root>` for each of 1, 2, 3, 4, public; its default ladder includes all eight thresholds.
+`--counts 3 5` selects a follow-up sub-ladder; the archived follow-up outputs live under `<root>/low-count/`.
+Run `scripts/validation/summarize_round3.py <root> docs/validation/response --chosen 3` for the merged tables, covariance summaries and figures.
+Modern DES defaults to N_min=3; refit-W covariance is primary and fixed-W remains conditional.

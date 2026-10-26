@@ -15,7 +15,7 @@ from round2_weights import BASE, EXTERNAL, calibrated_mean, covariance, load
 
 from sp_validation import response
 
-LADDER = (0, 10, 30, 100, 300, 1000)
+LADDER = (0, 3, 5, 10, 30, 100, 300, 1000)
 
 
 def occupancy(count, weight_sum):
@@ -76,25 +76,50 @@ def sampling_noise(gm):
 
 
 def grid_run(grid, output):
-    gm0, _ = load(grid, "1z2z", "des")
+    gm0, _ = load(grid, "1z2z", "des", min_count=0)
     occ = {}
     count = gm0.W[3]
     occ["1z2z"] = occupancy(count, count * gm0.W[2])
     noise = sampling_noise(gm0)
+    fragility = {}
     del gm0
     with open(BASE / f"grid_{grid}/results/m_bias_config.yaml") as f:
         gin = yaml.safe_load(f)["shear_amplitude"]
     means = {n: {} for n in LADDER}
     deletes = {n: {"fixed": {}, "refit": {}} for n in LADDER}
     for name in EXTERNAL:
-        gm, tiles = load(grid, name, "des")
+        gm, tiles = load(grid, name, "des", min_count=0)
         occ[name] = occupancy(gm.W[3], gm.W[3] * gm.W[2])
         for n in LADDER:
             gm._des_min_count = n
             gm._prepare_weights()
+            if grid == 4 and name == "1z2m":
+                snr, size, e, r = training(gm)
+                keep = tiles[gm.mask_dict["ns"]] != "275.282"
+                table = response.fit_w(
+                    snr[keep],
+                    size[keep],
+                    e[:, keep],
+                    r[keep],
+                    gm.W[0],
+                    gm.W[1],
+                    min_count=n,
+                )
+                if n == LADDER[0]:
+                    raw = response.fit_w(
+                        snr[keep], size[keep], e[:, keep], r[keep], gm.W[0], gm.W[1]
+                    )
+                    cell = np.unravel_index(np.argmax(raw[2]), raw[2].shape)
+                fragility[str(n)] = dict(
+                    cell=list(map(int, cell)),
+                    full_count=int(gm.W[3][cell]),
+                    deleted_count=int(table[3][cell]),
+                    full_w=float(gm.W[2][cell]),
+                    deleted_w=float(table[2][cell]),
+                )
             means[n][name] = calibrated_mean(gm, gm.branch_weights)
             for policy in ("fixed", "refit"):
-                _, jk, labels = gm.response_jackknife(tiles, refit_w=policy == "refit")
+                labels, jk, _ = gm.response_jackknife(tiles, refit_w=policy == "refit")
                 deletes[n][policy][name] = jk["c_g"]
             print(grid, name, n, flush=True)
 
@@ -121,7 +146,9 @@ def grid_run(grid, output):
                 deleted=jk.tolist(),
                 labels=labels.tolist(),
             )
-    result = dict(occupancy=occ, sampling_noise=noise, ladder=results)
+    result = dict(
+        occupancy=occ, sampling_noise=noise, ladder=results, grid4_deletion=fragility
+    )
     (output / f"sparse_grid_{grid}.json").write_text(json.dumps(result, indent=2))
 
 
@@ -156,7 +183,9 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--sample", required=True, choices=["public", "1", "2", "3", "4"])
     p.add_argument("--output", type=Path, required=True)
+    p.add_argument("--counts", type=int, nargs="+", default=LADDER)
     a = p.parse_args()
+    LADDER = tuple(a.counts)
     a.output.mkdir(parents=True, exist_ok=True)
     if a.sample == "public":
         public_run(a.output)
