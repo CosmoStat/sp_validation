@@ -43,6 +43,7 @@ def metacal_from_config(data, mask, cm, verbose=False):
         weight_scheme=cm.get("weight_scheme"),
         legacy_response=not modern,
         des_num_bins=cm.get("des_num_bins", 20),
+        des_min_count=cm.get("des_min_count", 0),
         w_col=cm.get("w_col"),
         verbose=verbose,
     )
@@ -379,6 +380,7 @@ def fit_w_des(
     snr_max=None,
     size_ratio_min=None,
     size_ratio_max=None,
+    min_count=0,
 ):
     """Fit once on raw no-shear shapes; evaluate via response.evaluate_w."""
     return response.fit_w(
@@ -390,6 +392,7 @@ def fit_w_des(
         create_bins(
             cat_gal["size_ratio"], num_bins, x_min=size_ratio_min, x_max=size_ratio_max
         ),
+        min_count=min_count,
     )
 
 
@@ -854,6 +857,7 @@ class metacal:
         weight_scheme=None,
         legacy_response=False,
         des_num_bins=20,
+        des_min_count=0,
         w_col=None,
     ):
         if weight_scheme is not None and global_R_weight is not None:
@@ -873,6 +877,7 @@ class metacal:
         self.weight_scheme = weight_scheme
         self._legacy_response = legacy_response
         self._des_num_bins = des_num_bins
+        self._des_min_count = des_min_count
         if w_col is not None:
             response.validate_weight_scheme(weight_scheme, w_col)
         self._masking_type = masking_type
@@ -1059,6 +1064,7 @@ class metacal:
             step=self._step,
             estimator="split",
             W_policy="fixed",
+            des_min_count=self._des_min_count,
             iv_policy="branch measurement variances",
             c_units="c_e raw; c_g calibrated",
         )
@@ -1083,6 +1089,7 @@ class metacal:
                 self._snr_max,
                 self._rel_size_min,
                 self._rel_size_max,
+                min_count=self._des_min_count,
             )
             ns_cell = (
                 response.cell_index(snr, self.W[0]),
@@ -1137,6 +1144,7 @@ class metacal:
             0.5 * (self.R11[retained] + self.R22[retained]),
             self.W[0],
             self.W[1],
+            min_count=self._des_min_count,
         )
         return {
             b: response.evaluate_w(

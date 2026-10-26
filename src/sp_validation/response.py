@@ -41,11 +41,14 @@ def evaluate_w(table, snr, size):
     return w
 
 
-def fit_w(snr, size, e, response, edges_s, edges_r):
+def fit_w(snr, size, e, response, edges_s, edges_r, min_count=0):
     """Fit W = mean(trace R/2)^2 / mean(|e|^2/2), unweighted per cell.
 
     Uses second moments, not centered variances. Fitting and evaluation share
-    the same boundary convention. Vectorized group sums avoid cell loops.
+    the same boundary convention. Below min_count, pool moments over the
+    smallest clipped concentric square of cells reaching min_count; if the
+    entire training set is smaller, use its moments. Populated cells are exact.
+    The returned counts are unmerged training counts.
     """
     shape = (len(edges_s) - 1, len(edges_r) - 1)
     idx = cell_index(snr, edges_s) * shape[1] + cell_index(size, edges_r)
@@ -60,6 +63,23 @@ def fit_w(snr, size, e, response, edges_s, edges_r):
     w = np.divide(
         rsum**2, count * esum, out=np.zeros_like(rsum), where=(count * esum) > 0
     )
+    if min_count < 0:
+        raise ValueError("min_count must be nonnegative")
+    # Smallest concentric square in cell-index space (clipped at the edges).
+    # Pool sufficient statistics, never weights; retain the original counts.
+    if min_count:
+        counts, rsums, esums = (x.reshape(shape) for x in (count, rsum, esum))
+        for i, j in np.argwhere(counts < min_count):
+            for radius in range(1, max(shape)):
+                window = (
+                    slice(max(0, i - radius), min(shape[0], i + radius + 1)),
+                    slice(max(0, j - radius), min(shape[1], j + radius + 1)),
+                )
+                n = counts[window].sum()
+                if n >= min_count or radius == max(shape) - 1:
+                    r, e2 = rsums[window].sum(), esums[window].sum()
+                    w[i * shape[1] + j] = r**2 / (n * e2) if n * e2 > 0 else 0
+                    break
     return edges_s, edges_r, w.reshape(shape), count.reshape(shape)
 
 
