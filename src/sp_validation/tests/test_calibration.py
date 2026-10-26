@@ -51,6 +51,7 @@ def make_fake_gal_metacal(R=R, g1=G1, g2=G2, w=W, mask=MASK):
     populated, so the test exercises the pure linear algebra and nothing else.
     """
     return types.SimpleNamespace(
+        _legacy_response=True,  # These literals characterize released legacy c/scatter.
         R=np.asarray(R, dtype=float),
         ns={
             "g1": np.asarray(g1, dtype=float),
