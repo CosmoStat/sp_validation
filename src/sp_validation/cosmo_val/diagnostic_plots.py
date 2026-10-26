@@ -14,7 +14,9 @@ def plot_footprint(count_map, outputs):
     plotter = FootprintPlotter()
     for region, path in outputs.items():
         plotter.plot_region(
-            count_map, plotter._regions[region], outpath=str(path),
+            count_map,
+            plotter._regions[region],
+            outpath=str(path),
             colorbar_label=f"Galaxies per pixel (NSIDE={count_map.nside_sparse})",
         )
         plt.close()
