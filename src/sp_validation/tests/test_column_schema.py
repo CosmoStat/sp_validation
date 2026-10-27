@@ -48,6 +48,10 @@ NOT_COLUMNS = {
     "TTYPE{}",
     # pseudo-Cl, COSEBIs and SACC products
     "BB",
+    "EE",
+    "BB_BB",
+    "EB_EB",
+    "EE_EE",
     "COSEBIS",
     "COVAR_BB_BB",
     "COVAR_EE_EE",
