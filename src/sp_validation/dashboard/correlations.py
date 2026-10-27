@@ -350,9 +350,14 @@ def main(argv=None):
     timings["read"] = time.time() - t0
 
     patch_path = out / f"patches_{args.version}.npz"
-    if patch_path.exists():
-        centres = np.load(patch_path)["centres"]
-        assert len(centres) == args.npatch, patch_path
+    n_gal = len(gal["RA"])
+    saved = dict(np.load(patch_path)) if patch_path.exists() else {}
+    if (
+        saved
+        and len(saved["centres"]) == args.npatch
+        and int(saved.get("n_galaxies", -1)) == n_gal
+    ):
+        centres = saved["centres"]
     else:
         every = max(1, len(gal["RA"]) // 2_000_000)
         sub = treecorr.Catalog(
@@ -366,6 +371,7 @@ def main(argv=None):
             patch_path,
             centres=centres,
             npatch=args.npatch,
+            n_galaxies=n_gal,
             every_nth=every,
             seed=args.seed,
             region=str(args.region),
@@ -511,6 +517,10 @@ def main(argv=None):
                 stars["HSM_G2_STAR"] - stars["HSM_G2_PSF"],
             ),
         ):
+            # The survey-mean ellipticity is an additive offset, not structure
+            # correlated with galaxy positions; subtract it as TauStat does.
+            g1 = g1 - np.mean(g1)
+            g2 = g2 - np.mean(g2)
             src = catalog(stars["RA"], stars["DEC"], centres, g1=g1, g2=g2)
             results[label] = measure(
                 lenses, src, randoms=randoms, num_threads=args.threads, **TC
@@ -528,7 +538,8 @@ def main(argv=None):
                 n_lenses=lenses.ntot,
                 n_randoms=randoms.ntot,
                 sources="PSF validation star detections (valid HSM): psf = HSM_G*_PSF "
-                "(lambda_1), residual = HSM_G*_STAR - HSM_G*_PSF (lambda_3)",
+                "(lambda_1), residual = HSM_G*_STAR - HSM_G*_PSF (lambda_3), "
+                "each with its mean subtracted",
                 n_sources=len(stars),
                 random_subtraction=True,
                 seconds=timings["lambda"],

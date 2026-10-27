@@ -110,8 +110,10 @@ CORRELATIONS = [
         "psf_alpha_mag",
         "leakage",
         "Scale-dependent leakage α(θ) = τ₀/ρ₀ for all galaxies and in galaxy-magnitude "
-        "tertiles (calibrated e₁, e₂ rescaled to each bin's shear response, w_des; "
-        "jackknife errors). The paper's DES-Y3 comparison is omitted.",
+        "tertiles (calibrated e₁, e₂ rescaled to each bin's shear response plus the "
+        "global selection response, w_des; jackknife errors). The selection "
+        "response is larger for the faint bin, so its |α| is likely underestimated "
+        "by ~10–20%. The paper's DES-Y3 comparison is omitted.",
         "full",
     ),
     (

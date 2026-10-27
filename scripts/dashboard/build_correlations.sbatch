@@ -3,7 +3,7 @@
 #SBATCH --account=def-sfabbro
 #SBATCH --time=01:30:00
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=96G
+#SBATCH --mem=128G
 #SBATCH --output=%x-%j.log
 #
 # Catalogue-paper position-shear and alpha(theta) products
@@ -28,7 +28,7 @@
 #   total          ~20 min
 # Extrapolated to 20.5k tiles (~2x galaxies, stars, Gaia stars and randoms;
 # TreeCorr NG/GG time scales roughly with the lens and source counts):
-# ~40-50 min and ~75-90 GB peak (alpha, stars), hence --mem=96G and 1.5 h.
+# ~40-50 min and ~75-90 GB peak (alpha, stars), hence --mem=128G for headroom and 1.5 h.
 
 set -euo pipefail
 : "${CATALOGUE_DIR:?}" "${VERSION:?}" "${OUT_DIR:?}"
