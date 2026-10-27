@@ -22,9 +22,9 @@ import yaml
 
 from . import covariance as CV
 from . import data_vectors as DV
+from . import object_bias, ptes, selection_hist, sky, star_residuals
 from . import products as P
 from . import psf as PSF
-from . import ptes, sky
 from . import scale_cuts as SC
 from . import versions as V
 from . import weights as W
@@ -226,6 +226,23 @@ def render(run_dir, versions, out, maps_dir=None):
     }
 
     # PSF leakage
+    star_path = Path(maps_dir or ref.cv) / f"star_residuals_{versions[0]}.npz"
+    stars = dict(np.load(star_path, allow_pickle=False)) if star_path.exists() else {}
+    star_keys = {
+        f"{kind}_{i}" for i in range(5) for kind in ("edges", "hist", "mean", "std")
+    }
+    if star_keys <= stars.keys():
+        star_residuals.plot(stars, figs.path("star_residuals"))
+        figs.add(
+            "star_residuals",
+            "leakage",
+            "PSF validation stars (valid HSM): "
+            "star-minus-model ellipticity and fourth moments, and half-light "
+            "radius residual from √(T★/T_PSF) − 1. Means and σ use all finite detections.",
+            "full",
+        )
+    else:
+        print("Skipping star_residuals: product missing")
     rt = P.load_rho_tau(ref.assembled, ref.tau_cov, ref.psf_fit)
     PSF.tau_fit(rt, figs.path("psf_tau"))
     figs.add(
@@ -274,25 +291,122 @@ def render(run_dir, versions, out, maps_dir=None):
             "half",
         )
 
+    cell_path = ref.weight_cells
+    if cell_path is not None:
+        bias_cells = dict(np.load(cell_path, allow_pickle=False))
+        if {
+            "leakage_sums",
+            "leakage_snr_edges",
+            "resolution_edges",
+        } <= bias_cells.keys():
+            object_bias.leakage(bias_cells, figs.path("object_leakage_bins"))
+            figs.add(
+                "object_leakage_bins",
+                "leakage",
+                "Weighted regressions of calibrated e₁, e₂ against the corresponding "
+                "PSF model ellipticity at each galaxy, without an object-wise "
+                "leakage correction. Eight equal-count resolution bins each have "
+                "eight equal-count SNR bins. Hatching marks |α| < 2σ; σ is the "
+                "weighted least-squares fit uncertainty.",
+                "full",
+            )
+        else:
+            print("Skipping object_leakage_bins: regression sums missing")
+        if {"bias_sums", "bias_names"} <= bias_cells.keys() and bias_cells[
+            "bias_sums"
+        ].shape[2] == 10:
+            object_bias.bias(bias_cells, figs.path("additive_bias"))
+            figs.add(
+                "additive_bias",
+                "leakage",
+                "Linear fits to weighted binned "
+                "calibrated ellipticity versus each standardised property. "
+                "Error bars and significances use inverse-variance fits to binned "
+                "means with independent-galaxy shape-noise errors; they omit "
+                "spatially correlated noise, notably for RA and Dec. "
+                "Galaxy size is √T and the size ratio is T/T_PSF; only objects "
+                "inside the fixed property ranges are used.",
+                "full",
+            )
+        else:
+            print("Skipping additive_bias: regression sums missing")
+    else:
+        print("Skipping object_leakage_bins and additive_bias: product missing")
+
     # Weights, footprint and field maps, covariances
+    selection_path = Path(maps_dir or ref.cv) / f"selection_hist_{versions[0]}.npz"
+    if selection_path.exists():
+        selection = dict(np.load(selection_path, allow_pickle=False))
+        selection_hist.plot(selection, figs.path("selection_hist"))
+        figs.add(
+            "selection_hist",
+            "survey",
+            "Cumulative v2 catalogue selections; histograms show magnitudes 15–30. "
+            "The paper's chip-defect/IMA_FLAGS, stellar-halo and pointing-count "
+            "stages have no corresponding cut in this run. The configured tile "
+            "overlap and r-band coverage cuts are included.",
+            "full",
+        )
+    else:
+        print("Skipping selection_hist: product missing")
     if ref.weight_cells is not None:
         cells = dict(np.load(ref.weight_cells, allow_pickle=False))
-        W.weights(cells, figs.path("weights"))
-        W.weights(cells, figs.path("weights_narrow"), layout="narrow")
-        s = W.summary(cells)
-        figs.add(
-            "weights",
-            "survey",
-            f"Shape weight on its {int(np.sqrt(s['n_cells']))}×{int(np.sqrt(s['n_cells']))} "
-            f"signal-to-noise × size grid: every galaxy in a cell carries that cell's "
-            f"weight, so the catalogue has {s['n_values']} distinct weights "
-            f"({s['w_min']:.2f} to {s['w_max']:.1f}).",
-            "full",
-            narrow=True,
-        )
+        if "sum_response" not in cells or "sum_uncal_ee" not in cells:
+            print("Skipping weights: weight cells lack response and noise sums")
+        else:
+            W.weights(cells, figs.path("weights"))
+            W.weights(cells, figs.path("weights_narrow"), layout="narrow")
+            figs.add(
+                "weights",
+                "survey",
+                "Counts, weights, mean diagonal galaxy response and per-component "
+                "uncalibrated ellipticity RMS on the weight grid.",
+                "full",
+                narrow=True,
+            )
+        if {
+            "response_hist",
+            "response_edges",
+            "response_outside",
+            "n_rows",
+        } <= cells.keys():
+            W.response_histogram(cells, figs.path("response_histogram"))
+            figs.add(
+                "response_histogram",
+                "survey",
+                "Galaxy metacal response components over −5 to 5; at most "
+                f"{100 * np.max(cells['response_outside']) / int(cells['n_rows']):.2f}% "
+                "of entries per component lie outside this range or are non-finite. "
+                "v2 has no metacal star shapes.",
+                "half",
+            )
+        else:
+            print("Skipping response_histogram: response histogram missing")
     if ref.field_maps is not None:
         maps = dict(np.load(ref.field_maps, allow_pickle=False))
         footprint = dict(np.load(ref.cv / f"footprint_{versions[0]}.npz"))
+        if "sum_dT_over_T_psf" in maps:
+            sky.paper_map_pair(maps, figs.path("sky_stars"), "stars")
+            figs.add(
+                "sky_stars",
+                "survey",
+                "PSF validation stars (valid HSM): star "
+                "detections per sky area, counted once per exposure, and "
+                "star-minus-model T divided by model T.",
+                "full",
+            )
+        else:
+            print("Skipping sky_stars: model-normalised size residual missing")
+        if "sum_mag" in maps:
+            sky.paper_map_pair(maps, figs.path("sky_magnitude"), "magnitude")
+            figs.add(
+                "sky_magnitude",
+                "survey",
+                "PSF FWHM and unweighted mean galaxy r magnitude per pixel.",
+                "full",
+            )
+        else:
+            print("Skipping sky_magnitude: magnitude sums missing")
         sky.footprint_map(maps, footprint, figs.path("sky_footprint"))
         figs.add(
             "sky_footprint",
