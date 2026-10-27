@@ -101,8 +101,15 @@ def main():
     p.add_argument("--config", required=True)
     p.add_argument("--expected", type=int, required=True)
     p.add_argument("--out", required=True)
+    p.add_argument("--version", required=True)
     args = p.parse_args()
-    np.savez_compressed(args.out, **build(args.catalogue, args.config, args.expected))
+    np.savez_compressed(
+        args.out,
+        version=args.version,
+        selection="cumulative config_mask cuts and noshear metacal cuts",
+        units="r-band magnitude, AB",
+        **build(args.catalogue, args.config, args.expected),
+    )
 
 
 if __name__ == "__main__":
