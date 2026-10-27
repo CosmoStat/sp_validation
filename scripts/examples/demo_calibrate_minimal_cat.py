@@ -17,12 +17,15 @@
 # %reload_ext autoreload
 # %autoreload 2
 
-import numpy as np
 from astropy.io import fits
 
 import sp_validation.catalog as cat
 from sp_validation import catalog_builders as sp_joint
-from sp_validation.calibration import get_calibrated_m_c, metacal_from_config
+from sp_validation.calibration import (
+    get_calibrated_m_c,
+    metacal_from_config,
+    save_response_product,
+)
 
 # Initialize calibration class instance
 obj = sp_joint.CalibrateCat()
@@ -110,7 +113,7 @@ sp_joint.Mask.print_strings(
 
 cat_gal = {}
 
-w_des = sp_joint.compute_weights_gatti(
+sp_joint.compute_weights_gatti(
     cat_gal,
     g_uncorr,
     gal_metacal,
@@ -143,7 +146,7 @@ for mask in masks:
 
 # +
 # Additional quantities
-R_shear = np.mean(gal_metacal.R_shear, 2)
+R_shear = gal_metacal.R_shear_global
 
 ra = cat.get_col(dat, "RA", mask_combined._mask, mask_metacal)
 dec = cat.get_col(dat, "Dec", mask_combined._mask, mask_metacal)
@@ -153,7 +156,6 @@ mag = cat.get_col(dat, "mag", mask_combined._mask, mask_metacal)
 # +
 
 add_cols = [
-    "w_iv",
     "FLUX_RADIUS",
     "FWHM_IMAGE",
     "FWHM_WORLD",
@@ -168,11 +170,16 @@ add_cols = [
 add_cols_data = {}
 for key in add_cols:
     add_cols_data[key] = dat[key][mask_combined._mask][mask_metacal]
+if gal_metacal.weight_scheme != "iv":
+    add_cols_data["w_iv"] = gal_metacal.ns["w_iv"][mask_metacal]
 
 # +
 
 add_cols_data["e1_leak_corrected"] = e1_leak_corrected
 add_cols_data["e2_leak_corrected"] = e2_leak_corrected
+
+for key in ("R_g11", "R_g12", "R_g21", "R_g22"):
+    add_cols_data[key] = cat_gal[key]
 
 add_cols_data["e1_PSF"] = cat_gal["e1_PSF"]
 add_cols_data["e2_PSF"] = cat_gal["e2_PSF"]
@@ -201,7 +208,7 @@ cat.write_shape_catalog(
     output_shape_cat_path,
     ra,
     dec,
-    w_des,
+    cat_gal["w_des"] if gal_metacal._legacy_response else w,
     mag=mag,
     snr=cat_gal["snr"],
     g=g_corr_mc,
@@ -212,10 +219,11 @@ cat.write_shape_catalog(
     R_select=gal_metacal.R_selection,
     c=c,
     c_err=c_err,
-    w_type="des",
+    w_type=gal_metacal.weight_scheme or "des",
     add_cols=add_cols_data,
     add_header=header,
 )
+save_response_product(output_shape_cat_path, gal_metacal)
 # -
 
 with open("masks.txt", "w") as f_out:
