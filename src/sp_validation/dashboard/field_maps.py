@@ -40,13 +40,33 @@ GALAXY_COLUMNS = [
     "w_des",
     "e1",
     "e2",
+    "e1_uncal",
+    "e2_uncal",
+    "R_g11",
+    "R_g12",
+    "R_g21",
+    "R_g22",
     "e1_PSF",
     "e2_PSF",
     "fwhm_PSF",
+    "mag",
     "snr",
     "NGMIX_T_NOSHEAR",
     "NGMIX_T_PSF_RECONV_NOSHEAR",
 ]
+BIAS_EDGES = {
+    "PSF e1": np.linspace(-0.2, 0.2, 21),
+    "PSF e2": np.linspace(-0.2, 0.2, 21),
+    "PSF FWHM": np.linspace(0.3, 2.0, 21),
+    "r magnitude": np.linspace(18, 27, 21),
+    "SNR": np.geomspace(10, 500, 21),
+    "size ratio": np.linspace(0.707, 3, 21),
+    "galaxy size": np.linspace(0, 5, 21),
+    "RA": np.linspace(0, 360, 21),
+    "Dec": np.linspace(-30, 90, 21),
+    "weight": np.linspace(0, 50, 21),
+}
+
 STAR_COLUMNS = [
     "RA",
     "DEC",
@@ -56,6 +76,10 @@ STAR_COLUMNS = [
     "HSM_G1_STAR",
     "HSM_G2_STAR",
     "HSM_T_STAR",
+    "HSM_M4_1_STAR",
+    "HSM_M4_2_STAR",
+    "HSM_M4_1_PSF",
+    "HSM_M4_2_PSF",
     "HSM_FLAG_PSF",
     "HSM_FLAG_STAR",
 ]
@@ -69,6 +93,7 @@ GALAXY_SUMS = [
     "sum_w_e1_psf",
     "sum_w_e2_psf",
     "sum_w_fwhm_psf",
+    "sum_mag",
 ]
 STAR_SUMS = [
     "n_star",
@@ -103,6 +128,36 @@ def _accumulate(total, pixels, weights, npix):
     total += np.bincount(pixels, weights=weights, minlength=npix)
 
 
+def leakage_cells(data, n_bins=8):
+    """Equal-count resolution bins, then equal-count SNR within each bin."""
+    valid = np.all(np.isfinite(data), axis=1) & (data[:, 2] > 0)
+    data = data[valid]
+    resolution_edges = np.quantile(data[:, 1], np.linspace(0, 1, n_bins + 1))
+    if np.any(np.diff(resolution_edges) <= 0):
+        raise ValueError("resolution quantiles are not distinct")
+    rbin = np.clip(
+        np.searchsorted(resolution_edges, data[:, 1], side="right") - 1, 0, n_bins - 1
+    )
+    snr_edges = np.zeros((n_bins, n_bins + 1))
+    sums = np.zeros((2, 7, n_bins, n_bins))
+    for r in range(n_bins):
+        d = data[rbin == r].astype(np.float64)
+        snr_edges[r] = np.quantile(d[:, 0], np.linspace(0, 1, n_bins + 1))
+        if np.any(np.diff(snr_edges[r]) <= 0):
+            raise ValueError("SNR quantiles are not distinct")
+        idx = np.clip(
+            np.searchsorted(snr_edges[r], d[:, 0], side="right") - 1, 0, n_bins - 1
+        )
+        w = d[:, 2]
+        for component in range(2):
+            x, y = d[:, 3 + 2 * component], d[:, 4 + 2 * component]
+            for k, v in enumerate(
+                (w, w * x, w * y, w * x * x, w * x * y, w * y * y, np.ones_like(w))
+            ):
+                sums[component, k, r] = np.bincount(idx, weights=v, minlength=n_bins)
+    return resolution_edges, snr_edges, sums
+
+
 def galaxy_products(path, nside, n_bins, snr_range, size_ratio_range, chunk):
     """Stream the galaxy catalogue once into map sums and weight-cell tallies."""
     npix = hp.nside2npix(nside)
@@ -113,10 +168,17 @@ def galaxy_products(path, nside, n_bins, snr_range, size_ratio_range, chunk):
     cell_w_max = np.full((n_bins, n_bins), -np.inf)
     out_of_range = {"snr_low": 0, "snr_high": 0, "size_low": 0, "size_high": 0}
     weights = []
+    cell_response = np.zeros((n_bins, n_bins))
+    cell_ee = np.zeros((n_bins, n_bins))
+    response_edges = np.linspace(-5, 5, 501)
+    response_hist = np.zeros((4, 500), dtype=np.int64)
+    response_outside = np.zeros(4, dtype=np.int64)
+    bias_sums = np.zeros((len(BIAS_EDGES), 2, 10, 20))
 
     with fitsio.FITS(path) as fits:
         table = fits[1]
         n_rows = table.get_nrows()
+        leakage_data = np.empty((n_rows, 7), dtype=np.float32)
         for start in range(0, n_rows, chunk):
             rows = table[GALAXY_COLUMNS][start : start + chunk]
             pix = hp.ang2pix(nside, rows["RA"], rows["Dec"], lonlat=True, nest=True)
@@ -132,6 +194,7 @@ def galaxy_products(path, nside, n_bins, snr_range, size_ratio_range, chunk):
                 ("sum_w_e1_psf", w * rows["e1_PSF"]),
                 ("sum_w_e2_psf", w * rows["e2_PSF"]),
                 ("sum_w_fwhm_psf", w * rows["fwhm_PSF"]),
+                ("sum_mag", rows["mag"]),
             ):
                 _accumulate(sums[key], pix, value, npix)
 
@@ -145,15 +208,81 @@ def galaxy_products(path, nside, n_bins, snr_range, size_ratio_range, chunk):
             j = weight_cell_index(size_ratio, size_edges)
             flat = i * n_bins + j
             cell_count += np.bincount(flat, minlength=n_bins**2).reshape(n_bins, -1)
+            response = 0.5 * (rows["R_g11"] + rows["R_g22"])
+            ee = 0.5 * (rows["e1_uncal"] ** 2 + rows["e2_uncal"] ** 2)
+            cell_response += np.bincount(
+                flat, weights=response, minlength=n_bins**2
+            ).reshape(n_bins, -1)
+            cell_ee += np.bincount(flat, weights=ee, minlength=n_bins**2).reshape(
+                n_bins, -1
+            )
+            for k, name in enumerate(("R_g11", "R_g22", "R_g12", "R_g21")):
+                hist, _ = np.histogram(rows[name], bins=response_edges)
+                response_hist[k] += hist
+                response_outside[k] += len(rows) - hist.sum()
+            with np.errstate(invalid="ignore", divide="ignore"):
+                resolution = 1 / (1 + np.sqrt(size_ratio))
+            for column, data in enumerate(
+                (snr, resolution, w, rows["e1_PSF"], e1, rows["e2_PSF"], e2)
+            ):
+                leakage_data[start : start + len(rows), column] = data
+            props = (
+                rows["e1_PSF"],
+                rows["e2_PSF"],
+                rows["fwhm_PSF"],
+                rows["mag"],
+                snr,
+                size_ratio,
+                np.sqrt(np.maximum(rows["NGMIX_T_NOSHEAR"], 0)),
+                rows["RA"],
+                rows["Dec"],
+                w,
+            )
+            for p, (x, edges) in enumerate(zip(props, BIAS_EDGES.values())):
+                idx = np.searchsorted(edges, x, side="right") - 1
+                ok = (idx >= 0) & (idx < 20) & np.isfinite(x)
+                b, xx, ww = idx[ok], x[ok].astype(float), w[ok]
+                for component in range(2):
+                    y = rows[f"e{component + 1}"][ok].astype(float)
+                    for k, v in enumerate(
+                        (
+                            ww,
+                            ww * xx,
+                            ww * y,
+                            ww * xx * xx,
+                            ww * xx * y,
+                            ww * y * y,
+                            ww * ww,
+                            np.ones_like(ww),
+                            ww * ww * y,
+                            ww * ww * y * y,
+                        )
+                    ):
+                        bias_sums[p, component, k] += np.bincount(
+                            b, weights=v, minlength=20
+                        )
             np.minimum.at(cell_w_min.ravel(), flat, w)
             np.maximum.at(cell_w_max.ravel(), flat, w)
             weights.append(w)
 
+    resolution_edges, leakage_snr_edges, leakage_sums = leakage_cells(leakage_data)
+    del leakage_data
     values, multiplicity = np.unique(np.concatenate(weights), return_counts=True)
     cells = {
         "snr_edges": snr_edges,
         "size_ratio_edges": size_edges,
         "count": cell_count,
+        "sum_response": cell_response,
+        "sum_uncal_ee": cell_ee,
+        "response_edges": response_edges,
+        "response_hist": response_hist,
+        "response_outside": response_outside,
+        "resolution_edges": resolution_edges,
+        "leakage_snr_edges": leakage_snr_edges,
+        "leakage_sums": leakage_sums,
+        "bias_names": np.array(list(BIAS_EDGES)),
+        "bias_edges": np.array(list(BIAS_EDGES.values())),
+        "bias_sums": bias_sums,
         "w_min": np.where(cell_count > 0, cell_w_min, np.nan),
         "w_max": np.where(cell_count > 0, cell_w_max, np.nan),
         "w_values": values,
@@ -181,7 +310,27 @@ def star_sums(path, nside):
         ("sum_T_psf", t_psf),
     ):
         _accumulate(sums[key], pix, value, npix)
-    return sums, int(keep.sum())
+    residuals = [
+        stars["HSM_G1_STAR"] - stars["HSM_G1_PSF"],
+        stars["HSM_G2_STAR"] - stars["HSM_G2_PSF"],
+        stars["HSM_M4_1_STAR"] - stars["HSM_M4_1_PSF"],
+        stars["HSM_M4_2_STAR"] - stars["HSM_M4_2_PSF"],
+        np.sqrt(np.where((t_star > 0) & (t_psf > 0), t_star / t_psf, np.nan)) - 1,
+    ]
+    edges = (
+        [np.linspace(-0.5, 0.5, 401)] * 2
+        + [np.linspace(-0.5, 0.5, 401)] * 2
+        + [np.linspace(-1, 1, 401)]
+    )
+    histograms = {}
+    for i, (values, bins) in enumerate(zip(residuals, edges)):
+        values = values[np.isfinite(values)]
+        histograms[f"edges_{i}"] = bins
+        histograms[f"hist_{i}"] = np.histogram(values, bins=bins)[0]
+        histograms[f"mean_{i}"] = values.mean()
+        histograms[f"std_{i}"] = values.std()
+        histograms[f"outside_{i}"] = len(values) - histograms[f"hist_{i}"].sum()
+    return sums, int(keep.sum()), histograms
 
 
 def main(argv=None):
@@ -206,10 +355,12 @@ def main(argv=None):
         args.size_ratio_range,
         args.chunk,
     )
-    stars, n_stars = star_sums(args.stars, args.nside)
+    stars, n_stars, star_hist = star_sums(args.stars, args.nside)
     occupied = np.flatnonzero((gal["n_gal"] > 0) | (stars["n_star"] > 0))
     np.savez_compressed(
         out_dir / f"field_maps_{args.version}.npz",
+        version=args.version,
+        selection="calibrated cut catalogue; stars with both HSM flags zero",
         nside=args.nside,
         nest=True,
         pixels=occupied,
@@ -217,8 +368,17 @@ def main(argv=None):
         **{key: value[occupied] for key, value in {**gal, **stars}.items()},
     )
     np.savez_compressed(
+        out_dir / f"star_residuals_{args.version}.npz",
+        version=args.version,
+        selection="PSF validation stars with both HSM flags zero",
+        units="dimensionless HSM ellipticity, fourth moments and radius ratio",
+        **star_hist,
+    )
+    np.savez_compressed(
         out_dir / f"weight_cells_{args.version}.npz",
         version=args.version,
+        selection="calibrated cut catalogue",
+        units="SNR dimensionless; sizes are ngmix T ratios",
         **cells,
     )
 

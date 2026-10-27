@@ -5,8 +5,93 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from sp_validation.dashboard.field_maps import weight_cell_index, weight_grid_edges
+from sp_validation.dashboard.field_maps import (
+    leakage_cells,
+    weight_cell_index,
+    weight_grid_edges,
+)
+from sp_validation.dashboard.object_bias import bias_fit, leakage_fit, slopes
+from sp_validation.dashboard.psf import xi_sys_comparison
 from sp_validation.dashboard.sky import Zenithal, coarsen, footprint_parts, quantity
+
+
+def test_xi_sys_comparison_rejects_incompatible_grids(tmp_path):
+    rt = {
+        "theta": np.array([1.0, 2.0]),
+        "theta_tau": np.array([1.0, 3.0]),
+        "fit": {"theta": np.array([1.0, 2.0])},
+    }
+    with pytest.raises(ValueError, match="angular grids differ"):
+        xi_sys_comparison(rt, tmp_path / "plot.png")
+
+
+def test_leakage_quantile_bins():
+    rng = np.random.default_rng(17)
+    data = rng.normal(size=(6400, 7))
+    data[:, 0] = np.exp(data[:, 0])
+    data[:, 2] = 1
+    data[:, 4] = 0.2 * data[:, 3] + 0.4
+    data[:, 6] = -0.1 * data[:, 5] - 0.2
+    _, _, sums = leakage_cells(data)
+    np.testing.assert_array_equal(sums[0, 6], np.full((8, 8), 100))
+    np.testing.assert_allclose(slopes(sums[0]), 0.2, atol=1e-12)
+    np.testing.assert_allclose(slopes(sums[1]), -0.1, atol=1e-12)
+
+
+def test_weighted_leakage_regression_has_intercept():
+    x = np.array([-2.0, -1.0, 1.0, 2.0])
+    y = 0.3 * x + 0.7
+    w = np.array([1.0, 2.0, 3.0, 4.0])
+    sums = np.array(
+        [w.sum(), (w * x).sum(), (w * y).sum(), (w * x * x).sum(), (w * x * y).sum()]
+    )
+    np.testing.assert_allclose(slopes(sums), 0.3)
+
+
+def test_leakage_fit_matches_statsmodels():
+    import statsmodels.api as sm
+
+    rng = np.random.default_rng(42)
+    x = rng.normal(size=200)
+    y = 0.03 * x + 0.4 + rng.normal(size=200)
+    w = rng.uniform(0.1, 3, size=200)
+    s = np.array(
+        [
+            w.sum(),
+            (w * x).sum(),
+            (w * y).sum(),
+            (w * x * x).sum(),
+            (w * x * y).sum(),
+            (w * y * y).sum(),
+            len(x),
+        ]
+    )
+    value, error = leakage_fit(np.tile(s, (2, 1)))
+    fit = sm.WLS(y, sm.add_constant(x), weights=w).fit()
+    np.testing.assert_allclose(value, fit.params[1])
+    np.testing.assert_allclose(error, fit.bse[1])
+
+
+def test_binned_bias_fit():
+    x = np.array([-1.0, 0.0, 1.0])
+    y = 0.4 * x + 0.2
+    s = np.array(
+        [
+            np.full(3, 10.0),
+            10 * x,
+            10 * y,
+            10 * x * x,
+            10 * x * y,
+            10 * (y * y + 0.1),
+            np.full(3, 10.0),
+            np.full(3, 10.0),
+            10 * y,
+            10 * (y * y + 0.1),
+        ]
+    )
+    slope, error = bias_fit(s)
+    np.testing.assert_allclose(slope, 0.4 * np.sqrt(2 / 3))
+    assert error > 0
 
 
 def test_size_residual_uses_model_normalised_sum():
