@@ -10,7 +10,7 @@ nested) pixel touched by a tile, from one or more tile lists: a text file of
 ``XXX.YYY`` names or a JSON manifest whose ``tiles`` mapping is keyed by name.
 Gaia ``source_id`` encodes the level-12 nested pixel in its high bits, so each
 level-7 pixel is a contiguous ``source_id`` range and the query is a union of
-indexed range scans, run synchronously in chunks. Each chunk is cached in ``<out>.parts/`` so a rerun resumes. Writes ``<out>.fits`` and ``<out>.json`` (ADQL template,
+indexed range scans, run synchronously in chunks. Each chunk is cached in ``<out>.parts/`` so a rerun resumes, and removed once the table is written. Writes ``<out>.fits`` and ``<out>.json`` (ADQL template,
 pixel list digest, row count).
 
 Usage::
@@ -22,6 +22,7 @@ Usage::
 import argparse
 import hashlib
 import json
+import shutil
 import time
 from pathlib import Path
 
@@ -140,6 +141,7 @@ def main(argv=None):
         "n_unique_source_id": int(len(np.unique(table["source_id"]))),
     }
     out.with_suffix(".json").write_text(json.dumps(record, indent=2) + "\n")
+    shutil.rmtree(parts_dir)
     print(json.dumps(record, indent=2))
 
 
