@@ -26,6 +26,7 @@ from . import object_bias, ptes, selection_hist, sky, star_residuals
 from . import products as P
 from . import psf as PSF
 from . import scale_cuts as SC
+from . import tangential as TG
 from . import versions as V
 from . import weights as W
 
@@ -33,6 +34,7 @@ SECTIONS = [
     ("data_vectors", "Data vectors"),
     ("bmodes", "B modes"),
     ("leakage", "PSF leakage"),
+    ("tangential", "Tangential shear tests"),
     ("survey", "Weights, footprint and covariances"),
 ]
 GROUPS = {
@@ -100,7 +102,68 @@ def load_version(run_dir, version, maps_dir):
     )
 
 
-def render(run_dir, versions, out, maps_dir=None):
+CORRELATIONS = [
+    # (product stem, renderer, figure id, section, caption, size)
+    (
+        "alpha_mag",
+        TG.alpha_mag,
+        "psf_alpha_mag",
+        "leakage",
+        "Scale-dependent leakage α(θ) = τ₀/ρ₀ for all galaxies and in galaxy-magnitude "
+        "tertiles (calibrated e₁, e₂ rescaled to each bin's shear response, w_des; "
+        "jackknife errors). The paper's DES-Y3 comparison is omitted.",
+        "full",
+    ),
+    (
+        "gamma_stars",
+        TG.gamma_stars,
+        "tan_psf_stars",
+        "tangential",
+        "Galaxy γt and γ× around PSF validation stars (valid HSM, one entry per star), "
+        "all and by star magnitude; calibrated e₁, e₂ with w_des, no random "
+        "subtraction; jackknife errors, χ²/ν against zero.",
+        "full",
+    ),
+    (
+        "lambda_stars",
+        TG.lambda_stars,
+        "tan_lambda",
+        "tangential",
+        "PSF validation stars around galaxy positions: tangential and cross PSF-model "
+        "ellipticity (λ₁) and star-minus-model residual (λ₃), minus the same around "
+        "footprint randoms. Not a null test: it traces the PSF field.",
+        "full",
+    ),
+    (
+        "gamma_tiles",
+        TG.gamma_tiles,
+        "tan_tiles",
+        "tangential",
+        "θγt and θγ× of galaxies around tile centres; jackknife errors.",
+        "full",
+    ),
+    (
+        "gamma_gaia",
+        TG.gamma_gaia,
+        "tan_gaia",
+        "tangential",
+        "Galaxy γt and γ× around Gaia DR3 stars (RUWE < 1.4) in three G bins, minus "
+        "the same around footprint randoms; jackknife errors.",
+        "full",
+    ),
+]
+
+
+def render_correlations(figs, corr_dir, version):
+    """Figures from the correlation products present in ``corr_dir``."""
+    for stem, renderer, fid, section, caption, size in CORRELATIONS:
+        path = Path(corr_dir) / f"{stem}_{version}.npz"
+        if path.exists():
+            renderer(P.load_correlation(path), figs.path(fid))
+            figs.add(fid, section, caption, size)
+
+
+def render(run_dir, versions, out, maps_dir=None, corr_dir=None):
     cuts = run_config(run_dir)
     theta_cut, ell_cut, full_cut = cuts["theta"], cuts["ell"], cuts["theta_full"]
     loaded = [load_version(run_dir, v, maps_dir) for v in versions]
@@ -333,6 +396,9 @@ def render(run_dir, versions, out, maps_dir=None):
     else:
         print("Skipping object_leakage_bins and additive_bias: product missing")
 
+    if corr_dir is not None:
+        render_correlations(figs, corr_dir, versions[0])
+
     # Weights, footprint and field maps, covariances
     selection_path = Path(maps_dir or ref.cv) / f"selection_hist_{versions[0]}.npz"
     if selection_path.exists():
@@ -524,9 +590,12 @@ def main(argv=None):
         help="catalogue version; repeat for a comparison run",
     )
     parser.add_argument("--maps-dir", help="directory of field_maps/weight_cells NPZs")
+    parser.add_argument("--correlations-dir", help="directory of correlations NPZs")
     parser.add_argument("--out", required=True)
     args = parser.parse_args(argv)
-    manifest = render(args.run_dir, args.version, args.out, args.maps_dir)
+    manifest = render(
+        args.run_dir, args.version, args.out, args.maps_dir, args.correlations_dir
+    )
     print(f"{len(manifest['figures'])} figures -> {args.out}")
 
 

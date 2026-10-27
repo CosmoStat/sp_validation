@@ -120,6 +120,7 @@ star:
     HSM_M4_2_PSF: PSF model fourth-moment component 2.
     HSM_M4_1_STAR: Stellar fourth-moment component 1.
     HSM_M4_2_STAR: Stellar fourth-moment component 2.
+    MAG: Star magnitude.
 
 shear:
   about: >-

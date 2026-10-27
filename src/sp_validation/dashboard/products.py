@@ -269,3 +269,16 @@ def load_rho_tau(sacc_path, tau_cov_path, psf_fit_path):
 def load_json(path):
     with open(path) as f:
         return json.load(f)
+
+
+def load_correlation(path):
+    """A :mod:`sp_validation.dashboard.correlations` product as
+    ``{label: {quantity: array}}`` plus ``"provenance"``."""
+    with np.load(path, allow_pickle=False) as data:
+        out = {"provenance": json.loads(str(data["provenance"]))}
+        for label in data["labels"]:
+            prefix = f"{label}__"
+            out[str(label)] = {
+                k[len(prefix) :]: data[k] for k in data.files if k.startswith(prefix)
+            }
+    return out
