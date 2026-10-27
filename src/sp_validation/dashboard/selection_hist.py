@@ -80,14 +80,26 @@ def build(path, config, expected, chunk=500_000):
 
 def plot(data, out):
     """Plot cumulative histogram steps from the validated product."""
+    import matplotlib as mpl
     import matplotlib.pyplot as plt
 
     from . import style as S
 
     with S.figure_style():
         fig, ax = plt.subplots(figsize=(7.2, 4.0))
-        for hist, label in zip(data["hist"], data["labels"]):
-            ax.stairs(hist, data["edges"], label=str(label))
+        n = len(data["labels"])
+        for i, (hist, label) in enumerate(zip(data["hist"], data["labels"])):
+            label = str(label)
+            if label.startswith('r"') and label.endswith('"'):
+                label = label[2:-1]
+            color = S.INK if i == n - 1 else mpl.colormaps["tab20"](i / max(n - 2, 1))
+            ax.stairs(
+                hist,
+                data["edges"],
+                label=label,
+                color=color,
+                linewidth=1.5 if i == n - 1 else 0.8,
+            )
         ax.set_yscale("log")
         ax.set_xlabel("r magnitude")
         ax.set_ylabel("Detections")
