@@ -196,11 +196,12 @@ def warn_if_image_stale():
 
 def configure(workflow_config):
     """Install config-derived values after Snakemake has loaded configfiles."""
-    global CATALOG_CONFIG, DEFAULT_MASK_SUFFIX, FIDUCIAL, PLANCK18
+    global CAT_CONFIG, CATALOG_CONFIG, DEFAULT_MASK_SUFFIX, FIDUCIAL, PLANCK18
     from snakemake.common.configfile import load_configfile
 
     inject_checkout_pythonpath(workflow_config)
     warn_if_image_stale()
+    CAT_CONFIG = str(_plain(workflow_config.get('catalog_config', CAT_CONFIG)))
     CATALOG_CONFIG = load_configfile(CAT_CONFIG)
     FIDUCIAL = workflow_config["fiducial"]
     DEFAULT_MASK_SUFFIX = (
