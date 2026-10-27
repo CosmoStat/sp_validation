@@ -380,6 +380,12 @@ def quantity(maps, name, nside_out, footprint=None):
     elif name in ("e1", "e2"):
         values = _ratio(sums[f"sum_w_{name}"], sums["sum_w"])
         keep = sums["n_gal"] > 0
+    elif name == "star_density":
+        values = sums["n_star"] / area
+        keep = sums["n_star"] >= 5
+    elif name == "mag":
+        values = _ratio(sums["sum_mag"], sums["n_gal"])
+        keep = sums["n_gal"] > 0
     elif name == "fwhm_psf":
         values = _ratio(sums["sum_w_fwhm_psf"], sums["sum_w"])
         keep = sums["n_gal"] > 0
@@ -390,7 +396,9 @@ def quantity(maps, name, nside_out, footprint=None):
     else:
         raise KeyError(name)
     # Drop sparsely filled pixels (footprint edges), whose means are noise.
-    n = sums["n_star" if name in ("de1", "de2", "dT_over_T") else "n_gal"]
+    n = sums[
+        "n_star" if name in ("de1", "de2", "dT_over_T", "star_density") else "n_gal"
+    ]
     keep &= n >= 0.3 * np.median(n[n > 0])
     return pix[keep], values[keep]
 
@@ -474,6 +482,50 @@ FIELD_SETS = {
         ("de2", 128, r"stars: $\langle e_{2,\star} - e_{2,{\rm PSF}} \rangle$", True),
     ],
 }
+
+
+def paper_map_pair(maps, out, which):
+    """Draw the catalogue paper's two related sky-map quantities."""
+    fields = {
+        "stars": [
+            ("star_density", "Star detections [arcmin$^{-2}$]", False),
+            ("dT_over_T", r"$\langle(T_\star-T_{\rm PSF})/T_{\rm PSF}\rangle$", True),
+        ],
+        "magnitude": [
+            ("fwhm_psf", "PSF FWHM [arcsec]", False),
+            ("mag", "Mean galaxy r magnitude", False),
+        ],
+    }
+    gal_pix = maps["pixels"][maps["n_gal"] > 0]
+    parts = make_parts(gal_pix, int(maps["nside"]))
+    nside = 256
+    with S.figure_style():
+        fig = plt.figure(figsize=(7.2, 3.6 * _aspect(parts) + 0.6))
+        gs = fig.add_gridspec(1, 2, wspace=0.05)
+        for cell, (name, label, symmetric) in zip(gs, fields[which]):
+            pix, val = quantity(maps, name, nside)
+            inside = np.isin(
+                pix, np.unique(gal_pix // (int(maps["nside"]) // nside) ** 2)
+            )
+            pix, val = pix[inside], val[inside]
+            lo, hi = _robust_limits(val, symmetric)
+            norm = (
+                TwoSlopeNorm(0, lo, hi) if symmetric else mpl.colors.Normalize(lo, hi)
+            )
+            axes = map_grid(fig, cell, parts)
+            for ax, part in zip(axes, parts):
+                im = draw_map(
+                    ax,
+                    part,
+                    pix,
+                    val,
+                    nside,
+                    DIVERGING if symmetric else SEQUENTIAL,
+                    norm,
+                    labels=False,
+                )
+            _colorbar(fig, im, axes, label, symmetric)
+        return S.save(fig, out, "full")
 
 
 def field_maps(maps, out, which, footprint=None, layout="wide"):
