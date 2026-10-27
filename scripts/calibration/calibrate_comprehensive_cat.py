@@ -180,7 +180,7 @@ add_cols = [
     "FLUX_RADIUS",
     "MAGERR_AUTO",
     "NGMIX_T_NOSHEAR",
-    "NGMIX_Tpsf_NOSHEAR",
+    "NGMIX_T_PSF_RECONV_NOSHEAR",
     "fwhm_PSF",
 ]
 
