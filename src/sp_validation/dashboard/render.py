@@ -261,6 +261,19 @@ def render(run_dir, versions, out, maps_dir=None):
         "full",
     )
 
+    try:
+        PSF.xi_sys_comparison(rt, figs.path("psf_xi_sys_comparison"))
+    except ValueError as exc:
+        print(f"Skipping psf_xi_sys_comparison: {exc}")
+    else:
+        figs.add(
+            "psf_xi_sys_comparison",
+            "leakage",
+            "PSF systematic ξ⁺ from the α–β–η posterior (68% band) compared "
+            "with τ₀,+²/ρ₀,+; no cosmological signal is shown.",
+            "half",
+        )
+
     # Weights, footprint and field maps, covariances
     if ref.weight_cells is not None:
         cells = dict(np.load(ref.weight_cells, allow_pickle=False))
