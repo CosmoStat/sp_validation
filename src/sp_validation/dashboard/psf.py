@@ -291,9 +291,12 @@ def xi_sys_comparison(rt, out):
             ms=3,
             label=r"$\tau_{0,+}^2/\rho_{0,+}$",
         )
-        S.zero_line(ax)
         S.theta_axis(ax)
-        ax.set_yscale("symlog", linthresh=1e-8)
+        if np.all(np.concatenate((lo, med, hi, simple)) > 0):
+            ax.set_yscale("log")
+        else:
+            S.zero_line(ax)
+            ax.set_yscale("symlog", linthresh=1e-8)
         ax.set_xlabel(r"$\theta$ [arcmin]")
         ax.set_ylabel(r"$\xi^{\rm sys}_+(\theta)$")
         ax.legend()
