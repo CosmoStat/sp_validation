@@ -110,6 +110,7 @@ star:
     DEC: Declination [deg].
     HSM_G1_PSF: PSF model ellipticity g1 (HSM).
     HSM_G2_PSF: PSF model ellipticity g2 (HSM).
+    MAG: Star magnitude.
 
 shear:
   about: >-
