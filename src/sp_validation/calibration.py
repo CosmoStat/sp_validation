@@ -185,8 +185,13 @@ def fill_cat_gal(cat_gal, dat, g_uncorr, gal_metacal, mask1, mask2, purpose="wei
     cat_gal["R_g22"] = gal_metacal.R22
 
     cat_gal["NGMIX_T_NOSHEAR"] = sp_cat.get_col(dat, "NGMIX_T_NOSHEAR", mask1, mask2)
+    # v1.6 writes NGMIX_Tpsf_NOSHEAR, ShapePipe v2 NGMIX_T_PSF_RECONV_NOSHEAR;
+    # the output column keeps one name either way.
     cat_gal["NGMIX_T_PSF_RECONV_NOSHEAR"] = sp_cat.get_col(
-        dat, "NGMIX_T_PSF_RECONV_NOSHEAR", mask1, mask2
+        dat,
+        first_present(dat, "NGMIX_T_PSF_RECONV_NOSHEAR", "NGMIX_Tpsf_NOSHEAR"),
+        mask1,
+        mask2,
     )
     cat_gal["size_ratio"] = (
         cat_gal["NGMIX_T_NOSHEAR"] / cat_gal["NGMIX_T_PSF_RECONV_NOSHEAR"]
@@ -690,6 +695,27 @@ def get_calibrate_no_leakage_e_from_cat(path_cat_gal, weight_type="des", verbose
     return e1_noleak, e2_noleak
 
 
+def first_present(data, *candidates):
+    """Return the first of `candidates` present in `data`.
+
+    ngmix columns come in two grammars: v1.6 and earlier catalogues use
+    NGMIX_ELL_<shear>_<comp> and NGMIX_Tpsf_<shear>, ShapePipe v2 writes
+    NGMIX_G<n>_<shear> and NGMIX_T_PSF_RECONV_<shear>.
+    """
+    names = getattr(getattr(data, "dtype", None), "names", None)
+    if names is None:
+        names = getattr(data, "colnames", None)
+    if names is None:
+        names = list(data.keys())
+    for candidate in candidates:
+        if candidate in names:
+            return candidate
+    raise KeyError(
+        f"none of {list(candidates)} in the catalogue; it has neither ngmix"
+        f" column grammar"
+    )
+
+
 class metacal:
     """Metacal.
 
@@ -804,7 +830,7 @@ class metacal:
 
             dict_tmp["flag"] = masked_data[f"NGMIX_FLAGS_{name_shear}"]
 
-            # Ellipticity in named scalar components (ShapePipe-v2 grammar)
+            # Either ngmix grammar (see first_present)
             for comp in (0, 1):
                 dict_tmp[f"g{comp + 1}"] = masked_data[
                     f"NGMIX_G{comp + 1}_{name_shear}"
