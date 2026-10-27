@@ -10,7 +10,7 @@ nested) pixel touched by a tile, from one or more tile lists: a text file of
 ``XXX.YYY`` names or a JSON manifest whose ``tiles`` mapping is keyed by name.
 Gaia ``source_id`` encodes the level-12 nested pixel in its high bits, so each
 level-7 pixel is a contiguous ``source_id`` range and the query is a union of
-indexed range scans, run synchronously in chunks. Writes ``<out>.fits`` and ``<out>.json`` (ADQL template,
+indexed range scans, run synchronously in chunks. Each chunk is cached in ``<out>.parts/`` so a rerun resumes. Writes ``<out>.fits`` and ``<out>.json`` (ADQL template,
 pixel list digest, row count).
 
 Usage::
@@ -28,7 +28,7 @@ from pathlib import Path
 import healpy as hp
 import numpy as np
 import pyvo
-from astropy.table import vstack
+from astropy.table import Table, vstack
 
 TAP = "https://dc.zah.uni-heidelberg.de/tap"
 TABLE = "gaia.dr3lite"
@@ -82,6 +82,21 @@ def where(runs):
     )
 
 
+def fetch(service, pixels, attempts=4):
+    """Rows for ``pixels``; a chunk that keeps failing is fetched in halves."""
+    query = ADQL.format(table=TABLE, ranges=where(ranges(pixels)))
+    for attempt in range(attempts):
+        try:
+            return service.run_sync(query, maxrec=16_000_000).to_table()
+        except (pyvo.dal.DALServiceError, pyvo.dal.DALQueryError) as error:
+            print(f"retry {attempt + 1} ({len(pixels)} pixels): {error}", flush=True)
+            time.sleep(30)
+    if len(pixels) == 1:
+        raise RuntimeError(f"pixel {pixels[0]} failed after {attempts} attempts")
+    half = len(pixels) // 2
+    return vstack([fetch(service, pixels[:half]), fetch(service, pixels[half:])])
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--tiles", nargs="+", required=True)
@@ -93,24 +108,22 @@ def main(argv=None):
     pixels = tile_pixels(names)
     print(f"{len(names)} tiles -> {len(pixels)} level-{LEVEL} pixels", flush=True)
     service = pyvo.dal.TAPService(TAP)
+    out = Path(args.out)
+    parts_dir = out.parent / f"{out.name}.parts"
+    parts_dir.mkdir(parents=True, exist_ok=True)
     parts = []
     for start in range(0, len(pixels), args.pixels_per_query):
         chunk = pixels[start : start + args.pixels_per_query]
-        query = ADQL.format(table=TABLE, ranges=where(ranges(chunk)))
-        for attempt in range(5):
-            try:
-                table = service.run_sync(query, maxrec=16_000_000).to_table()
-                break
-            except pyvo.dal.DALServiceError as error:
-                print(f"retry {attempt + 1}: {error}", flush=True)
-                time.sleep(30)
-        else:
-            raise RuntimeError(f"pixels {start}+ failed after retries")
+        part = parts_dir / f"{chunk[0]:06d}-{chunk[-1]:06d}.fits"
+        if not part.exists():
+            rows = fetch(service, chunk)
+            rows.meta.clear()
+            rows.write(part)
+        table = Table.read(part)
         print(f"pixels {start}-{start + len(chunk)}: {len(table)} rows", flush=True)
         parts.append(table)
     table = vstack(parts)
     table.meta.clear()
-    out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     table.write(out.with_suffix(".fits"), overwrite=True)
     record = {
