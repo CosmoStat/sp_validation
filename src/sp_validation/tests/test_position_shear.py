@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 import treecorr
 
 from sp_validation.dashboard.position_shear import measure
@@ -41,6 +42,27 @@ def test_injected_tangential_shear_and_joint_covariance():
     np.testing.assert_allclose(result["xi_x"], 0, atol=1e-4)
     assert result["covariance"].shape == (6, 6)
     assert np.all(result["npairs"] > 0)
+
+
+def test_rejects_mismatched_patch_centres():
+    source = treecorr.Catalog(
+        ra=[0, 1, 2],
+        dec=[0, 1, 2],
+        g1=[0, 0, 0],
+        g2=[0, 0, 0],
+        ra_units="deg",
+        dec_units="deg",
+        npatch=2,
+    )
+    lens = treecorr.Catalog(
+        ra=[10, 11, 12],
+        dec=[0, 1, 2],
+        ra_units="deg",
+        dec_units="deg",
+        npatch=2,
+    )
+    with pytest.raises(ValueError, match="patch centres"):
+        measure(lens, source, num_threads=1)
 
 
 def test_random_subtraction_identical_catalogues():

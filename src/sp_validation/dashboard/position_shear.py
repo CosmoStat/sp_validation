@@ -25,6 +25,14 @@ def measure(
     covariance between the two and, when supplied, the random subtraction.
     Separations are in arcminutes.
     """
+    centers = sources.patch_centers
+    if len(centers) < 2:
+        raise ValueError("jackknife requires at least two source patches")
+    for catalogue in (lenses,) if randoms is None else (lenses, randoms):
+        other = catalogue.patch_centers
+        if other.shape != centers.shape or not np.allclose(other, centers):
+            raise ValueError("all catalogues must share the source patch centres")
+
     config = dict(
         min_sep=min_sep,
         max_sep=max_sep,
