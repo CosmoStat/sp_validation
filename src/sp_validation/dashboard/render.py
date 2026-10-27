@@ -319,8 +319,8 @@ def render(run_dir, versions, out, maps_dir=None):
             figs.add(
                 "additive_bias",
                 "leakage",
-                "Linear fits to weighted binned "
-                "calibrated ellipticity versus each standardised property. "
+                "Linear fits to weighted means of calibrated ellipticity in "
+                "20 fixed bins of each standardised property. "
                 "Error bars and significances use inverse-variance fits to binned "
                 "means with independent-galaxy shape-noise errors; they omit "
                 "spatially correlated noise, notably for RA and Dec. "
@@ -392,7 +392,7 @@ def render(run_dir, versions, out, maps_dir=None):
                 "survey",
                 "PSF validation stars (valid HSM): star "
                 "detections per sky area, counted once per exposure, and "
-                "star-minus-model T divided by model T.",
+                "star-minus-model T divided by model T; HEALPix nside 256.",
                 "full",
             )
         else:
@@ -402,7 +402,8 @@ def render(run_dir, versions, out, maps_dir=None):
             figs.add(
                 "sky_magnitude",
                 "survey",
-                "PSF FWHM and unweighted mean galaxy r magnitude per pixel.",
+                "PSF FWHM and unweighted mean galaxy r magnitude per "
+                "HEALPix nside-256 pixel.",
                 "full",
             )
         else:

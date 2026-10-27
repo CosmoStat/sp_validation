@@ -15,7 +15,13 @@ read by the renderers in :mod:`sp_validation.dashboard`:
     The galaxy weight on the SNR x size-ratio grid it is built on
     (:func:`sp_validation.calibration.get_w_des`): per-cell counts and the
     weight range within each cell, the grid edges, and the distinct weight
-    values with their multiplicities.
+    values with their multiplicities. Also contains response histograms,
+    equal-count leakage-cell regression sums and binned additive-bias sums.
+    Quantile boundaries use a temporary float32 buffer of the seven leakage
+    inputs; only sufficient statistics are saved.
+
+``star_residuals_<version>.npz``
+    Histograms and full-sample moments of valid-HSM star residuals.
 
 Usage (inside the container)::
 
