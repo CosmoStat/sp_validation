@@ -6,7 +6,19 @@ import pandas as pd
 import pytest
 
 from sp_validation.dashboard.field_maps import weight_cell_index, weight_grid_edges
-from sp_validation.dashboard.sky import Zenithal, coarsen, footprint_parts
+from sp_validation.dashboard.sky import Zenithal, coarsen, footprint_parts, quantity
+
+
+def test_size_residual_uses_model_normalised_sum():
+    maps = {
+        "nside": 128,
+        "pixels": np.array([0]),
+        "n_star": np.array([10.0]),
+        "sum_dT_over_T_psf": np.array([-2.0]),
+    }
+    pixels, values = quantity(maps, "dT_over_T", 128)
+    np.testing.assert_array_equal(pixels, [0])
+    np.testing.assert_allclose(values, [-0.2])
 
 
 def test_weight_cells_match_calibration_binning():

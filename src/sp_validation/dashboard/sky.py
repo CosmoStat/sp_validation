@@ -384,7 +384,8 @@ def quantity(maps, name, nside_out, footprint=None):
         values = _ratio(sums["sum_w_fwhm_psf"], sums["sum_w"])
         keep = sums["n_gal"] > 0
     elif name in ("de1", "de2", "dT_over_T"):
-        values = _ratio(sums[f"sum_{name}"], sums["n_star"])
+        key = "sum_dT_over_T_psf" if name == "dT_over_T" else f"sum_{name}"
+        values = _ratio(sums[key], sums["n_star"])
         keep = sums["n_star"] >= 5
     else:
         raise KeyError(name)
@@ -466,7 +467,7 @@ FIELD_SETS = {
         (
             "dT_over_T",
             128,
-            r"stars: $\langle (T_\star - T_{\rm PSF})/T_\star \rangle$",
+            r"stars: $\langle (T_\star - T_{\rm PSF})/T_{\rm PSF} \rangle$",
             True,
         ),
         ("de1", 128, r"stars: $\langle e_{1,\star} - e_{1,{\rm PSF}} \rangle$", True),

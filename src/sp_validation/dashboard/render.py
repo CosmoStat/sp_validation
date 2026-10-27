@@ -287,7 +287,12 @@ def render(run_dir, versions, out, maps_dir=None):
             "Effective source density in a zenithal equal-area projection centred on the patch.",
             "full",
         )
-        for which in ("galaxies", "psf"):
+        field_sets = ["galaxies"]
+        if "sum_dT_over_T_psf" in maps:
+            field_sets.append("psf")
+        else:
+            print("Skipping sky_psf: field maps lack model-normalised size residuals")
+        for which in field_sets:
             sky.field_maps(maps, figs.path(f"sky_{which}"), which, footprint)
             sky.field_maps(
                 maps,
@@ -303,15 +308,17 @@ def render(run_dir, versions, out, maps_dir=None):
             "full",
             narrow=True,
         )
-        dt = sky.median_quantity(maps, "dT_over_T", 128)
-        figs.add(
-            "sky_psf",
-            "survey",
-            "PSF fields: model FWHM at galaxies, and star-minus-model size and ellipticity "
-            f"residuals (median size residual {100 * dt:+.2f}%).",
-            "full",
-            narrow=True,
-        )
+        if "psf" in field_sets:
+            dt = sky.median_quantity(maps, "dT_over_T", 128)
+            figs.add(
+                "sky_psf",
+                "survey",
+                "PSF fields: model FWHM at galaxies, and star-minus-model size and "
+                "ellipticity residuals for PSF validation stars (valid HSM); "
+                f"size residual normalised by the model (median {100 * dt:+.2f}%).",
+                "full",
+                narrow=True,
+            )
     n = len(xi["theta"])
     CV.correlation(
         xi["cov"], CV.xi_blocks(n), figs.path("cov_xi"), r"$\xi_\pm$ reporting grid"

@@ -74,7 +74,7 @@ STAR_SUMS = [
     "n_star",
     "sum_de1",
     "sum_de2",
-    "sum_dT_over_T",
+    "sum_dT_over_T_psf",
     "sum_T_psf",
 ]
 
@@ -177,7 +177,7 @@ def star_sums(path, nside):
         ("n_star", None),
         ("sum_de1", stars["HSM_G1_STAR"] - stars["HSM_G1_PSF"]),
         ("sum_de2", stars["HSM_G2_STAR"] - stars["HSM_G2_PSF"]),
-        ("sum_dT_over_T", (t_star - t_psf) / t_star),
+        ("sum_dT_over_T_psf", (t_star - t_psf) / t_psf),
         ("sum_T_psf", t_psf),
     ):
         _accumulate(sums[key], pix, value, npix)
