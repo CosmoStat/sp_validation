@@ -174,11 +174,6 @@ class CosmologyValidation(
         Bin width in ell for linear binning (used with binning='linear').
     pol_factor : int, default -1
         Apply polarization correction factor in pseudo-C_ell calculations.
-    nrandom_cell : int, default 10
-        Number of random realizations for C_ell error estimation.
-    cell_seed : int, default 8192
-        Seed for the random-rotation noise realizations in the pseudo-C_ell
-        noise debiasing, making those realizations reproducible run-to-run.
     cosmo_params : dict, optional
         Cosmological parameters to pass to get_cosmo(). If None, uses Planck 2018.
     compute_tomography : bool, default False
@@ -304,11 +299,7 @@ class CosmologyValidation(
         n_ell_bins=32,
         ell_step=10,
         pol_factor=-1,
-        cell_method="map",
-        noise_bias_method="analytic",
         fiducial_input_inka="coupled",
-        nrandom_cell=10,
-        cell_seed=8192,
         path_onecovariance=None,
         cosmo_params=None,
         compute_tomography=False,
@@ -340,22 +331,12 @@ class CosmologyValidation(
             raise ValueError(f"pol_factor must be -1 or 1, got {pol_factor!r}")
         self.pol_factor = pol_factor
 
-        self.nrandom_cell = nrandom_cell
-        self.cell_seed = cell_seed
-        self.cell_method = cell_method
-        self.noise_bias_method = noise_bias_method
         self.fiducial_input_inka = fiducial_input_inka
         self.nside_mask = nside_mask
         self.path_onecovariance = path_onecovariance
         self.compute_tomography = compute_tomography
         self.force_run = force_run
 
-        assert self.cell_method in ["map", "catalog"], (
-            "cell_method must be 'map' or 'catalog'"
-        )
-        assert self.noise_bias_method in ["analytic", "randoms"], (
-            "noise_bias_method must be 'analytic' or 'randoms'"
-        )
         assert self.fiducial_input_inka in ["coupled", "decoupled"], (
             "fiducial_input_inka must be 'coupled' or 'decoupled'"
         )

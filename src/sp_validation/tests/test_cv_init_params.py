@@ -12,6 +12,7 @@ import inspect
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
 import yaml
 
 from sp_validation.cosmo_val import CosmologyValidation
@@ -54,6 +55,15 @@ def test_every_default_is_forwarded_or_exempt():
         f"{sorted(unaccounted)}. Forward them from config['cosmo_val'] or add "
         f"them to EXEMPT with a reason."
     )
+
+
+def test_legacy_cell_method_config_fails_loudly():
+    config = yaml.safe_load(
+        (REPO / "papers" / "cosmo_val" / "config" / "config.yaml").read_text()
+    )
+    config["cosmo_val"]["cell_method"] = "catalog"
+    with pytest.raises(ValueError, match="cell_method is no longer supported"):
+        _load_common().cv_init_params(config)
 
 
 def test_exemptions_are_live_keywords():

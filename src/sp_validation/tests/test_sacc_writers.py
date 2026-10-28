@@ -153,39 +153,6 @@ def test_paper_pseudo_cl_reader(tmp_path):
     assert np.array_equal(data["BB"], cl_all[3])
 
 
-def test_pseudo_cl_to_sacc_real_namaster_pixel_window(tmp_path):
-    """The SACC window gains pw²(ℓ) only when a map nside is supplied."""
-    pytest.importorskip("pymaster")
-    import healpy as hp
-
-    from sp_validation.pseudo_cl import get_pseudo_cls_map
-
-    nside = 32
-    mask = np.ones(12 * nside**2)
-    rng = np.random.default_rng(0)
-    shear = (
-        rng.normal(size=12 * nside**2) + 1j * rng.normal(size=12 * nside**2)
-    ) * 1e-2
-    ell_eff, cl_all, wsp = get_pseudo_cls_map(shear, mask, nside, "linear", ell_step=8)
-    s = sw.pseudo_cl_to_sacc({0: _nz()}, META, ell_eff, cl_all, wsp)
-    s2 = _roundtrip(s, tmp_path, "clreal")
-    ell_r, ee, bb, eb, window = sio.get_pseudo_cl(s2, (0, 0))
-    assert np.array_equal(ell_r, ell_eff)
-    assert np.array_equal(ee, cl_all[0]) and np.array_equal(bb, cl_all[3])
-    # With nside unset, the workspace window carries no pixel window.
-    assert window.weight.shape[1] == len(ell_eff)
-
-    mapped = sw.pseudo_cl_to_sacc({0: _nz()}, META, ell_eff, cl_all, wsp, nside=nside)
-    mapped_window = mapped.get_bandpower_windows(mapped.indices(sio.CL_EE))
-    pw2 = hp.pixwin(nside, lmax=window.weight.shape[0] - 1) ** 2
-    nonzero = np.abs(window.weight) > 1e-20
-    np.testing.assert_allclose(
-        mapped_window.weight[nonzero] / window.weight[nonzero],
-        np.broadcast_to(pw2[:, None], window.weight.shape)[nonzero],
-        rtol=1e-12,
-    )
-
-
 def test_cosebis_to_sacc(tmp_path):
     En, Bn = np.arange(1, 11) * 1e-6, np.arange(1, 11) * 1e-7
     result = {"En": En, "Bn": Bn, "cov": _spd(20, 7)}

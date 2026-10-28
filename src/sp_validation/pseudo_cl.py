@@ -5,8 +5,8 @@ mirroring ``b_modes.py`` and ``rho_tau.py``: the orchestrator mixin in
 ``sp_validation.cosmo_val.pseudo_cl`` (and analysis scripts directly) call these
 free functions. Everything here is pure computation -- NaMaster binning,
 weighted galaxy number-density maps, random-rotation noise debiasing, and the
-map-/catalog-based pseudo-Cl estimators. Depends on pymaster (NaMaster) and
-healpy.
+catalog-based pseudo-Cl estimation and mask/noise-map utilities for Gaussian
+covariance simulations. Depends on pymaster (NaMaster) and healpy.
 
 The harmonic geometry the estimators use is fixed by ``nside``: ``lmin = 8``,
 ``lmax = 2 * nside``, ``b_lmax = lmax - 1``. ``pseudo_cl_geometry`` returns that
@@ -314,291 +314,56 @@ def get_noise_realisation(
     return noise_map_e1, noise_map_e2
 
 
-def get_noise_bias_from_gaussian_real(
-    ra,
-    dec,
-    e1,
-    e2,
-    w,
-    nside,
-    nrandom_cell,
-    binning,
-    ell_step=10,
-    n_ell_bins=32,
-    power=0.5,
-    unique_pix=None,
-    idx=None,
-    idx_rep=None,
-    n_gal_map=None,
-    wsp=None,
-    seed=42,
-):
-    """
-    Compute the power spectrum of the noise bias from random realisations.
-
-    Parameters
-    ----------
-    ra, dec : np.ndarray
-        Right ascension and declination of the sources.
-    e1, e2 : np.ndarray
-        Ellipticity components.
-    w : np.ndarray
-        Weights of the sources.
-    nside : int
-        HEALPix resolution.
-    nrandom_cell : int
-        Number of random cells to use for the noise estimation.
-    binning, ell_step, n_ell_bins, power : str, int, int, float
-        Binning scheme and parameters.
-    unique_pix, idx, idx_rep : np.ndarray, optional
-        Pixel indices and bookkeeping arrays. If not provided, they will be computed.
-    n_gal_map : np.ndarray, optional
-        Galaxy number density map. If not provided, it will be computed.
-
-    Returns
-    -------
-    noise_bias_cl : np.ndarray
-        Power spectrum of the noise bias.
-    """
-    lmin, lmax, b_lmax = pseudo_cl_geometry(nside)
-
-    b = make_namaster_bin(
-        lmin,
-        lmax,
-        b_lmax,
-        binning,
-        ell_step=ell_step,
-        n_ell_bins=n_ell_bins,
-        power=power,
-    )
-
-    ell_eff = b.get_effective_ells()
-    noise_bias_cl = np.zeros((4, ell_eff.size))
-
-    rng = np.random.default_rng(seed)
-
-    if unique_pix is None or idx is None or idx_rep is None:
-        unique_pix, idx, idx_rep = get_pixels(ra, dec, nside)
-
-    if n_gal_map is None:
-        n_gal_map = get_n_gal_map(
-            nside, ra, dec, weights=w, unique_pix=unique_pix, idx=idx, idx_rep=idx_rep
-        )
-
-    if wsp is None:
-        _, _, wsp = get_field_and_workspace_from_map(b, mask_a=n_gal_map)
-
-    for _ in range(nrandom_cell):
-        noise_map_e1, noise_map_e2 = get_noise_realisation(
-            ra,
-            dec,
-            e1,
-            e2,
-            w,
-            nside,
-            unique_pix=unique_pix,
-            idx=idx,
-            idx_rep=idx_rep,
-            n_gal_map=n_gal_map,
-            rng=rng,
-        )
-
-        noise_map = noise_map_e1 + 1j * noise_map_e2
-        del noise_map_e1, noise_map_e2
-
-        _, cl_noise_, _ = get_pseudo_cls_map(
-            noise_map,
-            n_gal_map,
-            nside,
-            binning,
-            ell_step=ell_step,
-            n_ell_bins=n_ell_bins,
-            power=power,
-            wsp=wsp,
-        )
-
-        noise_bias_cl += cl_noise_
-
-    noise_bias_cl /= nrandom_cell
-
-    return noise_bias_cl
-
-
-def get_noise_bias(
-    ra,
-    dec,
-    e1,
-    e2,
-    w,
-    nside,
-    noise_bias_method,
-    binning,
-    *,
-    ell_step=10,
-    n_ell_bins=32,
-    power=0.5,
-    nrandom_cell=100,
-    seed=42,
-):
-    """
-    Compute the noise bias from object positions and ellipticities.
-
-    Parameters
-    ----------
-    ra, dec : np.ndarray
-        Right ascension and declination of the sources.
-    e1, e2 : np.ndarray
-        Ellipticity components.
-    w : np.ndarray
-        Weights of the sources.
-    nside : int
-        HEALPix resolution.
-    noise_bias_method : {'randoms', 'analytic'}
-        Method used to estimate the noise bias.
-    binning : {'linear', 'logspace', 'powspace'}
-        Binning scheme.
-    ell_step : int, optional
-        Bin width in ell for ``'linear'`` binning.
-    n_ell_bins : int, optional
-        Number of ell bins for ``'logspace'`` / ``'powspace'`` binning.
-    power : float, optional
-        Exponent for ``'powspace'`` binning.
-    nrandom_cell : int, optional
-        Number of random cells to use for the noise estimation. (only for the `randoms` method)
-    seed : int, optional
-        Random seed for reproducibility. (only for the `randoms` method)
-
-    Returns
-    -------
-    noise_bias_cl : np.ndarray
-        Power spectrum of the noise bias.
-    """
-    if noise_bias_method not in ["randoms", "analytic"]:
-        raise ValueError("noise_bias_method must be 'randoms' or 'analytic'")
-
-    lmin, lmax, b_lmax = pseudo_cl_geometry(nside)
-
-    b = make_namaster_bin(
-        lmin,
-        lmax,
-        b_lmax,
-        binning,
-        ell_step=ell_step,
-        n_ell_bins=n_ell_bins,
-        power=power,
-    )
-
+def get_noise_bias(ra, dec, e1, e2, w, nside):
+    """Compute the analytic noise bias from object positions and ellipticities."""
+    _, lmax, _ = pseudo_cl_geometry(nside)
     unique_pix, idx, idx_rep = get_pixels(ra, dec, nside)
-
-    if noise_bias_method == "analytic":
-        noise_bias_cl = get_noise_bias_analytical(
-            ra,
-            dec,
-            e1,
-            e2,
-            w,
-            lmax,
-            nside,
-            unique_pix=unique_pix,
-            idx=idx,
-            idx_rep=idx_rep,
-        )
-
-    elif noise_bias_method == "randoms":
-        noise_bias_cl = get_noise_bias_from_gaussian_real(
-            ra,
-            dec,
-            e1,
-            e2,
-            w,
-            nside,
-            nrandom_cell,
-            binning,
-            ell_step=ell_step,
-            n_ell_bins=n_ell_bins,
-            power=power,
-            unique_pix=unique_pix,
-            idx=idx,
-            idx_rep=idx_rep,
-            seed=seed,
-        )
-
-        noise_bias_cl = b.unbin_cell(noise_bias_cl)
-    else:
-        raise ValueError(
-            f"Invalid noise bias method `{noise_bias_method}`. Must be 'analytic' or 'randoms'."
-        )
-
+    noise_bias_cl = get_noise_bias_analytical(
+        ra,
+        dec,
+        e1,
+        e2,
+        w,
+        lmax,
+        nside,
+        unique_pix=unique_pix,
+        idx=idx,
+        idx_rep=idx_rep,
+    )
     return noise_bias_cl
 
 
 # ---------------------- Cl computation functions ----------------------
-def get_field_and_workspace_from_map(
-    b,
-    mask_a,
-    e1_map_a=None,
-    e2_map_a=None,
-    mask_b=None,
-    e1_map_b=None,
-    e2_map_b=None,
-    pol_factor=-1,
-    return_wsp=True,
-):
-    """Compute a NaMaster field and workspace object from the input maps.
-
-    If the shear maps are None, returns field objects but only the workspace objects is relevant and contains the mixing matrix.
-    If the second mask and shear maps (indexed b) are provided, the mixing matrix is computed between the two fields.
+def get_field_and_workspace_from_mask(b, mask_a, mask_b=None, return_wsp=True):
+    """Build zero-shear NaMaster fields and their mask-coupling workspace.
 
     Parameters
     ----------
     b : nmt.NmtBin
         NaMaster binning object.
     mask_a : np.ndarray
-        Field mask for the first map.
-    e1_map_a : np.ndarray, optional
-        E1 map for the first field.
-    e2_map_a : np.ndarray, optional
-        E2 map for the first field.
+        HEALPix occupancy mask for the first catalogue.
     mask_b : np.ndarray, optional
-        Field mask for the second map.
-    e1_map_b : np.ndarray, optional
-        E1 map for the second field.
-    e2_map_b : np.ndarray, optional
-        E2 map for the second field.
-    pol_factor : float, optional
-        Polarization factor to apply to the E2 map.
+        HEALPix occupancy mask for the second catalogue.
     return_wsp : bool, optional
         If True, return the NaMaster workspace object containing the mixing matrix.
 
     Returns
     -------
     field_a : nmt.NmtField
-        NaMaster field object for the first map.
+        Zero-shear NaMaster field carrying the first occupancy mask.
     field_b : nmt.NmtField
-        NaMaster field object for the second map (if provided, same than the first map otherwise).
+        Zero-shear field carrying the second occupancy mask, or ``field_a``.
     wsp : nmt.NmtWorkspace
         NaMaster workspace object containing the mixing matrix.
 
     """
     nside = hp.npix2nside(len(mask_a))
     lmax = b.lmax
-    if e1_map_a is None or e2_map_a is None:
-        e1_map_a = np.zeros(hp.nside2npix(nside))
-        e2_map_a = np.zeros(hp.nside2npix(nside))
-
-    # Create NaMaster field
-    field_a = nmt.NmtField(
-        mask=mask_a, maps=[e1_map_a, pol_factor * e2_map_a], lmax=lmax
-    )
-
+    zero_map = np.zeros(hp.nside2npix(nside))
+    field_a = nmt.NmtField(mask=mask_a, maps=[zero_map, zero_map], lmax=lmax)
     if mask_b is not None:
-        if e1_map_b is None or e2_map_b is None:
-            e1_map_b = np.zeros(hp.nside2npix(nside))
-            e2_map_b = np.zeros(hp.nside2npix(nside))
-
-        field_b = nmt.NmtField(
-            mask=mask_b, maps=[e1_map_b, pol_factor * e2_map_b], lmax=lmax
-        )
+        field_b = nmt.NmtField(mask=mask_b, maps=[zero_map, zero_map], lmax=lmax)
     else:
         field_b = field_a
 
@@ -734,118 +499,6 @@ def compute_cl_from_field_and_workspace(field_a, field_b, wsp, b):
     cl_decoupled = wsp.decouple_cell(cl_coupled)
 
     return cl_coupled, cl_decoupled
-
-
-def get_pseudo_cls_map(
-    shear_map_a,
-    mask_a,
-    nside,
-    binning,
-    *,
-    shear_map_b=None,
-    mask_b=None,
-    pol_factor=-1,
-    wsp=None,
-    ell_step=10,
-    n_ell_bins=32,
-    power=0.5,
-):
-    """Map-based pseudo-Cl for a complex shear map.
-
-    Parameters
-    ----------
-    shear_map_a : np.ndarray
-        Complex shear map (``e1 + 1j * e2``).
-    mask_a : np.ndarray
-        Field mask (the galaxy number-density map).
-    nside : int
-        HEALPix resolution; fixes the harmonic geometry.
-    binning : str
-        Binning scheme passed to :func:`make_namaster_bin`.
-    shear_map_b : np.ndarray, optional
-        Complex shear map for the second field (``e1 + 1j * e2``).
-    mask_b : np.ndarray, optional
-        Field mask for the second field (the galaxy number-density map).
-    pol_factor : float, optional
-        Polarization factor to apply to the E2 component.
-    wsp : nmt.NmtWorkspace, optional
-        Reuse a coupling workspace; built from the field if ``None``.
-    ell_step, n_ell_bins, power : optional
-        Binning-scheme parameters forwarded to :func:`make_namaster_bin`.
-
-    Returns
-    -------
-    ell_eff : np.ndarray
-        Effective multipoles of the bandpowers.
-    cl_all : np.ndarray
-        Decoupled EE/EB/BE/BB spectra, shape ``(4, n_bands)``.
-    wsp : nmt.NmtWorkspace
-        The coupling workspace (newly built or the one passed in).
-    """
-    # First do some assertion checks
-    if shear_map_b is not None:
-        assert mask_b is not None, "mask_b must be provided if shear_map_b is provided"
-        assert shear_map_a.shape == shear_map_b.shape, (
-            "shear_map_a and shear_map_b must have the same shape"
-        )
-        assert mask_a.shape == mask_b.shape, (
-            "mask_a and mask_b must have the same shape"
-        )
-
-    if mask_b is not None:
-        assert shear_map_b is not None, (
-            "shear_map_b must be provided if mask_b is provided"
-        )
-        assert shear_map_a.shape == shear_map_b.shape, (
-            "shear_map_a and shear_map_b must have the same shape"
-        )
-        assert mask_a.shape == mask_b.shape, (
-            "mask_a and mask_b must have the same shape"
-        )
-
-    lmin, lmax, b_lmax = pseudo_cl_geometry(nside)
-
-    b = make_namaster_bin(
-        lmin,
-        lmax,
-        b_lmax,
-        binning,
-        ell_step=ell_step,
-        n_ell_bins=n_ell_bins,
-        power=power,
-    )
-    ell_eff = b.get_effective_ells()
-
-    if wsp is None:
-        field_a, field_b, wsp = get_field_and_workspace_from_map(
-            b,
-            mask_a,
-            e1_map_a=shear_map_a.real,
-            e2_map_a=shear_map_a.imag,
-            mask_b=mask_b,
-            e1_map_b=shear_map_b.real if shear_map_b is not None else None,
-            e2_map_b=shear_map_b.imag if shear_map_b is not None else None,
-            pol_factor=pol_factor,
-            return_wsp=True,
-        )
-    else:
-        field_a, field_b, _ = get_field_and_workspace_from_map(
-            b,
-            mask_a,
-            e1_map_a=shear_map_a.real,
-            e2_map_a=shear_map_a.imag,
-            mask_b=mask_b,
-            e1_map_b=shear_map_b.real if shear_map_b is not None else None,
-            e2_map_b=shear_map_b.imag if shear_map_b is not None else None,
-            pol_factor=pol_factor,
-            return_wsp=False,
-        )
-
-    cl_coupled, cl_decoupled = compute_cl_from_field_and_workspace(
-        field_a, field_b, wsp, b
-    )
-
-    return ell_eff, cl_decoupled, wsp
 
 
 def get_pseudo_cls_catalog(
@@ -1054,12 +707,8 @@ def get_pseudo_cl_iNKA_covariance(
 _NMT_EE = 0
 
 
-def bandpower_window_from_workspace(wsp, nside=None):
+def bandpower_window_from_workspace(wsp):
     """Extract the bandpower window matrix ``W`` for a spin-2×spin-2 workspace.
-
-    For HEALPix-map spectra, supply ``nside`` to include the pixel window
-    ``pw²(ℓ)`` in the measured spectrum. Catalogue-based spectra have no pixel
-    window and must leave ``nside`` unset.
 
     NaMaster's ``get_bandpower_windows()`` returns a four-index array
     ``(n_cl_out, n_bpw, n_cl_in, n_ell)`` describing how each output bandpower
@@ -1075,13 +724,9 @@ def bandpower_window_from_workspace(wsp, nside=None):
         ``compute_coupled_cell``.
     window_weights : np.ndarray
         ``W`` of shape ``(n_ell, n_bpw)`` — one column per bandpower, the layout
-        :func:`sp_validation.sacc_io.add_pseudo_cl` expects. If ``nside`` is
-        given, this includes ``pw²(ℓ)`` on the window's multipole grid.
+        :func:`sp_validation.sacc_io.add_pseudo_cl` expects.
     """
     bpw = wsp.get_bandpower_windows()  # (n_cl_out, n_bpw, n_cl_in, n_ell)
     diagonal = bpw[_NMT_EE, :, _NMT_EE, :]  # (n_bpw, n_ell)
     window_ells = np.arange(diagonal.shape[1], dtype=float)
-    if nside is not None:
-        pixwin = hp.pixwin(nside, lmax=diagonal.shape[1] - 1)
-        diagonal = diagonal * pixwin**2
     return window_ells, diagonal.T
