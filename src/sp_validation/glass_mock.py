@@ -36,8 +36,6 @@ __all__ = [
     "create_mask_from_catalogue",
     "compute_two_point_xi",
     "compute_two_point_cl",
-    "compute_two_point_cl_map",
-    "get_n_gal_map",
     "compute_leakage_harmony",
     "TREECORR_CONFIG",
 ]
@@ -475,21 +473,6 @@ def compute_two_point_xi(cat, config=None):
     return gg
 
 
-def get_n_gal_map(nside, ra, dec, unique_pix=None, idx=None, idx_rep=None):
-    """Galaxy-count HEALPix map, shape ``(npix,)``.
-
-    The unweighted twin of the pseudo-Cl ``get_n_gal_map`` primitive: delegates
-    to it with ``weights=None`` (counts), reusing the ``get_pixels`` bookkeeping
-    when given. Imported lazily so this module keeps resolving in CAMB-only
-    environments without the harmonic stack.
-    """
-    from sp_validation.pseudo_cl import get_n_gal_map as _get_n_gal_map
-
-    return _get_n_gal_map(
-        nside, ra, dec, unique_pix=unique_pix, idx=idx, idx_rep=idx_rep
-    )
-
-
 def compute_two_point_cl(cat, nside=1024, lmin=8, n_bins=32):
     """Catalogue-based NaMaster pseudo-Cl for a mock shear field.
 
@@ -524,67 +507,6 @@ def compute_two_point_cl(cat, nside=1024, lmin=8, n_bins=32):
         lmax_mask=b_lmax,
         spin=2,
         lonlat=True,
-    )
-
-    wsp = nmt.NmtWorkspace.from_fields(f_all, f_all, b)
-    cl_coupled = nmt.compute_coupled_cell(f_all, f_all)
-    cl_all = wsp.decouple_cell(cl_coupled)
-
-    # compute_coupled_cell runs over ell = 0..b_lmax, index = ell
-    cl_coupled = np.concatenate([np.arange(lmax)[np.newaxis, :], cl_coupled])
-    cl_all = np.concatenate([ell_eff[np.newaxis, ...], cl_all])
-    return cl_coupled, cl_all
-
-
-def compute_two_point_cl_map(cat, nside=1024, lmin=8, n_bins=32):
-    """Map-based NaMaster pseudo-Cl for a mock shear field.
-
-    Bins the galaxies onto a HEALPix shear map (count-weighted mean per pixel)
-    and runs the MCM on the resulting masked field. Returns
-    ``(cl_coupled, cl_all)`` with the ell axis prepended.
-
-    Deliberately keeps its own ``NmtField`` construction rather than delegating
-    to the ``pseudo_cl.get_pseudo_cls_map`` primitive: the mock shear map is
-    built from UNWEIGHTED galaxy counts (the mask is the count map and the
-    per-pixel mean divides by counts, not summed shear weights), and this
-    function returns the COUPLED pseudo-Cl alongside the decoupled one (both with
-    an ell axis prepended), which the primitive's ``(ell_eff, cl_all, wsp)``
-    contract does not expose. The shared pieces — the powspace binning and the
-    galaxy-count map — come from ``_mock_powspace_bin`` and ``get_n_gal_map``.
-    """
-    import healpy as hp
-    import pymaster as nmt
-
-    from sp_validation.pseudo_cl import get_pixels
-
-    e1 = cat["e1"]
-    e2 = cat["e2"]
-    ra = cat["ra"]
-    dec = cat["dec"]
-    del cat
-
-    ra[ra < 0] += 360
-
-    b, ell_eff, lmax, b_lmax = _mock_powspace_bin(nside, lmin, n_bins)
-
-    factor = -1
-    unique_pix, idx, idx_rep = get_pixels(ra, dec, nside)
-    n_gal_map = get_n_gal_map(
-        nside, ra, dec, unique_pix=unique_pix, idx=idx, idx_rep=idx_rep
-    )
-    mask = n_gal_map > 0
-
-    shear_map_e1 = np.zeros(hp.nside2npix(nside))
-    shear_map_e2 = np.zeros(hp.nside2npix(nside))
-    shear_map_e1[unique_pix] += np.bincount(idx_rep, weights=e1)
-    shear_map_e2[unique_pix] += np.bincount(idx_rep, weights=e2)
-    shear_map_e1[mask] /= n_gal_map[mask]
-    shear_map_e2[mask] /= n_gal_map[mask]
-
-    f_all = nmt.NmtField(
-        mask=n_gal_map,
-        maps=[shear_map_e1, factor * shear_map_e2],
-        lmax=b_lmax,
     )
 
     wsp = nmt.NmtWorkspace.from_fields(f_all, f_all, b)

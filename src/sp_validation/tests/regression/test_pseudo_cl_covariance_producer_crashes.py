@@ -73,12 +73,10 @@ def test_pseudo_cl_cov_does_not_multiply_fiducial_dictionary(tmp_path, monkeypat
     stub = Tiny()
     stub.__dict__.update(
         nside=16,
-        cell_method="map",
         force_run=True,
         versions=["v"],
         cc={"v": {"shear": {"redshift_path": str(zpath)}}},
         cosmo=ccl.CosmologyVanillaLCDM(),
-        noise_bias_method="analytic",
         _output_path=lambda name: str(tmp_path / name),
         _output_path_pseudo_cl_cov=lambda *args, **kwargs: str(tmp_path / "cov.fits"),
         print_start=noop,

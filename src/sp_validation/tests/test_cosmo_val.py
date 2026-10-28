@@ -653,8 +653,6 @@ class TestCosmologyValidation:
         cv.cc[version]["shear"]["path"] = str(tmp_path / "missing.fits")
         out = tmp_path / "tomographic.fits"
         with pytest.raises(blinding.BlindingError, match="tomographic"):
-            cv.calculate_pseudo_cl_map(version, 16, out, 1, 2)
-        with pytest.raises(blinding.BlindingError, match="tomographic"):
             cv.calculate_pseudo_cl_catalog(version, out, 1, 2)
         assert not out.exists()
 
