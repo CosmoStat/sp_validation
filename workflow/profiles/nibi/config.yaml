@@ -1,0 +1,22 @@
+# Nibi / Alliance. Driver on login; every scientific job goes to Slurm.
+executor: slurm
+software-deployment-method: apptainer
+apptainer-args: "--cleanenv --bind /home,/project,/scratch"
+rerun-triggers: [mtime, params, input, code]
+latency-wait: 60
+jobs: 3
+local-cores: 1
+default-resources:
+  # Nibi's canonical CPU association for --account=def-sfabbro.
+  slurm_account: def-sfabbro_cpu
+  mem_mb: 8000
+  runtime: 60m
+shared-fs-usage:
+  - persistence
+  - input-output
+  - software-deployment
+  - sources
+  - storage-local-copies
+  - software-deployment-cache
+slurm-keep-successful-logs: true
+retries: 0
