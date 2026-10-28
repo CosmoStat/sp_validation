@@ -20,54 +20,22 @@ def test_branch_specific_selection():
     np.testing.assert_array_equal(masks["m1"], [0])
 
 
-def test_effective_m_and_covariance():
+def test_effective_m_total_response_and_covariance():
     product = {
         "edges": [10, 15, 20],
-        "value": [[1, 0, 2, 0], [3, 0, 6, 0]],
+        "value": [[0.1, 0, 0.1, 0], [0, 0, 0, 0]],
         "covariance": np.diag(np.arange(1.0, 9.0)),
     }
-    m, cov, share = sim_m_snr.effective_m(
-        product,
-        np.array([12, 15, 18]),
-        np.array([1, 2, 1]),
-        np.array([[1, 2], [1, 2], [3, 1]]),
-    )
-    np.testing.assert_allclose(share, [[0.5, 6 / 7], [0.5, 1 / 7]])
-    np.testing.assert_allclose(m, [2, 18 / 7])
-    hm, hc, hs = sim_m_snr.effective_m(product, histogram=[[3, 6], [3, 1]])
-    np.testing.assert_allclose(hm, m)
-    np.testing.assert_allclose(hc, cov)
-    np.testing.assert_allclose(hs, share)
-    common_m, _, _ = sim_m_snr.effective_m(product, [12, 18], [1, 3], 0.7)
-    np.testing.assert_allclose(common_m, [2.5, 5.0])
-    mapped = {"edges": [10, 15, 20], "sum_w_r11": [3, 3], "sum_w_r22": [6, 1]}
-    np.testing.assert_allclose(sim_m_snr.effective_m(product, histogram=mapped)[0], m)
-    mapped["edges"] = [10, 14, 20]
-    with pytest.raises(ValueError, match="edges"):
-        sim_m_snr.effective_m(product, histogram=mapped)
-    np.testing.assert_allclose(np.diag(cov), [1.5, (36 * 3 + 7) / 49])
-    with pytest.raises(ValueError, match="covered"):
-        sim_m_snr.effective_m(product, [9], [1], [1])
-
-
-def test_flat_m_bins_sum_to_full_numerator():
-    # In a flat-m toy, summing each bin's response-weighted numerator
-    # exactly recovers the full-population numerator in either component.
-    weights = np.array([1.0, 4.0, 2.0, 3.0])
-    r = np.array([[0.3, 0.7], [0.6, 0.5], [0.8, 0.9], [1.0, 0.4]])
-    m = np.array([0.02, -0.01])
-    product = {
-        "edges": [10, 15, 20],
-        "value": [[m[0], 0, m[1], 0]] * 2,
-        "covariance": np.eye(8),
-    }
-    result, _, shares = sim_m_snr.effective_m(product, [11, 14, 17, 19], weights, r)
-    np.testing.assert_allclose(result, m)
-    total_response = np.sum(weights[:, None] * r, axis=0)
-    np.testing.assert_allclose(
-        (shares * m).sum(axis=0) * total_response,
-        np.sum(weights[:, None] * r * m, axis=0),
-    )
+    # Equal W and R_shear=0.5; selection response is 0.5 in the first bin.
+    responses = np.array([np.eye(2), np.eye(2) * 0.5])
+    m, cov, share = sim_m_snr.effective_m(product, [1, 1], responses)
+    np.testing.assert_allclose(share, [[2 / 3, 2 / 3], [1 / 3, 1 / 3]])
+    np.testing.assert_allclose(m * 1000, [66.6666666667, 66.6666666667])
+    np.testing.assert_allclose(np.diag(cov), [1.0, 19 / 9])
+    with pytest.raises(ValueError, match="Expected bin weights"):
+        sim_m_snr.effective_m(product, [1], responses)
+    with pytest.raises(ValueError, match="nonnegative"):
+        sim_m_snr.effective_m(product, [-1, 1], responses)
 
 
 def test_grid_combination_and_product_roundtrip(tmp_path):

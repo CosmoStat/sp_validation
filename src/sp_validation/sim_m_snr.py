@@ -126,64 +126,30 @@ def combine_grids(products):
     )
 
 
-def effective_m(product, snr=None, weights=None, responses=None, *, histogram=None):
-    """Return response-weighted m and covariance for a data selection.
+def effective_m(product, bin_weights, total_response):
+    """Compute diagonal-response-weighted effective m for a data selection.
 
-    ``responses`` has shape (N,2), (N,), or scalar: per-object diagonal
-    response, or a common selection response. Data SNR and weights are no-shear
-    quantities. The covariance propagates simulation-bin uncertainty only.
-    Every selected object must lie within the product edges. Alternatively,
-    ``histogram`` is a (bins, 2) array of sum(w * R_ii), or a mapping
-    with ``sum_w_r11`` and ``sum_w_r22`` arrays (and optional ``edges``).
+    ``bin_weights`` is the no-shear sum of weights in each bin and
+    ``total_response`` is the selection's (bins, 2, 2) ensemble response,
+    including both shear and selection response measured for that bin.
+    This diagonal approximation assumes linear response and neglects matrix
+    mixing and bin-fraction derivative terms. Recalibrate the response for
+    each data sub-selection; separately corrected bins use different weights.
+    The covariance propagates simulation-bin uncertainty conditional on the
+    supplied data weights and responses.
     """
-    if histogram is not None:
-        if any(x is not None for x in (snr, weights, responses)):
-            raise ValueError("Pass either a histogram or per-object arrays")
-        if isinstance(histogram, dict):
-            if "edges" in histogram and not np.array_equal(
-                histogram["edges"], product["edges"]
-            ):
-                raise ValueError("Histogram edges do not match the product")
-            histogram = np.column_stack(
-                (histogram["sum_w_r11"], histogram["sum_w_r22"])
-            )
-        shares = np.asarray(histogram, dtype=float)
-        if shares.shape != (len(product["edges"]) - 1, 2):
-            raise ValueError("Histogram must have shape (bins, 2)")
-        if not np.all(np.isfinite(shares)):
-            raise ValueError("Histogram responses must be finite")
-        return _effective_from_histogram(product, shares)
-    if any(x is None for x in (snr, weights, responses)):
-        raise ValueError("SNR, weights and responses are all required")
-    snr, weights, responses = map(np.asarray, (snr, weights, responses))
-    if snr.ndim != 1 or weights.shape != snr.shape:
-        raise ValueError("SNR and weights must be aligned vectors")
-    if responses.ndim == 0:
-        responses = np.full((len(snr), 2), responses)
-    elif responses.shape == snr.shape:
-        responses = np.repeat(responses[:, None], 2, axis=1)
-    if responses.shape != (len(snr), 2):
-        raise ValueError("responses must have shape (N,) or (N,2)")
-    edges = np.asarray(product["edges"])
-    idx = np.searchsorted(edges, snr, side="left") - 1
-    if not np.all(np.isfinite(snr)) or np.any(idx < 0) or np.any(idx >= len(edges) - 1):
-        raise ValueError("Every selected SNR must be covered by the bins")
-    if (
-        not np.all(np.isfinite(weights))
-        or np.any(weights < 0)
-        or not np.all(np.isfinite(responses))
-    ):
-        raise ValueError("Weights and responses must be finite; weights nonnegative")
-    shares = np.stack(
-        [
-            np.bincount(
-                idx, weights=weights * responses[:, i], minlength=len(edges) - 1
-            )
-            for i in range(2)
-        ],
-        axis=1,
+    weights = np.asarray(bin_weights, dtype=float)
+    responses = np.asarray(total_response, dtype=float)
+    bins = len(product["edges"]) - 1
+    if weights.shape != (bins,) or responses.shape != (bins, 2, 2):
+        raise ValueError("Expected bin weights (bins,) and total response (bins,2,2)")
+    if not np.all(np.isfinite(weights)) or np.any(weights < 0):
+        raise ValueError("Bin weights must be finite and nonnegative")
+    if not np.all(np.isfinite(responses)):
+        raise ValueError("Total responses must be finite")
+    return _effective_from_histogram(
+        product, weights[:, None] * np.diagonal(responses, axis1=1, axis2=2)
     )
-    return _effective_from_histogram(product, shares)
 
 
 def _effective_from_histogram(product, histogram):
