@@ -68,15 +68,17 @@ done
 python scripts/validation/response/closure_snr_m.py --output "$OUT/snr"
 ```
 
-For the archived v2 cell product, the following supplies a provisional estimate by interpolating data weighted shear-response sums uniformly in log SNR within each table cell.
-It estimates data selection response using the simulations' per-bin selection-to-shear response ratio, not a measurement on the data.
-The data histogram, simulation ratio and data response are held fixed in the covariance; the simulation ratio uncertainty and data-transfer uncertainty are not included.
-The comparison uses paired tile deletions for its difference from the full-population m.
+For the halo-clear fiducial v2 data selection, `data_snr_hist_v2.json` contains 62,309,299 galaxies and measured per-bin shear, selection and total responses using the fixed `v2-d533a078` DES table.
+The product is available as a companion file to the `where-does-425-s-residual-m` felt thread; use its path for `--histogram`.
+The measured data binning is `[lower, upper)`, whereas the simulations use `(lower, upper]`; the effect of objects exactly on internal edges has not been quantified.
+Data histogram and response covariance, weight-table uncertainty and data-transfer uncertainty are not included.
+The comparison uses paired simulation tile deletions for its difference from the full-population m.
+The script also compares the no-shear-weighted mean of the bin response matrices to the directly measured full-sample response; they need not agree exactly because selection responses are separately normalised.
 
 ```bash
 python scripts/validation/response/data_snr_m.py \
   --product-snr "$OUT/snr/m_snr.fits" \
-  --cells /n17data/cdaley/unions/validation/2026-10-26_response-425/response/cell_response-d533a078.npz \
+  --histogram /path/to/data_snr_hist_v2.json \
   --production "$OUT/production" --output "$OUT/snr"
 ```
 

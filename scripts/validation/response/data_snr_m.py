@@ -10,56 +10,44 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
-from astropy.io import fits
 
 from sp_validation import sim_m_snr
 
 
-def from_cells(path, weight_path, target_edges):
-    """Rebin data cell sums, assuming uniform density in log SNR within cells."""
-    with np.load(path) as f, fits.open(weight_path) as hdus:
-        edges = f["snr_edges"].copy()
-        np.testing.assert_allclose(edges, hdus["W_EDGES"].data[0])
-        np.testing.assert_allclose(f["size_edges"], hdus["W_EDGES"].data[1])
-        weights = hdus["W_DES"].data
-        count = f["count"].copy()
-        np.testing.assert_array_equal(count, hdus["W_COUNT"].data)
-        r = np.stack([f["sum_R_g11"], f["sum_R_g22"]], axis=-1)
-        cell_response = np.sum(r * weights[:, :, None], axis=1)
-        cell_weight = np.sum(count * weights, axis=1)
-        cell_count = np.sum(count, axis=1)
-    a, b = np.log(edges[:-1]), np.log(edges[1:])
-    x, y = np.log(target_edges[:-1]), np.log(target_edges[1:])
-    frac = np.maximum(0, np.minimum(b[:, None], y) - np.maximum(a[:, None], x))
-    frac /= (b - a)[:, None]
+def load_histogram(path, target_edges):
+    """Load halo-clear data bin responses and validate their provenance and sums."""
+    data = json.loads(path.read_text())
+    if not np.array_equal(data["edges"], target_edges):
+        raise ValueError("Data and simulation SNR edges differ")
+    if not data["ensemble_response"]["available"]:
+        raise ValueError("Data ensemble response is unavailable")
+    if not data["weight_verification"]["w_des_is_exact_production_weight"]:
+        raise ValueError("Data weights do not match the production table")
+    bins = data["per_bin"]
+    weights = np.asarray(bins["sum_w"], dtype=float)
+    total = np.asarray(bins["R_total"], dtype=float)
+    shear = np.asarray(bins["R_shear"], dtype=float)
+    selection = np.asarray(bins["R_sel"], dtype=float)
+    count = np.asarray(bins["N"], dtype=int)
+    np.testing.assert_allclose(total, shear + selection, rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(weights.sum(), data["totals"]["sum_w"], rtol=1e-12)
+    if count.sum() != data["totals"]["selected"]:
+        raise ValueError("Data bin counts do not sum to the selected population")
     return dict(
-        count=frac.T @ cell_count,
-        sum_w=frac.T @ cell_weight,
-        sum_w_r=frac.T @ cell_response,
+        count=count,
+        sum_w=weights,
+        total=total,
+        full_response=np.asarray(data["totals"]["R_total"]),
+        convention=data["convention"],
     )
 
 
-def run(product_path, cells, full_dir, output):
-    """Save an effective-m summary and a provisional data histogram plot."""
+def run(product_path, histogram, full_dir, output):
+    """Save an effective-m summary and the data response-share plot."""
     product = sim_m_snr.read_product(product_path)
-    hist = from_cells(cells, inputs.PRODUCT["path"], product["edges"])
-    # Pool simulation selection/shear response ratios over external branches
-    # and grids with their no-shear weight sums. This is a stand-in for the
-    # data selection response, not a measurement of that response.
-    shear = np.zeros_like(hist["sum_w_r"])
-    selection = np.zeros_like(shear)
-    for grid in range(1, 5):
-        with np.load(output / f"review_default_{grid}.npz") as f:
-            for c in range(2):
-                shear[:, c] += (f["sum_w"] * f["shear"][:, :, c, c]).sum(axis=0)
-                selection[:, c] += (f["sum_w"] * f["selection"][:, :, c, c]).sum(axis=0)
-    if np.any(shear == 0) or np.any(hist["sum_w"] <= 0):
-        raise ValueError("Cannot form response ratios for empty bins")
-    ratio = selection / shear
-    total = np.zeros((len(hist["sum_w"]), 2, 2))
-    for c in range(2):
-        total[:, c, c] = hist["sum_w_r"][:, c] / hist["sum_w"] * (1 + ratio[:, c])
-    value, cov, share = sim_m_snr.effective_m(product, hist["sum_w"], total)
+    hist = load_histogram(histogram, product["edges"])
+    value, cov, share = sim_m_snr.effective_m(product, hist["sum_w"], hist["total"])
+    weighted_response = np.average(hist["total"], axis=0, weights=hist["sum_w"])
     full = []
     for i in range(1, 5):
         full.append(json.loads((full_dir / f"production_{i}.json").read_text()))
@@ -96,12 +84,18 @@ def run(product_path, cells, full_dir, output):
         delta -= delta.mean(axis=0)
         difference_cov += (len(delta) - 1) / len(delta) * delta.T @ delta
     summary = dict(
-        method="Provisional: log-uniform interpolation of data shear response in DES cells; simulation bin selection/shear response ratio stands in for data selection response. Fixed data distribution and response ratio.",
-        sim_selection_over_shear=ratio.tolist(),
-        data_total_response=total.tolist(),
+        method="Halo-clear v2 data, fixed no-shear bin weights and measured total responses; data histogram and response covariance neglected.",
+        data_product=str(histogram),
+        data_bin_convention=hist["convention"],
+        simulation_bin_convention="(lower, upper] intersected with production cuts",
+        data_total_response=hist["total"].tolist(),
+        weighted_bin_response=weighted_response.tolist(),
+        direct_full_data_response=hist["full_response"].tolist(),
+        weighted_minus_full_response=(
+            weighted_response - hist["full_response"]
+        ).tolist(),
         count=hist["count"].tolist(),
         sum_w=hist["sum_w"].tolist(),
-        sum_w_r=hist["sum_w_r"].tolist(),
         response_share=share.tolist(),
         effective_m=value.tolist(),
         covariance=cov.tolist(),
@@ -111,7 +105,7 @@ def run(product_path, cells, full_dir, output):
         difference_covariance=difference_cov.tolist(),
     )
     output.mkdir(parents=True, exist_ok=True)
-    (output / "data_snr_provisional.json").write_text(json.dumps(summary, indent=2))
+    (output / "data_snr_exact.json").write_text(json.dumps(summary, indent=2))
     edges = product["edges"]
     center = np.sqrt(edges[:-1] * edges[1:])
     errors = np.sqrt(np.diag(product["covariance"])).reshape(-1, 4)
@@ -142,7 +136,7 @@ def run(product_path, cells, full_dir, output):
     b.set_ylabel("Data response\nshare per bin")
     b.set_xlabel("No-shear SNR")
     b.set_xscale("log")
-    fig.suptitle("Image-sim m and provisional v2 response shares")
+    fig.suptitle("Image-sim m and halo-clear v2 data response shares")
     fig.tight_layout()
     fig.savefig(output / "snr_m.png", dpi=180)
     print(json.dumps(summary, indent=2))
@@ -152,9 +146,9 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser(description=__doc__)
     inputs.add_arguments(p)
     p.add_argument("--product-snr", type=Path, required=True)
-    p.add_argument("--cells", type=Path, required=True)
+    p.add_argument("--histogram", type=Path, required=True)
     p.add_argument("--production", type=Path, required=True)
     p.add_argument("--output", type=Path, required=True)
     args = p.parse_args()
     inputs.configure(args)
-    run(args.product_snr, args.cells, args.production, args.output)
+    run(args.product_snr, args.histogram, args.production, args.output)
