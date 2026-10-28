@@ -133,11 +133,20 @@ def effective_m(product, snr=None, weights=None, responses=None, *, histogram=No
     a scalar response assigned to each object. Data SNR and weights are no-shear
     quantities. The covariance propagates simulation-bin uncertainty only.
     Every selected object must lie within the product edges. Alternatively,
-    ``histogram`` is a (bins, 2) array of sum(w * R_ii) in each bin.
+    ``histogram`` is a (bins, 2) array of sum(w * R_ii), or a mapping
+    with ``sum_w_r11`` and ``sum_w_r22`` arrays (and optional ``edges``).
     """
     if histogram is not None:
         if any(x is not None for x in (snr, weights, responses)):
             raise ValueError("Pass either a histogram or per-object arrays")
+        if isinstance(histogram, dict):
+            if "edges" in histogram and not np.array_equal(
+                histogram["edges"], product["edges"]
+            ):
+                raise ValueError("Histogram edges do not match the product")
+            histogram = np.column_stack(
+                (histogram["sum_w_r11"], histogram["sum_w_r22"])
+            )
         shares = np.asarray(histogram, dtype=float)
         if shares.shape != (len(product["edges"]) - 1, 2):
             raise ValueError("Histogram must have shape (bins, 2)")
