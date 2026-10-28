@@ -1,9 +1,11 @@
 #!/bin/bash
 # Build every cosmo_val dashboard figure for one catalogue snapshot through Slurm.
 #
-# Submits the catalogue-level products (build_products.sbatch) and the
-# position-shear products (build_correlations.sbatch) in parallel, then a render
-# job that runs once both succeed. With --after, all of it waits for that job
+# Submits the catalogue-level products (build_products.sbatch), the
+# position-shear products (build_correlations.sbatch) and the COSEBIs
+# scale-cut PTE grid (from the run's ξ± and covariance) in parallel, then a
+# render job that runs once all succeed. A grid already in OUT_DIR/products is
+# kept. With --after, all of it waits for that job
 # (e.g. the catalogue extraction) to finish successfully.
 #
 # Usage, from the repository root on a login node:
@@ -43,12 +45,24 @@ correlations=$(sbatch --parsable --account="$account" "${dep[@]}" \
     --output="$out/logs/%x-%j.log" \
     --export=ALL,CATALOGUE_DIR="$catdir",VERSION="$version",OUT_DIR="$out/products",GAIA="$gaia",SIF="$SPV_IMAGE",SRC="$root/src" \
     scripts/dashboard/build_correlations.sbatch)
+grid="$out/products/cosebis_grid_$version.npz"
+after_grid=""
+if [ ! -e "$grid" ]; then
+    # #425 full grid, 210 cuts: see the cosebis-grid log for timing.
+    cosebis=$(sbatch --parsable --account="$account" --job-name=dashboard-cosebis-grid \
+        --time=01:30:00 --cpus-per-task=16 --mem=32G \
+        --output="$out/logs/%x-%j.log" \
+        --wrap="module load apptainer && apptainer exec --bind /scratch,/project,/home \
+--env PYTHONPATH=$root/src $SPV_IMAGE python -m sp_validation.dashboard.cosebis_grid \
+--run-dir $rundir --version $version --out $grid")
+    after_grid=":$cosebis"
+fi
 render=$(sbatch --parsable --account="$account" --job-name=dashboard-render \
-    --dependency="afterok:$products:$correlations" \
+    --dependency="afterok:$products:$correlations$after_grid" \
     --time=00:30:00 --cpus-per-task=2 --mem=8G \
     --output="$out/logs/%x-%j.log" \
     --wrap="module load apptainer && apptainer exec --bind /scratch,/project,/home \
 --env PYTHONPATH=$root/src $SPV_IMAGE python -m sp_validation.dashboard.render \
 --run-dir $rundir --version $version --maps-dir $out/products \
 --correlations-dir $out/products --out $out/figures")
-echo "products $products  correlations $correlations  render $render"
+echo "products $products  correlations $correlations  cosebis-grid ${cosebis:-kept}  render $render"

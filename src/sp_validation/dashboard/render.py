@@ -190,7 +190,7 @@ def render(run_dir, versions, out, maps_dir=None, corr_dir=None):
     figs.add(
         "cl",
         "data_vectors",
-        f"Cℓ (NaMaster, mode-decoupled) as ℓCℓ: EE (blinded), BB and EB. Shaded: outside {lcut}.",
+        f"Blinded Cℓ EE (NaMaster, mode-decoupled) as ℓCℓ. Shaded: outside {lcut}.",
         "full",
         narrow=True,
     )
@@ -222,15 +222,19 @@ def render(run_dir, versions, out, maps_dir=None, corr_dir=None):
         f"Cℓ BB and EB in units of their uncertainty. Shaded: outside {lcut}.",
         "half",
     )
+    cg = P.load_cosebis_grid(ref.cosebis_grid, blind) if ref.cosebis_grid else None
     for layout, suffix in (("wide", ""), ("narrow", "_narrow")):
-        SC.config_space(pe, figs.path("ptes_config" + suffix), theta_cut, layout=layout)
-        SC.harmonic_and_cosebis(
-            cl, co, figs.path("ptes_harmonic" + suffix), ell_cut, layout=layout
+        SC.config_space(
+            pe, cg, figs.path("ptes_config" + suffix), theta_cut, layout=layout
         )
+    SC.harmonic(cl, figs.path("ptes_harmonic"), ell_cut)
     figs.add(
         "ptes_config",
         "bmodes",
-        "Pure-B PTE for every (θmin, θmax) cut; the fiducial cut is outlined.",
+        "B-mode PTE for every (θmin, θmax) cut on the 20-bin reporting grid: pure "
+        "ξ+B, pure ξ−B"
+        + (" and COSEBIs Bₙ (n ≤ 6)" if cg is not None else "")
+        + "; the fiducial cut is outlined.",
         "full",
         narrow=True,
         group="scale_cuts",
@@ -238,9 +242,8 @@ def render(run_dir, versions, out, maps_dir=None, corr_dir=None):
     figs.add(
         "ptes_harmonic",
         "bmodes",
-        "Cℓ BB PTE for every band range, and COSEBIs B PTE (n ≤ 20) for each cached cut.",
-        "full",
-        narrow=True,
+        f"Cℓ BB PTE for every band range; the fiducial {lcut} is outlined.",
+        "half",
         group="scale_cuts",
     )
     if len(versions) > 1:

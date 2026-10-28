@@ -160,3 +160,33 @@ def test_coarsen_sums_children():
     out, sums = coarsen(pixels, {"n": np.ones(64)}, nside=4, nside_out=2)
     np.testing.assert_array_equal(out, np.arange(16))
     np.testing.assert_array_equal(sums["n"], np.full(16, 4))
+
+
+def test_cosebis_grid_panel_and_blind_check(tmp_path):
+    from sp_validation.dashboard.products import load_cosebis_grid
+    from sp_validation.dashboard.scale_cuts import config_space
+
+    edges = np.geomspace(1, 250, 21)
+    n = 20
+    tri = np.where(np.triu(np.ones((n, n))) > 0, 0.5, np.nan)
+    path = tmp_path / "cosebis_grid_V.npz"
+    np.savez(
+        path,
+        left_edges=edges[:-1],
+        right_edges=edges[1:],
+        pte_B_n6=tri,
+        pte_B_n20=tri,
+        blind=np.array("unions"),
+    )
+    with pytest.raises(ValueError, match="another blind"):
+        load_cosebis_grid(path, "other")
+    cg = load_cosebis_grid(path, "unions")
+    pe = {
+        "left_edges": edges[:-1],
+        "right_edges": edges[1:],
+        "pte_matrices": {"xip_B": tri, "xim_B": tri},
+    }
+    for layout in ("wide", "narrow"):
+        out = tmp_path / f"ptes_{layout}.png"
+        config_space(pe, cg, out, (12, 83), layout=layout)
+        assert out.exists()
