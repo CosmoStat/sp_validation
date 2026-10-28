@@ -59,18 +59,10 @@ def test_pair_count_dependency_and_ini(toy):
     assert "[tabulated inputs files]\nnpair_directory = " in text
     assert "npair_mm_file = " in text
     assert "\\n" not in text
-    assert f"ellipticity_dispersion = {0.3 / 2**0.5!r}" in text
-    cat_path = toy.root / "cosmo_val" / "cat_config.yaml"
-    original = cat_path.read_text()
-    entries = yaml.safe_load(original)
-    entries[VERSIONS[0]]["cov_th"]["sigma_e_convention"] = "per_component"
-    cat_path.write_text(yaml.safe_dump(entries))
-    try:
-        result = toy.snakemake("-F", target, "--allowed-rules", "covariance_ini")
-        assert result.returncode == 0, result.stdout
-        assert "ellipticity_dispersion = 0.3" in Path(target).read_text()
-    finally:
-        cat_path.write_text(original)
+    entries = yaml.safe_load((toy.root / "cosmo_val" / "cat_config.yaml").read_text())
+    sigma_e = float(entries[VERSIONS[0]]["cov_th"]["sigma_e"])
+    # cov_th.sigma_e is per component, as OneCovariance takes it.
+    assert f"ellipticity_dispersion = {sigma_e!r}" in text
 
 
 def test_analytic_flag_removes_pair_dependency(toy):
