@@ -1,0 +1,1363 @@
+{
+  "schema_version": 1,
+  "created_utc": "2026-10-28T19:29:15.296578+00:00",
+  "slurm_job_id": "25237093",
+  "edges": [
+    10.0,
+    15.0,
+    20.0,
+    30.0,
+    50.0,
+    100.0,
+    500.0
+  ],
+  "convention": "[lower, upper) for every SNR histogram bin; SNR=500 is out of range. No other finite-value cuts are applied.",
+  "per_bin": {
+    "N": [
+      21713560,
+      11245346,
+      10600252,
+      8021094,
+      5916067,
+      4812980
+    ],
+    "N_inside_weight_grid": [
+      21713560,
+      11245346,
+      10600252,
+      8021094,
+      5916067,
+      4812980
+    ],
+    "sum_w": [
+      56947780.32954137,
+      59605718.90038386,
+      88312009.15430501,
+      94834705.0009279,
+      90038532.24550737,
+      99229506.76685594
+    ],
+    "sum_w_R11": [
+      22078651.259381246,
+      33145591.24308068,
+      62165893.49253783,
+      77657202.81603722,
+      78816470.76114759,
+      84692107.10420246
+    ],
+    "sum_w_R22": [
+      22244137.014226876,
+      33312695.395810757,
+      62308908.157200746,
+      77796923.40097056,
+      78930339.6340582,
+      84796118.43066905
+    ],
+    "sum_w_R11_inside_weight_grid": [
+      22078651.259381246,
+      33145591.24308068,
+      62165893.49253783,
+      77657202.81603722,
+      78816470.76114759,
+      84692107.10420246
+    ],
+    "R_shear": [
+      [
+        [
+          0.3876999442582562,
+          0.00076974773162426
+        ],
+        [
+          -0.00021491556562861934,
+          0.39060586532994895
+        ]
+      ],
+      [
+        [
+          0.5560807226985267,
+          0.00020124934182224471
+        ],
+        [
+          -6.280087692113244e-06,
+          0.5588842146421354
+        ]
+      ],
+      [
+        [
+          0.7039347659266111,
+          0.00031455696953754564
+        ],
+        [
+          0.00011998906760236153,
+          0.7055541908047498
+        ]
+      ],
+      [
+        [
+          0.8188690291731825,
+          -8.342564381413567e-05
+        ],
+        [
+          -0.00014597062101574023,
+          0.8203423356481908
+        ]
+      ],
+      [
+        [
+          0.875363789207941,
+          4.8857278484827494e-05
+        ],
+        [
+          3.364659499655315e-05,
+          0.8766284574568648
+        ]
+      ],
+      [
+        [
+          0.8534972092846063,
+          1.736566722075593e-05
+        ],
+        [
+          -3.0008326779895297e-06,
+          0.8545453987783903
+        ]
+      ]
+    ],
+    "R_sel": [
+      [
+        [
+          0.02904967697656048,
+          0.00019433885561780754
+        ],
+        [
+          0.0009227536112379382,
+          0.029742839541373575
+        ]
+      ],
+      [
+        [
+          0.03715367800630077,
+          0.00019822027872901565
+        ],
+        [
+          -0.00010535899083374882,
+          0.03658171765071217
+        ]
+      ],
+      [
+        [
+          0.020714732128260492,
+          -0.0014796546187548366
+        ],
+        [
+          -0.00032158026114607614,
+          0.021411889095637782
+        ]
+      ],
+      [
+        [
+          -0.02273672862352161,
+          0.0014751673213620553
+        ],
+        [
+          0.0013652352937654252,
+          -0.021009548590621416
+        ]
+      ],
+      [
+        [
+          -0.07194001710117708,
+          -0.00039516642927304524
+        ],
+        [
+          -6.272458383027645e-05,
+          -0.07281855263296978
+        ]
+      ],
+      [
+        [
+          -0.08025480831175989,
+          0.00034811550430940887
+        ],
+        [
+          -0.00025140032953812984,
+          -0.07912579800399433
+        ]
+      ]
+    ],
+    "R_total": [
+      [
+        [
+          0.4167496212348167,
+          0.0009640865872420675
+        ],
+        [
+          0.0007078380456093189,
+          0.42034870487132253
+        ]
+      ],
+      [
+        [
+          0.5932344007048275,
+          0.0003994696205512604
+        ],
+        [
+          -0.00011163907852586206,
+          0.5954659322928476
+        ]
+      ],
+      [
+        [
+          0.7246494980548716,
+          -0.001165097649217291
+        ],
+        [
+          -0.00020159119354371463,
+          0.7269660799003875
+        ]
+      ],
+      [
+        [
+          0.7961323005496609,
+          0.0013917416775479196
+        ],
+        [
+          0.001219264672749685,
+          0.7993327870575694
+        ]
+      ],
+      [
+        [
+          0.803423772106764,
+          -0.00034630915078821774
+        ],
+        [
+          -2.9077988833723297e-05,
+          0.803809904823895
+        ]
+      ],
+      [
+        [
+          0.7732424009728464,
+          0.0003654811715301648
+        ],
+        [
+          -0.00025440116221611935,
+          0.775419600774396
+        ]
+      ]
+    ],
+    "R_joint": [
+      [
+        [
+          0.4182967649063129,
+          0.00018242981502964182
+        ],
+        [
+          0.0007283325564426821,
+          0.4217662999230643
+        ]
+      ],
+      [
+        [
+          0.5937292630017154,
+          0.00036543451858436294
+        ],
+        [
+          -0.0001056317052568537,
+          0.5958457359782405
+        ]
+      ],
+      [
+        [
+          0.7247824432954216,
+          -0.0011241703828007322
+        ],
+        [
+          -0.0001544849925229179,
+          0.7272728361951162
+        ]
+      ],
+      [
+        [
+          0.7962428730349121,
+          0.001420639390813732
+        ],
+        [
+          0.001240670471493062,
+          0.7995101118027009
+        ]
+      ],
+      [
+        [
+          0.8034413835219988,
+          -0.00031629285105961105
+        ],
+        [
+          -5.3848434086717746e-05,
+          0.8038058032212608
+        ]
+      ],
+      [
+        [
+          0.7732607923119094,
+          0.0003162679679278633
+        ],
+        [
+          -0.00026232874023453495,
+          0.7754540109722721
+        ]
+      ]
+    ],
+    "branch_sum_w": [
+      {
+        "ns": 56947780.329506904,
+        "p1": 56886255.7547992,
+        "m1": 57019982.069087215,
+        "p2": 56873526.332464315,
+        "m2": 56999962.26260248
+      },
+      {
+        "ns": 59605718.90036576,
+        "p1": 59513456.78309228,
+        "m1": 59708574.34870083,
+        "p2": 59457617.54698495,
+        "m2": 59707091.05248761
+      },
+      {
+        "ns": 88312009.15429565,
+        "p1": 88180566.21563026,
+        "m1": 88458277.22829576,
+        "p2": 88069189.05652432,
+        "m2": 88470947.36144549
+      },
+      {
+        "ns": 94834705.00093065,
+        "p1": 94700210.33990459,
+        "m1": 94978623.10227792,
+        "p2": 94597420.92484789,
+        "m2": 94997575.20630617
+      },
+      {
+        "ns": 90038532.24550603,
+        "p1": 89911392.73772354,
+        "m1": 90169627.98698737,
+        "p2": 89813408.94392867,
+        "m2": 90172778.88047582
+      },
+      {
+        "ns": 99229506.76685947,
+        "p1": 99081594.64921348,
+        "m1": 99382124.49460165,
+        "p2": 98952797.12941408,
+        "m2": 99412812.57036404
+      }
+    ],
+    "branch_N": [
+      {
+        "ns": 21713560,
+        "p1": 21691849,
+        "m1": 21737845,
+        "p2": 21690231,
+        "m2": 21729357
+      },
+      {
+        "ns": 11245346,
+        "p1": 11227857,
+        "m1": 11264685,
+        "p2": 11216787,
+        "m2": 11264458
+      },
+      {
+        "ns": 10600252,
+        "p1": 10584862,
+        "m1": 10617790,
+        "p2": 10570703,
+        "m2": 10619755
+      },
+      {
+        "ns": 8021094,
+        "p1": 8009862,
+        "m1": 8033193,
+        "p2": 8001063,
+        "m2": 8035047
+      },
+      {
+        "ns": 5916067,
+        "p1": 5907760,
+        "m1": 5924690,
+        "p2": 5901445,
+        "m2": 5924723
+      },
+      {
+        "ns": 4812980,
+        "p1": 4805793,
+        "m1": 4820397,
+        "p2": 4799647,
+        "m2": 4821803
+      }
+    ]
+  },
+  "totals": {
+    "input_cut_rows": 73023642,
+    "selected": 62309299,
+    "inside_weight_grid": 62309299,
+    "outside_weight_grid": 0,
+    "snr_below_10": 0,
+    "snr_at_or_above_500": 0,
+    "snr_nonfinite": 0,
+    "snr_outside_histogram": 0,
+    "weight_grid_snr_outside": 0,
+    "weight_grid_size_outside": 0,
+    "sum_w": 488968252.3974646,
+    "sum_w_R11": 358555916.6763871,
+    "sum_w_R22": 359389122.0329362,
+    "sum_w_R11_inside_weight_grid": 358555916.6763871,
+    "R_shear": [
+      [
+        0.7332907912085252,
+        0.00016733350665618145
+      ],
+      [
+        -2.684873662529288e-05,
+        0.7349947982733279
+      ]
+    ],
+    "R_sel": [
+      [
+        -0.02228854898930045,
+        6.214547133034663e-05
+      ],
+      [
+        0.00023742591518686128,
+        -0.021751995241030168
+      ]
+    ],
+    "R_total": [
+      [
+        0.7110022422192248,
+        0.00022947897798652808
+      ],
+      [
+        0.0002105771785615684,
+        0.7132428030322977
+      ]
+    ],
+    "R_joint": [
+      [
+        0.71129101488222,
+        0.00014275701819195353
+      ],
+      [
+        0.00022017351979348678,
+        0.7135378392354267
+      ]
+    ],
+    "branch_sum_w": {
+      "ns": 488968252.39746463,
+      "p1": 488273476.4803632,
+      "m1": 489717209.2299512,
+      "p2": 487763959.9341641,
+      "m2": 489761167.3336819
+    },
+    "branch_N": {
+      "ns": 62309299,
+      "p1": 62227983,
+      "m1": 62398600,
+      "p2": 62179876,
+      "m2": 62395143
+    }
+  },
+  "selected_nonfinite_counts": {
+    "snr": 0,
+    "size_ratio": 0,
+    "w_des": 0,
+    "R_g11": 0,
+    "R_g22": 0
+  },
+  "weight_grid": {
+    "snr_edges": [
+      10.0,
+      12.160417906586572,
+      14.787576366283135,
+      17.98231084395659,
+      21.867241478865562,
+      26.591479484724942,
+      32.336350328867866,
+      39.32235335728214,
+      47.81762498950186,
+      58.148230317277964,
+      70.71067811865474,
+      85.98713963809685,
+      104.5639552591273,
+      127.1541393916608,
+      154.62474735549577,
+      188.03015465431966,
+      228.65252596366324,
+      278.051027111478,
+      338.1216689031204,
+      411.17007971344435,
+      499.99999999999994
+    ],
+    "size_ratio_edges": [
+      0.707,
+      0.7599840992212895,
+      0.8169389406919305,
+      0.8781621003685308,
+      0.9439734551893261,
+      1.014716854357664,
+      1.090761915875063,
+      1.1725059577103223,
+      1.2603760736945893,
+      1.3548313649884698,
+      1.4563653387800741,
+      1.5655084867466518,
+      1.6828310567516807,
+      1.8089460322588922,
+      1.9445123350299858,
+      2.0902382678393923,
+      2.246885215193478,
+      2.415271621389602,
+      2.5962772666994627,
+      2.7908478640188163,
+      3.0
+    ],
+    "inside_convention": "(lower edge, upper edge] on both coordinates, finite values only; outside counts are union, coordinate counts may overlap.",
+    "cache_cell_convention": "Right-closed; values outside the edge range are assigned to last cell on that axis, not dropped (field_maps.weight_cell_index)."
+  },
+  "selection": {
+    "path": "/scratch/cdaley/cosmo-val-v2/calib/full-r425/selected-halo-clear.npy",
+    "kind": "boolean mask, one element per cut-FITS row",
+    "shape": [
+      73023642
+    ],
+    "dtype": "bool",
+    "definition": "Apply selected-halo-clear to the already calibrated cut catalogue: both MASK_1_Faint_star_halos and MASK_2_Bright_star_halos must be clear. W and R are not refitted after this additional selection.",
+    "code_reference": "/scratch/cdaley/cosmo-val-v2/calib/r425/driver.py:48-55,96-100"
+  },
+  "column_definitions": {
+    "snr": {
+      "definition": "NGMIX_FLUX_NOSHEAR / NGMIX_FLUX_ERR_NOSHEAR; no-shear-branch flux SNR, already present in cut FITS. No comprehensive HDF5 access needed.",
+      "code_references": [
+        "src/sp_validation/calibration.py:282-304 (fill_cat_gal)",
+        "scripts/calibration/calibrate_comprehensive_cat.py:225-233 (write_shape_catalog)"
+      ]
+    },
+    "w_des": {
+      "definition": "Fixed production DES cell weight W = mean((R11+R22)/2)^2 / mean((e1_uncal^2+e2_uncal^2)/2), fitted with unweighted per-cell means; evaluated at no-shear SNR and T/T_PSF. Finite out-of-range coordinates are clipped to nearest production cell, nonfinite coordinates give zero.",
+      "code_references": [
+        "src/sp_validation/response.py:14-49",
+        "src/sp_validation/calibration.py:368-391",
+        "scripts/calibration/calibrate_comprehensive_cat.py:225-229"
+      ]
+    },
+    "R_g11": {
+      "definition": "Per-object metacal shear response (NGMIX_G1_1P - NGMIX_G1_1M)/(2*step), on no-shear-selected rows; not total or selection response; no weights in individual finite difference.",
+      "step": 0.01,
+      "code_references": [
+        "src/sp_validation/calibration.py:924-951 (branch mapping)",
+        "src/sp_validation/calibration.py:1230-1243",
+        "src/sp_validation/calibration.py:282-288",
+        "scripts/calibration/calibrate_comprehensive_cat.py:191-199"
+      ]
+    },
+    "R_g22": {
+      "definition": "Per-object metacal shear response (NGMIX_G2_2P - NGMIX_G2_2M)/(2*step), on no-shear-selected rows.",
+      "step": 0.01,
+      "code_references": [
+        "src/sp_validation/calibration.py:924-951 (branch mapping)",
+        "src/sp_validation/calibration.py:1230-1243"
+      ]
+    },
+    "size_ratio": {
+      "definition": "NGMIX_T_NOSHEAR / NGMIX_T_PSF_RECONV_NOSHEAR; ratio of second-moment sizes, not radii.",
+      "code_references": [
+        "src/sp_validation/calibration.py:290-297"
+      ]
+    },
+    "sum_w_R11_inside_weight_grid": {
+      "definition": "Sum w_des * R_g11 after the halo-clear selection, further restricted to finite no-shear SNR and size_ratio inside the catpaper grid as defined above."
+    }
+  },
+  "code_provenance": {
+    "checkout": "/home/cdaley/sp/sp_validation-r425",
+    "commit": "d604206f407e81bf63abfa3f6c630b442d80dc4b",
+    "references_relative_to_checkout": true,
+    "catpaper_checkout": "/project/6001537/cdaley/sp/sp_validation-catpaper",
+    "catpaper_commit": "e93c07dd",
+    "analysis_script": "/scratch/cdaley/chair-fanout/snr-hist/analyze.py",
+    "slurm_script": "/scratch/cdaley/chair-fanout/snr-hist/analyze.sbatch",
+    "ensemble_script": "/scratch/cdaley/chair-fanout/snr-hist/ensemble_response.py",
+    "script_sha256": {
+      "analyze.py": "98488a65024dd88f6b3d6800e29e18711eef674f2869eb006e91da6f89c7ef6b",
+      "ensemble_response.py": "e0714f37f796a57d238e03f9e9139d5df5ad4abeec6c057ded8d24b7bd77ee46",
+      "finalize.py": "69b9ad9cf4828c2652ee2089e4b40e19ba51d7aee56006170026575b71a86181"
+    },
+    "ensemble_slurm_script": "/scratch/cdaley/chair-fanout/snr-hist/ensemble.sbatch"
+  },
+  "weight_verification": {
+    "rows_tested": 73023642,
+    "embedded_mismatches": 0,
+    "production_mismatches": 0,
+    "embedded_max_abs_difference": 0.0,
+    "production_max_abs_difference": 0.0,
+    "w_des_is_exact_production_weight": true,
+    "embedded_and_product_W_exactly_equal": true,
+    "embedded_and_product_edges_exactly_equal": true,
+    "embedded_training_count": 73023642,
+    "production_fit_commit": "d533a078ed6998683e92e6f24191d0baa8419fa9",
+    "method": "Recompute weights for every cut-FITS row, independently from embedded W_DES/W_EDGES and production-product W_DES/W_EDGES, with response.evaluate_w convention."
+  },
+  "cross_check": {
+    "cache_reproduced_by_all_cut_rows": true,
+    "npz_selection": "calibrated cut catalogue",
+    "npz_count_total": 73023642,
+    "npz_sum_response_total": 43984940.28651769,
+    "sum_response_definition": "Unweighted sum of (R_g11+R_g22)/2, not sum(w*R11), not total metacal response.",
+    "code_reference": "/project/6001537/cdaley/sp/sp_validation-catpaper/src/sp_validation/dashboard/field_maps.py:120-130,213-225,277-281,382-389",
+    "note": "Cache builder reads all rows of the calibrated cut catalogue, without selected-halo-clear. The halo-clear histogram is therefore not expected to reproduce this cache. Both populations are checked separately; compare all_cut_rows to cache for like-for-like verification. Cache totals include its out-of-range-to-last-cell assignments; strictly_inside_grid reports the finite geometric subset separately.",
+    "all_cut_rows": {
+      "count_total": 73023642,
+      "sum_response_total": 43984940.28651769,
+      "strictly_inside_grid": {
+        "count": 73023642,
+        "sum_response": 43984940.2865177
+      },
+      "count_difference_from_npz": 0,
+      "sum_response_difference_from_npz": 0.0,
+      "cells_count_exactly_equal": true,
+      "cells_sum_response_allclose_rtol_1e_12": true,
+      "cells_max_abs_count_difference": 0,
+      "cells_max_abs_sum_response_difference": 6.402842700481415e-10
+    },
+    "selected_rows": {
+      "count_total": 62309299,
+      "sum_response_total": 37513586.25785795,
+      "strictly_inside_grid": {
+        "count": 62309299,
+        "sum_response": 37513586.25785794
+      },
+      "count_difference_from_npz": -10714343,
+      "sum_response_difference_from_npz": -6471354.028659739,
+      "cells_count_exactly_equal": false,
+      "cells_sum_response_allclose_rtol_1e_12": false,
+      "cells_max_abs_count_difference": 114378,
+      "cells_max_abs_sum_response_difference": 41617.46086159628
+    }
+  },
+  "inputs": [
+    {
+      "path": "/scratch/cdaley/cosmo-val-v2/calib/full-r425/shape_catalog_cut_ngmix.fits",
+      "size_bytes": 13949236800,
+      "mtime_utc": "2026-10-26T05:04:35.731958+00:00",
+      "mtime_ns": 1792991075731957965
+    },
+    {
+      "path": "/scratch/cdaley/cosmo-val-v2/calib/full-r425/selected-halo-clear.npy",
+      "size_bytes": 73023770,
+      "mtime_utc": "2026-10-26T05:10:07.354921+00:00",
+      "mtime_ns": 1792991407354921163
+    },
+    {
+      "path": "/scratch/cdaley/cosmo-val-v2/calib/full-r425/des_weight_product-d533a078.fits",
+      "size_bytes": 25920,
+      "mtime_utc": "2026-10-26T03:34:19.806584+00:00",
+      "mtime_ns": 1792985659806583687
+    },
+    {
+      "path": "/scratch/cdaley/cosmo-val-v2/calib/full-r425/des_weight_product-d533a078.json",
+      "size_bytes": 4600,
+      "mtime_utc": "2026-10-26T03:34:29.105966+00:00",
+      "mtime_ns": 1792985669105966140
+    },
+    {
+      "path": "/scratch/cdaley/cosmo-val-v2/catpaper/products/weight_cells_SP_v2.0.npz",
+      "size_bytes": 53215,
+      "mtime_utc": "2026-10-27T10:09:38.399559+00:00",
+      "mtime_ns": 1793095778399559208
+    },
+    {
+      "path": "/scratch/cdaley/cosmo-val-v2/calib/full-r425/shape_catalog_comprehensive_ngmix.hdf5",
+      "size_bytes": 175124461552,
+      "mtime_utc": "2026-10-25T01:43:35.067096+00:00",
+      "mtime_ns": 1792892615067095807
+    },
+    {
+      "path": "/scratch/cdaley/cosmo-val-v2/calib/full-r425/config_mask.yaml",
+      "size_bytes": 1347,
+      "mtime_utc": "2026-10-26T02:06:59.460595+00:00",
+      "mtime_ns": 1792980419460595138
+    }
+  ],
+  "not_verified": [
+    "No independent rerun of the upstream ngmix image measurements; response differences use the stored metacal branch measurements. No jackknife uncertainty or detection response computed."
+  ],
+  "ensemble_response": {
+    "available": true,
+    "slurm_job_id": "25237900",
+    "input": "/scratch/cdaley/cosmo-val-v2/calib/full-r425/shape_catalog_comprehensive_ngmix.hdf5",
+    "columns_read": [
+      "FLAGS",
+      "MASK_1024_Maximask",
+      "MASK_1_Faint_star_halos",
+      "MASK_2_Bright_star_halos",
+      "MASK_4_Stars",
+      "MASK_64_r",
+      "MASK_8_Manual",
+      "NGMIX_FLAGS_1M",
+      "NGMIX_FLAGS_1P",
+      "NGMIX_FLAGS_2M",
+      "NGMIX_FLAGS_2P",
+      "NGMIX_FLAGS_NOSHEAR",
+      "NGMIX_FLUX_1M",
+      "NGMIX_FLUX_1P",
+      "NGMIX_FLUX_2M",
+      "NGMIX_FLUX_2P",
+      "NGMIX_FLUX_ERR_1M",
+      "NGMIX_FLUX_ERR_1P",
+      "NGMIX_FLUX_ERR_2M",
+      "NGMIX_FLUX_ERR_2P",
+      "NGMIX_FLUX_ERR_NOSHEAR",
+      "NGMIX_FLUX_NOSHEAR",
+      "NGMIX_G1_1M",
+      "NGMIX_G1_1P",
+      "NGMIX_G1_2M",
+      "NGMIX_G1_2P",
+      "NGMIX_G1_NOSHEAR",
+      "NGMIX_G1_PSF_ORIG_NOSHEAR",
+      "NGMIX_G2_1M",
+      "NGMIX_G2_1P",
+      "NGMIX_G2_2M",
+      "NGMIX_G2_2P",
+      "NGMIX_G2_NOSHEAR",
+      "NGMIX_G2_PSF_ORIG_NOSHEAR",
+      "NGMIX_MCAL_TYPES_FAIL",
+      "NGMIX_N_EPOCH",
+      "NGMIX_T_1M",
+      "NGMIX_T_1P",
+      "NGMIX_T_2M",
+      "NGMIX_T_2P",
+      "NGMIX_T_NOSHEAR",
+      "NGMIX_T_PSF_RECONV_1M",
+      "NGMIX_T_PSF_RECONV_1P",
+      "NGMIX_T_PSF_RECONV_2M",
+      "NGMIX_T_PSF_RECONV_2P",
+      "NGMIX_T_PSF_RECONV_NOSHEAR",
+      "N_EPOCH",
+      "mag",
+      "overlap"
+    ],
+    "common_parent_rows": 266725795,
+    "branch_order": [
+      "ns",
+      "p1",
+      "m1",
+      "p2",
+      "m2"
+    ],
+    "per_bin": [
+      {
+        "R_shear": [
+          [
+            0.3876999442582562,
+            0.00076974773162426
+          ],
+          [
+            -0.00021491556562861934,
+            0.39060586532994895
+          ]
+        ],
+        "R_sel": [
+          [
+            0.02904967697656048,
+            0.00019433885561780754
+          ],
+          [
+            0.0009227536112379382,
+            0.029742839541373575
+          ]
+        ],
+        "R_total": [
+          [
+            0.4167496212348167,
+            0.0009640865872420675
+          ],
+          [
+            0.0007078380456093189,
+            0.42034870487132253
+          ]
+        ],
+        "R_joint": [
+          [
+            0.4182967649063129,
+            0.00018242981502964182
+          ],
+          [
+            0.0007283325564426821,
+            0.4217662999230643
+          ]
+        ],
+        "sum_w": 56947780.329506904,
+        "branch_sum_w": {
+          "ns": 56947780.329506904,
+          "p1": 56886255.7547992,
+          "m1": 57019982.069087215,
+          "p2": 56873526.332464315,
+          "m2": 56999962.26260248
+        },
+        "branch_N": {
+          "ns": 21713560,
+          "p1": 21691849,
+          "m1": 21737845,
+          "p2": 21690231,
+          "m2": 21729357
+        },
+        "weighted_noshear_shape_sums": [
+          [
+            -4873.656685603602,
+            -9465.69105438874
+          ],
+          [
+            12306.440011432434,
+            -10391.844727335256
+          ],
+          [
+            -20792.87162582716,
+            -11468.581416950428
+          ],
+          [
+            -3629.934067990025,
+            6686.793110456959
+          ],
+          [
+            -3859.549948274887,
+            -27205.15606230367
+          ]
+        ]
+      },
+      {
+        "R_shear": [
+          [
+            0.5560807226985267,
+            0.00020124934182224471
+          ],
+          [
+            -6.280087692113244e-06,
+            0.5588842146421354
+          ]
+        ],
+        "R_sel": [
+          [
+            0.03715367800630077,
+            0.00019822027872901565
+          ],
+          [
+            -0.00010535899083374882,
+            0.03658171765071217
+          ]
+        ],
+        "R_total": [
+          [
+            0.5932344007048275,
+            0.0003994696205512604
+          ],
+          [
+            -0.00011163907852586206,
+            0.5954659322928476
+          ]
+        ],
+        "R_joint": [
+          [
+            0.5937292630017154,
+            0.00036543451858436294
+          ],
+          [
+            -0.0001056317052568537,
+            0.5958457359782405
+          ]
+        ],
+        "sum_w": 59605718.90036576,
+        "branch_sum_w": {
+          "ns": 59605718.90036576,
+          "p1": 59513456.78309228,
+          "m1": 59708574.34870083,
+          "p2": 59457617.54698495,
+          "m2": 59707091.05248761
+        },
+        "branch_N": {
+          "ns": 11245346,
+          "p1": 11227857,
+          "m1": 11264685,
+          "p2": 11216787,
+          "m2": 11264458
+        },
+        "weighted_noshear_shape_sums": [
+          [
+            -7881.037215314588,
+            8467.058102821462
+          ],
+          [
+            14629.875942158485,
+            8845.286150555288
+          ],
+          [
+            -29690.022257779998,
+            9000.102524877027
+          ],
+          [
+            -7569.419367298081,
+            31275.949192912456
+          ],
+          [
+            -7837.882418762104,
+            -12276.581463009146
+          ]
+        ]
+      },
+      {
+        "R_shear": [
+          [
+            0.7039347659266111,
+            0.00031455696953754564
+          ],
+          [
+            0.00011998906760236153,
+            0.7055541908047498
+          ]
+        ],
+        "R_sel": [
+          [
+            0.020714732128260492,
+            -0.0014796546187548366
+          ],
+          [
+            -0.00032158026114607614,
+            0.021411889095637782
+          ]
+        ],
+        "R_total": [
+          [
+            0.7246494980548716,
+            -0.001165097649217291
+          ],
+          [
+            -0.00020159119354371463,
+            0.7269660799003875
+          ]
+        ],
+        "R_joint": [
+          [
+            0.7247824432954216,
+            -0.0011241703828007322
+          ],
+          [
+            -0.0001544849925229179,
+            0.7272728361951162
+          ]
+        ],
+        "sum_w": 88312009.15429565,
+        "branch_sum_w": {
+          "ns": 88312009.15429565,
+          "p1": 88180566.21563026,
+          "m1": 88458277.22829576,
+          "p2": 88069189.05652432,
+          "m2": 88470947.36144549
+        },
+        "branch_N": {
+          "ns": 10600252,
+          "p1": 10584862,
+          "m1": 10617790,
+          "p2": 10570703,
+          "m2": 10619755
+        },
+        "weighted_noshear_shape_sums": [
+          [
+            -3283.5770382742035,
+            27438.58008800927
+          ],
+          [
+            17133.385307215267,
+            27344.500487908146
+          ],
+          [
+            -19460.44610012191,
+            27999.54646770887
+          ],
+          [
+            -2972.0570687022837,
+            46210.19556751888
+          ],
+          [
+            -367.4862252372597,
+            8534.397220702544
+          ]
+        ]
+      },
+      {
+        "R_shear": [
+          [
+            0.8188690291731825,
+            -8.342564381413567e-05
+          ],
+          [
+            -0.00014597062101574023,
+            0.8203423356481908
+          ]
+        ],
+        "R_sel": [
+          [
+            -0.02273672862352161,
+            0.0014751673213620553
+          ],
+          [
+            0.0013652352937654252,
+            -0.021009548590621416
+          ]
+        ],
+        "R_total": [
+          [
+            0.7961323005496609,
+            0.0013917416775479196
+          ],
+          [
+            0.001219264672749685,
+            0.7993327870575694
+          ]
+        ],
+        "R_joint": [
+          [
+            0.7962428730349121,
+            0.001420639390813732
+          ],
+          [
+            0.001240670471493062,
+            0.7995101118027009
+          ]
+        ],
+        "sum_w": 94834705.00093065,
+        "branch_sum_w": {
+          "ns": 94834705.00093065,
+          "p1": 94700210.33990459,
+          "m1": 94978623.10227792,
+          "p2": 94597420.92484789,
+          "m2": 94997575.20630617
+        },
+        "branch_N": {
+          "ns": 8021094,
+          "p1": 8009862,
+          "m1": 8033193,
+          "p2": 8001063,
+          "m2": 8035047
+        },
+        "weighted_noshear_shape_sums": [
+          [
+            4991.100047417094,
+            18573.496490336744
+          ],
+          [
+            -16214.31100354578,
+            21220.639527820575
+          ],
+          [
+            26928.083495001218,
+            18689.6635275512
+          ],
+          [
+            6038.468623638512,
+            867.8484873495482
+          ],
+          [
+            3261.26543387902,
+            40788.642998183714
+          ]
+        ]
+      },
+      {
+        "R_shear": [
+          [
+            0.875363789207941,
+            4.8857278484827494e-05
+          ],
+          [
+            3.364659499655315e-05,
+            0.8766284574568648
+          ]
+        ],
+        "R_sel": [
+          [
+            -0.07194001710117708,
+            -0.00039516642927304524
+          ],
+          [
+            -6.272458383027645e-05,
+            -0.07281855263296978
+          ]
+        ],
+        "R_total": [
+          [
+            0.803423772106764,
+            -0.00034630915078821774
+          ],
+          [
+            -2.9077988833723297e-05,
+            0.803809904823895
+          ]
+        ],
+        "R_joint": [
+          [
+            0.8034413835219988,
+            -0.00031629285105961105
+          ],
+          [
+            -5.3848434086717746e-05,
+            0.8038058032212608
+          ]
+        ],
+        "sum_w": 90038532.24550603,
+        "branch_sum_w": {
+          "ns": 90038532.24550603,
+          "p1": 89911392.73772354,
+          "m1": 90169627.98698737,
+          "p2": 89813408.94392867,
+          "m2": 90172778.88047582
+        },
+        "branch_N": {
+          "ns": 5916067,
+          "p1": 5907760,
+          "m1": 5924690,
+          "p2": 5901445,
+          "m2": 5924723
+        },
+        "weighted_noshear_shape_sums": [
+          [
+            -3190.70803065661,
+            25606.886975139223
+          ],
+          [
+            -68448.96535723747,
+            24600.779301573806
+          ],
+          [
+            61090.533395199855,
+            24784.552449573086
+          ],
+          [
+            -3205.123973866283,
+            -40590.22696917584
+          ],
+          [
+            -2505.2835191698114,
+            90572.38446141667
+          ]
+        ]
+      },
+      {
+        "R_shear": [
+          [
+            0.8534972092846063,
+            1.736566722075593e-05
+          ],
+          [
+            -3.0008326779895297e-06,
+            0.8545453987783903
+          ]
+        ],
+        "R_sel": [
+          [
+            -0.08025480831175989,
+            0.00034811550430940887
+          ],
+          [
+            -0.00025140032953812984,
+            -0.07912579800399433
+          ]
+        ],
+        "R_total": [
+          [
+            0.7732424009728464,
+            0.0003654811715301648
+          ],
+          [
+            -0.00025440116221611935,
+            0.775419600774396
+          ]
+        ],
+        "R_joint": [
+          [
+            0.7732607923119094,
+            0.0003162679679278633
+          ],
+          [
+            -0.00026232874023453495,
+            0.7754540109722721
+          ]
+        ],
+        "sum_w": 99229506.76685947,
+        "branch_sum_w": {
+          "ns": 99229506.76685947,
+          "p1": 99081594.64921348,
+          "m1": 99382124.49460165,
+          "p2": 98952797.12941408,
+          "m2": 99412812.57036404
+        },
+        "branch_N": {
+          "ns": 4812980,
+          "p1": 4805793,
+          "m1": 4820397,
+          "p2": 4799647,
+          "m2": 4821803
+        },
+        "weighted_noshear_shape_sums": [
+          [
+            13457.9205046055,
+            9077.293409134336
+          ],
+          [
+            -65839.4857086263,
+            9392.381706076405
+          ],
+          [
+            93478.67993727102,
+            9920.564233631792
+          ],
+          [
+            14181.813070862258,
+            -68259.32797761647
+          ],
+          [
+            13555.599182888796,
+            88745.70805060367
+          ]
+        ]
+      }
+    ],
+    "total": {
+      "R_shear": [
+        [
+          0.7332907912085252,
+          0.00016733350665618145
+        ],
+        [
+          -2.684873662529288e-05,
+          0.7349947982733279
+        ]
+      ],
+      "R_sel": [
+        [
+          -0.02228854898930045,
+          6.214547133034663e-05
+        ],
+        [
+          0.00023742591518686128,
+          -0.021751995241030168
+        ]
+      ],
+      "R_total": [
+        [
+          0.7110022422192248,
+          0.00022947897798652808
+        ],
+        [
+          0.0002105771785615684,
+          0.7132428030322977
+        ]
+      ],
+      "R_joint": [
+        [
+          0.71129101488222,
+          0.00014275701819195353
+        ],
+        [
+          0.00022017351979348678,
+          0.7135378392354267
+        ]
+      ],
+      "sum_w": 488968252.39746463,
+      "branch_sum_w": {
+        "ns": 488968252.39746463,
+        "p1": 488273476.4803632,
+        "m1": 489717209.2299512,
+        "p2": 487763959.9341641,
+        "m2": 489761167.3336819
+      },
+      "branch_N": {
+        "ns": 62309299,
+        "p1": 62227983,
+        "m1": 62398600,
+        "p2": 62179876,
+        "m2": 62395143
+      },
+      "weighted_noshear_shape_sums": [
+        [
+          -779.9584178267608,
+          79697.62401105245
+        ],
+        [
+          -106433.06080860323,
+          81011.74244659902
+        ],
+        [
+          111553.95684374306,
+          78925.84778639131
+        ],
+        [
+          2843.7472166439825,
+          -23808.768588554627
+        ],
+        [
+          2246.662505323626,
+          189159.39520559396
+        ]
+      ]
+    },
+    "definition": "R_shear is the DES-weighted mean of the per-object finite-difference matrix on no-shear-selected rows. R_sel[:,j] = (weighted mean of noshear shapes on branch +j selection minus weighted mean of noshear shapes on branch -j selection)/(2*0.01), normalising each branch separately. R_total=R_shear+R_sel. R_joint is included only as a separate diagnostic, not substituted for R_total.",
+    "bin_selection": "[lower,upper) on each metacal branch own flux/flux_err, after that branch FLAGS==0, 10<SNR<500 and 0.707<T/T_PSF<3. Common config_mask.yaml preselection and both halo bits clear are fixed for all branches. The total is recomputed with no interior SNR boundaries; it is not a weighted average of bin R_sel.",
+    "weight_selection": "Fixed d533a078 W_DES evaluated separately on each branch SNR and size ratio via response.evaluate_w. No W refit. Sum_w is no-shear denominator; branch_sum_w provides each branch denominator.",
+    "algorithm": "One streaming pass, reading only listed columns via h5py Dataset.fields. Accumulate exact sufficient sums. Call #425 response.responses on one pseudo-row per branch with aggregated means and weight sums; this preserves every normalised mean and shear finite difference. Synthetic direct-vs-reduced response.responses comparison passed at rtol/atol 1e-12.",
+    "code_references": [
+      "/home/cdaley/sp/sp_validation-r425/src/sp_validation/masks.py:get_masks_from_config",
+      "/home/cdaley/sp/sp_validation-r425/src/sp_validation/calibration.py:1143-1181 (_masking_gal),1230-1243 (_shear_response)",
+      "/home/cdaley/sp/sp_validation-r425/src/sp_validation/response.py:19-27 (evaluate_w),52-91 (responses)"
+    ],
+    "cross_check": {
+      "cut_rows_reconstructed": 73023642,
+      "halo_mask_mismatches": 0,
+      "noshear_bin_counts_match_cut_histogram": true,
+      "noshear_bin_sum_w_and_weighted_response_diagonals_match_cut_histogram_rtol_1e_12": true
+    },
+    "completed_utc": "2026-10-28T20:10:05.899600+00:00"
+  },
+  "updated_utc": "2026-10-28T20:14:12.534984+00:00",
+  "execution": {
+    "histogram": {
+      "slurm_job_id": "25237093",
+      "state": "COMPLETED",
+      "exit_code": "0:0",
+      "elapsed": "00:01:45",
+      "max_rss_kib": 14024708,
+      "cpus": 1,
+      "requested_memory": "16G",
+      "log": "/scratch/cdaley/chair-fanout/snr-hist/analyze-25237093.log"
+    },
+    "ensemble_response": {
+      "slurm_job_id": "25237900",
+      "state": "COMPLETED",
+      "exit_code": "0:0",
+      "elapsed": "00:37:01",
+      "max_rss_kib": 16749540,
+      "cpus": 2,
+      "requested_memory": "16G",
+      "log": "/scratch/cdaley/chair-fanout/snr-hist/ensemble-25237900.log"
+    },
+    "input_inspection_and_boundary_tests": {
+      "slurm_job_id": "25237092",
+      "state": "COMPLETED",
+      "exit_code": "0:0",
+      "elapsed": "00:00:10",
+      "log": "/scratch/cdaley/chair-fanout/snr-hist/inspect-25237092.log"
+    },
+    "container": "/home/cdaley/sp/containers/sp_validation-develop-20261024.sif",
+    "account": "def-sfabbro",
+    "artifact_consistency_checks": "passed; bin sums, branch denominators, and R_total=R_shear+R_sel checked"
+  }
+}
