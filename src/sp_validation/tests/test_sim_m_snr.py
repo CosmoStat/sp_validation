@@ -38,6 +38,8 @@ def test_effective_m_and_covariance():
     np.testing.assert_allclose(hm, m)
     np.testing.assert_allclose(hc, cov)
     np.testing.assert_allclose(hs, share)
+    common_m, _, _ = sim_m_snr.effective_m(product, [12, 18], [1, 3], 0.7)
+    np.testing.assert_allclose(common_m, [2.5, 5.0])
     mapped = {"edges": [10, 15, 20], "sum_w_r11": [3, 3], "sum_w_r22": [6, 1]}
     np.testing.assert_allclose(sim_m_snr.effective_m(product, histogram=mapped)[0], m)
     mapped["edges"] = [10, 14, 20]

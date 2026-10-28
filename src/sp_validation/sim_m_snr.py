@@ -129,8 +129,8 @@ def combine_grids(products):
 def effective_m(product, snr=None, weights=None, responses=None, *, histogram=None):
     """Return response-weighted m and covariance for a data selection.
 
-    ``responses`` has shape (N,2) or (N,): per-object diagonal response, or
-    a scalar response assigned to each object. Data SNR and weights are no-shear
+    ``responses`` has shape (N,2), (N,), or scalar: per-object diagonal
+    response, or a common selection response. Data SNR and weights are no-shear
     quantities. The covariance propagates simulation-bin uncertainty only.
     Every selected object must lie within the product edges. Alternatively,
     ``histogram`` is a (bins, 2) array of sum(w * R_ii), or a mapping
@@ -158,7 +158,9 @@ def effective_m(product, snr=None, weights=None, responses=None, *, histogram=No
     snr, weights, responses = map(np.asarray, (snr, weights, responses))
     if snr.ndim != 1 or weights.shape != snr.shape:
         raise ValueError("SNR and weights must be aligned vectors")
-    if responses.shape == snr.shape:
+    if responses.ndim == 0:
+        responses = np.full((len(snr), 2), responses)
+    elif responses.shape == snr.shape:
         responses = np.repeat(responses[:, None], 2, axis=1)
     if responses.shape != (len(snr), 2):
         raise ValueError("responses must have shape (N,) or (N,2)")
