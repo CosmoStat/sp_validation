@@ -1106,17 +1106,17 @@ def compute_PSF_leakage(
     mask_combined,
     mask_metacal,
     num_bins=20,
+    weight_type="des",
 ):
-    """Compute PSF Leakage."""
+    """Compute PSF leakage using the selected calibration weight."""
     cat_gal["e1"] = g_corr_mc[0]
     cat_gal["e2"] = g_corr_mc[1]
     cat_gal["e1_PSF"] = sp_cat.get_col(dat, "e1_PSF", mask_combined._mask, mask_metacal)
     cat_gal["e2_PSF"] = sp_cat.get_col(dat, "e2_PSF", mask_combined._mask, mask_metacal)
 
-    weight_type = "des"
     key = f"w_{weight_type}"
     if key not in cat_gal:
-        raise KeyError("Key '{key}' not found in cat_gal")
+        raise KeyError(f"Key '{key}' not found in cat_gal")
 
     try:
         alpha_1, alpha_2 = calibration.get_alpha_leakage_per_object(

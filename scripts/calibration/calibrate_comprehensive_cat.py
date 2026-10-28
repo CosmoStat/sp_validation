@@ -129,6 +129,7 @@ alpha_1, alpha_2 = sp_joint.compute_PSF_leakage(
     mask_combined,
     mask_metacal,
     num_bins=20,
+    weight_type=gal_metacal.weight_scheme or "des",
 )
 
 # Compute leakage-corrected ellipticities
