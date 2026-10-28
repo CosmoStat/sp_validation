@@ -54,19 +54,41 @@ The per-grid NPZ files retain the shared-tile deletions; the JSON files retain b
 Grids are combined independently, with inverse-variance weights per bin and component; the full covariance uses those same weights.
 The table-training uncertainty and detection response are not included.
 
-For a selected catalogue, `sim_m_snr.effective_m` accepts its no-shear SNR, weight and per-object diagonal responses, or a `(bins, 2)` histogram of sums of `w * R_ii`.
-It returns the response-weighted m, its propagated simulation covariance and the shares.
-This is a response-shear-weighted approximation when per-object `R_g` is supplied: ensemble selection response is not a per-object quantity and is not included in those data shares.
-It also assumes that the binned simulation m transfers to the data selection.
+For a selected catalogue, `sim_m_snr.effective_m` accepts each bin's no-shear sum of weights W and its ensemble 2×2 total response R = R_shear + R_sel.
+It returns m with shares proportional to W times the diagonal total response, the propagated simulation covariance and the shares.
+This diagonal, linear approximation neglects matrix mixing and bin-fraction derivative terms; separately corrected bins combine differently.
+Measure a new total response for every data sub-selection and test transfer of the simulation calibration to that selection.
 
-For the archived v2 cell product, the following supplies a provisional estimate by interpolating the weighted response sums uniformly in log SNR within each table cell; the data histogram is not exact on the default bin edges.
-The output comparison uses paired tile deletions for its difference from the full-population m.
+The closure check measures all four grids and compares total-share recombination with direct full-population m, including paired tile-deletion errors:
+
+```bash
+for g in 1 2 3 4; do
+  python scripts/validation/response/closure_snr_m.py --grid "$g" --output "$OUT/snr"
+done
+python scripts/validation/response/closure_snr_m.py --output "$OUT/snr"
+```
+
+For the archived v2 cell product, the following supplies a provisional estimate by interpolating data weighted shear-response sums uniformly in log SNR within each table cell.
+It estimates data selection response using the simulations' per-bin selection-to-shear response ratio, not a measurement on the data.
+The data histogram, simulation ratio and data response are held fixed in the covariance; the simulation ratio uncertainty and data-transfer uncertainty are not included.
+The comparison uses paired tile deletions for its difference from the full-population m.
 
 ```bash
 python scripts/validation/response/data_snr_m.py \
   --product-snr "$OUT/snr/m_snr.fits" \
   --cells /n17data/cdaley/unions/validation/2026-10-26_response-425/response/cell_response-d533a078.npz \
   --production "$OUT/production" --output "$OUT/snr"
+```
+
+## FLAGS comparison
+
+The following reproduces the production path with the FLAGS parent cut kept and removed, then combines per-grid paired jackknife differences:
+
+```bash
+for g in 1 2 3 4; do
+  python scripts/validation/response/flags_comparison.py --grid "$g" --output "$OUT/flags"
+done
+python scripts/validation/response/summarize_flags.py "$OUT/flags"
 ```
 
 ## Simulation/data occupancy and response

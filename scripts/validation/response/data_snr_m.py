@@ -43,7 +43,23 @@ def run(product_path, cells, full_dir, output):
     """Save an effective-m summary and a provisional data histogram plot."""
     product = sim_m_snr.read_product(product_path)
     hist = from_cells(cells, inputs.PRODUCT["path"], product["edges"])
-    value, cov, share = sim_m_snr.effective_m(product, histogram=hist["sum_w_r"])
+    # Pool simulation selection/shear response ratios over external branches
+    # and grids with their no-shear weight sums. This is a stand-in for the
+    # data selection response, not a measurement of that response.
+    shear = np.zeros_like(hist["sum_w_r"])
+    selection = np.zeros_like(shear)
+    for grid in range(1, 5):
+        with np.load(output / f"review_default_{grid}.npz") as f:
+            for c in range(2):
+                shear[:, c] += (f["sum_w"] * f["shear"][:, :, c, c]).sum(axis=0)
+                selection[:, c] += (f["sum_w"] * f["selection"][:, :, c, c]).sum(axis=0)
+    if np.any(shear == 0) or np.any(hist["sum_w"] <= 0):
+        raise ValueError("Cannot form response ratios for empty bins")
+    ratio = selection / shear
+    total = np.zeros((len(hist["sum_w"]), 2, 2))
+    for c in range(2):
+        total[:, c, c] = hist["sum_w_r"][:, c] / hist["sum_w"] * (1 + ratio[:, c])
+    value, cov, share = sim_m_snr.effective_m(product, hist["sum_w"], total)
     full = []
     for i in range(1, 5):
         full.append(json.loads((full_dir / f"production_{i}.json").read_text()))
@@ -80,7 +96,9 @@ def run(product_path, cells, full_dir, output):
         delta -= delta.mean(axis=0)
         difference_cov += (len(delta) - 1) / len(delta) * delta.T @ delta
     summary = dict(
-        method="Approximate log-uniform interpolation within DES table SNR cells; fixed data distribution and per-object shear response only",
+        method="Provisional: log-uniform interpolation of data shear response in DES cells; simulation bin selection/shear response ratio stands in for data selection response. Fixed data distribution and response ratio.",
+        sim_selection_over_shear=ratio.tolist(),
+        data_total_response=total.tolist(),
         count=hist["count"].tolist(),
         sum_w=hist["sum_w"].tolist(),
         sum_w_r=hist["sum_w_r"].tolist(),
@@ -124,7 +142,7 @@ def run(product_path, cells, full_dir, output):
     b.set_ylabel("Data response\nshare per bin")
     b.set_xlabel("No-shear SNR")
     b.set_xscale("log")
-    fig.suptitle("Image-sim m and v2 data SNR distribution (provisional)")
+    fig.suptitle("Image-sim m and provisional v2 response shares")
     fig.tight_layout()
     fig.savefig(output / "snr_m.png", dpi=180)
     print(json.dumps(summary, indent=2))
