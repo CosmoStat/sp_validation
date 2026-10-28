@@ -498,11 +498,7 @@ CV_INIT_KEYS = (
     "n_ell_bins",
     "ell_step",
     "pol_factor",
-    "cell_method",
-    "noise_bias_method",
     "fiducial_input_inka",
-    "nrandom_cell",
-    "cell_seed",
     "path_onecovariance",
     "cosmo_params",
 )
@@ -516,6 +512,11 @@ def cv_init_params(config):
     COSMO_VAL, never the constructor's cwd-relative defaults.
     """
     cv = config["cosmo_val"]
+    if "cell_method" in cv:
+        raise ValueError(
+            "cosmo_val.cell_method is no longer supported; pseudo-Cℓ estimation "
+            "uses catalogues only. Remove the cell_method setting."
+        )
     return dict(
         versions=config["versions"],
         catalog_config=CAT_CONFIG,
