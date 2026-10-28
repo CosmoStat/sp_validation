@@ -22,10 +22,11 @@ import yaml
 
 from . import covariance as CV
 from . import data_vectors as DV
+from . import object_bias, ptes, selection_hist, sky, star_residuals
 from . import products as P
 from . import psf as PSF
-from . import ptes, sky
 from . import scale_cuts as SC
+from . import tangential as TG
 from . import versions as V
 from . import weights as W
 
@@ -33,6 +34,7 @@ SECTIONS = [
     ("data_vectors", "Data vectors"),
     ("bmodes", "B modes"),
     ("leakage", "PSF leakage"),
+    ("tangential", "Tangential shear tests"),
     ("survey", "Weights, footprint and covariances"),
 ]
 GROUPS = {
@@ -100,7 +102,70 @@ def load_version(run_dir, version, maps_dir):
     )
 
 
-def render(run_dir, versions, out, maps_dir=None):
+CORRELATIONS = [
+    # (product stem, renderer, figure id, section, caption, size)
+    (
+        "alpha_mag",
+        TG.alpha_mag,
+        "psf_alpha_mag",
+        "leakage",
+        "Scale-dependent leakage α(θ) = τ₀/ρ₀ for all galaxies and in galaxy-magnitude "
+        "tertiles (calibrated e₁, e₂ rescaled to each bin's shear response plus the "
+        "global selection response, w_des; jackknife errors). The selection "
+        "response is larger for the faint bin, so its |α| is likely underestimated "
+        "by ~10–20%. The paper's DES-Y3 comparison is omitted.",
+        "full",
+    ),
+    (
+        "gamma_stars",
+        TG.gamma_stars,
+        "tan_psf_stars",
+        "tangential",
+        "Galaxy γt and γ× around PSF validation stars (valid HSM, one entry per star), "
+        "all and by star magnitude; calibrated e₁, e₂ with w_des, no random "
+        "subtraction; jackknife errors, χ²/ν against zero.",
+        "full",
+    ),
+    (
+        "lambda_stars",
+        TG.lambda_stars,
+        "tan_lambda",
+        "tangential",
+        "PSF validation stars around galaxy positions: tangential and cross PSF-model "
+        "ellipticity (λ₁) and star-minus-model residual (λ₃), minus the same around "
+        "footprint randoms. Not a null test: it traces the PSF field.",
+        "full",
+    ),
+    (
+        "gamma_tiles",
+        TG.gamma_tiles,
+        "tan_tiles",
+        "tangential",
+        "θγt and θγ× of galaxies around tile centres; jackknife errors.",
+        "full",
+    ),
+    (
+        "gamma_gaia",
+        TG.gamma_gaia,
+        "tan_gaia",
+        "tangential",
+        "Galaxy γt and γ× around Gaia DR3 stars (RUWE < 1.4) in three G bins, minus "
+        "the same around footprint randoms; jackknife errors.",
+        "full",
+    ),
+]
+
+
+def render_correlations(figs, corr_dir, version):
+    """Figures from the correlation products present in ``corr_dir``."""
+    for stem, renderer, fid, section, caption, size in CORRELATIONS:
+        path = Path(corr_dir) / f"{stem}_{version}.npz"
+        if path.exists():
+            renderer(P.load_correlation(path), figs.path(fid))
+            figs.add(fid, section, caption, size)
+
+
+def render(run_dir, versions, out, maps_dir=None, corr_dir=None):
     cuts = run_config(run_dir)
     theta_cut, ell_cut, full_cut = cuts["theta"], cuts["ell"], cuts["theta_full"]
     loaded = [load_version(run_dir, v, maps_dir) for v in versions]
@@ -125,7 +190,7 @@ def render(run_dir, versions, out, maps_dir=None):
     figs.add(
         "cl",
         "data_vectors",
-        f"Cℓ (NaMaster, mode-decoupled) as ℓCℓ: EE (blinded), BB and EB. Shaded: outside {lcut}.",
+        f"Blinded Cℓ EE (NaMaster, mode-decoupled) as ℓCℓ. Shaded: outside {lcut}.",
         "full",
         narrow=True,
     )
@@ -157,15 +222,19 @@ def render(run_dir, versions, out, maps_dir=None):
         f"Cℓ BB and EB in units of their uncertainty. Shaded: outside {lcut}.",
         "half",
     )
+    cg = P.load_cosebis_grid(ref.cosebis_grid, blind) if ref.cosebis_grid else None
     for layout, suffix in (("wide", ""), ("narrow", "_narrow")):
-        SC.config_space(pe, figs.path("ptes_config" + suffix), theta_cut, layout=layout)
-        SC.harmonic_and_cosebis(
-            cl, co, figs.path("ptes_harmonic" + suffix), ell_cut, layout=layout
+        SC.config_space(
+            pe, cg, figs.path("ptes_config" + suffix), theta_cut, layout=layout
         )
+    SC.harmonic(cl, figs.path("ptes_harmonic"), ell_cut)
     figs.add(
         "ptes_config",
         "bmodes",
-        "Pure-B PTE for every (θmin, θmax) cut; the fiducial cut is outlined.",
+        "B-mode PTE for every (θmin, θmax) cut on the 20-bin reporting grid: pure "
+        "ξ+B, pure ξ−B"
+        + (" and COSEBIs Bₙ (n ≤ 6)" if cg is not None else "")
+        + "; the fiducial cut is outlined.",
         "full",
         narrow=True,
         group="scale_cuts",
@@ -173,9 +242,8 @@ def render(run_dir, versions, out, maps_dir=None):
     figs.add(
         "ptes_harmonic",
         "bmodes",
-        "Cℓ BB PTE for every band range, and COSEBIs B PTE (n ≤ 20) for each cached cut.",
-        "full",
-        narrow=True,
+        f"Cℓ BB PTE for every band range; the fiducial {lcut} is outlined.",
+        "half",
         group="scale_cuts",
     )
     if len(versions) > 1:
@@ -226,6 +294,23 @@ def render(run_dir, versions, out, maps_dir=None):
     }
 
     # PSF leakage
+    star_path = Path(maps_dir or ref.cv) / f"star_residuals_{versions[0]}.npz"
+    stars = dict(np.load(star_path, allow_pickle=False)) if star_path.exists() else {}
+    star_keys = {
+        f"{kind}_{i}" for i in range(5) for kind in ("edges", "hist", "mean", "std")
+    }
+    if star_keys <= stars.keys():
+        star_residuals.plot(stars, figs.path("star_residuals"))
+        figs.add(
+            "star_residuals",
+            "leakage",
+            "PSF validation stars (valid HSM): "
+            "star-minus-model ellipticity and fourth moments, and half-light "
+            "radius residual from √(T★/T_PSF) − 1. Means and σ use all finite detections.",
+            "full",
+        )
+    else:
+        print("Skipping star_residuals: product missing")
     rt = P.load_rho_tau(ref.assembled, ref.tau_cov, ref.psf_fit)
     PSF.tau_fit(rt, figs.path("psf_tau"))
     figs.add(
@@ -261,25 +346,139 @@ def render(run_dir, versions, out, maps_dir=None):
         "full",
     )
 
+    try:
+        PSF.xi_sys_comparison(rt, figs.path("psf_xi_sys_comparison"))
+    except ValueError as exc:
+        print(f"Skipping psf_xi_sys_comparison: {exc}")
+    else:
+        figs.add(
+            "psf_xi_sys_comparison",
+            "leakage",
+            "PSF systematic ξ⁺ from the α–β–η posterior (68% band) compared "
+            "with τ₀,+²/ρ₀,+; no cosmological signal is shown.",
+            "half",
+        )
+
+    cell_path = ref.weight_cells
+    if cell_path is not None:
+        bias_cells = dict(np.load(cell_path, allow_pickle=False))
+        if {
+            "leakage_sums",
+            "leakage_snr_edges",
+            "resolution_edges",
+        } <= bias_cells.keys():
+            object_bias.leakage(bias_cells, figs.path("object_leakage_bins"))
+            figs.add(
+                "object_leakage_bins",
+                "leakage",
+                "Weighted regressions of calibrated e₁, e₂ against the corresponding "
+                "PSF model ellipticity at each galaxy, without an object-wise "
+                "leakage correction. Eight equal-count resolution bins each have "
+                "eight equal-count SNR bins. Hatching marks |α| < 2σ; σ is the "
+                "weighted least-squares fit uncertainty.",
+                "full",
+            )
+        else:
+            print("Skipping object_leakage_bins: regression sums missing")
+        if {"bias_sums", "bias_names"} <= bias_cells.keys() and bias_cells[
+            "bias_sums"
+        ].shape[2] == 10:
+            object_bias.bias(bias_cells, figs.path("additive_bias"))
+            figs.add(
+                "additive_bias",
+                "leakage",
+                "Linear fits to weighted means of calibrated ellipticity in "
+                "20 fixed bins of each standardised property. "
+                "Error bars and significances use inverse-variance fits to binned "
+                "means with independent-galaxy shape-noise errors; they omit "
+                "spatially correlated noise, notably for RA and Dec. "
+                "Galaxy size is √T and the size ratio is T/T_PSF; only objects "
+                "inside the fixed property ranges are used.",
+                "full",
+            )
+        else:
+            print("Skipping additive_bias: regression sums missing")
+    else:
+        print("Skipping object_leakage_bins and additive_bias: product missing")
+
+    if corr_dir is not None:
+        render_correlations(figs, corr_dir, versions[0])
+
     # Weights, footprint and field maps, covariances
+    selection_path = Path(maps_dir or ref.cv) / f"selection_hist_{versions[0]}.npz"
+    if selection_path.exists():
+        selection = dict(np.load(selection_path, allow_pickle=False))
+        selection_hist.plot(selection, figs.path("selection_hist"))
+        figs.add(
+            "selection_hist",
+            "survey",
+            "Cumulative v2 catalogue selections; histograms show magnitudes 15–30. "
+            "The paper's chip-defect/IMA_FLAGS, stellar-halo and pointing-count "
+            "stages have no corresponding cut in this run. The configured tile "
+            "overlap and r-band coverage cuts are included.",
+            "full",
+        )
+    else:
+        print("Skipping selection_hist: product missing")
     if ref.weight_cells is not None:
         cells = dict(np.load(ref.weight_cells, allow_pickle=False))
-        W.weights(cells, figs.path("weights"))
-        W.weights(cells, figs.path("weights_narrow"), layout="narrow")
-        s = W.summary(cells)
-        figs.add(
-            "weights",
-            "survey",
-            f"Shape weight on its {int(np.sqrt(s['n_cells']))}×{int(np.sqrt(s['n_cells']))} "
-            f"signal-to-noise × size grid: every galaxy in a cell carries that cell's "
-            f"weight, so the catalogue has {s['n_values']} distinct weights "
-            f"({s['w_min']:.2f} to {s['w_max']:.1f}).",
-            "full",
-            narrow=True,
-        )
+        if "sum_response" not in cells or "sum_uncal_ee" not in cells:
+            print("Skipping weights: weight cells lack response and noise sums")
+        else:
+            W.weights(cells, figs.path("weights"))
+            W.weights(cells, figs.path("weights_narrow"), layout="narrow")
+            figs.add(
+                "weights",
+                "survey",
+                "Counts, weights, mean diagonal galaxy response and per-component "
+                "uncalibrated ellipticity RMS on the weight grid.",
+                "full",
+                narrow=True,
+            )
+        if {
+            "response_hist",
+            "response_edges",
+            "response_outside",
+            "n_rows",
+        } <= cells.keys():
+            W.response_histogram(cells, figs.path("response_histogram"))
+            figs.add(
+                "response_histogram",
+                "survey",
+                "Galaxy metacal response components over −5 to 5; at most "
+                f"{100 * np.max(cells['response_outside']) / int(cells['n_rows']):.2f}% "
+                "of entries per component lie outside this range or are non-finite. "
+                "v2 has no metacal star shapes.",
+                "half",
+            )
+        else:
+            print("Skipping response_histogram: response histogram missing")
     if ref.field_maps is not None:
         maps = dict(np.load(ref.field_maps, allow_pickle=False))
         footprint = dict(np.load(ref.cv / f"footprint_{versions[0]}.npz"))
+        if "sum_dT_over_T_psf" in maps:
+            sky.paper_map_pair(maps, figs.path("sky_stars"), "stars")
+            figs.add(
+                "sky_stars",
+                "survey",
+                "PSF validation stars (valid HSM): star "
+                "detections per sky area, counted once per exposure, and "
+                "star-minus-model T divided by model T; HEALPix nside 256.",
+                "full",
+            )
+        else:
+            print("Skipping sky_stars: model-normalised size residual missing")
+        if "sum_mag" in maps:
+            sky.paper_map_pair(maps, figs.path("sky_magnitude"), "magnitude")
+            figs.add(
+                "sky_magnitude",
+                "survey",
+                "PSF FWHM and unweighted mean galaxy r magnitude per "
+                "HEALPix nside-256 pixel.",
+                "full",
+            )
+        else:
+            print("Skipping sky_magnitude: magnitude sums missing")
         sky.footprint_map(maps, footprint, figs.path("sky_footprint"))
         figs.add(
             "sky_footprint",
@@ -287,7 +486,12 @@ def render(run_dir, versions, out, maps_dir=None):
             "Effective source density in a zenithal equal-area projection centred on the patch.",
             "full",
         )
-        for which in ("galaxies", "psf"):
+        field_sets = ["galaxies"]
+        if "sum_dT_over_T_psf" in maps:
+            field_sets.append("psf")
+        else:
+            print("Skipping sky_psf: field maps lack model-normalised size residuals")
+        for which in field_sets:
             sky.field_maps(maps, figs.path(f"sky_{which}"), which, footprint)
             sky.field_maps(
                 maps,
@@ -303,15 +507,17 @@ def render(run_dir, versions, out, maps_dir=None):
             "full",
             narrow=True,
         )
-        dt = sky.median_quantity(maps, "dT_over_T", 128)
-        figs.add(
-            "sky_psf",
-            "survey",
-            "PSF fields: model FWHM at galaxies, and star-minus-model size and ellipticity "
-            f"residuals (median size residual {100 * dt:+.2f}%).",
-            "full",
-            narrow=True,
-        )
+        if "psf" in field_sets:
+            dt = sky.median_quantity(maps, "dT_over_T", 128)
+            figs.add(
+                "sky_psf",
+                "survey",
+                "PSF fields: model FWHM at galaxies, and star-minus-model size and "
+                "ellipticity residuals for PSF validation stars (valid HSM); "
+                f"size residual normalised by the model (median {100 * dt:+.2f}%).",
+                "full",
+                narrow=True,
+            )
     n = len(xi["theta"])
     CV.correlation(
         xi["cov"], CV.xi_blocks(n), figs.path("cov_xi"), r"$\xi_\pm$ reporting grid"
@@ -389,9 +595,12 @@ def main(argv=None):
         help="catalogue version; repeat for a comparison run",
     )
     parser.add_argument("--maps-dir", help="directory of field_maps/weight_cells NPZs")
+    parser.add_argument("--correlations-dir", help="directory of correlations NPZs")
     parser.add_argument("--out", required=True)
     args = parser.parse_args(argv)
-    manifest = render(args.run_dir, args.version, args.out, args.maps_dir)
+    manifest = render(
+        args.run_dir, args.version, args.out, args.maps_dir, args.correlations_dir
+    )
     print(f"{len(manifest['figures'])} figures -> {args.out}")
 
 
