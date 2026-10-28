@@ -35,6 +35,40 @@ Measure full-matrix shear-only m and the selection-response contribution with id
 python scripts/validation/response/m_split.py --output "$OUT/m_split"
 ```
 
+## SNR-resolved m and a data selection
+
+Measure each grid with the production parent cuts and the named fixed data table.
+Each metacal branch is selected using its own SNR in a bin, so its selection response includes bin-edge migration.
+The default edges are 10, 15, 20, 30, 50, 100 and 500; override them with `--edges`.
+Bins are left-open and right-closed, intersected with the production cuts.
+
+```bash
+for g in 1 2 3 4; do
+  python scripts/validation/response/snr_m.py --grid "$g" --output "$OUT/snr"
+done
+python scripts/validation/response/summarize_snr_m.py "$OUT/snr" "$OUT/snr/m_snr.fits"
+```
+
+The FITS product records the weight scheme, table name and path, bin-major values `(m1,c1,m2,c2)`, and their full cross-bin covariance.
+The per-grid NPZ files retain the shared-tile deletions; the JSON files retain branch counts.
+Grids are combined independently, with inverse-variance weights per bin and component; the full covariance uses those same weights.
+The table-training uncertainty and detection response are not included.
+
+For a selected catalogue, `sim_m_snr.effective_m` accepts its no-shear SNR, weight and per-object diagonal responses, or a `(bins, 2)` histogram of sums of `w * R_ii`.
+It returns the response-weighted m, its propagated simulation covariance and the shares.
+This is a response-shear-weighted approximation when per-object `R_g` is supplied: ensemble selection response is not a per-object quantity and is not included in those data shares.
+It also assumes that the binned simulation m transfers to the data selection.
+
+For the archived v2 cell product, the following supplies a provisional estimate by interpolating the weighted response sums uniformly in log SNR within each table cell; the data histogram is not exact on the default bin edges.
+The output comparison uses paired tile deletions for its difference from the full-population m.
+
+```bash
+python scripts/validation/response/data_snr_m.py \
+  --product-snr "$OUT/snr/m_snr.fits" \
+  --cells /n17data/cdaley/unions/validation/2026-10-26_response-425/response/cell_response-d533a078.npz \
+  --production "$OUT/production" --output "$OUT/snr"
+```
+
 ## Simulation/data occupancy and response
 
 ```bash

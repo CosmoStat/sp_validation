@@ -206,13 +206,14 @@ def write_product(path, product, weight_product, overwrite=False):
     cols.extend(
         fits.Column(name=k, format="D", array=values[:, i]) for i, k in enumerate(ORDER)
     )
-    fits.HDUList(
-        [
-            fits.PrimaryHDU(header=header),
-            fits.BinTableHDU.from_columns(cols, name="SNR_BINS"),
-            fits.ImageHDU(np.asarray(product["covariance"]), name="MC_COV"),
-        ]
-    ).writeto(path, overwrite=overwrite)
+    hdus = [
+        fits.PrimaryHDU(header=header),
+        fits.BinTableHDU.from_columns(cols, name="SNR_BINS"),
+        fits.ImageHDU(np.asarray(product["covariance"]), name="MC_COV"),
+    ]
+    if "grid_weights" in product:
+        hdus.append(fits.ImageHDU(np.asarray(product["grid_weights"]), name="GRID_W"))
+    fits.HDUList(hdus).writeto(path, overwrite=overwrite)
 
 
 def read_product(path):
