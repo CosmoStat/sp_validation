@@ -4,7 +4,8 @@ For each contiguous range of reporting bins ``[i, j]`` on the 20-bin
 1′–250′ grid, the COSEBIs are recomputed on the integration-grid ξ± between
 those reporting edges, and the B-mode χ² against zero is taken over the first
 6 and over all 20 modes with the analytic covariance carried through the same
-kernel. Cuts whose COSEBIs filters fail to converge are NaN, as in the paper.
+kernel. Where the 20-mode filters fail to converge (narrow cuts), the n ≤ 6
+PTE comes from a 6-mode computation and the n ≤ 20 PTE is NaN.
 
 The product is a cache read by :func:`sp_validation.dashboard.scale_cuts.config_space`;
 computing it needs only the run's integration-grid ξ± part and its OneCovariance
@@ -70,9 +71,9 @@ def _init(xi_path, cov_path, blind, integ, nmodes):
     )
 
 
-def _pair(cut):
-    from scipy import stats
-
+def _modes(cut, nmodes):
+    """B-mode COSEBIs and their covariance for one cut, or None if the filter
+    roots fail to converge."""
     from sp_validation.b_modes import cosebis_scan_from_xi
 
     s = _STATE
@@ -83,18 +84,33 @@ def _pair(cut):
             s["xim"],
             s["cov"],
             *s["edges"],
-            nmodes=s["nmodes"],
+            nmodes=nmodes,
             scale_cuts=[cut],
         ).values()
     except Exception as e:  # sympy NoConvergence in the filter roots
-        print(f"cut {cut}: {type(e).__name__}: {e}", flush=True)
-        return [np.nan] * len(SUBSETS)
-    n = s["nmodes"]
-    cov_B = r["cov"][n:, n:]
+        print(f"cut {cut}, {nmodes} modes: {type(e).__name__}: {e}", flush=True)
+        return None
+    return r["Bn"], r["cov"][nmodes:, nmodes:]
+
+
+def _pair(cut):
+    """B PTEs over the first k modes for each k in SUBSETS.
+
+    The log-COSEBIs filter of mode n does not depend on how many modes are
+    requested, so a cut whose full mode set fails to converge is retried
+    with only the modes a smaller subset needs.
+    """
+    from scipy import stats
+
+    full = _modes(cut, _STATE["nmodes"])
     out = []
     for k in SUBSETS:
-        b = r["Bn"][:k]
-        out.append(float(stats.chi2.sf(b @ np.linalg.solve(cov_B[:k, :k], b), k)))
+        r = full if full is not None or k >= _STATE["nmodes"] else _modes(cut, k)
+        if r is None:
+            out.append(np.nan)
+            continue
+        b, cov_B = r[0][:k], r[1][:k, :k]
+        out.append(float(stats.chi2.sf(b @ np.linalg.solve(cov_B, b), k)))
     return out
 
 
