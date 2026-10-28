@@ -1,5 +1,7 @@
 # One entry per catalogue. `blind:` is `none` (public) or the name of the blind
 # its signal is concealed under (sp_validation.blinding).
+# cov_th.sigma_e is the per-component dispersion. DES and SP_axel_v0.0
+# preserve their former OneCovariance inputs; their original convention is unknown.
 DES:
   blind: none
   subdir: /n17data/mkilbing/astro/data/DES
@@ -12,7 +14,7 @@ DES:
     A: 4143
     n_e: 5.67
     n_psf: 3.8
-    sigma_e: 0.29
+    sigma_e: 0.20506096654409875
   psf:
     PSF_size: piff_T
     star_size: obs_T
@@ -54,7 +56,7 @@ SP_axel_v0.0:
     A: 1500
     n_e: 6.47
     n_psf: 0.47
-    sigma_e: 0.3
+    sigma_e: 0.21213203435596423
   psf:
     PSF_flag: HSM_FLAG_PSF
     PSF_size: HSM_T_PSF
@@ -169,7 +171,7 @@ SP_v1.3.6:
     A: 2894.0303815287743
     n_e: 4.002931781928292
     n_psf: 0.752316232272063
-    sigma_e: 0.3785853255980945
+    sigma_e: 0.2677002509881296
   mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_footprint_nside_4096.fits
   psf:
     PSF_flag: HSM_FLAG_PSF
@@ -214,7 +216,7 @@ SP_v1.4.5:
     A: 2894.0303815287743
     n_e: 6.477062501504287
     n_psf: 0.4973044366748657
-    sigma_e: 0.39740419232655594
+    sigma_e: 0.2810071992660706
   mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_footprint_nside_4096.fits
   psf:
     PSF_flag: HSM_FLAG_PSF
@@ -259,7 +261,7 @@ SP_v1.4.5.A:
     A: 2420.2651014497287
     n_e: 7.040818382014773
     n_psf: 0.752316232272063
-    sigma_e: 0.30961528707207325
+    sigma_e: 0.21893106904768259
   psf:
     PSF_flag: HSM_FLAG_PSF
     PSF_size: HSM_T_PSF
@@ -303,7 +305,7 @@ SP_v1.4.5_bright:
     A: 2420.2651014497287
     n_e: 7.040818382014773
     n_psf: 0.752316232272063
-    sigma_e: 0.30961528707207325
+    sigma_e: 0.21893106904768259
   psf:
     PSF_flag: HSM_FLAG_PSF
     PSF_size: HSM_T_PSF
@@ -345,7 +347,7 @@ SP_v1.4.5_faint:
     A: 2420.2651014497287
     n_e: 7.040818382014773
     n_psf: 0.752316232272063
-    sigma_e: 0.30961528707207325
+    sigma_e: 0.21893106904768259
   psf:
     PSF_flag: HSM_FLAG_PSF
     PSF_size: HSM_T_PSF
@@ -387,7 +389,7 @@ SP_v1.4.6_glass_mock:
     A: 2405.3892055695346
     n_e: 6.128201234871523
     n_psf: 0.752316232272063
-    sigma_e: 0.379587601488189
+    sigma_e: 0.26840896706663525
   mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_footprint_nside_4096.fits
   psf:
     PSF_flag: HSM_FLAG_PSF
@@ -431,7 +433,7 @@ SP_v1.4.5_intermediate:
     A: 2420.2651014497287
     n_e: 7.040818382014773
     n_psf: 0.752316232272063
-    sigma_e: 0.30961528707207325
+    sigma_e: 0.21893106904768259
   psf:
     PSF_flag: HSM_FLAG_PSF
     PSF_size: HSM_T_PSF
@@ -473,7 +475,7 @@ SP_v1.4.6:
     A: 2894.0303815287743
     n_e: 5.09348802763124
     n_psf: 0.752316232272063
-    sigma_e: 0.379587601488189
+    sigma_e: 0.26840896706663525
   mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_footprint_nside_4096.fits
   psf:
     PSF_flag: HSM_FLAG_PSF
@@ -519,7 +521,7 @@ SP_v1.4.6.3:
     A: 2894.0303815287743
     n_e: 4.957279270321334
     n_psf: 0.752316232272063
-    sigma_e: 0.3783979556382064
+    sigma_e: 0.2675677604189021
   psf:
     PSF_flag: HSM_FLAG_PSF
     PSF_size: HSM_T_PSF
@@ -564,7 +566,7 @@ SP_v1.4.6.3_B:
     A: 2894.0303815287743
     n_e: 4.957279270321334
     n_psf: 0.752316232272063
-    sigma_e: 0.3783979556382064
+    sigma_e: 0.2675677604189021
   psf:
     PSF_flag: HSM_FLAG_PSF
     PSF_size: HSM_T_PSF
@@ -609,7 +611,7 @@ SP_v1.4.6.3_C:
     A: 2894.0303815287743
     n_e: 4.957279270321334
     n_psf: 0.752316232272063
-    sigma_e: 0.3783979556382064
+    sigma_e: 0.2675677604189021
   psf:
     PSF_flag: HSM_FLAG_PSF
     PSF_size: HSM_T_PSF
@@ -654,7 +656,7 @@ SP_v1.4.6.3_A:
     A: 2894.0303815287743
     n_e: 4.957279270321334
     n_psf: 0.752316232272063
-    sigma_e: 0.3783979556382064
+    sigma_e: 0.2675677604189021
   psf:
     PSF_flag: HSM_FLAG_PSF
     PSF_size: HSM_T_PSF
@@ -698,7 +700,7 @@ SP_v1.4.6_ecut07:
     A: 2894.0303815287743
     n_e: 4.77419733499695
     n_psf: 0.752316232272063
-    sigma_e: 0.34187904441900674
+    sigma_e: 0.24174499065425653
   mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_footprint_nside_4096.fits
   psf:
     PSF_flag: HSM_FLAG_PSF
@@ -743,7 +745,7 @@ SP_v1.4.6.1:
     A: 2405.3892055695346
     n_e: 6.128201234871523
     n_psf: 0.752316232272063
-    sigma_e: 0.379587601488189
+    sigma_e: 0.26840896706663525
   mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_footprint_nside_4096.fits
   psf:
     PSF_flag: HSM_FLAG_PSF
@@ -788,7 +790,7 @@ SP_v1.4.7:
     A: 2050.5970269635545
     n_e: 6.121543643587931
     n_psf: 0.752316232272063
-    sigma_e: 0.3797419081703805
+    sigma_e: 0.26851807836799524
   mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_footprint_nside_4096.fits
   psf:
     PSF_flag: HSM_FLAG_PSF
@@ -835,7 +837,7 @@ SP_v1.4.8:
     A: 2517.021356326454
     n_e: 4.983323636055024
     n_psf: 0.752316232272063
-    sigma_e: 0.3797397825805285
+    sigma_e: 0.26851657534899687
   mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_footprint_starhalo_nside_4096.fits
   psf:
     PSF_flag: HSM_FLAG_PSF
@@ -880,7 +882,7 @@ SP_v1.4.11.2:
     A: 2894.0303815287743
     n_e: 6.2581259680050625
     n_psf: 0.752316232272063
-    sigma_e: 0.380499698062307
+    sigma_e: 0.2690539167392911
   mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_footprint_nside_4096.fits
   psf:
     PSF_flag: HSM_FLAG_PSF
@@ -925,7 +927,7 @@ SP_v1.4.11.3:
     A: 2894.0303815287743
     n_e: 6.2581259680050625
     n_psf: 0.752316232272063
-    sigma_e: 0.380499698062307
+    sigma_e: 0.2690539167392911
   mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_footprint_nside_4096.fits
   psf:
     PSF_flag: HSM_FLAG_PSF
@@ -970,7 +972,7 @@ SP_v1.4.12.3:
     A: 2405.3892055695346
     n_e: 6.128201234871523
     n_psf: 0.752316232272063
-    sigma_e: 0.379587601488189
+    sigma_e: 0.26840896706663525
   mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_v1.4.6_nside_8192.fits
   psf:
     PSF_flag: HSM_FLAG_PSF
@@ -1015,7 +1017,7 @@ SP_v1.4.13.3:
     A: 2405.3892055695346
     n_e: 6.128201234871523
     n_psf: 0.752316232272063
-    sigma_e: 0.379587601488189
+    sigma_e: 0.26840896706663525
   mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_v1.4.6_nside_8192.fits
   psf:
     PSF_flag: HSM_FLAG_PSF
@@ -1060,7 +1062,7 @@ SP_v1.4.11.3_ecut07:
     A: 2894.0303815287743
     n_e: 5.830114732534133
     n_psf: 0.752316232272063
-    sigma_e: 0.34058513153783426
+    sigma_e: 0.24083005608171487
   mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_footprint_nside_4096.fits
   psf:
     PSF_flag: HSM_FLAG_PSF
@@ -1210,7 +1212,7 @@ SP_v1.6.6:
     A: 2405.3892055695346
     n_e: 6.128201234871523
     n_psf: 0.752316232272063
-    sigma_e: 0.379587601488189
+    sigma_e: 0.26840896706663525
   mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_footprint_nside_4096.fits
   psf:
     PSF_flag: HSM_FLAG_PSF
@@ -1257,7 +1259,7 @@ GLASS_mock_validation:
     A: 2405.3892055695346
     n_e: 6.128201234871523
     n_psf: 0.752316232272063
-    sigma_e: 0.379587601488189
+    sigma_e: 0.26840896706663525
   mask: /n09data/guerrini/glass_mock_test/mask_nside_1024.fits
   psf:
     PSF_flag: HSM_FLAG_PSF
