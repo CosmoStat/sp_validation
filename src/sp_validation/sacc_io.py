@@ -1010,6 +1010,31 @@ def seal(s, blind, theory=None):
     return out
 
 
+def derived_stamp(parts):
+    """The common stamp inherited by a derivation, for SACC and NPZ alike."""
+    stamps = {stamp(p) for p in parts}
+    if len(stamps) != 1:
+        raise ValueError(f"input parts carry different blinds: {sorted(stamps)}")
+    return stamps.pop()
+
+
+def save_npz(arrays, path, *, derived_from):
+    """Save a cosmological array cache with the same inheritance as SACC."""
+    np.savez(path, **{**arrays, STAMP_KEY: derived_stamp(derived_from)})
+
+
+def load_npz(path, *, blind):
+    """Check explicit provenance before reading any cached signal arrays."""
+    from types import SimpleNamespace
+
+    with np.load(path, allow_pickle=False) as data:
+        if STAMP_KEY not in data:
+            raise ValueError("cosmological NPZ is missing its blind stamp")
+        part = SimpleNamespace(metadata={STAMP_KEY: str(data[STAMP_KEY].item())})
+        expect(part, blind)
+        return {k: data[k] for k in data.files if k != STAMP_KEY}
+
+
 def save(s, path, *, blind=None, theory=None, derived_from=None):
     """Write ``s`` to ``path`` (FITS) and return what was written.
 
@@ -1028,10 +1053,7 @@ def save(s, path, *, blind=None, theory=None, derived_from=None):
     signal never leaves that function.
     """
     if derived_from is not None:
-        stamps = {stamp(p) for p in derived_from}
-        if len(stamps) != 1:
-            raise ValueError(f"input parts carry different blinds: {sorted(stamps)}")
-        (name,) = stamps
+        name = derived_stamp(derived_from)
         out = s.copy()
         out.metadata[STAMP_KEY] = name
         if blind is not None:
