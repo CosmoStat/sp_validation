@@ -69,7 +69,8 @@ python scripts/validation/response/closure_snr_m.py --output "$OUT/snr"
 ```
 
 For the halo-clear fiducial v2 data selection, `data_snr_hist_v2.json` contains 62,309,299 galaxies and measured per-bin shear, selection and total responses using the fixed `v2-d533a078` DES table.
-The product is available as a companion file to the `where-does-425-s-residual-m` felt thread; use its path for `--histogram`.
+The product is available as a companion file to the `where-does-425-s-residual-m` felt thread and [on the PR assets branch](https://raw.githubusercontent.com/CosmoStat/sp_validation/pr-assets/425-stack/data_snr_hist_v2.json); use its path for `--histogram`.
+Its SHA-256 is `6a93f7232d64caf46d1fd5327d353d8d3e573fbcd4c78826d4d3d4d84ef91dc8`.
 The measured data binning is `[lower, upper)`, whereas the simulations use `(lower, upper]`; the effect of objects exactly on internal edges has not been quantified.
 Data histogram and response covariance, weight-table uncertainty and data-transfer uncertainty are not included.
 The comparison uses paired simulation tile deletions for its difference from the full-population m.
