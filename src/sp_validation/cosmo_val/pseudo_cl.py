@@ -103,7 +103,8 @@ class _ShearCatalogue:
                 return self.columns[key]
             return self.catalog[key]
         return _ShearCatalogue(
-            self.catalog[key], {name: value[key] for name, value in self.columns.items()}
+            self.catalog[key],
+            {name: value[key] for name, value in self.columns.items()},
         )
 
 
@@ -113,9 +114,7 @@ class PseudoClMixin:
         catalog = open_entry(self.cc[ver]["shear"])
         g1, g2 = self._calibrated_g(ver, catalog)
         shear = self.cc[ver]["shear"]
-        return _ShearCatalogue(
-            catalog, {shear["e1_col"]: g1, shear["e2_col"]: g2}
-        )
+        return _ShearCatalogue(catalog, {shear["e1_col"]: g1, shear["e2_col"]: g2})
 
     # ---------------- Pseudo-Cl properties ---------------- #
     @property
