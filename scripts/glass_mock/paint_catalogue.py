@@ -25,18 +25,21 @@ def main():
     maps.add_argument("--output", required=True)
     maps.add_argument("--cache", required=True)
     maps.add_argument("--seed", type=int, required=True)
-    maps.add_argument("--nside", type=int, default=4096)
+    maps.add_argument("--nside", type=int, help="Default 4096")
     maps.add_argument(
         "--lmax", type=int, default=None, help="Default 2*nside; must be <=3*nside-1"
     )
-    maps.add_argument("--dx", type=float, default=200)
-    maps.add_argument("--zmax", type=float, default=3.5)
+    maps.add_argument("--dx", type=float, help="Default 200 Mpc")
+    maps.add_argument("--zmax", type=float, help="Default 3.5")
     maps.add_argument(
         "--exact-matter-cls",
         action="store_true",
         help="Use non-Limber shell spectra (slower)",
     )
     maps.add_argument("--config", help="YAML overrides, including cosmology")
+    maps.add_argument(
+        "--workers", type=int, help="Spectrum solver processes; default OMP_NUM_THREADS"
+    )
     paint = commands.add_parser("paint", help="Paint a FITS/HDF5 catalogue in chunks")
     paint.add_argument("--input", required=True)
     paint.add_argument("--output", required=True)
@@ -65,23 +68,33 @@ def main():
     paint.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()
     if args.command == "maps":
-        from dataclasses import replace
+        from dataclasses import asdict
 
-        config = (
-            GlassMockConfig.from_yaml(args.config, seed=args.seed)
-            if args.config
-            else GlassMockConfig(seed=args.seed)
+        settings = asdict(GlassMockConfig(nside=4096, zmax=3.5, limber=True))
+        if args.config:
+            import yaml
+
+            with open(args.config) as stream:
+                supplied = yaml.safe_load(stream)
+            settings.update(
+                {key: value for key, value in supplied.items() if key in settings}
+            )
+        for key in ("nside", "dx", "zmax"):
+            if getattr(args, key) is not None:
+                settings[key] = getattr(args, key)
+        settings["harmonic_lmax"] = (
+            args.lmax
+            if args.lmax is not None
+            else settings["harmonic_lmax"] or 2 * settings["nside"]
         )
-        config = replace(
-            config,
-            nside=args.nside,
-            harmonic_lmax=args.lmax or 2 * args.nside,
-            dx=args.dx,
-            zmax=args.zmax,
-            nz_path=args.nz,
-            limber=not args.exact_matter_cls,
-        )
-        result = generate_lensing_maps(config, args.output, args.cache)
+        settings.update(seed=args.seed, nz_path=args.nz)
+        if args.exact_matter_cls:
+            settings["limber"] = False
+        config = GlassMockConfig(**settings)
+        import os
+
+        workers = args.workers or int(os.environ.get("OMP_NUM_THREADS", "1"))
+        result = generate_lensing_maps(config, args.output, args.cache, workers=workers)
     else:
         b_cl = None
         if args.b_amplitude or args.b_cl:

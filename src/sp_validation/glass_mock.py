@@ -40,6 +40,15 @@ __all__ = [
     "build_shells",
     "matter_shell_cls",
     "generate_matter_maps",
+    "source_shell_weights",
+    "projected_convergence_weights",
+    "projected_theory",
+    "prepare_lensing_spectra",
+    "convergence_to_shear",
+    "generate_lensing_maps",
+    "draw_b_mode_maps",
+    "paint_shear",
+    "paint_catalogue",
     "downgrade_mask",
     "growth_factor",
     "ia_convergence",
@@ -356,7 +365,71 @@ def projected_theory(cls, transfer, nside, lmax, ncorr=3):
     )
 
 
-def prepare_lensing_spectra(config, cache_dir):
+def _solve_shell_spectrum(task):
+    """Solve one independent GLASS transformation pair in a worker process."""
+    import glass.grf
+
+    index, i, j, cl, first, second = task
+    if not len(cl):
+        return index, cl.copy(), cl.copy(), 3
+    gl, realized, info = glass.grf.solve(
+        cl,
+        first,
+        second,
+        pad=2 * len(cl),
+        monopole=0.0 if cl[0] == 0 else None,
+    )
+    return index, gl, realized[: len(cl)], info
+
+
+def solve_shell_spectra(fields, cls, workers=1):
+    """GLASS's padded solver, parallel over independent shell pairs.
+
+    Returns Gaussian spectra, achieved matter spectra, and solver status.
+    Spawned processes each use one native thread; the caller's OpenMP setting
+    is restored before map generation. No fork follows CAMB's OpenMP runtime.
+    """
+    import multiprocessing
+    import os
+    from concurrent.futures import ProcessPoolExecutor
+
+    import glass
+
+    tasks = [
+        (index, i, j, cl, fields[i], fields[j])
+        for index, (i, j, cl) in enumerate(glass.enumerate_spectra(cls))
+    ]
+    results = [None] * len(tasks)
+    if workers <= 1:
+        solved = map(_solve_shell_spectrum, tasks)
+        for index, gl, realized, info in solved:
+            results[index] = gl, realized, info
+    else:
+        threads = os.environ.get("OMP_NUM_THREADS")
+        os.environ["OMP_NUM_THREADS"] = "1"
+        try:
+            with ProcessPoolExecutor(
+                max_workers=workers, mp_context=multiprocessing.get_context("spawn")
+            ) as pool:
+                for done, (index, gl, realized, info) in enumerate(
+                    pool.map(_solve_shell_spectrum, tasks), 1
+                ):
+                    results[index] = gl, realized, info
+                    if len(gl):
+                        print(
+                            f"Solved shell spectrum {done}/{len(tasks)} (status {info})",
+                            flush=True,
+                        )
+        finally:
+            if threads is None:
+                os.environ.pop("OMP_NUM_THREADS", None)
+            else:
+                os.environ["OMP_NUM_THREADS"] = threads
+    gaussian, realized, info = zip(*results, strict=True)
+    return list(gaussian), list(realized), np.asarray(info)
+
+
+def prepare_lensing_spectra(config, cache_dir, workers=1):
     """Cache seed-independent matter/Gaussian spectra and source theory.
 
     A lock serializes writers. The key includes cosmology, shell geometry,
@@ -369,6 +442,7 @@ def prepare_lensing_spectra(config, cache_dir):
     from pathlib import Path
 
     import glass
+    import healpy as hp
 
     nz_path = Path(config.nz_path)
     physics = {
@@ -389,7 +463,7 @@ def prepare_lensing_spectra(config, cache_dir):
             "limber",
         )
     }
-    physics.update(lmax=config.lmax, ncorr=3, glass=glass.__version__, schema=1)
+    physics.update(lmax=config.lmax, ncorr=3, glass=glass.__version__, schema=2)
     digest = hashlib.sha256(
         json.dumps(physics, sort_keys=True).encode() + nz_path.read_bytes()
     ).hexdigest()[:20]
@@ -403,7 +477,15 @@ def prepare_lensing_spectra(config, cache_dir):
         fcntl.flock(lock, fcntl.LOCK_EX)
         if not path.exists():
             print(f"Computing seed-independent matter spectra: {path}", flush=True)
-            cls = matter_shell_cls(config, pars, shells, limber=config.limber)
+            matter_path = path.with_suffix(".matter.npz")
+            if matter_path.exists():
+                with np.load(matter_path) as saved:
+                    cls = [saved[f"cl_{i}"] for i in range(len(saved.files))]
+            else:
+                cls = matter_shell_cls(config, pars, shells, limber=config.limber)
+                matter_tmp = matter_path.with_suffix(".tmp.npz")
+                np.savez(matter_tmp, **{f"cl_{i}": c for i, c in enumerate(cls)})
+                matter_tmp.replace(matter_path)
             nz = np.loadtxt(nz_path)
             if nz.ndim != 2 or nz.shape[1] != 2:
                 raise ValueError("Projected non-tomographic maps need two-column n(z)")
@@ -415,8 +497,19 @@ def prepare_lensing_spectra(config, cache_dir):
             discrete = glass.discretized_cls(
                 cls, nside=config.nside, lmax=config.lmax, ncorr=3
             )
-            gls = glass.solve_gaussian_spectra(glass.lognormal_fields(shells), discrete)
+            gls, achieved, solver_info = solve_shell_spectra(
+                glass.lognormal_fields(shells), discrete, workers=workers
+            )
+            # Solver residuals are recorded rather than hidden behind a warning.
+            achieved_theory = projected_theory(
+                achieved, transfer, config.nside, config.lmax
+            )
+            theory["cl_kk_achieved_pixel"] = achieved_theory["cl_kk"]
+            pw0, pw2 = hp.pixwin(config.nside, pol=True, lmax=config.lmax)
+            theory["cl_ee_achieved_pixel"] = achieved_theory["cl_ee"] * (pw2 / pw0) ** 2
             arrays = {f"matter_{i}": c for i, c in enumerate(cls)}
+            arrays.update({f"achieved_{i}": c for i, c in enumerate(achieved)})
+            arrays["solver_info"] = solver_info
             arrays.update({f"gaussian_{i}": c for i, c in enumerate(gls)})
             arrays.update(theory)
             arrays.update(weights=weights, transfer=transfer, nspectra=len(cls))
@@ -444,7 +537,7 @@ def convergence_to_shear(kappa, lmax):
     return hp.alm2map_spin([alm, np.zeros_like(alm)], nside, 2, lmax)
 
 
-def generate_lensing_maps(config, output_dir, cache_dir):
+def generate_lensing_maps(config, output_dir, cache_dir, workers=1):
     """Save projected kappa/gamma float32 maps and full-sky known-answer spectra.
 
     Matter shells are lognormal, with three neighbouring cross-correlations.
@@ -463,7 +556,9 @@ def generate_lensing_maps(config, output_dir, cache_dir):
         raise ValueError("lmax must be between 2 and 3*nside-1")
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
-    pars, shells, spectra, cache = prepare_lensing_spectra(config, cache_dir)
+    pars, shells, spectra, cache = prepare_lensing_spectra(
+        config, cache_dir, workers=workers
+    )
     prepared = time.perf_counter()
     gls = [spectra[f"gaussian_{i}"] for i in range(int(spectra["nspectra"]))]
     matter = glass.generate(
@@ -493,7 +588,15 @@ def generate_lensing_maps(config, output_dir, cache_dir):
     measured = hp.anafast(maps, lmax=config.lmax, pol=True, iter=3)
     theory = {
         key: spectra[key]
-        for key in ("ell", "cl_kk", "cl_ee", "cl_kk_pixel", "cl_ee_pixel")
+        for key in (
+            "ell",
+            "cl_kk",
+            "cl_ee",
+            "cl_kk_pixel",
+            "cl_ee_pixel",
+            "cl_kk_achieved_pixel",
+            "cl_ee_achieved_pixel",
+        )
     }
     np.savez(
         out / "spectra.npz",
@@ -513,6 +616,8 @@ def generate_lensing_maps(config, output_dir, cache_dir):
         convention="RING HEALPix gamma; catalogue e2=-gamma2",
         reduced_shear="gamma/(1-kappa) of n(z)-projected fields",
         theory="GLASS shell ensemble, ncorr=3, spherical spin factor",
+        unconverged_spectra=int(np.sum(spectra["solver_info"] == 0)),
+        solver_workers=workers,
         seconds=dict(
             prepare=prepared - start,
             matter=generated - prepared,

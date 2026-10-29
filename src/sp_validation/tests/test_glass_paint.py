@@ -64,7 +64,8 @@ def test_zero_signal_noise_only(mock_maps):
         np.testing.assert_array_equal(result[component], result[component + "_noise"])
 
 
-def test_streamed_catalogue_and_chunk_independence(tmp_path, mock_maps):
+@pytest.mark.parametrize("layout", ["hdf5", "chunked_hdf5", "fits"])
+def test_streamed_catalogue_and_chunk_independence(tmp_path, mock_maps, layout):
     from sp_validation.io import read_catalogue
 
     for name, values in zip(("kappa", "gamma1", "gamma2"), mock_maps, strict=True):
@@ -89,9 +90,19 @@ def test_streamed_catalogue_and_chunk_independence(tmp_path, mock_maps):
     source["e1"] = 0.2
     source["w_des"] = np.arange(100)
     source["e1_PSF"] = 0.03
-    path = tmp_path / "input.h5"
-    with h5py.File(path, "w") as dst:
-        dst["data"] = source
+    path = tmp_path / ("input.fits" if layout == "fits" else "input.h5")
+    if layout == "fits":
+        from astropy.io import fits
+
+        fits.BinTableHDU(source).writeto(path)
+    else:
+        with h5py.File(path, "w") as dst:
+            if layout == "chunked_hdf5":
+                group = dst.create_group("tiles")
+                group["00001"] = source[:37]
+                group["00002"] = source[37:]
+            else:
+                dst["data"] = source
     for chunk in (17, 100):
         paint_catalogue(
             path, tmp_path / f"mock_{chunk}.h5", tmp_path, 123, chunk_size=chunk
@@ -146,6 +157,60 @@ def test_sign_convention_through_pipeline_namaster():
     np.testing.assert_allclose(result["e1"], gamma1)
     np.testing.assert_allclose(result["e2"], -gamma2)
     assert np.all(ell > 0)
+
+
+def test_parallel_solver_matches_glass_and_restores_threads(monkeypatch):
+    import glass
+
+    from sp_validation.glass_mock import solve_shell_spectra
+
+    fields = [glass.grf.Lognormal(), glass.grf.Lognormal()]
+    cl = 1e-5 / (1 + np.arange(17)) ** 2
+    cls = [cl, cl * 2, cl * 0.4]
+    monkeypatch.setenv("OMP_NUM_THREADS", "4")
+    gaussian, _, info = solve_shell_spectra(fields, cls, workers=2)
+    import os
+
+    assert os.environ["OMP_NUM_THREADS"] == "4"
+    for first, second in zip(
+        gaussian, glass.solve_gaussian_spectra(fields, cls), strict=True
+    ):
+        np.testing.assert_array_equal(first, second)
+    assert np.all(info > 0)
+
+
+def test_projected_maps_seed_and_cache_reproducibility(tmp_path):
+    from dataclasses import replace
+
+    from sp_validation.glass_mock import GlassMockConfig, generate_lensing_maps
+
+    nz = tmp_path / "nz.txt"
+    np.savetxt(nz, np.column_stack((np.linspace(0.01, 0.39, 30), np.ones(30))))
+    config = GlassMockConfig(
+        nside=8,
+        harmonic_lmax=16,
+        seed=7,
+        zmax=0.4,
+        dx=500,
+        nz_path=str(nz),
+        limber=True,
+    )
+    first = generate_lensing_maps(config, tmp_path / "first", tmp_path / "cache")
+    second = generate_lensing_maps(config, tmp_path / "second", tmp_path / "cache")
+    third = generate_lensing_maps(
+        replace(config, seed=8), tmp_path / "third", tmp_path / "cache"
+    )
+    assert first["spectra_cache"] == second["spectra_cache"] == third["spectra_cache"]
+    for key in ("kappa", "gamma1", "gamma2"):
+        a = np.load(tmp_path / "first" / f"{key}.npy")
+        b = np.load(tmp_path / "second" / f"{key}.npy")
+        c = np.load(tmp_path / "third" / f"{key}.npy")
+        assert a.dtype == np.float32
+        np.testing.assert_array_equal(a, b)
+        assert not np.array_equal(a, c)
+    with np.load(tmp_path / "first" / "spectra.npz") as spectra:
+        assert spectra["realization_ee"].shape == (17,)
+        assert np.all(spectra["cl_ee_pixel"][2:] > 0)
 
 
 def test_b_injection_is_pure_b():
