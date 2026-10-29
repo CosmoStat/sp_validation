@@ -1196,8 +1196,8 @@ nz:
     path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_{pipeline}_A.txt
 paths:
   output: ./output
-  # Where the <name>.blind.json records live.
-  blinds: /n17data/UNIONS/WL/blinds
+  # Clone of git@github.com:UNIONS-WL/blinds.git.
+  blinds: ~/.sp_validation/blinds
 SP_v1.6.6:
   blind: none
   subdir: /n17data/UNIONS/WL/v1.6.x

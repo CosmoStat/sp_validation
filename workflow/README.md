@@ -31,10 +31,9 @@ Every entry of `cosmo_val/cat_config.yaml` declares `blind: none` or
 `blind: <name>`; an entry without one stops the launch. `_leak_corr` versions
 take their entry's blind, and entries reading one shear file declare one blind.
 
-A blind is a secret record, `<paths.blinds>/<name>.blind.json` (seed, envelope,
-fiducial), drawn once with
-`spv-container exec python -m sp_validation.blinding init <name>` and never
-committed. On a blinded catalogue, ξ± and Cℓ_EE are shifted by
+Blind records live in the private `git@github.com:UNIONS-WL/blinds.git` clone at
+`~/.sp_validation/blinds` (mode 0700), selected by `paths.blinds`; the record is
+never committed. Each machine clones that repository to this location. On a blinded catalogue, ξ± and Cℓ_EE are shifted by
 t(hidden) − t(fiducial) before they are first written: Smokescreen draws the
 hidden point (S8 and Ωm) from the seed, and the theory `t` is
 `sp_validation.blinding.shear`. Cℓ_BB and Cℓ_EB get zero shift; ρ/τ are saved
