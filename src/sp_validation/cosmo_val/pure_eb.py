@@ -287,5 +287,9 @@ class PureEBMixin:
                 )
 
                 # Save data products and store on instance
-                save_pure_eb_results(version_results, out_stub + "_data.npz")
+                save_pure_eb_results(
+                    version_results,
+                    out_stub + "_data.npz",
+                    derived_from=[self.xi_parts[version, "integration"]],
+                )
                 self._pure_eb_results[version][bin_key] = version_results

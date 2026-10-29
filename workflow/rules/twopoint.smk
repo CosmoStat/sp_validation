@@ -48,11 +48,14 @@ rule rho_tau_stats:
     output:
         rho_stats=str(COSMO_VAL / "rho_tau_stats/rho_stats_{version}_tomo_bin_all_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
         tau_stats=str(COSMO_VAL / "rho_tau_stats/tau_stats_{version}_tomo_bin_all_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
+        covariance=str(COSMO_VAL / ("rho_tau_stats/cov_tau_{version}_tomo_bin_all_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}_" + config.get("cosmo_val", {}).get("cov_estimate_method", "th") + ".npy")),
+        rho_covariance=str(COSMO_VAL / "rho_tau_stats/cov_rho_{version}_tomo_bin_all_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}_jk.npy"),
         # Born-as-SACC ρ/τ part, written alongside the FITS.
         rho_tau=str(COSMO_VAL / "rho_tau_stats/rho_tau_{version}_tomo_bin_all_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc"),
     threads: 48
     params:
         ver="{version}",
+        cov_estimate_method=config.get("cosmo_val", {}).get("cov_estimate_method", "th"),
         min_sep="{min_sep}",
         max_sep="{max_sep}",
         nbins="{nbins}",
