@@ -138,6 +138,65 @@ def test_streamed_catalogue_and_chunk_independence(tmp_path, mock_maps, layout):
         assert metadata["shear"] == "gamma"
 
 
+def test_paint_injections_share_noise_and_save_realized_b_truth(tmp_path, mock_maps):
+    from sp_validation.io import read_catalogue
+
+    for name, values in zip(("kappa", "gamma1", "gamma2"), mock_maps, strict=True):
+        np.save(tmp_path / f"{name}.npy", values)
+    source = np.zeros(
+        100,
+        dtype=[
+            (name, "f8")
+            for name in ("RA", "Dec", "w_des", "e1", "e2", "e1_PSF", "e2_PSF")
+        ],
+    )
+    source["e1"], source["e2"], source["w_des"] = 0.2, 0.1, 1.0
+    source["e1_PSF"], source["e2_PSF"] = 0.03, -0.02
+    path = tmp_path / "source.h5"
+    with h5py.File(path, "w") as dst:
+        dst["data"] = source
+    cl = np.zeros(32)
+    cl[8:24] = 1e-7
+    for tag, injection in (
+        ("clean", {}),
+        ("psf", {"alpha": 0.1}),
+        ("b", {"b_cl": cl, "b_seed": 401}),
+    ):
+        paint_catalogue(
+            path, tmp_path / f"{tag}.h5", tmp_path, 1, chunk_size=17, **injection
+        )
+    clean, psf, b = [
+        read_catalogue(tmp_path / f"{tag}.h5") for tag in ("clean", "psf", "b")
+    ]
+    for component in (1, 2):
+        name = f"e{component}"
+        for injected in (psf, b):
+            np.testing.assert_array_equal(
+                clean[f"{name}_noise"], injected[f"{name}_noise"]
+            )
+            np.testing.assert_array_equal(
+                clean[f"g{component}_true"], injected[f"g{component}_true"]
+            )
+        np.testing.assert_allclose(
+            psf[name] - clean[name], 0.1 * source[f"{name}_PSF"], atol=1e-15
+        )
+        np.testing.assert_allclose(
+            b[name] - clean[name], b[f"{name}_injected"], atol=1e-8
+        )
+    with np.load(tmp_path / "b.h5.bmode_spectra.npz") as spectra:
+        np.testing.assert_array_equal(spectra["target_bb"], cl)
+        assert int(spectra["seed"]) == 401
+        assert (
+            np.sum(spectra["realization_ee"]) / np.sum(spectra["realization_bb"]) < 1e-6
+        )
+    metadata = json.loads((tmp_path / "b.h5.json").read_text())
+    assert metadata["b_realization_spectra"] == str(tmp_path / "b.h5.bmode_spectra.npz")
+    expected_sigma = np.sqrt(0.5 * (source["e1"] ** 2 + source["e2"] ** 2).mean())
+    assert metadata["shape_noise"]["noise"]["weight_power_2"][
+        "isotropic_sigma"
+    ] == pytest.approx(expected_sigma)
+
+
 def pure_e_paint(nside=32):
     """Sample a fixed non-axisymmetric pure-E field at every pixel centre."""
     lmax = 2 * nside - 1
