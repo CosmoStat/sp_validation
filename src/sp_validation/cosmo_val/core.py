@@ -303,7 +303,7 @@ class CosmologyValidation(
         n_ell_bins=32,
         ell_step=10,
         pol_factor=-1,
-        cell_method="map",
+        cell_method="catalog",
         noise_bias_method="analytic",
         fiducial_input_inka="coupled",
         nrandom_cell=10,

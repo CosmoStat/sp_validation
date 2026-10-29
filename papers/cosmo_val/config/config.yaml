@@ -28,7 +28,6 @@ cosmo_val:
   theta_max_plot: 260.0
   ylim_alpha: [-0.01, 0.05]
   nrandom_cell: 100
-  cell_method: catalog
   nside_mask: 8192
   cov_estimate_method: th
   compute_cov_rho: true
