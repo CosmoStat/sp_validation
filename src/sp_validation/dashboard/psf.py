@@ -265,6 +265,44 @@ def xi_sys_ratio(rt, xi, out, reference=0.1):
         return S.save(fig, out, "full")
 
 
+def xi_sys_comparison(rt, out):
+    """Compare the full fitted systematic with tau_0 squared over rho_0."""
+    theta = np.asarray(rt["theta"])
+    # Pair-weighted mean separations differ slightly within the same bins.
+    if not (
+        np.allclose(theta, rt["theta_tau"], rtol=0.002)
+        and np.allclose(theta, rt["fit"]["theta"])
+    ):
+        raise ValueError("rho, tau and PSF fit angular grids differ")
+    rho = np.asarray(rt["rho"][0]["p"])
+    tau = np.asarray(rt["tau"][0]["p"])
+    with np.errstate(divide="ignore", invalid="ignore"):
+        simple = np.where(rho != 0, tau**2 / rho, np.nan)
+    lo, med, hi = np.percentile(rt["fit"]["samples_plus"], [16, 50, 84], axis=0)
+    with S.figure_style():
+        fig, ax = plt.subplots(figsize=(3.6, 2.8))
+        ax.fill_between(theta, lo, hi, color=MODEL, alpha=0.3, lw=0)
+        ax.plot(theta, med, color=MODEL, label=r"$\alpha,\beta,\eta$ model")
+        ax.plot(
+            theta,
+            simple,
+            color=SERIES[1],
+            marker="o",
+            ms=3,
+            label=r"$\tau_{0,+}^2/\rho_{0,+}$",
+        )
+        S.theta_axis(ax)
+        if np.all(np.concatenate((lo, med, hi, simple)) > 0):
+            ax.set_yscale("log")
+        else:
+            S.zero_line(ax)
+            ax.set_yscale("symlog", linthresh=1e-8)
+        ax.set_xlabel(r"$\theta$ [arcmin]")
+        ax.set_ylabel(r"$\xi^{\rm sys}_+(\theta)$")
+        ax.legend()
+        return S.save(fig, out, "half")
+
+
 ALPHA_ROWS = [
     ("aii_mean", r"$\langle a_{ii} \rangle$", "object-wise"),
     ("a11", r"$a_{11}$", "object-wise"),

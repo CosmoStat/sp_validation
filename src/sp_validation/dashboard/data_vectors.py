@@ -93,13 +93,8 @@ def _cl_shade(cl, ell_cut):
 
 
 def ell_cl(cl, out, ell_cut, layout="wide", blind=None):
-    """ℓ C_ℓ for EE, BB and EB on a linear ℓ axis (EE blinded)."""
+    """Blinded ℓ C_ℓ^EE on a linear ℓ axis; BB and EB are drawn with the B modes."""
     ell = cl["ell"]
-    series = [
-        ("EE", "o", True, S.COLOR_TOTAL, r"$EE$"),
-        ("BB", "o", True, S.COLOR_CL_BB, r"$BB$"),
-        ("EB", "D", False, S.COLOR_CL_EB, r"$EB$"),
-    ]
     top = np.max(ell * (cl["EE"] + cl["sigma_EE"]))
     p = int(np.floor(np.log10(top)))
     scale = 10.0**p
@@ -107,26 +102,22 @@ def ell_cl(cl, out, ell_cut, layout="wide", blind=None):
     with S.figure_style():
         fig, ax = plt.subplots(figsize=size)
         S.zero_line(ax)
-        bandwidth = cl["ell_hi"] - cl["ell_lo"] + 1
-        for (key, marker, filled, color, _), off in zip(series, (-0.18, 0.0, 0.18)):
-            ax.errorbar(
-                ell + off * bandwidth,
-                ell * cl[key] / scale,
-                yerr=ell * cl[f"sigma_{key}"] / scale,
-                marker=marker,
-                color=color,
-                markerfacecolor=color if filled else "none",
-                markeredgecolor=color,
-                **S.DATA_VECTOR_MARK,
-            )
+        ax.errorbar(
+            ell,
+            ell * cl["EE"] / scale,
+            yerr=ell * cl["sigma_EE"] / scale,
+            marker="o",
+            color=S.COLOR_TOTAL,
+            **{**S.DATA_VECTOR_MARK, "markersize": 3.8},
+        )
         ax.set_xlim(0, cl["ell_hi"][-1] + 30)
         S.shade_outside(ax, *_cl_shade(cl, ell_cut))
         ax.set_xlabel(r"$\ell$")
         ax.set_ylabel(rf"$\ell\, C_\ell \times 10^{{{-p}}}$")
-        S.label_box(ax, r"$C_\ell$")
-        _legend(fig, [_marker(m, c, lab, f) for _, m, f, c, lab in series], 3)
+        S.label_box(ax, r"$C_\ell^{EE}$")
         if blind:
-            S.blind_stamp(fig, blind, where="bottom")
+            fig.suptitle(" ", fontsize=7)
+            S.blind_stamp(fig, blind)
         return S.save(fig, out, "full" if layout == "wide" else "half")
 
 

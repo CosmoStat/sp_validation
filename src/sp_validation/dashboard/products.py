@@ -110,6 +110,13 @@ class RunProducts:
         )
 
     @property
+    def cosebis_grid(self):
+        """COSEBIs B PTEs over every reporting-bin cut (:mod:`.cosebis_grid`)."""
+        return _maybe(
+            Path(self.extra_dir or self.cv) / f"cosebis_grid_{self.version}.npz"
+        )
+
+    @property
     def weight_cells(self):
         return _maybe(
             Path(self.extra_dir or self.cv) / f"weight_cells_{self.version}.npz"
@@ -209,6 +216,15 @@ def powspace_edges(ell_eff, lmin=None, lmax=2048, power=0.5):
     return lo, hi
 
 
+def load_cosebis_grid(npz_path, blind):
+    """The COSEBIs scale-cut PTE grid, checked against the expected blind."""
+    with np.load(npz_path) as f:
+        d = {k: f[k] for k in f.files}
+    if str(d.pop("blind")) != blind:
+        raise ValueError(f"{npz_path} was computed under another blind")
+    return d
+
+
 def load_cl(sacc_path, cov_path, blind):
     """Band powers, their multipole edges, and the NaMaster covariance blocks."""
     from astropy.io import fits
@@ -269,3 +285,16 @@ def load_rho_tau(sacc_path, tau_cov_path, psf_fit_path):
 def load_json(path):
     with open(path) as f:
         return json.load(f)
+
+
+def load_correlation(path):
+    """A :mod:`sp_validation.dashboard.correlations` product as
+    ``{label: {quantity: array}}`` plus ``"provenance"``."""
+    with np.load(path, allow_pickle=False) as data:
+        out = {"provenance": json.loads(str(data["provenance"]))}
+        for label in data["labels"]:
+            prefix = f"{label}__"
+            out[str(label)] = {
+                k[len(prefix) :]: data[k] for k in data.files if k.startswith(prefix)
+            }
+    return out
