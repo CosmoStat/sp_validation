@@ -8,9 +8,13 @@
 # kept. With --after, all of it waits for that job
 # (e.g. the catalogue extraction) to finish successfully.
 #
+# Every cosmological product is checked against the blind its version is
+# declared under in the catalogue config: --cat-config, else RUN_DIR's
+# cat_config.yaml, else the repository's cosmo_val/cat_config.yaml.
+#
 # Usage, from the repository root on a login node:
 #   scripts/dashboard/build_dashboard.sh CATALOGUE_DIR RUN_DIR VERSION OUT_DIR \
-#       [--gaia GAIA_FITS] [--after JOBID]
+#       [--gaia GAIA_FITS] [--after JOBID] [--cat-config CAT_CONFIG]
 # Products go to OUT_DIR/products, figures and figures.json to OUT_DIR/figures.
 # ACCOUNT (default def-sfabbro) and SPV_IMAGE (default the pinned SIF) are read
 # from the environment.
@@ -22,16 +26,24 @@ out=$(realpath -m "${4:?output directory}")
 shift 4
 gaia=""
 after=""
+catconfig=""
 while [ $# -gt 0 ]; do
     case $1 in
         --gaia) gaia=$(realpath "$2"); shift 2 ;;
         --after) after=$2; shift 2 ;;
+        --cat-config) catconfig=$(realpath "$2"); shift 2 ;;
         *) echo "unknown argument: $1" >&2; exit 2 ;;
     esac
 done
 
 root=$(git rev-parse --show-toplevel)
 cd "$root"
+if [ -z "$catconfig" ]; then
+    catconfig="$rundir/cat_config.yaml"
+    [ -e "$catconfig" ] || catconfig="$root/cosmo_val/cat_config.yaml"
+fi
+[ -e "$catconfig" ] || { echo "no catalogue config: $catconfig" >&2; exit 2; }
+echo "blinds declared by $catconfig"
 account=${ACCOUNT:-def-sfabbro}
 export SPV_IMAGE=${SPV_IMAGE:-/project/6001537/cdaley/containers/sp_validation-ddd58fe0.sif}
 mkdir -p "$out/products" "$out/figures" "$out/logs"
@@ -54,7 +66,7 @@ if [ ! -e "$grid" ]; then
         --output="$out/logs/%x-%j.log" \
         --wrap="module load apptainer && apptainer exec --bind /scratch,/project,/home \
 --env PYTHONPATH=$root/src $SPV_IMAGE python -m sp_validation.dashboard.cosebis_grid \
---run-dir $rundir --version $version --out $grid")
+--run-dir $rundir --version $version --cat-config $catconfig --out $grid")
     after_grid=":$cosebis"
 fi
 render=$(sbatch --parsable --account="$account" --job-name=dashboard-render \
@@ -63,6 +75,6 @@ render=$(sbatch --parsable --account="$account" --job-name=dashboard-render \
     --output="$out/logs/%x-%j.log" \
     --wrap="module load apptainer && apptainer exec --bind /scratch,/project,/home \
 --env PYTHONPATH=$root/src $SPV_IMAGE python -m sp_validation.dashboard.render \
---run-dir $rundir --version $version --maps-dir $out/products \
+--run-dir $rundir --version $version --cat-config $catconfig --maps-dir $out/products \
 --correlations-dir $out/products --out $out/figures")
 echo "products $products  correlations $correlations  cosebis-grid ${cosebis:-kept}  render $render"
