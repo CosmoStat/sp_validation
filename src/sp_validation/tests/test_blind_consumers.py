@@ -83,3 +83,64 @@ def test_load_checks_expected_blind(part_path, as_name, stamp):
             sacc_io.load(part_path, blind=expected)
     else:
         assert sacc_io.stamp(sacc_io.load(part_path, blind=expected)) == "toy"
+
+
+def _cat_config(tmp_path, blind):
+    import yaml
+
+    path = tmp_path / "cat_config.yaml"
+    path.write_text(yaml.safe_dump({"SP_v": {"blind": blind}, "paths": {}}))
+    return path
+
+
+@pytest.mark.parametrize("version", ["SP_v", "SP_v_leak_corr"])
+def test_dashboard_takes_blind_from_declaration(tmp_path, version):
+    from sp_validation.dashboard import products
+
+    assert products.declared_blind(_cat_config(tmp_path, "toy"), version) == "toy"
+
+
+@pytest.mark.parametrize("declared", ["none", "toy"])
+def test_dashboard_refuses_stale_public_part(
+    part_path, tmp_path, monkeypatch, declared
+):
+    """A product saved public, of a catalogue since declared under a blind, is
+    refused before its signal is read."""
+    from sp_validation.dashboard import products
+
+    class ReachedSignal(Exception):
+        pass
+
+    def read_signal(*args, **kwargs):
+        raise ReachedSignal
+
+    monkeypatch.setattr(sacc_io, "xi_correlation", read_signal)
+    blind = products.declared_blind(_cat_config(tmp_path, declared), "SP_v")
+    error = ReachedSignal if declared == "none" else ValueError
+    with pytest.raises(error):
+        products.load_xi(part_path, blind)
+
+
+@pytest.mark.parametrize("declared", ["none", "toy"])
+def test_cosebis_grid_refuses_stale_public_xi(
+    part_path, tmp_path, monkeypatch, declared
+):
+    """The scale-cut grid derives from ξ under the declared blind, not ξ's stamp."""
+    import numpy as np
+
+    from sp_validation.dashboard import cosebis_grid
+
+    class ReachedSignal(Exception):
+        pass
+
+    def read_signal(*args, **kwargs):
+        raise ReachedSignal
+
+    monkeypatch.setattr(sacc_io, "get_xi", read_signal)
+    monkeypatch.setattr(cosebis_grid, "_paths", lambda r, v: (part_path, part_path))
+    monkeypatch.setattr(
+        cosebis_grid, "_grid", lambda r: (np.geomspace(1, 100, 3), (1, 100, 10), 6)
+    )
+    error = ReachedSignal if declared == "none" else ValueError
+    with pytest.raises(error):
+        cosebis_grid.compute(tmp_path, "SP_v", _cat_config(tmp_path, declared))
