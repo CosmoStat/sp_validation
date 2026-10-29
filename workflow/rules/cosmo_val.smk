@@ -401,6 +401,7 @@ rule cv_additive_bias:
         "../scripts/cv_additive_bias.py"
 
 
+# LG: DEPRACATED since we do not plot unblinded data vectors.
 rule cv_plot_2pcf:
     """Xi± overlays across versions, from the sealed reporting parts."""
     input:
@@ -418,7 +419,7 @@ rule cv_plot_2pcf:
     script:
         "../scripts/cv_plot_diagnostic.py"
 
-
+# LG: DEPRACATED since we do not plot unblinded data vectors.
 rule cv_ratio_xi_sys_xi:
     """Ratio of PSF systematics (xi_psf_sys) to the cosmic-shear signal (xi+)."""
     input:
