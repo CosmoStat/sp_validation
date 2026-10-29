@@ -9,6 +9,7 @@ import copy
 import logging
 import runpy
 import shutil
+from importlib.util import find_spec
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -133,7 +134,16 @@ def produce(config_path, version, blind, output):
             "xi_integration": str(paths["integration"]),
             "cov_integration": str(covariance),
         },
-        outputs={"npz": str(output / "pure.npz"), "sacc": str(output / "pure.sacc")},
+        outputs={
+            "npz": str(output / "pure.npz"),
+            "sacc": str(output / "pure.sacc"),
+            # Before the compute/render split, the producer also draws figures.
+            **(
+                pure_figures(output)
+                if not (SCRIPTS / "cv_plot_pure_eb.py").exists()
+                else {}
+            ),
+        },
     )
     cosebis = script(
         "cv_cosebis.py",
@@ -149,6 +159,11 @@ def produce(config_path, version, blind, output):
         outputs={
             "npz": str(output / "cosebis.npz"),
             "sacc": str(output / "cosebis.sacc"),
+            **(
+                cosebis_figures(output)
+                if not (SCRIPTS / "cv_plot_cosebis.py").exists()
+                else {}
+            ),
         },
     )
     return paths, pure["results"], cosebis["results"]
@@ -220,13 +235,25 @@ def references_and_shifts(
         np.eye(2 * INTEGRATION["nbins"]) * 1e-10,
         np.geomspace(*CUT, REPORTING["nbins"] + 1),
     )
-    cached_pure = b_modes.load_pure_eb_results(
-        sealed_paths["cl"].parent / "pure.npz", blind=blind
-    )
+    pure_path = sealed_paths["cl"].parent / "pure.npz"
+    extended_pure_cache = hasattr(b_modes, "load_pure_eb_results")
+    if extended_pure_cache:
+        cached_pure = b_modes.load_pure_eb_results(pure_path, blind=blind)
+    else:
+        # develop's pre-split cache has the pure modes but not the comparison ξ±
+        # arrays or a stamp. Still check every persisted signal value numerically.
+        with np.load(pure_path) as data:
+            cached_pure = dict(data)
     for key in (*sacc_io.PURE_KEYS, "xip", "xim", "xip_int", "xim_int"):
         np.testing.assert_allclose(
             sealed_pure[key], expected_pure[key], rtol=1e-10, atol=1e-20
         )
+    cache_keys = (
+        (*sacc_io.PURE_KEYS, "xip", "xim", "xip_int", "xim_int")
+        if extended_pure_cache
+        else sacc_io.PURE_KEYS
+    )
+    for key in cache_keys:
         np.testing.assert_allclose(
             cached_pure[key], expected_pure[key], rtol=1e-10, atol=1e-20
         )
@@ -251,21 +278,28 @@ def references_and_shifts(
         nmodes=2,
         scale_cuts=CUTS,
     )
-    cached_cosebis, _ = b_modes.load_cosebis_results(
-        sealed_paths["cl"].parent / "cosebis.npz", blind=blind
-    )
-    assert set(cached_cosebis) == set(expected_cosebis)
+    cosebis_path = sealed_paths["cl"].parent / "cosebis.npz"
+    if hasattr(b_modes, "load_cosebis_results"):
+        cached_cosebis, _ = b_modes.load_cosebis_results(cosebis_path, blind=blind)
+        assert set(cached_cosebis) == set(expected_cosebis)
+    else:
+        # Before #430, only the fiducial cut is persisted. Both cuts are still
+        # computed by the real script and checked in memory below.
+        with np.load(cosebis_path) as data:
+            assert tuple(data["scale_cut"]) == CUT
+            cached_cosebis = {CUT: dict(data)}
     for cut, result in sealed_cosebis.items():
         for key in ("En", "Bn", "chi2_E"):
             np.testing.assert_allclose(
                 result[key], expected_cosebis[cut][key], rtol=1e-10, atol=1e-20
             )
-            np.testing.assert_allclose(
-                cached_cosebis[cut][key],
-                expected_cosebis[cut][key],
-                rtol=1e-10,
-                atol=1e-20,
-            )
+            if cut in cached_cosebis:
+                np.testing.assert_allclose(
+                    cached_cosebis[cut][key],
+                    expected_cosebis[cut][key],
+                    rtol=1e-10,
+                    atol=1e-20,
+                )
         for key in ("En", "chi2_E"):
             reference(f"cosebis/{cut}/{key}", raw_cosebis[cut][key], result[key])
     # Check SACC numerical values too: a stamp and nonempty output aren't enough.
@@ -281,14 +315,23 @@ def references_and_shifts(
     return references, concealed
 
 
-def render(paths, version, blind, observed, monkeypatch):
-    """Run #430 plot scripts and #434 dashboard data-vector loaders/figures.
+def pure_figures(output):
+    return {
+        f"figure_{key}": str(output / f"pure_{key}.png")
+        for key in ("integration_vs_reporting", "xis", "ptes", "covariance")
+    }
 
-    Record pre-scaling renderer arguments as well as scanning image metadata;
-    comparing raster pixels with floating-point cosmological vectors is meaningless.
-    """
-    from sp_validation.cosmo_val import diagnostic_plots, pseudo_cl
-    from sp_validation.dashboard import data_vectors, products
+
+def cosebis_figures(output):
+    return {
+        f"figure_{key}": str(output / f"cosebis_{key}.png")
+        for key in ("modes", "covariance", "scalecut_ptes")
+    }
+
+
+def observe_renderers(observed, monkeypatch):
+    """Record real renderer inputs, including pre-split compute-time figures."""
+    from sp_validation.cosmo_val import pseudo_cl
 
     def record(module, name):
         original = getattr(module, name)
@@ -300,7 +343,6 @@ def render(paths, version, blind, observed, monkeypatch):
         monkeypatch.setattr(module, name, wrapped)
 
     for module, names in (
-        (diagnostic_plots, ("plot_2pcf",)),
         (pseudo_cl, ("plot_pseudo_cl_spectrum",)),
         (
             b_modes,
@@ -310,10 +352,26 @@ def render(paths, version, blind, observed, monkeypatch):
                 "plot_cosebis_modes",
             ),
         ),
-        (data_vectors, ("xi_pm", "pure_eb", "cosebis")),
     ):
         for name in names:
             record(module, name)
+    if find_spec("sp_validation.cosmo_val.diagnostic_plots") is not None:
+        from sp_validation.cosmo_val import diagnostic_plots
+
+        record(diagnostic_plots, "plot_2pcf")
+    if find_spec("sp_validation.dashboard") is not None:
+        from sp_validation.dashboard import data_vectors
+
+        for name in ("xi_pm", "pure_eb", "cosebis"):
+            record(data_vectors, name)
+
+
+def render(paths, version, blind):
+    """Always assemble/plot Cℓ; run #430/#434-only figures when present.
+
+    No importorskip here: a missing optional surface must not skip the core
+    estimators, assembly, numerical assertions or final leak scan.
+    """
     out = paths["cl"].parent
     cov_cl = out / "cl_cov.fits"
     fits.HDUList(
@@ -345,48 +403,54 @@ def render(paths, version, blind, observed, monkeypatch):
         ),
         outputs={"sacc": str(assembled)},
     )
-    script(
-        "cv_plot_diagnostic.py",
-        params=dict(
-            kind="xi", styles={version: {"colour": "C0", "marker": "o"}}, blinds=[blind]
-        ),
-        inputs={"xi": [str(paths["reporting"])]},
-        outputs={"figures": [str(out / f"xi_{i}.png") for i in range(2)]},
-    )
+    n_figures = 10  # Four pure-E/B, three COSEBIs, three Cℓ on both APIs.
+    if (SCRIPTS / "cv_plot_diagnostic.py").exists():
+        script(
+            "cv_plot_diagnostic.py",
+            params=dict(
+                kind="xi",
+                styles={version: {"colour": "C0", "marker": "o"}},
+                blinds=[blind],
+            ),
+            inputs={"xi": [str(paths["reporting"])]},
+            outputs={"figures": [str(out / f"xi_{i}.png") for i in range(2)]},
+        )
+        n_figures += 2
     script(
         "cv_plot_pseudo_cl.py",
         params=dict(versions=[version], blinds=[blind], markers=["o"], colours=["C0"]),
         inputs={"pseudo_cl": [str(paths["cl"])], "pseudo_cl_cov": [str(cov_cl)]},
         outputs={f"figure_{k}": str(out / f"cl_{k}.png") for k in ("ee", "bb", "eb")},
     )
-    script(
-        "cv_plot_pure_eb.py",
-        params=dict(version=version, blind=blind, fiducial_scale_cut=CUT),
-        inputs={"npz": str(out / "pure.npz")},
-        outputs={
-            f"figure_{k}": str(out / f"pure_{k}.png")
-            for k in ("integration_vs_reporting", "xis", "ptes", "covariance")
-        },
-    )
-    script(
-        "cv_plot_cosebis.py",
-        params=dict(version=version, blind=blind, fiducial_scale_cut=CUT),
-        inputs={"npz": str(out / "cosebis.npz")},
-        outputs={
-            f"figure_{k}": str(out / f"cosebis_{k}.png")
-            for k in ("modes", "covariance", "scalecut_ptes")
-        },
-    )
-    xi = products.load_xi(assembled, blind)
-    pure = products.load_pure_eb(out / "pure.npz", blind)
-    cosebis = products.load_cosebis(out / "cosebis.npz", blind)
-    data_vectors.xi_pm(xi, out / "dashboard_xi.png", blind=blind)
-    data_vectors.pure_eb(pure, out / "dashboard_pure.png", CUT, blind=blind)
-    data_vectors.cosebis(
-        cosebis, out / "dashboard_cosebis.png", full_cut=CUT, n_subset=2
-    )
+    for name, outputs in (
+        ("pure_eb", pure_figures(out)),
+        ("cosebis", cosebis_figures(out)),
+    ):
+        if (SCRIPTS / f"cv_plot_{name}.py").exists():
+            script(
+                f"cv_plot_{name}.py",
+                params=dict(version=version, blind=blind, fiducial_scale_cut=CUT),
+                inputs={
+                    "npz": str(
+                        out / ("pure.npz" if name == "pure_eb" else "cosebis.npz")
+                    )
+                },
+                outputs=outputs,
+            )
+    if find_spec("sp_validation.dashboard") is not None:
+        from sp_validation.dashboard import data_vectors, products
+
+        xi = products.load_xi(assembled, blind)
+        pure = products.load_pure_eb(out / "pure.npz", blind)
+        cosebis = products.load_cosebis(out / "cosebis.npz", blind)
+        data_vectors.xi_pm(xi, out / "dashboard_xi.png", blind=blind)
+        data_vectors.pure_eb(pure, out / "dashboard_pure.png", CUT, blind=blind)
+        data_vectors.cosebis(
+            cosebis, out / "dashboard_cosebis.png", full_cut=CUT, n_subset=2
+        )
+        n_figures += 3
     figures = list(out.glob("*.png"))
-    assert len(figures) == 15 and all(p.stat().st_size > 100 for p in figures)
+    assert len(figures) == n_figures and all(p.stat().st_size > 100 for p in figures)
     # All constituent signal vectors survive assembly unchanged (not re-shifted).
     expected_mean = np.concatenate(
         [
@@ -429,6 +493,7 @@ def test_non_tomographic_workflow_emits_no_unblinded_signal(
     capfd.readouterr()
     caplog.clear()
     observed = []
+    observe_renderers(observed, monkeypatch)
     # Observe high-level returns and retained state without replacing computation.
     for name in ("calculate_2pcf_version", "calculate_pseudo_cl_catalog"):
         original = getattr(CosmologyValidation, name)
@@ -444,7 +509,7 @@ def test_non_tomographic_workflow_emits_no_unblinded_signal(
         sealed_paths, sealed_pure, sealed_cosebis = produce(
             config_path, version, "gate", tmp_path / "sealed"
         )
-        render(sealed_paths, version, "gate", observed, monkeypatch)
+        render(sealed_paths, version, "gate")
         cv = CosmologyValidation(
             versions=[version],
             catalog_config=str(config_path),
