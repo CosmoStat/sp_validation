@@ -9,6 +9,7 @@ ratio_xi_sys_xi.png at a fixed path (declared output).
 
 from cv_runner import _unbuffer_streams, make_cv, take_reporting_parts, verify_outputs
 
+# LG : This is now DEPRECATED, NOT TO BE USED, since we are no longer plotting unblinded data vectors.
 _unbuffer_streams()
 cv = make_cv(snakemake)
 take_reporting_parts(cv, snakemake.input["xi"])
