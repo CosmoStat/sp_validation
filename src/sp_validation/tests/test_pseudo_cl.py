@@ -65,7 +65,6 @@ from sp_validation.cosmo_val.sacc_writers import BIN as SACC_BIN
 from sp_validation.pseudo_cl import (
     apply_random_rotation,
     bandpower_window_from_workspace,
-    get_catalog_noise_bias,
     get_field_and_workspace_from_catalog,
     get_field_and_workspace_from_map,
     get_pseudo_cl_iNKA_covariance,
@@ -107,17 +106,56 @@ def test_map_iNKA_fields_remain_map_based():
     npt.assert_allclose(cov, cov.transpose(2, 3, 0, 1), rtol=1e-10, atol=1e-14)
 
 
-def test_catalog_noise_bias_uses_catalogue_weight_normalization():
-    e1 = np.array([0.2, 0.4])
-    e2 = np.array([0.1, 0.3])
-    weights = np.array([1.0, 2.0])
-    expected = 4 * np.pi * np.sum(0.5 * (e1**2 + e2**2) * weights**2) / 9
-    noise = get_catalog_noise_bias(e1, e2, weights, lmax=12)
+def test_catalog_noise_covariance_matches_rotations(tmp_path, monkeypatch):
+    """The producer must not add shape noise to the catalogue signal Cls.
 
-    npt.assert_equal(noise.shape, (4, 12))
-    npt.assert_allclose(noise[0], expected)
-    npt.assert_allclose(noise[3], expected)
-    npt.assert_array_equal(noise[1:3], 0)
+    NaMaster already builds NN/NS/SN terms from the retained catalogue.
+    Adding a white spectrum as well overpredicts this full-sky MC variance
+    by about four, even though the covariance remains symmetric and PSD.
+    """
+    from astropy.table import Table
+
+    config, version = _write_synthetic_config(tmp_path)
+    rng = np.random.default_rng(20261030)
+    nsrc = 5000
+    ra = rng.uniform(0, 360, nsrc)
+    dec = np.rad2deg(np.arcsin(rng.uniform(-1, 1, nsrc)))
+    e1, e2 = rng.normal(scale=0.2, size=(2, nsrc))
+    weights = rng.uniform(0.5, 1.5, nsrc)
+    Table({"RA": ra, "Dec": dec, "e1": e1, "e2": e2, "w": weights}).write(
+        tmp_path / "catalog/shear.fits", overwrite=True
+    )
+    cv = CosmologyValidation(
+        versions=[version],
+        catalog_config=config,
+        output_dir=str(tmp_path / "output"),
+        nside=16,
+        binning="powspace",
+        n_ell_bins=4,
+        power=0.5,
+        cell_method="catalog",
+        force_run=True,
+    )
+    monkeypatch.setattr(
+        cv, "get_fiducial_cl", lambda *args: {"WallxWall": np.zeros(32)}
+    )
+    cv.calculate_pseudo_cl_inka_cov(compute_tomography=False)
+    with fits.open(
+        cv._output_path_pseudo_cl_cov(version, "iNKA", tomography=False)
+    ) as h:
+        predicted = np.diag(h["COVAR_BB_BB"].data)
+
+    b = make_namaster_bin(8, 32, 31, "powspace", n_ell_bins=4, power=0.5)
+    _, _, wsp = get_field_and_workspace_from_catalog(b, ra, dec, e1, e2, weights)
+    bb = []
+    for _ in range(256):
+        er1, er2 = apply_random_rotation(e1, e2, rng=rng)
+        f, _, _ = get_field_and_workspace_from_catalog(
+            b, ra, dec, er1, er2, weights, return_wsp=False
+        )
+        bb.append(wsp.decouple_cell(pymaster.compute_coupled_cell(f, f))[3])
+    # A variance from 256 draws has 9% fractional sampling uncertainty.
+    npt.assert_allclose(np.var(bb, axis=0, ddof=1) / predicted, 1, rtol=0.35)
 
 
 def test_catalog_iNKA_covariance_is_symmetric_positive_and_binned():

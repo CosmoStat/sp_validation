@@ -233,25 +233,6 @@ def get_noise_bias_analytical(
     return noise_bias_cl
 
 
-def get_catalog_noise_bias(e1, e2, weights, lmax):
-    """Return the white shot-noise spectrum for a weighted shear catalogue.
-
-    The catalogue estimator normalizes each field by its total source weight,
-    so the full-sky noise level is ``4π Σ(w² σ²) / (Σw)²``, with
-    ``σ² = (e1² + e2²) / 2``.
-    """
-    e1 = np.asarray(e1)
-    e2 = np.asarray(e2)
-    weights = np.asarray(weights)
-    noise_level = (
-        4 * np.pi * np.sum(0.5 * (e1**2 + e2**2) * weights**2) / np.sum(weights) ** 2
-    )
-    noise = np.zeros((4, lmax))
-    noise[0] = noise_level
-    noise[3] = noise_level
-    return noise
-
-
 def apply_random_rotation(e1, e2, rng=None):
     """Apply a uniform random rotation to ellipticity components.
 
@@ -1017,6 +998,10 @@ def get_pseudo_cl_iNKA_covariance(
     b,
 ):
     """Compute the iNKA covariance for pseudo-Cl.
+
+    Input spectra include noise for map fields, but signal only for catalogue
+    fields: NaMaster constructs the latter's noise and mixed terms directly
+    from the retained weighted ellipticities (``retain_catalog=True``).
 
     Parameters
     ----------

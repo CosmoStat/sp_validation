@@ -543,22 +543,16 @@ class PseudoClMixin:
                     cat_gal_ = self._get_tomographic_bin(params, cat_gal, bin_key1)
 
                     if self.cell_method == "catalog":
-                        # The catalogue estimator has white shot noise set by
-                        # its source-weight normalization; do not rasterize it
-                        # into the map estimator's noise convention.
-                        _, lmax, _ = spv_pseudo_cl.pseudo_cl_geometry(nside)
-                        noise_bias_cl = spv_pseudo_cl.get_catalog_noise_bias(
-                            cat_gal_[params["e1_col"]],
-                            cat_gal_[params["e2_col"]],
-                            cat_gal_[params["w_col"]],
-                            lmax,
-                        )
+                        # NmtCovarianceWorkspace builds the catalogue NN, NS,
+                        # and SN terms from the retained weighted ellipticities.
+                        # Its input Cls (including get_iNKA_cell's cl_guess) must
+                        # contain signal only, or shape noise is counted twice.
+                        noise_bias_cl = np.zeros((4, lmax))
                     else:
                         noise_bias_cl = self.get_noise_bias(params, nside, cat_gal_)
 
-                    # If using the analytical map noise bias, decouple it before
-                    # adding it to the decoupled theory spectrum. Catalogue shot
-                    # noise above is already expressed in catalogue-field units.
+                    # Map-field workspaces do not add noise themselves: decouple
+                    # the analytical map noise before adding it to the theory.
                     if (
                         self.noise_bias_method == "analytic"
                         and self.cell_method == "map"
