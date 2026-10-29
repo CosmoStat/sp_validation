@@ -52,6 +52,33 @@ def test_assemble_resolves(toy):
         }, job.input
 
 
+def test_inference_resolves_from_sacc_and_tracks_templates(toy):
+    """The native and converter configs share the assembled SACC input."""
+    result = toy.snakemake("-n", "inference_fiducial")
+    assert result.returncode == 0, result.stdout
+    jobs = parse_jobs(result.stdout)
+    (prep,) = [j for j in jobs if j.rule == "inference_prep"]
+    version = toy.config["fiducial"]["version"]
+    assert {Path(f).name for f in prep.input} == {
+        f"{version}.sacc",
+        "cosmosis_pipeline_A_ia.ini",
+        "cosmosis_pipeline_A_ia_sacc.ini",
+    }
+    templates = toy.root / "cosmo_inference" / "cosmosis_config" / "templates"
+    assert all(
+        str(templates / name) in prep.input
+        for name in ("cosmosis_pipeline_A_ia.ini", "cosmosis_pipeline_A_ia_sacc.ini")
+    )
+    assert {Path(f).name for f in prep.output} == {
+        f"cosmosis_{version}.fits",
+        f"cosmosis_pipeline_{version}_A_ia.ini",
+        f"cosmosis_pipeline_{version}_A_ia_sacc.ini",
+    }
+    assert any(j.rule == "assemble_sacc" for j in jobs)
+    for output in prep.output:
+        assert Path(output).is_relative_to(toy.cosmo_inference)
+
+
 def test_xi_leaves_a_measurement_only_as_a_part(toy, forced, grids):
     """No job reads or writes a ξ± text dump; the ξ± figures draw the parts."""
     jobs = forced[1]

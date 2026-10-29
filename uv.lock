@@ -3953,6 +3953,9 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+cosmosis = [
+    { name = "cosmosis" },
+]
 develop = [
     { name = "myst-parser" },
     { name = "numpydoc" },
@@ -3998,6 +4001,7 @@ requires-dist = [
     { name = "colorama" },
     { name = "cosmo-numba", git = "https://github.com/cailmdaley/cosmo-numba.git?rev=a64cb2ed13e595a16ad056a128ef24594b811504" },
     { name = "cosmology-compat-camb", marker = "extra == 'glass'", specifier = "==0.2.0" },
+    { name = "cosmosis", marker = "extra == 'cosmosis'", specifier = ">=3.25" },
     { name = "cosmosis", marker = "extra == 'workflow'", specifier = ">=3.25" },
     { name = "cs-util", git = "https://github.com/CosmoStat/cs_util.git?rev=develop" },
     { name = "emcee" },
@@ -4049,7 +4053,7 @@ requires-dist = [
     { name = "treecorr", specifier = ">=5.0" },
     { name = "uncertainties" },
 ]
-provides-extras = ["test", "docs", "glass", "workflow", "develop"]
+provides-extras = ["test", "docs", "glass", "workflow", "cosmosis", "develop"]
 
 [[package]]
 name = "sphinx"
