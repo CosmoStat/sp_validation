@@ -143,7 +143,11 @@ This is the default because the alternative is incoherent: Snakemake's
 rule executes new script code against an old `import sp_validation` — the two
 halves of one commit, split.
 
-The catalogue config is the launched checkout's `cosmo_val/cat_config.yaml`.
+The catalogue config defaults to the launched checkout's `cosmo_val/cat_config.yaml`.
+Set `catalog_config: /path/to/catalogues.yaml` in the run config to use an isolated
+registry, including its own `paths.blinds`; every producer reads that same file.
+Configured catalogue names also work as version wildcards, so a mock entry does
+not need a ShapePipe `SP_v...` name.
 `COSMO_VAL` defaults to the launched checkout's `cosmo_val/output`, so writing
 into another checkout's products means naming it; `COSMO_INFERENCE` defaults to
 the shared candide tree, which holds the covariances and only its owner
