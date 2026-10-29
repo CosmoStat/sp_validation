@@ -224,7 +224,7 @@ def reduced_shear_comparison(maps, output):
     return metrics
 
 
-def catalogue_noise(source_path, mock_path, maps, output):
+def catalogue_noise(source_path, mock_path, maps, output, max_rows=1_000_000):
     names = ["RA", "Dec", "e1", "e2", "w_des"]
     source_hist = np.zeros(100)
     noise_hist = np.zeros(100)
@@ -233,7 +233,8 @@ def catalogue_noise(source_path, mock_path, maps, output):
     # Each row contains sum(w), sum(w*x), sum(w*x^2), for w and w^2.
     moments = {kind: np.zeros((2, 2, 3)) for kind in ("input", "noise", "mock")}
     samples = []
-    offset = 0
+    evaluated = 0
+    part_offset = 0
     max_truth_error = 0.0
     max_amplitude_error = 0.0
     lensing = [
@@ -243,9 +244,24 @@ def catalogue_noise(source_path, mock_path, maps, output):
     nside = hp.npix2nside(len(lensing[0]))
     with Catalogue(source_path) as cat, h5py.File(mock_path) as painted:
         shear_choice = json.loads(painted.attrs["mock_metadata"])["shear"]
+        total_rows = len(cat)
+        block = min(50_000, max_rows, total_rows)
+        if total_rows <= max_rows:
+            starts = np.arange(0, total_rows, block)
+        else:
+            starts = np.linspace(0, total_rows - block, max_rows // block, dtype=int)
         for part in cat.chunks.values():
-            for lo in range(0, len(part), 250_000):
-                real = materialise(part[lo : lo + 250_000], names)
+            windows = [
+                (
+                    max(0, int(start) - part_offset),
+                    min(len(part), int(start) + block - part_offset),
+                )
+                for start in starts
+                if start < part_offset + len(part) and start + block > part_offset
+            ]
+            for lo, hi in windows:
+                offset = part_offset + lo
+                real = materialise(part[lo:hi], names)
                 mock = painted["data"][offset : offset + len(real)]
                 for key in ("RA", "Dec", "w_des"):
                     if not np.array_equal(real[key], mock[key]):
@@ -274,9 +290,9 @@ def catalogue_noise(source_path, mock_path, maps, output):
                 max_amplitude_error = max(
                     max_amplitude_error, np.max(np.abs(true_amp - noise_amp))
                 )
-                # Uniform deterministic sample across the full catalogue.
-                select = np.flatnonzero((offset + np.arange(len(real))) % 100 == 0)
-                selected = mock[select]
+                # Contiguous blocks distributed across the catalogue avoid a
+                # full multi-GB reread while sampling the entire row range.
+                selected = mock
                 pix = hp.ang2pix(nside, selected["RA"], selected["Dec"], lonlat=True)
                 kap = np.asarray(lensing[0][pix], dtype=float)
                 denominator = 1 - kap if shear_choice == "reduced" else 1
@@ -302,7 +318,8 @@ def catalogue_noise(source_path, mock_path, maps, output):
                         )
                     )
                 )
-                offset += len(real)
+                evaluated += len(real)
+            part_offset += len(part)
     sample = np.concatenate(samples)
     sigmas = {}
     for kind, accum in moments.items():
@@ -381,7 +398,8 @@ def catalogue_noise(source_path, mock_path, maps, output):
     ax[1, 1].legend(fontsize=8)
     ax[1, 2].axis("off")
     text = [
-        f"{offset:,} galaxies; positions / weights unchanged",
+        f"{evaluated:,} / {total_rows:,} galaxies checked",
+        "sample positions / weights unchanged",
         "",
         "sigma_e per component, w^2 weighted:",
     ]
@@ -392,14 +410,15 @@ def catalogue_noise(source_path, mock_path, maps, output):
         "",
         f"max |noise amplitude - input amplitude|: {max_amplitude_error:.2g}",
         f"max |saved g - sampled map g|: {max_truth_error:.2g}",
-        f"conditional means: 1/{100} of catalogue",
+        "conditional means: sampled blocks",
     ]
     ax[1, 2].text(0, 1, "\n".join(text), va="top", fontsize=9, family="monospace")
     fig.suptitle("Catalogue-painted GLASS mock: geometry, signal and empirical noise")
     fig.savefig(output / "catalogue_noise.png", dpi=160)
     plt.close(fig)
     return dict(
-        rows=offset,
+        rows=total_rows,
+        rows_sampled=evaluated,
         sigma_e=sigmas,
         max_amplitude_error=float(max_amplitude_error),
         sampled_max_truth_error=float(max_truth_error),

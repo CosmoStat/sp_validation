@@ -791,6 +791,19 @@ def paint_catalogue(
         import healpy as hp
 
         b_maps = draw_b_mode_maps(hp.npix2nside(len(maps[0])), b_cl, b_seed)
+        measured_b = hp.anafast(
+            [np.zeros_like(b_maps[0]), *b_maps], lmax=len(b_cl) - 1, pol=True, iter=3
+        )
+        b_spectra_path = output.with_suffix(output.suffix + ".bmode_spectra.npz")
+        np.savez(
+            b_spectra_path,
+            ell=np.arange(len(b_cl)),
+            target_bb=b_cl,
+            realization_ee=measured_b[1],
+            realization_bb=measured_b[2],
+            realization_eb=measured_b[4],
+            seed=b_seed,
+        )
     rng = np.random.default_rng(seed)
     temporary = output.with_suffix(output.suffix + ".partial")
     extra = (
@@ -810,6 +823,7 @@ def paint_catalogue(
         additive=list(additive),
         b_seed=b_seed,
         b_cl=None if b_cl is None else np.asarray(b_cl).tolist(),
+        b_realization_spectra=None if b_cl is None else str(b_spectra_path),
         columns=dict(
             ra=ra_col, dec=dec_col, e1=e1_col, e2=e2_col, w=w_col, psf=list(psf_cols)
         ),
@@ -844,6 +858,8 @@ def paint_catalogue(
         )
         offset = 0
         timings = dict(read=0.0, paint=0.0, assemble=0.0, write=0.0)
+        weight_sums = np.zeros(2)
+        moments = {kind: np.zeros((2, 2, 2)) for kind in ("noise", "mock")}
         for part in cat.chunks.values():
             for lo in range(0, len(part), chunk_size):
                 tick = time.perf_counter()
@@ -877,14 +893,46 @@ def paint_catalogue(
                         mock[alias] = painted[component]
                 for name in extra:
                     mock[name] = painted[name]
+                # One-point diagnostics use only rotated or mock shapes.
+                # No unrotated data component or rotation angle is retained.
+                weight = np.asarray(rows[w_col], dtype=float)
+                for index, power in enumerate((1, 2)):
+                    wp = weight**power
+                    weight_sums[index] += np.sum(wp)
+                    for kind, pair in (
+                        ("noise", ("e1_noise", "e2_noise")),
+                        ("mock", (e1_col, e2_col)),
+                    ):
+                        for component, name in enumerate(pair):
+                            value = np.asarray(mock[name], dtype=float)
+                            moments[kind][index, component] += [
+                                np.sum(wp * value),
+                                np.sum(wp * value**2),
+                            ]
                 timings["assemble"] += time.perf_counter() - tick
                 tick = time.perf_counter()
                 table[offset : offset + len(rows)] = mock
                 timings["write"] += time.perf_counter() - tick
                 offset += len(rows)
                 print(f"Painted {offset}/{len(cat)} rows", flush=True)
+        diagnostics = {}
+        for kind, accum in moments.items():
+            diagnostics[kind] = {}
+            for index, power in enumerate((1, 2)):
+                first, second = accum[index].T
+                norm = weight_sums[index]
+                diagnostics[kind][f"weight_power_{power}"] = dict(
+                    sigma_per_component=np.sqrt(
+                        second / norm - (first / norm) ** 2
+                    ).tolist(),
+                    isotropic_sigma=float(np.sqrt(0.5 * np.sum(second) / norm)),
+                )
         metadata.update(
-            rows=offset, seconds=time.perf_counter() - start, seconds_by_stage=timings
+            rows=offset,
+            seconds=time.perf_counter() - start,
+            seconds_by_stage=timings,
+            weight_sums=dict(sum_w=float(weight_sums[0]), sum_w2=float(weight_sums[1])),
+            shape_noise=diagnostics,
         )
         dst.attrs["mock_metadata"] = json.dumps(metadata)
         dst.attrs["is_mock"] = True

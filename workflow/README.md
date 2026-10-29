@@ -222,6 +222,15 @@ Input ngmix/uncalibrated shape columns are auxiliary and must not be used as
 mock shears; the mock's calibrated shape columns are authoritative.
 A JSON sidecar and HDF5 attributes record rotation and injection seeds and
 amplitudes.
+For a B injection, `<catalogue>.bmode_spectra.npz` stores the target BB and
+the realised full-sky EE/BB/EB of the injected field; its path is in the header.
+The catalogue header also records weight sums and full-catalogue one-point
+moments of the rotated noise and painted shapes, using both w and w² weights.
+These diagnostics never use unrotated data components.
+Columnar HDF5 inputs (one row-aligned dataset per column) are read lazily by
+`Catalogue`, so compact 138M-row inputs stay bounded by `chunk_size`.
+For a calibrated v2 input with a `w` column, set `w_col: w` and R=1 in the
+consumer; `halo_clear` is copied unchanged for subsequent row selections.
 A B-mode injection accepts either `b_amplitude` for
 `C_BB=A exp[-(ell/2000)^2]` or a two-column `b_cl_path`; these specify the
 pixelized target spectrum, without another pixel-window factor.
@@ -244,6 +253,8 @@ python scripts/glass_mock/plot_painted_mock.py \
 
 This diagnostic runner uses the v1.4.6.3 column names (`RA`, `Dec`, `w_des`,
 `e1`, `e2`) for its catalogue panels.
+It samples up to one million rows in distributed contiguous blocks to avoid a
+full multi-GB reread; the figure and JSON identify the evaluated sample size.
 Its real-catalogue accesses are only one-point shape-noise distributions;
 it never measures a real cosmological vector.
 The reduced-shear comparison is entirely mock-map based, with both EE and BB

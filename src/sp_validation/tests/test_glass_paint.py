@@ -78,7 +78,7 @@ def test_zero_signal_noise_only(mock_maps):
         np.testing.assert_array_equal(result[component], result[component + "_noise"])
 
 
-@pytest.mark.parametrize("layout", ["hdf5", "chunked_hdf5", "fits"])
+@pytest.mark.parametrize("layout", ["hdf5", "chunked_hdf5", "columnar_hdf5", "fits"])
 def test_streamed_catalogue_and_chunk_independence(tmp_path, mock_maps, layout):
     from sp_validation.io import read_catalogue
 
@@ -111,7 +111,10 @@ def test_streamed_catalogue_and_chunk_independence(tmp_path, mock_maps, layout):
         fits.BinTableHDU(source).writeto(path)
     else:
         with h5py.File(path, "w") as dst:
-            if layout == "chunked_hdf5":
+            if layout == "columnar_hdf5":
+                for name in source.dtype.names:
+                    dst[name] = source[name]
+            elif layout == "chunked_hdf5":
                 group = dst.create_group("tiles")
                 group["00001"] = source[:37]
                 group["00002"] = source[37:]
