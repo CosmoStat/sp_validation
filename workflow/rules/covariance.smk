@@ -21,8 +21,12 @@ def get_onecov_cat_params(version):
     per bin."""
     cov_th = catalogue_entry(version)["cov_th"]
     # cov_th.sigma_e sums both components; OneCovariance takes it per component.
+    convention = cov_th.get("sigma_e_convention", "total")
+    if convention not in ("total", "per_component"):
+        raise ValueError(f"Unknown sigma_e_convention: {convention}")
+    divisor = 2**0.5 if convention == "total" else 1
     sigma_e = ", ".join(
-        repr(float(s) / 2**0.5) for s in str(cov_th["sigma_e"]).split(",")
+        repr(float(s) / divisor) for s in str(cov_th["sigma_e"]).split(",")
     )
     return sigma_e, cov_th["n_e"], cov_th["A"]
 
@@ -43,6 +47,26 @@ def _onecov_tool(key, default=None):
             raise ValueError(f"Set tools.{key} in the workflow config to run OneCovariance.")
         return value
     return lookup
+
+
+def _pair_noise_enabled(w):
+    """Default to measured noise for non-tomographic cosmo_val runs only."""
+    default = "pair_counts" if "cosmo_val" in config and not w.tomo_suffix else "analytic"
+    mode = config.get("covariance", {}).get("shape_noise", default)
+    if mode not in ("pair_counts", "analytic"):
+        raise ValueError("covariance.shape_noise must be pair_counts or analytic")
+    if w.tomo_suffix:
+        if mode == "pair_counts":
+            raise ValueError("Pair-count noise currently supports non-tomographic xi only")
+        return False
+    return mode == "pair_counts"
+
+
+def _pair_count_path(w, suffix=".txt"):
+    return str(COSMO_VAL / (
+        f"{w.version}_pairs_minsep={w.min_sep}_maxsep={w.max_sep}"
+        f"_nbins={w.nbins}{suffix}"
+    ))
 
 
 # Number of cores to use to execute OneCovariance
@@ -114,9 +138,30 @@ rule generate_glass_mock_rhotau_samples:
         "../scripts/generate_glass_mock_rhotau_samples.py"
 
 
+rule covariance_pair_counts:
+    """Non-cosmological cache: positions and weights only, no blind access."""
+    input:
+        catalog=get_shear_catalog,
+    output:
+        cache=str(COSMO_VAL / "{version}_pairs_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}.npz"),
+        tabulated=str(COSMO_VAL / "{version}_pairs_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}.txt"),
+    params:
+        ra_col=lambda w: catalogue_entry(w.version)["shear"].get("ra_col", "RA"),
+        dec_col=lambda w: catalogue_entry(w.version)["shear"].get("dec_col", "Dec"),
+        w_col=lambda w: catalogue_entry(w.version)["shear"]["w_col"],
+    threads: 24
+    resources:
+        mem_mb=40000,
+        disk_mb=20000,
+        runtime=600,
+    script:
+        "../scripts/measure_pair_counts.py"
+
+
 rule covariance_ini:
     input:
         nz_file=lambda w: redshift_path(w.version),
+        npair=lambda w: [_pair_count_path(w)] if _pair_noise_enabled(w) else [],
         mask=lambda w: [] if w.mask_suffix != "_masked" else [get_footprint_path(w.version)],
     output:
         cov_output(".ini"),
@@ -149,6 +194,12 @@ rule covariance_ini:
         nz_dir=lambda w: os.path.dirname(redshift_path(w.version)),
         nz_file=lambda w: os.path.basename(redshift_path(w.version)),
         num_cores=ONECOV_THREADS,
+        pair_section=lambda w: (
+            "[tabulated inputs files]\n"
+            f"npair_directory = {COSMO_VAL}\n"
+            f"npair_mm_file = {os.path.basename(_pair_count_path(w))}"
+            if _pair_noise_enabled(w) else ""
+        ),
     threads: 1
     shell:
         """
@@ -191,6 +242,8 @@ mask_file_lensing = {params.mask_file}
 ellipticity_dispersion = {params.sigma_e_param}
 survey_area_lensing_in_deg2 = {params.area}
 n_eff_lensing = {params.n_e}
+
+{params.pair_section}
 
 [redshift]
 zlens_directory = {params.nz_dir}

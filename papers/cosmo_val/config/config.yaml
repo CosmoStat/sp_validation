@@ -113,6 +113,9 @@ var_method: jackknife
 
 covariance:
   default_masked: true
+  # Non-tomographic real-space shape noise: measured W²/Q includes pair loss.
+  # Set analytic to restore OneCovariance's uniform-area approximation.
+  shape_noise: pair_counts
 
 cl:
   n_ell_bins: 32
