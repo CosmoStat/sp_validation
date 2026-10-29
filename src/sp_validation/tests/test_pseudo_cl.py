@@ -65,6 +65,10 @@ from sp_validation.cosmo_val.sacc_writers import BIN as SACC_BIN
 from sp_validation.pseudo_cl import (
     apply_random_rotation,
     bandpower_window_from_workspace,
+    get_catalog_noise_bias,
+    get_field_and_workspace_from_catalog,
+    get_pseudo_cl_iNKA_covariance,
+    make_namaster_bin,
 )
 from sp_validation.rho_tau import get_params_rho_tau
 
@@ -82,6 +86,58 @@ SEED = 1234
 N_ELL_BINS = 8
 
 REFERENCE_TOMO = Path(__file__).parent / "data" / "test_cl_catalog.npz"
+
+
+def test_catalog_noise_bias_uses_catalogue_weight_normalization():
+    e1 = np.array([0.2, 0.4])
+    e2 = np.array([0.1, 0.3])
+    weights = np.array([1.0, 2.0])
+    expected = 4 * np.pi * np.sum(0.5 * (e1**2 + e2**2) * weights**2) / 9
+    noise = get_catalog_noise_bias(e1, e2, weights, lmax=12)
+
+    npt.assert_equal(noise.shape, (4, 12))
+    npt.assert_allclose(noise[0], expected)
+    npt.assert_allclose(noise[3], expected)
+    npt.assert_array_equal(noise[1:3], 0)
+
+
+def test_catalog_iNKA_covariance_is_symmetric_positive_and_binned():
+    """Catalogue-based NaMaster fields produce a finite PSD covariance."""
+    rng = np.random.default_rng(20261029)
+    nsrc = 512
+    ra = rng.uniform(0, 360, nsrc)
+    dec = np.rad2deg(np.arcsin(rng.uniform(-1, 1, nsrc)))
+    e1 = rng.normal(scale=0.2, size=nsrc)
+    e2 = rng.normal(scale=0.2, size=nsrc)
+    weights = np.ones(nsrc)
+    b = make_namaster_bin(2, 23, 24, "linear", ell_step=4)
+
+    field_a, field_b, wsp = get_field_and_workspace_from_catalog(
+        b, ra, dec, e1, e2, weights, retain_catalog=True
+    )
+    cl = np.zeros((4, 25))
+    cl[0] = 1e-4
+    cl[3] = 1e-4
+    cov = get_pseudo_cl_iNKA_covariance(
+        cl,
+        cl,
+        cl,
+        cl,
+        field_a,
+        field_a,
+        field_b,
+        field_b,
+        wsp,
+        wsp,
+        b,
+    )
+
+    nband = b.get_n_bands()
+    matrix = cov.reshape(nband * 4, nband * 4)
+    npt.assert_equal(cov.shape, (nband, 4, nband, 4))
+    npt.assert_allclose(matrix, matrix.T, rtol=1e-10, atol=1e-14)
+    assert np.all(np.isfinite(matrix))
+    assert np.linalg.eigvalsh(matrix).min() >= -1e-12 * np.diag(matrix).max()
 
 
 # ---------------------------------------------------------------------------
