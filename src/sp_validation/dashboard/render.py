@@ -165,8 +165,15 @@ def render_correlations(figs, corr_dir, version):
             figs.add(fid, section, caption, size)
 
 
-def render(run_dir, versions, out, maps_dir=None, corr_dir=None,
-           corrected_tau_run=None, corrected_tau_version=None):
+def render(
+    run_dir,
+    versions,
+    out,
+    maps_dir=None,
+    corr_dir=None,
+    corrected_tau_run=None,
+    corrected_tau_version=None,
+):
     cuts = run_config(run_dir)
     theta_cut, ell_cut, full_cut = cuts["theta"], cuts["ell"], cuts["theta_full"]
     loaded = [load_version(run_dir, v, maps_dir) for v in versions]
@@ -324,8 +331,11 @@ def render(run_dir, versions, out, maps_dir=None, corr_dir=None,
         "psf_theta_tau",
         "leakage",
         "Galaxy–PSF correlations θτ₀,+, θτ₂,+ and θτ₅,+ (θ in arcmin). "
-        + ("Raw and object-wise leakage-corrected catalogues overlaid. "
-           if corrected_tau is not None else "Raw catalogue only. ")
+        + (
+            "Raw and object-wise leakage-corrected catalogues overlaid. "
+            if corrected_tau is not None
+            else "Raw catalogue only. "
+        )
         + "Band: raw α–β–η posterior (68%); no corrected fit is implied. "
         "Errors: theory τ covariance; bars omitted for nonpositive variances.",
         "full",
@@ -618,13 +628,22 @@ def main(argv=None):
     )
     parser.add_argument("--maps-dir", help="directory of field_maps/weight_cells NPZs")
     parser.add_argument("--correlations-dir", help="directory of correlations NPZs")
-    parser.add_argument("--corrected-tau-run", help="optional τ-only leakage-corrected run")
-    parser.add_argument("--corrected-tau-version", help="default: reference version + _leak_corr")
+    parser.add_argument(
+        "--corrected-tau-run", help="optional τ-only leakage-corrected run"
+    )
+    parser.add_argument(
+        "--corrected-tau-version", help="default: reference version + _leak_corr"
+    )
     parser.add_argument("--out", required=True)
     args = parser.parse_args(argv)
     manifest = render(
-        args.run_dir, args.version, args.out, args.maps_dir, args.correlations_dir,
-        args.corrected_tau_run, args.corrected_tau_version,
+        args.run_dir,
+        args.version,
+        args.out,
+        args.maps_dir,
+        args.correlations_dir,
+        args.corrected_tau_run,
+        args.corrected_tau_version,
     )
     print(f"{len(manifest['figures'])} figures -> {args.out}")
 

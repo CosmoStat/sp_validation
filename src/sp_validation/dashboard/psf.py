@@ -269,14 +269,19 @@ def xi_sys_ratio(rt, xi, out, reference=0.1):
             fit["samples_minus"] * theta[None, :], [16, 50, 84], axis=0
         )
         S.zero_line(ax)
-        ax.fill_between(theta, lo, hi, color=MODEL, alpha=0.3, lw=0,
-                        label=r"PSF model (68%)")
+        ax.fill_between(
+            theta, lo, hi, color=MODEL, alpha=0.3, lw=0, label=r"PSF model (68%)"
+        )
         ax.plot(theta, med, color=MODEL, lw=1.1)
         data_theta = np.asarray(xi["theta"])
         ax.errorbar(
-            data_theta, data_theta * xi["xim"],
-            yerr=data_theta * xi["sigma_xim"], marker="o", color=S.INK,
-            label=r"$\xi_-$ (blinded)", **S.DATA_VECTOR_MARK,
+            data_theta,
+            data_theta * xi["xim"],
+            yerr=data_theta * xi["sigma_xim"],
+            marker="o",
+            color=S.INK,
+            label=r"$\xi_-$ (blinded)",
+            **S.DATA_VECTOR_MARK,
         )
         ax.set_ylabel(r"$\theta\,\xi_-(\theta)$ [arcmin]")
         ax.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
@@ -312,12 +317,16 @@ def theta_tau(rt, out, corrected=None):
                 th = np.asarray(data["theta_tau"])
                 val = th * np.asarray(data["tau"][k]["p"])
                 var = np.asarray(data["tau"][k]["var_p"])
-                ax.plot(th, val, color=color, marker=marker, ms=3,
-                        lw=0.7, label=label)
+                ax.plot(th, val, color=color, marker=marker, ms=3, lw=0.7, label=label)
                 valid = np.isfinite(var) & (var > 0)
-                ax.errorbar(th[valid], val[valid],
-                            yerr=th[valid] * np.sqrt(var[valid]),
-                            color=color, fmt="none", **S.DATA_VECTOR_MARK)
+                ax.errorbar(
+                    th[valid],
+                    val[valid],
+                    yerr=th[valid] * np.sqrt(var[valid]),
+                    color=color,
+                    fmt="none",
+                    **S.DATA_VECTOR_MARK,
+                )
             S.theta_axis(ax)
             ax.set_xticks([1, 10, 100])
             ax.set_xticklabels(["$1$", "$10$", "$100$"])
@@ -364,9 +373,15 @@ def xi_sys_comparison(rt, out, xi=None):
         values = [lo, med, hi, simple]
         if xi is not None:
             xip = np.asarray(xi["xip"])
-            ax.errorbar(xi["theta"], xip, yerr=xi["sigma_xip"],
-                        color=S.INK, marker="o", label=r"$\xi_+$ (blinded)",
-                        **S.DATA_VECTOR_MARK)
+            ax.errorbar(
+                xi["theta"],
+                xip,
+                yerr=xi["sigma_xip"],
+                color=S.INK,
+                marker="o",
+                label=r"$\xi_+$ (blinded)",
+                **S.DATA_VECTOR_MARK,
+            )
             values.append(xip)
         S.theta_axis(ax)
         if np.all(np.concatenate(values) > 0):
