@@ -16,7 +16,9 @@ Map gamma2 follows HEALPix, while catalogue e2/g2 have the opposite sign
 so that cosmo_val's ``pol_factor=-1`` restores the HEALPix spin-2 field.
 The catalogue stage preserves row order, positions, weights, and auxiliary
 columns, randomizes each calibrated ellipticity's orientation, and stores
-the noise, reduced shear, and injected terms separately.
+the noise, selected shear signal, and injected terms separately.
+Painting defaults to ``shear='gamma'`` for exact pure-E unit-test answers;
+``shear='reduced'`` applies gamma/(1-kappa).
 
 This module also collects the reusable two-point and PSF-leakage helpers the
 mock post-processing runners in ``scripts/glass_mock/`` share (configuration-
@@ -654,14 +656,28 @@ def draw_b_mode_maps(nside, cl_bb, seed):
 
 
 def paint_shear(
-    ra, dec, e1, e2, maps, rng, *, psf=None, alpha=0.0, additive=(0.0, 0.0), b_maps=None
+    ra,
+    dec,
+    e1,
+    e2,
+    maps,
+    rng,
+    *,
+    psf=None,
+    alpha=0.0,
+    additive=(0.0, 0.0),
+    b_maps=None,
+    shear="gamma",
 ):
     """Paint one row chunk, with all returned components in catalogue convention.
 
     ``maps=(kappa,gamma1,gamma2)`` and ``b_maps`` are RING HEALPix maps.
     The calibrated input |e| is preserved by the uniform spin-2 rotation.
+    ``shear='gamma'`` applies gamma directly for pure-E unit-test skies;
+    ``shear='reduced'`` applies gamma/(1-kappa). The selected signal is stored
+    as ``g1_true/g2_true`` in either case.
     ``e_noise`` is the intrinsic rotated epsilon, not e_mock minus g, because
-    reduced-shear composition is nonlinear. ``e_injected`` is added afterwards.
+    ellipticity composition is nonlinear. ``e_injected`` is added afterwards.
     """
     import healpy as hp
 
@@ -678,10 +694,14 @@ def paint_shear(
         raise ValueError("Declination lies outside [-90, 90]")
     pix = hp.ang2pix(nside, np.mod(values[0], 360), values[1], lonlat=True)
     kap = np.asarray(kappa[pix], dtype=float)
-    if np.any(np.abs(1 - kap) < 1e-8):
+    if shear not in ("gamma", "reduced"):
+        raise ValueError("shear must be 'gamma' or 'reduced'")
+    if shear == "reduced" and np.any(np.abs(1 - kap) < 1e-8):
         raise ValueError("Reduced shear is singular at kappa=1")
     # Conjugating HEALPix gamma gives the catalogue's sky-coordinate convention.
-    g = (np.asarray(gamma1[pix], dtype=float) - 1j * gamma2[pix]) / (1 - kap)
+    g = np.asarray(gamma1[pix], dtype=float) - 1j * gamma2[pix]
+    if shear == "reduced":
+        g /= 1 - kap
     noise = np.hypot(values[2], values[3]) * np.exp(
         2j * rng.uniform(0, np.pi, len(pix))
     )
@@ -728,6 +748,7 @@ def paint_catalogue(
     chunk_size=250_000,
     column_map=None,
     overwrite=False,
+    shear="gamma",
 ):
     """Stream a FITS/HDF5 catalogue into an HDF5 mock (root ``data`` table).
 
@@ -791,6 +812,8 @@ def paint_catalogue(
             ra=ra_col, dec=dec_col, e1=e1_col, e2=e2_col, w=w_col, psf=list(psf_cols)
         ),
         convention="catalogue e2=-HEALPix gamma2; pol_factor=-1",
+        shear=shear,
+        applied_signal="gamma" if shear == "gamma" else "gamma/(1-kappa)",
         shape_composition="(g+e_noise)/(1+conj(g)*e_noise)+e_injected",
         calibrated_aliases="e1_leak_corrected/e2_leak_corrected = mock",
     )
@@ -832,6 +855,7 @@ def paint_catalogue(
                     alpha=alpha,
                     additive=additive,
                     b_maps=b_maps,
+                    shear=shear,
                 )
                 mock = np.empty(len(rows), dtype=output_dtype)
                 for name in dtype.names:

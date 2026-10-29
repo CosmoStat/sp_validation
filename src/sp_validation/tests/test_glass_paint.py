@@ -27,13 +27,27 @@ def test_rotation_preserves_amplitude_and_reduced_shear_inverse(mock_maps):
     size = 1000
     e1, e2 = rng.normal(0, 0.2, (2, size))
     mock_maps[0][:] = 0.1
-    result = paint_shear(np.zeros(size), np.zeros(size), e1, e2, mock_maps, rng)
+    result = paint_shear(
+        np.zeros(size), np.zeros(size), e1, e2, mock_maps, rng, shear="reduced"
+    )
     noise = result["e1_noise"] + 1j * result["e2_noise"]
     g = result["g1_true"] + 1j * result["g2_true"]
     e = result["e1"] + 1j * result["e2"]
     np.testing.assert_allclose(np.abs(noise), np.hypot(e1, e2), atol=1e-15)
     np.testing.assert_allclose(g, (0.02 + 0.01j) / 0.9)
     np.testing.assert_allclose((e - g) / (1 - np.conj(g) * e), noise, atol=1e-15)
+
+
+def test_gamma_default_and_reduced_switch(mock_maps):
+    mock_maps[0][:] = 0.2
+    inputs = [np.zeros(10)] * 4
+    gamma = paint_shear(*inputs, mock_maps, np.random.default_rng(1))
+    reduced = paint_shear(*inputs, mock_maps, np.random.default_rng(1), shear="reduced")
+    np.testing.assert_allclose(gamma["g1_true"], 0.02)
+    np.testing.assert_allclose(reduced["g1_true"], 0.02 / 0.8)
+    np.testing.assert_allclose(gamma["g2_true"], 0.01)
+    with pytest.raises(ValueError, match="shear must"):
+        paint_shear(*inputs, mock_maps, np.random.default_rng(1), shear="invalid")
 
 
 def test_reproducible_and_injection(mock_maps):
@@ -116,7 +130,9 @@ def test_streamed_catalogue_and_chunk_independence(tmp_path, mock_maps, layout):
     assert not np.array_equal(first["e1"], source["e1"])
     with h5py.File(tmp_path / "mock_17.h5") as src:
         assert src.attrs["is_mock"]
-        assert json.loads(src.attrs["mock_metadata"])["rotation_seed"] == 123
+        metadata = json.loads(src.attrs["mock_metadata"])
+        assert metadata["rotation_seed"] == 123
+        assert metadata["shear"] == "gamma"
 
 
 def pure_e_paint(nside=32):

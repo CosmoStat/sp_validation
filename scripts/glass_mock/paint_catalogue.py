@@ -45,6 +45,12 @@ def main():
     paint.add_argument("--output", required=True)
     paint.add_argument("--maps", required=True)
     paint.add_argument("--seed", type=int, required=True, help="Rotation RNG seed")
+    paint.add_argument(
+        "--shear",
+        choices=["gamma", "reduced"],
+        default="gamma",
+        help="Default gamma gives a pure-E known-answer sky",
+    )
     for key, default in (
         ("ra", "RA"),
         ("dec", "Dec"),
@@ -129,6 +135,7 @@ def main():
             b_seed=args.b_seed,
             chunk_size=args.chunk_size,
             overwrite=args.overwrite,
+            shear=args.shear,
         )
     print(json.dumps(result, indent=2))
 
