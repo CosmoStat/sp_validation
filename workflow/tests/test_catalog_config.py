@@ -43,3 +43,27 @@ def test_external_mock_registry(toy, tmp_path):
     (job,) = [job for job in parse_jobs(result.stdout) if job.rule == "xi"]
     assert [toy.common._plain(p) for p in job.input] == [toy.common._plain(catalogue)]
     assert job.wildcards["version"] == name
+
+    # Record producer params without running a scientific measurement.
+    from pathlib import Path
+
+    Path(target).parent.mkdir(parents=True, exist_ok=True)
+    Path(target).touch()
+    overrides = [
+        f"catalog_config={registry}",
+        f'versions=["{name}"]',
+        f'fiducial={{"version":"{name}","mock_version":"{name}"}}',
+    ]
+    touched = toy.snakemake("--touch", "--force", target, config=overrides)
+    assert touched.returncode == 0, touched.stdout
+    unchanged = toy.snakemake("-n", target, config=overrides)
+    assert unchanged.returncode == 0, unchanged.stdout
+    assert not parse_jobs(unchanged.stdout)
+
+    entries = yaml.safe_load(registry.read_text())
+    entries[name]["shear"]["redshift_path"] = str(tmp_path / "other_nz.txt")
+    registry.write_text(yaml.safe_dump(entries))
+    changed = toy.snakemake("-n", target, config=overrides)
+    assert changed.returncode == 0, changed.stdout
+    assert [job.rule for job in parse_jobs(changed.stdout)] == ["xi"]
+    assert "params have changed" in changed.stdout.lower()
