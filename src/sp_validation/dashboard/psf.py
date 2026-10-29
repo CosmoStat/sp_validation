@@ -265,6 +265,48 @@ def xi_sys_ratio(rt, xi, out, reference=0.1):
         return S.save(fig, out, "full")
 
 
+def theta_tau(rt, out, corrected=None):
+    """θτ0,2,5 with the raw fit; a corrected input needs only θ, τ and covariance.
+
+    Nonpositive theory variances have no real standard deviation: retain those
+    points but omit their error bars rather than presenting a zero uncertainty.
+    Each catalogue uses its own pair-weighted mean separation.
+    """
+    with S.figure_style():
+        fig, axes = plt.subplots(1, 3, figsize=(7.2, 2.7))
+        for ax, k in zip(axes, (0, 2, 5)):
+            theta = np.asarray(rt["theta_tau"])
+            model = tau_model_samples(rt, k, rt["fit"]["flat_samples"]) * theta[None, :]
+            lo, med, hi = np.percentile(model, [16, 50, 84], axis=0)
+            S.zero_line(ax)
+            ax.fill_between(theta, lo, hi, color=MODEL, alpha=0.3, lw=0)
+            ax.plot(theta, med, color=MODEL, lw=1.1)
+            inputs = [(rt, "raw", S.INK, "o")]
+            if corrected is not None:
+                inputs.append((corrected, "leakage-corrected", SERIES[1], "s"))
+            for data, label, color, marker in inputs:
+                th = np.asarray(data["theta_tau"])
+                val = th * np.asarray(data["tau"][k]["p"])
+                var = np.asarray(data["tau"][k]["var_p"])
+                ax.plot(th, val, color=color, marker=marker, ms=3,
+                        lw=0.7, label=label)
+                valid = np.isfinite(var) & (var > 0)
+                ax.errorbar(th[valid], val[valid],
+                            yerr=th[valid] * np.sqrt(var[valid]),
+                            color=color, fmt="none", **S.DATA_VECTOR_MARK)
+            S.theta_axis(ax)
+            ax.set_xticks([1, 10, 100])
+            ax.set_xticklabels(["$1$", "$10$", "$100$"])
+            ax.set_xlabel(r"$\theta$ [arcmin]")
+            ax.set_ylabel(rf"$\theta\,\tau_{{{k},+}}$ [arcmin]")
+            ax.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
+        handles, labels = axes[0].get_legend_handles_labels()
+        handles.append(Line2D([], [], color=MODEL, lw=4, alpha=0.4))
+        labels.append(r"raw $\alpha,\beta,\eta$ posterior (68%)")
+        fig.legend(handles, labels, loc="outside upper center", ncol=len(labels))
+        return S.save(fig, out, "full")
+
+
 def xi_sys_comparison(rt, out):
     """Compare the full fitted systematic with tau_0 squared over rho_0."""
     theta = np.asarray(rt["theta"])
