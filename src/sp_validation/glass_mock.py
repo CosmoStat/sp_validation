@@ -8,6 +8,16 @@ into a sky. Galaxy sampling and catalogue I/O are a thin layer downstream
 config can be characterized in isolation — see
 ``tests/test_glass_mock.py``.
 
+Catalogue-painted mocks use ``generate_lensing_maps`` followed by
+``paint_catalogue`` (CLI: ``scripts/glass_mock/paint_catalogue.py``).
+The maps average the source-plane convergence over one n(z); all galaxies
+sample that projected field, not individual source redshifts.
+Map gamma2 follows HEALPix, while catalogue e2/g2 have the opposite sign
+so that cosmo_val's ``pol_factor=-1`` restores the HEALPix spin-2 field.
+The catalogue stage preserves row order, positions, weights, and auxiliary
+columns, randomizes each calibrated ellipticity's orientation, and stores
+the noise, reduced shear, and injected terms separately.
+
 This module also collects the reusable two-point and PSF-leakage helpers the
 mock post-processing runners in ``scripts/glass_mock/`` share (configuration-
 space ξ±, NaMaster pseudo-Cℓ, harmonic rho/tau, footprint masks).
@@ -19,7 +29,7 @@ environment with CAMB, even one without GLASS installed.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 
 import numpy as np
 
@@ -60,6 +70,7 @@ class GlassMockConfig:
 
     # --- resolution / sampling ---
     nside: int = 32
+    harmonic_lmax: int | None = None
     seed: int = 42
     # --- shell construction ---
     dx: float = 200.0  # comoving shell thickness [Mpc]
@@ -123,8 +134,8 @@ class GlassMockConfig:
 
     @property
     def lmax(self) -> int:
-        """``lmax`` is tied to ``nside`` in the production mocks."""
-        return self.nside
+        """Harmonic ceiling; defaults to ``nside`` for the sampled mocks."""
+        return self.nside if self.harmonic_lmax is None else self.harmonic_lmax
 
     @property
     def Oc(self) -> float:
@@ -278,6 +289,468 @@ def Cosmology_from_camb(pars):
     results = camb.get_background(pars)
 
     return Cosmology(results)
+
+
+# --- projected maps and catalogue painting ----------------------------------
+
+
+def source_shell_weights(z, nz, shells):
+    """Normalized non-negative GLASS partition of a single source n(z)."""
+    import glass
+
+    z, nz = np.asarray(z), np.asarray(nz)
+    if z.ndim != 1 or nz.shape != z.shape or np.any(np.diff(z) <= 0):
+        raise ValueError("n(z) needs matching 1D arrays and increasing redshifts")
+    if not np.all(np.isfinite(nz)) or np.any(nz < 0):
+        raise ValueError("n(z) must be finite and non-negative")
+    norm = np.trapezoid(nz, z)
+    if norm <= 0:
+        raise ValueError("n(z) has zero integral")
+    weights = glass.partition(z, nz / norm, shells)
+    return weights / np.sum(weights)
+
+
+def projected_convergence_weights(pars, shells, weights):
+    """Linear response of the n(z)-averaged convergence to matter shells."""
+    import glass
+
+    convergence = glass.MultiPlaneConvergence(Cosmology_from_camb(pars))
+    transfer = np.zeros(len(shells))
+    for i, (shell, weight) in enumerate(zip(shells, weights, strict=True)):
+        basis = np.zeros(len(shells))
+        basis[i] = 1
+        convergence.add_window(basis, shell)
+        transfer += weight * convergence.kappa
+    return transfer
+
+
+def projected_theory(cls, transfer, nside, lmax, ncorr=3):
+    """Exact shell-ensemble spectra, before and after HEALPix pixel windows.
+
+    The source partition and the finite ``ncorr`` covariance are identical to
+    the map generator's. The spin-2 / convergence conversion is spherical,
+    including its low-ell factor (not the flat-sky approximation).
+    """
+    import glass
+    import healpy as hp
+
+    kk = np.zeros(lmax + 1)
+    for i, ti in enumerate(transfer):
+        for j in range(max(0, i - ncorr), i + 1):
+            kk += (
+                (1 if i == j else 2)
+                * ti
+                * transfer[j]
+                * glass.getcl(cls, i, j, lmax=lmax)
+            )
+    ell = np.arange(lmax + 1, dtype=float)
+    factor = np.zeros_like(ell)
+    factor[2:] = (ell[2:] + 2) * (ell[2:] - 1) / (ell[2:] * (ell[2:] + 1))
+    pw0, pw2 = hp.pixwin(nside, pol=True, lmax=lmax)
+    return dict(
+        ell=ell.astype(int),
+        cl_kk=kk,
+        cl_ee=kk * factor,
+        cl_kk_pixel=kk * pw0**2,
+        cl_ee_pixel=kk * factor * pw2**2,
+    )
+
+
+def prepare_lensing_spectra(config, cache_dir):
+    """Cache seed-independent matter/Gaussian spectra and source theory.
+
+    A lock serializes writers. The key includes cosmology, shell geometry,
+    resolution, n(z) contents, GLASS version and the correlation truncation.
+    No seed enters the key. Cache files contain numeric arrays only.
+    """
+    import fcntl
+    import hashlib
+    import json
+    from pathlib import Path
+
+    import glass
+
+    nz_path = Path(config.nz_path)
+    physics = {
+        key: getattr(config, key)
+        for key in (
+            "nside",
+            "dx",
+            "zmax",
+            "h",
+            "Om",
+            "Ob",
+            "ns",
+            "sigma8",
+            "mnu",
+            "log_T_AGN",
+            "As_init",
+            "kmax",
+            "limber",
+        )
+    }
+    physics.update(lmax=config.lmax, ncorr=3, glass=glass.__version__, schema=1)
+    digest = hashlib.sha256(
+        json.dumps(physics, sort_keys=True).encode() + nz_path.read_bytes()
+    ).hexdigest()[:20]
+    root = Path(cache_dir)
+    root.mkdir(parents=True, exist_ok=True)
+    path = root / f"cls_{digest}.npz"
+    # Shells and the background also define the multi-plane propagation.
+    pars = build_camb_params(config)
+    shells = build_shells(config, pars)
+    with (root / f"cls_{digest}.lock").open("w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        if not path.exists():
+            print(f"Computing seed-independent matter spectra: {path}", flush=True)
+            cls = matter_shell_cls(config, pars, shells, limber=config.limber)
+            nz = np.loadtxt(nz_path)
+            if nz.ndim != 2 or nz.shape[1] != 2:
+                raise ValueError("Projected non-tomographic maps need two-column n(z)")
+            if nz[-1, 0] > config.zmax and np.any(nz[nz[:, 0] > config.zmax, 1] > 0):
+                raise ValueError("zmax truncates nonzero source n(z)")
+            weights = source_shell_weights(nz[:, 0], nz[:, 1], shells)
+            transfer = projected_convergence_weights(pars, shells, weights)
+            theory = projected_theory(cls, transfer, config.nside, config.lmax)
+            discrete = glass.discretized_cls(
+                cls, nside=config.nside, lmax=config.lmax, ncorr=3
+            )
+            gls = glass.solve_gaussian_spectra(glass.lognormal_fields(shells), discrete)
+            arrays = {f"matter_{i}": c for i, c in enumerate(cls)}
+            arrays.update({f"gaussian_{i}": c for i, c in enumerate(gls)})
+            arrays.update(theory)
+            arrays.update(weights=weights, transfer=transfer, nspectra=len(cls))
+            temporary = path.with_suffix(".tmp.npz")
+            np.savez(temporary, **arrays)
+            temporary.replace(path)
+            path.with_suffix(".json").write_text(json.dumps(physics, indent=2))
+    with np.load(path) as cached:
+        spectra = {key: cached[key] for key in cached.files}
+    print(f"Using spectra cache: {path}", flush=True)
+    return pars, shells, spectra, path
+
+
+def convergence_to_shear(kappa, lmax):
+    """GLASS spherical shear conversion without network pixel-weight downloads."""
+    import healpy as hp
+
+    nside = hp.get_nside(kappa)
+    alm = hp.map2alm(kappa, lmax=lmax, pol=False, iter=3)
+    ell = np.arange(lmax + 1, dtype=float)
+    factor = np.zeros_like(ell)
+    factor[2:] = -np.sqrt((ell[2:] + 2) * (ell[2:] - 1) / (ell[2:] * (ell[2:] + 1)))
+    pw0, pw2 = hp.pixwin(nside, pol=True, lmax=lmax)
+    hp.almxfl(alm, factor * pw2 / pw0, inplace=True)
+    return hp.alm2map_spin([alm, np.zeros_like(alm)], nside, 2, lmax)
+
+
+def generate_lensing_maps(config, output_dir, cache_dir):
+    """Save projected kappa/gamma float32 maps and full-sky known-answer spectra.
+
+    Matter shells are lognormal, with three neighbouring cross-correlations.
+    Source-plane convergence is integrated before the linear shear transform,
+    avoiding a spherical transform for every source shell.
+    """
+    import json
+    import time
+    from pathlib import Path
+
+    import glass
+    import healpy as hp
+
+    start = time.perf_counter()
+    if config.lmax > 3 * config.nside - 1 or config.lmax < 2:
+        raise ValueError("lmax must be between 2 and 3*nside-1")
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    pars, shells, spectra, cache = prepare_lensing_spectra(config, cache_dir)
+    prepared = time.perf_counter()
+    gls = [spectra[f"gaussian_{i}"] for i in range(int(spectra["nspectra"]))]
+    matter = glass.generate(
+        glass.lognormal_fields(shells),
+        gls,
+        config.nside,
+        ncorr=3,
+        rng=np.random.default_rng(config.seed),
+    )
+    convergence = glass.MultiPlaneConvergence(Cosmology_from_camb(pars))
+    kappa = np.zeros(hp.nside2npix(config.nside))
+    for i, delta in enumerate(matter):
+        convergence.add_window(delta, shells[i])
+        kappa += spectra["weights"][i] * convergence.kappa
+        print(f"Matter shell {i + 1}/{len(shells)}", flush=True)
+    generated = time.perf_counter()
+    gamma1, gamma2 = convergence_to_shear(kappa, config.lmax)
+    transformed = time.perf_counter()
+    for name, values in (("kappa", kappa), ("gamma1", gamma1), ("gamma2", gamma2)):
+        np.save(out / f"{name}.npy", values.astype(np.float32))
+    # Measure the persisted precision, not just the float64 precursor.
+    del kappa, gamma1, gamma2, matter, convergence, delta
+    maps = [
+        np.load(out / f"{name}.npy", mmap_mode="r")
+        for name in ("kappa", "gamma1", "gamma2")
+    ]
+    measured = hp.anafast(maps, lmax=config.lmax, pol=True, iter=3)
+    theory = {
+        key: spectra[key]
+        for key in ("ell", "cl_kk", "cl_ee", "cl_kk_pixel", "cl_ee_pixel")
+    }
+    np.savez(
+        out / "spectra.npz",
+        **theory,
+        realization_kk=measured[0],
+        realization_ee=measured[1],
+        realization_bb=measured[2],
+        realization_ke=measured[3],
+        realization_eb=measured[4],
+        realization_kb=measured[5],
+    )
+    metadata = dict(
+        config=asdict(config),
+        lmax=config.lmax,
+        spectra_cache=str(cache),
+        source_weights=spectra["weights"].tolist(),
+        convention="RING HEALPix gamma; catalogue e2=-gamma2",
+        reduced_shear="gamma/(1-kappa) of n(z)-projected fields",
+        theory="GLASS shell ensemble, ncorr=3, spherical spin factor",
+        seconds=dict(
+            prepare=prepared - start,
+            matter=generated - prepared,
+            shear=transformed - generated,
+            spectra_and_io=time.perf_counter() - transformed,
+            total=time.perf_counter() - start,
+        ),
+    )
+    (out / "maps.json").write_text(json.dumps(metadata, indent=2))
+    return metadata
+
+
+def draw_b_mode_maps(nside, cl_bb, seed):
+    """Seeded pure-B Gaussian spin-2 field in the HEALPix convention.
+
+    ``cl_bb`` is the pixelized target (no additional pixel window is applied).
+    This uses a local Generator, not healpy's process-global RNG.
+    """
+    import healpy as hp
+
+    cl_bb = np.asarray(cl_bb, dtype=float)
+    if np.any(~np.isfinite(cl_bb)) or np.any(cl_bb < 0):
+        raise ValueError("C_BB must be finite and non-negative")
+    lmax = len(cl_bb) - 1
+    if lmax < 2 or lmax > 3 * nside - 1 or np.any(cl_bb[:2] != 0):
+        raise ValueError("Spin-2 C_BB needs ell 0,1 zero and lmax <= 3*nside-1")
+    rng = np.random.default_rng(seed)
+    ell, emm = hp.Alm.getlm(lmax)
+    alm = rng.normal(size=len(ell)) + 1j * rng.normal(size=len(ell))
+    alm *= np.sqrt(cl_bb[ell] / 2)
+    zero = emm == 0
+    alm[zero] = alm[zero].real * np.sqrt(2)
+    return hp.alm2map_spin([np.zeros_like(alm), alm], nside, 2, lmax)
+
+
+def paint_shear(
+    ra, dec, e1, e2, maps, rng, *, psf=None, alpha=0.0, additive=(0.0, 0.0), b_maps=None
+):
+    """Paint one row chunk, with all returned components in catalogue convention.
+
+    ``maps=(kappa,gamma1,gamma2)`` and ``b_maps`` are RING HEALPix maps.
+    The calibrated input |e| is preserved by the uniform spin-2 rotation.
+    ``e_noise`` is the intrinsic rotated epsilon, not e_mock minus g, because
+    reduced-shear composition is nonlinear. ``e_injected`` is added afterwards.
+    """
+    import healpy as hp
+
+    kappa, gamma1, gamma2 = maps
+    nside = hp.npix2nside(len(kappa))
+    if any(len(m) != len(kappa) for m in maps):
+        raise ValueError("Lensing map sizes differ")
+    values = [np.asarray(v) for v in (ra, dec, e1, e2)]
+    if any(v.shape != values[0].shape for v in values):
+        raise ValueError("Galaxy columns must have matching shapes")
+    if any(np.any(~np.isfinite(v)) for v in values):
+        raise ValueError("Galaxy positions and ellipticities must be finite")
+    if np.any(np.abs(values[1]) > 90):
+        raise ValueError("Declination lies outside [-90, 90]")
+    pix = hp.ang2pix(nside, np.mod(values[0], 360), values[1], lonlat=True)
+    kap = np.asarray(kappa[pix], dtype=float)
+    if np.any(np.abs(1 - kap) < 1e-8):
+        raise ValueError("Reduced shear is singular at kappa=1")
+    # Conjugating HEALPix gamma gives the catalogue's sky-coordinate convention.
+    g = (np.asarray(gamma1[pix], dtype=float) - 1j * gamma2[pix]) / (1 - kap)
+    noise = np.hypot(values[2], values[3]) * np.exp(
+        2j * rng.uniform(0, np.pi, len(pix))
+    )
+    mock = (g + noise) / (1 + np.conj(g) * noise)
+    injection = np.full(len(pix), complex(*additive), dtype=complex)
+    if alpha != 0:
+        if psf is None:
+            raise ValueError("PSF leakage needs two PSF ellipticity columns")
+        injection += alpha * (np.asarray(psf[0]) + 1j * np.asarray(psf[1]))
+    if b_maps is not None:
+        if any(len(m) != len(kappa) for m in b_maps):
+            raise ValueError("B-mode and lensing map sizes differ")
+        injection += b_maps[0][pix] - 1j * b_maps[1][pix]
+    mock += injection
+    return dict(
+        e1=mock.real,
+        e2=mock.imag,
+        e1_noise=noise.real,
+        e2_noise=noise.imag,
+        g1_true=g.real,
+        g2_true=g.imag,
+        kappa_true=kap,
+        e1_injected=injection.real,
+        e2_injected=injection.imag,
+    )
+
+
+def paint_catalogue(
+    input_path,
+    output_path,
+    maps_dir,
+    seed,
+    *,
+    ra_col="RA",
+    dec_col="Dec",
+    e1_col="e1",
+    e2_col="e2",
+    w_col="w_des",
+    psf_cols=("e1_PSF", "e2_PSF"),
+    alpha=0.0,
+    additive=(0.0, 0.0),
+    b_cl=None,
+    b_seed=None,
+    chunk_size=250_000,
+    column_map=None,
+    overwrite=False,
+):
+    """Stream a FITS/HDF5 catalogue into an HDF5 mock (root ``data`` table).
+
+    Uses the same lazy ``Catalogue`` reader as ``read_catalogue`` with bounded
+    row slices, including single-dataset 138M-row HDF5 catalogues.
+    Auxiliary columns are preserved in the reader's canonical grammar.
+    Calibrated ``e*_leak_corrected`` aliases, when present, also receive the
+    mock shapes, so the corrected-column cosmo_val path stays mock-only.
+    Output is atomic; a JSON sidecar and HDF5 attributes record the injection.
+    """
+    import json
+    import time
+    from pathlib import Path
+
+    import h5py
+
+    from sp_validation.grammar import materialise
+    from sp_validation.io import Catalogue
+
+    start = time.perf_counter()
+    output = Path(output_path)
+    if output.exists() and not overwrite:
+        raise FileExistsError(output)
+    if Path(input_path).resolve() == output.resolve():
+        raise ValueError("Cannot overwrite the input catalogue")
+    if chunk_size <= 0:
+        raise ValueError("chunk_size must be positive")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    root = Path(maps_dir)
+    maps = tuple(
+        np.load(root / f"{key}.npy", mmap_mode="r")
+        for key in ("kappa", "gamma1", "gamma2")
+    )
+    b_maps = None
+    if b_cl is not None:
+        if b_seed is None:
+            raise ValueError("B-mode injection requires an explicit b_seed")
+        import healpy as hp
+
+        b_maps = draw_b_mode_maps(hp.npix2nside(len(maps[0])), b_cl, b_seed)
+    rng = np.random.default_rng(seed)
+    temporary = output.with_suffix(output.suffix + ".partial")
+    extra = (
+        "e1_noise",
+        "e2_noise",
+        "g1_true",
+        "g2_true",
+        "kappa_true",
+        "e1_injected",
+        "e2_injected",
+    )
+    metadata = dict(
+        input=str(input_path),
+        maps=str(root),
+        rotation_seed=seed,
+        alpha=alpha,
+        additive=list(additive),
+        b_seed=b_seed,
+        b_cl=None if b_cl is None else np.asarray(b_cl).tolist(),
+        columns=dict(
+            ra=ra_col, dec=dec_col, e1=e1_col, e2=e2_col, w=w_col, psf=list(psf_cols)
+        ),
+        convention="catalogue e2=-HEALPix gamma2; pol_factor=-1",
+        shape_composition="(g+e_noise)/(1+conj(g)*e_noise)+e_injected",
+        calibrated_aliases="e1_leak_corrected/e2_leak_corrected = mock",
+    )
+    with (
+        Catalogue(input_path, column_map=column_map) as cat,
+        h5py.File(temporary, "w") as dst,
+    ):
+        dtype = cat.dtype()
+        required = [ra_col, dec_col, e1_col, e2_col, w_col]
+        if alpha != 0:
+            required += list(psf_cols)
+        missing = set(required) - set(dtype.names)
+        if missing:
+            raise KeyError(f"Missing painting columns: {sorted(missing)}")
+        if set(extra) & set(dtype.names):
+            raise ValueError("Input already contains mock truth/noise columns")
+        output_dtype = np.dtype(
+            [(name, dtype[name]) for name in dtype.names]
+            + [(name, "f4") for name in extra]
+        )
+        table = dst.create_dataset(
+            "data",
+            shape=(len(cat),),
+            dtype=output_dtype,
+            chunks=(min(chunk_size, max(1, len(cat))),),
+        )
+        offset = 0
+        for part in cat.chunks.values():
+            for lo in range(0, len(part), chunk_size):
+                rows = materialise(part[lo : lo + chunk_size])
+                painted = paint_shear(
+                    rows[ra_col],
+                    rows[dec_col],
+                    rows[e1_col],
+                    rows[e2_col],
+                    maps,
+                    rng,
+                    psf=(rows[psf_cols[0]], rows[psf_cols[1]]) if alpha != 0 else None,
+                    alpha=alpha,
+                    additive=additive,
+                    b_maps=b_maps,
+                )
+                mock = np.empty(len(rows), dtype=output_dtype)
+                for name in dtype.names:
+                    mock[name] = rows[name]
+                mock[e1_col], mock[e2_col] = painted["e1"], painted["e2"]
+                for alias, component in (
+                    ("e1_leak_corrected", "e1"),
+                    ("e2_leak_corrected", "e2"),
+                ):
+                    if alias in dtype.names:
+                        mock[alias] = painted[component]
+                for name in extra:
+                    mock[name] = painted[name]
+                table[offset : offset + len(rows)] = mock
+                offset += len(rows)
+                print(f"Painted {offset}/{len(cat)} rows", flush=True)
+        metadata.update(rows=offset, seconds=time.perf_counter() - start)
+        dst.attrs["mock_metadata"] = json.dumps(metadata)
+        dst.attrs["is_mock"] = True
+    temporary.replace(output)
+    output.with_suffix(output.suffix + ".json").write_text(
+        json.dumps(metadata, indent=2)
+    )
+    return metadata
 
 
 # --- mask / galaxy-sampling helpers (used by the generation runner) ---------
