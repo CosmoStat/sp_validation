@@ -74,6 +74,35 @@ def test_xi_comparison_without_overlay(rt, tmp_path):
     assert out.exists()
 
 
+def test_xi_minus_native_units_at_zero_crossing(rt, tmp_path, monkeypatch):
+    rt["fit"]["samples_minus"] = np.ones((8, 3)) * 1e-7
+    xi = {"theta": rt["theta"] * 1.001,
+          "xip": np.full(3, 1e-5),
+          "xim": np.array([0.0, -2e-6, 3e-6]),
+          "sigma_xim": np.full(3, 3e-6)}
+    saved = []
+    monkeypatch.setattr(psf.S, "save", lambda fig, *args: saved.append(fig))
+    with np.errstate(divide="raise", invalid="raise"):
+        psf.xi_sys_ratio(rt, xi, tmp_path / "xi_sys.png")
+    fig = saved[0]
+    plus, minus = fig.axes
+    # The plus panel remains the original ratio with +/-10% reference lines.
+    np.testing.assert_allclose(plus.lines[3].get_ydata(), np.full(3, 0.01))
+    np.testing.assert_allclose(plus.lines[0].get_ydata(), [-0.1, -0.1])
+    # Zero line then theta-scaled posterior median; no xi- denominator.
+    np.testing.assert_allclose(minus.lines[1].get_ydata(),
+                               rt["fit"]["theta"] * 1e-7)
+    container = minus.containers[0]
+    np.testing.assert_allclose(container.lines[0].get_ydata(),
+                               xi["theta"] * xi["xim"])
+    segments = container.lines[2][0].get_segments()
+    np.testing.assert_allclose([s[1, 1] - s[0, 1] for s in segments],
+                               2 * xi["theta"] * xi["sigma_xim"])
+    assert minus.get_yscale() == "linear"
+    fig.savefig(tmp_path / "xi_sys.png")
+    plt.close(fig)
+
+
 def test_corrected_tau_loader_needs_no_assembled_or_fit(tmp_path, monkeypatch):
     stats = tmp_path / "cosmo_val/rho_tau_stats"
     stats.mkdir(parents=True)

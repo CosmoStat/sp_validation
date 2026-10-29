@@ -359,7 +359,11 @@ def render(run_dir, versions, out, maps_dir=None, corr_dir=None,
     figs.add(
         "psf_xi_sys",
         "leakage",
-        "Propagated PSF systematic relative to the blinded ξ±; dotted lines at ±10%.",
+        "Left: PSF ξ⁺sys / blinded ξ⁺; dotted lines at ±10%, band from "
+        "PSF-coefficient uncertainty only (data denominator held fixed). "
+        "Right: signed θξ⁻ data with analytic errors and θξ⁻sys posterior "
+        "(68% band), θ in arcmin; no division by near-zero ξ⁻. "
+        "The data include cosmological signal.",
         "full",
     )
 

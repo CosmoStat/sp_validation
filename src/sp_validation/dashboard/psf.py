@@ -240,28 +240,52 @@ def rho_stats(rt, out):
 
 
 def xi_sys_ratio(rt, xi, out, reference=0.1):
-    """Propagated PSF systematic relative to the blinded ξ±."""
+    """ξ+ PSF/data ratio, and signed θξ− in native units near its zero crossing.
+
+    The ξ+ ratio band propagates only PSF-coefficient uncertainty, holding the
+    blinded denominator fixed. The ξ− panel does not divide by the noisy data:
+    show separate analytic data errors and the posterior PSF model band.
+    """
     fit = rt["fit"]
-    theta = fit["theta"]
+    theta = np.asarray(fit["theta"])
     with S.figure_style():
-        fig, axes = plt.subplots(1, 2, figsize=(7.2, 2.5))
-        for ax, comp, key, sign in zip(axes, ("plus", "minus"), ("xip", "xim"), "+-"):
-            ratio = fit[f"samples_{comp}"] / xi[key][None, :]
-            lo, med, hi = np.percentile(ratio, [16, 50, 84], axis=0)
-            for r in (-reference, reference):
-                ax.axhline(r, color=S.INK_MUTED, lw=0.7, ls=(0, (2, 2)))
-            S.zero_line(ax)
-            ax.fill_between(theta, lo, hi, color=MODEL, alpha=0.3, lw=0)
-            ax.plot(theta, med, color=MODEL, lw=1.1)
+        fig, axes = plt.subplots(1, 2, figsize=(7.2, 2.7))
+        ax = axes[0]
+        ratio = fit["samples_plus"] / xi["xip"][None, :]
+        lo, med, hi = np.percentile(ratio, [16, 50, 84], axis=0)
+        for r in (-reference, reference):
+            ax.axhline(r, color=S.INK_MUTED, lw=0.7, ls=(0, (2, 2)))
+        S.zero_line(ax)
+        ax.fill_between(theta, lo, hi, color=MODEL, alpha=0.3, lw=0)
+        ax.plot(theta, med, color=MODEL, lw=1.1)
+        ax.set_ylabel(r"$\xi_+^{\rm sys} / \xi_+$")
+        top = max(np.nanmax(hi), reference) * 1.25
+        bot = min(np.nanmin(lo), -reference) * 1.25
+        ax.set_ylim(max(bot, -1.0), min(top, 1.0))
+        S.label_box(ax, r"$\xi_+$", loc="upper left")
+
+        ax = axes[1]
+        lo, med, hi = np.percentile(
+            fit["samples_minus"] * theta[None, :], [16, 50, 84], axis=0
+        )
+        S.zero_line(ax)
+        ax.fill_between(theta, lo, hi, color=MODEL, alpha=0.3, lw=0,
+                        label=r"PSF model (68%)")
+        ax.plot(theta, med, color=MODEL, lw=1.1)
+        data_theta = np.asarray(xi["theta"])
+        ax.errorbar(
+            data_theta, data_theta * xi["xim"],
+            yerr=data_theta * xi["sigma_xim"], marker="o", color=S.INK,
+            label=r"$\xi_-$ (blinded)", **S.DATA_VECTOR_MARK,
+        )
+        ax.set_ylabel(r"$\theta\,\xi_-(\theta)$ [arcmin]")
+        ax.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
+        ax.legend(loc="upper left")
+        for ax in axes:
             S.theta_axis(ax)
             ax.set_xticks([1, 10, 100])
             ax.set_xticklabels(["$1$", "$10$", "$100$"])
             ax.set_xlabel(r"$\theta$ [arcmin]")
-            ax.set_ylabel(rf"$\xi_{sign}^{{\rm sys}} / \xi_{sign}$")
-            top = max(np.nanmax(hi), reference) * 1.25
-            bot = min(np.nanmin(lo), -reference) * 1.25
-            ax.set_ylim(max(bot, -1.0), min(top, 1.0))
-            S.label_box(ax, rf"$\xi_{sign}$", loc="upper left")
         return S.save(fig, out, "full")
 
 
