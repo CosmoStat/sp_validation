@@ -407,8 +407,9 @@ def solve_shell_spectra(fields, cls, workers=1):
         for index, gl, realized, info in solved:
             results[index] = gl, realized, info
     else:
-        threads = os.environ.get("OMP_NUM_THREADS")
-        os.environ["OMP_NUM_THREADS"] = "1"
+        native_threads = ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS")
+        saved_threads = {key: os.environ.get(key) for key in native_threads}
+        os.environ.update({key: "1" for key in native_threads})
         try:
             with ProcessPoolExecutor(
                 max_workers=workers, mp_context=multiprocessing.get_context("spawn")
@@ -423,10 +424,11 @@ def solve_shell_spectra(fields, cls, workers=1):
                             flush=True,
                         )
         finally:
-            if threads is None:
-                os.environ.pop("OMP_NUM_THREADS", None)
-            else:
-                os.environ["OMP_NUM_THREADS"] = threads
+            for key, value in saved_threads.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
     gaussian, realized, info = zip(*results, strict=True)
     return list(gaussian), list(realized), np.asarray(info)
 
@@ -841,9 +843,13 @@ def paint_catalogue(
             chunks=(min(chunk_size, max(1, len(cat))),),
         )
         offset = 0
+        timings = dict(read=0.0, paint=0.0, assemble=0.0, write=0.0)
         for part in cat.chunks.values():
             for lo in range(0, len(part), chunk_size):
+                tick = time.perf_counter()
                 rows = materialise(part[lo : lo + chunk_size])
+                timings["read"] += time.perf_counter() - tick
+                tick = time.perf_counter()
                 painted = paint_shear(
                     rows[ra_col],
                     rows[dec_col],
@@ -857,6 +863,8 @@ def paint_catalogue(
                     b_maps=b_maps,
                     shear=shear,
                 )
+                timings["paint"] += time.perf_counter() - tick
+                tick = time.perf_counter()
                 mock = np.empty(len(rows), dtype=output_dtype)
                 for name in dtype.names:
                     mock[name] = rows[name]
@@ -869,10 +877,15 @@ def paint_catalogue(
                         mock[alias] = painted[component]
                 for name in extra:
                     mock[name] = painted[name]
+                timings["assemble"] += time.perf_counter() - tick
+                tick = time.perf_counter()
                 table[offset : offset + len(rows)] = mock
+                timings["write"] += time.perf_counter() - tick
                 offset += len(rows)
                 print(f"Painted {offset}/{len(cat)} rows", flush=True)
-        metadata.update(rows=offset, seconds=time.perf_counter() - start)
+        metadata.update(
+            rows=offset, seconds=time.perf_counter() - start, seconds_by_stage=timings
+        )
         dst.attrs["mock_metadata"] = json.dumps(metadata)
         dst.attrs["is_mock"] = True
     temporary.replace(output)
