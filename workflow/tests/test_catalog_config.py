@@ -61,6 +61,14 @@ def test_external_mock_registry(toy, tmp_path):
     assert not parse_jobs(unchanged.stdout)
 
     entries = yaml.safe_load(registry.read_text())
+    entries[name]["colour"] = "C3"
+    entries[name]["marker"] = "s"
+    entries[name]["cov_th"] = {"A": 1234.0, "sigma_e": 0.27}
+    registry.write_text(yaml.safe_dump(entries))
+    restyled = toy.snakemake("-n", target, config=overrides)
+    assert restyled.returncode == 0, restyled.stdout
+    assert not parse_jobs(restyled.stdout)
+
     entries[name]["shear"]["redshift_path"] = str(tmp_path / "other_nz.txt")
     registry.write_text(yaml.safe_dump(entries))
     changed = toy.snakemake("-n", target, config=overrides)
