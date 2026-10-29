@@ -9,8 +9,8 @@
 # (e.g. the catalogue extraction) to finish successfully.
 #
 # Every cosmological product is checked against the blind its version is
-# declared under in the catalogue config: --cat-config, else RUN_DIR's
-# cat_config.yaml, else the repository's cosmo_val/cat_config.yaml.
+# declared under in the run's catalogue config: --cat-config, else RUN_DIR's
+# cat_config.yaml. With neither, the script refuses to start.
 #
 # Usage, from the repository root on a login node:
 #   scripts/dashboard/build_dashboard.sh CATALOGUE_DIR RUN_DIR VERSION OUT_DIR \
@@ -38,11 +38,11 @@ done
 
 root=$(git rev-parse --show-toplevel)
 cd "$root"
-if [ -z "$catconfig" ]; then
-    catconfig="$rundir/cat_config.yaml"
-    [ -e "$catconfig" ] || catconfig="$root/cosmo_val/cat_config.yaml"
-fi
-[ -e "$catconfig" ] || { echo "no catalogue config: $catconfig" >&2; exit 2; }
+catconfig=${catconfig:-$rundir/cat_config.yaml}
+[ -e "$catconfig" ] || {
+    echo "no catalogue config at $catconfig: pass --cat-config with the config the run declared its blinds in" >&2
+    exit 2
+}
 echo "blinds declared by $catconfig"
 account=${ACCOUNT:-def-sfabbro}
 export SPV_IMAGE=${SPV_IMAGE:-/project/6001537/cdaley/containers/sp_validation-ddd58fe0.sif}
