@@ -366,7 +366,7 @@ def observe_renderers(observed, monkeypatch):
             record(data_vectors, name)
 
 
-def render(paths, version, blind):
+def render(paths, version, blind, cat_config):
     """Always assemble/plot Cℓ; run #430/#434-only figures when present.
 
     No importorskip here: a missing optional surface must not skip the core
@@ -440,9 +440,17 @@ def render(paths, version, blind):
     if find_spec("sp_validation.dashboard") is not None:
         from sp_validation.dashboard import data_vectors, products
 
-        xi = products.load_xi(assembled, blind)
-        pure = products.load_pure_eb(out / "pure.npz", blind)
-        cosebis = products.load_cosebis(out / "cosebis.npz", blind)
+        # New dashboards obtain the expected blind from cat_config, never the
+        # assembled product's stamp. Older loaders still take an explicit name.
+        expected = (
+            products.declared_blind(cat_config, version)
+            if hasattr(products, "declared_blind")
+            else blind
+        )
+        assert expected == blind
+        xi = products.load_xi(assembled, expected)
+        pure = products.load_pure_eb(out / "pure.npz", expected)
+        cosebis = products.load_cosebis(out / "cosebis.npz", expected)
         data_vectors.xi_pm(xi, out / "dashboard_xi.png", blind=blind)
         data_vectors.pure_eb(pure, out / "dashboard_pure.png", CUT, blind=blind)
         data_vectors.cosebis(
@@ -466,6 +474,50 @@ def render(paths, version, blind):
     np.testing.assert_array_equal(
         sacc_io.load(assembled, blind=blind).mean, expected_mean
     )
+
+
+def assert_dashboard_refuses_stale_public(raw_paths, cat_config, version):
+    """Public twin products cannot stand in for this declared-blind version.
+
+    Keep deliberately stale fixtures in the public twin's directory, outside
+    the real blinded run whose artifacts the final scan must find clean.
+    """
+    if find_spec("sp_validation.dashboard") is None:
+        return  # Only this #434-only assertion is absent on develop.
+    from sp_validation.dashboard import products
+
+    config = yaml.safe_load(cat_config.read_text())
+    expected = blinding.blind_of(config, version)
+    if hasattr(products, "declared_blind"):
+        assert products.declared_blind(cat_config, version) == expected
+    assert expected != "none"
+    with pytest.raises(ValueError, match="stamp.*none"):
+        products.load_xi(raw_paths["reporting"], expected)
+    for name, filename in (
+        ("load_pure_eb", "pure.npz"),
+        ("load_cosebis", "cosebis.npz"),
+    ):
+        with pytest.raises(ValueError, match="stamp.*none"):
+            getattr(products, name)(raw_paths["cl"].parent / filename, expected)
+    if hasattr(products, "declared_blind"):
+        # Exercise the dashboard's real config-driven ingestion entry point as
+        # well, not just a caller manually handing its loaders the right name.
+        from sp_validation.dashboard.render import load_version
+
+        stale = raw_paths["cl"].parent / "stale-dashboard"
+        cv_dir = stale / "cosmo_val"
+        cv_dir.mkdir(parents=True)
+        for source, destination in (
+            (raw_paths["reporting"], f"{version}.sacc"),
+            (raw_paths["cl"].parent / "pure.npz", f"{version}_eb_minsep=5_data.npz"),
+            (
+                raw_paths["cl"].parent / "cosebis.npz",
+                f"{version}_cosebis_minsep=5_data.npz",
+            ),
+        ):
+            shutil.copyfile(source, cv_dir / destination)
+        with pytest.raises(ValueError, match="stamp.*none"):
+            load_version(stale, version, None, cat_config=cat_config)
 
 
 @pytest.mark.slow
@@ -509,7 +561,8 @@ def test_non_tomographic_workflow_emits_no_unblinded_signal(
         sealed_paths, sealed_pure, sealed_cosebis = produce(
             config_path, version, "gate", tmp_path / "sealed"
         )
-        render(sealed_paths, version, "gate")
+        render(sealed_paths, version, "gate", config_path)
+        assert_dashboard_refuses_stale_public(raw_paths, config_path, version)
         cv = CosmologyValidation(
             versions=[version],
             catalog_config=str(config_path),
