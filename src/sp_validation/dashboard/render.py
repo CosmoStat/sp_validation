@@ -364,15 +364,16 @@ def render(run_dir, versions, out, maps_dir=None, corr_dir=None,
     )
 
     try:
-        PSF.xi_sys_comparison(rt, figs.path("psf_xi_sys_comparison"))
+        PSF.xi_sys_comparison(rt, figs.path("psf_xi_sys_comparison"), xi=xi)
     except ValueError as exc:
         print(f"Skipping psf_xi_sys_comparison: {exc}")
     else:
         figs.add(
             "psf_xi_sys_comparison",
             "leakage",
-            "PSF systematic ξ⁺ from the α–β–η posterior (68% band) compared "
-            "with τ₀,+²/ρ₀,+; no cosmological signal is shown.",
+            "PSF systematic ξ⁺ from the α–β–η posterior (68% band), compared "
+            "with τ₀,+²/ρ₀,+ and the same version's blinded ξ⁺ with its run covariance errors. "
+            "The black points include cosmological signal; they are not PSF-only.",
             "half",
         )
 

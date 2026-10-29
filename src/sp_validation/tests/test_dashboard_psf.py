@@ -45,6 +45,35 @@ def test_theta_tau_scaling_and_own_grid(rt, overlay, tmp_path, monkeypatch):
     plt.close(fig)
 
 
+@pytest.mark.parametrize("sign", [1, -1])
+def test_xi_comparison_uses_blinded_points_and_errors(rt, sign, tmp_path, monkeypatch):
+    xi = {"theta": rt["theta"] * 1.001,
+          "xip": np.array([1., 2., 3.]) * 1e-5 * sign,
+          "sigma_xip": np.full(3, 1e-6)}
+    saved = []
+    monkeypatch.setattr(psf.S, "save", lambda fig, *args: saved.append(fig))
+    psf.xi_sys_comparison(rt, tmp_path / "xi.png", xi=xi)
+    fig = saved[0]
+    ax = fig.axes[0]
+    container = ax.containers[0]
+    line = container.lines[0]
+    np.testing.assert_allclose(line.get_xdata(), xi["theta"])
+    np.testing.assert_allclose(line.get_ydata(), xi["xip"])
+    segments = container.lines[2][0].get_segments()
+    np.testing.assert_allclose([s[1, 1] - s[0, 1] for s in segments],
+                               2 * xi["sigma_xip"])
+    assert "blinded" in container.get_label()
+    assert ax.get_yscale() == ("log" if sign > 0 else "symlog")
+    fig.savefig(tmp_path / "xi.png")
+    plt.close(fig)
+
+
+def test_xi_comparison_without_overlay(rt, tmp_path):
+    out = tmp_path / "no_xi.png"
+    psf.xi_sys_comparison(rt, out)
+    assert out.exists()
+
+
 def test_corrected_tau_loader_needs_no_assembled_or_fit(tmp_path, monkeypatch):
     stats = tmp_path / "cosmo_val/rho_tau_stats"
     stats.mkdir(parents=True)

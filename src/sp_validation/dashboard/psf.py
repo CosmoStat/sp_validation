@@ -307,8 +307,12 @@ def theta_tau(rt, out, corrected=None):
         return S.save(fig, out, "full")
 
 
-def xi_sys_comparison(rt, out):
-    """Compare the full fitted systematic with tau_0 squared over rho_0."""
+def xi_sys_comparison(rt, out, xi=None):
+    """Compare fitted PSF systematic, τ0²/ρ0 and optional blinded ξ+.
+
+    ``xi`` comes from products.load_xi, including the run covariance errors.
+    Its own pair-weighted angular grid is retained.
+    """
     theta = np.asarray(rt["theta"])
     # Pair-weighted mean separations differ slightly within the same bins.
     if not (
@@ -333,14 +337,21 @@ def xi_sys_comparison(rt, out):
             ms=3,
             label=r"$\tau_{0,+}^2/\rho_{0,+}$",
         )
+        values = [lo, med, hi, simple]
+        if xi is not None:
+            xip = np.asarray(xi["xip"])
+            ax.errorbar(xi["theta"], xip, yerr=xi["sigma_xip"],
+                        color=S.INK, marker="o", label=r"$\xi_+$ (blinded)",
+                        **S.DATA_VECTOR_MARK)
+            values.append(xip)
         S.theta_axis(ax)
-        if np.all(np.concatenate((lo, med, hi, simple)) > 0):
+        if np.all(np.concatenate(values) > 0):
             ax.set_yscale("log")
         else:
             S.zero_line(ax)
             ax.set_yscale("symlog", linthresh=1e-8)
         ax.set_xlabel(r"$\theta$ [arcmin]")
-        ax.set_ylabel(r"$\xi^{\rm sys}_+(\theta)$")
+        ax.set_ylabel(r"$\xi_+(\theta)$")
         ax.legend()
         return S.save(fig, out, "half")
 
