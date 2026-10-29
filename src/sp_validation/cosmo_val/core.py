@@ -546,6 +546,14 @@ class CosmologyValidation(
 
         results = {}
         for ver in self.versions:
+            if objectwise and not all(
+                key in self.cc[ver]["shear"] for key in ("e1_PSF_col", "e2_PSF_col")
+            ):
+                self.print_magenta(
+                    f"Skipping object-wise leakage for {ver}: "
+                    "no galaxy PSF ellipticity columns configured"
+                )
+                continue
             obj = results[ver] = make_leakage()
             obj.entries = self.cc[ver]
             obj._params.update(set_params(ver))
