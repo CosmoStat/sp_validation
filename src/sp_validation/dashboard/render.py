@@ -86,9 +86,9 @@ class Figures:
         self.entries.append(entry)
 
 
-def load_version(run_dir, version, maps_dir):
+def load_version(run_dir, version, maps_dir, cat_config):
     r = P.RunProducts(run_dir, version, maps_dir)
-    blind = P.blind_of(r.assembled)
+    blind = P.declared_blind(cat_config, version)
     return (
         r,
         blind,
@@ -100,10 +100,10 @@ def load_version(run_dir, version, maps_dir):
     )
 
 
-def render(run_dir, versions, out, maps_dir=None):
+def render(run_dir, versions, out, cat_config, maps_dir=None):
     cuts = run_config(run_dir)
     theta_cut, ell_cut, full_cut = cuts["theta"], cuts["ell"], cuts["theta_full"]
-    loaded = [load_version(run_dir, v, maps_dir) for v in versions]
+    loaded = [load_version(run_dir, v, maps_dir, cat_config) for v in versions]
     ref, blind, d = loaded[0]
     pe, co, cl = d["pe"], d["co"], d["cl"]
     xi = P.load_xi(ref.assembled, blind)
@@ -226,7 +226,7 @@ def render(run_dir, versions, out, maps_dir=None):
     }
 
     # PSF leakage
-    rt = P.load_rho_tau(ref.assembled, ref.tau_cov, ref.psf_fit)
+    rt = P.load_rho_tau(ref.assembled, ref.tau_cov, ref.psf_fit, blind)
     PSF.tau_fit(rt, figs.path("psf_tau"))
     figs.add(
         "psf_tau",
@@ -388,10 +388,17 @@ def main(argv=None):
         required=True,
         help="catalogue version; repeat for a comparison run",
     )
+    parser.add_argument(
+        "--cat-config",
+        required=True,
+        help="catalogue config declaring each version's blind (the run's cat_config.yaml)",
+    )
     parser.add_argument("--maps-dir", help="directory of field_maps/weight_cells NPZs")
     parser.add_argument("--out", required=True)
     args = parser.parse_args(argv)
-    manifest = render(args.run_dir, args.version, args.out, args.maps_dir)
+    manifest = render(
+        args.run_dir, args.version, args.out, args.cat_config, args.maps_dir
+    )
     print(f"{len(manifest['figures'])} figures -> {args.out}")
 
 
