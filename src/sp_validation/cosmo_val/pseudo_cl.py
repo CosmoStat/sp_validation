@@ -462,37 +462,49 @@ class PseudoClMixin:
                 cat_gal_a = self._get_tomographic_bin(params, cat_gal, bin_key1)
                 cat_gal_b = self._get_tomographic_bin(params, cat_gal, bin_key2)
 
-                # Compute the n_gal_maps and the wsp object
-                unique_pix_a, idx_a, idx_rep_a = self.get_pixels(
-                    params, nside, cat_gal_a
-                )
-                unique_pix_b, idx_b, idx_rep_b = self.get_pixels(
-                    params, nside, cat_gal_b
-                )
-
-                # Compute the number density maps
-                n_gal_map_a = self.get_n_gal_map(params, nside, cat_gal_a)
-                n_gal_map_b = self.get_n_gal_map(params, nside, cat_gal_b)
-
-                # Get the shear maps
-                shear_map_a_e1, shear_map_a_e2 = self.get_shear_map(
-                    params,
-                    self.nside,
-                    cat_gal_a,
-                    unique_pix=unique_pix_a,
-                    idx=idx_a,
-                    idx_rep=idx_rep_a,
-                )
-                shear_map_b_e1, shear_map_b_e2 = self.get_shear_map(
-                    params,
-                    self.nside,
-                    cat_gal_b,
-                    unique_pix=unique_pix_b,
-                    idx=idx_b,
-                    idx_rep=idx_rep_b,
-                )
-
-                if self.cell_method == "catalog":
+                if self.cell_method == "map":
+                    unique_pix_a, idx_a, idx_rep_a = self.get_pixels(
+                        params, nside, cat_gal_a
+                    )
+                    unique_pix_b, idx_b, idx_rep_b = self.get_pixels(
+                        params, nside, cat_gal_b
+                    )
+                    n_gal_map_a = self.get_n_gal_map(params, nside, cat_gal_a)
+                    n_gal_map_b = self.get_n_gal_map(params, nside, cat_gal_b)
+                    shear_map_a_e1, shear_map_a_e2 = self.get_shear_map(
+                        params,
+                        self.nside,
+                        cat_gal_a,
+                        unique_pix=unique_pix_a,
+                        idx=idx_a,
+                        idx_rep=idx_rep_a,
+                    )
+                    shear_map_b_e1, shear_map_b_e2 = self.get_shear_map(
+                        params,
+                        self.nside,
+                        cat_gal_b,
+                        unique_pix=unique_pix_b,
+                        idx=idx_b,
+                        idx_rep=idx_rep_b,
+                    )
+                    field_a, field_b, wsp = (
+                        spv_pseudo_cl.get_field_and_workspace_from_map(
+                            b,
+                            mask_a=n_gal_map_a,
+                            e1_map_a=shear_map_a_e1,
+                            e2_map_a=shear_map_a_e2,
+                            mask_b=n_gal_map_b,
+                            e1_map_b=shear_map_b_e1,
+                            e2_map_b=shear_map_b_e2,
+                            pol_factor=self.pol_factor,
+                            return_wsp=True,
+                        )
+                    )
+                    if f"W{bin_key1}" not in n_gal_map_dict:
+                        n_gal_map_dict[f"W{bin_key1}"] = n_gal_map_a
+                    if f"W{bin_key2}" not in n_gal_map_dict:
+                        n_gal_map_dict[f"W{bin_key2}"] = n_gal_map_b
+                else:
                     # The catalogue estimator's covariance must use the same
                     # catalogue fields and catalogue coupling as its data vector.
                     field_a, field_b, wsp = (
@@ -514,27 +526,7 @@ class PseudoClMixin:
                             retain_catalog=True,
                         )
                     )
-                else:
-                    field_a, field_b, wsp = (
-                        spv_pseudo_cl.get_field_and_workspace_from_map(
-                            b,
-                            mask_a=n_gal_map_a,
-                            e1_map_a=shear_map_a_e1,
-                            e2_map_a=shear_map_a_e2,
-                            mask_b=n_gal_map_b,
-                            e1_map_b=shear_map_b_e1,
-                            e2_map_b=shear_map_b_e2,
-                            pol_factor=self.pol_factor,
-                            return_wsp=True,
-                        )
-                    )
 
-                # Save fields and map masks for the selected estimator.
-                if self.cell_method == "map":
-                    if f"W{bin_key1}" not in n_gal_map_dict:
-                        n_gal_map_dict[f"W{bin_key1}"] = n_gal_map_a
-                    if f"W{bin_key2}" not in n_gal_map_dict:
-                        n_gal_map_dict[f"W{bin_key2}"] = n_gal_map_b
                 if f"W{bin_key1}" not in field_dict:
                     field_dict[f"W{bin_key1}"] = field_a
                 if f"W{bin_key2}" not in field_dict:
@@ -599,10 +591,9 @@ class PseudoClMixin:
                     + noise_bias_cl
                 )
 
-            if self.fiducial_input_inka == "coupled":
-                # Couple the cell if required. Map fields use a number-density
-                # mask whose amplitude is removed here; catalogue fields carry
-                # their own catalogue normalization in the workspace.
+            if self.fiducial_input_inka == "coupled" and self.cell_method == "map":
+                # The map estimator couples spectra with its map workspace and
+                # divides by the number-density mask amplitude.
                 self.print_cyan("Coupling the fiducial Cls.")
                 for bin_key1, bin_key2 in tomo_bin_pairs:
                     # Get the coupling workspace for this field pair.
@@ -692,6 +683,46 @@ class PseudoClMixin:
                     if bin_key_a2 <= bin_key_b2
                     else fiducial_cl[f"W{bin_key_b2}xW{bin_key_a2}"]
                 )
+
+                if (
+                    self.cell_method == "catalog"
+                    and self.fiducial_input_inka == "coupled"
+                ):
+                    # NaMaster's catalogue iNKA helper applies the catalogue
+                    # mode coupling and its normalization; a raw coupling
+                    # matrix cannot be rescaled like the map mask matrix.
+                    input_cl_a1_b1 = spv_pseudo_cl.nmt.get_iNKA_cell(
+                        field_dict[f"W{bin_key_a1}"],
+                        field_dict[f"W{bin_key_b1}"],
+                        cl_guess=input_cl_a1_b1,
+                        w=wsp_dict[
+                            f"W{min(bin_key_a1, bin_key_b1)}xW{max(bin_key_a1, bin_key_b1)}"
+                        ],
+                    )
+                    input_cl_a1_b2 = spv_pseudo_cl.nmt.get_iNKA_cell(
+                        field_dict[f"W{bin_key_a1}"],
+                        field_dict[f"W{bin_key_b2}"],
+                        cl_guess=input_cl_a1_b2,
+                        w=wsp_dict[
+                            f"W{min(bin_key_a1, bin_key_b2)}xW{max(bin_key_a1, bin_key_b2)}"
+                        ],
+                    )
+                    input_cl_a2_b1 = spv_pseudo_cl.nmt.get_iNKA_cell(
+                        field_dict[f"W{bin_key_a2}"],
+                        field_dict[f"W{bin_key_b1}"],
+                        cl_guess=input_cl_a2_b1,
+                        w=wsp_dict[
+                            f"W{min(bin_key_a2, bin_key_b1)}xW{max(bin_key_a2, bin_key_b1)}"
+                        ],
+                    )
+                    input_cl_a2_b2 = spv_pseudo_cl.nmt.get_iNKA_cell(
+                        field_dict[f"W{bin_key_a2}"],
+                        field_dict[f"W{bin_key_b2}"],
+                        cl_guess=input_cl_a2_b2,
+                        w=wsp_dict[
+                            f"W{min(bin_key_a2, bin_key_b2)}xW{max(bin_key_a2, bin_key_b2)}"
+                        ],
+                    )
 
                 covar_22_22 = spv_pseudo_cl.get_pseudo_cl_iNKA_covariance(
                     input_cl_a1_b1,

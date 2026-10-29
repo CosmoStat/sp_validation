@@ -67,6 +67,7 @@ from sp_validation.pseudo_cl import (
     bandpower_window_from_workspace,
     get_catalog_noise_bias,
     get_field_and_workspace_from_catalog,
+    get_field_and_workspace_from_map,
     get_pseudo_cl_iNKA_covariance,
     make_namaster_bin,
 )
@@ -86,6 +87,24 @@ SEED = 1234
 N_ELL_BINS = 8
 
 REFERENCE_TOMO = Path(__file__).parent / "data" / "test_cl_catalog.npz"
+
+
+def test_map_iNKA_fields_remain_map_based():
+    b = make_namaster_bin(2, 47, 46, "linear", ell_step=4)
+    mask = np.ones(12 * 16**2)
+    shear = np.random.default_rng(321).normal(size=(2, len(mask)))
+    field_a, field_b, workspace = get_field_and_workspace_from_map(
+        b, mask, shear[0], shear[1]
+    )
+    cl = np.zeros((4, 48))
+    cl[0] = cl[3] = 1e-4
+    cov = get_pseudo_cl_iNKA_covariance(
+        cl, cl, cl, cl, field_a, field_a, field_b, field_b, workspace, workspace, b
+    )
+
+    assert isinstance(field_a, pymaster.NmtField)
+    assert cov.shape == (b.get_n_bands(), 4, b.get_n_bands(), 4)
+    npt.assert_allclose(cov, cov.transpose(2, 3, 0, 1), rtol=1e-10, atol=1e-14)
 
 
 def test_catalog_noise_bias_uses_catalogue_weight_normalization():
@@ -118,11 +137,12 @@ def test_catalog_iNKA_covariance_is_symmetric_positive_and_binned():
     cl = np.zeros((4, 25))
     cl[0] = 1e-4
     cl[3] = 1e-4
+    inka_cl = pymaster.get_iNKA_cell(field_a, field_b, cl_guess=cl, w=wsp)
     cov = get_pseudo_cl_iNKA_covariance(
-        cl,
-        cl,
-        cl,
-        cl,
+        inka_cl,
+        inka_cl,
+        inka_cl,
+        inka_cl,
         field_a,
         field_a,
         field_b,
