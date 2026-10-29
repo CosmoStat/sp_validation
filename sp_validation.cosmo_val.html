@@ -287,10 +287,12 @@ used throughout the mixins. A single <code class="docutils literal notranslate">
 </dd></dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="sp_validation.cosmo_val.CosmologyValidation.sacc_nz">
-<span class="sig-name descname"><span class="pre">sacc_nz</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">version</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmo_val/core.html#CosmologyValidation.sacc_nz"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmo_val.CosmologyValidation.sacc_nz" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.CosmologyValidation.sacc_nz'">¶</a></dt>
-<dd><p>Single-bin <code class="docutils literal notranslate"><span class="pre">nz</span></code> mapping <code class="docutils literal notranslate"><span class="pre">{0:</span> <span class="pre">(z,</span> <span class="pre">nz)}</span></code> for the SACC writers.</p>
-<p>The SACC parts carry the (“all”, “all”) pair only, so the whole-survey
-n(z) of <a class="reference internal" href="#sp_validation.cosmo_val.CosmologyValidation.get_redshift" title="sp_validation.cosmo_val.CosmologyValidation.get_redshift"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_redshift()</span></code></a> is bin 0.</p>
+<span class="sig-name descname"><span class="pre">sacc_nz</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">version</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tomography</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmo_val/core.html#CosmologyValidation.sacc_nz"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmo_val.CosmologyValidation.sacc_nz" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.CosmologyValidation.sacc_nz'">¶</a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">nz</span></code> mapping <code class="docutils literal notranslate"><span class="pre">{i:</span> <span class="pre">(z,</span> <span class="pre">nz_i)}</span></code> for the SACC writers.</p>
+<p>Non-tomographic parts carry the (“all”, “all”) pair only, so the
+whole-survey n(z) of <a class="reference internal" href="#sp_validation.cosmo_val.CosmologyValidation.get_redshift" title="sp_validation.cosmo_val.CosmologyValidation.get_redshift"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_redshift()</span></code></a> is bin 0. With
+<code class="docutils literal notranslate"><span class="pre">tomography</span></code>, bin <code class="docutils literal notranslate"><span class="pre">i</span></code> is column <code class="docutils literal notranslate"><span class="pre">i</span> <span class="pre">+</span> <span class="pre">1</span></code> of the <code class="docutils literal notranslate"><span class="pre">redshift_path</span></code>
+file (column 0 is z), one per tomographic bin.</p>
 </dd></dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="sp_validation.cosmo_val.CosmologyValidation.sacc_metadata">
@@ -377,10 +379,11 @@ under, as the catalogue config declares it.</p>
 <dt class="sig sig-object py" id="sp_validation.cosmo_val.CosmologyValidation._refuse_blinded_tomography">
 <span class="sig-name descname"><span class="pre">_refuse_blinded_tomography</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">version</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmo_val/core.html#CosmologyValidation._refuse_blinded_tomography"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmo_val.CosmologyValidation._refuse_blinded_tomography" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.CosmologyValidation._refuse_blinded_tomography'">¶</a></dt>
 <dd><p>Refuse to measure tomographic shear signal on a blinded catalogue.</p>
-<p>Only the <code class="docutils literal notranslate"><span class="pre">("all",</span> <span class="pre">"all")</span></code> pair is born as a SACC part, whose tracer
-carries the n(z) the blind’s theory shifts it by. The tomographic ξ±,
-⟨M_ap²⟩ and pseudo-Cℓ are TreeCorr objects and FITS tables with no
-per-bin tracer, so on a blinded catalogue they would hold true values.</p>
+<p>A statistic is blinded by sealing its SACC part, whose tracers carry
+the n(z) the blind’s theory shifts it by. ξ± (and ⟨M_ap²⟩, derived from
+it) is born as such a part for every tomographic bin pair; the
+tomographic pseudo-Cℓ are still FITS tables with no per-bin tracer, so
+on a blinded catalogue they would hold true values.</p>
 </dd></dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="sp_validation.cosmo_val.CosmologyValidation.basename">
@@ -682,7 +685,9 @@ Example: {version1: {‘ids’: tomo_bin_ids1, ‘pairs’: tomo_bin_pairs1}, �
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="sp_validation.cosmo_val.sacc_writers.html">sp_validation.cosmo_val.sacc_writers</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.sacc_writers.html#sp_validation.cosmo_val.sacc_writers.xi_pairs_to_sacc"><code class="docutils literal notranslate"><span class="pre">xi_pairs_to_sacc()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.sacc_writers.html#sp_validation.cosmo_val.sacc_writers.xi_to_sacc"><code class="docutils literal notranslate"><span class="pre">xi_to_sacc()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.sacc_writers.html#sp_validation.cosmo_val.sacc_writers.onecov_xi_covariance"><code class="docutils literal notranslate"><span class="pre">onecov_xi_covariance()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.sacc_writers.html#sp_validation.cosmo_val.sacc_writers.pseudo_cl_to_sacc"><code class="docutils literal notranslate"><span class="pre">pseudo_cl_to_sacc()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.sacc_writers.html#sp_validation.cosmo_val.sacc_writers.cosebis_to_sacc"><code class="docutils literal notranslate"><span class="pre">cosebis_to_sacc()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.sacc_writers.html#sp_validation.cosmo_val.sacc_writers.pure_eb_to_sacc"><code class="docutils literal notranslate"><span class="pre">pure_eb_to_sacc()</span></code></a></li>
@@ -760,7 +765,7 @@ Example: {version1: {‘ids’: tomo_bin_ids1, ‘pairs’: tomo_bin_pairs1}, �
 </div><footer class="py-6 border-t border-border md:py-0">
 <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
 <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 26 Oct, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.1</a></p>
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 29 Oct, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.1</a></p>
 </div>
 </div>
 </footer>

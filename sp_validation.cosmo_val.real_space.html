@@ -165,24 +165,28 @@ measurement, and the per-bin-pair plots of both. It depends on TreeCorr.</p>
 <dt class="sig sig-object py" id="sp_validation.cosmo_val.real_space.RealSpaceMixin.calculate_2pcf_version">
 <span class="sig-name descname"><span class="pre">calculate_2pcf_version</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ver</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">npatch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compute_tomography</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'reporting'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">treecorr_config</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmo_val/real_space.html#RealSpaceMixin.calculate_2pcf_version"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmo_val.real_space.RealSpaceMixin.calculate_2pcf_version" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.real_space.RealSpaceMixin.calculate_2pcf_version'">¶</a></dt>
 <dd><p>ξ± of one catalogue version on one binning, for each bin pair.</p>
-<p>The non-tomographic <code class="docutils literal notranslate"><span class="pre">("all",</span> <span class="pre">"all")</span></code> pair is born as its SACC part,
-sealed under the version’s blind (<a class="reference internal" href="sp_validation.sacc_io.html#sp_validation.sacc_io.seal" title="sp_validation.sacc_io.seal"><code class="xref py py-func docutils literal notranslate"><span class="pre">sp_validation.sacc_io.seal()</span></code></a>)
-before it is kept in <code class="docutils literal notranslate"><span class="pre">self.xi_parts[ver,</span> <span class="pre">grid]</span></code>, returned or written,
-so on a blinded catalogue its true values never leave this method. A
-part already held for <code class="docutils literal notranslate"><span class="pre">(ver,</span> <span class="pre">grid)</span></code> is reused when no <code class="docutils literal notranslate"><span class="pre">npatch</span></code>,
-binning or <code class="docutils literal notranslate"><span class="pre">out</span></code> is asked for, so the figure rules draw the parts they
-are handed. Tomographic pairs are measured only on a public catalogue
-(<code class="xref py py-meth docutils literal notranslate"><span class="pre">_refuse_blinded_tomography()</span></code>). Use <a class="reference internal" href="#sp_validation.cosmo_val.real_space.RealSpaceMixin.calculate_2pcf" title="sp_validation.cosmo_val.real_space.RealSpaceMixin.calculate_2pcf"><code class="xref py py-meth docutils literal notranslate"><span class="pre">calculate_2pcf()</span></code></a> to run
-over every version in <code class="docutils literal notranslate"><span class="pre">self.versions</span></code>.</p>
+<p>The measured pairs are born as one SACC part — the <code class="docutils literal notranslate"><span class="pre">("all",</span> <span class="pre">"all")</span></code>
+pair, or every tomographic bin pair with one <code class="docutils literal notranslate"><span class="pre">source_i</span></code> tracer and
+n(z) per bin — sealed under the version’s blind
+(<a class="reference internal" href="sp_validation.sacc_io.html#sp_validation.sacc_io.seal" title="sp_validation.sacc_io.seal"><code class="xref py py-func docutils literal notranslate"><span class="pre">sp_validation.sacc_io.seal()</span></code></a>) before it is kept in
+<code class="docutils literal notranslate"><span class="pre">self.xi_parts[ver,</span> <span class="pre">grid]</span></code> (<code class="docutils literal notranslate"><span class="pre">self.xi_tomo_parts</span></code> for tomography),
+returned or written, so on a blinded catalogue its true values never
+leave this method. A part already held for <code class="docutils literal notranslate"><span class="pre">(ver,</span> <span class="pre">grid)</span></code> is reused
+when no <code class="docutils literal notranslate"><span class="pre">npatch</span></code>, binning or <code class="docutils literal notranslate"><span class="pre">out</span></code> is asked for, so the figure rules
+draw the parts they are handed. Use <a class="reference internal" href="#sp_validation.cosmo_val.real_space.RealSpaceMixin.calculate_2pcf" title="sp_validation.cosmo_val.real_space.RealSpaceMixin.calculate_2pcf"><code class="xref py py-meth docutils literal notranslate"><span class="pre">calculate_2pcf()</span></code></a> to run over
+every version in <code class="docutils literal notranslate"><span class="pre">self.versions</span></code>.</p>
+<p>Tomographic bin ids map to SACC bins in ascending order, so bin <code class="docutils literal notranslate"><span class="pre">i</span></code>
+takes column <code class="docutils literal notranslate"><span class="pre">i</span> <span class="pre">+</span> <span class="pre">1</span></code> of the <code class="docutils literal notranslate"><span class="pre">redshift_path</span></code> file, and pairs go in
+as <code class="docutils literal notranslate"><span class="pre">(0,</span> <span class="pre">0),</span> <span class="pre">(0,</span> <span class="pre">1),</span> <span class="pre">…,</span> <span class="pre">(n-1,</span> <span class="pre">n-1)</span></code> — OneCovariance’s bin-pair order.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>ver</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a>) – The catalogue version to measure.</p></li>
 <li><p><strong>npatch</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a><em>, </em><em>optional</em>) – Jackknife patches; the instance’s
 <code class="docutils literal notranslate"><span class="pre">npatch</span></code> by default. With patches the part carries the
-jackknife covariance, without them the shot-noise diagonal.
-Seeded patch centres come from the full catalogue and are
-shared by every bin pair.</p></li>
+jackknife covariance (across bin pairs too), without them the
+shot-noise diagonal. Seeded patch centres come from the full
+catalogue and are shared by every bin pair.</p></li>
 <li><p><strong>compute_tomography</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.15)"><em>bool</em></a><em>, </em><em>optional</em>) – Measure the tomographic bin
 pairs instead of <code class="docutils literal notranslate"><span class="pre">("all",</span> <span class="pre">"all")</span></code>.</p></li>
 <li><p><strong>grid</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a>) – The grid tag the part’s points carry.</p></li>
@@ -192,10 +196,9 @@ e.g. <code class="docutils literal notranslate"><span class="pre">min_sep=1</spa
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">"tomo_bin_{b1}_tomo_bin_{b2}"</span></code> → ξ± shaped like a TreeCorr
-<code class="docutils literal notranslate"><span class="pre">GGCorrelation</span></code>: the part’s
-<a class="reference internal" href="sp_validation.sacc_io.html#sp_validation.sacc_io.xi_correlation" title="sp_validation.sacc_io.xi_correlation"><code class="xref py py-func docutils literal notranslate"><span class="pre">xi_correlation()</span></code></a> view for
-<code class="docutils literal notranslate"><span class="pre">("all",</span> <span class="pre">"all")</span></code>, the TreeCorr object for a tomographic pair.</p>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">"tomo_bin_{b1}_tomo_bin_{b2}"</span></code> → the part’s
+<a class="reference internal" href="sp_validation.sacc_io.html#sp_validation.sacc_io.xi_correlation" title="sp_validation.sacc_io.xi_correlation"><code class="xref py py-func docutils literal notranslate"><span class="pre">xi_correlation()</span></code></a> view of that pair,
+shaped like a TreeCorr <code class="docutils literal notranslate"><span class="pre">GGCorrelation</span></code>.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.15)">dict</a></p>
@@ -253,9 +256,9 @@ in <code class="docutils literal notranslate"><span class="pre">self.cat_ggs</sp
 <dd><p>⟨M_ap²⟩ and ⟨M_×²⟩ of every version and bin pair, from its ξ±.</p>
 <p>Both are linear in ξ± (TreeCorr’s <code class="docutils literal notranslate"><span class="pre">calculateMapSq</span></code> sum, Schneider et
 al. 2002 filter), so they and their covariance T·C·Tᵀ come from the ξ±
-of <a class="reference internal" href="#sp_validation.cosmo_val.real_space.RealSpaceMixin.calculate_2pcf_version" title="sp_validation.cosmo_val.real_space.RealSpaceMixin.calculate_2pcf_version"><code class="xref py py-meth docutils literal notranslate"><span class="pre">calculate_2pcf_version()</span></code></a> on a fine grid: for <code class="docutils literal notranslate"><span class="pre">("all",</span>
-<span class="pre">"all")</span></code> its sealed part, concealed on a blinded catalogue, whose shift,
-the same in every patch, leaves C unchanged.</p>
+of <a class="reference internal" href="#sp_validation.cosmo_val.real_space.RealSpaceMixin.calculate_2pcf_version" title="sp_validation.cosmo_val.real_space.RealSpaceMixin.calculate_2pcf_version"><code class="xref py py-meth docutils literal notranslate"><span class="pre">calculate_2pcf_version()</span></code></a> on a fine grid: its sealed part, for
+every bin pair concealed on a blinded catalogue, whose shift, the same
+in every patch, leaves C unchanged.</p>
 </dd></dl>
 <dl class="py property">
 <dt class="sig sig-object py" id="sp_validation.cosmo_val.real_space.RealSpaceMixin.map2">
@@ -415,7 +418,7 @@ and ξ±; the first version also draws the <code class="docutils literal notrans
 </div><footer class="py-6 border-t border-border md:py-0">
 <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
 <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 26 Oct, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.1</a></p>
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 29 Oct, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.1</a></p>
 </div>
 </div>
 </footer>

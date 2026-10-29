@@ -1889,59 +1889,88 @@
 
 </span><span id="line-1534">
 </span><span id="line-1535">
+<div class="viewcode-block" id="read_onecov_matrix">
+<a class="viewcode-back" href="../../sp_validation.sacc_io.html#sp_validation.sacc_io.read_onecov_matrix">[docs]</a>
+</span><span id="line-1536"><span class="k">def</span><span class="w"> </span><span class="nf">read_onecov_matrix</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+</span><span id="line-1537"><span class="w">    </span><span class="sd">"""Read a OneCovariance ``style = matrix`` covariance (the workflow's ``.dat``).</span>
+</span><span id="line-1538">
+</span><span id="line-1539"><span class="sd">    OneCovariance writes the dense matrix with ``np.savetxt`` under a ``#``</span>
+</span><span id="line-1540"><span class="sd">    header; for real-space ξ± its rows are type-major (all ξ+, then all ξ−),</span>
+</span><span id="line-1541"><span class="sd">    which :func:`sp_validation.cosmo_val.sacc_writers.onecov_xi_covariance`</span>
+</span><span id="line-1542"><span class="sd">    reorders to a part's insertion order.</span>
+</span><span id="line-1543">
+</span><span id="line-1544"><span class="sd">    Parameters</span>
+</span><span id="line-1545"><span class="sd">    ----------</span>
+</span><span id="line-1546"><span class="sd">    path : str or pathlib.Path</span>
+</span><span id="line-1547"><span class="sd">        The matrix file.</span>
+</span><span id="line-1548">
+</span><span id="line-1549"><span class="sd">    Returns</span>
+</span><span id="line-1550"><span class="sd">    -------</span>
+</span><span id="line-1551"><span class="sd">    numpy.ndarray</span>
+</span><span id="line-1552"><span class="sd">        The square, symmetric covariance matrix.</span>
+</span><span id="line-1553"><span class="sd">    """</span>
+</span><span id="line-1554">    <span class="n">cov</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">)))</span>
+</span><span id="line-1555">    <span class="k">if</span> <span class="n">cov</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">cov</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+</span><span id="line-1556">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">: covariance is not square, shape </span><span class="si">{</span><span class="n">cov</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="line-1557">    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">cov</span><span class="p">,</span> <span class="n">cov</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">rtol</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">,</span> <span class="n">atol</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+</span><span id="line-1558">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">: covariance is not symmetric"</span><span class="p">)</span>
+</span><span id="line-1559">    <span class="k">return</span> <span class="n">cov</span></div>
+
+</span><span id="line-1560">
+</span><span id="line-1561">
 <div class="viewcode-block" id="covariance_blocks">
 <a class="viewcode-back" href="../../sp_validation.sacc_io.html#sp_validation.sacc_io.covariance_blocks">[docs]</a>
-</span><span id="line-1536"><span class="k">def</span><span class="w"> </span><span class="nf">covariance_blocks</span><span class="p">(</span><span class="n">cov_list</span><span class="p">,</span> <span class="n">selectors</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">gaussian</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-</span><span id="line-1537"><span class="w">    </span><span class="sd">"""Reshape a OneCovariance ``covariance_list`` table into SACC cov blocks.</span>
-</span><span id="line-1538">
-</span><span id="line-1539"><span class="sd">    OneCovariance emits a flat ``covariance_list_*.dat`` table with one row per</span>
-</span><span id="line-1540"><span class="sd">    ``(i, j)`` element pair (row-major, ``k = i·n + j``); the covariance value</span>
-</span><span id="line-1541"><span class="sd">    lives in column 10 (Gaussian) or column 9 (Gaussian+non-Gaussian). This</span>
-</span><span id="line-1542"><span class="sd">    reshapes the flat table into dense square block(s) — reusing</span>
-</span><span id="line-1543"><span class="sd">    :func:`sp_validation.statistics.cov_from_one_covariance` for the per-block</span>
-</span><span id="line-1544"><span class="sd">    reshape — and pairs each with its SACC selector, ready for</span>
-</span><span id="line-1545"><span class="sd">    :func:`sp_validation.assemble_covariance`.</span>
-</span><span id="line-1546">
-</span><span id="line-1547"><span class="sd">    Single-statistic case: pass the whole table and one selector; you get one</span>
-</span><span id="line-1548"><span class="sd">    ``(selector, dense)`` block. Multi-statistic case (tomography-ready): pass a</span>
-</span><span id="line-1549"><span class="sd">    sequence of ``(selector, sub_table)`` pairs — each ``sub_table`` a</span>
-</span><span id="line-1550"><span class="sd">    contiguous slice of the flat output for one statistic / bin-pair — and each</span>
-</span><span id="line-1551"><span class="sd">    is reshaped and re-paired with its selector in order. The API is thus shaped</span>
-</span><span id="line-1552"><span class="sd">    to extend to multi-probe blocking without over-fitting the single-bin case.</span>
-</span><span id="line-1553">
-</span><span id="line-1554"><span class="sd">    Parameters</span>
-</span><span id="line-1555"><span class="sd">    ----------</span>
-</span><span id="line-1556"><span class="sd">    cov_list : numpy.ndarray or sequence</span>
-</span><span id="line-1557"><span class="sd">        Either the flat OneCovariance table (2-D array, one row per pair) for a</span>
-</span><span id="line-1558"><span class="sd">        single block, or — for the multi-block form — a sequence of</span>
-</span><span id="line-1559"><span class="sd">        ``(selector, sub_table)`` pairs. In the multi-block form ``selectors``</span>
-</span><span id="line-1560"><span class="sd">        must be ``None`` (the selectors travel with the sub-tables).</span>
-</span><span id="line-1561"><span class="sd">    selectors : selector or None</span>
-</span><span id="line-1562"><span class="sd">        For the single-block form, the SACC selector for the whole table (a</span>
-</span><span id="line-1563"><span class="sd">        ``(data_type, tracers[, tags])`` tuple or an index array, as</span>
-</span><span id="line-1564"><span class="sd">        :func:`assemble_covariance` accepts). Must be ``None`` for the</span>
-</span><span id="line-1565"><span class="sd">        multi-block form.</span>
-</span><span id="line-1566"><span class="sd">    gaussian : bool, optional</span>
-</span><span id="line-1567"><span class="sd">        Select the Gaussian-only column (``True``, default) or the</span>
-</span><span id="line-1568"><span class="sd">        Gaussian+non-Gaussian column (``False``); passed straight through to</span>
-</span><span id="line-1569"><span class="sd">        ``cov_from_one_covariance``.</span>
-</span><span id="line-1570">
-</span><span id="line-1571"><span class="sd">    Returns</span>
-</span><span id="line-1572"><span class="sd">    -------</span>
-</span><span id="line-1573"><span class="sd">    list</span>
-</span><span id="line-1574"><span class="sd">        Ordered ``(selector, dense_cov)`` pairs, directly consumable by</span>
-</span><span id="line-1575"><span class="sd">        ``assemble_covariance(s, blocks)``.</span>
-</span><span id="line-1576"><span class="sd">    """</span>
-</span><span id="line-1577">    <span class="k">if</span> <span class="n">selectors</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-1578">        <span class="c1"># Multi-block form: cov_list is a sequence of (selector, sub_table).</span>
-</span><span id="line-1579">        <span class="k">return</span> <span class="p">[</span>
-</span><span id="line-1580">            <span class="p">(</span><span class="n">selector</span><span class="p">,</span> <span class="n">cov_from_one_covariance</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">sub</span><span class="p">),</span> <span class="n">gaussian</span><span class="o">=</span><span class="n">gaussian</span><span class="p">))</span>
-</span><span id="line-1581">            <span class="k">for</span> <span class="n">selector</span><span class="p">,</span> <span class="n">sub</span> <span class="ow">in</span> <span class="n">cov_list</span>
-</span><span id="line-1582">        <span class="p">]</span>
-</span><span id="line-1583">    <span class="c1"># Single-block form: one flat table, one selector.</span>
-</span><span id="line-1584">    <span class="k">return</span> <span class="p">[</span>
-</span><span id="line-1585">        <span class="p">(</span><span class="n">selectors</span><span class="p">,</span> <span class="n">cov_from_one_covariance</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">cov_list</span><span class="p">),</span> <span class="n">gaussian</span><span class="o">=</span><span class="n">gaussian</span><span class="p">))</span>
-</span><span id="line-1586">    <span class="p">]</span></div>
+</span><span id="line-1562"><span class="k">def</span><span class="w"> </span><span class="nf">covariance_blocks</span><span class="p">(</span><span class="n">cov_list</span><span class="p">,</span> <span class="n">selectors</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">gaussian</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+</span><span id="line-1563"><span class="w">    </span><span class="sd">"""Reshape a OneCovariance ``covariance_list`` table into SACC cov blocks.</span>
+</span><span id="line-1564">
+</span><span id="line-1565"><span class="sd">    OneCovariance emits a flat ``covariance_list_*.dat`` table with one row per</span>
+</span><span id="line-1566"><span class="sd">    ``(i, j)`` element pair (row-major, ``k = i·n + j``); the covariance value</span>
+</span><span id="line-1567"><span class="sd">    lives in column 10 (Gaussian) or column 9 (Gaussian+non-Gaussian). This</span>
+</span><span id="line-1568"><span class="sd">    reshapes the flat table into dense square block(s) — reusing</span>
+</span><span id="line-1569"><span class="sd">    :func:`sp_validation.statistics.cov_from_one_covariance` for the per-block</span>
+</span><span id="line-1570"><span class="sd">    reshape — and pairs each with its SACC selector, ready for</span>
+</span><span id="line-1571"><span class="sd">    :func:`sp_validation.assemble_covariance`.</span>
+</span><span id="line-1572">
+</span><span id="line-1573"><span class="sd">    Single-statistic case: pass the whole table and one selector; you get one</span>
+</span><span id="line-1574"><span class="sd">    ``(selector, dense)`` block. Multi-statistic case (tomography-ready): pass a</span>
+</span><span id="line-1575"><span class="sd">    sequence of ``(selector, sub_table)`` pairs — each ``sub_table`` a</span>
+</span><span id="line-1576"><span class="sd">    contiguous slice of the flat output for one statistic / bin-pair — and each</span>
+</span><span id="line-1577"><span class="sd">    is reshaped and re-paired with its selector in order. The API is thus shaped</span>
+</span><span id="line-1578"><span class="sd">    to extend to multi-probe blocking without over-fitting the single-bin case.</span>
+</span><span id="line-1579">
+</span><span id="line-1580"><span class="sd">    Parameters</span>
+</span><span id="line-1581"><span class="sd">    ----------</span>
+</span><span id="line-1582"><span class="sd">    cov_list : numpy.ndarray or sequence</span>
+</span><span id="line-1583"><span class="sd">        Either the flat OneCovariance table (2-D array, one row per pair) for a</span>
+</span><span id="line-1584"><span class="sd">        single block, or — for the multi-block form — a sequence of</span>
+</span><span id="line-1585"><span class="sd">        ``(selector, sub_table)`` pairs. In the multi-block form ``selectors``</span>
+</span><span id="line-1586"><span class="sd">        must be ``None`` (the selectors travel with the sub-tables).</span>
+</span><span id="line-1587"><span class="sd">    selectors : selector or None</span>
+</span><span id="line-1588"><span class="sd">        For the single-block form, the SACC selector for the whole table (a</span>
+</span><span id="line-1589"><span class="sd">        ``(data_type, tracers[, tags])`` tuple or an index array, as</span>
+</span><span id="line-1590"><span class="sd">        :func:`assemble_covariance` accepts). Must be ``None`` for the</span>
+</span><span id="line-1591"><span class="sd">        multi-block form.</span>
+</span><span id="line-1592"><span class="sd">    gaussian : bool, optional</span>
+</span><span id="line-1593"><span class="sd">        Select the Gaussian-only column (``True``, default) or the</span>
+</span><span id="line-1594"><span class="sd">        Gaussian+non-Gaussian column (``False``); passed straight through to</span>
+</span><span id="line-1595"><span class="sd">        ``cov_from_one_covariance``.</span>
+</span><span id="line-1596">
+</span><span id="line-1597"><span class="sd">    Returns</span>
+</span><span id="line-1598"><span class="sd">    -------</span>
+</span><span id="line-1599"><span class="sd">    list</span>
+</span><span id="line-1600"><span class="sd">        Ordered ``(selector, dense_cov)`` pairs, directly consumable by</span>
+</span><span id="line-1601"><span class="sd">        ``assemble_covariance(s, blocks)``.</span>
+</span><span id="line-1602"><span class="sd">    """</span>
+</span><span id="line-1603">    <span class="k">if</span> <span class="n">selectors</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-1604">        <span class="c1"># Multi-block form: cov_list is a sequence of (selector, sub_table).</span>
+</span><span id="line-1605">        <span class="k">return</span> <span class="p">[</span>
+</span><span id="line-1606">            <span class="p">(</span><span class="n">selector</span><span class="p">,</span> <span class="n">cov_from_one_covariance</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">sub</span><span class="p">),</span> <span class="n">gaussian</span><span class="o">=</span><span class="n">gaussian</span><span class="p">))</span>
+</span><span id="line-1607">            <span class="k">for</span> <span class="n">selector</span><span class="p">,</span> <span class="n">sub</span> <span class="ow">in</span> <span class="n">cov_list</span>
+</span><span id="line-1608">        <span class="p">]</span>
+</span><span id="line-1609">    <span class="c1"># Single-block form: one flat table, one selector.</span>
+</span><span id="line-1610">    <span class="k">return</span> <span class="p">[</span>
+</span><span id="line-1611">        <span class="p">(</span><span class="n">selectors</span><span class="p">,</span> <span class="n">cov_from_one_covariance</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">cov_list</span><span class="p">),</span> <span class="n">gaussian</span><span class="o">=</span><span class="n">gaussian</span><span class="p">))</span>
+</span><span id="line-1612">    <span class="p">]</span></div>
 
 </span></code></pre></div>
     </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
@@ -1951,7 +1980,7 @@
       </div><footer class="py-6 border-t border-border md:py-0">
     <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
       <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-        <p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini&nbsp;Last updated: 26 Oct, 2026.&nbsp;Built with <a class="font-medium underline underline-offset-4"
+        <p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini&nbsp;Last updated: 29 Oct, 2026.&nbsp;Built with <a class="font-medium underline underline-offset-4"
     href="https://www.sphinx-doc.org"
     rel="noreferrer">Sphinx 9.1.1</a></p>
 </div>

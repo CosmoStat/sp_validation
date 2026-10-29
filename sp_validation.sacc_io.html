@@ -979,6 +979,26 @@ and <code class="docutils literal notranslate"><span class="pre">nz</span></code
 </dl>
 </dd></dl>
 <dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io.read_onecov_matrix">
+<span class="sig-name descname"><span class="pre">read_onecov_matrix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#read_onecov_matrix"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.read_onecov_matrix" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.read_onecov_matrix'">¶</a></dt>
+<dd><p>Read a OneCovariance <code class="docutils literal notranslate"><span class="pre">style</span> <span class="pre">=</span> <span class="pre">matrix</span></code> covariance (the workflow’s <code class="docutils literal notranslate"><span class="pre">.dat</span></code>).</p>
+<p>OneCovariance writes the dense matrix with <code class="docutils literal notranslate"><span class="pre">np.savetxt</span></code> under a <code class="docutils literal notranslate"><span class="pre">#</span></code>
+header; for real-space ξ± its rows are type-major (all ξ+, then all ξ−),
+which <a class="reference internal" href="sp_validation.cosmo_val.sacc_writers.html#sp_validation.cosmo_val.sacc_writers.onecov_xi_covariance" title="sp_validation.cosmo_val.sacc_writers.onecov_xi_covariance"><code class="xref py py-func docutils literal notranslate"><span class="pre">sp_validation.cosmo_val.sacc_writers.onecov_xi_covariance()</span></code></a>
+reorders to a part’s insertion order.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><em>pathlib.Path</em></a>) – The matrix file.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The square, symmetric covariance matrix.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)">numpy.ndarray</a></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.sacc_io.covariance_blocks">
 <span class="sig-name descname"><span class="pre">covariance_blocks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cov_list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selectors</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">gaussian</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#covariance_blocks"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.covariance_blocks" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.covariance_blocks'">¶</a></dt>
 <dd><p>Reshape a OneCovariance <code class="docutils literal notranslate"><span class="pre">covariance_list</span></code> table into SACC cov blocks.</p>
@@ -1095,6 +1115,7 @@ Gaussian+non-Gaussian column (<code class="docutils literal notranslate"><span c
 <li><a :data-current="activeSection === '#sp_validation.sacc_io.write_nz'" class="reference internal" href="#sp_validation.sacc_io.write_nz"><code class="docutils literal notranslate"><span class="pre">write_nz()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.sacc_io.nz_config_stanza'" class="reference internal" href="#sp_validation.sacc_io.nz_config_stanza"><code class="docutils literal notranslate"><span class="pre">nz_config_stanza()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.sacc_io.read_nz'" class="reference internal" href="#sp_validation.sacc_io.read_nz"><code class="docutils literal notranslate"><span class="pre">read_nz()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io.read_onecov_matrix'" class="reference internal" href="#sp_validation.sacc_io.read_onecov_matrix"><code class="docutils literal notranslate"><span class="pre">read_onecov_matrix()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.sacc_io.covariance_blocks'" class="reference internal" href="#sp_validation.sacc_io.covariance_blocks"><code class="docutils literal notranslate"><span class="pre">covariance_blocks()</span></code></a></li>
 </ul>
 </div>
@@ -1104,7 +1125,7 @@ Gaussian+non-Gaussian column (<code class="docutils literal notranslate"><span c
 </div><footer class="py-6 border-t border-border md:py-0">
 <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
 <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 26 Oct, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.1</a></p>
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 29 Oct, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.1</a></p>
 </div>
 </div>
 </footer>
