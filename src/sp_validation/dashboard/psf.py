@@ -1,11 +1,11 @@
-"""PSF leakage: ρ statistics, the τ fit and its posterior, the propagated
+"""PSF leakage: ρ statistics, the τ fit and its coefficient draws, the propagated
 systematic, and every estimate of the leakage coefficient α side by side.
 
 The τ model is the one the ρ/τ fit uses (shear_psf_leakage, with η):
 
     τ0 = α ρ0 + β ρ2 + η ρ5,  τ2 = α ρ2 + β ρ1 + η ρ4,  τ5 = α ρ5 + β ρ4 + η ρ3
 
-evaluated here on the cached posterior samples; nothing is refitted.
+evaluated here on the cached coefficient draws; nothing is refitted.
 """
 
 import matplotlib.pyplot as plt
@@ -30,7 +30,7 @@ PARAMS = (r"\alpha", r"\beta", r"\eta")
 
 
 def tau_model_samples(rt, k, samples):
-    """τ_{k,+}(θ) for each posterior sample, shape ``(n_samples, n_theta)``."""
+    """τ_{k,+}(θ) for each coefficient draw, shape ``(n_samples, n_theta)``."""
     model = 0
     for param, rho_k in TAU_MODEL[k]:
         model = model + samples[:, [param]] * rt["rho"][rho_k]["p"][None, :]
@@ -43,7 +43,7 @@ def _power_of_ten(values):
 
 
 def tau_fit(rt, out):
-    """τ_{0,2,5}+ with the posterior band of the fitted model."""
+    """τ_{0,2,5}+ with the coefficient-resampling band of the fitted model."""
     theta = rt["theta_tau"]
     samples = rt["fit"]["flat_samples"]
     with S.figure_style():
@@ -88,7 +88,7 @@ def tau_fit(rt, out):
                 color=MODEL,
                 lw=4,
                 alpha=0.4,
-                label=r"$\alpha, \beta, \eta$ posterior (68%)",
+                label=r"$\alpha, \beta, \eta$ coefficient draws (68%)",
             ),
         ]
         fig.legend(handles=handles, loc="outside upper center", ncol=2)
@@ -102,7 +102,10 @@ def _contour_levels(h, fractions=(0.68, 0.95)):
 
 
 def posterior(rt, out, markers=(0, 1, 1)):
-    """Corner plot of the (α, β, η) posterior from the cached samples."""
+    """Cached coefficient draws; axes omit 0.3% of each marginal tail.
+
+    Least-squares rho/tau resampling draws are not Bayesian posterior samples.
+    """
     samples = rt["fit"]["flat_samples"]
     n = samples.shape[1]
     with S.figure_style():
@@ -244,7 +247,7 @@ def xi_sys_ratio(rt, xi, out, reference=0.1):
 
     The ξ+ ratio band propagates only PSF-coefficient uncertainty, holding the
     blinded denominator fixed. The ξ− panel does not divide by the noisy data:
-    show separate analytic data errors and the posterior PSF model band.
+    show separate analytic data errors and the coefficient-resampling model band.
     """
     fit = rt["fit"]
     theta = np.asarray(fit["theta"])
@@ -335,7 +338,7 @@ def theta_tau(rt, out, corrected=None):
             ax.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
         handles, labels = axes[0].get_legend_handles_labels()
         handles.append(Line2D([], [], color=MODEL, lw=4, alpha=0.4))
-        labels.append(r"raw $\alpha,\beta,\eta$ posterior (68%)")
+        labels.append(r"raw $\alpha,\beta,\eta$ coefficient draws (68%)")
         fig.legend(handles, labels, loc="outside upper center", ncol=len(labels))
         return S.save(fig, out, "full")
 

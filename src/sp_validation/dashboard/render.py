@@ -44,6 +44,21 @@ GROUPS = {
 }
 
 
+def coefficient_draw_caption(samples):
+    """Name the cached ranges separately from the corner plot's tail clipping."""
+    ranges = "; ".join(
+        f"{name} [{np.min(values):.3g}, {np.max(values):.3g}]"
+        for name, values in zip("αβη", np.asarray(samples).T)
+    )
+    eta_limits = np.percentile(np.asarray(samples)[:, 2], [0.3, 99.7])
+    return (
+        "Coefficient-resampling draws of the leakage parameters (68 and 95% contours), "
+        "not a Bayesian posterior. Axes omit 0.3% of each marginal tail. "
+        f"Full sample ranges: {ranges}. "
+        f"Displayed η range: [{eta_limits[0]:.3g}, {eta_limits[1]:.3g}]."
+    )
+
+
 def run_config(run_dir):
     """Scale cuts from the run's recorded configuration, when present."""
     prov = Path(run_dir) / "provenance.json"
@@ -336,21 +351,22 @@ def render(
             if corrected_tau is not None
             else "Raw catalogue only. "
         )
-        + "Band: raw α–β–η posterior (68%); no corrected fit is implied. "
+        + "Band: raw α–β–η coefficient draws (68%); no corrected fit is implied. "
         "Errors: theory τ covariance; bars omitted for nonpositive variances.",
         "full",
     )
     figs.add(
         "psf_tau",
         "leakage",
-        "Galaxy–PSF correlations τ₀,₂,₅ with the posterior band of the α, β, η leakage model.",
+        "Galaxy–PSF correlations τ₀,₂,₅ with the 68% coefficient-resampling band "
+        "of the α, β, η leakage model.",
         "full",
     )
     PSF.posterior(rt, figs.path("psf_posterior"))
     figs.add(
         "psf_posterior",
         "leakage",
-        "Posterior of the leakage parameters (68 and 95%).",
+        coefficient_draw_caption(rt["fit"]["flat_samples"]),
         "half",
     )
     leakage = P.load_json(ref.leakage).get(versions[0], {}).get("tomo_bin_all", {})
@@ -371,7 +387,7 @@ def render(
         "leakage",
         "Left: PSF ξ⁺sys / blinded ξ⁺; dotted lines at ±10%, band from "
         "PSF-coefficient uncertainty only (data denominator held fixed). "
-        "Right: signed θξ⁻ data with analytic errors and θξ⁻sys posterior "
+        "Right: signed θξ⁻ data with analytic errors and θξ⁻sys coefficient draws "
         "(68% band), θ in arcmin; no division by near-zero ξ⁻. "
         "The data include cosmological signal.",
         "full",
@@ -385,7 +401,7 @@ def render(
         figs.add(
             "psf_xi_sys_comparison",
             "leakage",
-            "PSF systematic ξ⁺ from the α–β–η posterior (68% band), compared "
+            "PSF systematic ξ⁺ from the α–β–η coefficient draws (68% band), compared "
             "with τ₀,+²/ρ₀,+ and the same version's blinded ξ⁺ with its run covariance errors. "
             "The black points include cosmological signal; they are not PSF-only.",
             "half",

@@ -118,6 +118,18 @@ def test_xi_minus_native_units_at_zero_crossing(rt, tmp_path, monkeypatch):
     plt.close(fig)
 
 
+def test_corner_caption_names_full_range_and_clipping():
+    from sp_validation.dashboard.render import coefficient_draw_caption
+
+    samples = np.column_stack([np.zeros(1000), np.ones(1000), np.arange(1000)])
+    caption = coefficient_draw_caption(samples)
+    assert "coefficient" in caption.lower()
+    assert "not a Bayesian posterior" in caption
+    assert "0.3% of each marginal tail" in caption
+    assert "η [0, 999]" in caption
+    assert "Displayed η range: [3, 996]" in caption
+
+
 def test_corrected_tau_loader_needs_no_assembled_or_fit(tmp_path, monkeypatch):
     stats = tmp_path / "cosmo_val/rho_tau_stats"
     stats.mkdir(parents=True)
