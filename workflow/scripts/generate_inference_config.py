@@ -120,7 +120,9 @@ def _from_snakemake(smk):
 
         Path(smk.output.fits_file).parent.mkdir(parents=True, exist_ok=True)
         sacc_io.sacc_to_twopoint_fits(
-            sacc_io.load(smk.input.sacc), smk.output.fits_file, n_bins=1
+            sacc_io.load(smk.input.sacc, blind=p["blind"]),
+            smk.output.fits_file,
+            n_bins=1,
         )
         for template, output, data_file in (
             (

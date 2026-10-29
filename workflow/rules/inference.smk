@@ -109,6 +109,7 @@ rule inference_prep:
         # SCRATCH = the per-version chain output root the generated inis point at.
         scratch=lambda w: f"{CHAINS_DIR}/{w.version}",
         cosmosis_dir=lambda w: _csl_dir(),
+        blind=lambda w: blind_of(w.version),
     threads: 1
     resources:
         mem_mb=8000,

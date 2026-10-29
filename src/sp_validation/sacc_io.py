@@ -1038,9 +1038,18 @@ def save(s, path, *, blind=None, theory=None, derived_from=None):
     return out
 
 
-def load(path):
-    """Load the SACC at ``path``."""
-    return sacc.Sacc.load_fits(str(path))
+def load(path, *, blind=None):
+    """Load the SACC at ``path``, optionally checking its declared blind."""
+    out = sacc.Sacc.load_fits(str(path))
+    if blind is not None:
+        expected = blind.name if hasattr(blind, "name") else str(blind)
+        actual = stamp(out)
+        if actual != expected:
+            raise ValueError(
+                f"SACC is stamped {actual}, but the catalogue is declared under "
+                f"blind {expected}"
+            )
+    return out
 
 
 # =============================================================================

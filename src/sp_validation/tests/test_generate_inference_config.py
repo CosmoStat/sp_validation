@@ -160,7 +160,11 @@ def test_inference_prep_script_writes_all_three_products(tmp_path):
                 template_sacc=_SACC_TEMPLATE,
             ),
             output=output,
-            params={"scratch": "/chains/test", "cosmosis_dir": "/csl"},
+            params={
+                "scratch": "/chains/test",
+                "cosmosis_dir": "/csl",
+                "blind": NONE,
+            },
         )
     )
     with fits.open(output.fits_file) as hdul:
@@ -172,6 +176,45 @@ def test_inference_prep_script_writes_all_three_products(tmp_path):
     assert (
         _read_interpolated(output.config_file_sacc)["sacc_like"]["data_file"] == source
     )
+
+
+def test_inference_prep_rejects_sacc_with_wrong_declared_blind(tmp_path):
+    """A public SACC cannot pass inference prep for a named-blind catalogue."""
+    from types import SimpleNamespace
+
+    import numpy as np
+
+    from sp_validation import sacc_io
+    from sp_validation.blinding import NONE, Blind
+
+    z = np.linspace(0.01, 2, 100)
+    s = sacc_io.new_sacc({0: (z, np.exp(-z))})
+    theta = np.geomspace(1, 100, 5)
+    sacc_io.add_xi(s, (0, 0), theta, theta * 1e-5, theta * 2e-6, grid="reporting")
+    s.add_covariance(np.eye(10))
+    source = str(tmp_path / "analysis.sacc")
+    sacc_io.save(s, source, blind=NONE)
+
+    with pytest.raises((ValueError, RuntimeError)):
+        gen._from_snakemake(
+            SimpleNamespace(
+                input=SimpleNamespace(
+                    sacc=source,
+                    template_2pt=_FITS_TEMPLATE,
+                    template_sacc=_SACC_TEMPLATE,
+                ),
+                output=SimpleNamespace(
+                    fits_file=str(tmp_path / "data" / "analysis.fits"),
+                    config_file_2pt=str(tmp_path / "configs" / "2pt.ini"),
+                    config_file_sacc=str(tmp_path / "configs" / "sacc.ini"),
+                ),
+                params={
+                    "scratch": "/chains/test",
+                    "cosmosis_dir": "/csl",
+                    "blind": Blind("declared"),
+                },
+            )
+        )
 
 
 def test_no_default_section_raises(tmp_path):
