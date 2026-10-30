@@ -57,6 +57,10 @@ from sp_validation.cosmo_val.sacc_writers import BIN as SACC_BIN
 from sp_validation.pseudo_cl import (
     apply_random_rotation,
     bandpower_window_from_workspace,
+    get_field_and_workspace_from_catalog,
+    get_field_and_workspace_from_map,
+    get_pseudo_cl_iNKA_covariance,
+    make_namaster_bin,
 )
 from sp_validation.rho_tau import get_params_rho_tau
 
@@ -74,6 +78,116 @@ SEED = 1234
 N_ELL_BINS = 8
 
 REFERENCE_TOMO = Path(__file__).parent / "data" / "test_cl_catalog.npz"
+
+
+def test_map_iNKA_fields_remain_map_based():
+    b = make_namaster_bin(2, 47, 46, "linear", ell_step=4)
+    mask = np.ones(12 * 16**2)
+    shear = np.random.default_rng(321).normal(size=(2, len(mask)))
+    field_a, field_b, workspace = get_field_and_workspace_from_map(
+        b, mask, shear[0], shear[1]
+    )
+    cl = np.zeros((4, 48))
+    cl[0] = cl[3] = 1e-4
+    cov = get_pseudo_cl_iNKA_covariance(
+        cl, cl, cl, cl, field_a, field_a, field_b, field_b, workspace, workspace, b
+    )
+
+    assert isinstance(field_a, pymaster.NmtField)
+    assert cov.shape == (b.get_n_bands(), 4, b.get_n_bands(), 4)
+    npt.assert_allclose(cov, cov.transpose(2, 3, 0, 1), rtol=1e-10, atol=1e-14)
+
+
+def test_catalog_noise_covariance_matches_rotations(tmp_path, monkeypatch):
+    """The producer must not add shape noise to the catalogue signal Cls.
+
+    NaMaster already builds NN/NS/SN terms from the retained catalogue.
+    Adding a white spectrum as well overpredicts this full-sky MC variance
+    by about four, even though the covariance remains symmetric and PSD.
+    """
+    from astropy.table import Table
+
+    config, version = _write_synthetic_config(tmp_path)
+    rng = np.random.default_rng(20261030)
+    nsrc = 5000
+    ra = rng.uniform(0, 360, nsrc)
+    dec = np.rad2deg(np.arcsin(rng.uniform(-1, 1, nsrc)))
+    e1, e2 = rng.normal(scale=0.2, size=(2, nsrc))
+    weights = rng.uniform(0.5, 1.5, nsrc)
+    Table({"RA": ra, "Dec": dec, "e1": e1, "e2": e2, "w": weights}).write(
+        tmp_path / "catalog/shear.fits", overwrite=True
+    )
+    cv = CosmologyValidation(
+        versions=[version],
+        catalog_config=config,
+        output_dir=str(tmp_path / "output"),
+        nside=16,
+        binning="powspace",
+        n_ell_bins=4,
+        power=0.5,
+        cell_method="catalog",
+        force_run=True,
+    )
+    monkeypatch.setattr(
+        cv, "get_fiducial_cl", lambda *args: {"WallxWall": np.zeros(32)}
+    )
+    cv.calculate_pseudo_cl_inka_cov(compute_tomography=False)
+    with fits.open(
+        cv._output_path_pseudo_cl_cov(version, "iNKA", tomography=False)
+    ) as h:
+        predicted = np.diag(h["COVAR_BB_BB"].data)
+
+    b = make_namaster_bin(8, 32, 31, "powspace", n_ell_bins=4, power=0.5)
+    _, _, wsp = get_field_and_workspace_from_catalog(b, ra, dec, e1, e2, weights)
+    bb = []
+    for _ in range(256):
+        er1, er2 = apply_random_rotation(e1, e2, rng=rng)
+        f, _, _ = get_field_and_workspace_from_catalog(
+            b, ra, dec, er1, er2, weights, return_wsp=False
+        )
+        bb.append(wsp.decouple_cell(pymaster.compute_coupled_cell(f, f))[3])
+    # A variance from 256 draws has 9% fractional sampling uncertainty.
+    npt.assert_allclose(np.var(bb, axis=0, ddof=1) / predicted, 1, rtol=0.35)
+
+
+def test_catalog_iNKA_covariance_is_symmetric_positive_and_binned():
+    """Catalogue-based NaMaster fields produce a finite PSD covariance."""
+    rng = np.random.default_rng(20261029)
+    nsrc = 512
+    ra = rng.uniform(0, 360, nsrc)
+    dec = np.rad2deg(np.arcsin(rng.uniform(-1, 1, nsrc)))
+    e1 = rng.normal(scale=0.2, size=nsrc)
+    e2 = rng.normal(scale=0.2, size=nsrc)
+    weights = np.ones(nsrc)
+    b = make_namaster_bin(2, 23, 24, "linear", ell_step=4)
+
+    field_a, field_b, wsp = get_field_and_workspace_from_catalog(
+        b, ra, dec, e1, e2, weights, retain_catalog=True
+    )
+    cl = np.zeros((4, 25))
+    cl[0] = 1e-4
+    cl[3] = 1e-4
+    inka_cl = pymaster.get_iNKA_cell(field_a, field_b, cl_guess=cl, w=wsp)
+    cov = get_pseudo_cl_iNKA_covariance(
+        inka_cl,
+        inka_cl,
+        inka_cl,
+        inka_cl,
+        field_a,
+        field_a,
+        field_b,
+        field_b,
+        wsp,
+        wsp,
+        b,
+    )
+
+    nband = b.get_n_bands()
+    matrix = cov.reshape(nband * 4, nband * 4)
+    npt.assert_equal(cov.shape, (nband, 4, nband, 4))
+    npt.assert_allclose(matrix, matrix.T, rtol=1e-10, atol=1e-14)
+    assert np.all(np.isfinite(matrix))
+    assert np.linalg.eigvalsh(matrix).min() >= -1e-12 * np.diag(matrix).max()
 
 
 # ---------------------------------------------------------------------------

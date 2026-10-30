@@ -114,11 +114,11 @@ def _pair(cut):
     return out
 
 
-def compute(run_dir, version, nproc=1):
-    from sp_validation.dashboard.products import blind_of
+def compute(run_dir, version, cat_config, nproc=1):
+    from sp_validation.dashboard.products import declared_blind
 
     xi_path, cov_path = _paths(run_dir, version)
-    blind = blind_of(xi_path)
+    blind = declared_blind(cat_config, version)
     edges, integ, nmodes = _grid(run_dir)
     n = len(edges) - 1
     pairs = [(i, j) for i in range(n) for j in range(i, n)]
@@ -148,6 +148,11 @@ def main(argv=None):
     ap.add_argument("--version", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument(
+        "--cat-config",
+        required=True,
+        help="catalogue config declaring the version's blind",
+    )
+    ap.add_argument(
         "--nproc", type=int, default=int(os.environ.get("SLURM_CPUS_PER_TASK", 1))
     )
     a = ap.parse_args(argv)
@@ -155,7 +160,7 @@ def main(argv=None):
     os.environ.setdefault(
         "NUMBA_NUM_THREADS", "1" if a.nproc > 1 else str(os.cpu_count())
     )
-    data = compute(a.run_dir, a.version, a.nproc)
+    data = compute(a.run_dir, a.version, a.cat_config, a.nproc)
     out = Path(a.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     tmp = out.with_suffix(".tmp.npz")

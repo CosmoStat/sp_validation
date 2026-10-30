@@ -18,7 +18,9 @@ def test_leakage_uses_iv_weights(monkeypatch):
         weights = gal[f"w_{weight_type}"]
         return np.average(gal["e1"], weights=weights), 0.0
 
-    monkeypatch.setattr(catalog_builders.calibration, "get_alpha_leakage_per_object", fit)
+    monkeypatch.setattr(
+        catalog_builders.calibration, "get_alpha_leakage_per_object", fit
+    )
     result = catalog_builders.compute_PSF_leakage(
         cat,
         (np.array([1.0, 3.0]), np.array([0.0, 0.0])),

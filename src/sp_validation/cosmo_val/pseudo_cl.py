@@ -1,10 +1,10 @@
 """Pseudo-Cl / harmonic-space diagnostic for cosmology validation.
 
-This mixin holds catalogue-based pseudo-Cl estimation, NaMaster
+This mixin holds the pseudo-Cl (harmonic-space) machinery: NaMaster
 field/workspace construction, the analytic (iNKA) Gaussian covariance, the
-OneCovariance Gaussian + non-Gaussian covariance, random-rotation noise
-debiasing, and plotting. It depends on pymaster (NaMaster), healpy, and
-OneCovariance.
+OneCovariance Gaussian + non-Gaussian covariance, map- and catalog-based
+pseudo-Cl estimation, random-rotation noise debiasing, and plotting. It depends
+on pymaster (NaMaster), healpy, and OneCovariance.
 """
 
 import colorsys
@@ -26,6 +26,23 @@ from ..rho_tau import get_params_rho_tau
 from ..statistics import cov_from_one_covariance
 from .sacc_writers import BIN as SACC_BIN
 from .sacc_writers import pseudo_cl_to_sacc
+
+
+def _apply_pixel_window_to_fiducial_cl(fiducial_cl, nside, cell_method):
+    """Apply ``pw²(ℓ)`` to fiducial spectra only for HEALPix-map measurements.
+
+    Each spectrum array uses index ``ell``, so the window spans the matching
+    ``ell = 0..len(spectrum)-1`` grid. Catalogue spectra are point-sampled and
+    must remain unchanged.
+    """
+    if cell_method != "map" or not fiducial_cl:
+        return fiducial_cl
+
+    lmax = len(next(iter(fiducial_cl.values()))) - 1
+    pixwin = hp.pixwin(nside, lmax=lmax)
+    return {
+        key: np.asarray(cl, dtype=float) * pixwin**2 for key, cl in fiducial_cl.items()
+    }
 
 
 def plot_pseudo_cl_spectrum(datasets, spectrum, output_path):
@@ -215,9 +232,119 @@ class PseudoClMixin:
                     ] = held
                     continue
 
-                self.calculate_pseudo_cl_catalog(ver, pair_out_path, bin_key1, bin_key2)
+                if self.cell_method == "map":
+                    self.calculate_pseudo_cl_map(
+                        ver, self.nside, pair_out_path, bin_key1, bin_key2
+                    )
+                elif self.cell_method == "catalog":
+                    self.calculate_pseudo_cl_catalog(
+                        ver, pair_out_path, bin_key1, bin_key2
+                    )
+                else:
+                    raise ValueError(f"Unknown cell method: {self.cell_method}")
 
         self.print_done("Done pseudo-Cl's")
+
+    def calculate_pseudo_cl_map(self, ver, nside, out_path, tomo_bin_a, tomo_bin_b):
+        if (tomo_bin_a, tomo_bin_b) != ("all", "all"):
+            self._refuse_blinded_tomography(ver)
+        assert (tomo_bin_a == "all" and tomo_bin_b == "all") or (
+            isinstance(tomo_bin_a, (int, np.integer))
+            and isinstance(tomo_bin_b, (int, np.integer))
+        ), "tomo_bin_a and tomo_bin_b must be either both 'all' or both integers."
+
+        params = get_params_rho_tau(self.cc[ver])
+
+        self.print_cyan(
+            f"Computing pseudo-Cl's for tomographic bins {tomo_bin_a} and {tomo_bin_b}..."
+        )
+
+        # Load data and create shear and noise maps
+        cat_gal = self._pseudo_cl_catalogue(ver)
+
+        # Get the tomographic bin
+        cat_gal_a = self._get_tomographic_bin(params, cat_gal, tomo_bin_a)
+        cat_gal_b = self._get_tomographic_bin(params, cat_gal, tomo_bin_b)
+
+        del cat_gal
+
+        self.print_cyan("Creating maps and computing Cl's...")
+        # Get the pixels and indices for the catalogs
+        unique_pix_a, idx_a, idx_rep_a = self.get_pixels(params, nside, cat_gal_a)
+        unique_pix_b, idx_b, idx_rep_b = self.get_pixels(params, nside, cat_gal_b)
+
+        # Create number density maps for each tomographic bin
+        n_gal_map_a = self.get_n_gal_map(
+            params,
+            nside,
+            cat_gal_a,
+            unique_pix=unique_pix_a,
+            idx=idx_a,
+            idx_rep=idx_rep_a,
+        )
+        n_gal_map_b = self.get_n_gal_map(
+            params,
+            nside,
+            cat_gal_b,
+            unique_pix=unique_pix_b,
+            idx=idx_b,
+            idx_rep=idx_rep_b,
+        )
+
+        # Create shear maps for each tomographic bin
+        shear_map_a_e1, shear_map_a_e2 = self.get_shear_map(
+            params,
+            nside,
+            cat_gal_a,
+            unique_pix=unique_pix_a,
+            idx=idx_a,
+            idx_rep=idx_rep_a,
+            n_gal_map=n_gal_map_a,
+        )
+        shear_map_a = shear_map_a_e1 + 1j * shear_map_a_e2
+        del shear_map_a_e1, shear_map_a_e2
+
+        shear_map_b_e1, shear_map_b_e2 = self.get_shear_map(
+            params,
+            nside,
+            cat_gal_b,
+            unique_pix=unique_pix_b,
+            idx=idx_b,
+            idx_rep=idx_rep_b,
+            n_gal_map=n_gal_map_b,
+        )
+        shear_map_b = shear_map_b_e1 + 1j * shear_map_b_e2
+        del shear_map_b_e1, shear_map_b_e2
+
+        # Compute the pseudo-Cl's
+        ell_eff, cl_shear, wsp = self.get_pseudo_cls_map(
+            shear_map_a, n_gal_map_a, shear_map_b=shear_map_b, mask_b=n_gal_map_b
+        )
+
+        # Remove the noise bias for auto-correlations.
+        if tomo_bin_a == tomo_bin_b:
+            # Compute the noise bias using noise_bias_method
+            cl_noise = self.get_noise_bias_from_gaussian_real(
+                params,
+                nside,
+                cat_gal_a,
+                unique_pix=unique_pix_a,
+                idx=idx_a,
+                idx_rep=idx_rep_a,
+                n_gal_map=n_gal_map_a,
+                wsp=wsp,
+            )
+
+            # Subtract the noise bias from the pseudo-Cl's
+            cl_shear = cl_shear - cl_noise
+
+        self.print_cyan("Saving pseudo-Cl's...")
+        tomo_bin_pair = (tomo_bin_a, tomo_bin_b)
+        self._pseudo_cls[ver][f"tomo_bin_{tomo_bin_a}_tomo_bin_{tomo_bin_b}"][
+            "pseudo_cl"
+        ] = self._save_pseudo_cl(
+            ver, out_path, tomo_bin_pair, ell_eff, cl_shear, wsp, nside=nside
+        )
 
     def calculate_pseudo_cl_catalog(self, ver, out_path, tomo_bin_a, tomo_bin_b):
         if (tomo_bin_a, tomo_bin_b) != ("all", "all"):
@@ -229,7 +356,7 @@ class PseudoClMixin:
 
         params = get_params_rho_tau(self.cc[ver])
 
-        # Load the catalogue and estimate spectra directly from its objects.
+        # Load data and create shear and noise maps
         cat_gal = self._pseudo_cl_catalogue(ver)
 
         ell_eff, cl_shear, wsp = self.get_pseudo_cls_catalog(
@@ -245,7 +372,12 @@ class PseudoClMixin:
     def calculate_pseudo_cl_inka_cov(
         self, compute_tomography=True, load_all_block=False
     ):
-        """Compute the Gaussian iNKA covariance for EE, EB, and BB."""
+        """Compute the Gaussian iNKA covariance for EE, EB, and BB.
+
+        Apply the HEALPix pixel window ``pw²(ℓ)`` to each fiducial spectrum only
+        when ``cell_method == "map"``. Catalogue-based spectra have no pixel
+        window and use the unmodified fiducial.
+        """
         self.print_start("Computing Pseudo-Cl covariance")
 
         nside = self.nside
@@ -338,10 +470,14 @@ class PseudoClMixin:
                 key: np.concatenate(([0.0], np.asarray(value[:-1], dtype=float)))
                 for key, value in fiducial_cl.items()
             }
+            fiducial_cl = _apply_pixel_window_to_fiducial_cl(
+                fiducial_cl, nside, self.cell_method
+            )
 
             self.print_cyan(
                 "Estimating and adding the noise bias to the fiducial power spectra"
             )
+            self.print_cyan(f"Method used: {self.noise_bias_method}")
 
             params = get_params_rho_tau(self.cc[ver])
             cat_gal = self._pseudo_cl_catalogue(ver)
@@ -359,21 +495,71 @@ class PseudoClMixin:
                 cat_gal_a = self._get_tomographic_bin(params, cat_gal, bin_key1)
                 cat_gal_b = self._get_tomographic_bin(params, cat_gal, bin_key2)
 
-                # The covariance workspace depends on the occupancy masks, not
-                # on catalogue shear values.
-                n_gal_map_a = self.get_n_gal_map(params, nside, cat_gal_a)
-                n_gal_map_b = self.get_n_gal_map(params, nside, cat_gal_b)
+                if self.cell_method == "map":
+                    unique_pix_a, idx_a, idx_rep_a = self.get_pixels(
+                        params, nside, cat_gal_a
+                    )
+                    unique_pix_b, idx_b, idx_rep_b = self.get_pixels(
+                        params, nside, cat_gal_b
+                    )
+                    n_gal_map_a = self.get_n_gal_map(params, nside, cat_gal_a)
+                    n_gal_map_b = self.get_n_gal_map(params, nside, cat_gal_b)
+                    shear_map_a_e1, shear_map_a_e2 = self.get_shear_map(
+                        params,
+                        self.nside,
+                        cat_gal_a,
+                        unique_pix=unique_pix_a,
+                        idx=idx_a,
+                        idx_rep=idx_rep_a,
+                    )
+                    shear_map_b_e1, shear_map_b_e2 = self.get_shear_map(
+                        params,
+                        self.nside,
+                        cat_gal_b,
+                        unique_pix=unique_pix_b,
+                        idx=idx_b,
+                        idx_rep=idx_rep_b,
+                    )
+                    field_a, field_b, wsp = (
+                        spv_pseudo_cl.get_field_and_workspace_from_map(
+                            b,
+                            mask_a=n_gal_map_a,
+                            e1_map_a=shear_map_a_e1,
+                            e2_map_a=shear_map_a_e2,
+                            mask_b=n_gal_map_b,
+                            e1_map_b=shear_map_b_e1,
+                            e2_map_b=shear_map_b_e2,
+                            pol_factor=self.pol_factor,
+                            return_wsp=True,
+                        )
+                    )
+                    if f"W{bin_key1}" not in n_gal_map_dict:
+                        n_gal_map_dict[f"W{bin_key1}"] = n_gal_map_a
+                    if f"W{bin_key2}" not in n_gal_map_dict:
+                        n_gal_map_dict[f"W{bin_key2}"] = n_gal_map_b
+                else:
+                    # The catalogue estimator's covariance must use the same
+                    # catalogue fields and catalogue coupling as its data vector.
+                    field_a, field_b, wsp = (
+                        spv_pseudo_cl.get_field_and_workspace_from_catalog(
+                            b,
+                            ra_a=cat_gal_a[params["ra_col"]],
+                            dec_a=cat_gal_a[params["dec_col"]],
+                            e1_a=cat_gal_a[params["e1_col"]],
+                            e2_a=cat_gal_a[params["e2_col"]],
+                            w_a=cat_gal_a[params["w_col"]],
+                            ra_b=cat_gal_b[params["ra_col"]],
+                            dec_b=cat_gal_b[params["dec_col"]],
+                            e1_b=cat_gal_b[params["e1_col"]],
+                            e2_b=cat_gal_b[params["e2_col"]],
+                            w_b=cat_gal_b[params["w_col"]],
+                            pol_factor=self.pol_factor,
+                            return_wsp=True,
+                            same_bin=bin_key1 == bin_key2,
+                            retain_catalog=True,
+                        )
+                    )
 
-                # Get the fields and workspaces
-                field_a, field_b, wsp = spv_pseudo_cl.get_field_and_workspace_from_mask(
-                    b, mask_a=n_gal_map_a, mask_b=n_gal_map_b, return_wsp=True
-                )
-
-                # Save in the dictionnaries
-                if f"W{bin_key1}" not in n_gal_map_dict:
-                    n_gal_map_dict[f"W{bin_key1}"] = n_gal_map_a
-                if f"W{bin_key2}" not in n_gal_map_dict:
-                    n_gal_map_dict[f"W{bin_key2}"] = n_gal_map_b
                 if f"W{bin_key1}" not in field_dict:
                     field_dict[f"W{bin_key1}"] = field_a
                 if f"W{bin_key2}" not in field_dict:
@@ -389,17 +575,32 @@ class PseudoClMixin:
 
                     cat_gal_ = self._get_tomographic_bin(params, cat_gal, bin_key1)
 
-                    noise_bias_cl = self.get_noise_bias(params, nside, cat_gal_)
+                    if self.cell_method == "catalog":
+                        # NmtCovarianceWorkspace builds the catalogue NN, NS,
+                        # and SN terms from the retained weighted ellipticities.
+                        # Its input Cls (including get_iNKA_cell's cl_guess) must
+                        # contain signal only, or shape noise is counted twice.
+                        noise_bias_cl = np.zeros((4, lmax))
+                    else:
+                        noise_bias_cl = self.get_noise_bias(params, nside, cat_gal_)
 
-                    self.print_cyan("Decoupling the analytic noise bias...")
-                    wsp = wsp_dict[f"W{bin_key1}xW{bin_key2}"]
-                    noise_bias_cl = wsp.decouple_cell(noise_bias_cl)
+                    # Map-field workspaces do not add noise themselves: decouple
+                    # the analytical map noise before adding it to the theory.
+                    if (
+                        self.noise_bias_method == "analytic"
+                        and self.cell_method == "map"
+                    ):
+                        self.print_cyan(
+                            "Decoupling the noise bias for the analytic method..."
+                        )
+                        wsp = wsp_dict[f"W{bin_key1}xW{bin_key2}"]
+                        noise_bias_cl = wsp.decouple_cell(noise_bias_cl)
 
-                    # Unbin, then continue the white noise below lmin at the
-                    # lowest band's value.
-                    noise_bias_cl = b.unbin_cell(noise_bias_cl)
-                    lowest_ell = b.get_ell_list(0)[0]
-                    noise_bias_cl[:, :lowest_ell] = noise_bias_cl[:, [lowest_ell]]
+                        # Unbin, then continue the white noise below lmin at the
+                        # lowest band's value
+                        noise_bias_cl = b.unbin_cell(noise_bias_cl)
+                        lowest_ell = b.get_ell_list(0)[0]
+                        noise_bias_cl[:, :lowest_ell] = noise_bias_cl[:, [lowest_ell]]
 
                 else:
                     noise_bias_cl = np.zeros((4, 2 * nside))
@@ -417,24 +618,26 @@ class PseudoClMixin:
                     + noise_bias_cl
                 )
 
-            if self.fiducial_input_inka == "coupled":
-                # Couple the cell if required
+            if self.fiducial_input_inka == "coupled" and self.cell_method == "map":
+                # The map estimator couples spectra with its map workspace and
+                # divides by the number-density mask amplitude.
                 self.print_cyan("Coupling the fiducial Cls.")
                 for bin_key1, bin_key2 in tomo_bin_pairs:
-                    # Get the wsp object
-                    n_gal_map_a = n_gal_map_dict[f"W{bin_key1}"]
-                    n_gal_map_b = n_gal_map_dict[f"W{bin_key2}"]
+                    # Get the coupling workspace for this field pair.
                     wsp = wsp_dict[f"W{bin_key1}xW{bin_key2}"]
 
                     coupling_mat = wsp.get_coupling_matrix()
                     coupling_mat_re = np.reshape(
                         coupling_mat, (4, lmax, 4, lmax), order="F"
                     )
-                    fiducial_cl[f"W{bin_key1}xW{bin_key2}"] = np.tensordot(
+                    coupled_cl = np.tensordot(
                         coupling_mat_re, fiducial_cl[f"W{bin_key1}xW{bin_key2}"]
-                    ) / np.mean(
-                        n_gal_map_a * n_gal_map_b
-                    )  # couple and divide by the product of the mask
+                    )
+                    if self.cell_method == "map":
+                        n_gal_map_a = n_gal_map_dict[f"W{bin_key1}"]
+                        n_gal_map_b = n_gal_map_dict[f"W{bin_key2}"]
+                        coupled_cl /= np.mean(n_gal_map_a * n_gal_map_b)
+                    fiducial_cl[f"W{bin_key1}xW{bin_key2}"] = coupled_cl
 
             # To compute all the blocks in the covariance,
             # we must compute all the (i, j, k, l) bin combinations
@@ -507,6 +710,46 @@ class PseudoClMixin:
                     if bin_key_a2 <= bin_key_b2
                     else fiducial_cl[f"W{bin_key_b2}xW{bin_key_a2}"]
                 )
+
+                if (
+                    self.cell_method == "catalog"
+                    and self.fiducial_input_inka == "coupled"
+                ):
+                    # NaMaster's catalogue iNKA helper applies the catalogue
+                    # mode coupling and its normalization; a raw coupling
+                    # matrix cannot be rescaled like the map mask matrix.
+                    input_cl_a1_b1 = spv_pseudo_cl.nmt.get_iNKA_cell(
+                        field_dict[f"W{bin_key_a1}"],
+                        field_dict[f"W{bin_key_b1}"],
+                        cl_guess=input_cl_a1_b1,
+                        w=wsp_dict[
+                            f"W{min(bin_key_a1, bin_key_b1)}xW{max(bin_key_a1, bin_key_b1)}"
+                        ],
+                    )
+                    input_cl_a1_b2 = spv_pseudo_cl.nmt.get_iNKA_cell(
+                        field_dict[f"W{bin_key_a1}"],
+                        field_dict[f"W{bin_key_b2}"],
+                        cl_guess=input_cl_a1_b2,
+                        w=wsp_dict[
+                            f"W{min(bin_key_a1, bin_key_b2)}xW{max(bin_key_a1, bin_key_b2)}"
+                        ],
+                    )
+                    input_cl_a2_b1 = spv_pseudo_cl.nmt.get_iNKA_cell(
+                        field_dict[f"W{bin_key_a2}"],
+                        field_dict[f"W{bin_key_b1}"],
+                        cl_guess=input_cl_a2_b1,
+                        w=wsp_dict[
+                            f"W{min(bin_key_a2, bin_key_b1)}xW{max(bin_key_a2, bin_key_b1)}"
+                        ],
+                    )
+                    input_cl_a2_b2 = spv_pseudo_cl.nmt.get_iNKA_cell(
+                        field_dict[f"W{bin_key_a2}"],
+                        field_dict[f"W{bin_key_b2}"],
+                        cl_guess=input_cl_a2_b2,
+                        w=wsp_dict[
+                            f"W{min(bin_key_a2, bin_key_b2)}xW{max(bin_key_a2, bin_key_b2)}"
+                        ],
+                    )
 
                 covar_22_22 = spv_pseudo_cl.get_pseudo_cl_iNKA_covariance(
                     input_cl_a1_b1,
@@ -710,6 +953,107 @@ class PseudoClMixin:
             idx_rep=idx_rep,
         )
 
+    def get_shear_map(
+        self,
+        params,
+        nside,
+        cat_gal,
+        unique_pix=None,
+        idx=None,
+        idx_rep=None,
+        n_gal_map=None,
+    ):
+        """Weighted shear map (thin wrapper -> primitive)."""
+        return spv_pseudo_cl.get_shear_map(
+            cat_gal[params["ra_col"]],
+            cat_gal[params["dec_col"]],
+            cat_gal[params["e1_col"]],
+            cat_gal[params["e2_col"]],
+            cat_gal[params["w_col"]],
+            nside,
+            unique_pix=unique_pix,
+            idx=idx,
+            idx_rep=idx_rep,
+            n_gal_map=n_gal_map,
+        )
+
+    def get_noise_realisation(
+        self,
+        params,
+        nside,
+        cat_gal,
+        n_gal=None,
+        unique_pix=None,
+        idx=None,
+        idx_rep=None,
+        rng=None,
+    ):
+        """
+        Get a single Gaussian noise realization (thin wrapper -> primitive).
+        """
+        return spv_pseudo_cl.get_noise_realisation(
+            cat_gal[params["ra_col"]],
+            cat_gal[params["dec_col"]],
+            cat_gal[params["e1_col"]],
+            cat_gal[params["e2_col"]],
+            cat_gal[params["w_col"]],
+            nside,
+            n_gal_map=n_gal,
+            unique_pix=unique_pix,
+            idx=idx,
+            idx_rep=idx_rep,
+            rng=rng,
+        )
+
+    def get_noise_bias_from_gaussian_real(
+        self,
+        params,
+        nside,
+        cat_gal,
+        unique_pix=None,
+        idx=None,
+        idx_rep=None,
+        n_gal_map=None,
+        wsp=None,
+    ):
+        """Noise-bias from Gaussian realisations (thin wrapper, state -> primitive)"""
+        return spv_pseudo_cl.get_noise_bias_from_gaussian_real(
+            cat_gal[params["ra_col"]],
+            cat_gal[params["dec_col"]],
+            cat_gal[params["e1_col"]],
+            cat_gal[params["e2_col"]],
+            cat_gal[params["w_col"]],
+            nside,
+            nrandom_cell=self.nrandom_cell,
+            binning=self.binning,
+            ell_step=self.ell_step,
+            n_ell_bins=self.n_ell_bins,
+            power=self.power,
+            unique_pix=unique_pix,
+            idx=idx,
+            idx_rep=idx_rep,
+            n_gal_map=n_gal_map,
+            wsp=wsp,
+            seed=self.cell_seed,
+        )
+
+    def get_noise_bias_analytical(
+        self, params, nside, cat_gal, unique_pix=None, idx=None, idx_rep=None
+    ):
+        """Noise-bias from analytical prescription (thin wrapper, state -> primitive)"""
+        return spv_pseudo_cl.get_noise_bias_analytical(
+            cat_gal[params["ra_col"]],
+            cat_gal[params["dec_col"]],
+            cat_gal[params["e1_col"]],
+            cat_gal[params["e2_col"]],
+            cat_gal[params["w_col"]],
+            lmax=2 * nside,
+            nside=nside,
+            unique_pix=unique_pix,
+            idx=idx,
+            idx_rep=idx_rep,
+        )
+
     def get_noise_bias(self, params, nside, cat_gal):
         """Noise-bias estimation (thin wrapper, state -> primitive)"""
         return spv_pseudo_cl.get_noise_bias(
@@ -719,6 +1063,31 @@ class PseudoClMixin:
             cat_gal[params["e2_col"]],
             cat_gal[params["w_col"]],
             nside,
+            noise_bias_method=self.noise_bias_method,
+            binning=self.binning,
+            ell_step=self.ell_step,
+            n_ell_bins=self.n_ell_bins,
+            power=self.power,
+            nrandom_cell=self.nrandom_cell,
+            seed=self.cell_seed,
+        )
+
+    def get_pseudo_cls_map(
+        self, map_a, mask_a, wsp=None, shear_map_b=None, mask_b=None
+    ):
+        """Map-based pseudo-cl (thin wrapper, state -> primitive)."""
+        return spv_pseudo_cl.get_pseudo_cls_map(
+            map_a,
+            mask_a,
+            self.nside,
+            self.binning,
+            shear_map_b=shear_map_b,
+            mask_b=mask_b,
+            pol_factor=self.pol_factor,
+            wsp=wsp,
+            ell_step=self.ell_step,
+            n_ell_bins=self.n_ell_bins,
+            power=self.power,
         )
 
     def get_pseudo_cls_catalog(
@@ -935,7 +1304,7 @@ class PseudoClMixin:
         bin_key1, bin_key2 = tomo_bin_pair
         return self._output_path(
             "pseudo_cl",
-            f"pseudo_cl_tomo_bin_{bin_key1}_tomo_bin_{bin_key2}_{ver}_binning_{self.binning}_nbins_{self.n_ell_bins}.fits",
+            f"pseudo_cl_from_{self.cell_method}_tomo_bin_{bin_key1}_tomo_bin_{bin_key2}_{ver}_binning_{self.binning}_nbins_{self.n_ell_bins}.fits",
         )
 
     def _output_path_pseudo_cl_cov(self, ver, method, tomography):
@@ -953,15 +1322,19 @@ class PseudoClMixin:
             f"pseudo_cl_cov_from_iNKA_tomo_bin_{bin_key_a1}_tomo_bin_{bin_key_a2}_tomo_bin_{bin_key_b1}_tomo_bin_{bin_key_b2}_{ver}_binning_{self.binning}_nbins_{self.n_ell_bins}.fits",
         )
 
-    def _save_pseudo_cl(self, ver, out_path, tomo_bin_pair, ell_eff, cl_all, wsp):
+    def _save_pseudo_cl(
+        self, ver, out_path, tomo_bin_pair, ell_eff, cl_all, wsp, nside=None
+    ):
         """Write one pair as SACC or FITS and return its spectra as written.
 
-        The ``("all", "all")`` spectra are those of the part as sealed under
-        the version's blind.
+        Forwards ``nside`` for map spectra. The ``("all", "all")`` spectra are
+        those of the part as sealed under the version's blind.
         """
         if tuple(tomo_bin_pair) == ("all", "all"):
             return _spectra(
-                self.pseudo_cl_to_sacc_part(ver, out_path, ell_eff, cl_all, wsp)
+                self.pseudo_cl_to_sacc_part(
+                    ver, out_path, ell_eff, cl_all, wsp, nside=nside
+                )
             )
         self.save_pseudo_cl(ell_eff, cl_all, out_path)
         return fits.getdata(out_path)
@@ -979,11 +1352,15 @@ class PseudoClMixin:
             return None
         return _spectra(part)
 
-    def pseudo_cl_to_sacc_part(self, version, out_path, ell_eff, cl_all, wsp):
+    def pseudo_cl_to_sacc_part(
+        self, version, out_path, ell_eff, cl_all, wsp, nside=None
+    ):
         """Write the pseudo-Cl SACC part with its shared bandpower window.
 
         ``cl_all`` is NaMaster's decoupled ``(4, nbp)`` array (EE, EB, BE, BB).
-        No covariance is attached here. Returns the part
+        Map-based callers pass ``nside`` so the window includes ``pw²(ℓ)``;
+        catalogue-based callers leave it unset because their spectra have no
+        HEALPix pixel window. No covariance is attached here. Returns the part
         as sealed under the version's blind.
         """
         s = pseudo_cl_to_sacc(
@@ -992,6 +1369,7 @@ class PseudoClMixin:
             ell_eff,
             cl_all,
             wsp,
+            nside=nside,
         )
         return sacc_io.save(s, out_path, blind=self.blind(version))
 

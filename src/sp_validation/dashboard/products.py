@@ -3,7 +3,8 @@
 Every loader takes explicit paths and returns a dict; none measures, fits or
 transforms anything. Cosmological products are read through the blind-stamp
 checks of :mod:`sp_validation.sacc_io`, so a figure can only draw vectors
-saved under the blind it was asked for.
+saved under the blind its catalogue is declared under
+(:func:`declared_blind`).
 
 :class:`RunProducts` resolves those paths inside a cosmo_val run directory for
 one catalogue version; the figure functions never see the directory layout.
@@ -123,9 +124,28 @@ class RunProducts:
         )
 
 
-def blind_of(sacc_path):
-    """The blind a SACC was saved under."""
-    return sacc_io.stamp(sacc_io.load(sacc_path))
+def catalogue_name(catalogues, version):
+    """The catalogue-config entry describing ``version``: its own, or the one
+    its ``_leak_corr`` / ``_seed<N>`` variant derives from (as the workflow
+    resolves it)."""
+    if version in catalogues:
+        return version
+    return re.sub(r"_seed\d+$", "", re.sub(r"_leak_corr$", "", version))
+
+
+def declared_blind(cat_config, version):
+    """The blind ``version`` is declared under in the catalogue config.
+
+    The expected blind comes from the declaration, never from a product's own
+    stamp, so a stale product of a catalogue that has since been put under a
+    blind is refused by the loaders rather than drawn.
+    """
+    import yaml
+
+    from sp_validation import blinding
+
+    catalogues = yaml.safe_load(Path(cat_config).read_text())
+    return blinding.blind_of(catalogues, catalogue_name(catalogues, version))
 
 
 def load_xi(sacc_path, blind):
@@ -253,15 +273,23 @@ def load_cl(sacc_path, cov_path, blind):
     }
 
 
-def load_rho_tau(sacc_path, tau_cov_path, psf_fit_path):
+def load_rho_tau(sacc_path, tau_cov_path, psf_fit_path, blind):
     """ρ/τ statistics with their covariance blocks, and the PSF-fit samples."""
-    s = sacc_io.load(sacc_path)
+    s = sacc_io.load(sacc_path, blind=blind)
     cov = s.covariance.dense
     rho = {}
     for k in range(6):
         theta, p, m = sacc_io.get_rho(s, k)
         idx = s.indices(sacc_io.RHO_PLUS.format(k=k))
         rho[k] = {"p": p, "m": m, "sigma_p": np.sqrt(np.abs(np.diag(cov)[idx]))}
+    result = load_tau(sacc_path, tau_cov_path, blind)
+    result.update(theta=theta, rho=rho, fit=dict(np.load(psf_fit_path)))
+    return result
+
+
+def load_tau(sacc_path, tau_cov_path, blind):
+    """τ-only SACC part and theory covariance; no cosmology or fit required."""
+    s = sacc_io.load(sacc_path, blind=blind)
     tau = {}
     for k in (0, 2, 5):
         theta_tau, p, m = sacc_io.get_tau(s, (0,), k)
@@ -271,15 +299,15 @@ def load_rho_tau(sacc_path, tau_cov_path, psf_fit_path):
     for i, k in enumerate((0, 2, 5)):
         var = np.diag(tau_cov)[i * n : (i + 1) * n]
         tau[k]["var_p"] = var
-    fit = dict(np.load(psf_fit_path))
-    return {
-        "theta": theta,
-        "theta_tau": theta_tau,
-        "rho": rho,
-        "tau": tau,
-        "tau_cov": tau_cov,
-        "fit": fit,
-    }
+    return {"theta_tau": theta_tau, "tau": tau, "tau_cov": tau_cov}
+
+
+def load_corrected_tau(run_dir, version, cat_config):
+    """Resolve a τ-only run explicitly, avoiding a corrected full-DAG run."""
+    stats = Path(run_dir) / "cosmo_val" / "rho_tau_stats"
+    part = _one(stats / f"rho_tau_{version}_tomo_bin_all_*.sacc")
+    cov = _one(stats / f"cov_tau_{version}_tomo_bin_all_*_th.npy")
+    return load_tau(part, cov, declared_blind(cat_config, version))
 
 
 def load_json(path):
