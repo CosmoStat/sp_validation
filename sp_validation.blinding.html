@@ -181,8 +181,10 @@
 <p>A blind is a named secret, <code class="docutils literal notranslate"><span class="pre">&lt;paths.blinds&gt;/&lt;name&gt;.blind.json</span></code> holding a
 seed, the envelope the hidden point is drawn in and the fiducial point. It is
 drawn once, <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">sp_validation.blinding</span> <span class="pre">init</span> <span class="pre">&lt;name&gt;</span></code>, and never
-committed (<code class="docutils literal notranslate"><span class="pre">*.blind.json</span></code> is gitignored). Each catalogue entry of the
-catalogue config declares <code class="docutils literal notranslate"><span class="pre">blind:</span> <span class="pre">none</span></code> (public) or <code class="docutils literal notranslate"><span class="pre">blind:</span> <span class="pre">&lt;name&gt;</span></code>
+committed (<code class="docutils literal notranslate"><span class="pre">*.blind.json</span></code> is gitignored). The private
+<code class="docutils literal notranslate"><span class="pre">git@github.com:UNIONS-WL/blinds.git</span></code> repository is cloned on each machine to
+<code class="docutils literal notranslate"><span class="pre">~/.sp_validation/blinds</span></code> (mode 0700), the catalogue config’s <code class="docutils literal notranslate"><span class="pre">paths.blinds</span></code>.
+Each catalogue entry declares <code class="docutils literal notranslate"><span class="pre">blind:</span> <span class="pre">none</span></code> (public) or <code class="docutils literal notranslate"><span class="pre">blind:</span> <span class="pre">&lt;name&gt;</span></code>
 (<a class="reference internal" href="#sp_validation.blinding.blind_of" title="sp_validation.blinding.blind_of"><code class="xref py py-func docutils literal notranslate"><span class="pre">blind_of()</span></code></a>).</p>
 <p><a class="reference internal" href="#sp_validation.blinding.conceal" title="sp_validation.blinding.conceal"><code class="xref py py-func docutils literal notranslate"><span class="pre">conceal()</span></code></a> adds the blind’s shift, t(hidden) − t(fiducial), to every row
 of a SACC; Smokescreen draws the hidden point from the seed and evaluates the

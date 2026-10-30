@@ -231,411 +231,413 @@
 </span><span id="line-3"><span class="sd">A blind is a named secret, ``&lt;paths.blinds&gt;/&lt;name&gt;.blind.json`` holding a</span>
 </span><span id="line-4"><span class="sd">seed, the envelope the hidden point is drawn in and the fiducial point. It is</span>
 </span><span id="line-5"><span class="sd">drawn once, ``python -m sp_validation.blinding init &lt;name&gt;``, and never</span>
-</span><span id="line-6"><span class="sd">committed (``*.blind.json`` is gitignored). Each catalogue entry of the</span>
-</span><span id="line-7"><span class="sd">catalogue config declares ``blind: none`` (public) or ``blind: &lt;name&gt;``</span>
-</span><span id="line-8"><span class="sd">(:func:`blind_of`).</span>
-</span><span id="line-9">
-</span><span id="line-10"><span class="sd">:func:`conceal` adds the blind's shift, t(hidden) − t(fiducial), to every row</span>
-</span><span id="line-11"><span class="sd">of a SACC; Smokescreen draws the hidden point from the seed and evaluates the</span>
-</span><span id="line-12"><span class="sd">theory t at both points.</span>
-</span><span id="line-13">
-</span><span id="line-14"><span class="sd">A theory is a function ``theory(params, s)``:</span>
+</span><span id="line-6"><span class="sd">committed (``*.blind.json`` is gitignored). The private</span>
+</span><span id="line-7"><span class="sd">``git@github.com:UNIONS-WL/blinds.git`` repository is cloned on each machine to</span>
+</span><span id="line-8"><span class="sd">``~/.sp_validation/blinds`` (mode 0700), the catalogue config's ``paths.blinds``.</span>
+</span><span id="line-9"><span class="sd">Each catalogue entry declares ``blind: none`` (public) or ``blind: &lt;name&gt;``</span>
+</span><span id="line-10"><span class="sd">(:func:`blind_of`).</span>
+</span><span id="line-11">
+</span><span id="line-12"><span class="sd">:func:`conceal` adds the blind's shift, t(hidden) − t(fiducial), to every row</span>
+</span><span id="line-13"><span class="sd">of a SACC; Smokescreen draws the hidden point from the seed and evaluates the</span>
+</span><span id="line-14"><span class="sd">theory t at both points.</span>
 </span><span id="line-15">
-</span><span id="line-16"><span class="sd">- ``params`` is a dict of cosmological parameters with the keys of</span>
-</span><span id="line-17"><span class="sd">  :func:`fiducial` (``S8``, ``Omega_m``, ``Omega_b``, ``h``, ``n_s``,</span>
-</span><span id="line-18"><span class="sd">  ``m_nu``, ``w0``, ``wa``, ``logT_AGN``, ``A_IA``). The fiducial and hidden</span>
-</span><span id="line-19"><span class="sd">  points differ only in ``S8`` and ``Omega_m``.</span>
-</span><span id="line-20"><span class="sd">- ``s`` is the ``sacc.Sacc`` being concealed: its rows carry a data type, a</span>
-</span><span id="line-21"><span class="sd">  tracer pair and a θ or ℓ tag, its tracers the n(z).</span>
-</span><span id="line-22"><span class="sd">- It returns an array shaped like the data, ``len(s.mean)`` values in the</span>
-</span><span id="line-23"><span class="sd">  order of ``s.data``: the prediction for each row, zero where the cosmology</span>
-</span><span id="line-24"><span class="sd">  has no effect.</span>
-</span><span id="line-25">
-</span><span id="line-26"><span class="sd">For Cℓ_EE/BB/EB bandpowers, for example::</span>
+</span><span id="line-16"><span class="sd">A theory is a function ``theory(params, s)``:</span>
+</span><span id="line-17">
+</span><span id="line-18"><span class="sd">- ``params`` is a dict of cosmological parameters with the keys of</span>
+</span><span id="line-19"><span class="sd">  :func:`fiducial` (``S8``, ``Omega_m``, ``Omega_b``, ``h``, ``n_s``,</span>
+</span><span id="line-20"><span class="sd">  ``m_nu``, ``w0``, ``wa``, ``logT_AGN``, ``A_IA``). The fiducial and hidden</span>
+</span><span id="line-21"><span class="sd">  points differ only in ``S8`` and ``Omega_m``.</span>
+</span><span id="line-22"><span class="sd">- ``s`` is the ``sacc.Sacc`` being concealed: its rows carry a data type, a</span>
+</span><span id="line-23"><span class="sd">  tracer pair and a θ or ℓ tag, its tracers the n(z).</span>
+</span><span id="line-24"><span class="sd">- It returns an array shaped like the data, ``len(s.mean)`` values in the</span>
+</span><span id="line-25"><span class="sd">  order of ``s.data``: the prediction for each row, zero where the cosmology</span>
+</span><span id="line-26"><span class="sd">  has no effect.</span>
 </span><span id="line-27">
-</span><span id="line-28"><span class="sd">    def my_theory(params, s):</span>
-</span><span id="line-29"><span class="sd">        out = np.zeros(len(s.mean))</span>
-</span><span id="line-30"><span class="sd">        ee = s.indices(sacc_io.CL_EE)</span>
-</span><span id="line-31"><span class="sd">        window = s.get_bandpower_windows(ee)</span>
-</span><span id="line-32"><span class="sd">        out[ee] = window.weight.T @ my_cl_ee(params, window.values)</span>
-</span><span id="line-33"><span class="sd">        return out  # Cℓ_BB and Cℓ_EB stay zero</span>
-</span><span id="line-34">
-</span><span id="line-35"><span class="sd">:func:`shear` is the default theory; :func:`no_signal` is that of a statistic</span>
-</span><span id="line-36"><span class="sd">with no cosmological signal (ρ/τ).</span>
-</span><span id="line-37">
-</span><span id="line-38"><span class="sd">The host Snakemake loads this module by path, so at import it needs only the</span>
-</span><span id="line-39"><span class="sd">standard library.</span>
-</span><span id="line-40"><span class="sd">"""</span>
-</span><span id="line-41">
-</span><span id="line-42"><span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
-</span><span id="line-43"><span class="kn">import</span><span class="w"> </span><span class="nn">dataclasses</span>
-</span><span id="line-44"><span class="kn">import</span><span class="w"> </span><span class="nn">functools</span>
-</span><span id="line-45"><span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
-</span><span id="line-46"><span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
-</span><span id="line-47"><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
-</span><span id="line-48"><span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
-</span><span id="line-49"><span class="kn">import</span><span class="w"> </span><span class="nn">secrets</span>
-</span><span id="line-50"><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-</span><span id="line-51">
-</span><span id="line-52"><span class="n">ENVELOPE</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"S8"</span><span class="p">:</span> <span class="mf">0.075</span><span class="p">,</span> <span class="s2">"Omega_m"</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">}</span>
-</span><span id="line-53"><span class="n">REPO_CAT_CONFIG</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">/</span> <span class="s2">"cosmo_val"</span> <span class="o">/</span> <span class="s2">"cat_config.yaml"</span>
-</span><span id="line-54"><span class="n">_NAME</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">"[a-z0-9][a-z0-9_.-]*"</span><span class="p">)</span>
-</span><span id="line-55">
-</span><span id="line-56">
+</span><span id="line-28"><span class="sd">For Cℓ_EE/BB/EB bandpowers, for example::</span>
+</span><span id="line-29">
+</span><span id="line-30"><span class="sd">    def my_theory(params, s):</span>
+</span><span id="line-31"><span class="sd">        out = np.zeros(len(s.mean))</span>
+</span><span id="line-32"><span class="sd">        ee = s.indices(sacc_io.CL_EE)</span>
+</span><span id="line-33"><span class="sd">        window = s.get_bandpower_windows(ee)</span>
+</span><span id="line-34"><span class="sd">        out[ee] = window.weight.T @ my_cl_ee(params, window.values)</span>
+</span><span id="line-35"><span class="sd">        return out  # Cℓ_BB and Cℓ_EB stay zero</span>
+</span><span id="line-36">
+</span><span id="line-37"><span class="sd">:func:`shear` is the default theory; :func:`no_signal` is that of a statistic</span>
+</span><span id="line-38"><span class="sd">with no cosmological signal (ρ/τ).</span>
+</span><span id="line-39">
+</span><span id="line-40"><span class="sd">The host Snakemake loads this module by path, so at import it needs only the</span>
+</span><span id="line-41"><span class="sd">standard library.</span>
+</span><span id="line-42"><span class="sd">"""</span>
+</span><span id="line-43">
+</span><span id="line-44"><span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
+</span><span id="line-45"><span class="kn">import</span><span class="w"> </span><span class="nn">dataclasses</span>
+</span><span id="line-46"><span class="kn">import</span><span class="w"> </span><span class="nn">functools</span>
+</span><span id="line-47"><span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+</span><span id="line-48"><span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+</span><span id="line-49"><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+</span><span id="line-50"><span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+</span><span id="line-51"><span class="kn">import</span><span class="w"> </span><span class="nn">secrets</span>
+</span><span id="line-52"><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+</span><span id="line-53">
+</span><span id="line-54"><span class="n">ENVELOPE</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"S8"</span><span class="p">:</span> <span class="mf">0.075</span><span class="p">,</span> <span class="s2">"Omega_m"</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">}</span>
+</span><span id="line-55"><span class="n">REPO_CAT_CONFIG</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">/</span> <span class="s2">"cosmo_val"</span> <span class="o">/</span> <span class="s2">"cat_config.yaml"</span>
+</span><span id="line-56"><span class="n">_NAME</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">"[a-z0-9][a-z0-9_.-]*"</span><span class="p">)</span>
+</span><span id="line-57">
+</span><span id="line-58">
 <div class="viewcode-block" id="BlindingError">
 <a class="viewcode-back" href="../../sp_validation.blinding.html#sp_validation.blinding.BlindingError">[docs]</a>
-</span><span id="line-57"><span class="k">class</span><span class="w"> </span><span class="nc">BlindingError</span><span class="p">(</span><span class="ne">RuntimeError</span><span class="p">):</span>
-</span><span id="line-58"><span class="w">    </span><span class="sd">"""A blind cannot be opened or applied; the message carries no hidden value."""</span></div>
+</span><span id="line-59"><span class="k">class</span><span class="w"> </span><span class="nc">BlindingError</span><span class="p">(</span><span class="ne">RuntimeError</span><span class="p">):</span>
+</span><span id="line-60"><span class="w">    </span><span class="sd">"""A blind cannot be opened or applied; the message carries no hidden value."""</span></div>
 
-</span><span id="line-59">
-</span><span id="line-60">
+</span><span id="line-61">
+</span><span id="line-62">
 <div class="viewcode-block" id="Blind">
 <a class="viewcode-back" href="../../sp_validation.blinding.html#sp_validation.blinding.Blind">[docs]</a>
-</span><span id="line-61"><span class="nd">@dataclasses</span><span class="o">.</span><span class="n">dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="line-62"><span class="k">class</span><span class="w"> </span><span class="nc">Blind</span><span class="p">:</span>
-</span><span id="line-63"><span class="w">    </span><span class="sd">"""A blind's name and the path of its record; ``none`` has no record."""</span>
-</span><span id="line-64">
-</span><span id="line-65">    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="line-66">    <span class="n">path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="line-67">
+</span><span id="line-63"><span class="nd">@dataclasses</span><span class="o">.</span><span class="n">dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-64"><span class="k">class</span><span class="w"> </span><span class="nc">Blind</span><span class="p">:</span>
+</span><span id="line-65"><span class="w">    </span><span class="sd">"""A blind's name and the path of its record; ``none`` has no record."""</span>
+</span><span id="line-66">
+</span><span id="line-67">    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="line-68">    <span class="n">path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="line-69">
 <div class="viewcode-block" id="Blind.record">
 <a class="viewcode-back" href="../../sp_validation.blinding.html#sp_validation.blinding.Blind.record">[docs]</a>
-</span><span id="line-68">    <span class="k">def</span><span class="w"> </span><span class="nf">record</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-</span><span id="line-69"><span class="w">        </span><span class="sd">"""The blind's ``{seed, envelope, fiducial}``."""</span>
-</span><span id="line-70">        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span></div>
+</span><span id="line-70">    <span class="k">def</span><span class="w"> </span><span class="nf">record</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="line-71"><span class="w">        </span><span class="sd">"""The blind's ``{seed, envelope, fiducial}``."""</span>
+</span><span id="line-72">        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span></div>
 </div>
 
-</span><span id="line-71">
-</span><span id="line-72">
-</span><span id="line-73"><span class="n">NONE</span> <span class="o">=</span> <span class="n">Blind</span><span class="p">(</span><span class="s2">"none"</span><span class="p">)</span>
+</span><span id="line-73">
 </span><span id="line-74">
-</span><span id="line-75">
+</span><span id="line-75"><span class="n">NONE</span> <span class="o">=</span> <span class="n">Blind</span><span class="p">(</span><span class="s2">"none"</span><span class="p">)</span>
+</span><span id="line-76">
+</span><span id="line-77">
 <div class="viewcode-block" id="_shear_file">
 <a class="viewcode-back" href="../../sp_validation.blinding.html#sp_validation.blinding._shear_file">[docs]</a>
-</span><span id="line-76"><span class="k">def</span><span class="w"> </span><span class="nf">_shear_file</span><span class="p">(</span><span class="n">entry</span><span class="p">):</span>
-</span><span id="line-77">    <span class="n">shear</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"shear"</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
-</span><span id="line-78">    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">shear</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">"path"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">shear</span><span class="p">:</span>
-</span><span id="line-79">        <span class="k">return</span> <span class="kc">None</span>
-</span><span id="line-80">    <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">realpath</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"subdir"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)),</span> <span class="n">shear</span><span class="p">[</span><span class="s2">"path"</span><span class="p">]))</span></div>
+</span><span id="line-78"><span class="k">def</span><span class="w"> </span><span class="nf">_shear_file</span><span class="p">(</span><span class="n">entry</span><span class="p">):</span>
+</span><span id="line-79">    <span class="n">shear</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"shear"</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+</span><span id="line-80">    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">shear</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">"path"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">shear</span><span class="p">:</span>
+</span><span id="line-81">        <span class="k">return</span> <span class="kc">None</span>
+</span><span id="line-82">    <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">realpath</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"subdir"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)),</span> <span class="n">shear</span><span class="p">[</span><span class="s2">"path"</span><span class="p">]))</span></div>
 
-</span><span id="line-81">
-</span><span id="line-82">
+</span><span id="line-83">
+</span><span id="line-84">
 <div class="viewcode-block" id="blind_of">
 <a class="viewcode-back" href="../../sp_validation.blinding.html#sp_validation.blinding.blind_of">[docs]</a>
-</span><span id="line-83"><span class="k">def</span><span class="w"> </span><span class="nf">blind_of</span><span class="p">(</span><span class="n">catalogues</span><span class="p">,</span> <span class="n">entry</span><span class="p">):</span>
-</span><span id="line-84"><span class="w">    </span><span class="sd">"""The ``blind:`` of catalogue-config entry ``entry``.</span>
-</span><span id="line-85">
-</span><span id="line-86"><span class="sd">    Refuses an entry that declares none, and entries reading one shear file</span>
-</span><span id="line-87"><span class="sd">    under different blinds.</span>
-</span><span id="line-88"><span class="sd">    """</span>
-</span><span id="line-89">    <span class="n">blind</span> <span class="o">=</span> <span class="n">catalogues</span><span class="p">[</span><span class="n">entry</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"blind"</span><span class="p">)</span>
-</span><span id="line-90">    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">blind</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
-</span><span id="line-91">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-</span><span id="line-92">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">entry</span><span class="si">}</span><span class="s2"> declares no `blind:`; declare `blind: none` (public) or "</span>
-</span><span id="line-93">            <span class="s2">"`blind: &lt;name&gt;` in its catalogue config entry"</span>
-</span><span id="line-94">        <span class="p">)</span>
-</span><span id="line-95">    <span class="n">path</span> <span class="o">=</span> <span class="n">_shear_file</span><span class="p">(</span><span class="n">catalogues</span><span class="p">[</span><span class="n">entry</span><span class="p">])</span>
-</span><span id="line-96">    <span class="n">readers</span> <span class="o">=</span> <span class="p">{</span>
-</span><span id="line-97">        <span class="n">name</span><span class="p">:</span> <span class="n">other</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"blind"</span><span class="p">)</span>
-</span><span id="line-98">        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">other</span> <span class="ow">in</span> <span class="n">catalogues</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
-</span><span id="line-99">        <span class="k">if</span> <span class="n">path</span> <span class="ow">and</span> <span class="n">_shear_file</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="o">==</span> <span class="n">path</span>
-</span><span id="line-100">    <span class="p">}</span>
-</span><span id="line-101">    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">readers</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
-</span><span id="line-102">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2"> is read under different blinds: </span><span class="si">{</span><span class="n">readers</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-</span><span id="line-103">    <span class="k">return</span> <span class="n">blind</span></div>
+</span><span id="line-85"><span class="k">def</span><span class="w"> </span><span class="nf">blind_of</span><span class="p">(</span><span class="n">catalogues</span><span class="p">,</span> <span class="n">entry</span><span class="p">):</span>
+</span><span id="line-86"><span class="w">    </span><span class="sd">"""The ``blind:`` of catalogue-config entry ``entry``.</span>
+</span><span id="line-87">
+</span><span id="line-88"><span class="sd">    Refuses an entry that declares none, and entries reading one shear file</span>
+</span><span id="line-89"><span class="sd">    under different blinds.</span>
+</span><span id="line-90"><span class="sd">    """</span>
+</span><span id="line-91">    <span class="n">blind</span> <span class="o">=</span> <span class="n">catalogues</span><span class="p">[</span><span class="n">entry</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"blind"</span><span class="p">)</span>
+</span><span id="line-92">    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">blind</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+</span><span id="line-93">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-94">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">entry</span><span class="si">}</span><span class="s2"> declares no `blind:`; declare `blind: none` (public) or "</span>
+</span><span id="line-95">            <span class="s2">"`blind: &lt;name&gt;` in its catalogue config entry"</span>
+</span><span id="line-96">        <span class="p">)</span>
+</span><span id="line-97">    <span class="n">path</span> <span class="o">=</span> <span class="n">_shear_file</span><span class="p">(</span><span class="n">catalogues</span><span class="p">[</span><span class="n">entry</span><span class="p">])</span>
+</span><span id="line-98">    <span class="n">readers</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="line-99">        <span class="n">name</span><span class="p">:</span> <span class="n">other</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"blind"</span><span class="p">)</span>
+</span><span id="line-100">        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">other</span> <span class="ow">in</span> <span class="n">catalogues</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+</span><span id="line-101">        <span class="k">if</span> <span class="n">path</span> <span class="ow">and</span> <span class="n">_shear_file</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="o">==</span> <span class="n">path</span>
+</span><span id="line-102">    <span class="p">}</span>
+</span><span id="line-103">    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">readers</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+</span><span id="line-104">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2"> is read under different blinds: </span><span class="si">{</span><span class="n">readers</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="line-105">    <span class="k">return</span> <span class="n">blind</span></div>
 
-</span><span id="line-104">
-</span><span id="line-105">
+</span><span id="line-106">
+</span><span id="line-107">
 <div class="viewcode-block" id="registry">
 <a class="viewcode-back" href="../../sp_validation.blinding.html#sp_validation.blinding.registry">[docs]</a>
-</span><span id="line-106"><span class="k">def</span><span class="w"> </span><span class="nf">registry</span><span class="p">(</span><span class="n">catalogues</span><span class="p">):</span>
-</span><span id="line-107"><span class="w">    </span><span class="sd">"""The directory a catalogue config keeps its blinds in (``paths.blinds``)."""</span>
-</span><span id="line-108">    <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="n">catalogues</span><span class="p">[</span><span class="s2">"paths"</span><span class="p">][</span><span class="s2">"blinds"</span><span class="p">]))</span></div>
+</span><span id="line-108"><span class="k">def</span><span class="w"> </span><span class="nf">registry</span><span class="p">(</span><span class="n">catalogues</span><span class="p">):</span>
+</span><span id="line-109"><span class="w">    </span><span class="sd">"""The directory a catalogue config keeps its blinds in (``paths.blinds``)."""</span>
+</span><span id="line-110">    <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="n">catalogues</span><span class="p">[</span><span class="s2">"paths"</span><span class="p">][</span><span class="s2">"blinds"</span><span class="p">]))</span></div>
 
-</span><span id="line-109">
-</span><span id="line-110">
+</span><span id="line-111">
+</span><span id="line-112">
 <div class="viewcode-block" id="open_blind">
 <a class="viewcode-back" href="../../sp_validation.blinding.html#sp_validation.blinding.open_blind">[docs]</a>
-</span><span id="line-111"><span class="k">def</span><span class="w"> </span><span class="nf">open_blind</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">catalogues</span><span class="p">):</span>
-</span><span id="line-112"><span class="w">    </span><span class="sd">"""Blind ``name`` of the catalogue config ``catalogues``; its record must exist."""</span>
-</span><span id="line-113">    <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="n">NONE</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
-</span><span id="line-114">        <span class="k">return</span> <span class="n">NONE</span>
-</span><span id="line-115">    <span class="n">path</span> <span class="o">=</span> <span class="n">registry</span><span class="p">(</span><span class="n">catalogues</span><span class="p">)</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">.blind.json"</span>
-</span><span id="line-116">    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">access</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">R_OK</span><span class="p">):</span>
-</span><span id="line-117">        <span class="k">raise</span> <span class="n">BlindingError</span><span class="p">(</span>
-</span><span id="line-118">            <span class="sa">f</span><span class="s2">"cannot read blind </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> at </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">; `python -m sp_validation.blinding "</span>
-</span><span id="line-119">            <span class="sa">f</span><span class="s2">"init </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">` draws it, if it is meant to be new"</span>
-</span><span id="line-120">        <span class="p">)</span>
-</span><span id="line-121">    <span class="k">return</span> <span class="n">Blind</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span></div>
+</span><span id="line-113"><span class="k">def</span><span class="w"> </span><span class="nf">open_blind</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">catalogues</span><span class="p">):</span>
+</span><span id="line-114"><span class="w">    </span><span class="sd">"""Blind ``name`` of the catalogue config ``catalogues``; its record must exist."""</span>
+</span><span id="line-115">    <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="n">NONE</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
+</span><span id="line-116">        <span class="k">return</span> <span class="n">NONE</span>
+</span><span id="line-117">    <span class="n">path</span> <span class="o">=</span> <span class="n">registry</span><span class="p">(</span><span class="n">catalogues</span><span class="p">)</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">.blind.json"</span>
+</span><span id="line-118">    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">access</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">R_OK</span><span class="p">):</span>
+</span><span id="line-119">        <span class="k">raise</span> <span class="n">BlindingError</span><span class="p">(</span>
+</span><span id="line-120">            <span class="sa">f</span><span class="s2">"cannot read blind </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> at </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">; `python -m sp_validation.blinding "</span>
+</span><span id="line-121">            <span class="sa">f</span><span class="s2">"init </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">` draws it, if it is meant to be new"</span>
+</span><span id="line-122">        <span class="p">)</span>
+</span><span id="line-123">    <span class="k">return</span> <span class="n">Blind</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span></div>
 
-</span><span id="line-122">
-</span><span id="line-123">
+</span><span id="line-124">
+</span><span id="line-125">
 <div class="viewcode-block" id="conceal">
 <a class="viewcode-back" href="../../sp_validation.blinding.html#sp_validation.blinding.conceal">[docs]</a>
-</span><span id="line-124"><span class="k">def</span><span class="w"> </span><span class="nf">conceal</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">blind</span><span class="p">,</span> <span class="n">theory</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-</span><span id="line-125"><span class="w">    </span><span class="sd">"""A copy of SACC ``s`` with ``blind``'s shift added to every row.</span>
-</span><span id="line-126">
-</span><span id="line-127"><span class="sd">    The shift is t(hidden) − t(fiducial), t being ``theory`` (default</span>
-</span><span id="line-128"><span class="sd">    :func:`shear`). A failure raises :class:`BlindingError` naming only the</span>
-</span><span id="line-129"><span class="sd">    exception type, so no message or traceback shows the hidden point.</span>
-</span><span id="line-130"><span class="sd">    """</span>
-</span><span id="line-131">    <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-</span><span id="line-132">    <span class="kn">from</span><span class="w"> </span><span class="nn">smokescreen.datavector</span><span class="w"> </span><span class="kn">import</span> <span class="n">concealing_factor</span>
-</span><span id="line-133">
-</span><span id="line-134">    <span class="n">theory</span> <span class="o">=</span> <span class="n">theory</span> <span class="ow">or</span> <span class="n">shear</span>
-</span><span id="line-135">    <span class="n">record</span><span class="p">,</span> <span class="n">failure</span> <span class="o">=</span> <span class="n">blind</span><span class="o">.</span><span class="n">record</span><span class="p">(),</span> <span class="kc">None</span>
-</span><span id="line-136">    <span class="k">try</span><span class="p">:</span>
-</span><span id="line-137">        <span class="n">shift</span> <span class="o">=</span> <span class="n">concealing_factor</span><span class="p">(</span>
-</span><span id="line-138">            <span class="n">record</span><span class="p">[</span><span class="s2">"fiducial"</span><span class="p">],</span>
-</span><span id="line-139">            <span class="n">record</span><span class="p">[</span><span class="s2">"envelope"</span><span class="p">],</span>
-</span><span id="line-140">            <span class="n">seed</span><span class="o">=</span><span class="n">record</span><span class="p">[</span><span class="s2">"seed"</span><span class="p">],</span>
-</span><span id="line-141">            <span class="n">theory_fn</span><span class="o">=</span><span class="k">lambda</span> <span class="n">params</span><span class="p">:</span> <span class="n">theory</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">s</span><span class="p">),</span>
-</span><span id="line-142">        <span class="p">)</span>
-</span><span id="line-143">    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
-</span><span id="line-144">        <span class="n">failure</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">err</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span>
-</span><span id="line-145">    <span class="k">if</span> <span class="n">failure</span><span class="p">:</span>  <span class="c1"># raised outside the except, so nothing is chained</span>
-</span><span id="line-146">        <span class="k">raise</span> <span class="n">BlindingError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"the theory failed under blind </span><span class="si">{</span><span class="n">blind</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">failure</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
-</span><span id="line-147">    <span class="n">shift</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">shift</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span>
-</span><span id="line-148">    <span class="k">if</span> <span class="n">shift</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">mean</span><span class="p">),):</span>
-</span><span id="line-149">        <span class="k">raise</span> <span class="n">BlindingError</span><span class="p">(</span>
-</span><span id="line-150">            <span class="sa">f</span><span class="s2">"the theory returned </span><span class="si">{</span><span class="n">shift</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">shift</span><span class="o">.</span><span class="n">ndim</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="mi">0</span><span class="si">}</span><span class="s2"> values for "</span>
-</span><span id="line-151">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">mean</span><span class="p">)</span><span class="si">}</span><span class="s2"> rows"</span>
-</span><span id="line-152">        <span class="p">)</span>
-</span><span id="line-153">    <span class="n">out</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-</span><span id="line-154">    <span class="k">for</span> <span class="n">dp</span><span class="p">,</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">shift</span><span class="p">):</span>
-</span><span id="line-155">        <span class="n">dp</span><span class="o">.</span><span class="n">value</span> <span class="o">+=</span> <span class="nb">float</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
-</span><span id="line-156">    <span class="k">return</span> <span class="n">out</span></div>
+</span><span id="line-126"><span class="k">def</span><span class="w"> </span><span class="nf">conceal</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">blind</span><span class="p">,</span> <span class="n">theory</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+</span><span id="line-127"><span class="w">    </span><span class="sd">"""A copy of SACC ``s`` with ``blind``'s shift added to every row.</span>
+</span><span id="line-128">
+</span><span id="line-129"><span class="sd">    The shift is t(hidden) − t(fiducial), t being ``theory`` (default</span>
+</span><span id="line-130"><span class="sd">    :func:`shear`). A failure raises :class:`BlindingError` naming only the</span>
+</span><span id="line-131"><span class="sd">    exception type, so no message or traceback shows the hidden point.</span>
+</span><span id="line-132"><span class="sd">    """</span>
+</span><span id="line-133">    <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+</span><span id="line-134">    <span class="kn">from</span><span class="w"> </span><span class="nn">smokescreen.datavector</span><span class="w"> </span><span class="kn">import</span> <span class="n">concealing_factor</span>
+</span><span id="line-135">
+</span><span id="line-136">    <span class="n">theory</span> <span class="o">=</span> <span class="n">theory</span> <span class="ow">or</span> <span class="n">shear</span>
+</span><span id="line-137">    <span class="n">record</span><span class="p">,</span> <span class="n">failure</span> <span class="o">=</span> <span class="n">blind</span><span class="o">.</span><span class="n">record</span><span class="p">(),</span> <span class="kc">None</span>
+</span><span id="line-138">    <span class="k">try</span><span class="p">:</span>
+</span><span id="line-139">        <span class="n">shift</span> <span class="o">=</span> <span class="n">concealing_factor</span><span class="p">(</span>
+</span><span id="line-140">            <span class="n">record</span><span class="p">[</span><span class="s2">"fiducial"</span><span class="p">],</span>
+</span><span id="line-141">            <span class="n">record</span><span class="p">[</span><span class="s2">"envelope"</span><span class="p">],</span>
+</span><span id="line-142">            <span class="n">seed</span><span class="o">=</span><span class="n">record</span><span class="p">[</span><span class="s2">"seed"</span><span class="p">],</span>
+</span><span id="line-143">            <span class="n">theory_fn</span><span class="o">=</span><span class="k">lambda</span> <span class="n">params</span><span class="p">:</span> <span class="n">theory</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">s</span><span class="p">),</span>
+</span><span id="line-144">        <span class="p">)</span>
+</span><span id="line-145">    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+</span><span id="line-146">        <span class="n">failure</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">err</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span>
+</span><span id="line-147">    <span class="k">if</span> <span class="n">failure</span><span class="p">:</span>  <span class="c1"># raised outside the except, so nothing is chained</span>
+</span><span id="line-148">        <span class="k">raise</span> <span class="n">BlindingError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"the theory failed under blind </span><span class="si">{</span><span class="n">blind</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">failure</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
+</span><span id="line-149">    <span class="n">shift</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">shift</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span>
+</span><span id="line-150">    <span class="k">if</span> <span class="n">shift</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">mean</span><span class="p">),):</span>
+</span><span id="line-151">        <span class="k">raise</span> <span class="n">BlindingError</span><span class="p">(</span>
+</span><span id="line-152">            <span class="sa">f</span><span class="s2">"the theory returned </span><span class="si">{</span><span class="n">shift</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">shift</span><span class="o">.</span><span class="n">ndim</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="mi">0</span><span class="si">}</span><span class="s2"> values for "</span>
+</span><span id="line-153">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">mean</span><span class="p">)</span><span class="si">}</span><span class="s2"> rows"</span>
+</span><span id="line-154">        <span class="p">)</span>
+</span><span id="line-155">    <span class="n">out</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+</span><span id="line-156">    <span class="k">for</span> <span class="n">dp</span><span class="p">,</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">shift</span><span class="p">):</span>
+</span><span id="line-157">        <span class="n">dp</span><span class="o">.</span><span class="n">value</span> <span class="o">+=</span> <span class="nb">float</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+</span><span id="line-158">    <span class="k">return</span> <span class="n">out</span></div>
 
-</span><span id="line-157">
-</span><span id="line-158">
+</span><span id="line-159">
+</span><span id="line-160">
 <div class="viewcode-block" id="init">
 <a class="viewcode-back" href="../../sp_validation.blinding.html#sp_validation.blinding.init">[docs]</a>
-</span><span id="line-159"><span class="k">def</span><span class="w"> </span><span class="nf">init</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">catalogues</span><span class="p">):</span>
-</span><span id="line-160"><span class="w">    </span><span class="sd">"""Draw blind ``name`` into the catalogue config's registry, once."""</span>
-</span><span id="line-161">    <span class="k">if</span> <span class="ow">not</span> <span class="n">_NAME</span><span class="o">.</span><span class="n">fullmatch</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="ow">or</span> <span class="n">name</span> <span class="o">==</span> <span class="n">NONE</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
-</span><span id="line-162">        <span class="k">raise</span> <span class="n">BlindingError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"blind name </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2">: use a-z, 0-9, - _ ."</span><span class="p">)</span>
-</span><span id="line-163">    <span class="n">where</span> <span class="o">=</span> <span class="n">registry</span><span class="p">(</span><span class="n">catalogues</span><span class="p">)</span>
-</span><span id="line-164">    <span class="n">where</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="mo">0o700</span><span class="p">,</span> <span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="line-165">    <span class="n">record</span> <span class="o">=</span> <span class="p">{</span>
-</span><span id="line-166">        <span class="s2">"seed"</span><span class="p">:</span> <span class="n">secrets</span><span class="o">.</span><span class="n">token_hex</span><span class="p">(</span><span class="mi">32</span><span class="p">),</span>
-</span><span id="line-167">        <span class="s2">"envelope"</span><span class="p">:</span> <span class="n">ENVELOPE</span><span class="p">,</span>
-</span><span id="line-168">        <span class="s2">"fiducial"</span><span class="p">:</span> <span class="n">fiducial</span><span class="p">(),</span>
-</span><span id="line-169">    <span class="p">}</span>
-</span><span id="line-170">    <span class="n">path</span> <span class="o">=</span> <span class="n">where</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">.blind.json"</span>
-</span><span id="line-171">    <span class="k">try</span><span class="p">:</span>
-</span><span id="line-172">        <span class="n">fd</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">O_WRONLY</span> <span class="o">|</span> <span class="n">os</span><span class="o">.</span><span class="n">O_CREAT</span> <span class="o">|</span> <span class="n">os</span><span class="o">.</span><span class="n">O_EXCL</span><span class="p">,</span> <span class="mo">0o440</span><span class="p">)</span>
-</span><span id="line-173">    <span class="k">except</span> <span class="ne">FileExistsError</span><span class="p">:</span>
-</span><span id="line-174">        <span class="k">raise</span> <span class="n">BlindingError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"blind </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> exists at </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
-</span><span id="line-175">    <span class="k">with</span> <span class="n">os</span><span class="o">.</span><span class="n">fdopen</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="s2">"w"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-</span><span id="line-176">        <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-</span><span id="line-177">    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[blinding] drew blind </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> at </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-</span><span id="line-178">    <span class="k">return</span> <span class="n">Blind</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span></div>
+</span><span id="line-161"><span class="k">def</span><span class="w"> </span><span class="nf">init</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">catalogues</span><span class="p">):</span>
+</span><span id="line-162"><span class="w">    </span><span class="sd">"""Draw blind ``name`` into the catalogue config's registry, once."""</span>
+</span><span id="line-163">    <span class="k">if</span> <span class="ow">not</span> <span class="n">_NAME</span><span class="o">.</span><span class="n">fullmatch</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="ow">or</span> <span class="n">name</span> <span class="o">==</span> <span class="n">NONE</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
+</span><span id="line-164">        <span class="k">raise</span> <span class="n">BlindingError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"blind name </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2">: use a-z, 0-9, - _ ."</span><span class="p">)</span>
+</span><span id="line-165">    <span class="n">where</span> <span class="o">=</span> <span class="n">registry</span><span class="p">(</span><span class="n">catalogues</span><span class="p">)</span>
+</span><span id="line-166">    <span class="n">where</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="mo">0o700</span><span class="p">,</span> <span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-167">    <span class="n">record</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="line-168">        <span class="s2">"seed"</span><span class="p">:</span> <span class="n">secrets</span><span class="o">.</span><span class="n">token_hex</span><span class="p">(</span><span class="mi">32</span><span class="p">),</span>
+</span><span id="line-169">        <span class="s2">"envelope"</span><span class="p">:</span> <span class="n">ENVELOPE</span><span class="p">,</span>
+</span><span id="line-170">        <span class="s2">"fiducial"</span><span class="p">:</span> <span class="n">fiducial</span><span class="p">(),</span>
+</span><span id="line-171">    <span class="p">}</span>
+</span><span id="line-172">    <span class="n">path</span> <span class="o">=</span> <span class="n">where</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">.blind.json"</span>
+</span><span id="line-173">    <span class="k">try</span><span class="p">:</span>
+</span><span id="line-174">        <span class="n">fd</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">O_WRONLY</span> <span class="o">|</span> <span class="n">os</span><span class="o">.</span><span class="n">O_CREAT</span> <span class="o">|</span> <span class="n">os</span><span class="o">.</span><span class="n">O_EXCL</span><span class="p">,</span> <span class="mo">0o440</span><span class="p">)</span>
+</span><span id="line-175">    <span class="k">except</span> <span class="ne">FileExistsError</span><span class="p">:</span>
+</span><span id="line-176">        <span class="k">raise</span> <span class="n">BlindingError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"blind </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> exists at </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+</span><span id="line-177">    <span class="k">with</span> <span class="n">os</span><span class="o">.</span><span class="n">fdopen</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="s2">"w"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+</span><span id="line-178">        <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</span><span id="line-179">    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[blinding] drew blind </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> at </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="line-180">    <span class="k">return</span> <span class="n">Blind</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span></div>
 
-</span><span id="line-179">
-</span><span id="line-180">
-</span><span id="line-181"><span class="c1"># --------------------------------------------------------------------------- #</span>
-</span><span id="line-182"><span class="c1"># Theories</span>
+</span><span id="line-181">
+</span><span id="line-182">
 </span><span id="line-183"><span class="c1"># --------------------------------------------------------------------------- #</span>
-</span><span id="line-184"><span class="n">_COSMOLOGY</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"S8"</span><span class="p">,</span> <span class="s2">"Omega_m"</span><span class="p">,</span> <span class="s2">"Omega_b"</span><span class="p">,</span> <span class="s2">"h"</span><span class="p">,</span> <span class="s2">"n_s"</span><span class="p">,</span> <span class="s2">"m_nu"</span><span class="p">,</span> <span class="s2">"w0"</span><span class="p">,</span> <span class="s2">"wa"</span><span class="p">,</span> <span class="s2">"logT_AGN"</span><span class="p">)</span>
-</span><span id="line-185">
-</span><span id="line-186">
+</span><span id="line-184"><span class="c1"># Theories</span>
+</span><span id="line-185"><span class="c1"># --------------------------------------------------------------------------- #</span>
+</span><span id="line-186"><span class="n">_COSMOLOGY</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"S8"</span><span class="p">,</span> <span class="s2">"Omega_m"</span><span class="p">,</span> <span class="s2">"Omega_b"</span><span class="p">,</span> <span class="s2">"h"</span><span class="p">,</span> <span class="s2">"n_s"</span><span class="p">,</span> <span class="s2">"m_nu"</span><span class="p">,</span> <span class="s2">"w0"</span><span class="p">,</span> <span class="s2">"wa"</span><span class="p">,</span> <span class="s2">"logT_AGN"</span><span class="p">)</span>
+</span><span id="line-187">
+</span><span id="line-188">
 <div class="viewcode-block" id="fiducial">
 <a class="viewcode-back" href="../../sp_validation.blinding.html#sp_validation.blinding.fiducial">[docs]</a>
-</span><span id="line-187"><span class="k">def</span><span class="w"> </span><span class="nf">fiducial</span><span class="p">():</span>
-</span><span id="line-188"><span class="w">    </span><span class="sd">"""cs_util's Planck 2018 point, with feedback and no IA."""</span>
-</span><span id="line-189">    <span class="kn">from</span><span class="w"> </span><span class="nn">cs_util.cosmo</span><span class="w"> </span><span class="kn">import</span> <span class="n">PLANCK18</span> <span class="k">as</span> <span class="n">p</span>
-</span><span id="line-190">
-</span><span id="line-191">    <span class="k">return</span> <span class="p">{</span>
-</span><span id="line-192">        <span class="s2">"S8"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="s2">"sigma_8"</span><span class="p">]</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="s2">"Omega_m"</span><span class="p">]</span> <span class="o">/</span> <span class="mf">0.3</span><span class="p">)),</span>
-</span><span id="line-193">        <span class="o">**</span><span class="p">{</span>
-</span><span id="line-194">            <span class="n">k</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="n">k</span><span class="p">])</span>
-</span><span id="line-195">            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"Omega_m"</span><span class="p">,</span> <span class="s2">"Omega_b"</span><span class="p">,</span> <span class="s2">"h"</span><span class="p">,</span> <span class="s2">"n_s"</span><span class="p">,</span> <span class="s2">"m_nu"</span><span class="p">,</span> <span class="s2">"w0"</span><span class="p">,</span> <span class="s2">"wa"</span><span class="p">)</span>
-</span><span id="line-196">        <span class="p">},</span>
-</span><span id="line-197">        <span class="s2">"logT_AGN"</span><span class="p">:</span> <span class="mf">7.5</span><span class="p">,</span>
-</span><span id="line-198">        <span class="s2">"A_IA"</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
-</span><span id="line-199">    <span class="p">}</span></div>
+</span><span id="line-189"><span class="k">def</span><span class="w"> </span><span class="nf">fiducial</span><span class="p">():</span>
+</span><span id="line-190"><span class="w">    </span><span class="sd">"""cs_util's Planck 2018 point, with feedback and no IA."""</span>
+</span><span id="line-191">    <span class="kn">from</span><span class="w"> </span><span class="nn">cs_util.cosmo</span><span class="w"> </span><span class="kn">import</span> <span class="n">PLANCK18</span> <span class="k">as</span> <span class="n">p</span>
+</span><span id="line-192">
+</span><span id="line-193">    <span class="k">return</span> <span class="p">{</span>
+</span><span id="line-194">        <span class="s2">"S8"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="s2">"sigma_8"</span><span class="p">]</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="s2">"Omega_m"</span><span class="p">]</span> <span class="o">/</span> <span class="mf">0.3</span><span class="p">)),</span>
+</span><span id="line-195">        <span class="o">**</span><span class="p">{</span>
+</span><span id="line-196">            <span class="n">k</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="n">k</span><span class="p">])</span>
+</span><span id="line-197">            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"Omega_m"</span><span class="p">,</span> <span class="s2">"Omega_b"</span><span class="p">,</span> <span class="s2">"h"</span><span class="p">,</span> <span class="s2">"n_s"</span><span class="p">,</span> <span class="s2">"m_nu"</span><span class="p">,</span> <span class="s2">"w0"</span><span class="p">,</span> <span class="s2">"wa"</span><span class="p">)</span>
+</span><span id="line-198">        <span class="p">},</span>
+</span><span id="line-199">        <span class="s2">"logT_AGN"</span><span class="p">:</span> <span class="mf">7.5</span><span class="p">,</span>
+</span><span id="line-200">        <span class="s2">"A_IA"</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+</span><span id="line-201">    <span class="p">}</span></div>
 
-</span><span id="line-200">
-</span><span id="line-201">
+</span><span id="line-202">
+</span><span id="line-203">
 <div class="viewcode-block" id="no_signal">
 <a class="viewcode-back" href="../../sp_validation.blinding.html#sp_validation.blinding.no_signal">[docs]</a>
-</span><span id="line-202"><span class="k">def</span><span class="w"> </span><span class="nf">no_signal</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">s</span><span class="p">):</span>
-</span><span id="line-203"><span class="w">    </span><span class="sd">"""Zeros: the theory of a statistic with no cosmological signal (ρ/τ)."""</span>
-</span><span id="line-204">    <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-</span><span id="line-205">
-</span><span id="line-206">    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">mean</span><span class="p">))</span></div>
-
+</span><span id="line-204"><span class="k">def</span><span class="w"> </span><span class="nf">no_signal</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">s</span><span class="p">):</span>
+</span><span id="line-205"><span class="w">    </span><span class="sd">"""Zeros: the theory of a statistic with no cosmological signal (ρ/τ)."""</span>
+</span><span id="line-206">    <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 </span><span id="line-207">
-</span><span id="line-208">
+</span><span id="line-208">    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">mean</span><span class="p">))</span></div>
+
+</span><span id="line-209">
+</span><span id="line-210">
 <div class="viewcode-block" id="shear">
 <a class="viewcode-back" href="../../sp_validation.blinding.html#sp_validation.blinding.shear">[docs]</a>
-</span><span id="line-209"><span class="k">def</span><span class="w"> </span><span class="nf">shear</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">s</span><span class="p">):</span>
-</span><span id="line-210"><span class="w">    </span><span class="sd">"""Cosmic-shear ξ± and Cℓ_EE from pyccl; zeros for Cℓ_BB and Cℓ_EB.</span>
-</span><span id="line-211">
-</span><span id="line-212"><span class="sd">    ξ± is evaluated at each row's stored θ (TreeCorr's ``meanr``) and Cℓ_EE</span>
-</span><span id="line-213"><span class="sd">    through each row's bandpower window. Any other data type raises: pass your</span>
-</span><span id="line-214"><span class="sd">    own theory.</span>
-</span><span id="line-215"><span class="sd">    """</span>
-</span><span id="line-216">    <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-</span><span id="line-217">
-</span><span id="line-218">    <span class="kn">from</span><span class="w"> </span><span class="nn">.sacc_io</span><span class="w"> </span><span class="kn">import</span> <span class="n">CL_BB</span><span class="p">,</span> <span class="n">CL_EB</span><span class="p">,</span> <span class="n">CL_EE</span><span class="p">,</span> <span class="n">XI_MINUS</span><span class="p">,</span> <span class="n">XI_PLUS</span>
+</span><span id="line-211"><span class="k">def</span><span class="w"> </span><span class="nf">shear</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">s</span><span class="p">):</span>
+</span><span id="line-212"><span class="w">    </span><span class="sd">"""Cosmic-shear ξ± and Cℓ_EE from pyccl; zeros for Cℓ_BB and Cℓ_EB.</span>
+</span><span id="line-213">
+</span><span id="line-214"><span class="sd">    ξ± is evaluated at each row's stored θ (TreeCorr's ``meanr``) and Cℓ_EE</span>
+</span><span id="line-215"><span class="sd">    through each row's bandpower window. Any other data type raises: pass your</span>
+</span><span id="line-216"><span class="sd">    own theory.</span>
+</span><span id="line-217"><span class="sd">    """</span>
+</span><span id="line-218">    <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 </span><span id="line-219">
-</span><span id="line-220">    <span class="n">out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">mean</span><span class="p">))</span>
-</span><span id="line-221">    <span class="n">groups</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="line-222">    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">dp</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">):</span>
-</span><span id="line-223">        <span class="k">if</span> <span class="n">dp</span><span class="o">.</span><span class="n">data_type</span> <span class="ow">in</span> <span class="p">(</span><span class="n">XI_PLUS</span><span class="p">,</span> <span class="n">XI_MINUS</span><span class="p">):</span>
-</span><span id="line-224">            <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="n">_xi</span><span class="p">,</span> <span class="n">dp</span><span class="o">.</span><span class="n">tracers</span><span class="p">)</span>
-</span><span id="line-225">        <span class="k">elif</span> <span class="n">dp</span><span class="o">.</span><span class="n">data_type</span> <span class="o">==</span> <span class="n">CL_EE</span><span class="p">:</span>
-</span><span id="line-226">            <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="n">_cl</span><span class="p">,</span> <span class="n">dp</span><span class="o">.</span><span class="n">tracers</span><span class="p">,</span> <span class="nb">id</span><span class="p">(</span><span class="n">dp</span><span class="o">.</span><span class="n">tags</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"window"</span><span class="p">)))</span>
-</span><span id="line-227">        <span class="k">elif</span> <span class="n">dp</span><span class="o">.</span><span class="n">data_type</span> <span class="ow">in</span> <span class="p">(</span><span class="n">CL_BB</span><span class="p">,</span> <span class="n">CL_EB</span><span class="p">):</span>
-</span><span id="line-228">            <span class="k">continue</span>
-</span><span id="line-229">        <span class="k">else</span><span class="p">:</span>
-</span><span id="line-230">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-</span><span id="line-231">                <span class="sa">f</span><span class="s2">"blinding.shear has no prediction for </span><span class="si">{</span><span class="n">dp</span><span class="o">.</span><span class="n">data_type</span><span class="si">}</span><span class="s2">; pass your "</span>
-</span><span id="line-232">                <span class="s2">"own theory"</span>
-</span><span id="line-233">            <span class="p">)</span>
-</span><span id="line-234">        <span class="n">groups</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
-</span><span id="line-235">    <span class="c1"># One call per tracer pair (and window), so ξ+ and ξ− share their Cℓ.</span>
-</span><span id="line-236">    <span class="k">for</span> <span class="p">(</span><span class="n">function</span><span class="p">,</span> <span class="o">*</span><span class="n">_</span><span class="p">),</span> <span class="n">rows</span> <span class="ow">in</span> <span class="n">groups</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-</span><span id="line-237">        <span class="n">out</span><span class="p">[</span><span class="n">rows</span><span class="p">]</span> <span class="o">=</span> <span class="n">function</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">rows</span><span class="p">))</span>
-</span><span id="line-238">    <span class="k">return</span> <span class="n">out</span></div>
+</span><span id="line-220">    <span class="kn">from</span><span class="w"> </span><span class="nn">.sacc_io</span><span class="w"> </span><span class="kn">import</span> <span class="n">CL_BB</span><span class="p">,</span> <span class="n">CL_EB</span><span class="p">,</span> <span class="n">CL_EE</span><span class="p">,</span> <span class="n">XI_MINUS</span><span class="p">,</span> <span class="n">XI_PLUS</span>
+</span><span id="line-221">
+</span><span id="line-222">    <span class="n">out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">mean</span><span class="p">))</span>
+</span><span id="line-223">    <span class="n">groups</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-224">    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">dp</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">):</span>
+</span><span id="line-225">        <span class="k">if</span> <span class="n">dp</span><span class="o">.</span><span class="n">data_type</span> <span class="ow">in</span> <span class="p">(</span><span class="n">XI_PLUS</span><span class="p">,</span> <span class="n">XI_MINUS</span><span class="p">):</span>
+</span><span id="line-226">            <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="n">_xi</span><span class="p">,</span> <span class="n">dp</span><span class="o">.</span><span class="n">tracers</span><span class="p">)</span>
+</span><span id="line-227">        <span class="k">elif</span> <span class="n">dp</span><span class="o">.</span><span class="n">data_type</span> <span class="o">==</span> <span class="n">CL_EE</span><span class="p">:</span>
+</span><span id="line-228">            <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="n">_cl</span><span class="p">,</span> <span class="n">dp</span><span class="o">.</span><span class="n">tracers</span><span class="p">,</span> <span class="nb">id</span><span class="p">(</span><span class="n">dp</span><span class="o">.</span><span class="n">tags</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"window"</span><span class="p">)))</span>
+</span><span id="line-229">        <span class="k">elif</span> <span class="n">dp</span><span class="o">.</span><span class="n">data_type</span> <span class="ow">in</span> <span class="p">(</span><span class="n">CL_BB</span><span class="p">,</span> <span class="n">CL_EB</span><span class="p">):</span>
+</span><span id="line-230">            <span class="k">continue</span>
+</span><span id="line-231">        <span class="k">else</span><span class="p">:</span>
+</span><span id="line-232">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-233">                <span class="sa">f</span><span class="s2">"blinding.shear has no prediction for </span><span class="si">{</span><span class="n">dp</span><span class="o">.</span><span class="n">data_type</span><span class="si">}</span><span class="s2">; pass your "</span>
+</span><span id="line-234">                <span class="s2">"own theory"</span>
+</span><span id="line-235">            <span class="p">)</span>
+</span><span id="line-236">        <span class="n">groups</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+</span><span id="line-237">    <span class="c1"># One call per tracer pair (and window), so ξ+ and ξ− share their Cℓ.</span>
+</span><span id="line-238">    <span class="k">for</span> <span class="p">(</span><span class="n">function</span><span class="p">,</span> <span class="o">*</span><span class="n">_</span><span class="p">),</span> <span class="n">rows</span> <span class="ow">in</span> <span class="n">groups</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="line-239">        <span class="n">out</span><span class="p">[</span><span class="n">rows</span><span class="p">]</span> <span class="o">=</span> <span class="n">function</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">rows</span><span class="p">))</span>
+</span><span id="line-240">    <span class="k">return</span> <span class="n">out</span></div>
 
-</span><span id="line-239">
-</span><span id="line-240">
+</span><span id="line-241">
+</span><span id="line-242">
 <div class="viewcode-block" id="cosmology">
 <a class="viewcode-back" href="../../sp_validation.blinding.html#sp_validation.blinding.cosmology">[docs]</a>
-</span><span id="line-241"><span class="k">def</span><span class="w"> </span><span class="nf">cosmology</span><span class="p">(</span><span class="n">params</span><span class="p">):</span>
-</span><span id="line-242"><span class="w">    </span><span class="sd">"""The ``pyccl.Cosmology`` at ``params``, built once per point.</span>
-</span><span id="line-243">
-</span><span id="line-244"><span class="sd">    Built through ``cs_util.cosmo.get_cosmo`` on the CAMB HMCode2020-feedback</span>
-</span><span id="line-245"><span class="sd">    route the CosmoSIS inference runs, with σ8 = S8/√(Ωm/0.3); ``get_cosmo``</span>
-</span><span id="line-246"><span class="sd">    subtracts CAMB's Ω_ν from ``Omega_m`` for Ω_c.</span>
-</span><span id="line-247"><span class="sd">    """</span>
-</span><span id="line-248">    <span class="k">return</span> <span class="n">_cosmology</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="n">k</span><span class="p">])</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">_COSMOLOGY</span><span class="p">))</span></div>
+</span><span id="line-243"><span class="k">def</span><span class="w"> </span><span class="nf">cosmology</span><span class="p">(</span><span class="n">params</span><span class="p">):</span>
+</span><span id="line-244"><span class="w">    </span><span class="sd">"""The ``pyccl.Cosmology`` at ``params``, built once per point.</span>
+</span><span id="line-245">
+</span><span id="line-246"><span class="sd">    Built through ``cs_util.cosmo.get_cosmo`` on the CAMB HMCode2020-feedback</span>
+</span><span id="line-247"><span class="sd">    route the CosmoSIS inference runs, with σ8 = S8/√(Ωm/0.3); ``get_cosmo``</span>
+</span><span id="line-248"><span class="sd">    subtracts CAMB's Ω_ν from ``Omega_m`` for Ω_c.</span>
+</span><span id="line-249"><span class="sd">    """</span>
+</span><span id="line-250">    <span class="k">return</span> <span class="n">_cosmology</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="n">k</span><span class="p">])</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">_COSMOLOGY</span><span class="p">))</span></div>
 
-</span><span id="line-249">
-</span><span id="line-250">
+</span><span id="line-251">
+</span><span id="line-252">
 <div class="viewcode-block" id="_cosmology">
 <a class="viewcode-back" href="../../sp_validation.blinding.html#sp_validation.blinding._cosmology">[docs]</a>
-</span><span id="line-251"><span class="nd">@functools</span><span class="o">.</span><span class="n">lru_cache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
-</span><span id="line-252"><span class="k">def</span><span class="w"> </span><span class="nf">_cosmology</span><span class="p">(</span><span class="n">point</span><span class="p">):</span>
-</span><span id="line-253">    <span class="kn">from</span><span class="w"> </span><span class="nn">cs_util.cosmo</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_cosmo</span>
-</span><span id="line-254">
-</span><span id="line-255">    <span class="n">p</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">_COSMOLOGY</span><span class="p">,</span> <span class="n">point</span><span class="p">))</span>
-</span><span id="line-256">    <span class="n">cosmo</span> <span class="o">=</span> <span class="n">get_cosmo</span><span class="p">(</span>
-</span><span id="line-257">        <span class="n">Omega_m</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">"Omega_m"</span><span class="p">],</span>
-</span><span id="line-258">        <span class="n">Omega_b</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">"Omega_b"</span><span class="p">],</span>
-</span><span id="line-259">        <span class="n">h</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">"h"</span><span class="p">],</span>
-</span><span id="line-260">        <span class="n">sig8</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">"S8"</span><span class="p">]</span> <span class="o">/</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="s2">"Omega_m"</span><span class="p">]</span> <span class="o">/</span> <span class="mf">0.3</span><span class="p">),</span>
-</span><span id="line-261">        <span class="n">ns</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">"n_s"</span><span class="p">],</span>
-</span><span id="line-262">        <span class="n">w0</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">"w0"</span><span class="p">],</span>
-</span><span id="line-263">        <span class="n">wa</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">"wa"</span><span class="p">],</span>
-</span><span id="line-264">        <span class="n">mnu</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">"m_nu"</span><span class="p">],</span>
-</span><span id="line-265">        <span class="c1"># get_cosmo's default "halofit" ignores extra_params.</span>
-</span><span id="line-266">        <span class="n">matter_power_spectrum</span><span class="o">=</span><span class="s2">"camb"</span><span class="p">,</span>
-</span><span id="line-267">        <span class="n">extra_params</span><span class="o">=</span><span class="p">{</span>
-</span><span id="line-268">            <span class="s2">"camb"</span><span class="p">:</span> <span class="p">{</span>
-</span><span id="line-269">                <span class="s2">"halofit_version"</span><span class="p">:</span> <span class="s2">"mead2020_feedback"</span><span class="p">,</span>
-</span><span id="line-270">                <span class="s2">"HMCode_logT_AGN"</span><span class="p">:</span> <span class="n">p</span><span class="p">[</span><span class="s2">"logT_AGN"</span><span class="p">],</span>
-</span><span id="line-271">            <span class="p">}</span>
-</span><span id="line-272">        <span class="p">},</span>
-</span><span id="line-273">    <span class="p">)</span>
-</span><span id="line-274">    <span class="c1"># CCL's Hankel transform extrapolates C_ℓ to ELL_MAX_CORR; its default</span>
-</span><span id="line-275">    <span class="c1"># (6·10⁴) rings in ξ− below a few arcmin.</span>
-</span><span id="line-276">    <span class="n">cosmo</span><span class="o">.</span><span class="n">cosmo</span><span class="o">.</span><span class="n">spline_params</span><span class="o">.</span><span class="n">ELL_MAX_CORR</span> <span class="o">=</span> <span class="mi">10_000_000</span>
-</span><span id="line-277">    <span class="n">cosmo</span><span class="o">.</span><span class="n">cosmo</span><span class="o">.</span><span class="n">spline_params</span><span class="o">.</span><span class="n">N_ELL_CORR</span> <span class="o">=</span> <span class="mi">5_000</span>
-</span><span id="line-278">    <span class="k">return</span> <span class="n">cosmo</span></div>
+</span><span id="line-253"><span class="nd">@functools</span><span class="o">.</span><span class="n">lru_cache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+</span><span id="line-254"><span class="k">def</span><span class="w"> </span><span class="nf">_cosmology</span><span class="p">(</span><span class="n">point</span><span class="p">):</span>
+</span><span id="line-255">    <span class="kn">from</span><span class="w"> </span><span class="nn">cs_util.cosmo</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_cosmo</span>
+</span><span id="line-256">
+</span><span id="line-257">    <span class="n">p</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">_COSMOLOGY</span><span class="p">,</span> <span class="n">point</span><span class="p">))</span>
+</span><span id="line-258">    <span class="n">cosmo</span> <span class="o">=</span> <span class="n">get_cosmo</span><span class="p">(</span>
+</span><span id="line-259">        <span class="n">Omega_m</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">"Omega_m"</span><span class="p">],</span>
+</span><span id="line-260">        <span class="n">Omega_b</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">"Omega_b"</span><span class="p">],</span>
+</span><span id="line-261">        <span class="n">h</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">"h"</span><span class="p">],</span>
+</span><span id="line-262">        <span class="n">sig8</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">"S8"</span><span class="p">]</span> <span class="o">/</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="s2">"Omega_m"</span><span class="p">]</span> <span class="o">/</span> <span class="mf">0.3</span><span class="p">),</span>
+</span><span id="line-263">        <span class="n">ns</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">"n_s"</span><span class="p">],</span>
+</span><span id="line-264">        <span class="n">w0</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">"w0"</span><span class="p">],</span>
+</span><span id="line-265">        <span class="n">wa</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">"wa"</span><span class="p">],</span>
+</span><span id="line-266">        <span class="n">mnu</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">"m_nu"</span><span class="p">],</span>
+</span><span id="line-267">        <span class="c1"># get_cosmo's default "halofit" ignores extra_params.</span>
+</span><span id="line-268">        <span class="n">matter_power_spectrum</span><span class="o">=</span><span class="s2">"camb"</span><span class="p">,</span>
+</span><span id="line-269">        <span class="n">extra_params</span><span class="o">=</span><span class="p">{</span>
+</span><span id="line-270">            <span class="s2">"camb"</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="line-271">                <span class="s2">"halofit_version"</span><span class="p">:</span> <span class="s2">"mead2020_feedback"</span><span class="p">,</span>
+</span><span id="line-272">                <span class="s2">"HMCode_logT_AGN"</span><span class="p">:</span> <span class="n">p</span><span class="p">[</span><span class="s2">"logT_AGN"</span><span class="p">],</span>
+</span><span id="line-273">            <span class="p">}</span>
+</span><span id="line-274">        <span class="p">},</span>
+</span><span id="line-275">    <span class="p">)</span>
+</span><span id="line-276">    <span class="c1"># CCL's Hankel transform extrapolates C_ℓ to ELL_MAX_CORR; its default</span>
+</span><span id="line-277">    <span class="c1"># (6·10⁴) rings in ξ− below a few arcmin.</span>
+</span><span id="line-278">    <span class="n">cosmo</span><span class="o">.</span><span class="n">cosmo</span><span class="o">.</span><span class="n">spline_params</span><span class="o">.</span><span class="n">ELL_MAX_CORR</span> <span class="o">=</span> <span class="mi">10_000_000</span>
+</span><span id="line-279">    <span class="n">cosmo</span><span class="o">.</span><span class="n">cosmo</span><span class="o">.</span><span class="n">spline_params</span><span class="o">.</span><span class="n">N_ELL_CORR</span> <span class="o">=</span> <span class="mi">5_000</span>
+</span><span id="line-280">    <span class="k">return</span> <span class="n">cosmo</span></div>
 
-</span><span id="line-279">
-</span><span id="line-280">
+</span><span id="line-281">
+</span><span id="line-282">
 <div class="viewcode-block" id="_ell">
 <a class="viewcode-back" href="../../sp_validation.blinding.html#sp_validation.blinding._ell">[docs]</a>
-</span><span id="line-281"><span class="nd">@functools</span><span class="o">.</span><span class="n">cache</span>
-</span><span id="line-282"><span class="k">def</span><span class="w"> </span><span class="nf">_ell</span><span class="p">():</span>
-</span><span id="line-283"><span class="w">    </span><span class="sd">"""The multipoles the ξ± Hankel transform integrates over: every ℓ below 50,</span>
-</span><span id="line-284"><span class="sd">    then 200 log-spaced up to 6·10⁴."""</span>
-</span><span id="line-285">    <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-</span><span id="line-286">
-</span><span id="line-287">    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">50</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">geomspace</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="mf">6e4</span><span class="p">,</span> <span class="mi">200</span><span class="p">)]))</span></div>
-
+</span><span id="line-283"><span class="nd">@functools</span><span class="o">.</span><span class="n">cache</span>
+</span><span id="line-284"><span class="k">def</span><span class="w"> </span><span class="nf">_ell</span><span class="p">():</span>
+</span><span id="line-285"><span class="w">    </span><span class="sd">"""The multipoles the ξ± Hankel transform integrates over: every ℓ below 50,</span>
+</span><span id="line-286"><span class="sd">    then 200 log-spaced up to 6·10⁴."""</span>
+</span><span id="line-287">    <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 </span><span id="line-288">
-</span><span id="line-289">
+</span><span id="line-289">    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">50</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">geomspace</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="mf">6e4</span><span class="p">,</span> <span class="mi">200</span><span class="p">)]))</span></div>
+
+</span><span id="line-290">
+</span><span id="line-291">
 <div class="viewcode-block" id="_lensing">
 <a class="viewcode-back" href="../../sp_validation.blinding.html#sp_validation.blinding._lensing">[docs]</a>
-</span><span id="line-290"><span class="k">def</span><span class="w"> </span><span class="nf">_lensing</span><span class="p">(</span><span class="n">cosmo</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
-</span><span id="line-291">    <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-</span><span id="line-292">    <span class="kn">import</span><span class="w"> </span><span class="nn">pyccl</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ccl</span>
-</span><span id="line-293">
-</span><span id="line-294">    <span class="n">tracer</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">tracers</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
-</span><span id="line-295">    <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">tracer</span><span class="p">,</span> <span class="s2">"nz"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-296">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"tracer </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> has no n(z)"</span><span class="p">)</span>
-</span><span id="line-297">    <span class="n">z</span><span class="p">,</span> <span class="n">n</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">tracer</span><span class="o">.</span><span class="n">z</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">tracer</span><span class="o">.</span><span class="n">nz</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span>
-</span><span id="line-298">    <span class="n">ia</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">params</span><span class="p">[</span><span class="s2">"A_IA"</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">full_like</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">params</span><span class="p">[</span><span class="s2">"A_IA"</span><span class="p">]))</span>
-</span><span id="line-299">    <span class="k">return</span> <span class="n">ccl</span><span class="o">.</span><span class="n">WeakLensingTracer</span><span class="p">(</span><span class="n">cosmo</span><span class="p">,</span> <span class="n">dndz</span><span class="o">=</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span> <span class="n">ia_bias</span><span class="o">=</span><span class="n">ia</span><span class="p">)</span></div>
+</span><span id="line-292"><span class="k">def</span><span class="w"> </span><span class="nf">_lensing</span><span class="p">(</span><span class="n">cosmo</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+</span><span id="line-293">    <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+</span><span id="line-294">    <span class="kn">import</span><span class="w"> </span><span class="nn">pyccl</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ccl</span>
+</span><span id="line-295">
+</span><span id="line-296">    <span class="n">tracer</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">tracers</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+</span><span id="line-297">    <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">tracer</span><span class="p">,</span> <span class="s2">"nz"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-298">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"tracer </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> has no n(z)"</span><span class="p">)</span>
+</span><span id="line-299">    <span class="n">z</span><span class="p">,</span> <span class="n">n</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">tracer</span><span class="o">.</span><span class="n">z</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">tracer</span><span class="o">.</span><span class="n">nz</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span>
+</span><span id="line-300">    <span class="n">ia</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">params</span><span class="p">[</span><span class="s2">"A_IA"</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">full_like</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">params</span><span class="p">[</span><span class="s2">"A_IA"</span><span class="p">]))</span>
+</span><span id="line-301">    <span class="k">return</span> <span class="n">ccl</span><span class="o">.</span><span class="n">WeakLensingTracer</span><span class="p">(</span><span class="n">cosmo</span><span class="p">,</span> <span class="n">dndz</span><span class="o">=</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span> <span class="n">ia_bias</span><span class="o">=</span><span class="n">ia</span><span class="p">)</span></div>
 
-</span><span id="line-300">
-</span><span id="line-301">
+</span><span id="line-302">
+</span><span id="line-303">
 <div class="viewcode-block" id="_shear_cl">
 <a class="viewcode-back" href="../../sp_validation.blinding.html#sp_validation.blinding._shear_cl">[docs]</a>
-</span><span id="line-302"><span class="k">def</span><span class="w"> </span><span class="nf">_shear_cl</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">rows</span><span class="p">,</span> <span class="n">ell</span><span class="p">):</span>
-</span><span id="line-303">    <span class="kn">import</span><span class="w"> </span><span class="nn">pyccl</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ccl</span>
-</span><span id="line-304">
-</span><span id="line-305">    <span class="n">cosmo</span> <span class="o">=</span> <span class="n">cosmology</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
-</span><span id="line-306">    <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="p">(</span><span class="n">_lensing</span><span class="p">(</span><span class="n">cosmo</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">rows</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">tracers</span><span class="p">)</span>
-</span><span id="line-307">    <span class="k">return</span> <span class="n">ccl</span><span class="o">.</span><span class="n">angular_cl</span><span class="p">(</span><span class="n">cosmo</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">ell</span><span class="p">)</span></div>
+</span><span id="line-304"><span class="k">def</span><span class="w"> </span><span class="nf">_shear_cl</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">rows</span><span class="p">,</span> <span class="n">ell</span><span class="p">):</span>
+</span><span id="line-305">    <span class="kn">import</span><span class="w"> </span><span class="nn">pyccl</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ccl</span>
+</span><span id="line-306">
+</span><span id="line-307">    <span class="n">cosmo</span> <span class="o">=</span> <span class="n">cosmology</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+</span><span id="line-308">    <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="p">(</span><span class="n">_lensing</span><span class="p">(</span><span class="n">cosmo</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">rows</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">tracers</span><span class="p">)</span>
+</span><span id="line-309">    <span class="k">return</span> <span class="n">ccl</span><span class="o">.</span><span class="n">angular_cl</span><span class="p">(</span><span class="n">cosmo</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">ell</span><span class="p">)</span></div>
 
-</span><span id="line-308">
-</span><span id="line-309">
+</span><span id="line-310">
+</span><span id="line-311">
 <div class="viewcode-block" id="_xi">
 <a class="viewcode-back" href="../../sp_validation.blinding.html#sp_validation.blinding._xi">[docs]</a>
-</span><span id="line-310"><span class="k">def</span><span class="w"> </span><span class="nf">_xi</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">rows</span><span class="p">):</span>
-</span><span id="line-311"><span class="w">    </span><span class="sd">"""ξ± of one shear pair: Limber Cℓ on :func:`_ell`, then CCL's Hankel transform."""</span>
-</span><span id="line-312">    <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-</span><span id="line-313">    <span class="kn">import</span><span class="w"> </span><span class="nn">pyccl</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ccl</span>
-</span><span id="line-314">
-</span><span id="line-315">    <span class="kn">from</span><span class="w"> </span><span class="nn">.sacc_io</span><span class="w"> </span><span class="kn">import</span> <span class="n">XI_PLUS</span>
+</span><span id="line-312"><span class="k">def</span><span class="w"> </span><span class="nf">_xi</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">rows</span><span class="p">):</span>
+</span><span id="line-313"><span class="w">    </span><span class="sd">"""ξ± of one shear pair: Limber Cℓ on :func:`_ell`, then CCL's Hankel transform."""</span>
+</span><span id="line-314">    <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+</span><span id="line-315">    <span class="kn">import</span><span class="w"> </span><span class="nn">pyccl</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ccl</span>
 </span><span id="line-316">
-</span><span id="line-317">    <span class="n">ell</span> <span class="o">=</span> <span class="n">_ell</span><span class="p">()</span>
-</span><span id="line-318">    <span class="n">cosmo</span><span class="p">,</span> <span class="n">cl</span> <span class="o">=</span> <span class="n">cosmology</span><span class="p">(</span><span class="n">params</span><span class="p">),</span> <span class="n">_shear_cl</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">rows</span><span class="p">,</span> <span class="n">ell</span><span class="p">)</span>
-</span><span id="line-319">    <span class="n">theta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">tags</span><span class="p">[</span><span class="s2">"theta"</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">])</span> <span class="o">/</span> <span class="mf">60.0</span>
-</span><span id="line-320">    <span class="n">xip</span><span class="p">,</span> <span class="n">xim</span> <span class="o">=</span> <span class="p">(</span>
-</span><span id="line-321">        <span class="n">ccl</span><span class="o">.</span><span class="n">correlation</span><span class="p">(</span><span class="n">cosmo</span><span class="p">,</span> <span class="n">ell</span><span class="o">=</span><span class="n">ell</span><span class="p">,</span> <span class="n">C_ell</span><span class="o">=</span><span class="n">cl</span><span class="p">,</span> <span class="n">theta</span><span class="o">=</span><span class="n">theta</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">t</span><span class="p">)</span>
-</span><span id="line-322">        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"GG+"</span><span class="p">,</span> <span class="s2">"GG-"</span><span class="p">)</span>
-</span><span id="line-323">    <span class="p">)</span>
-</span><span id="line-324">    <span class="n">plus</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">data_type</span> <span class="o">==</span> <span class="n">XI_PLUS</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">])</span>
-</span><span id="line-325">    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">plus</span><span class="p">,</span> <span class="n">xip</span><span class="p">,</span> <span class="n">xim</span><span class="p">)</span></div>
+</span><span id="line-317">    <span class="kn">from</span><span class="w"> </span><span class="nn">.sacc_io</span><span class="w"> </span><span class="kn">import</span> <span class="n">XI_PLUS</span>
+</span><span id="line-318">
+</span><span id="line-319">    <span class="n">ell</span> <span class="o">=</span> <span class="n">_ell</span><span class="p">()</span>
+</span><span id="line-320">    <span class="n">cosmo</span><span class="p">,</span> <span class="n">cl</span> <span class="o">=</span> <span class="n">cosmology</span><span class="p">(</span><span class="n">params</span><span class="p">),</span> <span class="n">_shear_cl</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">rows</span><span class="p">,</span> <span class="n">ell</span><span class="p">)</span>
+</span><span id="line-321">    <span class="n">theta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">tags</span><span class="p">[</span><span class="s2">"theta"</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">])</span> <span class="o">/</span> <span class="mf">60.0</span>
+</span><span id="line-322">    <span class="n">xip</span><span class="p">,</span> <span class="n">xim</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="line-323">        <span class="n">ccl</span><span class="o">.</span><span class="n">correlation</span><span class="p">(</span><span class="n">cosmo</span><span class="p">,</span> <span class="n">ell</span><span class="o">=</span><span class="n">ell</span><span class="p">,</span> <span class="n">C_ell</span><span class="o">=</span><span class="n">cl</span><span class="p">,</span> <span class="n">theta</span><span class="o">=</span><span class="n">theta</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">t</span><span class="p">)</span>
+</span><span id="line-324">        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"GG+"</span><span class="p">,</span> <span class="s2">"GG-"</span><span class="p">)</span>
+</span><span id="line-325">    <span class="p">)</span>
+</span><span id="line-326">    <span class="n">plus</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">data_type</span> <span class="o">==</span> <span class="n">XI_PLUS</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">])</span>
+</span><span id="line-327">    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">plus</span><span class="p">,</span> <span class="n">xip</span><span class="p">,</span> <span class="n">xim</span><span class="p">)</span></div>
 
-</span><span id="line-326">
-</span><span id="line-327">
+</span><span id="line-328">
+</span><span id="line-329">
 <div class="viewcode-block" id="_cl">
 <a class="viewcode-back" href="../../sp_validation.blinding.html#sp_validation.blinding._cl">[docs]</a>
-</span><span id="line-328"><span class="k">def</span><span class="w"> </span><span class="nf">_cl</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">rows</span><span class="p">):</span>
-</span><span id="line-329"><span class="w">    </span><span class="sd">"""Cℓ_EE of one shear pair through its bandpower window."""</span>
-</span><span id="line-330">    <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-</span><span id="line-331">
-</span><span id="line-332">    <span class="n">window</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">get_bandpower_windows</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
-</span><span id="line-333">    <span class="n">cl</span> <span class="o">=</span> <span class="n">_shear_cl</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">rows</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">window</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span>
-</span><span id="line-334">    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">window</span><span class="o">.</span><span class="n">weight</span><span class="p">)</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">cl</span></div>
+</span><span id="line-330"><span class="k">def</span><span class="w"> </span><span class="nf">_cl</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">rows</span><span class="p">):</span>
+</span><span id="line-331"><span class="w">    </span><span class="sd">"""Cℓ_EE of one shear pair through its bandpower window."""</span>
+</span><span id="line-332">    <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+</span><span id="line-333">
+</span><span id="line-334">    <span class="n">window</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">get_bandpower_windows</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
+</span><span id="line-335">    <span class="n">cl</span> <span class="o">=</span> <span class="n">_shear_cl</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">rows</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">window</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span>
+</span><span id="line-336">    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">window</span><span class="o">.</span><span class="n">weight</span><span class="p">)</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">cl</span></div>
 
-</span><span id="line-335">
-</span><span id="line-336">
+</span><span id="line-337">
+</span><span id="line-338">
 <div class="viewcode-block" id="main">
 <a class="viewcode-back" href="../../sp_validation.blinding.html#sp_validation.blinding.main">[docs]</a>
-</span><span id="line-337"><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="n">argv</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-</span><span id="line-338">    <span class="kn">import</span><span class="w"> </span><span class="nn">yaml</span>
-</span><span id="line-339">
-</span><span id="line-340">    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">prog</span><span class="o">=</span><span class="s2">"python -m sp_validation.blinding"</span><span class="p">)</span>
-</span><span id="line-341">    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"command"</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="p">(</span><span class="s2">"init"</span><span class="p">,))</span>
-</span><span id="line-342">    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"blind"</span><span class="p">)</span>
-</span><span id="line-343">    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--cat-config"</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">REPO_CAT_CONFIG</span><span class="p">))</span>
-</span><span id="line-344">    <span class="n">a</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">(</span><span class="n">argv</span><span class="p">)</span>
-</span><span id="line-345">    <span class="n">init</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">blind</span><span class="p">,</span> <span class="n">yaml</span><span class="o">.</span><span class="n">safe_load</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">cat_config</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">()))</span>
-</span><span id="line-346">    <span class="k">return</span> <span class="mi">0</span></div>
+</span><span id="line-339"><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="n">argv</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+</span><span id="line-340">    <span class="kn">import</span><span class="w"> </span><span class="nn">yaml</span>
+</span><span id="line-341">
+</span><span id="line-342">    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">prog</span><span class="o">=</span><span class="s2">"python -m sp_validation.blinding"</span><span class="p">)</span>
+</span><span id="line-343">    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"command"</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="p">(</span><span class="s2">"init"</span><span class="p">,))</span>
+</span><span id="line-344">    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"blind"</span><span class="p">)</span>
+</span><span id="line-345">    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--cat-config"</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">REPO_CAT_CONFIG</span><span class="p">))</span>
+</span><span id="line-346">    <span class="n">a</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">(</span><span class="n">argv</span><span class="p">)</span>
+</span><span id="line-347">    <span class="n">init</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">blind</span><span class="p">,</span> <span class="n">yaml</span><span class="o">.</span><span class="n">safe_load</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">cat_config</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">()))</span>
+</span><span id="line-348">    <span class="k">return</span> <span class="mi">0</span></div>
 
-</span><span id="line-347">
-</span><span id="line-348">
-</span><span id="line-349"><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
-</span><span id="line-350">    <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
+</span><span id="line-349">
+</span><span id="line-350">
+</span><span id="line-351"><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
+</span><span id="line-352">    <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
 </span></code></pre></div>
     </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
 </div></div>
