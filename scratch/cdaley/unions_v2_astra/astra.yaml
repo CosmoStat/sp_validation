@@ -1,0 +1,188 @@
+id: unions_v2_tomo_cosmo_val
+version: "0.0.14"
+name: "UNIONS v2 blinded tomographic cosmology validation"
+tags: [unions, weak-lensing, cosmic-shear, tomography, validation, blinded]
+
+description: >-
+  The ShapePipe v2 catalogue is validated for cosmology before anyone looks at
+  cosmology. This analysis measures every two-point statistic of
+  [sp_validation's cosmo_val](#outputs.tomo_sacc) — ξ±, pseudo-Cℓ, COSEBIs,
+  pure-E/B and ρ/τ — per pair of four tomographic bins, on the full-area
+  [v2 shear catalogue](#inputs.shear_catalog_v2) under the adopted
+  [size bound](#decisions.size_bound), with a [working n(z)](#decisions.nz_estimate)
+  that is fit for null tests but not for parameter constraints. Every E-mode
+  vector is concealed at birth by the [blind](#decisions.blinding); B-modes,
+  PSF-leakage statistics and nulls are unblinded by construction. The
+  [report](#outputs.report) leads with which B-mode nulls pass, per bin pair.
+  It is a separate root from the v1.4.6.3 Papers II–IV spec
+  (scratch/cdaley/unions_astra): catalogue version, n(z) and blinding scheme
+  all differ, so none of that spec's defaults carry over.
+
+inputs:
+  - id: shear_catalog_v2
+    type: data
+    label: "ShapePipe v2 full-area shear catalogue (full2 tiles)"
+    source: "/project/def-mjhudson/cdaley/cosmo-val-v2-loop/leakadq-bound9/galaxies.fits"
+    description: >-
+      20,515 frozen v2 tiles (full2 snapshot), metacalibration-calibrated with
+      one global DES weight table fitted on the bound-9 selection.
+      170,617,249 selected galaxies.
+  - id: star_catalogs
+    type: data
+    label: "PSF and star catalogues (full2 snapshot)"
+    source: "/scratch/cdaley/cosmo-val-v2/calib/full2-r425/"
+    description: "stars.hdf5 (ρ statistics) and psf_catalog_ngmix.fits (τ statistics)."
+  - id: dr6_photometry
+    type: data
+    label: "UNIONS DR6 ugriz photometry with BPZ photo-z"
+    source: "candide:/n17data/UNIONS/WL/photometry/UNIONS_DR6/"
+  - id: blind_record
+    type: data
+    label: "The `unions` blind"
+    source: "~/.sp_validation/blinds (Nibi, custodied)"
+    description: "Read only inside the measurement jobs, which conceal E-mode vectors at birth."
+
+decisions:
+  size_bound:
+    label: "Galaxy–PSF relative-size upper bound"
+    tags: [data-selection]
+    rationale: >-
+      Cail's ruling for v2 (sp_validation #448): bound 9 with
+      (FLAGS & ~16) <= 2 keeps large, well-resolved galaxies that bound 3
+      dropped. The bound-3 n(z) biases S8 by ~+2.5% on the bound-9 sample, so
+      the n(z) is rebuilt for this selection.
+    default: bound_9
+    options:
+      bound_9:
+        label: "T/T_PSF < 9, (FLAGS & ~16) <= 2"
+      bound_3:
+        label: "T/T_PSF < 3 (pre-#448)"
+
+  tomographic_binning:
+    label: "Tomographic bin definition"
+    tags: [redshift]
+    rationale: >-
+      Four DR6-BPZ/SOM bins defined on 600 tiles and frozen; each galaxy with
+      complete photometry is assigned by the frozen SOM model. Galaxies without
+      complete photometry (bin 0, ~49% of the weight) stay in the
+      non-tomographic statistics and drop out of the tomographic ones.
+    default: four_bin_dr6_som
+    options:
+      four_bin_dr6_som:
+        label: "Four bins, ⟨z⟩ = 0.286 / 0.448 / 0.612 / 0.929"
+        description: "bins_frozen.yaml + som_assignment_model.npz (v2-tomographic-nz)."
+
+  z_filter:
+    label: "Which z-band photometry counts as complete"
+    tags: [redshift, data-selection]
+    rationale: >-
+      DR6's z2 channel recovers most of the weight canonical z misses (39% →
+      51% of the weight with complete photometry over the full area). A scalar
+      z2 → z map (z2 − 0.1105) biases bin 4's mean by ≲ 0.003.
+    default: z_or_z2
+    options:
+      z_or_z2:
+        label: "Canonical z if detected, else z2 − 0.1105"
+      z_only:
+        label: "Canonical z only"
+
+  nz_estimate:
+    label: "Source n(z)"
+    tags: [redshift]
+    rationale: >-
+      The working n(z) is recomputed with full-area bound-9 weights. It serves
+      validation, SACC and null tests; parameter constraints wait for the
+      photo-z group's official n(z).
+    default: working_dr6_som_full_area
+    options:
+      working_dr6_som_full_area:
+        label: "Working DR6-BPZ/SOM n(z), full-area weights"
+        description: "/project/def-mjhudson/cdaley/tomo-nz-v2-full/products/nz_v2_bound9_full_tomo.txt"
+      official_photoz_group:
+        label: "Photo-z group n(z) (not yet delivered)"
+
+  blinding:
+    label: "Blinding"
+    tags: [stats]
+    rationale: >-
+      One blind per sky for v2: every E-mode data vector is concealed at birth
+      under the `unions` blind (sp_validation.blinding), so no unblinded
+      cosmology exists on disk. B-modes and PSF-leakage statistics carry no
+      cosmology and stay unblinded.
+    default: unions_at_birth
+    options:
+      unions_at_birth:
+        label: "`unions` blind, E concealed at birth"
+
+  covariance:
+    label: "Data-vector covariance"
+    tags: [stats]
+    rationale: >-
+      Analytic OneCovariance (Gaussian + non-Gaussian + SSC) for ξ± on the
+      measured footprint, with the measured per-component σ_e and n_eff of each
+      bin; NaMaster Gaussian covariance for pseudo-Cℓ. Measured pair-count shape
+      noise is implemented for the non-tomographic ξ± only.
+    default: analytic_onecov
+    options:
+      analytic_onecov:
+        label: "OneCovariance (ξ±) and NaMaster (Cℓ), analytic"
+
+  psf_leakage_fit:
+    label: "ρ/τ PSF-leakage estimator"
+    tags: [systematics]
+    rationale: >-
+      sp_validation #454: a joint errors-in-variables ρ/τ fit on the jackknife
+      measurement, with the PSF stars inside dense-object circles masked
+      (config/masks/star_contamination.json).
+    default: eiv_masked
+    options:
+      eiv_masked:
+        label: "Joint EIV fit, star-contamination mask"
+      lsq_unmasked:
+        label: "Least squares, no star mask (pre-#454)"
+
+  bmode_scale_cut:
+    label: "B-mode PTE scale cut"
+    tags: [stats]
+    rationale: "Paper II's real-space cut; harmonic ℓ 300–1600."
+    default: paper_ii
+    options:
+      paper_ii:
+        label: "12′–83′ (ξ±, COSEBIs), ℓ 300–1600 (Cℓ)"
+
+outputs:
+  - id: tomo_catalogue
+    type: data
+    format: fits
+    label: "Run catalogue with TOM_BIN_ID"
+    description: >-
+      The bound-9 selection plus TOM_BIN_ID, its occupied footprint and the
+      survey numbers (area, n_eff and σ_e per bin) the covariance reads.
+    inputs: [shear_catalog_v2, dr6_photometry]
+    decisions: [size_bound, tomographic_binning, z_filter]
+    recipe:
+      command: "sbatch /project/def-mjhudson/cdaley/cosmo-val-v2-tomo/build_catalogue.sbatch"
+      resources:
+        cpus: 2
+        memory: "96GB"
+        time_limit: "01:30:00"
+  - id: tomo_sacc
+    type: data
+    format: sacc
+    label: "Concealed tomographic SACC"
+    description: >-
+      SP_v2.0_tomo.sacc: ξ±, pseudo-Cℓ, COSEBIs, pure-E/B and ρ/τ for every bin
+      pair with their covariances; E concealed. The same DAG writes the
+      non-tomographic SP_v2.0.sacc and the full cosmo_val plot set.
+    inputs: [tomo_catalogue, star_catalogs, blind_record]
+    decisions: [nz_estimate, blinding, covariance, psf_leakage_fit]
+    recipe:
+      command: "sbatch /project/def-mjhudson/cdaley/cosmo-val-v2-tomo/driver.sbatch"
+  - id: report
+    type: report
+    format: html
+    label: "Tomographic cosmo_val report"
+    inputs: [tomo_sacc]
+    decisions: [bmode_scale_cut]
+    recipe:
+      command: "python /project/def-mjhudson/cdaley/cosmo-val-v2-tomo/report/build_report.py"
