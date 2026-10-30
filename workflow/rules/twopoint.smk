@@ -80,6 +80,8 @@ rule xi_onecov:
 
 
 rule rho_tau_stats:
+    input:
+        sky_mask=psf_leakage_sky_mask_input(config),
     output:
         rho_stats=str(COSMO_VAL / "rho_tau_stats/rho_stats_{version}_tomo_bin_all_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
         tau_stats=str(COSMO_VAL / "rho_tau_stats/tau_stats_{version}_tomo_bin_all_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
@@ -98,8 +100,8 @@ rule rho_tau_stats:
         cat_config=CAT_CONFIG,
         output_dir=str(COSMO_VAL),
         b_target=config.get("cosmo_val", {}).get("b_target", 0.01),
-        # Its sky mask applies to the ρ/τ stars and galaxies.
-        psf_leakage=config.get("cosmo_val", {}).get("psf_leakage"),
+        # The psf_leakage sky mask applies to the ρ/τ stars and galaxies.
+        psf_leakage={"sky_mask": psf_leakage_sky_mask(config)},
         blind=lambda w: blind_of(w.version),
     resources:
         mem_mb=64000,
