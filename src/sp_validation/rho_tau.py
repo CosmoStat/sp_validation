@@ -578,11 +578,11 @@ def measure_leakage_jackknife(
         if (first, second) == LEAKAGE_TAU_PAIRS[0]:
             theta = corr.meanr.copy()
         if (first, second) != LEAKAGE_SLOPE_AUTO:
-            fine, _, error = leakage_fit.treecorr_jackknife_rows([corr])
+            fine, error = leakage_fit.treecorr_jackknife_rows([corr])
             max_check_error = max(max_check_error, error)
             rows[npatch_fine].append(fine)
             for n in patch_counts:
-                grouped, _, _ = leakage_fit.treecorr_jackknife_rows(
+                grouped, _ = leakage_fit.treecorr_jackknife_rows(
                     [corr], groups=groups[n], check_rows=False
                 )
                 rows[n].append(grouped)
@@ -636,10 +636,9 @@ def fit_leakage(products, npatch, beta_psf_size=False, cross_term=True):
             template_vector=products["template_vector"],
             template_rows=rows[:, n_joint:],
         )
-    result, _ = leakage_fit.fit_joint_eiv(
+    return leakage_fit.fit_joint_eiv(
         products["vector"], rows[:, :n_joint], cross_term=cross_term, **template
     )
-    return result
 
 
 def get_samples_eiv(

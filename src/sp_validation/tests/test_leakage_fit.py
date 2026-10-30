@@ -3,10 +3,13 @@
 import numpy as np
 import pytest
 import treecorr
+from scipy.optimize import minimize
+from shear_psf_leakage.rho_tau_stat import PSFErrorFit, RhoStat, TauStat
 
 from sp_validation.leakage_fit import (
     fit_joint_eiv,
     keep_sky,
+    residual_covariance_model,
     rho_tau_design,
     systematic_correlation_matrix,
     treecorr_jackknife_rows,
@@ -70,7 +73,7 @@ def test_joint_eiv_is_exact_without_noise(slope):
     vector, rows, template, template_rows, expected = _synthetic_joint(
         seed=204, slope=slope, noise=False
     )
-    result, _ = fit_joint_eiv(
+    result = fit_joint_eiv(
         vector, rows, template_vector=template, template_rows=template_rows
     )
     np.testing.assert_allclose(result["parameters"], expected, rtol=1e-7, atol=1e-9)
@@ -88,7 +91,7 @@ def test_joint_eiv_recovers_parameters_within_errors(slope):
         vector, rows, template, template_rows, expected = _synthetic_joint(
             seed=seed, slope=slope
         )
-        result, _ = fit_joint_eiv(
+        result = fit_joint_eiv(
             vector, rows, template_vector=template, template_rows=template_rows
         )
         pulls.append((np.array(result["parameters"]) - expected) / result["sigma"])
@@ -103,8 +106,8 @@ def test_joint_eiv_recovers_parameters_within_errors(slope):
 def test_joint_eiv_cross_covariance_changes_the_fit():
     """The rho-tau block matters when the delete-one rows correlate."""
     vector, rows, _, _, _ = _synthetic_joint(seed=41)
-    full, _ = fit_joint_eiv(vector, rows, cross_term=True)
-    no_cross, _ = fit_joint_eiv(vector, rows, cross_term=False)
+    full = fit_joint_eiv(vector, rows, cross_term=True)
+    no_cross = fit_joint_eiv(vector, rows, cross_term=False)
     # Without the cross term the propagated rho noise is counted twice in V.
     assert full["chi2"] > 1.3 * no_cross["chi2"]
     assert full["chi2"] - no_cross["chi2"] > 2.0
@@ -152,15 +155,14 @@ def test_treecorr_rows_match_native_match_jackknife_and_grouped_catalogues():
     for left, right in ((first, second), (first, first)):
         fine_corr = treecorr.GGCorrelation(config)
         fine_corr.process(left, right)
-        rows, weights, _ = treecorr_jackknife_rows([fine_corr])
-        native, native_weights = treecorr.build_multi_cov_design_matrix(
+        rows, _ = treecorr_jackknife_rows([fine_corr])
+        native, _ = treecorr.build_multi_cov_design_matrix(
             [fine_corr],
             "jackknife",
             func=lambda correlations: correlations[0].xip,
             cross_patch_weight="match",
         )
         np.testing.assert_allclose(rows, native, rtol=1e-11, atol=1e-14)
-        np.testing.assert_allclose(weights, native_weights, rtol=1e-12)
         centered = rows - rows.mean(axis=0)
         covariance = (len(rows) - 1) / len(rows) * centered.T @ centered
         np.testing.assert_allclose(
@@ -177,10 +179,10 @@ def test_treecorr_rows_match_native_match_jackknife_and_grouped_catalogues():
 
         coarse_corr = treecorr.GGCorrelation(config)
         coarse_corr.process(coarse(left), coarse(right))
-        grouped, grouped_weights, _ = treecorr_jackknife_rows(
+        grouped, _ = treecorr_jackknife_rows(
             [fine_corr], groups=groups, check_rows=False
         )
-        native_grouped, native_group_weights = treecorr.build_multi_cov_design_matrix(
+        native_grouped, _ = treecorr.build_multi_cov_design_matrix(
             [coarse_corr],
             "jackknife",
             func=lambda correlations: correlations[0].xip,
@@ -190,7 +192,6 @@ def test_treecorr_rows_match_native_match_jackknife_and_grouped_catalogues():
             fine_corr.xip, coarse_corr.xip, rtol=1e-11, atol=1e-14
         )
         np.testing.assert_allclose(grouped, native_grouped, rtol=1e-11, atol=1e-14)
-        np.testing.assert_allclose(grouped_weights, native_group_weights, rtol=1e-12)
 
 
 def test_spherical_circle_mask_handles_inside_outside_and_ra_wrap():
@@ -242,3 +243,130 @@ def test_ward_groups_are_contiguous_unions():
     groups = ward_group_map(centres, 7)
     assert groups.shape == (40,)
     np.testing.assert_array_equal(np.unique(groups), np.arange(7))
+
+
+def _linear_map(parameters, nbin):
+    """L with r = L [rho, tau, template] to first order: tau - B(p) rho - b1 t."""
+    alpha_beta_eta = parameters[:3]
+    linear = np.zeros((3 * nbin, (9 + 3 * (len(parameters) > 3)) * nbin))
+    for block, columns in enumerate(((0, 2, 5), (2, 1, 4), (5, 4, 3))):
+        rows = slice(block * nbin, (block + 1) * nbin)
+        for value, rho in zip(alpha_beta_eta, columns):
+            linear[rows, rho * nbin : (rho + 1) * nbin] -= value * np.eye(nbin)
+    linear[:, 6 * nbin : 9 * nbin] = np.eye(3 * nbin)
+    if len(parameters) > 3:
+        linear[:, 9 * nbin :] = -parameters[3] * np.eye(3 * nbin)
+    return linear
+
+
+def _dense_covariance(rows):
+    centred = rows - rows.mean(axis=0)
+    return (len(rows) - 1) / len(rows) * centred.T @ centred
+
+
+def _design_rows(rows, template_rows, nbin):
+    return np.stack(
+        [
+            np.column_stack((rho_tau_design(row[: 6 * nbin].reshape(6, nbin)), t))
+            for row, t in zip(rows, template_rows)
+        ]
+    )
+
+
+def test_residual_covariance_is_the_propagated_joint_jackknife_covariance():
+    """V(p) = L C L^T for the explicit joint covariance of [rho, tau, template]."""
+    rng = np.random.default_rng(0)
+    nbin, npatch = 4, 50
+    rows = rng.normal(size=(npatch, 9 * nbin))
+    template_rows = rng.normal(size=(npatch, 3 * nbin))
+    covariance, derivative = residual_covariance_model(
+        _design_rows(rows, template_rows, nbin), rows[:, 6 * nbin :]
+    )
+    dense = _dense_covariance(np.concatenate((rows, template_rows), axis=1))
+    parameters = np.array([0.02, 1.3, -0.7, 0.5])
+    linear = _linear_map(parameters, nbin)
+    np.testing.assert_allclose(
+        covariance(parameters), linear @ dense @ linear.T, rtol=1e-12, atol=1e-12
+    )
+    step = 1e-6
+    for index in range(4):
+        shift = np.eye(4)[index] * step
+        numeric = (covariance(parameters + shift) - covariance(parameters - shift)) / (
+            2 * step
+        )
+        np.testing.assert_allclose(
+            derivative(parameters)[index], numeric, rtol=1e-6, atol=1e-8
+        )
+
+
+def test_noisy_fit_minimises_the_dense_joint_chi2():
+    """The fit's chi2 and minimum are those of the dense r^T (L C L^T)^-1 r."""
+    nbin = 5
+    vector, rows, template, template_rows, _ = _synthetic_joint(seed=3, slope=True)
+    result = fit_joint_eiv(
+        vector, rows, template_vector=template, template_rows=template_rows
+    )
+    dense = _dense_covariance(np.concatenate((rows, template_rows), axis=1))
+    x = np.column_stack((rho_tau_design(vector[: 6 * nbin].reshape(6, nbin)), template))
+
+    def dense_chi2(parameters):
+        linear = _linear_map(parameters, nbin)
+        residual = vector[6 * nbin :] - x @ parameters
+        return residual @ np.linalg.solve(linear @ dense @ linear.T, residual)
+
+    fitted = np.array(result["parameters"])
+    assert result["chi2_raw"] == pytest.approx(dense_chi2(fitted), rel=1e-10)
+    direct = minimize(
+        dense_chi2,
+        fitted * 1.05,
+        method="Nelder-Mead",
+        options={"xatol": 1e-10, "fatol": 1e-12, "maxiter": 20000},
+    )
+    np.testing.assert_allclose(direct.x, fitted, rtol=1e-4, atol=1e-6)
+    assert result["chi2_raw"] <= direct.fun * (1 + 1e-8)
+    assert result["profile_hessian_positive"] and result["bfgs_success"]
+
+
+def test_unconstrained_parameter_is_flagged_not_given_an_error():
+    """A template column of zeros leaves eta unconstrained: no sigma, flagged."""
+    nbin = 5
+    vector, rows, _, _, _ = _synthetic_joint(seed=8)
+    for target in (vector, *rows):
+        target[3 * nbin : 6 * nbin] = 0.0  # rho3, rho4, rho5: the eta column
+    result = fit_joint_eiv(vector, rows)
+    assert not result["profile_hessian_positive"]
+    assert result["sigma"] == [None, None, None]
+    assert result["parameter_covariance"] is None
+
+
+def _production_fitter(tmp_path, rho):
+    config = dict(min_sep=1.0, max_sep=30.0, nbins=rho.shape[1], sep_units="arcmin")
+    fitter = PSFErrorFit(
+        RhoStat(output=str(tmp_path), treecorr_config=config),
+        TauStat(output=str(tmp_path), treecorr_config=config),
+        str(tmp_path),
+    )
+    stats = {"theta": np.geomspace(1, 30, rho.shape[1])}
+    stats.update({f"rho_{i}_p": rho[i] for i in range(6)})
+    stats.update({f"rho_{i}_m": -2 * rho[i] for i in range(6)})
+    fitter.rho_stat_handler.rho_stats = stats
+    return fitter
+
+
+def test_design_and_xi_sys_match_shear_psf_leakage(tmp_path):
+    """The rho-to-tau design and constant-beta xi_sys are PSFErrorFit's."""
+    rng = np.random.default_rng(11)
+    rho = rng.normal(size=(6, 7))
+    fitter = _production_fitter(tmp_path, rho)
+    a, b = rng.normal(size=3), rng.normal(size=3)
+    np.testing.assert_allclose(
+        rho_tau_design(rho) @ a,
+        fitter.model((*a, 0.0, 0.0), use_eta=True, use_fourth_moment=False),
+        rtol=1e-13,
+    )
+    for sign, part in ((1, "p"), (-2, "m")):
+        np.testing.assert_allclose(
+            xi_psf_sys(a, b, systematic_correlation_matrix(sign * rho))[0],
+            fitter.compute_xi_psf_sys(a, b, p_or_m=part),
+            rtol=1e-12,
+        )

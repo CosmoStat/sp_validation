@@ -40,8 +40,12 @@ def ward_group_map(centres, ngroups):
     patch index to a contiguous coarse group index.
     """
     centres = np.asarray(centres, dtype=float)
-    if centres.ndim != 2 or centres.shape[0] < 3:
+    if centres.ndim != 2:
         raise ValueError("centres must be a two-dimensional array of patch centres")
+    if centres.shape[0] < 3:
+        raise ValueError(
+            f"Ward grouping needs at least 3 fine patch centres, got {centres.shape[0]}"
+        )
     if not 1 < ngroups < len(centres):
         raise ValueError("ngroups must be between 2 and the number of fine patches")
     groups = (
@@ -58,12 +62,12 @@ def treecorr_jackknife_rows(correlations, groups=None, check_rows=True):
     """Build exact TreeCorr '+' match-jackknife rows in O(number of pairs).
 
     When ``groups`` maps fine patch IDs to coarse unions, all fine pairs within
-    one coarse union are treated as internal pairs and deleted together. The
-    returned tuple is ``(rows, weights, max_checked_error)``; the weight vector
-    is diagnostic and matches TreeCorr's patch-weight convention.
+    one coarse union are treated as internal pairs and deleted together.
+    Returns ``(rows, max_checked_error)``: the rows of all correlations side by
+    side, and the largest difference from TreeCorr's own delete-one result over
+    the checked fine rows.
     """
     blocks = []
-    weights = None
     max_error = 0.0
     group_map = None if groups is None else np.asarray(groups, dtype=int)
 
@@ -126,14 +130,11 @@ def treecorr_jackknife_rows(correlations, groups=None, check_rows=True):
                         f"fast jackknife row {patch} differs from TreeCorr by {error}"
                     )
 
-        treecorr_factor = len(corr.getWeight()) / len(corr.weight)
-        block_weights = denominator.sum(axis=1) * treecorr_factor
-        weights = block_weights if weights is None else weights + block_weights
         blocks.append(rows)
 
     if not blocks:
         raise ValueError("at least one TreeCorr correlation is required")
-    return np.concatenate(blocks, axis=1), weights, max_error
+    return np.concatenate(blocks, axis=1), max_error
 
 
 def keep_sky(ra, dec, circles, chunk_size=1_000_000):
@@ -173,14 +174,52 @@ def keep_sky(ra, dec, circles, chunk_size=1_000_000):
     return keep
 
 
+def residual_covariance_model(x_rows, y_rows, cross_term=True):
+    """The covariance V(p) of ``r = y - x p`` for a noisy design ``x``.
+
+    ``x_rows`` (shape ``(npatch, ndata, nparam)``) and ``y_rows`` (shape
+    ``(npatch, ndata)``) are delete-one jackknife rows of ``x`` and ``y``.
+    With the jackknife covariances C_xx, C_xy, C_yy built from them,
+    V(p) = C_yy - (B C_xy + C_yx B^T) + B C_xx B^T, B the linear map
+    x -> x p. ``cross_term=False`` zeroes C_xy. Returns two functions of
+    ``p``: V(p), shape ``(ndata, ndata)``, and dV/dp, shape
+    ``(nparam, ndata, ndata)``.
+    """
+    n_patch = len(x_rows)
+    jk_factor = (n_patch - 1) / n_patch
+    dx = x_rows - x_rows.mean(axis=0)
+    dy = y_rows - y_rows.mean(axis=0)
+    cov_yy = jk_factor * dy.T @ dy
+    cov_xy = jk_factor * np.einsum("nai,nb->iab", dx, dy)
+    if not cross_term:
+        cov_xy.fill(0.0)
+    linear = -cov_xy - cov_xy.transpose(0, 2, 1)
+    cov_xx = jk_factor * np.einsum("nai,nbj->ijab", dx, dx)
+
+    def covariance(parameters):
+        return (
+            cov_yy
+            + np.einsum("i,iab->ab", parameters, linear)
+            + np.einsum("i,j,ijab->ab", parameters, parameters, cov_xx)
+        )
+
+    def derivative(parameters):
+        return (
+            linear
+            + np.einsum("j,ijab->iab", parameters, cov_xx)
+            + np.einsum("j,jiab->iab", parameters, cov_xx)
+        )
+
+    return covariance, derivative
+
+
 def _profile_fit(x, y, x_rows, y_rows, scales, cross_term, start):
     """Fit ``y = x p`` with noisy ``x`` by profiling its latent true values.
 
-    ``x_rows``/``y_rows`` are delete-one jackknife rows of ``x`` and ``y``. With
-    jackknife covariances C_xx, C_xy, C_yy built from them, the residual
-    ``r = y - x p`` has covariance V(p) = C_yy - (B C_xy + C_yx B^T)
-    + B C_xx B^T, B the linear map p -> x p, and the objective is
-    r^T V(p)^-1 r (no log-determinant term).
+    Minimises r^T V(p)^-1 r (no log-determinant term), V from
+    `residual_covariance_model`, by BFGS from several starts. The best trial
+    is the lowest objective among those BFGS reports converged, or among all
+    trials if none did (``bfgs_success`` False).
     """
     n_patch, n_data, n_param = x_rows.shape
     if y_rows.shape != (n_patch, n_data):
@@ -193,56 +232,34 @@ def _profile_fit(x, y, x_rows, y_rows, scales, cross_term, start):
     if hartlap <= 0:
         raise ValueError("Hartlap factor is non-positive for this patch/data count")
 
-    jk_factor = (n_patch - 1) / n_patch
-    dx = x_rows - x_rows.mean(axis=0)
-    dy = y_rows - y_rows.mean(axis=0)
-    cov_yy = jk_factor * dy.T @ dy
-    cov_xy = jk_factor * np.einsum("nai,nb->iab", dx, dy)
-    if not cross_term:
-        cov_xy.fill(0.0)
-    linear = -cov_xy - cov_xy.transpose(0, 2, 1)
-    cov_xx = jk_factor * np.einsum("nai,nbj->ijab", dx, dx)
-
-    def residual_covariance(parameters):
-        return (
-            cov_yy
-            + np.einsum("i,iab->ab", parameters, linear)
-            + np.einsum("i,j,ijab->ab", parameters, parameters, cov_xx)
-        )
+    residual_covariance, covariance_derivative = residual_covariance_model(
+        x_rows, y_rows, cross_term
+    )
 
     def objective(scaled_parameters):
         parameters = scaled_parameters * scales
         residual = y - x @ parameters
-        covariance = residual_covariance(parameters)
-        factor = cho_factor(covariance, lower=True, check_finite=False)
+        factor = cho_factor(
+            residual_covariance(parameters), lower=True, check_finite=False
+        )
         weighted_residual = cho_solve(factor, residual, check_finite=False)
         value = float(residual @ weighted_residual)
-        covariance_derivative = (
-            linear
-            + np.einsum("j,ijab->iab", parameters, cov_xx)
-            + np.einsum("j,jiab->iab", parameters, cov_xx)
-        )
         gradient = (
             -2 * x.T @ weighted_residual
             - np.einsum(
                 "a,iab,b->i",
                 weighted_residual,
-                covariance_derivative,
+                covariance_derivative(parameters),
                 weighted_residual,
             )
         ) * scales
         return value, gradient
 
-    def generalized_least_squares(covariance):
-        factor = cho_factor(covariance, lower=True, check_finite=False)
-        weighted_x = cho_solve(factor, x, check_finite=False)
-        weighted_y = cho_solve(factor, y, check_finite=False)
-        return np.linalg.solve(x.T @ weighted_x, x.T @ weighted_y)
-
-    fixed_start = generalized_least_squares(cov_yy)
-    initial = fixed_start if start is None else np.asarray(start, dtype=float)
-    if initial.shape != (n_param,):
-        raise ValueError("start must contain one value per fit parameter")
+    # Generalised least squares with the template noise ignored.
+    factor = cho_factor(residual_covariance(np.zeros(n_param)), lower=True)
+    fixed_start = np.linalg.lstsq(
+        x.T @ cho_solve(factor, x), x.T @ cho_solve(factor, y), rcond=None
+    )[0]
     starts = [fixed_start, np.zeros(n_param)]
     if n_param >= 3:
         starts.extend(
@@ -252,35 +269,37 @@ def _profile_fit(x, y, x_rows, y_rows, scales, cross_term, start):
             ]
         )
     if start is not None:
-        starts.append(initial)
+        start = np.asarray(start, dtype=float)
+        if start.shape != (n_param,):
+            raise ValueError("start must contain one value per fit parameter")
+        starts.append(start)
     rng = np.random.default_rng(1028)
     starts.extend(fixed_start + rng.normal(size=n_param) * scales for _ in range(3))
 
-    trials = []
-    fitted = []
-    for initial_parameters in starts:
-        optimization = minimize(
+    fitted = [
+        minimize(
             objective,
-            initial_parameters / scales,
+            initial / scales,
             jac=True,
             method="BFGS",
             options={"gtol": 1e-7, "maxiter": 500},
         )
-        fitted.append(optimization)
-        trials.append(
-            {
-                "parameters": (optimization.x * scales).tolist(),
-                "chi2_raw": float(optimization.fun),
-                "success": bool(optimization.success),
-                "gradient_norm": float(np.linalg.norm(optimization.jac)),
-            }
-        )
-    best = min(fitted, key=lambda fit: fit.fun)
+        for initial in starts
+    ]
+    trials = [
+        {
+            "parameters": (fit.x * scales).tolist(),
+            "chi2_raw": float(fit.fun),
+            "success": bool(fit.success),
+            "gradient_norm": float(np.linalg.norm(fit.jac)),
+        }
+        for fit in fitted
+    ]
+    best = min([fit for fit in fitted if fit.success] or fitted, key=lambda f: f.fun)
     parameters = best.x * scales
     covariance = residual_covariance(parameters)
     residual = y - x @ parameters
-    precision_residual = np.linalg.solve(covariance, residual)
-    chi2_raw = float(residual @ precision_residual)
+    chi2_raw = float(residual @ np.linalg.solve(covariance, residual))
     chi2_value = hartlap * chi2_raw
 
     step = 1e-4
@@ -295,15 +314,26 @@ def _profile_fit(x, y, x_rows, y_rows, scales, cross_term, start):
         ]
     )
     hessian = (hessian + hessian.T) / 2
-    eigenvalues = np.linalg.eigvalsh(hessian)
-    parameter_covariance = (
-        2 * np.linalg.inv(hessian) * scales[:, None] * scales[None, :] / hartlap
-    )
+    try:
+        np.linalg.cholesky(hessian)
+        positive = True
+    except np.linalg.LinAlgError:
+        positive = False
+    if positive:
+        parameter_covariance = (
+            2 * np.linalg.inv(hessian) * scales[:, None] * scales[None, :] / hartlap
+        )
+        sigma = np.sqrt(np.diag(parameter_covariance)).tolist()
+        parameter_covariance = parameter_covariance.tolist()
+    else:
+        parameter_covariance = None
+        sigma = [None] * n_param
     dof = n_data - n_param
-    result = {
+    residual_sigma = np.sqrt(np.diag(covariance))
+    return {
         "parameters": parameters.tolist(),
-        "sigma": np.sqrt(np.maximum(np.diag(parameter_covariance), 0)).tolist(),
-        "parameter_covariance": parameter_covariance.tolist(),
+        "sigma": sigma,
+        "parameter_covariance": parameter_covariance,
         "chi2": chi2_value,
         "chi2_raw": chi2_raw,
         "dof": dof,
@@ -311,16 +341,16 @@ def _profile_fit(x, y, x_rows, y_rows, scales, cross_term, start):
         "hartlap": hartlap,
         "residual": residual.tolist(),
         "prediction": (x @ parameters).tolist(),
-        "residual_sigma": np.sqrt(np.diag(covariance)).tolist(),
-        "residual_sigma_normalized": (residual / np.sqrt(np.diag(covariance))).tolist(),
-        "profile_hessian_eigenvalues": eigenvalues.tolist(),
-        "profile_hessian_positive": bool(eigenvalues.min() > 0),
+        "residual_sigma": residual_sigma.tolist(),
+        "residual_sigma_normalized": (residual / residual_sigma).tolist(),
+        "profile_hessian_eigenvalues": np.linalg.eigvalsh(hessian).tolist(),
+        "profile_hessian_positive": positive,
+        "bfgs_success": bool(best.success),
         "gradient_norm": float(np.linalg.norm(best.jac)),
         "trials": trials,
         "objective": "joint noisy-template Gaussian profile; no residual log determinant",
         "cross_term": bool(cross_term),
     }
-    return result, covariance
 
 
 def fit_joint_eiv(
@@ -340,7 +370,7 @@ def fit_joint_eiv(
     contains the same delete-one measurements, one row per patch. Optional
     template columns add measured predictors such as ``u * delta_e``; their
     point values and rows have shapes ``(ndata, ntemplate)`` and
-    ``(npatch, ndata, ntemplate)``. Returns ``(result, residual_covariance)``.
+    ``(npatch, ndata, ntemplate)``.
 
     The objective is the profile chi-squared with the latent true templates
     profiled out, minimised by multi-start BFGS; it has no log-determinant
@@ -349,6 +379,12 @@ def fit_joint_eiv(
     the parameter covariance is twice the inverse numerical profile Hessian,
     divided by the same factor. ``cross_term=False`` zeroes the rho-tau block
     of the covariance.
+
+    Returns a dict with the ``parameters``, their ``sigma`` and
+    ``parameter_covariance`` (None where the profile Hessian is not positive
+    definite, ``profile_hessian_positive`` False), ``chi2``, ``dof``,
+    ``pte``, ``hartlap``, the residuals, and the convergence diagnostics
+    ``bfgs_success`` and ``gradient_norm`` of the chosen trial.
     """
     vector = np.asarray(vector, dtype=float)
     jk_rows = np.asarray(jk_rows, dtype=float)
