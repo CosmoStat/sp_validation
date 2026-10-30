@@ -115,6 +115,7 @@ covariance:
   default_masked: true
   # Non-tomographic real-space shape noise: measured W²/Q includes pair loss.
   # Set analytic to restore OneCovariance's uniform-area approximation.
+  # Tomographic covariances are always analytic.
   shape_noise: pair_counts
 
 cl:
