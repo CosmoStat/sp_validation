@@ -346,6 +346,23 @@ def match_stars2(ra_gal, dec_gal, ra_star, dec_star, thresh=0.0002):
     return ind_stars
 
 
+def _logical_to_bool(array):
+    """Decode FITS logical storage without changing already-boolean arrays."""
+    array = np.asarray(array)
+    if array.dtype.kind == "b":
+        return array
+    if array.dtype.kind in "SU":
+        true, false = (b"T", b"F") if array.dtype.kind == "S" else ("T", "F")
+    else:
+        # Astropy commonly exposes FITS logicals as integer ASCII codes.
+        if np.isin(array, [0, 1]).all():
+            return array.astype(bool)
+        true, false = ord("T"), ord("F")
+    if not np.isin(array, [true, false]).all():
+        raise ValueError("Invalid FITS logical values; expected boolean or T/F")
+    return array == true
+
+
 def write_shape_catalog(
     output_path,
     ra,
@@ -523,6 +540,8 @@ def write_shape_catalog(
         fields = []
         for col, _ in col_info_arr:
             arr = np.asarray(col.array)
+            if str(col.format).endswith("L"):
+                arr = _logical_to_bool(arr)
             if arr.ndim == 2:
                 for idx in range(arr.shape[1]):
                     fields.append((f"{col.name}_{idx}", arr[:, idx]))

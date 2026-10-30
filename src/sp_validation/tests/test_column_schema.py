@@ -46,8 +46,14 @@ NOT_COLUMNS = {
     "R_S21",
     "R_S22",
     "TTYPE{}",
+    # Gaia magnitude-bin keys of the position-shear product
+    "G{}",
     # pseudo-Cl, COSEBIs and SACC products
     "BB",
+    "EE",
+    "BB_BB",
+    "EB_EB",
+    "EE_EE",
     "COSEBIS",
     "COVAR_BB_BB",
     "COVAR_EE_EE",

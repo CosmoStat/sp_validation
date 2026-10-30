@@ -10,25 +10,23 @@
 #                   ├─ integration part ─┬──→ pure_eb (part, npz, figures)
 #                   │                    └──→ cosebis (part, npz, figures)
 #                   └─ reporting part ──→ 2pcf plot, ratio_xi_sys_xi
-#   CosmoCov ξ±, integration grid ──→ pure_eb, cosebis (their covariances)
+#   OneCov ξ±, integration grid ──→ pure_eb, cosebis (their covariances)
 #   catalogue ──→ pseudo_cl (part) ──┬─→ pseudo-Cl figures
-#   CosmoCov ξ±, reporting grid ─────┤
+#   OneCov ξ±, reporting grid ───────┤
 #   rho/tau (part + FITS) ───────────┼─→ summarize_bmodes (reads the products)
 #                                    └─→ assemble_sacc ──→ {version}.sacc
 #
 # The B-mode rules and the ξ± figures are ingests: they work from the parts and
 # the covariance inputs, never from a catalogue, so a blinded part keeps
-# everything downstream blinded. The analytic covariances (CosmoCov ξ±,
+# everything downstream blinded. The analytic covariances (OneCovariance ξ±,
 # NaMaster pseudo-Cℓ) are what assembly puts in the terminal file, replacing
 # the estimates a part was born with.
 #
-# Methods that only emit figures, or whose figure paths derive from internal
-# handler state (rho/tau plots, rho_tau_fits, objectwise leakage, 2pcf
-# overlay), declare a sentinel under COSMO_VAL/snakemake_sentinels so they stay
-# DAG-trackable. Lazy cv state the original code never persists (c1/c2,
-# xi_psf_sys) is either materialized to a small JSON (additive bias) or
-# recomputed in the one rule that needs it — recompute is cheap next to the
-# science it depends on. See workflow/scripts/cv_runner.py.
+# Every compute rule writes a data product. Every figure is declared by a
+# separate rule consuming those products, with no catalogue inputs or lazy cv
+# state. cosmo_val_plots gathers all figures; cosmo_val_all also assembles the
+# analysis products. Cosmological caches contain only already-sealed vectors.
+# Plot modules are explicit inputs so edits to them invalidate figures only.
 
 CV = config["cosmo_val"]
 CV_VERSIONS = config["versions"]
@@ -80,7 +78,7 @@ def cv_pure_eb_figures(version):
 
 
 def _grid_cov(version, grid, gaussian):
-    """CosmoCov-processed ξ± covariance on a named grid's own binning."""
+    """OneCovariance ξ± covariance on a named grid's own binning."""
     binning = XI_GRIDS[grid]
     return covariance_path(
         version,
@@ -93,7 +91,7 @@ def _grid_cov(version, grid, gaussian):
 
 
 def cv_xi_cov_integration(version):
-    """CosmoCov gaussian ξ± covariance on the integration grid.
+    """OneCovariance Gaussian ξ± covariance on the integration grid.
 
     The one analytic covariance both B-mode statistics take: the pure-E/B Monte
     Carlo draws from it and COSEBIs carry it through their kernel. Gaussian
@@ -150,7 +148,7 @@ def cv_pseudo_cl_cov(version):
 
 
 def cv_xi_cov(version):
-    """CosmoCov ξ± covariance on the reporting grid, the terminal file's."""
+    """OneCovariance ξ± covariance on the reporting grid, the terminal file's."""
     return _grid_cov(version, "reporting", "ng")
 
 
@@ -183,6 +181,31 @@ def cv_analysis_sacc(version):
 
 # The CosmologyValidation constructor kwargs every cv_runner rule passes.
 CV_INIT = cv_init_params(config)
+CV_STYLES = {
+    v: {k: catalogue_entry(v).get(k, default) for k, default in
+        (("colour", "C0"), ("marker", "o"), ("label", v))}
+    for v in CV_VERSIONS
+}
+CV_PLOT_CODE = str(REPO_ROOT / "src/sp_validation/cosmo_val/diagnostic_plots.py")
+CV_REGIONS = ("NGC", "SGC", "fullsky")
+CV_PSF_PRODUCTS = [str(COSMO_VAL / f"psf_fit_{v}_{CV_BINNING}.npz") for v in CV_VERSIONS]
+CV_FOOTPRINT_MAPS = [str(COSMO_VAL / f"footprint_{v}.npz") for v in CV_VERSIONS]
+CV_FOOTPRINT_FIGURES = [
+    str(COSMO_VAL / f"footprint_{v}_{r}.png") for v in CV_VERSIONS for r in CV_REGIONS
+]
+
+
+def cv_shear_catalogues():
+    """Catalogue inputs belong to compute rules only."""
+    return [str(Path(catalogue_entry(v)["subdir"]) / catalogue_entry(v)["shear"]["path"])
+            for v in CV_VERSIONS]
+
+
+def cv_tau_covariances():
+    method = CV.get("cov_estimate_method", "th")
+    return [str(COSMO_VAL / "rho_tau_stats" /
+                f"cov_tau_{cv_basename(v, CV_FIDUCIAL)}_{method}.npy")
+            for v in CV_VERSIONS]
 
 
 # ---------------------------------------------------------------------------
@@ -198,29 +221,35 @@ CV_INIT = cv_init_params(config)
 rule cv_plot_rho_stats:
     """Overlay rho statistics across all versions."""
     input:
-        rho=[cv_rho_stats(v, CV_FIDUCIAL) for v in CV_VERSIONS],
+        stats=[cv_rho_stats(v, CV_FIDUCIAL) for v in CV_VERSIONS],
+        covariances=[],
+        plot_code=CV_PLOT_CODE,
     output:
-        sentinel=str(CV_SENTINELS / "plot_rho_stats.done"),
+        figure=str(COSMO_VAL / "rho_tau_stats/rho_stats.png"),
     params:
-        cv_init=CV_INIT,
+        kind="rho",
+        styles=CV_STYLES,
     resources:
         runtime=20,
     script:
-        "../scripts/cv_plot_rho_stats.py"
+        "../scripts/cv_plot_diagnostic.py"
 
 
 rule cv_plot_tau_stats:
     """Overlay tau statistics across all versions."""
     input:
-        tau=[cv_tau_stats(v, CV_FIDUCIAL) for v in CV_VERSIONS],
+        stats=[cv_tau_stats(v, CV_FIDUCIAL) for v in CV_VERSIONS],
+        covariances=cv_tau_covariances(),
+        plot_code=CV_PLOT_CODE,
     output:
-        sentinel=str(CV_SENTINELS / "plot_tau_stats.done"),
+        figure=str(COSMO_VAL / "rho_tau_stats/tau_stats.png"),
     params:
-        cv_init=CV_INIT,
+        kind="tau",
+        styles=CV_STYLES,
     resources:
         runtime=20,
     script:
-        "../scripts/cv_plot_tau_stats.py"
+        "../scripts/cv_plot_diagnostic.py"
 
 
 rule cv_rho_tau_fits:
@@ -228,8 +257,11 @@ rule cv_rho_tau_fits:
     input:
         rho=[cv_rho_stats(v, CV_FIDUCIAL) for v in CV_VERSIONS],
         tau=[cv_tau_stats(v, CV_FIDUCIAL) for v in CV_VERSIONS],
+        covariances=cv_tau_covariances(),
+        rho_covariances=[str(COSMO_VAL / "rho_tau_stats" /
+            f"cov_rho_{cv_basename(v, CV_FIDUCIAL)}_jk.npy") for v in CV_VERSIONS],
     output:
-        sentinel=str(CV_SENTINELS / "rho_tau_fits.done"),
+        products=CV_PSF_PRODUCTS,
     params:
         cv_init=CV_INIT,
     resources:
@@ -244,9 +276,11 @@ rule cv_rho_tau_fits:
 # ---------------------------------------------------------------------------
 
 rule cv_footprints:
-    """Per-version survey footprint maps."""
+    """Cache per-version sparse survey count maps."""
+    input:
+        catalogues=cv_shear_catalogues(),
     output:
-        sentinel=str(CV_SENTINELS / "footprints.done"),
+        maps=CV_FOOTPRINT_MAPS,
     params:
         cv_init=CV_INIT,
     resources:
@@ -257,12 +291,14 @@ rule cv_footprints:
 
 
 rule cv_objectwise_leakage:
-    """Object-wise PSF-leakage regression vs scale-dependent alpha (all versions)."""
+    """Cache object-wise regression and scale-dependent alpha summaries."""
     input:
+        catalogues=cv_shear_catalogues(),
+        covariances=cv_tau_covariances(),
         rho=[cv_rho_stats(v, CV_FIDUCIAL) for v in CV_VERSIONS],
         tau=[cv_tau_stats(v, CV_FIDUCIAL) for v in CV_VERSIONS],
     output:
-        sentinel=str(CV_SENTINELS / "objectwise_leakage.done"),
+        coefficients=str(COSMO_VAL / "leakage_coefficients.json"),
     params:
         cv_init=CV_INIT,
     threads: 12
@@ -274,9 +310,11 @@ rule cv_objectwise_leakage:
 
 
 rule cv_weights:
-    """Weighted shear-weight histograms across versions."""
+    """Cache weighted shear-weight histogram counts and edges."""
+    input:
+        catalogues=cv_shear_catalogues(),
     output:
-        weight_hist=str(COSMO_VAL / "weight_hist.png"),
+        histograms=str(COSMO_VAL / "weight_hist.npz"),
     params:
         cv_init=CV_INIT,
     resources:
@@ -295,6 +333,61 @@ rule cv_weights:
 # standalone diagnostic (the original driver's cv.calculate_additive_bias()
 # call); the xi rule does not depend on it.
 
+rule cv_plot_footprints:
+    input:
+        maps=CV_FOOTPRINT_MAPS,
+        plot_code=CV_PLOT_CODE,
+    output:
+        figures=CV_FOOTPRINT_FIGURES,
+    params:
+        kind="footprints",
+        styles=CV_STYLES,
+        regions=CV_REGIONS,
+    script:
+        "../scripts/cv_plot_diagnostic.py"
+
+
+rule cv_plot_weights:
+    input:
+        histograms=rules.cv_weights.output.histograms,
+        plot_code=CV_PLOT_CODE,
+    output:
+        figure=str(COSMO_VAL / "weight_hist.png"),
+    params:
+        kind="weights",
+        styles=CV_STYLES,
+    script:
+        "../scripts/cv_plot_diagnostic.py"
+
+
+rule cv_plot_objectwise_leakage:
+    input:
+        coefficients=rules.cv_objectwise_leakage.output.coefficients,
+        plot_code=CV_PLOT_CODE,
+    output:
+        figure=str(COSMO_VAL / "leakage_coefficients.png"),
+    params:
+        kind="objectwise_leakage",
+        styles=CV_STYLES,
+    script:
+        "../scripts/cv_plot_diagnostic.py"
+
+
+rule cv_plot_rho_tau_fits:
+    input:
+        products=CV_PSF_PRODUCTS,
+        plot_code=CV_PLOT_CODE,
+    output:
+        contours=str(COSMO_VAL / "rho_tau_stats/contours_tau_stat.png"),
+        samples=str(COSMO_VAL / "rho_tau_stats/xi_psf_sys_tomography_False_sample.png"),
+        summary=str(COSMO_VAL / "rho_tau_stats/xi_psf_sys_tomography_False_mean_and_std.png"),
+    params:
+        kind="rho_tau_fits",
+        styles=CV_STYLES,
+    script:
+        "../scripts/cv_plot_diagnostic.py"
+
+
 rule cv_additive_bias:
     """Weighted mean ellipticity c1/c2 per version (standalone diagnostic)."""
     output:
@@ -308,36 +401,42 @@ rule cv_additive_bias:
         "../scripts/cv_additive_bias.py"
 
 
+# LG: DEPRACATED since we do not plot unblinded data vectors.
 rule cv_plot_2pcf:
-    """n_pairs / xi± overlay across versions, from the reporting parts."""
+    """Xi± overlays across versions, from the sealed reporting parts."""
     input:
         xi=[cv_xi_sacc(v, "reporting") for v in CV_VERSIONS],
+        plot_code=CV_PLOT_CODE,
     output:
-        sentinel=str(CV_SENTINELS / "plot_2pcf.done"),
+        figures=[str(COSMO_VAL / name) for name in
+                 ("xi_pm_tomography_False.png", "xi_pm_theta_tomography_False.png")],
     params:
-        cv_init=CV_INIT,
+        kind="xi",
+        styles=CV_STYLES,
+        blinds=[blind_of(v) for v in CV_VERSIONS],
     resources:
         runtime=20,
     script:
-        "../scripts/cv_plot_2pcf.py"
+        "../scripts/cv_plot_diagnostic.py"
 
-
+# LG: DEPRACATED since we do not plot unblinded data vectors.
 rule cv_ratio_xi_sys_xi:
     """Ratio of PSF systematics (xi_psf_sys) to the cosmic-shear signal (xi+)."""
     input:
         xi=[cv_xi_sacc(v, "reporting") for v in CV_VERSIONS],
-        rho=[cv_rho_stats(v, CV_FIDUCIAL) for v in CV_VERSIONS],
-        tau=[cv_tau_stats(v, CV_FIDUCIAL) for v in CV_VERSIONS],
+        products=CV_PSF_PRODUCTS,
+        plot_code=CV_PLOT_CODE,
     output:
-        ratio=str(COSMO_VAL / "ratio_xi_sys_xi.png"),
+        figure=str(COSMO_VAL / "ratio_xi_sys_xi.png"),
     params:
-        offset=0.1,
-        cv_init=CV_INIT,
+        kind="ratio",
+        styles=CV_STYLES,
+        blinds=[blind_of(v) for v in CV_VERSIONS],
     resources:
         mem_mb=16000,
         runtime=120,
     script:
-        "../scripts/cv_ratio_xi_sys_xi.py"
+        "../scripts/cv_plot_diagnostic.py"
 
 
 # ---------------------------------------------------------------------------
@@ -357,10 +456,12 @@ rule cv_plot_pseudo_cl:
     input:
         pseudo_cl=[cv_pseudo_cl_analysis_sacc(v) for v in CV_VERSIONS],
         pseudo_cl_cov=[cv_pseudo_cl_cov(v) for v in CV_VERSIONS],
+        plot_code=str(REPO_ROOT / "src/sp_validation/cosmo_val/pseudo_cl.py"),
     output:
         **cv_pseudo_cl_figures(),
     params:
         versions=CV_VERSIONS,
+        blinds=[blind_of(v) for v in CV_VERSIONS],
         # Style is per catalogue, so the derived variants take their parent's.
         markers=[CATALOG_CONFIG[base_version(v)]["marker"] for v in CV_VERSIONS],
         colours=[CATALOG_CONFIG[base_version(v)]["colour"] for v in CV_VERSIONS],
@@ -387,9 +488,9 @@ rule cv_pure_eb:
     output:
         npz=cv_pure_eb_npz("{version}"),
         sacc=cv_pure_eb_sacc("{version}"),
-        **cv_pure_eb_figures("{version}"),
     params:
         version="{version}",
+        blind=lambda w: blind_of(w.version),
         min_sep=CV["theta_min"],
         max_sep=CV["theta_max"],
         nbins=CV["nbins"],
@@ -405,7 +506,7 @@ rule cv_pure_eb:
 rule cv_cosebis:
     """COSEBIs E/B decomposition for one version, from its integration-grid part.
 
-    The modes come from the part; the covariance is the CosmoCov ξ± covariance
+    The modes come from the part; the covariance is the OneCovariance ξ± covariance
     on the same grid through the same kernel as the modes.
     """
     input:
@@ -414,9 +515,9 @@ rule cv_cosebis:
     output:
         npz=cv_cosebis_npz("{version}"),
         sacc=cv_cosebis_sacc("{version}"),
-        **cv_cosebis_figures("{version}"),
     params:
         version="{version}",
+        blind=lambda w: blind_of(w.version),
         min_sep=XI_GRIDS["integration"]["min_sep"],
         max_sep=XI_GRIDS["integration"]["max_sep"],
         nbins=XI_GRIDS["integration"]["nbins"],
@@ -429,6 +530,36 @@ rule cv_cosebis:
         runtime=600,
     script:
         "../scripts/cv_cosebis.py"
+
+
+rule cv_plot_pure_eb:
+    """Render pure E/B figures without rerunning the transform."""
+    input:
+        npz=lambda w: cv_pure_eb_npz(w.version),
+        plot_code=str(REPO_ROOT / "src/sp_validation/b_modes.py"),
+    output:
+        **cv_pure_eb_figures("{version}"),
+    params:
+        version="{version}",
+        blind=lambda w: blind_of(w.version),
+        fiducial_scale_cut=CV["fiducial_scale_cut"],
+    script:
+        "../scripts/cv_plot_pure_eb.py"
+
+
+rule cv_plot_cosebis:
+    """Render COSEBIs figures without rerunning the transform."""
+    input:
+        npz=lambda w: cv_cosebis_npz(w.version),
+        plot_code=str(REPO_ROOT / "src/sp_validation/b_modes.py"),
+    output:
+        **cv_cosebis_figures("{version}"),
+    params:
+        version="{version}",
+        blind=lambda w: blind_of(w.version),
+        fiducial_scale_cut=CV["fiducial_scale_cut"],
+    script:
+        "../scripts/cv_plot_cosebis.py"
 
 
 rule cv_summarize_bmodes:
@@ -448,6 +579,7 @@ rule cv_summarize_bmodes:
         summary_json=str(COSMO_VAL / "bmode_summary.json"),
     params:
         versions=CV_VERSIONS,
+        blinds=[blind_of(v) for v in CV_VERSIONS],
         fiducial_scale_cut=CV["fiducial_scale_cut"],
         include_pseudo_cl=CV.get("include_pseudo_cl", False),
     resources:
@@ -517,23 +649,49 @@ rule assemble_sacc_all:
 # Aggregate target: the whole validation suite
 # ---------------------------------------------------------------------------
 
-rule cosmo_val_all:
-    """Run the full CosmologyValidation diagnostic suite."""
+rule cosmo_val_plots:
+    """Render every validation figure from cached data products."""
     input:
-        # PSF diagnostics
-        str(CV_SENTINELS / "footprints.done"),
-        str(CV_SENTINELS / "plot_rho_stats.done"),
-        str(CV_SENTINELS / "plot_tau_stats.done"),
-        str(CV_SENTINELS / "rho_tau_fits.done"),
-        # Shear diagnostics
-        str(CV_SENTINELS / "objectwise_leakage.done"),
-        str(COSMO_VAL / "weight_hist.png"),
-        str(COSMO_VAL / "additive_bias.json"),
-        # Two-point
-        str(CV_SENTINELS / "plot_2pcf.done"),
-        str(COSMO_VAL / "ratio_xi_sys_xi.png"),
-        # B-modes
-        str(COSMO_VAL / "bmode_summary.json"),
+        rules.cv_plot_rho_stats.output,
+        rules.cv_plot_tau_stats.output,
+        rules.cv_plot_rho_tau_fits.output,
+        rules.cv_plot_footprints.output,
+        rules.cv_plot_objectwise_leakage.output,
+        rules.cv_plot_weights.output,
+        rules.cv_plot_2pcf.output,
+        rules.cv_ratio_xi_sys_xi.output,
+        [path for v in CV_VERSIONS for path in cv_pure_eb_figures(v).values()],
+        [path for v in CV_VERSIONS for path in cv_cosebis_figures(v).values()],
         list(cv_pseudo_cl_figures().values()) if CV.get("include_pseudo_cl", False) else [],
-        # Terminal analysis file: the assembled {version}.sacc per version
+        [cv_xi_cov(v).removesuffix(".dat") + "_corr_plot.pdf" for v in CV_VERSIONS],
+        [cv_xi_cov_integration(v).removesuffix(".dat") + "_corr_plot.pdf" for v in CV_VERSIONS],
+        # Direct dependencies are intentional. With --allowed-rules Snakemake
+        # can prune a plot whose figure exists even when its cache is missing.
+        # The aggregate must validate caches independently of those plot jobs.
+        caches=[
+            *rules.cv_plot_rho_stats.input.stats,
+            *rules.cv_plot_tau_stats.input.stats,
+            *rules.cv_plot_tau_stats.input.covariances,
+            *rules.cv_plot_rho_tau_fits.input.products,
+            *rules.cv_plot_footprints.input.maps,
+            rules.cv_plot_objectwise_leakage.input.coefficients,
+            rules.cv_plot_weights.input.histograms,
+            *rules.cv_plot_2pcf.input.xi,
+            *[cv_pure_eb_npz(v) for v in CV_VERSIONS],
+            *[cv_cosebis_npz(v) for v in CV_VERSIONS],
+            *[cv_xi_cov(v) for v in CV_VERSIONS],
+            *[cv_xi_cov_integration(v) for v in CV_VERSIONS],
+            *([cv_pseudo_cl_analysis_sacc(v) for v in CV_VERSIONS]
+              if CV.get("include_pseudo_cl", False) else []),
+            *([cv_pseudo_cl_cov(v) for v in CV_VERSIONS]
+              if CV.get("include_pseudo_cl", False) else []),
+        ],
+
+
+rule cosmo_val_all:
+    """Run the full suite, including every plot-only rule."""
+    input:
+        rules.cosmo_val_plots.input,
+        str(COSMO_VAL / "additive_bias.json"),
+        str(COSMO_VAL / "bmode_summary.json"),
         [cv_analysis_sacc(v) for v in CV_VERSIONS],

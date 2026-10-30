@@ -7,7 +7,7 @@ Each part is a single-statistic SACC; they load in CANONICAL order and are
 rebuilt into one Sacc with a single ``BlockDiagonalCovariance``.
 
 Every part must carry a covariance block. ξ± reporting and pseudo-Cℓ take
-theirs from the analytic inputs — the CosmoCov ``.txt`` (``--xi-cov``) and the
+theirs from the analytic inputs — the OneCovariance ξ± matrix (``--xi-cov``) and the
 NaMaster covariance FITS (``--pseudo-cl-cov``) — which replace any estimate the
 part was born with; the pseudo-Cℓ cross-spectrum blocks (EE↔BB, …) are dropped,
 matching what the B-mode PTE reads today.
@@ -19,7 +19,10 @@ import numpy as np
 
 from sp_validation import sacc_io
 from sp_validation.blinding import Blind
-from sp_validation.cosmo_val.sacc_writers import assemble_analysis_sacc
+from sp_validation.cosmo_val.sacc_writers import (
+    assemble_analysis_sacc,
+    onecov_xi_covariance,
+)
 
 # NaMaster iNKA covariance FITS: per-spectrum HDU names, in SACC insertion order.
 _CL_HDUS = ("COVAR_EE_EE", "COVAR_BB_BB", "COVAR_EB_EB")
@@ -74,7 +77,7 @@ def _attach_cov(part, name, xi_cov, pseudo_cl_cov):
             f"--{_INJECTED[name].replace('_', '-')}, which was not supplied"
         )
     block = (
-        np.loadtxt(supplied)
+        onecov_xi_covariance(part, sacc_io.read_onecov_matrix(supplied))
         if name == "xi_reporting"
         else _pseudo_cl_cov_block(supplied)
     )
@@ -136,7 +139,8 @@ def assemble_sacc(
         path = part_paths.get(name)
         if path is None:
             continue
-        parts.append(_attach_cov(sacc_io.load(path), name, xi_cov, pseudo_cl_cov))
+        part = sacc_io.load(path, blind=blind)
+        parts.append(_attach_cov(part, name, xi_cov, pseudo_cl_cov))
     if not parts:
         raise ValueError(f"no parts found for {version}: {part_paths}")
     s = sacc_io.save(
@@ -178,7 +182,9 @@ def _from_cli(argv=None):
         ap.add_argument(
             f"--{name.replace('_', '-')}", default=None, help=f"{name} part"
         )
-    ap.add_argument("--xi-cov", default=None, help="CosmoCov ξ covariance .txt")
+    ap.add_argument(
+        "--xi-cov", default=None, help="OneCovariance ξ± covariance matrix (.dat)"
+    )
     ap.add_argument(
         "--pseudo-cl-cov", default=None, help="NaMaster pseudo-Cℓ covariance FITS"
     )

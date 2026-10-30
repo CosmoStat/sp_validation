@@ -87,7 +87,7 @@ itself — no rule writes its own `apptainer exec` call. The image name comes
 from the `container:` directive in `workflow/Snakefile` (or a rule's own
 override, e.g. the image-sims `SIF`).
 
-A few rules shell out to a host toolchain (CosmoCov, ImageMagick) and keep
+A few rules shell out to a host toolchain (OneCovariance, ImageMagick) and keep
 `container: None`; each says why in its own docstring.
 
 The slurm executor submits with `--export=ALL`, so every job starts with the
@@ -146,10 +146,10 @@ halves of one commit, split.
 The catalogue config is the launched checkout's `cosmo_val/cat_config.yaml`.
 `COSMO_VAL` defaults to the launched checkout's `cosmo_val/output`, so writing
 into another checkout's products means naming it; `COSMO_INFERENCE` defaults to
-the shared candide tree, which holds the CosmoCov covariances and only its owner
+the shared candide tree, which holds the covariances and only its owner
 can write. Anyone else launches with `COSMO_INFERENCE=<tree>` of their own,
 holding a link to the shared tree's `data/mask/` (the one input the covariance
-rules take from it); the CosmoCov chain then runs there:
+rules take from it); the OneCovariance rules then run there:
 
 ```bash
 mkdir -p <tree>/data
@@ -159,6 +159,39 @@ ln -s /n17data/cdaley/unions/code/sp_validation/cosmo_inference/data/mask <tree>
 **Caveat:** `rerun-triggers: code` watches rule bodies and `script:` files, not
 `src/`. Editing a module under `src/` does not by itself mark outputs stale —
 force with `-F` or `--forcerun <rule>`.
+The `cosmo_val` plot rules are an exception: their plotting modules are explicit inputs, so editing those modules invalidates figures without invalidating computations.
+
+### Re-render the cosmo_val figures from cache
+
+`cosmo_val_all` runs the computations and every companion plot.
+`cosmo_val_plots` gathers only figures, including the reporting/integration covariance correlation plots.
+Plots read the sealed SACC/NPZ products, sparse footprint counts, weight histograms and PSF/leakage summaries; no plot rule reads a catalogue or fits a model.
+Every figure is a declared output and is overwritten when its plot rule runs.
+
+After a full run, use the same config and output roots to render changed plots:
+
+```bash
+snakemake --profile workflow/profiles/default -s workflow/Snakefile \
+    --configfile <run.yaml> --cores 4 cosmo_val_plots
+```
+
+To force every figure to be restyled, while **refusing to run any computation even if a cache is missing**, restrict the allowed rules:
+
+```bash
+plot_rules=(cosmo_val_plots cv_plot_rho_stats cv_plot_tau_stats \
+    cv_plot_rho_tau_fits cv_plot_footprints cv_plot_objectwise_leakage \
+    cv_plot_weights cv_plot_2pcf cv_ratio_xi_sys_xi cv_plot_pure_eb \
+    cv_plot_cosebis cv_plot_pseudo_cl covariance_plot)
+snakemake --profile workflow/profiles/default -s workflow/Snakefile \
+    --configfile <run.yaml> --cores 4 --forceall \
+    --allowed-rules "${plot_rules[@]}" -- cosmo_val_plots
+```
+
+Run this on an allocation, using the host's container/bind settings as usual.
+Without the rule restriction, requesting a missing data product can schedule its producer.
+A pre-split run needs one compute pass to create the new caches: old pure-E/B NPZs lack the comparison vectors and old COSEBIs NPZs contain only the fiducial cut.
+That pass derives cosmological products only from the already-sealed integration SACC; no unsealed vector is added for plotting.
+The objectwise rule now calls the spin-2 regression directly rather than the external all-in-one exploratory driver, so it produces the suite's leakage-coefficient comparison rather than unrelated 1D-fit/scatter side effects.
 
 To reproduce a run from the image alone, opt out:
 

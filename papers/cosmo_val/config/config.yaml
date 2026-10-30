@@ -151,4 +151,4 @@ glass_mocks:
   seed_range: [1, 350]
 
 tools:
-  cosmocov_executable: "/n23data1/n06data/lgoh/scratch/UNIONS/CosmoCov/covs/cov"
+  onecov_executable: "/home/guerrini/OneCovariance/covariance.py"

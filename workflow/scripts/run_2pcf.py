@@ -10,12 +10,14 @@ orchestration:
         --ver SP_v1.4.6.3_leak_corr \
         --min-sep 1.0 --max-sep 250.0 --nbins 20 --npatch 1 \
         --cat-config /path/to/cosmo_val/cat_config.yaml \
-        --out <output_dir>
+        --out <output_dir> [--tomo]
 
 The measurement is binning-agnostic: the reporting and the fine integration
 grids are the same compute with different ``--min-sep/--max-sep/--nbins``. The
-non-tomographic ``("all", "all")`` ξ± is born as a SACC part, named by its
-binning, tagged with its ``--grid`` and sealed under the catalogue's blind by
+ξ± — the non-tomographic ``("all", "all")`` pair, or with ``--tomo`` every
+tomographic bin pair with one n(z) tracer per bin — is born as a SACC part,
+named by its binning (``_tomo`` appended for tomography), tagged with its
+``--grid`` and sealed under the catalogue's blind by
 ``CosmologyValidation.calculate_2pcf_version``. The part carries the covariance
 the measurement estimated: the dense jackknife covariance when it had patches,
 the shot-noise ``varxip``/``varxim`` diagonal when it had none.
@@ -41,6 +43,7 @@ def run_2pcf(
     sacc_out=None,
     grid="reporting",
     b_target=0.01,
+    compute_tomography=False,
 ):
     """Measure ξ±(θ) for ``ver`` and write its sealed SACC part.
 
@@ -51,6 +54,8 @@ def run_2pcf(
     ``cat_config['paths']['output']``. ``sacc_out`` is the exact destination for
     the part (the Snakemake-declared output); it defaults to a binning-derived
     name under the resolved output directory for the CLI path.
+    ``compute_tomography`` measures every tomographic bin pair instead of
+    ``("all", "all")``.
 
     Returns
     -------
@@ -66,18 +71,21 @@ def run_2pcf(
     )
     out_path = sacc_out or os.path.join(
         output_dir or cv.cc["paths"]["output"],
-        f"{ver}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc",
+        f"{ver}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}"
+        f"{'_tomo' if compute_tomography else ''}.sacc",
     )
     cv.calculate_2pcf_version(
         ver,
         npatch=npatch,
+        compute_tomography=compute_tomography,
         grid=grid,
         out=out_path,
         min_sep=min_sep,
         max_sep=max_sep,
         nbins=nbins,
     )
-    part = cv.xi_parts[ver, grid]
+    parts = cv.xi_tomo_parts if compute_tomography else cv.xi_parts
+    part = parts[ver, grid]
     print(f"Wrote {grid} ξ± SACC part: {out_path}")
     return part
 
@@ -95,6 +103,7 @@ def _from_snakemake(smk):
         grid=p.get("grid", "reporting"),
         b_target=p.get("b_target", 0.01),
         sacc_out=smk.output["sacc"],
+        compute_tomography=bool(p.get("compute_tomography", False)),
     )
 
 
@@ -127,6 +136,11 @@ def _from_cli(argv=None):
     ap.add_argument(
         "--b-target", type=float, default=0.01, help="Means-pass bin tolerance target"
     )
+    ap.add_argument(
+        "--tomo",
+        action="store_true",
+        help="Measure every tomographic bin pair instead of the whole sample",
+    )
     a = ap.parse_args(argv)
     run_2pcf(
         ver=a.ver,
@@ -138,6 +152,7 @@ def _from_cli(argv=None):
         output_dir=a.out,
         grid=a.grid,
         b_target=a.b_target,
+        compute_tomography=a.tomo,
     )
 
 

@@ -477,8 +477,10 @@ class CosmologyValidation(
         # B-mode results storage for summarize_bmodes()
         self._pure_eb_results = {}
         self._cosebis_results = {}
-        # The sealed ξ± parts calculate_2pcf_version made, by (version, grid).
+        # The sealed ξ± parts calculate_2pcf_version made, by (version, grid):
+        # the ("all", "all") pair, and every tomographic bin pair.
         self.xi_parts = {}
+        self.xi_tomo_parts = {}
 
     def _output_path(self, *parts):
         """Absolute path under the catalog config's output directory.
@@ -490,13 +492,18 @@ class CosmologyValidation(
         """
         return os.path.abspath(os.path.join(self.cc["paths"]["output"], *parts))
 
-    def sacc_nz(self, version):
-        """Single-bin ``nz`` mapping ``{0: (z, nz)}`` for the SACC writers.
+    def sacc_nz(self, version, tomography=False):
+        """``nz`` mapping ``{i: (z, nz_i)}`` for the SACC writers.
 
-        The SACC parts carry the ("all", "all") pair only, so the whole-survey
-        n(z) of :meth:`get_redshift` is bin 0.
+        Non-tomographic parts carry the ("all", "all") pair only, so the
+        whole-survey n(z) of :meth:`get_redshift` is bin 0. With
+        ``tomography``, bin ``i`` is column ``i + 1`` of the ``redshift_path``
+        file (column 0 is z), one per tomographic bin.
         """
-        return {0: tuple(self.get_redshift(version))}
+        if not tomography:
+            return {0: tuple(self.get_redshift(version))}
+        z, dndz = self.read_redshift_distribution(version, is_tomography=True)
+        return {i: (z, dndz[:, i]) for i in range(dndz.shape[1])}
 
     def sacc_metadata(self, version):
         """Provenance metadata stored on every SACC part for ``version``."""
@@ -607,17 +614,19 @@ class CosmologyValidation(
     def _refuse_blinded_tomography(self, version):
         """Refuse to measure tomographic shear signal on a blinded catalogue.
 
-        Only the ``("all", "all")`` pair is born as a SACC part, whose tracer
-        carries the n(z) the blind's theory shifts it by. The tomographic ξ±,
-        ⟨M_ap²⟩ and pseudo-Cℓ are TreeCorr objects and FITS tables with no
-        per-bin tracer, so on a blinded catalogue they would hold true values.
+        A statistic is blinded by sealing its SACC part, whose tracers carry
+        the n(z) the blind's theory shifts it by. ξ± (and ⟨M_ap²⟩, derived from
+        it) is born as such a part for every tomographic bin pair; the
+        tomographic pseudo-Cℓ are still FITS tables with no per-bin tracer, so
+        on a blinded catalogue they would hold true values.
         """
         blind = self.blind(version)
         if blind.name != blinding.NONE.name:
             raise blinding.BlindingError(
                 f"{version} is blinded under {blind.name}, and blinding covers "
-                "its non-tomographic pair only; tomographic shear statistics are "
-                "measured on public (`blind: none`) catalogues"
+                "its tomographic ξ± and non-tomographic statistics only; other "
+                "tomographic shear statistics are measured on public "
+                "(`blind: none`) catalogues"
             )
 
     def basename(

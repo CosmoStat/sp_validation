@@ -27,7 +27,7 @@ def grids(toy):
 def test_assemble_resolves(toy):
     """Each terminal file gathers every part and the analytic covariances.
 
-    The ξ± block takes the CosmoCov covariance on the reporting grid, and the
+    The ξ± block takes the OneCovariance covariance on the reporting grid, and the
     harmonic block is the part on the fiducial harmonic binning with the
     NaMaster covariance of that same binning.
     """
