@@ -57,7 +57,11 @@ def onecov_nz_path(version, tomo_suffix=""):
 
 
 rule nz_bin_sum:
-    """Whole-sample n(z) of a multi-bin catalogue: z and the sum of its bins."""
+    """Whole-sample n(z) of a multi-bin catalogue: z and the sum of its bins.
+
+    The bins' columns must carry their relative weights (integrals summing to
+    one, as the shear-weight fractions); a file whose every column integrates
+    to one would weight the bins equally, and is refused."""
     input:
         lambda w: redshift_path(w.version),
     output:
@@ -66,6 +70,13 @@ rule nz_bin_sum:
         import numpy as np
 
         table = np.loadtxt(input[0])
+        trapezoid = getattr(np, "trapezoid", None) or np.trapz
+        integrals = trapezoid(table[:, 1:], table[:, 0], axis=0)
+        if np.allclose(integrals, 1.0, atol=0.02):
+            raise ValueError(
+                f"{input[0]}: every bin's n(z) integrates to 1, so their sum "
+                "would weight the bins equally; give each bin its weight fraction"
+            )
         np.savetxt(
             output[0],
             np.column_stack([table[:, 0], table[:, 1:].sum(axis=1)]),
