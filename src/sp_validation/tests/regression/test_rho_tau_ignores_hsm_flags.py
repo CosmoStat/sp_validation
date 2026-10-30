@@ -89,7 +89,6 @@ class _Validation(PSFSystematicsMixin):
         self.cov_estimate_method = "sim"
         self.compute_cov_rho = False
         self.npatch = 4
-        self.psf_leakage = {"sky_mask": None}
 
     def basename(self, version, tomo_bin_a="all", **kwargs):
         return f"{version}_{tomo_bin_a}"

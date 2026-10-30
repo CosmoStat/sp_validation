@@ -64,8 +64,6 @@ cosmo_val:
     fiducial_npatch: 400
     # beta(T_PSF) = beta0 + beta1 (T_PSF / <T_PSF> - 1)
     beta_psf_size: false
-    # sky circles excised from stars and galaxies in every rho/tau measurement
-    sky_mask: config/masks/star_contamination.json
 
   # Fiducial scale cut (arcmin) for B-mode PTE extraction. Paper II: [12, 83].
   fiducial_scale_cut: [12, 83]

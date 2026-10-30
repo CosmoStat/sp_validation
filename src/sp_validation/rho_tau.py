@@ -447,14 +447,12 @@ def leakage_cache_key(
     npatch_fine,
     patch_counts,
     beta_psf_size,
-    sky_mask,
     mask_star=None,
     mask_gal=None,
 ):
     """The settings and row selections that identify a joint leakage measurement.
 
-    ``sky_mask`` is the list of circles applied to stars and galaxies, or
-    None; ``mask_star``/``mask_gal`` are the star and galaxy selections the
+    ``mask_star``/``mask_gal`` are the star and galaxy selections the
     measurement uses, recorded as `selection_digest`s. TreeCorr settings the
     measurement overrides (``var_method``, ``cross_patch_weight``) or that
     only change round-off (``num_threads``) are left out.
@@ -469,7 +467,6 @@ def leakage_cache_key(
         "npatch_fine": int(npatch_fine),
         "patch_counts": sorted(int(n) for n in patch_counts),
         "beta_psf_size": bool(beta_psf_size),
-        "sky_mask": sky_mask,
         "selection": {
             "stars": selection_digest(mask_star),
             "stars_galaxies": selection_digest(mask_star, mask_gal),
@@ -502,13 +499,12 @@ def measure_leakage_jackknife(
 
     ``key`` (from `leakage_cache_key` with these masks) holds the settings:
     TreeCorr configuration, ``npatch_fine``, ``patch_counts``,
-    ``beta_psf_size`` and the sky-mask circles, which ``mask_star``/
-    ``mask_gal`` must already apply. Stars and galaxies are built into
-    TreeCorr catalogues exactly as `get_rho_tau` builds them
-    (``shear_psf_leakage`` field definitions; galaxy ellipticities are
-    centred on the weighted mean of the full, unmasked shear catalogue before
-    ``mask_gal`` selects rows), sharing one set of
-    ``npatch_fine`` k-means patch centres found on the selected stars. One
+    ``beta_psf_size``, and the selections of ``mask_star``/``mask_gal``.
+    Stars and galaxies are built into TreeCorr catalogues exactly as
+    `get_rho_tau` builds them (``shear_psf_leakage`` field definitions;
+    galaxy ellipticities are centred on the weighted mean of the full,
+    unmasked shear catalogue before ``mask_gal`` selects rows), sharing one
+    set of ``npatch_fine`` k-means patch centres found on the selected stars. One
     pass of GG correlations, with 'match' cross-patch weights, measures
     rho0..rho5 and tau0, tau2, tau5 and, with ``beta_psf_size``, the
     correlations of u de (u = T_PSF / <T_PSF> - 1 over the selected stars)

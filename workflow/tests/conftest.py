@@ -9,11 +9,11 @@ These tests run under the host launcher, never inside the image::
 parse with the standard library and Snakemake alone -- the condition a host
 Snakemake is in. The ``candide`` tests need candide itself; CI deselects them.
 
-The ``toy`` fixture is a disposable checkout: copies of ``workflow/``,
-``papers/cosmo_val/`` and ``config/masks/``, this checkout's ``src/``
-symlinked in, a blinded and an undeclared catalogue (each with a star
-catalogue), stand-ins for the OneCovariance covariances (their
-inputs live on candide), and both output roots in tmp. The host never opens a
+The ``toy`` fixture is a disposable checkout: copies of ``workflow/`` and
+``papers/cosmo_val/``, this checkout's ``src/`` symlinked in, a blinded and an
+undeclared catalogue (each with a star catalogue), stand-ins for the
+OneCovariance covariances (their inputs live on candide), and both output
+roots in tmp. The host never opens a
 blind, so there is no blind record.
 """
 
@@ -178,7 +178,6 @@ def toy(tmp_path_factory):
     shutil.copytree(
         REPO / "papers" / "cosmo_val", root / "papers" / "cosmo_val", ignore=skip
     )
-    shutil.copytree(REPO / "config" / "masks", root / "config" / "masks")
     (root / "src").symlink_to(REPO / "src")
 
     (root / "data").mkdir()

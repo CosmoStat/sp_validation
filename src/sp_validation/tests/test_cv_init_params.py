@@ -75,17 +75,3 @@ def test_cv_basename_is_the_class_basename():
     assert _load_common().cv_basename(
         "SP_v1.4.6.3", fiducial
     ) == CosmologyValidation.basename(cv, "SP_v1.4.6.3")
-
-
-def test_workflow_sky_mask_default_is_the_class_default():
-    """Rules list the sky-mask file as input; unset, it is the class default."""
-    from sp_validation.cosmo_val.psf_systematics import PSF_LEAKAGE_DEFAULTS
-
-    common = _load_common()
-    assert common.PSF_LEAKAGE_SKY_MASK == PSF_LEAKAGE_DEFAULTS["sky_mask"]
-    assert common.psf_leakage_sky_mask({}) == PSF_LEAKAGE_DEFAULTS["sky_mask"]
-    (path,) = common.psf_leakage_sky_mask_input({})
-    assert Path(path) == REPO / PSF_LEAKAGE_DEFAULTS["sky_mask"]
-    assert Path(path).exists()
-    off = {"cosmo_val": {"psf_leakage": {"sky_mask": None}}}
-    assert common.psf_leakage_sky_mask_input(off) == []

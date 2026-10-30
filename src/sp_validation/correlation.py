@@ -12,7 +12,7 @@ def selection_digest(*masks):
     """Digest of row selections; ``None`` stands for every row.
 
     Recorded beside a cached measurement so a product made from different rows,
-    e.g. before or after a sky mask, is never reused.
+    e.g. another star flag or tomographic bin, is never reused.
     """
     digest = hashlib.sha1()
     for mask in masks:
