@@ -159,6 +159,136 @@ This option does not share shear vectors, rho/tau, fitted coefficients or
 harmonic covariances, and it does not authorize sharing between different
 positions, weights or selections.
 
+### Catalogue-painted GLASS mocks
+
+The `glass_painted_maps` and `glass_painted_catalogue` rules project a single
+source n(z) through lognormal matter shells, then paint the resulting shear
+onto the positions of a calibrated FITS/HDF5 catalogue.
+The default `shear: gamma` makes the signal pure E with the saved C_EE as its
+known answer; `shear: reduced` applies gamma/(1-kappa) and includes physical
+reduced-shear corrections to EE and BB.
+The CLI exposes the same choice through `--shear {gamma,reduced}`, and the
+catalogue metadata records it.
+Each input ellipticity keeps its amplitude and receives an independent uniform
+orientation; positions, weights and auxiliary columns remain row-aligned.
+This models the projected source population rather than drawing a source
+redshift per object.
+The default sky has nside 4096 and lmax 8192; `harmonic_lmax` is explicit so the
+painted mocks have power throughout the analysis range, independently of the
+sampled mocks' `lmax=nside` default.
+The default zmax of 3.5 contains the nonzero tail of the v1.4.6.3 B n(z).
+
+Add this opt-in configuration to a run config (paths are examples):
+
+```yaml
+glass_paint:
+  output_dir: results/glass_painted
+  nz: /path/to/nz_B.txt
+  threads: 28
+  map_config:
+    nside: 4096
+    harmonic_lmax: 8192
+    zmax: 3.5
+    limber: true
+  catalogues:
+    sample:
+      path: /path/to/calibrated_catalogue.fits
+      ra_col: RA
+      dec_col: Dec
+      w_col: w_des
+      e1_col: e1
+      e2_col: e2
+      shear: gamma
+      psf_cols: [e1_PSF, e2_PSF]
+  injections:
+    none: {}
+    leakage:
+      alpha: 0.02
+      additive: [0.0001, 0.0]
+    additive_b:
+      b_amplitude: 2.6e-11
+      b_seed: 401
+```
+
+Target `results/glass_painted/seed_00001/sample_none.h5` with the shared
+workflow and the run config.
+On an existing allocation, run with `srun -n 1 -c 28` and the default profile
+(`-j 28`), not the cluster profile that submits new jobs.
+The standalone equivalent is:
+
+```bash
+python scripts/glass_mock/paint_catalogue.py maps --seed 1 --nz /path/nz_B.txt \
+    --output results/glass_painted/seed_00001/maps --cache results/glass_painted/cache
+python scripts/glass_mock/paint_catalogue.py paint --seed 1 \
+    --input /path/calibrated_catalogue.fits \
+    --maps results/glass_painted/seed_00001/maps \
+    --output results/glass_painted/seed_00001/sample_none.h5
+```
+
+Each sky stores float32 RING `kappa.npy`, `gamma1.npy`, `gamma2.npy`,
+`spectra.npz` (measured full-sky KK, EE, BB and cross spectra; shell-ensemble
+KK/EE with and without pixel windows), and `maps.json` (cosmology, seed,
+source weights, timings and cache key).
+The exact shell theory includes the same source partition and three-neighbour
+shell covariance truncation as the generator, and the spherical spin-2 factor.
+Both the target and the padded lognormal solver's achieved ensemble spectra are
+saved, so solver residuals can be checked quantitatively.
+The solver runs independent shell pairs in spawned single-thread processes,
+bounded by the rule's threads or the CLI's `--workers` (default OMP_NUM_THREADS).
+The locked cache holds seed-independent matter and Gaussian spectra.
+It is keyed by cosmology, shell geometry, n(z), resolution and GLASS version.
+
+The output HDF5 has a root `data` table, readable by `read_catalogue`.
+It stores `e1/e2` (or caller-named columns), `e1_noise/e2_noise` (rotated intrinsic
+ellipticities), `g1_true/g2_true` (the selected noise-free signal, gamma by
+default), `kappa_true`, and
+`e1_injected/e2_injected` (the optional additive terms).
+The input calibrated `e1_leak_corrected/e2_leak_corrected` aliases, if present,
+also receive the mock shapes so corrected-column diagnostics stay mock-only.
+These aliases don't apply a leakage correction to an injected mock.
+Input ngmix/uncalibrated shape columns are auxiliary and must not be used as
+mock shears; the mock's calibrated shape columns are authoritative.
+A JSON sidecar and HDF5 attributes record rotation and injection seeds and
+amplitudes.
+For a B injection, `<catalogue>.bmode_spectra.npz` stores the target BB and
+the realised full-sky EE/BB/EB of the injected field; its path is in the header.
+The catalogue header also records weight sums and full-catalogue one-point
+moments of the rotated noise and painted shapes, using both w and w² weights.
+These diagnostics never use unrotated data components.
+Columnar HDF5 inputs (one row-aligned dataset per column) are read lazily by
+`Catalogue`, so compact 138M-row inputs stay bounded by `chunk_size`.
+For a calibrated v2 input with a `w` column, set `w_col: w` and R=1 in the
+consumer; `halo_clear` is copied unchanged for subsequent row selections.
+A B-mode injection accepts either `b_amplitude` for
+`C_BB=A exp[-(ell/2000)^2]` or a two-column `b_cl_path`; these specify the
+pixelized target spectrum, without another pixel-window factor.
+Map gamma2 has the HEALPix sign; catalogue e2, g2, noise2 and injected2 have the
+opposite sky-coordinate sign, matching cosmo_val's `pol_factor: -1`.
+`test_glass_paint.py` proves this with the pipeline's NaMaster map estimator,
+and fails the null with the opposite sign.
+Only these known-truth mock catalogue entries may use `blind: none`.
+The map and catalogue headers include stage timings; catalogue timing splits
+reading, signal painting, output assembly and writing.
+The known-answer figures can be generated with:
+
+```bash
+python scripts/glass_mock/plot_painted_mock.py \
+    --maps results/glass_painted/seed_00001/maps \
+    --catalogue /path/calibrated_catalogue.fits \
+    --mock results/glass_painted/seed_00001/sample_none.h5 \
+    --output results/glass_painted/diagnostics --reduced-comparison
+```
+
+This diagnostic runner uses the v1.4.6.3 column names (`RA`, `Dec`, `w_des`,
+`e1`, `e2`) for its catalogue panels.
+It samples up to one million rows in distributed contiguous blocks to avoid a
+full multi-GB reread; the figure and JSON identify the evaluated sample size.
+Its real-catalogue accesses are only one-point shape-noise distributions;
+it never measures a real cosmological vector.
+The reduced-shear comparison is entirely mock-map based, with both EE and BB
+measured through `healpy.anafast(pol=True)`.
+The sign-control panel instead uses cosmo_val's NaMaster primitive.
+
 ### Which `sp_validation` a rule imports: the launched checkout
 
 The image is the frozen *dependency stack*; the `sp_validation` that runs is
