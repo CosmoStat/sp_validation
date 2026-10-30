@@ -91,6 +91,11 @@ def test_xi_native_units_both_signs(rt, xi, comparison, tmp_path, monkeypatch):
             2 * xi["theta"] * xi[f"sigma_{field}"],
         )
         assert ax.get_yscale() == "linear"
+        if comparison:
+            labels = ax.get_legend_handles_labels()[1]
+            assert len(labels) == 2
+            assert labels[0] == "coefficient draws (68%)"
+            assert "blinded" in labels[1]
     fig.savefig(tmp_path / "xi.png")
     plt.close(fig)
 

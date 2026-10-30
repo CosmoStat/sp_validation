@@ -403,8 +403,7 @@ def render(
             "psf_xi_sys_comparison",
             "leakage",
             "θξ± from α–β–η coefficient draws (68% band) and blinded data with "
-            "run covariance errors, θ in arcmin. The plus panel also shows "
-            "θτ₀,+²/ρ₀,+; no corresponding minus estimator is available. "
+            "run covariance errors, θ in arcmin. "
             "The data include cosmological signal.",
             "full",
         )
