@@ -501,6 +501,7 @@ def cosebis_scan_from_xi(
             "pte_B": 1 - stats.chi2.cdf(chi2_B, nmodes),
             "scale_cut": (min_theta, max_theta),
             "inds": inds,
+            "bin_indices": np.array([start_bin, stop_bin]),
         }
 
         print(f"COSEBIs results [{min_theta:.1f}-{max_theta:.1f} arcmin]:")
@@ -850,7 +851,21 @@ def plot_pure_eb_correlations(
         ax.set(xscale="log", xlabel=r"$\theta$ [arcmin]")
         ax.axhline(0, alpha=0.3, color="k", linestyle="--", linewidth=0.5)
         ax.legend(loc="upper left")
-        ax.set_ylim(-0.5, 2)
+    # Include every displayed mode and its error bars, symmetric about zero.
+    bounds = []
+    for xi_type, var_attr in (("xip", "var_xip"), ("xim", "var_xim")):
+        bounds.extend(
+            theta
+            * (np.abs(results[xi_type]) + np.sqrt(results[var_attr]))
+            / scale_factor
+        )
+        for mode in ("E", "B", "amb"):
+            key = f"{xi_type}_{mode}"
+            bounds.extend(
+                theta * (np.abs(results[key]) + results[f"std_{key}"]) / scale_factor
+            )
+    limit = 1.1 * np.nanmax(bounds)
+    axs[0].set_ylim(-limit, limit)
 
     # Save the axis limits after data plotting but before adding gray regions
     original_xlims = [ax.get_xlim() for ax in axs]
@@ -919,30 +934,19 @@ def plot_cosebis_scale_cut_heatmap(
         (min_scale, max_scale) for cross-hatching
     """
     left_edges, right_edges = edges
-    nbins = len(left_edges)
+    starts = sorted({int(r["bin_indices"][0]) for r in cosebis_results.values()})
+    stops = sorted({int(r["bin_indices"][1]) for r in cosebis_results.values()})
+    nx, ny = len(starts), len(stops)
 
-    # Initialize matrices
-    snrs = [np.sqrt(result["chi2_E"]) for result in cosebis_results.values()]
-    ptes = [result["pte_B"] for result in cosebis_results.values()]
-
-    rows = [start for start in range(nbins) for stop in range(start, nbins)]
-    columns = [stop for start in range(nbins) for stop in range(start, nbins)]
-
-    snr_matrix = np.full((nbins, nbins), np.nan)
-    pte_matrix = np.full((nbins, nbins), np.nan)
-    for row, column, snr, pte in zip(rows, columns, snrs, ptes):
-        snr_matrix[row, column] = snr
-        pte_matrix[row, column] = pte
-
-    # Fill matrices from COSEBIs results
-    for i in range(len(left_edges)):
-        for j in range(i, len(right_edges)):
-            scale_cut = (left_edges[i], right_edges[j])
-            result = cosebis_results.get(scale_cut)
-
-            if result is not None:
-                snr_matrix[i, j] = np.sqrt(result["chi2_E"])
-                pte_matrix[i, j] = result["pte_B"]
+    # Place only the cuts actually scanned, using their binning metadata.
+    # A sparse scan must not be assigned to the first N triangular cells.
+    snr_matrix = np.full((nx, ny), np.nan)
+    pte_matrix = np.full((nx, ny), np.nan)
+    for result in cosebis_results.values():
+        start, stop = result["bin_indices"]
+        i, j = starts.index(start), stops.index(stop)
+        snr_matrix[i, j] = np.sqrt(result["chi2_E"])
+        pte_matrix[i, j] = result["pte_B"]
 
     # Create 1x2 subplot layout
     fig, axs = plt.subplots(1, 2, figsize=(15, 7))
@@ -964,11 +968,11 @@ def plot_cosebis_scale_cut_heatmap(
         cmap=mako_cmap,
         vmin=0,
         vmax=snr_max,
-        extent=[0, nbins, 0, nbins],
+        extent=[0, nx, 0, ny],
     )
     axs[0].set_title(r"E-mode SNR: $\sqrt{\chi^2_E}$")
-    axs[0].set_xlabel("Lower scale cut")
-    axs[0].set_ylabel("Upper scale cut")
+    axs[0].set_xlabel("Lower scale cut [arcmin]")
+    axs[0].set_ylabel("Upper scale cut [arcmin]")
 
     # Right plot: B-mode PTE with contours
     pte_plot_data = pte_matrix.T
@@ -979,33 +983,25 @@ def plot_cosebis_scale_cut_heatmap(
         cmap=vlag_cmap,
         vmin=0,
         vmax=1,
-        extent=[0, nbins, 0, nbins],
+        extent=[0, nx, 0, ny],
     )
 
-    # Add contours to PTE plot
-    cs = axs[1].contour(
-        pte_plot_data,
-        levels=[0.05, 0.95],
-        colors="black",
-        linewidths=1,
-        extent=[0, nbins, 0, nbins],
-    )
-    axs[1].clabel(cs, inline=True, fontsize=8)
+    # Sparse discrete cuts do not support interpolated significance contours.
 
     axs[1].set_title("B-mode PTE")
     axs[1].set_xlabel("Lower scale cut")
 
     # Add fiducial scale cut cross-hatching if provided
     if fiducial_scale_cut is not None:
-        min_scale, max_scale = fiducial_scale_cut
-        start_bin, stop_bin = bins_from_edges(
-            left_edges, right_edges, min_scale, max_scale
+        fiducial_key = find_conservative_scale_cut_key(
+            cosebis_results, fiducial_scale_cut
         )
+        start_bin, stop_bin = cosebis_results[fiducial_key]["bin_indices"]
 
-        if stop_bin > start_bin and start_bin < nbins and stop_bin > 0:
-            # Add cross-hatching at the fiducial scale cut matrix element
-            rect_x = start_bin
-            rect_y = stop_bin - 1
+        if start_bin in starts and stop_bin in stops:
+            # Mark the cached selected cut.
+            rect_x = starts.index(start_bin)
+            rect_y = stops.index(stop_bin)
             rect_width = 1
             rect_height = 1
 
@@ -1025,15 +1021,10 @@ def plot_cosebis_scale_cut_heatmap(
                 )
 
     # Set angular scale ticks
-    tick_indices = np.arange(0, nbins)
-    x_tick_labels = [
-        f"{left_edges[i]:.1f}" for i in tick_indices if i < len(left_edges)
-    ]
-    y_tick_labels = [
-        f"{right_edges[i]:.1f}" for i in tick_indices if i < len(right_edges)
-    ]
-    x_tick_positions = tick_indices + 0.5
-    y_tick_positions = tick_indices + 0.5
+    x_tick_labels = [f"{left_edges[i]:.2f}" for i in starts]
+    y_tick_labels = [f"{right_edges[i - 1]:.2f}" for i in stops]
+    x_tick_positions = np.arange(nx) + 0.5
+    y_tick_positions = np.arange(ny) + 0.5
 
     for ax in axs:
         ax.set_xticks(x_tick_positions[: len(x_tick_labels)])
@@ -1283,7 +1274,10 @@ def plot_cosebis_modes(results, version, output_path, fiducial_scale_cut=None):
     plt.legend()
     plt.xlabel("n (mode)")
     plt.ylabel("E_n, B_n")
-    plt.ylim(-0.5e-10, 3e-10)
+    errors = np.sqrt(np.diag(results["cov"]))
+    values = np.concatenate([results["En"], results["Bn"]])
+    limit = 1.1 * np.nanmax(np.abs(values) + errors)
+    plt.ylim(-limit, limit)
 
     # Add scale cut information to title - use actual scale cut from results
     scale_info = ""
@@ -1299,7 +1293,7 @@ def plot_cosebis_modes(results, version, output_path, fiducial_scale_cut=None):
     plt.savefig(output_path, dpi=300, bbox_inches="tight")
 
 
-def save_pure_eb_results(results, output_path):
+def save_pure_eb_results(results, output_path, *, derived_from):
     """
     Save pure E/B mode data vectors and covariance to .npz.
 
@@ -1310,12 +1304,13 @@ def save_pure_eb_results(results, output_path):
     output_path : str
         Output .npz file path
     """
-    # Data vectors and covariance
+    # Include the sealed fine/reporting vectors and variances used by the
+    # comparison figures, not just the transformed modes.
     save_dict = {
-        key: results[key] for key in ("theta", "left_edges", "right_edges", "cov")
+        key: value
+        for key, value in results.items()
+        if key not in ("pte_matrices", "npatch") and value is not None
     }
-    for key in _EB_KEYS:
-        save_dict[key] = results[key]
 
     # PTE matrices
     for key, matrix in results.get("pte_matrices", {}).items():
@@ -1325,8 +1320,46 @@ def save_pure_eb_results(results, output_path):
     if results["npatch"] is not None:
         save_dict["npatch"] = np.array(results["npatch"])
 
-    np.savez(output_path, **save_dict)
+    from . import sacc_io
+
+    sacc_io.save_npz(save_dict, output_path, derived_from=derived_from)
     print(f"Saved pure E/B results to {output_path}")
+
+
+def load_pure_eb_results(path, *, blind):
+    """Read a sealed plot cache only after checking the expected blind."""
+    from . import sacc_io
+
+    data = sacc_io.load_npz(path, blind=blind)
+    results = {k: v for k, v in data.items() if not k.startswith("pte_matrices_")}
+    results["pte_matrices"] = {
+        k.removeprefix("pte_matrices_"): v
+        for k, v in data.items()
+        if k.startswith("pte_matrices_")
+    }
+    results["npatch"] = int(results["npatch"]) if "npatch" in results else None
+    return results
+
+
+def load_cosebis_results(path, *, blind):
+    """Read cached scale cuts after checking their inherited blind stamp."""
+    from . import sacc_io
+
+    data = sacc_io.load_npz(path, blind=blind)
+    results = {}
+    for lo, hi in data["scale_cuts"]:
+        # Match the writer's scalar formatting (including integer cuts).
+        suffix = next(
+            k.removeprefix("En")
+            for k in data
+            if k.startswith("En_") and tuple(map(float, k[3:].split("_"))) == (lo, hi)
+        )
+        results[lo, hi] = {
+            k: data[k + suffix]
+            for k in ("En", "Bn", "cov", "chi2_E", "chi2_B", "pte_B", "bin_indices")
+        }
+    edges = data["left_edges"], data["right_edges"]
+    return results, edges
 
 
 def _cosebis_result_to_dict(r, suffix=""):
@@ -1338,10 +1371,13 @@ def _cosebis_result_to_dict(r, suffix=""):
         f"chi2_E{suffix}": np.array(r["chi2_E"]),
         f"chi2_B{suffix}": np.array(r["chi2_B"]),
         f"pte_B{suffix}": np.array(r["pte_B"]),
+        f"bin_indices{suffix}": np.asarray(r["bin_indices"]),
     }
 
 
-def save_cosebis_results(results, output_path, fiducial_scale_cut=None):
+def save_cosebis_results(
+    results, output_path, fiducial_scale_cut=None, edges=None, *, derived_from
+):
     """
     Save COSEBIs data vectors and covariance to .npz.
 
@@ -1353,16 +1389,22 @@ def save_cosebis_results(results, output_path, fiducial_scale_cut=None):
     output_path : str
         Output .npz file path
     fiducial_scale_cut : tuple, optional
-        If results has multiple scale cuts, save only this one.
-        If None and results has multiple scale cuts, saves all.
+        If given, also save untagged entries for this fiducial cut (used by
+        summary consumers). All scanned cuts are always retained.
+    edges : tuple of arrays, optional
+        Integration-bin left/right edges used by the scale-cut heatmap.
     """
     is_multi = all(isinstance(k, tuple) for k in results)
 
     if is_multi and fiducial_scale_cut is not None:
-        # Select the single best-matching scale cut
+        # Keep the untagged fiducial entries for summary consumers, and every
+        # scanned cut for the plot-only heatmap.
         key = find_conservative_scale_cut_key(results, fiducial_scale_cut)
         save_dict = _cosebis_result_to_dict(results[key])
         save_dict["scale_cut"] = np.array(key)
+        for sc, r in results.items():
+            save_dict.update(_cosebis_result_to_dict(r, f"_{sc[0]}_{sc[1]}"))
+        save_dict["scale_cuts"] = np.array(list(results.keys()))
     elif is_multi:
         # Save all scale cuts with tagged keys
         save_dict = {}
@@ -1375,7 +1417,11 @@ def save_cosebis_results(results, output_path, fiducial_scale_cut=None):
         if "scale_cut" in results:
             save_dict["scale_cut"] = np.array(results["scale_cut"])
 
-    np.savez(output_path, **save_dict)
+    if edges is not None:
+        save_dict["left_edges"], save_dict["right_edges"] = edges
+    from . import sacc_io
+
+    sacc_io.save_npz(save_dict, output_path, derived_from=derived_from)
     print(f"Saved COSEBIs results to {output_path}")
 
 

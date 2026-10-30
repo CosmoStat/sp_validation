@@ -303,7 +303,23 @@ class PSFSystematicsMixin:
         else:
             self.print_cyan(f"Computing object-wise leakage regression, {suffix}")
             with results_obj.temporarily_read_data(selection=selection):
-                results_obj.PSF_leakage(mix=mix, order=order, suffix=suffix)
+                # Use the regression primitive, not PSF_leakage: that driver
+                # also fits unrelated 1D models and writes exploratory plots.
+                e, weights = results_obj.get_ellipticity_weights()
+                x = [
+                    results_obj._dat[results_obj._params[key]]
+                    for key in ("e1_PSF_col", "e2_PSF_col")
+                ]
+                results_obj.par_best_fit = leakage.corr_2d(
+                    x,
+                    e,
+                    weights=weights,
+                    order=order,
+                    mix=mix,
+                    stats_file=results_obj._stats_file,
+                    verbose=results_obj._params["verbose"],
+                )
+                leakage.save_to_file(results_obj.par_best_fit, out_path)
 
         par_best_fit = results_obj.par_best_fit
         a11 = ufloat(par_best_fit["a11"].value, par_best_fit["a11"].stderr)
