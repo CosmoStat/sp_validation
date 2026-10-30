@@ -33,8 +33,6 @@ from ..rho_tau import (
 from .diagnostic_plots import leakage_contour_axes
 from .sacc_writers import rho_tau_to_sacc
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-
 # Settings of the joint rho/tau leakage measurement and its 'eiv' fit; the
 # CosmologyValidation ``psf_leakage`` argument overrides them key by key.
 PSF_LEAKAGE_DEFAULTS = {
@@ -42,7 +40,6 @@ PSF_LEAKAGE_DEFAULTS = {
     "patch_counts": [200, 400],
     "fiducial_npatch": 400,
     "beta_psf_size": False,
-    "sky_mask": "config/masks/star_contamination.json",
 }
 RHO_TAU_METHODS = ("eiv", "lsq", "emcee", "none")
 
@@ -116,13 +113,18 @@ class PSFSystematicsMixin:
             else:
                 tomo_bin_ids, tomo_bin_pairs = ["all"], [("all", "all")]
 
+            # Get the selection for stars
+            mask_star = self._get_star_mask(ver)
+
             tau_tables = []
             tau_covariances = []
             for index, tomo_bin_id in enumerate(sorted(tomo_bin_ids)):
                 self.print_cyan(f"Computing for the tomographic bin: {tomo_bin_id}")
                 base_rho = self.basename(ver)
                 base_tau = self.basename(ver, tomo_bin_a=tomo_bin_id)
-                mask_star, mask_gal = self._get_rho_tau_masks(ver, tomo_bin_id)
+
+                # Get the selection for galaxies
+                mask_gal = self._get_galaxy_mask(ver, tomo_bin_id)
 
                 # Compute rho and tau statistics
                 rho_stat_handler, tau_stat_handler = get_rho_tau_w_cov(
@@ -402,38 +404,6 @@ class PSFSystematicsMixin:
             star_mask = np.ones(len(cat_star), dtype=bool)
         return star_mask
 
-    def _sky_mask_circles(self):
-        """Circles of the configured ``psf_leakage`` sky mask, or None."""
-        path = self.psf_leakage["sky_mask"]
-        if path is None:
-            return None
-        path = Path(path) if Path(path).is_absolute() else REPO_ROOT / path
-        return json.loads(path.read_text())["circles"]
-
-    def _get_rho_tau_masks(self, ver, tomo_bin_id):
-        """Star and galaxy selections of every rho/tau measurement.
-
-        Stars pass both HSM flags (`_get_star_mask`), galaxies the tomographic
-        selection (`_get_galaxy_mask`), and both lie outside the configured
-        sky-mask circles.
-        """
-        mask_star = self._get_star_mask(ver)
-        mask_gal = self._get_galaxy_mask(ver, tomo_bin_id)
-        circles = self._sky_mask_circles()
-        if circles is not None:
-            for mask, block, ra_default, dec_default in (
-                (mask_star, "psf", "RA", "DEC"),
-                (mask_gal, "shear", "RA", "Dec"),
-            ):
-                entry = self.cc[ver][block]
-                cat = open_entry(entry)
-                mask &= leakage_fit.keep_sky(
-                    np.asarray(cat[entry.get("ra_col", ra_default)], dtype=float),
-                    np.asarray(cat[entry.get("dec_col", dec_default)], dtype=float),
-                    circles,
-                )
-        return mask_star, mask_gal
-
     def leakage_jackknife(self, ver, tomo_bin_id="all", measure=False):
         """Joint rho/tau jackknife measurement of one version and bin.
 
@@ -448,13 +418,13 @@ class PSFSystematicsMixin:
         if (ver, tomo_bin_id) not in cache:
             path = self.leakage_jackknife_path(ver, tomo_bin_id)
             settings = self.psf_leakage
-            mask_star, mask_gal = self._get_rho_tau_masks(ver, tomo_bin_id)
+            mask_star = self._get_star_mask(ver)
+            mask_gal = self._get_galaxy_mask(ver, tomo_bin_id)
             key = leakage_cache_key(
                 self.treecorr_config,
                 settings["npatch_fine"],
                 settings["patch_counts"],
                 settings["beta_psf_size"],
-                self._sky_mask_circles(),
                 mask_star=mask_star,
                 mask_gal=mask_gal,
             )

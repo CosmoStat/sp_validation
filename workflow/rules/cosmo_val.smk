@@ -268,7 +268,6 @@ rule cv_leakage_jackknife:
         catalogues=lambda w: cv_shear_catalogues()
         + [str(Path(catalogue_entry(v)["subdir"]) / catalogue_entry(v)["psf"]["path"])
            for v in CV_VERSIONS],
-        sky_mask=psf_leakage_sky_mask_input(config),
     output:
         measurements=CV_LEAKAGE_JACKKNIFE,
     params:

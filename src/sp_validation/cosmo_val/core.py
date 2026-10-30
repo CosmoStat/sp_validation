@@ -140,9 +140,7 @@ class CosmologyValidation(
         stars and galaxies), ``patch_counts`` (jackknife patch counts the fit
         reports, unions of the fine patches), ``fiducial_npatch`` (the count
         whose fit gives the samples used downstream), ``beta_psf_size`` (fit
-        beta(T_PSF) = beta0 + beta1 (T_PSF / <T_PSF> - 1)), and ``sky_mask``
-        (a JSON file of sky circles excised from stars and galaxies in every
-        rho/tau measurement, relative to the repository root, or None).
+        beta(T_PSF) = beta0 + beta1 (T_PSF / <T_PSF> - 1)).
     cov_estimate_method : {'th', 'jk', 'sim'}, default 'th'
         Covariance estimation: 'th' for semi-analytic theory, 'jk' for jackknife,
         'sim' for a covariance measured on simulations.

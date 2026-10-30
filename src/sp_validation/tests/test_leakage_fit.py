@@ -8,7 +8,6 @@ from shear_psf_leakage.rho_tau_stat import PSFErrorFit, RhoStat, TauStat
 
 from sp_validation.leakage_fit import (
     fit_joint_eiv,
-    keep_sky,
     residual_covariance_model,
     rho_tau_design,
     systematic_correlation_matrix,
@@ -193,22 +192,6 @@ def test_treecorr_rows_match_native_match_jackknife_and_grouped_catalogues():
             fine_corr.xip, coarse_corr.xip, rtol=1e-11, atol=1e-14
         )
         np.testing.assert_allclose(grouped, native_grouped, rtol=1e-11, atol=1e-14)
-
-
-def test_spherical_circle_mask_handles_inside_outside_and_ra_wrap():
-    """Circle excision follows great-circle distance across RA=0 degrees."""
-    circles = [{"name": "wrap", "ra_deg": 359.8, "dec_deg": 0.0, "radius_deg": 0.5}]
-    keep = keep_sky(
-        ra=np.array([359.9, 0.1, 359.0, 180.0]),
-        dec=np.array([0.0, 0.0, 0.0, 0.0]),
-        circles=circles,
-    )
-    np.testing.assert_array_equal(keep, [False, False, True, True])
-
-
-def test_sky_mask_rejects_mismatched_coordinates():
-    with pytest.raises(ValueError, match="equal length"):
-        keep_sky([1.0], [1.0, 2.0], [])
 
 
 def test_xi_psf_sys_matches_term_by_term_expansion():

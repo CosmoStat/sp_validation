@@ -544,29 +544,6 @@ def cv_cov_tau(version, fiducial=None):
     return str(COSMO_VAL / "rho_tau_stats" / f"cov_tau_{base}_th.npy")
 
 
-# CosmologyValidation's default ``psf_leakage`` sky mask (PSF_LEAKAGE_DEFAULTS
-# in sp_validation.cosmo_val.psf_systematics; test_cv_init_params checks they agree).
-PSF_LEAKAGE_SKY_MASK = "config/masks/star_contamination.json"
-
-
-def psf_leakage_sky_mask(config):
-    """The ρ/τ sky-mask setting: ``cosmo_val.psf_leakage.sky_mask`` or the default.
-
-    A JSON file of circles relative to the repository root, or None for none.
-    """
-    leakage = (config.get("cosmo_val") or {}).get("psf_leakage") or {}
-    return leakage.get("sky_mask", PSF_LEAKAGE_SKY_MASK)
-
-
-def psf_leakage_sky_mask_input(config):
-    """The sky-mask file as rule input, so editing its circles reruns the rule."""
-    path = psf_leakage_sky_mask(config)
-    if path is None:
-        return []
-    path = Path(path)
-    return [str(path if path.is_absolute() else REPO_ROOT / path)]
-
-
 # CosmologyValidation constructor kwargs read from config["cosmo_val"]. Every
 # keyword with a default is either here or explicitly exempted in
 # src/sp_validation/tests/test_cv_init_params.py, so no default applies silently.
