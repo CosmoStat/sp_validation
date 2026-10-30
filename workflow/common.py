@@ -332,6 +332,60 @@ def catalogue_entry(version):
     return CATALOG_CONFIG[catalogue_name(version)]
 
 
+def measurement_catalogue(version, *, psf=False):
+    """Load-bearing catalogue metadata for two-point producer invalidation.
+
+    Styles and precomputed survey summaries are presentation/covariance inputs,
+    not inputs to these measurements. Keep them out of expensive rerun triggers.
+    The PSF producers additionally read the stellar entries and patch count.
+    """
+    entry = catalogue_entry(version)
+    shear_keys = (
+        "path",
+        "hdu",
+        "column_map",
+        "ra_col",
+        "dec_col",
+        "w_col",
+        "e1_col",
+        "e2_col",
+        "e1_col_corrected",
+        "e2_col_corrected",
+        "R",
+        "R11",
+        "R22",
+        "redshift_path",
+        "tomo_bin_col",
+    )
+    metadata = {
+        "subdir": entry.get("subdir", ""),
+        "shear": {
+            key: entry["shear"][key] for key in shear_keys if key in entry["shear"]
+        },
+        "mask": entry.get("mask"),
+    }
+    if psf:
+        metadata.update(
+            {key: entry[key] for key in ("psf", "star", "patch_number") if key in entry}
+        )
+    return metadata
+
+
+def pair_count_reference(config, version):
+    """Resolve an explicit geometry-only reference without chaining aliases.
+
+    The run must verify identical positions, weights and selection before
+    declaring a reference. The default measures each catalogue independently.
+    """
+    references = config.get("covariance", {}).get("pair_counts_reference", {})
+    reference = references.get(version, version)
+    if reference not in config["versions"]:
+        raise ValueError(f"Pair-count reference {reference!r} is not a run version")
+    if references.get(reference, reference) != reference:
+        raise ValueError("Pair-count references must point directly to a producer")
+    return reference
+
+
 def redshift_path(version):
     """The n(z) file of ``version``: its catalogue entry's ``shear.redshift_path``,
     as written (as ``CosmologyValidation.get_redshift`` reads it)."""
