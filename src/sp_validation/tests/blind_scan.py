@@ -104,10 +104,21 @@ def assert_no_raw_values(root, references, *, expected=None, objects=(), logs=""
                 raw = reference
                 if expected is not None:
                     raw = raw[~np.isclose(raw, expected[name], rtol=rtol, atol=1e-25)]
+                if not len(raw):
+                    continue
+                # isclose(a, b) requires |a| within the extrema of
+                # |b| ± (atol + rtol*|b|). Geometry maps often contain millions
+                # of zeros/counts but no values on the shear signal's scale.
+                absolute = np.abs(np.asarray(raw, dtype=float))
+                lower = np.nextafter(
+                    max(0.0, absolute.min() * (1 - rtol) - 1e-25), -np.inf
+                )
+                upper = np.nextafter(absolute.max() * (1 + rtol) + 1e-25, np.inf)
+                possible = values[(np.abs(values) >= lower) & (np.abs(values) <= upper)]
                 # Chunk large FITS columns so a future larger fixture stays bounded.
-                for start in range(0, len(values), 4096):
+                for start in range(0, len(possible), 4096):
                     match = np.isclose(
-                        values[start : start + 4096, None],
+                        possible[start : start + 4096, None],
                         raw[None, :],
                         rtol=rtol,
                         atol=1e-25,
