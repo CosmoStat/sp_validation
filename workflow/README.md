@@ -134,7 +134,33 @@ snakemake -n --profile workflow/profiles/default -s workflow/Snakefile \
     --configfile papers/bmodes/config/config.yaml
 ```
 
-### Catalogue-painted GLASS mocks
+### Geometry-only pair counts
+
+The default measures weighted pair counts independently for each catalogue.
+A paired mock run can share this non-cosmological geometry calculation after
+verifying **all** selected positions and weights are identical, for example by
+hashing every RA, Dec and weight value in row order.
+Declare the reference explicitly in the run config:
+
+```yaml
+covariance:
+  shape_noise: pair_counts
+  pair_counts_reference:
+    GLASS1_blinded: GLASS1_clean
+    GLASS1_psfleak: GLASS1_clean
+    GLASS1_addB: GLASS1_clean
+```
+
+Each consumer depends directly on the clean entry's pair-count table on the same
+angular grid; the workflow does not copy tables into another producer's outputs.
+The reference must be a configured run version and cannot chain through another
+reference.
+This option does not share shear vectors, rho/tau, fitted coefficients or
+harmonic covariances, and it does not authorize sharing between different
+positions, weights or selections.
+Keep the full-geometry verification receipt with the run.
+
+## Catalogue-painted GLASS mocks
 
 The `glass_painted_maps` and `glass_painted_catalogue` rules project a single
 source n(z) through lognormal matter shells, then paint the resulting shear
