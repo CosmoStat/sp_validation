@@ -966,8 +966,10 @@ def test_calculate_pseudo_cl_catalog_end_to_end_tomo(cv, tmp_path):
     np.savetxt(nz_path, np.column_stack((z, np.exp(-z), np.exp(-2 * z))))
     cv.cc[ver]["shear"]["redshift_path"] = str(nz_path)
     _, tomo_bin_pairs = cv._get_tomo_bins(ver)
-    cv.calculate_pseudo_cl(compute_tomography=True)
-    assert os.path.exists(cv._output_path_pseudo_cl(ver, tomography=True))
+    tagged = cv._output_path(f"pseudo_cl_{ver}_tagged_tomo.sacc")
+    cv.calculate_pseudo_cl(compute_tomography=True, out_path=tagged)
+    assert os.path.exists(tagged)
+    assert not os.path.exists(cv._output_path_pseudo_cl(ver, tomography=True))
 
     result_to_compare = np.load(REFERENCE_TOMO, allow_pickle=True)["arr_0"].item()
     for tomo_bin_a, tomo_bin_b in tomo_bin_pairs:
@@ -1040,12 +1042,4 @@ def test_calculate_pseudo_cl_out_path_rejects_multiversion(cv):
     with pytest.raises(ValueError, match="one part to one path"):
         cv.calculate_pseudo_cl(
             compute_tomography=False, out_path=cv._output_path("pseudo_cl_x.sacc")
-        )
-
-
-def test_calculate_pseudo_cl_out_path_rejects_tomography(cv):
-    """out_path names the non-tomographic SACC part only."""
-    with pytest.raises(ValueError, match="compute_tomography=False"):
-        cv.calculate_pseudo_cl(
-            compute_tomography=True, out_path=cv._output_path("pseudo_cl_x.sacc")
         )

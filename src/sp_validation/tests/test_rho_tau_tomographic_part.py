@@ -19,7 +19,9 @@ def test_tomographic_rho_tau_part(tmp_path, monkeypatch):
     calls = []
 
     def measure(*args, **kwargs):
-        bin_id = int(args[5].split("_")[-1])
+        base = args[5]
+        label = base.split("_")[-1]
+        bin_id = 4 if label == "all" else int(label)
         calls.append(bin_id)
         tau = {"theta": theta}
         for k in sw.TAU_K:
@@ -27,7 +29,7 @@ def test_tomographic_rho_tau_part(tmp_path, monkeypatch):
                 tau[f"tau_{k}_{sign}"] = theta * bin_id
                 tau[f"vartau_{k}_{sign}"] = theta
         np.save(
-            tmp_path / "rho_tau_stats" / f"cov_tau_bin_{bin_id}_th.npy",
+            tmp_path / "rho_tau_stats" / f"cov_tau_{base}_th.npy",
             np.eye(6) * bin_id,
         )
         return SimpleNamespace(rho_stats=rho), SimpleNamespace(tau_stats=tau)
@@ -106,3 +108,10 @@ def test_tomographic_rho_tau_part(tmp_path, monkeypatch):
     for i in range(3):
         for j in range(i):
             assert not np.any(part.covariance.dense[np.ix_(rows[i], rows[j])])
+
+    CV().calculate_rho_tau_stats(tomography=False)
+    for k in sw.RHO_K:
+        for tomo_values, all_values in zip(
+            sacc_io.get_rho(part, k), sacc_io.get_rho(saved["part"], k)
+        ):
+            np.testing.assert_array_equal(tomo_values, all_values)

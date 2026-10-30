@@ -132,14 +132,9 @@ class PseudoClMixin:
         destination (one version only). An existing part is reused only if it
         was sealed under the blind declared now. With
         ``compute_tomography=True`` all pairs are written to one sealed SACC
-        part; ``out_path`` is not accepted.
+        part; ``out_path`` overrides its destination for a single version.
         """
         if out_path is not None:
-            if compute_tomography:
-                raise ValueError(
-                    "calculate_pseudo_cl(out_path=...) names the non-tomographic "
-                    "SACC part; call it with compute_tomography=False"
-                )
             if len(self.versions) != 1:
                 raise ValueError(
                     "calculate_pseudo_cl(out_path=...) writes one part to one "
