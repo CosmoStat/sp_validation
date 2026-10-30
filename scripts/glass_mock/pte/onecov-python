@@ -1,0 +1,8 @@
+#!/bin/bash
+set -euo pipefail
+exec apptainer exec --cleanenv --bind /n17data,/n09data,/automnt,/home \
+  /home/cdaley/.cache/sp_validation/sp_validation.sif \
+  env PYTHONPATH=/n17data/cdaley/scratch/glass-mock-cv/pte-wt/src \
+  OMP_NUM_THREADS=8 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 \
+  MPLCONFIGDIR=/n17data/cdaley/scratch/glass-mock-cv/.mpl \
+  TMPDIR=/n17data/cdaley/scratch/glass-mock-cv/tmp python "$@"
