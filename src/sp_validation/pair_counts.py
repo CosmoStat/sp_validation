@@ -78,6 +78,9 @@ def measure_pair_counts(
         min_top=6,
         num_threads=int(num_threads),
     )
+    constant_weight = (
+        float(weights[0]) if len(weights) and np.all(weights == weights[0]) else None
+    )
     counts = []
     for power in (1, 2):
         cat = treecorr.Catalog(
@@ -91,6 +94,12 @@ def measure_pair_counts(
         nn.process(cat)
         counts.append(nn.weight.copy())
         print(f"Completed NN weights^{power}", flush=True)
+        if constant_weight is not None:
+            # For w_i=c, W=c² N and Q=c⁴ N=c² W on the same geometry.
+            # The second traversal carries no additional information.
+            counts.append(counts[0] * constant_weight**2)
+            print("Derived squared-weight counts for constant weights", flush=True)
+            break
     W, Q = counts
     ordered = ordered_effective_pairs(W, Q)
     edges = np.geomspace(float(min_sep), float(max_sep), int(nbins) + 1)
