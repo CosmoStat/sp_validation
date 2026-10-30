@@ -7,10 +7,10 @@ Missing metadata remains distinct from a measured empty external catalogue.
 ## Evidence and limits
 
 The publication census contains 22,901 tile manifests; 27 carry `catalogue_match`.
-Join counts recovered from existing logs extend the measurement to 437 distinct published tiles.
+Join counts recovered from existing logs extend the measurement to 439 distinct published tiles.
 The comparison uses `config/calibration/mask_v2.0.yaml`, including its overlap, mask, epoch, fit, S/N and size selection.
 The sampled catalogues yield 2,321,814 selected galaxies.
-All 13 sampled tiles below 0.98 pairing, including one empty tile, yield zero selected galaxies.
+All 15 sampled tiles below 0.98 pairing, including one empty tile, yield zero selected galaxies.
 Rejecting below 0.99 would remove 11,002 selected galaxies (0.474% of this sample); rejecting below 0.995 would remove 424,394 (18.28%).
 These thresholds are sensitivity checks, not selection recommendations.
 
@@ -21,9 +21,16 @@ The standard masks cover 71/71 and 147/171 unmatched positions; star-halo masks 
 These observations support star-related low-S/N detections in sparse fields as the explanation for these losses.
 They do not establish the pixel-level cause of each missed detection.
 
+The retained Nibi batch logs identify 11 rejected tiles; the Fir chair's exhaustive scan of 285 live and superseded trees identifies three nonempty rejections and one empty-tile crash.
+The union is 14 pairing rejections plus empty tile 177.257.
+All 15 have a published catalogue and tile manifest in the complete `latest` inventory; each yields zero selected galaxies.
+The Nibi log scan adds 038.229 and 039.221 to the chair's notes, and the Fir scan adds 134.283 and 131.285 to the initial diagnostic sample.
+There are no observed guard-rejected tiles still unpublished or omitted from this comparison.
+
 The current sample supports no additional fraction cut because it would either duplicate existing selections or discard galaxies without a measured improvement.
 It does not establish that future low-match tiles are safe.
-No selected galaxies remain below 0.98 to test their shear, and the historical controls are censored by the earlier match guard.
+No selected galaxies remain below 0.98 to test their shear.
+The count-available sample is not random, although the complete observed guard-rejection population is included.
 Mean uncalibrated ellipticities and per-exposure stellar PSF residuals are diagnostics, not a shear-calibration bound.
 Nominal rejected tile area is 0.25 deg² per tile; this is not masked survey area.
 The no-cut decision removes zero additional objects or area.
