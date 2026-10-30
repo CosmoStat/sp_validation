@@ -142,7 +142,7 @@ reduced-shear corrections to EE and BB.
 The CLI exposes the same choice through `--shear {gamma,reduced}`, and the
 catalogue metadata records it.
 Each input ellipticity keeps its amplitude and receives an independent uniform
-orientation; positions, weights and auxiliary columns remain row-aligned.
+orientation; positions, weights and PSF columns remain row-aligned.
 This models the projected source population rather than drawing a source
 redshift per object.
 The default sky has nside 4096 and lmax 8192; `harmonic_lmax` is explicit so the
@@ -215,11 +215,13 @@ It stores `e1/e2` (or caller-named columns), `e1_noise/e2_noise` (rotated intrin
 ellipticities), `g1_true/g2_true` (the selected noise-free signal, gamma by
 default), `kappa_true`, and
 `e1_injected/e2_injected` (the optional additive terms).
-The input calibrated `e1_leak_corrected/e2_leak_corrected` aliases, if present,
-also receive the mock shapes so corrected-column diagnostics stay mock-only.
-These aliases don't apply a leakage correction to an injected mock.
-Input ngmix/uncalibrated shape columns are auxiliary and must not be used as
-mock shears; the mock's calibrated shape columns are authoritative.
+The mock carries only an allowlist of input columns: position, weight, PSF
+ellipticities and any names passed as `keep`. Every input shape and response
+(`e*_uncal`, `R_g*`, …) is dropped, so a mock painted from a blinded catalogue
+carries no measured shape, and `keep` refuses shape-like names.
+`e1_leak_corrected/e2_leak_corrected` hold the mock shapes so corrected-column
+diagnostics stay mock-only; they don't apply a leakage correction to an
+injected mock.
 A JSON sidecar and HDF5 attributes record rotation and injection seeds and
 amplitudes.
 For a B injection, `<catalogue>.bmode_spectra.npz` stores the target BB and
