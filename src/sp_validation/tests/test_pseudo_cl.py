@@ -792,7 +792,9 @@ def test_calculate_pseudo_cl_catalog_end_to_end(cv, tmp_path, monkeypatch):
     ver = cv._test_version
     shear = cv.cc[ver]["shear"]
     monkeypatch.setattr(
-        cv, "_calibrated_g", lambda ver, cat: (cat[shear["e1_col"]], cat[shear["e2_col"]])
+        cv,
+        "_calibrated_g",
+        lambda ver, cat: (cat[shear["e1_col"]], cat[shear["e2_col"]]),
     )
     cv.cell_method = "catalog"
     cv._pseudo_cls = {ver: {"tomo_bin_all_tomo_bin_all": {}}}
@@ -962,7 +964,9 @@ def test_calculate_pseudo_cl_catalog_end_to_end_tomo(cv, tmp_path, monkeypatch):
     shear = cv.cc[ver]["shear"]
     # This round-trip regression pins the historical uncentered input.
     monkeypatch.setattr(
-        cv, "_calibrated_g", lambda ver, cat: (cat[shear["e1_col"]], cat[shear["e2_col"]])
+        cv,
+        "_calibrated_g",
+        lambda ver, cat: (cat[shear["e1_col"]], cat[shear["e2_col"]]),
     )
     cv._pseudo_cls = {
         ver: {
