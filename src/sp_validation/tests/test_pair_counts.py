@@ -67,6 +67,35 @@ def test_positions_weights_only_and_unordered_treecorr(tmp_path):
         )
 
 
+@pytest.mark.parametrize("weight", [1.0, 2.0, 0.7])
+def test_constant_weights_use_one_tree_traversal(tmp_path, monkeypatch, weight):
+    import treecorr
+
+    calls = []
+    process = treecorr.NNCorrelation.process
+
+    def record(self, *args, **kwargs):
+        calls.append(1)
+        return process(self, *args, **kwargs)
+
+    monkeypatch.setattr(treecorr.NNCorrelation, "process", record)
+    cat = tmp_path / "constant.fits"
+    fits.BinTableHDU.from_columns(
+        [
+            fits.Column(name="RA", format="D", array=[0.0, 0.01, 0.03, 0.07]),
+            fits.Column(name="Dec", format="D", array=np.zeros(4)),
+            fits.Column(name="w", format="D", array=np.full(4, weight)),
+        ]
+    ).writeto(cat)
+    out = tmp_path / "pairs.npz"
+    measure_pair_counts(cat, out, min_sep=0.1, max_sep=10.0, nbins=1)
+    assert len(calls) == 1
+    with np.load(out) as z:
+        np.testing.assert_allclose(z["weight"], 6 * weight**2)
+        np.testing.assert_allclose(z["weight_squared"], 6 * weight**4)
+        np.testing.assert_allclose(z["ordered_effective_pairs"], 12)
+
+
 @pytest.mark.parametrize("layout", ["single", "chunked", "joined"])
 def test_hdf5_never_materialises_shapes(tmp_path, monkeypatch, layout):
     cat = tmp_path / "catalogue.fits"  # Detection is by content, not extension.
