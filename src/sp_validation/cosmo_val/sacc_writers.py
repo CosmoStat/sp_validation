@@ -149,6 +149,56 @@ def onecov_xi_covariance(s, cov):
     return cov[np.ix_(order, order)]
 
 
+def namaster_cl_covariance(s, cov_fits):
+    """Map iNKA pair-major covariance HDUs to a pseudo-Cℓ part's order.
+
+    Each same-polarisation HDU is ordered by source pair, then increasing ℓ.
+    Cross-polarisation blocks are zero, including across source pairs.
+    """
+    from astropy.io import fits
+
+    hdus = {
+        sio.CL_EE: "COVAR_EE_EE",
+        sio.CL_BB: "COVAR_BB_BB",
+        sio.CL_EB: "COVAR_EB_EB",
+    }
+    if not s.data or any(dp.data_type not in hdus for dp in s.data):
+        raise ValueError("namaster_cl_covariance takes a pseudo-Cℓ part only")
+
+    def pair(dp):
+        return tuple(sorted(int(t.removeprefix("source_")) for t in dp.tracers))
+
+    pairs = sorted({pair(dp) for dp in s.data})
+    ells = {}
+    for dp in s.data:
+        ells.setdefault((dp.data_type, pair(dp)), []).append(dp.tags["ell"])
+    if set(ells) != {(dtype, p) for dtype in hdus for p in pairs}:
+        raise ValueError("every pair must carry EE, BB and EB")
+    grids = [sorted(values) for values in ells.values()]
+    if any(grid != grids[0] for grid in grids) or len(set(grids[0])) != len(grids[0]):
+        raise ValueError("every spectrum must have the same distinct ℓ points")
+    nell = len(grids[0])
+    size = len(pairs) * nell
+    with fits.open(cov_fits) as hdul:
+        missing = [name for name in hdus.values() if name not in hdul]
+        if missing:
+            raise ValueError(f"{cov_fits} lacks the pseudo-Cℓ cov HDUs {missing}")
+        blocks = {
+            dtype: np.asarray(hdul[name].data, float) for dtype, name in hdus.items()
+        }
+    if any(block.shape != (size, size) for block in blocks.values()):
+        raise ValueError(f"iNKA covariance blocks must have shape {(size, size)}")
+    result = np.zeros((len(s.data), len(s.data)))
+    for dtype, block in blocks.items():
+        positions = [i for i, dp in enumerate(s.data) if dp.data_type == dtype]
+        order = [
+            pairs.index(pair(s.data[i])) * nell + grids[0].index(s.data[i].tags["ell"])
+            for i in positions
+        ]
+        result[np.ix_(positions, positions)] = block[np.ix_(order, order)]
+    return result
+
+
 def pseudo_cl_to_sacc(nz, metadata, ell_eff, cl_all, wsp, covariance=None, nside=None):
     """One pseudo-Cℓ part: EE/BB/EB with the shared bandpower window.
 
