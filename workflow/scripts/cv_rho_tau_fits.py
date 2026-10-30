@@ -10,9 +10,13 @@ for ver, path in zip(cv.versions, snakemake.output.products, strict=True):
     flat_samples = cv.get_samples(ver, params, "all")
     plus, minus = cv.get_xi_psf_sys_samples(ver, params, "all", "all")
     if cv.rho_tau_method == "eiv":
-        theta = cv.leakage_jackknife(ver)["theta"]
+        leakage = cv.leakage_jackknife(ver)
+        theta = leakage["theta"]
         fit_summary = cv.leakage_jackknife_path(ver, "all", "leakage_eiv_fit")
         extra = dict(leakage_eiv_fit=fit_summary.read_text())
+        if cv.psf_leakage["beta_psf_size"]:
+            # <u de, {p, de, q}>: the beta1 term of the tau0, tau2, tau5 model.
+            extra["tau_slope_template"] = leakage["slope_xip"][:3]
     else:
         theta = cv.psf_fitter.rho_stat_handler.rho_stats["theta"]
         extra = {}

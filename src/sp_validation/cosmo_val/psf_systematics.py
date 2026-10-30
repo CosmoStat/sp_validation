@@ -30,6 +30,7 @@ from ..rho_tau import (
     measure_leakage_jackknife,
     read_leakage_jackknife,
 )
+from .diagnostic_plots import leakage_contour_axes
 from .sacc_writers import rho_tau_to_sacc
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -1239,15 +1240,16 @@ class PSFSystematicsMixin:
         sample_list = [
             self.rho_tau_fits[ver]["flat_samples"]["tomo_bin_all"] for ver in versions
         ]
+        names, labels, markers = leakage_contour_axes(sample_list[0].shape[1])
         psfleak_plots.plot_contours(
             sample_list,
-            names=["x0", "x1", "x2"],
-            labels=[r"\alpha", r"\beta", r"\eta"],
+            names=names,
+            labels=labels,
             savefig=savefig,
             legend_labels=versions,
             legend_loc="upper right",
             contour_colors=colors,
-            markers={"x0": 0, "x1": 1, "x2": 1},
+            markers=markers,
             show=show,
             close=close,
         )
