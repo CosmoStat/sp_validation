@@ -45,7 +45,13 @@ save_cosebis_results(
     results, snakemake.output["npz"], fiducial_scale_cut, edges, derived_from=[part]
 )
 
-s = cosebis_to_sacc({0: sacc_io.get_nz(part, 0)}, part.metadata, fiducial, fiducial_key)
+s = cosebis_to_sacc(
+    {0: sacc_io.get_nz(part, 0)},
+    part.metadata,
+    [((0, 0), fiducial)],
+    fiducial_key,
+    covariance=fiducial["cov"],
+)
 sacc_io.save(s, snakemake.output["sacc"], derived_from=[part])
 
 verify_outputs(snakemake)

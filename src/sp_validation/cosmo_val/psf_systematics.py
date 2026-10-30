@@ -153,8 +153,8 @@ class PSFSystematicsMixin:
             self.sacc_nz(version),
             self.sacc_metadata(version),
             rho_stat_handler.rho_stats,
-            tau_stat_handler.tau_stats,
-            tau_cov_th=tau_cov_th,
+            [(0, tau_stat_handler.tau_stats)],
+            tau_cov_th_by_bin=[(0, tau_cov_th)] if tau_cov_th is not None else None,
         )
         out_path = os.path.join(out_dir, f"rho_tau_{base}.sacc")
         sacc_io.save(s, out_path, blind=self.blind(version), theory=blinding.no_signal)

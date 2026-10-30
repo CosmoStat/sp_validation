@@ -24,7 +24,6 @@ from .. import sacc_io
 from ..io import open_entry
 from ..rho_tau import get_params_rho_tau
 from ..statistics import cov_from_one_covariance
-from .sacc_writers import BIN as SACC_BIN
 from .sacc_writers import pseudo_cl_to_sacc
 
 
@@ -94,7 +93,7 @@ def plot_pseudo_cl_spectrum(datasets, spectrum, output_path):
 
 def _spectra(part):
     """The ELL/EE/EB/BE/BB dict of a single-field pseudo-Cl part, whose BE is EB."""
-    ell, ee, bb, eb, _window = sacc_io.get_pseudo_cl(part, SACC_BIN)
+    ell, ee, bb, eb, _window = sacc_io.get_pseudo_cl(part, (0, 0))
     return {"ELL": ell, "EE": ee, "EB": eb, "BE": eb.copy(), "BB": bb}
 
 
@@ -1341,10 +1340,12 @@ class PseudoClMixin:
         s = pseudo_cl_to_sacc(
             self.sacc_nz(version),
             self.sacc_metadata(version),
-            ell_eff,
-            cl_all,
-            wsp,
-            nside=nside,
+            [
+                (
+                    (0, 0),
+                    {"ell_eff": ell_eff, "cl_all": cl_all, "wsp": wsp, "nside": nside},
+                )
+            ],
         )
         return sacc_io.save(s, out_path, blind=self.blind(version))
 

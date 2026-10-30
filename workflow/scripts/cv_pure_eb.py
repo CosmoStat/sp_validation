@@ -47,8 +47,15 @@ sacc_io.save(
     pure_eb_to_sacc(
         {0: sacc_io.get_nz(part, 0)},
         part.metadata,
-        results["theta"],
-        {key: results[key] for key in sacc_io.PURE_KEYS},
+        [
+            (
+                (0, 0),
+                {
+                    "theta": results["theta"],
+                    **{key: results[key] for key in sacc_io.PURE_KEYS},
+                },
+            )
+        ],
         covariance=results["cov"],
     ),
     snakemake.output["sacc"],

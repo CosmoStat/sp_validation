@@ -61,7 +61,6 @@ import yaml
 from sp_validation import sacc_io
 from sp_validation.cosmo_val import CosmologyValidation
 from sp_validation.cosmo_val.pseudo_cl import _apply_pixel_window_to_fiducial_cl
-from sp_validation.cosmo_val.sacc_writers import BIN as SACC_BIN
 from sp_validation.pseudo_cl import (
     apply_random_rotation,
     bandpower_window_from_workspace,
@@ -810,7 +809,7 @@ def test_calculate_pseudo_cl_catalog_end_to_end(cv, tmp_path, monkeypatch):
 
     assert os.path.exists(out_path)
     s = sacc_io.load(out_path)
-    ell, ee, bb, eb, window = sacc_io.get_pseudo_cl(s, SACC_BIN)
+    ell, ee, bb, eb, window = sacc_io.get_pseudo_cl(s, (0, 0))
     assert window is not None  # the shared BandpowerWindow rides the part
     readback = cv._load_pseudo_cl(ver, out_path, ("all", "all"))
     npt.assert_array_equal(readback["BE"], eb)
@@ -912,7 +911,7 @@ def test_calculate_pseudo_cl_map_sacc_pixel_window(cv, monkeypatch):
     cv.calculate_pseudo_cl_map(ver, NSIDE, out_path, "all", "all")
 
     s = sacc_io.load(out_path)
-    _ell, _ee, _bb, _eb, window = sacc_io.get_pseudo_cl(s, SACC_BIN)
+    _ell, _ee, _bb, _eb, window = sacc_io.get_pseudo_cl(s, (0, 0))
     assert saved["nside"] == NSIDE
     window_ells, unwindowed_weights = bandpower_window_from_workspace(
         saved["workspace"]
