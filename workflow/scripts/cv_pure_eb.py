@@ -1,12 +1,11 @@
-"""Rule cv_pure_eb: pure E/B-mode decomposition for one version.
+"""Derive pure E/B from the concealed integration-grid ξ± part.
 
-A consumer of the integration-grid ξ± part plus a ξ± covariance on that grid —
-nothing here touches a catalogue. The estimator is one fixed linear operator
-on the fine ξ± (b_modes.pure_eb_operator), averaged with the part's TreeCorr
-pair weights into reporting bins snapped onto the fine edges, so its covariance
-is the supplied ξ± covariance pushed exactly through that operator. The
-pure-E/B part is a derivation of the ξ± part and carries its blind stamp.
+All pairs use the same reporting bins; tomographic scale cuts are not applied.
+Their pair-weighted operators propagate the full ξ± covariance without zeroing
+any of its blocks.
 """
+
+from pathlib import Path
 
 import numpy as np
 from cv_runner import _unbuffer_streams, verify_outputs
@@ -15,51 +14,44 @@ from sp_validation import sacc_io
 from sp_validation.b_modes import (
     calculate_eb_statistics,
     calculate_pure_eb_correlation,
+    pure_eb_operator,
     save_pure_eb_results,
+)
+from sp_validation.cosmo_val.derived_covariance import (
+    propagate,
+    xi_covariance,
+    xi_pairs,
 )
 from sp_validation.cosmo_val.sacc_writers import pure_eb_to_sacc
 
 _unbuffer_streams()
 p = snakemake.params
-version = p["version"]
-fiducial_scale_cut = tuple(p["fiducial_scale_cut"])
-
 part = sacc_io.load(snakemake.input["xi_integration"], blind=p["blind"])
-gg_int = sacc_io.xi_correlation(part, grid="integration")
-# A part stores bin centres; the edges come from the grid it was measured on.
+pairs = xi_pairs(part)
+views = [sacc_io.xi_correlation(part, pair, grid="integration") for pair in pairs]
+covariance, npatch = xi_covariance(part, snakemake.input["cov_integration"])
 grid = p["integration"]
 edges_int = np.geomspace(grid["min_sep"], grid["max_sep"], grid["nbins"] + 1)
+reporting = np.geomspace(p["min_sep"], p["max_sep"], p["nbins"] + 1)
+outputs, operators = [], []
+for pair, gg in zip(pairs, views):
+    cov = covariance[gg._rows[:, None], gg._rows]
+    results = calculate_pure_eb_correlation(
+        gg.meanr, gg.xip, gg.xim, gg.weight, edges_int, cov, reporting, npatch=npatch
+    )
+    results = calculate_eb_statistics(results)
+    path = Path(snakemake.output["npz"])
+    if len(pairs) > 1:
+        path = path.with_name(f"{path.stem}_{pair[0]}_{pair[1]}{path.suffix}")
+    save_pure_eb_results(results, path, derived_from=[part])
+    if pair == pairs[0] and len(pairs) > 1:
+        save_pure_eb_results(results, snakemake.output["npz"], derived_from=[part])
+    outputs.append((pair, results))
+    if len(pairs) > 1:
+        operators.append(pure_eb_operator(gg.weight, edges_int, reporting)[0])
 
-results = calculate_pure_eb_correlation(
-    gg_int.meanr,
-    gg_int.xip,
-    gg_int.xim,
-    gg_int.weight,
-    edges_int,
-    np.loadtxt(snakemake.input["cov_integration"]),
-    np.geomspace(p["min_sep"], p["max_sep"], p["nbins"] + 1),
-)
-results = calculate_eb_statistics(results)
-
-save_pure_eb_results(results, snakemake.output["npz"], derived_from=[part])
-
-sacc_io.save(
-    pure_eb_to_sacc(
-        {0: sacc_io.get_nz(part, 0)},
-        part.metadata,
-        [
-            (
-                (0, 0),
-                {
-                    "theta": results["theta"],
-                    **{key: results[key] for key in sacc_io.PURE_KEYS},
-                },
-            )
-        ],
-        covariance=results["cov"],
-    ),
-    snakemake.output["sacc"],
-    derived_from=[part],
-)
-
+cov = outputs[0][1]["cov"] if len(pairs) == 1 else propagate(operators, covariance)
+nz = {i: sacc_io.get_nz(part, i) for pair in pairs for i in pair}
+s = pure_eb_to_sacc(nz, part.metadata, outputs, covariance=cov)
+sacc_io.save(s, snakemake.output["sacc"], derived_from=[part])
 verify_outputs(snakemake)
