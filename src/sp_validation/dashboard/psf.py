@@ -327,39 +327,6 @@ def theta_tau(rt, out, corrected=None):
         return S.save(fig, out, "full")
 
 
-def xi_sys_comparison(rt, out, xi=None):
-    """Compare θξ± coefficient draws and blinded data."""
-    theta = np.asarray(rt["fit"]["theta"])
-    with S.figure_style():
-        fig, axes = plt.subplots(1, 2, figsize=(7.2, 2.8))
-        for ax, sign, key, field in zip(
-            axes, ("+", "-"), ("plus", "minus"), ("xip", "xim")
-        ):
-            lo, med, hi = np.percentile(
-                rt["fit"][f"samples_{key}"] * theta[None, :], [16, 50, 84], axis=0
-            )
-            S.zero_line(ax)
-            ax.fill_between(theta, lo, hi, color=MODEL, alpha=0.3, lw=0)
-            ax.plot(theta, med, color=MODEL, label="coefficient draws (68%)")
-            if xi is not None:
-                th = np.asarray(xi["theta"])
-                ax.errorbar(
-                    th,
-                    th * xi[field],
-                    yerr=th * xi[f"sigma_{field}"],
-                    color=S.INK,
-                    marker="o",
-                    label=rf"$\xi_{sign}$ (blinded)",
-                    **S.DATA_VECTOR_MARK,
-                )
-            S.theta_axis(ax)
-            ax.set_xlabel(r"$\theta$ [arcmin]")
-            ax.set_ylabel(rf"$\theta\,\xi_{sign}(\theta)$ [arcmin]")
-            ax.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
-            ax.legend()
-        return S.save(fig, out, "full")
-
-
 ALPHA_ROWS = [
     ("aii_mean", r"$\langle a_{ii} \rangle$", "object-wise"),
     ("a11", r"$a_{11}$", "object-wise"),
