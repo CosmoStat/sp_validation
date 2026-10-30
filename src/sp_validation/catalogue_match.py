@@ -10,7 +10,7 @@ from pathlib import Path
 
 import numpy as np
 
-# @sc [decision:catalogue_match.tile_selection]
+# @sc [decision:dr6_catalogue.catalogue_match_tile_selection]
 MIN_EXTERNAL_PAIRED_FRACTION = None
 
 _COUNT_FIELDS = (

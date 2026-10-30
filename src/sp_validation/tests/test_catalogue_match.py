@@ -144,18 +144,43 @@ def test_missing_unit_and_missing_vs_present_metadata(tmp_path):
         cm.read_catalogue_match_manifests([missing])
 
 
+DECISION = "dr6_catalogue.catalogue_match_tile_selection"
+
+
+def record_pins(root):
+    """Return the decision's ``Values:`` pins from the composed ASTRA record."""
+    analysis_id, decision_id = DECISION.split(".")
+    project_root = root / "scratch/cdaley/unions_astra"
+    project = yaml.safe_load((project_root / "astra.yaml").read_text())
+    analysis_root = project_root / project["analyses"][analysis_id]["path"]
+    spec = yaml.safe_load((analysis_root / "astra.yaml").read_text())
+    decision = spec["decisions"][decision_id]
+    assert decision["default"] in decision["options"]
+    rationale = decision["rationale"]
+    assert rationale.count("Values:") == 1
+    values = rationale.split("Values:", 1)[1].strip().removesuffix(".")
+    pins = {}
+    for entry in values.split(";"):
+        name, value = [part.strip() for part in entry.split("=", 1)]
+        pins[name] = ast.literal_eval(value)
+    return pins
+
+
 def assert_decision_pins(config=None):
     root = Path(__file__).resolve().parents[3]
-    document = (root / "docs/catalogue-match-selection.md").read_text()
-    lines = [line for line in document.splitlines() if line.startswith("Values:")]
-    assert len(lines) == 1
-    values = lines[0].removeprefix("Values:").strip().removesuffix(".")
-    policy, epoch = [part.strip() for part in values.split(";")]
-    policy_name, policy_value = [part.strip() for part in policy.split("=")]
-    epoch_name, epoch_value = [part.strip() for part in epoch.split("=")]
-    assert policy_name == "MIN_EXTERNAL_PAIRED_FRACTION"
-    assert epoch_name == "mask_v2.0.yaml#N_EPOCH"
-    assert cm.MIN_EXTERNAL_PAIRED_FRACTION == ast.literal_eval(policy_value)
+    pins = record_pins(root)
+    assert set(pins) == {"MIN_EXTERNAL_PAIRED_FRACTION", "mask_v2.0.yaml#N_EPOCH"}
+
+    tag = f"@sc [decision:{DECISION}]"
+    tagged_paths = (
+        root / "src/sp_validation/catalogue_match.py",
+        root / "config/calibration/mask_v2.0.yaml",
+        root / "scripts/calibration/extract_info.py",
+    )
+    for path in tagged_paths:
+        assert path.read_text().count(tag) == 1
+
+    assert cm.MIN_EXTERNAL_PAIRED_FRACTION == pins["MIN_EXTERNAL_PAIRED_FRACTION"]
     if config is None:
         config = yaml.safe_load(
             (root / "config/calibration/mask_v2.0.yaml").read_text()
@@ -163,7 +188,7 @@ def assert_decision_pins(config=None):
     cuts = [item for item in config["dat"] if item.get("col_name") == "N_EPOCH"]
     assert len(cuts) == 1
     assert cuts[0]["kind"] == "greater_equal"
-    assert cuts[0]["value"] == ast.literal_eval(epoch_value)
+    assert cuts[0]["value"] == pins["mask_v2.0.yaml#N_EPOCH"]
 
 
 def test_policy_pin():

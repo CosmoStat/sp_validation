@@ -71,7 +71,7 @@ dd = read_catalogue(
     verbose=verbose,
 )
 
-# @sc [decision:catalogue_match.tile_selection]
+# @sc [decision:dr6_catalogue.catalogue_match_tile_selection]
 if globals().get("catalogue_match_manifests") is not None:
     from sp_validation.catalogue_match import write_catalogue_match_audit
 
