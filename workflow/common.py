@@ -404,6 +404,32 @@ def pair_count_reference(config, version):
     return reference
 
 
+def integration_covariance_reference(config, version):
+    """Resolve an opt-in Gaussian integration-covariance producer.
+
+    References require identical survey summaries, n(z), mask and an explicit
+    shared pair-count producer. The run must additionally verify the underlying
+    geometry, selection and weights; no measured shear or PSF vector is shared.
+    """
+    references = config.get("covariance", {}).get("integration_reference", {})
+    reference = references.get(version, version)
+    if reference not in config["versions"]:
+        raise ValueError(f"Covariance reference {reference!r} is not a run version")
+    if references.get(reference, reference) != reference:
+        raise ValueError("Covariance references must point directly to a producer")
+    if reference != version:
+        for key in ("cov_th", "mask"):
+            if catalogue_entry(version).get(key) != catalogue_entry(reference).get(key):
+                raise ValueError(f"Covariance reference requires identical {key}")
+        if redshift_path(version) != redshift_path(reference):
+            raise ValueError("Covariance reference requires identical n(z)")
+        if pair_count_reference(config, version) != pair_count_reference(
+            config, reference
+        ):
+            raise ValueError("Covariance reference requires shared pair-count geometry")
+    return reference
+
+
 def redshift_path(version):
     """The n(z) file of ``version``: its catalogue entry's ``shear.redshift_path``,
     as written (as ``CosmologyValidation.get_redshift`` reads it)."""

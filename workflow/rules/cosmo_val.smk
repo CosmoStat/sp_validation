@@ -97,7 +97,8 @@ def cv_xi_cov_integration(version):
     Carlo draws from it and COSEBIs carry it through their kernel. Gaussian
     because B-modes only need the scatter a Gaussian field would give.
     """
-    return _grid_cov(version, "integration", "g")
+    reference = integration_covariance_reference(config, version)
+    return _grid_cov(reference, "integration", "g")
 
 
 def _cosebis_stub(version):
