@@ -1,0 +1,199 @@
+GLASS1_clean:
+  blind: none
+  subdir: /n17data/cdaley/scratch/glass-mock-cv/mocks/v1.4.6.3/seed_00001
+  pipeline: SP
+  colour: C0
+  getdist_colour: 0.0, 0.5, 1.0
+  ls: dotted
+  marker: o
+  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_footprint_nside_4096.fits
+  cov_th:
+    A: 2894.0303815287743
+    n_e: 4.957279270321334
+    n_psf: 0.752316232272063
+    sigma_e: 0.2675677604189021
+  psf:
+    PSF_flag: HSM_FLAG_PSF
+    PSF_size: HSM_T_PSF
+    star_flag: HSM_FLAG_STAR
+    star_size: HSM_T_STAR
+    hdu: 1
+    path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_psf_2024_v1.4.a.fits
+    ra_col: RA
+    dec_col: DEC
+    e1_PSF_col: HSM_G1_PSF
+    e1_star_col: HSM_G1_STAR
+    e2_PSF_col: HSM_G2_PSF
+    e2_star_col: HSM_G2_STAR
+  shear:
+    R: 1.0
+    path: /n17data/cdaley/scratch/glass-mock-cv/mocks/v1.4.6.3/seed_00001/painted.h5
+    redshift_path: /n17data/sguerrini/UNIONS/WL/nz/v1.4.6.3/nz_SP_v1.4.6.3_B.txt
+    w_col: w_des
+    e1_col: e1
+    e1_col_corrected: e1_leak_corrected
+    e1_PSF_col: e1_PSF
+    e2_col: e2
+    e2_col_corrected: e2_leak_corrected
+    e2_PSF_col: e2_PSF
+    ra_col: RA
+    dec_col: Dec
+  star:
+    ra_col: RA
+    dec_col: Dec
+    e1_col: e1
+    e2_col: e2
+    path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
+  patch_number: 100
+  label: GLASS1_clean
+GLASS1_blinded:
+  blind: glassmock-test
+  subdir: /n17data/cdaley/scratch/glass-mock-cv/mocks/v1.4.6.3/seed_00001
+  pipeline: SP
+  colour: C1
+  getdist_colour: 0.0, 0.5, 1.0
+  ls: dotted
+  marker: o
+  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_footprint_nside_4096.fits
+  cov_th:
+    A: 2894.0303815287743
+    n_e: 4.957279270321334
+    n_psf: 0.752316232272063
+    sigma_e: 0.2675677604189021
+  psf:
+    PSF_flag: HSM_FLAG_PSF
+    PSF_size: HSM_T_PSF
+    star_flag: HSM_FLAG_STAR
+    star_size: HSM_T_STAR
+    hdu: 1
+    path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_psf_2024_v1.4.a.fits
+    ra_col: RA
+    dec_col: DEC
+    e1_PSF_col: HSM_G1_PSF
+    e1_star_col: HSM_G1_STAR
+    e2_PSF_col: HSM_G2_PSF
+    e2_star_col: HSM_G2_STAR
+  shear:
+    R: 1.0
+    path: /n17data/cdaley/scratch/glass-mock-cv/cvpaint/catalogues/painted_blinded.h5
+    redshift_path: /n17data/sguerrini/UNIONS/WL/nz/v1.4.6.3/nz_SP_v1.4.6.3_B.txt
+    w_col: w_des
+    e1_col: e1
+    e1_col_corrected: e1_leak_corrected
+    e1_PSF_col: e1_PSF
+    e2_col: e2
+    e2_col_corrected: e2_leak_corrected
+    e2_PSF_col: e2_PSF
+    ra_col: RA
+    dec_col: Dec
+  star:
+    ra_col: RA
+    dec_col: Dec
+    e1_col: e1
+    e2_col: e2
+    path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
+  patch_number: 100
+  label: GLASS1_blinded
+GLASS1_psfleak:
+  blind: none
+  subdir: /n17data/cdaley/scratch/glass-mock-cv/mocks/v1.4.6.3/seed_00001
+  pipeline: SP
+  colour: C2
+  getdist_colour: 0.0, 0.5, 1.0
+  ls: dotted
+  marker: o
+  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_footprint_nside_4096.fits
+  cov_th:
+    A: 2894.0303815287743
+    n_e: 4.957279270321334
+    n_psf: 0.752316232272063
+    sigma_e: 0.2675677604189021
+  psf:
+    PSF_flag: HSM_FLAG_PSF
+    PSF_size: HSM_T_PSF
+    star_flag: HSM_FLAG_STAR
+    star_size: HSM_T_STAR
+    hdu: 1
+    path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_psf_2024_v1.4.a.fits
+    ra_col: RA
+    dec_col: DEC
+    e1_PSF_col: HSM_G1_PSF
+    e1_star_col: HSM_G1_STAR
+    e2_PSF_col: HSM_G2_PSF
+    e2_star_col: HSM_G2_STAR
+  shear:
+    R: 1.0
+    path: /n17data/cdaley/scratch/glass-mock-cv/mocks/v1.4.6.3/seed_00001/painted_psfleak.h5
+    redshift_path: /n17data/sguerrini/UNIONS/WL/nz/v1.4.6.3/nz_SP_v1.4.6.3_B.txt
+    w_col: w_des
+    e1_col: e1
+    e1_col_corrected: e1_leak_corrected
+    e1_PSF_col: e1_PSF
+    e2_col: e2
+    e2_col_corrected: e2_leak_corrected
+    e2_PSF_col: e2_PSF
+    ra_col: RA
+    dec_col: Dec
+  star:
+    ra_col: RA
+    dec_col: Dec
+    e1_col: e1
+    e2_col: e2
+    path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
+  patch_number: 100
+  label: GLASS1_psfleak
+GLASS1_addB:
+  blind: none
+  subdir: /n17data/cdaley/scratch/glass-mock-cv/mocks/v1.4.6.3/seed_00001
+  pipeline: SP
+  colour: C3
+  getdist_colour: 0.0, 0.5, 1.0
+  ls: dotted
+  marker: o
+  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_footprint_nside_4096.fits
+  cov_th:
+    A: 2894.0303815287743
+    n_e: 4.957279270321334
+    n_psf: 0.752316232272063
+    sigma_e: 0.2675677604189021
+  psf:
+    PSF_flag: HSM_FLAG_PSF
+    PSF_size: HSM_T_PSF
+    star_flag: HSM_FLAG_STAR
+    star_size: HSM_T_STAR
+    hdu: 1
+    path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_psf_2024_v1.4.a.fits
+    ra_col: RA
+    dec_col: DEC
+    e1_PSF_col: HSM_G1_PSF
+    e1_star_col: HSM_G1_STAR
+    e2_PSF_col: HSM_G2_PSF
+    e2_star_col: HSM_G2_STAR
+  shear:
+    R: 1.0
+    path: /n17data/cdaley/scratch/glass-mock-cv/mocks/v1.4.6.3/seed_00001/painted_addB.h5
+    redshift_path: /n17data/sguerrini/UNIONS/WL/nz/v1.4.6.3/nz_SP_v1.4.6.3_B.txt
+    w_col: w_des
+    e1_col: e1
+    e1_col_corrected: e1_leak_corrected
+    e1_PSF_col: e1_PSF
+    e2_col: e2
+    e2_col_corrected: e2_leak_corrected
+    e2_PSF_col: e2_PSF
+    ra_col: RA
+    dec_col: Dec
+  star:
+    ra_col: RA
+    dec_col: Dec
+    e1_col: e1
+    e2_col: e2
+    path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
+  patch_number: 100
+  label: GLASS1_addB
+nz:
+  subdir: /n17data/cdaley/scratch/glass-mock-cv/mocks/v1.4.6.3/seed_00001
+  dndz:
+    path: /n17data/sguerrini/UNIONS/WL/nz/v1.4.6.3/nz_SP_v1.4.6.3_B.txt
+paths:
+  output: /n17data/cdaley/scratch/glass-mock-cv/cvpaint/output
+  blinds: /n17data/cdaley/scratch/glass-mock-cv/cvmock/blinds

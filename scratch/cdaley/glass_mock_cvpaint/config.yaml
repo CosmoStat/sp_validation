@@ -1,0 +1,133 @@
+versions:
+- GLASS1_clean
+- GLASS1_blinded
+- GLASS1_psfleak
+- GLASS1_addB
+cosmo_val:
+  npatch: 100
+  theta_min: 1.0
+  theta_max: 250.0
+  nbins: 20
+  b_target: 0.01
+  theta_min_plot: 0.8
+  theta_max_plot: 260.0
+  ylim_alpha:
+  - -0.01
+  - 0.05
+  nrandom_cell: 100
+  nside_mask: 8192
+  cov_estimate_method: th
+  compute_cov_rho: true
+  n_cov: 100
+  n_sim_cov: 300
+  var_method: jackknife
+  quantile: 0.1587
+  ylim_xi_sys_ratio:
+  - -0.02
+  - 0.5
+  fiducial_input_inka: coupled
+  nside: 1024
+  binning: powspace
+  power: 0.5
+  n_ell_bins: 32
+  ell_step: 10
+  pol_factor: -1
+  noise_bias_method: analytic
+  cell_seed: 8192
+  path_onecovariance: /home/guerrini/OneCovariance/
+  rho_tau_method: lsq
+  fiducial_scale_cut:
+  - 12
+  - 83
+  include_pseudo_cl: true
+  cosmo_params:
+    Omega_m: 0.30966
+    Omega_b: 0.04897
+    h: 0.6766
+    sig8: 0.8102
+    ns: 0.9665
+    mnu: 0.06
+    extra_params:
+      camb:
+        nonlinear: true
+        halofit_version: mead2020_feedback
+        HMCode_log_T_AGN: 7.8
+        kmax: 20
+        kmax_extrapolate: 500
+  integration:
+    min_sep: 0.08
+    max_sep: 300
+    nbins: 1000
+  cosebis:
+    nmodes: 20
+    scale_cuts:
+    - - 1
+      - 250
+    - - 2
+      - 250
+    - - 5
+      - 250
+    - - 10
+      - 250
+    - - 12
+      - 83
+    - - 15
+      - 250
+    - - 20
+      - 250
+fiducial:
+  version: GLASS1_clean
+  npatch: 1
+  min_sep: 1.0
+  max_sep: 250.0
+  nbins: 20
+  min_sep_int: 0.5
+  max_sep_int: 300.0
+  nbins_int: 1000
+  nmodes: 20
+  mock_version: GLASS1_clean
+  fiducial_min_scale: 12
+  fiducial_max_scale: 83
+var_method: jackknife
+covariance:
+  default_masked: true
+  shape_noise: pair_counts
+  pair_counts_reference:
+    GLASS1_blinded: GLASS1_clean
+    GLASS1_psfleak: GLASS1_clean
+    GLASS1_addB: GLASS1_clean
+cl:
+  n_ell_bins: 32
+  cosebis_nbins: 96
+  fiducial_ell_min: 300
+  fiducial_ell_max: 1600
+harmonic:
+  fiducial:
+    binning: powspace
+    nbins: 32
+inference:
+  chains_dir: /n09data/guerrini/output_chains
+  glass_mock_chains_dir: /n09data/guerrini/glass_mock_chains
+cosebis:
+  theta_min: 1.0
+  theta_max: 250.0
+  mode_subsets:
+  - 6
+  - 20
+pixel_mask:
+  target_nsides:
+  - 2048
+  - 4096
+  - 8192
+  source_file: /n17data/UNIONS/WL/masks/mask_r_nside131072.hsp
+glass_mocks:
+  data_dir: /n09data/guerrini/glass_mock_v1.4.6.3_v2/results
+  version: v0
+  seed_range:
+  - 1
+  - 350
+tools:
+  onecov_executable: /home/guerrini/OneCovariance/covariance.py
+  python_executable: /n17data/cdaley/scratch/glass-mock-cv/cvpaint/onecov-python
+catalog_config: /n17data/cdaley/scratch/glass-mock-cv/cvpaint/cat_config.yaml
+container: /home/cdaley/.cache/sp_validation/sp_validation.sif
