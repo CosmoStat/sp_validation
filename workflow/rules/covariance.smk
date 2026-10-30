@@ -92,16 +92,16 @@ def _onecov_tool(key, default=None):
 
 
 def _pair_noise_enabled(w):
-    """Default to measured noise for non-tomographic cosmo_val runs only."""
-    default = "pair_counts" if "cosmo_val" in config and not w.tomo_suffix else "analytic"
+    """Whether a covariance uses measured pair counts for its shape noise.
+
+    ``covariance.shape_noise`` sets the non-tomographic covariance (default
+    pair_counts in cosmo_val, analytic elsewhere). Tomographic covariances are
+    always analytic: pair counts are measured for the whole sample only."""
+    default = "pair_counts" if "cosmo_val" in config else "analytic"
     mode = config.get("covariance", {}).get("shape_noise", default)
     if mode not in ("pair_counts", "analytic"):
         raise ValueError("covariance.shape_noise must be pair_counts or analytic")
-    if w.tomo_suffix:
-        if mode == "pair_counts":
-            raise ValueError("Pair-count noise currently supports non-tomographic xi only")
-        return False
-    return mode == "pair_counts"
+    return mode == "pair_counts" and not w.tomo_suffix
 
 
 def _pair_count_path(w, suffix=".txt"):
