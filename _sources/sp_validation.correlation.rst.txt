@@ -1,0 +1,7 @@
+sp\_validation.correlation
+--------------------------
+
+.. automodule:: sp_validation.correlation
+   :members:
+   :show-inheritance:
+   :undoc-members:

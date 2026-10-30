@@ -129,6 +129,7 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html">sp_validation.catalog</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog_builders.html">sp_validation.catalog_builders</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.container.html">sp_validation.container</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.correlation.html">sp_validation.correlation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.format.html">sp_validation.format</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html">sp_validation.galaxy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html">sp_validation.glass_mock</a></li>
@@ -180,6 +181,15 @@
 <dt class="sig sig-object py" id="sp_validation.rho_tau._extract_xip">
 <span class="sig-name descname"><span class="pre">_extract_xip</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">correlations</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/rho_tau.html#_extract_xip"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.rho_tau._extract_xip" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.rho_tau._extract_xip'">¶</a></dt>
 <dd><p>Return flattened array of xip values from a list of correlations.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.rho_tau._compute_stats_with_patches">
+<span class="sig-name descname"><span class="pre">_compute_stats_with_patches</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">handler</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kind</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catalog_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_cov</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">means</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/rho_tau.html#_compute_stats_with_patches"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.rho_tau._compute_stats_with_patches" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.rho_tau._compute_stats_with_patches'">¶</a></dt>
+<dd><p>Publish unpatched ρ/τ means with the patched variances and covariance.</p>
+<p>The handlers expose catalogue mappings and FITS tables, rather than their
+internal GG objects. The shared measurement mechanism uses the configured
+bin_slop for means and TreeCorr’s default for the patched covariance pass.
+Cached means avoid repeating the full-sample pass across covariance draws.</p>
 </dd></dl>
 <dl class="py class">
 <dt class="sig sig-object py" id="sp_validation.rho_tau._CatalogueLoader">
@@ -322,6 +332,7 @@ Also compute rho and tau-statistics.</p>
 <div class="sticky top-16 -mt-10 max-h-[calc(100vh-5rem)] h-full overflow-y-auto pt-6 space-y-2"><p class="font-medium">On this page</p>
 <ul>
 <li><a :data-current="activeSection === '#sp_validation.rho_tau._extract_xip'" class="reference internal" href="#sp_validation.rho_tau._extract_xip"><code class="docutils literal notranslate"><span class="pre">_extract_xip()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.rho_tau._compute_stats_with_patches'" class="reference internal" href="#sp_validation.rho_tau._compute_stats_with_patches"><code class="docutils literal notranslate"><span class="pre">_compute_stats_with_patches()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.rho_tau._CatalogueLoader'" class="reference internal" href="#sp_validation.rho_tau._CatalogueLoader"><code class="docutils literal notranslate"><span class="pre">_CatalogueLoader</span></code></a><ul>
 <li><a :data-current="activeSection === '#sp_validation.rho_tau._CatalogueLoader._columns'" class="reference internal" href="#sp_validation.rho_tau._CatalogueLoader._columns"><code class="docutils literal notranslate"><span class="pre">_CatalogueLoader._columns()</span></code></a></li>
 </ul>

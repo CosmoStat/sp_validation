@@ -161,6 +161,7 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html">sp_validation.catalog</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog_builders.html">sp_validation.catalog_builders</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.container.html">sp_validation.container</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.correlation.html">sp_validation.correlation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.format.html">sp_validation.format</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html">sp_validation.galaxy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html">sp_validation.glass_mock</a></li>
@@ -294,6 +295,8 @@
 </li>
       <li><a href="sp_validation.cosmo_val.psf_systematics.html#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin._compute_scale_dependent_xi_psf_sys">_compute_scale_dependent_xi_psf_sys() (PSFSystematicsMixin method)</a>
 </li>
+      <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau._compute_stats_with_patches">_compute_stats_with_patches() (in module sp_validation.rho_tau)</a>
+</li>
       <li><a href="sp_validation.dashboard.psf.html#sp_validation.dashboard.psf._contour_levels">_contour_levels() (in module sp_validation.dashboard.psf)</a>
 </li>
       <li><a href="sp_validation.cosmo_val.sacc_writers.html#sp_validation.cosmo_val.sacc_writers._copy_data_points">_copy_data_points() (in module sp_validation.cosmo_val.sacc_writers)</a>
@@ -414,6 +417,8 @@
 </li>
       <li><a href="sp_validation.sacc_io.html#sp_validation.sacc_io._mean_optional">_mean_optional() (in module sp_validation.sacc_io)</a>
 </li>
+      <li><a href="sp_validation.correlation.html#sp_validation.correlation._measurement_configs">_measurement_configs() (in module sp_validation.correlation)</a>
+</li>
       <li><a href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin._merge_iNKA_covariance">_merge_iNKA_covariance() (PseudoClMixin method)</a>
 </li>
       <li><a href="sp_validation.statistics.html#sp_validation.statistics._min_pte">_min_pte() (in module sp_validation.statistics)</a>
@@ -525,6 +530,8 @@
       <li><a href="sp_validation.sacc_io.html#sp_validation.sacc_io._twopoint_hdu">_twopoint_hdu() (in module sp_validation.sacc_io)</a>
 </li>
       <li><a href="sp_validation.sacc_io.html#sp_validation.sacc_io._type_major_xi">_type_major_xi() (in module sp_validation.sacc_io)</a>
+</li>
+      <li><a href="sp_validation.correlation.html#sp_validation.correlation._unpatched_catalog">_unpatched_catalog() (in module sp_validation.correlation)</a>
 </li>
       <li><a href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin._update_onecov_cosmo_params">_update_onecov_cosmo_params() (PseudoClMixin method)</a>
 </li>
@@ -1413,6 +1420,10 @@
 </li>
       <li><a href="sp_validation.dashboard.position_shear.html#sp_validation.dashboard.position_shear.measure">measure() (in module sp_validation.dashboard.position_shear)</a>
 </li>
+      <li><a href="sp_validation.correlation.html#sp_validation.correlation.measure_with_patches">measure_with_patches() (in module sp_validation.correlation)</a>
+</li>
+      <li><a href="sp_validation.correlation.html#sp_validation.correlation.measurement_matches">measurement_matches() (in module sp_validation.correlation)</a>
+</li>
       <li><a href="sp_validation.dashboard.sky.html#sp_validation.dashboard.sky.median_quantity">median_quantity() (in module sp_validation.dashboard.sky)</a>
 </li>
       <li><a href="sp_validation.sacc_io.html#sp_validation.sacc_io.merge">merge() (in module sp_validation.sacc_io)</a>
@@ -1448,6 +1459,8 @@
         <li><a href="sp_validation.catalog_builders.html#module-sp_validation.catalog_builders">sp_validation.catalog_builders</a>
 </li>
         <li><a href="sp_validation.container.html#module-sp_validation.container">sp_validation.container</a>
+</li>
+        <li><a href="sp_validation.correlation.html#module-sp_validation.correlation">sp_validation.correlation</a>
 </li>
         <li><a href="sp_validation.cosmo_val.html#module-sp_validation.cosmo_val">sp_validation.cosmo_val</a>
 </li>
@@ -1725,14 +1738,14 @@
 </li>
       <li><a href="sp_validation.cosmo_val.psf_systematics.html#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.plot_tau_stats">plot_tau_stats() (PSFSystematicsMixin method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin.plot_weights">plot_weights() (CatalogCharacterizationMixin method)</a>
 
       <ul style="list-style-type:none">
         <li><a href="sp_validation.cosmo_val.diagnostic_plots.html#sp_validation.cosmo_val.diagnostic_plots.plot_weights">(in module sp_validation.cosmo_val.diagnostic_plots)</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.dashboard.psf.html#sp_validation.dashboard.psf.posterior">posterior() (in module sp_validation.dashboard.psf)</a>
 </li>
       <li><a href="sp_validation.dashboard.products.html#sp_validation.dashboard.products.powspace_edges">powspace_edges() (in module sp_validation.dashboard.products)</a>
@@ -1778,6 +1791,8 @@
       <li><a href="sp_validation.catalog_builders.html#sp_validation.catalog_builders.Mask.print_strings">print_strings() (Mask class method)</a>, <a href="sp_validation.masks.html#sp_validation.masks.Mask.print_strings">[1]</a>
 </li>
       <li><a href="sp_validation.catalog_builders.html#sp_validation.catalog_builders.Mask.print_summary">print_summary() (Mask method)</a>, <a href="sp_validation.masks.html#sp_validation.masks.Mask.print_summary">[1]</a>
+</li>
+      <li><a href="sp_validation.correlation.html#sp_validation.correlation.process_gg">process_gg() (in module sp_validation.correlation)</a>
 </li>
       <li><a href="sp_validation.dashboard.sky.html#sp_validation.dashboard.sky.Part.projection">projection (Part attribute)</a>
 </li>
@@ -2038,6 +2053,13 @@
 </li>
       </ul></li>
       <li>
+    sp_validation.correlation
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.correlation.html#module-sp_validation.correlation">module</a>
+</li>
+      </ul></li>
+      <li>
     sp_validation.cosmo_val
 
       <ul style="list-style-type:none">
@@ -2128,6 +2150,8 @@
         <li><a href="sp_validation.dashboard.correlations.html#module-sp_validation.dashboard.correlations">module</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li>
     sp_validation.dashboard.cosebis_grid
 
@@ -2135,8 +2159,6 @@
         <li><a href="sp_validation.dashboard.cosebis_grid.html#module-sp_validation.dashboard.cosebis_grid">module</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li>
     sp_validation.dashboard.covariance
 
@@ -2473,13 +2495,15 @@
 </li>
       <li><a href="sp_validation.dashboard.sky.html#sp_validation.dashboard.sky.Part.width">width (Part property)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.statistics.html#sp_validation.statistics.wilson_interval">wilson_interval() (in module sp_validation.statistics)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.io.html#sp_validation.io.write_binned_quantity">write_binned_quantity() (in module sp_validation.io)</a>
 </li>
       <li><a href="sp_validation.catalog.html#sp_validation.catalog.write_galaxy_cat">write_galaxy_cat() (in module sp_validation.catalog)</a>
+</li>
+      <li><a href="sp_validation.correlation.html#sp_validation.correlation.write_measurement_metadata">write_measurement_metadata() (in module sp_validation.correlation)</a>
 </li>
       <li><a href="sp_validation.sacc_io.html#sp_validation.sacc_io.write_nz">write_nz() (in module sp_validation.sacc_io)</a>
 </li>

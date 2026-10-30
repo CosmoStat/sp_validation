@@ -129,6 +129,7 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html">sp_validation.catalog</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog_builders.html">sp_validation.catalog_builders</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.container.html">sp_validation.container</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.correlation.html">sp_validation.correlation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.format.html">sp_validation.format</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html">sp_validation.galaxy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html">sp_validation.glass_mock</a></li>
@@ -219,13 +220,18 @@ pairs instead of <code class="docutils literal notranslate"><span class="pre">("
 e.g. <code class="docutils literal notranslate"><span class="pre">min_sep=1</span></code>.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">"tomo_bin_{b1}_tomo_bin_{b2}"</span></code> → the part’s
+</dl>
+<p>Means use an unpatched pass with the configured <code class="docutils literal notranslate"><span class="pre">bin_slop</span></code>.
+Patched covariance uses TreeCorr’s default tolerance.
+No unsealed text cache is written; figures reuse the sealed SACC part.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">"tomo_bin_{b1}_tomo_bin_{b2}"</span></code> → the part’s
 <a class="reference internal" href="sp_validation.sacc_io.html#sp_validation.sacc_io.xi_correlation" title="sp_validation.sacc_io.xi_correlation"><code class="xref py py-func docutils literal notranslate"><span class="pre">xi_correlation()</span></code></a> view of that pair,
 shaped like a TreeCorr <code class="docutils literal notranslate"><span class="pre">GGCorrelation</span></code>.</p>
 </dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.15)">dict</a></p>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.15)">dict</a></p>
 </dd>
 </dl>
 </dd></dl>
