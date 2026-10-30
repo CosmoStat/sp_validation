@@ -2,7 +2,7 @@
 
 This is a mock-only run on the v1.4.6.3 footprint.
 The registry uses `blind: none` only for painted catalogues with known truth.
-The checkout is `/n17data/cdaley/scratch/glass-mock-cv/pte-wt`, branch `pte/glass`, merged commit `36ec1efc2526e021b42466da2fcb90c21aef1299`.
+The checkout is `/n17data/cdaley/scratch/glass-mock-cv/pte-wt`, branch `pte/glass`, with `run/glassmock-int` commit `4893fab9` merged at `de57b450`.
 Scientific jobs run on allocation 1045571, inside `/home/cdaley/.cache/sp_validation/sp_validation.sif`, and use at most 20 cores.
 The host Snakemake driver uses the default profile to wrap scientific rules in the image; `/scratchc03` is omitted because it is absent on n19.
 
@@ -16,7 +16,7 @@ This end-to-end continuation has not yet been validated; inspect the log and fig
 /n17data/cdaley/scratch/glass-mock-cv/pte/production.sh 10 2>&1 | tee /n17data/cdaley/scratch/glass-mock-cv/pte/production.log
 ```
 
-The current detached run was started with `nohup .../production.sh 10 > .../production.log 2>&1 < /dev/null &`.
+The current detached run was started with `nohup .../production.sh 10 > .../production.log 2>&1 < /dev/null &` as login PID 1104723, allocation step `1045571.104`.
 Inspect `production.log` and `squeue -j 1045571 -s` for progress.
 Do not launch a second copy while it is running.
 If the detached run exits after the Snakemake targets without running the post-processing scripts, rerun `production.sh 10` after the allocation step exits; Snakemake reuses completed outputs.
@@ -32,7 +32,7 @@ This is an approximation to check against measured fine-grid pair counts before 
 It also calculates the EE comparison against `cl_ee_pixel`, the GLASS shell-ensemble target.
 
 The harmonic iNKA covariance includes fiducial cosmological signal as well as shape noise.
-Its noise bias is estimated from the painted ellipticity values themselves, so that input is seed-dependent even for identical positions, weights and intrinsic ellipticity amplitudes.
+Its catalogue covariance workspace retains the painted weighted ellipticities for its noise terms, so that input is seed-dependent even for identical positions, weights and intrinsic ellipticity amplitudes.
 `audit_inputs.py` hashes positions and weights and records the painted shape moment per seed; it does not establish exact seed-independence of the harmonic covariance.
 Reuse of the seed-1 matrix is therefore an approximation whose adequacy must be quantified.
 The OneCovariance inputs use the shared survey geometry, n(z), cosmology and fixed per-component dispersion.
