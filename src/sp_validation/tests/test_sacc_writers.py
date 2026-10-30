@@ -153,6 +153,39 @@ def test_paper_pseudo_cl_reader(tmp_path):
     assert np.array_equal(data["BB"], cl_all[3])
 
 
+def test_pseudo_cl_to_sacc_real_namaster_pixel_window(tmp_path):
+    """The SACC window gains pw²(ℓ) only when a map nside is supplied."""
+    pytest.importorskip("pymaster")
+    import healpy as hp
+
+    from sp_validation.pseudo_cl import get_pseudo_cls_map
+
+    nside = 32
+    mask = np.ones(12 * nside**2)
+    rng = np.random.default_rng(0)
+    shear = (
+        rng.normal(size=12 * nside**2) + 1j * rng.normal(size=12 * nside**2)
+    ) * 1e-2
+    ell_eff, cl_all, wsp = get_pseudo_cls_map(shear, mask, nside, "linear", ell_step=8)
+    s = sw.pseudo_cl_to_sacc({0: _nz()}, META, ell_eff, cl_all, wsp)
+    s2 = _roundtrip(s, tmp_path, "clreal")
+    ell_r, ee, bb, eb, window = sio.get_pseudo_cl(s2, (0, 0))
+    assert np.array_equal(ell_r, ell_eff)
+    assert np.array_equal(ee, cl_all[0]) and np.array_equal(bb, cl_all[3])
+    # With nside unset, the workspace window carries no pixel window.
+    assert window.weight.shape[1] == len(ell_eff)
+
+    mapped = sw.pseudo_cl_to_sacc({0: _nz()}, META, ell_eff, cl_all, wsp, nside=nside)
+    mapped_window = mapped.get_bandpower_windows(mapped.indices(sio.CL_EE))
+    pw2 = hp.pixwin(nside, lmax=window.weight.shape[0] - 1) ** 2
+    nonzero = np.abs(window.weight) > 1e-20
+    np.testing.assert_allclose(
+        mapped_window.weight[nonzero] / window.weight[nonzero],
+        np.broadcast_to(pw2[:, None], window.weight.shape)[nonzero],
+        rtol=1e-12,
+    )
+
+
 def test_cosebis_to_sacc(tmp_path):
     En, Bn = np.arange(1, 11) * 1e-6, np.arange(1, 11) * 1e-7
     result = {"En": En, "Bn": Bn, "cov": _spd(20, 7)}
@@ -367,3 +400,67 @@ def test_xi_part_rejects_two_covariances():
             covariance=_spd(12, 42),
             variances=np.ones(12),
         )
+
+
+# --------------------------------------------------------------------------- #
+# Tomographic ξ± and the OneCovariance covariance
+# --------------------------------------------------------------------------- #
+def _tomo_xi_part(nbin=2, ntheta=4):
+    """A pair-major ξ± part over every pair of ``nbin`` bins, values labelled."""
+    theta = _theta(ntheta)
+    pairs = [(i, j) for i in range(nbin) for j in range(i, nbin)]
+    measured = [
+        (
+            bins,
+            {
+                "theta": theta,
+                "xip": 1e-5 * (10 * k + np.arange(ntheta)),
+                "xim": -1e-5 * (10 * k + np.arange(ntheta)),
+            },
+        )
+        for k, bins in enumerate(pairs)
+    ]
+    nz = {i: _nz(seed=i) for i in range(nbin)}
+    return sw.xi_pairs_to_sacc(nz, META, measured, grid="reporting"), pairs, theta
+
+
+def test_xi_pairs_to_sacc_writes_every_pair_pair_major(tmp_path):
+    """Each pair goes in as [ξ+; ξ−], pairs in the order given, one tracer per bin."""
+    s, pairs, theta = _tomo_xi_part(nbin=3)
+    s2 = _roundtrip(s, tmp_path, "xitomo")
+    assert {sio.source_name(i) for i in range(3)} <= set(s2.tracers)
+    assert len(s2.mean) == len(pairs) * 2 * len(theta)
+    for k, bins in enumerate(pairs):
+        th, p, m = sio.get_xi(s2, bins, grid="reporting")
+        np.testing.assert_array_equal(th, theta)
+        np.testing.assert_allclose(p, 1e-5 * (10 * k + np.arange(len(theta))))
+        block = slice(k * 2 * len(theta), (k + 1) * 2 * len(theta))
+        np.testing.assert_allclose(s2.mean[block], np.concatenate([p, m]))
+
+
+def test_onecov_xi_covariance_reorders_type_major_to_pair_major():
+    """OneCovariance's [all ξ+; all ξ−] matrix lands on the part's pair-major points."""
+    s, pairs, theta = _tomo_xi_part(nbin=2, ntheta=4)
+    part_order = [(t, b, n) for b in pairs for t in (0, 1) for n in range(len(theta))]
+    onecov_order = sorted(part_order)  # type, then pair, then θ
+    expected = _spd(len(part_order), seed=7)
+    position = {label: k for k, label in enumerate(part_order)}
+    take = [position[label] for label in onecov_order]
+    onecov = expected[np.ix_(take, take)]
+
+    np.testing.assert_array_equal(sw.onecov_xi_covariance(s, onecov), expected)
+
+
+def test_onecov_xi_covariance_is_the_identity_for_one_bin():
+    """For the single (0, 0) pair OneCovariance's order already is the part's."""
+    theta = _theta()
+    s = sw.xi_to_sacc({0: _nz()}, META, theta, theta * 0, theta * 0, grid="reporting")
+    cov = _spd(2 * len(theta), seed=3)
+    np.testing.assert_array_equal(sw.onecov_xi_covariance(s, cov), cov)
+
+
+def test_onecov_xi_covariance_refuses_a_mismatched_matrix():
+    """A matrix from another binning or tomography is refused, not truncated."""
+    s, _, _ = _tomo_xi_part(nbin=2, ntheta=4)
+    with pytest.raises(ValueError, match="binning and tomography"):
+        sw.onecov_xi_covariance(s, np.eye(len(s.mean) - 2))

@@ -7,8 +7,11 @@ statistic into a single-statistic SACC — a *part* — carrying that statistic'
 own covariance as its one block. :func:`assemble_analysis_sacc` rebuilds the
 single ``{version}.sacc`` analysis file from these parts.
 
-Everything here is single-bin today (``bins=(0, 0)``); the interface is
-tomography-native so a future round supplies real bin pairs unchanged.
+ξ± is written over any set of bin pairs (:func:`xi_pairs_to_sacc`), and
+:func:`onecov_xi_covariance` puts OneCovariance's ξ± matrix in a part's
+order. The other statistics are single-bin today (``bins=(0, 0)``); their
+interface is tomography-native so a future round supplies real bin pairs
+unchanged.
 """
 
 import numpy as np
@@ -27,6 +30,39 @@ _NMT_EE, _NMT_EB, _NMT_BB = 0, 1, 3
 BIN = (0, 0)
 
 
+def xi_pairs_to_sacc(nz, metadata, pairs, *, grid, variances=None, covariance=None):
+    """One ξ± part over one or more bin pairs, on a named angular grid.
+
+    ``pairs`` is a sequence of ``(bins, xi)``: ``bins`` a source bin pair
+    ``(i, j)`` and ``xi`` a mapping with ``theta``, ``xip``, ``xim`` and,
+    optionally, ``theta_nom``, ``npairs``, ``weight``. Each pair goes in as
+    ``[ξ+; ξ−]`` in the order given, so the data vector is pair-major, and the
+    covariance is tied to that order by position: ``covariance`` is the dense
+    block in it, ``variances`` the matching diagonal. At most one may be given.
+    ``nz`` must hold an n(z) for every bin the pairs name.
+    """
+    s = sio.new_sacc(nz, metadata)
+    for bins, xi in pairs:
+        sio.add_xi(
+            s,
+            bins,
+            xi["theta"],
+            xi["xip"],
+            xi["xim"],
+            grid=grid,
+            theta_nom=xi.get("theta_nom"),
+            npairs=xi.get("npairs"),
+            weight=xi.get("weight"),
+        )
+    if covariance is not None and variances is not None:
+        raise ValueError("give the ξ± writer a dense covariance or variances, not both")
+    if covariance is not None:
+        s.add_covariance(np.asarray(covariance))
+    elif variances is not None:
+        sio.add_diagonal_covariance(s, np.asarray(variances))
+    return s
+
+
 def xi_to_sacc(
     nz,
     metadata,
@@ -43,39 +79,86 @@ def xi_to_sacc(
 ):
     """One ξ± part (``bins=(0, 0)``) on a named angular grid.
 
-    The grid's covariance comes in one of two shapes: ``covariance``, the dense
-    ``[ξ+; ξ−]``-ordered block (a jackknife estimate), or ``variances``, the
-    concatenated ``[varxip; varxim]`` diagonal. At most one may be given.
+    The single-pair form of :func:`xi_pairs_to_sacc`. The grid's covariance
+    comes in one of two shapes: ``covariance``, the dense ``[ξ+; ξ−]``-ordered
+    block (a jackknife estimate), or ``variances``, the concatenated
+    ``[varxip; varxim]`` diagonal. At most one may be given.
     """
-    s = sio.new_sacc(nz, metadata)
-    sio.add_xi(
-        s,
-        BIN,
-        theta,
-        xip,
-        xim,
-        grid=grid,
-        theta_nom=theta_nom,
-        npairs=npairs,
-        weight=weight,
+    xi = {
+        "theta": theta,
+        "xip": xip,
+        "xim": xim,
+        "theta_nom": theta_nom,
+        "npairs": npairs,
+        "weight": weight,
+    }
+    return xi_pairs_to_sacc(
+        nz, metadata, [(BIN, xi)], grid=grid, variances=variances, covariance=covariance
     )
-    if covariance is not None and variances is not None:
-        raise ValueError("give xi_to_sacc a dense covariance or variances, not both")
-    if covariance is not None:
-        s.add_covariance(np.asarray(covariance))
-    elif variances is not None:
-        sio.add_diagonal_covariance(s, np.asarray(variances))
-    return s
 
 
-def pseudo_cl_to_sacc(nz, metadata, ell_eff, cl_all, wsp, covariance=None):
+def onecov_xi_covariance(s, cov):
+    """OneCovariance's real-space ξ± matrix ``cov`` in the insertion order of ``s``.
+
+    OneCovariance writes ξ± type-major: every ξ+ point, then every ξ− point;
+    within each, bin pairs ``(i, j)`` with ``i <= j`` and ``i`` outermost, then
+    θ ascending. A ξ± part is pair-major (:func:`xi_pairs_to_sacc`), so this
+    finds each point of ``s`` in OneCovariance's order and permutes ``cov``
+    to match. The two orders agree for a single bin pair. OneCovariance's bin
+    ``k`` is column ``k`` of the n(z) file, which must be the part's
+    ``source_k``.
+
+    ``s`` must hold ξ± on one grid only, with the same θ points for every bin
+    pair, as a part does.
+    """
+    cov = np.asarray(cov, float)
+    types = {sio.XI_PLUS: 0, sio.XI_MINUS: 1}
+    if any(dp.data_type not in types for dp in s.data):
+        raise ValueError("onecov_xi_covariance takes a part holding ξ± only")
+    grids = {dp.tags.get("grid") for dp in s.data}
+    if len(grids) != 1:
+        raise ValueError(f"the part's ξ± lies on several grids {sorted(grids)}")
+    if cov.shape != (len(s.data), len(s.data)):
+        raise ValueError(
+            f"OneCovariance matrix is {cov.shape}, but the part has "
+            f"{len(s.data)} ξ± points; check the binning and tomography match"
+        )
+
+    def bin_index(tracer):
+        return int(tracer.removeprefix("source_"))
+
+    pairs = sorted({tuple(sorted(map(bin_index, dp.tracers))) for dp in s.data})
+    thetas = {}
+    for dp in s.data:
+        key = (dp.data_type, tuple(sorted(map(bin_index, dp.tracers))))
+        thetas.setdefault(key, []).append(dp.tags["theta"])
+    ntheta = {len(t) for t in thetas.values()}
+    if len(ntheta) != 1 or len(thetas) != 2 * len(pairs):
+        raise ValueError("every bin pair must carry ξ+ and ξ− on the same θ points")
+    (ntheta,) = ntheta
+
+    order = np.empty(len(s.data), dtype=int)
+    for k, dp in enumerate(s.data):
+        pair = tuple(sorted(map(bin_index, dp.tracers)))
+        theta_rank = sorted(thetas[dp.data_type, pair]).index(dp.tags["theta"])
+        order[k] = (
+            types[dp.data_type] * len(pairs) * ntheta
+            + pairs.index(pair) * ntheta
+            + theta_rank
+        )
+    return cov[np.ix_(order, order)]
+
+
+def pseudo_cl_to_sacc(nz, metadata, ell_eff, cl_all, wsp, covariance=None, nside=None):
     """One pseudo-Cℓ part: EE/BB/EB with the shared bandpower window.
 
     ``cl_all`` is NaMaster's decoupled ``(4, nbp)`` array (EE, EB, BE, BB); the
-    window comes from :func:`bandpower_window_from_workspace`. ``covariance``,
-    when given, is the dense ``[EE; BB; EB]``-ordered block matching insertion.
+    window comes from :func:`bandpower_window_from_workspace`. Supply ``nside``
+    only for HEALPix-map spectra, whose measured spectrum includes ``pw²(ℓ)``;
+    catalogue-based spectra have no pixel window. ``covariance``, when given,
+    is the dense ``[EE; BB; EB]``-ordered block matching insertion.
     """
-    window_ells, window_weights = bandpower_window_from_workspace(wsp)
+    window_ells, window_weights = bandpower_window_from_workspace(wsp, nside)
     s = sio.new_sacc(nz, metadata)
     sio.add_pseudo_cl(
         s,

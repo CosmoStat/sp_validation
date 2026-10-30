@@ -24,9 +24,12 @@ cosmo_val:
   theta_min: 1.0
   theta_max: 250.0
   nbins: 20
+  # Applies to published means; patched covariance uses TreeCorr's default bin_slop.
+  b_target: 0.01
   theta_min_plot: 0.8
   theta_max_plot: 260.0
   ylim_alpha: [-0.01, 0.05]
+  nrandom_cell: 100
   nside_mask: 8192
   cov_estimate_method: th
   compute_cov_rho: true
@@ -37,7 +40,7 @@ cosmo_val:
   quantile: 0.1587
   ylim_xi_sys_ratio: [-0.02, 0.5]
   fiducial_input_inka: coupled
-  # Pseudo-Cl geometry and ell binning
+  # Pseudo-Cl map resolution, ell binning and noise/randoms settings
   nside: 1024
   binning: powspace
   power: 0.5
@@ -45,6 +48,8 @@ cosmo_val:
   ell_step: 10
   # e2 multiplier (±1) applied before NaMaster; -1 flips the e2 sign
   pol_factor: -1
+  noise_bias_method: analytic
+  cell_seed: 8192
   path_onecovariance: "/home/guerrini/OneCovariance/"
   rho_tau_method: lsq
 

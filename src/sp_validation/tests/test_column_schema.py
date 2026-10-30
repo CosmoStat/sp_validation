@@ -39,12 +39,6 @@ NOT_COLUMNS = {
     "R",
     "R11",
     "R22",
-    # SNR-binned simulation product extensions, columns and covariance header.
-    "COVORDER",
-    "MC_COV",
-    "SNR_BINS",
-    "SNR_HI",
-    "SNR_LO",
     # FITS header keywords (response/c units, weighting and spatial products)
     "CE_{}",
     "CG_{}",

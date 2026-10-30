@@ -15,16 +15,22 @@ functions in a new ``sp_validation/pseudo_cl.py`` module. These golden values
 are the safety net: an extraction that silently changes the numbers fails here
 rather than staying green on a smoke test.
 
-The pinned primitives are NaMaster binning, the catalogue pseudo-Cl estimator
-(``NmtFieldCatalog``), the deterministic end-to-end catalogue path, occupancy
-maps used for covariance masks, and random rotations used by Gaussian
-covariance simulations.
+The pinned primitives (the exact functions Track B2 moves):
+
+* ``get_namaster_bin``       -- NaMaster binning, all three schemes
+* ``get_n_gal_map``          -- weighted galaxy number-density map
+* ``get_pseudo_cls_map``     -- map-based pseudo-Cl (decoupled EE/EB/BE/BB)
+* ``get_pseudo_cls_catalog`` -- catalog-based pseudo-Cl (NmtFieldCatalog)
+* ``calculate_pseudo_cl_catalog`` -- the deterministic end-to-end catalog path
+* ``apply_random_rotation``  -- pinned by INVARIANT + seed reproducibility (see below)
 
 REPRODUCIBILITY / TOLERANCE (measured over 3 independent container processes)
 ----------------------------------------------------------------------------
-* ``get_namaster_bin`` and ``get_n_gal_map`` are BITWISE-identical across
-  processes. Pinned at ``rtol=1e-9`` -- far inside the float-noise floor of 0,
-  with margin against a future NaMaster build.
+* ``get_namaster_bin`` / ``get_n_gal_map`` / ``get_pseudo_cls_map`` are
+  BITWISE-identical across processes (pure binning math; map-based NaMaster
+  reduction is deterministic). Pinned at ``rtol=1e-9`` -- far inside the
+  float-noise floor of 0, yet a hair of margin so an exact-equality assertion
+  doesn't make the suite brittle to a future NaMaster build.
 * ``get_pseudo_cls_catalog`` (the ``NmtFieldCatalog`` path) and the end-to-end
   ``calculate_pseudo_cl_catalog`` are NOT bitwise-reproducible: their reduction
   order drifts at the ~2e-12 relative level (worst case measured 2.1e-12,
@@ -37,7 +43,8 @@ REPRODUCIBILITY / TOLERANCE (measured over 3 independent container processes)
   pinned by the rotation INVARIANT (magnitude conservation
   ``e1_rot^2 + e2_rot^2 == e1^2 + e2^2`` and shape, both exact) plus a
   reproducibility test (same seed -> identical, different seed -> differs).
-  Gaussian covariance simulations use seeded rotations for reproducibility.
+  The noise debiasing now threads a seeded ``rng`` (``CosmologyValidation``'s
+  ``cell_seed``) so the pseudo-Cl realizations are reproducible run-to-run.
 
 :Author: claude-opus on behalf of Cail
 
@@ -53,10 +60,15 @@ import yaml
 
 from sp_validation import sacc_io
 from sp_validation.cosmo_val import CosmologyValidation
+from sp_validation.cosmo_val.pseudo_cl import _apply_pixel_window_to_fiducial_cl
 from sp_validation.cosmo_val.sacc_writers import BIN as SACC_BIN
 from sp_validation.pseudo_cl import (
     apply_random_rotation,
     bandpower_window_from_workspace,
+    get_field_and_workspace_from_catalog,
+    get_field_and_workspace_from_map,
+    get_pseudo_cl_iNKA_covariance,
+    make_namaster_bin,
 )
 from sp_validation.rho_tau import get_params_rho_tau
 
@@ -74,6 +86,116 @@ SEED = 1234
 N_ELL_BINS = 8
 
 REFERENCE_TOMO = Path(__file__).parent / "data" / "test_cl_catalog.npz"
+
+
+def test_map_iNKA_fields_remain_map_based():
+    b = make_namaster_bin(2, 47, 46, "linear", ell_step=4)
+    mask = np.ones(12 * 16**2)
+    shear = np.random.default_rng(321).normal(size=(2, len(mask)))
+    field_a, field_b, workspace = get_field_and_workspace_from_map(
+        b, mask, shear[0], shear[1]
+    )
+    cl = np.zeros((4, 48))
+    cl[0] = cl[3] = 1e-4
+    cov = get_pseudo_cl_iNKA_covariance(
+        cl, cl, cl, cl, field_a, field_a, field_b, field_b, workspace, workspace, b
+    )
+
+    assert isinstance(field_a, pymaster.NmtField)
+    assert cov.shape == (b.get_n_bands(), 4, b.get_n_bands(), 4)
+    npt.assert_allclose(cov, cov.transpose(2, 3, 0, 1), rtol=1e-10, atol=1e-14)
+
+
+def test_catalog_noise_covariance_matches_rotations(tmp_path, monkeypatch):
+    """The producer must not add shape noise to the catalogue signal Cls.
+
+    NaMaster already builds NN/NS/SN terms from the retained catalogue.
+    Adding a white spectrum as well overpredicts this full-sky MC variance
+    by about four, even though the covariance remains symmetric and PSD.
+    """
+    from astropy.table import Table
+
+    config, version = _write_synthetic_config(tmp_path)
+    rng = np.random.default_rng(20261030)
+    nsrc = 5000
+    ra = rng.uniform(0, 360, nsrc)
+    dec = np.rad2deg(np.arcsin(rng.uniform(-1, 1, nsrc)))
+    e1, e2 = rng.normal(scale=0.2, size=(2, nsrc))
+    weights = rng.uniform(0.5, 1.5, nsrc)
+    Table({"RA": ra, "Dec": dec, "e1": e1, "e2": e2, "w": weights}).write(
+        tmp_path / "catalog/shear.fits", overwrite=True
+    )
+    cv = CosmologyValidation(
+        versions=[version],
+        catalog_config=config,
+        output_dir=str(tmp_path / "output"),
+        nside=16,
+        binning="powspace",
+        n_ell_bins=4,
+        power=0.5,
+        cell_method="catalog",
+        force_run=True,
+    )
+    monkeypatch.setattr(
+        cv, "get_fiducial_cl", lambda *args: {"WallxWall": np.zeros(32)}
+    )
+    cv.calculate_pseudo_cl_inka_cov(compute_tomography=False)
+    with fits.open(
+        cv._output_path_pseudo_cl_cov(version, "iNKA", tomography=False)
+    ) as h:
+        predicted = np.diag(h["COVAR_BB_BB"].data)
+
+    b = make_namaster_bin(8, 32, 31, "powspace", n_ell_bins=4, power=0.5)
+    _, _, wsp = get_field_and_workspace_from_catalog(b, ra, dec, e1, e2, weights)
+    bb = []
+    for _ in range(256):
+        er1, er2 = apply_random_rotation(e1, e2, rng=rng)
+        f, _, _ = get_field_and_workspace_from_catalog(
+            b, ra, dec, er1, er2, weights, return_wsp=False
+        )
+        bb.append(wsp.decouple_cell(pymaster.compute_coupled_cell(f, f))[3])
+    # A variance from 256 draws has 9% fractional sampling uncertainty.
+    npt.assert_allclose(np.var(bb, axis=0, ddof=1) / predicted, 1, rtol=0.35)
+
+
+def test_catalog_iNKA_covariance_is_symmetric_positive_and_binned():
+    """Catalogue-based NaMaster fields produce a finite PSD covariance."""
+    rng = np.random.default_rng(20261029)
+    nsrc = 512
+    ra = rng.uniform(0, 360, nsrc)
+    dec = np.rad2deg(np.arcsin(rng.uniform(-1, 1, nsrc)))
+    e1 = rng.normal(scale=0.2, size=nsrc)
+    e2 = rng.normal(scale=0.2, size=nsrc)
+    weights = np.ones(nsrc)
+    b = make_namaster_bin(2, 23, 24, "linear", ell_step=4)
+
+    field_a, field_b, wsp = get_field_and_workspace_from_catalog(
+        b, ra, dec, e1, e2, weights, retain_catalog=True
+    )
+    cl = np.zeros((4, 25))
+    cl[0] = 1e-4
+    cl[3] = 1e-4
+    inka_cl = pymaster.get_iNKA_cell(field_a, field_b, cl_guess=cl, w=wsp)
+    cov = get_pseudo_cl_iNKA_covariance(
+        inka_cl,
+        inka_cl,
+        inka_cl,
+        inka_cl,
+        field_a,
+        field_a,
+        field_b,
+        field_b,
+        wsp,
+        wsp,
+        b,
+    )
+
+    nband = b.get_n_bands()
+    matrix = cov.reshape(nband * 4, nband * 4)
+    npt.assert_equal(cov.shape, (nband, 4, nband, 4))
+    npt.assert_allclose(matrix, matrix.T, rtol=1e-10, atol=1e-14)
+    assert np.all(np.isfinite(matrix))
+    assert np.linalg.eigvalsh(matrix).min() >= -1e-12 * np.diag(matrix).max()
 
 
 # ---------------------------------------------------------------------------
@@ -193,7 +315,7 @@ def test_reference_exists():
 
 
 # Tolerances ----------------------------------------------------------------
-# Bitwise-stable primitives (binning math and occupancy-map construction).
+# Bitwise-stable primitives (binning math, n_gal map, map-based pseudo-Cl).
 RTOL_DET = 1e-9
 ATOL_DET = 1e-30
 # Catalog (NmtFieldCatalog) path: drifts ~2e-12 cross-process; pin well above.
@@ -325,6 +447,208 @@ def test_get_n_gal_map(cv, cat_and_params):
                 4.573348360592046,
                 7.926927899839571,
                 4.5074633637396575,
+            ]
+        ),
+        rtol=RTOL_DET,
+        atol=ATOL_DET,
+    )
+
+
+# ===========================================================================
+# get_pseudo_cls_map -- map-based pseudo-Cl (bitwise-stable)
+# ===========================================================================
+def _build_shear_map(cv, cat_gal, params):
+    """Replicate calculate_pseudo_cl_map's weighted shear-map construction."""
+    unique_pix, _idx, idx_rep = cv.get_pixels(params, NSIDE, cat_gal)
+    n_gal = cv.get_n_gal_map(
+        params, NSIDE, cat_gal, unique_pix=unique_pix, idx=_idx, idx_rep=idx_rep
+    )
+    w = cat_gal[params["w_col"]]
+    e1 = cat_gal[params["e1_col"]]
+    e2 = cat_gal[params["e2_col"]]
+    mask = n_gal != 0
+    m1 = np.zeros(n_gal.size)
+    m2 = np.zeros(n_gal.size)
+    m1[unique_pix] += np.bincount(idx_rep, weights=e1 * w)
+    m2[unique_pix] += np.bincount(idx_rep, weights=e2 * w)
+    m1[mask] /= n_gal[mask]
+    m2[mask] /= n_gal[mask]
+    return m1 + 1j * m2, n_gal
+
+
+def test_build_shear_map(cv, cat_and_params):
+    """Pin the weighted shear map construction from the synthetic catalog."""
+    cat_gal, params = cat_and_params
+    unique_pix, _idx, idx_rep = cv.get_pixels(params, NSIDE, cat_gal)
+    n_gal = cv.get_n_gal_map(
+        params, NSIDE, cat_gal, unique_pix=unique_pix, idx=_idx, idx_rep=idx_rep
+    )
+    m1, m2 = cv.get_shear_map(
+        params, NSIDE, cat_gal, unique_pix=unique_pix, idx=_idx, idx_rep=idx_rep
+    )
+
+    m = m1 + 1j * m2
+
+    m_replicate, n_gal_replicate = _build_shear_map(cv, cat_gal, params)
+
+    npt.assert_allclose(m, m_replicate, rtol=RTOL_DET, atol=ATOL_DET)
+    npt.assert_allclose(n_gal, n_gal_replicate, rtol=RTOL_DET, atol=ATOL_DET)
+
+
+def test_get_pseudo_cls_map(cv, cat_and_params):
+    cat_gal, params = cat_and_params
+    shear_map, n_gal = _build_shear_map(cv, cat_gal, params)
+    ell_eff, cl_all, wsp = cv.get_pseudo_cls_map(shear_map, n_gal)
+    ell_eff_2, cl_all_2, wsp_2 = cv.get_pseudo_cls_map(
+        shear_map, n_gal, shear_map_b=shear_map, mask_b=n_gal
+    )
+
+    assert cl_all.shape == (4, N_ELL_BINS)
+    npt.assert_allclose(
+        ell_eff,
+        np.array([11.5, 20.0, 30.5, 43.5, 58.5, 75.5, 95.0, 116.5]),
+        rtol=RTOL_DET,
+        atol=ATOL_DET,
+    )
+    npt.assert_allclose(
+        cl_all[0],  # EE
+        np.array(
+            [
+                -3.5657848980278575e-06,
+                2.834003490842137e-06,
+                5.141388691413763e-07,
+                1.4864803917859117e-06,
+                1.529668502385154e-06,
+                9.126381881185905e-07,
+                8.60858982887623e-07,
+                2.324190517614256e-06,
+            ]
+        ),
+        rtol=RTOL_DET,
+        atol=ATOL_DET,
+    )
+    npt.assert_allclose(
+        cl_all[1],  # EB
+        np.array(
+            [
+                1.1955866959532166e-05,
+                -2.422720314939584e-06,
+                -9.9636714751786e-07,
+                -6.033940105986599e-07,
+                7.694521848269152e-07,
+                2.2127016030540707e-07,
+                -1.716732270067554e-07,
+                1.290575887877422e-07,
+            ]
+        ),
+        rtol=RTOL_DET,
+        atol=ATOL_DET,
+    )
+    npt.assert_allclose(
+        cl_all[3],  # BB
+        np.array(
+            [
+                1.0742046525039353e-05,
+                -8.20401788619865e-07,
+                1.1220545996996594e-06,
+                9.428235070512487e-07,
+                1.8882197714480114e-06,
+                1.5461915098836886e-06,
+                1.8834735730847215e-06,
+                1.8974610324105966e-06,
+            ]
+        ),
+        rtol=RTOL_DET,
+        atol=ATOL_DET,
+    )
+    # BE (index 2) is the transpose-symmetric partner of EB for an auto-spectrum.
+    npt.assert_allclose(cl_all[2], cl_all[1], rtol=RTOL_DET, atol=1e-18)
+
+    # Assert that running the same map against itself and against itself as a second map gives the same result.
+    npt.assert_allclose(cl_all, cl_all_2, rtol=RTOL_DET, atol=ATOL_DET)
+    npt.assert_allclose(ell_eff, ell_eff_2, rtol=RTOL_DET, atol=ATOL_DET)
+
+
+def test_get_pseudo_cls_map_with_tomo(cv, cat_and_params):
+    cat_gal, params = cat_and_params
+    cat_gal_tomo1 = cat_gal[cat_gal[params["tomo_bin_col"]] == 1]
+    cat_gal_tomo2 = cat_gal[cat_gal[params["tomo_bin_col"]] == 2]
+    shear_map_1, n_gal_1 = _build_shear_map(cv, cat_gal_tomo1, params)
+    shear_map_2, n_gal_2 = _build_shear_map(cv, cat_gal_tomo2, params)
+    ell_eff, cl_all, wsp = cv.get_pseudo_cls_map(
+        shear_map_1, n_gal_1, shear_map_b=shear_map_2, mask_b=n_gal_2
+    )
+
+    assert cl_all.shape == (4, N_ELL_BINS)
+    npt.assert_allclose(
+        ell_eff,
+        np.array([11.5, 20.0, 30.5, 43.5, 58.5, 75.5, 95.0, 116.5]),
+        rtol=RTOL_DET,
+        atol=ATOL_DET,
+    )
+    npt.assert_allclose(
+        cl_all[0],  # EE
+        np.array(
+            [
+                -8.648947250571888e-06,
+                4.386882223005456e-06,
+                -2.3193526251107696e-06,
+                1.0651397314115168e-06,
+                -2.722591256637468e-07,
+                -3.862270431501105e-07,
+                -1.40420405782524e-06,
+                2.1531429566476774e-07,
+            ]
+        ),
+        rtol=RTOL_DET,
+        atol=ATOL_DET,
+    )
+    npt.assert_allclose(
+        cl_all[1],  # EB
+        np.array(
+            [
+                -2.8032134416262087e-07,
+                -1.271298363785575e-06,
+                1.7112863041724342e-08,
+                -2.899403854283714e-07,
+                1.360217254538336e-06,
+                7.682614612656511e-08,
+                6.620365648170535e-07,
+                -3.164479179586416e-07,
+            ]
+        ),
+        rtol=RTOL_DET,
+        atol=ATOL_DET,
+    )
+    npt.assert_allclose(
+        cl_all[2],  # BE
+        np.array(
+            [
+                -3.83934537153214e-06,
+                6.218772676611559e-06,
+                -5.542920986484232e-06,
+                8.810792449470091e-07,
+                -3.2973293732012423e-07,
+                -1.3155110757359602e-08,
+                -1.420039280183438e-07,
+                3.09464700816748e-07,
+            ]
+        ),
+        rtol=RTOL_DET,
+        atol=ATOL_DET,
+    )
+    npt.assert_allclose(
+        cl_all[3],  # BB
+        np.array(
+            [
+                9.387700364892905e-06,
+                -2.9045253374872504e-06,
+                -1.7006849005134948e-06,
+                -3.6869001010423035e-07,
+                4.4986878855942184e-07,
+                6.021221048891767e-07,
+                8.413198154662088e-08,
+                -5.782957119801217e-07,
             ]
         ),
         rtol=RTOL_DET,
@@ -472,13 +796,19 @@ def test_calculate_pseudo_cl_catalog_end_to_end(cv, tmp_path, monkeypatch):
         "_calibrated_g",
         lambda ver, cat: (cat[shear["e1_col"]], cat[shear["e2_col"]]),
     )
+    cv.cell_method = "catalog"
     cv._pseudo_cls = {ver: {"tomo_bin_all_tomo_bin_all": {}}}
     saved = {}
     save_pseudo_cl = cv._save_pseudo_cl
 
-    def capture_workspace(ver, out_path, tomo_bin_pair, ell_eff, cl_all, wsp):
+    def capture_workspace(
+        ver, out_path, tomo_bin_pair, ell_eff, cl_all, wsp, nside=None
+    ):
         saved["workspace"] = wsp
-        return save_pseudo_cl(ver, out_path, tomo_bin_pair, ell_eff, cl_all, wsp)
+        saved["nside"] = nside
+        return save_pseudo_cl(
+            ver, out_path, tomo_bin_pair, ell_eff, cl_all, wsp, nside=nside
+        )
 
     monkeypatch.setattr(cv, "_save_pseudo_cl", capture_workspace)
     out_path = cv._output_path(f"pseudo_cl_{ver}.sacc")
@@ -491,6 +821,7 @@ def test_calculate_pseudo_cl_catalog_end_to_end(cv, tmp_path, monkeypatch):
     readback = cv._load_pseudo_cl(ver, out_path, ("all", "all"))
     npt.assert_array_equal(readback["BE"], eb)
     assert not np.shares_memory(readback["BE"], readback["EB"])
+    assert saved["nside"] is None
     window_ells, unwindowed_weights = bandpower_window_from_workspace(
         saved["workspace"]
     )
@@ -562,6 +893,64 @@ def test_calculate_pseudo_cl_catalog_end_to_end(cv, tmp_path, monkeypatch):
         catalog=cat_gal, params=params, tomo_bin_a="all", tomo_bin_b="all"
     )
     npt.assert_allclose(ee, cl_prim[0], rtol=RTOL_CAT, atol=ATOL_CAT)
+
+
+def test_calculate_pseudo_cl_map_sacc_pixel_window(cv, monkeypatch):
+    """Map SACC output multiplies its workspace window by pw²(ℓ)."""
+    ver = cv._test_version
+    cv.cell_method = "map"
+    cv.noise_bias_method = "analytic"
+    cv._pseudo_cls = {ver: {"tomo_bin_all_tomo_bin_all": {}}}
+    saved = {}
+    save_pseudo_cl = cv._save_pseudo_cl
+
+    def capture_workspace(
+        ver, out_path, tomo_bin_pair, ell_eff, cl_all, wsp, nside=None
+    ):
+        saved["workspace"] = wsp
+        saved["nside"] = nside
+        return save_pseudo_cl(
+            ver, out_path, tomo_bin_pair, ell_eff, cl_all, wsp, nside=nside
+        )
+
+    monkeypatch.setattr(cv, "_save_pseudo_cl", capture_workspace)
+    out_path = cv._output_path(f"pseudo_cl_map_{ver}.sacc")
+    cv.calculate_pseudo_cl_map(ver, NSIDE, out_path, "all", "all")
+
+    s = sacc_io.load(out_path)
+    _ell, _ee, _bb, _eb, window = sacc_io.get_pseudo_cl(s, SACC_BIN)
+    assert saved["nside"] == NSIDE
+    window_ells, unwindowed_weights = bandpower_window_from_workspace(
+        saved["workspace"]
+    )
+    assert len(window_ells) == window.weight.shape[0]
+    pw2 = healpy.pixwin(NSIDE, lmax=len(window_ells) - 1) ** 2
+    nonzero = np.abs(unwindowed_weights) > 1e-20
+    npt.assert_allclose(
+        window.weight[nonzero] / unwindowed_weights[nonzero],
+        np.broadcast_to(pw2[:, None], unwindowed_weights.shape)[nonzero],
+        rtol=1e-12,
+    )
+
+
+def test_fiducial_pixel_window_applies_only_to_map():
+    """iNKA fiducials carry pw² on maps and remain unchanged for catalogues."""
+    nside = 4
+    ell_grid = np.arange(12)
+    fiducial = {
+        "W1xW1": 1.0 + ell_grid.astype(float),
+        "W1xW2": 2.0 + 2 * ell_grid.astype(float),
+    }
+    original = {key: value.copy() for key, value in fiducial.items()}
+
+    catalog_fiducial = _apply_pixel_window_to_fiducial_cl(fiducial, nside, "catalog")
+    map_fiducial = _apply_pixel_window_to_fiducial_cl(fiducial, nside, "map")
+    pw2 = healpy.pixwin(nside, lmax=len(ell_grid) - 1) ** 2
+
+    for key, cl in original.items():
+        npt.assert_array_equal(catalog_fiducial[key], cl)
+        npt.assert_allclose(map_fiducial[key], cl * pw2, rtol=1e-14, atol=0.0)
+        npt.assert_array_equal(fiducial[key], cl)
 
 
 def test_calculate_pseudo_cl_catalog_end_to_end_tomo(cv, tmp_path, monkeypatch):

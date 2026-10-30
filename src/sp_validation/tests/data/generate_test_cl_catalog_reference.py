@@ -7,6 +7,8 @@ import yaml
 from astropy.table import Table
 
 from sp_validation.cosmo_val import CosmologyValidation
+from sp_validation.io import open_entry
+from sp_validation.rho_tau import get_params_rho_tau
 
 ipython = IPython.get_ipython()
 
@@ -91,8 +93,27 @@ cv = CosmologyValidation(
 )
 cv._test_version = version
 
+ver = cv._test_version
+params = get_params_rho_tau(cv.cc[ver])
+cat_gal = open_entry(cv.cc[ver]["shear"])
+
+cat_gal_tomo_bin_1 = cat_gal[cat_gal[params["tomo_bin_col"]] == 1]
+cat_gal_tomo_bin_2 = cat_gal[cat_gal[params["tomo_bin_col"]] == 2]
+n_gal_map_a = cv.get_n_gal_map(params, NSIDE, cat_gal_tomo_bin_1)
+shear_map_a_e1, shear_map_a_e2 = cv.get_shear_map(params, NSIDE, cat_gal_tomo_bin_1)
+n_gal_map_b = cv.get_n_gal_map(params, NSIDE, cat_gal_tomo_bin_2)
+shear_map_b_e1, shear_map_b_e2 = cv.get_shear_map(params, NSIDE, cat_gal_tomo_bin_2)
+
+shear_map_a = shear_map_a_e1 + 1j * shear_map_a_e2
+shear_map_b = shear_map_b_e1 + 1j * shear_map_b_e2
+
+
 # %%
-# The reference values below are produced only by the catalogue estimator.
+ell_eff, cl_all, wsp = cv.get_pseudo_cls_map(
+    shear_map_a, n_gal_map_a, shear_map_b=shear_map_b, mask_b=n_gal_map_b
+)
+
+# %%
 # Get the catalogue output
 ver = cv._test_version
 cv._pseudo_cls = {
