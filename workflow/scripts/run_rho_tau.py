@@ -21,5 +21,5 @@ cv = CosmologyValidation(
     output_dir=params["output_dir"],
     cov_estimate_method=params.get("cov_estimate_method", "th"),
 )
-cv.calculate_rho_tau_stats(tomography=False)
+cv.calculate_rho_tau_stats(tomography=params.get("compute_tomography", False))
 verify_outputs(snakemake)
