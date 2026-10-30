@@ -57,8 +57,11 @@ def _pair_noise_enabled(w):
 
 
 def _pair_count_path(w, suffix=".txt"):
+    # This explicit reference is for catalogues with verified identical
+    # positions, weights and selection. No shear or rho/tau product is shared.
+    reference = pair_count_reference(config, w.version)
     return str(COSMO_VAL / (
-        f"{w.version}_pairs_minsep={w.min_sep}_maxsep={w.max_sep}"
+        f"{reference}_pairs_minsep={w.min_sep}_maxsep={w.max_sep}"
         f"_nbins={w.nbins}{suffix}"
     ))
 
