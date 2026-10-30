@@ -1,6 +1,7 @@
 """Synthetic workflow no-leak regression: real estimators, real blind, real files.
 
-Run in the scientific container on an allocated compute node. No fixture reads a
+Runs in CI's ``-m 'not slow'`` suite: every input is synthetic. On the cluster,
+run in the scientific container on an allocated compute node. No fixture reads a
 survey catalogue or a user's blind registry. The twin has a physical FITS copy,
 not a symlink: one catalogue cannot legitimately declare two different blinds.
 """
@@ -520,7 +521,6 @@ def assert_dashboard_refuses_stale_public(raw_paths, cat_config, version):
             load_version(stale, version, None, cat_config=cat_config)
 
 
-@pytest.mark.slow
 def test_non_tomographic_workflow_emits_no_unblinded_signal(
     tmp_path, monkeypatch, capfd, caplog
 ):
