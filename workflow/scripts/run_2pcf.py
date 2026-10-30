@@ -42,6 +42,7 @@ def run_2pcf(
     output_dir,
     sacc_out=None,
     grid="reporting",
+    b_target=0.01,
     compute_tomography=False,
 ):
     """Measure ξ±(θ) for ``ver`` and write its sealed SACC part.
@@ -65,6 +66,8 @@ def run_2pcf(
         versions=[ver],
         catalog_config=cat_config,
         output_dir=output_dir,
+        npatch=npatch,
+        b_target=b_target,
     )
     out_path = sacc_out or os.path.join(
         output_dir or cv.cc["paths"]["output"],
@@ -98,6 +101,7 @@ def _from_snakemake(smk):
         cat_config=p["cat_config"],
         output_dir=p["output_dir"],
         grid=p.get("grid", "reporting"),
+        b_target=p.get("b_target", 0.01),
         sacc_out=smk.output["sacc"],
         compute_tomography=bool(p.get("compute_tomography", False)),
     )
@@ -130,6 +134,9 @@ def _from_cli(argv=None):
         "--grid", default="reporting", help="SACC grid tag for the measured points"
     )
     ap.add_argument(
+        "--b-target", type=float, default=0.01, help="Means-pass bin tolerance target"
+    )
+    ap.add_argument(
         "--tomo",
         action="store_true",
         help="Measure every tomographic bin pair instead of the whole sample",
@@ -144,6 +151,7 @@ def _from_cli(argv=None):
         cat_config=a.cat_config,
         output_dir=a.out,
         grid=a.grid,
+        b_target=a.b_target,
         compute_tomography=a.tomo,
     )
 

@@ -59,12 +59,17 @@ def test_jackknife_draws_use_distinct_shared_layouts(tmp_path, monkeypatch):
         )
     }
     layouts, catalogs, chunks = [], [], {"rho": [], "tau": []}
+    unpatched = []
     compute = rho_tau.RhoStat.compute_rho_stats
     save = np.save
 
     def record_compute(self, catalog_id, *args, **kwargs):
         cats = self.catalogs.catalogs_dict
         psf = cats[f"psf_{catalog_id}"]
+        if psf.npatch == 1:
+            assert not kwargs["save_cov"]
+            unpatched.append(catalog_id)
+            return compute(self, catalog_id, *args, **kwargs)
         layouts.append(psf.patch_centers.copy())
         catalogs.append(psf)
         for prefix in ("psf_error", "psf_size_error", "gal"):
@@ -100,6 +105,7 @@ def test_jackknife_draws_use_distinct_shared_layouts(tmp_path, monkeypatch):
         npatch=7,
         ncov=3,
     )
+    assert len(unpatched) == 1
     assert len(layouts) == 3
     assert all(
         not np.array_equal(layouts[i], layouts[j]) for i in range(3) for j in range(i)
