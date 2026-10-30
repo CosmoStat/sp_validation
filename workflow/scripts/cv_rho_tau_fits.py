@@ -9,9 +9,17 @@ for ver, path in zip(cv.versions, snakemake.output.products, strict=True):
     params = cv.set_params_rho_tau(ver, cv.results[ver]._params, cv.cc[ver]["psf"])
     flat_samples = cv.get_samples(ver, params, "all")
     plus, minus = cv.get_xi_psf_sys_samples(ver, params, "all", "all")
+    if cv.rho_tau_method == "eiv":
+        theta = cv.leakage_jackknife(ver)["theta"]
+        fit_summary = cv.leakage_jackknife_path(ver, "all", "leakage_eiv_fit")
+        extra = dict(leakage_eiv_fit=fit_summary.read_text())
+    else:
+        theta = cv.psf_fitter.rho_stat_handler.rho_stats["theta"]
+        extra = {}
     data = dict(
-        theta=cv.psf_fitter.rho_stat_handler.rho_stats["theta"],
+        theta=theta,
         flat_samples=flat_samples,
+        **extra,
         theta_edges=np.geomspace(
             cv.treecorr_config["min_sep"],
             cv.treecorr_config["max_sep"],

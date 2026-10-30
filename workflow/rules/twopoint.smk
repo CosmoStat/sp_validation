@@ -98,6 +98,8 @@ rule rho_tau_stats:
         cat_config=CAT_CONFIG,
         output_dir=str(COSMO_VAL),
         b_target=config.get("cosmo_val", {}).get("b_target", 0.01),
+        # Its sky mask applies to the ρ/τ stars and galaxies.
+        psf_leakage=config.get("cosmo_val", {}).get("psf_leakage"),
         blind=lambda w: blind_of(w.version),
     resources:
         mem_mb=64000,
