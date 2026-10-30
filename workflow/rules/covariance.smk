@@ -15,14 +15,53 @@ def get_footprint_path(version):
 # tomographic. Named by covariance_base() in common.py.
 # ---------------------------------------------------------------------------
 
-def get_onecov_cat_params(version):
+def get_onecov_cat_params(version, tomo_suffix=""):
     """OneCovariance survey parameters (sigma_e, n_e, area) of ``version``'s
-    catalogue entry. Tomographic values are comma-separated strings, one entry
-    per bin."""
+    catalogue entry, as comma-separated strings with one entry per bin.
+
+    A tomographic covariance reads ``cov_th.tomo`` (per-bin ``sigma_e`` and
+    ``n_e``) when the entry has one; a non-tomographic covariance reads the
+    whole-sample ``cov_th.sigma_e`` and ``cov_th.n_e``."""
     cov_th = catalogue_entry(version)["cov_th"]
+    survey = cov_th.get("tomo", cov_th) if tomo_suffix else cov_th
+
+    def per_bin(value):
+        values = value if isinstance(value, (list, tuple)) else str(value).split(",")
+        return ", ".join(repr(float(v)) for v in values)
+
     # Both cov_th.sigma_e and OneCovariance use per-component dispersion.
-    sigma_e = ", ".join(repr(float(s)) for s in str(cov_th["sigma_e"]).split(","))
-    return sigma_e, cov_th["n_e"], cov_th["A"]
+    return per_bin(survey["sigma_e"]), per_bin(survey["n_e"]), cov_th["A"]
+
+
+def onecov_nz_path(version, tomo_suffix=""):
+    """The n(z) file OneCovariance reads for one covariance.
+
+    The catalogue's own ``redshift_path`` for a tomographic covariance or a
+    catalogue without tomographic bins; for a non-tomographic covariance of a
+    catalogue that declares ``shear.tomo_bin_col``, the bin sum written by
+    ``nz_bin_sum`` (the whole-sample n(z), as
+    ``CosmologyValidation.get_redshift`` reads it)."""
+    path = redshift_path(version)
+    if tomo_suffix or "tomo_bin_col" not in catalogue_entry(version)["shear"]:
+        return path
+    return str(COSMO_VAL / "nz" / f"{version}_nz_bin_sum.txt")
+
+
+rule nz_bin_sum:
+    """Whole-sample n(z) of a multi-bin catalogue: z and the sum of its bins."""
+    input:
+        lambda w: redshift_path(w.version),
+    output:
+        str(COSMO_VAL / "nz" / "{version}_nz_bin_sum.txt"),
+    run:
+        import numpy as np
+
+        table = np.loadtxt(input[0])
+        np.savetxt(
+            output[0],
+            np.column_stack([table[:, 0], table[:, 1:].sum(axis=1)]),
+            header=f"z n(z): sum of the {table.shape[1] - 1} bins of {input[0]}",
+        )
 
 
 def _onecov_args(w):
@@ -157,7 +196,7 @@ rule covariance_pair_counts:
 
 rule covariance_ini:
     input:
-        nz_file=lambda w: redshift_path(w.version),
+        nz_file=lambda w: onecov_nz_path(w.version, w.tomo_suffix),
         npair=lambda w: [_pair_count_path(w)] if _pair_noise_enabled(w) else [],
         mask=lambda w: [] if w.mask_suffix != "_masked" else [get_footprint_path(w.version)],
     output:
@@ -173,9 +212,9 @@ rule covariance_ini:
         h=PLANCK18["h"],
         omega_b=PLANCK18["Omega_b"],
         hmcode_logT_AGN=7.75,
-        sigma_e_param=lambda w: get_onecov_cat_params(w.version)[0],
-        n_e=lambda w: get_onecov_cat_params(w.version)[1],
-        area=lambda w: get_onecov_cat_params(w.version)[2],
+        sigma_e_param=lambda w: get_onecov_cat_params(w.version, w.tomo_suffix)[0],
+        n_e=lambda w: get_onecov_cat_params(w.version, w.tomo_suffix)[1],
+        area=lambda w: get_onecov_cat_params(w.version, w.tomo_suffix)[2],
         # OneCovariance takes directory and file separately.
         mask_dir=lambda w: (
             os.path.dirname(get_footprint_path(w.version))
@@ -187,8 +226,8 @@ rule covariance_ini:
             if w.mask_suffix == "_masked"
             else ""
         ),
-        nz_dir=lambda w: os.path.dirname(redshift_path(w.version)),
-        nz_file=lambda w: os.path.basename(redshift_path(w.version)),
+        nz_dir=lambda w: os.path.dirname(onecov_nz_path(w.version, w.tomo_suffix)),
+        nz_file=lambda w: os.path.basename(onecov_nz_path(w.version, w.tomo_suffix)),
         num_cores=ONECOV_THREADS,
         pair_section=lambda w: (
             "[tabulated inputs files]\n"
@@ -307,11 +346,7 @@ EOF
 
 
 rule covariance_run:
-    """Run OneCovariance on its generated .ini.
-
-    `container: None` on purpose: OneCovariance runs from a host checkout under
-    environment-modules, set by tools.onecov_executable.
-    """
+    """Run the pinned OneCovariance checkout in the workflow container."""
     input:
         rules.covariance_ini.output,
     output:
@@ -320,19 +355,14 @@ rule covariance_run:
         outdir=lambda w: covariance_dir(*_onecov_args(w)),
         onecov=_onecov_tool("onecov_executable"),
         python_executable=_onecov_tool("python_executable", "python"),
-    container:
-        None
     threads: ONECOV_THREADS
+    resources:
+        mem_mb=lambda w: 128000 if int(w.nbins) > 100 else 32000,
+        runtime=720,
     shell:
         """
-        module unload gcc || true
-        module load gcc
-        module unload intelpython || true
-        module load intelpython/3-2024.1.0
-        module load openmpi
-
-        cd {params.outdir}
-        {params.python_executable} {params.onecov} {input}
+        cd {params.outdir:q}
+        {params.python_executable:q} {params.onecov:q} {input:q}
         """
 
 
@@ -387,5 +417,6 @@ ruleorder: covariance_ini > covariance_run > covariance
 
 localrules:
     cosmology_params,
+    nz_bin_sum,
     covariance_ini,
     generate_glass_mock_rhotau_samples,
