@@ -7,3 +7,5 @@ Figures show raw uncalibrated ellipticity proxies and one-point stellar PSF diag
 `tile-quality.json` holds per-tile measurements identified by campaign and tile.
 The code base for selection is sp_validation develop 2b5bede5; scientific reads used the sp_validation-develop-20261024 container on Nibi.
 No threshold is applied; the dotted thresholds show sensitivity costs.
+
+Run `python figures.py` in the sp_validation container to regenerate the distribution, quality-comparison and PSF-residual plots from the accompanying measurements.
