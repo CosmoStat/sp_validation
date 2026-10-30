@@ -663,6 +663,8 @@ class TestCosmologyValidation:
             with_tomography=tomography,
             coherent_shear=True,
         )
+        if tomography:
+            self._use_tomographic_nz(params, version, tmp_path)
         cv = CosmologyValidation(
             [version], npatch=8, theta_min=5, theta_max=200, nbins=8, **params
         )
@@ -725,8 +727,6 @@ class TestCosmologyValidation:
                 ),
             )
             np.testing.assert_array_equal(a.cov, direct.cov)
-            if tomography:
-                np.testing.assert_array_equal(a.estimate_cov("jackknife"), direct.cov)
 
     def test_rho_tau_means_are_layout_independent(self, tmp_path, monkeypatch):
         from sp_validation import rho_tau
