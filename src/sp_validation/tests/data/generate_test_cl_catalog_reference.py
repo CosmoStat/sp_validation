@@ -123,12 +123,7 @@ cv._pseudo_cls = {
         "tomo_bin_2_tomo_bin_2": {},
     }
 }
-tomo_bin_ids, tomo_bin_pairs = cv._get_tomo_bins(ver)
-for tomo_bin_a, tomo_bin_b in tomo_bin_pairs:
-    ell, cl, _, _ = cv.calculate_pseudo_cl_catalog(ver, tomo_bin_a, tomo_bin_b)
-    cv._pseudo_cls[ver][f"tomo_bin_{tomo_bin_a}_tomo_bin_{tomo_bin_b}"]["pseudo_cl"] = (
-        dict(zip(("ELL", "EE", "EB", "BE", "BB"), (ell, *cl)))
-    )
+cv.calculate_pseudo_cl(compute_tomography=True)
 
 
 # %%

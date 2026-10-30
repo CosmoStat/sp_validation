@@ -21,7 +21,7 @@ The pinned primitives (the exact functions Track B2 moves):
 * ``get_n_gal_map``          -- weighted galaxy number-density map
 * ``get_pseudo_cls_map``     -- map-based pseudo-Cl (decoupled EE/EB/BE/BB)
 * ``get_pseudo_cls_catalog`` -- catalog-based pseudo-Cl (NmtFieldCatalog)
-* ``calculate_pseudo_cl_catalog`` -- the deterministic end-to-end catalog path
+* ``_measure_pseudo_cl_catalog`` -- the deterministic end-to-end catalog path
 * ``apply_random_rotation``  -- pinned by INVARIANT + seed reproducibility (see below)
 
 REPRODUCIBILITY / TOLERANCE (measured over 3 independent container processes)
@@ -32,7 +32,7 @@ REPRODUCIBILITY / TOLERANCE (measured over 3 independent container processes)
   float-noise floor of 0, yet a hair of margin so an exact-equality assertion
   doesn't make the suite brittle to a future NaMaster build.
 * ``get_pseudo_cls_catalog`` (the ``NmtFieldCatalog`` path) and the end-to-end
-  ``calculate_pseudo_cl_catalog`` are NOT bitwise-reproducible: their reduction
+  ``_measure_pseudo_cl_catalog`` are NOT bitwise-reproducible: their reduction
   order drifts at the ~2e-12 relative level (worst case measured 2.1e-12,
   absolute 2.7e-19). Pinned at ``rtol=1e-6 / atol=1e-12`` -- ~6 orders of
   magnitude above that float-noise floor (no flakiness margin consumed) yet
@@ -457,7 +457,7 @@ def test_get_n_gal_map(cv, cat_and_params):
 # get_pseudo_cls_map -- map-based pseudo-Cl (bitwise-stable)
 # ===========================================================================
 def _build_shear_map(cv, cat_gal, params):
-    """Replicate calculate_pseudo_cl_map's weighted shear-map construction."""
+    """Replicate _measure_pseudo_cl_map's weighted shear-map construction."""
     unique_pix, _idx, idx_rep = cv.get_pixels(params, NSIDE, cat_gal)
     n_gal = cv.get_n_gal_map(
         params, NSIDE, cat_gal, unique_pix=unique_pix, idx=_idx, idx_rep=idx_rep
@@ -784,22 +784,22 @@ def test_apply_random_rotation_reproducible_with_seed(cv, cat_and_params):
 
 
 # ===========================================================================
-# calculate_pseudo_cl_catalog -- deterministic end-to-end catalog path
+# _measure_pseudo_cl_catalog -- deterministic end-to-end catalog path
 # ===========================================================================
-def test_calculate_pseudo_cl_catalog_end_to_end(cv, tmp_path, monkeypatch):
+def test__measure_pseudo_cl_catalog_end_to_end(cv, tmp_path, monkeypatch):
     """Catalog SACC output retains the unwindowed workspace bandpower window."""
     ver = cv._test_version
     cv.cell_method = "catalog"
     cv._pseudo_cls = {ver: {"tomo_bin_all_tomo_bin_all": {}}}
     saved = {}
-    measure = cv.calculate_pseudo_cl_catalog
+    measure = cv._measure_pseudo_cl_catalog
 
     def capture_workspace(*args):
         result = measure(*args)
         saved["workspace"], saved["nside"] = result[2:]
         return result
 
-    monkeypatch.setattr(cv, "calculate_pseudo_cl_catalog", capture_workspace)
+    monkeypatch.setattr(cv, "_measure_pseudo_cl_catalog", capture_workspace)
     out_path = cv._output_path(f"pseudo_cl_{ver}.sacc")
     cv.calculate_pseudo_cl(compute_tomography=False, out_path=out_path)
 
@@ -884,21 +884,21 @@ def test_calculate_pseudo_cl_catalog_end_to_end(cv, tmp_path, monkeypatch):
     npt.assert_allclose(ee, cl_prim[0], rtol=RTOL_CAT, atol=ATOL_CAT)
 
 
-def test_calculate_pseudo_cl_map_sacc_pixel_window(cv, monkeypatch):
+def test__measure_pseudo_cl_map_sacc_pixel_window(cv, monkeypatch):
     """Map SACC output multiplies its workspace window by pw²(ℓ)."""
     ver = cv._test_version
     cv.cell_method = "map"
     cv.noise_bias_method = "analytic"
     cv._pseudo_cls = {ver: {"tomo_bin_all_tomo_bin_all": {}}}
     saved = {}
-    measure = cv.calculate_pseudo_cl_map
+    measure = cv._measure_pseudo_cl_map
 
     def capture_workspace(*args):
         result = measure(*args)
         saved["workspace"], saved["nside"] = result[2:]
         return result
 
-    monkeypatch.setattr(cv, "calculate_pseudo_cl_map", capture_workspace)
+    monkeypatch.setattr(cv, "_measure_pseudo_cl_map", capture_workspace)
     out_path = cv._output_path(f"pseudo_cl_map_{ver}.sacc")
     cv.calculate_pseudo_cl(compute_tomography=False, out_path=out_path)
 
@@ -945,7 +945,7 @@ def test_calculate_pseudo_cl_tomography_requires_one_nz_per_bin(cv):
         cv.calculate_pseudo_cl(compute_tomography=True)
 
 
-def test_calculate_pseudo_cl_catalog_end_to_end_tomo(cv, tmp_path):
+def test__measure_pseudo_cl_catalog_end_to_end_tomo(cv, tmp_path):
     """End-to-end catalog path: SACC round-trip of ell + EE/EB/BB.
 
     The catalog method has no random noise debiasing, so it is reproducible to

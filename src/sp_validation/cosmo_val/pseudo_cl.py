@@ -187,13 +187,11 @@ class PseudoClMixin:
                 for a, b in tomo_bin_pairs:
                     self.print_cyan(f"Tomo Bin Pair: ({a}, {b})")
                     if self.cell_method == "map":
-                        ell, cl, wsp, nside = self.calculate_pseudo_cl_map(
+                        ell, cl, wsp, nside = self._measure_pseudo_cl_map(
                             ver, self.nside, a, b
                         )
                     elif self.cell_method == "catalog":
-                        ell, cl, wsp, nside = self.calculate_pseudo_cl_catalog(
-                            ver, a, b
-                        )
+                        ell, cl, wsp, nside = self._measure_pseudo_cl_catalog(ver, a, b)
                     else:
                         raise ValueError(f"Unknown cell method: {self.cell_method}")
                     measured.append(
@@ -215,7 +213,7 @@ class PseudoClMixin:
 
         self.print_done("Done pseudo-Cl's")
 
-    def calculate_pseudo_cl_map(self, ver, nside, tomo_bin_a, tomo_bin_b):
+    def _measure_pseudo_cl_map(self, ver, nside, tomo_bin_a, tomo_bin_b):
         assert (tomo_bin_a == "all" and tomo_bin_b == "all") or (
             isinstance(tomo_bin_a, (int, np.integer))
             and isinstance(tomo_bin_b, (int, np.integer))
@@ -308,7 +306,7 @@ class PseudoClMixin:
 
         return ell_eff, cl_shear, wsp, nside
 
-    def calculate_pseudo_cl_catalog(self, ver, tomo_bin_a, tomo_bin_b):
+    def _measure_pseudo_cl_catalog(self, ver, tomo_bin_a, tomo_bin_b):
         assert (tomo_bin_a == "all" and tomo_bin_b == "all") or (
             isinstance(tomo_bin_a, (int, np.integer))
             and isinstance(tomo_bin_b, (int, np.integer))

@@ -754,7 +754,7 @@ class TestCosmologyValidation:
 
         public_cv = CosmologyValidation(versions=[version], npatch=1, **params)
         public_cv.cell_method = "catalog"
-        monkeypatch.setattr(public_cv, "calculate_pseudo_cl_catalog", measure)
+        monkeypatch.setattr(public_cv, "_measure_pseudo_cl_catalog", measure)
         public_cv.calculate_pseudo_cl(compute_tomography=True)
         path = public_cv._output_path_pseudo_cl(version, tomography=True)
         public = sacc_io.load(path)
@@ -768,10 +768,28 @@ class TestCosmologyValidation:
         blind = blinding.init("toy", config)
         cv = CosmologyValidation(versions=[version], npatch=1, **params)
         cv.cell_method = "catalog"
-        monkeypatch.setattr(cv, "calculate_pseudo_cl_catalog", measure)
-        cv.calculate_pseudo_cl(compute_tomography=True)
+        monkeypatch.setattr(cv, "_measure_pseudo_cl_catalog", measure)
+        assert cv.calculate_pseudo_cl(compute_tomography=True) is None
         sealed = sacc_io.load(path)
         assert sacc_io.stamp(sealed) == "toy"
+        public_methods = [
+            name for name in dir(cv) if name.startswith("calculate_pseudo_cl")
+        ]
+        assert "calculate_pseudo_cl_map" not in public_methods
+        assert "calculate_pseudo_cl_catalog" not in public_methods
+        for bins, pair in zip(((0, 0), (0, 1), (1, 1)), ((1, 1), (1, 2), (2, 2))):
+            stored = cv._pseudo_cls[version][f"tomo_bin_{pair[0]}_tomo_bin_{pair[1]}"][
+                "pseudo_cl"
+            ]
+            ell, ee, bb, eb, _ = sacc_io.get_pseudo_cl(sealed, bins)
+            for key, values in (
+                ("ELL", ell),
+                ("EE", ee),
+                ("BB", bb),
+                ("EB", eb),
+                ("BE", eb),
+            ):
+                np.testing.assert_array_equal(stored[key], values)
         assert len(calls) == 6  # the public part was stale under the new blind
         raw = public.copy()
         del raw.metadata["blind"]
