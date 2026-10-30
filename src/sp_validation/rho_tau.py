@@ -728,7 +728,8 @@ def get_theory_cov(
 
     ``CovTauTh`` takes the survey area and effective galaxy density from the
     galaxy catalogue after ``mask_gal``. The masks select rows as in
-    ``get_rho_tau``.
+    ``get_rho_tau``; their `selection_digest` is recorded beside the cached
+    covariance, which is reused only for the same selection.
     """
 
     params = get_params_rho_tau(config[version])
@@ -736,8 +737,14 @@ def get_theory_cov(
     info = config[version]
 
     target_cov = Path(outdir) / f"cov_tau_{base}_th.npy"
+    metadata = Path(str(target_cov) + ".json")
+    selection = selection_digest(mask_star, mask_gal)
 
-    if target_cov.exists():
+    if (
+        target_cov.exists()
+        and metadata.exists()
+        and json.loads(metadata.read_text()).get("selection") == selection
+    ):
         print(f"Skipping covariance computation, file {target_cov} already exists.")
         return
 
@@ -764,6 +771,7 @@ def get_theory_cov(
         print(f"--- Covariance matrix assembled in {time.time() - start_time:.2f}s ---")
         target_cov.parent.mkdir(parents=True, exist_ok=True)
         np.save(target_cov, cov)
+        metadata.write_text(json.dumps({"selection": selection}) + "\n")
         print("Saved covariance matrix of version: ", version)
         del cov_tau_th
     gc.collect()
@@ -953,6 +961,24 @@ def get_jackknife_cov(
     return rho_stat_handler, tau_stat_handler
 
 
+def _sample_cache_name(psf_fitter, base_tau, sampler, cov_type):
+    """Name of a sample cache, keyed on the tau statistics' row selection.
+
+    The selection is the `selection_digest` recorded beside
+    ``tau_stats_<base_tau>.fits`` (stars and galaxies), so samples of a
+    different selection are never reused.
+    """
+    name = f"{base_tau}_sampler_{sampler}_cov_tau_type_{cov_type}"
+    metadata = (
+        Path(psf_fitter.tau_stat_handler.catalogs._output)
+        / f"tau_stats_{base_tau}.fits.json"
+    )
+    if not metadata.exists():
+        return name
+    selection = json.loads(metadata.read_text()).get("selection")
+    return name if selection is None else f"{name}_selection={selection[:12]}"
+
+
 def get_samples(
     psf_fitter,
     base_rho,
@@ -1041,7 +1067,7 @@ def get_samples_emcee(
     psf_fitter.load_tau_stat(f"tau_stats_{base_tau}.fits")
 
     # Check if the path exists (use base for cache key to account for different TreeCorr configs)
-    base_sample = f"{base_tau}_sampler_emcee_cov_tau_type_{cov_type}"
+    base_sample = _sample_cache_name(psf_fitter, base_tau, "emcee", cov_type)
     sample_file_path = psf_fitter.get_sample_path(base_sample)
     if os.path.exists(sample_file_path):
         print(f"Skipping sampling; {sample_file_path} exists.")
@@ -1093,7 +1119,7 @@ def get_samples_lsq(
     psf_fitter.load_rho_stat(f"rho_stats_{base_rho}.fits")
     psf_fitter.load_tau_stat(f"tau_stats_{base_tau}.fits")
 
-    base_sample = f"{base_tau}_sampler_lsq_cov_tau_type_{cov_type}"
+    base_sample = _sample_cache_name(psf_fitter, base_tau, "lsq", cov_type)
     # Check if the path exists (use base for cache key to account for different TreeCorr configs)
     sample_file_path = psf_fitter.get_sample_path(base_sample)
     if os.path.exists(sample_file_path):

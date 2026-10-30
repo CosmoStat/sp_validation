@@ -269,3 +269,39 @@ def test_psf_leakage_settings_are_validated(settings, message):
 
     with pytest.raises(ValueError, match=message):
         CosmologyValidation(versions=[], psf_leakage=settings)
+
+
+def test_theory_covariance_follows_the_selection(tmp_path, monkeypatch):
+    """cov_tau_*_th.npy is rebuilt when the star or galaxy selection changes."""
+    val = _Validation(tmp_path)
+    built = []
+
+    class FakeCovTauTh:
+        def __init__(self, mask_star=None, mask_gal=None, **kwargs):
+            built.append((mask_star.sum(), mask_gal.sum()))
+
+        def build_cov(self, **kwargs):
+            return np.eye(2) * len(built)
+
+    monkeypatch.setattr(rho_tau, "CovTauTh", FakeCovTauTh)
+    mask_star, mask_gal = val._get_rho_tau_masks(VERSION, "all")
+    outdir = tmp_path / "rho_tau_stats"
+
+    def covariance(star, gal):
+        rho_tau.get_theory_cov(
+            val.cc,
+            VERSION,
+            val.treecorr_config,
+            str(outdir),
+            "base",
+            mask_star=star,
+            mask_gal=gal,
+        )
+        return np.load(outdir / "cov_tau_base_th.npy")[0, 0]
+
+    assert covariance(mask_star, mask_gal) == 1
+    assert covariance(mask_star, mask_gal) == 1
+    fewer = mask_gal.copy()
+    fewer[np.flatnonzero(fewer)[0]] = False
+    assert covariance(mask_star, fewer) == 2
+    assert len(built) == 2
