@@ -6,6 +6,8 @@ from pathlib import Path
 import yaml
 from conftest import VERSIONS
 
+UNMASKED = ['covariance={"shape_noise":"analytic","default_masked":false}']
+
 
 def _ini(toy, tomo_suffix=""):
     # Unmasked target: no site-specific footprint needed by this test.
@@ -23,17 +25,18 @@ def _ini(toy, tomo_suffix=""):
 
 
 @contextmanager
-def _two_bin_catalogue(toy):
+def _two_bin_catalogue(toy, tomo_cov_th=True):
     """The toy version as a two-bin catalogue: a 2-column n(z), cov_th.tomo."""
     nz = toy.root / "data" / "nz_SP_v0.1_A.txt"
     cat_config = toy.root / "cosmo_val" / "cat_config.yaml"
     originals = {p: p.read_text() if p.exists() else None for p in (nz, cat_config)}
     nz.write_text("0.0 0.0 0.0\n0.5 1.0 0.5\n1.0 0.0 1.5\n")
     entries = yaml.safe_load(originals[cat_config])
-    entries[VERSIONS[0]]["cov_th"]["tomo"] = {
-        "n_e": [2.0, 3.0],
-        "sigma_e": [0.25, 0.35],
-    }
+    if tomo_cov_th:
+        entries[VERSIONS[0]]["cov_th"]["tomo"] = {
+            "n_e": [2.0, 3.0],
+            "sigma_e": [0.25, 0.35],
+        }
     entries[VERSIONS[0]]["shear"]["tomo_bin_col"] = "TOM_BIN_ID"
     cat_config.write_text(yaml.safe_dump(entries))
     try:
@@ -50,7 +53,6 @@ def test_tomographic_catalogue_covariance_inputs(toy):
     """One multi-bin entry serves both covariances: the tomographic ini reads its
     per-bin n(z) and cov_th.tomo, the non-tomographic one the bin-summed n(z)
     and the whole-sample cov_th."""
-    unmasked = ['covariance={"shape_noise":"analytic","default_masked":false}']
     with _two_bin_catalogue(toy) as cov_th:
         texts = {}
         for suffix in ("", "_tomo"):
@@ -61,7 +63,7 @@ def test_tomographic_catalogue_covariance_inputs(toy):
                 "--allowed-rules",
                 "covariance_ini",
                 "nz_bin_sum",
-                config=unmasked,
+                config=UNMASKED,
             )
             assert result.returncode == 0, result.stdout
             texts[suffix] = Path(target).read_text()
@@ -78,3 +80,12 @@ def test_tomographic_catalogue_covariance_inputs(toy):
         if not line.startswith("#")
     ]
     assert table == [[0.0, 0.0], [0.5, 1.5], [1.0, 1.5]]
+
+
+def test_tomographic_covariance_refuses_whole_sample_cov_th(toy):
+    """Without cov_th.tomo, a binned entry's tomographic ini is refused rather
+    than given the whole-sample n_e and sigma_e for every bin."""
+    with _two_bin_catalogue(toy, tomo_cov_th=False):
+        result = toy.snakemake("-n", _ini(toy, "_tomo"), config=UNMASKED)
+    assert result.returncode != 0
+    assert "per-bin n_e and sigma_e in cov_th.tomo" in result.stdout
