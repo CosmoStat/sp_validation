@@ -17,15 +17,17 @@ rule xi:
     """TreeCorr ξ±(θ) for one version on one angular grid, as its sealed SACC part.
 
     One rule for every grid: outputs are named by their binning, so a request
-    binds the wildcards and the grid label resolves from them.
+    binds the wildcards and the grid label resolves from them. A `_tomo`
+    suffix measures every tomographic bin pair into the one part.
     """
     input:
         catalog=get_shear_catalog,
     output:
-        sacc=str(COSMO_VAL / "{version}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc"),
+        sacc=str(COSMO_VAL / "{version}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}{tomo_suffix}.sacc"),
     threads: 24
     params:
         ver="{version}",
+        compute_tomography=lambda w: w.tomo_suffix == "_tomo",
         min_sep="{min_sep}",
         max_sep="{max_sep}",
         nbins="{nbins}",
@@ -33,6 +35,7 @@ rule xi:
         cat_config=CAT_CONFIG,
         output_dir=str(COSMO_VAL),
         grid=lambda w: grid_of(XI_GRIDS, w),
+        b_target=config.get("cosmo_val", {}).get("b_target", 0.01),
         blind=lambda w: blind_of(w.version),
     resources:
         # The fine integration grid needs more memory and wall time than the
@@ -42,6 +45,38 @@ rule xi:
         runtime=lambda w: 600 if int(w.nbins) > 100 else 360,
     script:
         "../scripts/run_2pcf.py"
+
+
+def xi_onecov_covariance(w):
+    """The OneCovariance matrix on a ξ± request's binning and tomography:
+    Gaussian on the integration grid, non-Gaussian otherwise, as cosmo_val's
+    covariance inputs are."""
+    gaussian = "g" if grid_of(XI_GRIDS, w) == "integration" else "ng"
+    return covariance_path(
+        w.version, gaussian, w.min_sep, w.max_sep, w.nbins,
+        DEFAULT_MASK_SUFFIX, w.tomo_suffix,
+    )
+
+
+rule xi_onecov:
+    """A ξ± part with the OneCovariance matrix of its binning as its covariance.
+
+    The matrix replaces the estimate the part was born with (jackknife or shot
+    noise), reordered to the part's points; the result is a derivation of the
+    part, so it keeps the part's blind.
+    """
+    input:
+        xi=str(COSMO_VAL / "{version}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}{tomo_suffix}.sacc"),
+        cov=xi_onecov_covariance,
+    output:
+        sacc=str(COSMO_VAL / "{version}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}{tomo_suffix}_onecov.sacc"),
+    params:
+        blind=lambda w: blind_of(w.version),
+    resources:
+        mem_mb=4000,
+        runtime=10,
+    script:
+        "../scripts/xi_onecov_sacc.py"
 
 
 rule rho_tau_stats:
@@ -62,6 +97,7 @@ rule rho_tau_stats:
         npatch="{npatch}",
         cat_config=CAT_CONFIG,
         output_dir=str(COSMO_VAL),
+        b_target=config.get("cosmo_val", {}).get("b_target", 0.01),
         blind=lambda w: blind_of(w.version),
     resources:
         mem_mb=64000,

@@ -20,10 +20,8 @@ def get_onecov_cat_params(version):
     catalogue entry. Tomographic values are comma-separated strings, one entry
     per bin."""
     cov_th = catalogue_entry(version)["cov_th"]
-    # cov_th.sigma_e sums both components; OneCovariance takes it per component.
-    sigma_e = ", ".join(
-        repr(float(s) / 2**0.5) for s in str(cov_th["sigma_e"]).split(",")
-    )
+    # Both cov_th.sigma_e and OneCovariance use per-component dispersion.
+    sigma_e = ", ".join(repr(float(s)) for s in str(cov_th["sigma_e"]).split(","))
     return sigma_e, cov_th["n_e"], cov_th["A"]
 
 

@@ -34,7 +34,10 @@ take their entry's blind, and entries reading one shear file declare one blind.
 A blind is a secret record, `<paths.blinds>/<name>.blind.json` (seed, envelope,
 fiducial), drawn once with
 `spv-container exec python -m sp_validation.blinding init <name>` and never
-committed. On a blinded catalogue, ξ± and Cℓ_EE are shifted by
+committed to this repository. UNIONS keeps its one blind, `unions`, in the
+private `git@github.com:UNIONS-WL/blinds.git`; each machine clones it to
+`~/.sp_validation/blinds` (mode 0700), the default `paths.blinds`, and pulls
+before a blinded run. On a blinded catalogue, ξ± and Cℓ_EE are shifted by
 t(hidden) − t(fiducial) before they are first written: Smokescreen draws the
 hidden point (S8 and Ωm) from the seed, and the theory `t` is
 `sp_validation.blinding.shear`. Cℓ_BB and Cℓ_EB get zero shift; ρ/τ are saved
@@ -144,6 +147,9 @@ rule executes new script code against an old `import sp_validation` — the two
 halves of one commit, split.
 
 The catalogue config is the launched checkout's `cosmo_val/cat_config.yaml`.
+Pseudo-Cℓ estimation defaults to the catalogue estimator. Set
+`cosmo_val.cell_method: map` in the run config to select the retained
+map-based estimator; the catalogue estimator remains the default when omitted.
 `COSMO_VAL` defaults to the launched checkout's `cosmo_val/output`, so writing
 into another checkout's products means naming it; `COSMO_INFERENCE` defaults to
 the shared candide tree, which holds the covariances and only its owner
