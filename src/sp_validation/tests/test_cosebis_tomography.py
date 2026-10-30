@@ -154,7 +154,9 @@ def test_workflow_full_pair_covariance_and_stamp(
                 block[:2, 2:] = 0
                 block[2:, :2] = 0
             expected[np.ix_(ra, rb)] = block
-    np.testing.assert_allclose(out.covariance.dense, expected, rtol=1e-12, atol=1e-23)
+    # Block-wise and full-matrix products round differently across BLAS builds;
+    # a misplaced block would differ at order unity.
+    np.testing.assert_allclose(out.covariance.dense, expected, rtol=1e-10, atol=1e-23)
 
 
 @pytest.mark.parametrize("kind", ["pure", "cosebis"])
