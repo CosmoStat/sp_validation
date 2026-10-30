@@ -56,6 +56,42 @@ def apply_condition(array, kind, value):
     return _KIND_OPS[kind](array, value)
 
 
+def star_veto(cat, entry):
+    """Return the stars a catalogue entry's ``mask_veto`` flags.
+
+    ``entry`` is a cat_config ``psf`` block. Its optional ``mask_veto`` names
+    one veto or a list of them. A veto is either a column of the star
+    catalogue, read as nonzero/True = vetoed (e.g. ``MASK_8_Manual``), or the
+    path of a boolean healsparse map (``*.hsp``), True = vetoed, queried at
+    the block's ``ra_col``/``dec_col``. Without ``mask_veto`` no star is
+    vetoed.
+
+    Parameters
+    ----------
+    cat : mapping
+        star catalogue, indexable by column name
+    entry : dict
+        cat_config ``psf`` block
+
+    Returns
+    -------
+    numpy.ndarray
+        boolean, True for stars to drop
+    """
+    vetoes = entry.get("mask_veto") or []
+    if isinstance(vetoes, str):
+        vetoes = [vetoes]
+    vetoed = np.zeros(len(cat), dtype=bool)
+    for veto in vetoes:
+        if str(veto).endswith(".hsp"):
+            sky_map = hsp.HealSparseMap.read(veto)
+            ra, dec = (np.asarray(cat[entry[k]]) for k in ("ra_col", "dec_col"))
+            vetoed |= np.asarray(sky_map.get_values_pos(ra, dec, lonlat=True), bool)
+        else:
+            vetoed |= np.asarray(cat[veto]) != 0
+    return vetoed
+
+
 def correlation_matrix(masks, confidence_level=0.9):
     n_key = len(masks)
     print(n_key)

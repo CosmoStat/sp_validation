@@ -20,6 +20,7 @@ from uncertainties import ufloat
 
 from .. import blinding, sacc_io
 from ..io import open_entry
+from ..masks import star_veto
 from ..rho_tau import (
     get_rho_tau_w_cov,
     get_samples,
@@ -358,17 +359,18 @@ class PSFSystematicsMixin:
         return gal_mask
 
     def _get_star_mask(self, ver):
-        cat_star = open_entry(self.cc[ver]["psf"])
-        PSF_flag = self.cc[ver]["psf"].get("PSF_flag")
-        star_flag = self.cc[ver]["psf"].get("star_flag")
-        if PSF_flag is not None:
-            if star_flag is not None:
-                star_mask = (cat_star[PSF_flag] == 0) & (cat_star[star_flag] == 0)
-            else:
-                star_mask = cat_star[PSF_flag] == 0
-        else:
-            star_mask = np.ones(len(cat_star), dtype=bool)
-        return star_mask
+        """Return the stars that enter rho/tau for version ``ver``.
+
+        A star is kept when the psf block's ``PSF_flag`` and ``star_flag``
+        columns, where configured, are zero and no ``mask_veto`` flags it.
+        """
+        entry = self.cc[ver]["psf"]
+        cat_star = open_entry(entry)
+        star_mask = np.ones(len(cat_star), dtype=bool)
+        for key in ("PSF_flag", "star_flag"):
+            if entry.get(key) is not None:
+                star_mask &= cat_star[entry[key]] == 0
+        return star_mask & ~star_veto(cat_star, entry)
 
     def set_params_rho_tau(self, ver, params, params_psf):
         params = {**params}

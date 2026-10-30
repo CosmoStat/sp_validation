@@ -3,18 +3,23 @@
 Covers ``sp_validation.masks.apply_condition`` — the single ``kind``/``value``
 evaluator shared by the object-selection ``Mask`` class and the
 cosmo_inference footprint builder (issue #181) — plus an equivalence check
-against ``Mask.apply()`` itself.
+against ``Mask.apply()`` itself, and the ``mask_veto`` that drops PSF stars
+from rho/tau (``star_veto``).
 
 :Author: cdaley
 
 """
 
+import hashlib
 import importlib.util
 from pathlib import Path
 
+import healpy as hp
+import healsparse as hsp
 import numpy as np
 import numpy.testing as npt
 import pytest
+from astropy.table import Table
 
 from sp_validation.masks import (
     Mask,
@@ -126,3 +131,50 @@ def test_masking_script_refuses_dat_ext():
     with pytest.raises(ValueError, match="dat_ext"):
         masking.apply_masks(dat, config, footprint_only=True)
     assert "IMAFLAGS_ISO" in masking.SPATIAL_CUTS
+
+
+def _star_entry(tmp_path, **veto):
+    stars = Table(
+        dict(
+            RA=[10.0, 10.1, 10.2, 10.3],
+            DEC=[20.0, 20.1, 20.2, 20.3],
+            HSM_FLAG_PSF=[0, 0, 0, 1],
+            HSM_FLAG_STAR=[0, 0, 0, 0],
+            MASK_8_Manual=[False, True, False, False],
+        )
+    )
+    tmp_path.mkdir(exist_ok=True)
+    stars.write(tmp_path / "stars.fits")
+    return dict(
+        path=str(tmp_path / "stars.fits"),
+        ra_col="RA",
+        dec_col="DEC",
+        PSF_flag="HSM_FLAG_PSF",
+        star_flag="HSM_FLAG_STAR",
+        **veto,
+    )
+
+
+def _star_mask(entry):
+    from sp_validation.cosmo_val.psf_systematics import PSFSystematicsMixin
+
+    stub = PSFSystematicsMixin()
+    stub.cc = {"v": {"psf": entry}}
+    return stub._get_star_mask("v")
+
+
+def test_mask_veto_column_drops_manually_masked_stars(tmp_path):
+    unvetoed = _star_mask(_star_entry(tmp_path / "a"))
+    vetoed = _star_mask(_star_entry(tmp_path / "b", mask_veto="MASK_8_Manual"))
+    np.testing.assert_array_equal(unvetoed, [True, True, True, False])
+    np.testing.assert_array_equal(vetoed, [True, False, True, False])
+    assert hashlib.sha1(unvetoed).digest() != hashlib.sha1(vetoed).digest()
+
+
+def test_mask_veto_map_drops_stars_inside_it(tmp_path):
+    nside = 1024
+    sky_map = hsp.HealSparseMap.make_empty(32, nside, dtype=np.bool_)
+    sky_map[hp.ang2pix(nside, 10.1, 20.1, lonlat=True, nest=True)] = True
+    sky_map.write(str(tmp_path / "manual.hsp"))
+    entry = _star_entry(tmp_path, mask_veto=[str(tmp_path / "manual.hsp")])
+    np.testing.assert_array_equal(_star_mask(entry), [True, False, True, False])
