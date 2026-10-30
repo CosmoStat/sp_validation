@@ -1,0 +1,16 @@
+tile	published_batch	n_external	n_paired	n_selected	case
+035.238	smk-b599	3221	3154	0	external-only guard rejection
+036.238	smk-b599	3126	3054	0	external-only guard rejection
+038.229	smk-b614	3329	3245	0	external-only guard rejection
+039.221	smk-b620	3681	3597	0	external-only guard rejection
+048.252	smk-b561	6619	6485	0	external-only guard rejection
+058.220	smk-b619	845	774	0	external-only guard rejection
+131.285	fir-b0093	2408	2359	0	external-only guard rejection
+134.283	fir-b0093	1023	979	0	external-only guard rejection
+177.257	fir-b0283	0	0	0	empty-tile crash
+207.238	fir-b0283	3946	3775	0	external-only guard rejection
+416.238	smk-b391	4018	3919	0	external-only guard rejection
+576.248	smk-b493	1968	1919	0	external-only guard rejection
+577.246	smk-b494	2490	2431	0	external-only guard rejection
+603.227	smk-b499	1680	1625	0	external-only guard rejection
+618.220	smk-b512	2861	2760	0	external-only guard rejection

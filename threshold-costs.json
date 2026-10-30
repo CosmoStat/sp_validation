@@ -8,22 +8,22 @@
   },
   {
     "threshold": 0.98,
-    "tiles": 13,
-    "nominal_area_deg2": 3.25,
+    "tiles": 15,
+    "nominal_area_deg2": 3.75,
     "n_selected": 0,
     "selected_fraction": 0.0
   },
   {
     "threshold": 0.99,
-    "tiles": 18,
-    "nominal_area_deg2": 4.5,
+    "tiles": 20,
+    "nominal_area_deg2": 5.0,
     "n_selected": 11002,
     "selected_fraction": 0.0047385363340905
   },
   {
     "threshold": 0.995,
-    "tiles": 102,
-    "nominal_area_deg2": 25.5,
+    "tiles": 104,
+    "nominal_area_deg2": 26.0,
     "n_selected": 424394,
     "selected_fraction": 0.18278552890110922
   }
