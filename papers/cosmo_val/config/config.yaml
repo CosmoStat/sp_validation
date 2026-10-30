@@ -51,7 +51,21 @@ cosmo_val:
   noise_bias_method: analytic
   cell_seed: 8192
   path_onecovariance: "/home/guerrini/OneCovariance/"
-  rho_tau_method: lsq
+  # PSF-leakage fit: 'eiv' is the joint errors-in-variables fit of the rho/tau
+  # jackknife measurement below; 'lsq'/'emcee' fit the published tau statistics
+  # with the cov_estimate_method covariance.
+  rho_tau_method: eiv
+  psf_leakage:
+    # k-means patches shared by stars and galaxies in the joint measurement
+    npatch_fine: 800
+    # jackknife patch counts the fit reports (Ward unions of the fine patches)
+    patch_counts: [200, 400]
+    # the patch count whose fit gives the samples used downstream
+    fiducial_npatch: 400
+    # beta(T_PSF) = beta0 + beta1 (T_PSF / <T_PSF> - 1)
+    beta_psf_size: false
+    # sky circles excised from stars and galaxies in every rho/tau measurement
+    sky_mask: config/masks/star_contamination.json
 
   # Fiducial scale cut (arcmin) for B-mode PTE extraction. Paper II: [12, 83].
   fiducial_scale_cut: [12, 83]

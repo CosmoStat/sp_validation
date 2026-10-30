@@ -1,0 +1,33 @@
+{
+  "description": "Sky circles excised from PSF stars and galaxies in the rho/tau PSF-leakage measurement. A row is removed when its angular separation from a circle centre (ICRS degrees) is less than radius_deg. M33 contaminates the PSF stars (CosmoStat/sp_validation#452); M101, M13 and M92 are conservative crowding or extended-source excisions.",
+  "circles": [
+    {
+      "name": "M33",
+      "ra_deg": 23.462,
+      "dec_deg": 30.66,
+      "radius_deg": 1.0,
+      "reason": "Resolved galaxy contaminating the PSF star sample (CosmoStat/sp_validation#452)"
+    },
+    {
+      "name": "M101",
+      "ra_deg": 210.8023,
+      "dec_deg": 54.3489,
+      "radius_deg": 0.6,
+      "reason": "Known extended galaxy or dense globular cluster with positive size-residual, ellipticity-residual or density outlier"
+    },
+    {
+      "name": "M13",
+      "ra_deg": 250.4235,
+      "dec_deg": 36.4613,
+      "radius_deg": 0.5,
+      "reason": "Known extended galaxy or dense globular cluster with positive size-residual, ellipticity-residual or density outlier"
+    },
+    {
+      "name": "M92",
+      "ra_deg": 259.2808,
+      "dec_deg": 43.1365,
+      "radius_deg": 0.5,
+      "reason": "Known extended galaxy or dense globular cluster with positive size-residual, ellipticity-residual or density outlier"
+    }
+  ]
+}

@@ -23,7 +23,7 @@ from ..version import __version__
 from .catalog_characterization import CatalogCharacterizationMixin
 from .cosebis import CosebisMixin
 from .pseudo_cl import PseudoClMixin
-from .psf_systematics import PSFSystematicsMixin
+from .psf_systematics import PSF_LEAKAGE_DEFAULTS, PSFSystematicsMixin
 from .pure_eb import PureEBMixin
 from .real_space import RealSpaceMixin
 
@@ -129,8 +129,20 @@ class CosmologyValidation(
         and analysis settings for each version.
     output_dir : str, optional
         Output directory. If None, the catalog config's paths.output.
-    rho_tau_method : {'lsq', 'mcmc'}, default 'lsq'
-        Fitting method for PSF leakage systematics parameters.
+    rho_tau_method : {'eiv', 'lsq', 'emcee', 'none'}, default 'eiv'
+        Fitting method for the PSF-leakage parameters (alpha, beta, eta).
+        'eiv' is the joint errors-in-variables fit of the rho/tau jackknife
+        measurement configured by ``psf_leakage``; 'lsq' and 'emcee' fit the
+        published tau statistics with the ``cov_estimate_method`` covariance.
+    psf_leakage : dict, optional
+        Settings of the PSF-leakage measurement and 'eiv' fit, over
+        ``PSF_LEAKAGE_DEFAULTS``: ``npatch_fine`` (k-means patches shared by
+        stars and galaxies), ``patch_counts`` (jackknife patch counts the fit
+        reports, unions of the fine patches), ``fiducial_npatch`` (the count
+        whose fit gives the samples used downstream), ``beta_psf_size`` (fit
+        beta(T_PSF) = beta0 + beta1 (T_PSF / <T_PSF> - 1)), and ``sky_mask``
+        (a JSON file of sky circles excised from stars and galaxies in every
+        rho/tau measurement, relative to the repository root, or None).
     cov_estimate_method : {'th', 'jk', 'sim'}, default 'th'
         Covariance estimation: 'th' for semi-analytic theory, 'jk' for jackknife,
         'sim' for a covariance measured on simulations.
@@ -285,7 +297,8 @@ class CosmologyValidation(
         versions,
         catalog_config="./cat_config.yaml",
         output_dir=None,
-        rho_tau_method="lsq",
+        rho_tau_method="eiv",
+        psf_leakage=None,
         cov_estimate_method="th",
         compute_cov_rho=True,
         n_cov=100,
@@ -319,7 +332,20 @@ class CosmologyValidation(
         b_target=0.01,
     ):
         self.b_target = b_target
-        self.rho_tau_method = rho_tau_method
+        self.set_psf_parameter_sampling_method(rho_tau_method)
+        unknown = set(psf_leakage or {}) - set(PSF_LEAKAGE_DEFAULTS)
+        if unknown:
+            raise ValueError(f"Unknown psf_leakage settings: {sorted(unknown)}")
+        self.psf_leakage = {**PSF_LEAKAGE_DEFAULTS, **(psf_leakage or {})}
+        npatch_fine = self.psf_leakage["npatch_fine"]
+        patch_counts = self.psf_leakage["patch_counts"]
+        if not all(1 < n < npatch_fine for n in patch_counts):
+            raise ValueError(
+                f"psf_leakage patch_counts {patch_counts} must each lie strictly "
+                f"between 1 and npatch_fine={npatch_fine}"
+            )
+        if self.psf_leakage["fiducial_npatch"] not in patch_counts:
+            raise ValueError("psf_leakage fiducial_npatch must be one of patch_counts")
         self.cov_estimate_method = cov_estimate_method
         self.compute_cov_rho = compute_cov_rho
         self.n_cov = n_cov

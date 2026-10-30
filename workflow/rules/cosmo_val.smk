@@ -252,13 +252,41 @@ rule cv_plot_tau_stats:
         "../scripts/cv_plot_diagnostic.py"
 
 
+# The 'eiv' PSF-leakage fit reads its own joint ρ/τ jackknife measurement;
+# 'lsq'/'emcee' fit the published τ statistics with their covariances.
+CV_LEAKAGE_FINE = {**CV_FIDUCIAL, "npatch": CV["psf_leakage"]["npatch_fine"]}
+CV_LEAKAGE_JACKKNIFE = [
+    str(COSMO_VAL / "rho_tau_stats" / f"leakage_eiv_{cv_basename(v, CV_LEAKAGE_FINE)}.npz")
+    for v in CV_VERSIONS
+]
+
+
+rule cv_leakage_jackknife:
+    """Joint ρ/τ jackknife measurement behind the 'eiv' PSF-leakage fit."""
+    input:
+        catalogues=cv_shear_catalogues()
+        + [str(Path(catalogue_entry(v)["subdir"]) / catalogue_entry(v)["psf"]["path"])
+           for v in CV_VERSIONS],
+        sky_mask=psf_leakage_sky_mask_input(config),
+    output:
+        measurements=CV_LEAKAGE_JACKKNIFE,
+    params:
+        cv_init=CV_INIT,
+    threads: 8
+    resources:
+        mem_mb=128000,
+        runtime=240,
+    script:
+        "../scripts/cv_leakage_jackknife.py"
+
+
 rule cv_rho_tau_fits:
     """Fit the PSF-error model (alpha/beta/eta) and propagate to xi_psf_sys."""
     input:
         rho=[cv_rho_stats(v, CV_FIDUCIAL) for v in CV_VERSIONS],
         tau=[cv_tau_stats(v, CV_FIDUCIAL) for v in CV_VERSIONS],
-        covariances=cv_tau_covariances(),
-        rho_covariances=[str(COSMO_VAL / "rho_tau_stats" /
+        fit_inputs=CV_LEAKAGE_JACKKNIFE if CV["rho_tau_method"] == "eiv"
+        else cv_tau_covariances() + [str(COSMO_VAL / "rho_tau_stats" /
             f"cov_rho_{cv_basename(v, CV_FIDUCIAL)}_jk.npy") for v in CV_VERSIONS],
     output:
         products=CV_PSF_PRODUCTS,

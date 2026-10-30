@@ -1,9 +1,28 @@
 """Layout-independent full-sample means with patched covariance measurements."""
 
+import hashlib
 import json
 from pathlib import Path
 
+import numpy as np
 import treecorr
+
+
+def selection_digest(*masks):
+    """Digest of row selections; ``None`` stands for every row.
+
+    Recorded beside a cached measurement so a product made from different rows,
+    e.g. before or after a sky mask, is never reused.
+    """
+    digest = hashlib.sha1()
+    for mask in masks:
+        if mask is None:
+            digest.update(b"all;")
+        else:
+            mask = np.asarray(mask, dtype=bool)
+            digest.update(f"{mask.size};".encode())
+            digest.update(np.packbits(mask).tobytes())
+    return digest.hexdigest()
 
 
 def _measurement_configs(config):
@@ -14,14 +33,16 @@ def _measurement_configs(config):
     return {"means": means, "patched": patched}
 
 
-def measurement_matches(path, config):
-    """Whether a cache records the current means and patched configurations."""
+def measurement_matches(path, config, selection=None):
+    """Whether a cache records the current configurations and row selection."""
     metadata = Path(str(path) + ".json")
     if not Path(path).exists() or not metadata.exists():
         return False
     recorded = json.loads(metadata.read_text())
     recorded_configs = recorded.get("configs")
     if recorded.get("means") != "unpatched" or not isinstance(recorded_configs, dict):
+        return False
+    if recorded.get("selection") != selection:
         return False
     expected_configs = _measurement_configs(config)
     if config.get("min_top") is not None:
@@ -33,12 +54,12 @@ def measurement_matches(path, config):
     return recorded_configs == expected_configs
 
 
-def write_measurement_metadata(path, config):
-    """Record both TreeCorr configurations beside a cached product."""
-    Path(str(path) + ".json").write_text(
-        json.dumps({"means": "unpatched", "configs": _measurement_configs(config)})
-        + "\n"
-    )
+def write_measurement_metadata(path, config, selection=None):
+    """Record both TreeCorr configurations and the row selection beside a product."""
+    record = {"means": "unpatched", "configs": _measurement_configs(config)}
+    if selection is not None:
+        record["selection"] = selection
+    Path(str(path) + ".json").write_text(json.dumps(record) + "\n")
 
 
 def _unpatched_catalog(cat):
