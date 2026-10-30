@@ -1,9 +1,11 @@
 # Config file for masking and calibration.
-# Standard cuts without halo masks, type v1.X.6.
+# Joint ShapePipe + PhotoPipe catalogue.
+# SP: Standard cuts without halo masks, type v1.X.6.
+# PP" Standard selection.
 
 # General parameters (can also given on command line)
 params:
-  input_path: unions_shapepipe_comprehensive_struc_2024_v1.X.c.hdf5
+  input_path: unions_shapepipe_comprehensive_struc_ugriz_2024_v1.X.c.hdf5
   cmatrices: False
   sky_regions: False
   verbose: True
@@ -99,11 +101,43 @@ dat:
     kind: equal
     value: False
 
+  # u-band footprint
+  - col_name: MASK_16_u
+    label: "u-band imaging"
+    kind: equal
+    value: False
+
+  # g-band footprint
+  - col_name: MASK_32_g
+    label: "g-band imaging"
+    kind: equal
+    value: False
+
   # r-band footprint
   - col_name: MASK_64_r
     label: "r-band imaging"
     kind: equal
     value: False
+
+  # i-band footprint
+  - col_name: MASK_128_i
+    label: "i-band imaging"
+    kind: equal
+    value: False
+
+  # z-band footprint, both z surveys: 256_z is WISHES (Subaru HSC), 2048_z2 is
+  # Pan-STARRS (the deeper data, not the shallow all-sky survey). Told apart by
+  # depth: median MAG_LIM_z = 25.54 vs MAG_LIM_z2 = 24.88.
+  # Each bit is only required where its own band has a magnitude: asking for
+  # both at once keeps only the overlap of the two surveys, which costs ~85% of
+  # the sample. Pairs with the MAG_GAAP_0p7_z / _z2 two-band cut in `dat`.
+  - col_name: MASK_256_z
+    col_name2: MASK_2048_z2
+    mag_col: MAG_GAAP_0p7_z
+    mag_col2: MAG_GAAP_0p7_z2
+    label: "z-band imaging"
+    kind: covered_2bands
+    value: -99
 
   # Maximask
   - col_name: MASK_1024_Maximask
@@ -135,3 +169,14 @@ metacal:
 
   # Weight for global response matrix, None for unweighted mean
   global_R_weight: w
+
+# Binned footprint mask
+binned_mask:
+  # Resolution
+  nside: 8192
+
+  # Mask value for "good" (observed) area
+  good: False
+
+  # Output file path base
+  output_base: "footprint_binned" 
