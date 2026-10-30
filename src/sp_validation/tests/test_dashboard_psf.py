@@ -68,15 +68,11 @@ def test_theta_tau_scaling_and_own_grid(rt, overlay, tmp_path, monkeypatch):
     plt.close(fig)
 
 
-@pytest.mark.parametrize("comparison", [False, True])
-def test_xi_native_units_both_signs(rt, xi, comparison, tmp_path, monkeypatch):
+def test_xi_native_units_both_signs(rt, xi, tmp_path, monkeypatch):
     saved = []
     monkeypatch.setattr(psf.S, "save", lambda fig, *args: saved.append(fig))
     with np.errstate(divide="raise", invalid="raise"):
-        if comparison:
-            psf.xi_sys_comparison(rt, tmp_path / "xi.png", xi=xi)
-        else:
-            psf.xi_sys(rt, xi, tmp_path / "xi.png")
+        psf.xi_sys(rt, xi, tmp_path / "xi.png")
     fig = saved[0]
     assert len(fig.axes) == 2
     for ax, field in zip(fig.axes, ("xip", "xim")):
@@ -91,19 +87,13 @@ def test_xi_native_units_both_signs(rt, xi, comparison, tmp_path, monkeypatch):
             2 * xi["theta"] * xi[f"sigma_{field}"],
         )
         assert ax.get_yscale() == "linear"
-        if comparison:
-            labels = ax.get_legend_handles_labels()[1]
-            assert len(labels) == 2
-            assert labels[0] == "coefficient draws (68%)"
-            assert "blinded" in labels[1]
+        labels = ax.get_legend_handles_labels()[1]
+        assert sorted(labels, key=lambda s: "blinded" in s) == [
+            "coefficient draws (68%)",
+            rf"$\xi_{'+' if field == 'xip' else '-'}$ (blinded)",
+        ]
     fig.savefig(tmp_path / "xi.png")
     plt.close(fig)
-
-
-def test_xi_comparison_without_overlay(rt, tmp_path):
-    out = tmp_path / "no_xi.png"
-    psf.xi_sys_comparison(rt, out)
-    assert out.exists()
 
 
 def test_corner_caption_names_full_range_and_clipping():
