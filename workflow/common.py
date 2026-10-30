@@ -81,8 +81,8 @@ COSMO_INFERENCE = _plain(
         "COSMO_INFERENCE", "/n17data/cdaley/unions/code/sp_validation/cosmo_inference"
     )
 )
-# The catalogue config of the launched checkout: the one file both the host
-# (CATALOG_CONFIG, loaded in configure) and every job read catalogues from.
+# The default catalogue config. configure() resolves a run's catalog_config
+# override so the host and every job read the same file.
 CAT_CONFIG = str(REPO_ROOT / "cosmo_val" / "cat_config.yaml")
 
 # Fiducial cosmology: Planck 2018 (astropy Planck18, Table 2 + BAO)
@@ -196,12 +196,30 @@ def warn_if_image_stale():
 
 def configure(workflow_config):
     """Install config-derived values after Snakemake has loaded configfiles."""
-    global CATALOG_CONFIG, DEFAULT_MASK_SUFFIX, FIDUCIAL, PLANCK18
+    global CAT_CONFIG, CATALOG_CONFIG, DEFAULT_MASK_SUFFIX, FIDUCIAL, PLANCK18
     from snakemake.common.configfile import load_configfile
 
     inject_checkout_pythonpath(workflow_config)
     warn_if_image_stale()
+    CAT_CONFIG = str(
+        _plain(
+            workflow_config.get(
+                "catalog_config", REPO_ROOT / "cosmo_val" / "cat_config.yaml"
+            )
+        )
+    )
     CATALOG_CONFIG = load_configfile(CAT_CONFIG)
+    # Explicit catalogue names support mock and external-survey entries without
+    # allowing a version wildcard to consume the binning suffix of an output.
+    names = [
+        re.escape(name)
+        for name, entry in CATALOG_CONFIG.items()
+        if isinstance(entry, dict) and "shear" in entry
+    ]
+    WILDCARD_CONSTRAINTS["version"] = (
+        r"SP_v[\d.]+(_[ABC])?(_w_iv)?(_ecut\d+)?(_leak_corr)?"
+        + ("|" + "|".join(names) if names else "")
+    )
     FIDUCIAL = workflow_config["fiducial"]
     DEFAULT_MASK_SUFFIX = (
         "_masked" if workflow_config["covariance"].get("default_masked", False) else ""
@@ -330,6 +348,45 @@ def catalogue_name(version):
 def catalogue_entry(version):
     """The catalogue-config entry describing ``version``."""
     return CATALOG_CONFIG[catalogue_name(version)]
+
+
+def measurement_catalogue(version, *, psf=False):
+    """Load-bearing catalogue metadata for two-point producer invalidation.
+
+    Styles and precomputed survey summaries are presentation/covariance inputs,
+    not inputs to these measurements. Keep them out of expensive rerun triggers.
+    The PSF producers additionally read the stellar entries and patch count.
+    """
+    entry = catalogue_entry(version)
+    shear_keys = (
+        "path",
+        "hdu",
+        "column_map",
+        "ra_col",
+        "dec_col",
+        "w_col",
+        "e1_col",
+        "e2_col",
+        "e1_col_corrected",
+        "e2_col_corrected",
+        "R",
+        "R11",
+        "R22",
+        "redshift_path",
+        "tomo_bin_col",
+    )
+    metadata = {
+        "subdir": entry.get("subdir", ""),
+        "shear": {
+            key: entry["shear"][key] for key in shear_keys if key in entry["shear"]
+        },
+        "mask": entry.get("mask"),
+    }
+    if psf:
+        metadata.update(
+            {key: entry[key] for key in ("psf", "star", "patch_number") if key in entry}
+        )
+    return metadata
 
 
 def redshift_path(version):
