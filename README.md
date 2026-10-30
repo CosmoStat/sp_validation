@@ -17,3 +17,10 @@ The ordinary count-available controls are not a representative survey sample.
 `report.html` is self-contained and includes all plots.
 The selection base is sp_validation develop 2b5bede5 with config/calibration/mask_v2.0.yaml; scientific reads used the sp_validation-develop-20261024 container on Nibi.
 Run `python figures.py` in that container to regenerate the distribution, quality-comparison and PSF-residual plots from the measurements.
+
+The no-cut decision is conditional on `N_EPOCH >= 2`.
+The decision document pins that value and the no-cut policy; the same checker rejects actual changes to either.
+Revisit if the epoch cut is relaxed or a tile below 98% pairing contributes selected galaxies.
+The rejection census covers logged failures: the pre-#975 guard required both >20 external-only objects and >2%, and #975 adds a 50-object allowance for nonempty joins.
+Published batches including fir-b0093 ran #975 code, so the rejection census is not a census of every tile below 98% pairing.
+Cross-family Opus review and the final diff check are clean; revised-head CI and Cail's Tier 1 merge decision are owned by the steward.
