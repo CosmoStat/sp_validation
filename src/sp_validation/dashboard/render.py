@@ -44,6 +44,21 @@ GROUPS = {
 }
 
 
+def coefficient_draw_caption(samples):
+    """Name the cached ranges separately from the corner plot's tail clipping."""
+    ranges = "; ".join(
+        f"{name} [{np.min(values):.3g}, {np.max(values):.3g}]"
+        for name, values in zip("αβη", np.asarray(samples).T)
+    )
+    eta_limits = np.percentile(np.asarray(samples)[:, 2], [0.3, 99.7])
+    return (
+        "Coefficient-resampling draws of the leakage parameters (68 and 95% contours), "
+        "not Bayesian samples. Axes omit 0.3% of each marginal tail. "
+        f"Full sample ranges: {ranges}. "
+        f"Displayed η range: [{eta_limits[0]:.3g}, {eta_limits[1]:.3g}]."
+    )
+
+
 def run_config(run_dir):
     """Scale cuts from the run's recorded configuration, when present."""
     prov = Path(run_dir) / "provenance.json"
@@ -165,7 +180,16 @@ def render_correlations(figs, corr_dir, version):
             figs.add(fid, section, caption, size)
 
 
-def render(run_dir, versions, out, cat_config, maps_dir=None, corr_dir=None):
+def render(
+    run_dir,
+    versions,
+    out,
+    cat_config,
+    maps_dir=None,
+    corr_dir=None,
+    corrected_tau_run=None,
+    corrected_tau_version=None,
+):
     cuts = run_config(run_dir)
     theta_cut, ell_cut, full_cut = cuts["theta"], cuts["ell"], cuts["theta_full"]
     loaded = [load_version(run_dir, v, maps_dir, cat_config) for v in versions]
@@ -313,17 +337,39 @@ def render(run_dir, versions, out, cat_config, maps_dir=None, corr_dir=None):
         print("Skipping star_residuals: product missing")
     rt = P.load_rho_tau(ref.assembled, ref.tau_cov, ref.psf_fit, blind)
     PSF.tau_fit(rt, figs.path("psf_tau"))
+    corrected_tau = None
+    if corrected_tau_run is not None:
+        corrected_tau = P.load_corrected_tau(
+            corrected_tau_run,
+            corrected_tau_version or versions[0] + "_leak_corr",
+            cat_config,
+        )
+    PSF.theta_tau(rt, figs.path("psf_theta_tau"), corrected=corrected_tau)
+    figs.add(
+        "psf_theta_tau",
+        "leakage",
+        "Galaxy–PSF correlations θτ₂,+ and θτ₅,+ (θ in arcmin). "
+        + (
+            "Raw and object-wise leakage-corrected catalogues overlaid. "
+            if corrected_tau is not None
+            else "Raw catalogue only. "
+        )
+        + "Band: raw α–β–η coefficient draws (68%); no corrected fit is implied. "
+        "Errors: theory τ covariance; bars omitted for nonpositive variances.",
+        "full",
+    )
     figs.add(
         "psf_tau",
         "leakage",
-        "Galaxy–PSF correlations τ₀,₂,₅ with the posterior band of the α, β, η leakage model.",
+        "Galaxy–PSF correlations τ₀,₂,₅ with the 68% coefficient-resampling band "
+        "of the α, β, η leakage model.",
         "full",
     )
-    PSF.posterior(rt, figs.path("psf_posterior"))
+    PSF.coefficient_draws(rt, figs.path("psf_coefficient_draws"))
     figs.add(
-        "psf_posterior",
+        "psf_coefficient_draws",
         "leakage",
-        "Posterior of the leakage parameters (68 and 95%).",
+        coefficient_draw_caption(rt["fit"]["flat_samples"]),
         "half",
     )
     leakage = P.load_json(ref.leakage).get(versions[0], {}).get("tomo_bin_all", {})
@@ -338,25 +384,28 @@ def render(run_dir, versions, out, cat_config, maps_dir=None, corr_dir=None):
     figs.add(
         "psf_rho", "leakage", "ρ statistics of the PSF model and its residuals.", "full"
     )
-    PSF.xi_sys_ratio(rt, xi, figs.path("psf_xi_sys"))
+    PSF.xi_sys(rt, xi, figs.path("psf_xi_sys"))
     figs.add(
         "psf_xi_sys",
         "leakage",
-        "Propagated PSF systematic relative to the blinded ξ±; dotted lines at ±10%.",
+        "Signed θξ± data (blinded) with analytic errors and θξ±sys from "
+        "coefficient draws (68% band), θ in arcmin. "
+        "The data include cosmological signal; no noisy data division is used.",
         "full",
     )
 
     try:
-        PSF.xi_sys_comparison(rt, figs.path("psf_xi_sys_comparison"))
+        PSF.xi_sys_comparison(rt, figs.path("psf_xi_sys_comparison"), xi=xi)
     except ValueError as exc:
         print(f"Skipping psf_xi_sys_comparison: {exc}")
     else:
         figs.add(
             "psf_xi_sys_comparison",
             "leakage",
-            "PSF systematic ξ⁺ from the α–β–η posterior (68% band) compared "
-            "with τ₀,+²/ρ₀,+; no cosmological signal is shown.",
-            "half",
+            "θξ± from α–β–η coefficient draws (68% band) and blinded data with "
+            "run covariance errors, θ in arcmin. "
+            "The data include cosmological signal.",
+            "full",
         )
 
     cell_path = ref.weight_cells
@@ -601,6 +650,12 @@ def main(argv=None):
     )
     parser.add_argument("--maps-dir", help="directory of field_maps/weight_cells NPZs")
     parser.add_argument("--correlations-dir", help="directory of correlations NPZs")
+    parser.add_argument(
+        "--corrected-tau-run", help="optional τ-only leakage-corrected run"
+    )
+    parser.add_argument(
+        "--corrected-tau-version", help="default: reference version + _leak_corr"
+    )
     parser.add_argument("--out", required=True)
     args = parser.parse_args(argv)
     manifest = render(
@@ -610,6 +665,8 @@ def main(argv=None):
         args.cat_config,
         args.maps_dir,
         args.correlations_dir,
+        args.corrected_tau_run,
+        args.corrected_tau_version,
     )
     print(f"{len(manifest['figures'])} figures -> {args.out}")
 

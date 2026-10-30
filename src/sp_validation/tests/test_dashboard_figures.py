@@ -15,14 +15,17 @@ from sp_validation.dashboard.psf import xi_sys_comparison
 from sp_validation.dashboard.sky import Zenithal, coarsen, footprint_parts, quantity
 
 
-def test_xi_sys_comparison_rejects_incompatible_grids(tmp_path):
+def test_xi_sys_comparison_uses_fit_grid_without_tau(tmp_path):
     rt = {
-        "theta": np.array([1.0, 2.0]),
-        "theta_tau": np.array([1.0, 3.0]),
-        "fit": {"theta": np.array([1.0, 2.0])},
+        "fit": {
+            "theta": np.array([1.0, 2.0]),
+            "samples_plus": np.ones((3, 2)),
+            "samples_minus": np.ones((3, 2)),
+        }
     }
-    with pytest.raises(ValueError, match="angular grids differ"):
-        xi_sys_comparison(rt, tmp_path / "plot.png")
+    out = tmp_path / "plot.png"
+    xi_sys_comparison(rt, out)
+    assert out.exists()
 
 
 def test_leakage_quantile_bins():
