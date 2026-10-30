@@ -109,8 +109,6 @@ def process_gg(config, cat1, cat2=None):
         # TreeCorr estimates covariance lazily from fields that the means pass
         # replaces below, so freeze the patched-pass estimates first.
         _ = gg.varxip, gg.varxim, gg.cov
-        # Multi-correlation jackknife must use the unmodified patched results.
-        gg._patched_covariance_source = gg.copy()
         for name in (
             "xip",
             "xim",

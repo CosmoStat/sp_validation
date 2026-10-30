@@ -457,6 +457,20 @@ def get_theory_cov(
     return
 
 
+def rho_cache_valid(rho_path, cov_rho_path, treecorr_config, force_run=False):
+    """Whether a cached ρ measurement and its jackknife covariance can be reused.
+
+    The ρ FITS must record the current means and patched configurations
+    (:func:`~sp_validation.correlation.measurement_matches`); the PSF-only
+    result is then shared by every source bin of a tomographic run.
+    """
+    return (
+        not force_run
+        and Path(cov_rho_path).exists()
+        and measurement_matches(rho_path, treecorr_config)
+    )
+
+
 def get_jackknife_cov(
     config,
     version,
@@ -525,7 +539,7 @@ def get_jackknife_cov(
 
     rho_path = Path(outdir) / rho_filename
     cov_rho_path = Path(outdir) / f"cov_rho_{base_rho}_jk.npy"
-    reuse_rho = rho_path.exists() and cov_rho_path.exists() and not force_run
+    reuse_rho = rho_cache_valid(rho_path, cov_rho_path, treecorr_config, force_run)
     if reuse_rho:
         rho_stat_handler.load_rho_stats(rho_filename)
         cached_rho_cov = np.load(cov_rho_path)

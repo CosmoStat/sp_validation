@@ -131,10 +131,7 @@ class RealSpaceMixin:
             else:
                 # [ξ+; ξ−] per correlation, in list order: the part's pair-major
                 # order, with the cross-pair covariance a per-pair gg.cov drops.
-                patched = [
-                    getattr(gg, "_patched_covariance_source", gg) for gg in correlations
-                ]
-                covariance = treecorr.estimate_multi_cov(patched, "jackknife")
+                covariance = treecorr.estimate_multi_cov(correlations, "jackknife")
             s = xi_pairs_to_sacc(
                 nz,
                 {**self.sacc_metadata(ver), "npatch": npatch},
