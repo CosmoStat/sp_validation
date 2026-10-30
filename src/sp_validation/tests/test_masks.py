@@ -52,6 +52,33 @@ def test_smaller_equal_alias_matches_less_equal():
     )
 
 
+@pytest.mark.parametrize("dtype", ["i4", "u4"])
+def test_ignore_bits_and_config_mask(dtype):
+    flags = np.array([0, 1, 2, 3, 16, 17, 18, 19, 20, 32], dtype=dtype)
+    expected = [True, True, True, False, True, True, True, False, False, False]
+    npt.assert_array_equal(apply_condition(flags, "less_equal", 2, 16), expected)
+    config = {
+        "dat": [
+            {
+                "col_name": "FLAGS",
+                "label": "flags",
+                "kind": "less_equal",
+                "value": 2,
+                "ignore_bits": 16,
+            }
+        ]
+    }
+    masks, _ = get_masks_from_config(config, {"FLAGS": flags})
+    npt.assert_array_equal(masks[0]._mask, expected)
+    masks[0].create_descr()
+    assert masks[0]._descr == "(FLAGS & ~16) <= 2"
+
+
+def test_ignore_bits_rejects_float():
+    with pytest.raises(ValueError, match="integer"):
+        apply_condition(np.array([1.0]), "less_equal", 2, 16)
+
+
 def test_unknown_kind_raises():
     with pytest.raises(ValueError):
         apply_condition(_ARRAY, "not_a_real_kind", 3)

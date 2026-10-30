@@ -35,13 +35,14 @@ params:
 # Masks
 ## Cuts on catalogue columns, in the v2 grammar (sp_validation.grammar)
 dat:
-  # SExtractor flags: keep 0 (clean), 1 (neighbours), 2 (deblended); drop
-  # 3 (both) and above. Same as the image-sims config, so data and sims
-  # select identically (shapepipe#885).
+  # Ignore bit 16 (incomplete aperture data), then keep FLAGS <= 2.
+  # Bit 16 preferentially flags large galaxies; selecting on it biases m in
+  # image sims. The image-sim validation uses this same predicate.
   - col_name: FLAGS
     label: SE FLAGS
     kind: smaller_equal
     value: 2
+    ignore_bits: 16
 
   # Duplicate objects
   - col_name: overlap
@@ -139,9 +140,9 @@ metacal:
   gal_snr_min: 10
   gal_snr_max: 500
 
-  # Relative-size (hlr / hlr_psf) range
+  # Moment ratio T_gal / T_PSF; admit galaxies below 9.
   gal_rel_size_min: 0.707
-  gal_rel_size_max: 3
+  gal_rel_size_max: 9
 
   # Correct relative size for ellipticity?
   gal_size_corr_ell: False
