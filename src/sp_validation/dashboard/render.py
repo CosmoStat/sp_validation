@@ -53,7 +53,7 @@ def coefficient_draw_caption(samples):
     eta_limits = np.percentile(np.asarray(samples)[:, 2], [0.3, 99.7])
     return (
         "Coefficient-resampling draws of the leakage parameters (68 and 95% contours), "
-        "not a Bayesian posterior. Axes omit 0.3% of each marginal tail. "
+        "not Bayesian samples. Axes omit 0.3% of each marginal tail. "
         f"Full sample ranges: {ranges}. "
         f"Displayed η range: [{eta_limits[0]:.3g}, {eta_limits[1]:.3g}]."
     )
@@ -103,9 +103,9 @@ class Figures:
         self.entries.append(entry)
 
 
-def load_version(run_dir, version, maps_dir):
+def load_version(run_dir, version, maps_dir, cat_config):
     r = P.RunProducts(run_dir, version, maps_dir)
-    blind = P.blind_of(r.assembled)
+    blind = P.declared_blind(cat_config, version)
     return (
         r,
         blind,
@@ -184,6 +184,7 @@ def render(
     run_dir,
     versions,
     out,
+    cat_config,
     maps_dir=None,
     corr_dir=None,
     corrected_tau_run=None,
@@ -191,7 +192,7 @@ def render(
 ):
     cuts = run_config(run_dir)
     theta_cut, ell_cut, full_cut = cuts["theta"], cuts["ell"], cuts["theta_full"]
-    loaded = [load_version(run_dir, v, maps_dir) for v in versions]
+    loaded = [load_version(run_dir, v, maps_dir, cat_config) for v in versions]
     ref, blind, d = loaded[0]
     pe, co, cl = d["pe"], d["co"], d["cl"]
     xi = P.load_xi(ref.assembled, blind)
@@ -334,18 +335,20 @@ def render(
         )
     else:
         print("Skipping star_residuals: product missing")
-    rt = P.load_rho_tau(ref.assembled, ref.tau_cov, ref.psf_fit)
+    rt = P.load_rho_tau(ref.assembled, ref.tau_cov, ref.psf_fit, blind)
     PSF.tau_fit(rt, figs.path("psf_tau"))
     corrected_tau = None
     if corrected_tau_run is not None:
         corrected_tau = P.load_corrected_tau(
-            corrected_tau_run, corrected_tau_version or versions[0] + "_leak_corr"
+            corrected_tau_run,
+            corrected_tau_version or versions[0] + "_leak_corr",
+            cat_config,
         )
     PSF.theta_tau(rt, figs.path("psf_theta_tau"), corrected=corrected_tau)
     figs.add(
         "psf_theta_tau",
         "leakage",
-        "Galaxy–PSF correlations θτ₀,+, θτ₂,+ and θτ₅,+ (θ in arcmin). "
+        "Galaxy–PSF correlations θτ₂,+ and θτ₅,+ (θ in arcmin). "
         + (
             "Raw and object-wise leakage-corrected catalogues overlaid. "
             if corrected_tau is not None
@@ -362,9 +365,9 @@ def render(
         "of the α, β, η leakage model.",
         "full",
     )
-    PSF.posterior(rt, figs.path("psf_posterior"))
+    PSF.coefficient_draws(rt, figs.path("psf_coefficient_draws"))
     figs.add(
-        "psf_posterior",
+        "psf_coefficient_draws",
         "leakage",
         coefficient_draw_caption(rt["fit"]["flat_samples"]),
         "half",
@@ -381,15 +384,13 @@ def render(
     figs.add(
         "psf_rho", "leakage", "ρ statistics of the PSF model and its residuals.", "full"
     )
-    PSF.xi_sys_ratio(rt, xi, figs.path("psf_xi_sys"))
+    PSF.xi_sys(rt, xi, figs.path("psf_xi_sys"))
     figs.add(
         "psf_xi_sys",
         "leakage",
-        "Left: PSF ξ⁺sys / blinded ξ⁺; dotted lines at ±10%, band from "
-        "PSF-coefficient uncertainty only (data denominator held fixed). "
-        "Right: signed θξ⁻ data with analytic errors and θξ⁻sys coefficient draws "
-        "(68% band), θ in arcmin; no division by near-zero ξ⁻. "
-        "The data include cosmological signal.",
+        "Signed θξ± data (blinded) with analytic errors and θξ±sys from "
+        "coefficient draws (68% band), θ in arcmin. "
+        "The data include cosmological signal; no noisy data division is used.",
         "full",
     )
 
@@ -401,10 +402,11 @@ def render(
         figs.add(
             "psf_xi_sys_comparison",
             "leakage",
-            "PSF systematic ξ⁺ from the α–β–η coefficient draws (68% band), compared "
-            "with τ₀,+²/ρ₀,+ and the same version's blinded ξ⁺ with its run covariance errors. "
-            "The black points include cosmological signal; they are not PSF-only.",
-            "half",
+            "θξ± from α–β–η coefficient draws (68% band) and blinded data with "
+            "run covariance errors, θ in arcmin. The plus panel also shows "
+            "θτ₀,+²/ρ₀,+; no corresponding minus estimator is available. "
+            "The data include cosmological signal.",
+            "full",
         )
 
     cell_path = ref.weight_cells
@@ -642,6 +644,11 @@ def main(argv=None):
         required=True,
         help="catalogue version; repeat for a comparison run",
     )
+    parser.add_argument(
+        "--cat-config",
+        required=True,
+        help="catalogue config declaring each version's blind (the run's cat_config.yaml)",
+    )
     parser.add_argument("--maps-dir", help="directory of field_maps/weight_cells NPZs")
     parser.add_argument("--correlations-dir", help="directory of correlations NPZs")
     parser.add_argument(
@@ -656,6 +663,7 @@ def main(argv=None):
         args.run_dir,
         args.version,
         args.out,
+        args.cat_config,
         args.maps_dir,
         args.correlations_dir,
         args.corrected_tau_run,
