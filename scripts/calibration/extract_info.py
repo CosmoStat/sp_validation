@@ -71,6 +71,16 @@ dd = read_catalogue(
     verbose=verbose,
 )
 
+# @sc [decision:catalogue_match.tile_selection]
+if globals().get("catalogue_match_manifests") is not None:
+    from sp_validation.catalogue_match import write_catalogue_match_audit
+
+    audit_path = os.path.join(output_dir, "catalogue_match_audit.csv")
+    audit = write_catalogue_match_audit(
+        dd["TILE_ID"], catalogue_match_manifests, audit_path
+    )
+    print(f"Catalogue-match audit: {audit}; written to {audit_path}")
+
 n_obj = len(dd)
 print_stats(
     f"Read {n_obj} objects from file {galaxy_cat_path}", stats_file, verbose=verbose
