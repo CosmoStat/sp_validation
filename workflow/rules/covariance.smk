@@ -20,14 +20,8 @@ def get_onecov_cat_params(version):
     catalogue entry. Tomographic values are comma-separated strings, one entry
     per bin."""
     cov_th = catalogue_entry(version)["cov_th"]
-    # cov_th.sigma_e sums both components; OneCovariance takes it per component.
-    convention = cov_th.get("sigma_e_convention", "total")
-    if convention not in ("total", "per_component"):
-        raise ValueError(f"Unknown sigma_e_convention: {convention}")
-    divisor = 2**0.5 if convention == "total" else 1
-    sigma_e = ", ".join(
-        repr(float(s) / divisor) for s in str(cov_th["sigma_e"]).split(",")
-    )
+    # Both cov_th.sigma_e and OneCovariance use per-component dispersion.
+    sigma_e = ", ".join(repr(float(s)) for s in str(cov_th["sigma_e"]).split(","))
     return sigma_e, cov_th["n_e"], cov_th["A"]
 
 

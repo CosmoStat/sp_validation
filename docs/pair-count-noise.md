@@ -25,7 +25,6 @@ For unordered auto pairs in bin b, the NPZ stores:
 With independent isotropic shapes of constant per-component dispersion s, the pure-noise variance of either ξ component is `2 s⁴ Q/W²`.
 The total two-component RMS is σ_e = √2 s, so the same variance is `σ_e⁴/(2 N_eff)`, where `N_eff = W²/Q` is **unordered**.
 Mixing the two dispersion conventions gives a factor-of-four error.
-Catalogue entries lacking `cov_th.sigma_e_convention` keep the legacy `total` convention; an explicit `per_component` skips the boundary's √2 division.
 
 ## OneCovariance interface
 
