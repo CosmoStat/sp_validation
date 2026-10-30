@@ -87,6 +87,7 @@ dat:
   # catalogue.
 
   # Number of epochs
+  # @sc [decision:catalogue_match.tile_selection]
   - col_name: N_EPOCH
     label: r"$n_{\rm epoch}$"
     kind: greater_equal

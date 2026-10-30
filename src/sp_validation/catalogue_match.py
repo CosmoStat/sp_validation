@@ -8,6 +8,8 @@ import re
 from collections import Counter
 from pathlib import Path
 
+import numpy as np
+
 # @sc [decision:catalogue_match.tile_selection]
 MIN_EXTERNAL_PAIRED_FRACTION = None
 
@@ -40,11 +42,18 @@ def normalize_tile_id(value):
 
 
 def read_catalogue_match_manifests(manifest_paths):
-    """Read explicit manifests, rejecting inconsistent or conflicting metadata."""
+    """Read explicit manifests.
+
+    Raises:
+        ValueError: Invalid metadata or conflicting metadata for one tile,
+            including manifests with and without catalogue_match.
+    """
     records = {}
     for path in map(Path, manifest_paths):
         with path.open() as stream:
             manifest = json.load(stream)
+        if "unit" not in manifest:
+            raise ValueError(f"Missing unit in {path}")
         tile = normalize_tile_id(manifest["unit"])
         if (
             path.name != "tile_make_cat.json"
@@ -99,7 +108,10 @@ def read_catalogue_match_manifests(manifest_paths):
 
 def write_catalogue_match_audit(tile_ids, manifest_paths, output_path):
     """Write one row per catalogue or manifest tile and return summary counts."""
-    counts = Counter(normalize_tile_id(tile) for tile in tile_ids)
+    counts = Counter()
+    unique_ids, row_counts = np.unique(tile_ids, return_counts=True)
+    for tile, count in zip(unique_ids, row_counts):
+        counts[normalize_tile_id(tile)] += int(count)
     records = read_catalogue_match_manifests(manifest_paths)
     fields = (
         "tile_id",
@@ -109,7 +121,12 @@ def write_catalogue_match_audit(tile_ids, manifest_paths, output_path):
         "external_warning",
         "min_external_paired_fraction",
     )
-    summary = {"tiles": 0, "missing_metadata": 0, "warnings": 0}
+    summary = {
+        "tiles": 0,
+        "missing_manifest": 0,
+        "missing_catalogue_match": 0,
+        "warnings": 0,
+    }
     with Path(output_path).open("w", newline="") as stream:
         writer = csv.DictWriter(stream, fieldnames=fields)
         writer.writeheader()
@@ -123,7 +140,10 @@ def write_catalogue_match_audit(tile_ids, manifest_paths, output_path):
                 "min_external_paired_fraction": MIN_EXTERNAL_PAIRED_FRACTION,
             }
             if match is None:
-                summary["missing_metadata"] += 1
+                key = (
+                    "missing_catalogue_match" if tile in records else "missing_manifest"
+                )
+                summary[key] += 1
             else:
                 warning = match["n_external_only"] > match["external_warning_budget"]
                 row.update(match, external_warning=warning)
