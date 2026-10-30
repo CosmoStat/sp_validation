@@ -21,16 +21,25 @@ def get_onecov_cat_params(version, tomo_suffix=""):
 
     A tomographic covariance reads ``cov_th.tomo`` (per-bin ``sigma_e`` and
     ``n_e``) when the entry has one; a non-tomographic covariance reads the
-    whole-sample ``cov_th.sigma_e`` and ``cov_th.n_e``."""
-    cov_th = catalogue_entry(version)["cov_th"]
+    whole-sample ``cov_th.sigma_e`` and ``cov_th.n_e``. A tomographic covariance
+    of an entry that declares ``shear.tomo_bin_col`` refuses single
+    whole-sample values, which would stand in for every bin."""
+    entry = catalogue_entry(version)
+    cov_th = entry["cov_th"]
     survey = cov_th.get("tomo", cov_th) if tomo_suffix else cov_th
 
     def per_bin(value):
         values = value if isinstance(value, (list, tuple)) else str(value).split(",")
-        return ", ".join(repr(float(v)) for v in values)
+        return [repr(float(v)) for v in values]
 
     # Both cov_th.sigma_e and OneCovariance use per-component dispersion.
-    return per_bin(survey["sigma_e"]), per_bin(survey["n_e"]), cov_th["A"]
+    sigma_e, n_e = per_bin(survey["sigma_e"]), per_bin(survey["n_e"])
+    if tomo_suffix and "tomo_bin_col" in entry["shear"] and len(n_e) == 1:
+        raise ValueError(
+            f"{version}: a tomographic covariance needs per-bin n_e and sigma_e "
+            "in cov_th.tomo"
+        )
+    return ", ".join(sigma_e), ", ".join(n_e), cov_th["A"]
 
 
 def onecov_nz_path(version, tomo_suffix=""):
