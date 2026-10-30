@@ -273,7 +273,7 @@ rule cv_leakage_jackknife:
         cv_init=CV_INIT,
     threads: 8
     resources:
-        mem_mb=96000,
+        mem_mb=128000,
         runtime=240,
     script:
         "../scripts/cv_leakage_jackknife.py"
