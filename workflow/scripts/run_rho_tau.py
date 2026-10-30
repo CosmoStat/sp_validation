@@ -20,6 +20,7 @@ cv = CosmologyValidation(
     catalog_config=params["cat_config"],
     output_dir=params["output_dir"],
     cov_estimate_method=params.get("cov_estimate_method", "th"),
+    psf_leakage=params.get("psf_leakage"),
 )
-cv.calculate_rho_tau_stats(tomography=False)
+cv.calculate_rho_tau_stats(tomography=params.get("compute_tomography", False))
 verify_outputs(snakemake)

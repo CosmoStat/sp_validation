@@ -68,15 +68,11 @@ def test_theta_tau_scaling_and_own_grid(rt, overlay, tmp_path, monkeypatch):
     plt.close(fig)
 
 
-@pytest.mark.parametrize("comparison", [False, True])
-def test_xi_native_units_both_signs(rt, xi, comparison, tmp_path, monkeypatch):
+def test_xi_native_units_both_signs(rt, xi, tmp_path, monkeypatch):
     saved = []
     monkeypatch.setattr(psf.S, "save", lambda fig, *args: saved.append(fig))
     with np.errstate(divide="raise", invalid="raise"):
-        if comparison:
-            psf.xi_sys_comparison(rt, tmp_path / "xi.png", xi=xi)
-        else:
-            psf.xi_sys(rt, xi, tmp_path / "xi.png")
+        psf.xi_sys(rt, xi, tmp_path / "xi.png")
     fig = saved[0]
     assert len(fig.axes) == 2
     for ax, field in zip(fig.axes, ("xip", "xim")):
@@ -91,19 +87,13 @@ def test_xi_native_units_both_signs(rt, xi, comparison, tmp_path, monkeypatch):
             2 * xi["theta"] * xi[f"sigma_{field}"],
         )
         assert ax.get_yscale() == "linear"
-        if comparison:
-            labels = ax.get_legend_handles_labels()[1]
-            assert len(labels) == 2
-            assert labels[0] == "coefficient draws (68%)"
-            assert "blinded" in labels[1]
+        labels = ax.get_legend_handles_labels()[1]
+        assert sorted(labels, key=lambda s: "blinded" in s) == [
+            "coefficient draws (68%)",
+            rf"$\xi_{'+' if field == 'xip' else '-'}$ (blinded)",
+        ]
     fig.savefig(tmp_path / "xi.png")
     plt.close(fig)
-
-
-def test_xi_comparison_without_overlay(rt, tmp_path):
-    out = tmp_path / "no_xi.png"
-    psf.xi_sys_comparison(rt, out)
-    assert out.exists()
 
 
 def test_corner_caption_names_full_range_and_clipping():
@@ -127,3 +117,33 @@ def test_corrected_tau_loader_needs_no_assembled_or_fit(tmp_path, monkeypatch):
     monkeypatch.setattr(P, "declared_blind", lambda c, v: "toy")
     monkeypatch.setattr(P, "load_tau", lambda s, c, b: (s, c, b))
     assert P.load_corrected_tau(tmp_path, "V_leak_corr", "config") == (part, cov, "toy")
+
+
+def test_slope_samples_use_the_tau_slope_template(rt, tmp_path, monkeypatch):
+    """(α, β₀, η, β₁) draws add β₁ ⟨u δe, ·⟩ to τ; without the template, raise."""
+    samples = np.array([[0.1, 1.0, 2.0, 3.0]])
+    template = np.arange(9.0).reshape(3, 3) * 1e-6
+    with pytest.raises(ValueError, match="tau_slope_template"):
+        psf.tau_model_samples(rt, 2, samples)
+    rt["fit"]["tau_slope_template"] = template
+    rho = 1e-5 * (0.1 + 1.0 + 2.0)
+    for k, row in ((0, 0), (2, 1), (5, 2)):
+        np.testing.assert_allclose(
+            psf.tau_model_samples(rt, k, samples)[0], rho + 3.0 * template[row]
+        )
+    rt["fit"]["flat_samples"] = np.random.default_rng(1).normal(size=(64, 4))
+    saved = []
+    monkeypatch.setattr(psf.S, "save", lambda fig, *args: saved.append(fig))
+    psf.coefficient_draws(rt, tmp_path / "draws.png")
+    assert "$\\beta_1$" in [ax.get_xlabel() for ax in saved[0].axes]
+    plt.close(saved[0])
+
+
+def test_contour_axes_follow_the_parameter_count():
+    from sp_validation.cosmo_val.diagnostic_plots import leakage_contour_axes
+
+    names, labels, markers = leakage_contour_axes(4)
+    assert names == ["x0", "x1", "x2", "x3"]
+    assert labels[3] == r"\beta_1"
+    assert markers == {"x0": 0, "x1": 1, "x2": 1, "x3": 0}
+    assert leakage_contour_axes(3)[1] == [r"\alpha", r"\beta", r"\eta"]

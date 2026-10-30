@@ -46,6 +46,7 @@ def generate_pseudo_cl_cov(
     binning: str = "powspace",
     nbins: int = 32,
     power: float = 0.5,
+    compute_tomography: bool = False,
 ):
     """Generate a pseudo-Cl covariance into ``output_dir``.
 
@@ -73,11 +74,13 @@ def generate_pseudo_cl_cov(
         Number of ell bins
     power : float
         Power for powspace binning (0.5 = sqrt spacing)
+    compute_tomography : bool
+        Compute the covariance over all tomographic pairs when true.
 
     Returns
     -------
     str
-        Path to the native non-tomographic iNKA covariance FITS.
+        Path to the native iNKA covariance FITS.
     """
     os.makedirs(output_dir, exist_ok=True)
 
@@ -131,12 +134,13 @@ def generate_pseudo_cl_cov(
 
     cv = CosmologyValidation(**cv_kwargs)
 
-    # Covariance of the ("all", "all") pair only
     print("Calculating covariance...")
-    cv.calculate_pseudo_cl_inka_cov(compute_tomography=False)
+    cv.calculate_pseudo_cl_inka_cov(compute_tomography=compute_tomography)
 
     # Report on the native product (moved by the Snakemake caller, if any)
-    src_cov = cv._output_path_pseudo_cl_cov(version, "iNKA", tomography=False)
+    src_cov = cv._output_path_pseudo_cl_cov(
+        version, "iNKA", tomography=compute_tomography
+    )
     if os.path.exists(src_cov):
         with fits.open(src_cov) as hdul:
             # CV outputs covariance blocks as COVAR_XX_YY extensions
@@ -168,6 +172,7 @@ def _from_snakemake(smk):
             binning=p["binning"],
             nbins=int(p["nbins"]),
             power=float(p.get("power", 0.5)),
+            compute_tomography=p.get("compute_tomography", False),
         )
         shutil.move(src_cov, output_cov)
         gc.collect()

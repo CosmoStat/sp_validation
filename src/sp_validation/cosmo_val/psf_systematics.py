@@ -5,7 +5,9 @@ Rho/tau statistics, their fits, and PSF leakage tests (scale-dependent and
 object-wise) for catalogue validation.
 """
 
+import json
 import os
+import zlib
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -18,13 +20,31 @@ from shear_psf_leakage import plots as psfleak_plots
 from shear_psf_leakage.rho_tau_stat import PSFErrorFit
 from uncertainties import ufloat
 
-from .. import blinding, sacc_io
+from .. import blinding, leakage_fit, sacc_io
 from ..io import open_entry
 from ..rho_tau import (
     get_rho_tau_w_cov,
     get_samples,
+    get_samples_eiv,
+    leakage_cache_key,
+    measure_leakage_jackknife,
+    read_leakage_jackknife,
 )
+from .diagnostic_plots import leakage_contour_axes
 from .sacc_writers import rho_tau_to_sacc
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+
+# Settings of the joint rho/tau leakage measurement and its 'eiv' fit; the
+# CosmologyValidation ``psf_leakage`` argument overrides them key by key.
+PSF_LEAKAGE_DEFAULTS = {
+    "npatch_fine": 800,
+    "patch_counts": [200, 400],
+    "fiducial_npatch": 400,
+    "beta_psf_size": False,
+    "sky_mask": "config/masks/star_contamination.json",
+}
+RHO_TAU_METHODS = ("eiv", "lsq", "emcee", "none")
 
 
 # TODO: Reorganise the order of functions so it is more readable
@@ -76,8 +96,7 @@ class PSFSystematicsMixin:
     def calculate_rho_tau_stats(self, tomography=True):
         """Measure ρ/τ statistics per version and tomographic bin.
 
-        Without ``tomography`` the single bin is ``"all"``, and its SACC part is
-        written per version (``rho_tau_to_sacc_part``).
+        Write one SACC part per version, with ρ once and τ for each source bin.
         """
         out_dir = f"{self.cc['paths']['output']}/rho_tau_stats"
         if not os.path.exists(out_dir):
@@ -97,16 +116,13 @@ class PSFSystematicsMixin:
             else:
                 tomo_bin_ids, tomo_bin_pairs = ["all"], [("all", "all")]
 
-            # Get the selection for stars
-            mask_star = self._get_star_mask(ver)
-
-            for tomo_bin_id in tomo_bin_ids:
+            tau_tables = []
+            tau_covariances = []
+            for index, tomo_bin_id in enumerate(sorted(tomo_bin_ids)):
                 self.print_cyan(f"Computing for the tomographic bin: {tomo_bin_id}")
                 base_rho = self.basename(ver)
                 base_tau = self.basename(ver, tomo_bin_a=tomo_bin_id)
-
-                # Get the selection for galaxies
-                mask_gal = self._get_galaxy_mask(ver, tomo_bin_id)
+                mask_star, mask_gal = self._get_rho_tau_masks(ver, tomo_bin_id)
 
                 # Compute rho and tau statistics
                 rho_stat_handler, tau_stat_handler = get_rho_tau_w_cov(
@@ -122,41 +138,57 @@ class PSFSystematicsMixin:
                     cov_rho=self.compute_cov_rho,
                     npatch=self.npatch,
                 )
-                if not tomography:
-                    self.rho_tau_to_sacc_part(
-                        ver, out_dir, base_tau, rho_stat_handler, tau_stat_handler
-                    )
+                tau_tables.append((index, tau_stat_handler.tau_stats))
+                tau_covariances.append((index, base_tau))
+
+            self.rho_tau_to_sacc_part(
+                ver,
+                out_dir,
+                self.basename(ver),
+                rho_stat_handler,
+                tau_tables,
+                tau_covariances,
+                tomography=tomography,
+            )
         self.print_done("Rho stats finished")
 
         self._rho_stat_handler = rho_stat_handler
         self._tau_stat_handler = tau_stat_handler
 
     def rho_tau_to_sacc_part(
-        self, version, out_dir, base, rho_stat_handler, tau_stat_handler
+        self,
+        version,
+        out_dir,
+        base,
+        rho_stat_handler,
+        tau_tables,
+        tau_bases,
+        tomography=False,
     ):
         """Write the ρ/τ SACC part for one version, under the version's blind.
 
-        ρ_0…ρ_5 autos and τ_0/τ_2/τ_5 leakage from the handler tables. The
-        ``CovTauTh`` theory covariance ``cov_tau_{base}_th.npy`` is passed as
-        ``tau_cov_th`` when it exists; without it the τ block falls back —
-        loudly — to a variance diagonal.
+        The part contains ρ_0…ρ_5 and τ_0/τ_2/τ_5 per source bin.
+        Each available ``CovTauTh`` block is attached to its bin; otherwise
+        its τ covariance falls back to a variance diagonal.
         """
-        tau_cov_path = os.path.join(out_dir, f"cov_tau_{base}_th.npy")
-        tau_cov_th = np.load(tau_cov_path) if os.path.exists(tau_cov_path) else None
-        if tau_cov_th is None:
-            self.print_magenta(
-                f"No τ theory covariance at {tau_cov_path}; writing ρ/τ SACC part "
-                "with a diagonal placeholder covariance (τ inference block is a "
-                "variance diagonal, not CovTauTh)."
-            )
+        covariances = []
+        for index, tau_base in tau_bases:
+            tau_cov_path = os.path.join(out_dir, f"cov_tau_{tau_base}_th.npy")
+            if os.path.exists(tau_cov_path):
+                covariances.append((index, np.load(tau_cov_path)))
+            else:
+                self.print_magenta(
+                    f"No τ theory covariance at {tau_cov_path}; using a variance diagonal."
+                )
         s = rho_tau_to_sacc(
-            self.sacc_nz(version),
+            self.sacc_nz(version, tomography=tomography),
             self.sacc_metadata(version),
             rho_stat_handler.rho_stats,
-            tau_stat_handler.tau_stats,
-            tau_cov_th=tau_cov_th,
+            tau_tables,
+            tau_cov_th_by_bin=covariances or None,
         )
-        out_path = os.path.join(out_dir, f"rho_tau_{base}.sacc")
+        suffix = "_tomo" if tomography else ""
+        out_path = os.path.join(out_dir, f"rho_tau_{base}{suffix}.sacc")
         sacc_io.save(s, out_path, blind=self.blind(version), theory=blinding.no_signal)
 
     def calculate_rho_tau_fits(self, tomography=True, track_result=True):
@@ -370,6 +402,138 @@ class PSFSystematicsMixin:
             star_mask = np.ones(len(cat_star), dtype=bool)
         return star_mask
 
+    def _sky_mask_circles(self):
+        """Circles of the configured ``psf_leakage`` sky mask, or None."""
+        path = self.psf_leakage["sky_mask"]
+        if path is None:
+            return None
+        path = Path(path) if Path(path).is_absolute() else REPO_ROOT / path
+        return json.loads(path.read_text())["circles"]
+
+    def _get_rho_tau_masks(self, ver, tomo_bin_id):
+        """Star and galaxy selections of every rho/tau measurement.
+
+        Stars pass both HSM flags (`_get_star_mask`), galaxies the tomographic
+        selection (`_get_galaxy_mask`), and both lie outside the configured
+        sky-mask circles.
+        """
+        mask_star = self._get_star_mask(ver)
+        mask_gal = self._get_galaxy_mask(ver, tomo_bin_id)
+        circles = self._sky_mask_circles()
+        if circles is not None:
+            for mask, block, ra_default, dec_default in (
+                (mask_star, "psf", "RA", "DEC"),
+                (mask_gal, "shear", "RA", "Dec"),
+            ):
+                entry = self.cc[ver][block]
+                cat = open_entry(entry)
+                mask &= leakage_fit.keep_sky(
+                    np.asarray(cat[entry.get("ra_col", ra_default)], dtype=float),
+                    np.asarray(cat[entry.get("dec_col", dec_default)], dtype=float),
+                    circles,
+                )
+        return mask_star, mask_gal
+
+    def leakage_jackknife(self, ver, tomo_bin_id="all", measure=False):
+        """Joint rho/tau jackknife measurement of one version and bin.
+
+        Read from ``rho_tau_stats/leakage_eiv_<basename>.npz``, which must have
+        been measured with the current ``psf_leakage`` settings and star and
+        galaxy selections. Only ``measure=True`` (the workflow rule
+        ``cv_leakage_jackknife``) measures it, by
+        `rho_tau.measure_leakage_jackknife`, when no matching cache exists or
+        ``force_run`` is set; otherwise a missing or stale cache raises.
+        """
+        cache = self.__dict__.setdefault("_leakage_jackknife", {})
+        if (ver, tomo_bin_id) not in cache:
+            path = self.leakage_jackknife_path(ver, tomo_bin_id)
+            settings = self.psf_leakage
+            mask_star, mask_gal = self._get_rho_tau_masks(ver, tomo_bin_id)
+            key = leakage_cache_key(
+                self.treecorr_config,
+                settings["npatch_fine"],
+                settings["patch_counts"],
+                settings["beta_psf_size"],
+                self._sky_mask_circles(),
+                mask_star=mask_star,
+                mask_gal=mask_gal,
+            )
+            reuse = not (measure and self.force_run)
+            products = read_leakage_jackknife(path, key) if reuse else None
+            if products is None and not measure:
+                state = "is stale for" if path.exists() else "is missing for"
+                raise FileNotFoundError(
+                    f"The joint leakage measurement {path} {state} the current "
+                    "psf_leakage settings and selections. Measure it with the "
+                    "Snakemake rule cv_leakage_jackknife, or interactively with "
+                    f"cv.leakage_jackknife({ver!r}, {tomo_bin_id!r}, measure=True)."
+                )
+            if products is None:
+                products = measure_leakage_jackknife(
+                    self.cc,
+                    ver,
+                    self.treecorr_config,
+                    path,
+                    key,
+                    mask_star=mask_star,
+                    mask_gal=mask_gal,
+                )
+            cache[(ver, tomo_bin_id)] = products
+        return cache[(ver, tomo_bin_id)]
+
+    def leakage_jackknife_path(self, ver, tomo_bin_id="all", kind="leakage_eiv"):
+        """Path of a joint leakage product (``kind`` leakage_eiv or leakage_eiv_fit)."""
+        base = self.basename(
+            ver, tomo_bin_a=tomo_bin_id, npatch=self.psf_leakage["npatch_fine"]
+        )
+        suffix = "json" if kind == "leakage_eiv_fit" else "npz"
+        return Path(self._output_path("rho_tau_stats", f"{kind}_{base}.{suffix}"))
+
+    def _leakage_eiv_fit(self, ver, tomo_bin_id, nsamples):
+        """EIV fits of one version and bin, and samples of the fiducial fit.
+
+        The fits at every ``patch_counts`` entry are also written as JSON
+        beside the measurement. The sample seed derives from the bin id, so
+        different bins draw independent samples.
+        """
+        cache = self.__dict__.setdefault("_leakage_eiv_fits", {})
+        if (ver, tomo_bin_id) not in cache:
+            settings = self.psf_leakage
+            samples, fits, quantiles = get_samples_eiv(
+                self.leakage_jackknife(ver, tomo_bin_id),
+                settings["patch_counts"],
+                settings["fiducial_npatch"],
+                beta_psf_size=settings["beta_psf_size"],
+                nsamples=nsamples,
+                seed=zlib.crc32(str(tomo_bin_id).encode()),
+            )
+            summary = {
+                str(n): {
+                    key: fit[key]
+                    for key in (
+                        "parameters",
+                        "sigma",
+                        "parameter_covariance",
+                        "chi2",
+                        "dof",
+                        "pte",
+                        "hartlap",
+                        "bfgs_success",
+                        "gradient_norm",
+                        "profile_hessian_positive",
+                        "profile_hessian_eigenvalues",
+                        "residual",
+                        "residual_sigma",
+                    )
+                }
+                for n, fit in fits.items()
+            }
+            self.leakage_jackknife_path(ver, tomo_bin_id, "leakage_eiv_fit").write_text(
+                json.dumps({"settings": settings, "fits": summary}, indent=2) + "\n"
+            )
+            cache[(ver, tomo_bin_id)] = samples, fits, quantiles
+        return cache[(ver, tomo_bin_id)]
+
     def set_params_rho_tau(self, ver, params, params_psf):
         params = {**params}
 
@@ -451,8 +615,11 @@ class PSFSystematicsMixin:
         return params_in
 
     def set_psf_parameter_sampling_method(self, rho_tau_method):
-        if rho_tau_method not in ["emcee", "lsq"]:
-            raise ValueError("Invalid PSF parameter sampling method.")
+        if rho_tau_method not in RHO_TAU_METHODS:
+            raise ValueError(
+                f"Invalid PSF parameter sampling method {rho_tau_method!r}; "
+                f"choose one of {RHO_TAU_METHODS}."
+            )
         self.rho_tau_method = rho_tau_method
 
     def set_psf_parameter_nsamples(self, nsamples):
@@ -462,15 +629,14 @@ class PSFSystematicsMixin:
         self.psf_error_nwalkers = nwalkers
 
     def get_samples(self, version, params, tomo_bin_id, track_result=False):
-        # Hartlap debiasing of the inverse covariance: the number of jackknife
-        # patches or of simulations the covariance was estimated from.
-        n_realisations = {"jk": params["patch_number"], "sim": self.n_sim_cov}.get(
-            self.cov_estimate_method
-        )
+        """PSF-leakage parameter samples of one version and tomographic bin.
 
-        base_rho = self.basename(version)
-        base_tau = self.basename(version, tomo_bin_a=tomo_bin_id)
-
+        With ``rho_tau_method`` 'eiv' these are draws from the Gaussian of the
+        ``fiducial_npatch`` joint EIV fit, (alpha, beta, eta) or, with
+        ``beta_psf_size``, (alpha, beta0, eta, beta1); the tracked result
+        holds the fits at every patch count. Otherwise the 'lsq' or 'emcee'
+        samples of the published tau statistics.
+        """
         # Set the number of samples and walkers and fallback to defaults if not attributed.
         n_samples = (
             self.psf_error_nsamples if hasattr(self, "psf_error_nsamples") else 10_000
@@ -479,16 +645,28 @@ class PSFSystematicsMixin:
             self.psf_error_nwalkers if hasattr(self, "psf_error_nwalkers") else 124
         )
 
-        flat_samples, result, q = get_samples(
-            self.psf_fitter,
-            base_rho,
-            base_tau,
-            cov_type=self.cov_estimate_method,
-            apply_debias=n_realisations,
-            sampler=self.rho_tau_method,
-            nsamples=n_samples,
-            nwalkers=n_walkers,
-        )
+        if self.rho_tau_method == "eiv":
+            flat_samples, result, q = self._leakage_eiv_fit(
+                version, tomo_bin_id, n_samples
+            )
+        else:
+            # Hartlap debiasing of the inverse covariance: the number of
+            # jackknife patches or of simulations the covariance was
+            # estimated from.
+            n_realisations = {
+                "jk": params["patch_number"],
+                "sim": self.n_sim_cov,
+            }.get(self.cov_estimate_method)
+            flat_samples, result, q = get_samples(
+                self.psf_fitter,
+                self.basename(version),
+                self.basename(version, tomo_bin_a=tomo_bin_id),
+                cov_type=self.cov_estimate_method,
+                apply_debias=n_realisations,
+                sampler=self.rho_tau_method,
+                nsamples=n_samples,
+                nwalkers=n_walkers,
+            )
 
         if track_result:
             if version not in self.rho_tau_fits.keys():
@@ -506,13 +684,36 @@ class PSFSystematicsMixin:
         return flat_samples
 
     def get_xi_psf_sys_samples(self, ver, params, tomo_bin_a, tomo_bin_b):
-        base_rho = self.basename(ver)
-        self.psf_fitter.load_rho_stat(f"rho_stats_{base_rho}.fits")
-        nbins = self.psf_fitter.rho_stat_handler._treecorr_config["nbins"]
+        """xi_sys+ and xi_sys- samples, one per pair of parameter samples.
 
+        With 'eiv', xi_sys = a^T M b over the rho (and, with the PSF-size
+        slope, u de) correlations of the joint leakage measurement of the
+        full star sample (`leakage_fit.systematic_correlation_matrix`);
+        otherwise from the published rho statistics.
+        """
         # Get the samples for the given tomographic bins
         flat_samples_a = self.get_samples(ver, params, tomo_bin_a, track_result=False)
         flat_samples_b = self.get_samples(ver, params, tomo_bin_b, track_result=False)
+
+        if self.rho_tau_method == "eiv":
+            products = self.leakage_jackknife(ver, tomo_bin_a)
+            nbins = len(products["theta"])
+            rho_xip = products["vector"][: 6 * nbins].reshape(6, nbins)
+            slope = self.psf_leakage["beta_psf_size"]
+            return tuple(
+                leakage_fit.xi_psf_sys(
+                    flat_samples_a,
+                    flat_samples_b,
+                    leakage_fit.systematic_correlation_matrix(
+                        rho, products[f"slope_{part}"] if slope else None
+                    ),
+                )
+                for rho, part in ((rho_xip, "xip"), (products["rho_xim"], "xim"))
+            )
+
+        base_rho = self.basename(ver)
+        self.psf_fitter.load_rho_stat(f"rho_stats_{base_rho}.fits")
+        nbins = self.psf_fitter.rho_stat_handler._treecorr_config["nbins"]
 
         xi_psf_sys_samples_plus = np.array(
             [
@@ -1056,15 +1257,16 @@ class PSFSystematicsMixin:
         sample_list = [
             self.rho_tau_fits[ver]["flat_samples"]["tomo_bin_all"] for ver in versions
         ]
+        names, labels, markers = leakage_contour_axes(sample_list[0].shape[1])
         psfleak_plots.plot_contours(
             sample_list,
-            names=["x0", "x1", "x2"],
-            labels=[r"\alpha", r"\beta", r"\eta"],
+            names=names,
+            labels=labels,
             savefig=savefig,
             legend_labels=versions,
             legend_loc="upper right",
             contour_colors=colors,
-            markers={"x0": 0, "x1": 1, "x2": 1},
+            markers=markers,
             show=show,
             close=close,
         )

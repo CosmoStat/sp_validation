@@ -37,6 +37,7 @@ def generate_pseudo_cl(
     binning: str = "linear",
     nbins: int = None,
     power: float = 0.5,
+    compute_tomography: bool = False,
 ):
     """Generate a pseudo-Cl data vector, born as a SACC part at ``out_path``.
 
@@ -62,6 +63,8 @@ def generate_pseudo_cl(
         Number of ell bins (required)
     power : float
         Power for powspace binning (0.5 = sqrt spacing)
+    compute_tomography : bool
+        Measure all tomographic pairs in one part when true.
 
     Returns
     -------
@@ -123,9 +126,9 @@ def generate_pseudo_cl(
     cv = CosmologyValidation(**cv_kwargs)
 
     # Pseudo-Cls only (no covariance), born directly at the final out_path.
-    cv.calculate_pseudo_cl(compute_tomography=False, out_path=out_path)
+    cv.calculate_pseudo_cl(compute_tomography=compute_tomography, out_path=out_path)
 
-    ell = cv.pseudo_cls[version]["tomo_bin_all_tomo_bin_all"]["pseudo_cl"]["ELL"]
+    ell = next(iter(cv._pseudo_cls[version].values()))["pseudo_cl"]["ELL"]
     print(f"Generated pseudo-Cl with {len(ell)} ell bins")
     print(f"ell range: [{ell.min():.1f}, {ell.max():.1f}]")
     return out_path
@@ -143,6 +146,7 @@ def _from_snakemake(smk):
         binning=p["binning"],
         nbins=int(p["nbins"]),
         power=float(p.get("power", 0.5)),
+        compute_tomography=p.get("compute_tomography", False),
     )
 
 

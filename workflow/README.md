@@ -134,7 +134,7 @@ snakemake -n --profile workflow/profiles/default -s workflow/Snakefile \
     --configfile papers/bmodes/config/config.yaml
 ```
 
-### Geometry-only pair counts
+#### Geometry-only pair counts for paired mocks
 
 The default measures weighted pair counts independently for each catalogue.
 A paired mock run can share this non-cosmological geometry calculation after
@@ -158,9 +158,8 @@ reference.
 This option does not share shear vectors, rho/tau, fitted coefficients or
 harmonic covariances, and it does not authorize sharing between different
 positions, weights or selections.
-Keep the full-geometry verification receipt with the run.
 
-## Catalogue-painted GLASS mocks
+### Catalogue-painted GLASS mocks
 
 The `glass_painted_maps` and `glass_painted_catalogue` rules project a single
 source n(z) through lognormal matter shells, then paint the resulting shear

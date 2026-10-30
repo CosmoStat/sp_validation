@@ -35,8 +35,8 @@ rule xi:
         cat_config=CAT_CONFIG,
         output_dir=str(COSMO_VAL),
         grid=lambda w: grid_of(XI_GRIDS, w),
-        catalogue=lambda w: measurement_catalogue(w.version),
         b_target=config.get("cosmo_val", {}).get("b_target", 0.01),
+        catalogue=lambda w: measurement_catalogue(w.version),
         blind=lambda w: blind_of(w.version),
     resources:
         # The fine integration grid needs more memory and wall time than the
@@ -81,6 +81,8 @@ rule xi_onecov:
 
 
 rule rho_tau_stats:
+    input:
+        sky_mask=psf_leakage_sky_mask_input(config),
     output:
         rho_stats=str(COSMO_VAL / "rho_tau_stats/rho_stats_{version}_tomo_bin_all_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
         tau_stats=str(COSMO_VAL / "rho_tau_stats/tau_stats_{version}_tomo_bin_all_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
@@ -98,13 +100,35 @@ rule rho_tau_stats:
         npatch="{npatch}",
         cat_config=CAT_CONFIG,
         output_dir=str(COSMO_VAL),
-        catalogue=lambda w: measurement_catalogue(w.version, psf=True),
         b_target=config.get("cosmo_val", {}).get("b_target", 0.01),
+        catalogue=lambda w: measurement_catalogue(w.version, psf=True),
+        # The psf_leakage sky mask applies to the ρ/τ stars and galaxies.
+        psf_leakage={"sky_mask": psf_leakage_sky_mask(config)},
         blind=lambda w: blind_of(w.version),
     resources:
         mem_mb=64000,
         disk_mb=20000,
         runtime=360,
+    script:
+        "../scripts/run_rho_tau.py"
+
+
+rule rho_tau_stats_tomo:
+    """Measure τ per source bin, reusing the PSF-only ρ measurement."""
+    input:
+        rho=str(COSMO_VAL / "rho_tau_stats/rho_stats_{version}_tomo_bin_all_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
+    output:
+        rho_tau=str(COSMO_VAL / "rho_tau_stats/rho_tau_{version}_tomo_bin_all_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}_tomo.sacc"),
+    threads: 48
+    params:
+        ver="{version}",
+        cov_estimate_method=config.get("cosmo_val", {}).get("cov_estimate_method", "th"),
+        min_sep="{min_sep}", max_sep="{max_sep}", nbins="{nbins}", npatch="{npatch}",
+        cat_config=CAT_CONFIG, output_dir=str(COSMO_VAL),
+        blind=lambda w: blind_of(w.version),
+        compute_tomography=True,
+    resources:
+        mem_mb=64000, disk_mb=20000, runtime=360,
     script:
         "../scripts/run_rho_tau.py"
 
@@ -118,7 +142,7 @@ wildcard_constraints:
 rule pseudo_cl:
     """Generate pseudo-Cl data vector (born as SACC) with configurable binning."""
     output:
-        pseudo_cl=str(COSMO_VAL / "pseudo_cl_{version}_{binning}_nbins={nbins}.sacc"),
+        pseudo_cl=str(COSMO_VAL / "pseudo_cl_{version}_{binning}_nbins={nbins}{tomo_suffix}.sacc"),
     params:
         version="{version}",
         cat_config=CAT_CONFIG,
@@ -128,6 +152,7 @@ rule pseudo_cl:
         binning="{binning}",
         nbins=lambda w: int(w.nbins),
         power=0.5,
+        compute_tomography=lambda w: w.tomo_suffix == "_tomo",
         catalogue=lambda w: measurement_catalogue(w.version),
         blind=lambda w: blind_of(w.version),
     resources:
@@ -141,7 +166,7 @@ rule pseudo_cl:
 rule pseudo_cl_cov:
     """Generate pseudo-Cl covariance with configurable binning."""
     output:
-        pseudo_cl_cov=str(COSMO_VAL / "pseudo_cl_cov_{version}_{binning}_nbins={nbins}.fits"),
+        pseudo_cl_cov=str(COSMO_VAL / "pseudo_cl_cov_{version}_{binning}_nbins={nbins}{tomo_suffix}.fits"),
     params:
         version="{version}",
         cat_config=CAT_CONFIG,
@@ -151,6 +176,7 @@ rule pseudo_cl_cov:
         binning="{binning}",
         nbins=lambda w: int(w.nbins),
         power=0.5,
+        compute_tomography=lambda w: w.tomo_suffix == "_tomo",
         catalogue=lambda w: measurement_catalogue(w.version),
     resources:
         mem_mb=16000,

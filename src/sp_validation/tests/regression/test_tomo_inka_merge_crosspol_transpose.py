@@ -57,9 +57,6 @@ def test_tomo_inka_merge_lower_triangle_uses_transposed_qp_block(tmp_path):
             return str(tmp_path / ("_".join(map(str, tomo_bin_quad)) + ".fits"))
 
     instance = Tiny()
-    instance._pseudo_cls = {
-        "v": {"tomo_bin_all_tomo_bin_all": {"pseudo_cl": {"ELL": np.arange(n_ell)}}}
-    }
     for ia, ib in itertools.combinations_with_replacement(range(n_s), 2):
         # [ell_a, pol_a, ell_b, pol_b]
         block = np.transpose(covariance[:, ia, :, :, ib, :], (1, 0, 3, 2))
@@ -94,3 +91,70 @@ def test_tomo_inka_merge_lower_triangle_uses_transposed_qp_block(tmp_path):
             f"iNKA joint covariance: symmetry error={np.max(np.abs(joint - joint.T)):.3g}, "
             f"min eigenvalue={eigenvalues.min():.12g}"
         )
+
+
+def test_fresh_cv_merges_tomographic_covariance(tmp_path, monkeypatch):
+    from sp_validation.cosmo_val import CosmologyValidation
+
+    cv = CosmologyValidation.__new__(CosmologyValidation)
+    cv.versions = ["v"]
+    cv.nside = 4
+    cv.cell_method = "catalog"
+    cv.fiducial_input_inka = "uncoupled"
+    cv.noise_bias_method = "analytic"
+    cv.force_run = False
+    cv.cc = {"v": {"shear": "unused"}}
+    pairs = [(1, 1), (1, 2), (2, 2)]
+    monkeypatch.setattr(cv, "_get_tomo_bins", lambda ver: ([1, 2], pairs))
+    monkeypatch.setattr(cv, "_output_path", lambda *a: str(tmp_path))
+    monkeypatch.setattr(
+        cv, "_output_path_pseudo_cl_cov", lambda *a, **k: str(tmp_path / "merged.fits")
+    )
+    monkeypatch.setattr(
+        cv,
+        "_output_path_iNKA_block_cov",
+        lambda ver, tomo_bin_quad: str(
+            tmp_path / ("_".join(map(str, tomo_bin_quad)) + ".fits")
+        ),
+    )
+    monkeypatch.setattr(
+        cv, "get_fiducial_cl", lambda *a: {f"W{x}xW{y}": np.zeros(8) for x, y in pairs}
+    )
+    monkeypatch.setattr(cv, "_get_tomographic_bin", lambda params, cat, b: cat)
+    monkeypatch.setattr(cv, "get_namaster_bin", lambda *a: None)
+    monkeypatch.setattr(
+        pseudo_cl,
+        "get_params_rho_tau",
+        lambda entry: {
+            k: k for k in ("ra_col", "dec_col", "e1_col", "e2_col", "w_col")
+        },
+    )
+    monkeypatch.setattr(
+        pseudo_cl,
+        "open_entry",
+        lambda *a: {
+            k: np.zeros(2) for k in ("ra_col", "dec_col", "e1_col", "e2_col", "w_col")
+        },
+    )
+    # Shear calibration is not under test: read the stub catalogue as is.
+    monkeypatch.setattr(
+        cv, "_pseudo_cl_catalogue", lambda ver: pseudo_cl.open_entry(None)
+    )
+    monkeypatch.setattr(
+        pseudo_cl.spv_pseudo_cl,
+        "get_field_and_workspace_from_catalog",
+        lambda *a, **k: (None, None, None),
+    )
+    monkeypatch.setattr(
+        pseudo_cl.spv_pseudo_cl,
+        "get_pseudo_cl_iNKA_covariance",
+        lambda *a, **k: np.zeros((3, 4, 3, 4)),
+    )
+    cv.pol_factor = 1
+    cv.calculate_pseudo_cl_inka_cov(compute_tomography=True)
+    with pseudo_cl.fits.open(tmp_path / "merged.fits") as merged:
+        assert merged["COVAR_EE_EE"].data.shape == (9, 9)
+    assert all(
+        "pseudo_cl" not in cv._pseudo_cls["v"][f"tomo_bin_{a}_tomo_bin_{b}"]
+        for a, b in pairs
+    )
