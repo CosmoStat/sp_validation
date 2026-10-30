@@ -36,6 +36,10 @@ inputs:
     type: data
     label: "UNIONS DR6 ugriz photometry with BPZ photo-z"
     source: "candide:/n17data/UNIONS/WL/photometry/UNIONS_DR6/"
+  - id: dr6_bit8_mask
+    type: data
+    label: "DR6 mask bit 8 (manual star/object masks)"
+    source: "/project/def-mjhudson/unions-wl/masks/dr6-2026-08/mask_ugriz_nside131072_n8.hsp"
   - id: blind_record
     type: data
     label: "The `unions` blind"
@@ -131,15 +135,19 @@ decisions:
     label: "ρ/τ PSF-leakage estimator"
     tags: [systematics]
     rationale: >-
-      sp_validation #454: a joint errors-in-variables ρ/τ fit on the jackknife
-      measurement, with the PSF stars inside dense-object circles masked
-      (config/masks/star_contamination.json).
-    default: eiv_masked
+      A joint errors-in-variables ρ/τ fit on the jackknife measurement
+      (sp_validation #454). PSF stars inside DR6 mask bit 8 (manual masks:
+      M33, globular clusters, dense fields) are vetoed through psf.mask_veto
+      (#457). M33's core is the one dense object whose stars are corrupted
+      (~20% oversized), as found in ShapePipe #993.
+    default: eiv_bit8_veto
     options:
-      eiv_masked:
-        label: "Joint EIV fit, star-contamination mask"
+      eiv_bit8_veto:
+        label: "Joint EIV fit, DR6 bit-8 PSF-star veto"
+      eiv_unmasked:
+        label: "Joint EIV fit, no star veto"
       lsq_unmasked:
-        label: "Least squares, no star mask (pre-#454)"
+        label: "Least squares, no star veto (pre-#454)"
 
   bmode_scale_cut:
     label: "B-mode PTE scale cut"
@@ -174,7 +182,7 @@ outputs:
       SP_v2.0_tomo.sacc: ξ±, pseudo-Cℓ, COSEBIs, pure-E/B and ρ/τ for every bin
       pair with their covariances; E concealed. The same DAG writes the
       non-tomographic SP_v2.0.sacc and the full cosmo_val plot set.
-    inputs: [tomo_catalogue, star_catalogs, blind_record]
+    inputs: [tomo_catalogue, star_catalogs, dr6_bit8_mask, blind_record]
     decisions: [nz_estimate, blinding, covariance, psf_leakage_fit]
     recipe:
       command: "sbatch /project/def-mjhudson/cdaley/cosmo-val-v2-tomo/driver.sbatch"
