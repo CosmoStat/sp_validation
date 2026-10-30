@@ -22,7 +22,9 @@ No rho/tau cache is staged between entries.
 
 Checkout: `/n17data/cdaley/scratch/glass-mock-cv/run-int`, branch `run/glassmock-int`.
 Starting point `4662cbbe`; painted-generator/reader merged from `a6741eef`; integration merged from `29f962bb` (including develop's no-leak gate).
-The run recipe and audit sources are committed at `85d3e2bd` under `scratch/cdaley/glass_mock_cvpaint`; current checkout HEAD is `a7b1cbfe`.
+The run recipe and audit sources are versioned under `scratch/cdaley/glass_mock_cvpaint`, initially at `85d3e2bd`.
+The inherited checkpoint is `a7b1cbfe`; `ee8ce619` adds the integration-covariance reference and its ten focused tests.
+The continuation commits update the dispatch/thread settings and the finite-Bessel ξ validator.
 `93ffebb7` adds a conservative numerical-scale prefilter to the existing leak oracle and filters nonzero finite mock references; `a7b1cbfe` retains the complete existing decoder coverage alongside new boundary/performance tests.
 All 50 scanner/producer-gate tests pass in the image (`logs/blind_scan_tests_complete.log`).
 The prefilter cannot discard an `isclose` match: it uses outward-rounded bounds on the possible absolute values, then applies the same comparison and decoder tolerances.
