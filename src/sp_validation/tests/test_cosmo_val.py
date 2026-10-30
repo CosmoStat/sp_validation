@@ -502,7 +502,6 @@ class TestCosmologyValidation:
             output_dir=params["output_dir"],
             sacc_out=str(part),
         )
-
         cov = sacc_io.load(str(part)).covariance
         assert isinstance(
             cov,
@@ -542,8 +541,9 @@ class TestCosmologyValidation:
         process = treecorr.GGCorrelation.process
 
         def recording_process(gg, cat, *args, **kwargs):
-            patches.append(np.array(cat.patch))
-            measured.append(gg)
+            if cat.npatch > 1:
+                patches.append(np.array(cat.patch))
+                measured.append(gg)
             return process(gg, cat, *args, **kwargs)
 
         monkeypatch.setattr(treecorr.GGCorrelation, "process", recording_process)
@@ -592,6 +592,7 @@ class TestCosmologyValidation:
         params, version = self._write_synthetic_catalogs(
             tmp_path, n_gal=400, with_tomography=True
         )
+        self._use_tomographic_nz(params, version, tmp_path)
         cv = CosmologyValidation(versions=[version], npatch=4, **params)
         cols = cv._shear_columns(version, compute_tomography=True)
         full_catalog = treecorr.Catalog(
@@ -629,9 +630,293 @@ class TestCosmologyValidation:
             cross_pair_catalogs[1][2], expected_centers, rtol=0, atol=1e-14
         )
 
+    @pytest.mark.parametrize("b_target", [0.01, 0.02])
+    def test_bin_slop_follows_the_grid(self, tmp_path, b_target):
+        params, version = self._write_synthetic_catalogs(tmp_path)
+        cv = CosmologyValidation(
+            [version],
+            theta_min=1,
+            theta_max=250,
+            nbins=20,
+            b_target=b_target,
+            **params,
+        )
+        expected = b_target / (np.log(250) / 20)
+        assert cv.treecorr_config["bin_slop"] == pytest.approx(expected)
+        assert cv._binning()["bin_slop"] == pytest.approx(expected)
+        assert cv._binning(0.08, 300, 1000)["bin_slop"] == 1
+        assert cv._binning(bin_slop=0)["bin_slop"] == 0
+        assert "angle_slop" not in cv.treecorr_config
+
+    @pytest.mark.parametrize("tomography", [False, True])
+    def test_published_means_are_layout_independent(
+        self, tmp_path, monkeypatch, tomography
+    ):
+        """Both auto- and cross-bin means ignore the covariance patch layout."""
+        import treecorr
+
+        from sp_validation.statistics import jackknife_patch_centers
+
+        params, version = self._write_synthetic_catalogs(
+            tmp_path,
+            n_gal=4000,
+            with_tomography=tomography,
+            coherent_shear=True,
+        )
+        if tomography:
+            self._use_tomographic_nz(params, version, tmp_path)
+        cv = CosmologyValidation(
+            [version], npatch=8, theta_min=5, theta_max=200, nbins=8, **params
+        )
+        # Small trees exercise cell aggregation without a large catalogue.
+        cv.treecorr_config.update(min_top=2, num_threads=1)
+        cols = cv._shear_columns(version, tomography)
+        cat = cv._bin_catalog(cols, "all", 1)
+        centers = jackknife_patch_centers(cat, 8)
+        angle = np.deg2rad(0.35)
+        rotation = np.array(
+            [
+                [np.cos(angle), -np.sin(angle), 0],
+                [np.sin(angle), np.cos(angle), 0],
+                [0, 0, 1],
+            ]
+        )
+        layouts = [centers, centers @ rotation.T]
+        assert not np.array_equal(
+            cv._bin_catalog(cols, "all", 8, layouts[0]).patch,
+            cv._bin_catalog(cols, "all", 8, layouts[1]).patch,
+        )
+        measured = []
+        for centers in layouts:
+            monkeypatch.setattr(cv, "_patch_centers", lambda *args, c=centers: c)
+            measured.append(
+                cv.calculate_2pcf_version(
+                    version, npatch=8, compute_tomography=tomography
+                )
+            )
+        for pair in measured[0]:
+            a, b = measured[0][pair], measured[1][pair]
+            for column in (
+                "xip",
+                "xim",
+                "meanr",
+                "weight",
+                "npairs",
+            ):
+                np.testing.assert_array_equal(getattr(a, column), getattr(b, column))
+            assert not np.array_equal(a.cov, b.cov)
+            # Covariance is still exactly the direct patched measurement.
+            bin1, bin2 = (
+                (1, 2)
+                if pair == "tomo_bin_1_tomo_bin_2"
+                else (
+                    (1, 1)
+                    if pair == "tomo_bin_1_tomo_bin_1"
+                    else (2, 2)
+                    if pair == "tomo_bin_2_tomo_bin_2"
+                    else ("all", "all")
+                )
+            )
+            covariance_config = cv._binning()
+            covariance_config.pop("bin_slop")
+            direct = treecorr.GGCorrelation(covariance_config)
+            direct.process(
+                cv._bin_catalog(cols, bin1, 8, layouts[0]),
+                cat2=(
+                    cv._bin_catalog(cols, bin2, 8, layouts[0]) if bin1 != bin2 else None
+                ),
+            )
+            np.testing.assert_array_equal(a.cov, direct.cov)
+
+    def test_rho_tau_means_are_layout_independent(self, tmp_path, monkeypatch):
+        from sp_validation import rho_tau
+
+        params, version = self._write_synthetic_catalogs(
+            tmp_path,
+            n_gal=1200,
+            n_star=1000,
+            with_psf=True,
+        )
+        cv = CosmologyValidation(
+            [version], npatch=8, theta_min=5, theta_max=200, nbins=8, **params
+        )
+        cv.treecorr_config["num_threads"] = 1
+        cv.cc[version]["patch_number"] = 8
+        from shear_psf_leakage.rho_tau_stat import Catalogs
+
+        from sp_validation.statistics import jackknife_patch_centers
+
+        cols = cv._shear_columns(version, False)
+        centers = jackknife_patch_centers(cv._bin_catalog(cols, "all", 1), 8)
+        angle = np.deg2rad(0.35)
+        rotation = np.array(
+            [
+                [np.cos(angle), -np.sin(angle), 0],
+                [np.sin(angle), np.cos(angle), 0],
+                [0, 0, 1],
+            ]
+        )
+        build = Catalogs.build_catalog
+        outputs = []
+        for i, layout in enumerate((centers, centers @ rotation.T)):
+
+            def with_layout(self, *args, layout=layout, **kwargs):
+                kwargs["patch_centers"] = layout
+                return build(self, *args, **kwargs)
+
+            monkeypatch.setattr(Catalogs, "build_catalog", with_layout)
+            out = tmp_path / f"rho_tau_{i}"
+            out.mkdir()
+            rho, tau = rho_tau.get_jackknife_cov(
+                cv.cc,
+                version,
+                cv.treecorr_config,
+                str(out),
+                "test",
+                "test",
+                npatch=8,
+                ncov=1,
+            )
+            outputs.append(
+                (
+                    rho.rho_stats.copy(),
+                    tau.tau_stats.copy(),
+                    np.load(out / "cov_tau_test_jk.npy"),
+                )
+            )
+        for i in (0, 1):
+            for column in outputs[0][i].dtype.names:
+                if not column.startswith("var"):
+                    np.testing.assert_array_equal(
+                        outputs[0][i][column], outputs[1][i][column]
+                    )
+        assert not np.array_equal(outputs[0][2], outputs[1][2])
+        assert not np.array_equal(
+            outputs[0][1]["vartau_0_p"], outputs[1][1]["vartau_0_p"]
+        )
+
+    def test_aperture_mass_means_are_layout_independent(self, tmp_path, monkeypatch):
+        from sp_validation.statistics import jackknife_patch_centers
+
+        params, version = self._write_synthetic_catalogs(tmp_path, n_gal=3000)
+        cv = CosmologyValidation([version], npatch=8, **params)
+        cv.treecorr_config.update(min_top=2, num_threads=1)
+        cols = cv._shear_columns(version, False)
+        cat = cv._bin_catalog(cols, "all", 1)
+        centers = jackknife_patch_centers(cat, 8)
+        angle = np.deg2rad(0.35)
+        rotation = np.array(
+            [
+                [np.cos(angle), -np.sin(angle), 0],
+                [np.sin(angle), np.cos(angle), 0],
+                [0, 0, 1],
+            ]
+        )
+        measured = []
+        for layout in (centers, centers @ rotation.T):
+            monkeypatch.setattr(cv, "_patch_centers", lambda *args, c=layout: c)
+            cv.calculate_aperture_mass_dispersion(
+                theta_min=5, theta_max=200, nbins=30, npatch=8
+            )
+            measured.append(cv.map2[version]["tomo_bin_all_tomo_bin_all"])
+        for key in ("mapsq", "mxsq"):
+            np.testing.assert_array_equal(measured[0][key], measured[1][key])
+        assert not np.array_equal(measured[0]["varmapsq"], measured[1]["varmapsq"])
+
     def test_a_blinded_catalogue_refuses_tomographic_signal(self, tmp_path):
         """Blinding shifts the ("all", "all") parts only, so a blinded
         catalogue's tomographic ξ± and pseudo-Cℓ are refused before measuring."""
+
+    @staticmethod
+    def _use_tomographic_nz(params, version, tmp_path, nbin=2):
+        """Point ``version`` at an n(z) file with one column per tomographic bin."""
+        z = np.linspace(0.05, 3.0, 31)
+        columns = [np.exp(-(((z - 0.4 - 0.5 * i) / 0.3) ** 2)) for i in range(nbin)]
+        nz_path = tmp_path / "nz_tomo.txt"
+        np.savetxt(nz_path, np.column_stack([z, *columns]))
+        config = yaml.safe_load(open(params["catalog_config"]))
+        config[version]["shear"]["redshift_path"] = str(nz_path)
+        with open(params["catalog_config"], "w") as f:
+            yaml.dump(config, f, sort_keys=False)
+        return z, columns
+
+    def test_tomographic_xi_is_one_part_with_a_tracer_per_bin(self, tmp_path):
+        """Every bin pair goes into one sealed part: source_i carries column i + 1
+        of the n(z) file, pairs are pair-major in OneCovariance's order, and the
+        jackknife covariance spans the pairs."""
+        params, version = self._write_synthetic_catalogs(
+            tmp_path, n_gal=600, with_tomography=True
+        )
+        z, columns = self._use_tomographic_nz(params, version, tmp_path)
+        cv = CosmologyValidation(versions=[version], npatch=4, **params)
+
+        ggs = cv.calculate_2pcf_version(version, compute_tomography=True)
+
+        part = cv.xi_tomo_parts[version, "reporting"]
+        assert sacc_io.stamp(part) == "none"
+        assert sorted(ggs) == [
+            "tomo_bin_1_tomo_bin_1",
+            "tomo_bin_1_tomo_bin_2",
+            "tomo_bin_2_tomo_bin_2",
+        ]
+        for i, column in enumerate(columns):
+            z_read, nz_read = sacc_io.get_nz(part, i)
+            np.testing.assert_allclose(z_read, z)
+            np.testing.assert_allclose(nz_read, column)
+        nbins = cv.treecorr_config["nbins"]
+        pairs = [dp.tracers for dp in part.data[:: 2 * nbins]]
+        assert pairs == [
+            ("source_0", "source_0"),
+            ("source_0", "source_1"),
+            ("source_1", "source_1"),
+        ]
+        np.testing.assert_allclose(
+            ggs["tomo_bin_1_tomo_bin_2"].xip,
+            sacc_io.get_xi(part, (0, 1), grid="reporting")[1],
+        )
+        cov = part.covariance.dense
+        assert cov.shape == (6 * nbins, 6 * nbins)
+        assert np.any(cov[: 2 * nbins, 2 * nbins : 4 * nbins] != 0)
+
+    def test_tomographic_xi_needs_an_nz_per_bin(self, tmp_path):
+        """A single-column n(z) cannot describe two bins; the part is refused."""
+        params, version = self._write_synthetic_catalogs(
+            tmp_path, n_gal=400, with_tomography=True
+        )
+        cv = CosmologyValidation(versions=[version], npatch=1, **params)
+        with pytest.raises(ValueError, match="n\\(z\\)"):
+            cv.calculate_2pcf_version(version, compute_tomography=True)
+
+    def test_a_blinded_catalogue_conceals_tomographic_xi(self, tmp_path):
+        """On a blinded catalogue every tomographic pair is sealed under the
+        blind, so the ξ± handed back differs from the public measurement."""
+        pytest.importorskip("smokescreen")
+        from sp_validation import blinding
+
+        params, version = self._write_synthetic_catalogs(
+            tmp_path, n_gal=400, with_tomography=True
+        )
+        self._use_tomographic_nz(params, version, tmp_path)
+        public = CosmologyValidation(
+            versions=[version], npatch=1, **params
+        ).calculate_2pcf_version(version, compute_tomography=True)
+
+        config = yaml.safe_load(open(params["catalog_config"]))
+        config["paths"]["blinds"] = str(tmp_path / "blinds")
+        config[version]["blind"] = "toy"
+        with open(params["catalog_config"], "w") as f:
+            yaml.dump(config, f, sort_keys=False)
+        blinding.init("toy", config)
+        cv = CosmologyValidation(versions=[version], npatch=1, **params)
+        blinded = cv.calculate_2pcf_version(version, compute_tomography=True)
+
+        assert sacc_io.stamp(cv.xi_tomo_parts[version, "reporting"]) == "toy"
+        for key in public:
+            assert not np.allclose(blinded[key].xip, public[key].xip)
+
+    def test_a_blinded_catalogue_refuses_tomographic_pseudo_cl(self, tmp_path):
+        """Blinding covers the tomographic ξ± parts but not the pseudo-Cℓ FITS
+        tables, so a blinded catalogue's tomographic pseudo-Cℓ are refused."""
         from sp_validation import blinding
 
         params, version = self._write_synthetic_catalogs(
@@ -645,8 +930,6 @@ class TestCosmologyValidation:
         blinding.init("toy", config)
         cv = CosmologyValidation(versions=[version], npatch=1, **params)
 
-        with pytest.raises(blinding.BlindingError, match="tomographic"):
-            cv.calculate_2pcf_version(version, compute_tomography=True)
         with pytest.raises(blinding.BlindingError, match="tomographic"):
             cv.calculate_pseudo_cl(compute_tomography=True)
         # Direct producers must refuse before opening even a missing catalogue.
@@ -917,6 +1200,11 @@ class TestCosmologyValidation:
         assert bin_id == 0
         np.testing.assert_allclose(z_read, z)
         np.testing.assert_allclose(nz_read, nz_bins.sum(axis=0))
+
+        tomographic = cv.sacc_nz(version, tomography=True)
+        assert sorted(tomographic) == [0, 1, 2]
+        for i, nz_bin in enumerate(nz_bins):
+            np.testing.assert_allclose(tomographic[i][1], nz_bin)
 
     @pytest.mark.parametrize("pol_factor", [True, False, 0, 2])
     def test_pol_factor_must_be_plus_or_minus_one(self, tmp_path, pol_factor):

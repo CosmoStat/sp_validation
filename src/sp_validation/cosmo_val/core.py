@@ -147,6 +147,9 @@ class CosmologyValidation(
         Maximum angular separation in arcminutes for correlation function binning.
     nbins : int, default 20
         Number of angular bins for TreeCorr real-space correlation functions.
+    b_target : float, default 0.01
+        Maximum logarithmic-bin tolerance for full-sample means, with bin_slop
+        capped at 1 per grid. Patched covariance passes use TreeCorr's default.
     var_method : {'jackknife', 'sample', 'bootstrap', 'marked_bootstrap'}, default 'jackknife'
         TreeCorr variance estimation method.
     npatch : int, default 20
@@ -303,7 +306,7 @@ class CosmologyValidation(
         n_ell_bins=32,
         ell_step=10,
         pol_factor=-1,
-        cell_method="map",
+        cell_method="catalog",
         noise_bias_method="analytic",
         fiducial_input_inka="coupled",
         nrandom_cell=10,
@@ -312,7 +315,9 @@ class CosmologyValidation(
         cosmo_params=None,
         compute_tomography=False,
         force_run=False,
+        b_target=0.01,
     ):
+        self.b_target = b_target
         self.rho_tau_method = rho_tau_method
         self.cov_estimate_method = cov_estimate_method
         self.compute_cov_rho = compute_cov_rho
@@ -374,15 +379,16 @@ class CosmologyValidation(
             "nbins": nbins,
             "var_method": var_method,
             "cross_patch_weight": "match" if var_method == "jackknife" else "simple",
-            # min_top sets the depth of TreeCorr's root cells, hence which pairs
-            # bin_slop approximates. Left unset, TreeCorr derives it from its
-            # thread count (max(3, ceil(log2 n))) and ξ± depends on the machine.
-            # 6 is what TreeCorr derives on candide's 48- and 64-CPU nodes.
+            # min_top fixes TreeCorr's root-cell depth, which controls the pairs
+            # bin_slop approximates. Its default depends on thread count and would
+            # make ξ± depend on the machine; 6 is used on candide's 48/64-CPU nodes.
             "min_top": 6,
             # The CPUs this process may use; TreeCorr's own default is the
             # node's count, whatever share of it the job holds.
             "num_threads": len(os.sched_getaffinity(0)),
         }
+
+        self.treecorr_config = self._binning()
 
         self.catalog_config_path = Path(catalog_config)
         with self.catalog_config_path.open("r") as file:
@@ -471,8 +477,10 @@ class CosmologyValidation(
         # B-mode results storage for summarize_bmodes()
         self._pure_eb_results = {}
         self._cosebis_results = {}
-        # The sealed ξ± parts calculate_2pcf_version made, by (version, grid).
+        # The sealed ξ± parts calculate_2pcf_version made, by (version, grid):
+        # the ("all", "all") pair, and every tomographic bin pair.
         self.xi_parts = {}
+        self.xi_tomo_parts = {}
 
     def _output_path(self, *parts):
         """Absolute path under the catalog config's output directory.
@@ -484,13 +492,18 @@ class CosmologyValidation(
         """
         return os.path.abspath(os.path.join(self.cc["paths"]["output"], *parts))
 
-    def sacc_nz(self, version):
-        """Single-bin ``nz`` mapping ``{0: (z, nz)}`` for the SACC writers.
+    def sacc_nz(self, version, tomography=False):
+        """``nz`` mapping ``{i: (z, nz_i)}`` for the SACC writers.
 
-        The SACC parts carry the ("all", "all") pair only, so the whole-survey
-        n(z) of :meth:`get_redshift` is bin 0.
+        Non-tomographic parts carry the ("all", "all") pair only, so the
+        whole-survey n(z) of :meth:`get_redshift` is bin 0. With
+        ``tomography``, bin ``i`` is column ``i + 1`` of the ``redshift_path``
+        file (column 0 is z), one per tomographic bin.
         """
-        return {0: tuple(self.get_redshift(version))}
+        if not tomography:
+            return {0: tuple(self.get_redshift(version))}
+        z, dndz = self.read_redshift_distribution(version, is_tomography=True)
+        return {i: (z, dndz[:, i]) for i in range(dndz.shape[1])}
 
     def sacc_metadata(self, version):
         """Provenance metadata stored on every SACC part for ``version``."""
@@ -601,17 +614,19 @@ class CosmologyValidation(
     def _refuse_blinded_tomography(self, version):
         """Refuse to measure tomographic shear signal on a blinded catalogue.
 
-        Only the ``("all", "all")`` pair is born as a SACC part, whose tracer
-        carries the n(z) the blind's theory shifts it by. The tomographic ξ±,
-        ⟨M_ap²⟩ and pseudo-Cℓ are TreeCorr objects and FITS tables with no
-        per-bin tracer, so on a blinded catalogue they would hold true values.
+        A statistic is blinded by sealing its SACC part, whose tracers carry
+        the n(z) the blind's theory shifts it by. ξ± (and ⟨M_ap²⟩, derived from
+        it) is born as such a part for every tomographic bin pair; the
+        tomographic pseudo-Cℓ are still FITS tables with no per-bin tracer, so
+        on a blinded catalogue they would hold true values.
         """
         blind = self.blind(version)
         if blind.name != blinding.NONE.name:
             raise blinding.BlindingError(
                 f"{version} is blinded under {blind.name}, and blinding covers "
-                "its non-tomographic pair only; tomographic shear statistics are "
-                "measured on public (`blind: none`) catalogues"
+                "its tomographic ξ± and non-tomographic statistics only; other "
+                "tomographic shear statistics are measured on public "
+                "(`blind: none`) catalogues"
             )
 
     def basename(
@@ -634,18 +649,25 @@ class CosmologyValidation(
         )
 
     def _binning(self, min_sep=None, max_sep=None, nbins=None, **extra):
-        """treecorr_config with min_sep/max_sep/nbins overridden.
+        """Means-pass TreeCorr config with min_sep/max_sep/nbins overridden.
 
         None falls back to the instance's treecorr_config value for that key;
-        any further keys in `extra` override on top.
+        any further keys in `extra` override on top. The shared two-pass
+        measurement removes ``bin_slop`` from the patched config, leaving
+        TreeCorr's default for covariance and resampling products.
         """
-        return {
+        config = {
             **self.treecorr_config,
             "min_sep": min_sep or self.treecorr_config["min_sep"],
             "max_sep": max_sep or self.treecorr_config["max_sep"],
             "nbins": nbins or self.treecorr_config["nbins"],
             **extra,
         }
+        bin_size = np.log(config["max_sep"] / config["min_sep"]) / config["nbins"]
+        # This is the means tolerance; measure_with_patches drops it for the
+        # patched covariance pass so TreeCorr uses its standard default there.
+        config["bin_slop"] = extra.get("bin_slop", min(1, self.b_target / bin_size))
+        return config
 
     def _read_shear_cols(self, ver, *keys):
         """Read shear-catalog columns by their config-key names.

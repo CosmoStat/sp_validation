@@ -53,6 +53,7 @@ def test_rho_tau_driver_reads_cat_config_from_launched_checkout(monkeypatch, tmp
             "max_sep": "250.0",
             "nbins": "20",
             "npatch": "20",
+            "cov_estimate_method": "jackknife",
             "cat_config": str(checkout / "cosmo_val" / "cat_config.yaml"),
             "output_dir": str(checkout / "cosmo_val" / "output"),
         },

@@ -16,8 +16,10 @@ cv = CosmologyValidation(
     theta_max=float(params["max_sep"]),
     nbins=int(params["nbins"]),
     npatch=int(params["npatch"]),
+    b_target=params.get("b_target", 0.01),
     catalog_config=params["cat_config"],
     output_dir=params["output_dir"],
+    cov_estimate_method=params.get("cov_estimate_method", "th"),
 )
 cv.calculate_rho_tau_stats(tomography=False)
 verify_outputs(snakemake)

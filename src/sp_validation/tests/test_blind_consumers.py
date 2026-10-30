@@ -11,6 +11,23 @@ from sp_validation import blinding, sacc_io
 SCRIPTS = Path(__file__).resolve().parents[3] / "workflow" / "scripts"
 
 
+@pytest.mark.parametrize("loader", ["load_pure_eb_results", "load_cosebis_results"])
+@pytest.mark.parametrize("stamp", [None, "wrong"])
+@pytest.mark.parametrize("expected", ["none", "expected"])
+def test_npz_consumers_refuse_missing_or_wrong_blind(tmp_path, loader, stamp, expected):
+    import numpy as np
+
+    from sp_validation import b_modes
+
+    path = tmp_path / "cosmological.npz"
+    data = dict(scale_cuts=np.empty((0, 2)), left_edges=[], right_edges=[])
+    if stamp is not None:
+        data["blind"] = stamp
+    np.savez(path, **data)
+    with pytest.raises(ValueError, match="stamp"):
+        getattr(b_modes, loader)(path, blind=expected)
+
+
 @pytest.fixture
 def part_path(tmp_path):
     part = sacc_io.new_sacc({0: ([0.1, 1.0], [1.0, 1.0])})
@@ -18,23 +35,6 @@ def part_path(tmp_path):
     path = tmp_path / "xi.sacc"
     sacc_io.save(part, path, blind=blinding.NONE)
     return path
-
-
-@pytest.mark.parametrize("expected", ["none", "toy"])
-def test_reporting_parts(part_path, monkeypatch, expected):
-    monkeypatch.syspath_prepend(str(SCRIPTS))
-    from cv_runner import take_reporting_parts
-
-    cv = SimpleNamespace(
-        versions=["v"], xi_parts={}, blind=lambda v: blinding.Blind(expected)
-    )
-    if expected == "toy":
-        with pytest.raises(ValueError, match="stamped none.*toy"):
-            take_reporting_parts(cv, [part_path])
-        assert not cv.xi_parts
-    else:
-        take_reporting_parts(cv, [part_path])
-        assert sacc_io.stamp(cv.xi_parts["v", "reporting"]) == "none"
 
 
 @pytest.mark.parametrize(
@@ -83,3 +83,64 @@ def test_load_checks_expected_blind(part_path, as_name, stamp):
             sacc_io.load(part_path, blind=expected)
     else:
         assert sacc_io.stamp(sacc_io.load(part_path, blind=expected)) == "toy"
+
+
+def _cat_config(tmp_path, blind):
+    import yaml
+
+    path = tmp_path / "cat_config.yaml"
+    path.write_text(yaml.safe_dump({"SP_v": {"blind": blind}, "paths": {}}))
+    return path
+
+
+@pytest.mark.parametrize("version", ["SP_v", "SP_v_leak_corr"])
+def test_dashboard_takes_blind_from_declaration(tmp_path, version):
+    from sp_validation.dashboard import products
+
+    assert products.declared_blind(_cat_config(tmp_path, "toy"), version) == "toy"
+
+
+@pytest.mark.parametrize("declared", ["none", "toy"])
+def test_dashboard_refuses_stale_public_part(
+    part_path, tmp_path, monkeypatch, declared
+):
+    """A product saved public, of a catalogue since declared under a blind, is
+    refused before its signal is read."""
+    from sp_validation.dashboard import products
+
+    class ReachedSignal(Exception):
+        pass
+
+    def read_signal(*args, **kwargs):
+        raise ReachedSignal
+
+    monkeypatch.setattr(sacc_io, "xi_correlation", read_signal)
+    blind = products.declared_blind(_cat_config(tmp_path, declared), "SP_v")
+    error = ReachedSignal if declared == "none" else ValueError
+    with pytest.raises(error):
+        products.load_xi(part_path, blind)
+
+
+@pytest.mark.parametrize("declared", ["none", "toy"])
+def test_cosebis_grid_refuses_stale_public_xi(
+    part_path, tmp_path, monkeypatch, declared
+):
+    """The scale-cut grid derives from ξ under the declared blind, not ξ's stamp."""
+    import numpy as np
+
+    from sp_validation.dashboard import cosebis_grid
+
+    class ReachedSignal(Exception):
+        pass
+
+    def read_signal(*args, **kwargs):
+        raise ReachedSignal
+
+    monkeypatch.setattr(sacc_io, "get_xi", read_signal)
+    monkeypatch.setattr(cosebis_grid, "_paths", lambda r, v: (part_path, part_path))
+    monkeypatch.setattr(
+        cosebis_grid, "_grid", lambda r: (np.geomspace(1, 100, 3), (1, 100, 10), 6)
+    )
+    error = ReachedSignal if declared == "none" else ValueError
+    with pytest.raises(error):
+        cosebis_grid.compute(tmp_path, "SP_v", _cat_config(tmp_path, declared))
