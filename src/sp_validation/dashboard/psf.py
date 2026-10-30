@@ -101,11 +101,8 @@ def _contour_levels(h, fractions=(0.68, 0.95)):
     return sorted(flat[np.searchsorted(cum, f)] for f in fractions)
 
 
-def posterior(rt, out, markers=(0, 1, 1)):
-    """Cached coefficient draws; axes omit 0.3% of each marginal tail.
-
-    Least-squares rho/tau resampling draws are not Bayesian posterior samples.
-    """
+def coefficient_draws(rt, out, markers=(0, 1, 1)):
+    """Cached coefficient draws; axes omit 0.3% of each marginal tail."""
     samples = rt["fit"]["flat_samples"]
     n = samples.shape[1]
     with S.figure_style():
@@ -242,54 +239,41 @@ def rho_stats(rt, out):
         return S.save(fig, out, "full")
 
 
-def xi_sys_ratio(rt, xi, out, reference=0.1):
-    """ξ+ PSF/data ratio, and signed θξ− in native units near its zero crossing.
-
-    The ξ+ ratio band propagates only PSF-coefficient uncertainty, holding the
-    blinded denominator fixed. The ξ− panel does not divide by the noisy data:
-    show separate analytic data errors and the coefficient-resampling model band.
-    """
+def xi_sys(rt, xi, out):
+    """Blinded θξ± and PSF coefficient-draw bands in native units."""
     fit = rt["fit"]
     theta = np.asarray(fit["theta"])
     with S.figure_style():
         fig, axes = plt.subplots(1, 2, figsize=(7.2, 2.7))
-        ax = axes[0]
-        ratio = fit["samples_plus"] / xi["xip"][None, :]
-        lo, med, hi = np.percentile(ratio, [16, 50, 84], axis=0)
-        for r in (-reference, reference):
-            ax.axhline(r, color=S.INK_MUTED, lw=0.7, ls=(0, (2, 2)))
-        S.zero_line(ax)
-        ax.fill_between(theta, lo, hi, color=MODEL, alpha=0.3, lw=0)
-        ax.plot(theta, med, color=MODEL, lw=1.1)
-        ax.set_ylabel(r"$\xi_+^{\rm sys} / \xi_+$")
-        top = max(np.nanmax(hi), reference) * 1.25
-        bot = min(np.nanmin(lo), -reference) * 1.25
-        ax.set_ylim(max(bot, -1.0), min(top, 1.0))
-        S.label_box(ax, r"$\xi_+$", loc="upper left")
-
-        ax = axes[1]
-        lo, med, hi = np.percentile(
-            fit["samples_minus"] * theta[None, :], [16, 50, 84], axis=0
-        )
-        S.zero_line(ax)
-        ax.fill_between(
-            theta, lo, hi, color=MODEL, alpha=0.3, lw=0, label=r"PSF model (68%)"
-        )
-        ax.plot(theta, med, color=MODEL, lw=1.1)
-        data_theta = np.asarray(xi["theta"])
-        ax.errorbar(
-            data_theta,
-            data_theta * xi["xim"],
-            yerr=data_theta * xi["sigma_xim"],
-            marker="o",
-            color=S.INK,
-            label=r"$\xi_-$ (blinded)",
-            **S.DATA_VECTOR_MARK,
-        )
-        ax.set_ylabel(r"$\theta\,\xi_-(\theta)$ [arcmin]")
-        ax.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
-        ax.legend(loc="upper left")
-        for ax in axes:
+        for ax, sign, key in zip(axes, ("+", "-"), ("plus", "minus")):
+            lo, med, hi = np.percentile(
+                fit[f"samples_{key}"] * theta[None, :], [16, 50, 84], axis=0
+            )
+            S.zero_line(ax)
+            ax.fill_between(
+                theta,
+                lo,
+                hi,
+                color=MODEL,
+                alpha=0.3,
+                lw=0,
+                label="coefficient draws (68%)",
+            )
+            ax.plot(theta, med, color=MODEL, lw=1.1)
+            data_theta = np.asarray(xi["theta"])
+            field = "xip" if sign == "+" else "xim"
+            ax.errorbar(
+                data_theta,
+                data_theta * xi[field],
+                yerr=data_theta * xi[f"sigma_{field}"],
+                marker="o",
+                color=S.INK,
+                label=rf"$\xi_{sign}$ (blinded)",
+                **S.DATA_VECTOR_MARK,
+            )
+            ax.set_ylabel(rf"$\theta\,\xi_{sign}(\theta)$ [arcmin]")
+            ax.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
+            ax.legend(loc="upper left")
             S.theta_axis(ax)
             ax.set_xticks([1, 10, 100])
             ax.set_xticklabels(["$1$", "$10$", "$100$"])
@@ -298,15 +282,15 @@ def xi_sys_ratio(rt, xi, out, reference=0.1):
 
 
 def theta_tau(rt, out, corrected=None):
-    """θτ0,2,5 with the raw fit; a corrected input needs only θ, τ and covariance.
+    """θτ2,5 with the raw fit; a corrected input needs only θ, τ and covariance.
 
     Nonpositive theory variances have no real standard deviation: retain those
     points but omit their error bars rather than presenting a zero uncertainty.
     Each catalogue uses its own pair-weighted mean separation.
     """
     with S.figure_style():
-        fig, axes = plt.subplots(1, 3, figsize=(7.2, 2.7))
-        for ax, k in zip(axes, (0, 2, 5)):
+        fig, axes = plt.subplots(1, 2, figsize=(7.2, 2.7))
+        for ax, k in zip(axes, (2, 5)):
             theta = np.asarray(rt["theta_tau"])
             model = tau_model_samples(rt, k, rt["fit"]["flat_samples"]) * theta[None, :]
             lo, med, hi = np.percentile(model, [16, 50, 84], axis=0)
@@ -344,11 +328,7 @@ def theta_tau(rt, out, corrected=None):
 
 
 def xi_sys_comparison(rt, out, xi=None):
-    """Compare fitted PSF systematic, τ0²/ρ0 and optional blinded ξ+.
-
-    ``xi`` comes from products.load_xi, including the run covariance errors.
-    Its own pair-weighted angular grid is retained.
-    """
+    """Compare θξ± coefficient draws and data, with τ₀,+²/ρ₀,+ for ξ+."""
     theta = np.asarray(rt["theta"])
     # Pair-weighted mean separations differ slightly within the same bins.
     if not (
@@ -356,46 +336,47 @@ def xi_sys_comparison(rt, out, xi=None):
         and np.allclose(theta, rt["fit"]["theta"])
     ):
         raise ValueError("rho, tau and PSF fit angular grids differ")
-    rho = np.asarray(rt["rho"][0]["p"])
-    tau = np.asarray(rt["tau"][0]["p"])
-    with np.errstate(divide="ignore", invalid="ignore"):
-        simple = np.where(rho != 0, tau**2 / rho, np.nan)
-    lo, med, hi = np.percentile(rt["fit"]["samples_plus"], [16, 50, 84], axis=0)
     with S.figure_style():
-        fig, ax = plt.subplots(figsize=(3.6, 2.8))
-        ax.fill_between(theta, lo, hi, color=MODEL, alpha=0.3, lw=0)
-        ax.plot(theta, med, color=MODEL, label=r"$\alpha,\beta,\eta$ model")
-        ax.plot(
-            theta,
-            simple,
-            color=SERIES[1],
-            marker="o",
-            ms=3,
-            label=r"$\tau_{0,+}^2/\rho_{0,+}$",
-        )
-        values = [lo, med, hi, simple]
-        if xi is not None:
-            xip = np.asarray(xi["xip"])
-            ax.errorbar(
-                xi["theta"],
-                xip,
-                yerr=xi["sigma_xip"],
-                color=S.INK,
-                marker="o",
-                label=r"$\xi_+$ (blinded)",
-                **S.DATA_VECTOR_MARK,
+        fig, axes = plt.subplots(1, 2, figsize=(7.2, 2.8))
+        for ax, sign, key, field in zip(
+            axes, ("+", "-"), ("plus", "minus"), ("xip", "xim")
+        ):
+            lo, med, hi = np.percentile(
+                rt["fit"][f"samples_{key}"] * theta[None, :], [16, 50, 84], axis=0
             )
-            values.append(xip)
-        S.theta_axis(ax)
-        if np.all(np.concatenate(values) > 0):
-            ax.set_yscale("log")
-        else:
             S.zero_line(ax)
-            ax.set_yscale("symlog", linthresh=1e-8)
-        ax.set_xlabel(r"$\theta$ [arcmin]")
-        ax.set_ylabel(r"$\xi_+(\theta)$")
-        ax.legend()
-        return S.save(fig, out, "half")
+            ax.fill_between(theta, lo, hi, color=MODEL, alpha=0.3, lw=0)
+            ax.plot(theta, med, color=MODEL, label="coefficient draws (68%)")
+            if sign == "+":
+                rho = np.asarray(rt["rho"][0]["p"])
+                tau = np.asarray(rt["tau"][0]["p"])
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    simple = np.where(rho != 0, theta * tau**2 / rho, np.nan)
+                ax.plot(
+                    theta,
+                    simple,
+                    color=SERIES[1],
+                    marker="o",
+                    ms=3,
+                    label=r"$\theta\tau_{0,+}^2/\rho_{0,+}$",
+                )
+            if xi is not None:
+                th = np.asarray(xi["theta"])
+                ax.errorbar(
+                    th,
+                    th * xi[field],
+                    yerr=th * xi[f"sigma_{field}"],
+                    color=S.INK,
+                    marker="o",
+                    label=rf"$\xi_{sign}$ (blinded)",
+                    **S.DATA_VECTOR_MARK,
+                )
+            S.theta_axis(ax)
+            ax.set_xlabel(r"$\theta$ [arcmin]")
+            ax.set_ylabel(rf"$\theta\,\xi_{sign}(\theta)$ [arcmin]")
+            ax.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
+            ax.legend()
+        return S.save(fig, out, "full")
 
 
 ALPHA_ROWS = [

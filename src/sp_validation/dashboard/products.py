@@ -282,14 +282,14 @@ def load_rho_tau(sacc_path, tau_cov_path, psf_fit_path, blind):
         theta, p, m = sacc_io.get_rho(s, k)
         idx = s.indices(sacc_io.RHO_PLUS.format(k=k))
         rho[k] = {"p": p, "m": m, "sigma_p": np.sqrt(np.abs(np.diag(cov)[idx]))}
-    result = load_tau(sacc_path, tau_cov_path)
+    result = load_tau(sacc_path, tau_cov_path, blind)
     result.update(theta=theta, rho=rho, fit=dict(np.load(psf_fit_path)))
     return result
 
 
-def load_tau(sacc_path, tau_cov_path):
+def load_tau(sacc_path, tau_cov_path, blind):
     """τ-only SACC part and theory covariance; no cosmology or fit required."""
-    s = sacc_io.load(sacc_path)
+    s = sacc_io.load(sacc_path, blind=blind)
     tau = {}
     for k in (0, 2, 5):
         theta_tau, p, m = sacc_io.get_tau(s, (0,), k)
@@ -302,12 +302,12 @@ def load_tau(sacc_path, tau_cov_path):
     return {"theta_tau": theta_tau, "tau": tau, "tau_cov": tau_cov}
 
 
-def load_corrected_tau(run_dir, version):
+def load_corrected_tau(run_dir, version, cat_config):
     """Resolve a τ-only run explicitly, avoiding a corrected full-DAG run."""
     stats = Path(run_dir) / "cosmo_val" / "rho_tau_stats"
     part = _one(stats / f"rho_tau_{version}_tomo_bin_all_*.sacc")
     cov = _one(stats / f"cov_tau_{version}_tomo_bin_all_*_th.npy")
-    return load_tau(part, cov)
+    return load_tau(part, cov, declared_blind(cat_config, version))
 
 
 def load_json(path):
