@@ -7,10 +7,10 @@ Missing metadata remains distinct from a measured empty external catalogue.
 ## Evidence and limits
 
 The publication census contains 22,901 tile manifests; 27 carry `catalogue_match`.
-Join counts recovered from existing logs extend the measurement to 435 distinct published tiles.
+Join counts recovered from existing logs extend the measurement to 437 distinct published tiles.
 The comparison uses `config/calibration/mask_v2.0.yaml`, including its overlap, mask, epoch, fit, S/N and size selection.
 The sampled catalogues yield 2,321,814 selected galaxies.
-All 11 sampled tiles below 0.98 pairing, including one empty tile, yield zero selected galaxies.
+All 13 sampled tiles below 0.98 pairing, including one empty tile, yield zero selected galaxies.
 Rejecting below 0.99 would remove 11,002 selected galaxies (0.474% of this sample); rejecting below 0.995 would remove 424,394 (18.28%).
 These thresholds are sensitivity checks, not selection recommendations.
 
