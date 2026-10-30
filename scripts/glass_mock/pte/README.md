@@ -26,9 +26,10 @@ No fine integration-grid ξ, COSEBIs, pure E/B or PSF statistics are requested.
 
 ## Inference and caveats
 
-`validate.py` compares each `realization_ee`, which is already pixelized, with EE via the SACC bandpower window and with ξ± via CCL's spin-2 correlation transform.
-For ξ± it averages theory under a uniform pair density within each reporting annulus, not the true fine-grid pair-weight distribution.
-This is an approximation to check against measured fine-grid pair counts before interpreting small residuals.
+`validate.py` compares each `realization_ee`, which is already pixelized, with EE via the SACC bandpower window and with ξ± via a direct, finite-band flat-sky Bessel sum.
+The latter avoids the numerical failure observed for CCL's FFTLog and Bessel transforms on some realized spectra.
+For ξ± it averages the transform using measured weighted pairs in 1000 logarithmic bins, with the signal evaluated at each fine-bin center, and compares this to uniform annular weighting.
+It does not evaluate individual pair separations and uses a flat-sky approximation.
 It also calculates the EE comparison against `cl_ee_pixel`, the GLASS shell-ensemble target.
 
 The harmonic iNKA covariance includes fiducial cosmological signal as well as shape noise.

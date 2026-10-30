@@ -5,11 +5,12 @@ import argparse
 import json
 from pathlib import Path
 
+import h5py
 import matplotlib
 import numpy as np
-import pyccl as ccl
 from astropy.io import fits
 from scipy import linalg
+from scipy.special import jv
 from scipy.stats import chi2, kstest
 
 matplotlib.use("Agg")
@@ -43,17 +44,27 @@ def pte(x, c):
     return {"chi2": q, "dof": len(x), "pte": float(chi2.sf(q, len(x)))}
 
 
-# CCL's correlation routine is a linear transform of the supplied pixelized
-# spectrum; cosmology is not involved in this transform.
-cosmo = ccl.Cosmology(
-    Omega_c=0.30966 - 0.04897, Omega_b=0.04897, h=0.6766, sigma8=0.8102, n_s=0.9665
-)
+# Finite-band flat-sky spin-2 transform: no uncontrolled extrapolation of
+# the noisy realization spectrum beyond the GLASS band limit.
 edges = np.geomspace(1.0, 250.0, 21)
 # Uniform pair density within each annulus, rather than unknown fine-grid counts.
 q = np.linspace(0, 1, 33)
 theta = np.sqrt(edges[:-1, None] ** 2 * (1 - q) + edges[1:, None] ** 2 * q)
+fine_path = root / "output/GLASSpte_s01_pairs_minsep=1.0_maxsep=250.0_nbins=1000.npz"
+with np.load(fine_path) as fine:
+    fine_theta = fine["theta"].copy()
+    fine_weight = fine["weight"].copy()
+fine_groups = np.arange(1000).reshape(20, 50)
+theta_all = np.concatenate((theta.ravel(), fine_theta))
+ls_transform = np.arange(2, 8193)
+arg = np.outer(theta_all * np.pi / (180 * 60), ls_transform + 0.5)
+kernels = [jv(order, arg) * ((ls_transform + 0.5) / (2 * np.pi)) for order in (0, 4)]
+del arg
 results = {}
 residuals = []
+raw_residuals = []
+xi_standardized = []
+xi_uniform = []
 ell0 = None
 for seed in range(1, a.seeds + 1):
     name = f"GLASSpte_s{seed:02d}"
@@ -84,13 +95,22 @@ for seed in range(1, a.seeds + 1):
     elif not np.array_equal(ell0, ell):
         raise ValueError("Inconsistent ell grid")
     residuals.append((ee - own) / np.sqrt(np.diag(cov["EE"])))
+    raw_residuals.append(ee - own)
+    if not np.array_equal(ls[2:], ls_transform):
+        raise ValueError("Unexpected GLASS ell grid")
     theory = []
-    for typ in ["GG+", "GG-"]:
-        vals = ccl.correlation(
-            cosmo, ell=ls[2:], C_ell=real[2:], theta=theta.ravel() / 60, type=typ
-        ).reshape(theta.shape)
-        theory.append(np.trapezoid(vals, q, axis=1))
+    theory_uniform = []
+    for kernel in kernels:
+        vals = kernel @ real[2:]
+        uniform = vals[: theta.size].reshape(theta.shape)
+        fv = vals[theta.size :][fine_groups]
+        fw = fine_weight[fine_groups]
+        theory_uniform.append(np.trapezoid(uniform, q, axis=1))
+        theory.append(np.sum(fv * fw, axis=1) / np.sum(fw, axis=1))
     diff = np.concatenate([xp - theory[0], xm - theory[1]])
+    udiff = np.concatenate([xp - theory_uniform[0], xm - theory_uniform[1]])
+    xi_standardized.append(diff / np.sqrt(np.diag(cxi)))
+    xi_uniform.append(udiff / np.sqrt(np.diag(cxi)))
     row = {
         "BB": pte(bb, cov["BB"]),
         "EB": pte(eb, cov["EB"]),
@@ -99,22 +119,43 @@ for seed in range(1, a.seeds + 1):
         "xi_plus": pte(diff[:20], cxi[:20, :20]),
         "xi_minus": pte(diff[20:], cxi[20:, 20:]),
         "xi_combined": pte(diff, cxi),
+        "xi_plus_uniform": pte(udiff[:20], cxi[:20, :20]),
+        "xi_minus_uniform": pte(udiff[20:], cxi[20:, 20:]),
     }
     results[name] = row
     print(name, json.dumps(row), flush=True)
 keys = list(next(iter(results.values())))
-summary = {
-    k: {
-        "ks_p": float(kstest([r[k]["pte"] for r in results.values()], "uniform").pvalue)
-    }
-    for k in keys
-}
+summary = {}
+for k in keys:
+    ks = kstest([r[k]["pte"] for r in results.values()], "uniform")
+    summary[k] = {"ks_p": float(ks.pvalue), "ks_d": float(ks.statistic)}
+mean_residual = np.mean(raw_residuals, axis=0)
+mean_test = pte(mean_residual, cov["EE"] / a.seeds)
+noise = []
+for seed in (1, 2):
+    with h5py.File(
+        root.parent / f"mocks/v1.4.6.3/seed_{seed:05d}/painted.h5", "r"
+    ) as f:
+        d = f["data"].fields(["e1_noise", "e2_noise"])[:1_000_000]
+        noise.append(np.column_stack([d["e1_noise"], d["e2_noise"]]))
+noise_corr = np.corrcoef(noise[0].T, noise[1].T)[:2, 2:].tolist()
 (root / "metrics.json").write_text(
     json.dumps(
         {
             "per_seed": results,
             "uniform_ks": summary,
-            "xi_theory": "CCL spin-2 transform of pixelized realization_ee, uniform pair density within 20 annuli; ell <= 8192; not measured pair-weight averaging",
+            "xi_theory": "Finite ell 2..8192 flat-sky spin-2 Bessel sum of already-pixelized realization_ee; 1000-bin measured pair-weight average at bin centers",
+            "ee_mean_residual_chi2": mean_test,
+            "noise_component_correlation_seed1_seed2_1M": noise_corr,
+            "theta_bin_mean_standardized_residual_squared": np.mean(
+                np.square(xi_standardized), axis=0
+            ).tolist(),
+            "theta_bin_mean_standardized_residual_squared_uniform": np.mean(
+                np.square(xi_uniform), axis=0
+            ).tolist(),
+            "theta_bin_mean_standardized_residual": np.mean(
+                xi_standardized, axis=0
+            ).tolist(),
             "covariance": "One shared seed-1 iNKA covariance and one shared OneCovariance matrix; includes cosmic variance; not a conditional covariance on the observed full-sky realization",
         },
         indent=2,
@@ -150,4 +191,31 @@ ax.set(
 fig.tight_layout()
 fig.savefig(figdir / "ee_residual_mean.png", dpi=150)
 plt.close(fig)
-print("Inspect both figures and investigate extreme PTEs before reporting.")
+fig, axes = plt.subplots(1, 2, figsize=(11, 4), sharey=True)
+for i, ax in enumerate(axes):
+    vals = np.asarray(xi_standardized)[:, i * 20 : (i + 1) * 20]
+    ax.plot(
+        np.sqrt(edges[:-1] * edges[1:]),
+        np.mean(vals**2, axis=0),
+        "o-",
+        label="Measured fine pair weights",
+    )
+    uv = np.asarray(xi_uniform)[:, i * 20 : (i + 1) * 20]
+    ax.plot(
+        np.sqrt(edges[:-1] * edges[1:]),
+        np.mean(uv**2, axis=0),
+        "--",
+        label="Uniform annular weighting",
+    )
+    ax.axhline(1, color="k", lw=1)
+    ax.set(
+        xscale="log",
+        xlabel="theta [arcmin]",
+        title=r"$\xi_+$" if i == 0 else r"$\xi_-$",
+    )
+axes[0].set_ylabel("Mean squared marginal standardized residual")
+axes[1].legend(fontsize=8)
+fig.tight_layout()
+fig.savefig(figdir / "xi_bin_residuals.png", dpi=150)
+plt.close(fig)
+print("Inspect all figures and investigate extreme PTEs before reporting.")
