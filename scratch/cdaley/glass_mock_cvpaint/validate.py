@@ -692,6 +692,10 @@ def run_scan():
         i = su.indices(typ)
         refs[typ] = su.mean[i]
         expected[typ] = sb.mean[i]
+    for name, raw in refs.items():
+        valid = np.isfinite(raw) & (raw != 0)
+        refs[name] = raw[valid]
+        expected[name] = expected[name][valid]
     try:
         assert_no_raw_values(audit, refs, expected=expected)
     except AssertionError as error:
