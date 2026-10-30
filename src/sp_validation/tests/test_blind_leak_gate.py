@@ -70,8 +70,15 @@ def script(name, *, params, inputs=None, outputs=None):
 def make_inputs(tmp_path):
     params, version = (
         synthetic_helpers.TestCosmologyValidation._write_synthetic_catalogs(
-            tmp_path, n_gal=3000, coherent_shear=True, with_psf=True
+            tmp_path,
+            n_gal=3000,
+            coherent_shear=True,
+            with_psf=True,
+            with_tomography=True,
         )
+    )
+    synthetic_helpers.TestCosmologyValidation._use_tomographic_nz(
+        params, version, tmp_path
     )
     config_path = Path(params["catalog_config"])
     config = yaml.safe_load(config_path.read_text())
@@ -105,6 +112,29 @@ def produce(config_path, version, blind, output):
             ),
             outputs={"sacc": str(paths[grid])},
         )
+    paths["tomo"] = output / "tomo.sacc"
+    paths["tomo_onecov"] = output / "tomo_onecov.sacc"
+    script(
+        "run_2pcf.py",
+        params=dict(
+            ver=version,
+            **REPORTING,
+            npatch=1,
+            grid="reporting",
+            cat_config=str(config_path),
+            output_dir=str(output),
+            compute_tomography=True,
+        ),
+        outputs={"sacc": str(paths["tomo"])},
+    )
+    tomo_cov = output / "tomo_cov.dat"
+    np.savetxt(tomo_cov, np.eye(6 * REPORTING["nbins"]) * 1e-10)
+    script(
+        "xi_onecov_sacc.py",
+        params={"blind": blind},
+        inputs={"xi": str(paths["tomo"]), "cov": str(tomo_cov)},
+        outputs={"sacc": str(paths["tomo_onecov"])},
+    )
     script(
         "generate_pseudo_cl.py",
         params=dict(
@@ -218,6 +248,34 @@ def references_and_shifts(
             np.testing.assert_allclose(
                 sealed.covariance.dense, raw.covariance.dense, rtol=1e-12, atol=1e-25
             )
+
+    raw = sacc_io.load(raw_paths["tomo"], blind="none")
+    sealed = sacc_io.load(sealed_paths["tomo"], blind=blind)
+    z = np.linspace(0.05, 3.0, 31)
+    for i in range(2):
+        z_read, nz = sacc_io.get_nz(raw, i)
+        np.testing.assert_allclose(z_read, z)
+        np.testing.assert_allclose(nz, np.exp(-(((z - 0.4 - 0.5 * i) / 0.3) ** 2)))
+        np.testing.assert_allclose(sacc_io.get_nz(sealed, i), (z_read, nz))
+    delta = shift_for(raw, blind)
+    for pair in ((0, 0), (0, 1), (1, 1)):
+        tracers = tuple(f"source_{i}" for i in pair)
+        for kind in (sacc_io.XI_PLUS, sacc_io.XI_MINUS):
+            rows = raw.indices(kind, tracers=tracers)
+            assert len(rows) == REPORTING["nbins"]
+            np.testing.assert_allclose(
+                sealed.mean[rows], raw.mean[rows] + delta[rows], rtol=1e-10, atol=1e-25
+            )
+            reference(f"tomo/{pair}/{kind}", raw.mean[rows], sealed.mean[rows])
+    for paths, part, expected_blind in (
+        (raw_paths, raw, "none"),
+        (sealed_paths, sealed, blind),
+    ):
+        derived = sacc_io.load(paths["tomo_onecov"], blind=expected_blind)
+        np.testing.assert_array_equal(derived.mean, part.mean)
+        np.testing.assert_allclose(
+            derived.covariance.dense, np.eye(len(part.mean)) * 1e-10
+        )
 
     raw = sacc_io.load(raw_paths["integration"])
     shifted = raw.copy()
@@ -521,9 +579,7 @@ def assert_dashboard_refuses_stale_public(raw_paths, cat_config, version):
             load_version(stale, version, None, cat_config=cat_config)
 
 
-def test_non_tomographic_workflow_emits_no_unblinded_signal(
-    tmp_path, monkeypatch, capfd, caplog
-):
+def test_workflow_emits_no_unblinded_signal(tmp_path, monkeypatch, capfd, caplog):
     """Paired catalogue runs must emit shifted signal and no copied raw values."""
     assert (
         Path(blinding.__file__).resolve().parent == Path(__file__).resolve().parents[1]
@@ -569,8 +625,6 @@ def test_non_tomographic_workflow_emits_no_unblinded_signal(
             output_dir=str(tmp_path / "sealed"),
             npatch=1,
         )
-        with pytest.raises(blinding.BlindingError, match="tomographic"):
-            cv.calculate_2pcf_version(version, compute_tomography=True)
         with pytest.raises(blinding.BlindingError, match="tomographic"):
             cv.calculate_pseudo_cl(compute_tomography=True)
     captured = capfd.readouterr()
