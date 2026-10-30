@@ -16,6 +16,7 @@ from sp_validation import grammar, io, leakage_fit
 from sp_validation.correlation import (
     measure_with_patches,
     measurement_matches,
+    selection_digest,
     write_measurement_metadata,
 )
 
@@ -31,7 +32,7 @@ def _extract_xip(correlations):
 
 
 def _compute_stats_with_patches(
-    handler, kind, catalog_id, filename, save_cov=False, means=None
+    handler, kind, catalog_id, filename, save_cov=False, means=None, selection=None
 ):
     """Publish unpatched ρ/τ means with the patched variances and covariance.
 
@@ -78,7 +79,9 @@ def _compute_stats_with_patches(
     setattr(handler, attribute, table)
     getattr(handler, f"save_{kind}_stats")(filename)
     getattr(handler, f"load_{kind}_stats")(filename)
-    write_measurement_metadata(Path(handler.catalogs._output) / filename, config)
+    write_measurement_metadata(
+        Path(handler.catalogs._output) / filename, config, selection=selection
+    )
     return means
 
 
@@ -347,7 +350,11 @@ def get_rho_tau(
     )
 
     with _CatalogueLoader(config[version], params) as load:
-        rho_stats_exists = measurement_matches(rho_path, treecorr_config)
+        rho_selection = selection_digest(mask_star)
+        tau_selection = selection_digest(mask_star, mask_gal)
+        rho_stats_exists = measurement_matches(
+            rho_path, treecorr_config, selection=rho_selection
+        )
         cov_exists = True if not cov_rho else cov_rho_path.exists()
         need_compute = (not rho_stats_exists) or (not cov_exists) or force_run
 
@@ -358,7 +365,12 @@ def get_rho_tau(
             )
 
             _compute_stats_with_patches(
-                rho_stat_handler, "rho", catalog_id, rho_path.name, save_cov=cov_rho
+                rho_stat_handler,
+                "rho",
+                catalog_id,
+                rho_path.name,
+                save_cov=cov_rho,
+                selection=rho_selection,
             )
             rho_stat_handler.load_rho_stats(rho_path.name)
         else:
@@ -375,7 +387,10 @@ def get_rho_tau(
             verbose=True,
         )
 
-        if measurement_matches(tau_path, treecorr_config) and not force_run:
+        if (
+            measurement_matches(tau_path, treecorr_config, selection=tau_selection)
+            and not force_run
+        ):
             print(
                 f"Skipping tau statistics computation, file {tau_path} already exists."
             )
@@ -394,7 +409,13 @@ def get_rho_tau(
                 load("shear"), cat_type="gal", catalog_id=version, mask=mask_gal
             )
 
-            _compute_stats_with_patches(tau_stat_handler, "tau", version, tau_path.name)
+            _compute_stats_with_patches(
+                tau_stat_handler,
+                "tau",
+                version,
+                tau_path.name,
+                selection=tau_selection,
+            )
 
     print(f"Time to compute rho and tau statistics: {time.time() - start_time:.2f} s")
     return rho_stat_handler, tau_stat_handler
@@ -731,12 +752,18 @@ def get_jackknife_cov(
     rho_filename = f"rho_stats_{base_rho}.fits"
     tau_filename = f"tau_stats_{base_tau}.fits"
     tau_cov_path = Path(outdir) / f"cov_tau_{base_tau}_jk.npy"
+    rho_selection = selection_digest(mask_star)
+    tau_selection = selection_digest(mask_star, mask_gal)
 
     if (
         tau_cov_path.exists()
         and (Path(outdir) / f"cov_rho_{base_rho}_jk.npy").exists()
-        and measurement_matches(Path(outdir) / rho_filename, treecorr_config)
-        and measurement_matches(Path(outdir) / tau_filename, treecorr_config)
+        and measurement_matches(
+            Path(outdir) / rho_filename, treecorr_config, selection=rho_selection
+        )
+        and measurement_matches(
+            Path(outdir) / tau_filename, treecorr_config, selection=tau_selection
+        )
         and not force_run
     ):
         print(f"Skipping covariance computation, file {tau_cov_path} already exists.")
@@ -843,6 +870,7 @@ def get_jackknife_cov(
                     rho_filename,
                     save_cov=True,
                     means=rho_means,
+                    selection=rho_selection,
                 )
                 tau_means = _compute_stats_with_patches(
                     tau_stat_handler,
@@ -851,6 +879,7 @@ def get_jackknife_cov(
                     tau_filename,
                     save_cov=True,
                     means=tau_means,
+                    selection=tau_selection,
                 )
 
                 # Update the keys in the dictionaries
