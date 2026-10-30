@@ -98,7 +98,32 @@ def _spectra(part):
     return {"ELL": ell, "EE": ee, "EB": eb, "BE": eb.copy(), "BB": bb}
 
 
+class _ShearCatalogue:
+    """Override shear columns without modifying the source catalogue."""
+
+    def __init__(self, catalog, columns):
+        self.catalog = catalog
+        self.columns = columns
+
+    def __getitem__(self, key):
+        if isinstance(key, str):
+            if key in self.columns:
+                return self.columns[key]
+            return self.catalog[key]
+        return _ShearCatalogue(
+            self.catalog[key],
+            {name: value[key] for name, value in self.columns.items()},
+        )
+
+
 class PseudoClMixin:
+    def _pseudo_cl_catalogue(self, ver):
+        """Read the catalogue with the same calibrated shear used for ξ±."""
+        catalog = open_entry(self.cc[ver]["shear"])
+        g1, g2 = self._calibrated_g(ver, catalog)
+        shear = self.cc[ver]["shear"]
+        return _ShearCatalogue(catalog, {shear["e1_col"]: g1, shear["e2_col"]: g2})
+
     # ---------------- Pseudo-Cl properties ---------------- #
     @property
     def pseudo_cls(self):
@@ -235,7 +260,7 @@ class PseudoClMixin:
         )
 
         # Load data and create shear and noise maps
-        cat_gal = open_entry(self.cc[ver]["shear"])
+        cat_gal = self._pseudo_cl_catalogue(ver)
 
         # Get the tomographic bin
         cat_gal_a = self._get_tomographic_bin(params, cat_gal, tomo_bin_a)
@@ -332,7 +357,7 @@ class PseudoClMixin:
         params = get_params_rho_tau(self.cc[ver])
 
         # Load data and create shear and noise maps
-        cat_gal = open_entry(self.cc[ver]["shear"])
+        cat_gal = self._pseudo_cl_catalogue(ver)
 
         ell_eff, cl_shear, wsp = self.get_pseudo_cls_catalog(
             catalog=cat_gal, params=params, tomo_bin_a=tomo_bin_a, tomo_bin_b=tomo_bin_b
@@ -455,7 +480,7 @@ class PseudoClMixin:
             self.print_cyan(f"Method used: {self.noise_bias_method}")
 
             params = get_params_rho_tau(self.cc[ver])
-            cat_gal = open_entry(self.cc[ver]["shear"])
+            cat_gal = self._pseudo_cl_catalogue(ver)
 
             lmin, lmax, b_lmax = spv_pseudo_cl.pseudo_cl_geometry(self.nside)
             b = self.get_namaster_bin(lmin, lmax, b_lmax)
