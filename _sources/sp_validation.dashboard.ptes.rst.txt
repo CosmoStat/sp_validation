@@ -1,0 +1,7 @@
+sp\_validation.dashboard.ptes
+-----------------------------
+
+.. automodule:: sp_validation.dashboard.ptes
+   :members:
+   :show-inheritance:
+   :undoc-members:

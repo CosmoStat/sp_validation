@@ -1,0 +1,7 @@
+sp\_validation.cosmo\_val.diagnostic\_products
+----------------------------------------------
+
+.. automodule:: sp_validation.cosmo_val.diagnostic_products
+   :members:
+   :show-inheritance:
+   :undoc-members:

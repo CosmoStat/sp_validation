@@ -29,7 +29,7 @@
 <link href="search.html" rel="search" title="Search"/>
 <link href="genindex.html" rel="index" title="Index"/>
 <link href="sp_validation.blinding.html" rel="next" title="sp_validation.blinding"/>
-<link href="sp_validation.cosmo_val.sacc_writers.html" rel="prev" title="sp_validation.cosmo_val.sacc_writers"/>
+<link href="sp_validation.dashboard.weights.html" rel="prev" title="sp_validation.dashboard.weights"/>
 </head>
 <body :class="{ 'overflow-hidden': showSidebar }" @scroll.window="showScrollTop = pageYOffset &gt; 100" class="min-h-screen font-sans antialiased bg-background text-foreground" x-data="{ showSidebar: false, showScrollTop: false }">
 <div @click.self="showSidebar = false" class="fixed inset-0 z-50 overflow-hidden bg-background/80 backdrop-blur-sm md:hidden" x-cloak="" x-show="showSidebar"></div><div class="relative flex flex-col min-h-screen" id="page"><a class="absolute top-0 left-0 z-[100] block bg-background p-4 text-xl transition -translate-x-full opacity-0 focus:translate-x-0 focus:opacity-100" href="#content">
@@ -92,11 +92,35 @@
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.catalog_characterization.html">sp_validation.cosmo_val.catalog_characterization</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html">sp_validation.cosmo_val.core</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.cosebis.html">sp_validation.cosmo_val.cosebis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.diagnostic_plots.html">sp_validation.cosmo_val.diagnostic_plots</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.diagnostic_products.html">sp_validation.cosmo_val.diagnostic_products</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html">sp_validation.cosmo_val.pseudo_cl</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.psf_systematics.html">sp_validation.cosmo_val.psf_systematics</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pure_eb.html">sp_validation.cosmo_val.pure_eb</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.real_space.html">sp_validation.cosmo_val.real_space</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.sacc_writers.html">sp_validation.cosmo_val.sacc_writers</a></li>
+</ul>
+</li>
+<li class="toctree-l2" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.dashboard.html">sp_validation.dashboard<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul x-cloak="" x-show="expanded">
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.correlations.html">sp_validation.dashboard.correlations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.cosebis_grid.html">sp_validation.dashboard.cosebis_grid</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.covariance.html">sp_validation.dashboard.covariance</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.data_vectors.html">sp_validation.dashboard.data_vectors</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.field_maps.html">sp_validation.dashboard.field_maps</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.object_bias.html">sp_validation.dashboard.object_bias</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.position_shear.html">sp_validation.dashboard.position_shear</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.products.html">sp_validation.dashboard.products</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.psf.html">sp_validation.dashboard.psf</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.ptes.html">sp_validation.dashboard.ptes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.render.html">sp_validation.dashboard.render</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.scale_cuts.html">sp_validation.dashboard.scale_cuts</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.selection_hist.html">sp_validation.dashboard.selection_hist</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.sky.html">sp_validation.dashboard.sky</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.star_residuals.html">sp_validation.dashboard.star_residuals</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.style.html">sp_validation.dashboard.style</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.tangential.html">sp_validation.dashboard.tangential</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.versions.html">sp_validation.dashboard.versions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.weights.html">sp_validation.dashboard.weights</a></li>
 </ul>
 </li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">sp_validation.b_modes</a></li>
@@ -535,7 +559,7 @@ bars use)</p></li>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.b_modes.save_pure_eb_results">
-<span class="sig-name descname"><span class="pre">save_pure_eb_results</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">results</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/b_modes.html#save_pure_eb_results"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.b_modes.save_pure_eb_results" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.b_modes.save_pure_eb_results'">¶</a></dt>
+<span class="sig-name descname"><span class="pre">save_pure_eb_results</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">results</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_path</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">derived_from</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/b_modes.html#save_pure_eb_results"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.b_modes.save_pure_eb_results" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.b_modes.save_pure_eb_results'">¶</a></dt>
 <dd><p>Save pure E/B mode data vectors and covariance to .npz.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -547,13 +571,23 @@ bars use)</p></li>
 </dl>
 </dd></dl>
 <dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.b_modes.load_pure_eb_results">
+<span class="sig-name descname"><span class="pre">load_pure_eb_results</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">blind</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/b_modes.html#load_pure_eb_results"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.b_modes.load_pure_eb_results" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.b_modes.load_pure_eb_results'">¶</a></dt>
+<dd><p>Read a sealed plot cache only after checking the expected blind.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.b_modes.load_cosebis_results">
+<span class="sig-name descname"><span class="pre">load_cosebis_results</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">blind</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/b_modes.html#load_cosebis_results"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.b_modes.load_cosebis_results" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.b_modes.load_cosebis_results'">¶</a></dt>
+<dd><p>Read cached scale cuts after checking their inherited blind stamp.</p>
+</dd></dl>
+<dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.b_modes._cosebis_result_to_dict">
 <span class="sig-name descname"><span class="pre">_cosebis_result_to_dict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">r</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">suffix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/b_modes.html#_cosebis_result_to_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.b_modes._cosebis_result_to_dict" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.b_modes._cosebis_result_to_dict'">¶</a></dt>
 <dd><p>Build save dict entries from a single COSEBIs result.</p>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.b_modes.save_cosebis_results">
-<span class="sig-name descname"><span class="pre">save_cosebis_results</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">results</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fiducial_scale_cut</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/b_modes.html#save_cosebis_results"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.b_modes.save_cosebis_results" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.b_modes.save_cosebis_results'">¶</a></dt>
+<span class="sig-name descname"><span class="pre">save_cosebis_results</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">results</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fiducial_scale_cut</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">edges</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">derived_from</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/b_modes.html#save_cosebis_results"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.b_modes.save_cosebis_results" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.b_modes.save_cosebis_results'">¶</a></dt>
 <dd><p>Save COSEBIs data vectors and covariance to .npz.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -561,8 +595,9 @@ bars use)</p></li>
 <li><p><strong>results</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.15)"><em>dict</em></a>) – COSEBIs results. Either a single-scale-cut dict with keys like
 ‘En’, ‘Bn’, ‘cov’, or a multi-scale-cut dict with tuple keys.</p></li>
 <li><p><strong>output_path</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a>) – Output .npz file path</p></li>
-<li><p><strong>fiducial_scale_cut</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.15)"><em>tuple</em></a><em>, </em><em>optional</em>) – If results has multiple scale cuts, save only this one.
-If None and results has multiple scale cuts, saves all.</p></li>
+<li><p><strong>fiducial_scale_cut</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.15)"><em>tuple</em></a><em>, </em><em>optional</em>) – If given, also save untagged entries for this fiducial cut (used by
+summary consumers). All scanned cuts are always retained.</p></li>
+<li><p><strong>edges</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.15)"><em>tuple</em></a><em> of </em><em>arrays</em><em>, </em><em>optional</em>) – Integration-bin left/right edges used by the scale-cut heatmap.</p></li>
 </ul>
 </dd>
 </dl>
@@ -585,11 +620,11 @@ If None and results has multiple scale cuts, saves all.</p></li>
 </section>
 </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
 <div class="mr-auto">
-<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="sp_validation.cosmo_val.sacc_writers.html">
+<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="sp_validation.dashboard.weights.html">
 <svg class="mr-2 h-4 w-4" fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
 <polyline points="15 18 9 12 15 6"></polyline>
 </svg>
-        sp_validation.cosmo_val.sacc_writers
+        sp_validation.dashboard.weights
       </a>
 </div>
 <div class="ml-auto">
@@ -626,6 +661,8 @@ If None and results has multiple scale cuts, saves all.</p></li>
 <li><a :data-current="activeSection === '#sp_validation.b_modes.plot_eb_covariance_matrix'" class="reference internal" href="#sp_validation.b_modes.plot_eb_covariance_matrix"><code class="docutils literal notranslate"><span class="pre">plot_eb_covariance_matrix()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.b_modes.plot_cosebis_modes'" class="reference internal" href="#sp_validation.b_modes.plot_cosebis_modes"><code class="docutils literal notranslate"><span class="pre">plot_cosebis_modes()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.b_modes.save_pure_eb_results'" class="reference internal" href="#sp_validation.b_modes.save_pure_eb_results"><code class="docutils literal notranslate"><span class="pre">save_pure_eb_results()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.b_modes.load_pure_eb_results'" class="reference internal" href="#sp_validation.b_modes.load_pure_eb_results"><code class="docutils literal notranslate"><span class="pre">load_pure_eb_results()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.b_modes.load_cosebis_results'" class="reference internal" href="#sp_validation.b_modes.load_cosebis_results"><code class="docutils literal notranslate"><span class="pre">load_cosebis_results()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.b_modes._cosebis_result_to_dict'" class="reference internal" href="#sp_validation.b_modes._cosebis_result_to_dict"><code class="docutils literal notranslate"><span class="pre">_cosebis_result_to_dict()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.b_modes.save_cosebis_results'" class="reference internal" href="#sp_validation.b_modes.save_cosebis_results"><code class="docutils literal notranslate"><span class="pre">save_cosebis_results()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.b_modes.plot_cosebis_covariance_matrix'" class="reference internal" href="#sp_validation.b_modes.plot_cosebis_covariance_matrix"><code class="docutils literal notranslate"><span class="pre">plot_cosebis_covariance_matrix()</span></code></a></li>

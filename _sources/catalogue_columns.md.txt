@@ -145,6 +145,17 @@ ShapePipe star/PSF catalogue (`full_starcat_<campaign>.hdf5`, or FITS). Rho/tau 
 | `DEC` | Declination [deg]. |
 | `HSM_G1_PSF` | PSF model ellipticity g1 (HSM). |
 | `HSM_G2_PSF` | PSF model ellipticity g2 (HSM). |
+| `HSM_G1_STAR` | Stellar ellipticity g1 (HSM). |
+| `HSM_G2_STAR` | Stellar ellipticity g2 (HSM). |
+| `HSM_T_PSF` | PSF model size T (HSM). |
+| `HSM_T_STAR` | Stellar size T (HSM). |
+| `HSM_FLAG_PSF` | HSM PSF measurement flag. |
+| `HSM_FLAG_STAR` | HSM stellar measurement flag. |
+| `HSM_M4_1_PSF` | PSF model fourth-moment component 1. |
+| `HSM_M4_2_PSF` | PSF model fourth-moment component 2. |
+| `HSM_M4_1_STAR` | Stellar fourth-moment component 1. |
+| `HSM_M4_2_STAR` | Stellar fourth-moment component 2. |
+| `MAG` | Star magnitude. |
 
 ## Shear catalogue
 

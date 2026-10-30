@@ -1,0 +1,7 @@
+sp\_validation.dashboard.data\_vectors
+--------------------------------------
+
+.. automodule:: sp_validation.dashboard.data_vectors
+   :members:
+   :show-inheritance:
+   :undoc-members:

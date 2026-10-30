@@ -1,0 +1,34 @@
+sp\_validation.dashboard
+========================
+
+
+.. automodule:: sp_validation.dashboard
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   sp_validation.dashboard.correlations
+   sp_validation.dashboard.cosebis_grid
+   sp_validation.dashboard.covariance
+   sp_validation.dashboard.data_vectors
+   sp_validation.dashboard.field_maps
+   sp_validation.dashboard.object_bias
+   sp_validation.dashboard.position_shear
+   sp_validation.dashboard.products
+   sp_validation.dashboard.psf
+   sp_validation.dashboard.ptes
+   sp_validation.dashboard.render
+   sp_validation.dashboard.scale_cuts
+   sp_validation.dashboard.selection_hist
+   sp_validation.dashboard.sky
+   sp_validation.dashboard.star_residuals
+   sp_validation.dashboard.style
+   sp_validation.dashboard.tangential
+   sp_validation.dashboard.versions
+   sp_validation.dashboard.weights

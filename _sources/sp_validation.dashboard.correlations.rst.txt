@@ -1,0 +1,7 @@
+sp\_validation.dashboard.correlations
+-------------------------------------
+
+.. automodule:: sp_validation.dashboard.correlations
+   :members:
+   :show-inheritance:
+   :undoc-members:

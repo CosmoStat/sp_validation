@@ -124,11 +124,35 @@
 <li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.catalog_characterization.html">sp_validation.cosmo_val.catalog_characterization</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.core.html">sp_validation.cosmo_val.core</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.cosebis.html">sp_validation.cosmo_val.cosebis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.diagnostic_plots.html">sp_validation.cosmo_val.diagnostic_plots</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.diagnostic_products.html">sp_validation.cosmo_val.diagnostic_products</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.pseudo_cl.html">sp_validation.cosmo_val.pseudo_cl</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.psf_systematics.html">sp_validation.cosmo_val.psf_systematics</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.pure_eb.html">sp_validation.cosmo_val.pure_eb</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.real_space.html">sp_validation.cosmo_val.real_space</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.sacc_writers.html">sp_validation.cosmo_val.sacc_writers</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.dashboard.html">sp_validation.dashboard</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.correlations.html">sp_validation.dashboard.correlations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.cosebis_grid.html">sp_validation.dashboard.cosebis_grid</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.covariance.html">sp_validation.dashboard.covariance</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.data_vectors.html">sp_validation.dashboard.data_vectors</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.field_maps.html">sp_validation.dashboard.field_maps</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.object_bias.html">sp_validation.dashboard.object_bias</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.position_shear.html">sp_validation.dashboard.position_shear</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.products.html">sp_validation.dashboard.products</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.psf.html">sp_validation.dashboard.psf</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.ptes.html">sp_validation.dashboard.ptes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.render.html">sp_validation.dashboard.render</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.scale_cuts.html">sp_validation.dashboard.scale_cuts</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.selection_hist.html">sp_validation.dashboard.selection_hist</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.sky.html">sp_validation.dashboard.sky</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.star_residuals.html">sp_validation.dashboard.star_residuals</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.style.html">sp_validation.dashboard.style</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.tangential.html">sp_validation.dashboard.tangential</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.versions.html">sp_validation.dashboard.versions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.weights.html">sp_validation.dashboard.weights</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.b_modes.html">sp_validation.b_modes</a></li>
@@ -507,22 +531,26 @@
 </span><span id="line-297">                <span class="n">plot_results</span><span class="p">,</span> <span class="n">version</span><span class="p">,</span> <span class="n">var_method</span><span class="p">,</span> <span class="n">bin_stub</span> <span class="o">+</span> <span class="s2">"_covariance.png"</span>
 </span><span id="line-298">            <span class="p">)</span>
 </span><span id="line-299">
-</span><span id="line-300">            <span class="k">if</span> <span class="n">multiple_scale_cuts</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">bin_results</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
-</span><span id="line-301">                <span class="n">binning</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_binning</span><span class="p">(</span><span class="n">min_sep</span><span class="p">,</span> <span class="n">max_sep</span><span class="p">,</span> <span class="n">nbins</span><span class="p">)</span>
-</span><span id="line-302">                <span class="n">plot_cosebis_scale_cut_heatmap</span><span class="p">(</span>
-</span><span id="line-303">                    <span class="n">bin_results</span><span class="p">,</span>
-</span><span id="line-304">                    <span class="n">log_bin_edges</span><span class="p">(</span>
-</span><span id="line-305">                        <span class="n">binning</span><span class="p">[</span><span class="s2">"min_sep"</span><span class="p">],</span> <span class="n">binning</span><span class="p">[</span><span class="s2">"max_sep"</span><span class="p">],</span> <span class="n">binning</span><span class="p">[</span><span class="s2">"nbins"</span><span class="p">]</span>
-</span><span id="line-306">                    <span class="p">),</span>
+</span><span id="line-300">            <span class="c1"># Stored bin indices refer to the integration grid, including when</span>
+</span><span id="line-301">            <span class="c1"># the requested cuts were generated from a coarser reporting grid.</span>
+</span><span id="line-302">            <span class="n">edges</span> <span class="o">=</span> <span class="n">log_bin_edges</span><span class="p">(</span><span class="n">min_sep_int</span><span class="p">,</span> <span class="n">max_sep_int</span><span class="p">,</span> <span class="n">nbins_int</span><span class="p">)</span>
+</span><span id="line-303">            <span class="k">if</span> <span class="n">multiple_scale_cuts</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">bin_results</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+</span><span id="line-304">                <span class="n">plot_cosebis_scale_cut_heatmap</span><span class="p">(</span>
+</span><span id="line-305">                    <span class="n">bin_results</span><span class="p">,</span>
+</span><span id="line-306">                    <span class="n">edges</span><span class="p">,</span>
 </span><span id="line-307">                    <span class="n">version</span><span class="p">,</span>
 </span><span id="line-308">                    <span class="n">bin_stub</span> <span class="o">+</span> <span class="s2">"_scalecut_ptes.png"</span><span class="p">,</span>
 </span><span id="line-309">                    <span class="n">fiducial_scale_cut</span><span class="o">=</span><span class="n">fiducial_scale_cut</span><span class="p">,</span>
 </span><span id="line-310">                <span class="p">)</span>
 </span><span id="line-311">
 </span><span id="line-312">            <span class="n">save_cosebis_results</span><span class="p">(</span>
-</span><span id="line-313">                <span class="n">bin_results</span><span class="p">,</span> <span class="n">bin_stub</span> <span class="o">+</span> <span class="s2">"_data.npz"</span><span class="p">,</span> <span class="n">fiducial_scale_cut</span>
-</span><span id="line-314">            <span class="p">)</span>
-</span><span id="line-315">        <span class="bp">self</span><span class="o">.</span><span class="n">_cosebis_results</span><span class="p">[</span><span class="n">version</span><span class="p">]</span> <span class="o">=</span> <span class="n">results_tomo</span></div>
+</span><span id="line-313">                <span class="n">bin_results</span><span class="p">,</span>
+</span><span id="line-314">                <span class="n">bin_stub</span> <span class="o">+</span> <span class="s2">"_data.npz"</span><span class="p">,</span>
+</span><span id="line-315">                <span class="n">fiducial_scale_cut</span><span class="p">,</span>
+</span><span id="line-316">                <span class="n">edges</span><span class="p">,</span>
+</span><span id="line-317">                <span class="n">derived_from</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">xi_parts</span><span class="p">[</span><span class="n">version</span><span class="p">,</span> <span class="s2">"integration"</span><span class="p">]],</span>
+</span><span id="line-318">            <span class="p">)</span>
+</span><span id="line-319">        <span class="bp">self</span><span class="o">.</span><span class="n">_cosebis_results</span><span class="p">[</span><span class="n">version</span><span class="p">]</span> <span class="o">=</span> <span class="n">results_tomo</span></div>
 </div>
 
 </span></code></pre></div>

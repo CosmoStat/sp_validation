@@ -92,11 +92,35 @@
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.catalog_characterization.html">sp_validation.cosmo_val.catalog_characterization</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html">sp_validation.cosmo_val.core</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.cosebis.html">sp_validation.cosmo_val.cosebis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.diagnostic_plots.html">sp_validation.cosmo_val.diagnostic_plots</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.diagnostic_products.html">sp_validation.cosmo_val.diagnostic_products</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html">sp_validation.cosmo_val.pseudo_cl</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.psf_systematics.html">sp_validation.cosmo_val.psf_systematics</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pure_eb.html">sp_validation.cosmo_val.pure_eb</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.real_space.html">sp_validation.cosmo_val.real_space</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.sacc_writers.html">sp_validation.cosmo_val.sacc_writers</a></li>
+</ul>
+</li>
+<li class="toctree-l2" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.dashboard.html">sp_validation.dashboard<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul x-cloak="" x-show="expanded">
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.correlations.html">sp_validation.dashboard.correlations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.cosebis_grid.html">sp_validation.dashboard.cosebis_grid</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.covariance.html">sp_validation.dashboard.covariance</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.data_vectors.html">sp_validation.dashboard.data_vectors</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.field_maps.html">sp_validation.dashboard.field_maps</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.object_bias.html">sp_validation.dashboard.object_bias</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.position_shear.html">sp_validation.dashboard.position_shear</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.products.html">sp_validation.dashboard.products</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.psf.html">sp_validation.dashboard.psf</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.ptes.html">sp_validation.dashboard.ptes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.render.html">sp_validation.dashboard.render</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.scale_cuts.html">sp_validation.dashboard.scale_cuts</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.selection_hist.html">sp_validation.dashboard.selection_hist</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.sky.html">sp_validation.dashboard.sky</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.star_residuals.html">sp_validation.dashboard.star_residuals</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.style.html">sp_validation.dashboard.style</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.tangential.html">sp_validation.dashboard.tangential</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.versions.html">sp_validation.dashboard.versions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.weights.html">sp_validation.dashboard.weights</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html">sp_validation.b_modes</a></li>
@@ -719,6 +743,21 @@ window (equal window ells and weight matrix); series without windows
 concealed under <code class="docutils literal notranslate"><span class="pre">blind</span></code> with <code class="docutils literal notranslate"><span class="pre">theory</span></code> and stamped with its name.</p>
 </dd></dl>
 <dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io.derived_stamp">
+<span class="sig-name descname"><span class="pre">derived_stamp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parts</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#derived_stamp"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.derived_stamp" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.derived_stamp'">¶</a></dt>
+<dd><p>The common stamp inherited by a derivation, for SACC and NPZ alike.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io.save_npz">
+<span class="sig-name descname"><span class="pre">save_npz</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arrays</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">derived_from</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#save_npz"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.save_npz" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.save_npz'">¶</a></dt>
+<dd><p>Save a cosmological array cache with the same inheritance as SACC.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io.load_npz">
+<span class="sig-name descname"><span class="pre">load_npz</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">blind</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#load_npz"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.load_npz" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.load_npz'">¶</a></dt>
+<dd><p>Check explicit provenance before reading any cached signal arrays.</p>
+</dd></dl>
+<dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.sacc_io.save">
 <span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">blind</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">derived_from</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#save"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.save" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.save'">¶</a></dt>
 <dd><p>Write <code class="docutils literal notranslate"><span class="pre">s</span></code> to <code class="docutils literal notranslate"><span class="pre">path</span></code> (FITS) and return what was written.</p>
@@ -1099,6 +1138,9 @@ Gaussian+non-Gaussian column (<code class="docutils literal notranslate"><span c
 <li><a :data-current="activeSection === '#sp_validation.sacc_io.stamp'" class="reference internal" href="#sp_validation.sacc_io.stamp"><code class="docutils literal notranslate"><span class="pre">stamp()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.sacc_io.expect'" class="reference internal" href="#sp_validation.sacc_io.expect"><code class="docutils literal notranslate"><span class="pre">expect()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.sacc_io.seal'" class="reference internal" href="#sp_validation.sacc_io.seal"><code class="docutils literal notranslate"><span class="pre">seal()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io.derived_stamp'" class="reference internal" href="#sp_validation.sacc_io.derived_stamp"><code class="docutils literal notranslate"><span class="pre">derived_stamp()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io.save_npz'" class="reference internal" href="#sp_validation.sacc_io.save_npz"><code class="docutils literal notranslate"><span class="pre">save_npz()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io.load_npz'" class="reference internal" href="#sp_validation.sacc_io.load_npz"><code class="docutils literal notranslate"><span class="pre">load_npz()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.sacc_io.save'" class="reference internal" href="#sp_validation.sacc_io.save"><code class="docutils literal notranslate"><span class="pre">save()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.sacc_io.load'" class="reference internal" href="#sp_validation.sacc_io.load"><code class="docutils literal notranslate"><span class="pre">load()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.sacc_io._twopoint_hdu'" class="reference internal" href="#sp_validation.sacc_io._twopoint_hdu"><code class="docutils literal notranslate"><span class="pre">_twopoint_hdu()</span></code></a></li>

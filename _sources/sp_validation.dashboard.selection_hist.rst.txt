@@ -1,0 +1,7 @@
+sp\_validation.dashboard.selection\_hist
+----------------------------------------
+
+.. automodule:: sp_validation.dashboard.selection_hist
+   :members:
+   :show-inheritance:
+   :undoc-members:

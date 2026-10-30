@@ -1,0 +1,7 @@
+sp\_validation.dashboard.cosebis\_grid
+--------------------------------------
+
+.. automodule:: sp_validation.dashboard.cosebis_grid
+   :members:
+   :show-inheritance:
+   :undoc-members:

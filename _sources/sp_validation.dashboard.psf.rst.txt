@@ -1,0 +1,7 @@
+sp\_validation.dashboard.psf
+----------------------------
+
+.. automodule:: sp_validation.dashboard.psf
+   :members:
+   :show-inheritance:
+   :undoc-members:

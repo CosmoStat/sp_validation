@@ -1,0 +1,7 @@
+sp\_validation.dashboard.position\_shear
+----------------------------------------
+
+.. automodule:: sp_validation.dashboard.position_shear
+   :members:
+   :show-inheritance:
+   :undoc-members:

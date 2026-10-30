@@ -1,0 +1,7 @@
+sp\_validation.dashboard.covariance
+-----------------------------------
+
+.. automodule:: sp_validation.dashboard.covariance
+   :members:
+   :show-inheritance:
+   :undoc-members:

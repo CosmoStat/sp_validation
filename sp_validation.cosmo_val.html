@@ -92,11 +92,35 @@
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.catalog_characterization.html">sp_validation.cosmo_val.catalog_characterization</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html">sp_validation.cosmo_val.core</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.cosebis.html">sp_validation.cosmo_val.cosebis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.diagnostic_plots.html">sp_validation.cosmo_val.diagnostic_plots</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.diagnostic_products.html">sp_validation.cosmo_val.diagnostic_products</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html">sp_validation.cosmo_val.pseudo_cl</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.psf_systematics.html">sp_validation.cosmo_val.psf_systematics</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pure_eb.html">sp_validation.cosmo_val.pure_eb</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.real_space.html">sp_validation.cosmo_val.real_space</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.sacc_writers.html">sp_validation.cosmo_val.sacc_writers</a></li>
+</ul>
+</li>
+<li class="toctree-l2" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.dashboard.html">sp_validation.dashboard<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul x-cloak="" x-show="expanded">
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.correlations.html">sp_validation.dashboard.correlations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.cosebis_grid.html">sp_validation.dashboard.cosebis_grid</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.covariance.html">sp_validation.dashboard.covariance</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.data_vectors.html">sp_validation.dashboard.data_vectors</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.field_maps.html">sp_validation.dashboard.field_maps</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.object_bias.html">sp_validation.dashboard.object_bias</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.position_shear.html">sp_validation.dashboard.position_shear</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.products.html">sp_validation.dashboard.products</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.psf.html">sp_validation.dashboard.psf</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.ptes.html">sp_validation.dashboard.ptes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.render.html">sp_validation.dashboard.render</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.scale_cuts.html">sp_validation.dashboard.scale_cuts</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.selection_hist.html">sp_validation.dashboard.selection_hist</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.sky.html">sp_validation.dashboard.sky</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.star_residuals.html">sp_validation.dashboard.star_residuals</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.style.html">sp_validation.dashboard.style</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.tangential.html">sp_validation.dashboard.tangential</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.versions.html">sp_validation.dashboard.versions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.weights.html">sp_validation.dashboard.weights</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html">sp_validation.b_modes</a></li>
@@ -497,8 +521,10 @@ Example: {version1: {‘ids’: tomo_bin_ids1, ‘pairs’: tomo_bin_pairs1}, �
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin.calculate_area_from_binned_catalog"><code class="docutils literal notranslate"><span class="pre">CatalogCharacterizationMixin.calculate_area_from_binned_catalog()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin.calculate_n_eff_gal"><code class="docutils literal notranslate"><span class="pre">CatalogCharacterizationMixin.calculate_n_eff_gal()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin.calculate_ellipticity_dispersion"><code class="docutils literal notranslate"><span class="pre">CatalogCharacterizationMixin.calculate_ellipticity_dispersion()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin.footprint_maps"><code class="docutils literal notranslate"><span class="pre">CatalogCharacterizationMixin.footprint_maps()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin.plot_footprints"><code class="docutils literal notranslate"><span class="pre">CatalogCharacterizationMixin.plot_footprints()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin.plot_ellipticity"><code class="docutils literal notranslate"><span class="pre">CatalogCharacterizationMixin.plot_ellipticity()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin.weight_histograms"><code class="docutils literal notranslate"><span class="pre">CatalogCharacterizationMixin.weight_histograms()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin.plot_weights"><code class="docutils literal notranslate"><span class="pre">CatalogCharacterizationMixin.plot_weights()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin.plot_separation"><code class="docutils literal notranslate"><span class="pre">CatalogCharacterizationMixin.plot_separation()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin.calculate_additive_bias"><code class="docutils literal notranslate"><span class="pre">CatalogCharacterizationMixin.calculate_additive_bias()</span></code></a></li>
@@ -564,6 +590,23 @@ Example: {version1: {‘ids’: tomo_bin_ids1, ‘pairs’: tomo_bin_pairs1}, �
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.cosebis.html#sp_validation.cosmo_val.cosebis.CosebisMixin.plot_cosebis"><code class="docutils literal notranslate"><span class="pre">CosebisMixin.plot_cosebis()</span></code></a></li>
 </ul>
 </li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="sp_validation.cosmo_val.diagnostic_plots.html">sp_validation.cosmo_val.diagnostic_plots</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.diagnostic_plots.html#sp_validation.cosmo_val.diagnostic_plots.plot_footprint"><code class="docutils literal notranslate"><span class="pre">plot_footprint()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.diagnostic_plots.html#sp_validation.cosmo_val.diagnostic_plots.plot_weights"><code class="docutils literal notranslate"><span class="pre">plot_weights()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.diagnostic_plots.html#sp_validation.cosmo_val.diagnostic_plots.plot_objectwise_leakage"><code class="docutils literal notranslate"><span class="pre">plot_objectwise_leakage()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.diagnostic_plots.html#sp_validation.cosmo_val.diagnostic_plots.plot_rho_tau_fits"><code class="docutils literal notranslate"><span class="pre">plot_rho_tau_fits()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.diagnostic_plots.html#sp_validation.cosmo_val.diagnostic_plots.plot_ratio_xi_sys_xi"><code class="docutils literal notranslate"><span class="pre">plot_ratio_xi_sys_xi()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.diagnostic_plots.html#sp_validation.cosmo_val.diagnostic_plots.plot_2pcf"><code class="docutils literal notranslate"><span class="pre">plot_2pcf()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.diagnostic_plots.html#sp_validation.cosmo_val.diagnostic_plots.plot_psf_stats"><code class="docutils literal notranslate"><span class="pre">plot_psf_stats()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.diagnostic_plots.html#sp_validation.cosmo_val.diagnostic_plots.plot_covariance"><code class="docutils literal notranslate"><span class="pre">plot_covariance()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="sp_validation.cosmo_val.diagnostic_products.html">sp_validation.cosmo_val.diagnostic_products</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.diagnostic_products.html#sp_validation.cosmo_val.diagnostic_products.footprint_counts"><code class="docutils literal notranslate"><span class="pre">footprint_counts()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.diagnostic_products.html#sp_validation.cosmo_val.diagnostic_products.save_footprint"><code class="docutils literal notranslate"><span class="pre">save_footprint()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.diagnostic_products.html#sp_validation.cosmo_val.diagnostic_products.load_footprint"><code class="docutils literal notranslate"><span class="pre">load_footprint()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html">sp_validation.cosmo_val.pseudo_cl</a><ul>

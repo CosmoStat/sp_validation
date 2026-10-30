@@ -1,0 +1,7 @@
+sp\_validation.dashboard.scale\_cuts
+------------------------------------
+
+.. automodule:: sp_validation.dashboard.scale_cuts
+   :members:
+   :show-inheritance:
+   :undoc-members:

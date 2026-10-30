@@ -1,0 +1,7 @@
+sp\_validation.dashboard.object\_bias
+-------------------------------------
+
+.. automodule:: sp_validation.dashboard.object_bias
+   :members:
+   :show-inheritance:
+   :undoc-members:

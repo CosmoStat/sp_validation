@@ -1,0 +1,7 @@
+sp\_validation.dashboard.style
+------------------------------
+
+.. automodule:: sp_validation.dashboard.style
+   :members:
+   :show-inheritance:
+   :undoc-members:

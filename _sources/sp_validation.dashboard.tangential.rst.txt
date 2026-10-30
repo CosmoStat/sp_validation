@@ -1,0 +1,7 @@
+sp\_validation.dashboard.tangential
+-----------------------------------
+
+.. automodule:: sp_validation.dashboard.tangential
+   :members:
+   :show-inheritance:
+   :undoc-members:

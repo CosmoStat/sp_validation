@@ -1,0 +1,7 @@
+sp\_validation.dashboard.star\_residuals
+----------------------------------------
+
+.. automodule:: sp_validation.dashboard.star_residuals
+   :members:
+   :show-inheritance:
+   :undoc-members:

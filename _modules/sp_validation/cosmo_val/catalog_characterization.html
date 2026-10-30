@@ -124,11 +124,35 @@
 <li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.catalog_characterization.html">sp_validation.cosmo_val.catalog_characterization</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.core.html">sp_validation.cosmo_val.core</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.cosebis.html">sp_validation.cosmo_val.cosebis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.diagnostic_plots.html">sp_validation.cosmo_val.diagnostic_plots</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.diagnostic_products.html">sp_validation.cosmo_val.diagnostic_products</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.pseudo_cl.html">sp_validation.cosmo_val.pseudo_cl</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.psf_systematics.html">sp_validation.cosmo_val.psf_systematics</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.pure_eb.html">sp_validation.cosmo_val.pure_eb</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.real_space.html">sp_validation.cosmo_val.real_space</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.sacc_writers.html">sp_validation.cosmo_val.sacc_writers</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.dashboard.html">sp_validation.dashboard</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.correlations.html">sp_validation.dashboard.correlations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.cosebis_grid.html">sp_validation.dashboard.cosebis_grid</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.covariance.html">sp_validation.dashboard.covariance</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.data_vectors.html">sp_validation.dashboard.data_vectors</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.field_maps.html">sp_validation.dashboard.field_maps</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.object_bias.html">sp_validation.dashboard.object_bias</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.position_shear.html">sp_validation.dashboard.position_shear</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.products.html">sp_validation.dashboard.products</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.psf.html">sp_validation.dashboard.psf</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.ptes.html">sp_validation.dashboard.ptes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.render.html">sp_validation.dashboard.render</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.scale_cuts.html">sp_validation.dashboard.scale_cuts</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.selection_hist.html">sp_validation.dashboard.selection_hist</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.sky.html">sp_validation.dashboard.sky</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.star_residuals.html">sp_validation.dashboard.star_residuals</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.style.html">sp_validation.dashboard.style</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.tangential.html">sp_validation.dashboard.tangential</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.versions.html">sp_validation.dashboard.versions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.weights.html">sp_validation.dashboard.weights</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.b_modes.html">sp_validation.b_modes</a></li>
@@ -509,165 +533,163 @@
 </span><span id="line-281">                    <span class="p">)</span></div>
 
 </span><span id="line-282">
+<div class="viewcode-block" id="CatalogCharacterizationMixin.footprint_maps">
+<a class="viewcode-back" href="../../../sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin.footprint_maps">[docs]</a>
+</span><span id="line-283">    <span class="k">def</span><span class="w"> </span><span class="nf">footprint_maps</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="line-284"><span class="w">        </span><span class="sd">"""Build one sparse count map per version, shared by every region."""</span>
+</span><span id="line-285">        <span class="kn">from</span><span class="w"> </span><span class="nn">.diagnostic_products</span><span class="w"> </span><span class="kn">import</span> <span class="n">footprint_counts</span>
+</span><span id="line-286">
+</span><span id="line-287">        <span class="k">for</span> <span class="n">ver</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">versions</span><span class="p">:</span>
+</span><span id="line-288">            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span><span class="o">.</span><span class="n">temporarily_read_data</span><span class="p">():</span>
+</span><span id="line-289">                <span class="k">yield</span> <span class="p">(</span>
+</span><span id="line-290">                    <span class="n">ver</span><span class="p">,</span>
+</span><span id="line-291">                    <span class="n">footprint_counts</span><span class="p">(</span>
+</span><span id="line-292">                        <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span><span class="o">.</span><span class="n">dat_shear</span><span class="p">[</span><span class="s2">"RA"</span><span class="p">],</span>
+</span><span id="line-293">                        <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span><span class="o">.</span><span class="n">dat_shear</span><span class="p">[</span><span class="s2">"Dec"</span><span class="p">],</span>
+</span><span id="line-294">                    <span class="p">),</span>
+</span><span id="line-295">                <span class="p">)</span></div>
+
+</span><span id="line-296">
 <div class="viewcode-block" id="CatalogCharacterizationMixin.plot_footprints">
 <a class="viewcode-back" href="../../../sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin.plot_footprints">[docs]</a>
-</span><span id="line-283">    <span class="k">def</span><span class="w"> </span><span class="nf">plot_footprints</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-</span><span id="line-284">        <span class="bp">self</span><span class="o">.</span><span class="n">print_start</span><span class="p">(</span><span class="s2">"Plotting footprints:"</span><span class="p">)</span>
-</span><span id="line-285">        <span class="k">for</span> <span class="n">ver</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">versions</span><span class="p">:</span>
-</span><span id="line-286">            <span class="bp">self</span><span class="o">.</span><span class="n">print_magenta</span><span class="p">(</span><span class="n">ver</span><span class="p">)</span>
-</span><span id="line-287">
-</span><span id="line-288">            <span class="n">fp</span> <span class="o">=</span> <span class="n">cs_plots</span><span class="o">.</span><span class="n">FootprintPlotter</span><span class="p">()</span>
-</span><span id="line-289">
-</span><span id="line-290">            <span class="k">for</span> <span class="n">region</span> <span class="ow">in</span> <span class="n">fp</span><span class="o">.</span><span class="n">_regions</span><span class="p">:</span>
-</span><span id="line-291">                <span class="n">out_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_output_path</span><span class="p">(</span><span class="sa">f</span><span class="s2">"footprint_</span><span class="si">{</span><span class="n">ver</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">region</span><span class="si">}</span><span class="s2">.png"</span><span class="p">)</span>
-</span><span id="line-292">            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">out_path</span><span class="p">):</span>
-</span><span id="line-293">                <span class="bp">self</span><span class="o">.</span><span class="n">print_done</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Skipping footprint plot, </span><span class="si">{</span><span class="n">out_path</span><span class="si">}</span><span class="s2"> exists"</span><span class="p">)</span>
-</span><span id="line-294">            <span class="k">else</span><span class="p">:</span>
-</span><span id="line-295">                <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span><span class="o">.</span><span class="n">temporarily_read_data</span><span class="p">():</span>
-</span><span id="line-296">                    <span class="n">hsp_map</span> <span class="o">=</span> <span class="n">fp</span><span class="o">.</span><span class="n">create_hsp_map</span><span class="p">(</span>
-</span><span id="line-297">                        <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span><span class="o">.</span><span class="n">dat_shear</span><span class="p">[</span><span class="s2">"RA"</span><span class="p">],</span>
-</span><span id="line-298">                        <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span><span class="o">.</span><span class="n">dat_shear</span><span class="p">[</span><span class="s2">"Dec"</span><span class="p">],</span>
-</span><span id="line-299">                    <span class="p">)</span>
-</span><span id="line-300">                <span class="n">fp</span><span class="o">.</span><span class="n">plot_region</span><span class="p">(</span><span class="n">hsp_map</span><span class="p">,</span> <span class="n">fp</span><span class="o">.</span><span class="n">_regions</span><span class="p">[</span><span class="n">region</span><span class="p">],</span> <span class="n">outpath</span><span class="o">=</span><span class="n">out_path</span><span class="p">)</span>
-</span><span id="line-301">                <span class="bp">self</span><span class="o">.</span><span class="n">print_done</span><span class="p">(</span><span class="s2">"Footprint plot saved to "</span> <span class="o">+</span> <span class="n">out_path</span><span class="p">)</span></div>
+</span><span id="line-297">    <span class="k">def</span><span class="w"> </span><span class="nf">plot_footprints</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="line-298"><span class="w">        </span><span class="sd">"""Notebook convenience wrapper; workflow plots use persisted maps."""</span>
+</span><span id="line-299">        <span class="kn">from</span><span class="w"> </span><span class="nn">.diagnostic_plots</span><span class="w"> </span><span class="kn">import</span> <span class="n">plot_footprint</span>
+</span><span id="line-300">
+</span><span id="line-301">        <span class="k">for</span> <span class="n">ver</span><span class="p">,</span> <span class="n">count_map</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">footprint_maps</span><span class="p">():</span>
+</span><span id="line-302">            <span class="n">plot_footprint</span><span class="p">(</span>
+</span><span id="line-303">                <span class="n">count_map</span><span class="p">,</span>
+</span><span id="line-304">                <span class="p">{</span>
+</span><span id="line-305">                    <span class="n">region</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_output_path</span><span class="p">(</span><span class="sa">f</span><span class="s2">"footprint_</span><span class="si">{</span><span class="n">ver</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">region</span><span class="si">}</span><span class="s2">.png"</span><span class="p">)</span>
+</span><span id="line-306">                    <span class="k">for</span> <span class="n">region</span> <span class="ow">in</span> <span class="n">cs_plots</span><span class="o">.</span><span class="n">FootprintPlotter</span><span class="o">.</span><span class="n">_regions</span>
+</span><span id="line-307">                <span class="p">},</span>
+</span><span id="line-308">            <span class="p">)</span></div>
 
-</span><span id="line-302">
+</span><span id="line-309">
 <div class="viewcode-block" id="CatalogCharacterizationMixin.plot_ellipticity">
 <a class="viewcode-back" href="../../../sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin.plot_ellipticity">[docs]</a>
-</span><span id="line-303">    <span class="k">def</span><span class="w"> </span><span class="nf">plot_ellipticity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nbins</span><span class="o">=</span><span class="mi">200</span><span class="p">):</span>
-</span><span id="line-304">        <span class="n">out_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_output_path</span><span class="p">(</span><span class="s2">"ell_hist.png"</span><span class="p">)</span>
-</span><span id="line-305">        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">out_path</span><span class="p">):</span>
-</span><span id="line-306">            <span class="bp">self</span><span class="o">.</span><span class="n">print_done</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Skipping ellipticity histograms, </span><span class="si">{</span><span class="n">out_path</span><span class="si">}</span><span class="s2"> exists"</span><span class="p">)</span>
-</span><span id="line-307">        <span class="k">else</span><span class="p">:</span>
-</span><span id="line-308">            <span class="bp">self</span><span class="o">.</span><span class="n">print_start</span><span class="p">(</span><span class="s2">"Computing ellipticity histograms:"</span><span class="p">)</span>
-</span><span id="line-309">
-</span><span id="line-310">            <span class="n">_fig</span><span class="p">,</span> <span class="n">axs</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">22</span><span class="p">,</span> <span class="mi">7</span><span class="p">))</span>
-</span><span id="line-311">            <span class="n">bins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mf">1.1</span><span class="p">,</span> <span class="mf">1.1</span><span class="p">,</span> <span class="n">nbins</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
-</span><span id="line-312">            <span class="k">for</span> <span class="n">ver</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">versions</span><span class="p">:</span>
-</span><span id="line-313">                <span class="bp">self</span><span class="o">.</span><span class="n">print_magenta</span><span class="p">(</span><span class="n">ver</span><span class="p">)</span>
-</span><span id="line-314">                <span class="n">R</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">"shear"</span><span class="p">][</span><span class="s2">"R"</span><span class="p">]</span>
-</span><span id="line-315">                <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span><span class="o">.</span><span class="n">temporarily_read_data</span><span class="p">():</span>
-</span><span id="line-316">                    <span class="n">e1</span> <span class="o">=</span> <span class="p">(</span>
-</span><span id="line-317">                        <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span><span class="o">.</span><span class="n">dat_shear</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">"shear"</span><span class="p">][</span><span class="s2">"e1_col"</span><span class="p">]]</span> <span class="o">/</span> <span class="n">R</span>
-</span><span id="line-318">                    <span class="p">)</span>
-</span><span id="line-319">                    <span class="n">e2</span> <span class="o">=</span> <span class="p">(</span>
-</span><span id="line-320">                        <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span><span class="o">.</span><span class="n">dat_shear</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">"shear"</span><span class="p">][</span><span class="s2">"e2_col"</span><span class="p">]]</span> <span class="o">/</span> <span class="n">R</span>
-</span><span id="line-321">                    <span class="p">)</span>
-</span><span id="line-322">                    <span class="n">w</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span><span class="o">.</span><span class="n">dat_shear</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">"shear"</span><span class="p">][</span><span class="s2">"w_col"</span><span class="p">]]</span>
-</span><span id="line-323">
-</span><span id="line-324">                    <span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span>
-</span><span id="line-325">                        <span class="n">e1</span><span class="p">,</span>
-</span><span id="line-326">                        <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">,</span>
-</span><span id="line-327">                        <span class="n">density</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-</span><span id="line-328">                        <span class="n">histtype</span><span class="o">=</span><span class="s2">"step"</span><span class="p">,</span>
-</span><span id="line-329">                        <span class="n">weights</span><span class="o">=</span><span class="n">w</span><span class="p">,</span>
-</span><span id="line-330">                        <span class="n">label</span><span class="o">=</span><span class="n">ver</span><span class="p">,</span>
-</span><span id="line-331">                        <span class="n">color</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">"colour"</span><span class="p">],</span>
-</span><span id="line-332">                    <span class="p">)</span>
-</span><span id="line-333">                    <span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span>
-</span><span id="line-334">                        <span class="n">e2</span><span class="p">,</span>
-</span><span id="line-335">                        <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">,</span>
-</span><span id="line-336">                        <span class="n">density</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-</span><span id="line-337">                        <span class="n">histtype</span><span class="o">=</span><span class="s2">"step"</span><span class="p">,</span>
-</span><span id="line-338">                        <span class="n">weights</span><span class="o">=</span><span class="n">w</span><span class="p">,</span>
-</span><span id="line-339">                        <span class="n">label</span><span class="o">=</span><span class="n">ver</span><span class="p">,</span>
-</span><span id="line-340">                        <span class="n">color</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">"colour"</span><span class="p">],</span>
-</span><span id="line-341">                    <span class="p">)</span>
-</span><span id="line-342">
-</span><span id="line-343">            <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
-</span><span id="line-344">                <span class="n">axs</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="sa">f</span><span class="s2">"$e_</span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2">$"</span><span class="p">)</span>
-</span><span id="line-345">                <span class="n">axs</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">"normalised count"</span><span class="p">)</span>
-</span><span id="line-346">                <span class="n">axs</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
-</span><span id="line-347">                <span class="n">axs</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">([</span><span class="o">-</span><span class="mf">1.5</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">])</span>
-</span><span id="line-348">            <span class="n">cs_plots</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">out_path</span><span class="p">,</span> <span class="n">close_fig</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-</span><span id="line-349">            <span class="n">cs_plots</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-</span><span id="line-350">            <span class="bp">self</span><span class="o">.</span><span class="n">print_done</span><span class="p">(</span><span class="s2">"Ellipticity histograms saved to "</span> <span class="o">+</span> <span class="n">out_path</span><span class="p">)</span></div>
+</span><span id="line-310">    <span class="k">def</span><span class="w"> </span><span class="nf">plot_ellipticity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nbins</span><span class="o">=</span><span class="mi">200</span><span class="p">):</span>
+</span><span id="line-311">        <span class="n">out_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_output_path</span><span class="p">(</span><span class="s2">"ell_hist.png"</span><span class="p">)</span>
+</span><span id="line-312">        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">out_path</span><span class="p">):</span>
+</span><span id="line-313">            <span class="bp">self</span><span class="o">.</span><span class="n">print_done</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Skipping ellipticity histograms, </span><span class="si">{</span><span class="n">out_path</span><span class="si">}</span><span class="s2"> exists"</span><span class="p">)</span>
+</span><span id="line-314">        <span class="k">else</span><span class="p">:</span>
+</span><span id="line-315">            <span class="bp">self</span><span class="o">.</span><span class="n">print_start</span><span class="p">(</span><span class="s2">"Computing ellipticity histograms:"</span><span class="p">)</span>
+</span><span id="line-316">
+</span><span id="line-317">            <span class="n">_fig</span><span class="p">,</span> <span class="n">axs</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">22</span><span class="p">,</span> <span class="mi">7</span><span class="p">))</span>
+</span><span id="line-318">            <span class="n">bins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mf">1.1</span><span class="p">,</span> <span class="mf">1.1</span><span class="p">,</span> <span class="n">nbins</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+</span><span id="line-319">            <span class="k">for</span> <span class="n">ver</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">versions</span><span class="p">:</span>
+</span><span id="line-320">                <span class="bp">self</span><span class="o">.</span><span class="n">print_magenta</span><span class="p">(</span><span class="n">ver</span><span class="p">)</span>
+</span><span id="line-321">                <span class="n">R</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">"shear"</span><span class="p">][</span><span class="s2">"R"</span><span class="p">]</span>
+</span><span id="line-322">                <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span><span class="o">.</span><span class="n">temporarily_read_data</span><span class="p">():</span>
+</span><span id="line-323">                    <span class="n">e1</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="line-324">                        <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span><span class="o">.</span><span class="n">dat_shear</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">"shear"</span><span class="p">][</span><span class="s2">"e1_col"</span><span class="p">]]</span> <span class="o">/</span> <span class="n">R</span>
+</span><span id="line-325">                    <span class="p">)</span>
+</span><span id="line-326">                    <span class="n">e2</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="line-327">                        <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span><span class="o">.</span><span class="n">dat_shear</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">"shear"</span><span class="p">][</span><span class="s2">"e2_col"</span><span class="p">]]</span> <span class="o">/</span> <span class="n">R</span>
+</span><span id="line-328">                    <span class="p">)</span>
+</span><span id="line-329">                    <span class="n">w</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span><span class="o">.</span><span class="n">dat_shear</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">"shear"</span><span class="p">][</span><span class="s2">"w_col"</span><span class="p">]]</span>
+</span><span id="line-330">
+</span><span id="line-331">                    <span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span>
+</span><span id="line-332">                        <span class="n">e1</span><span class="p">,</span>
+</span><span id="line-333">                        <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">,</span>
+</span><span id="line-334">                        <span class="n">density</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="line-335">                        <span class="n">histtype</span><span class="o">=</span><span class="s2">"step"</span><span class="p">,</span>
+</span><span id="line-336">                        <span class="n">weights</span><span class="o">=</span><span class="n">w</span><span class="p">,</span>
+</span><span id="line-337">                        <span class="n">label</span><span class="o">=</span><span class="n">ver</span><span class="p">,</span>
+</span><span id="line-338">                        <span class="n">color</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">"colour"</span><span class="p">],</span>
+</span><span id="line-339">                    <span class="p">)</span>
+</span><span id="line-340">                    <span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span>
+</span><span id="line-341">                        <span class="n">e2</span><span class="p">,</span>
+</span><span id="line-342">                        <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">,</span>
+</span><span id="line-343">                        <span class="n">density</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="line-344">                        <span class="n">histtype</span><span class="o">=</span><span class="s2">"step"</span><span class="p">,</span>
+</span><span id="line-345">                        <span class="n">weights</span><span class="o">=</span><span class="n">w</span><span class="p">,</span>
+</span><span id="line-346">                        <span class="n">label</span><span class="o">=</span><span class="n">ver</span><span class="p">,</span>
+</span><span id="line-347">                        <span class="n">color</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">"colour"</span><span class="p">],</span>
+</span><span id="line-348">                    <span class="p">)</span>
+</span><span id="line-349">
+</span><span id="line-350">            <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
+</span><span id="line-351">                <span class="n">axs</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="sa">f</span><span class="s2">"$e_</span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2">$"</span><span class="p">)</span>
+</span><span id="line-352">                <span class="n">axs</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">"normalised count"</span><span class="p">)</span>
+</span><span id="line-353">                <span class="n">axs</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+</span><span id="line-354">                <span class="n">axs</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">([</span><span class="o">-</span><span class="mf">1.5</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">])</span>
+</span><span id="line-355">            <span class="n">cs_plots</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">out_path</span><span class="p">,</span> <span class="n">close_fig</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</span><span id="line-356">            <span class="n">cs_plots</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</span><span id="line-357">            <span class="bp">self</span><span class="o">.</span><span class="n">print_done</span><span class="p">(</span><span class="s2">"Ellipticity histograms saved to "</span> <span class="o">+</span> <span class="n">out_path</span><span class="p">)</span></div>
 
-</span><span id="line-351">
+</span><span id="line-358">
+<div class="viewcode-block" id="CatalogCharacterizationMixin.weight_histograms">
+<a class="viewcode-back" href="../../../sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin.weight_histograms">[docs]</a>
+</span><span id="line-359">    <span class="k">def</span><span class="w"> </span><span class="nf">weight_histograms</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nbins</span><span class="o">=</span><span class="mi">200</span><span class="p">):</span>
+</span><span id="line-360"><span class="w">        </span><span class="sd">"""Return weight-weighted counts and edges, with independent bins per version."""</span>
+</span><span id="line-361">        <span class="n">histograms</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-362">        <span class="k">for</span> <span class="n">ver</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">versions</span><span class="p">:</span>
+</span><span id="line-363">            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span><span class="o">.</span><span class="n">temporarily_read_data</span><span class="p">():</span>
+</span><span id="line-364">                <span class="n">w</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_shear_cols</span><span class="p">(</span><span class="n">ver</span><span class="p">,</span> <span class="s2">"w_col"</span><span class="p">)</span>
+</span><span id="line-365">                <span class="n">histograms</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">nbins</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">w</span><span class="p">)</span>
+</span><span id="line-366">        <span class="k">return</span> <span class="n">histograms</span></div>
+
+</span><span id="line-367">
 <div class="viewcode-block" id="CatalogCharacterizationMixin.plot_weights">
 <a class="viewcode-back" href="../../../sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin.plot_weights">[docs]</a>
-</span><span id="line-352">    <span class="k">def</span><span class="w"> </span><span class="nf">plot_weights</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nbins</span><span class="o">=</span><span class="mi">200</span><span class="p">):</span>
-</span><span id="line-353">        <span class="n">out_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_output_path</span><span class="p">(</span><span class="s2">"weight_hist.png"</span><span class="p">)</span>
-</span><span id="line-354">        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">out_path</span><span class="p">):</span>
-</span><span id="line-355">            <span class="bp">self</span><span class="o">.</span><span class="n">print_done</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Skipping weight histograms, </span><span class="si">{</span><span class="n">out_path</span><span class="si">}</span><span class="s2"> exists"</span><span class="p">)</span>
-</span><span id="line-356">        <span class="k">else</span><span class="p">:</span>
-</span><span id="line-357">            <span class="bp">self</span><span class="o">.</span><span class="n">print_start</span><span class="p">(</span><span class="s2">"Computing weight histograms:"</span><span class="p">)</span>
-</span><span id="line-358">
-</span><span id="line-359">            <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">7</span><span class="p">))</span>
-</span><span id="line-360">            <span class="k">for</span> <span class="n">ver</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">versions</span><span class="p">:</span>
-</span><span id="line-361">                <span class="bp">self</span><span class="o">.</span><span class="n">print_magenta</span><span class="p">(</span><span class="n">ver</span><span class="p">)</span>
-</span><span id="line-362">                <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span><span class="o">.</span><span class="n">temporarily_read_data</span><span class="p">():</span>
-</span><span id="line-363">                    <span class="n">w</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_shear_cols</span><span class="p">(</span><span class="n">ver</span><span class="p">,</span> <span class="s2">"w_col"</span><span class="p">)</span>
-</span><span id="line-364">
-</span><span id="line-365">                    <span class="n">plt</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span>
-</span><span id="line-366">                        <span class="n">w</span><span class="p">,</span>
-</span><span id="line-367">                        <span class="n">bins</span><span class="o">=</span><span class="n">nbins</span><span class="p">,</span>
-</span><span id="line-368">                        <span class="n">density</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-</span><span id="line-369">                        <span class="n">histtype</span><span class="o">=</span><span class="s2">"step"</span><span class="p">,</span>
-</span><span id="line-370">                        <span class="n">weights</span><span class="o">=</span><span class="n">w</span><span class="p">,</span>
-</span><span id="line-371">                        <span class="n">label</span><span class="o">=</span><span class="n">ver</span><span class="p">,</span>
-</span><span id="line-372">                        <span class="n">color</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">"colour"</span><span class="p">],</span>
-</span><span id="line-373">                    <span class="p">)</span>
-</span><span id="line-374">
-</span><span id="line-375">            <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">"$w$"</span><span class="p">)</span>
-</span><span id="line-376">            <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">"frequency"</span><span class="p">)</span>
-</span><span id="line-377">            <span class="n">plt</span><span class="o">.</span><span class="n">yscale</span><span class="p">(</span><span class="s2">"log"</span><span class="p">)</span>
-</span><span id="line-378">            <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
-</span><span id="line-379">            <span class="c1"># plt.xlim([-0.01, 1.2])</span>
-</span><span id="line-380">            <span class="n">cs_plots</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">out_path</span><span class="p">,</span> <span class="n">close_fig</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-</span><span id="line-381">            <span class="n">cs_plots</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-</span><span id="line-382">            <span class="bp">self</span><span class="o">.</span><span class="n">print_done</span><span class="p">(</span><span class="s2">"Weight histograms saved to "</span> <span class="o">+</span> <span class="n">out_path</span><span class="p">)</span></div>
+</span><span id="line-368">    <span class="k">def</span><span class="w"> </span><span class="nf">plot_weights</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nbins</span><span class="o">=</span><span class="mi">200</span><span class="p">):</span>
+</span><span id="line-369"><span class="w">        </span><span class="sd">"""Notebook convenience wrapper; workflow plots read cached histograms."""</span>
+</span><span id="line-370">        <span class="kn">from</span><span class="w"> </span><span class="nn">.diagnostic_plots</span><span class="w"> </span><span class="kn">import</span> <span class="n">plot_weights</span>
+</span><span id="line-371">
+</span><span id="line-372">        <span class="n">plot_weights</span><span class="p">(</span>
+</span><span id="line-373">            <span class="bp">self</span><span class="o">.</span><span class="n">weight_histograms</span><span class="p">(</span><span class="n">nbins</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_output_path</span><span class="p">(</span><span class="s2">"weight_hist.png"</span><span class="p">)</span>
+</span><span id="line-374">        <span class="p">)</span></div>
 
-</span><span id="line-383">
+</span><span id="line-375">
 <div class="viewcode-block" id="CatalogCharacterizationMixin.plot_separation">
 <a class="viewcode-back" href="../../../sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin.plot_separation">[docs]</a>
-</span><span id="line-384">    <span class="k">def</span><span class="w"> </span><span class="nf">plot_separation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nbins</span><span class="o">=</span><span class="mi">200</span><span class="p">):</span>
-</span><span id="line-385">        <span class="bp">self</span><span class="o">.</span><span class="n">print_start</span><span class="p">(</span><span class="s2">"Separation histograms"</span><span class="p">)</span>
-</span><span id="line-386">        <span class="k">if</span> <span class="s2">"SP_matched_MP_v1.0"</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">versions</span><span class="p">:</span>
-</span><span id="line-387">            <span class="n">_fig</span><span class="p">,</span> <span class="n">axs</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">7</span><span class="p">))</span>
-</span><span id="line-388">            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">"SP_matched_MP_v1.0"</span><span class="p">]</span><span class="o">.</span><span class="n">temporarily_read_data</span><span class="p">():</span>
-</span><span id="line-389">                <span class="n">sep</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">"SP_matched_MP_v1.0"</span><span class="p">]</span><span class="o">.</span><span class="n">dat_shear</span><span class="p">[</span><span class="s2">"Separation"</span><span class="p">]</span>
-</span><span id="line-390">            <span class="n">axs</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span>
-</span><span id="line-391">                <span class="n">sep</span><span class="p">,</span>
-</span><span id="line-392">                <span class="n">bins</span><span class="o">=</span><span class="n">nbins</span><span class="p">,</span>
-</span><span id="line-393">                <span class="n">density</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-</span><span id="line-394">                <span class="n">histtype</span><span class="o">=</span><span class="s2">"step"</span><span class="p">,</span>
-</span><span id="line-395">                <span class="n">label</span><span class="o">=</span><span class="s2">"SP_matched_MP_v1.0"</span><span class="p">,</span>
-</span><span id="line-396">                <span class="n">color</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="s2">"SP_matched_MP_v1.0"</span><span class="p">][</span><span class="s2">"colour"</span><span class="p">],</span>
-</span><span id="line-397">            <span class="p">)</span>
-</span><span id="line-398">            <span class="nb">print</span><span class="p">(</span><span class="s2">"Max separation: </span><span class="si">%s</span><span class="s2"> arcsec"</span> <span class="o">%</span> <span class="nb">max</span><span class="p">(</span><span class="n">sep</span><span class="p">))</span>
-</span><span id="line-399">            <span class="n">axs</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="sa">r</span><span class="s2">"Separation $\theta$ [arcsec]"</span><span class="p">)</span>
-</span><span id="line-400">            <span class="n">axs</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
-</span><span id="line-401">        <span class="k">else</span><span class="p">:</span>
-</span><span id="line-402">            <span class="bp">self</span><span class="o">.</span><span class="n">print_done</span><span class="p">(</span><span class="s2">"SP_matched_MP_v1.0 not in versions"</span><span class="p">)</span></div>
+</span><span id="line-376">    <span class="k">def</span><span class="w"> </span><span class="nf">plot_separation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nbins</span><span class="o">=</span><span class="mi">200</span><span class="p">):</span>
+</span><span id="line-377">        <span class="bp">self</span><span class="o">.</span><span class="n">print_start</span><span class="p">(</span><span class="s2">"Separation histograms"</span><span class="p">)</span>
+</span><span id="line-378">        <span class="k">if</span> <span class="s2">"SP_matched_MP_v1.0"</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">versions</span><span class="p">:</span>
+</span><span id="line-379">            <span class="n">_fig</span><span class="p">,</span> <span class="n">axs</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">7</span><span class="p">))</span>
+</span><span id="line-380">            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">"SP_matched_MP_v1.0"</span><span class="p">]</span><span class="o">.</span><span class="n">temporarily_read_data</span><span class="p">():</span>
+</span><span id="line-381">                <span class="n">sep</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">"SP_matched_MP_v1.0"</span><span class="p">]</span><span class="o">.</span><span class="n">dat_shear</span><span class="p">[</span><span class="s2">"Separation"</span><span class="p">]</span>
+</span><span id="line-382">            <span class="n">axs</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span>
+</span><span id="line-383">                <span class="n">sep</span><span class="p">,</span>
+</span><span id="line-384">                <span class="n">bins</span><span class="o">=</span><span class="n">nbins</span><span class="p">,</span>
+</span><span id="line-385">                <span class="n">density</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+</span><span id="line-386">                <span class="n">histtype</span><span class="o">=</span><span class="s2">"step"</span><span class="p">,</span>
+</span><span id="line-387">                <span class="n">label</span><span class="o">=</span><span class="s2">"SP_matched_MP_v1.0"</span><span class="p">,</span>
+</span><span id="line-388">                <span class="n">color</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="s2">"SP_matched_MP_v1.0"</span><span class="p">][</span><span class="s2">"colour"</span><span class="p">],</span>
+</span><span id="line-389">            <span class="p">)</span>
+</span><span id="line-390">            <span class="nb">print</span><span class="p">(</span><span class="s2">"Max separation: </span><span class="si">%s</span><span class="s2"> arcsec"</span> <span class="o">%</span> <span class="nb">max</span><span class="p">(</span><span class="n">sep</span><span class="p">))</span>
+</span><span id="line-391">            <span class="n">axs</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="sa">r</span><span class="s2">"Separation $\theta$ [arcsec]"</span><span class="p">)</span>
+</span><span id="line-392">            <span class="n">axs</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+</span><span id="line-393">        <span class="k">else</span><span class="p">:</span>
+</span><span id="line-394">            <span class="bp">self</span><span class="o">.</span><span class="n">print_done</span><span class="p">(</span><span class="s2">"SP_matched_MP_v1.0 not in versions"</span><span class="p">)</span></div>
 
-</span><span id="line-403">
+</span><span id="line-395">
 <div class="viewcode-block" id="CatalogCharacterizationMixin.calculate_additive_bias">
 <a class="viewcode-back" href="../../../sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin.calculate_additive_bias">[docs]</a>
-</span><span id="line-404">    <span class="k">def</span><span class="w"> </span><span class="nf">calculate_additive_bias</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-</span><span id="line-405">        <span class="bp">self</span><span class="o">.</span><span class="n">print_start</span><span class="p">(</span><span class="s2">"Calculating additive bias:"</span><span class="p">)</span>
-</span><span id="line-406">        <span class="bp">self</span><span class="o">.</span><span class="n">_c1</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="line-407">        <span class="bp">self</span><span class="o">.</span><span class="n">_c2</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="line-408">        <span class="k">for</span> <span class="n">ver</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">versions</span><span class="p">:</span>
-</span><span id="line-409">            <span class="bp">self</span><span class="o">.</span><span class="n">print_magenta</span><span class="p">(</span><span class="n">ver</span><span class="p">)</span>
-</span><span id="line-410">            <span class="n">R</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">"shear"</span><span class="p">][</span><span class="s2">"R"</span><span class="p">]</span>
-</span><span id="line-411">            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span><span class="o">.</span><span class="n">temporarily_read_data</span><span class="p">():</span>
-</span><span id="line-412">                <span class="n">e1</span><span class="p">,</span> <span class="n">e2</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_shear_cols</span><span class="p">(</span><span class="n">ver</span><span class="p">,</span> <span class="s2">"e1_col"</span><span class="p">,</span> <span class="s2">"e2_col"</span><span class="p">,</span> <span class="s2">"w_col"</span><span class="p">)</span>
-</span><span id="line-413">                <span class="bp">self</span><span class="o">.</span><span class="n">_c1</span><span class="p">[</span><span class="n">ver</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_c2</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span> <span class="o">=</span> <span class="n">additive_bias</span><span class="p">(</span><span class="n">e1</span><span class="p">,</span> <span class="n">e2</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">R</span><span class="p">)</span>
-</span><span id="line-414">        <span class="bp">self</span><span class="o">.</span><span class="n">print_done</span><span class="p">(</span><span class="s2">"Finished additive bias calculation."</span><span class="p">)</span></div>
+</span><span id="line-396">    <span class="k">def</span><span class="w"> </span><span class="nf">calculate_additive_bias</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="line-397">        <span class="bp">self</span><span class="o">.</span><span class="n">print_start</span><span class="p">(</span><span class="s2">"Calculating additive bias:"</span><span class="p">)</span>
+</span><span id="line-398">        <span class="bp">self</span><span class="o">.</span><span class="n">_c1</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-399">        <span class="bp">self</span><span class="o">.</span><span class="n">_c2</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-400">        <span class="k">for</span> <span class="n">ver</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">versions</span><span class="p">:</span>
+</span><span id="line-401">            <span class="bp">self</span><span class="o">.</span><span class="n">print_magenta</span><span class="p">(</span><span class="n">ver</span><span class="p">)</span>
+</span><span id="line-402">            <span class="n">R</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">"shear"</span><span class="p">][</span><span class="s2">"R"</span><span class="p">]</span>
+</span><span id="line-403">            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span><span class="o">.</span><span class="n">temporarily_read_data</span><span class="p">():</span>
+</span><span id="line-404">                <span class="n">e1</span><span class="p">,</span> <span class="n">e2</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_shear_cols</span><span class="p">(</span><span class="n">ver</span><span class="p">,</span> <span class="s2">"e1_col"</span><span class="p">,</span> <span class="s2">"e2_col"</span><span class="p">,</span> <span class="s2">"w_col"</span><span class="p">)</span>
+</span><span id="line-405">                <span class="bp">self</span><span class="o">.</span><span class="n">_c1</span><span class="p">[</span><span class="n">ver</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_c2</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span> <span class="o">=</span> <span class="n">additive_bias</span><span class="p">(</span><span class="n">e1</span><span class="p">,</span> <span class="n">e2</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">R</span><span class="p">)</span>
+</span><span id="line-406">        <span class="bp">self</span><span class="o">.</span><span class="n">print_done</span><span class="p">(</span><span class="s2">"Finished additive bias calculation."</span><span class="p">)</span></div>
 
-</span><span id="line-415">
-</span><span id="line-416">    <span class="nd">@property</span>
-</span><span id="line-417">    <span class="k">def</span><span class="w"> </span><span class="nf">c1</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-</span><span id="line-418">        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"_c1"</span><span class="p">):</span>
-</span><span id="line-419">            <span class="bp">self</span><span class="o">.</span><span class="n">calculate_additive_bias</span><span class="p">()</span>
-</span><span id="line-420">        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_c1</span>
-</span><span id="line-421">
-</span><span id="line-422">    <span class="nd">@property</span>
-</span><span id="line-423">    <span class="k">def</span><span class="w"> </span><span class="nf">c2</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-</span><span id="line-424">        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"_c2"</span><span class="p">):</span>
-</span><span id="line-425">            <span class="bp">self</span><span class="o">.</span><span class="n">calculate_additive_bias</span><span class="p">()</span>
-</span><span id="line-426">        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_c2</span></div>
+</span><span id="line-407">
+</span><span id="line-408">    <span class="nd">@property</span>
+</span><span id="line-409">    <span class="k">def</span><span class="w"> </span><span class="nf">c1</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="line-410">        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"_c1"</span><span class="p">):</span>
+</span><span id="line-411">            <span class="bp">self</span><span class="o">.</span><span class="n">calculate_additive_bias</span><span class="p">()</span>
+</span><span id="line-412">        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_c1</span>
+</span><span id="line-413">
+</span><span id="line-414">    <span class="nd">@property</span>
+</span><span id="line-415">    <span class="k">def</span><span class="w"> </span><span class="nf">c2</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="line-416">        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"_c2"</span><span class="p">):</span>
+</span><span id="line-417">            <span class="bp">self</span><span class="o">.</span><span class="n">calculate_additive_bias</span><span class="p">()</span>
+</span><span id="line-418">        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_c2</span></div>
 
 </span></code></pre></div>
     </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">

@@ -1,0 +1,7 @@
+sp\_validation.cosmo\_val.diagnostic\_plots
+-------------------------------------------
+
+.. automodule:: sp_validation.cosmo_val.diagnostic_plots
+   :members:
+   :show-inheritance:
+   :undoc-members:

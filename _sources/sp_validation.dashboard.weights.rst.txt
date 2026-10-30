@@ -1,0 +1,7 @@
+sp\_validation.dashboard.weights
+--------------------------------
+
+.. automodule:: sp_validation.dashboard.weights
+   :members:
+   :show-inheritance:
+   :undoc-members:

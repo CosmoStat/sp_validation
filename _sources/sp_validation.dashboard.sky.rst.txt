@@ -1,0 +1,7 @@
+sp\_validation.dashboard.sky
+----------------------------
+
+.. automodule:: sp_validation.dashboard.sky
+   :members:
+   :show-inheritance:
+   :undoc-members:
