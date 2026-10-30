@@ -6,6 +6,8 @@ from pathlib import Path
 import yaml
 from conftest import VERSIONS
 
+# Bin integrals 0.5 and 0.625: not unit-normalised.
+NZ_ROWS = "0.0 0.0 0.0\n0.5 1.0 0.5\n1.0 0.0 1.5\n"
 UNMASKED = ['covariance={"shape_noise":"analytic","default_masked":false}']
 
 
@@ -25,12 +27,12 @@ def _ini(toy, tomo_suffix=""):
 
 
 @contextmanager
-def _two_bin_catalogue(toy, tomo_cov_th=True):
+def _two_bin_catalogue(toy, tomo_cov_th=True, nz_rows=NZ_ROWS):
     """The toy version as a two-bin catalogue: a 2-column n(z), cov_th.tomo."""
     nz = toy.root / "data" / "nz_SP_v0.1_A.txt"
     cat_config = toy.root / "cosmo_val" / "cat_config.yaml"
     originals = {p: p.read_text() if p.exists() else None for p in (nz, cat_config)}
-    nz.write_text("0.0 0.0 0.0\n0.5 1.0 0.5\n1.0 0.0 1.5\n")
+    nz.write_text(nz_rows)
     entries = yaml.safe_load(originals[cat_config])
     if tomo_cov_th:
         entries[VERSIONS[0]]["cov_th"]["tomo"] = {
@@ -89,3 +91,18 @@ def test_tomographic_covariance_refuses_whole_sample_cov_th(toy):
         result = toy.snakemake("-n", _ini(toy, "_tomo"), config=UNMASKED)
     assert result.returncode != 0
     assert "per-bin n_e and sigma_e in cov_th.tomo" in result.stdout
+
+
+def test_unit_normalised_bins_refused(toy):
+    """Bins that each integrate to one carry no weights; summing them is refused."""
+    with _two_bin_catalogue(toy, nz_rows="0.0 0.0 0.0\n0.5 2.0 2.0\n1.0 0.0 0.0\n"):
+        result = toy.snakemake(
+            "-F",
+            _ini(toy),
+            "--allowed-rules",
+            "covariance_ini",
+            "nz_bin_sum",
+            config=UNMASKED,
+        )
+    assert result.returncode != 0
+    assert "weight the bins equally" in result.stdout
