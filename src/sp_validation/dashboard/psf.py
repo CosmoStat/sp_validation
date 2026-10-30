@@ -328,14 +328,8 @@ def theta_tau(rt, out, corrected=None):
 
 
 def xi_sys_comparison(rt, out, xi=None):
-    """Compare θξ± coefficient draws and data, with τ₀,+²/ρ₀,+ for ξ+."""
-    theta = np.asarray(rt["theta"])
-    # Pair-weighted mean separations differ slightly within the same bins.
-    if not (
-        np.allclose(theta, rt["theta_tau"], rtol=0.002)
-        and np.allclose(theta, rt["fit"]["theta"])
-    ):
-        raise ValueError("rho, tau and PSF fit angular grids differ")
+    """Compare θξ± coefficient draws and blinded data."""
+    theta = np.asarray(rt["fit"]["theta"])
     with S.figure_style():
         fig, axes = plt.subplots(1, 2, figsize=(7.2, 2.8))
         for ax, sign, key, field in zip(
@@ -347,19 +341,6 @@ def xi_sys_comparison(rt, out, xi=None):
             S.zero_line(ax)
             ax.fill_between(theta, lo, hi, color=MODEL, alpha=0.3, lw=0)
             ax.plot(theta, med, color=MODEL, label="coefficient draws (68%)")
-            if sign == "+":
-                rho = np.asarray(rt["rho"][0]["p"])
-                tau = np.asarray(rt["tau"][0]["p"])
-                with np.errstate(divide="ignore", invalid="ignore"):
-                    simple = np.where(rho != 0, theta * tau**2 / rho, np.nan)
-                ax.plot(
-                    theta,
-                    simple,
-                    color=SERIES[1],
-                    marker="o",
-                    ms=3,
-                    label=r"$\theta\tau_{0,+}^2/\rho_{0,+}$",
-                )
             if xi is not None:
                 th = np.asarray(xi["theta"])
                 ax.errorbar(
