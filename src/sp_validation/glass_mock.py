@@ -734,8 +734,11 @@ def paint_shear(
 
 # Mock shapes are written under the shape columns and these calibrated aliases.
 ALIASES = ("e1_leak_corrected", "e2_leak_corrected")
-# Names that carry a galaxy's measured shape or response and may never be kept.
-SHAPE_COLUMN = re.compile(r"^(e[12]|g[12]|R_|.*_uncal$|.*leak_corrected$)", re.I)
+# Names that may carry a galaxy's measured shape or response and are never kept;
+# false positives only refuse a column, so the match is deliberately broad.
+SHAPE_COLUMN = re.compile(
+    r"(^|_)[eg][12](_|$)|(^|_)R_?g|^R_|ell|ngmix|uncal|leak_corrected|shear", re.I
+)
 
 
 def paint_catalogue(
@@ -863,7 +866,7 @@ def paint_catalogue(
         kept = [name for name in dtype.names if name in set(kept)]
         if missing := set(keep) - set(dtype.names):
             raise KeyError(f"Missing kept columns: {sorted(missing)}")
-        if shaped := [name for name in keep if SHAPE_COLUMN.match(name)]:
+        if shaped := [name for name in keep if SHAPE_COLUMN.search(name)]:
             raise ValueError(f"Kept columns look like galaxy shapes: {shaped}")
         shapes = [e1_col, e2_col, *ALIASES]
         output_dtype = np.dtype(

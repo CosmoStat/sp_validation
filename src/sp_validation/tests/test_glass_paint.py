@@ -307,6 +307,7 @@ def test_b_injection_is_pure_b():
 
 
 def test_painted_mock_carries_no_input_shape(tmp_path, mock_maps):
+    from sp_validation.glass_mock import SHAPE_COLUMN
     from sp_validation.io import read_catalogue
 
     for name, values in zip(("kappa", "gamma1", "gamma2"), mock_maps, strict=True):
@@ -328,6 +329,9 @@ def test_painted_mock_carries_no_input_shape(tmp_path, mock_maps):
     for column in mock.dtype.names:
         for name in ("e1", "e2", *shaped):
             assert not np.array_equal(mock[column], source[name]), (column, name)
+    for name in ("e1_uncal", "NGMIX_G1_NOSHEAR", "NGMIX_ELL_PSFo", "R_g11"):
+        assert SHAPE_COLUMN.search(name), name
+    assert not SHAPE_COLUMN.search("snr") and not SHAPE_COLUMN.search("FLUX_RADIUS")
     with pytest.raises(ValueError, match="galaxy shapes"):
         paint_catalogue(
             path, tmp_path / "leak.h5", tmp_path, 7, keep=("e1_uncal",), overwrite=True
