@@ -44,7 +44,9 @@ def ward_group_map(centres, ngroups):
         raise ValueError("centres must be a two-dimensional array of patch centres")
     if not 1 < ngroups < len(centres):
         raise ValueError("ngroups must be between 2 and the number of fine patches")
-    groups = fcluster(linkage(centres, method="ward"), ngroups, criterion="maxclust") - 1
+    groups = (
+        fcluster(linkage(centres, method="ward"), ngroups, criterion="maxclust") - 1
+    )
     if len(np.unique(groups)) != ngroups:
         raise ValueError(
             f"Ward grouping produced {len(np.unique(groups))} groups, expected {ngroups}"
@@ -68,7 +70,9 @@ def treecorr_jackknife_rows(correlations, groups=None, check_rows=True):
     for corr in correlations:
         fine_n = corr.npatch1
         if fine_n != corr.npatch2 or fine_n < 2:
-            raise ValueError("each correlation must have matching patches and npatch > 1")
+            raise ValueError(
+                "each correlation must have matching patches and npatch > 1"
+            )
         if group_map is None:
             n_patch = fine_n
         else:
@@ -117,9 +121,7 @@ def treecorr_jackknife_rows(correlations, groups=None, check_rows=True):
                 )
                 error = float(np.max(np.abs(check.xip - rows[patch])))
                 max_error = max(max_error, error)
-                if not np.allclose(
-                    check.xip, rows[patch], rtol=1e-8, atol=1e-22
-                ):
+                if not np.allclose(check.xip, rows[patch], rtol=1e-8, atol=1e-22):
                     raise AssertionError(
                         f"fast jackknife row {patch} differs from TreeCorr by {error}"
                     )
@@ -164,12 +166,9 @@ def keep_sky(ra, dec, circles, chunk_size=1_000_000):
                 continue
             point_dec = np.deg2rad(dec[start:stop][candidate])
             point_ra = np.deg2rad(ra[start:stop][candidate])
-            cosine = (
-                np.sin(point_dec) * np.sin(centre_dec)
-                + np.cos(point_dec)
-                * np.cos(centre_dec)
-                * np.cos(point_ra - centre_ra)
-            )
+            cosine = np.sin(point_dec) * np.sin(centre_dec) + np.cos(
+                point_dec
+            ) * np.cos(centre_dec) * np.cos(point_ra - centre_ra)
             keep[start + candidate[cosine >= cos_radius]] = False
     return keep
 
@@ -205,8 +204,10 @@ def _profile_fit(x, y, x_rows, y_rows, scales, cross_term, start):
     cov_xx = jk_factor * np.einsum("nai,nbj->ijab", dx, dx)
 
     def residual_covariance(parameters):
-        return cov_yy + np.einsum("i,iab->ab", parameters, linear) + np.einsum(
-            "i,j,ijab->ab", parameters, parameters, cov_xx
+        return (
+            cov_yy
+            + np.einsum("i,iab->ab", parameters, linear)
+            + np.einsum("i,j,ijab->ab", parameters, parameters, cov_xx)
         )
 
     def objective(scaled_parameters):
@@ -216,9 +217,11 @@ def _profile_fit(x, y, x_rows, y_rows, scales, cross_term, start):
         factor = cho_factor(covariance, lower=True, check_finite=False)
         weighted_residual = cho_solve(factor, residual, check_finite=False)
         value = float(residual @ weighted_residual)
-        covariance_derivative = linear + np.einsum(
-            "j,ijab->iab", parameters, cov_xx
-        ) + np.einsum("j,jiab->iab", parameters, cov_xx)
+        covariance_derivative = (
+            linear
+            + np.einsum("j,ijab->iab", parameters, cov_xx)
+            + np.einsum("j,jiab->iab", parameters, cov_xx)
+        )
         gradient = (
             -2 * x.T @ weighted_residual
             - np.einsum(
@@ -294,11 +297,7 @@ def _profile_fit(x, y, x_rows, y_rows, scales, cross_term, start):
     hessian = (hessian + hessian.T) / 2
     eigenvalues = np.linalg.eigvalsh(hessian)
     parameter_covariance = (
-        2
-        * np.linalg.inv(hessian)
-        * scales[:, None]
-        * scales[None, :]
-        / hartlap
+        2 * np.linalg.inv(hessian) * scales[:, None] * scales[None, :] / hartlap
     )
     dof = n_data - n_param
     result = {
@@ -313,9 +312,7 @@ def _profile_fit(x, y, x_rows, y_rows, scales, cross_term, start):
         "residual": residual.tolist(),
         "prediction": (x @ parameters).tolist(),
         "residual_sigma": np.sqrt(np.diag(covariance)).tolist(),
-        "residual_sigma_normalized": (
-            residual / np.sqrt(np.diag(covariance))
-        ).tolist(),
+        "residual_sigma_normalized": (residual / np.sqrt(np.diag(covariance))).tolist(),
         "profile_hessian_eigenvalues": eigenvalues.tolist(),
         "profile_hessian_positive": bool(eigenvalues.min() > 0),
         "gradient_norm": float(np.linalg.norm(best.jac)),

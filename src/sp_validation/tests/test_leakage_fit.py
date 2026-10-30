@@ -14,7 +14,6 @@ from sp_validation.leakage_fit import (
     xi_psf_sys,
 )
 
-
 TRUE_PARAMETERS = np.array([0.013, 1.28, 0.96, 1.9])
 
 
@@ -187,16 +186,16 @@ def test_treecorr_rows_match_native_match_jackknife_and_grouped_catalogues():
             func=lambda correlations: correlations[0].xip,
             cross_patch_weight="match",
         )
-        np.testing.assert_allclose(fine_corr.xip, coarse_corr.xip, rtol=1e-11, atol=1e-14)
+        np.testing.assert_allclose(
+            fine_corr.xip, coarse_corr.xip, rtol=1e-11, atol=1e-14
+        )
         np.testing.assert_allclose(grouped, native_grouped, rtol=1e-11, atol=1e-14)
         np.testing.assert_allclose(grouped_weights, native_group_weights, rtol=1e-12)
 
 
 def test_spherical_circle_mask_handles_inside_outside_and_ra_wrap():
     """Circle excision follows great-circle distance across RA=0 degrees."""
-    circles = [
-        {"name": "wrap", "ra_deg": 359.8, "dec_deg": 0.0, "radius_deg": 0.5}
-    ]
+    circles = [{"name": "wrap", "ra_deg": 359.8, "dec_deg": 0.0, "radius_deg": 0.5}]
     keep = keep_sky(
         ra=np.array([359.9, 0.1, 359.0, 180.0]),
         dec=np.array([0.0, 0.0, 0.0, 0.0]),
