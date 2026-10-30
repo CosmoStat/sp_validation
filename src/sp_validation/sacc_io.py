@@ -1555,6 +1555,32 @@ def read_nz(path):
     return table[:, 0], table[:, 1:]
 
 
+def read_onecov_matrix(path):
+    """Read a OneCovariance ``style = matrix`` covariance (the workflow's ``.dat``).
+
+    OneCovariance writes the dense matrix with ``np.savetxt`` under a ``#``
+    header; for real-space ξ± its rows are type-major (all ξ+, then all ξ−),
+    which :func:`sp_validation.cosmo_val.sacc_writers.onecov_xi_covariance`
+    reorders to a part's insertion order.
+
+    Parameters
+    ----------
+    path : str or pathlib.Path
+        The matrix file.
+
+    Returns
+    -------
+    numpy.ndarray
+        The square, symmetric covariance matrix.
+    """
+    cov = np.atleast_2d(np.loadtxt(str(path)))
+    if cov.shape[0] != cov.shape[1]:
+        raise ValueError(f"{path}: covariance is not square, shape {cov.shape}")
+    if not np.allclose(cov, cov.T, rtol=1e-6, atol=0):
+        raise ValueError(f"{path}: covariance is not symmetric")
+    return cov
+
+
 def covariance_blocks(cov_list, selectors, *, gaussian=True):
     """Reshape a OneCovariance ``covariance_list`` table into SACC cov blocks.
 
