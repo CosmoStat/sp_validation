@@ -53,3 +53,9 @@ def test_filter_preserves_isclose_boundary(tmp_path, dtype, sign, fraction):
         assert_no_raw_values(
             tmp_path, {"EE": reference}, expected={"EE": reference * 1.1}
         )
+
+
+def test_non_finite_reference_entries_do_not_disable_the_scan(tmp_path):
+    np.save(tmp_path / "leak.npy", np.array([0.0, 2e-11]))
+    with pytest.raises(AssertionError, match="Unblinded EE value"):
+        assert_no_raw_values(tmp_path, {"EE": np.array([np.nan, 2e-11, np.inf])})
