@@ -50,11 +50,15 @@ edges = np.geomspace(1.0, 250.0, 21)
 # Uniform pair density within each annulus, rather than unknown fine-grid counts.
 q = np.linspace(0, 1, 33)
 theta = np.sqrt(edges[:-1, None] ** 2 * (1 - q) + edges[1:, None] ** 2 * q)
-fine_path = root / "output/GLASSpte_s01_pairs_minsep=1.0_maxsep=250.0_nbins=1000.npz"
+fine_path = root / "output/GLASSpte_s01_pairs_minsep=0.08_maxsep=300.0_nbins=1000.npz"
 with np.load(fine_path) as fine:
     fine_theta = fine["theta"].copy()
     fine_weight = fine["weight"].copy()
-fine_groups = np.arange(1000).reshape(20, 50)
+    fine_edges = fine["edges"].copy()
+lo = np.maximum(edges[:-1, None], fine_edges[None, :-1])
+hi = np.minimum(edges[1:, None], fine_edges[None, 1:])
+fraction = np.maximum(hi**2 - lo**2, 0) / np.diff(fine_edges**2)[None, :]
+weights = fraction * fine_weight[None, :]
 theta_all = np.concatenate((theta.ravel(), fine_theta))
 ls_transform = np.arange(2, 8193)
 arg = np.outer(theta_all * np.pi / (180 * 60), ls_transform + 0.5)
@@ -103,10 +107,9 @@ for seed in range(1, a.seeds + 1):
     for kernel in kernels:
         vals = kernel @ real[2:]
         uniform = vals[: theta.size].reshape(theta.shape)
-        fv = vals[theta.size :][fine_groups]
-        fw = fine_weight[fine_groups]
+        fv = vals[theta.size :]
         theory_uniform.append(np.trapezoid(uniform, q, axis=1))
-        theory.append(np.sum(fv * fw, axis=1) / np.sum(fw, axis=1))
+        theory.append((weights @ fv) / np.sum(weights, axis=1))
     diff = np.concatenate([xp - theory[0], xm - theory[1]])
     udiff = np.concatenate([xp - theory_uniform[0], xm - theory_uniform[1]])
     xi_standardized.append(diff / np.sqrt(np.diag(cxi)))
@@ -144,7 +147,7 @@ noise_corr = np.corrcoef(noise[0].T, noise[1].T)[:2, 2:].tolist()
         {
             "per_seed": results,
             "uniform_ks": summary,
-            "xi_theory": "Finite ell 2..8192 flat-sky spin-2 Bessel sum of already-pixelized realization_ee; 1000-bin measured pair-weight average at bin centers",
+            "xi_theory": "Finite ell 2..8192 flat-sky spin-2 Bessel sum of already-pixelized realization_ee; measured 1000-bin pair-weight average at bin centers with fractional annular overlap",
             "ee_mean_residual_chi2": mean_test,
             "noise_component_correlation_seed1_seed2_1M": noise_corr,
             "theta_bin_mean_standardized_residual_squared": np.mean(
