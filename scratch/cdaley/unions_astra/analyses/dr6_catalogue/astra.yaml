@@ -1,0 +1,113 @@
+version: "0.0.10"
+name: "DR6 shear-catalogue selection (ShapePipe v2)"
+tags: [unions, weak-lensing, shear-catalogue, data-selection]
+
+authors:
+  - "Cail Daley"
+
+narrative:
+  summary: |
+    Selection of the DR6 ShapePipe v2 shear catalogue by
+    `config/calibration/mask_v2.0.yaml` and the calibration scripts. Papers
+    II–IV consume the v1.4.6.3 catalogue, so nothing here reaches their data
+    vectors; this sub-analysis holds the choices that select the DR6
+    catalogue itself.
+  methods: |
+    The optional [catalogue-match audit](#outputs.catalogue_match_audit)
+    tabulates ShapePipe's published external-catalogue join counts per tile.
+    The [paired-fraction tile selection](#decisions.catalogue_match_tile_selection)
+    keeps that fraction diagnostic-only.
+  inputs: |
+    The [v2_catalogue](#inputs.v2_catalogue) and its published
+    [tile_manifests](#inputs.tile_manifests).
+  outputs: |
+    The [catalogue_match_audit](#outputs.catalogue_match_audit) table and the
+    [selected_catalogue](#outputs.selected_catalogue).
+
+inputs:
+  - id: v2_catalogue
+    type: data
+    label: "ShapePipe v2 comprehensive catalogue (DR6)"
+    source: "unions_shapepipe_comprehensive_2025_v2.0.hdf5"
+    description: >-
+      The comprehensive ShapePipe v2 catalogue named by mask_v2.0.yaml's
+      input_path, before galaxy selection and metacalibration.
+  - id: tile_manifests
+    type: data
+    label: "Published ShapePipe tile manifests"
+    source: "tile_make_cat.json (one per published tile)"
+    description: >-
+      Per-tile manifests; those written by ShapePipe with external-catalogue
+      matching carry a catalogue_match block of join counts, the external
+      paired fraction and the warning budget.
+
+decisions:
+  catalogue_match_tile_selection:
+    label: "External paired-fraction tile selection"
+    tags: [data-selection]
+    rationale: >-
+      No tile is removed on its external_paired_fraction; the audit reports
+      the fraction and ShapePipe's warnings without rejecting objects.
+      [HARDCODED] MIN_EXTERNAL_PAIRED_FRACTION is a module constant with no
+      config key. In 439 measured published tiles under mask_v2.0.yaml
+      (2,321,814 selected galaxies), all 15 sampled tiles below 0.98 pairing,
+      including one empty tile, yield zero selected galaxies, so a 0.98 cut
+      would remove nothing. That depends on the N_EPOCH >= 2 cut: of those
+      tiles only 207.238 retains objects past it (three
+      detections, lost at the fit cut), and a one-epoch selection would admit
+      a different population needing a new assessment. Stricter thresholds
+      remove galaxies with no measured improvement, and with no selected
+      galaxies below 0.98 there is no shear to test there, so the audit does
+      not establish that future low-pairing tiles are safe. Reassess if
+      N_EPOCH is relaxed, if any tile below 0.98 contributes a selected
+      galaxy (audit the selected catalogue's TILE_ID against nonzero
+      catalogue_rows), or on a coherent quality anomaly. Coverage and the
+      tile-level evidence are in docs/catalogue-match-selection.md.
+      Values: MIN_EXTERNAL_PAIRED_FRACTION = None; mask_v2.0.yaml#N_EPOCH = 2.
+    default: no_cut
+    options:
+      no_cut:
+        label: "No paired-fraction cut"
+        description: "The paired fraction is a diagnostic; no tile is removed on it."
+      cut_below_0_98:
+        label: "Reject tiles below 0.98"
+        description: >-
+          Removes the 15 audited tiles below 0.98, which contribute zero
+          selected galaxies under N_EPOCH >= 2: no change to the sample.
+      cut_below_0_99:
+        label: "Reject tiles below 0.99"
+        description: "Removes 11,002 selected galaxies (0.474% of the measured sample)."
+      cut_below_0_995:
+        label: "Reject tiles below 0.995"
+        description: "Removes 424,394 selected galaxies (18.28% of the measured sample)."
+      reject_warning_tiles:
+        label: "Reject tiles with a ShapePipe match warning"
+        description: >-
+          Warnings budget join discrepancies, not catalogue quality; the two
+          published warning tiles (058.220, 207.238) are sparse coverage edges
+          contributing zero selected galaxies.
+      mask_unmatched_positions:
+        label: "Mask positions of unmatched external objects"
+        description: >-
+          Unmatched external objects carry no shapes; their absence alone does
+          not justify masking retained neighbours.
+
+outputs:
+  - id: catalogue_match_audit
+    type: table
+    label: "Per-tile catalogue-match audit"
+    inputs: [v2_catalogue, tile_manifests]
+    decisions: [catalogue_match_tile_selection]
+    description: >-
+      catalogue_match_audit.csv from scripts/calibration/extract_info.py when
+      catalogue_match_manifests is set: per-tile catalogue rows, join counts
+      and warnings, distinguishing a missing manifest, missing match metadata
+      and a measured empty external catalogue.
+  - id: selected_catalogue
+    type: data
+    label: "Selected, metacalibrated DR6 shear catalogue"
+    inputs: [v2_catalogue]
+    decisions: [catalogue_match_tile_selection]
+    description: >-
+      Output of scripts/calibration/calibrate_comprehensive_cat.py under
+      mask_v2.0.yaml, including its N_EPOCH >= 2 cut.
