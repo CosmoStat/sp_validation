@@ -433,8 +433,7 @@ def run_blind_xi():
 
 
 def run_xi():
-    import pyccl as ccl
-    from cs_util.cosmo import get_cosmo
+    from scipy.special import jv
 
     su, sb = xi(U, "reporting"), xi(B, "reporting")
     cov = xi_covariance(U)
@@ -455,29 +454,20 @@ def run_xi():
     weights = np.array(weights)
     spec = np.load(MOCK / "maps/spectra.npz")
     ell = spec["ell"][2:]
-    config = yaml.safe_load((ROOT / "config.yaml").read_text())
-    cosmo = get_cosmo(**config["cosmo_val"]["cosmo_params"])
+    if not np.array_equal(ell, np.arange(2, 8193)):
+        raise ValueError("Unexpected GLASS ell grid")
+    arg = np.outer(fine.meanr * np.pi / (180 * 60), ell + 0.5)
     fig, axes = plt.subplots(2, 2, figsize=(12, 7), sharex="col")
     predictions, ensemble_predictions, theta_list = [], [], []
     for j, typ in enumerate((sio.XI_PLUS, sio.XI_MINUS)):
         i, y, cc = block(su, typ)
         theta = coord(su, i, "theta")
         theta_list.append(theta)
-        kind = "GG+" if j == 0 else "GG-"
-        real = weights @ ccl.correlation(
-            cosmo,
-            ell=ell,
-            C_ell=spec["realization_ee"][2:],
-            theta=fine.meanr / 60,
-            type=kind,
-        )
-        target = weights @ ccl.correlation(
-            cosmo,
-            ell=ell,
-            C_ell=spec["cl_ee_pixel"][2:],
-            theta=fine.meanr / 60,
-            type=kind,
-        )
+        # Finite-band flat-sky transform: FFTLog extrapolates a jagged
+        # realized spectrum outside its band limit and is unstable here.
+        kernel = jv(0 if j == 0 else 4, arg) * ((ell + 0.5) / (2 * np.pi))
+        real = weights @ (kernel @ spec["realization_ee"][2:])
+        target = weights @ (kernel @ spec["cl_ee_pixel"][2:])
         predictions.append(real)
         ensemble_predictions.append(target)
         sig = np.sqrt(np.diag(cc))
@@ -510,7 +500,7 @@ def run_xi():
         ensemble_fiducial=pte(
             (su.mean - ensemble_prediction)[keep], cov[np.ix_(keep, keep)]
         ),
-        theory_binning="Actual fine-grid weighted pairs and fractional annular overlap; CCL GG± transform, ell 2–8192; no extra pixel window.",
+        theory_binning="Actual fine-grid weighted pairs and fractional annular overlap; finite direct J0/J4 Bessel sum with ell+0.5, ell 2–8192; no extrapolation or extra pixel window.",
     )
     fig.tight_layout()
     fig.savefig(FIG / "ee_xi.png", dpi=170)
@@ -577,10 +567,43 @@ def run_decompositions():
                 checks["fiducial"] = pte(y[keep], cov[np.ix_(keep, keep)])
                 label = f"{typ}: PTE(12–83′)={checks['fiducial']['pte']:.3g}"
             metrics["decomposition_nulls"].setdefault(version, {})[typ] = checks
+            if version == A:
+                clean = sio.load(OUT / f"{U}_{suffix}.sacc", blind="none")
+                _, baseline, detection_cov = block(clean, typ)
+                excess = y - baseline
+                # Identical noise cancels in the paired excess. This is the
+                # ordinary pipeline detection scale, NOT a calibrated paired
+                # covariance or paired-difference null PTE.
+                subsets = {"full": np.ones(len(y), dtype=bool)}
+                if suffix == "cosebis":
+                    subsets["first_6_modes"] = np.arange(len(y)) < 6
+                else:
+                    subsets["fiducial"] = (x >= 12) & (x <= 83)
+                excess_checks = {}
+                for name, keep in subsets.items():
+                    diagnostic = pte(excess[keep], detection_cov[np.ix_(keep, keep)])
+                    diagnostic.pop("pte")
+                    diagnostic["mahalanobis_distance"] = float(
+                        np.sqrt(diagnostic["chi2"])
+                    )
+                    excess_checks[name] = diagnostic
+                metrics.setdefault("decomposition_injection_excess", {})[typ] = {
+                    "checks": excess_checks,
+                    "covariance": "Clean single-catalogue detection scale; not a paired-difference covariance/PTE.",
+                }
             ax = axes[row, col]
             ax.errorbar(
                 x, y / np.sqrt(np.diag(cov)), yerr=np.ones(len(x)), fmt="o", ms=3
             )
+            if version == A:
+                ax.plot(
+                    x,
+                    excess / np.sqrt(np.diag(detection_cov)),
+                    "s",
+                    ms=3,
+                    label="addB − clean / clean σ",
+                )
+                ax.legend(fontsize=8)
             ax.axhline(0, color="k", lw=0.7)
             ax.set(title=f"{version}\n{label}", ylabel="Signal / marginal σ")
             if row == 0:

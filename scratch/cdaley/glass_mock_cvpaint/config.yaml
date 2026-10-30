@@ -92,6 +92,10 @@ var_method: jackknife
 covariance:
   default_masked: true
   shape_noise: pair_counts
+  integration_reference:
+    GLASS1_blinded: GLASS1_clean
+    GLASS1_psfleak: GLASS1_clean
+    GLASS1_addB: GLASS1_clean
   pair_counts_reference:
     GLASS1_blinded: GLASS1_clean
     GLASS1_psfleak: GLASS1_clean
