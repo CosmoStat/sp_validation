@@ -1322,12 +1322,13 @@ class PseudoClMixin:
                     f"Tomographic bin IDs of version {ver} is not available."
                 )
 
-            # The tomographic part supplies the band count without requiring
-            # a separate non-tomographic measurement.
+            # Covariance blocks exist independently of measured spectra.
             a, b = tomo_bin_pairs[0]
-            n_ell = len(
-                self._pseudo_cls[ver][f"tomo_bin_{a}_tomo_bin_{b}"]["pseudo_cl"]["ELL"]
+            first_block = self._output_path_iNKA_block_cov(
+                ver, tomo_bin_quad=(a, b, a, b)
             )
+            with fits.open(first_block) as block_cov:
+                n_ell = block_cov["COVAR_EE_EE"].data.shape[0]
 
             n_spectra = len(tomo_bin_pairs)
             block_indices = list(
