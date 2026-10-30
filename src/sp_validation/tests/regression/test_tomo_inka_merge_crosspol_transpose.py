@@ -58,7 +58,7 @@ def test_tomo_inka_merge_lower_triangle_uses_transposed_qp_block(tmp_path):
 
     instance = Tiny()
     instance._pseudo_cls = {
-        "v": {"tomo_bin_all_tomo_bin_all": {"pseudo_cl": {"ELL": np.arange(n_ell)}}}
+        "v": {"tomo_bin_1_tomo_bin_1": {"pseudo_cl": {"ELL": np.arange(n_ell)}}}
     }
     for ia, ib in itertools.combinations_with_replacement(range(n_s), 2):
         # [ell_a, pol_a, ell_b, pol_b]

@@ -123,12 +123,11 @@ cv._pseudo_cls = {
         "tomo_bin_2_tomo_bin_2": {},
     }
 }
-out_path = cv._output_path(f"pseudo_cl_cat_{ver}.fits")
 tomo_bin_ids, tomo_bin_pairs = cv._get_tomo_bins(ver)
 for tomo_bin_a, tomo_bin_b in tomo_bin_pairs:
-    out_path = cv._output_path(f"pseudo_cl_cat_{ver}_{tomo_bin_a}_{tomo_bin_b}.fits")
-    cv.calculate_pseudo_cl_catalog(
-        ver, out_path, tomo_bin_a=tomo_bin_a, tomo_bin_b=tomo_bin_b
+    ell, cl, _, _ = cv.calculate_pseudo_cl_catalog(ver, tomo_bin_a, tomo_bin_b)
+    cv._pseudo_cls[ver][f"tomo_bin_{tomo_bin_a}_tomo_bin_{tomo_bin_b}"]["pseudo_cl"] = (
+        dict(zip(("ELL", "EE", "EB", "BE", "BB"), (ell, *cl)))
     )
 
 

@@ -717,32 +717,74 @@ class TestCosmologyValidation:
         for key in public:
             assert not np.allclose(blinded[key].xip, public[key].xip)
 
-    def test_a_blinded_catalogue_refuses_tomographic_pseudo_cl(self, tmp_path):
-        """Blinding covers the tomographic ξ± parts but not the pseudo-Cℓ FITS
-        tables, so a blinded catalogue's tomographic pseudo-Cℓ are refused."""
+    def test_a_blinded_catalogue_conceals_tomographic_pseudo_cl(
+        self, tmp_path, monkeypatch
+    ):
+        """Every pair is sealed with its own tracers, including on stale reuse."""
+        pytest.importorskip("smokescreen")
         from sp_validation import blinding
 
         params, version = self._write_synthetic_catalogs(
             tmp_path, n_gal=400, with_tomography=True
         )
+        self._use_tomographic_nz(params, version, tmp_path)
+
+        def theory(p, s):
+            values = []
+            for dp in s.data:
+                a, b = (s.tracers[name] for name in dp.tracers)
+                za = np.sum(a.z * a.nz) / np.sum(a.nz)
+                zb = np.sum(b.z * b.nz) / np.sum(b.nz)
+                values.append(
+                    p["S8"] * (za + zb) if dp.data_type == sacc_io.CL_EE else 0
+                )
+            return np.array(values)
+
+        monkeypatch.setattr(blinding, "shear", theory)
+
+        class Workspace:
+            def get_bandpower_windows(self):
+                return np.ones((4, 2, 4, 8))
+
+        calls = []
+
+        def measure(ver, a, b):
+            calls.append((a, b))
+            return np.array([3.0, 6.0]), np.full((4, 2), a + b), Workspace(), None
+
+        public_cv = CosmologyValidation(versions=[version], npatch=1, **params)
+        public_cv.cell_method = "catalog"
+        monkeypatch.setattr(public_cv, "calculate_pseudo_cl_catalog", measure)
+        public_cv.calculate_pseudo_cl(compute_tomography=True)
+        path = public_cv._output_path_pseudo_cl(version, tomography=True)
+        public = sacc_io.load(path)
+        assert sacc_io.stamp(public) == "none"
+
         config = yaml.safe_load(open(params["catalog_config"]))
         config["paths"]["blinds"] = str(tmp_path / "blinds")
         config[version]["blind"] = "toy"
         with open(params["catalog_config"], "w") as f:
             yaml.dump(config, f, sort_keys=False)
-        blinding.init("toy", config)
+        blind = blinding.init("toy", config)
         cv = CosmologyValidation(versions=[version], npatch=1, **params)
-
-        with pytest.raises(blinding.BlindingError, match="tomographic"):
-            cv.calculate_pseudo_cl(compute_tomography=True)
-        # Direct producers must refuse before opening even a missing catalogue.
-        cv.cc[version]["shear"]["path"] = str(tmp_path / "missing.fits")
-        out = tmp_path / "tomographic.fits"
-        with pytest.raises(blinding.BlindingError, match="tomographic"):
-            cv.calculate_pseudo_cl_map(version, 16, out, 1, 2)
-        with pytest.raises(blinding.BlindingError, match="tomographic"):
-            cv.calculate_pseudo_cl_catalog(version, out, 1, 2)
-        assert not out.exists()
+        cv.cell_method = "catalog"
+        monkeypatch.setattr(cv, "calculate_pseudo_cl_catalog", measure)
+        cv.calculate_pseudo_cl(compute_tomography=True)
+        sealed = sacc_io.load(path)
+        assert sacc_io.stamp(sealed) == "toy"
+        assert len(calls) == 6  # the public part was stale under the new blind
+        raw = public.copy()
+        del raw.metadata["blind"]
+        expected = blinding.conceal(raw, blind, theory=theory)
+        np.testing.assert_allclose(sealed.mean, expected.mean, rtol=0, atol=1e-14)
+        shifts = []
+        for bins in ((0, 0), (0, 1), (1, 1)):
+            shifted = sacc_io.get_pseudo_cl(sealed, bins)[1]
+            original = sacc_io.get_pseudo_cl(public, bins)[1]
+            shifts.append(shifted[0] - original[0])
+        assert len(set(shifts)) == 3
+        cv.calculate_pseudo_cl(compute_tomography=True)
+        assert len(calls) == 6
 
     @pytest.mark.parametrize("stamp", ["none", "toy"])
     def test_held_xi_matches_declared_blind(self, tmp_path, stamp):
