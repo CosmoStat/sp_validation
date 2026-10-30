@@ -15,9 +15,6 @@ from sp_validation.b_modes import (
     cosebis_scan_from_xi,
     find_conservative_scale_cut_key,
     log_bin_edges,
-    plot_cosebis_covariance_matrix,
-    plot_cosebis_modes,
-    plot_cosebis_scale_cut_heatmap,
     save_cosebis_results,
 )
 from sp_validation.cosmo_val.sacc_writers import cosebis_to_sacc
@@ -44,24 +41,9 @@ results = cosebis_scan_from_xi(
 fiducial_key = find_conservative_scale_cut_key(results, fiducial_scale_cut)
 fiducial = results[fiducial_key]
 
-plot_cosebis_modes(
-    fiducial,
-    version,
-    snakemake.output["figure_modes"],
-    fiducial_scale_cut=fiducial_scale_cut,
+save_cosebis_results(
+    results, snakemake.output["npz"], fiducial_scale_cut, edges, derived_from=[part]
 )
-plot_cosebis_covariance_matrix(
-    fiducial, version, "analytic", snakemake.output["figure_covariance"]
-)
-plot_cosebis_scale_cut_heatmap(
-    results,
-    edges,
-    version,
-    snakemake.output["figure_scalecut_ptes"],
-    fiducial_scale_cut=fiducial_scale_cut,
-)
-
-save_cosebis_results(results, snakemake.output["npz"], fiducial_scale_cut)
 
 s = cosebis_to_sacc({0: sacc_io.get_nz(part, 0)}, part.metadata, fiducial, fiducial_key)
 sacc_io.save(s, snakemake.output["sacc"], derived_from=[part])

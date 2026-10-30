@@ -1,12 +1,12 @@
-"""Rule cv_weights: weighted shear-weight histograms across versions.
+"""Cache weight-weighted bin sums and bin edges; no figures."""
 
-Leaf rule. Reads each version's shear weights; writes weight_hist.png at a
-fixed path under the output dir (declared output).
-"""
+import numpy as np
+from cv_runner import make_cv, verify_outputs
 
-from cv_runner import _unbuffer_streams, make_cv, verify_outputs
-
-_unbuffer_streams()
 cv = make_cv(snakemake)
-cv.plot_weights()
+data = {"versions": np.asarray(cv.versions)}
+for i, (counts, edges) in enumerate(cv.weight_histograms().values()):
+    data[f"counts_{i}"] = counts
+    data[f"edges_{i}"] = edges
+np.savez(snakemake.output.histograms, **data)
 verify_outputs(snakemake)

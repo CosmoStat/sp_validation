@@ -26,7 +26,7 @@ cov_methods = set()
 for i, version in enumerate(p["versions"]):
     row = {}
 
-    pure_eb = np.load(snakemake.input["pure_eb"][i])
+    pure_eb = sacc_io.load_npz(snakemake.input["pure_eb"][i], blind=p["blinds"][i])
     # The bins the PTE matrices are indexed on: the snapped reporting edges.
     edges = (pure_eb["left_edges"], pure_eb["right_edges"])
     for stat in ("xip_B", "xim_B", "combined"):
@@ -41,7 +41,7 @@ for i, version in enumerate(p["versions"]):
 
     # The COSEBIs .npz is written at the fiducial cut, so its PTE is the one
     # this table wants.
-    cosebis = np.load(snakemake.input["cosebis"][i])
+    cosebis = sacc_io.load_npz(snakemake.input["cosebis"][i], blind=p["blinds"][i])
     row["COSEBIS"] = float(cosebis["pte_B"])
     cov_methods.add("COSEBIs: analytic (OneCovariance ξ± through the COSEBIs kernel)")
 
