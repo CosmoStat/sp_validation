@@ -7,6 +7,7 @@ object-wise) for catalogue validation.
 
 import json
 import os
+import zlib
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -415,27 +416,41 @@ class PSFSystematicsMixin:
                 )
         return mask_star, mask_gal
 
-    def leakage_jackknife(self, ver, tomo_bin_id="all"):
+    def leakage_jackknife(self, ver, tomo_bin_id="all", measure=False):
         """Joint rho/tau jackknife measurement of one version and bin.
 
-        Read from ``rho_tau_stats/leakage_eiv_<basename>.npz`` when cached
-        with the current settings, else measured there by
-        `rho_tau.measure_leakage_jackknife` with the ``psf_leakage`` settings.
+        Read from ``rho_tau_stats/leakage_eiv_<basename>.npz``, which must have
+        been measured with the current ``psf_leakage`` settings and star and
+        galaxy selections. Only ``measure=True`` (the workflow rule
+        ``cv_leakage_jackknife``) measures it, by
+        `rho_tau.measure_leakage_jackknife`, when no matching cache exists or
+        ``force_run`` is set; otherwise a missing or stale cache raises.
         """
         cache = self.__dict__.setdefault("_leakage_jackknife", {})
         if (ver, tomo_bin_id) not in cache:
             path = self.leakage_jackknife_path(ver, tomo_bin_id)
             settings = self.psf_leakage
+            mask_star, mask_gal = self._get_rho_tau_masks(ver, tomo_bin_id)
             key = leakage_cache_key(
                 self.treecorr_config,
                 settings["npatch_fine"],
                 settings["patch_counts"],
                 settings["beta_psf_size"],
                 self._sky_mask_circles(),
+                mask_star=mask_star,
+                mask_gal=mask_gal,
             )
-            products = None if self.force_run else read_leakage_jackknife(path, key)
+            reuse = not (measure and self.force_run)
+            products = read_leakage_jackknife(path, key) if reuse else None
+            if products is None and not measure:
+                state = "is stale for" if path.exists() else "is missing for"
+                raise FileNotFoundError(
+                    f"The joint leakage measurement {path} {state} the current "
+                    "psf_leakage settings and selections. Measure it with the "
+                    "Snakemake rule cv_leakage_jackknife, or interactively with "
+                    f"cv.leakage_jackknife({ver!r}, {tomo_bin_id!r}, measure=True)."
+                )
             if products is None:
-                mask_star, mask_gal = self._get_rho_tau_masks(ver, tomo_bin_id)
                 products = measure_leakage_jackknife(
                     self.cc,
                     ver,
@@ -460,7 +475,8 @@ class PSFSystematicsMixin:
         """EIV fits of one version and bin, and samples of the fiducial fit.
 
         The fits at every ``patch_counts`` entry are also written as JSON
-        beside the measurement.
+        beside the measurement. The sample seed derives from the bin id, so
+        different bins draw independent samples.
         """
         cache = self.__dict__.setdefault("_leakage_eiv_fits", {})
         if (ver, tomo_bin_id) not in cache:
@@ -471,6 +487,7 @@ class PSFSystematicsMixin:
                 settings["fiducial_npatch"],
                 beta_psf_size=settings["beta_psf_size"],
                 nsamples=nsamples,
+                seed=zlib.crc32(str(tomo_bin_id).encode()),
             )
             summary = {
                 str(n): {
@@ -482,6 +499,11 @@ class PSFSystematicsMixin:
                         "chi2",
                         "dof",
                         "pte",
+                        "hartlap",
+                        "bfgs_success",
+                        "gradient_norm",
+                        "profile_hessian_positive",
+                        "profile_hessian_eigenvalues",
                         "residual",
                         "residual_sigma",
                     )

@@ -115,6 +115,16 @@ class _Validation(PSFSystematicsMixin):
         return os.path.join(self.output, *parts)
 
 
+def _fresh(val, **psf_leakage):
+    """A new host on the same outputs, without in-memory products."""
+    fresh = _Validation.__new__(_Validation)
+    fresh.__dict__.update(
+        {k: v for k, v in val.__dict__.items() if not k.startswith("_leakage")}
+    )
+    fresh.psf_leakage = {**val.psf_leakage, **psf_leakage}
+    return fresh
+
+
 def test_sky_mask_removes_stars_and_galaxies_inside_the_circles(tmp_path):
     val = _Validation(tmp_path)
     mask_star, mask_gal = val._get_rho_tau_masks(VERSION, "all")
@@ -134,7 +144,7 @@ def test_sky_mask_removes_stars_and_galaxies_inside_the_circles(tmp_path):
 def test_joint_vector_equals_production_rho_tau(tmp_path):
     """With exact pair counting the joint vector is production's rho/tau."""
     val = _Validation(tmp_path)
-    products = val.leakage_jackknife(VERSION)
+    products = val.leakage_jackknife(VERSION, measure=True)
     mask_star, mask_gal = val._get_rho_tau_masks(VERSION, "all")
     (tmp_path / "production").mkdir()
     rho_handler, tau_handler = rho_tau.get_rho_tau(
@@ -167,6 +177,7 @@ def test_joint_vector_equals_production_rho_tau(tmp_path):
 def test_eiv_samples_and_xi_sys_through_the_mixin(tmp_path, monkeypatch, beta_psf_size):
     val = _Validation(tmp_path, beta_psf_size=beta_psf_size)
     val.psf_error_nsamples = 50
+    val.leakage_jackknife(VERSION, measure=True)
     samples = val.get_samples(VERSION, {}, "all")
     k = 4 if beta_psf_size else 3
     assert samples.shape == (50, k)
@@ -204,10 +215,43 @@ def test_eiv_samples_and_xi_sys_through_the_mixin(tmp_path, monkeypatch, beta_ps
     monkeypatch.setattr(
         "sp_validation.cosmo_val.psf_systematics.measure_leakage_jackknife", fail
     )
-    fresh = _Validation.__new__(_Validation)
-    fresh.__dict__.update(
-        {k: v for k, v in val.__dict__.items() if not k.startswith("_leakage")}
-    )
     np.testing.assert_array_equal(
-        fresh.leakage_jackknife(VERSION)["vector"], products["vector"]
+        _fresh(val).leakage_jackknife(VERSION)["vector"], products["vector"]
     )
+
+
+def test_reading_without_a_measurement_names_the_rule(tmp_path):
+    """Only measure=True measures; every other caller needs the cache."""
+    val = _Validation(tmp_path)
+    with pytest.raises(FileNotFoundError, match="is missing.*cv_leakage_jackknife"):
+        val.leakage_jackknife(VERSION)
+    with pytest.raises(FileNotFoundError, match="cv_leakage_jackknife"):
+        val.get_samples(VERSION, {}, "all")
+    assert not val.leakage_jackknife_path(VERSION).exists()
+
+
+@pytest.mark.parametrize("change", ["sky_mask", "beta_psf_size", "selection"])
+def test_cache_is_stale_after_a_change(tmp_path, change):
+    """Sky mask, PSF-size slope and star selection each invalidate the cache."""
+    val = _Validation(tmp_path)
+    val.leakage_jackknife(VERSION, measure=True)
+    if change == "sky_mask":
+        mask = tmp_path / "wider.json"
+        mask.write_text(json.dumps({"circles": [{**CIRCLE, "radius_deg": 0.4}]}))
+        fresh = _fresh(val, sky_mask=str(mask))
+    elif change == "beta_psf_size":
+        fresh = _fresh(val, beta_psf_size=True)
+    else:
+        fresh = _fresh(val)
+        star_mask = PSFSystematicsMixin._get_star_mask
+
+        def fewer_stars(self, ver):
+            # A strip far from the masked circle, so the selection changes.
+            ra = fits.getdata(self.cc[ver]["psf"]["path"])["RA"]
+            return star_mask(self, ver) & (ra > 10.2)
+
+        fresh._get_star_mask = fewer_stars.__get__(fresh)
+    with pytest.raises(FileNotFoundError, match="is stale"):
+        fresh.leakage_jackknife(VERSION)
+    assert _fresh(val).leakage_jackknife(VERSION) is not None
+

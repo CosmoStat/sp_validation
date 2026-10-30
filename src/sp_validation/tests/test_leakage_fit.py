@@ -16,6 +16,7 @@ from sp_validation.leakage_fit import (
     ward_group_map,
     xi_psf_sys,
 )
+from sp_validation.rho_tau import get_samples_eiv
 
 TRUE_PARAMETERS = np.array([0.013, 1.28, 0.96, 1.9])
 
@@ -337,6 +338,8 @@ def test_unconstrained_parameter_is_flagged_not_given_an_error():
     assert not result["profile_hessian_positive"]
     assert result["sigma"] == [None, None, None]
     assert result["parameter_covariance"] is None
+    with pytest.raises(ValueError, match="not positive definite"):
+        get_samples_eiv({"vector": vector, "rows_200": rows}, [200], 200)
 
 
 def _production_fitter(tmp_path, rho):

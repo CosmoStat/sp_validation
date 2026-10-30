@@ -5,5 +5,5 @@ from cv_runner import _unbuffer_streams, make_cv, verify_outputs
 _unbuffer_streams()
 cv = make_cv(snakemake)
 for ver in cv.versions:
-    cv.leakage_jackknife(ver)
+    cv.leakage_jackknife(ver, measure=True)
 verify_outputs(snakemake)

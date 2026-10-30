@@ -443,16 +443,26 @@ LEAKAGE_SLOPE_AUTO = ("psf_error_size_slope", "psf_error_size_slope")
 
 
 def leakage_cache_key(
-    treecorr_config, npatch_fine, patch_counts, beta_psf_size, sky_mask
+    treecorr_config,
+    npatch_fine,
+    patch_counts,
+    beta_psf_size,
+    sky_mask,
+    mask_star=None,
+    mask_gal=None,
 ):
-    """The settings that identify a joint leakage measurement.
+    """The settings and row selections that identify a joint leakage measurement.
 
-    ``sky_mask`` is the list of circles applied to stars and galaxies, or None.
+    ``sky_mask`` is the list of circles applied to stars and galaxies, or
+    None; ``mask_star``/``mask_gal`` are the star and galaxy selections the
+    measurement uses, recorded as `selection_digest`s. TreeCorr settings the
+    measurement overrides (``var_method``, ``cross_patch_weight``) or that
+    only change round-off (``num_threads``) are left out.
     """
     config = {
         key: value
         for key, value in treecorr_config.items()
-        if key not in ("num_threads", "var_method")
+        if key not in ("num_threads", "var_method", "cross_patch_weight")
     }
     return {
         "treecorr_config": config,
@@ -460,6 +470,10 @@ def leakage_cache_key(
         "patch_counts": sorted(int(n) for n in patch_counts),
         "beta_psf_size": bool(beta_psf_size),
         "sky_mask": sky_mask,
+        "selection": {
+            "stars": selection_digest(mask_star),
+            "stars_galaxies": selection_digest(mask_star, mask_gal),
+        },
     }
 
 
@@ -486,12 +500,14 @@ def measure_leakage_jackknife(
 ):
     """Measure the rho/tau vector and its joint delete-one jackknife rows.
 
-    ``key`` (from `leakage_cache_key`) holds the settings: TreeCorr
-    configuration, ``npatch_fine``, ``patch_counts``, ``beta_psf_size`` and
-    the sky-mask circles, which ``mask_star``/``mask_gal`` must already apply.
-    Stars and galaxies are built into TreeCorr catalogues exactly as
-    `get_rho_tau` builds them (``shear_psf_leakage`` field definitions,
-    galaxy ellipticities centred on their weighted mean), sharing one set of
+    ``key`` (from `leakage_cache_key` with these masks) holds the settings:
+    TreeCorr configuration, ``npatch_fine``, ``patch_counts``,
+    ``beta_psf_size`` and the sky-mask circles, which ``mask_star``/
+    ``mask_gal`` must already apply. Stars and galaxies are built into
+    TreeCorr catalogues exactly as `get_rho_tau` builds them
+    (``shear_psf_leakage`` field definitions; galaxy ellipticities are
+    centred on the weighted mean of the full, unmasked shear catalogue before
+    ``mask_gal`` selects rows), sharing one set of
     ``npatch_fine`` k-means patch centres found on the selected stars. One
     pass of GG correlations, with 'match' cross-patch weights, measures
     rho0..rho5 and tau0, tau2, tau5 and, with ``beta_psf_size``, the
@@ -550,6 +566,11 @@ def measure_leakage_jackknife(
             mean_psf_size = float(size.mean())
             u = size / mean_psf_size - 1
             de = cats["psf_error"]
+            if u.size != de.ntot:
+                raise ValueError(
+                    f"PSF-size template has {u.size} rows but the de catalogue "
+                    f"{de.ntot}; the two must be the same selected stars"
+                )
             cats["psf_error_size_slope"] = treecorr.Catalog(
                 ra=de.ra,
                 dec=de.dec,
@@ -557,6 +578,7 @@ def measure_leakage_jackknife(
                 dec_units="rad",
                 g1=u * de.g1,
                 g2=u * de.g2,
+                w=de.w,
                 patch_centers=centres,
             )
             del size, u
@@ -646,24 +668,42 @@ def get_samples_eiv(
 ):
     """Joint EIV fits at each patch count and Gaussian samples at the fiducial.
 
-    Returns ``(samples, fits, quantiles)``: ``nsamples`` draws from
-    N(mu, Sigma_p) of the ``fiducial_npatch`` fit, the fit results keyed by
-    patch count, and the 16/50/84 per cent sample quantiles per parameter.
+    Returns ``(samples, fits, quantiles)``: ``nsamples`` draws (generator
+    ``seed``) from N(mu, Sigma_p) of the ``fiducial_npatch`` fit, the fit
+    results keyed by patch count, and the 16/50/84 per cent sample quantiles
+    per parameter. Raises if the fiducial fit's profile Hessian is not
+    positive definite, since it then has no parameter covariance.
     """
     fits = {
         int(n): fit_leakage(products, n, beta_psf_size=beta_psf_size)
         for n in patch_counts
     }
     for n, result in fits.items():
+        errors = ", ".join(
+            f"{mu:.4g} +/- {sigma:.2g}" if sigma is not None else f"{mu:.4g} +/- ?"
+            for mu, sigma in zip(result["parameters"], result["sigma"])
+        )
+        flags = [
+            message
+            for ok, message in (
+                (result["bfgs_success"], "BFGS did not converge"),
+                (result["profile_hessian_positive"], "Hessian not positive definite"),
+            )
+            if not ok
+        ]
         print(
             f"EIV leakage fit, {n} patches: chi2 = {result['chi2']:.2f}/"
-            f"{result['dof']} (PTE {result['pte']:.3g}), parameters "
-            + ", ".join(
-                f"{mu:.4g} +/- {sigma:.2g}"
-                for mu, sigma in zip(result["parameters"], result["sigma"])
-            )
+            f"{result['dof']} (PTE {result['pte']:.3g}), parameters {errors}"
+            + (f" [{'; '.join(flags)}]" if flags else "")
         )
     fiducial = fits[int(fiducial_npatch)]
+    if not fiducial["profile_hessian_positive"]:
+        raise ValueError(
+            f"The {fiducial_npatch}-patch EIV leakage fit has a profile Hessian "
+            "that is not positive definite (eigenvalues "
+            f"{fiducial['profile_hessian_eigenvalues']}); its parameters are not "
+            "constrained, so no samples can be drawn."
+        )
     samples = np.random.default_rng(seed).multivariate_normal(
         fiducial["parameters"], fiducial["parameter_covariance"], size=nsamples
     )
