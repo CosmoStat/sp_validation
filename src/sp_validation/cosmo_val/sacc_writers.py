@@ -1,14 +1,10 @@
-"""Born-as-SACC writers for the cosmo_val data products.
+"""Pair-native SACC writers and covariance helpers for cosmo_val products.
 
-A thin, pure layer between the ``cosmo_val`` mixins (which compute statistics as
-TreeCorr / NaMaster / b_modes arrays) and :mod:`sp_validation.sacc_io` (which
-knows the file layout). Each ``*_to_sacc`` function turns one already-computed
-statistic into a single-statistic SACC — a *part* — carrying that statistic's
-own covariance as its one block. :func:`assemble_analysis_sacc` rebuilds the
-single ``{version}.sacc`` analysis file from these parts.
-
-The writers accept source-bin pairs in insertion order. Covariance matrices
-are ordered like the points in their parts.
+Each writer turns a computed statistic into a single-statistic SACC part.
+Pairs are inserted in the supplied order, typically (0, 0), (0, 1), …, with
+points and covariances pair-major. Covariance helpers map OneCovariance ξ± and
+NaMaster iNKA matrices to the part's point order. :func:`assemble_analysis_sacc`
+combines the parts and their covariance blocks into an analysis file.
 """
 
 import numpy as np
@@ -202,8 +198,10 @@ def namaster_cl_covariance(s, cov_fits):
 def pseudo_cl_to_sacc(nz, metadata, pairs, covariance=None):
     """Write pair-major EE/BB/EB spectra and their bandpower windows.
 
-    Each payload contains ``ell_eff``, NaMaster's ``cl_all``, ``wsp``, and
-    optionally ``nside``. Covariance follows the pair-major insertion order.
+    Each payload contains ``ell_eff``, NaMaster's ``cl_all`` in row order
+    [EE, EB, BE, BB], and ``wsp``. Supply ``nside`` only for HEALPix-map
+    spectra, to include the squared pixel window pw²(ℓ); catalogue spectra
+    have no pixel window. Covariance follows the pair-major insertion order.
     """
     s = sio.new_sacc(nz, metadata)
     for bins, payload in pairs:
@@ -227,7 +225,12 @@ def pseudo_cl_to_sacc(nz, metadata, pairs, covariance=None):
 
 
 def cosebis_to_sacc(nz, metadata, pairs, scale_cut, covariance=None):
-    """Write each pair's COSEBIs in [En; Bn] order at the scale cut."""
+    """Write each pair's COSEBIs in [En; Bn] order at the scale cut.
+
+    Each payload contains ``En`` and ``Bn``. The supplied covariance follows
+    that pair-major order and has its E×B and B×E blocks zeroed, including
+    across pairs.
+    """
     s = sio.new_sacc(nz, metadata)
     for bins, result in pairs:
         sio.add_cosebis(s, bins, result["En"], scale_cut, Bn=result["Bn"])
@@ -237,7 +240,11 @@ def cosebis_to_sacc(nz, metadata, pairs, scale_cut, covariance=None):
 
 
 def pure_eb_to_sacc(nz, metadata, pairs, covariance=None):
-    """Write each pair's theta and six ``sacc_io.PURE_KEYS`` arrays."""
+    """Write each pair's ``theta`` and six arrays in ``PURE_KEYS`` order.
+
+    The order is ``xip_E``, ``xim_E``, ``xip_B``, ``xim_B``, ``xip_amb``,
+    ``xim_amb``; the covariance follows this order within each pair.
+    """
     s = sio.new_sacc(nz, metadata)
     for bins, eb in pairs:
         sio.add_pure_eb(s, bins, eb["theta"], **{key: eb[key] for key in sio.PURE_KEYS})
@@ -249,10 +256,14 @@ def pure_eb_to_sacc(nz, metadata, pairs, covariance=None):
 def rho_tau_to_sacc(nz, metadata, rho_stats, tau_by_bin, tau_cov_th_by_bin=None):
     """One ρ/τ part: ρ_0…ρ_5 autos and τ_0/τ_2/τ_5 leakage.
 
-    ``rho_stats`` and the tables in ``tau_by_bin`` come from the
-    ``shear_psf_leakage`` handlers. ρ carries a variance diagonal. Each τ block
-    has a variance diagonal, with its optional CovTauTh matrix scattered into
-    its plus rows. Cross-bin covariances are approximated as zero.
+    ``rho_stats`` contains ``theta``, ``rho_{k}_p``, ``rho_{k}_m``,
+    ``varrho_{k}_p`` and ``varrho_{k}_m`` for k=0,…,5. Each table in
+    ``tau_by_bin`` contains ``theta``, ``tau_{k}_p``, ``tau_{k}_m``,
+    ``vartau_{k}_p`` and ``vartau_{k}_m`` for k=0,2,5.
+    ρ carries a variance diagonal. Each τ block has a variance diagonal,
+    with its optional CovTauTh matrix scattered into its plus rows. CovTauTh
+    has shape (3·nθ, 3·nθ), ordered k-major (0, 2, 5), plus only.
+    Cross-bin covariances are approximated as zero.
     """
     s = sio.new_sacc(nz, metadata)
     theta_rho = np.asarray(rho_stats["theta"])
