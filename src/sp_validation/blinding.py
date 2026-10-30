@@ -3,8 +3,10 @@
 A blind is a named secret, ``<paths.blinds>/<name>.blind.json`` holding a
 seed, the envelope the hidden point is drawn in and the fiducial point. It is
 drawn once, ``python -m sp_validation.blinding init <name>``, and never
-committed (``*.blind.json`` is gitignored). Each catalogue entry of the
-catalogue config declares ``blind: none`` (public) or ``blind: <name>``
+committed (``*.blind.json`` is gitignored). The private
+``git@github.com:UNIONS-WL/blinds.git`` repository is cloned on each machine to
+``~/.sp_validation/blinds`` (mode 0700), the catalogue config's ``paths.blinds``.
+Each catalogue entry declares ``blind: none`` (public) or ``blind: <name>``
 (:func:`blind_of`).
 
 :func:`conceal` adds the blind's shift, t(hidden) − t(fiducial), to every row

@@ -100,8 +100,12 @@ def test_tomographic_jackknife_matches_independent_pair_order(tmp_path):
         )
     pairs = [(i, j) for i in range(3) for j in range(i, 3)][::-1]
     correlations = []
+    patched_config = {**cv._binning(), "var_method": "jackknife"}
+    # The covariance pass uses TreeCorr's default tolerance, independently of
+    # the explicit bin_slop used for the full-sample means.
+    patched_config.pop("bin_slop", None)
     for i, j in pairs:
-        gg = treecorr.GGCorrelation({**cv._binning(), "var_method": "jackknife"})
+        gg = treecorr.GGCorrelation(patched_config)
         gg.process(catalogs[i], cat2=catalogs[j] if i != j else None, num_threads=1)
         correlations.append(gg)
     independent = treecorr.estimate_multi_cov(correlations, "jackknife")

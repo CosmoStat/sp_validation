@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import treecorr
 
+from sp_validation.correlation import process_gg
 from sp_validation.statistics import jackknife_patch_centers
 
 from .. import sacc_io
@@ -59,6 +60,10 @@ class RealSpaceMixin:
             **treecorr_config: Overrides of the instance's ``treecorr_config``,
                 e.g. ``min_sep=1``.
 
+        Means use an unpatched pass with the configured ``bin_slop``.
+        Patched covariance uses TreeCorr's default tolerance.
+        No unsealed text cache is written; figures reuse the sealed SACC part.
+
         Returns:
             dict: ``"tomo_bin_{b1}_tomo_bin_{b2}"`` → the part's
             :func:`~sp_validation.sacc_io.xi_correlation` view of that pair,
@@ -96,8 +101,6 @@ class RealSpaceMixin:
 
             measured = []
             for bin1, bin2 in tomo_bin_pairs:
-                gg = treecorr.GGCorrelation(gg_config)
-
                 cat_gal1 = self._bin_catalog(cols, bin1, npatch, patch_centers)
                 cat_gal2 = (
                     self._bin_catalog(cols, bin2, npatch, patch_centers)
@@ -105,7 +108,9 @@ class RealSpaceMixin:
                     else None
                 )
 
-                gg.process(cat_gal1, cat2=cat_gal2)
+                # Unpatched means; patched covariance at TreeCorr's default
+                # tolerance (sp_validation.correlation.process_gg).
+                gg = process_gg(gg_config, cat_gal1, cat_gal2)
                 measured.append(((index[bin1], index[bin2]), gg))
 
             nz = self.sacc_nz(ver, tomography=compute_tomography)
@@ -126,7 +131,10 @@ class RealSpaceMixin:
             else:
                 # [ξ+; ξ−] per correlation, in list order: the part's pair-major
                 # order, with the cross-pair covariance a per-pair gg.cov drops.
-                covariance = treecorr.estimate_multi_cov(correlations, "jackknife")
+                patched = [
+                    getattr(gg, "_patched_covariance_source", gg) for gg in correlations
+                ]
+                covariance = treecorr.estimate_multi_cov(patched, "jackknife")
             s = xi_pairs_to_sacc(
                 nz,
                 {**self.sacc_metadata(ver), "npatch": npatch},
