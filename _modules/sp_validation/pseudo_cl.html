@@ -891,483 +891,490 @@
 </span><span id="line-626">    <span class="n">pol_factor</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
 </span><span id="line-627">    <span class="n">return_wsp</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
 </span><span id="line-628">    <span class="n">same_bin</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-</span><span id="line-629"><span class="p">):</span>
-</span><span id="line-630"><span class="w">    </span><span class="sd">"""Create a NaMaster field and workspace from the input catalog.</span>
-</span><span id="line-631">
-</span><span id="line-632"><span class="sd">    If the second catalog is provided, the mixing matrix is computed between the two fields.</span>
-</span><span id="line-633">
-</span><span id="line-634"><span class="sd">    Parameters</span>
-</span><span id="line-635"><span class="sd">    ----------</span>
-</span><span id="line-636"><span class="sd">    b : nmt.NmtBin</span>
-</span><span id="line-637"><span class="sd">        NaMaster binning object.</span>
-</span><span id="line-638"><span class="sd">    ra_a : np.ndarray</span>
-</span><span id="line-639"><span class="sd">        Right ascension of sources in the first catalog.</span>
-</span><span id="line-640"><span class="sd">    dec_a : np.ndarray</span>
-</span><span id="line-641"><span class="sd">        Declination of sources in the first catalog.</span>
-</span><span id="line-642"><span class="sd">    e1_a : np.ndarray</span>
-</span><span id="line-643"><span class="sd">        E1 shear component of sources in the first catalog.</span>
-</span><span id="line-644"><span class="sd">    e2_a : np.ndarray</span>
-</span><span id="line-645"><span class="sd">        E2 shear component of sources in the first catalog.</span>
-</span><span id="line-646"><span class="sd">    w_a : np.ndarray</span>
-</span><span id="line-647"><span class="sd">        Weights of sources in the first catalog.</span>
-</span><span id="line-648"><span class="sd">    ra_b : np.ndarray, optional</span>
-</span><span id="line-649"><span class="sd">        Right ascension of sources in the second catalog.</span>
-</span><span id="line-650"><span class="sd">    dec_b : np.ndarray, optional</span>
-</span><span id="line-651"><span class="sd">        Declination of sources in the second catalog.</span>
-</span><span id="line-652"><span class="sd">    e1_b : np.ndarray, optional</span>
-</span><span id="line-653"><span class="sd">        E1 shear component of sources in the second catalog.</span>
-</span><span id="line-654"><span class="sd">    e2_b : np.ndarray, optional</span>
-</span><span id="line-655"><span class="sd">        E2 shear component of sources in the second catalog.</span>
-</span><span id="line-656"><span class="sd">    w_b : np.ndarray, optional</span>
-</span><span id="line-657"><span class="sd">        Weights of sources in the second catalog.</span>
-</span><span id="line-658"><span class="sd">    pol_factor : float, optional</span>
-</span><span id="line-659"><span class="sd">        Polarization factor to apply to the E2 component.</span>
-</span><span id="line-660"><span class="sd">    return_wsp : bool, optional</span>
-</span><span id="line-661"><span class="sd">        If True, return the NaMaster workspace object containing the mixing matrix.</span>
-</span><span id="line-662">
-</span><span id="line-663"><span class="sd">    Returns</span>
-</span><span id="line-664"><span class="sd">    -------</span>
-</span><span id="line-665"><span class="sd">    field_a : nmt.NmtFieldCatalog</span>
-</span><span id="line-666"><span class="sd">        NaMaster field object for the first catalog.</span>
-</span><span id="line-667"><span class="sd">    field_b : nmt.NmtFieldCatalog</span>
-</span><span id="line-668"><span class="sd">        NaMaster field object for the second catalog (if provided, same as the first catalog otherwise).</span>
-</span><span id="line-669"><span class="sd">    wsp : nmt.NmtWorkspace</span>
-</span><span id="line-670"><span class="sd">        NaMaster workspace object containing the mixing matrix.</span>
-</span><span id="line-671">
-</span><span id="line-672"><span class="sd">    """</span>
-</span><span id="line-673">    <span class="n">lmax</span> <span class="o">=</span> <span class="n">b</span><span class="o">.</span><span class="n">lmax</span>
-</span><span id="line-674">    <span class="c1"># Get field for input catalog a</span>
-</span><span id="line-675">    <span class="n">field_a</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtFieldCatalog</span><span class="p">(</span>
-</span><span id="line-676">        <span class="n">positions</span><span class="o">=</span><span class="p">[</span><span class="n">ra_a</span><span class="p">,</span> <span class="n">dec_a</span><span class="p">],</span>
-</span><span id="line-677">        <span class="n">weights</span><span class="o">=</span><span class="n">w_a</span><span class="p">,</span>
-</span><span id="line-678">        <span class="n">field</span><span class="o">=</span><span class="p">[</span><span class="n">e1_a</span><span class="p">,</span> <span class="n">pol_factor</span> <span class="o">*</span> <span class="n">e2_a</span><span class="p">],</span>
-</span><span id="line-679">        <span class="n">lmax</span><span class="o">=</span><span class="n">lmax</span><span class="p">,</span>
-</span><span id="line-680">        <span class="n">lmax_mask</span><span class="o">=</span><span class="n">lmax</span><span class="p">,</span>
-</span><span id="line-681">        <span class="n">spin</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-</span><span id="line-682">        <span class="n">lonlat</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-</span><span id="line-683">    <span class="p">)</span>
-</span><span id="line-684">
-</span><span id="line-685">    <span class="k">if</span> <span class="p">(</span>
-</span><span id="line-686">        <span class="n">ra_b</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-</span><span id="line-687">        <span class="ow">and</span> <span class="n">dec_b</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-</span><span id="line-688">        <span class="ow">and</span> <span class="n">e1_b</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-</span><span id="line-689">        <span class="ow">and</span> <span class="n">e2_b</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-</span><span id="line-690">        <span class="ow">and</span> <span class="n">w_b</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-</span><span id="line-691">        <span class="ow">and</span> <span class="ow">not</span> <span class="n">same_bin</span>
-</span><span id="line-692">    <span class="p">):</span>
-</span><span id="line-693">        <span class="n">field_b</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtFieldCatalog</span><span class="p">(</span>
-</span><span id="line-694">            <span class="n">positions</span><span class="o">=</span><span class="p">[</span><span class="n">ra_b</span><span class="p">,</span> <span class="n">dec_b</span><span class="p">],</span>
-</span><span id="line-695">            <span class="n">weights</span><span class="o">=</span><span class="n">w_b</span><span class="p">,</span>
-</span><span id="line-696">            <span class="n">field</span><span class="o">=</span><span class="p">[</span><span class="n">e1_b</span><span class="p">,</span> <span class="n">pol_factor</span> <span class="o">*</span> <span class="n">e2_b</span><span class="p">],</span>
-</span><span id="line-697">            <span class="n">lmax</span><span class="o">=</span><span class="n">lmax</span><span class="p">,</span>
-</span><span id="line-698">            <span class="n">lmax_mask</span><span class="o">=</span><span class="n">lmax</span><span class="p">,</span>
-</span><span id="line-699">            <span class="n">spin</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-</span><span id="line-700">            <span class="n">lonlat</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-</span><span id="line-701">        <span class="p">)</span>
-</span><span id="line-702">    <span class="k">else</span><span class="p">:</span>
-</span><span id="line-703">        <span class="n">field_b</span> <span class="o">=</span> <span class="n">field_a</span>
-</span><span id="line-704">
-</span><span id="line-705">    <span class="k">if</span> <span class="n">return_wsp</span><span class="p">:</span>
-</span><span id="line-706">        <span class="n">wsp</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtWorkspace</span><span class="o">.</span><span class="n">from_fields</span><span class="p">(</span><span class="n">field_a</span><span class="p">,</span> <span class="n">field_b</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
-</span><span id="line-707">        <span class="k">return</span> <span class="n">field_a</span><span class="p">,</span> <span class="n">field_b</span><span class="p">,</span> <span class="n">wsp</span>
-</span><span id="line-708">    <span class="k">else</span><span class="p">:</span>
-</span><span id="line-709">        <span class="k">return</span> <span class="n">field_a</span><span class="p">,</span> <span class="n">field_b</span><span class="p">,</span> <span class="kc">None</span></div>
+</span><span id="line-629">    <span class="n">retain_catalog</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+</span><span id="line-630"><span class="p">):</span>
+</span><span id="line-631"><span class="w">    </span><span class="sd">"""Create a NaMaster field and workspace from the input catalog.</span>
+</span><span id="line-632">
+</span><span id="line-633"><span class="sd">    If the second catalog is provided, the mixing matrix is computed between the two fields.</span>
+</span><span id="line-634">
+</span><span id="line-635"><span class="sd">    Parameters</span>
+</span><span id="line-636"><span class="sd">    ----------</span>
+</span><span id="line-637"><span class="sd">    b : nmt.NmtBin</span>
+</span><span id="line-638"><span class="sd">        NaMaster binning object.</span>
+</span><span id="line-639"><span class="sd">    ra_a : np.ndarray</span>
+</span><span id="line-640"><span class="sd">        Right ascension of sources in the first catalog.</span>
+</span><span id="line-641"><span class="sd">    dec_a : np.ndarray</span>
+</span><span id="line-642"><span class="sd">        Declination of sources in the first catalog.</span>
+</span><span id="line-643"><span class="sd">    e1_a : np.ndarray</span>
+</span><span id="line-644"><span class="sd">        E1 shear component of sources in the first catalog.</span>
+</span><span id="line-645"><span class="sd">    e2_a : np.ndarray</span>
+</span><span id="line-646"><span class="sd">        E2 shear component of sources in the first catalog.</span>
+</span><span id="line-647"><span class="sd">    w_a : np.ndarray</span>
+</span><span id="line-648"><span class="sd">        Weights of sources in the first catalog.</span>
+</span><span id="line-649"><span class="sd">    ra_b : np.ndarray, optional</span>
+</span><span id="line-650"><span class="sd">        Right ascension of sources in the second catalog.</span>
+</span><span id="line-651"><span class="sd">    dec_b : np.ndarray, optional</span>
+</span><span id="line-652"><span class="sd">        Declination of sources in the second catalog.</span>
+</span><span id="line-653"><span class="sd">    e1_b : np.ndarray, optional</span>
+</span><span id="line-654"><span class="sd">        E1 shear component of sources in the second catalog.</span>
+</span><span id="line-655"><span class="sd">    e2_b : np.ndarray, optional</span>
+</span><span id="line-656"><span class="sd">        E2 shear component of sources in the second catalog.</span>
+</span><span id="line-657"><span class="sd">    w_b : np.ndarray, optional</span>
+</span><span id="line-658"><span class="sd">        Weights of sources in the second catalog.</span>
+</span><span id="line-659"><span class="sd">    pol_factor : float, optional</span>
+</span><span id="line-660"><span class="sd">        Polarization factor to apply to the E2 component.</span>
+</span><span id="line-661"><span class="sd">    return_wsp : bool, optional</span>
+</span><span id="line-662"><span class="sd">        If True, return the NaMaster workspace object containing the mixing matrix.</span>
+</span><span id="line-663">
+</span><span id="line-664"><span class="sd">    Returns</span>
+</span><span id="line-665"><span class="sd">    -------</span>
+</span><span id="line-666"><span class="sd">    field_a : nmt.NmtFieldCatalog</span>
+</span><span id="line-667"><span class="sd">        NaMaster field object for the first catalog.</span>
+</span><span id="line-668"><span class="sd">    field_b : nmt.NmtFieldCatalog</span>
+</span><span id="line-669"><span class="sd">        NaMaster field object for the second catalog (if provided, same as the first catalog otherwise).</span>
+</span><span id="line-670"><span class="sd">    wsp : nmt.NmtWorkspace</span>
+</span><span id="line-671"><span class="sd">        NaMaster workspace object containing the mixing matrix.</span>
+</span><span id="line-672">
+</span><span id="line-673"><span class="sd">    """</span>
+</span><span id="line-674">    <span class="n">lmax</span> <span class="o">=</span> <span class="n">b</span><span class="o">.</span><span class="n">lmax</span>
+</span><span id="line-675">    <span class="c1"># Get field for input catalog a</span>
+</span><span id="line-676">    <span class="n">field_a</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtFieldCatalog</span><span class="p">(</span>
+</span><span id="line-677">        <span class="n">positions</span><span class="o">=</span><span class="p">[</span><span class="n">ra_a</span><span class="p">,</span> <span class="n">dec_a</span><span class="p">],</span>
+</span><span id="line-678">        <span class="n">weights</span><span class="o">=</span><span class="n">w_a</span><span class="p">,</span>
+</span><span id="line-679">        <span class="n">field</span><span class="o">=</span><span class="p">[</span><span class="n">e1_a</span><span class="p">,</span> <span class="n">pol_factor</span> <span class="o">*</span> <span class="n">e2_a</span><span class="p">],</span>
+</span><span id="line-680">        <span class="n">lmax</span><span class="o">=</span><span class="n">lmax</span><span class="p">,</span>
+</span><span id="line-681">        <span class="n">lmax_mask</span><span class="o">=</span><span class="n">lmax</span><span class="p">,</span>
+</span><span id="line-682">        <span class="n">spin</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+</span><span id="line-683">        <span class="n">lonlat</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="line-684">        <span class="n">retain_catalog</span><span class="o">=</span><span class="n">retain_catalog</span><span class="p">,</span>
+</span><span id="line-685">    <span class="p">)</span>
+</span><span id="line-686">
+</span><span id="line-687">    <span class="k">if</span> <span class="p">(</span>
+</span><span id="line-688">        <span class="n">ra_b</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+</span><span id="line-689">        <span class="ow">and</span> <span class="n">dec_b</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+</span><span id="line-690">        <span class="ow">and</span> <span class="n">e1_b</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+</span><span id="line-691">        <span class="ow">and</span> <span class="n">e2_b</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+</span><span id="line-692">        <span class="ow">and</span> <span class="n">w_b</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+</span><span id="line-693">        <span class="ow">and</span> <span class="ow">not</span> <span class="n">same_bin</span>
+</span><span id="line-694">    <span class="p">):</span>
+</span><span id="line-695">        <span class="n">field_b</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtFieldCatalog</span><span class="p">(</span>
+</span><span id="line-696">            <span class="n">positions</span><span class="o">=</span><span class="p">[</span><span class="n">ra_b</span><span class="p">,</span> <span class="n">dec_b</span><span class="p">],</span>
+</span><span id="line-697">            <span class="n">weights</span><span class="o">=</span><span class="n">w_b</span><span class="p">,</span>
+</span><span id="line-698">            <span class="n">field</span><span class="o">=</span><span class="p">[</span><span class="n">e1_b</span><span class="p">,</span> <span class="n">pol_factor</span> <span class="o">*</span> <span class="n">e2_b</span><span class="p">],</span>
+</span><span id="line-699">            <span class="n">lmax</span><span class="o">=</span><span class="n">lmax</span><span class="p">,</span>
+</span><span id="line-700">            <span class="n">lmax_mask</span><span class="o">=</span><span class="n">lmax</span><span class="p">,</span>
+</span><span id="line-701">            <span class="n">spin</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+</span><span id="line-702">            <span class="n">lonlat</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="line-703">            <span class="n">retain_catalog</span><span class="o">=</span><span class="n">retain_catalog</span><span class="p">,</span>
+</span><span id="line-704">        <span class="p">)</span>
+</span><span id="line-705">    <span class="k">else</span><span class="p">:</span>
+</span><span id="line-706">        <span class="n">field_b</span> <span class="o">=</span> <span class="n">field_a</span>
+</span><span id="line-707">
+</span><span id="line-708">    <span class="k">if</span> <span class="n">return_wsp</span><span class="p">:</span>
+</span><span id="line-709">        <span class="n">wsp</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtWorkspace</span><span class="o">.</span><span class="n">from_fields</span><span class="p">(</span><span class="n">field_a</span><span class="p">,</span> <span class="n">field_b</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+</span><span id="line-710">        <span class="k">return</span> <span class="n">field_a</span><span class="p">,</span> <span class="n">field_b</span><span class="p">,</span> <span class="n">wsp</span>
+</span><span id="line-711">    <span class="k">else</span><span class="p">:</span>
+</span><span id="line-712">        <span class="k">return</span> <span class="n">field_a</span><span class="p">,</span> <span class="n">field_b</span><span class="p">,</span> <span class="kc">None</span></div>
 
-</span><span id="line-710">
-</span><span id="line-711">
+</span><span id="line-713">
+</span><span id="line-714">
 <div class="viewcode-block" id="compute_cl_from_field_and_workspace">
 <a class="viewcode-back" href="../../sp_validation.pseudo_cl.html#sp_validation.pseudo_cl.compute_cl_from_field_and_workspace">[docs]</a>
-</span><span id="line-712"><span class="k">def</span><span class="w"> </span><span class="nf">compute_cl_from_field_and_workspace</span><span class="p">(</span><span class="n">field_a</span><span class="p">,</span> <span class="n">field_b</span><span class="p">,</span> <span class="n">wsp</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
-</span><span id="line-713"><span class="w">    </span><span class="sd">"""Compute the angular power spectrum from the input NaMaster field and workspace</span>
-</span><span id="line-714">
-</span><span id="line-715"><span class="sd">    Parameters</span>
-</span><span id="line-716"><span class="sd">    ----------</span>
-</span><span id="line-717"><span class="sd">    field_a : nmt.NmtField</span>
-</span><span id="line-718"><span class="sd">        NaMaster field object for the first catalog.</span>
-</span><span id="line-719"><span class="sd">    field_b : nmt.NmtField</span>
-</span><span id="line-720"><span class="sd">        NaMaster field object for the second catalog.</span>
-</span><span id="line-721"><span class="sd">    wsp : nmt.NmtWorkspace</span>
-</span><span id="line-722"><span class="sd">        NaMaster workspace object containing the mixing matrix.</span>
-</span><span id="line-723"><span class="sd">    b : nmt.NmtBin</span>
-</span><span id="line-724"><span class="sd">        NaMaster binning object.</span>
-</span><span id="line-725">
-</span><span id="line-726"><span class="sd">    Returns</span>
-</span><span id="line-727"><span class="sd">    -------</span>
-</span><span id="line-728"><span class="sd">    cl_coupled : np.ndarray</span>
-</span><span id="line-729"><span class="sd">        Coupled angular power spectrum.</span>
-</span><span id="line-730"><span class="sd">    cl_decoupled : np.ndarray</span>
-</span><span id="line-731"><span class="sd">        Decoupled angular power spectrum.</span>
-</span><span id="line-732"><span class="sd">    """</span>
-</span><span id="line-733">    <span class="n">cl_coupled</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">compute_coupled_cell</span><span class="p">(</span><span class="n">field_a</span><span class="p">,</span> <span class="n">field_b</span><span class="p">)</span>
-</span><span id="line-734">    <span class="n">cl_decoupled</span> <span class="o">=</span> <span class="n">wsp</span><span class="o">.</span><span class="n">decouple_cell</span><span class="p">(</span><span class="n">cl_coupled</span><span class="p">)</span>
-</span><span id="line-735">
-</span><span id="line-736">    <span class="k">return</span> <span class="n">cl_coupled</span><span class="p">,</span> <span class="n">cl_decoupled</span></div>
-
-</span><span id="line-737">
+</span><span id="line-715"><span class="k">def</span><span class="w"> </span><span class="nf">compute_cl_from_field_and_workspace</span><span class="p">(</span><span class="n">field_a</span><span class="p">,</span> <span class="n">field_b</span><span class="p">,</span> <span class="n">wsp</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+</span><span id="line-716"><span class="w">    </span><span class="sd">"""Compute the angular power spectrum from the input NaMaster field and workspace</span>
+</span><span id="line-717">
+</span><span id="line-718"><span class="sd">    Parameters</span>
+</span><span id="line-719"><span class="sd">    ----------</span>
+</span><span id="line-720"><span class="sd">    field_a : nmt.NmtField</span>
+</span><span id="line-721"><span class="sd">        NaMaster field object for the first catalog.</span>
+</span><span id="line-722"><span class="sd">    field_b : nmt.NmtField</span>
+</span><span id="line-723"><span class="sd">        NaMaster field object for the second catalog.</span>
+</span><span id="line-724"><span class="sd">    wsp : nmt.NmtWorkspace</span>
+</span><span id="line-725"><span class="sd">        NaMaster workspace object containing the mixing matrix.</span>
+</span><span id="line-726"><span class="sd">    b : nmt.NmtBin</span>
+</span><span id="line-727"><span class="sd">        NaMaster binning object.</span>
+</span><span id="line-728">
+</span><span id="line-729"><span class="sd">    Returns</span>
+</span><span id="line-730"><span class="sd">    -------</span>
+</span><span id="line-731"><span class="sd">    cl_coupled : np.ndarray</span>
+</span><span id="line-732"><span class="sd">        Coupled angular power spectrum.</span>
+</span><span id="line-733"><span class="sd">    cl_decoupled : np.ndarray</span>
+</span><span id="line-734"><span class="sd">        Decoupled angular power spectrum.</span>
+</span><span id="line-735"><span class="sd">    """</span>
+</span><span id="line-736">    <span class="n">cl_coupled</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">compute_coupled_cell</span><span class="p">(</span><span class="n">field_a</span><span class="p">,</span> <span class="n">field_b</span><span class="p">)</span>
+</span><span id="line-737">    <span class="n">cl_decoupled</span> <span class="o">=</span> <span class="n">wsp</span><span class="o">.</span><span class="n">decouple_cell</span><span class="p">(</span><span class="n">cl_coupled</span><span class="p">)</span>
 </span><span id="line-738">
+</span><span id="line-739">    <span class="k">return</span> <span class="n">cl_coupled</span><span class="p">,</span> <span class="n">cl_decoupled</span></div>
+
+</span><span id="line-740">
+</span><span id="line-741">
 <div class="viewcode-block" id="get_pseudo_cls_map">
 <a class="viewcode-back" href="../../sp_validation.pseudo_cl.html#sp_validation.pseudo_cl.get_pseudo_cls_map">[docs]</a>
-</span><span id="line-739"><span class="k">def</span><span class="w"> </span><span class="nf">get_pseudo_cls_map</span><span class="p">(</span>
-</span><span id="line-740">    <span class="n">shear_map_a</span><span class="p">,</span>
-</span><span id="line-741">    <span class="n">mask_a</span><span class="p">,</span>
-</span><span id="line-742">    <span class="n">nside</span><span class="p">,</span>
-</span><span id="line-743">    <span class="n">binning</span><span class="p">,</span>
-</span><span id="line-744">    <span class="o">*</span><span class="p">,</span>
-</span><span id="line-745">    <span class="n">shear_map_b</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-</span><span id="line-746">    <span class="n">mask_b</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-</span><span id="line-747">    <span class="n">pol_factor</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
-</span><span id="line-748">    <span class="n">wsp</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-</span><span id="line-749">    <span class="n">ell_step</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
-</span><span id="line-750">    <span class="n">n_ell_bins</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span>
-</span><span id="line-751">    <span class="n">power</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
-</span><span id="line-752"><span class="p">):</span>
-</span><span id="line-753"><span class="w">    </span><span class="sd">"""Map-based pseudo-Cl for a complex shear map.</span>
-</span><span id="line-754">
-</span><span id="line-755"><span class="sd">    Parameters</span>
-</span><span id="line-756"><span class="sd">    ----------</span>
-</span><span id="line-757"><span class="sd">    shear_map_a : np.ndarray</span>
-</span><span id="line-758"><span class="sd">        Complex shear map (``e1 + 1j * e2``).</span>
-</span><span id="line-759"><span class="sd">    mask_a : np.ndarray</span>
-</span><span id="line-760"><span class="sd">        Field mask (the galaxy number-density map).</span>
-</span><span id="line-761"><span class="sd">    nside : int</span>
-</span><span id="line-762"><span class="sd">        HEALPix resolution; fixes the harmonic geometry.</span>
-</span><span id="line-763"><span class="sd">    binning : str</span>
-</span><span id="line-764"><span class="sd">        Binning scheme passed to :func:`make_namaster_bin`.</span>
-</span><span id="line-765"><span class="sd">    shear_map_b : np.ndarray, optional</span>
-</span><span id="line-766"><span class="sd">        Complex shear map for the second field (``e1 + 1j * e2``).</span>
-</span><span id="line-767"><span class="sd">    mask_b : np.ndarray, optional</span>
-</span><span id="line-768"><span class="sd">        Field mask for the second field (the galaxy number-density map).</span>
-</span><span id="line-769"><span class="sd">    pol_factor : float, optional</span>
-</span><span id="line-770"><span class="sd">        Polarization factor to apply to the E2 component.</span>
-</span><span id="line-771"><span class="sd">    wsp : nmt.NmtWorkspace, optional</span>
-</span><span id="line-772"><span class="sd">        Reuse a coupling workspace; built from the field if ``None``.</span>
-</span><span id="line-773"><span class="sd">    ell_step, n_ell_bins, power : optional</span>
-</span><span id="line-774"><span class="sd">        Binning-scheme parameters forwarded to :func:`make_namaster_bin`.</span>
-</span><span id="line-775">
-</span><span id="line-776"><span class="sd">    Returns</span>
-</span><span id="line-777"><span class="sd">    -------</span>
-</span><span id="line-778"><span class="sd">    ell_eff : np.ndarray</span>
-</span><span id="line-779"><span class="sd">        Effective multipoles of the bandpowers.</span>
-</span><span id="line-780"><span class="sd">    cl_all : np.ndarray</span>
-</span><span id="line-781"><span class="sd">        Decoupled EE/EB/BE/BB spectra, shape ``(4, n_bands)``.</span>
-</span><span id="line-782"><span class="sd">    wsp : nmt.NmtWorkspace</span>
-</span><span id="line-783"><span class="sd">        The coupling workspace (newly built or the one passed in).</span>
-</span><span id="line-784"><span class="sd">    """</span>
-</span><span id="line-785">    <span class="c1"># First do some assertion checks</span>
-</span><span id="line-786">    <span class="k">if</span> <span class="n">shear_map_b</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-787">        <span class="k">assert</span> <span class="n">mask_b</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">"mask_b must be provided if shear_map_b is provided"</span>
-</span><span id="line-788">        <span class="k">assert</span> <span class="n">shear_map_a</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="n">shear_map_b</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="p">(</span>
-</span><span id="line-789">            <span class="s2">"shear_map_a and shear_map_b must have the same shape"</span>
-</span><span id="line-790">        <span class="p">)</span>
-</span><span id="line-791">        <span class="k">assert</span> <span class="n">mask_a</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="n">mask_b</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="p">(</span>
-</span><span id="line-792">            <span class="s2">"mask_a and mask_b must have the same shape"</span>
+</span><span id="line-742"><span class="k">def</span><span class="w"> </span><span class="nf">get_pseudo_cls_map</span><span class="p">(</span>
+</span><span id="line-743">    <span class="n">shear_map_a</span><span class="p">,</span>
+</span><span id="line-744">    <span class="n">mask_a</span><span class="p">,</span>
+</span><span id="line-745">    <span class="n">nside</span><span class="p">,</span>
+</span><span id="line-746">    <span class="n">binning</span><span class="p">,</span>
+</span><span id="line-747">    <span class="o">*</span><span class="p">,</span>
+</span><span id="line-748">    <span class="n">shear_map_b</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-749">    <span class="n">mask_b</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-750">    <span class="n">pol_factor</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+</span><span id="line-751">    <span class="n">wsp</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-752">    <span class="n">ell_step</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+</span><span id="line-753">    <span class="n">n_ell_bins</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span>
+</span><span id="line-754">    <span class="n">power</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+</span><span id="line-755"><span class="p">):</span>
+</span><span id="line-756"><span class="w">    </span><span class="sd">"""Map-based pseudo-Cl for a complex shear map.</span>
+</span><span id="line-757">
+</span><span id="line-758"><span class="sd">    Parameters</span>
+</span><span id="line-759"><span class="sd">    ----------</span>
+</span><span id="line-760"><span class="sd">    shear_map_a : np.ndarray</span>
+</span><span id="line-761"><span class="sd">        Complex shear map (``e1 + 1j * e2``).</span>
+</span><span id="line-762"><span class="sd">    mask_a : np.ndarray</span>
+</span><span id="line-763"><span class="sd">        Field mask (the galaxy number-density map).</span>
+</span><span id="line-764"><span class="sd">    nside : int</span>
+</span><span id="line-765"><span class="sd">        HEALPix resolution; fixes the harmonic geometry.</span>
+</span><span id="line-766"><span class="sd">    binning : str</span>
+</span><span id="line-767"><span class="sd">        Binning scheme passed to :func:`make_namaster_bin`.</span>
+</span><span id="line-768"><span class="sd">    shear_map_b : np.ndarray, optional</span>
+</span><span id="line-769"><span class="sd">        Complex shear map for the second field (``e1 + 1j * e2``).</span>
+</span><span id="line-770"><span class="sd">    mask_b : np.ndarray, optional</span>
+</span><span id="line-771"><span class="sd">        Field mask for the second field (the galaxy number-density map).</span>
+</span><span id="line-772"><span class="sd">    pol_factor : float, optional</span>
+</span><span id="line-773"><span class="sd">        Polarization factor to apply to the E2 component.</span>
+</span><span id="line-774"><span class="sd">    wsp : nmt.NmtWorkspace, optional</span>
+</span><span id="line-775"><span class="sd">        Reuse a coupling workspace; built from the field if ``None``.</span>
+</span><span id="line-776"><span class="sd">    ell_step, n_ell_bins, power : optional</span>
+</span><span id="line-777"><span class="sd">        Binning-scheme parameters forwarded to :func:`make_namaster_bin`.</span>
+</span><span id="line-778">
+</span><span id="line-779"><span class="sd">    Returns</span>
+</span><span id="line-780"><span class="sd">    -------</span>
+</span><span id="line-781"><span class="sd">    ell_eff : np.ndarray</span>
+</span><span id="line-782"><span class="sd">        Effective multipoles of the bandpowers.</span>
+</span><span id="line-783"><span class="sd">    cl_all : np.ndarray</span>
+</span><span id="line-784"><span class="sd">        Decoupled EE/EB/BE/BB spectra, shape ``(4, n_bands)``.</span>
+</span><span id="line-785"><span class="sd">    wsp : nmt.NmtWorkspace</span>
+</span><span id="line-786"><span class="sd">        The coupling workspace (newly built or the one passed in).</span>
+</span><span id="line-787"><span class="sd">    """</span>
+</span><span id="line-788">    <span class="c1"># First do some assertion checks</span>
+</span><span id="line-789">    <span class="k">if</span> <span class="n">shear_map_b</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-790">        <span class="k">assert</span> <span class="n">mask_b</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">"mask_b must be provided if shear_map_b is provided"</span>
+</span><span id="line-791">        <span class="k">assert</span> <span class="n">shear_map_a</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="n">shear_map_b</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="p">(</span>
+</span><span id="line-792">            <span class="s2">"shear_map_a and shear_map_b must have the same shape"</span>
 </span><span id="line-793">        <span class="p">)</span>
-</span><span id="line-794">
-</span><span id="line-795">    <span class="k">if</span> <span class="n">mask_b</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-796">        <span class="k">assert</span> <span class="n">shear_map_b</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="p">(</span>
-</span><span id="line-797">            <span class="s2">"shear_map_b must be provided if mask_b is provided"</span>
-</span><span id="line-798">        <span class="p">)</span>
-</span><span id="line-799">        <span class="k">assert</span> <span class="n">shear_map_a</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="n">shear_map_b</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="p">(</span>
-</span><span id="line-800">            <span class="s2">"shear_map_a and shear_map_b must have the same shape"</span>
+</span><span id="line-794">        <span class="k">assert</span> <span class="n">mask_a</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="n">mask_b</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="p">(</span>
+</span><span id="line-795">            <span class="s2">"mask_a and mask_b must have the same shape"</span>
+</span><span id="line-796">        <span class="p">)</span>
+</span><span id="line-797">
+</span><span id="line-798">    <span class="k">if</span> <span class="n">mask_b</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-799">        <span class="k">assert</span> <span class="n">shear_map_b</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="p">(</span>
+</span><span id="line-800">            <span class="s2">"shear_map_b must be provided if mask_b is provided"</span>
 </span><span id="line-801">        <span class="p">)</span>
-</span><span id="line-802">        <span class="k">assert</span> <span class="n">mask_a</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="n">mask_b</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="p">(</span>
-</span><span id="line-803">            <span class="s2">"mask_a and mask_b must have the same shape"</span>
+</span><span id="line-802">        <span class="k">assert</span> <span class="n">shear_map_a</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="n">shear_map_b</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="p">(</span>
+</span><span id="line-803">            <span class="s2">"shear_map_a and shear_map_b must have the same shape"</span>
 </span><span id="line-804">        <span class="p">)</span>
-</span><span id="line-805">
-</span><span id="line-806">    <span class="n">lmin</span><span class="p">,</span> <span class="n">lmax</span><span class="p">,</span> <span class="n">b_lmax</span> <span class="o">=</span> <span class="n">pseudo_cl_geometry</span><span class="p">(</span><span class="n">nside</span><span class="p">)</span>
-</span><span id="line-807">
-</span><span id="line-808">    <span class="n">b</span> <span class="o">=</span> <span class="n">make_namaster_bin</span><span class="p">(</span>
-</span><span id="line-809">        <span class="n">lmin</span><span class="p">,</span>
-</span><span id="line-810">        <span class="n">lmax</span><span class="p">,</span>
-</span><span id="line-811">        <span class="n">b_lmax</span><span class="p">,</span>
-</span><span id="line-812">        <span class="n">binning</span><span class="p">,</span>
-</span><span id="line-813">        <span class="n">ell_step</span><span class="o">=</span><span class="n">ell_step</span><span class="p">,</span>
-</span><span id="line-814">        <span class="n">n_ell_bins</span><span class="o">=</span><span class="n">n_ell_bins</span><span class="p">,</span>
-</span><span id="line-815">        <span class="n">power</span><span class="o">=</span><span class="n">power</span><span class="p">,</span>
-</span><span id="line-816">    <span class="p">)</span>
-</span><span id="line-817">    <span class="n">ell_eff</span> <span class="o">=</span> <span class="n">b</span><span class="o">.</span><span class="n">get_effective_ells</span><span class="p">()</span>
-</span><span id="line-818">
-</span><span id="line-819">    <span class="k">if</span> <span class="n">wsp</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-820">        <span class="n">field_a</span><span class="p">,</span> <span class="n">field_b</span><span class="p">,</span> <span class="n">wsp</span> <span class="o">=</span> <span class="n">get_field_and_workspace_from_map</span><span class="p">(</span>
-</span><span id="line-821">            <span class="n">b</span><span class="p">,</span>
-</span><span id="line-822">            <span class="n">mask_a</span><span class="p">,</span>
-</span><span id="line-823">            <span class="n">e1_map_a</span><span class="o">=</span><span class="n">shear_map_a</span><span class="o">.</span><span class="n">real</span><span class="p">,</span>
-</span><span id="line-824">            <span class="n">e2_map_a</span><span class="o">=</span><span class="n">shear_map_a</span><span class="o">.</span><span class="n">imag</span><span class="p">,</span>
-</span><span id="line-825">            <span class="n">mask_b</span><span class="o">=</span><span class="n">mask_b</span><span class="p">,</span>
-</span><span id="line-826">            <span class="n">e1_map_b</span><span class="o">=</span><span class="n">shear_map_b</span><span class="o">.</span><span class="n">real</span> <span class="k">if</span> <span class="n">shear_map_b</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="line-827">            <span class="n">e2_map_b</span><span class="o">=</span><span class="n">shear_map_b</span><span class="o">.</span><span class="n">imag</span> <span class="k">if</span> <span class="n">shear_map_b</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="line-828">            <span class="n">pol_factor</span><span class="o">=</span><span class="n">pol_factor</span><span class="p">,</span>
-</span><span id="line-829">            <span class="n">return_wsp</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-</span><span id="line-830">        <span class="p">)</span>
-</span><span id="line-831">    <span class="k">else</span><span class="p">:</span>
-</span><span id="line-832">        <span class="n">field_a</span><span class="p">,</span> <span class="n">field_b</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">get_field_and_workspace_from_map</span><span class="p">(</span>
-</span><span id="line-833">            <span class="n">b</span><span class="p">,</span>
-</span><span id="line-834">            <span class="n">mask_a</span><span class="p">,</span>
-</span><span id="line-835">            <span class="n">e1_map_a</span><span class="o">=</span><span class="n">shear_map_a</span><span class="o">.</span><span class="n">real</span><span class="p">,</span>
-</span><span id="line-836">            <span class="n">e2_map_a</span><span class="o">=</span><span class="n">shear_map_a</span><span class="o">.</span><span class="n">imag</span><span class="p">,</span>
-</span><span id="line-837">            <span class="n">mask_b</span><span class="o">=</span><span class="n">mask_b</span><span class="p">,</span>
-</span><span id="line-838">            <span class="n">e1_map_b</span><span class="o">=</span><span class="n">shear_map_b</span><span class="o">.</span><span class="n">real</span> <span class="k">if</span> <span class="n">shear_map_b</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="line-839">            <span class="n">e2_map_b</span><span class="o">=</span><span class="n">shear_map_b</span><span class="o">.</span><span class="n">imag</span> <span class="k">if</span> <span class="n">shear_map_b</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="line-840">            <span class="n">pol_factor</span><span class="o">=</span><span class="n">pol_factor</span><span class="p">,</span>
-</span><span id="line-841">            <span class="n">return_wsp</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-</span><span id="line-842">        <span class="p">)</span>
-</span><span id="line-843">
-</span><span id="line-844">    <span class="n">cl_coupled</span><span class="p">,</span> <span class="n">cl_decoupled</span> <span class="o">=</span> <span class="n">compute_cl_from_field_and_workspace</span><span class="p">(</span>
-</span><span id="line-845">        <span class="n">field_a</span><span class="p">,</span> <span class="n">field_b</span><span class="p">,</span> <span class="n">wsp</span><span class="p">,</span> <span class="n">b</span>
-</span><span id="line-846">    <span class="p">)</span>
-</span><span id="line-847">
-</span><span id="line-848">    <span class="k">return</span> <span class="n">ell_eff</span><span class="p">,</span> <span class="n">cl_decoupled</span><span class="p">,</span> <span class="n">wsp</span></div>
-
-</span><span id="line-849">
+</span><span id="line-805">        <span class="k">assert</span> <span class="n">mask_a</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="n">mask_b</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="p">(</span>
+</span><span id="line-806">            <span class="s2">"mask_a and mask_b must have the same shape"</span>
+</span><span id="line-807">        <span class="p">)</span>
+</span><span id="line-808">
+</span><span id="line-809">    <span class="n">lmin</span><span class="p">,</span> <span class="n">lmax</span><span class="p">,</span> <span class="n">b_lmax</span> <span class="o">=</span> <span class="n">pseudo_cl_geometry</span><span class="p">(</span><span class="n">nside</span><span class="p">)</span>
+</span><span id="line-810">
+</span><span id="line-811">    <span class="n">b</span> <span class="o">=</span> <span class="n">make_namaster_bin</span><span class="p">(</span>
+</span><span id="line-812">        <span class="n">lmin</span><span class="p">,</span>
+</span><span id="line-813">        <span class="n">lmax</span><span class="p">,</span>
+</span><span id="line-814">        <span class="n">b_lmax</span><span class="p">,</span>
+</span><span id="line-815">        <span class="n">binning</span><span class="p">,</span>
+</span><span id="line-816">        <span class="n">ell_step</span><span class="o">=</span><span class="n">ell_step</span><span class="p">,</span>
+</span><span id="line-817">        <span class="n">n_ell_bins</span><span class="o">=</span><span class="n">n_ell_bins</span><span class="p">,</span>
+</span><span id="line-818">        <span class="n">power</span><span class="o">=</span><span class="n">power</span><span class="p">,</span>
+</span><span id="line-819">    <span class="p">)</span>
+</span><span id="line-820">    <span class="n">ell_eff</span> <span class="o">=</span> <span class="n">b</span><span class="o">.</span><span class="n">get_effective_ells</span><span class="p">()</span>
+</span><span id="line-821">
+</span><span id="line-822">    <span class="k">if</span> <span class="n">wsp</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-823">        <span class="n">field_a</span><span class="p">,</span> <span class="n">field_b</span><span class="p">,</span> <span class="n">wsp</span> <span class="o">=</span> <span class="n">get_field_and_workspace_from_map</span><span class="p">(</span>
+</span><span id="line-824">            <span class="n">b</span><span class="p">,</span>
+</span><span id="line-825">            <span class="n">mask_a</span><span class="p">,</span>
+</span><span id="line-826">            <span class="n">e1_map_a</span><span class="o">=</span><span class="n">shear_map_a</span><span class="o">.</span><span class="n">real</span><span class="p">,</span>
+</span><span id="line-827">            <span class="n">e2_map_a</span><span class="o">=</span><span class="n">shear_map_a</span><span class="o">.</span><span class="n">imag</span><span class="p">,</span>
+</span><span id="line-828">            <span class="n">mask_b</span><span class="o">=</span><span class="n">mask_b</span><span class="p">,</span>
+</span><span id="line-829">            <span class="n">e1_map_b</span><span class="o">=</span><span class="n">shear_map_b</span><span class="o">.</span><span class="n">real</span> <span class="k">if</span> <span class="n">shear_map_b</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="line-830">            <span class="n">e2_map_b</span><span class="o">=</span><span class="n">shear_map_b</span><span class="o">.</span><span class="n">imag</span> <span class="k">if</span> <span class="n">shear_map_b</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="line-831">            <span class="n">pol_factor</span><span class="o">=</span><span class="n">pol_factor</span><span class="p">,</span>
+</span><span id="line-832">            <span class="n">return_wsp</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="line-833">        <span class="p">)</span>
+</span><span id="line-834">    <span class="k">else</span><span class="p">:</span>
+</span><span id="line-835">        <span class="n">field_a</span><span class="p">,</span> <span class="n">field_b</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">get_field_and_workspace_from_map</span><span class="p">(</span>
+</span><span id="line-836">            <span class="n">b</span><span class="p">,</span>
+</span><span id="line-837">            <span class="n">mask_a</span><span class="p">,</span>
+</span><span id="line-838">            <span class="n">e1_map_a</span><span class="o">=</span><span class="n">shear_map_a</span><span class="o">.</span><span class="n">real</span><span class="p">,</span>
+</span><span id="line-839">            <span class="n">e2_map_a</span><span class="o">=</span><span class="n">shear_map_a</span><span class="o">.</span><span class="n">imag</span><span class="p">,</span>
+</span><span id="line-840">            <span class="n">mask_b</span><span class="o">=</span><span class="n">mask_b</span><span class="p">,</span>
+</span><span id="line-841">            <span class="n">e1_map_b</span><span class="o">=</span><span class="n">shear_map_b</span><span class="o">.</span><span class="n">real</span> <span class="k">if</span> <span class="n">shear_map_b</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="line-842">            <span class="n">e2_map_b</span><span class="o">=</span><span class="n">shear_map_b</span><span class="o">.</span><span class="n">imag</span> <span class="k">if</span> <span class="n">shear_map_b</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="line-843">            <span class="n">pol_factor</span><span class="o">=</span><span class="n">pol_factor</span><span class="p">,</span>
+</span><span id="line-844">            <span class="n">return_wsp</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+</span><span id="line-845">        <span class="p">)</span>
+</span><span id="line-846">
+</span><span id="line-847">    <span class="n">cl_coupled</span><span class="p">,</span> <span class="n">cl_decoupled</span> <span class="o">=</span> <span class="n">compute_cl_from_field_and_workspace</span><span class="p">(</span>
+</span><span id="line-848">        <span class="n">field_a</span><span class="p">,</span> <span class="n">field_b</span><span class="p">,</span> <span class="n">wsp</span><span class="p">,</span> <span class="n">b</span>
+</span><span id="line-849">    <span class="p">)</span>
 </span><span id="line-850">
+</span><span id="line-851">    <span class="k">return</span> <span class="n">ell_eff</span><span class="p">,</span> <span class="n">cl_decoupled</span><span class="p">,</span> <span class="n">wsp</span></div>
+
+</span><span id="line-852">
+</span><span id="line-853">
 <div class="viewcode-block" id="get_pseudo_cls_catalog">
 <a class="viewcode-back" href="../../sp_validation.pseudo_cl.html#sp_validation.pseudo_cl.get_pseudo_cls_catalog">[docs]</a>
-</span><span id="line-851"><span class="k">def</span><span class="w"> </span><span class="nf">get_pseudo_cls_catalog</span><span class="p">(</span>
-</span><span id="line-852">    <span class="n">catalog</span><span class="p">,</span>
-</span><span id="line-853">    <span class="n">params</span><span class="p">,</span>
-</span><span id="line-854">    <span class="n">nside</span><span class="p">,</span>
-</span><span id="line-855">    <span class="n">binning</span><span class="p">,</span>
-</span><span id="line-856">    <span class="o">*</span><span class="p">,</span>
-</span><span id="line-857">    <span class="n">tomo_bin_a</span><span class="o">=</span><span class="s2">"all"</span><span class="p">,</span>
-</span><span id="line-858">    <span class="n">tomo_bin_b</span><span class="o">=</span><span class="s2">"all"</span><span class="p">,</span>
-</span><span id="line-859">    <span class="n">pol_factor</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
-</span><span id="line-860">    <span class="n">wsp</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-</span><span id="line-861">    <span class="n">ell_step</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
-</span><span id="line-862">    <span class="n">n_ell_bins</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span>
-</span><span id="line-863">    <span class="n">power</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
-</span><span id="line-864"><span class="p">):</span>
-</span><span id="line-865"><span class="w">    </span><span class="sd">"""Catalog-based pseudo-Cl via NaMaster's ``NmtFieldCatalog``.</span>
-</span><span id="line-866">
-</span><span id="line-867"><span class="sd">    Parameters</span>
-</span><span id="line-868"><span class="sd">    ----------</span>
-</span><span id="line-869"><span class="sd">    catalog : np.ndarray</span>
-</span><span id="line-870"><span class="sd">        Structured catalog array with the columns named in ``params``.</span>
-</span><span id="line-871"><span class="sd">    params : dict</span>
-</span><span id="line-872"><span class="sd">        Column-name mapping (``ra_col``, ``dec_col``, ``w_col``, ``e1_col``,</span>
-</span><span id="line-873"><span class="sd">        ``e2_col``).</span>
-</span><span id="line-874"><span class="sd">    nside : int</span>
-</span><span id="line-875"><span class="sd">        HEALPix resolution; fixes the harmonic geometry.</span>
-</span><span id="line-876"><span class="sd">    binning : str</span>
-</span><span id="line-877"><span class="sd">        Binning scheme passed to :func:`make_namaster_bin`.</span>
-</span><span id="line-878"><span class="sd">    tomo_bin_a, tomo_bin_b : str or int or None, optional</span>
-</span><span id="line-879"><span class="sd">        Tomographic bin IDs for the two fields.</span>
-</span><span id="line-880"><span class="sd">    pol_factor : int, optional</span>
-</span><span id="line-881"><span class="sd">        Polarization factor to apply to the E2 component.</span>
-</span><span id="line-882"><span class="sd">    wsp : nmt.NmtWorkspace, optional</span>
-</span><span id="line-883"><span class="sd">        Reuse a coupling workspace; built from the field if ``None``.</span>
-</span><span id="line-884"><span class="sd">    ell_step, n_ell_bins, power : optional</span>
-</span><span id="line-885"><span class="sd">        Binning-scheme parameters forwarded to :func:`make_namaster_bin`.</span>
-</span><span id="line-886">
-</span><span id="line-887"><span class="sd">    Returns</span>
-</span><span id="line-888"><span class="sd">    -------</span>
-</span><span id="line-889"><span class="sd">    ell_eff : np.ndarray</span>
-</span><span id="line-890"><span class="sd">        Effective multipoles of the bandpowers.</span>
-</span><span id="line-891"><span class="sd">    cl_all : np.ndarray</span>
-</span><span id="line-892"><span class="sd">        Decoupled EE/EB/BE/BB spectra, shape ``(4, n_bands)``.</span>
-</span><span id="line-893"><span class="sd">    wsp : nmt.NmtWorkspace</span>
-</span><span id="line-894"><span class="sd">        The coupling workspace (newly built or the one passed in).</span>
-</span><span id="line-895"><span class="sd">    """</span>
-</span><span id="line-896">    <span class="c1"># First make some assertion checks reagarding the run mode</span>
-</span><span id="line-897">    <span class="k">assert</span> <span class="p">(</span><span class="n">tomo_bin_a</span> <span class="o">==</span> <span class="s2">"all"</span> <span class="ow">and</span> <span class="n">tomo_bin_b</span> <span class="o">==</span> <span class="s2">"all"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span>
-</span><span id="line-898">        <span class="n">tomo_bin_a</span> <span class="o">!=</span> <span class="s2">"all"</span> <span class="ow">and</span> <span class="n">tomo_bin_b</span> <span class="o">!=</span> <span class="s2">"all"</span>
-</span><span id="line-899">    <span class="p">),</span> <span class="s2">"Both tomo_bin_a and tomo_bin_b must be provided or both must be 'all'"</span>
-</span><span id="line-900">
-</span><span id="line-901">    <span class="n">lmin</span><span class="p">,</span> <span class="n">lmax</span><span class="p">,</span> <span class="n">b_lmax</span> <span class="o">=</span> <span class="n">pseudo_cl_geometry</span><span class="p">(</span><span class="n">nside</span><span class="p">)</span>
-</span><span id="line-902">
-</span><span id="line-903">    <span class="n">b</span> <span class="o">=</span> <span class="n">make_namaster_bin</span><span class="p">(</span>
-</span><span id="line-904">        <span class="n">lmin</span><span class="p">,</span>
-</span><span id="line-905">        <span class="n">lmax</span><span class="p">,</span>
-</span><span id="line-906">        <span class="n">b_lmax</span><span class="p">,</span>
-</span><span id="line-907">        <span class="n">binning</span><span class="p">,</span>
-</span><span id="line-908">        <span class="n">ell_step</span><span class="o">=</span><span class="n">ell_step</span><span class="p">,</span>
-</span><span id="line-909">        <span class="n">n_ell_bins</span><span class="o">=</span><span class="n">n_ell_bins</span><span class="p">,</span>
-</span><span id="line-910">        <span class="n">power</span><span class="o">=</span><span class="n">power</span><span class="p">,</span>
-</span><span id="line-911">    <span class="p">)</span>
-</span><span id="line-912">    <span class="n">ell_eff</span> <span class="o">=</span> <span class="n">b</span><span class="o">.</span><span class="n">get_effective_ells</span><span class="p">()</span>
-</span><span id="line-913">
-</span><span id="line-914">    <span class="n">is_tomography</span> <span class="o">=</span> <span class="n">tomo_bin_a</span> <span class="o">!=</span> <span class="s2">"all"</span> <span class="ow">and</span> <span class="n">tomo_bin_b</span> <span class="o">!=</span> <span class="s2">"all"</span>
-</span><span id="line-915">    <span class="k">if</span> <span class="n">is_tomography</span><span class="p">:</span>
-</span><span id="line-916">        <span class="k">assert</span> <span class="n">params</span><span class="p">[</span><span class="s2">"tomo_bin_col"</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="p">(</span>
-</span><span id="line-917">            <span class="s2">"The column of tomographic bin ids is not specified."</span>
-</span><span id="line-918">        <span class="p">)</span>
-</span><span id="line-919">        <span class="n">mask_tomo_a</span> <span class="o">=</span> <span class="n">catalog</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"tomo_bin_col"</span><span class="p">]]</span> <span class="o">==</span> <span class="n">tomo_bin_a</span>
-</span><span id="line-920">        <span class="n">mask_tomo_b</span> <span class="o">=</span> <span class="n">catalog</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"tomo_bin_col"</span><span class="p">]]</span> <span class="o">==</span> <span class="n">tomo_bin_b</span>
-</span><span id="line-921">        <span class="n">catalog_a</span> <span class="o">=</span> <span class="n">catalog</span><span class="p">[</span><span class="n">mask_tomo_a</span><span class="p">]</span>
-</span><span id="line-922">        <span class="n">catalog_b</span> <span class="o">=</span> <span class="n">catalog</span><span class="p">[</span><span class="n">mask_tomo_b</span><span class="p">]</span>
-</span><span id="line-923">        <span class="n">same_bin</span> <span class="o">=</span> <span class="n">tomo_bin_a</span> <span class="o">==</span> <span class="n">tomo_bin_b</span>
-</span><span id="line-924">    <span class="k">else</span><span class="p">:</span>
-</span><span id="line-925">        <span class="n">catalog_a</span> <span class="o">=</span> <span class="n">catalog</span>
-</span><span id="line-926">        <span class="n">catalog_b</span> <span class="o">=</span> <span class="n">catalog</span>
-</span><span id="line-927">        <span class="n">same_bin</span> <span class="o">=</span> <span class="kc">True</span>
-</span><span id="line-928">
-</span><span id="line-929">    <span class="k">if</span> <span class="n">wsp</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-930">        <span class="n">field_a</span><span class="p">,</span> <span class="n">field_b</span><span class="p">,</span> <span class="n">wsp</span> <span class="o">=</span> <span class="n">get_field_and_workspace_from_catalog</span><span class="p">(</span>
-</span><span id="line-931">            <span class="n">b</span><span class="p">,</span>
-</span><span id="line-932">            <span class="n">ra_a</span><span class="o">=</span><span class="n">catalog_a</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"ra_col"</span><span class="p">]],</span>
-</span><span id="line-933">            <span class="n">dec_a</span><span class="o">=</span><span class="n">catalog_a</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"dec_col"</span><span class="p">]],</span>
-</span><span id="line-934">            <span class="n">e1_a</span><span class="o">=</span><span class="n">catalog_a</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"e1_col"</span><span class="p">]],</span>
-</span><span id="line-935">            <span class="n">e2_a</span><span class="o">=</span><span class="n">catalog_a</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"e2_col"</span><span class="p">]],</span>
-</span><span id="line-936">            <span class="n">w_a</span><span class="o">=</span><span class="n">catalog_a</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"w_col"</span><span class="p">]],</span>
-</span><span id="line-937">            <span class="n">ra_b</span><span class="o">=</span><span class="n">catalog_b</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"ra_col"</span><span class="p">]],</span>
-</span><span id="line-938">            <span class="n">dec_b</span><span class="o">=</span><span class="n">catalog_b</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"dec_col"</span><span class="p">]],</span>
-</span><span id="line-939">            <span class="n">e1_b</span><span class="o">=</span><span class="n">catalog_b</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"e1_col"</span><span class="p">]],</span>
-</span><span id="line-940">            <span class="n">e2_b</span><span class="o">=</span><span class="n">catalog_b</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"e2_col"</span><span class="p">]],</span>
-</span><span id="line-941">            <span class="n">w_b</span><span class="o">=</span><span class="n">catalog_b</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"w_col"</span><span class="p">]],</span>
-</span><span id="line-942">            <span class="n">pol_factor</span><span class="o">=</span><span class="n">pol_factor</span><span class="p">,</span>
-</span><span id="line-943">            <span class="n">return_wsp</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-</span><span id="line-944">            <span class="n">same_bin</span><span class="o">=</span><span class="n">same_bin</span><span class="p">,</span>
-</span><span id="line-945">        <span class="p">)</span>
-</span><span id="line-946">    <span class="k">else</span><span class="p">:</span>
-</span><span id="line-947">        <span class="n">field_a</span><span class="p">,</span> <span class="n">field_b</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">get_field_and_workspace_from_catalog</span><span class="p">(</span>
-</span><span id="line-948">            <span class="n">b</span><span class="p">,</span>
-</span><span id="line-949">            <span class="n">ra_a</span><span class="o">=</span><span class="n">catalog_a</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"ra_col"</span><span class="p">]],</span>
-</span><span id="line-950">            <span class="n">dec_a</span><span class="o">=</span><span class="n">catalog_a</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"dec_col"</span><span class="p">]],</span>
-</span><span id="line-951">            <span class="n">e1_a</span><span class="o">=</span><span class="n">catalog_a</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"e1_col"</span><span class="p">]],</span>
-</span><span id="line-952">            <span class="n">e2_a</span><span class="o">=</span><span class="n">catalog_a</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"e2_col"</span><span class="p">]],</span>
-</span><span id="line-953">            <span class="n">w_a</span><span class="o">=</span><span class="n">catalog_a</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"w_col"</span><span class="p">]],</span>
-</span><span id="line-954">            <span class="n">ra_b</span><span class="o">=</span><span class="n">catalog_b</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"ra_col"</span><span class="p">]],</span>
-</span><span id="line-955">            <span class="n">dec_b</span><span class="o">=</span><span class="n">catalog_b</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"dec_col"</span><span class="p">]],</span>
-</span><span id="line-956">            <span class="n">e1_b</span><span class="o">=</span><span class="n">catalog_b</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"e1_col"</span><span class="p">]],</span>
-</span><span id="line-957">            <span class="n">e2_b</span><span class="o">=</span><span class="n">catalog_b</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"e2_col"</span><span class="p">]],</span>
-</span><span id="line-958">            <span class="n">w_b</span><span class="o">=</span><span class="n">catalog_b</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"w_col"</span><span class="p">]],</span>
-</span><span id="line-959">            <span class="n">pol_factor</span><span class="o">=</span><span class="n">pol_factor</span><span class="p">,</span>
-</span><span id="line-960">            <span class="n">return_wsp</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-</span><span id="line-961">            <span class="n">same_bin</span><span class="o">=</span><span class="n">same_bin</span><span class="p">,</span>
-</span><span id="line-962">        <span class="p">)</span>
-</span><span id="line-963">
-</span><span id="line-964">    <span class="n">cl_coupled</span><span class="p">,</span> <span class="n">cl_decoupled</span> <span class="o">=</span> <span class="n">compute_cl_from_field_and_workspace</span><span class="p">(</span>
-</span><span id="line-965">        <span class="n">field_a</span><span class="p">,</span> <span class="n">field_b</span><span class="p">,</span> <span class="n">wsp</span><span class="p">,</span> <span class="n">b</span>
-</span><span id="line-966">    <span class="p">)</span>
-</span><span id="line-967">
-</span><span id="line-968">    <span class="k">return</span> <span class="n">ell_eff</span><span class="p">,</span> <span class="n">cl_decoupled</span><span class="p">,</span> <span class="n">wsp</span></div>
-
-</span><span id="line-969">
+</span><span id="line-854"><span class="k">def</span><span class="w"> </span><span class="nf">get_pseudo_cls_catalog</span><span class="p">(</span>
+</span><span id="line-855">    <span class="n">catalog</span><span class="p">,</span>
+</span><span id="line-856">    <span class="n">params</span><span class="p">,</span>
+</span><span id="line-857">    <span class="n">nside</span><span class="p">,</span>
+</span><span id="line-858">    <span class="n">binning</span><span class="p">,</span>
+</span><span id="line-859">    <span class="o">*</span><span class="p">,</span>
+</span><span id="line-860">    <span class="n">tomo_bin_a</span><span class="o">=</span><span class="s2">"all"</span><span class="p">,</span>
+</span><span id="line-861">    <span class="n">tomo_bin_b</span><span class="o">=</span><span class="s2">"all"</span><span class="p">,</span>
+</span><span id="line-862">    <span class="n">pol_factor</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+</span><span id="line-863">    <span class="n">wsp</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-864">    <span class="n">ell_step</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+</span><span id="line-865">    <span class="n">n_ell_bins</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span>
+</span><span id="line-866">    <span class="n">power</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+</span><span id="line-867"><span class="p">):</span>
+</span><span id="line-868"><span class="w">    </span><span class="sd">"""Catalog-based pseudo-Cl via NaMaster's ``NmtFieldCatalog``.</span>
+</span><span id="line-869">
+</span><span id="line-870"><span class="sd">    Parameters</span>
+</span><span id="line-871"><span class="sd">    ----------</span>
+</span><span id="line-872"><span class="sd">    catalog : np.ndarray</span>
+</span><span id="line-873"><span class="sd">        Structured catalog array with the columns named in ``params``.</span>
+</span><span id="line-874"><span class="sd">    params : dict</span>
+</span><span id="line-875"><span class="sd">        Column-name mapping (``ra_col``, ``dec_col``, ``w_col``, ``e1_col``,</span>
+</span><span id="line-876"><span class="sd">        ``e2_col``).</span>
+</span><span id="line-877"><span class="sd">    nside : int</span>
+</span><span id="line-878"><span class="sd">        HEALPix resolution; fixes the harmonic geometry.</span>
+</span><span id="line-879"><span class="sd">    binning : str</span>
+</span><span id="line-880"><span class="sd">        Binning scheme passed to :func:`make_namaster_bin`.</span>
+</span><span id="line-881"><span class="sd">    tomo_bin_a, tomo_bin_b : str or int or None, optional</span>
+</span><span id="line-882"><span class="sd">        Tomographic bin IDs for the two fields.</span>
+</span><span id="line-883"><span class="sd">    pol_factor : int, optional</span>
+</span><span id="line-884"><span class="sd">        Polarization factor to apply to the E2 component.</span>
+</span><span id="line-885"><span class="sd">    wsp : nmt.NmtWorkspace, optional</span>
+</span><span id="line-886"><span class="sd">        Reuse a coupling workspace; built from the field if ``None``.</span>
+</span><span id="line-887"><span class="sd">    ell_step, n_ell_bins, power : optional</span>
+</span><span id="line-888"><span class="sd">        Binning-scheme parameters forwarded to :func:`make_namaster_bin`.</span>
+</span><span id="line-889">
+</span><span id="line-890"><span class="sd">    Returns</span>
+</span><span id="line-891"><span class="sd">    -------</span>
+</span><span id="line-892"><span class="sd">    ell_eff : np.ndarray</span>
+</span><span id="line-893"><span class="sd">        Effective multipoles of the bandpowers.</span>
+</span><span id="line-894"><span class="sd">    cl_all : np.ndarray</span>
+</span><span id="line-895"><span class="sd">        Decoupled EE/EB/BE/BB spectra, shape ``(4, n_bands)``.</span>
+</span><span id="line-896"><span class="sd">    wsp : nmt.NmtWorkspace</span>
+</span><span id="line-897"><span class="sd">        The coupling workspace (newly built or the one passed in).</span>
+</span><span id="line-898"><span class="sd">    """</span>
+</span><span id="line-899">    <span class="c1"># First make some assertion checks reagarding the run mode</span>
+</span><span id="line-900">    <span class="k">assert</span> <span class="p">(</span><span class="n">tomo_bin_a</span> <span class="o">==</span> <span class="s2">"all"</span> <span class="ow">and</span> <span class="n">tomo_bin_b</span> <span class="o">==</span> <span class="s2">"all"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span>
+</span><span id="line-901">        <span class="n">tomo_bin_a</span> <span class="o">!=</span> <span class="s2">"all"</span> <span class="ow">and</span> <span class="n">tomo_bin_b</span> <span class="o">!=</span> <span class="s2">"all"</span>
+</span><span id="line-902">    <span class="p">),</span> <span class="s2">"Both tomo_bin_a and tomo_bin_b must be provided or both must be 'all'"</span>
+</span><span id="line-903">
+</span><span id="line-904">    <span class="n">lmin</span><span class="p">,</span> <span class="n">lmax</span><span class="p">,</span> <span class="n">b_lmax</span> <span class="o">=</span> <span class="n">pseudo_cl_geometry</span><span class="p">(</span><span class="n">nside</span><span class="p">)</span>
+</span><span id="line-905">
+</span><span id="line-906">    <span class="n">b</span> <span class="o">=</span> <span class="n">make_namaster_bin</span><span class="p">(</span>
+</span><span id="line-907">        <span class="n">lmin</span><span class="p">,</span>
+</span><span id="line-908">        <span class="n">lmax</span><span class="p">,</span>
+</span><span id="line-909">        <span class="n">b_lmax</span><span class="p">,</span>
+</span><span id="line-910">        <span class="n">binning</span><span class="p">,</span>
+</span><span id="line-911">        <span class="n">ell_step</span><span class="o">=</span><span class="n">ell_step</span><span class="p">,</span>
+</span><span id="line-912">        <span class="n">n_ell_bins</span><span class="o">=</span><span class="n">n_ell_bins</span><span class="p">,</span>
+</span><span id="line-913">        <span class="n">power</span><span class="o">=</span><span class="n">power</span><span class="p">,</span>
+</span><span id="line-914">    <span class="p">)</span>
+</span><span id="line-915">    <span class="n">ell_eff</span> <span class="o">=</span> <span class="n">b</span><span class="o">.</span><span class="n">get_effective_ells</span><span class="p">()</span>
+</span><span id="line-916">
+</span><span id="line-917">    <span class="n">is_tomography</span> <span class="o">=</span> <span class="n">tomo_bin_a</span> <span class="o">!=</span> <span class="s2">"all"</span> <span class="ow">and</span> <span class="n">tomo_bin_b</span> <span class="o">!=</span> <span class="s2">"all"</span>
+</span><span id="line-918">    <span class="k">if</span> <span class="n">is_tomography</span><span class="p">:</span>
+</span><span id="line-919">        <span class="k">assert</span> <span class="n">params</span><span class="p">[</span><span class="s2">"tomo_bin_col"</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="p">(</span>
+</span><span id="line-920">            <span class="s2">"The column of tomographic bin ids is not specified."</span>
+</span><span id="line-921">        <span class="p">)</span>
+</span><span id="line-922">        <span class="n">mask_tomo_a</span> <span class="o">=</span> <span class="n">catalog</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"tomo_bin_col"</span><span class="p">]]</span> <span class="o">==</span> <span class="n">tomo_bin_a</span>
+</span><span id="line-923">        <span class="n">mask_tomo_b</span> <span class="o">=</span> <span class="n">catalog</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"tomo_bin_col"</span><span class="p">]]</span> <span class="o">==</span> <span class="n">tomo_bin_b</span>
+</span><span id="line-924">        <span class="n">catalog_a</span> <span class="o">=</span> <span class="n">catalog</span><span class="p">[</span><span class="n">mask_tomo_a</span><span class="p">]</span>
+</span><span id="line-925">        <span class="n">catalog_b</span> <span class="o">=</span> <span class="n">catalog</span><span class="p">[</span><span class="n">mask_tomo_b</span><span class="p">]</span>
+</span><span id="line-926">        <span class="n">same_bin</span> <span class="o">=</span> <span class="n">tomo_bin_a</span> <span class="o">==</span> <span class="n">tomo_bin_b</span>
+</span><span id="line-927">    <span class="k">else</span><span class="p">:</span>
+</span><span id="line-928">        <span class="n">catalog_a</span> <span class="o">=</span> <span class="n">catalog</span>
+</span><span id="line-929">        <span class="n">catalog_b</span> <span class="o">=</span> <span class="n">catalog</span>
+</span><span id="line-930">        <span class="n">same_bin</span> <span class="o">=</span> <span class="kc">True</span>
+</span><span id="line-931">
+</span><span id="line-932">    <span class="k">if</span> <span class="n">wsp</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-933">        <span class="n">field_a</span><span class="p">,</span> <span class="n">field_b</span><span class="p">,</span> <span class="n">wsp</span> <span class="o">=</span> <span class="n">get_field_and_workspace_from_catalog</span><span class="p">(</span>
+</span><span id="line-934">            <span class="n">b</span><span class="p">,</span>
+</span><span id="line-935">            <span class="n">ra_a</span><span class="o">=</span><span class="n">catalog_a</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"ra_col"</span><span class="p">]],</span>
+</span><span id="line-936">            <span class="n">dec_a</span><span class="o">=</span><span class="n">catalog_a</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"dec_col"</span><span class="p">]],</span>
+</span><span id="line-937">            <span class="n">e1_a</span><span class="o">=</span><span class="n">catalog_a</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"e1_col"</span><span class="p">]],</span>
+</span><span id="line-938">            <span class="n">e2_a</span><span class="o">=</span><span class="n">catalog_a</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"e2_col"</span><span class="p">]],</span>
+</span><span id="line-939">            <span class="n">w_a</span><span class="o">=</span><span class="n">catalog_a</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"w_col"</span><span class="p">]],</span>
+</span><span id="line-940">            <span class="n">ra_b</span><span class="o">=</span><span class="n">catalog_b</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"ra_col"</span><span class="p">]],</span>
+</span><span id="line-941">            <span class="n">dec_b</span><span class="o">=</span><span class="n">catalog_b</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"dec_col"</span><span class="p">]],</span>
+</span><span id="line-942">            <span class="n">e1_b</span><span class="o">=</span><span class="n">catalog_b</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"e1_col"</span><span class="p">]],</span>
+</span><span id="line-943">            <span class="n">e2_b</span><span class="o">=</span><span class="n">catalog_b</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"e2_col"</span><span class="p">]],</span>
+</span><span id="line-944">            <span class="n">w_b</span><span class="o">=</span><span class="n">catalog_b</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"w_col"</span><span class="p">]],</span>
+</span><span id="line-945">            <span class="n">pol_factor</span><span class="o">=</span><span class="n">pol_factor</span><span class="p">,</span>
+</span><span id="line-946">            <span class="n">return_wsp</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="line-947">            <span class="n">same_bin</span><span class="o">=</span><span class="n">same_bin</span><span class="p">,</span>
+</span><span id="line-948">        <span class="p">)</span>
+</span><span id="line-949">    <span class="k">else</span><span class="p">:</span>
+</span><span id="line-950">        <span class="n">field_a</span><span class="p">,</span> <span class="n">field_b</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">get_field_and_workspace_from_catalog</span><span class="p">(</span>
+</span><span id="line-951">            <span class="n">b</span><span class="p">,</span>
+</span><span id="line-952">            <span class="n">ra_a</span><span class="o">=</span><span class="n">catalog_a</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"ra_col"</span><span class="p">]],</span>
+</span><span id="line-953">            <span class="n">dec_a</span><span class="o">=</span><span class="n">catalog_a</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"dec_col"</span><span class="p">]],</span>
+</span><span id="line-954">            <span class="n">e1_a</span><span class="o">=</span><span class="n">catalog_a</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"e1_col"</span><span class="p">]],</span>
+</span><span id="line-955">            <span class="n">e2_a</span><span class="o">=</span><span class="n">catalog_a</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"e2_col"</span><span class="p">]],</span>
+</span><span id="line-956">            <span class="n">w_a</span><span class="o">=</span><span class="n">catalog_a</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"w_col"</span><span class="p">]],</span>
+</span><span id="line-957">            <span class="n">ra_b</span><span class="o">=</span><span class="n">catalog_b</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"ra_col"</span><span class="p">]],</span>
+</span><span id="line-958">            <span class="n">dec_b</span><span class="o">=</span><span class="n">catalog_b</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"dec_col"</span><span class="p">]],</span>
+</span><span id="line-959">            <span class="n">e1_b</span><span class="o">=</span><span class="n">catalog_b</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"e1_col"</span><span class="p">]],</span>
+</span><span id="line-960">            <span class="n">e2_b</span><span class="o">=</span><span class="n">catalog_b</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"e2_col"</span><span class="p">]],</span>
+</span><span id="line-961">            <span class="n">w_b</span><span class="o">=</span><span class="n">catalog_b</span><span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="s2">"w_col"</span><span class="p">]],</span>
+</span><span id="line-962">            <span class="n">pol_factor</span><span class="o">=</span><span class="n">pol_factor</span><span class="p">,</span>
+</span><span id="line-963">            <span class="n">return_wsp</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+</span><span id="line-964">            <span class="n">same_bin</span><span class="o">=</span><span class="n">same_bin</span><span class="p">,</span>
+</span><span id="line-965">        <span class="p">)</span>
+</span><span id="line-966">
+</span><span id="line-967">    <span class="n">cl_coupled</span><span class="p">,</span> <span class="n">cl_decoupled</span> <span class="o">=</span> <span class="n">compute_cl_from_field_and_workspace</span><span class="p">(</span>
+</span><span id="line-968">        <span class="n">field_a</span><span class="p">,</span> <span class="n">field_b</span><span class="p">,</span> <span class="n">wsp</span><span class="p">,</span> <span class="n">b</span>
+</span><span id="line-969">    <span class="p">)</span>
 </span><span id="line-970">
-</span><span id="line-971"><span class="c1"># ---------------------- Covariance computation functions ----------------------</span>
+</span><span id="line-971">    <span class="k">return</span> <span class="n">ell_eff</span><span class="p">,</span> <span class="n">cl_decoupled</span><span class="p">,</span> <span class="n">wsp</span></div>
+
+</span><span id="line-972">
+</span><span id="line-973">
+</span><span id="line-974"><span class="c1"># ---------------------- Covariance computation functions ----------------------</span>
 <div class="viewcode-block" id="get_fiducial_cl">
 <a class="viewcode-back" href="../../sp_validation.pseudo_cl.html#sp_validation.pseudo_cl.get_fiducial_cl">[docs]</a>
-</span><span id="line-972"><span class="k">def</span><span class="w"> </span><span class="nf">get_fiducial_cl</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">dndz</span><span class="p">,</span> <span class="n">lmax</span><span class="p">,</span> <span class="n">cosmo</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s2">"camb"</span><span class="p">):</span>
-</span><span id="line-973"><span class="w">    </span><span class="sd">"""</span>
-</span><span id="line-974"><span class="sd">    Get the fiducial Cl's using the redshift distribution.</span>
-</span><span id="line-975"><span class="sd">    Cosmology is determined by the input cosmo object.</span>
-</span><span id="line-976"><span class="sd">    """</span>
-</span><span id="line-977">    <span class="n">ell</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">lmax</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
-</span><span id="line-978">
-</span><span id="line-979">    <span class="n">fiducial_cl</span> <span class="o">=</span> <span class="n">get_theo_c_ell</span><span class="p">(</span><span class="n">ell</span><span class="o">=</span><span class="n">ell</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="n">z</span><span class="p">,</span> <span class="n">nz</span><span class="o">=</span><span class="n">dndz</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="n">backend</span><span class="p">,</span> <span class="n">cosmo</span><span class="o">=</span><span class="n">cosmo</span><span class="p">)</span>
-</span><span id="line-980">
-</span><span id="line-981">    <span class="k">return</span> <span class="n">fiducial_cl</span></div>
-
-</span><span id="line-982">
+</span><span id="line-975"><span class="k">def</span><span class="w"> </span><span class="nf">get_fiducial_cl</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">dndz</span><span class="p">,</span> <span class="n">lmax</span><span class="p">,</span> <span class="n">cosmo</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s2">"camb"</span><span class="p">):</span>
+</span><span id="line-976"><span class="w">    </span><span class="sd">"""</span>
+</span><span id="line-977"><span class="sd">    Get the fiducial Cl's using the redshift distribution.</span>
+</span><span id="line-978"><span class="sd">    Cosmology is determined by the input cosmo object.</span>
+</span><span id="line-979"><span class="sd">    """</span>
+</span><span id="line-980">    <span class="n">ell</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">lmax</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+</span><span id="line-981">
+</span><span id="line-982">    <span class="n">fiducial_cl</span> <span class="o">=</span> <span class="n">get_theo_c_ell</span><span class="p">(</span><span class="n">ell</span><span class="o">=</span><span class="n">ell</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="n">z</span><span class="p">,</span> <span class="n">nz</span><span class="o">=</span><span class="n">dndz</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="n">backend</span><span class="p">,</span> <span class="n">cosmo</span><span class="o">=</span><span class="n">cosmo</span><span class="p">)</span>
 </span><span id="line-983">
+</span><span id="line-984">    <span class="k">return</span> <span class="n">fiducial_cl</span></div>
+
+</span><span id="line-985">
+</span><span id="line-986">
 <div class="viewcode-block" id="get_pseudo_cl_iNKA_covariance">
 <a class="viewcode-back" href="../../sp_validation.pseudo_cl.html#sp_validation.pseudo_cl.get_pseudo_cl_iNKA_covariance">[docs]</a>
-</span><span id="line-984"><span class="k">def</span><span class="w"> </span><span class="nf">get_pseudo_cl_iNKA_covariance</span><span class="p">(</span>
-</span><span id="line-985">    <span class="n">input_cl_a1_b1</span><span class="p">,</span>
-</span><span id="line-986">    <span class="n">input_cl_a1_b2</span><span class="p">,</span>
-</span><span id="line-987">    <span class="n">input_cl_a2_b1</span><span class="p">,</span>
-</span><span id="line-988">    <span class="n">input_cl_a2_b2</span><span class="p">,</span>
-</span><span id="line-989">    <span class="n">field_a1</span><span class="p">,</span>
-</span><span id="line-990">    <span class="n">field_a2</span><span class="p">,</span>
-</span><span id="line-991">    <span class="n">field_b1</span><span class="p">,</span>
-</span><span id="line-992">    <span class="n">field_b2</span><span class="p">,</span>
-</span><span id="line-993">    <span class="n">wsp_a</span><span class="p">,</span>
-</span><span id="line-994">    <span class="n">wsp_b</span><span class="p">,</span>
-</span><span id="line-995">    <span class="n">b</span><span class="p">,</span>
-</span><span id="line-996"><span class="p">):</span>
-</span><span id="line-997"><span class="w">    </span><span class="sd">"""Compute the iNKA covariance for pseudo-Cl.</span>
-</span><span id="line-998">
-</span><span id="line-999"><span class="sd">    Parameters</span>
-</span><span id="line-1000"><span class="sd">    ----------</span>
-</span><span id="line-1001"><span class="sd">    input_cl_a1_b1 : np.ndarray</span>
-</span><span id="line-1002"><span class="sd">        Input Cl for field a1 and b1.</span>
-</span><span id="line-1003"><span class="sd">    input_cl_a1_b2 : np.ndarray</span>
-</span><span id="line-1004"><span class="sd">        Input Cl for field a1 and b2.</span>
-</span><span id="line-1005"><span class="sd">    input_cl_a2_b1 : np.ndarray</span>
-</span><span id="line-1006"><span class="sd">        Input Cl for field a2 and b1.</span>
-</span><span id="line-1007"><span class="sd">    input_cl_a2_b2 : np.ndarray</span>
-</span><span id="line-1008"><span class="sd">        Input Cl for field a2 and b2.</span>
-</span><span id="line-1009"><span class="sd">    field_a1 : nmt.NmtField</span>
-</span><span id="line-1010"><span class="sd">        NaMaster field object for the first catalog (a1).</span>
-</span><span id="line-1011"><span class="sd">    field_a2 : nmt.NmtField</span>
-</span><span id="line-1012"><span class="sd">        NaMaster field object for the second catalog (a2).</span>
-</span><span id="line-1013"><span class="sd">    field_b1 : nmt.NmtField</span>
-</span><span id="line-1014"><span class="sd">        NaMaster field object for the first catalog (b1).</span>
-</span><span id="line-1015"><span class="sd">    field_b2 : nmt.NmtField</span>
-</span><span id="line-1016"><span class="sd">        NaMaster field object for the second catalog (b2).</span>
-</span><span id="line-1017"><span class="sd">    wsp_a : nmt.NmtWorkspace</span>
-</span><span id="line-1018"><span class="sd">        NaMaster workspace object containing the mixing matrix for fields a.</span>
-</span><span id="line-1019"><span class="sd">    wsp_b : nmt.NmtWorkspace</span>
-</span><span id="line-1020"><span class="sd">        NaMaster workspace object containing the mixing matrix for fields b.</span>
-</span><span id="line-1021"><span class="sd">    b : nmt.NmtBin</span>
-</span><span id="line-1022"><span class="sd">        NaMaster binning object.</span>
-</span><span id="line-1023">
-</span><span id="line-1024"><span class="sd">    Returns</span>
-</span><span id="line-1025"><span class="sd">    -------</span>
-</span><span id="line-1026"><span class="sd">    cov_matrix : np.ndarray</span>
-</span><span id="line-1027"><span class="sd">        Covariance matrix of the pseudo-Cl, shape ``(n_bins, n_bins)``.</span>
-</span><span id="line-1028"><span class="sd">    """</span>
-</span><span id="line-1029">    <span class="c1"># Compute the coupling coefficients for the covariance</span>
-</span><span id="line-1030">    <span class="n">cw</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtCovarianceWorkspace</span><span class="o">.</span><span class="n">from_fields</span><span class="p">(</span><span class="n">field_a1</span><span class="p">,</span> <span class="n">field_a2</span><span class="p">,</span> <span class="n">field_b1</span><span class="p">,</span> <span class="n">field_b2</span><span class="p">)</span>
-</span><span id="line-1031">
-</span><span id="line-1032">    <span class="c1"># Get actual number of ell bins from binning scheme</span>
-</span><span id="line-1033">    <span class="n">n_ell_actual</span> <span class="o">=</span> <span class="n">b</span><span class="o">.</span><span class="n">get_n_bands</span><span class="p">()</span>
-</span><span id="line-1034">
-</span><span id="line-1035">    <span class="c1"># Compute the covariance using NaMaster's built-in function</span>
-</span><span id="line-1036">    <span class="n">cov_matrix</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">gaussian_covariance</span><span class="p">(</span>
-</span><span id="line-1037">        <span class="n">cw</span><span class="p">,</span>
-</span><span id="line-1038">        <span class="mi">2</span><span class="p">,</span>
-</span><span id="line-1039">        <span class="mi">2</span><span class="p">,</span>
-</span><span id="line-1040">        <span class="mi">2</span><span class="p">,</span>
-</span><span id="line-1041">        <span class="mi">2</span><span class="p">,</span>
-</span><span id="line-1042">        <span class="n">input_cl_a1_b1</span><span class="p">,</span>
-</span><span id="line-1043">        <span class="n">input_cl_a1_b2</span><span class="p">,</span>
-</span><span id="line-1044">        <span class="n">input_cl_a2_b1</span><span class="p">,</span>
-</span><span id="line-1045">        <span class="n">input_cl_a2_b2</span><span class="p">,</span>
-</span><span id="line-1046">        <span class="n">wsp_a</span><span class="p">,</span>
-</span><span id="line-1047">        <span class="n">wb</span><span class="o">=</span><span class="n">wsp_b</span><span class="p">,</span>
-</span><span id="line-1048">    <span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">([</span><span class="n">n_ell_actual</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="n">n_ell_actual</span><span class="p">,</span> <span class="mi">4</span><span class="p">])</span>
-</span><span id="line-1049">
-</span><span id="line-1050">    <span class="k">return</span> <span class="n">cov_matrix</span></div>
-
-</span><span id="line-1051">
-</span><span id="line-1052">
-</span><span id="line-1053"><span class="c1"># NaMaster spin-2 × spin-2 spectrum order: EE, EB, BE, BB.</span>
-</span><span id="line-1054"><span class="n">_NMT_EE</span> <span class="o">=</span> <span class="mi">0</span>
-</span><span id="line-1055">
+</span><span id="line-987"><span class="k">def</span><span class="w"> </span><span class="nf">get_pseudo_cl_iNKA_covariance</span><span class="p">(</span>
+</span><span id="line-988">    <span class="n">input_cl_a1_b1</span><span class="p">,</span>
+</span><span id="line-989">    <span class="n">input_cl_a1_b2</span><span class="p">,</span>
+</span><span id="line-990">    <span class="n">input_cl_a2_b1</span><span class="p">,</span>
+</span><span id="line-991">    <span class="n">input_cl_a2_b2</span><span class="p">,</span>
+</span><span id="line-992">    <span class="n">field_a1</span><span class="p">,</span>
+</span><span id="line-993">    <span class="n">field_a2</span><span class="p">,</span>
+</span><span id="line-994">    <span class="n">field_b1</span><span class="p">,</span>
+</span><span id="line-995">    <span class="n">field_b2</span><span class="p">,</span>
+</span><span id="line-996">    <span class="n">wsp_a</span><span class="p">,</span>
+</span><span id="line-997">    <span class="n">wsp_b</span><span class="p">,</span>
+</span><span id="line-998">    <span class="n">b</span><span class="p">,</span>
+</span><span id="line-999"><span class="p">):</span>
+</span><span id="line-1000"><span class="w">    </span><span class="sd">"""Compute the iNKA covariance for pseudo-Cl.</span>
+</span><span id="line-1001">
+</span><span id="line-1002"><span class="sd">    Input spectra include noise for map fields, but signal only for catalogue</span>
+</span><span id="line-1003"><span class="sd">    fields: NaMaster constructs the latter's noise and mixed terms directly</span>
+</span><span id="line-1004"><span class="sd">    from the retained weighted ellipticities (``retain_catalog=True``).</span>
+</span><span id="line-1005">
+</span><span id="line-1006"><span class="sd">    Parameters</span>
+</span><span id="line-1007"><span class="sd">    ----------</span>
+</span><span id="line-1008"><span class="sd">    input_cl_a1_b1 : np.ndarray</span>
+</span><span id="line-1009"><span class="sd">        Input Cl for field a1 and b1.</span>
+</span><span id="line-1010"><span class="sd">    input_cl_a1_b2 : np.ndarray</span>
+</span><span id="line-1011"><span class="sd">        Input Cl for field a1 and b2.</span>
+</span><span id="line-1012"><span class="sd">    input_cl_a2_b1 : np.ndarray</span>
+</span><span id="line-1013"><span class="sd">        Input Cl for field a2 and b1.</span>
+</span><span id="line-1014"><span class="sd">    input_cl_a2_b2 : np.ndarray</span>
+</span><span id="line-1015"><span class="sd">        Input Cl for field a2 and b2.</span>
+</span><span id="line-1016"><span class="sd">    field_a1 : nmt.NmtField</span>
+</span><span id="line-1017"><span class="sd">        NaMaster field object for the first catalog (a1).</span>
+</span><span id="line-1018"><span class="sd">    field_a2 : nmt.NmtField</span>
+</span><span id="line-1019"><span class="sd">        NaMaster field object for the second catalog (a2).</span>
+</span><span id="line-1020"><span class="sd">    field_b1 : nmt.NmtField</span>
+</span><span id="line-1021"><span class="sd">        NaMaster field object for the first catalog (b1).</span>
+</span><span id="line-1022"><span class="sd">    field_b2 : nmt.NmtField</span>
+</span><span id="line-1023"><span class="sd">        NaMaster field object for the second catalog (b2).</span>
+</span><span id="line-1024"><span class="sd">    wsp_a : nmt.NmtWorkspace</span>
+</span><span id="line-1025"><span class="sd">        NaMaster workspace object containing the mixing matrix for fields a.</span>
+</span><span id="line-1026"><span class="sd">    wsp_b : nmt.NmtWorkspace</span>
+</span><span id="line-1027"><span class="sd">        NaMaster workspace object containing the mixing matrix for fields b.</span>
+</span><span id="line-1028"><span class="sd">    b : nmt.NmtBin</span>
+</span><span id="line-1029"><span class="sd">        NaMaster binning object.</span>
+</span><span id="line-1030">
+</span><span id="line-1031"><span class="sd">    Returns</span>
+</span><span id="line-1032"><span class="sd">    -------</span>
+</span><span id="line-1033"><span class="sd">    cov_matrix : np.ndarray</span>
+</span><span id="line-1034"><span class="sd">        Covariance matrix of the pseudo-Cl, shape ``(n_bins, n_bins)``.</span>
+</span><span id="line-1035"><span class="sd">    """</span>
+</span><span id="line-1036">    <span class="c1"># Compute the coupling coefficients for the covariance</span>
+</span><span id="line-1037">    <span class="n">cw</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtCovarianceWorkspace</span><span class="o">.</span><span class="n">from_fields</span><span class="p">(</span><span class="n">field_a1</span><span class="p">,</span> <span class="n">field_a2</span><span class="p">,</span> <span class="n">field_b1</span><span class="p">,</span> <span class="n">field_b2</span><span class="p">)</span>
+</span><span id="line-1038">
+</span><span id="line-1039">    <span class="c1"># Get actual number of ell bins from binning scheme</span>
+</span><span id="line-1040">    <span class="n">n_ell_actual</span> <span class="o">=</span> <span class="n">b</span><span class="o">.</span><span class="n">get_n_bands</span><span class="p">()</span>
+</span><span id="line-1041">
+</span><span id="line-1042">    <span class="c1"># Compute the covariance using NaMaster's built-in function</span>
+</span><span id="line-1043">    <span class="n">cov_matrix</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">gaussian_covariance</span><span class="p">(</span>
+</span><span id="line-1044">        <span class="n">cw</span><span class="p">,</span>
+</span><span id="line-1045">        <span class="mi">2</span><span class="p">,</span>
+</span><span id="line-1046">        <span class="mi">2</span><span class="p">,</span>
+</span><span id="line-1047">        <span class="mi">2</span><span class="p">,</span>
+</span><span id="line-1048">        <span class="mi">2</span><span class="p">,</span>
+</span><span id="line-1049">        <span class="n">input_cl_a1_b1</span><span class="p">,</span>
+</span><span id="line-1050">        <span class="n">input_cl_a1_b2</span><span class="p">,</span>
+</span><span id="line-1051">        <span class="n">input_cl_a2_b1</span><span class="p">,</span>
+</span><span id="line-1052">        <span class="n">input_cl_a2_b2</span><span class="p">,</span>
+</span><span id="line-1053">        <span class="n">wsp_a</span><span class="p">,</span>
+</span><span id="line-1054">        <span class="n">wb</span><span class="o">=</span><span class="n">wsp_b</span><span class="p">,</span>
+</span><span id="line-1055">    <span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">([</span><span class="n">n_ell_actual</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="n">n_ell_actual</span><span class="p">,</span> <span class="mi">4</span><span class="p">])</span>
 </span><span id="line-1056">
+</span><span id="line-1057">    <span class="k">return</span> <span class="n">cov_matrix</span></div>
+
+</span><span id="line-1058">
+</span><span id="line-1059">
+</span><span id="line-1060"><span class="c1"># NaMaster spin-2 × spin-2 spectrum order: EE, EB, BE, BB.</span>
+</span><span id="line-1061"><span class="n">_NMT_EE</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span id="line-1062">
+</span><span id="line-1063">
 <div class="viewcode-block" id="bandpower_window_from_workspace">
 <a class="viewcode-back" href="../../sp_validation.pseudo_cl.html#sp_validation.pseudo_cl.bandpower_window_from_workspace">[docs]</a>
-</span><span id="line-1057"><span class="k">def</span><span class="w"> </span><span class="nf">bandpower_window_from_workspace</span><span class="p">(</span><span class="n">wsp</span><span class="p">,</span> <span class="n">nside</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-</span><span id="line-1058"><span class="w">    </span><span class="sd">"""Extract the bandpower window matrix ``W`` for a spin-2×spin-2 workspace.</span>
-</span><span id="line-1059">
-</span><span id="line-1060"><span class="sd">    For HEALPix-map spectra, supply ``nside`` to include the pixel window</span>
-</span><span id="line-1061"><span class="sd">    ``pw²(ℓ)`` in the measured spectrum. Catalogue-based spectra have no pixel</span>
-</span><span id="line-1062"><span class="sd">    window and must leave ``nside`` unset.</span>
-</span><span id="line-1063">
-</span><span id="line-1064"><span class="sd">    NaMaster's ``get_bandpower_windows()`` returns a four-index array</span>
-</span><span id="line-1065"><span class="sd">    ``(n_cl_out, n_bpw, n_cl_in, n_ell)`` describing how each output bandpower</span>
-</span><span id="line-1066"><span class="sd">    is built from the input multipoles across the EE/EB/BE/BB spectra. SACC's</span>
-</span><span id="line-1067"><span class="sd">    ``BandpowerWindow`` model (one window per bandpower, shared across the</span>
-</span><span id="line-1068"><span class="sd">    stored spectra) needs the per-spectrum *decoupling* window, i.e. the</span>
-</span><span id="line-1069"><span class="sd">    diagonal EE←EE block (equal to BB←BB and EB←EB, verified identical).</span>
+</span><span id="line-1064"><span class="k">def</span><span class="w"> </span><span class="nf">bandpower_window_from_workspace</span><span class="p">(</span><span class="n">wsp</span><span class="p">,</span> <span class="n">nside</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+</span><span id="line-1065"><span class="w">    </span><span class="sd">"""Extract the bandpower window matrix ``W`` for a spin-2×spin-2 workspace.</span>
+</span><span id="line-1066">
+</span><span id="line-1067"><span class="sd">    For HEALPix-map spectra, supply ``nside`` to include the pixel window</span>
+</span><span id="line-1068"><span class="sd">    ``pw²(ℓ)`` in the measured spectrum. Catalogue-based spectra have no pixel</span>
+</span><span id="line-1069"><span class="sd">    window and must leave ``nside`` unset.</span>
 </span><span id="line-1070">
-</span><span id="line-1071"><span class="sd">    Returns</span>
-</span><span id="line-1072"><span class="sd">    -------</span>
-</span><span id="line-1073"><span class="sd">    window_ells : np.ndarray</span>
-</span><span id="line-1074"><span class="sd">        Multipoles the window spans, ``arange(n_ell)`` — the ``ell`` axis of</span>
-</span><span id="line-1075"><span class="sd">        ``compute_coupled_cell``.</span>
-</span><span id="line-1076"><span class="sd">    window_weights : np.ndarray</span>
-</span><span id="line-1077"><span class="sd">        ``W`` of shape ``(n_ell, n_bpw)`` — one column per bandpower, the layout</span>
-</span><span id="line-1078"><span class="sd">        :func:`sp_validation.sacc_io.add_pseudo_cl` expects. If ``nside`` is</span>
-</span><span id="line-1079"><span class="sd">        given, this includes ``pw²(ℓ)`` on the window's multipole grid.</span>
-</span><span id="line-1080"><span class="sd">    """</span>
-</span><span id="line-1081">    <span class="n">bpw</span> <span class="o">=</span> <span class="n">wsp</span><span class="o">.</span><span class="n">get_bandpower_windows</span><span class="p">()</span>  <span class="c1"># (n_cl_out, n_bpw, n_cl_in, n_ell)</span>
-</span><span id="line-1082">    <span class="n">diagonal</span> <span class="o">=</span> <span class="n">bpw</span><span class="p">[</span><span class="n">_NMT_EE</span><span class="p">,</span> <span class="p">:,</span> <span class="n">_NMT_EE</span><span class="p">,</span> <span class="p">:]</span>  <span class="c1"># (n_bpw, n_ell)</span>
-</span><span id="line-1083">    <span class="n">window_ells</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">diagonal</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
-</span><span id="line-1084">    <span class="k">if</span> <span class="n">nside</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-1085">        <span class="n">pixwin</span> <span class="o">=</span> <span class="n">hp</span><span class="o">.</span><span class="n">pixwin</span><span class="p">(</span><span class="n">nside</span><span class="p">,</span> <span class="n">lmax</span><span class="o">=</span><span class="n">diagonal</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
-</span><span id="line-1086">        <span class="n">diagonal</span> <span class="o">=</span> <span class="n">diagonal</span> <span class="o">*</span> <span class="n">pixwin</span><span class="o">**</span><span class="mi">2</span>
-</span><span id="line-1087">    <span class="k">return</span> <span class="n">window_ells</span><span class="p">,</span> <span class="n">diagonal</span><span class="o">.</span><span class="n">T</span></div>
+</span><span id="line-1071"><span class="sd">    NaMaster's ``get_bandpower_windows()`` returns a four-index array</span>
+</span><span id="line-1072"><span class="sd">    ``(n_cl_out, n_bpw, n_cl_in, n_ell)`` describing how each output bandpower</span>
+</span><span id="line-1073"><span class="sd">    is built from the input multipoles across the EE/EB/BE/BB spectra. SACC's</span>
+</span><span id="line-1074"><span class="sd">    ``BandpowerWindow`` model (one window per bandpower, shared across the</span>
+</span><span id="line-1075"><span class="sd">    stored spectra) needs the per-spectrum *decoupling* window, i.e. the</span>
+</span><span id="line-1076"><span class="sd">    diagonal EE←EE block (equal to BB←BB and EB←EB, verified identical).</span>
+</span><span id="line-1077">
+</span><span id="line-1078"><span class="sd">    Returns</span>
+</span><span id="line-1079"><span class="sd">    -------</span>
+</span><span id="line-1080"><span class="sd">    window_ells : np.ndarray</span>
+</span><span id="line-1081"><span class="sd">        Multipoles the window spans, ``arange(n_ell)`` — the ``ell`` axis of</span>
+</span><span id="line-1082"><span class="sd">        ``compute_coupled_cell``.</span>
+</span><span id="line-1083"><span class="sd">    window_weights : np.ndarray</span>
+</span><span id="line-1084"><span class="sd">        ``W`` of shape ``(n_ell, n_bpw)`` — one column per bandpower, the layout</span>
+</span><span id="line-1085"><span class="sd">        :func:`sp_validation.sacc_io.add_pseudo_cl` expects. If ``nside`` is</span>
+</span><span id="line-1086"><span class="sd">        given, this includes ``pw²(ℓ)`` on the window's multipole grid.</span>
+</span><span id="line-1087"><span class="sd">    """</span>
+</span><span id="line-1088">    <span class="n">bpw</span> <span class="o">=</span> <span class="n">wsp</span><span class="o">.</span><span class="n">get_bandpower_windows</span><span class="p">()</span>  <span class="c1"># (n_cl_out, n_bpw, n_cl_in, n_ell)</span>
+</span><span id="line-1089">    <span class="n">diagonal</span> <span class="o">=</span> <span class="n">bpw</span><span class="p">[</span><span class="n">_NMT_EE</span><span class="p">,</span> <span class="p">:,</span> <span class="n">_NMT_EE</span><span class="p">,</span> <span class="p">:]</span>  <span class="c1"># (n_bpw, n_ell)</span>
+</span><span id="line-1090">    <span class="n">window_ells</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">diagonal</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span><span id="line-1091">    <span class="k">if</span> <span class="n">nside</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-1092">        <span class="n">pixwin</span> <span class="o">=</span> <span class="n">hp</span><span class="o">.</span><span class="n">pixwin</span><span class="p">(</span><span class="n">nside</span><span class="p">,</span> <span class="n">lmax</span><span class="o">=</span><span class="n">diagonal</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+</span><span id="line-1093">        <span class="n">diagonal</span> <span class="o">=</span> <span class="n">diagonal</span> <span class="o">*</span> <span class="n">pixwin</span><span class="o">**</span><span class="mi">2</span>
+</span><span id="line-1094">    <span class="k">return</span> <span class="n">window_ells</span><span class="p">,</span> <span class="n">diagonal</span><span class="o">.</span><span class="n">T</span></div>
 
 </span></code></pre></div>
     </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
