@@ -420,7 +420,6 @@ def get_jackknife_cov(
     Compute the covariance matrix of rho and tau-statistics using the jackknife method.
     Also compute rho and tau-statistics.
     """
-    # TODO: Reorganise this to avoid recomputing unnecessarily the rho-stats multiple times.
     rho_filename = f"rho_stats_{base_rho}.fits"
     tau_filename = f"tau_stats_{base_tau}.fits"
     tau_cov_path = Path(outdir) / f"cov_tau_{base_tau}_jk.npy"
@@ -462,6 +461,13 @@ def get_jackknife_cov(
     )
 
     tau_stat_handler.catalogs.set_params(params, outdir)
+
+    rho_path = Path(outdir) / rho_filename
+    cov_rho_path = Path(outdir) / f"cov_rho_{base_rho}_jk.npy"
+    reuse_rho = rho_path.exists() and cov_rho_path.exists() and not force_run
+    if reuse_rho:
+        rho_stat_handler.load_rho_stats(rho_filename)
+        cached_rho_cov = np.load(cov_rho_path)
 
     # shear_psf_leakage keys its catalogues by catalog_id and writes each
     # draw's covariance to cov_{rho,tau}_{catalog_id}.npy; base_tau names the
@@ -520,14 +526,17 @@ def get_jackknife_cov(
                     mask=mask_gal,
                 )
 
-                # Compute and save rho stats
-                rho_stat_handler.compute_rho_stats(
-                    catalog_id(i),
-                    rho_filename,
-                    save_cov=True,
-                    func=_extract_xip,
-                    var_method="jackknife",
-                )
+                # The PSF-only result is shared by every source bin.
+                if reuse_rho:
+                    np.save(chunks(i)[0], cached_rho_cov)
+                else:
+                    rho_stat_handler.compute_rho_stats(
+                        catalog_id(i),
+                        rho_filename,
+                        save_cov=True,
+                        func=_extract_xip,
+                        var_method="jackknife",
+                    )
 
                 # function to extract the tau_+
                 tau_stat_handler.compute_tau_stats(
@@ -563,9 +572,9 @@ def get_jackknife_cov(
     tau_cov_path.parent.mkdir(parents=True, exist_ok=True)
     np.save(tau_cov_path, cov_tau)
 
-    cov_rho_path = Path(outdir) / f"cov_rho_{base_rho}_jk.npy"
     cov_rho_path.parent.mkdir(parents=True, exist_ok=True)
-    np.save(cov_rho_path, cov_rho)
+    if not reuse_rho:
+        np.save(cov_rho_path, cov_rho)
 
     return rho_stat_handler, tau_stat_handler
 
