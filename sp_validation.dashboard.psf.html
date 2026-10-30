@@ -178,17 +178,17 @@
 <div id="content" role="main">
 <section id="module-sp_validation.dashboard.psf">
 <span id="sp-validation-dashboard-psf"></span><h1>sp_validation.dashboard.psf<a class="headerlink" href="#module-sp_validation.dashboard.psf" title="Link to this heading">¶</a></h1>
-<p>PSF leakage: ρ statistics, the τ fit and its posterior, the propagated
+<p>PSF leakage: ρ statistics, the τ fit and its coefficient draws, the propagated
 systematic, and every estimate of the leakage coefficient α side by side.</p>
 <p>The τ model is the one the ρ/τ fit uses (shear_psf_leakage, with η):</p>
 <blockquote>
 <div><p>τ0 = α ρ0 + β ρ2 + η ρ5,  τ2 = α ρ2 + β ρ1 + η ρ4,  τ5 = α ρ5 + β ρ4 + η ρ3</p>
 </div></blockquote>
-<p>evaluated here on the cached posterior samples; nothing is refitted.</p>
+<p>evaluated here on the cached coefficient draws; nothing is refitted.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.dashboard.psf.tau_model_samples">
 <span class="sig-name descname"><span class="pre">tau_model_samples</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">samples</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/dashboard/psf.html#tau_model_samples"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.dashboard.psf.tau_model_samples" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.dashboard.psf.tau_model_samples'">¶</a></dt>
-<dd><p>τ_{k,+}(θ) for each posterior sample, shape <code class="docutils literal notranslate"><span class="pre">(n_samples,</span> <span class="pre">n_theta)</span></code>.</p>
+<dd><p>τ_{k,+}(θ) for each coefficient draw, shape <code class="docutils literal notranslate"><span class="pre">(n_samples,</span> <span class="pre">n_theta)</span></code>.</p>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.dashboard.psf._power_of_ten">
@@ -197,16 +197,16 @@ systematic, and every estimate of the leakage coefficient α side by side.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.dashboard.psf.tau_fit">
 <span class="sig-name descname"><span class="pre">tau_fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/dashboard/psf.html#tau_fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.dashboard.psf.tau_fit" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.dashboard.psf.tau_fit'">¶</a></dt>
-<dd><p>τ_{0,2,5}+ with the posterior band of the fitted model.</p>
+<dd><p>τ_{0,2,5}+ with the coefficient-resampling band of the fitted model.</p>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.dashboard.psf._contour_levels">
 <span class="sig-name descname"><span class="pre">_contour_levels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">h</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fractions</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0.68,</span> <span class="pre">0.95)</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/dashboard/psf.html#_contour_levels"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.dashboard.psf._contour_levels" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.dashboard.psf._contour_levels'">¶</a></dt>
 <dd></dd></dl>
 <dl class="py function">
-<dt class="sig sig-object py" id="sp_validation.dashboard.psf.posterior">
-<span class="sig-name descname"><span class="pre">posterior</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">markers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0,</span> <span class="pre">1,</span> <span class="pre">1)</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/dashboard/psf.html#posterior"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.dashboard.psf.posterior" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.dashboard.psf.posterior'">¶</a></dt>
-<dd><p>Corner plot of the (α, β, η) posterior from the cached samples.</p>
+<dt class="sig sig-object py" id="sp_validation.dashboard.psf.coefficient_draws">
+<span class="sig-name descname"><span class="pre">coefficient_draws</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">markers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0,</span> <span class="pre">1,</span> <span class="pre">1)</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/dashboard/psf.html#coefficient_draws"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.dashboard.psf.coefficient_draws" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.dashboard.psf.coefficient_draws'">¶</a></dt>
+<dd><p>Cached coefficient draws; axes omit 0.3% of each marginal tail.</p>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.dashboard.psf.rho_stats">
@@ -214,14 +214,22 @@ systematic, and every estimate of the leakage coefficient α side by side.</p>
 <dd><p><a href="#id1"><span class="problematic" id="id2">|ρ_{k,+}|</span></a> on a log axis: filled markers positive, open negative.</p>
 </dd></dl>
 <dl class="py function">
-<dt class="sig sig-object py" id="sp_validation.dashboard.psf.xi_sys_ratio">
-<span class="sig-name descname"><span class="pre">xi_sys_ratio</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xi</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reference</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/dashboard/psf.html#xi_sys_ratio"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.dashboard.psf.xi_sys_ratio" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.dashboard.psf.xi_sys_ratio'">¶</a></dt>
-<dd><p>Propagated PSF systematic relative to the blinded ξ±.</p>
+<dt class="sig sig-object py" id="sp_validation.dashboard.psf.xi_sys">
+<span class="sig-name descname"><span class="pre">xi_sys</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xi</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/dashboard/psf.html#xi_sys"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.dashboard.psf.xi_sys" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.dashboard.psf.xi_sys'">¶</a></dt>
+<dd><p>Blinded θξ± and PSF coefficient-draw bands in native units.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.dashboard.psf.theta_tau">
+<span class="sig-name descname"><span class="pre">theta_tau</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">corrected</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/dashboard/psf.html#theta_tau"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.dashboard.psf.theta_tau" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.dashboard.psf.theta_tau'">¶</a></dt>
+<dd><p>θτ2,5 with the raw fit; a corrected input needs only θ, τ and covariance.</p>
+<p>Nonpositive theory variances have no real standard deviation: retain those
+points but omit their error bars rather than presenting a zero uncertainty.
+Each catalogue uses its own pair-weighted mean separation.</p>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.dashboard.psf.xi_sys_comparison">
-<span class="sig-name descname"><span class="pre">xi_sys_comparison</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/dashboard/psf.html#xi_sys_comparison"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.dashboard.psf.xi_sys_comparison" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.dashboard.psf.xi_sys_comparison'">¶</a></dt>
-<dd><p>Compare the full fitted systematic with tau_0 squared over rho_0.</p>
+<span class="sig-name descname"><span class="pre">xi_sys_comparison</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/dashboard/psf.html#xi_sys_comparison"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.dashboard.psf.xi_sys_comparison" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.dashboard.psf.xi_sys_comparison'">¶</a></dt>
+<dd><p>Compare θξ± coefficient draws and blinded data.</p>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.dashboard.psf.alpha_estimates">
@@ -253,9 +261,10 @@ systematic, and every estimate of the leakage coefficient α side by side.</p>
 <li><a :data-current="activeSection === '#sp_validation.dashboard.psf._power_of_ten'" class="reference internal" href="#sp_validation.dashboard.psf._power_of_ten"><code class="docutils literal notranslate"><span class="pre">_power_of_ten()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.dashboard.psf.tau_fit'" class="reference internal" href="#sp_validation.dashboard.psf.tau_fit"><code class="docutils literal notranslate"><span class="pre">tau_fit()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.dashboard.psf._contour_levels'" class="reference internal" href="#sp_validation.dashboard.psf._contour_levels"><code class="docutils literal notranslate"><span class="pre">_contour_levels()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.dashboard.psf.posterior'" class="reference internal" href="#sp_validation.dashboard.psf.posterior"><code class="docutils literal notranslate"><span class="pre">posterior()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.dashboard.psf.coefficient_draws'" class="reference internal" href="#sp_validation.dashboard.psf.coefficient_draws"><code class="docutils literal notranslate"><span class="pre">coefficient_draws()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.dashboard.psf.rho_stats'" class="reference internal" href="#sp_validation.dashboard.psf.rho_stats"><code class="docutils literal notranslate"><span class="pre">rho_stats()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.dashboard.psf.xi_sys_ratio'" class="reference internal" href="#sp_validation.dashboard.psf.xi_sys_ratio"><code class="docutils literal notranslate"><span class="pre">xi_sys_ratio()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.dashboard.psf.xi_sys'" class="reference internal" href="#sp_validation.dashboard.psf.xi_sys"><code class="docutils literal notranslate"><span class="pre">xi_sys()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.dashboard.psf.theta_tau'" class="reference internal" href="#sp_validation.dashboard.psf.theta_tau"><code class="docutils literal notranslate"><span class="pre">theta_tau()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.dashboard.psf.xi_sys_comparison'" class="reference internal" href="#sp_validation.dashboard.psf.xi_sys_comparison"><code class="docutils literal notranslate"><span class="pre">xi_sys_comparison()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.dashboard.psf.alpha_estimates'" class="reference internal" href="#sp_validation.dashboard.psf.alpha_estimates"><code class="docutils literal notranslate"><span class="pre">alpha_estimates()</span></code></a></li>
 </ul>

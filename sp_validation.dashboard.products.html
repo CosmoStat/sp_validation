@@ -320,6 +320,16 @@ band’s mean multipole reproduces the stored effective ell.</p>
 <dd><p>ρ/τ statistics with their covariance blocks, and the PSF-fit samples.</p>
 </dd></dl>
 <dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.dashboard.products.load_tau">
+<span class="sig-name descname"><span class="pre">load_tau</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sacc_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tau_cov_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">blind</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/dashboard/products.html#load_tau"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.dashboard.products.load_tau" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.dashboard.products.load_tau'">¶</a></dt>
+<dd><p>τ-only SACC part and theory covariance; no cosmology or fit required.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.dashboard.products.load_corrected_tau">
+<span class="sig-name descname"><span class="pre">load_corrected_tau</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">run_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">version</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cat_config</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/dashboard/products.html#load_corrected_tau"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.dashboard.products.load_corrected_tau" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.dashboard.products.load_corrected_tau'">¶</a></dt>
+<dd><p>Resolve a τ-only run explicitly, avoiding a corrected full-DAG run.</p>
+</dd></dl>
+<dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.dashboard.products.load_json">
 <span class="sig-name descname"><span class="pre">load_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/dashboard/products.html#load_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.dashboard.products.load_json" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.dashboard.products.load_json'">¶</a></dt>
 <dd></dd></dl>
@@ -380,6 +390,8 @@ band’s mean multipole reproduces the stored effective ell.</p>
 <li><a :data-current="activeSection === '#sp_validation.dashboard.products.load_cosebis_grid'" class="reference internal" href="#sp_validation.dashboard.products.load_cosebis_grid"><code class="docutils literal notranslate"><span class="pre">load_cosebis_grid()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.dashboard.products.load_cl'" class="reference internal" href="#sp_validation.dashboard.products.load_cl"><code class="docutils literal notranslate"><span class="pre">load_cl()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.dashboard.products.load_rho_tau'" class="reference internal" href="#sp_validation.dashboard.products.load_rho_tau"><code class="docutils literal notranslate"><span class="pre">load_rho_tau()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.dashboard.products.load_tau'" class="reference internal" href="#sp_validation.dashboard.products.load_tau"><code class="docutils literal notranslate"><span class="pre">load_tau()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.dashboard.products.load_corrected_tau'" class="reference internal" href="#sp_validation.dashboard.products.load_corrected_tau"><code class="docutils literal notranslate"><span class="pre">load_corrected_tau()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.dashboard.products.load_json'" class="reference internal" href="#sp_validation.dashboard.products.load_json"><code class="docutils literal notranslate"><span class="pre">load_json()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.dashboard.products.load_correlation'" class="reference internal" href="#sp_validation.dashboard.products.load_correlation"><code class="docutils literal notranslate"><span class="pre">load_correlation()</span></code></a></li>
 </ul>
