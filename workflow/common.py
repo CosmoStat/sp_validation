@@ -332,45 +332,6 @@ def catalogue_entry(version):
     return CATALOG_CONFIG[catalogue_name(version)]
 
 
-def measurement_catalogue(version, *, psf=False):
-    """Load-bearing catalogue metadata for two-point producer invalidation.
-
-    Styles and precomputed survey summaries are presentation/covariance inputs,
-    not inputs to these measurements. Keep them out of expensive rerun triggers.
-    The PSF producers additionally read the stellar entries and patch count.
-    """
-    entry = catalogue_entry(version)
-    shear_keys = (
-        "path",
-        "hdu",
-        "column_map",
-        "ra_col",
-        "dec_col",
-        "w_col",
-        "e1_col",
-        "e2_col",
-        "e1_col_corrected",
-        "e2_col_corrected",
-        "R",
-        "R11",
-        "R22",
-        "redshift_path",
-        "tomo_bin_col",
-    )
-    metadata = {
-        "subdir": entry.get("subdir", ""),
-        "shear": {
-            key: entry["shear"][key] for key in shear_keys if key in entry["shear"]
-        },
-        "mask": entry.get("mask"),
-    }
-    if psf:
-        metadata.update(
-            {key: entry[key] for key in ("psf", "star", "patch_number") if key in entry}
-        )
-    return metadata
-
-
 def pair_count_reference(config, version):
     """Resolve an explicit geometry-only reference without chaining aliases.
 
