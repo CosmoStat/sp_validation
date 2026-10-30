@@ -31,6 +31,7 @@ environment with CAMB, even one without GLASS installed.
 
 from __future__ import annotations
 
+import re
 from dataclasses import asdict, dataclass, field
 
 import numpy as np
@@ -731,6 +732,12 @@ def paint_shear(
     )
 
 
+# Mock shapes are written under the shape columns and these calibrated aliases.
+ALIASES = ("e1_leak_corrected", "e2_leak_corrected")
+# Names that carry a galaxy's measured shape or response and may never be kept.
+SHAPE_COLUMN = re.compile(r"^(e[12]|g[12]|R_|.*_uncal$|.*leak_corrected$)", re.I)
+
+
 def paint_catalogue(
     input_path,
     output_path,
@@ -751,14 +758,18 @@ def paint_catalogue(
     column_map=None,
     overwrite=False,
     shear="gamma",
+    keep=(),
 ):
     """Stream a FITS/HDF5 catalogue into an HDF5 mock (root ``data`` table).
 
     Uses the same lazy ``Catalogue`` reader as ``read_catalogue`` with bounded
     row slices, including single-dataset 138M-row HDF5 catalogues.
-    Auxiliary columns are preserved in the reader's canonical grammar.
-    Calibrated ``e*_leak_corrected`` aliases, when present, also receive the
-    mock shapes, so the corrected-column cosmo_val path stays mock-only.
+    The mock carries an allowlist of input columns, in the reader's canonical
+    grammar: position, weight, PSF ellipticities and any ``keep`` names. Every
+    other input column, including all galaxy shapes and responses, is dropped,
+    so a mock painted from a blinded catalogue carries no measured shape.
+    ``e1_col/e2_col`` and ``e*_leak_corrected`` hold the mock shapes, so the
+    corrected-column cosmo_val path stays mock-only.
     Output is atomic; a JSON sidecar and HDF5 attributes record the injection.
     """
     import json
@@ -827,6 +838,7 @@ def paint_catalogue(
         columns=dict(
             ra=ra_col, dec=dec_col, e1=e1_col, e2=e2_col, w=w_col, psf=list(psf_cols)
         ),
+        kept=list(keep),
         convention="catalogue e2=-HEALPix gamma2; pol_factor=-1",
         shear=shear,
         applied_signal="gamma" if shear == "gamma" else "gamma/(1-kappa)",
@@ -846,8 +858,17 @@ def paint_catalogue(
             raise KeyError(f"Missing painting columns: {sorted(missing)}")
         if set(extra) & set(dtype.names):
             raise ValueError("Input already contains mock truth/noise columns")
+        kept = [ra_col, dec_col, w_col, *keep]
+        kept += [name for name in psf_cols if name in dtype.names]
+        kept = [name for name in dtype.names if name in set(kept)]
+        if missing := set(keep) - set(dtype.names):
+            raise KeyError(f"Missing kept columns: {sorted(missing)}")
+        if shaped := [name for name in keep if SHAPE_COLUMN.match(name)]:
+            raise ValueError(f"Kept columns look like galaxy shapes: {shaped}")
+        shapes = [e1_col, e2_col, *ALIASES]
         output_dtype = np.dtype(
-            [(name, dtype[name]) for name in dtype.names]
+            [(name, dtype[name]) for name in kept]
+            + [(name, dtype[e1_col]) for name in shapes]
             + [(name, "f4") for name in extra]
         )
         table = dst.create_dataset(
@@ -882,15 +903,10 @@ def paint_catalogue(
                 timings["paint"] += time.perf_counter() - tick
                 tick = time.perf_counter()
                 mock = np.empty(len(rows), dtype=output_dtype)
-                for name in dtype.names:
+                for name in kept:
                     mock[name] = rows[name]
-                mock[e1_col], mock[e2_col] = painted["e1"], painted["e2"]
-                for alias, component in (
-                    ("e1_leak_corrected", "e1"),
-                    ("e2_leak_corrected", "e2"),
-                ):
-                    if alias in dtype.names:
-                        mock[alias] = painted[component]
+                for name, component in zip(shapes, ("e1", "e2") * 2, strict=True):
+                    mock[name] = painted[component]
                 for name in extra:
                     mock[name] = painted[name]
                 # One-point diagnostics use only rotated or mock shapes.
