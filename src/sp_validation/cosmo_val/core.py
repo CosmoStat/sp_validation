@@ -336,7 +336,14 @@ class CosmologyValidation(
         if unknown:
             raise ValueError(f"Unknown psf_leakage settings: {sorted(unknown)}")
         self.psf_leakage = {**PSF_LEAKAGE_DEFAULTS, **(psf_leakage or {})}
-        if self.psf_leakage["fiducial_npatch"] not in self.psf_leakage["patch_counts"]:
+        npatch_fine = self.psf_leakage["npatch_fine"]
+        patch_counts = self.psf_leakage["patch_counts"]
+        if not all(1 < n < npatch_fine for n in patch_counts):
+            raise ValueError(
+                f"psf_leakage patch_counts {patch_counts} must each lie strictly "
+                f"between 1 and npatch_fine={npatch_fine}"
+            )
+        if self.psf_leakage["fiducial_npatch"] not in patch_counts:
             raise ValueError("psf_leakage fiducial_npatch must be one of patch_counts")
         self.cov_estimate_method = cov_estimate_method
         self.compute_cov_rho = compute_cov_rho

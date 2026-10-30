@@ -255,3 +255,17 @@ def test_cache_is_stale_after_a_change(tmp_path, change):
         fresh.leakage_jackknife(VERSION)
     assert _fresh(val).leakage_jackknife(VERSION) is not None
 
+
+@pytest.mark.parametrize(
+    "settings, message",
+    [
+        ({"npatch_fine": 300}, "strictly between 1 and npatch_fine"),
+        ({"patch_counts": [1, 400]}, "strictly between 1 and npatch_fine"),
+        ({"fiducial_npatch": 300}, "fiducial_npatch must be one of"),
+    ],
+)
+def test_psf_leakage_settings_are_validated(settings, message):
+    from sp_validation.cosmo_val import CosmologyValidation
+
+    with pytest.raises(ValueError, match=message):
+        CosmologyValidation(versions=[], psf_leakage=settings)
