@@ -149,14 +149,16 @@ def onecov_xi_covariance(s, cov):
     return cov[np.ix_(order, order)]
 
 
-def pseudo_cl_to_sacc(nz, metadata, ell_eff, cl_all, wsp, covariance=None):
+def pseudo_cl_to_sacc(nz, metadata, ell_eff, cl_all, wsp, covariance=None, nside=None):
     """One pseudo-Cℓ part: EE/BB/EB with the shared bandpower window.
 
     ``cl_all`` is NaMaster's decoupled ``(4, nbp)`` array (EE, EB, BE, BB); the
-    window comes from :func:`bandpower_window_from_workspace`. ``covariance``,
-    when given, is the dense ``[EE; BB; EB]``-ordered block matching insertion.
+    window comes from :func:`bandpower_window_from_workspace`. Supply ``nside``
+    only for HEALPix-map spectra, whose measured spectrum includes ``pw²(ℓ)``;
+    catalogue-based spectra have no pixel window. ``covariance``, when given,
+    is the dense ``[EE; BB; EB]``-ordered block matching insertion.
     """
-    window_ells, window_weights = bandpower_window_from_workspace(wsp)
+    window_ells, window_weights = bandpower_window_from_workspace(wsp, nside)
     s = sio.new_sacc(nz, metadata)
     sio.add_pseudo_cl(
         s,
