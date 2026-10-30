@@ -112,10 +112,8 @@ class Toy:
         environment. The workflow profile is off: it enables apptainer, which CI
         runners lack.
         """
-        cmd = [
-            sys.executable,
-            "-m",
-            "snakemake",
+        launcher = os.environ.get("SPV_TEST_SNAKEMAKE")
+        cmd = ([launcher] if launcher else [sys.executable, "-m", "snakemake"]) + [
             "--cores",
             "1",
             "--workflow-profile",
