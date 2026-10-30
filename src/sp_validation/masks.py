@@ -25,7 +25,7 @@ _KIND_OPS = {
 }
 
 
-def apply_condition(array, kind, value):
+def apply_condition(array, kind, value, ignore_bits=0):
     """Apply Condition.
 
     Evaluate one mask condition (``kind``/``value``, as specified in mask
@@ -44,6 +44,9 @@ def apply_condition(array, kind, value):
     value : float or list
         value(s) to be used in mask operation; two-element list for "range"
 
+    ignore_bits : int, optional
+        Bits to clear before comparison; requires an integer array.
+
     Returns
     -------
     numpy.ndarray
@@ -53,6 +56,11 @@ def apply_condition(array, kind, value):
     kind = _KIND_ALIASES.get(kind, kind)
     if kind not in _KIND_OPS:
         raise ValueError(f"Unknown mask condition kind: {kind!r}")
+    if ignore_bits:
+        array = np.asarray(array)
+        if not np.issubdtype(array.dtype, np.integer):
+            raise ValueError("ignore_bits requires an integer array")
+        array = array & np.bitwise_not(np.array(ignore_bits, dtype=array.dtype))
     return _KIND_OPS[kind](array, value)
 
 
@@ -128,6 +136,8 @@ class Mask:
         input data, default is `None`; apply mask if given
     verbose : bool, optional
         verbose output if ``True``; default is ``False``
+    ignore_bits : int, optional
+        Bits to clear before evaluating the condition.
 
     """
 
@@ -140,7 +150,9 @@ class Mask:
         col_name2=None,
         dat=None,
         verbose=False,
+        ignore_bits=0,
     ):
+        self._ignore_bits = ignore_bits
         self._col_name = col_name
         self._label = label
         self._value = value
@@ -177,10 +189,14 @@ class Mask:
     def apply(self, dat):
         if self._kind == "not_equal_2bands":
             self._mask = apply_condition(
-                dat[self._col_name], "not_equal", self._value
-            ) | apply_condition(dat[self._col_name2], "not_equal", self._value)
+                dat[self._col_name], "not_equal", self._value, self._ignore_bits
+            ) | apply_condition(
+                dat[self._col_name2], "not_equal", self._value, self._ignore_bits
+            )
         else:
-            self._mask = apply_condition(dat[self._col_name], self._kind, self._value)
+            self._mask = apply_condition(
+                dat[self._col_name], self._kind, self._value, self._ignore_bits
+            )
 
     def to_bool(self, hsp_mask):
         if self._verbose:
@@ -222,10 +238,14 @@ class Mask:
             sign = "$=$" if latex else "="
         elif self._kind == "not_equal":
             sign = r"$\ne$" if latex else "!="
-        elif self._kind in ("greater_equal", "range"):
-            sign = r"$\leq$" if latex else ">="
-        elif self._kind == "smaller_equal":
-            sign = r"$\geq$" if latex else "<="
+        elif self._kind == "greater_equal":
+            sign = r"$\geq$" if latex else ">="
+        elif self._kind in ("smaller_equal", "less_equal", "range"):
+            sign = r"$\leq$" if latex else "<="
+        elif self._kind == "greater":
+            sign = ">"
+        elif self._kind == "less":
+            sign = "<"
         return sign
 
     def print_condition(self, f_out, latex=False):
@@ -235,8 +255,10 @@ class Mask:
         sign = self.get_sign(latex=latex)
 
         name = self._label if latex else self._col_name
+        if self._ignore_bits:
+            name = f"({name} & ~{self._ignore_bits})"
 
-        if sign is not None:
+        if sign is not None and self._kind != "range":
             print(f"{name} {sign} {self._value}", file=f_out)
 
         if self._kind == "not_equal_2bands":
@@ -266,8 +288,13 @@ class Mask:
         sign = self.get_sign()
         if sign is not None:
             descr = f"{sign}{self._value}"
+        if self._ignore_bits and sign is not None:
+            descr = f"({self._col_name} & ~{self._ignore_bits}) {sign} {self._value}"
         if self._kind == "range":
-            descr = f"{self._value[0]}<={self._col_name}<={self._value[1]}"
+            name = self._col_name
+            if self._ignore_bits:
+                name = f"({name} & ~{self._ignore_bits})"
+            descr = f"{self._value[0]}<={name}<={self._value[1]}"
         if self._kind == "not_equal_2bands":
             descr = f"!={self._value} in {self._col_name} or {self._col_name2}"
         self._descr = descr
