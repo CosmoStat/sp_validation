@@ -1,4 +1,4 @@
-"""CLI: two-point statistics (xi, catalogue pseudo-Cl) for one GLASS mock.
+"""CLI: two-point statistics (xi, pseudo-Cl, map-Cl) for one GLASS mock.
 
 Thin wrapper around the two-point helpers in ``sp_validation.glass_mock``.
 """
@@ -8,7 +8,11 @@ import argparse
 import numpy as np
 from astropy.io import fits
 
-from sp_validation.glass_mock import compute_two_point_cl, compute_two_point_xi
+from sp_validation.glass_mock import (
+    compute_two_point_cl,
+    compute_two_point_cl_map,
+    compute_two_point_xi,
+)
 
 
 def get_parser():
@@ -55,5 +59,14 @@ if __name__ == "__main__":
     print("Two-point statistics in harmonic space computed successfully.")
     np.save(f"{args.path}/cl_glass_mock_{number}_{args.nside}.npy", cl)
     np.save(f"{args.path}/cl_coupled_glass_mock_{number}_{args.nside}.npy", cl_coupled)
+
+    print("Computing two-point statistics in harmonic space (map-based)...")
+    cl_coupled_map, cl_map = compute_two_point_cl_map(cat)
+    print("Map-based harmonic-space two-point statistics computed successfully.")
+    np.save(f"{args.path}/cl_map_glass_mock_{number}_{args.nside}.npy", cl_map)
+    np.save(
+        f"{args.path}/cl_coupled_map_glass_mock_{number}_{args.nside}.npy",
+        cl_coupled_map,
+    )
 
     print(f"Two-point statistics computed and saved for mock {args.number}.")

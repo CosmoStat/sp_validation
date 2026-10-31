@@ -120,6 +120,8 @@ def generate_pseudo_cl_cov(
         output_dir=output_dir,
         binning=binning,
         nside=nside,
+        cell_method="catalog",
+        nrandom_cell=100,
         cosmo_params=cosmo_params,
         npatch=npatch,
         theta_min=1.0,
