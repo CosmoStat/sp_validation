@@ -26,14 +26,34 @@ TAU_MODEL = {
     2: ((0, 2), (1, 1), (2, 4)),
     5: ((0, 5), (1, 4), (2, 3)),
 }
-PARAMS = (r"\alpha", r"\beta", r"\eta")
+# Labels of (α, β, η) and, with the PSF-size slope, (α, β₀, η, β₁).
+PARAMS = {
+    3: (r"\alpha", r"\beta", r"\eta"),
+    4: (r"\alpha", r"\beta_0", r"\eta", r"\beta_1"),
+}
+
+
+# τ0, τ2, τ5 rows of the PSF-size slope template ⟨u δe, {p, δe, q}⟩.
+SLOPE_ROW = {0: 0, 2: 1, 5: 2}
 
 
 def tau_model_samples(rt, k, samples):
-    """τ_{k,+}(θ) for each coefficient draw, shape ``(n_samples, n_theta)``."""
+    """τ_{k,+}(θ) for each coefficient draw, shape ``(n_samples, n_theta)``.
+
+    Draws of (α, β₀, η, β₁) from the PSF-size-slope fit add β₁ times the
+    fit's ``tau_slope_template`` (⟨u δe, p⟩, ⟨u δe, δe⟩, ⟨u δe, q⟩ for τ0,
+    τ2, τ5).
+    """
     model = 0
     for param, rho_k in TAU_MODEL[k]:
         model = model + samples[:, [param]] * rt["rho"][rho_k]["p"][None, :]
+    if samples.shape[1] == 4:
+        if "tau_slope_template" not in rt["fit"]:
+            raise ValueError("PSF-size slope samples need the fit's tau_slope_template")
+        template = np.asarray(rt["fit"]["tau_slope_template"])[SLOPE_ROW[k]]
+        model = model + samples[:, [3]] * template[None, :]
+    elif samples.shape[1] != 3:
+        raise ValueError(f"expected 3 or 4 leakage parameters, got {samples.shape[1]}")
     return model
 
 
@@ -101,10 +121,11 @@ def _contour_levels(h, fractions=(0.68, 0.95)):
     return sorted(flat[np.searchsorted(cum, f)] for f in fractions)
 
 
-def coefficient_draws(rt, out, markers=(0, 1, 1)):
+def coefficient_draws(rt, out, markers=(0, 1, 1, 0)):
     """Cached coefficient draws; axes omit 0.3% of each marginal tail."""
     samples = rt["fit"]["flat_samples"]
     n = samples.shape[1]
+    labels = PARAMS[n]
     with S.figure_style():
         fig, axes = plt.subplots(n, n, figsize=(3.6, 3.6))
         lims = [np.percentile(samples[:, i], [0.3, 99.7]) for i in range(n)]
@@ -130,7 +151,7 @@ def coefficient_draws(rt, out, markers=(0, 1, 1)):
                     )
                     lo, med, hi = np.percentile(x, [16, 50, 84])
                     ax.set_title(
-                        rf"${PARAMS[i]} = {med:.3g}^{{+{hi - med:.2g}}}"
+                        rf"${labels[i]} = {med:.3g}^{{+{hi - med:.2g}}}"
                         rf"_{{-{med - lo:.2g}}}$",
                         fontsize=7.5,
                     )
@@ -170,11 +191,11 @@ def coefficient_draws(rt, out, markers=(0, 1, 1)):
                 ax.set_xlim(lims[j])
                 ax.locator_params(nbins=3)
                 if i == n - 1:
-                    ax.set_xlabel(rf"${PARAMS[j]}$")
+                    ax.set_xlabel(rf"${labels[j]}$")
                 else:
                     ax.set_xticklabels([])
                 if j == 0 and i > 0:
-                    ax.set_ylabel(rf"${PARAMS[i]}$")
+                    ax.set_ylabel(rf"${labels[i]}$")
                 elif j > 0 and i != j:
                     ax.set_yticklabels([])
         fig.get_layout_engine().set(hspace=0.02, wspace=0.02)
