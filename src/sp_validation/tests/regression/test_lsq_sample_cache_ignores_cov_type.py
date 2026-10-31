@@ -78,3 +78,36 @@ def test_lsq_posterior_width_follows_cov_type_not_cached_th(
         f"jk after th returned posterior std {std_jk}; expected ~{SIGMA_JK}, "
         f"not cached th width ~{SIGMA_TH}"
     )
+
+
+def test_lsq_samples_follow_the_recorded_selection(
+    tmp_path, monkeypatch, restore_random_state
+):
+    """Samples cached for one row selection are not reused for another.
+
+    The tau statistics record their star/galaxy selection beside the FITS
+    file. Remeasuring them on other rows (here tau shifts from 0 to 1) must
+    give samples of the new tau, not the cached draws of the old selection.
+    """
+    _write_fixture(tmp_path)
+    metadata = tmp_path / "tau_stats_fit.fits.json"
+    metadata.write_text('{"selection": "aaaaaaaaaaaaaaaa"}\n')
+    rho = RhoStat(output=str(tmp_path), treecorr_config=CFG)
+    tau = TauStat(output=str(tmp_path), treecorr_config=CFG)
+    fitter = PSFErrorFit(rho, tau, str(tmp_path))
+    original = fitter.get_least_squares_params_samples
+
+    def small_sample(**kwargs):
+        kwargs.update(n_samples=256, verbose=False)
+        return original(**kwargs)
+
+    monkeypatch.setattr(fitter, "get_least_squares_params_samples", small_sample)
+    before, _, _ = _run(fitter, "th")
+    assert np.allclose(before.mean(axis=0), 0, atol=1e-3)
+
+    Table({"theta": [10.0], **{f"tau_{i}_p": [1.0] for i in (0, 2, 5)}}).write(
+        tmp_path / "tau_stats_fit.fits", overwrite=True
+    )
+    metadata.write_text('{"selection": "bbbbbbbbbbbbbbbb"}\n')
+    after, _, _ = _run(fitter, "th")
+    assert np.allclose(after.mean(axis=0), 1, atol=1e-2), after.mean(axis=0)
