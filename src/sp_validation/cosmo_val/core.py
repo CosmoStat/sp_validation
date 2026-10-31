@@ -406,6 +406,13 @@ class CosmologyValidation(
                     section["path"] = (
                         str(path) if path.is_absolute() else str(subdir / path)
                     )
+            # A psf block's mask config is a config file, not data: relative
+            # to the catalogue config, not to subdir.
+            psf = cc[ver].get("psf")
+            if isinstance(psf, dict) and psf.get("mask_config"):
+                psf["mask_config"] = str(
+                    self.catalog_config_path.parent / psf["mask_config"]
+                )
 
         resolve_paths_for_version("nz")
         processed = {"nz"}
