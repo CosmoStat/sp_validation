@@ -92,6 +92,7 @@
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.catalog_characterization.html">sp_validation.cosmo_val.catalog_characterization</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">sp_validation.cosmo_val.core</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.cosebis.html">sp_validation.cosmo_val.cosebis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.derived_covariance.html">sp_validation.cosmo_val.derived_covariance</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.diagnostic_plots.html">sp_validation.cosmo_val.diagnostic_plots</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.diagnostic_products.html">sp_validation.cosmo_val.diagnostic_products</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html">sp_validation.cosmo_val.pseudo_cl</a></li>
@@ -439,16 +440,6 @@ whole-survey n(z) is their sum, as
 under, as the catalogue config declares it.</p>
 </dd></dl>
 <dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.cosmo_val.core.CosmologyValidation._refuse_blinded_tomography">
-<span class="sig-name descname"><span class="pre">_refuse_blinded_tomography</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">version</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmo_val/core.html#CosmologyValidation._refuse_blinded_tomography"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmo_val.core.CosmologyValidation._refuse_blinded_tomography" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.core.CosmologyValidation._refuse_blinded_tomography'">¶</a></dt>
-<dd><p>Refuse to measure tomographic shear signal on a blinded catalogue.</p>
-<p>A statistic is blinded by sealing its SACC part, whose tracers carry
-the n(z) the blind’s theory shifts it by. ξ± (and ⟨M_ap²⟩, derived from
-it) is born as such a part for every tomographic bin pair; the
-tomographic pseudo-Cℓ are still FITS tables with no per-bin tracer, so
-on a blinded catalogue they would hold true values.</p>
-</dd></dl>
-<dl class="py method">
 <dt class="sig sig-object py" id="sp_validation.cosmo_val.core.CosmologyValidation.basename">
 <span class="sig-name descname"><span class="pre">basename</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">version</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tomo_bin_a</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'all'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tomo_bin_b</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">treecorr_config</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">npatch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmo_val/core.html#CosmologyValidation.basename"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmo_val.core.CosmologyValidation.basename" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.core.CosmologyValidation.basename'">¶</a></dt>
 <dd></dd></dl>
@@ -602,7 +593,6 @@ Example: {version1: {‘ids’: tomo_bin_ids1, ‘pairs’: tomo_bin_pairs1}, �
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.core.CosmologyValidation.results'" class="reference internal" href="#sp_validation.cosmo_val.core.CosmologyValidation.results"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.results</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.core.CosmologyValidation.results_objectwise'" class="reference internal" href="#sp_validation.cosmo_val.core.CosmologyValidation.results_objectwise"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.results_objectwise</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.core.CosmologyValidation.blind'" class="reference internal" href="#sp_validation.cosmo_val.core.CosmologyValidation.blind"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.blind()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.cosmo_val.core.CosmologyValidation._refuse_blinded_tomography'" class="reference internal" href="#sp_validation.cosmo_val.core.CosmologyValidation._refuse_blinded_tomography"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._refuse_blinded_tomography()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.core.CosmologyValidation.basename'" class="reference internal" href="#sp_validation.cosmo_val.core.CosmologyValidation.basename"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.basename()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.core.CosmologyValidation._binning'" class="reference internal" href="#sp_validation.cosmo_val.core.CosmologyValidation._binning"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._binning()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.cosmo_val.core.CosmologyValidation._read_shear_cols'" class="reference internal" href="#sp_validation.cosmo_val.core.CosmologyValidation._read_shear_cols"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._read_shear_cols()</span></code></a></li>

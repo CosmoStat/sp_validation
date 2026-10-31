@@ -16,6 +16,7 @@ Submodules
    sp_validation.cosmo_val.catalog_characterization
    sp_validation.cosmo_val.core
    sp_validation.cosmo_val.cosebis
+   sp_validation.cosmo_val.derived_covariance
    sp_validation.cosmo_val.diagnostic_plots
    sp_validation.cosmo_val.diagnostic_products
    sp_validation.cosmo_val.pseudo_cl

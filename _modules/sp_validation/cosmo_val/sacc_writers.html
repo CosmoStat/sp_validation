@@ -124,6 +124,7 @@
 <li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.catalog_characterization.html">sp_validation.cosmo_val.catalog_characterization</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.core.html">sp_validation.cosmo_val.core</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.cosebis.html">sp_validation.cosmo_val.cosebis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.derived_covariance.html">sp_validation.cosmo_val.derived_covariance</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.diagnostic_plots.html">sp_validation.cosmo_val.diagnostic_plots</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.diagnostic_products.html">sp_validation.cosmo_val.diagnostic_products</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.pseudo_cl.html">sp_validation.cosmo_val.pseudo_cl</a></li>
@@ -226,352 +227,414 @@
 
     <div id="content" role="main">
       <h1>Source code for sp_validation.cosmo_val.sacc_writers</h1><div class="highlight"><pre>
-<span></span><code><span id="line-1"><span class="sd">"""Born-as-SACC writers for the cosmo_val data products.</span>
+<span></span><code><span id="line-1"><span class="sd">"""Pair-native SACC writers and covariance helpers for cosmo_val products.</span>
 </span><span id="line-2">
-</span><span id="line-3"><span class="sd">A thin, pure layer between the ``cosmo_val`` mixins (which compute statistics as</span>
-</span><span id="line-4"><span class="sd">TreeCorr / NaMaster / b_modes arrays) and :mod:`sp_validation.sacc_io` (which</span>
-</span><span id="line-5"><span class="sd">knows the file layout). Each ``*_to_sacc`` function turns one already-computed</span>
-</span><span id="line-6"><span class="sd">statistic into a single-statistic SACC — a *part* — carrying that statistic's</span>
-</span><span id="line-7"><span class="sd">own covariance as its one block. :func:`assemble_analysis_sacc` rebuilds the</span>
-</span><span id="line-8"><span class="sd">single ``{version}.sacc`` analysis file from these parts.</span>
+</span><span id="line-3"><span class="sd">Each writer turns a computed statistic into a single-statistic SACC part.</span>
+</span><span id="line-4"><span class="sd">Pairs are inserted in the supplied order, typically (0, 0), (0, 1), …, with</span>
+</span><span id="line-5"><span class="sd">points and covariances pair-major. Covariance helpers map OneCovariance ξ± and</span>
+</span><span id="line-6"><span class="sd">NaMaster iNKA matrices to the part's point order. :func:`assemble_analysis_sacc`</span>
+</span><span id="line-7"><span class="sd">combines the parts and their covariance blocks into an analysis file.</span>
+</span><span id="line-8"><span class="sd">"""</span>
 </span><span id="line-9">
-</span><span id="line-10"><span class="sd">ξ± is written over any set of bin pairs (:func:`xi_pairs_to_sacc`), and</span>
-</span><span id="line-11"><span class="sd">:func:`onecov_xi_covariance` puts OneCovariance's ξ± matrix in a part's</span>
-</span><span id="line-12"><span class="sd">order. The other statistics are single-bin today (``bins=(0, 0)``); their</span>
-</span><span id="line-13"><span class="sd">interface is tomography-native so a future round supplies real bin pairs</span>
-</span><span id="line-14"><span class="sd">unchanged.</span>
-</span><span id="line-15"><span class="sd">"""</span>
-</span><span id="line-16">
-</span><span id="line-17"><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-</span><span id="line-18"><span class="kn">import</span><span class="w"> </span><span class="nn">sacc</span>
+</span><span id="line-10"><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+</span><span id="line-11"><span class="kn">import</span><span class="w"> </span><span class="nn">sacc</span>
+</span><span id="line-12">
+</span><span id="line-13"><span class="kn">from</span><span class="w"> </span><span class="nn">..</span><span class="w"> </span><span class="kn">import</span> <span class="n">sacc_io</span> <span class="k">as</span> <span class="n">sio</span>
+</span><span id="line-14"><span class="kn">from</span><span class="w"> </span><span class="nn">..pseudo_cl</span><span class="w"> </span><span class="kn">import</span> <span class="n">bandpower_window_from_workspace</span>
+</span><span id="line-15">
+</span><span id="line-16"><span class="c1"># Statistics carried in the analysis file, and their custom-type k indices.</span>
+</span><span id="line-17"><span class="n">RHO_K</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span>  <span class="c1"># ρ_0 … ρ_5</span>
+</span><span id="line-18"><span class="n">TAU_K</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>  <span class="c1"># τ_0, τ_2, τ_5</span>
 </span><span id="line-19">
-</span><span id="line-20"><span class="kn">from</span><span class="w"> </span><span class="nn">..</span><span class="w"> </span><span class="kn">import</span> <span class="n">sacc_io</span> <span class="k">as</span> <span class="n">sio</span>
-</span><span id="line-21"><span class="kn">from</span><span class="w"> </span><span class="nn">..pseudo_cl</span><span class="w"> </span><span class="kn">import</span> <span class="n">bandpower_window_from_workspace</span>
+</span><span id="line-20"><span class="c1"># NaMaster spin-2 × spin-2 decoupled-spectrum row order (EE, EB, BE, BB).</span>
+</span><span id="line-21"><span class="n">_NMT_EE</span><span class="p">,</span> <span class="n">_NMT_EB</span><span class="p">,</span> <span class="n">_NMT_BB</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span>
 </span><span id="line-22">
-</span><span id="line-23"><span class="c1"># Statistics carried in the analysis file, and their custom-type k indices.</span>
-</span><span id="line-24"><span class="n">RHO_K</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span>  <span class="c1"># ρ_0 … ρ_5</span>
-</span><span id="line-25"><span class="n">TAU_K</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>  <span class="c1"># τ_0, τ_2, τ_5</span>
-</span><span id="line-26">
-</span><span id="line-27"><span class="c1"># NaMaster spin-2 × spin-2 decoupled-spectrum row order (EE, EB, BE, BB).</span>
-</span><span id="line-28"><span class="n">_NMT_EE</span><span class="p">,</span> <span class="n">_NMT_EB</span><span class="p">,</span> <span class="n">_NMT_BB</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span>
-</span><span id="line-29">
-</span><span id="line-30"><span class="n">BIN</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
-</span><span id="line-31">
-</span><span id="line-32">
+</span><span id="line-23">
 <div class="viewcode-block" id="xi_pairs_to_sacc">
 <a class="viewcode-back" href="../../../sp_validation.cosmo_val.sacc_writers.html#sp_validation.cosmo_val.sacc_writers.xi_pairs_to_sacc">[docs]</a>
-</span><span id="line-33"><span class="k">def</span><span class="w"> </span><span class="nf">xi_pairs_to_sacc</span><span class="p">(</span><span class="n">nz</span><span class="p">,</span> <span class="n">metadata</span><span class="p">,</span> <span class="n">pairs</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">grid</span><span class="p">,</span> <span class="n">variances</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">covariance</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-</span><span id="line-34"><span class="w">    </span><span class="sd">"""One ξ± part over one or more bin pairs, on a named angular grid.</span>
-</span><span id="line-35">
-</span><span id="line-36"><span class="sd">    ``pairs`` is a sequence of ``(bins, xi)``: ``bins`` a source bin pair</span>
-</span><span id="line-37"><span class="sd">    ``(i, j)`` and ``xi`` a mapping with ``theta``, ``xip``, ``xim`` and,</span>
-</span><span id="line-38"><span class="sd">    optionally, ``theta_nom``, ``npairs``, ``weight``. Each pair goes in as</span>
-</span><span id="line-39"><span class="sd">    ``[ξ+; ξ−]`` in the order given, so the data vector is pair-major, and the</span>
-</span><span id="line-40"><span class="sd">    covariance is tied to that order by position: ``covariance`` is the dense</span>
-</span><span id="line-41"><span class="sd">    block in it, ``variances`` the matching diagonal. At most one may be given.</span>
-</span><span id="line-42"><span class="sd">    ``nz`` must hold an n(z) for every bin the pairs name.</span>
-</span><span id="line-43"><span class="sd">    """</span>
-</span><span id="line-44">    <span class="n">s</span> <span class="o">=</span> <span class="n">sio</span><span class="o">.</span><span class="n">new_sacc</span><span class="p">(</span><span class="n">nz</span><span class="p">,</span> <span class="n">metadata</span><span class="p">)</span>
-</span><span id="line-45">    <span class="k">for</span> <span class="n">bins</span><span class="p">,</span> <span class="n">xi</span> <span class="ow">in</span> <span class="n">pairs</span><span class="p">:</span>
-</span><span id="line-46">        <span class="n">sio</span><span class="o">.</span><span class="n">add_xi</span><span class="p">(</span>
-</span><span id="line-47">            <span class="n">s</span><span class="p">,</span>
-</span><span id="line-48">            <span class="n">bins</span><span class="p">,</span>
-</span><span id="line-49">            <span class="n">xi</span><span class="p">[</span><span class="s2">"theta"</span><span class="p">],</span>
-</span><span id="line-50">            <span class="n">xi</span><span class="p">[</span><span class="s2">"xip"</span><span class="p">],</span>
-</span><span id="line-51">            <span class="n">xi</span><span class="p">[</span><span class="s2">"xim"</span><span class="p">],</span>
-</span><span id="line-52">            <span class="n">grid</span><span class="o">=</span><span class="n">grid</span><span class="p">,</span>
-</span><span id="line-53">            <span class="n">theta_nom</span><span class="o">=</span><span class="n">xi</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"theta_nom"</span><span class="p">),</span>
-</span><span id="line-54">            <span class="n">npairs</span><span class="o">=</span><span class="n">xi</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"npairs"</span><span class="p">),</span>
-</span><span id="line-55">            <span class="n">weight</span><span class="o">=</span><span class="n">xi</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"weight"</span><span class="p">),</span>
-</span><span id="line-56">        <span class="p">)</span>
-</span><span id="line-57">    <span class="k">if</span> <span class="n">covariance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">variances</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-58">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"give the ξ± writer a dense covariance or variances, not both"</span><span class="p">)</span>
-</span><span id="line-59">    <span class="k">if</span> <span class="n">covariance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-60">        <span class="n">s</span><span class="o">.</span><span class="n">add_covariance</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">covariance</span><span class="p">))</span>
-</span><span id="line-61">    <span class="k">elif</span> <span class="n">variances</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-62">        <span class="n">sio</span><span class="o">.</span><span class="n">add_diagonal_covariance</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">variances</span><span class="p">))</span>
-</span><span id="line-63">    <span class="k">return</span> <span class="n">s</span></div>
+</span><span id="line-24"><span class="k">def</span><span class="w"> </span><span class="nf">xi_pairs_to_sacc</span><span class="p">(</span><span class="n">nz</span><span class="p">,</span> <span class="n">metadata</span><span class="p">,</span> <span class="n">pairs</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">grid</span><span class="p">,</span> <span class="n">variances</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">covariance</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+</span><span id="line-25"><span class="w">    </span><span class="sd">"""One ξ± part over one or more bin pairs, on a named angular grid.</span>
+</span><span id="line-26">
+</span><span id="line-27"><span class="sd">    ``pairs`` is a sequence of ``(bins, xi)``: ``bins`` a source bin pair</span>
+</span><span id="line-28"><span class="sd">    ``(i, j)`` and ``xi`` a mapping with ``theta``, ``xip``, ``xim`` and,</span>
+</span><span id="line-29"><span class="sd">    optionally, ``theta_nom``, ``npairs``, ``weight``. Each pair goes in as</span>
+</span><span id="line-30"><span class="sd">    ``[ξ+; ξ−]`` in the order given, so the data vector is pair-major, and the</span>
+</span><span id="line-31"><span class="sd">    covariance is tied to that order by position: ``covariance`` is the dense</span>
+</span><span id="line-32"><span class="sd">    block in it, ``variances`` the matching diagonal. At most one may be given.</span>
+</span><span id="line-33"><span class="sd">    ``nz`` must hold an n(z) for every bin the pairs name.</span>
+</span><span id="line-34"><span class="sd">    """</span>
+</span><span id="line-35">    <span class="n">s</span> <span class="o">=</span> <span class="n">sio</span><span class="o">.</span><span class="n">new_sacc</span><span class="p">(</span><span class="n">nz</span><span class="p">,</span> <span class="n">metadata</span><span class="p">)</span>
+</span><span id="line-36">    <span class="k">for</span> <span class="n">bins</span><span class="p">,</span> <span class="n">xi</span> <span class="ow">in</span> <span class="n">pairs</span><span class="p">:</span>
+</span><span id="line-37">        <span class="n">sio</span><span class="o">.</span><span class="n">add_xi</span><span class="p">(</span>
+</span><span id="line-38">            <span class="n">s</span><span class="p">,</span>
+</span><span id="line-39">            <span class="n">bins</span><span class="p">,</span>
+</span><span id="line-40">            <span class="n">xi</span><span class="p">[</span><span class="s2">"theta"</span><span class="p">],</span>
+</span><span id="line-41">            <span class="n">xi</span><span class="p">[</span><span class="s2">"xip"</span><span class="p">],</span>
+</span><span id="line-42">            <span class="n">xi</span><span class="p">[</span><span class="s2">"xim"</span><span class="p">],</span>
+</span><span id="line-43">            <span class="n">grid</span><span class="o">=</span><span class="n">grid</span><span class="p">,</span>
+</span><span id="line-44">            <span class="n">theta_nom</span><span class="o">=</span><span class="n">xi</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"theta_nom"</span><span class="p">),</span>
+</span><span id="line-45">            <span class="n">npairs</span><span class="o">=</span><span class="n">xi</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"npairs"</span><span class="p">),</span>
+</span><span id="line-46">            <span class="n">weight</span><span class="o">=</span><span class="n">xi</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"weight"</span><span class="p">),</span>
+</span><span id="line-47">        <span class="p">)</span>
+</span><span id="line-48">    <span class="k">if</span> <span class="n">covariance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">variances</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-49">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"give the ξ± writer a dense covariance or variances, not both"</span><span class="p">)</span>
+</span><span id="line-50">    <span class="k">if</span> <span class="n">covariance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-51">        <span class="n">s</span><span class="o">.</span><span class="n">add_covariance</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">covariance</span><span class="p">))</span>
+</span><span id="line-52">    <span class="k">elif</span> <span class="n">variances</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-53">        <span class="n">sio</span><span class="o">.</span><span class="n">add_diagonal_covariance</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">variances</span><span class="p">))</span>
+</span><span id="line-54">    <span class="k">return</span> <span class="n">s</span></div>
 
-</span><span id="line-64">
-</span><span id="line-65">
+</span><span id="line-55">
+</span><span id="line-56">
 <div class="viewcode-block" id="xi_to_sacc">
 <a class="viewcode-back" href="../../../sp_validation.cosmo_val.sacc_writers.html#sp_validation.cosmo_val.sacc_writers.xi_to_sacc">[docs]</a>
-</span><span id="line-66"><span class="k">def</span><span class="w"> </span><span class="nf">xi_to_sacc</span><span class="p">(</span>
-</span><span id="line-67">    <span class="n">nz</span><span class="p">,</span>
-</span><span id="line-68">    <span class="n">metadata</span><span class="p">,</span>
-</span><span id="line-69">    <span class="n">theta</span><span class="p">,</span>
-</span><span id="line-70">    <span class="n">xip</span><span class="p">,</span>
-</span><span id="line-71">    <span class="n">xim</span><span class="p">,</span>
-</span><span id="line-72">    <span class="o">*</span><span class="p">,</span>
-</span><span id="line-73">    <span class="n">grid</span><span class="p">,</span>
-</span><span id="line-74">    <span class="n">theta_nom</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-</span><span id="line-75">    <span class="n">npairs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-</span><span id="line-76">    <span class="n">weight</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-</span><span id="line-77">    <span class="n">variances</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-</span><span id="line-78">    <span class="n">covariance</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-</span><span id="line-79"><span class="p">):</span>
-</span><span id="line-80"><span class="w">    </span><span class="sd">"""One ξ± part (``bins=(0, 0)``) on a named angular grid.</span>
-</span><span id="line-81">
-</span><span id="line-82"><span class="sd">    The single-pair form of :func:`xi_pairs_to_sacc`. The grid's covariance</span>
-</span><span id="line-83"><span class="sd">    comes in one of two shapes: ``covariance``, the dense ``[ξ+; ξ−]``-ordered</span>
-</span><span id="line-84"><span class="sd">    block (a jackknife estimate), or ``variances``, the concatenated</span>
-</span><span id="line-85"><span class="sd">    ``[varxip; varxim]`` diagonal. At most one may be given.</span>
-</span><span id="line-86"><span class="sd">    """</span>
-</span><span id="line-87">    <span class="n">xi</span> <span class="o">=</span> <span class="p">{</span>
-</span><span id="line-88">        <span class="s2">"theta"</span><span class="p">:</span> <span class="n">theta</span><span class="p">,</span>
-</span><span id="line-89">        <span class="s2">"xip"</span><span class="p">:</span> <span class="n">xip</span><span class="p">,</span>
-</span><span id="line-90">        <span class="s2">"xim"</span><span class="p">:</span> <span class="n">xim</span><span class="p">,</span>
-</span><span id="line-91">        <span class="s2">"theta_nom"</span><span class="p">:</span> <span class="n">theta_nom</span><span class="p">,</span>
-</span><span id="line-92">        <span class="s2">"npairs"</span><span class="p">:</span> <span class="n">npairs</span><span class="p">,</span>
-</span><span id="line-93">        <span class="s2">"weight"</span><span class="p">:</span> <span class="n">weight</span><span class="p">,</span>
-</span><span id="line-94">    <span class="p">}</span>
-</span><span id="line-95">    <span class="k">return</span> <span class="n">xi_pairs_to_sacc</span><span class="p">(</span>
-</span><span id="line-96">        <span class="n">nz</span><span class="p">,</span> <span class="n">metadata</span><span class="p">,</span> <span class="p">[(</span><span class="n">BIN</span><span class="p">,</span> <span class="n">xi</span><span class="p">)],</span> <span class="n">grid</span><span class="o">=</span><span class="n">grid</span><span class="p">,</span> <span class="n">variances</span><span class="o">=</span><span class="n">variances</span><span class="p">,</span> <span class="n">covariance</span><span class="o">=</span><span class="n">covariance</span>
-</span><span id="line-97">    <span class="p">)</span></div>
+</span><span id="line-57"><span class="k">def</span><span class="w"> </span><span class="nf">xi_to_sacc</span><span class="p">(</span>
+</span><span id="line-58">    <span class="n">nz</span><span class="p">,</span>
+</span><span id="line-59">    <span class="n">metadata</span><span class="p">,</span>
+</span><span id="line-60">    <span class="n">theta</span><span class="p">,</span>
+</span><span id="line-61">    <span class="n">xip</span><span class="p">,</span>
+</span><span id="line-62">    <span class="n">xim</span><span class="p">,</span>
+</span><span id="line-63">    <span class="o">*</span><span class="p">,</span>
+</span><span id="line-64">    <span class="n">grid</span><span class="p">,</span>
+</span><span id="line-65">    <span class="n">theta_nom</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-66">    <span class="n">npairs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-67">    <span class="n">weight</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-68">    <span class="n">variances</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-69">    <span class="n">covariance</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-70"><span class="p">):</span>
+</span><span id="line-71"><span class="w">    </span><span class="sd">"""One ξ± part (``bins=(0, 0)``) on a named angular grid.</span>
+</span><span id="line-72">
+</span><span id="line-73"><span class="sd">    The single-pair form of :func:`xi_pairs_to_sacc`. The grid's covariance</span>
+</span><span id="line-74"><span class="sd">    comes in one of two shapes: ``covariance``, the dense ``[ξ+; ξ−]``-ordered</span>
+</span><span id="line-75"><span class="sd">    block (a jackknife estimate), or ``variances``, the concatenated</span>
+</span><span id="line-76"><span class="sd">    ``[varxip; varxim]`` diagonal. At most one may be given.</span>
+</span><span id="line-77"><span class="sd">    """</span>
+</span><span id="line-78">    <span class="n">xi</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="line-79">        <span class="s2">"theta"</span><span class="p">:</span> <span class="n">theta</span><span class="p">,</span>
+</span><span id="line-80">        <span class="s2">"xip"</span><span class="p">:</span> <span class="n">xip</span><span class="p">,</span>
+</span><span id="line-81">        <span class="s2">"xim"</span><span class="p">:</span> <span class="n">xim</span><span class="p">,</span>
+</span><span id="line-82">        <span class="s2">"theta_nom"</span><span class="p">:</span> <span class="n">theta_nom</span><span class="p">,</span>
+</span><span id="line-83">        <span class="s2">"npairs"</span><span class="p">:</span> <span class="n">npairs</span><span class="p">,</span>
+</span><span id="line-84">        <span class="s2">"weight"</span><span class="p">:</span> <span class="n">weight</span><span class="p">,</span>
+</span><span id="line-85">    <span class="p">}</span>
+</span><span id="line-86">    <span class="k">return</span> <span class="n">xi_pairs_to_sacc</span><span class="p">(</span>
+</span><span id="line-87">        <span class="n">nz</span><span class="p">,</span>
+</span><span id="line-88">        <span class="n">metadata</span><span class="p">,</span>
+</span><span id="line-89">        <span class="p">[((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">xi</span><span class="p">)],</span>
+</span><span id="line-90">        <span class="n">grid</span><span class="o">=</span><span class="n">grid</span><span class="p">,</span>
+</span><span id="line-91">        <span class="n">variances</span><span class="o">=</span><span class="n">variances</span><span class="p">,</span>
+</span><span id="line-92">        <span class="n">covariance</span><span class="o">=</span><span class="n">covariance</span><span class="p">,</span>
+</span><span id="line-93">    <span class="p">)</span></div>
 
-</span><span id="line-98">
-</span><span id="line-99">
+</span><span id="line-94">
+</span><span id="line-95">
 <div class="viewcode-block" id="onecov_xi_covariance">
 <a class="viewcode-back" href="../../../sp_validation.cosmo_val.sacc_writers.html#sp_validation.cosmo_val.sacc_writers.onecov_xi_covariance">[docs]</a>
-</span><span id="line-100"><span class="k">def</span><span class="w"> </span><span class="nf">onecov_xi_covariance</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">cov</span><span class="p">):</span>
-</span><span id="line-101"><span class="w">    </span><span class="sd">"""OneCovariance's real-space ξ± matrix ``cov`` in the insertion order of ``s``.</span>
-</span><span id="line-102">
-</span><span id="line-103"><span class="sd">    OneCovariance writes ξ± type-major: every ξ+ point, then every ξ− point;</span>
-</span><span id="line-104"><span class="sd">    within each, bin pairs ``(i, j)`` with ``i &lt;= j`` and ``i`` outermost, then</span>
-</span><span id="line-105"><span class="sd">    θ ascending. A ξ± part is pair-major (:func:`xi_pairs_to_sacc`), so this</span>
-</span><span id="line-106"><span class="sd">    finds each point of ``s`` in OneCovariance's order and permutes ``cov``</span>
-</span><span id="line-107"><span class="sd">    to match. The two orders agree for a single bin pair. OneCovariance's bin</span>
-</span><span id="line-108"><span class="sd">    ``k`` is column ``k`` of the n(z) file, which must be the part's</span>
-</span><span id="line-109"><span class="sd">    ``source_k``.</span>
-</span><span id="line-110">
-</span><span id="line-111"><span class="sd">    ``s`` must hold ξ± on one grid only, with the same θ points for every bin</span>
-</span><span id="line-112"><span class="sd">    pair, as a part does.</span>
-</span><span id="line-113"><span class="sd">    """</span>
-</span><span id="line-114">    <span class="n">cov</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">cov</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span>
-</span><span id="line-115">    <span class="n">types</span> <span class="o">=</span> <span class="p">{</span><span class="n">sio</span><span class="o">.</span><span class="n">XI_PLUS</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="n">sio</span><span class="o">.</span><span class="n">XI_MINUS</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>
-</span><span id="line-116">    <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">dp</span><span class="o">.</span><span class="n">data_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">types</span> <span class="k">for</span> <span class="n">dp</span> <span class="ow">in</span> <span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">):</span>
-</span><span id="line-117">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"onecov_xi_covariance takes a part holding ξ± only"</span><span class="p">)</span>
-</span><span id="line-118">    <span class="n">grids</span> <span class="o">=</span> <span class="p">{</span><span class="n">dp</span><span class="o">.</span><span class="n">tags</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"grid"</span><span class="p">)</span> <span class="k">for</span> <span class="n">dp</span> <span class="ow">in</span> <span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">}</span>
-</span><span id="line-119">    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">grids</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
-</span><span id="line-120">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"the part's ξ± lies on several grids </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">grids</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-</span><span id="line-121">    <span class="k">if</span> <span class="n">cov</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">)):</span>
-</span><span id="line-122">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-</span><span id="line-123">            <span class="sa">f</span><span class="s2">"OneCovariance matrix is </span><span class="si">{</span><span class="n">cov</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">, but the part has "</span>
-</span><span id="line-124">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">)</span><span class="si">}</span><span class="s2"> ξ± points; check the binning and tomography match"</span>
-</span><span id="line-125">        <span class="p">)</span>
-</span><span id="line-126">
-</span><span id="line-127">    <span class="k">def</span><span class="w"> </span><span class="nf">bin_index</span><span class="p">(</span><span class="n">tracer</span><span class="p">):</span>
-</span><span id="line-128">        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">tracer</span><span class="o">.</span><span class="n">removeprefix</span><span class="p">(</span><span class="s2">"source_"</span><span class="p">))</span>
-</span><span id="line-129">
-</span><span id="line-130">    <span class="n">pairs</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">({</span><span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="n">bin_index</span><span class="p">,</span> <span class="n">dp</span><span class="o">.</span><span class="n">tracers</span><span class="p">)))</span> <span class="k">for</span> <span class="n">dp</span> <span class="ow">in</span> <span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">})</span>
-</span><span id="line-131">    <span class="n">thetas</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="line-132">    <span class="k">for</span> <span class="n">dp</span> <span class="ow">in</span> <span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
-</span><span id="line-133">        <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="n">dp</span><span class="o">.</span><span class="n">data_type</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="n">bin_index</span><span class="p">,</span> <span class="n">dp</span><span class="o">.</span><span class="n">tracers</span><span class="p">))))</span>
-</span><span id="line-134">        <span class="n">thetas</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dp</span><span class="o">.</span><span class="n">tags</span><span class="p">[</span><span class="s2">"theta"</span><span class="p">])</span>
-</span><span id="line-135">    <span class="n">ntheta</span> <span class="o">=</span> <span class="p">{</span><span class="nb">len</span><span class="p">(</span><span class="n">t</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">thetas</span><span class="o">.</span><span class="n">values</span><span class="p">()}</span>
-</span><span id="line-136">    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ntheta</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">thetas</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">pairs</span><span class="p">):</span>
-</span><span id="line-137">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"every bin pair must carry ξ+ and ξ− on the same θ points"</span><span class="p">)</span>
-</span><span id="line-138">    <span class="p">(</span><span class="n">ntheta</span><span class="p">,)</span> <span class="o">=</span> <span class="n">ntheta</span>
-</span><span id="line-139">
-</span><span id="line-140">    <span class="n">order</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
-</span><span id="line-141">    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">dp</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">):</span>
-</span><span id="line-142">        <span class="n">pair</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="n">bin_index</span><span class="p">,</span> <span class="n">dp</span><span class="o">.</span><span class="n">tracers</span><span class="p">)))</span>
-</span><span id="line-143">        <span class="n">theta_rank</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">thetas</span><span class="p">[</span><span class="n">dp</span><span class="o">.</span><span class="n">data_type</span><span class="p">,</span> <span class="n">pair</span><span class="p">])</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">dp</span><span class="o">.</span><span class="n">tags</span><span class="p">[</span><span class="s2">"theta"</span><span class="p">])</span>
-</span><span id="line-144">        <span class="n">order</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
-</span><span id="line-145">            <span class="n">types</span><span class="p">[</span><span class="n">dp</span><span class="o">.</span><span class="n">data_type</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">pairs</span><span class="p">)</span> <span class="o">*</span> <span class="n">ntheta</span>
-</span><span id="line-146">            <span class="o">+</span> <span class="n">pairs</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">pair</span><span class="p">)</span> <span class="o">*</span> <span class="n">ntheta</span>
-</span><span id="line-147">            <span class="o">+</span> <span class="n">theta_rank</span>
-</span><span id="line-148">        <span class="p">)</span>
-</span><span id="line-149">    <span class="k">return</span> <span class="n">cov</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ix_</span><span class="p">(</span><span class="n">order</span><span class="p">,</span> <span class="n">order</span><span class="p">)]</span></div>
+</span><span id="line-96"><span class="k">def</span><span class="w"> </span><span class="nf">onecov_xi_covariance</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">cov</span><span class="p">):</span>
+</span><span id="line-97"><span class="w">    </span><span class="sd">"""OneCovariance's real-space ξ± matrix ``cov`` in the insertion order of ``s``.</span>
+</span><span id="line-98">
+</span><span id="line-99"><span class="sd">    OneCovariance writes ξ± type-major: every ξ+ point, then every ξ− point;</span>
+</span><span id="line-100"><span class="sd">    within each, bin pairs ``(i, j)`` with ``i &lt;= j`` and ``i`` outermost, then</span>
+</span><span id="line-101"><span class="sd">    θ ascending. A ξ± part is pair-major (:func:`xi_pairs_to_sacc`), so this</span>
+</span><span id="line-102"><span class="sd">    finds each point of ``s`` in OneCovariance's order and permutes ``cov``</span>
+</span><span id="line-103"><span class="sd">    to match. The two orders agree for a single bin pair. OneCovariance's bin</span>
+</span><span id="line-104"><span class="sd">    ``k`` is column ``k`` of the n(z) file, which must be the part's</span>
+</span><span id="line-105"><span class="sd">    ``source_k``.</span>
+</span><span id="line-106">
+</span><span id="line-107"><span class="sd">    ``s`` must hold ξ± on one grid only, with the same θ points for every bin</span>
+</span><span id="line-108"><span class="sd">    pair, as a part does.</span>
+</span><span id="line-109"><span class="sd">    """</span>
+</span><span id="line-110">    <span class="n">cov</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">cov</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span>
+</span><span id="line-111">    <span class="n">types</span> <span class="o">=</span> <span class="p">{</span><span class="n">sio</span><span class="o">.</span><span class="n">XI_PLUS</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="n">sio</span><span class="o">.</span><span class="n">XI_MINUS</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>
+</span><span id="line-112">    <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">dp</span><span class="o">.</span><span class="n">data_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">types</span> <span class="k">for</span> <span class="n">dp</span> <span class="ow">in</span> <span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">):</span>
+</span><span id="line-113">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"onecov_xi_covariance takes a part holding ξ± only"</span><span class="p">)</span>
+</span><span id="line-114">    <span class="n">grids</span> <span class="o">=</span> <span class="p">{</span><span class="n">dp</span><span class="o">.</span><span class="n">tags</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"grid"</span><span class="p">)</span> <span class="k">for</span> <span class="n">dp</span> <span class="ow">in</span> <span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">}</span>
+</span><span id="line-115">    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">grids</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+</span><span id="line-116">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"the part's ξ± lies on several grids </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">grids</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="line-117">    <span class="k">if</span> <span class="n">cov</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">)):</span>
+</span><span id="line-118">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-119">            <span class="sa">f</span><span class="s2">"OneCovariance matrix is </span><span class="si">{</span><span class="n">cov</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">, but the part has "</span>
+</span><span id="line-120">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">)</span><span class="si">}</span><span class="s2"> ξ± points; check the binning and tomography match"</span>
+</span><span id="line-121">        <span class="p">)</span>
+</span><span id="line-122">
+</span><span id="line-123">    <span class="k">def</span><span class="w"> </span><span class="nf">bin_index</span><span class="p">(</span><span class="n">tracer</span><span class="p">):</span>
+</span><span id="line-124">        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">tracer</span><span class="o">.</span><span class="n">removeprefix</span><span class="p">(</span><span class="s2">"source_"</span><span class="p">))</span>
+</span><span id="line-125">
+</span><span id="line-126">    <span class="n">pairs</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">({</span><span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="n">bin_index</span><span class="p">,</span> <span class="n">dp</span><span class="o">.</span><span class="n">tracers</span><span class="p">)))</span> <span class="k">for</span> <span class="n">dp</span> <span class="ow">in</span> <span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">})</span>
+</span><span id="line-127">    <span class="n">thetas</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-128">    <span class="k">for</span> <span class="n">dp</span> <span class="ow">in</span> <span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
+</span><span id="line-129">        <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="n">dp</span><span class="o">.</span><span class="n">data_type</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="n">bin_index</span><span class="p">,</span> <span class="n">dp</span><span class="o">.</span><span class="n">tracers</span><span class="p">))))</span>
+</span><span id="line-130">        <span class="n">thetas</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dp</span><span class="o">.</span><span class="n">tags</span><span class="p">[</span><span class="s2">"theta"</span><span class="p">])</span>
+</span><span id="line-131">    <span class="n">ntheta</span> <span class="o">=</span> <span class="p">{</span><span class="nb">len</span><span class="p">(</span><span class="n">t</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">thetas</span><span class="o">.</span><span class="n">values</span><span class="p">()}</span>
+</span><span id="line-132">    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ntheta</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">thetas</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">pairs</span><span class="p">):</span>
+</span><span id="line-133">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"every bin pair must carry ξ+ and ξ− on the same θ points"</span><span class="p">)</span>
+</span><span id="line-134">    <span class="p">(</span><span class="n">ntheta</span><span class="p">,)</span> <span class="o">=</span> <span class="n">ntheta</span>
+</span><span id="line-135">
+</span><span id="line-136">    <span class="n">order</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+</span><span id="line-137">    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">dp</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">):</span>
+</span><span id="line-138">        <span class="n">pair</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="n">bin_index</span><span class="p">,</span> <span class="n">dp</span><span class="o">.</span><span class="n">tracers</span><span class="p">)))</span>
+</span><span id="line-139">        <span class="n">theta_rank</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">thetas</span><span class="p">[</span><span class="n">dp</span><span class="o">.</span><span class="n">data_type</span><span class="p">,</span> <span class="n">pair</span><span class="p">])</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">dp</span><span class="o">.</span><span class="n">tags</span><span class="p">[</span><span class="s2">"theta"</span><span class="p">])</span>
+</span><span id="line-140">        <span class="n">order</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="line-141">            <span class="n">types</span><span class="p">[</span><span class="n">dp</span><span class="o">.</span><span class="n">data_type</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">pairs</span><span class="p">)</span> <span class="o">*</span> <span class="n">ntheta</span>
+</span><span id="line-142">            <span class="o">+</span> <span class="n">pairs</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">pair</span><span class="p">)</span> <span class="o">*</span> <span class="n">ntheta</span>
+</span><span id="line-143">            <span class="o">+</span> <span class="n">theta_rank</span>
+</span><span id="line-144">        <span class="p">)</span>
+</span><span id="line-145">    <span class="k">return</span> <span class="n">cov</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ix_</span><span class="p">(</span><span class="n">order</span><span class="p">,</span> <span class="n">order</span><span class="p">)]</span></div>
 
+</span><span id="line-146">
+</span><span id="line-147">
+<div class="viewcode-block" id="namaster_cl_covariance">
+<a class="viewcode-back" href="../../../sp_validation.cosmo_val.sacc_writers.html#sp_validation.cosmo_val.sacc_writers.namaster_cl_covariance">[docs]</a>
+</span><span id="line-148"><span class="k">def</span><span class="w"> </span><span class="nf">namaster_cl_covariance</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">cov_fits</span><span class="p">):</span>
+</span><span id="line-149"><span class="w">    </span><span class="sd">"""Map iNKA pair-major covariance HDUs to a pseudo-Cℓ part's order.</span>
 </span><span id="line-150">
-</span><span id="line-151">
+</span><span id="line-151"><span class="sd">    Each same-polarisation HDU is ordered by source pair, then increasing ℓ.</span>
+</span><span id="line-152"><span class="sd">    Cross-polarisation blocks are zero, including across source pairs.</span>
+</span><span id="line-153"><span class="sd">    """</span>
+</span><span id="line-154">    <span class="kn">from</span><span class="w"> </span><span class="nn">astropy.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">fits</span>
+</span><span id="line-155">
+</span><span id="line-156">    <span class="n">hdus</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="line-157">        <span class="n">sio</span><span class="o">.</span><span class="n">CL_EE</span><span class="p">:</span> <span class="s2">"COVAR_EE_EE"</span><span class="p">,</span>
+</span><span id="line-158">        <span class="n">sio</span><span class="o">.</span><span class="n">CL_BB</span><span class="p">:</span> <span class="s2">"COVAR_BB_BB"</span><span class="p">,</span>
+</span><span id="line-159">        <span class="n">sio</span><span class="o">.</span><span class="n">CL_EB</span><span class="p">:</span> <span class="s2">"COVAR_EB_EB"</span><span class="p">,</span>
+</span><span id="line-160">    <span class="p">}</span>
+</span><span id="line-161">    <span class="k">if</span> <span class="ow">not</span> <span class="n">s</span><span class="o">.</span><span class="n">data</span> <span class="ow">or</span> <span class="nb">any</span><span class="p">(</span><span class="n">dp</span><span class="o">.</span><span class="n">data_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">hdus</span> <span class="k">for</span> <span class="n">dp</span> <span class="ow">in</span> <span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">):</span>
+</span><span id="line-162">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"namaster_cl_covariance takes a pseudo-Cℓ part only"</span><span class="p">)</span>
+</span><span id="line-163">
+</span><span id="line-164">    <span class="k">def</span><span class="w"> </span><span class="nf">pair</span><span class="p">(</span><span class="n">dp</span><span class="p">):</span>
+</span><span id="line-165">        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">removeprefix</span><span class="p">(</span><span class="s2">"source_"</span><span class="p">))</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">dp</span><span class="o">.</span><span class="n">tracers</span><span class="p">))</span>
+</span><span id="line-166">
+</span><span id="line-167">    <span class="n">pairs</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">({</span><span class="n">pair</span><span class="p">(</span><span class="n">dp</span><span class="p">)</span> <span class="k">for</span> <span class="n">dp</span> <span class="ow">in</span> <span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">})</span>
+</span><span id="line-168">    <span class="n">ells</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-169">    <span class="k">for</span> <span class="n">dp</span> <span class="ow">in</span> <span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
+</span><span id="line-170">        <span class="n">ells</span><span class="o">.</span><span class="n">setdefault</span><span class="p">((</span><span class="n">dp</span><span class="o">.</span><span class="n">data_type</span><span class="p">,</span> <span class="n">pair</span><span class="p">(</span><span class="n">dp</span><span class="p">)),</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dp</span><span class="o">.</span><span class="n">tags</span><span class="p">[</span><span class="s2">"ell"</span><span class="p">])</span>
+</span><span id="line-171">    <span class="k">if</span> <span class="nb">set</span><span class="p">(</span><span class="n">ells</span><span class="p">)</span> <span class="o">!=</span> <span class="p">{(</span><span class="n">dtype</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">dtype</span> <span class="ow">in</span> <span class="n">hdus</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pairs</span><span class="p">}:</span>
+</span><span id="line-172">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"every pair must carry EE, BB and EB"</span><span class="p">)</span>
+</span><span id="line-173">    <span class="n">grids</span> <span class="o">=</span> <span class="p">[</span><span class="nb">sorted</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="k">for</span> <span class="n">values</span> <span class="ow">in</span> <span class="n">ells</span><span class="o">.</span><span class="n">values</span><span class="p">()]</span>
+</span><span id="line-174">    <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">grid</span> <span class="o">!=</span> <span class="n">grids</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">grid</span> <span class="ow">in</span> <span class="n">grids</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">grids</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">grids</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+</span><span id="line-175">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"every spectrum must have the same distinct ℓ points"</span><span class="p">)</span>
+</span><span id="line-176">    <span class="n">nell</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">grids</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+</span><span id="line-177">    <span class="n">size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">pairs</span><span class="p">)</span> <span class="o">*</span> <span class="n">nell</span>
+</span><span id="line-178">    <span class="k">with</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">cov_fits</span><span class="p">)</span> <span class="k">as</span> <span class="n">hdul</span><span class="p">:</span>
+</span><span id="line-179">        <span class="n">missing</span> <span class="o">=</span> <span class="p">[</span><span class="n">name</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">hdus</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">hdul</span><span class="p">]</span>
+</span><span id="line-180">        <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
+</span><span id="line-181">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">cov_fits</span><span class="si">}</span><span class="s2"> lacks the pseudo-Cℓ cov HDUs </span><span class="si">{</span><span class="n">missing</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="line-182">        <span class="n">blocks</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="line-183">            <span class="n">dtype</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">hdul</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span> <span class="k">for</span> <span class="n">dtype</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">hdus</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+</span><span id="line-184">        <span class="p">}</span>
+</span><span id="line-185">    <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">block</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">size</span><span class="p">)</span> <span class="k">for</span> <span class="n">block</span> <span class="ow">in</span> <span class="n">blocks</span><span class="o">.</span><span class="n">values</span><span class="p">()):</span>
+</span><span id="line-186">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"iNKA covariance blocks must have shape </span><span class="si">{</span><span class="p">(</span><span class="n">size</span><span class="p">,</span><span class="w"> </span><span class="n">size</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="line-187">    <span class="n">result</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">)))</span>
+</span><span id="line-188">    <span class="k">for</span> <span class="n">dtype</span><span class="p">,</span> <span class="n">block</span> <span class="ow">in</span> <span class="n">blocks</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="line-189">        <span class="n">positions</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">dp</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">)</span> <span class="k">if</span> <span class="n">dp</span><span class="o">.</span><span class="n">data_type</span> <span class="o">==</span> <span class="n">dtype</span><span class="p">]</span>
+</span><span id="line-190">        <span class="n">order</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="line-191">            <span class="n">pairs</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">pair</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span> <span class="o">*</span> <span class="n">nell</span> <span class="o">+</span> <span class="n">grids</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">tags</span><span class="p">[</span><span class="s2">"ell"</span><span class="p">])</span>
+</span><span id="line-192">            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">positions</span>
+</span><span id="line-193">        <span class="p">]</span>
+</span><span id="line-194">        <span class="n">result</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ix_</span><span class="p">(</span><span class="n">positions</span><span class="p">,</span> <span class="n">positions</span><span class="p">)]</span> <span class="o">=</span> <span class="n">block</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ix_</span><span class="p">(</span><span class="n">order</span><span class="p">,</span> <span class="n">order</span><span class="p">)]</span>
+</span><span id="line-195">    <span class="k">return</span> <span class="n">result</span></div>
+
+</span><span id="line-196">
+</span><span id="line-197">
 <div class="viewcode-block" id="pseudo_cl_to_sacc">
 <a class="viewcode-back" href="../../../sp_validation.cosmo_val.sacc_writers.html#sp_validation.cosmo_val.sacc_writers.pseudo_cl_to_sacc">[docs]</a>
-</span><span id="line-152"><span class="k">def</span><span class="w"> </span><span class="nf">pseudo_cl_to_sacc</span><span class="p">(</span><span class="n">nz</span><span class="p">,</span> <span class="n">metadata</span><span class="p">,</span> <span class="n">ell_eff</span><span class="p">,</span> <span class="n">cl_all</span><span class="p">,</span> <span class="n">wsp</span><span class="p">,</span> <span class="n">covariance</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">nside</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-</span><span id="line-153"><span class="w">    </span><span class="sd">"""One pseudo-Cℓ part: EE/BB/EB with the shared bandpower window.</span>
-</span><span id="line-154">
-</span><span id="line-155"><span class="sd">    ``cl_all`` is NaMaster's decoupled ``(4, nbp)`` array (EE, EB, BE, BB); the</span>
-</span><span id="line-156"><span class="sd">    window comes from :func:`bandpower_window_from_workspace`. Supply ``nside``</span>
-</span><span id="line-157"><span class="sd">    only for HEALPix-map spectra, whose measured spectrum includes ``pw²(ℓ)``;</span>
-</span><span id="line-158"><span class="sd">    catalogue-based spectra have no pixel window. ``covariance``, when given,</span>
-</span><span id="line-159"><span class="sd">    is the dense ``[EE; BB; EB]``-ordered block matching insertion.</span>
-</span><span id="line-160"><span class="sd">    """</span>
-</span><span id="line-161">    <span class="n">window_ells</span><span class="p">,</span> <span class="n">window_weights</span> <span class="o">=</span> <span class="n">bandpower_window_from_workspace</span><span class="p">(</span><span class="n">wsp</span><span class="p">,</span> <span class="n">nside</span><span class="p">)</span>
-</span><span id="line-162">    <span class="n">s</span> <span class="o">=</span> <span class="n">sio</span><span class="o">.</span><span class="n">new_sacc</span><span class="p">(</span><span class="n">nz</span><span class="p">,</span> <span class="n">metadata</span><span class="p">)</span>
-</span><span id="line-163">    <span class="n">sio</span><span class="o">.</span><span class="n">add_pseudo_cl</span><span class="p">(</span>
-</span><span id="line-164">        <span class="n">s</span><span class="p">,</span>
-</span><span id="line-165">        <span class="n">BIN</span><span class="p">,</span>
-</span><span id="line-166">        <span class="n">ell_eff</span><span class="p">,</span>
-</span><span id="line-167">        <span class="n">cl_all</span><span class="p">[</span><span class="n">_NMT_EE</span><span class="p">],</span>
-</span><span id="line-168">        <span class="n">cl_all</span><span class="p">[</span><span class="n">_NMT_BB</span><span class="p">],</span>
-</span><span id="line-169">        <span class="n">cl_all</span><span class="p">[</span><span class="n">_NMT_EB</span><span class="p">],</span>
-</span><span id="line-170">        <span class="n">window_ells</span><span class="o">=</span><span class="n">window_ells</span><span class="p">,</span>
-</span><span id="line-171">        <span class="n">window_weights</span><span class="o">=</span><span class="n">window_weights</span><span class="p">,</span>
-</span><span id="line-172">    <span class="p">)</span>
-</span><span id="line-173">    <span class="k">if</span> <span class="n">covariance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-174">        <span class="n">s</span><span class="o">.</span><span class="n">add_covariance</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">covariance</span><span class="p">))</span>
-</span><span id="line-175">    <span class="k">return</span> <span class="n">s</span></div>
+</span><span id="line-198"><span class="k">def</span><span class="w"> </span><span class="nf">pseudo_cl_to_sacc</span><span class="p">(</span><span class="n">nz</span><span class="p">,</span> <span class="n">metadata</span><span class="p">,</span> <span class="n">pairs</span><span class="p">,</span> <span class="n">covariance</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+</span><span id="line-199"><span class="w">    </span><span class="sd">"""Write pair-major EE/BB/EB spectra and their bandpower windows.</span>
+</span><span id="line-200">
+</span><span id="line-201"><span class="sd">    Each payload contains ``ell_eff``, NaMaster's ``cl_all`` in row order</span>
+</span><span id="line-202"><span class="sd">    [EE, EB, BE, BB], and ``wsp``. Supply ``nside`` only for HEALPix-map</span>
+</span><span id="line-203"><span class="sd">    spectra, to include the squared pixel window pw²(ℓ); catalogue spectra</span>
+</span><span id="line-204"><span class="sd">    have no pixel window. Covariance follows the pair-major insertion order.</span>
+</span><span id="line-205"><span class="sd">    """</span>
+</span><span id="line-206">    <span class="n">s</span> <span class="o">=</span> <span class="n">sio</span><span class="o">.</span><span class="n">new_sacc</span><span class="p">(</span><span class="n">nz</span><span class="p">,</span> <span class="n">metadata</span><span class="p">)</span>
+</span><span id="line-207">    <span class="k">for</span> <span class="n">bins</span><span class="p">,</span> <span class="n">payload</span> <span class="ow">in</span> <span class="n">pairs</span><span class="p">:</span>
+</span><span id="line-208">        <span class="n">cl_all</span> <span class="o">=</span> <span class="n">payload</span><span class="p">[</span><span class="s2">"cl_all"</span><span class="p">]</span>
+</span><span id="line-209">        <span class="n">window_ells</span><span class="p">,</span> <span class="n">window_weights</span> <span class="o">=</span> <span class="n">bandpower_window_from_workspace</span><span class="p">(</span>
+</span><span id="line-210">            <span class="n">payload</span><span class="p">[</span><span class="s2">"wsp"</span><span class="p">],</span> <span class="n">payload</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"nside"</span><span class="p">)</span>
+</span><span id="line-211">        <span class="p">)</span>
+</span><span id="line-212">        <span class="n">sio</span><span class="o">.</span><span class="n">add_pseudo_cl</span><span class="p">(</span>
+</span><span id="line-213">            <span class="n">s</span><span class="p">,</span>
+</span><span id="line-214">            <span class="n">bins</span><span class="p">,</span>
+</span><span id="line-215">            <span class="n">payload</span><span class="p">[</span><span class="s2">"ell_eff"</span><span class="p">],</span>
+</span><span id="line-216">            <span class="n">cl_all</span><span class="p">[</span><span class="n">_NMT_EE</span><span class="p">],</span>
+</span><span id="line-217">            <span class="n">cl_all</span><span class="p">[</span><span class="n">_NMT_BB</span><span class="p">],</span>
+</span><span id="line-218">            <span class="n">cl_all</span><span class="p">[</span><span class="n">_NMT_EB</span><span class="p">],</span>
+</span><span id="line-219">            <span class="n">window_ells</span><span class="o">=</span><span class="n">window_ells</span><span class="p">,</span>
+</span><span id="line-220">            <span class="n">window_weights</span><span class="o">=</span><span class="n">window_weights</span><span class="p">,</span>
+</span><span id="line-221">        <span class="p">)</span>
+</span><span id="line-222">    <span class="k">if</span> <span class="n">covariance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-223">        <span class="n">s</span><span class="o">.</span><span class="n">add_covariance</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">covariance</span><span class="p">))</span>
+</span><span id="line-224">    <span class="k">return</span> <span class="n">s</span></div>
 
-</span><span id="line-176">
-</span><span id="line-177">
+</span><span id="line-225">
+</span><span id="line-226">
 <div class="viewcode-block" id="cosebis_to_sacc">
 <a class="viewcode-back" href="../../../sp_validation.cosmo_val.sacc_writers.html#sp_validation.cosmo_val.sacc_writers.cosebis_to_sacc">[docs]</a>
-</span><span id="line-178"><span class="k">def</span><span class="w"> </span><span class="nf">cosebis_to_sacc</span><span class="p">(</span><span class="n">nz</span><span class="p">,</span> <span class="n">metadata</span><span class="p">,</span> <span class="n">result</span><span class="p">,</span> <span class="n">scale_cut</span><span class="p">):</span>
-</span><span id="line-179"><span class="w">    </span><span class="sd">"""One COSEBIs part at the fiducial scale cut.</span>
-</span><span id="line-180">
-</span><span id="line-181"><span class="sd">    ``result`` is a single scale-cut result dict from</span>
-</span><span id="line-182"><span class="sd">    ``b_modes.calculate_cosebis`` — ``{"En", "Bn", "cov", ...}`` — where ``cov``</span>
-</span><span id="line-183"><span class="sd">    is the ``[En; Bn]``-ordered COSEBIs covariance.</span>
-</span><span id="line-184"><span class="sd">    """</span>
-</span><span id="line-185">    <span class="n">s</span> <span class="o">=</span> <span class="n">sio</span><span class="o">.</span><span class="n">new_sacc</span><span class="p">(</span><span class="n">nz</span><span class="p">,</span> <span class="n">metadata</span><span class="p">)</span>
-</span><span id="line-186">    <span class="n">sio</span><span class="o">.</span><span class="n">add_cosebis</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">BIN</span><span class="p">,</span> <span class="n">result</span><span class="p">[</span><span class="s2">"En"</span><span class="p">],</span> <span class="n">scale_cut</span><span class="p">,</span> <span class="n">Bn</span><span class="o">=</span><span class="n">result</span><span class="p">[</span><span class="s2">"Bn"</span><span class="p">])</span>
-</span><span id="line-187">    <span class="n">s</span><span class="o">.</span><span class="n">add_covariance</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">"cov"</span><span class="p">]))</span>
-</span><span id="line-188">    <span class="k">return</span> <span class="n">s</span></div>
+</span><span id="line-227"><span class="k">def</span><span class="w"> </span><span class="nf">cosebis_to_sacc</span><span class="p">(</span><span class="n">nz</span><span class="p">,</span> <span class="n">metadata</span><span class="p">,</span> <span class="n">pairs</span><span class="p">,</span> <span class="n">scale_cut</span><span class="p">,</span> <span class="n">covariance</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+</span><span id="line-228"><span class="w">    </span><span class="sd">"""Write each pair's COSEBIs in [En; Bn] order at the scale cut.</span>
+</span><span id="line-229">
+</span><span id="line-230"><span class="sd">    Each payload contains ``En`` and ``Bn``. The supplied covariance follows</span>
+</span><span id="line-231"><span class="sd">    that pair-major order and has its E×B and B×E blocks zeroed, including</span>
+</span><span id="line-232"><span class="sd">    across pairs.</span>
+</span><span id="line-233"><span class="sd">    """</span>
+</span><span id="line-234">    <span class="n">s</span> <span class="o">=</span> <span class="n">sio</span><span class="o">.</span><span class="n">new_sacc</span><span class="p">(</span><span class="n">nz</span><span class="p">,</span> <span class="n">metadata</span><span class="p">)</span>
+</span><span id="line-235">    <span class="k">for</span> <span class="n">bins</span><span class="p">,</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">pairs</span><span class="p">:</span>
+</span><span id="line-236">        <span class="n">sio</span><span class="o">.</span><span class="n">add_cosebis</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">bins</span><span class="p">,</span> <span class="n">result</span><span class="p">[</span><span class="s2">"En"</span><span class="p">],</span> <span class="n">scale_cut</span><span class="p">,</span> <span class="n">Bn</span><span class="o">=</span><span class="n">result</span><span class="p">[</span><span class="s2">"Bn"</span><span class="p">])</span>
+</span><span id="line-237">    <span class="k">if</span> <span class="n">covariance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-238">        <span class="n">s</span><span class="o">.</span><span class="n">add_covariance</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">covariance</span><span class="p">))</span>
+</span><span id="line-239">    <span class="k">return</span> <span class="n">s</span></div>
 
-</span><span id="line-189">
-</span><span id="line-190">
+</span><span id="line-240">
+</span><span id="line-241">
 <div class="viewcode-block" id="pure_eb_to_sacc">
 <a class="viewcode-back" href="../../../sp_validation.cosmo_val.sacc_writers.html#sp_validation.cosmo_val.sacc_writers.pure_eb_to_sacc">[docs]</a>
-</span><span id="line-191"><span class="k">def</span><span class="w"> </span><span class="nf">pure_eb_to_sacc</span><span class="p">(</span><span class="n">nz</span><span class="p">,</span> <span class="n">metadata</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">eb</span><span class="p">,</span> <span class="n">covariance</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-</span><span id="line-192"><span class="w">    </span><span class="sd">"""One pure-E/B part: the six ``sacc_io.PURE_KEYS`` blocks.</span>
-</span><span id="line-193">
-</span><span id="line-194"><span class="sd">    ``eb`` is a mapping with the six keys (``xip_E`` … ``xim_amb``); each array</span>
-</span><span id="line-195"><span class="sd">    is sampled at ``theta``. ``covariance``, when given, is the dense block in</span>
-</span><span id="line-196"><span class="sd">    ``PURE_KEYS`` order (matching ``b_modes._EB_KEYS`` and the insertion order).</span>
-</span><span id="line-197"><span class="sd">    """</span>
-</span><span id="line-198">    <span class="n">s</span> <span class="o">=</span> <span class="n">sio</span><span class="o">.</span><span class="n">new_sacc</span><span class="p">(</span><span class="n">nz</span><span class="p">,</span> <span class="n">metadata</span><span class="p">)</span>
-</span><span id="line-199">    <span class="n">sio</span><span class="o">.</span><span class="n">add_pure_eb</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">BIN</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="o">**</span><span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">eb</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">sio</span><span class="o">.</span><span class="n">PURE_KEYS</span><span class="p">})</span>
-</span><span id="line-200">    <span class="k">if</span> <span class="n">covariance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-201">        <span class="n">s</span><span class="o">.</span><span class="n">add_covariance</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">covariance</span><span class="p">))</span>
-</span><span id="line-202">    <span class="k">return</span> <span class="n">s</span></div>
+</span><span id="line-242"><span class="k">def</span><span class="w"> </span><span class="nf">pure_eb_to_sacc</span><span class="p">(</span><span class="n">nz</span><span class="p">,</span> <span class="n">metadata</span><span class="p">,</span> <span class="n">pairs</span><span class="p">,</span> <span class="n">covariance</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+</span><span id="line-243"><span class="w">    </span><span class="sd">"""Write each pair's ``theta`` and six arrays in ``PURE_KEYS`` order.</span>
+</span><span id="line-244">
+</span><span id="line-245"><span class="sd">    The order is ``xip_E``, ``xim_E``, ``xip_B``, ``xim_B``, ``xip_amb``,</span>
+</span><span id="line-246"><span class="sd">    ``xim_amb``; the covariance follows this order within each pair.</span>
+</span><span id="line-247"><span class="sd">    """</span>
+</span><span id="line-248">    <span class="n">s</span> <span class="o">=</span> <span class="n">sio</span><span class="o">.</span><span class="n">new_sacc</span><span class="p">(</span><span class="n">nz</span><span class="p">,</span> <span class="n">metadata</span><span class="p">)</span>
+</span><span id="line-249">    <span class="k">for</span> <span class="n">bins</span><span class="p">,</span> <span class="n">eb</span> <span class="ow">in</span> <span class="n">pairs</span><span class="p">:</span>
+</span><span id="line-250">        <span class="n">sio</span><span class="o">.</span><span class="n">add_pure_eb</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">bins</span><span class="p">,</span> <span class="n">eb</span><span class="p">[</span><span class="s2">"theta"</span><span class="p">],</span> <span class="o">**</span><span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">eb</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">sio</span><span class="o">.</span><span class="n">PURE_KEYS</span><span class="p">})</span>
+</span><span id="line-251">    <span class="k">if</span> <span class="n">covariance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-252">        <span class="n">s</span><span class="o">.</span><span class="n">add_covariance</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">covariance</span><span class="p">))</span>
+</span><span id="line-253">    <span class="k">return</span> <span class="n">s</span></div>
 
-</span><span id="line-203">
-</span><span id="line-204">
+</span><span id="line-254">
+</span><span id="line-255">
 <div class="viewcode-block" id="rho_tau_to_sacc">
 <a class="viewcode-back" href="../../../sp_validation.cosmo_val.sacc_writers.html#sp_validation.cosmo_val.sacc_writers.rho_tau_to_sacc">[docs]</a>
-</span><span id="line-205"><span class="k">def</span><span class="w"> </span><span class="nf">rho_tau_to_sacc</span><span class="p">(</span><span class="n">nz</span><span class="p">,</span> <span class="n">metadata</span><span class="p">,</span> <span class="n">rho_stats</span><span class="p">,</span> <span class="n">tau_stats</span><span class="p">,</span> <span class="n">tau_cov_th</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-</span><span id="line-206"><span class="w">    </span><span class="sd">"""One ρ/τ part: ρ_0…ρ_5 autos and τ_0/τ_2/τ_5 leakage.</span>
-</span><span id="line-207">
-</span><span id="line-208"><span class="sd">    ``rho_stats`` / ``tau_stats`` are the ``shear_psf_leakage`` handler tables</span>
-</span><span id="line-209"><span class="sd">    (columns ``theta``, ``rho_{k}_p``, ``varrho_{k}_p``, … and the τ analogue).</span>
-</span><span id="line-210"><span class="sd">    ρ carries a ``varrho`` diagonal; τ carries a ``vartau`` diagonal, with</span>
-</span><span id="line-211"><span class="sd">    ``tau_cov_th`` — a ``(3·nbin, 3·nbin)`` k-major matrix over the τ-plus points</span>
-</span><span id="line-212"><span class="sd">    only — scattered into the τ-plus rows/columns when given. ``tau_cov_th=None``</span>
-</span><span id="line-213"><span class="sd">    leaves the τ block fully diagonal.</span>
-</span><span id="line-214"><span class="sd">    """</span>
-</span><span id="line-215">    <span class="n">s</span> <span class="o">=</span> <span class="n">sio</span><span class="o">.</span><span class="n">new_sacc</span><span class="p">(</span><span class="n">nz</span><span class="p">,</span> <span class="n">metadata</span><span class="p">)</span>
-</span><span id="line-216">    <span class="n">theta_rho</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">rho_stats</span><span class="p">[</span><span class="s2">"theta"</span><span class="p">])</span>
-</span><span id="line-217">    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">RHO_K</span><span class="p">:</span>
-</span><span id="line-218">        <span class="n">sio</span><span class="o">.</span><span class="n">add_rho</span><span class="p">(</span>
-</span><span id="line-219">            <span class="n">s</span><span class="p">,</span>
-</span><span id="line-220">            <span class="n">k</span><span class="p">,</span>
-</span><span id="line-221">            <span class="n">theta_rho</span><span class="p">,</span>
-</span><span id="line-222">            <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">rho_stats</span><span class="p">[</span><span class="sa">f</span><span class="s2">"rho_</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">_p"</span><span class="p">]),</span>
-</span><span id="line-223">            <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">rho_stats</span><span class="p">[</span><span class="sa">f</span><span class="s2">"rho_</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">_m"</span><span class="p">]),</span>
-</span><span id="line-224">        <span class="p">)</span>
-</span><span id="line-225">    <span class="n">theta_tau</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">tau_stats</span><span class="p">[</span><span class="s2">"theta"</span><span class="p">])</span>
-</span><span id="line-226">    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">TAU_K</span><span class="p">:</span>
-</span><span id="line-227">        <span class="n">sio</span><span class="o">.</span><span class="n">add_tau</span><span class="p">(</span>
-</span><span id="line-228">            <span class="n">s</span><span class="p">,</span>
-</span><span id="line-229">            <span class="n">BIN</span><span class="p">,</span>
-</span><span id="line-230">            <span class="n">k</span><span class="p">,</span>
-</span><span id="line-231">            <span class="n">theta_tau</span><span class="p">,</span>
-</span><span id="line-232">            <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">tau_stats</span><span class="p">[</span><span class="sa">f</span><span class="s2">"tau_</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">_p"</span><span class="p">]),</span>
-</span><span id="line-233">            <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">tau_stats</span><span class="p">[</span><span class="sa">f</span><span class="s2">"tau_</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">_m"</span><span class="p">]),</span>
-</span><span id="line-234">        <span class="p">)</span>
-</span><span id="line-235">    <span class="n">nbin</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">theta_tau</span><span class="p">)</span>
-</span><span id="line-236">    <span class="n">rho_var</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
-</span><span id="line-237">        <span class="p">[</span>
-</span><span id="line-238">            <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">rho_stats</span><span class="p">[</span><span class="sa">f</span><span class="s2">"varrho_</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">_p"</span><span class="p">],</span> <span class="n">rho_stats</span><span class="p">[</span><span class="sa">f</span><span class="s2">"varrho_</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">_m"</span><span class="p">]])</span>
-</span><span id="line-239">            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">RHO_K</span>
-</span><span id="line-240">        <span class="p">]</span>
-</span><span id="line-241">    <span class="p">)</span>
-</span><span id="line-242">    <span class="n">tau_var</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
-</span><span id="line-243">        <span class="p">[</span>
-</span><span id="line-244">            <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">tau_stats</span><span class="p">[</span><span class="sa">f</span><span class="s2">"vartau_</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">_p"</span><span class="p">],</span> <span class="n">tau_stats</span><span class="p">[</span><span class="sa">f</span><span class="s2">"vartau_</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">_m"</span><span class="p">]])</span>
-</span><span id="line-245">            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">TAU_K</span>
-</span><span id="line-246">        <span class="p">]</span>
-</span><span id="line-247">    <span class="p">)</span>
-</span><span id="line-248">    <span class="k">if</span> <span class="n">tau_cov_th</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-249">        <span class="n">s</span><span class="o">.</span><span class="n">add_covariance</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">rho_var</span><span class="p">,</span> <span class="n">tau_var</span><span class="p">]))</span>
-</span><span id="line-250">        <span class="k">return</span> <span class="n">s</span>
-</span><span id="line-251">    <span class="n">tau_cov_th</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">tau_cov_th</span><span class="p">)</span>
-</span><span id="line-252">    <span class="n">n_plus</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">TAU_K</span><span class="p">)</span> <span class="o">*</span> <span class="n">nbin</span>
-</span><span id="line-253">    <span class="k">if</span> <span class="n">tau_cov_th</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="p">(</span><span class="n">n_plus</span><span class="p">,</span> <span class="n">n_plus</span><span class="p">):</span>
-</span><span id="line-254">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-</span><span id="line-255">            <span class="sa">f</span><span class="s2">"tau_cov_th shape </span><span class="si">{</span><span class="n">tau_cov_th</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> does not match the "</span>
-</span><span id="line-256">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">n_plus</span><span class="si">}</span><span class="s2"> τ-plus points (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">TAU_K</span><span class="p">)</span><span class="si">}</span><span class="s2"> indices × </span><span class="si">{</span><span class="n">nbin</span><span class="si">}</span><span class="s2"> bins) — "</span>
-</span><span id="line-257">            <span class="s2">"CovTauTh.build_cov returns one (plus-folded) component per τ index"</span>
-</span><span id="line-258">        <span class="p">)</span>
-</span><span id="line-259">    <span class="n">n_rho</span><span class="p">,</span> <span class="n">n_tau</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">rho_var</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">tau_var</span><span class="p">)</span>
-</span><span id="line-260">    <span class="n">tau_block</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">tau_var</span><span class="p">)</span>
-</span><span id="line-261">    <span class="c1"># τ-plus local positions in the τ block, k-major (per-k layout is [+; −]).</span>
-</span><span id="line-262">    <span class="n">plus</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
-</span><span id="line-263">        <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">i</span> <span class="o">*</span> <span class="n">nbin</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">i</span> <span class="o">*</span> <span class="n">nbin</span> <span class="o">+</span> <span class="n">nbin</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">TAU_K</span><span class="p">))]</span>
-</span><span id="line-264">    <span class="p">)</span>
-</span><span id="line-265">    <span class="n">tau_block</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ix_</span><span class="p">(</span><span class="n">plus</span><span class="p">,</span> <span class="n">plus</span><span class="p">)]</span> <span class="o">=</span> <span class="n">tau_cov_th</span>
-</span><span id="line-266">    <span class="n">full</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_rho</span> <span class="o">+</span> <span class="n">n_tau</span><span class="p">,</span> <span class="n">n_rho</span> <span class="o">+</span> <span class="n">n_tau</span><span class="p">))</span>
-</span><span id="line-267">    <span class="n">full</span><span class="p">[:</span><span class="n">n_rho</span><span class="p">,</span> <span class="p">:</span><span class="n">n_rho</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">rho_var</span><span class="p">)</span>
-</span><span id="line-268">    <span class="n">full</span><span class="p">[</span><span class="n">n_rho</span><span class="p">:,</span> <span class="n">n_rho</span><span class="p">:]</span> <span class="o">=</span> <span class="n">tau_block</span>
-</span><span id="line-269">    <span class="n">s</span><span class="o">.</span><span class="n">add_covariance</span><span class="p">(</span><span class="n">full</span><span class="p">)</span>
-</span><span id="line-270">    <span class="k">return</span> <span class="n">s</span></div>
+</span><span id="line-256"><span class="k">def</span><span class="w"> </span><span class="nf">rho_tau_to_sacc</span><span class="p">(</span><span class="n">nz</span><span class="p">,</span> <span class="n">metadata</span><span class="p">,</span> <span class="n">rho_stats</span><span class="p">,</span> <span class="n">tau_by_bin</span><span class="p">,</span> <span class="n">tau_cov_th_by_bin</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+</span><span id="line-257"><span class="w">    </span><span class="sd">"""One ρ/τ part: ρ_0…ρ_5 autos and τ_0/τ_2/τ_5 leakage.</span>
+</span><span id="line-258">
+</span><span id="line-259"><span class="sd">    ``rho_stats`` contains ``theta``, ``rho_{k}_p``, ``rho_{k}_m``,</span>
+</span><span id="line-260"><span class="sd">    ``varrho_{k}_p`` and ``varrho_{k}_m`` for k=0,…,5. Each table in</span>
+</span><span id="line-261"><span class="sd">    ``tau_by_bin`` contains ``theta``, ``tau_{k}_p``, ``tau_{k}_m``,</span>
+</span><span id="line-262"><span class="sd">    ``vartau_{k}_p`` and ``vartau_{k}_m`` for k=0,2,5.</span>
+</span><span id="line-263"><span class="sd">    ρ carries a variance diagonal. Each τ block has a variance diagonal,</span>
+</span><span id="line-264"><span class="sd">    with its optional CovTauTh matrix scattered into its plus rows. CovTauTh</span>
+</span><span id="line-265"><span class="sd">    has shape (3·nθ, 3·nθ), ordered k-major (0, 2, 5), plus only.</span>
+</span><span id="line-266"><span class="sd">    Cross-bin covariances are approximated as zero.</span>
+</span><span id="line-267"><span class="sd">    """</span>
+</span><span id="line-268">    <span class="n">s</span> <span class="o">=</span> <span class="n">sio</span><span class="o">.</span><span class="n">new_sacc</span><span class="p">(</span><span class="n">nz</span><span class="p">,</span> <span class="n">metadata</span><span class="p">)</span>
+</span><span id="line-269">    <span class="n">theta_rho</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">rho_stats</span><span class="p">[</span><span class="s2">"theta"</span><span class="p">])</span>
+</span><span id="line-270">    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">RHO_K</span><span class="p">:</span>
+</span><span id="line-271">        <span class="n">sio</span><span class="o">.</span><span class="n">add_rho</span><span class="p">(</span>
+</span><span id="line-272">            <span class="n">s</span><span class="p">,</span>
+</span><span id="line-273">            <span class="n">k</span><span class="p">,</span>
+</span><span id="line-274">            <span class="n">theta_rho</span><span class="p">,</span>
+</span><span id="line-275">            <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">rho_stats</span><span class="p">[</span><span class="sa">f</span><span class="s2">"rho_</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">_p"</span><span class="p">]),</span>
+</span><span id="line-276">            <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">rho_stats</span><span class="p">[</span><span class="sa">f</span><span class="s2">"rho_</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">_m"</span><span class="p">]),</span>
+</span><span id="line-277">        <span class="p">)</span>
+</span><span id="line-278">    <span class="n">rho_var</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
+</span><span id="line-279">        <span class="p">[</span>
+</span><span id="line-280">            <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">rho_stats</span><span class="p">[</span><span class="sa">f</span><span class="s2">"varrho_</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">_p"</span><span class="p">],</span> <span class="n">rho_stats</span><span class="p">[</span><span class="sa">f</span><span class="s2">"varrho_</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">_m"</span><span class="p">]])</span>
+</span><span id="line-281">            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">RHO_K</span>
+</span><span id="line-282">        <span class="p">]</span>
+</span><span id="line-283">    <span class="p">)</span>
+</span><span id="line-284">    <span class="n">theory</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">tau_cov_th_by_bin</span> <span class="ow">or</span> <span class="p">[])</span>
+</span><span id="line-285">    <span class="n">blocks</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">rho_var</span><span class="p">)]</span>
+</span><span id="line-286">    <span class="n">diagonals</span> <span class="o">=</span> <span class="p">[</span><span class="n">rho_var</span><span class="p">]</span>
+</span><span id="line-287">    <span class="k">for</span> <span class="n">bin_index</span><span class="p">,</span> <span class="n">tau_stats</span> <span class="ow">in</span> <span class="n">tau_by_bin</span><span class="p">:</span>
+</span><span id="line-288">        <span class="n">theta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">tau_stats</span><span class="p">[</span><span class="s2">"theta"</span><span class="p">])</span>
+</span><span id="line-289">        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">TAU_K</span><span class="p">:</span>
+</span><span id="line-290">            <span class="n">sio</span><span class="o">.</span><span class="n">add_tau</span><span class="p">(</span>
+</span><span id="line-291">                <span class="n">s</span><span class="p">,</span>
+</span><span id="line-292">                <span class="p">(</span><span class="n">bin_index</span><span class="p">,</span> <span class="n">bin_index</span><span class="p">),</span>
+</span><span id="line-293">                <span class="n">k</span><span class="p">,</span>
+</span><span id="line-294">                <span class="n">theta</span><span class="p">,</span>
+</span><span id="line-295">                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">tau_stats</span><span class="p">[</span><span class="sa">f</span><span class="s2">"tau_</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">_p"</span><span class="p">]),</span>
+</span><span id="line-296">                <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">tau_stats</span><span class="p">[</span><span class="sa">f</span><span class="s2">"tau_</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">_m"</span><span class="p">]),</span>
+</span><span id="line-297">            <span class="p">)</span>
+</span><span id="line-298">        <span class="n">tau_var</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
+</span><span id="line-299">            <span class="p">[</span>
+</span><span id="line-300">                <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">tau_stats</span><span class="p">[</span><span class="sa">f</span><span class="s2">"vartau_</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">_p"</span><span class="p">],</span> <span class="n">tau_stats</span><span class="p">[</span><span class="sa">f</span><span class="s2">"vartau_</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">_m"</span><span class="p">]])</span>
+</span><span id="line-301">                <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">TAU_K</span>
+</span><span id="line-302">            <span class="p">]</span>
+</span><span id="line-303">        <span class="p">)</span>
+</span><span id="line-304">        <span class="n">diagonals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tau_var</span><span class="p">)</span>
+</span><span id="line-305">        <span class="n">block</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">tau_var</span><span class="p">)</span>
+</span><span id="line-306">        <span class="n">cov</span> <span class="o">=</span> <span class="n">theory</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">bin_index</span><span class="p">)</span>
+</span><span id="line-307">        <span class="k">if</span> <span class="n">cov</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-308">            <span class="n">cov</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">cov</span><span class="p">)</span>
+</span><span id="line-309">            <span class="n">nbin</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">theta</span><span class="p">)</span>
+</span><span id="line-310">            <span class="n">n_plus</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">TAU_K</span><span class="p">)</span> <span class="o">*</span> <span class="n">nbin</span>
+</span><span id="line-311">            <span class="k">if</span> <span class="n">cov</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="p">(</span><span class="n">n_plus</span><span class="p">,</span> <span class="n">n_plus</span><span class="p">):</span>
+</span><span id="line-312">                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-313">                    <span class="sa">f</span><span class="s2">"tau_cov_th shape </span><span class="si">{</span><span class="n">cov</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> does not match </span><span class="si">{</span><span class="n">n_plus</span><span class="si">}</span><span class="s2"> τ-plus points"</span>
+</span><span id="line-314">                <span class="p">)</span>
+</span><span id="line-315">            <span class="n">plus</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
+</span><span id="line-316">                <span class="p">[</span>
+</span><span id="line-317">                    <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">i</span> <span class="o">*</span> <span class="n">nbin</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">i</span> <span class="o">*</span> <span class="n">nbin</span> <span class="o">+</span> <span class="n">nbin</span><span class="p">)</span>
+</span><span id="line-318">                    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">TAU_K</span><span class="p">))</span>
+</span><span id="line-319">                <span class="p">]</span>
+</span><span id="line-320">            <span class="p">)</span>
+</span><span id="line-321">            <span class="n">block</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ix_</span><span class="p">(</span><span class="n">plus</span><span class="p">,</span> <span class="n">plus</span><span class="p">)]</span> <span class="o">=</span> <span class="n">cov</span>
+</span><span id="line-322">        <span class="n">blocks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">block</span><span class="p">)</span>
+</span><span id="line-323">    <span class="k">if</span> <span class="ow">not</span> <span class="n">theory</span><span class="p">:</span>
+</span><span id="line-324">        <span class="n">s</span><span class="o">.</span><span class="n">add_covariance</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">diagonals</span><span class="p">))</span>
+</span><span id="line-325">    <span class="k">else</span><span class="p">:</span>
+</span><span id="line-326">        <span class="kn">from</span><span class="w"> </span><span class="nn">scipy.linalg</span><span class="w"> </span><span class="kn">import</span> <span class="n">block_diag</span>
+</span><span id="line-327">
+</span><span id="line-328">        <span class="n">s</span><span class="o">.</span><span class="n">add_covariance</span><span class="p">(</span><span class="n">block_diag</span><span class="p">(</span><span class="o">*</span><span class="n">blocks</span><span class="p">))</span>
+</span><span id="line-329">    <span class="k">return</span> <span class="n">s</span></div>
 
-</span><span id="line-271">
-</span><span id="line-272">
-</span><span id="line-273"><span class="c1"># --------------------------------------------------------------------------- #</span>
-</span><span id="line-274"><span class="c1"># Analysis-file assembly</span>
-</span><span id="line-275"><span class="c1"># --------------------------------------------------------------------------- #</span>
+</span><span id="line-330">
+</span><span id="line-331">
+</span><span id="line-332"><span class="c1"># --------------------------------------------------------------------------- #</span>
+</span><span id="line-333"><span class="c1"># Analysis-file assembly</span>
+</span><span id="line-334"><span class="c1"># --------------------------------------------------------------------------- #</span>
 <div class="viewcode-block" id="_copy_data_points">
 <a class="viewcode-back" href="../../../sp_validation.cosmo_val.sacc_writers.html#sp_validation.cosmo_val.sacc_writers._copy_data_points">[docs]</a>
-</span><span id="line-276"><span class="k">def</span><span class="w"> </span><span class="nf">_copy_data_points</span><span class="p">(</span><span class="n">dst</span><span class="p">,</span> <span class="n">src</span><span class="p">):</span>
-</span><span id="line-277"><span class="w">    </span><span class="sd">"""Append every data point of ``src`` into ``dst`` (tags preserved)."""</span>
-</span><span id="line-278">    <span class="k">for</span> <span class="n">dp</span> <span class="ow">in</span> <span class="n">src</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
-</span><span id="line-279">        <span class="n">dst</span><span class="o">.</span><span class="n">add_data_point</span><span class="p">(</span><span class="n">dp</span><span class="o">.</span><span class="n">data_type</span><span class="p">,</span> <span class="n">dp</span><span class="o">.</span><span class="n">tracers</span><span class="p">,</span> <span class="n">dp</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="o">**</span><span class="n">dp</span><span class="o">.</span><span class="n">tags</span><span class="p">)</span></div>
+</span><span id="line-335"><span class="k">def</span><span class="w"> </span><span class="nf">_copy_data_points</span><span class="p">(</span><span class="n">dst</span><span class="p">,</span> <span class="n">src</span><span class="p">):</span>
+</span><span id="line-336"><span class="w">    </span><span class="sd">"""Append every data point of ``src`` into ``dst`` (tags preserved)."""</span>
+</span><span id="line-337">    <span class="k">for</span> <span class="n">dp</span> <span class="ow">in</span> <span class="n">src</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
+</span><span id="line-338">        <span class="n">dst</span><span class="o">.</span><span class="n">add_data_point</span><span class="p">(</span><span class="n">dp</span><span class="o">.</span><span class="n">data_type</span><span class="p">,</span> <span class="n">dp</span><span class="o">.</span><span class="n">tracers</span><span class="p">,</span> <span class="n">dp</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="o">**</span><span class="n">dp</span><span class="o">.</span><span class="n">tags</span><span class="p">)</span></div>
 
-</span><span id="line-280">
-</span><span id="line-281">
+</span><span id="line-339">
+</span><span id="line-340">
 <div class="viewcode-block" id="assemble_analysis_sacc">
 <a class="viewcode-back" href="../../../sp_validation.cosmo_val.sacc_writers.html#sp_validation.cosmo_val.sacc_writers.assemble_analysis_sacc">[docs]</a>
-</span><span id="line-282"><span class="k">def</span><span class="w"> </span><span class="nf">assemble_analysis_sacc</span><span class="p">(</span><span class="n">parts</span><span class="p">):</span>
-</span><span id="line-283"><span class="w">    </span><span class="sd">"""Rebuild the single ``{version}.sacc`` analysis file from parts.</span>
-</span><span id="line-284">
-</span><span id="line-285"><span class="sd">    Each part is a single-statistic Sacc (from a ``*_to_sacc`` writer, loaded</span>
-</span><span id="line-286"><span class="sd">    from disk) carrying its own covariance = its block. Tracers and metadata are</span>
-</span><span id="line-287"><span class="sd">    seeded from ``parts[0]`` (every part describes the same catalogue version).</span>
-</span><span id="line-288"><span class="sd">    Data points are re-added in the order the parts are given, which must be the</span>
-</span><span id="line-289"><span class="sd">    canonical order (ξ± reporting, pseudo-Cℓ, COSEBIs, pure-E/B, ρ/τ), and the</span>
-</span><span id="line-290"><span class="sd">    per-part blocks become one ``BlockDiagonalCovariance``. Insertion order and</span>
-</span><span id="line-291"><span class="sd">    block order therefore agree by construction — validated by</span>
-</span><span id="line-292"><span class="sd">    :func:`sp_validation.sacc_io.assemble_covariance`.</span>
-</span><span id="line-293">
-</span><span id="line-294"><span class="sd">    Parameters</span>
-</span><span id="line-295"><span class="sd">    ----------</span>
-</span><span id="line-296"><span class="sd">    parts : sequence of sacc.Sacc</span>
-</span><span id="line-297"><span class="sd">        Single-statistic parts, each with a covariance, in canonical order.</span>
-</span><span id="line-298">
-</span><span id="line-299"><span class="sd">    Returns</span>
-</span><span id="line-300"><span class="sd">    -------</span>
-</span><span id="line-301"><span class="sd">    sacc.Sacc</span>
-</span><span id="line-302"><span class="sd">        The analysis Sacc with a ``BlockDiagonalCovariance`` covering every point.</span>
-</span><span id="line-303"><span class="sd">    """</span>
-</span><span id="line-304">    <span class="n">s</span> <span class="o">=</span> <span class="n">sacc</span><span class="o">.</span><span class="n">Sacc</span><span class="p">()</span>
-</span><span id="line-305">    <span class="n">s</span><span class="o">.</span><span class="n">tracers</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">tracers</span><span class="p">)</span>
-</span><span id="line-306">    <span class="n">s</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">metadata</span><span class="p">)</span>
-</span><span id="line-307">    <span class="n">blocks</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="line-308">    <span class="n">cursor</span> <span class="o">=</span> <span class="mi">0</span>
-</span><span id="line-309">    <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="n">parts</span><span class="p">:</span>
-</span><span id="line-310">        <span class="k">if</span> <span class="n">part</span><span class="o">.</span><span class="n">covariance</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-311">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-</span><span id="line-312">                <span class="s2">"every analysis part must carry its own covariance block; "</span>
-</span><span id="line-313">                <span class="sa">f</span><span class="s2">"a part with data types </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">dp</span><span class="o">.</span><span class="n">data_type</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">dp</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">part</span><span class="o">.</span><span class="n">data</span><span class="p">))</span><span class="si">}</span><span class="s2"> "</span>
-</span><span id="line-314">                <span class="s2">"has none"</span>
-</span><span id="line-315">            <span class="p">)</span>
-</span><span id="line-316">        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">part</span><span class="o">.</span><span class="n">mean</span><span class="p">)</span>
-</span><span id="line-317">        <span class="n">_copy_data_points</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">part</span><span class="p">)</span>
-</span><span id="line-318">        <span class="n">blocks</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">cursor</span><span class="p">,</span> <span class="n">cursor</span> <span class="o">+</span> <span class="n">n</span><span class="p">),</span> <span class="n">part</span><span class="o">.</span><span class="n">covariance</span><span class="o">.</span><span class="n">dense</span><span class="p">))</span>
-</span><span id="line-319">        <span class="n">cursor</span> <span class="o">+=</span> <span class="n">n</span>
-</span><span id="line-320">    <span class="k">return</span> <span class="n">sio</span><span class="o">.</span><span class="n">assemble_covariance</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">blocks</span><span class="p">)</span></div>
+</span><span id="line-341"><span class="k">def</span><span class="w"> </span><span class="nf">assemble_analysis_sacc</span><span class="p">(</span><span class="n">parts</span><span class="p">):</span>
+</span><span id="line-342"><span class="w">    </span><span class="sd">"""Rebuild the single ``{version}.sacc`` analysis file from parts.</span>
+</span><span id="line-343">
+</span><span id="line-344"><span class="sd">    Each part is a single-statistic Sacc (from a ``*_to_sacc`` writer, loaded</span>
+</span><span id="line-345"><span class="sd">    from disk) carrying its own covariance = its block. Tracers and metadata are</span>
+</span><span id="line-346"><span class="sd">    seeded from ``parts[0]`` (every part describes the same catalogue version).</span>
+</span><span id="line-347"><span class="sd">    Data points are re-added in the order the parts are given, which must be the</span>
+</span><span id="line-348"><span class="sd">    canonical order (ξ± reporting, pseudo-Cℓ, COSEBIs, pure-E/B, ρ/τ), and the</span>
+</span><span id="line-349"><span class="sd">    per-part blocks become one ``BlockDiagonalCovariance``. Insertion order and</span>
+</span><span id="line-350"><span class="sd">    block order therefore agree by construction — validated by</span>
+</span><span id="line-351"><span class="sd">    :func:`sp_validation.sacc_io.assemble_covariance`.</span>
+</span><span id="line-352">
+</span><span id="line-353"><span class="sd">    Parameters</span>
+</span><span id="line-354"><span class="sd">    ----------</span>
+</span><span id="line-355"><span class="sd">    parts : sequence of sacc.Sacc</span>
+</span><span id="line-356"><span class="sd">        Single-statistic parts, each with a covariance, in canonical order.</span>
+</span><span id="line-357">
+</span><span id="line-358"><span class="sd">    Returns</span>
+</span><span id="line-359"><span class="sd">    -------</span>
+</span><span id="line-360"><span class="sd">    sacc.Sacc</span>
+</span><span id="line-361"><span class="sd">        The analysis Sacc with a ``BlockDiagonalCovariance`` covering every point.</span>
+</span><span id="line-362"><span class="sd">    """</span>
+</span><span id="line-363">    <span class="n">s</span> <span class="o">=</span> <span class="n">sacc</span><span class="o">.</span><span class="n">Sacc</span><span class="p">()</span>
+</span><span id="line-364">    <span class="n">s</span><span class="o">.</span><span class="n">tracers</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">tracers</span><span class="p">)</span>
+</span><span id="line-365">    <span class="n">s</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">metadata</span><span class="p">)</span>
+</span><span id="line-366">    <span class="n">blocks</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="line-367">    <span class="n">cursor</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span id="line-368">    <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="n">parts</span><span class="p">:</span>
+</span><span id="line-369">        <span class="k">if</span> <span class="n">part</span><span class="o">.</span><span class="n">covariance</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-370">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-371">                <span class="s2">"every analysis part must carry its own covariance block; "</span>
+</span><span id="line-372">                <span class="sa">f</span><span class="s2">"a part with data types </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">dp</span><span class="o">.</span><span class="n">data_type</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">dp</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">part</span><span class="o">.</span><span class="n">data</span><span class="p">))</span><span class="si">}</span><span class="s2"> "</span>
+</span><span id="line-373">                <span class="s2">"has none"</span>
+</span><span id="line-374">            <span class="p">)</span>
+</span><span id="line-375">        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">part</span><span class="o">.</span><span class="n">mean</span><span class="p">)</span>
+</span><span id="line-376">        <span class="n">_copy_data_points</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">part</span><span class="p">)</span>
+</span><span id="line-377">        <span class="n">blocks</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">cursor</span><span class="p">,</span> <span class="n">cursor</span> <span class="o">+</span> <span class="n">n</span><span class="p">),</span> <span class="n">part</span><span class="o">.</span><span class="n">covariance</span><span class="o">.</span><span class="n">dense</span><span class="p">))</span>
+</span><span id="line-378">        <span class="n">cursor</span> <span class="o">+=</span> <span class="n">n</span>
+</span><span id="line-379">    <span class="k">return</span> <span class="n">sio</span><span class="o">.</span><span class="n">assemble_covariance</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">blocks</span><span class="p">)</span></div>
 
 </span></code></pre></div>
     </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">

@@ -92,6 +92,7 @@
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.catalog_characterization.html">sp_validation.cosmo_val.catalog_characterization</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html">sp_validation.cosmo_val.core</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.cosebis.html">sp_validation.cosmo_val.cosebis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.derived_covariance.html">sp_validation.cosmo_val.derived_covariance</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.diagnostic_plots.html">sp_validation.cosmo_val.diagnostic_plots</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.diagnostic_products.html">sp_validation.cosmo_val.diagnostic_products</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html">sp_validation.cosmo_val.pseudo_cl</a></li>
@@ -212,9 +213,8 @@ extend beyond the reporting range on both sides.</p></li>
 <li><p><strong>compute_tomography</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.15)"><em>bool</em></a><em>, </em><em>optional</em>) – Whether to compute the pure E/B modes for every tomographic bin pair
 instead of the non-tomographic pair. Defaults to False.</p></li>
 <li><p><strong>cov_path_int</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a><em>, </em><em>optional</em>) – Analytic ξ± covariance on the integration grid. Without it the
-covariance is the jackknife the integration-grid part carries. One
-file holds one pair’s covariance, so it cannot be combined with
-<code class="docutils literal notranslate"><span class="pre">compute_tomography</span></code>.</p></li>
+covariance is the jackknife the integration-grid part carries. The
+OneCovariance file includes all pairs for tomography.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>

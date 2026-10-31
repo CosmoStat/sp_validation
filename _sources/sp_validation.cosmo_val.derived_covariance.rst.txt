@@ -1,0 +1,7 @@
+sp\_validation.cosmo\_val.derived\_covariance
+---------------------------------------------
+
+.. automodule:: sp_validation.cosmo_val.derived_covariance
+   :members:
+   :show-inheritance:
+   :undoc-members:

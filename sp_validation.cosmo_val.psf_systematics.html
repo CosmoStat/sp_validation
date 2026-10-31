@@ -92,6 +92,7 @@
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.catalog_characterization.html">sp_validation.cosmo_val.catalog_characterization</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html">sp_validation.cosmo_val.core</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.cosebis.html">sp_validation.cosmo_val.cosebis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.derived_covariance.html">sp_validation.cosmo_val.derived_covariance</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.diagnostic_plots.html">sp_validation.cosmo_val.diagnostic_plots</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.diagnostic_products.html">sp_validation.cosmo_val.diagnostic_products</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html">sp_validation.cosmo_val.pseudo_cl</a></li>
@@ -209,17 +210,15 @@ object-wise) for catalogue validation.</p>
 <dt class="sig sig-object py" id="sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.calculate_rho_tau_stats">
 <span class="sig-name descname"><span class="pre">calculate_rho_tau_stats</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tomography</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmo_val/psf_systematics.html#PSFSystematicsMixin.calculate_rho_tau_stats"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.calculate_rho_tau_stats" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.calculate_rho_tau_stats'">¶</a></dt>
 <dd><p>Measure ρ/τ statistics per version and tomographic bin.</p>
-<p>Without <code class="docutils literal notranslate"><span class="pre">tomography</span></code> the single bin is <code class="docutils literal notranslate"><span class="pre">"all"</span></code>, and its SACC part is
-written per version (<code class="docutils literal notranslate"><span class="pre">rho_tau_to_sacc_part</span></code>).</p>
+<p>Write one SACC part per version, with ρ once and τ for each source bin.</p>
 </dd></dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.rho_tau_to_sacc_part">
-<span class="sig-name descname"><span class="pre">rho_tau_to_sacc_part</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">version</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">base</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rho_stat_handler</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tau_stat_handler</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmo_val/psf_systematics.html#PSFSystematicsMixin.rho_tau_to_sacc_part"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.rho_tau_to_sacc_part" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.rho_tau_to_sacc_part'">¶</a></dt>
+<span class="sig-name descname"><span class="pre">rho_tau_to_sacc_part</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">version</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">base</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rho_stat_handler</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tau_tables</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tau_bases</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tomography</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmo_val/psf_systematics.html#PSFSystematicsMixin.rho_tau_to_sacc_part"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.rho_tau_to_sacc_part" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.rho_tau_to_sacc_part'">¶</a></dt>
 <dd><p>Write the ρ/τ SACC part for one version, under the version’s blind.</p>
-<p>ρ_0…ρ_5 autos and τ_0/τ_2/τ_5 leakage from the handler tables. The
-<code class="docutils literal notranslate"><span class="pre">CovTauTh</span></code> theory covariance <code class="docutils literal notranslate"><span class="pre">cov_tau_{base}_th.npy</span></code> is passed as
-<code class="docutils literal notranslate"><span class="pre">tau_cov_th</span></code> when it exists; without it the τ block falls back —
-loudly — to a variance diagonal.</p>
+<p>The part contains ρ_0…ρ_5 and τ_0/τ_2/τ_5 per source bin.
+Each available <code class="docutils literal notranslate"><span class="pre">CovTauTh</span></code> block is attached to its bin; otherwise
+its τ covariance falls back to a variance diagonal.</p>
 </dd></dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.calculate_rho_tau_fits">

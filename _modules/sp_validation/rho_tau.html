@@ -124,6 +124,7 @@
 <li class="toctree-l3"><a class="reference internal" href="../../sp_validation.cosmo_val.catalog_characterization.html">sp_validation.cosmo_val.catalog_characterization</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../sp_validation.cosmo_val.core.html">sp_validation.cosmo_val.core</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../sp_validation.cosmo_val.cosebis.html">sp_validation.cosmo_val.cosebis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../sp_validation.cosmo_val.derived_covariance.html">sp_validation.cosmo_val.derived_covariance</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../sp_validation.cosmo_val.diagnostic_plots.html">sp_validation.cosmo_val.diagnostic_plots</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../sp_validation.cosmo_val.diagnostic_products.html">sp_validation.cosmo_val.diagnostic_products</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../sp_validation.cosmo_val.pseudo_cl.html">sp_validation.cosmo_val.pseudo_cl</a></li>
@@ -709,355 +710,381 @@
 
 </span><span id="line-458">
 </span><span id="line-459">
+<div class="viewcode-block" id="rho_cache_valid">
+<a class="viewcode-back" href="../../sp_validation.rho_tau.html#sp_validation.rho_tau.rho_cache_valid">[docs]</a>
+</span><span id="line-460"><span class="k">def</span><span class="w"> </span><span class="nf">rho_cache_valid</span><span class="p">(</span><span class="n">rho_path</span><span class="p">,</span> <span class="n">cov_rho_path</span><span class="p">,</span> <span class="n">treecorr_config</span><span class="p">,</span> <span class="n">force_run</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+</span><span id="line-461"><span class="w">    </span><span class="sd">"""Whether a cached ρ measurement and its jackknife covariance can be reused.</span>
+</span><span id="line-462">
+</span><span id="line-463"><span class="sd">    The ρ FITS must record the current means and patched configurations</span>
+</span><span id="line-464"><span class="sd">    (:func:`~sp_validation.correlation.measurement_matches`); the PSF-only</span>
+</span><span id="line-465"><span class="sd">    result is then shared by every source bin of a tomographic run.</span>
+</span><span id="line-466"><span class="sd">    """</span>
+</span><span id="line-467">    <span class="k">return</span> <span class="p">(</span>
+</span><span id="line-468">        <span class="ow">not</span> <span class="n">force_run</span>
+</span><span id="line-469">        <span class="ow">and</span> <span class="n">Path</span><span class="p">(</span><span class="n">cov_rho_path</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span>
+</span><span id="line-470">        <span class="ow">and</span> <span class="n">measurement_matches</span><span class="p">(</span><span class="n">rho_path</span><span class="p">,</span> <span class="n">treecorr_config</span><span class="p">)</span>
+</span><span id="line-471">    <span class="p">)</span></div>
+
+</span><span id="line-472">
+</span><span id="line-473">
 <div class="viewcode-block" id="get_jackknife_cov">
 <a class="viewcode-back" href="../../sp_validation.rho_tau.html#sp_validation.rho_tau.get_jackknife_cov">[docs]</a>
-</span><span id="line-460"><span class="k">def</span><span class="w"> </span><span class="nf">get_jackknife_cov</span><span class="p">(</span>
-</span><span id="line-461">    <span class="n">config</span><span class="p">,</span>
-</span><span id="line-462">    <span class="n">version</span><span class="p">,</span>
-</span><span id="line-463">    <span class="n">treecorr_config</span><span class="p">,</span>
-</span><span id="line-464">    <span class="n">outdir</span><span class="p">,</span>
-</span><span id="line-465">    <span class="n">base_rho</span><span class="p">,</span>
-</span><span id="line-466">    <span class="n">base_tau</span><span class="p">,</span>
-</span><span id="line-467">    <span class="n">npatch</span><span class="p">,</span>
-</span><span id="line-468">    <span class="n">ncov</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
-</span><span id="line-469">    <span class="n">mask_star</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-</span><span id="line-470">    <span class="n">mask_gal</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-</span><span id="line-471">    <span class="n">force_run</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-</span><span id="line-472"><span class="p">):</span>
-</span><span id="line-473"><span class="w">    </span><span class="sd">"""</span>
-</span><span id="line-474"><span class="sd">    Compute the covariance matrix of rho and tau-statistics using the jackknife method.</span>
-</span><span id="line-475"><span class="sd">    Also compute rho and tau-statistics.</span>
-</span><span id="line-476"><span class="sd">    """</span>
-</span><span id="line-477">    <span class="c1"># TODO: Reorganise this to avoid recomputing unnecessarily the rho-stats multiple times.</span>
-</span><span id="line-478">    <span class="n">rho_filename</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"rho_stats_</span><span class="si">{</span><span class="n">base_rho</span><span class="si">}</span><span class="s2">.fits"</span>
-</span><span id="line-479">    <span class="n">tau_filename</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"tau_stats_</span><span class="si">{</span><span class="n">base_tau</span><span class="si">}</span><span class="s2">.fits"</span>
-</span><span id="line-480">    <span class="n">tau_cov_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">outdir</span><span class="p">)</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"cov_tau_</span><span class="si">{</span><span class="n">base_tau</span><span class="si">}</span><span class="s2">_jk.npy"</span>
-</span><span id="line-481">
-</span><span id="line-482">    <span class="k">if</span> <span class="p">(</span>
-</span><span id="line-483">        <span class="n">tau_cov_path</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span>
-</span><span id="line-484">        <span class="ow">and</span> <span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">outdir</span><span class="p">)</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"cov_rho_</span><span class="si">{</span><span class="n">base_rho</span><span class="si">}</span><span class="s2">_jk.npy"</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span>
-</span><span id="line-485">        <span class="ow">and</span> <span class="n">measurement_matches</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">outdir</span><span class="p">)</span> <span class="o">/</span> <span class="n">rho_filename</span><span class="p">,</span> <span class="n">treecorr_config</span><span class="p">)</span>
-</span><span id="line-486">        <span class="ow">and</span> <span class="n">measurement_matches</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">outdir</span><span class="p">)</span> <span class="o">/</span> <span class="n">tau_filename</span><span class="p">,</span> <span class="n">treecorr_config</span><span class="p">)</span>
-</span><span id="line-487">        <span class="ow">and</span> <span class="ow">not</span> <span class="n">force_run</span>
-</span><span id="line-488">    <span class="p">):</span>
-</span><span id="line-489">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Skipping covariance computation, file </span><span class="si">{</span><span class="n">tau_cov_path</span><span class="si">}</span><span class="s2"> already exists."</span><span class="p">)</span>
-</span><span id="line-490">        <span class="n">rho_stat_handler</span> <span class="o">=</span> <span class="n">RhoStat</span><span class="p">(</span>
-</span><span id="line-491">            <span class="n">output</span><span class="o">=</span><span class="n">outdir</span><span class="p">,</span> <span class="n">treecorr_config</span><span class="o">=</span><span class="n">treecorr_config</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span>
-</span><span id="line-492">        <span class="p">)</span>
-</span><span id="line-493">
-</span><span id="line-494">        <span class="n">tau_stat_handler</span> <span class="o">=</span> <span class="n">TauStat</span><span class="p">(</span>
-</span><span id="line-495">            <span class="n">catalogs</span><span class="o">=</span><span class="n">rho_stat_handler</span><span class="o">.</span><span class="n">catalogs</span><span class="p">,</span>
-</span><span id="line-496">            <span class="n">output</span><span class="o">=</span><span class="n">outdir</span><span class="p">,</span>
-</span><span id="line-497">            <span class="n">treecorr_config</span><span class="o">=</span><span class="n">treecorr_config</span><span class="p">,</span>
-</span><span id="line-498">            <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-</span><span id="line-499">        <span class="p">)</span>
-</span><span id="line-500">
-</span><span id="line-501">        <span class="n">rho_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">outdir</span><span class="p">)</span> <span class="o">/</span> <span class="n">rho_filename</span>
-</span><span id="line-502">        <span class="n">tau_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">outdir</span><span class="p">)</span> <span class="o">/</span> <span class="n">tau_filename</span>
-</span><span id="line-503">        <span class="k">if</span> <span class="n">rho_path</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">force_run</span><span class="p">:</span>
-</span><span id="line-504">            <span class="n">rho_stat_handler</span><span class="o">.</span><span class="n">load_rho_stats</span><span class="p">(</span><span class="n">rho_path</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
-</span><span id="line-505">        <span class="k">if</span> <span class="n">tau_path</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">force_run</span><span class="p">:</span>
-</span><span id="line-506">            <span class="n">tau_stat_handler</span><span class="o">.</span><span class="n">load_tau_stats</span><span class="p">(</span><span class="n">tau_path</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
-</span><span id="line-507">        <span class="k">return</span> <span class="n">rho_stat_handler</span><span class="p">,</span> <span class="n">tau_stat_handler</span>
-</span><span id="line-508">
-</span><span id="line-509">    <span class="n">params</span> <span class="o">=</span> <span class="n">get_params_rho_tau</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="n">version</span><span class="p">])</span>
-</span><span id="line-510">    <span class="n">params</span><span class="p">[</span><span class="s2">"patch_number"</span><span class="p">]</span> <span class="o">=</span> <span class="n">npatch</span>
-</span><span id="line-511">
-</span><span id="line-512">    <span class="n">rho_stat_handler</span> <span class="o">=</span> <span class="n">RhoStat</span><span class="p">(</span>
-</span><span id="line-513">        <span class="n">output</span><span class="o">=</span><span class="n">outdir</span><span class="p">,</span> <span class="n">treecorr_config</span><span class="o">=</span><span class="n">treecorr_config</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span>
-</span><span id="line-514">    <span class="p">)</span>
-</span><span id="line-515">
-</span><span id="line-516">    <span class="n">rho_stat_handler</span><span class="o">.</span><span class="n">catalogs</span><span class="o">.</span><span class="n">set_params</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">outdir</span><span class="p">)</span>
-</span><span id="line-517">
-</span><span id="line-518">    <span class="n">tau_stat_handler</span> <span class="o">=</span> <span class="n">TauStat</span><span class="p">(</span>
-</span><span id="line-519">        <span class="n">catalogs</span><span class="o">=</span><span class="n">rho_stat_handler</span><span class="o">.</span><span class="n">catalogs</span><span class="p">,</span>
-</span><span id="line-520">        <span class="n">output</span><span class="o">=</span><span class="n">outdir</span><span class="p">,</span>
-</span><span id="line-521">        <span class="n">treecorr_config</span><span class="o">=</span><span class="n">treecorr_config</span><span class="p">,</span>
-</span><span id="line-522">        <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-</span><span id="line-523">    <span class="p">)</span>
+</span><span id="line-474"><span class="k">def</span><span class="w"> </span><span class="nf">get_jackknife_cov</span><span class="p">(</span>
+</span><span id="line-475">    <span class="n">config</span><span class="p">,</span>
+</span><span id="line-476">    <span class="n">version</span><span class="p">,</span>
+</span><span id="line-477">    <span class="n">treecorr_config</span><span class="p">,</span>
+</span><span id="line-478">    <span class="n">outdir</span><span class="p">,</span>
+</span><span id="line-479">    <span class="n">base_rho</span><span class="p">,</span>
+</span><span id="line-480">    <span class="n">base_tau</span><span class="p">,</span>
+</span><span id="line-481">    <span class="n">npatch</span><span class="p">,</span>
+</span><span id="line-482">    <span class="n">ncov</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+</span><span id="line-483">    <span class="n">mask_star</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-484">    <span class="n">mask_gal</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-485">    <span class="n">force_run</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+</span><span id="line-486"><span class="p">):</span>
+</span><span id="line-487"><span class="w">    </span><span class="sd">"""</span>
+</span><span id="line-488"><span class="sd">    Compute the covariance matrix of rho and tau-statistics using the jackknife method.</span>
+</span><span id="line-489"><span class="sd">    Also compute rho and tau-statistics.</span>
+</span><span id="line-490"><span class="sd">    """</span>
+</span><span id="line-491">    <span class="n">rho_filename</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"rho_stats_</span><span class="si">{</span><span class="n">base_rho</span><span class="si">}</span><span class="s2">.fits"</span>
+</span><span id="line-492">    <span class="n">tau_filename</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"tau_stats_</span><span class="si">{</span><span class="n">base_tau</span><span class="si">}</span><span class="s2">.fits"</span>
+</span><span id="line-493">    <span class="n">tau_cov_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">outdir</span><span class="p">)</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"cov_tau_</span><span class="si">{</span><span class="n">base_tau</span><span class="si">}</span><span class="s2">_jk.npy"</span>
+</span><span id="line-494">
+</span><span id="line-495">    <span class="k">if</span> <span class="p">(</span>
+</span><span id="line-496">        <span class="n">tau_cov_path</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span>
+</span><span id="line-497">        <span class="ow">and</span> <span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">outdir</span><span class="p">)</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"cov_rho_</span><span class="si">{</span><span class="n">base_rho</span><span class="si">}</span><span class="s2">_jk.npy"</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span>
+</span><span id="line-498">        <span class="ow">and</span> <span class="n">measurement_matches</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">outdir</span><span class="p">)</span> <span class="o">/</span> <span class="n">rho_filename</span><span class="p">,</span> <span class="n">treecorr_config</span><span class="p">)</span>
+</span><span id="line-499">        <span class="ow">and</span> <span class="n">measurement_matches</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">outdir</span><span class="p">)</span> <span class="o">/</span> <span class="n">tau_filename</span><span class="p">,</span> <span class="n">treecorr_config</span><span class="p">)</span>
+</span><span id="line-500">        <span class="ow">and</span> <span class="ow">not</span> <span class="n">force_run</span>
+</span><span id="line-501">    <span class="p">):</span>
+</span><span id="line-502">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Skipping covariance computation, file </span><span class="si">{</span><span class="n">tau_cov_path</span><span class="si">}</span><span class="s2"> already exists."</span><span class="p">)</span>
+</span><span id="line-503">        <span class="n">rho_stat_handler</span> <span class="o">=</span> <span class="n">RhoStat</span><span class="p">(</span>
+</span><span id="line-504">            <span class="n">output</span><span class="o">=</span><span class="n">outdir</span><span class="p">,</span> <span class="n">treecorr_config</span><span class="o">=</span><span class="n">treecorr_config</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span>
+</span><span id="line-505">        <span class="p">)</span>
+</span><span id="line-506">
+</span><span id="line-507">        <span class="n">tau_stat_handler</span> <span class="o">=</span> <span class="n">TauStat</span><span class="p">(</span>
+</span><span id="line-508">            <span class="n">catalogs</span><span class="o">=</span><span class="n">rho_stat_handler</span><span class="o">.</span><span class="n">catalogs</span><span class="p">,</span>
+</span><span id="line-509">            <span class="n">output</span><span class="o">=</span><span class="n">outdir</span><span class="p">,</span>
+</span><span id="line-510">            <span class="n">treecorr_config</span><span class="o">=</span><span class="n">treecorr_config</span><span class="p">,</span>
+</span><span id="line-511">            <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="line-512">        <span class="p">)</span>
+</span><span id="line-513">
+</span><span id="line-514">        <span class="n">rho_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">outdir</span><span class="p">)</span> <span class="o">/</span> <span class="n">rho_filename</span>
+</span><span id="line-515">        <span class="n">tau_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">outdir</span><span class="p">)</span> <span class="o">/</span> <span class="n">tau_filename</span>
+</span><span id="line-516">        <span class="k">if</span> <span class="n">rho_path</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">force_run</span><span class="p">:</span>
+</span><span id="line-517">            <span class="n">rho_stat_handler</span><span class="o">.</span><span class="n">load_rho_stats</span><span class="p">(</span><span class="n">rho_path</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+</span><span id="line-518">        <span class="k">if</span> <span class="n">tau_path</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">force_run</span><span class="p">:</span>
+</span><span id="line-519">            <span class="n">tau_stat_handler</span><span class="o">.</span><span class="n">load_tau_stats</span><span class="p">(</span><span class="n">tau_path</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+</span><span id="line-520">        <span class="k">return</span> <span class="n">rho_stat_handler</span><span class="p">,</span> <span class="n">tau_stat_handler</span>
+</span><span id="line-521">
+</span><span id="line-522">    <span class="n">params</span> <span class="o">=</span> <span class="n">get_params_rho_tau</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="n">version</span><span class="p">])</span>
+</span><span id="line-523">    <span class="n">params</span><span class="p">[</span><span class="s2">"patch_number"</span><span class="p">]</span> <span class="o">=</span> <span class="n">npatch</span>
 </span><span id="line-524">
-</span><span id="line-525">    <span class="n">tau_stat_handler</span><span class="o">.</span><span class="n">catalogs</span><span class="o">.</span><span class="n">set_params</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">outdir</span><span class="p">)</span>
-</span><span id="line-526">
-</span><span id="line-527">    <span class="c1"># shear_psf_leakage keys its catalogues by catalog_id and writes each</span>
-</span><span id="line-528">    <span class="c1"># draw's covariance to cov_{rho,tau}_{catalog_id}.npy; base_tau names the</span>
-</span><span id="line-529">    <span class="c1"># draws so that the bins of a tomographic run never share them.</span>
-</span><span id="line-530">    <span class="k">def</span><span class="w"> </span><span class="nf">catalog_id</span><span class="p">(</span><span class="n">i</span><span class="p">):</span>
-</span><span id="line-531">        <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">base_tau</span><span class="si">}{</span><span class="n">i</span><span class="si">}</span><span class="s2">"</span>
-</span><span id="line-532">
-</span><span id="line-533">    <span class="k">def</span><span class="w"> </span><span class="nf">chunks</span><span class="p">(</span><span class="n">i</span><span class="p">):</span>
-</span><span id="line-534">        <span class="k">return</span> <span class="p">[</span>
-</span><span id="line-535">            <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outdir</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"cov_</span><span class="si">{</span><span class="n">kind</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">catalog_id</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="si">}</span><span class="s2">.npy"</span><span class="p">)</span>
-</span><span id="line-536">            <span class="k">for</span> <span class="n">kind</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"rho"</span><span class="p">,</span> <span class="s2">"tau"</span><span class="p">)</span>
-</span><span id="line-537">        <span class="p">]</span>
-</span><span id="line-538">
-</span><span id="line-539">    <span class="n">rho_means</span> <span class="o">=</span> <span class="n">tau_means</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="line-540">    <span class="k">with</span> <span class="n">_CatalogueLoader</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="n">version</span><span class="p">],</span> <span class="n">params</span><span class="p">)</span> <span class="k">as</span> <span class="n">load</span><span class="p">:</span>
-</span><span id="line-541">        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ncov</span><span class="p">):</span>
-</span><span id="line-542">            <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span> <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">chunks</span><span class="p">(</span><span class="n">i</span><span class="p">)):</span>
-</span><span id="line-543">                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Computing rho-statistics for </span><span class="si">{</span><span class="n">version</span><span class="si">}</span><span class="s2"> (patch </span><span class="si">{</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">ncov</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
-</span><span id="line-544">
-</span><span id="line-545">                <span class="k">if</span> <span class="p">(</span>
-</span><span id="line-546">                    <span class="sa">f</span><span class="s2">"psf_</span><span class="si">{</span><span class="n">catalog_id</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
-</span><span id="line-547">                    <span class="ow">not</span> <span class="ow">in</span> <span class="n">rho_stat_handler</span><span class="o">.</span><span class="n">catalogs</span><span class="o">.</span><span class="n">catalogs_dict</span>
-</span><span id="line-548">                <span class="p">):</span>
-</span><span id="line-549">                    <span class="c1"># Build catalogues</span>
-</span><span id="line-550">                    <span class="n">rho_stat_handler</span><span class="o">.</span><span class="n">build_cat_to_compute_rho</span><span class="p">(</span>
-</span><span id="line-551">                        <span class="n">load</span><span class="p">(</span><span class="s2">"psf"</span><span class="p">),</span> <span class="n">catalog_id</span><span class="o">=</span><span class="n">catalog_id</span><span class="p">(</span><span class="n">i</span><span class="p">),</span> <span class="n">mask</span><span class="o">=</span><span class="n">mask_star</span>
-</span><span id="line-552">                    <span class="p">)</span>
-</span><span id="line-553">
-</span><span id="line-554">                    <span class="n">tau_stat_handler</span><span class="o">.</span><span class="n">catalogs</span><span class="o">.</span><span class="n">catalogs_dict</span> <span class="o">=</span> <span class="p">(</span>
-</span><span id="line-555">                        <span class="n">rho_stat_handler</span><span class="o">.</span><span class="n">catalogs</span><span class="o">.</span><span class="n">catalogs_dict</span>
-</span><span id="line-556">                    <span class="p">)</span>
-</span><span id="line-557">
-</span><span id="line-558">                <span class="n">catalogs</span> <span class="o">=</span> <span class="n">rho_stat_handler</span><span class="o">.</span><span class="n">catalogs</span>
-</span><span id="line-559">                <span class="n">centers</span> <span class="o">=</span> <span class="n">jackknife_patch_centers</span><span class="p">(</span>
-</span><span id="line-560">                    <span class="n">catalogs</span><span class="o">.</span><span class="n">catalogs_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">"psf_</span><span class="si">{</span><span class="n">catalog_id</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">],</span>
-</span><span id="line-561">                    <span class="n">catalogs</span><span class="o">.</span><span class="n">_params</span><span class="p">[</span><span class="s2">"patch_number"</span><span class="p">],</span>
-</span><span id="line-562">                    <span class="n">seed</span><span class="o">=</span><span class="n">i</span><span class="p">,</span>
-</span><span id="line-563">                    <span class="n">init</span><span class="o">=</span><span class="s2">"kmeans++"</span><span class="p">,</span>
-</span><span id="line-564">                <span class="p">)</span>
-</span><span id="line-565">                <span class="c1"># Fresh catalogues keep TreeCorr's cached patches consistent with</span>
-</span><span id="line-566">                <span class="c1"># this draw's shared star/galaxy layout.</span>
-</span><span id="line-567">                <span class="n">stars</span> <span class="o">=</span> <span class="n">catalogs</span><span class="o">.</span><span class="n">read_shear_cat</span><span class="p">(</span>
-</span><span id="line-568">                    <span class="n">path_gal</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">path_psf</span><span class="o">=</span><span class="n">load</span><span class="p">(</span><span class="s2">"psf"</span><span class="p">),</span> <span class="n">hdu</span><span class="o">=</span><span class="mi">1</span>
-</span><span id="line-569">                <span class="p">)</span>
-</span><span id="line-570">                <span class="k">for</span> <span class="n">cat_type</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"psf"</span><span class="p">,</span> <span class="s2">"psf_error"</span><span class="p">,</span> <span class="s2">"psf_size_error"</span><span class="p">):</span>
-</span><span id="line-571">                    <span class="n">catalogs</span><span class="o">.</span><span class="n">build_catalog</span><span class="p">(</span>
-</span><span id="line-572">                        <span class="n">cat</span><span class="o">=</span><span class="n">stars</span><span class="p">,</span>
-</span><span id="line-573">                        <span class="n">cat_type</span><span class="o">=</span><span class="n">cat_type</span><span class="p">,</span>
-</span><span id="line-574">                        <span class="n">key</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">cat_type</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">catalog_id</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
-</span><span id="line-575">                        <span class="n">patch_centers</span><span class="o">=</span><span class="n">centers</span><span class="p">,</span>
-</span><span id="line-576">                        <span class="n">mask</span><span class="o">=</span><span class="n">mask_star</span><span class="p">,</span>
-</span><span id="line-577">                    <span class="p">)</span>
-</span><span id="line-578">                <span class="n">tau_stat_handler</span><span class="o">.</span><span class="n">build_cat_to_compute_tau</span><span class="p">(</span>
-</span><span id="line-579">                    <span class="n">load</span><span class="p">(</span><span class="s2">"shear"</span><span class="p">),</span>
-</span><span id="line-580">                    <span class="n">cat_type</span><span class="o">=</span><span class="s2">"gal"</span><span class="p">,</span>
-</span><span id="line-581">                    <span class="n">catalog_id</span><span class="o">=</span><span class="n">catalog_id</span><span class="p">(</span><span class="n">i</span><span class="p">),</span>
-</span><span id="line-582">                    <span class="n">mask</span><span class="o">=</span><span class="n">mask_gal</span><span class="p">,</span>
-</span><span id="line-583">                <span class="p">)</span>
-</span><span id="line-584">
-</span><span id="line-585">                <span class="c1"># Compute and save rho stats</span>
-</span><span id="line-586">                <span class="n">rho_means</span> <span class="o">=</span> <span class="n">_compute_stats_with_patches</span><span class="p">(</span>
-</span><span id="line-587">                    <span class="n">rho_stat_handler</span><span class="p">,</span>
-</span><span id="line-588">                    <span class="s2">"rho"</span><span class="p">,</span>
-</span><span id="line-589">                    <span class="n">catalog_id</span><span class="p">(</span><span class="n">i</span><span class="p">),</span>
-</span><span id="line-590">                    <span class="n">rho_filename</span><span class="p">,</span>
-</span><span id="line-591">                    <span class="n">save_cov</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-</span><span id="line-592">                    <span class="n">means</span><span class="o">=</span><span class="n">rho_means</span><span class="p">,</span>
-</span><span id="line-593">                <span class="p">)</span>
-</span><span id="line-594">                <span class="n">tau_means</span> <span class="o">=</span> <span class="n">_compute_stats_with_patches</span><span class="p">(</span>
-</span><span id="line-595">                    <span class="n">tau_stat_handler</span><span class="p">,</span>
-</span><span id="line-596">                    <span class="s2">"tau"</span><span class="p">,</span>
-</span><span id="line-597">                    <span class="n">catalog_id</span><span class="p">(</span><span class="n">i</span><span class="p">),</span>
-</span><span id="line-598">                    <span class="n">tau_filename</span><span class="p">,</span>
-</span><span id="line-599">                    <span class="n">save_cov</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-</span><span id="line-600">                    <span class="n">means</span><span class="o">=</span><span class="n">tau_means</span><span class="p">,</span>
-</span><span id="line-601">                <span class="p">)</span>
-</span><span id="line-602">
-</span><span id="line-603">                <span class="c1"># Update the keys in the dictionaries</span>
-</span><span id="line-604">                <span class="n">rho_dict</span> <span class="o">=</span> <span class="n">rho_stat_handler</span><span class="o">.</span><span class="n">catalogs</span><span class="o">.</span><span class="n">catalogs_dict</span>
-</span><span id="line-605">                <span class="n">tau_dict</span> <span class="o">=</span> <span class="n">tau_stat_handler</span><span class="o">.</span><span class="n">catalogs</span><span class="o">.</span><span class="n">catalogs_dict</span>
-</span><span id="line-606">                <span class="k">for</span> <span class="n">prefix</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"psf"</span><span class="p">,</span> <span class="s2">"psf_error"</span><span class="p">,</span> <span class="s2">"psf_size_error"</span><span class="p">):</span>
-</span><span id="line-607">                    <span class="n">rho_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">catalog_id</span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">]</span> <span class="o">=</span> <span class="n">rho_dict</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span>
-</span><span id="line-608">                        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">catalog_id</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
-</span><span id="line-609">                    <span class="p">)</span>
-</span><span id="line-610">                <span class="n">tau_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">"gal_</span><span class="si">{</span><span class="n">catalog_id</span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">]</span> <span class="o">=</span> <span class="n">tau_dict</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span>
-</span><span id="line-611">                    <span class="sa">f</span><span class="s2">"gal_</span><span class="si">{</span><span class="n">catalog_id</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
-</span><span id="line-612">                <span class="p">)</span>
-</span><span id="line-613">
-</span><span id="line-614">    <span class="n">cov_rho_loc</span><span class="p">,</span> <span class="n">cov_tau_loc</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">c</span><span class="p">))</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">chunks</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
-</span><span id="line-615">    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ncov</span><span class="p">):</span>
-</span><span id="line-616">        <span class="n">rho_chunk</span><span class="p">,</span> <span class="n">tau_chunk</span> <span class="o">=</span> <span class="n">chunks</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
-</span><span id="line-617">        <span class="n">cov_rho_loc</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">rho_chunk</span><span class="p">)</span>
-</span><span id="line-618">        <span class="n">cov_tau_loc</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">tau_chunk</span><span class="p">)</span>
-</span><span id="line-619">        <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">rho_chunk</span><span class="p">)</span>
-</span><span id="line-620">        <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">tau_chunk</span><span class="p">)</span>
-</span><span id="line-621">
-</span><span id="line-622">    <span class="n">cov_tau</span> <span class="o">=</span> <span class="n">cov_tau_loc</span> <span class="o">/</span> <span class="n">ncov</span>
-</span><span id="line-623">    <span class="n">cov_rho</span> <span class="o">=</span> <span class="n">cov_rho_loc</span> <span class="o">/</span> <span class="n">ncov</span>
-</span><span id="line-624">
-</span><span id="line-625">    <span class="n">tau_cov_path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="line-626">    <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">tau_cov_path</span><span class="p">,</span> <span class="n">cov_tau</span><span class="p">)</span>
-</span><span id="line-627">
-</span><span id="line-628">    <span class="n">cov_rho_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">outdir</span><span class="p">)</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"cov_rho_</span><span class="si">{</span><span class="n">base_rho</span><span class="si">}</span><span class="s2">_jk.npy"</span>
-</span><span id="line-629">    <span class="n">cov_rho_path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="line-630">    <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">cov_rho_path</span><span class="p">,</span> <span class="n">cov_rho</span><span class="p">)</span>
-</span><span id="line-631">
-</span><span id="line-632">    <span class="k">return</span> <span class="n">rho_stat_handler</span><span class="p">,</span> <span class="n">tau_stat_handler</span></div>
+</span><span id="line-525">    <span class="n">rho_stat_handler</span> <span class="o">=</span> <span class="n">RhoStat</span><span class="p">(</span>
+</span><span id="line-526">        <span class="n">output</span><span class="o">=</span><span class="n">outdir</span><span class="p">,</span> <span class="n">treecorr_config</span><span class="o">=</span><span class="n">treecorr_config</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span>
+</span><span id="line-527">    <span class="p">)</span>
+</span><span id="line-528">
+</span><span id="line-529">    <span class="n">rho_stat_handler</span><span class="o">.</span><span class="n">catalogs</span><span class="o">.</span><span class="n">set_params</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">outdir</span><span class="p">)</span>
+</span><span id="line-530">
+</span><span id="line-531">    <span class="n">tau_stat_handler</span> <span class="o">=</span> <span class="n">TauStat</span><span class="p">(</span>
+</span><span id="line-532">        <span class="n">catalogs</span><span class="o">=</span><span class="n">rho_stat_handler</span><span class="o">.</span><span class="n">catalogs</span><span class="p">,</span>
+</span><span id="line-533">        <span class="n">output</span><span class="o">=</span><span class="n">outdir</span><span class="p">,</span>
+</span><span id="line-534">        <span class="n">treecorr_config</span><span class="o">=</span><span class="n">treecorr_config</span><span class="p">,</span>
+</span><span id="line-535">        <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="line-536">    <span class="p">)</span>
+</span><span id="line-537">
+</span><span id="line-538">    <span class="n">tau_stat_handler</span><span class="o">.</span><span class="n">catalogs</span><span class="o">.</span><span class="n">set_params</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">outdir</span><span class="p">)</span>
+</span><span id="line-539">
+</span><span id="line-540">    <span class="n">rho_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">outdir</span><span class="p">)</span> <span class="o">/</span> <span class="n">rho_filename</span>
+</span><span id="line-541">    <span class="n">cov_rho_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">outdir</span><span class="p">)</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"cov_rho_</span><span class="si">{</span><span class="n">base_rho</span><span class="si">}</span><span class="s2">_jk.npy"</span>
+</span><span id="line-542">    <span class="n">reuse_rho</span> <span class="o">=</span> <span class="n">rho_cache_valid</span><span class="p">(</span><span class="n">rho_path</span><span class="p">,</span> <span class="n">cov_rho_path</span><span class="p">,</span> <span class="n">treecorr_config</span><span class="p">,</span> <span class="n">force_run</span><span class="p">)</span>
+</span><span id="line-543">    <span class="k">if</span> <span class="n">reuse_rho</span><span class="p">:</span>
+</span><span id="line-544">        <span class="n">rho_stat_handler</span><span class="o">.</span><span class="n">load_rho_stats</span><span class="p">(</span><span class="n">rho_filename</span><span class="p">)</span>
+</span><span id="line-545">        <span class="n">cached_rho_cov</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">cov_rho_path</span><span class="p">)</span>
+</span><span id="line-546">
+</span><span id="line-547">    <span class="c1"># shear_psf_leakage keys its catalogues by catalog_id and writes each</span>
+</span><span id="line-548">    <span class="c1"># draw's covariance to cov_{rho,tau}_{catalog_id}.npy; base_tau names the</span>
+</span><span id="line-549">    <span class="c1"># draws so that the bins of a tomographic run never share them.</span>
+</span><span id="line-550">    <span class="k">def</span><span class="w"> </span><span class="nf">catalog_id</span><span class="p">(</span><span class="n">i</span><span class="p">):</span>
+</span><span id="line-551">        <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">base_tau</span><span class="si">}{</span><span class="n">i</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-552">
+</span><span id="line-553">    <span class="k">def</span><span class="w"> </span><span class="nf">chunks</span><span class="p">(</span><span class="n">i</span><span class="p">):</span>
+</span><span id="line-554">        <span class="k">return</span> <span class="p">[</span>
+</span><span id="line-555">            <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outdir</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"cov_</span><span class="si">{</span><span class="n">kind</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">catalog_id</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="si">}</span><span class="s2">.npy"</span><span class="p">)</span>
+</span><span id="line-556">            <span class="k">for</span> <span class="n">kind</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"rho"</span><span class="p">,</span> <span class="s2">"tau"</span><span class="p">)</span>
+</span><span id="line-557">        <span class="p">]</span>
+</span><span id="line-558">
+</span><span id="line-559">    <span class="n">rho_means</span> <span class="o">=</span> <span class="n">tau_means</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="line-560">    <span class="k">with</span> <span class="n">_CatalogueLoader</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="n">version</span><span class="p">],</span> <span class="n">params</span><span class="p">)</span> <span class="k">as</span> <span class="n">load</span><span class="p">:</span>
+</span><span id="line-561">        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ncov</span><span class="p">):</span>
+</span><span id="line-562">            <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span> <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">chunks</span><span class="p">(</span><span class="n">i</span><span class="p">)):</span>
+</span><span id="line-563">                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Computing rho-statistics for </span><span class="si">{</span><span class="n">version</span><span class="si">}</span><span class="s2"> (patch </span><span class="si">{</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">ncov</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
+</span><span id="line-564">
+</span><span id="line-565">                <span class="k">if</span> <span class="p">(</span>
+</span><span id="line-566">                    <span class="sa">f</span><span class="s2">"psf_</span><span class="si">{</span><span class="n">catalog_id</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-567">                    <span class="ow">not</span> <span class="ow">in</span> <span class="n">rho_stat_handler</span><span class="o">.</span><span class="n">catalogs</span><span class="o">.</span><span class="n">catalogs_dict</span>
+</span><span id="line-568">                <span class="p">):</span>
+</span><span id="line-569">                    <span class="c1"># Build catalogues</span>
+</span><span id="line-570">                    <span class="n">rho_stat_handler</span><span class="o">.</span><span class="n">build_cat_to_compute_rho</span><span class="p">(</span>
+</span><span id="line-571">                        <span class="n">load</span><span class="p">(</span><span class="s2">"psf"</span><span class="p">),</span> <span class="n">catalog_id</span><span class="o">=</span><span class="n">catalog_id</span><span class="p">(</span><span class="n">i</span><span class="p">),</span> <span class="n">mask</span><span class="o">=</span><span class="n">mask_star</span>
+</span><span id="line-572">                    <span class="p">)</span>
+</span><span id="line-573">
+</span><span id="line-574">                    <span class="n">tau_stat_handler</span><span class="o">.</span><span class="n">catalogs</span><span class="o">.</span><span class="n">catalogs_dict</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="line-575">                        <span class="n">rho_stat_handler</span><span class="o">.</span><span class="n">catalogs</span><span class="o">.</span><span class="n">catalogs_dict</span>
+</span><span id="line-576">                    <span class="p">)</span>
+</span><span id="line-577">
+</span><span id="line-578">                <span class="n">catalogs</span> <span class="o">=</span> <span class="n">rho_stat_handler</span><span class="o">.</span><span class="n">catalogs</span>
+</span><span id="line-579">                <span class="n">centers</span> <span class="o">=</span> <span class="n">jackknife_patch_centers</span><span class="p">(</span>
+</span><span id="line-580">                    <span class="n">catalogs</span><span class="o">.</span><span class="n">catalogs_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">"psf_</span><span class="si">{</span><span class="n">catalog_id</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">],</span>
+</span><span id="line-581">                    <span class="n">catalogs</span><span class="o">.</span><span class="n">_params</span><span class="p">[</span><span class="s2">"patch_number"</span><span class="p">],</span>
+</span><span id="line-582">                    <span class="n">seed</span><span class="o">=</span><span class="n">i</span><span class="p">,</span>
+</span><span id="line-583">                    <span class="n">init</span><span class="o">=</span><span class="s2">"kmeans++"</span><span class="p">,</span>
+</span><span id="line-584">                <span class="p">)</span>
+</span><span id="line-585">                <span class="c1"># Fresh catalogues keep TreeCorr's cached patches consistent with</span>
+</span><span id="line-586">                <span class="c1"># this draw's shared star/galaxy layout.</span>
+</span><span id="line-587">                <span class="n">stars</span> <span class="o">=</span> <span class="n">catalogs</span><span class="o">.</span><span class="n">read_shear_cat</span><span class="p">(</span>
+</span><span id="line-588">                    <span class="n">path_gal</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">path_psf</span><span class="o">=</span><span class="n">load</span><span class="p">(</span><span class="s2">"psf"</span><span class="p">),</span> <span class="n">hdu</span><span class="o">=</span><span class="mi">1</span>
+</span><span id="line-589">                <span class="p">)</span>
+</span><span id="line-590">                <span class="k">for</span> <span class="n">cat_type</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"psf"</span><span class="p">,</span> <span class="s2">"psf_error"</span><span class="p">,</span> <span class="s2">"psf_size_error"</span><span class="p">):</span>
+</span><span id="line-591">                    <span class="n">catalogs</span><span class="o">.</span><span class="n">build_catalog</span><span class="p">(</span>
+</span><span id="line-592">                        <span class="n">cat</span><span class="o">=</span><span class="n">stars</span><span class="p">,</span>
+</span><span id="line-593">                        <span class="n">cat_type</span><span class="o">=</span><span class="n">cat_type</span><span class="p">,</span>
+</span><span id="line-594">                        <span class="n">key</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">cat_type</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">catalog_id</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+</span><span id="line-595">                        <span class="n">patch_centers</span><span class="o">=</span><span class="n">centers</span><span class="p">,</span>
+</span><span id="line-596">                        <span class="n">mask</span><span class="o">=</span><span class="n">mask_star</span><span class="p">,</span>
+</span><span id="line-597">                    <span class="p">)</span>
+</span><span id="line-598">                <span class="n">tau_stat_handler</span><span class="o">.</span><span class="n">build_cat_to_compute_tau</span><span class="p">(</span>
+</span><span id="line-599">                    <span class="n">load</span><span class="p">(</span><span class="s2">"shear"</span><span class="p">),</span>
+</span><span id="line-600">                    <span class="n">cat_type</span><span class="o">=</span><span class="s2">"gal"</span><span class="p">,</span>
+</span><span id="line-601">                    <span class="n">catalog_id</span><span class="o">=</span><span class="n">catalog_id</span><span class="p">(</span><span class="n">i</span><span class="p">),</span>
+</span><span id="line-602">                    <span class="n">mask</span><span class="o">=</span><span class="n">mask_gal</span><span class="p">,</span>
+</span><span id="line-603">                <span class="p">)</span>
+</span><span id="line-604">
+</span><span id="line-605">                <span class="c1"># The PSF-only result is shared by every source bin.</span>
+</span><span id="line-606">                <span class="k">if</span> <span class="n">reuse_rho</span><span class="p">:</span>
+</span><span id="line-607">                    <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">chunks</span><span class="p">(</span><span class="n">i</span><span class="p">)[</span><span class="mi">0</span><span class="p">],</span> <span class="n">cached_rho_cov</span><span class="p">)</span>
+</span><span id="line-608">                <span class="k">else</span><span class="p">:</span>
+</span><span id="line-609">                    <span class="n">rho_means</span> <span class="o">=</span> <span class="n">_compute_stats_with_patches</span><span class="p">(</span>
+</span><span id="line-610">                        <span class="n">rho_stat_handler</span><span class="p">,</span>
+</span><span id="line-611">                        <span class="s2">"rho"</span><span class="p">,</span>
+</span><span id="line-612">                        <span class="n">catalog_id</span><span class="p">(</span><span class="n">i</span><span class="p">),</span>
+</span><span id="line-613">                        <span class="n">rho_filename</span><span class="p">,</span>
+</span><span id="line-614">                        <span class="n">save_cov</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="line-615">                        <span class="n">means</span><span class="o">=</span><span class="n">rho_means</span><span class="p">,</span>
+</span><span id="line-616">                    <span class="p">)</span>
+</span><span id="line-617">                <span class="n">tau_means</span> <span class="o">=</span> <span class="n">_compute_stats_with_patches</span><span class="p">(</span>
+</span><span id="line-618">                    <span class="n">tau_stat_handler</span><span class="p">,</span>
+</span><span id="line-619">                    <span class="s2">"tau"</span><span class="p">,</span>
+</span><span id="line-620">                    <span class="n">catalog_id</span><span class="p">(</span><span class="n">i</span><span class="p">),</span>
+</span><span id="line-621">                    <span class="n">tau_filename</span><span class="p">,</span>
+</span><span id="line-622">                    <span class="n">save_cov</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="line-623">                    <span class="n">means</span><span class="o">=</span><span class="n">tau_means</span><span class="p">,</span>
+</span><span id="line-624">                <span class="p">)</span>
+</span><span id="line-625">
+</span><span id="line-626">                <span class="c1"># Update the keys in the dictionaries</span>
+</span><span id="line-627">                <span class="n">rho_dict</span> <span class="o">=</span> <span class="n">rho_stat_handler</span><span class="o">.</span><span class="n">catalogs</span><span class="o">.</span><span class="n">catalogs_dict</span>
+</span><span id="line-628">                <span class="n">tau_dict</span> <span class="o">=</span> <span class="n">tau_stat_handler</span><span class="o">.</span><span class="n">catalogs</span><span class="o">.</span><span class="n">catalogs_dict</span>
+</span><span id="line-629">                <span class="k">for</span> <span class="n">prefix</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"psf"</span><span class="p">,</span> <span class="s2">"psf_error"</span><span class="p">,</span> <span class="s2">"psf_size_error"</span><span class="p">):</span>
+</span><span id="line-630">                    <span class="n">rho_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">catalog_id</span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">]</span> <span class="o">=</span> <span class="n">rho_dict</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span>
+</span><span id="line-631">                        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">catalog_id</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-632">                    <span class="p">)</span>
+</span><span id="line-633">                <span class="n">tau_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">"gal_</span><span class="si">{</span><span class="n">catalog_id</span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">]</span> <span class="o">=</span> <span class="n">tau_dict</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span>
+</span><span id="line-634">                    <span class="sa">f</span><span class="s2">"gal_</span><span class="si">{</span><span class="n">catalog_id</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-635">                <span class="p">)</span>
+</span><span id="line-636">
+</span><span id="line-637">    <span class="n">cov_rho_loc</span><span class="p">,</span> <span class="n">cov_tau_loc</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">c</span><span class="p">))</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">chunks</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+</span><span id="line-638">    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ncov</span><span class="p">):</span>
+</span><span id="line-639">        <span class="n">rho_chunk</span><span class="p">,</span> <span class="n">tau_chunk</span> <span class="o">=</span> <span class="n">chunks</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+</span><span id="line-640">        <span class="n">cov_rho_loc</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">rho_chunk</span><span class="p">)</span>
+</span><span id="line-641">        <span class="n">cov_tau_loc</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">tau_chunk</span><span class="p">)</span>
+</span><span id="line-642">        <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">rho_chunk</span><span class="p">)</span>
+</span><span id="line-643">        <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">tau_chunk</span><span class="p">)</span>
+</span><span id="line-644">
+</span><span id="line-645">    <span class="n">cov_tau</span> <span class="o">=</span> <span class="n">cov_tau_loc</span> <span class="o">/</span> <span class="n">ncov</span>
+</span><span id="line-646">    <span class="n">cov_rho</span> <span class="o">=</span> <span class="n">cov_rho_loc</span> <span class="o">/</span> <span class="n">ncov</span>
+</span><span id="line-647">
+</span><span id="line-648">    <span class="n">tau_cov_path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-649">    <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">tau_cov_path</span><span class="p">,</span> <span class="n">cov_tau</span><span class="p">)</span>
+</span><span id="line-650">
+</span><span id="line-651">    <span class="n">cov_rho_path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-652">    <span class="k">if</span> <span class="ow">not</span> <span class="n">reuse_rho</span><span class="p">:</span>
+</span><span id="line-653">        <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">cov_rho_path</span><span class="p">,</span> <span class="n">cov_rho</span><span class="p">)</span>
+</span><span id="line-654">
+</span><span id="line-655">    <span class="k">return</span> <span class="n">rho_stat_handler</span><span class="p">,</span> <span class="n">tau_stat_handler</span></div>
 
-</span><span id="line-633">
-</span><span id="line-634">
+</span><span id="line-656">
+</span><span id="line-657">
 <div class="viewcode-block" id="get_samples">
 <a class="viewcode-back" href="../../sp_validation.rho_tau.html#sp_validation.rho_tau.get_samples">[docs]</a>
-</span><span id="line-635"><span class="k">def</span><span class="w"> </span><span class="nf">get_samples</span><span class="p">(</span>
-</span><span id="line-636">    <span class="n">psf_fitter</span><span class="p">,</span>
-</span><span id="line-637">    <span class="n">base_rho</span><span class="p">,</span>
-</span><span id="line-638">    <span class="n">base_tau</span><span class="p">,</span>
-</span><span id="line-639">    <span class="n">cov_type</span><span class="o">=</span><span class="s2">"jk"</span><span class="p">,</span>
-</span><span id="line-640">    <span class="n">apply_debias</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-</span><span id="line-641">    <span class="n">sampler</span><span class="o">=</span><span class="s2">"emcee"</span><span class="p">,</span>
-</span><span id="line-642">    <span class="n">nsamples</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span>
-</span><span id="line-643">    <span class="n">nwalkers</span><span class="o">=</span><span class="mi">124</span><span class="p">,</span>
-</span><span id="line-644"><span class="p">):</span>
-</span><span id="line-645"><span class="w">    </span><span class="sd">"""Return (alpha, beta, eta) samples using ``emcee`` or least squares.</span>
-</span><span id="line-646">
-</span><span id="line-647"><span class="sd">    Parameters</span>
-</span><span id="line-648"><span class="sd">    ----------</span>
-</span><span id="line-649"><span class="sd">    psf_fitter : PSFFitter</span>
-</span><span id="line-650"><span class="sd">        PSF fitter instance that provides ``load_*`` helpers.</span>
-</span><span id="line-651"><span class="sd">    base_rho : str</span>
-</span><span id="line-652"><span class="sd">        Precomputed basename (e.g. ``SP_v1.4_minsep=…``) used for rho-stat filenames.</span>
-</span><span id="line-653"><span class="sd">    base_tau : str</span>
-</span><span id="line-654"><span class="sd">        Precomputed basename (e.g. ``SP_v1.4_minsep=…``) used for tau-stat filenames.</span>
-</span><span id="line-655"><span class="sd">    cov_type : str, optional</span>
-</span><span id="line-656"><span class="sd">        Covariance label (``'jk'``, ``'th'``, or ``'sim'``). Defaults to ``'jk'``.</span>
-</span><span id="line-657"><span class="sd">    apply_debias : int or None, optional</span>
-</span><span id="line-658"><span class="sd">        Jackknife patch count used to debias samples. Disabled when ``None``.</span>
-</span><span id="line-659"><span class="sd">    sampler : str, optional</span>
-</span><span id="line-660"><span class="sd">        ``'emcee'`` for MCMC sampling, ``'lsq'`` for least squares</span>
-</span><span id="line-661"><span class="sd">        (default ``'emcee'``).</span>
-</span><span id="line-662"><span class="sd">    nsamples : int, optional</span>
-</span><span id="line-663"><span class="sd">        Number of samples to draw (default ``10000``).</span>
-</span><span id="line-664"><span class="sd">    nwalkers : int, optional</span>
-</span><span id="line-665"><span class="sd">        Number of walkers for the MCMC run (default ``124``).</span>
-</span><span id="line-666"><span class="sd">    """</span>
-</span><span id="line-667">    <span class="k">if</span> <span class="n">sampler</span> <span class="o">==</span> <span class="s2">"emcee"</span><span class="p">:</span>
-</span><span id="line-668">        <span class="k">return</span> <span class="n">get_samples_emcee</span><span class="p">(</span>
-</span><span id="line-669">            <span class="n">psf_fitter</span><span class="p">,</span>
-</span><span id="line-670">            <span class="n">base_rho</span><span class="p">,</span>
-</span><span id="line-671">            <span class="n">base_tau</span><span class="p">,</span>
-</span><span id="line-672">            <span class="n">cov_type</span><span class="o">=</span><span class="n">cov_type</span><span class="p">,</span>
-</span><span id="line-673">            <span class="n">apply_debias</span><span class="o">=</span><span class="n">apply_debias</span><span class="p">,</span>
-</span><span id="line-674">            <span class="n">nsamples</span><span class="o">=</span><span class="n">nsamples</span><span class="p">,</span>
-</span><span id="line-675">            <span class="n">nwalkers</span><span class="o">=</span><span class="n">nwalkers</span><span class="p">,</span>
-</span><span id="line-676">        <span class="p">)</span>
-</span><span id="line-677">    <span class="k">elif</span> <span class="n">sampler</span> <span class="o">==</span> <span class="s2">"lsq"</span><span class="p">:</span>
-</span><span id="line-678">        <span class="k">return</span> <span class="n">get_samples_lsq</span><span class="p">(</span>
-</span><span id="line-679">            <span class="n">psf_fitter</span><span class="p">,</span>
-</span><span id="line-680">            <span class="n">base_rho</span><span class="p">,</span>
-</span><span id="line-681">            <span class="n">base_tau</span><span class="p">,</span>
-</span><span id="line-682">            <span class="n">cov_type</span><span class="o">=</span><span class="n">cov_type</span><span class="p">,</span>
-</span><span id="line-683">            <span class="n">apply_debias</span><span class="o">=</span><span class="n">apply_debias</span><span class="p">,</span>
-</span><span id="line-684">            <span class="n">nsamples</span><span class="o">=</span><span class="n">nsamples</span><span class="p">,</span>
-</span><span id="line-685">        <span class="p">)</span>
-</span><span id="line-686">    <span class="k">else</span><span class="p">:</span>
-</span><span id="line-687">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Sampler must be either 'emcee' or 'lsq'."</span><span class="p">)</span></div>
+</span><span id="line-658"><span class="k">def</span><span class="w"> </span><span class="nf">get_samples</span><span class="p">(</span>
+</span><span id="line-659">    <span class="n">psf_fitter</span><span class="p">,</span>
+</span><span id="line-660">    <span class="n">base_rho</span><span class="p">,</span>
+</span><span id="line-661">    <span class="n">base_tau</span><span class="p">,</span>
+</span><span id="line-662">    <span class="n">cov_type</span><span class="o">=</span><span class="s2">"jk"</span><span class="p">,</span>
+</span><span id="line-663">    <span class="n">apply_debias</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-664">    <span class="n">sampler</span><span class="o">=</span><span class="s2">"emcee"</span><span class="p">,</span>
+</span><span id="line-665">    <span class="n">nsamples</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span>
+</span><span id="line-666">    <span class="n">nwalkers</span><span class="o">=</span><span class="mi">124</span><span class="p">,</span>
+</span><span id="line-667"><span class="p">):</span>
+</span><span id="line-668"><span class="w">    </span><span class="sd">"""Return (alpha, beta, eta) samples using ``emcee`` or least squares.</span>
+</span><span id="line-669">
+</span><span id="line-670"><span class="sd">    Parameters</span>
+</span><span id="line-671"><span class="sd">    ----------</span>
+</span><span id="line-672"><span class="sd">    psf_fitter : PSFFitter</span>
+</span><span id="line-673"><span class="sd">        PSF fitter instance that provides ``load_*`` helpers.</span>
+</span><span id="line-674"><span class="sd">    base_rho : str</span>
+</span><span id="line-675"><span class="sd">        Precomputed basename (e.g. ``SP_v1.4_minsep=…``) used for rho-stat filenames.</span>
+</span><span id="line-676"><span class="sd">    base_tau : str</span>
+</span><span id="line-677"><span class="sd">        Precomputed basename (e.g. ``SP_v1.4_minsep=…``) used for tau-stat filenames.</span>
+</span><span id="line-678"><span class="sd">    cov_type : str, optional</span>
+</span><span id="line-679"><span class="sd">        Covariance label (``'jk'``, ``'th'``, or ``'sim'``). Defaults to ``'jk'``.</span>
+</span><span id="line-680"><span class="sd">    apply_debias : int or None, optional</span>
+</span><span id="line-681"><span class="sd">        Jackknife patch count used to debias samples. Disabled when ``None``.</span>
+</span><span id="line-682"><span class="sd">    sampler : str, optional</span>
+</span><span id="line-683"><span class="sd">        ``'emcee'`` for MCMC sampling, ``'lsq'`` for least squares</span>
+</span><span id="line-684"><span class="sd">        (default ``'emcee'``).</span>
+</span><span id="line-685"><span class="sd">    nsamples : int, optional</span>
+</span><span id="line-686"><span class="sd">        Number of samples to draw (default ``10000``).</span>
+</span><span id="line-687"><span class="sd">    nwalkers : int, optional</span>
+</span><span id="line-688"><span class="sd">        Number of walkers for the MCMC run (default ``124``).</span>
+</span><span id="line-689"><span class="sd">    """</span>
+</span><span id="line-690">    <span class="k">if</span> <span class="n">sampler</span> <span class="o">==</span> <span class="s2">"emcee"</span><span class="p">:</span>
+</span><span id="line-691">        <span class="k">return</span> <span class="n">get_samples_emcee</span><span class="p">(</span>
+</span><span id="line-692">            <span class="n">psf_fitter</span><span class="p">,</span>
+</span><span id="line-693">            <span class="n">base_rho</span><span class="p">,</span>
+</span><span id="line-694">            <span class="n">base_tau</span><span class="p">,</span>
+</span><span id="line-695">            <span class="n">cov_type</span><span class="o">=</span><span class="n">cov_type</span><span class="p">,</span>
+</span><span id="line-696">            <span class="n">apply_debias</span><span class="o">=</span><span class="n">apply_debias</span><span class="p">,</span>
+</span><span id="line-697">            <span class="n">nsamples</span><span class="o">=</span><span class="n">nsamples</span><span class="p">,</span>
+</span><span id="line-698">            <span class="n">nwalkers</span><span class="o">=</span><span class="n">nwalkers</span><span class="p">,</span>
+</span><span id="line-699">        <span class="p">)</span>
+</span><span id="line-700">    <span class="k">elif</span> <span class="n">sampler</span> <span class="o">==</span> <span class="s2">"lsq"</span><span class="p">:</span>
+</span><span id="line-701">        <span class="k">return</span> <span class="n">get_samples_lsq</span><span class="p">(</span>
+</span><span id="line-702">            <span class="n">psf_fitter</span><span class="p">,</span>
+</span><span id="line-703">            <span class="n">base_rho</span><span class="p">,</span>
+</span><span id="line-704">            <span class="n">base_tau</span><span class="p">,</span>
+</span><span id="line-705">            <span class="n">cov_type</span><span class="o">=</span><span class="n">cov_type</span><span class="p">,</span>
+</span><span id="line-706">            <span class="n">apply_debias</span><span class="o">=</span><span class="n">apply_debias</span><span class="p">,</span>
+</span><span id="line-707">            <span class="n">nsamples</span><span class="o">=</span><span class="n">nsamples</span><span class="p">,</span>
+</span><span id="line-708">        <span class="p">)</span>
+</span><span id="line-709">    <span class="k">else</span><span class="p">:</span>
+</span><span id="line-710">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Sampler must be either 'emcee' or 'lsq'."</span><span class="p">)</span></div>
 
-</span><span id="line-688">
-</span><span id="line-689">
+</span><span id="line-711">
+</span><span id="line-712">
 <div class="viewcode-block" id="get_samples_emcee">
 <a class="viewcode-back" href="../../sp_validation.rho_tau.html#sp_validation.rho_tau.get_samples_emcee">[docs]</a>
-</span><span id="line-690"><span class="k">def</span><span class="w"> </span><span class="nf">get_samples_emcee</span><span class="p">(</span>
-</span><span id="line-691">    <span class="n">psf_fitter</span><span class="p">,</span>
-</span><span id="line-692">    <span class="n">base_rho</span><span class="p">,</span>
-</span><span id="line-693">    <span class="n">base_tau</span><span class="p">,</span>
-</span><span id="line-694">    <span class="n">nwalkers</span><span class="o">=</span><span class="mi">124</span><span class="p">,</span>
-</span><span id="line-695">    <span class="n">nsamples</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span>
-</span><span id="line-696">    <span class="n">cov_type</span><span class="o">=</span><span class="s2">"jk"</span><span class="p">,</span>
-</span><span id="line-697">    <span class="n">apply_debias</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-</span><span id="line-698"><span class="p">):</span>
-</span><span id="line-699"><span class="w">    </span><span class="sd">"""Draw (alpha, beta, eta) samples using ``emcee`` and the tau covariance.</span>
-</span><span id="line-700">
-</span><span id="line-701"><span class="sd">    Parameters</span>
-</span><span id="line-702"><span class="sd">    ----------</span>
-</span><span id="line-703"><span class="sd">    psf_fitter : PSFFitter</span>
-</span><span id="line-704"><span class="sd">        PSF fitter instance managing rho/tau statistics and covariances.</span>
-</span><span id="line-705"><span class="sd">    base_rho : str</span>
-</span><span id="line-706"><span class="sd">        Precomputed basename for locating rho statistics/covariance files.</span>
-</span><span id="line-707"><span class="sd">    base_tau : str</span>
-</span><span id="line-708"><span class="sd">        Precomputed basename for locating tau statistics/covariance files.</span>
-</span><span id="line-709"><span class="sd">    nwalkers : int, optional</span>
-</span><span id="line-710"><span class="sd">        Number of walkers for the MCMC run (default ``124``).</span>
-</span><span id="line-711"><span class="sd">    nsamples : int, optional</span>
-</span><span id="line-712"><span class="sd">        Number of samples drawn per walker (default ``10000``).</span>
-</span><span id="line-713"><span class="sd">    cov_type : str, optional</span>
-</span><span id="line-714"><span class="sd">        Covariance label (``'jk'``/``'th'``/``'sim'``). Defaults to ``'jk'``.</span>
-</span><span id="line-715"><span class="sd">    apply_debias : int or None, optional</span>
-</span><span id="line-716"><span class="sd">        Jackknife patch count applied during debiasing. Disabled when ``None``.</span>
-</span><span id="line-717"><span class="sd">    """</span>
-</span><span id="line-718">    <span class="c1"># Load rho and tau stats</span>
-</span><span id="line-719">    <span class="n">psf_fitter</span><span class="o">.</span><span class="n">load_rho_stat</span><span class="p">(</span><span class="sa">f</span><span class="s2">"rho_stats_</span><span class="si">{</span><span class="n">base_rho</span><span class="si">}</span><span class="s2">.fits"</span><span class="p">)</span>
-</span><span id="line-720">    <span class="n">psf_fitter</span><span class="o">.</span><span class="n">load_tau_stat</span><span class="p">(</span><span class="sa">f</span><span class="s2">"tau_stats_</span><span class="si">{</span><span class="n">base_tau</span><span class="si">}</span><span class="s2">.fits"</span><span class="p">)</span>
-</span><span id="line-721">
-</span><span id="line-722">    <span class="c1"># Check if the path exists (use base for cache key to account for different TreeCorr configs)</span>
-</span><span id="line-723">    <span class="n">base_sample</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">base_tau</span><span class="si">}</span><span class="s2">_sampler_emcee_cov_tau_type_</span><span class="si">{</span><span class="n">cov_type</span><span class="si">}</span><span class="s2">"</span>
-</span><span id="line-724">    <span class="n">sample_file_path</span> <span class="o">=</span> <span class="n">psf_fitter</span><span class="o">.</span><span class="n">get_sample_path</span><span class="p">(</span><span class="n">base_sample</span><span class="p">)</span>
-</span><span id="line-725">    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">sample_file_path</span><span class="p">):</span>
-</span><span id="line-726">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Skipping sampling; </span><span class="si">{</span><span class="n">sample_file_path</span><span class="si">}</span><span class="s2"> exists."</span><span class="p">)</span>
-</span><span id="line-727">        <span class="n">flat_samples</span> <span class="o">=</span> <span class="n">psf_fitter</span><span class="o">.</span><span class="n">load_samples</span><span class="p">(</span><span class="n">base_sample</span><span class="p">)</span>
-</span><span id="line-728">        <span class="n">mcmc_result</span><span class="p">,</span> <span class="n">q</span> <span class="o">=</span> <span class="n">psf_fitter</span><span class="o">.</span><span class="n">get_mcmc_from_samples</span><span class="p">(</span><span class="n">flat_samples</span><span class="p">)</span>
-</span><span id="line-729">        <span class="nb">print</span><span class="p">(</span><span class="n">mcmc_result</span><span class="p">)</span>
-</span><span id="line-730">    <span class="c1"># Or run MCMC</span>
-</span><span id="line-731">    <span class="k">else</span><span class="p">:</span>
-</span><span id="line-732">        <span class="nb">print</span><span class="p">(</span><span class="s2">"MCMC sampling"</span><span class="p">)</span>
-</span><span id="line-733">        <span class="n">cov_filename</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"cov_tau_</span><span class="si">{</span><span class="n">base_tau</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">cov_type</span><span class="si">}</span><span class="s2">.npy"</span>
-</span><span id="line-734">        <span class="n">psf_fitter</span><span class="o">.</span><span class="n">load_covariance</span><span class="p">(</span><span class="n">cov_filename</span><span class="p">,</span> <span class="n">cov_type</span><span class="o">=</span><span class="s2">"tau"</span><span class="p">)</span>
-</span><span id="line-735">
-</span><span id="line-736">        <span class="n">debias_npatch</span> <span class="o">=</span> <span class="n">apply_debias</span> <span class="k">if</span> <span class="p">(</span><span class="n">apply_debias</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
-</span><span id="line-737">        <span class="n">flat_samples</span><span class="p">,</span> <span class="n">mcmc_result</span><span class="p">,</span> <span class="n">q</span> <span class="o">=</span> <span class="n">psf_fitter</span><span class="o">.</span><span class="n">run_chain</span><span class="p">(</span>
-</span><span id="line-738">            <span class="n">nwalkers</span><span class="o">=</span><span class="n">nwalkers</span><span class="p">,</span>
-</span><span id="line-739">            <span class="n">nsamples</span><span class="o">=</span><span class="n">nsamples</span><span class="p">,</span>
-</span><span id="line-740">            <span class="n">npatch</span><span class="o">=</span><span class="n">debias_npatch</span><span class="p">,</span>
-</span><span id="line-741">            <span class="n">apply_debias</span><span class="o">=</span><span class="n">debias_npatch</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="line-742">            <span class="n">savefig</span><span class="o">=</span><span class="s2">"mcmc_samples_"</span> <span class="o">+</span> <span class="n">base_tau</span> <span class="o">+</span> <span class="s2">".png"</span><span class="p">,</span>
-</span><span id="line-743">        <span class="p">)</span>
-</span><span id="line-744">        <span class="n">psf_fitter</span><span class="o">.</span><span class="n">save_samples</span><span class="p">(</span><span class="n">flat_samples</span><span class="p">,</span> <span class="n">base_sample</span><span class="p">)</span>
-</span><span id="line-745">    <span class="k">return</span> <span class="n">flat_samples</span><span class="p">,</span> <span class="n">mcmc_result</span><span class="p">,</span> <span class="n">q</span></div>
+</span><span id="line-713"><span class="k">def</span><span class="w"> </span><span class="nf">get_samples_emcee</span><span class="p">(</span>
+</span><span id="line-714">    <span class="n">psf_fitter</span><span class="p">,</span>
+</span><span id="line-715">    <span class="n">base_rho</span><span class="p">,</span>
+</span><span id="line-716">    <span class="n">base_tau</span><span class="p">,</span>
+</span><span id="line-717">    <span class="n">nwalkers</span><span class="o">=</span><span class="mi">124</span><span class="p">,</span>
+</span><span id="line-718">    <span class="n">nsamples</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span>
+</span><span id="line-719">    <span class="n">cov_type</span><span class="o">=</span><span class="s2">"jk"</span><span class="p">,</span>
+</span><span id="line-720">    <span class="n">apply_debias</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-721"><span class="p">):</span>
+</span><span id="line-722"><span class="w">    </span><span class="sd">"""Draw (alpha, beta, eta) samples using ``emcee`` and the tau covariance.</span>
+</span><span id="line-723">
+</span><span id="line-724"><span class="sd">    Parameters</span>
+</span><span id="line-725"><span class="sd">    ----------</span>
+</span><span id="line-726"><span class="sd">    psf_fitter : PSFFitter</span>
+</span><span id="line-727"><span class="sd">        PSF fitter instance managing rho/tau statistics and covariances.</span>
+</span><span id="line-728"><span class="sd">    base_rho : str</span>
+</span><span id="line-729"><span class="sd">        Precomputed basename for locating rho statistics/covariance files.</span>
+</span><span id="line-730"><span class="sd">    base_tau : str</span>
+</span><span id="line-731"><span class="sd">        Precomputed basename for locating tau statistics/covariance files.</span>
+</span><span id="line-732"><span class="sd">    nwalkers : int, optional</span>
+</span><span id="line-733"><span class="sd">        Number of walkers for the MCMC run (default ``124``).</span>
+</span><span id="line-734"><span class="sd">    nsamples : int, optional</span>
+</span><span id="line-735"><span class="sd">        Number of samples drawn per walker (default ``10000``).</span>
+</span><span id="line-736"><span class="sd">    cov_type : str, optional</span>
+</span><span id="line-737"><span class="sd">        Covariance label (``'jk'``/``'th'``/``'sim'``). Defaults to ``'jk'``.</span>
+</span><span id="line-738"><span class="sd">    apply_debias : int or None, optional</span>
+</span><span id="line-739"><span class="sd">        Jackknife patch count applied during debiasing. Disabled when ``None``.</span>
+</span><span id="line-740"><span class="sd">    """</span>
+</span><span id="line-741">    <span class="c1"># Load rho and tau stats</span>
+</span><span id="line-742">    <span class="n">psf_fitter</span><span class="o">.</span><span class="n">load_rho_stat</span><span class="p">(</span><span class="sa">f</span><span class="s2">"rho_stats_</span><span class="si">{</span><span class="n">base_rho</span><span class="si">}</span><span class="s2">.fits"</span><span class="p">)</span>
+</span><span id="line-743">    <span class="n">psf_fitter</span><span class="o">.</span><span class="n">load_tau_stat</span><span class="p">(</span><span class="sa">f</span><span class="s2">"tau_stats_</span><span class="si">{</span><span class="n">base_tau</span><span class="si">}</span><span class="s2">.fits"</span><span class="p">)</span>
+</span><span id="line-744">
+</span><span id="line-745">    <span class="c1"># Check if the path exists (use base for cache key to account for different TreeCorr configs)</span>
+</span><span id="line-746">    <span class="n">base_sample</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">base_tau</span><span class="si">}</span><span class="s2">_sampler_emcee_cov_tau_type_</span><span class="si">{</span><span class="n">cov_type</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-747">    <span class="n">sample_file_path</span> <span class="o">=</span> <span class="n">psf_fitter</span><span class="o">.</span><span class="n">get_sample_path</span><span class="p">(</span><span class="n">base_sample</span><span class="p">)</span>
+</span><span id="line-748">    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">sample_file_path</span><span class="p">):</span>
+</span><span id="line-749">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Skipping sampling; </span><span class="si">{</span><span class="n">sample_file_path</span><span class="si">}</span><span class="s2"> exists."</span><span class="p">)</span>
+</span><span id="line-750">        <span class="n">flat_samples</span> <span class="o">=</span> <span class="n">psf_fitter</span><span class="o">.</span><span class="n">load_samples</span><span class="p">(</span><span class="n">base_sample</span><span class="p">)</span>
+</span><span id="line-751">        <span class="n">mcmc_result</span><span class="p">,</span> <span class="n">q</span> <span class="o">=</span> <span class="n">psf_fitter</span><span class="o">.</span><span class="n">get_mcmc_from_samples</span><span class="p">(</span><span class="n">flat_samples</span><span class="p">)</span>
+</span><span id="line-752">        <span class="nb">print</span><span class="p">(</span><span class="n">mcmc_result</span><span class="p">)</span>
+</span><span id="line-753">    <span class="c1"># Or run MCMC</span>
+</span><span id="line-754">    <span class="k">else</span><span class="p">:</span>
+</span><span id="line-755">        <span class="nb">print</span><span class="p">(</span><span class="s2">"MCMC sampling"</span><span class="p">)</span>
+</span><span id="line-756">        <span class="n">cov_filename</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"cov_tau_</span><span class="si">{</span><span class="n">base_tau</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">cov_type</span><span class="si">}</span><span class="s2">.npy"</span>
+</span><span id="line-757">        <span class="n">psf_fitter</span><span class="o">.</span><span class="n">load_covariance</span><span class="p">(</span><span class="n">cov_filename</span><span class="p">,</span> <span class="n">cov_type</span><span class="o">=</span><span class="s2">"tau"</span><span class="p">)</span>
+</span><span id="line-758">
+</span><span id="line-759">        <span class="n">debias_npatch</span> <span class="o">=</span> <span class="n">apply_debias</span> <span class="k">if</span> <span class="p">(</span><span class="n">apply_debias</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+</span><span id="line-760">        <span class="n">flat_samples</span><span class="p">,</span> <span class="n">mcmc_result</span><span class="p">,</span> <span class="n">q</span> <span class="o">=</span> <span class="n">psf_fitter</span><span class="o">.</span><span class="n">run_chain</span><span class="p">(</span>
+</span><span id="line-761">            <span class="n">nwalkers</span><span class="o">=</span><span class="n">nwalkers</span><span class="p">,</span>
+</span><span id="line-762">            <span class="n">nsamples</span><span class="o">=</span><span class="n">nsamples</span><span class="p">,</span>
+</span><span id="line-763">            <span class="n">npatch</span><span class="o">=</span><span class="n">debias_npatch</span><span class="p">,</span>
+</span><span id="line-764">            <span class="n">apply_debias</span><span class="o">=</span><span class="n">debias_npatch</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="line-765">            <span class="n">savefig</span><span class="o">=</span><span class="s2">"mcmc_samples_"</span> <span class="o">+</span> <span class="n">base_tau</span> <span class="o">+</span> <span class="s2">".png"</span><span class="p">,</span>
+</span><span id="line-766">        <span class="p">)</span>
+</span><span id="line-767">        <span class="n">psf_fitter</span><span class="o">.</span><span class="n">save_samples</span><span class="p">(</span><span class="n">flat_samples</span><span class="p">,</span> <span class="n">base_sample</span><span class="p">)</span>
+</span><span id="line-768">    <span class="k">return</span> <span class="n">flat_samples</span><span class="p">,</span> <span class="n">mcmc_result</span><span class="p">,</span> <span class="n">q</span></div>
 
-</span><span id="line-746">
-</span><span id="line-747">
+</span><span id="line-769">
+</span><span id="line-770">
 <div class="viewcode-block" id="get_samples_lsq">
 <a class="viewcode-back" href="../../sp_validation.rho_tau.html#sp_validation.rho_tau.get_samples_lsq">[docs]</a>
-</span><span id="line-748"><span class="k">def</span><span class="w"> </span><span class="nf">get_samples_lsq</span><span class="p">(</span>
-</span><span id="line-749">    <span class="n">psf_fitter</span><span class="p">,</span>
-</span><span id="line-750">    <span class="n">base_rho</span><span class="p">,</span>
-</span><span id="line-751">    <span class="n">base_tau</span><span class="p">,</span>
-</span><span id="line-752">    <span class="n">nsamples</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span>
-</span><span id="line-753">    <span class="n">apply_debias</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-</span><span id="line-754">    <span class="n">cov_type</span><span class="o">=</span><span class="s2">"jk"</span><span class="p">,</span>
-</span><span id="line-755"><span class="p">):</span>
-</span><span id="line-756"><span class="w">    </span><span class="sd">"""Compute least-squares samples of (alpha, beta, eta) using the tau covariance.</span>
-</span><span id="line-757">
-</span><span id="line-758"><span class="sd">    Parameters</span>
-</span><span id="line-759"><span class="sd">    ----------</span>
-</span><span id="line-760"><span class="sd">    psf_fitter : PSFFitter</span>
-</span><span id="line-761"><span class="sd">        PSF fitter instance managing rho/tau statistics and covariances.</span>
-</span><span id="line-762"><span class="sd">    base_rho : str</span>
-</span><span id="line-763"><span class="sd">        Precomputed basename for locating rho statistics/covariance files.</span>
-</span><span id="line-764"><span class="sd">    base_tau : str</span>
-</span><span id="line-765"><span class="sd">        Precomputed basename for locating tau statistics/covariance files.</span>
-</span><span id="line-766"><span class="sd">    apply_debias : int or None, optional</span>
-</span><span id="line-767"><span class="sd">        Jackknife patch count applied during debiasing. Disabled when ``None``.</span>
-</span><span id="line-768"><span class="sd">    cov_type : str, optional</span>
-</span><span id="line-769"><span class="sd">        Covariance label (defaults to ``'jk'``).</span>
-</span><span id="line-770"><span class="sd">    """</span>
-</span><span id="line-771">    <span class="c1"># Load rho and tau stats</span>
-</span><span id="line-772">    <span class="n">psf_fitter</span><span class="o">.</span><span class="n">load_rho_stat</span><span class="p">(</span><span class="sa">f</span><span class="s2">"rho_stats_</span><span class="si">{</span><span class="n">base_rho</span><span class="si">}</span><span class="s2">.fits"</span><span class="p">)</span>
-</span><span id="line-773">    <span class="n">psf_fitter</span><span class="o">.</span><span class="n">load_tau_stat</span><span class="p">(</span><span class="sa">f</span><span class="s2">"tau_stats_</span><span class="si">{</span><span class="n">base_tau</span><span class="si">}</span><span class="s2">.fits"</span><span class="p">)</span>
-</span><span id="line-774">
-</span><span id="line-775">    <span class="n">base_sample</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">base_tau</span><span class="si">}</span><span class="s2">_sampler_lsq_cov_tau_type_</span><span class="si">{</span><span class="n">cov_type</span><span class="si">}</span><span class="s2">"</span>
-</span><span id="line-776">    <span class="c1"># Check if the path exists (use base for cache key to account for different TreeCorr configs)</span>
-</span><span id="line-777">    <span class="n">sample_file_path</span> <span class="o">=</span> <span class="n">psf_fitter</span><span class="o">.</span><span class="n">get_sample_path</span><span class="p">(</span><span class="n">base_sample</span><span class="p">)</span>
-</span><span id="line-778">    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">sample_file_path</span><span class="p">):</span>
-</span><span id="line-779">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Skipping sampling; </span><span class="si">{</span><span class="n">sample_file_path</span><span class="si">}</span><span class="s2"> exists."</span><span class="p">)</span>
-</span><span id="line-780">        <span class="n">flat_samples</span> <span class="o">=</span> <span class="n">psf_fitter</span><span class="o">.</span><span class="n">load_samples</span><span class="p">(</span><span class="n">base_sample</span><span class="p">)</span>
-</span><span id="line-781">        <span class="n">mcmc_result</span><span class="p">,</span> <span class="n">q</span> <span class="o">=</span> <span class="n">psf_fitter</span><span class="o">.</span><span class="n">get_mcmc_from_samples</span><span class="p">(</span><span class="n">flat_samples</span><span class="p">)</span>
-</span><span id="line-782">        <span class="nb">print</span><span class="p">(</span><span class="n">mcmc_result</span><span class="p">)</span>
-</span><span id="line-783">    <span class="c1"># Or run MCMC</span>
-</span><span id="line-784">    <span class="k">else</span><span class="p">:</span>
-</span><span id="line-785">        <span class="nb">print</span><span class="p">(</span><span class="s2">"Least square sampling"</span><span class="p">)</span>
-</span><span id="line-786">        <span class="n">tau_covariance</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"cov_tau_</span><span class="si">{</span><span class="n">base_tau</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">cov_type</span><span class="si">}</span><span class="s2">.npy"</span>
-</span><span id="line-787">        <span class="n">rho_covariance</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"cov_rho_</span><span class="si">{</span><span class="n">base_rho</span><span class="si">}</span><span class="s2">_jk.npy"</span>
-</span><span id="line-788">        <span class="n">psf_fitter</span><span class="o">.</span><span class="n">load_covariance</span><span class="p">(</span><span class="n">tau_covariance</span><span class="p">,</span> <span class="n">cov_type</span><span class="o">=</span><span class="s2">"tau"</span><span class="p">)</span>
-</span><span id="line-789">        <span class="n">psf_fitter</span><span class="o">.</span><span class="n">load_covariance</span><span class="p">(</span><span class="n">rho_covariance</span><span class="p">,</span> <span class="n">cov_type</span><span class="o">=</span><span class="s2">"rho"</span><span class="p">)</span>
-</span><span id="line-790">        <span class="n">debias_npatch</span> <span class="o">=</span> <span class="n">apply_debias</span> <span class="k">if</span> <span class="p">(</span><span class="n">apply_debias</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
-</span><span id="line-791">        <span class="n">flat_samples</span><span class="p">,</span> <span class="n">mcmc_result</span><span class="p">,</span> <span class="n">q</span> <span class="o">=</span> <span class="n">psf_fitter</span><span class="o">.</span><span class="n">get_least_squares_params_samples</span><span class="p">(</span>
-</span><span id="line-792">            <span class="n">npatch</span><span class="o">=</span><span class="n">debias_npatch</span><span class="p">,</span>
-</span><span id="line-793">            <span class="n">apply_debias</span><span class="o">=</span><span class="p">(</span><span class="n">debias_npatch</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">),</span>
-</span><span id="line-794">            <span class="n">n_samples</span><span class="o">=</span><span class="n">nsamples</span><span class="p">,</span>
-</span><span id="line-795">        <span class="p">)</span>
-</span><span id="line-796">        <span class="n">psf_fitter</span><span class="o">.</span><span class="n">save_samples</span><span class="p">(</span><span class="n">flat_samples</span><span class="p">,</span> <span class="n">base_sample</span><span class="p">)</span>
-</span><span id="line-797">    <span class="k">return</span> <span class="n">flat_samples</span><span class="p">,</span> <span class="n">mcmc_result</span><span class="p">,</span> <span class="n">q</span></div>
+</span><span id="line-771"><span class="k">def</span><span class="w"> </span><span class="nf">get_samples_lsq</span><span class="p">(</span>
+</span><span id="line-772">    <span class="n">psf_fitter</span><span class="p">,</span>
+</span><span id="line-773">    <span class="n">base_rho</span><span class="p">,</span>
+</span><span id="line-774">    <span class="n">base_tau</span><span class="p">,</span>
+</span><span id="line-775">    <span class="n">nsamples</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span>
+</span><span id="line-776">    <span class="n">apply_debias</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-777">    <span class="n">cov_type</span><span class="o">=</span><span class="s2">"jk"</span><span class="p">,</span>
+</span><span id="line-778"><span class="p">):</span>
+</span><span id="line-779"><span class="w">    </span><span class="sd">"""Compute least-squares samples of (alpha, beta, eta) using the tau covariance.</span>
+</span><span id="line-780">
+</span><span id="line-781"><span class="sd">    Parameters</span>
+</span><span id="line-782"><span class="sd">    ----------</span>
+</span><span id="line-783"><span class="sd">    psf_fitter : PSFFitter</span>
+</span><span id="line-784"><span class="sd">        PSF fitter instance managing rho/tau statistics and covariances.</span>
+</span><span id="line-785"><span class="sd">    base_rho : str</span>
+</span><span id="line-786"><span class="sd">        Precomputed basename for locating rho statistics/covariance files.</span>
+</span><span id="line-787"><span class="sd">    base_tau : str</span>
+</span><span id="line-788"><span class="sd">        Precomputed basename for locating tau statistics/covariance files.</span>
+</span><span id="line-789"><span class="sd">    apply_debias : int or None, optional</span>
+</span><span id="line-790"><span class="sd">        Jackknife patch count applied during debiasing. Disabled when ``None``.</span>
+</span><span id="line-791"><span class="sd">    cov_type : str, optional</span>
+</span><span id="line-792"><span class="sd">        Covariance label (defaults to ``'jk'``).</span>
+</span><span id="line-793"><span class="sd">    """</span>
+</span><span id="line-794">    <span class="c1"># Load rho and tau stats</span>
+</span><span id="line-795">    <span class="n">psf_fitter</span><span class="o">.</span><span class="n">load_rho_stat</span><span class="p">(</span><span class="sa">f</span><span class="s2">"rho_stats_</span><span class="si">{</span><span class="n">base_rho</span><span class="si">}</span><span class="s2">.fits"</span><span class="p">)</span>
+</span><span id="line-796">    <span class="n">psf_fitter</span><span class="o">.</span><span class="n">load_tau_stat</span><span class="p">(</span><span class="sa">f</span><span class="s2">"tau_stats_</span><span class="si">{</span><span class="n">base_tau</span><span class="si">}</span><span class="s2">.fits"</span><span class="p">)</span>
+</span><span id="line-797">
+</span><span id="line-798">    <span class="n">base_sample</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">base_tau</span><span class="si">}</span><span class="s2">_sampler_lsq_cov_tau_type_</span><span class="si">{</span><span class="n">cov_type</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-799">    <span class="c1"># Check if the path exists (use base for cache key to account for different TreeCorr configs)</span>
+</span><span id="line-800">    <span class="n">sample_file_path</span> <span class="o">=</span> <span class="n">psf_fitter</span><span class="o">.</span><span class="n">get_sample_path</span><span class="p">(</span><span class="n">base_sample</span><span class="p">)</span>
+</span><span id="line-801">    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">sample_file_path</span><span class="p">):</span>
+</span><span id="line-802">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Skipping sampling; </span><span class="si">{</span><span class="n">sample_file_path</span><span class="si">}</span><span class="s2"> exists."</span><span class="p">)</span>
+</span><span id="line-803">        <span class="n">flat_samples</span> <span class="o">=</span> <span class="n">psf_fitter</span><span class="o">.</span><span class="n">load_samples</span><span class="p">(</span><span class="n">base_sample</span><span class="p">)</span>
+</span><span id="line-804">        <span class="n">mcmc_result</span><span class="p">,</span> <span class="n">q</span> <span class="o">=</span> <span class="n">psf_fitter</span><span class="o">.</span><span class="n">get_mcmc_from_samples</span><span class="p">(</span><span class="n">flat_samples</span><span class="p">)</span>
+</span><span id="line-805">        <span class="nb">print</span><span class="p">(</span><span class="n">mcmc_result</span><span class="p">)</span>
+</span><span id="line-806">    <span class="c1"># Or run MCMC</span>
+</span><span id="line-807">    <span class="k">else</span><span class="p">:</span>
+</span><span id="line-808">        <span class="nb">print</span><span class="p">(</span><span class="s2">"Least square sampling"</span><span class="p">)</span>
+</span><span id="line-809">        <span class="n">tau_covariance</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"cov_tau_</span><span class="si">{</span><span class="n">base_tau</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">cov_type</span><span class="si">}</span><span class="s2">.npy"</span>
+</span><span id="line-810">        <span class="n">rho_covariance</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"cov_rho_</span><span class="si">{</span><span class="n">base_rho</span><span class="si">}</span><span class="s2">_jk.npy"</span>
+</span><span id="line-811">        <span class="n">psf_fitter</span><span class="o">.</span><span class="n">load_covariance</span><span class="p">(</span><span class="n">tau_covariance</span><span class="p">,</span> <span class="n">cov_type</span><span class="o">=</span><span class="s2">"tau"</span><span class="p">)</span>
+</span><span id="line-812">        <span class="n">psf_fitter</span><span class="o">.</span><span class="n">load_covariance</span><span class="p">(</span><span class="n">rho_covariance</span><span class="p">,</span> <span class="n">cov_type</span><span class="o">=</span><span class="s2">"rho"</span><span class="p">)</span>
+</span><span id="line-813">        <span class="n">debias_npatch</span> <span class="o">=</span> <span class="n">apply_debias</span> <span class="k">if</span> <span class="p">(</span><span class="n">apply_debias</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+</span><span id="line-814">        <span class="n">flat_samples</span><span class="p">,</span> <span class="n">mcmc_result</span><span class="p">,</span> <span class="n">q</span> <span class="o">=</span> <span class="n">psf_fitter</span><span class="o">.</span><span class="n">get_least_squares_params_samples</span><span class="p">(</span>
+</span><span id="line-815">            <span class="n">npatch</span><span class="o">=</span><span class="n">debias_npatch</span><span class="p">,</span>
+</span><span id="line-816">            <span class="n">apply_debias</span><span class="o">=</span><span class="p">(</span><span class="n">debias_npatch</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">),</span>
+</span><span id="line-817">            <span class="n">n_samples</span><span class="o">=</span><span class="n">nsamples</span><span class="p">,</span>
+</span><span id="line-818">        <span class="p">)</span>
+</span><span id="line-819">        <span class="n">psf_fitter</span><span class="o">.</span><span class="n">save_samples</span><span class="p">(</span><span class="n">flat_samples</span><span class="p">,</span> <span class="n">base_sample</span><span class="p">)</span>
+</span><span id="line-820">    <span class="k">return</span> <span class="n">flat_samples</span><span class="p">,</span> <span class="n">mcmc_result</span><span class="p">,</span> <span class="n">q</span></div>
 
 </span></code></pre></div>
     </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">

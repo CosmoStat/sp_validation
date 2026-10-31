@@ -92,6 +92,7 @@
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.catalog_characterization.html">sp_validation.cosmo_val.catalog_characterization</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html">sp_validation.cosmo_val.core</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.cosebis.html">sp_validation.cosmo_val.cosebis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.derived_covariance.html">sp_validation.cosmo_val.derived_covariance</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.diagnostic_plots.html">sp_validation.cosmo_val.diagnostic_plots</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.diagnostic_products.html">sp_validation.cosmo_val.diagnostic_products</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html">sp_validation.cosmo_val.pseudo_cl</a></li>
@@ -206,7 +207,6 @@
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.results"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.results</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.results_objectwise"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.results_objectwise</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.blind"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.blind()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._refuse_blinded_tomography"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._refuse_blinded_tomography()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.basename"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.basename()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._binning"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._binning()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._read_shear_cols"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._read_shear_cols()</span></code></a></li>
@@ -231,6 +231,12 @@
 </li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.cosebis.html">sp_validation.cosmo_val.cosebis</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="sp_validation.cosmo_val.cosebis.html#sp_validation.cosmo_val.cosebis.CosebisMixin"><code class="docutils literal notranslate"><span class="pre">CosebisMixin</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.derived_covariance.html">sp_validation.cosmo_val.derived_covariance</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.cosmo_val.derived_covariance.html#sp_validation.cosmo_val.derived_covariance.xi_pairs"><code class="docutils literal notranslate"><span class="pre">xi_pairs()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.cosmo_val.derived_covariance.html#sp_validation.cosmo_val.derived_covariance.xi_covariance"><code class="docutils literal notranslate"><span class="pre">xi_covariance()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.cosmo_val.derived_covariance.html#sp_validation.cosmo_val.derived_covariance.propagate"><code class="docutils literal notranslate"><span class="pre">propagate()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.diagnostic_plots.html">sp_validation.cosmo_val.diagnostic_plots</a><ul>
@@ -274,6 +280,7 @@
 <li class="toctree-l4"><a class="reference internal" href="sp_validation.cosmo_val.sacc_writers.html#sp_validation.cosmo_val.sacc_writers.xi_pairs_to_sacc"><code class="docutils literal notranslate"><span class="pre">xi_pairs_to_sacc()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="sp_validation.cosmo_val.sacc_writers.html#sp_validation.cosmo_val.sacc_writers.xi_to_sacc"><code class="docutils literal notranslate"><span class="pre">xi_to_sacc()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="sp_validation.cosmo_val.sacc_writers.html#sp_validation.cosmo_val.sacc_writers.onecov_xi_covariance"><code class="docutils literal notranslate"><span class="pre">onecov_xi_covariance()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.cosmo_val.sacc_writers.html#sp_validation.cosmo_val.sacc_writers.namaster_cl_covariance"><code class="docutils literal notranslate"><span class="pre">namaster_cl_covariance()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="sp_validation.cosmo_val.sacc_writers.html#sp_validation.cosmo_val.sacc_writers.pseudo_cl_to_sacc"><code class="docutils literal notranslate"><span class="pre">pseudo_cl_to_sacc()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="sp_validation.cosmo_val.sacc_writers.html#sp_validation.cosmo_val.sacc_writers.cosebis_to_sacc"><code class="docutils literal notranslate"><span class="pre">cosebis_to_sacc()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="sp_validation.cosmo_val.sacc_writers.html#sp_validation.cosmo_val.sacc_writers.pure_eb_to_sacc"><code class="docutils literal notranslate"><span class="pre">pure_eb_to_sacc()</span></code></a></li>
@@ -530,6 +537,7 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html#sp_validation.b_modes.pure_eb_operator"><code class="docutils literal notranslate"><span class="pre">pure_eb_operator()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html#sp_validation.b_modes.calculate_pure_eb_correlation"><code class="docutils literal notranslate"><span class="pre">calculate_pure_eb_correlation()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html#sp_validation.b_modes.covariance_label"><code class="docutils literal notranslate"><span class="pre">covariance_label()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html#sp_validation.b_modes.cosebis_operator"><code class="docutils literal notranslate"><span class="pre">cosebis_operator()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html#sp_validation.b_modes.calculate_cosebis"><code class="docutils literal notranslate"><span class="pre">calculate_cosebis()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html#sp_validation.b_modes.cosebis_scan_from_xi"><code class="docutils literal notranslate"><span class="pre">cosebis_scan_from_xi()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html#sp_validation.b_modes.calculate_eb_statistics"><code class="docutils literal notranslate"><span class="pre">calculate_eb_statistics()</span></code></a></li>
@@ -912,6 +920,7 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.rho_tau.html#sp_validation.rho_tau.get_rho_tau_w_cov"><code class="docutils literal notranslate"><span class="pre">get_rho_tau_w_cov()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.rho_tau.html#sp_validation.rho_tau.get_rho_tau"><code class="docutils literal notranslate"><span class="pre">get_rho_tau()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.rho_tau.html#sp_validation.rho_tau.get_theory_cov"><code class="docutils literal notranslate"><span class="pre">get_theory_cov()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.rho_tau.html#sp_validation.rho_tau.rho_cache_valid"><code class="docutils literal notranslate"><span class="pre">rho_cache_valid()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.rho_tau.html#sp_validation.rho_tau.get_jackknife_cov"><code class="docutils literal notranslate"><span class="pre">get_jackknife_cov()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.rho_tau.html#sp_validation.rho_tau.get_samples"><code class="docutils literal notranslate"><span class="pre">get_samples()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.rho_tau.html#sp_validation.rho_tau.get_samples_emcee"><code class="docutils literal notranslate"><span class="pre">get_samples_emcee()</span></code></a></li>
