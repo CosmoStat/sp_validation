@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import numpy as np
 import treecorr
+import yaml
 from cs_util import plots as cs_plots
 from shear_psf_leakage import leakage
 from shear_psf_leakage import plots as psfleak_plots
@@ -22,6 +23,7 @@ from uncertainties import ufloat
 
 from .. import blinding, leakage_fit, sacc_io
 from ..io import open_entry
+from ..masks import catalogue_selection
 from ..rho_tau import (
     get_rho_tau_w_cov,
     get_samples,
@@ -392,16 +394,31 @@ class PSFSystematicsMixin:
         return gal_mask
 
     def _get_star_mask(self, ver):
-        cat_star = open_entry(self.cc[ver]["psf"])
-        PSF_flag = self.cc[ver]["psf"].get("PSF_flag")
-        star_flag = self.cc[ver]["psf"].get("star_flag")
-        if PSF_flag is not None:
-            if star_flag is not None:
-                star_mask = (cat_star[PSF_flag] == 0) & (cat_star[star_flag] == 0)
-            else:
-                star_mask = cat_star[PSF_flag] == 0
-        else:
-            star_mask = np.ones(len(cat_star), dtype=bool)
+        """Return the stars that enter rho/tau for version ``ver``.
+
+        A star is kept when the psf block's ``PSF_flag`` and ``star_flag``
+        columns, where configured, are zero, and it passes the block's
+        ``mask_config``: a mask config file (relative to the catalogue
+        config) whose ``mask_cuts`` (column names; default all) select the
+        stars as they select galaxies. Star catalogues carry no mask columns,
+        so those cuts read the config's ``maps`` at ``ra_col``/``dec_col``.
+        """
+        entry = self.cc[ver]["psf"]
+        cat_star = open_entry(entry)
+        star_mask = np.ones(len(cat_star), dtype=bool)
+        for key in ("PSF_flag", "star_flag"):
+            if entry.get(key) is not None:
+                star_mask &= cat_star[entry[key]] == 0
+        if entry.get("mask_config"):
+            with open(entry["mask_config"]) as f:
+                mask_config = yaml.safe_load(f)
+            star_mask &= catalogue_selection(
+                mask_config,
+                cat_star,
+                cuts=entry.get("mask_cuts"),
+                ra_col=entry["ra_col"],
+                dec_col=entry["dec_col"],
+            )
         return star_mask
 
     def leakage_jackknife(self, ver, tomo_bin_id="all", measure=False):
