@@ -83,6 +83,19 @@ def file_arrays(path):
             raise AssertionError(f"No leak decoder for {path}") from error
 
 
+def _json_precision(text):
+    """Split a JSON document's numbers into rounded (<=10 digits) and exact."""
+    rounded, exact = [], []
+
+    def parse(token):
+        digits = token.lower().split("e")[0].replace("-", "").replace(".", "")
+        (rounded if len(digits.lstrip("0")) <= 10 else exact).append(float(token))
+        return float(token)
+
+    json.loads(text, parse_float=parse, parse_int=parse)
+    return np.array(rounded), np.array(exact)
+
+
 def assert_no_raw_values(root, references, *, expected=None, objects=(), logs=""):
     """Find even reordered/single-value subsets using scale-sensitive allclose.
 
@@ -131,20 +144,19 @@ def assert_no_raw_values(root, references, *, expected=None, objects=(), logs=""
                         )
 
     for path in sorted(Path(root).rglob("*")):
-        if path.is_file():
-            text = path.suffix.lower() in (
-                ".txt",
-                ".dat",
-                ".csv",
-                ".json",
-                ".log",
-                ".yaml",
-            )
-            check(
-                str(path.relative_to(root)),
-                file_arrays(path),
-                rtol=5e-6 if text else 1e-10,
-            )
+        if not path.is_file():
+            continue
+        source = str(path.relative_to(root))
+        suffix = path.suffix.lower()
+        if suffix == ".json":
+            # JSON keeps each float's written digits: full-precision floats are
+            # binary values, short ones were rounded by their writer.
+            rounded, exact = _json_precision(path.read_text())
+            check(source, [("rounded JSON numbers", rounded)], rtol=5e-6)
+            check(source, [("JSON numbers", exact)], rtol=1e-10)
+            continue
+        text = suffix in (".txt", ".dat", ".csv", ".log", ".yaml")
+        check(source, file_arrays(path), rtol=5e-6 if text else 1e-10)
     for label, value in objects:
         check(label, arrays(value))
     check("captured stdout/stderr/logging", arrays(logs), rtol=5e-6)
