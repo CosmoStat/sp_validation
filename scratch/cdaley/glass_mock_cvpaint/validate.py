@@ -653,11 +653,13 @@ def run_decompositions():
 def run_psf():
     fig, axes = plt.subplots(1, 3, figsize=(14, 4))
     metrics["psf_fit"] = {}
+    means = {}
     for j, version in enumerate((U, P)):
         path = next(OUT.glob(f"psf_fit_{version}_*.npz"))
         with np.load(path) as product:
             samples = product["flat_samples"]
         mean, std = samples.mean(axis=0), samples.std(axis=0)
+        means[version] = mean
         truth = np.array([0.0 if version == U else 0.1, 0.0, 0.0])
         metrics["psf_fit"][version] = {
             key: dict(
@@ -675,10 +677,20 @@ def run_psf():
             ax.errorbar(j, mean[k], yerr=std[k], fmt="o", label=version)
             ax.plot(j, truth[k], "kx", ms=7)
             ax.set(
-                xticks=[0, 1],
-                xticklabels=["clean", "α=0.1 injection"],
+                xticks=[0, 1, 2],
+                xticklabels=["clean", "α=0.1 injection", "paired Δ"],
                 title=["α", "β", "η"][k],
             )
+    # The twins share shear and noise, so injection − clean isolates the
+    # response to the injected α; the per-entry posteriors carry the shared
+    # chance shear–PSF correlation, which cancels here.
+    delta = means[P] - means[U]
+    metrics["psf_fit"]["paired_delta"] = dict(
+        zip(("alpha", "beta", "eta"), map(float, delta)), truth=[0.1, 0.0, 0.0]
+    )
+    for k, ax in enumerate(axes):
+        ax.plot(2, delta[k], "D", color="C3")
+        ax.plot(2, [0.1, 0.0, 0.0][k], "kx", ms=7)
     fig.tight_layout()
     fig.savefig(FIG / "psf_leakage.png", dpi=170)
     plt.close(fig)

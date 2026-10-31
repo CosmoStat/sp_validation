@@ -35,7 +35,7 @@ cosmo_val:
   noise_bias_method: analytic
   cell_seed: 8192
   path_onecovariance: /home/guerrini/OneCovariance/
-  rho_tau_method: lsq
+  rho_tau_method: eiv
   fiducial_scale_cut:
   - 12
   - 83
@@ -132,6 +132,5 @@ glass_mocks:
   - 350
 tools:
   onecov_executable: /home/guerrini/OneCovariance/covariance.py
-  python_executable: /n17data/cdaley/scratch/glass-mock-cv/cvpaint/onecov-python
 catalog_config: /n17data/cdaley/scratch/glass-mock-cv/cvpaint/cat_config.yaml
 container: /home/cdaley/.cache/sp_validation/sp_validation.sif
