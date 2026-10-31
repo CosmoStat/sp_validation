@@ -33,6 +33,7 @@ def _two_bin_catalogue(toy):
     entries[VERSIONS[0]]["cov_th"]["tomo"] = {
         "n_e": [2.0, 3.0],
         "sigma_e": [0.25, 0.35],
+        "A": 7.5,
     }
     entries[VERSIONS[0]]["shear"]["tomo_bin_col"] = "TOM_BIN_ID"
     cat_config.write_text(yaml.safe_dump(entries))
@@ -48,8 +49,8 @@ def _two_bin_catalogue(toy):
 
 def test_tomographic_catalogue_covariance_inputs(toy):
     """One multi-bin entry serves both covariances: the tomographic ini reads its
-    per-bin n(z) and cov_th.tomo, the non-tomographic one the bin-summed n(z)
-    and the whole-sample cov_th."""
+    per-bin n(z) and cov_th.tomo (with the binned sample's own area), the
+    non-tomographic one the bin-summed n(z) and the whole-sample cov_th."""
     unmasked = ['covariance={"shape_noise":"analytic","default_masked":false}']
     with _two_bin_catalogue(toy) as cov_th:
         texts = {}
@@ -68,6 +69,8 @@ def test_tomographic_catalogue_covariance_inputs(toy):
     assert "zlens_file = nz_SP_v0.1_A.txt" in texts["_tomo"]
     assert "ellipticity_dispersion = 0.25, 0.35" in texts["_tomo"]
     assert "n_eff_lensing = 2.0, 3.0" in texts["_tomo"]
+    assert "survey_area_lensing_in_deg2 = 7.5\n" in texts["_tomo"]
+    assert f"survey_area_lensing_in_deg2 = {cov_th['A']}\n" in texts[""]
     assert f"ellipticity_dispersion = {float(cov_th['sigma_e'])!r}\n" in texts[""]
     assert f"n_eff_lensing = {float(cov_th['n_e'])!r}\n" in texts[""]
     summed = toy.cosmo_val / "nz" / f"{VERSIONS[0]}_nz_bin_sum.txt"
