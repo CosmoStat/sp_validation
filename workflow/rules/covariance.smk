@@ -4,10 +4,15 @@
 # DEFAULT_MASK_SUFFIX defined in Snakefile
 
 
-def get_footprint_path(version):
-    """Healpix FITS footprint map of ``version``'s catalogue entry, which
-    OneCovariance reads as ``mask_file_lensing``."""
-    return catalogue_entry(version)["mask"]
+def get_footprint_path(version, tomo_suffix=""):
+    """Healpix FITS footprint map OneCovariance reads as ``mask_file_lensing``.
+
+    A tomographic covariance reads ``cov_th.tomo.mask`` when the entry has one:
+    the binned sample can cover less sky than the whole catalogue (bins need
+    photometry the whole sample does not). Otherwise the entry's ``mask``."""
+    entry = catalogue_entry(version)
+    tomo = entry.get("cov_th", {}).get("tomo", {}) if tomo_suffix else {}
+    return tomo.get("mask", entry["mask"])
 
 
 # ---------------------------------------------------------------------------
@@ -20,13 +25,20 @@ def get_onecov_cat_params(version, tomo_suffix=""):
     catalogue entry, as comma-separated strings with one entry per bin.
 
     A tomographic covariance reads ``cov_th.tomo`` (per-bin ``sigma_e`` and
-    ``n_e``) when the entry has one; a non-tomographic covariance reads the
-    whole-sample ``cov_th.sigma_e`` and ``cov_th.n_e``. A tomographic covariance
+    ``n_e``, and the binned sample's area ``A`` if it differs from the whole
+    sample's) when the entry has one; a non-tomographic covariance reads the
+    whole-sample ``cov_th.sigma_e``, ``cov_th.n_e`` and ``cov_th.A``. Each
+    ``n_e`` must be computed on the area it is paired with. A tomographic covariance
     of an entry that declares ``shear.tomo_bin_col`` refuses single
     whole-sample values, which would stand in for every bin."""
     entry = catalogue_entry(version)
     cov_th = entry["cov_th"]
     survey = cov_th.get("tomo", cov_th) if tomo_suffix else cov_th
+    if survey is not cov_th and ("A" in survey) != ("mask" in survey):
+        raise ValueError(
+            f"{version}: cov_th.tomo sets A and mask together: the binned "
+            "sample's area and the footprint it is measured on"
+        )
 
     def per_bin(value):
         values = value if isinstance(value, (list, tuple)) else str(value).split(",")
@@ -39,7 +51,7 @@ def get_onecov_cat_params(version, tomo_suffix=""):
             f"{version}: a tomographic covariance needs per-bin n_e and sigma_e "
             "in cov_th.tomo"
         )
-    return ", ".join(sigma_e), ", ".join(n_e), cov_th["A"]
+    return ", ".join(sigma_e), ", ".join(n_e), survey.get("A", cov_th["A"])
 
 
 def onecov_nz_path(version, tomo_suffix=""):
@@ -218,7 +230,10 @@ rule covariance_ini:
     input:
         nz_file=lambda w: onecov_nz_path(w.version, w.tomo_suffix),
         npair=lambda w: [_pair_count_path(w)] if _pair_noise_enabled(w) else [],
-        mask=lambda w: [] if w.mask_suffix != "_masked" else [get_footprint_path(w.version)],
+        mask=lambda w: (
+            [] if w.mask_suffix != "_masked"
+            else [get_footprint_path(w.version, w.tomo_suffix)]
+        ),
     output:
         cov_output(".ini"),
     params:
@@ -237,12 +252,12 @@ rule covariance_ini:
         area=lambda w: get_onecov_cat_params(w.version, w.tomo_suffix)[2],
         # OneCovariance takes directory and file separately.
         mask_dir=lambda w: (
-            os.path.dirname(get_footprint_path(w.version))
+            os.path.dirname(get_footprint_path(w.version, w.tomo_suffix))
             if w.mask_suffix == "_masked"
             else ""
         ),
         mask_file=lambda w: (
-            os.path.basename(get_footprint_path(w.version))
+            os.path.basename(get_footprint_path(w.version, w.tomo_suffix))
             if w.mask_suffix == "_masked"
             else ""
         ),

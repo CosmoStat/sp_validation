@@ -145,6 +145,21 @@ class CatalogCharacterizationMixin:
             self.calculate_area()
         return self._area
 
+    def tomographic_footprint(self, ver):
+        """Footprint map of ``ver``'s tomographic (binned) sample.
+
+        ``cov_th.tomo.mask`` when the entry has one, since bins can need data
+        the whole sample lacks on part of the sky; otherwise the entry's mask.
+        """
+        tomo = self.cc[ver].get("cov_th", {}).get("tomo", {})
+        return tomo.get("mask", self.cc[ver].get("mask"))
+
+    def tomographic_area(self, ver):
+        """Area in deg² of ``ver``'s tomographic footprint."""
+        if "mask" in self.cc[ver].get("cov_th", {}).get("tomo", {}):
+            return self._area_from_mask(self.tomographic_footprint(ver))
+        return self.area[ver]
+
     @property
     def n_eff_gal(self):
         if not hasattr(self, "_n_eff_gal"):
@@ -224,18 +239,20 @@ class CatalogCharacterizationMixin:
             else:
                 tomo_bin_ids, tomo_bin_pairs = ["all"], [("all", "all")]
 
+            # Each density is per unit area of the footprint its sample covers.
+            area = self.tomographic_area(ver) if tomography else self.area[ver]
             with self.results[ver].temporarily_read_data():
                 w = self._read_shear_cols(ver, "w_col")
                 for tomo_bin_id in tomo_bin_ids:
                     if tomo_bin_id == "all":
                         self._n_eff_gal[ver][f"tomo_bin_{tomo_bin_id}"] = n_eff_density(
-                            w, self.area[ver]
+                            w, area
                         )
                     else:
                         tomo_bin = self._read_shear_cols(ver, "tomo_bin_col")
                         mask = tomo_bin == tomo_bin_id
                         self._n_eff_gal[ver][f"tomo_bin_{tomo_bin_id}"] = n_eff_density(
-                            w[mask], self.area[ver]
+                            w[mask], area
                         )
                     print(
                         f"n_eff_gal for tomo_bin_{tomo_bin_id} = {self._n_eff_gal[ver][f'tomo_bin_{tomo_bin_id}']:.2f} gal./arcmin^-2"
