@@ -116,3 +116,11 @@ def test_scanner_judges_json_numbers_at_their_written_precision(tmp_path):
     (tmp_path / "rounded.json").write_text(json.dumps([round(float(RAW[0]), 13)]))
     with pytest.raises(AssertionError, match="rounded JSON numbers"):
         assert_no_raw_values(tmp_path, {"xi": RAW})
+
+
+def test_scanner_catches_float32_values_in_json(tmp_path):
+    single = [float(np.float32(value)) for value in RAW[:1]]
+    assert len(json.dumps(single)) > 18  # printed in full, not rounded
+    (tmp_path / "column.json").write_text(json.dumps(single))
+    with pytest.raises(AssertionError, match="rounded JSON numbers"):
+        assert_no_raw_values(tmp_path, {"xi": RAW})

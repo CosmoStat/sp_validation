@@ -84,13 +84,20 @@ def file_arrays(path):
 
 
 def _json_precision(text):
-    """Split a JSON document's numbers into rounded (<=10 digits) and exact."""
+    """Split a JSON document's numbers into rounded and exact.
+
+    Rounded: at most 10 written digits, or a float32 value printed in full
+    (float32 holds ~7 digits however many repr prints). Exact: the rest.
+    """
     rounded, exact = [], []
 
     def parse(token):
+        value = float(token)
         digits = token.lower().split("e")[0].replace("-", "").replace(".", "")
-        (rounded if len(digits.lstrip("0")) <= 10 else exact).append(float(token))
-        return float(token)
+        short = len(digits.lstrip("0")) <= 10
+        single = np.isfinite(value) and float(np.float32(value)) == value
+        (rounded if short or single else exact).append(value)
+        return value
 
     json.loads(text, parse_float=parse, parse_int=parse)
     return np.array(rounded), np.array(exact)
