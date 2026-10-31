@@ -102,6 +102,29 @@ def _onecov_tool(key, default=None):
     return lookup
 
 
+def _pair_noise_enabled(w):
+    """Whether a covariance uses measured pair counts for its shape noise.
+
+    ``covariance.shape_noise`` sets the non-tomographic covariance (default
+    pair_counts in cosmo_val, analytic elsewhere). Tomographic covariances are
+    always analytic: pair counts are measured for the whole sample only."""
+    default = "pair_counts" if "cosmo_val" in config else "analytic"
+    mode = config.get("covariance", {}).get("shape_noise", default)
+    if mode not in ("pair_counts", "analytic"):
+        raise ValueError("covariance.shape_noise must be pair_counts or analytic")
+    return mode == "pair_counts" and not w.tomo_suffix
+
+
+def _pair_count_path(w, suffix=".txt"):
+    # This explicit reference is for catalogues with verified identical
+    # positions, weights and selection. No shear or rho/tau product is shared.
+    reference = pair_count_reference(config, w.version)
+    return str(COSMO_VAL / (
+        f"{reference}_pairs_minsep={w.min_sep}_maxsep={w.max_sep}"
+        f"_nbins={w.nbins}{suffix}"
+    ))
+
+
 # Number of cores to use to execute OneCovariance
 ONECOV_THREADS = 8
 
@@ -171,9 +194,30 @@ rule generate_glass_mock_rhotau_samples:
         "../scripts/generate_glass_mock_rhotau_samples.py"
 
 
+rule covariance_pair_counts:
+    """Non-cosmological cache: positions and weights only, no blind access."""
+    input:
+        catalog=get_shear_catalog,
+    output:
+        cache=str(COSMO_VAL / "{version}_pairs_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}.npz"),
+        tabulated=str(COSMO_VAL / "{version}_pairs_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}.txt"),
+    params:
+        ra_col=lambda w: catalogue_entry(w.version)["shear"].get("ra_col", "RA"),
+        dec_col=lambda w: catalogue_entry(w.version)["shear"].get("dec_col", "Dec"),
+        w_col=lambda w: catalogue_entry(w.version)["shear"]["w_col"],
+    threads: 24
+    resources:
+        mem_mb=40000,
+        disk_mb=20000,
+        runtime=600,
+    script:
+        "../scripts/measure_pair_counts.py"
+
+
 rule covariance_ini:
     input:
         nz_file=lambda w: onecov_nz_path(w.version, w.tomo_suffix),
+        npair=lambda w: [_pair_count_path(w)] if _pair_noise_enabled(w) else [],
         mask=lambda w: [] if w.mask_suffix != "_masked" else [get_footprint_path(w.version)],
     output:
         cov_output(".ini"),
@@ -205,6 +249,12 @@ rule covariance_ini:
         nz_dir=lambda w: os.path.dirname(onecov_nz_path(w.version, w.tomo_suffix)),
         nz_file=lambda w: os.path.basename(onecov_nz_path(w.version, w.tomo_suffix)),
         num_cores=ONECOV_THREADS,
+        pair_section=lambda w: (
+            "[tabulated inputs files]\n"
+            f"npair_directory = {COSMO_VAL}\n"
+            f"npair_mm_file = {os.path.basename(_pair_count_path(w))}"
+            if _pair_noise_enabled(w) else ""
+        ),
     threads: 1
     shell:
         """
@@ -247,6 +297,8 @@ mask_file_lensing = {params.mask_file}
 ellipticity_dispersion = {params.sigma_e_param}
 survey_area_lensing_in_deg2 = {params.area}
 n_eff_lensing = {params.n_e}
+
+{params.pair_section}
 
 [redshift]
 zlens_directory = {params.nz_dir}
@@ -314,11 +366,7 @@ EOF
 
 
 rule covariance_run:
-    """Run OneCovariance on its generated .ini.
-
-    `container: None` on purpose: OneCovariance runs from a host checkout under
-    environment-modules, set by tools.onecov_executable.
-    """
+    """Run the pinned OneCovariance checkout in the workflow container."""
     input:
         rules.covariance_ini.output,
     output:
@@ -327,19 +375,14 @@ rule covariance_run:
         outdir=lambda w: covariance_dir(*_onecov_args(w)),
         onecov=_onecov_tool("onecov_executable"),
         python_executable=_onecov_tool("python_executable", "python"),
-    container:
-        None
     threads: ONECOV_THREADS
+    resources:
+        mem_mb=lambda w: 128000 if int(w.nbins) > 100 else 32000,
+        runtime=720,
     shell:
         """
-        module unload gcc || true
-        module load gcc
-        module unload intelpython || true
-        module load intelpython/3-2024.1.0
-        module load openmpi
-
-        cd {params.outdir}
-        {params.python_executable} {params.onecov} {input}
+        cd {params.outdir:q}
+        {params.python_executable:q} {params.onecov:q} {input:q}
         """
 
 
