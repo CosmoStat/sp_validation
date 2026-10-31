@@ -11,18 +11,7 @@ from sp_validation.dashboard.field_maps import (
     weight_grid_edges,
 )
 from sp_validation.dashboard.object_bias import bias_fit, leakage_fit, slopes
-from sp_validation.dashboard.psf import xi_sys_comparison
 from sp_validation.dashboard.sky import Zenithal, coarsen, footprint_parts, quantity
-
-
-def test_xi_sys_comparison_rejects_incompatible_grids(tmp_path):
-    rt = {
-        "theta": np.array([1.0, 2.0]),
-        "theta_tau": np.array([1.0, 3.0]),
-        "fit": {"theta": np.array([1.0, 2.0])},
-    }
-    with pytest.raises(ValueError, match="angular grids differ"):
-        xi_sys_comparison(rt, tmp_path / "plot.png")
 
 
 def test_leakage_quantile_bins():

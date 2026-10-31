@@ -122,6 +122,32 @@ def test_dashboard_refuses_stale_public_part(
 
 
 @pytest.mark.parametrize("declared", ["none", "toy"])
+@pytest.mark.parametrize("corrected", [False, True])
+def test_dashboard_tau_refuses_stale_public_part(
+    part_path, tmp_path, monkeypatch, declared, corrected
+):
+    from sp_validation.dashboard import products
+
+    class ReachedSignal(Exception):
+        pass
+
+    def read_signal(*args, **kwargs):
+        raise ReachedSignal
+
+    monkeypatch.setattr(sacc_io, "get_tau", read_signal)
+    config = _cat_config(tmp_path, declared)
+    error = ReachedSignal if declared == "none" else ValueError
+    with pytest.raises(error):
+        if corrected:
+            monkeypatch.setattr(products, "_one", lambda pattern: part_path)
+            products.load_corrected_tau(tmp_path, "SP_v_leak_corr", config)
+        else:
+            products.load_tau(
+                part_path, part_path, products.declared_blind(config, "SP_v")
+            )
+
+
+@pytest.mark.parametrize("declared", ["none", "toy"])
 def test_cosebis_grid_refuses_stale_public_xi(
     part_path, tmp_path, monkeypatch, declared
 ):

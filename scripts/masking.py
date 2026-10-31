@@ -79,7 +79,7 @@ def apply_masks(data, mask_config, footprint_only=False):
         kind = cut["kind"]
         value = cut["value"]
 
-        mask &= apply_condition(data[col], kind, value)
+        mask &= apply_condition(data[col], kind, value, cut.get("ignore_bits", 0))
 
     # --- metacal relative size (skip for footprint-only) ---
     if not footprint_only:
