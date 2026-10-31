@@ -124,6 +124,8 @@ def assert_no_raw_values(root, references, *, expected=None, objects=(), logs=""
                 raw = reference
                 if expected is not None:
                     raw = raw[~np.isclose(raw, expected[name], rtol=rtol, atol=1e-25)]
+                # A non-finite reference entry would make the scale window NaN.
+                raw = raw[np.isfinite(raw)]
                 if not len(raw):
                     continue
                 # isclose(a, b) requires |a| within the extrema of

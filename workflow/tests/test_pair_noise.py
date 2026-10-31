@@ -88,11 +88,15 @@ def test_implicit_tomographic_default_stays_analytic(toy):
     assert not any(j.rule == "covariance_pair_counts" for j in jobs)
 
 
-def test_explicit_tomographic_pair_counts_refused(toy):
+def test_explicit_pair_counts_leave_tomographic_analytic(toy):
+    """The template's explicit pair_counts governs the non-tomographic
+    covariance; a tomographic one from the same config resolves, analytic."""
     result = toy.snakemake(
         "-n",
         _ini(toy, "_tomo"),
         config=['covariance={"shape_noise":"pair_counts","default_masked":false}'],
     )
-    assert result.returncode != 0
-    assert "non-tomographic xi only" in result.stdout
+    assert result.returncode == 0, result.stdout
+    jobs = parse_jobs(result.stdout)
+    assert any(j.rule == "covariance_ini" for j in jobs)
+    assert not any(j.rule == "covariance_pair_counts" for j in jobs)

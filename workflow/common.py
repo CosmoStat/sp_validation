@@ -404,32 +404,6 @@ def measurement_catalogue(version, *, psf=False):
     return metadata
 
 
-def integration_covariance_reference(config, version):
-    """Resolve an opt-in Gaussian integration-covariance producer.
-
-    References require identical survey summaries, n(z), mask and an explicit
-    shared pair-count producer. The run must additionally verify the underlying
-    geometry, selection and weights; no measured shear or PSF vector is shared.
-    """
-    references = config.get("covariance", {}).get("integration_reference", {})
-    reference = references.get(version, version)
-    if reference not in config["versions"]:
-        raise ValueError(f"Covariance reference {reference!r} is not a run version")
-    if references.get(reference, reference) != reference:
-        raise ValueError("Covariance references must point directly to a producer")
-    if reference != version:
-        for key in ("cov_th", "mask"):
-            if catalogue_entry(version).get(key) != catalogue_entry(reference).get(key):
-                raise ValueError(f"Covariance reference requires identical {key}")
-        if redshift_path(version) != redshift_path(reference):
-            raise ValueError("Covariance reference requires identical n(z)")
-        if pair_count_reference(config, version) != pair_count_reference(
-            config, reference
-        ):
-            raise ValueError("Covariance reference requires shared pair-count geometry")
-    return reference
-
-
 def redshift_path(version):
     """The n(z) file of ``version``: its catalogue entry's ``shear.redshift_path``,
     as written (as ``CosmologyValidation.get_redshift`` reads it)."""
@@ -568,29 +542,6 @@ def cv_cov_tau(version, fiducial=None):
     """Theoretical τ covariance that CosmologyValidation writes for a version."""
     base = cv_basename(version, fiducial)
     return str(COSMO_VAL / "rho_tau_stats" / f"cov_tau_{base}_th.npy")
-
-
-# CosmologyValidation's default ``psf_leakage`` sky mask (PSF_LEAKAGE_DEFAULTS
-# in sp_validation.cosmo_val.psf_systematics; test_cv_init_params checks they agree).
-PSF_LEAKAGE_SKY_MASK = "config/masks/star_contamination.json"
-
-
-def psf_leakage_sky_mask(config):
-    """The ρ/τ sky-mask setting: ``cosmo_val.psf_leakage.sky_mask`` or the default.
-
-    A JSON file of circles relative to the repository root, or None for none.
-    """
-    leakage = (config.get("cosmo_val") or {}).get("psf_leakage") or {}
-    return leakage.get("sky_mask", PSF_LEAKAGE_SKY_MASK)
-
-
-def psf_leakage_sky_mask_input(config):
-    """The sky-mask file as rule input, so editing its circles reruns the rule."""
-    path = psf_leakage_sky_mask(config)
-    if path is None:
-        return []
-    path = Path(path)
-    return [str(path if path.is_absolute() else REPO_ROOT / path)]
 
 
 # CosmologyValidation constructor kwargs read from config["cosmo_val"]. Every

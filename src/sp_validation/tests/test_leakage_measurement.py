@@ -11,7 +11,6 @@ from sp_validation import rho_tau
 from sp_validation.cosmo_val.psf_systematics import PSFSystematicsMixin
 
 VERSION = "SP_synthetic"
-CIRCLE = {"name": "hole", "ra_deg": 11.0, "dec_deg": 1.0, "radius_deg": 0.3}
 
 
 def _write_catalogues(tmp_path, n_star=4000, n_gal=6000):
@@ -56,8 +55,6 @@ class _Validation(PSFSystematicsMixin):
     def __init__(self, tmp_path, beta_psf_size=False):
         psf, shear = _write_catalogues(tmp_path)
         (tmp_path / "rho_tau_stats").mkdir()
-        mask = tmp_path / "mask.json"
-        mask.write_text(json.dumps({"circles": [CIRCLE]}))
         self.output = tmp_path
         self.cc = {
             "paths": {"output": str(tmp_path)},
@@ -103,7 +100,6 @@ class _Validation(PSFSystematicsMixin):
             "patch_counts": [15, 20],
             "fiducial_npatch": 20,
             "beta_psf_size": beta_psf_size,
-            "sky_mask": str(mask),
         }
         self.rho_tau_method = "eiv"
         self.force_run = False
@@ -113,6 +109,11 @@ class _Validation(PSFSystematicsMixin):
 
     def _output_path(self, *parts):
         return os.path.join(self.output, *parts)
+
+
+def _masks(val):
+    """The star and galaxy selections of the leakage measurement."""
+    return val._get_star_mask(VERSION), val._get_galaxy_mask(VERSION, "all")
 
 
 def _fresh(val, **psf_leakage):
@@ -125,27 +126,11 @@ def _fresh(val, **psf_leakage):
     return fresh
 
 
-def test_sky_mask_removes_stars_and_galaxies_inside_the_circles(tmp_path):
-    val = _Validation(tmp_path)
-    mask_star, mask_gal = val._get_rho_tau_masks(VERSION, "all")
-    stars = fits.getdata(val.cc[VERSION]["psf"]["path"])
-    gals = fits.getdata(val.cc[VERSION]["shear"]["path"])
-
-    def inside(ra, dec):
-        return np.hypot((ra - 11.0) * np.cos(np.deg2rad(1.0)), dec - 1.0) < 0.299
-
-    assert not np.any(mask_star & inside(stars["RA"], stars["DEC"]))
-    assert not np.any(mask_gal & inside(gals["RA"], gals["Dec"]))
-    assert not np.any(mask_star & (stars["HSM_FLAG_PSF"] != 0))
-    outside_stars = ~inside(stars["RA"], stars["DEC"]) & (stars["HSM_FLAG_PSF"] == 0)
-    assert mask_star.sum() >= 0.99 * outside_stars.sum()
-
-
 def test_joint_vector_equals_production_rho_tau(tmp_path):
     """With exact pair counting the joint vector is production's rho/tau."""
     val = _Validation(tmp_path)
     products = val.leakage_jackknife(VERSION, measure=True)
-    mask_star, mask_gal = val._get_rho_tau_masks(VERSION, "all")
+    mask_star, mask_gal = _masks(val)
     (tmp_path / "production").mkdir()
     rho_handler, tau_handler = rho_tau.get_rho_tau(
         val.cc,
@@ -230,23 +215,19 @@ def test_reading_without_a_measurement_names_the_rule(tmp_path):
     assert not val.leakage_jackknife_path(VERSION).exists()
 
 
-@pytest.mark.parametrize("change", ["sky_mask", "beta_psf_size", "selection"])
+@pytest.mark.parametrize("change", ["beta_psf_size", "selection"])
 def test_cache_is_stale_after_a_change(tmp_path, change):
-    """Sky mask, PSF-size slope and star selection each invalidate the cache."""
+    """PSF-size slope and star selection each invalidate the cache."""
     val = _Validation(tmp_path)
     val.leakage_jackknife(VERSION, measure=True)
-    if change == "sky_mask":
-        mask = tmp_path / "wider.json"
-        mask.write_text(json.dumps({"circles": [{**CIRCLE, "radius_deg": 0.4}]}))
-        fresh = _fresh(val, sky_mask=str(mask))
-    elif change == "beta_psf_size":
+    if change == "beta_psf_size":
         fresh = _fresh(val, beta_psf_size=True)
     else:
         fresh = _fresh(val)
         star_mask = PSFSystematicsMixin._get_star_mask
 
         def fewer_stars(self, ver):
-            # A strip far from the masked circle, so the selection changes.
+            # Drop a strip of stars, so the selection changes.
             ra = fits.getdata(self.cc[ver]["psf"]["path"])["RA"]
             return star_mask(self, ver) & (ra > 10.2)
 
@@ -284,7 +265,7 @@ def test_theory_covariance_follows_the_selection(tmp_path, monkeypatch):
             return np.eye(2) * len(built)
 
     monkeypatch.setattr(rho_tau, "CovTauTh", FakeCovTauTh)
-    mask_star, mask_gal = val._get_rho_tau_masks(VERSION, "all")
+    mask_star, mask_gal = _masks(val)
     outdir = tmp_path / "rho_tau_stats"
 
     def covariance(star, gal):

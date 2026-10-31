@@ -2,7 +2,7 @@
 
 This module has no catalogue I/O. It builds the production rho-to-tau design,
 profiles noisy templates from a joint delete-one covariance, and provides
-TreeCorr jackknife, patch-grouping, and spherical-mask helpers.
+TreeCorr jackknife and patch-grouping helpers.
 """
 
 import numpy as np
@@ -135,43 +135,6 @@ def treecorr_jackknife_rows(correlations, groups=None, check_rows=True):
     if not blocks:
         raise ValueError("at least one TreeCorr correlation is required")
     return np.concatenate(blocks, axis=1), max_error
-
-
-def keep_sky(ra, dec, circles, chunk_size=1_000_000):
-    """Return a boolean mask outside all spherical circles.
-
-    ``ra`` and ``dec`` are in degrees. Each circle is a mapping with
-    ``ra_deg``, ``dec_deg`` and ``radius_deg`` fields. Angular separation is
-    computed on the sphere, including across the RA 0/360-degree boundary.
-    """
-    ra = np.asarray(ra, dtype=float)
-    dec = np.asarray(dec, dtype=float)
-    if ra.shape != dec.shape or ra.ndim != 1:
-        raise ValueError("ra and dec must be one-dimensional arrays of equal length")
-    circles = tuple(circles)
-    keep = np.ones(ra.size, dtype=bool)
-    for circle in circles:
-        radius = float(circle["radius_deg"])
-        if not 0 < radius < 180:
-            raise ValueError("circle radius must be between 0 and 180 degrees")
-        centre_ra = np.deg2rad(float(circle["ra_deg"]))
-        centre_dec_deg = float(circle["dec_deg"])
-        centre_dec = np.deg2rad(centre_dec_deg)
-        cos_radius = np.cos(np.deg2rad(radius))
-        for start in range(0, ra.size, chunk_size):
-            stop = min(start + chunk_size, ra.size)
-            candidate = np.flatnonzero(
-                np.abs(dec[start:stop] - centre_dec_deg) <= radius
-            )
-            if not candidate.size:
-                continue
-            point_dec = np.deg2rad(dec[start:stop][candidate])
-            point_ra = np.deg2rad(ra[start:stop][candidate])
-            cosine = np.sin(point_dec) * np.sin(centre_dec) + np.cos(
-                point_dec
-            ) * np.cos(centre_dec) * np.cos(point_ra - centre_ra)
-            keep[start + candidate[cosine >= cos_radius]] = False
-    return keep
 
 
 def residual_covariance_model(x_rows, y_rows, cross_term=True):

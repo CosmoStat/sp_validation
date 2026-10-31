@@ -97,8 +97,7 @@ def cv_xi_cov_integration(version, tomo_suffix=""):
     Both B-mode statistics propagate this Gaussian covariance through their
     linear operators.
     """
-    reference = integration_covariance_reference(config, version)
-    return _grid_cov(reference, "integration", "g", tomo_suffix)
+    return _grid_cov(version, "integration", "g", tomo_suffix)
 
 
 def _cosebis_stub(version):
@@ -269,7 +268,6 @@ rule cv_leakage_jackknife:
         catalogues=lambda w: cv_shear_catalogues()
         + [str(Path(catalogue_entry(v)["subdir"]) / catalogue_entry(v)["psf"]["path"])
            for v in CV_VERSIONS],
-        sky_mask=psf_leakage_sky_mask_input(config),
     output:
         measurements=CV_LEAKAGE_JACKKNIFE,
     params:

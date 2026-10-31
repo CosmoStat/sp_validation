@@ -47,7 +47,6 @@ def test_tomographic_rho_tau_part(tmp_path, monkeypatch):
         cov_estimate_method = "th"
         compute_cov_rho = False
         npatch = 1
-        psf_leakage = {"sky_mask": None}
 
         def _get_tomo_bins(self, v):
             return [9, 2, 5], [(2, 2)]

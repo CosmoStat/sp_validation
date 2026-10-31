@@ -304,3 +304,35 @@ def test_b_injection_is_pure_b():
         b1 - 1j * b2, np.ones(len(b1)), nside, "linear", ell_step=8
     )
     assert np.sum(np.abs(measured[0])) / np.sum(measured[3]) < 1e-6
+
+
+def test_painted_mock_carries_no_input_shape(tmp_path, mock_maps):
+    from sp_validation.glass_mock import SHAPE_COLUMN
+    from sp_validation.io import read_catalogue
+
+    for name, values in zip(("kappa", "gamma1", "gamma2"), mock_maps, strict=True):
+        np.save(tmp_path / f"{name}.npy", values)
+    names = ("RA", "Dec", "w_des", "e1", "e2", "e1_PSF", "e2_PSF", "snr")
+    shaped = ("e1_uncal", "e2_uncal", "R_g11", "R_g22", "e1_leak_corrected")
+    source = np.zeros(100, dtype=[(name, "f8") for name in names + shaped])
+    rng = np.random.default_rng(5)
+    for name in ("e1", "e2", *shaped):
+        source[name] = rng.uniform(-0.3, 0.3, len(source))
+    source["w_des"], source["snr"] = 1.0, 20.0
+    path = tmp_path / "source.h5"
+    with h5py.File(path, "w") as dst:
+        dst["data"] = source
+    paint_catalogue(path, tmp_path / "mock.h5", tmp_path, 7, keep=("snr",))
+    mock = read_catalogue(tmp_path / "mock.h5")
+    assert not set(shaped[:-1]) & set(mock.dtype.names)
+    assert {"RA", "Dec", "w_des", "e1_PSF", "e2_PSF", "snr"} <= set(mock.dtype.names)
+    for column in mock.dtype.names:
+        for name in ("e1", "e2", *shaped):
+            assert not np.array_equal(mock[column], source[name]), (column, name)
+    for name in ("e1_uncal", "NGMIX_G1_NOSHEAR", "NGMIX_ELL_PSFo", "R_g11"):
+        assert SHAPE_COLUMN.search(name), name
+    assert not SHAPE_COLUMN.search("snr") and not SHAPE_COLUMN.search("FLUX_RADIUS")
+    with pytest.raises(ValueError, match="galaxy shapes"):
+        paint_catalogue(
+            path, tmp_path / "leak.h5", tmp_path, 7, keep=("e1_uncal",), overwrite=True
+        )
