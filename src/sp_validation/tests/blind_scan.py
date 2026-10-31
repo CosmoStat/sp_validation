@@ -83,6 +83,26 @@ def file_arrays(path):
             raise AssertionError(f"No leak decoder for {path}") from error
 
 
+def _json_precision(text):
+    """Split a JSON document's numbers into rounded and exact.
+
+    Rounded: at most 10 written digits, or a float32 value printed in full
+    (float32 holds ~7 digits however many repr prints). Exact: the rest.
+    """
+    rounded, exact = [], []
+
+    def parse(token):
+        value = float(token)
+        digits = token.lower().split("e")[0].replace("-", "").replace(".", "")
+        short = len(digits.lstrip("0")) <= 10
+        single = np.isfinite(value) and float(np.float32(value)) == value
+        (rounded if short or single else exact).append(value)
+        return value
+
+    json.loads(text, parse_float=parse, parse_int=parse)
+    return np.array(rounded), np.array(exact)
+
+
 def assert_no_raw_values(root, references, *, expected=None, objects=(), logs=""):
     """Find even reordered/single-value subsets using scale-sensitive allclose.
 
@@ -104,10 +124,23 @@ def assert_no_raw_values(root, references, *, expected=None, objects=(), logs=""
                 raw = reference
                 if expected is not None:
                     raw = raw[~np.isclose(raw, expected[name], rtol=rtol, atol=1e-25)]
+                # A non-finite reference entry would make the scale window NaN.
+                raw = raw[np.isfinite(raw)]
+                if not len(raw):
+                    continue
+                # isclose(a, b) requires |a| within the extrema of
+                # |b| ± (atol + rtol*|b|). Geometry maps often contain millions
+                # of zeros/counts but no values on the shear signal's scale.
+                absolute = np.abs(np.asarray(raw, dtype=float))
+                lower = np.nextafter(
+                    max(0.0, absolute.min() * (1 - rtol) - 1e-25), -np.inf
+                )
+                upper = np.nextafter(absolute.max() * (1 + rtol) + 1e-25, np.inf)
+                possible = values[(np.abs(values) >= lower) & (np.abs(values) <= upper)]
                 # Chunk large FITS columns so a future larger fixture stays bounded.
-                for start in range(0, len(values), 4096):
+                for start in range(0, len(possible), 4096):
                     match = np.isclose(
-                        values[start : start + 4096, None],
+                        possible[start : start + 4096, None],
                         raw[None, :],
                         rtol=rtol,
                         atol=1e-25,
@@ -118,20 +151,19 @@ def assert_no_raw_values(root, references, *, expected=None, objects=(), logs=""
                         )
 
     for path in sorted(Path(root).rglob("*")):
-        if path.is_file():
-            text = path.suffix.lower() in (
-                ".txt",
-                ".dat",
-                ".csv",
-                ".json",
-                ".log",
-                ".yaml",
-            )
-            check(
-                str(path.relative_to(root)),
-                file_arrays(path),
-                rtol=5e-6 if text else 1e-10,
-            )
+        if not path.is_file():
+            continue
+        source = str(path.relative_to(root))
+        suffix = path.suffix.lower()
+        if suffix == ".json":
+            # JSON keeps each float's written digits: full-precision floats are
+            # binary values, short ones were rounded by their writer.
+            rounded, exact = _json_precision(path.read_text())
+            check(source, [("rounded JSON numbers", rounded)], rtol=5e-6)
+            check(source, [("JSON numbers", exact)], rtol=1e-10)
+            continue
+        text = suffix in (".txt", ".dat", ".csv", ".log", ".yaml")
+        check(source, file_arrays(path), rtol=5e-6 if text else 1e-10)
     for label, value in objects:
         check(label, arrays(value))
     check("captured stdout/stderr/logging", arrays(logs), rtol=5e-6)
