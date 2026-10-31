@@ -34,6 +34,11 @@ def get_onecov_cat_params(version, tomo_suffix=""):
     entry = catalogue_entry(version)
     cov_th = entry["cov_th"]
     survey = cov_th.get("tomo", cov_th) if tomo_suffix else cov_th
+    if survey is not cov_th and ("A" in survey) != ("mask" in survey):
+        raise ValueError(
+            f"{version}: cov_th.tomo sets A and mask together: the binned "
+            "sample's area and the footprint it is measured on"
+        )
 
     def per_bin(value):
         values = value if isinstance(value, (list, tuple)) else str(value).split(",")
