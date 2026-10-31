@@ -147,5 +147,7 @@ metacal:
   # Correct relative size for ellipticity?
   gal_size_corr_ell: False
 
-  # Weight for global response matrix, None for unweighted mean
-  global_R_weight: w
+  # DES case d: one fixed no-shear W, evaluated on each branch's SNR/size.
+  weight_scheme: des
+  w_col: w_des
+  des_num_bins: 20

@@ -18,6 +18,7 @@ from ..b_modes import (
     find_conservative_scale_cut_key,
 )
 from ..statistics import chi2_and_pte
+from ..survey import additive_bias
 from ..version import __version__
 from .catalog_characterization import CatalogCharacterizationMixin
 from .cosebis import CosebisMixin
@@ -676,24 +677,42 @@ class CosmologyValidation(
         )
         return cols[0] if len(cols) == 1 else cols
 
-    def _calibrated_g(self, ver):
+    def _calibrated_g(self, ver, catalog=None):
         """Calibrated shear components ``(g1, g2)`` for a catalog version.
 
         Applies additive-bias subtraction and the multiplicative response:
-        ``g = (e − c) / R``. For DES the response is the catalog-averaged
+        ``g = e / R − c_g``. Stored c is in calibrated shear units. For DES the response is the catalog-averaged
         per-component ``R11``/``R22`` (column names in the config); for every
         other version it is the scalar ``R`` from the config.
 
-        Must be called inside a ``self.results[ver].temporarily_read_data()``
-        context, since it reads ``dat_shear`` columns.
+        Without ``catalog``, call inside ``temporarily_read_data()``. With a
+        catalogue, calculate the same weighted mean directly from its full
+        population before any tomographic selection.
         """
-        e1, e2 = self._read_shear_cols(ver, "e1_col", "e2_col")
+        if catalog is None:
+            e1, e2 = self._read_shear_cols(ver, "e1_col", "e2_col")
+            R1, R2 = self._component_responses(ver)
+            c1, c2 = self.c1[ver], self.c2[ver]
+        else:
+            shear = self.cc[ver]["shear"]
+            e1, e2 = catalog[shear["e1_col"]], catalog[shear["e2_col"]]
+            R1, R2 = self._component_responses(ver, catalog)
+            c1, c2 = additive_bias(e1 / R1, e2 / R2, catalog[shear["w_col"]], 1)
+        return e1 / R1 - c1, e2 / R2 - c2
+
+    def _component_responses(self, ver, catalog=None):
+        """Resolve responses identically for mean-c production and subtraction.
+
+        Called within the catalogue's temporarily_read_data context.
+        """
         if ver == "DES":
-            R1 = np.average(self.results[ver].dat_shear[self.cc[ver]["shear"]["R11"]])
-            R2 = np.average(self.results[ver].dat_shear[self.cc[ver]["shear"]["R22"]])
+            if catalog is None:
+                catalog = self.results[ver].dat_shear
+            R1 = np.average(catalog[self.cc[ver]["shear"]["R11"]])
+            R2 = np.average(catalog[self.cc[ver]["shear"]["R22"]])
         else:
             R1 = R2 = self.cc[ver]["shear"]["R"]
-        return (e1 - self.c1[ver]) / R1, (e2 - self.c2[ver]) / R2
+        return R1, R2
 
     @property
     def colors(self):
