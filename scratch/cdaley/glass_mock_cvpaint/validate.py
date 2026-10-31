@@ -543,6 +543,13 @@ def run_xi():
     save()
 
 
+def cosebis_cut(version, cut):
+    """B_n and its covariance on one scanned COSEBIs cut, from the pipeline npz."""
+    path = next(OUT.glob(f"{version}_cosebis_*_data.npz"))
+    data = sio.load_npz(path, blind="none")
+    return data[f"Bn_{cut}"], data[f"cov_{cut}"][20:, 20:]
+
+
 def run_decompositions():
     metrics["decomposition_nulls"] = {}
     types = [sio.COSEBI_BB, sio.PURE_TYPES["xip_B"], sio.PURE_TYPES["xim_B"]]
@@ -560,8 +567,20 @@ def run_decompositions():
             stat = pte(y, cov)
             checks = {"full": stat}
             if suffix == "cosebis":
-                checks["first_6_modes"] = pte(y[:6], cov[:6, :6])
-                label = f"B_n: PTE(6)={checks['first_6_modes']['pte']:.3g}, PTE(20)={stat['pte']:.3g}"
+                # The SACC holds the fiducial cut (12–83′); the npz keeps every
+                # scanned cut, of which 1–250′ is the wide-range B-mode test.
+                wide_y, wide_cov = cosebis_cut(version, "1_250")
+                checks = {
+                    "12-83": {"full": stat, "first_6_modes": pte(y[:6], cov[:6, :6])},
+                    "1-250": {
+                        "full": pte(wide_y, wide_cov),
+                        "first_6_modes": pte(wide_y[:6], wide_cov[:6, :6]),
+                    },
+                }
+                label = (
+                    f"B_n PTE(20): 12–83′ {stat['pte']:.3g}, "
+                    f"1–250′ {checks['1-250']['full']['pte']:.3g}"
+                )
             else:
                 keep = (x >= 12) & (x <= 83)
                 checks["fiducial"] = pte(y[keep], cov[np.ix_(keep, keep)])
@@ -579,9 +598,19 @@ def run_decompositions():
                     subsets["first_6_modes"] = np.arange(len(y)) < 6
                 else:
                     subsets["fiducial"] = (x >= 12) & (x <= 83)
+                cuts = {"": (excess, detection_cov)}
+                if suffix == "cosebis":
+                    wide_clean, wide_cov = cosebis_cut(U, "1_250")
+                    cuts = {
+                        "12-83 ": (excess, detection_cov),
+                        "1-250 ": (cosebis_cut(A, "1_250")[0] - wide_clean, wide_cov),
+                    }
                 excess_checks = {}
-                for name, keep in subsets.items():
-                    diagnostic = pte(excess[keep], detection_cov[np.ix_(keep, keep)])
+                for (prefix, (vec, cmat)), (name, keep) in (
+                    (c, n) for c in cuts.items() for n in subsets.items()
+                ):
+                    name = f"{prefix}{name}"
+                    diagnostic = pte(vec[keep], cmat[np.ix_(keep, keep)])
                     diagnostic.pop("pte")
                     diagnostic["mahalanobis_distance"] = float(
                         np.sqrt(diagnostic["chi2"])
