@@ -264,7 +264,8 @@ CV_LEAKAGE_JACKKNIFE = [
 rule cv_leakage_jackknife:
     """Joint ρ/τ jackknife measurement behind the 'eiv' PSF-leakage fit."""
     input:
-        catalogues=cv_shear_catalogues()
+        # Deferred to DAG time: shear-only registries (mocks) have no psf entry.
+        catalogues=lambda w: cv_shear_catalogues()
         + [str(Path(catalogue_entry(v)["subdir"]) / catalogue_entry(v)["psf"]["path"])
            for v in CV_VERSIONS],
     output:

@@ -8,7 +8,7 @@ from conftest import VERSIONS
 
 # Bin integrals 0.5 and 0.625: not unit-normalised.
 NZ_ROWS = "0.0 0.0 0.0\n0.5 1.0 0.5\n1.0 0.0 1.5\n"
-UNMASKED = ['covariance={"default_masked":false}']
+UNMASKED = ['covariance={"shape_noise":"analytic","default_masked":false}']
 
 
 def _ini(toy, tomo_suffix=""):
