@@ -1,51 +1,74 @@
-"""Rule cv_cosebis: COSEBIs E/B decomposition for one version.
+"""Derive COSEBIs from a concealed integration-grid ξ± part.
 
-A consumer of the integration-grid ξ± part and the OneCovariance ξ± covariance on
-the same grid — nothing here touches a catalogue. The covariance goes through
-the same linear kernel as the modes to give the COSEBIs covariance; it is
-analytic, so no Hartlap debiasing applies. The COSEBIs part is a derivation of
-the ξ± part and carries its blind stamp.
+All pairs use the same fiducial scale cut; tomographic cuts are not applied.
+The COSEBIs convention sets E×B covariance blocks to zero across all pairs.
 """
 
-import numpy as np
+from pathlib import Path
+
 from cv_runner import _unbuffer_streams, verify_outputs
 
 from sp_validation import sacc_io
 from sp_validation.b_modes import (
+    cosebis_operator,
     cosebis_scan_from_xi,
     find_conservative_scale_cut_key,
     log_bin_edges,
     save_cosebis_results,
 )
+from sp_validation.cosmo_val.derived_covariance import (
+    propagate,
+    xi_covariance,
+    xi_pairs,
+)
 from sp_validation.cosmo_val.sacc_writers import cosebis_to_sacc
 
 _unbuffer_streams()
 p = snakemake.params
-version = p["version"]
 fiducial_scale_cut = tuple(p["fiducial_scale_cut"])
-
 part = sacc_io.load(snakemake.input["xi"], blind=p["blind"])
-theta, xip, xim = sacc_io.get_xi(part, (0, 0), grid="integration")
+pairs = xi_pairs(part)
+# Read only after the declared blind has been checked.
+xis = [sacc_io.get_xi(part, pair, grid="integration") for pair in pairs]
+covariance, npatch = xi_covariance(part, snakemake.input["cov"])
 edges = log_bin_edges(p["min_sep"], p["max_sep"], p["nbins"])
+outputs, operators = [], []
+for pair, (theta, xip, xim) in zip(pairs, xis):
+    view = sacc_io.xi_correlation(part, pair, grid="integration")
+    cov = covariance[view._rows[:, None], view._rows]
+    results = cosebis_scan_from_xi(
+        theta,
+        xip,
+        xim,
+        cov,
+        *edges,
+        nmodes=p["nmodes"],
+        scale_cuts=[tuple(sc) for sc in p["scale_cuts"]],
+        npatch=npatch,
+    )
+    key = find_conservative_scale_cut_key(results, fiducial_scale_cut)
+    outputs.append((pair, results[key]))
+    if len(pairs) > 1:
+        operators.append(cosebis_operator(theta, *edges, key, p["nmodes"]))
+    path = Path(snakemake.output["npz"])
+    if len(pairs) > 1:
+        path = path.with_name(f"{path.stem}_{pair[0]}_{pair[1]}{path.suffix}")
+    save_cosebis_results(results, path, fiducial_scale_cut, edges, derived_from=[part])
+    if pair == pairs[0] and len(pairs) > 1:
+        save_cosebis_results(
+            results,
+            snakemake.output["npz"],
+            fiducial_scale_cut,
+            edges,
+            derived_from=[part],
+        )
 
-results = cosebis_scan_from_xi(
-    theta,
-    xip,
-    xim,
-    np.loadtxt(snakemake.input["cov"]),
-    *edges,
-    nmodes=p["nmodes"],
-    scale_cuts=[tuple(sc) for sc in p["scale_cuts"]],
+cov = (
+    outputs[0][1]["cov"]
+    if len(pairs) == 1
+    else propagate(operators, covariance, cosebis=True)
 )
-
-fiducial_key = find_conservative_scale_cut_key(results, fiducial_scale_cut)
-fiducial = results[fiducial_key]
-
-save_cosebis_results(
-    results, snakemake.output["npz"], fiducial_scale_cut, edges, derived_from=[part]
-)
-
-s = cosebis_to_sacc({0: sacc_io.get_nz(part, 0)}, part.metadata, fiducial, fiducial_key)
+nz = {i: sacc_io.get_nz(part, i) for pair in pairs for i in pair}
+s = cosebis_to_sacc(nz, part.metadata, outputs, key, covariance=cov)
 sacc_io.save(s, snakemake.output["sacc"], derived_from=[part])
-
 verify_outputs(snakemake)

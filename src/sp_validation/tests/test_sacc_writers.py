@@ -108,7 +108,11 @@ def test_pseudo_cl_to_sacc_window_and_rows(tmp_path):
         def get_bandpower_windows(self):
             return self._w
 
-    s = sw.pseudo_cl_to_sacc({0: _nz()}, META, ell, cl_all, _Wsp(nbp, 24))
+    s = sw.pseudo_cl_to_sacc(
+        {0: _nz()},
+        META,
+        [((0, 0), {"ell_eff": ell, "cl_all": cl_all, "wsp": _Wsp(nbp, 24)})],
+    )
     s2 = _roundtrip(s, tmp_path, "cl")
     ell_r, ee, bb, eb, window = sio.get_pseudo_cl(s2, (0, 0))
     assert np.array_equal(ell_r, ell)
@@ -142,7 +146,11 @@ def test_paper_pseudo_cl_reader(tmp_path):
                     window[component, band, component, band * 4 : (band + 1) * 4] = 1.0
             return window
 
-    part = sw.pseudo_cl_to_sacc({0: _nz()}, META, ell, cl_all, _Workspace())
+    part = sw.pseudo_cl_to_sacc(
+        {0: _nz()},
+        META,
+        [((0, 0), {"ell_eff": ell, "cl_all": cl_all, "wsp": _Workspace()})],
+    )
     path = tmp_path / "pseudo_cl.sacc"
     sio.save(part, str(path), blind=NONE)
 
@@ -167,7 +175,9 @@ def test_pseudo_cl_to_sacc_real_namaster_pixel_window(tmp_path):
         rng.normal(size=12 * nside**2) + 1j * rng.normal(size=12 * nside**2)
     ) * 1e-2
     ell_eff, cl_all, wsp = get_pseudo_cls_map(shear, mask, nside, "linear", ell_step=8)
-    s = sw.pseudo_cl_to_sacc({0: _nz()}, META, ell_eff, cl_all, wsp)
+    s = sw.pseudo_cl_to_sacc(
+        {0: _nz()}, META, [((0, 0), {"ell_eff": ell_eff, "cl_all": cl_all, "wsp": wsp})]
+    )
     s2 = _roundtrip(s, tmp_path, "clreal")
     ell_r, ee, bb, eb, window = sio.get_pseudo_cl(s2, (0, 0))
     assert np.array_equal(ell_r, ell_eff)
@@ -175,7 +185,11 @@ def test_pseudo_cl_to_sacc_real_namaster_pixel_window(tmp_path):
     # With nside unset, the workspace window carries no pixel window.
     assert window.weight.shape[1] == len(ell_eff)
 
-    mapped = sw.pseudo_cl_to_sacc({0: _nz()}, META, ell_eff, cl_all, wsp, nside=nside)
+    mapped = sw.pseudo_cl_to_sacc(
+        {0: _nz()},
+        META,
+        [((0, 0), {"ell_eff": ell_eff, "cl_all": cl_all, "wsp": wsp, "nside": nside})],
+    )
     mapped_window = mapped.get_bandpower_windows(mapped.indices(sio.CL_EE))
     pw2 = hp.pixwin(nside, lmax=window.weight.shape[0] - 1) ** 2
     nonzero = np.abs(window.weight) > 1e-20
@@ -189,7 +203,9 @@ def test_pseudo_cl_to_sacc_real_namaster_pixel_window(tmp_path):
 def test_cosebis_to_sacc(tmp_path):
     En, Bn = np.arange(1, 11) * 1e-6, np.arange(1, 11) * 1e-7
     result = {"En": En, "Bn": Bn, "cov": _spd(20, 7)}
-    s = sw.cosebis_to_sacc({0: _nz()}, META, result, (1.0, 100.0))
+    s = sw.cosebis_to_sacc(
+        {0: _nz()}, META, [((0, 0), result)], (1.0, 100.0), covariance=result["cov"]
+    )
     s2 = _roundtrip(s, tmp_path, "co")
     n, E, B = sio.get_cosebis(s2, (0, 0))
     assert np.array_equal(n, np.arange(1, 11))
@@ -202,7 +218,9 @@ def test_pure_eb_to_sacc(tmp_path):
     theta = _theta()
     eb = {key: np.arange(6) * (i + 1) * 1e-6 for i, key in enumerate(sio.PURE_KEYS)}
     cov = _spd(6 * len(theta), 9)
-    s = sw.pure_eb_to_sacc({0: _nz()}, META, theta, eb, covariance=cov)
+    s = sw.pure_eb_to_sacc(
+        {0: _nz()}, META, [((0, 0), {"theta": theta, **eb})], covariance=cov
+    )
     s2 = _roundtrip(s, tmp_path, "eb")
     th, back = sio.get_pure_eb(s2, (0, 0))
     assert np.array_equal(th, theta)
@@ -229,7 +247,7 @@ def _rho_tau_tables(nth=6, seed=0):
 
 def test_rho_tau_to_sacc_diagonal(tmp_path):
     rho, tau, theta = _rho_tau_tables()
-    s = sw.rho_tau_to_sacc({0: _nz()}, META, rho, tau)
+    s = sw.rho_tau_to_sacc({0: _nz()}, META, rho, [(0, tau)])
     s2 = _roundtrip(s, tmp_path, "rt")
     for k in sw.RHO_K:
         th, p, m = sio.get_rho(s2, k)
@@ -249,7 +267,9 @@ def test_rho_tau_to_sacc_tau_theory_block(tmp_path):
     nbin = len(theta)
     n_plus = len(sw.TAU_K) * nbin  # τ-plus points (k-major, one component per k)
     tau_cov_th = _spd(n_plus, 11)
-    s = sw.rho_tau_to_sacc({0: _nz()}, META, rho, tau, tau_cov_th=tau_cov_th)
+    s = sw.rho_tau_to_sacc(
+        {0: _nz()}, META, rho, [(0, tau)], tau_cov_th_by_bin=[(0, tau_cov_th)]
+    )
     assert type(s.covariance).__name__ == "FullCovariance"
     tr = ("source_0", sio.PSF_TRACER)
     tau_plus = np.concatenate(
@@ -271,7 +291,9 @@ def test_rho_tau_to_sacc_tau_theory_block(tmp_path):
 def test_rho_tau_to_sacc_tau_cov_shape_mismatch():
     rho, tau, _ = _rho_tau_tables()
     with pytest.raises(ValueError, match="tau_cov_th shape"):
-        sw.rho_tau_to_sacc({0: _nz()}, META, rho, tau, tau_cov_th=_spd(3, 1))
+        sw.rho_tau_to_sacc(
+            {0: _nz()}, META, rho, [(0, tau)], tau_cov_th_by_bin=[(0, _spd(3, 1))]
+        )
 
 
 # --------------------------------------------------------------------------- #
@@ -296,16 +318,18 @@ def _make_parts(nz):
     cl_all = np.vstack(
         [np.arange(3) * 1e-9, np.arange(3) * 2e-9, np.zeros(3), np.arange(3) * 3e-9]
     )
-    cl = sw.pseudo_cl_to_sacc(nz, META, ell, cl_all, _Wsp(), covariance=_spd(9, 2))
+    cl = sw.pseudo_cl_to_sacc(
+        nz,
+        META,
+        [((0, 0), {"ell_eff": ell, "cl_all": cl_all, "wsp": _Wsp()})],
+        covariance=_spd(9, 2),
+    )
     co = sw.cosebis_to_sacc(
         nz,
         META,
-        {
-            "En": np.arange(1, 6) * 1e-6,
-            "Bn": np.arange(1, 6) * 1e-7,
-            "cov": _spd(10, 3),
-        },
+        [((0, 0), {"En": np.arange(1, 6) * 1e-6, "Bn": np.arange(1, 6) * 1e-7})],
         (1.0, 100.0),
+        covariance=_spd(10, 3),
     )
     return [xi, cl, co]
 
