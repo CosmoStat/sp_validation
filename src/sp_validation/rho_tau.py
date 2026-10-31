@@ -774,6 +774,22 @@ def get_theory_cov(
     return
 
 
+def rho_cache_valid(
+    rho_path, cov_rho_path, treecorr_config, force_run=False, selection=None
+):
+    """Whether a cached ρ measurement and its jackknife covariance can be reused.
+
+    The ρ FITS must record the current means, patched configurations and star
+    selection (:func:`~sp_validation.correlation.measurement_matches`); the PSF-only
+    result is then shared by every source bin of a tomographic run.
+    """
+    return (
+        not force_run
+        and Path(cov_rho_path).exists()
+        and measurement_matches(rho_path, treecorr_config, selection=selection)
+    )
+
+
 def get_jackknife_cov(
     config,
     version,
@@ -791,7 +807,6 @@ def get_jackknife_cov(
     Compute the covariance matrix of rho and tau-statistics using the jackknife method.
     Also compute rho and tau-statistics.
     """
-    # TODO: Reorganise this to avoid recomputing unnecessarily the rho-stats multiple times.
     rho_filename = f"rho_stats_{base_rho}.fits"
     tau_filename = f"tau_stats_{base_tau}.fits"
     tau_cov_path = Path(outdir) / f"cov_tau_{base_tau}_jk.npy"
@@ -846,6 +861,15 @@ def get_jackknife_cov(
     )
 
     tau_stat_handler.catalogs.set_params(params, outdir)
+
+    rho_path = Path(outdir) / rho_filename
+    cov_rho_path = Path(outdir) / f"cov_rho_{base_rho}_jk.npy"
+    reuse_rho = rho_cache_valid(
+        rho_path, cov_rho_path, treecorr_config, force_run, selection=rho_selection
+    )
+    if reuse_rho:
+        rho_stat_handler.load_rho_stats(rho_filename)
+        cached_rho_cov = np.load(cov_rho_path)
 
     # shear_psf_leakage keys its catalogues by catalog_id and writes each
     # draw's covariance to cov_{rho,tau}_{catalog_id}.npy; base_tau names the
@@ -905,16 +929,19 @@ def get_jackknife_cov(
                     mask=mask_gal,
                 )
 
-                # Compute and save rho stats
-                rho_means = _compute_stats_with_patches(
-                    rho_stat_handler,
-                    "rho",
-                    catalog_id(i),
-                    rho_filename,
-                    save_cov=True,
-                    means=rho_means,
-                    selection=rho_selection,
-                )
+                # The PSF-only result is shared by every source bin.
+                if reuse_rho:
+                    np.save(chunks(i)[0], cached_rho_cov)
+                else:
+                    rho_means = _compute_stats_with_patches(
+                        rho_stat_handler,
+                        "rho",
+                        catalog_id(i),
+                        rho_filename,
+                        save_cov=True,
+                        means=rho_means,
+                        selection=rho_selection,
+                    )
                 tau_means = _compute_stats_with_patches(
                     tau_stat_handler,
                     "tau",
@@ -950,9 +977,9 @@ def get_jackknife_cov(
     tau_cov_path.parent.mkdir(parents=True, exist_ok=True)
     np.save(tau_cov_path, cov_tau)
 
-    cov_rho_path = Path(outdir) / f"cov_rho_{base_rho}_jk.npy"
     cov_rho_path.parent.mkdir(parents=True, exist_ok=True)
-    np.save(cov_rho_path, cov_rho)
+    if not reuse_rho:
+        np.save(cov_rho_path, cov_rho)
 
     return rho_stat_handler, tau_stat_handler
 

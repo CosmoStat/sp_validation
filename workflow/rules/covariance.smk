@@ -15,14 +15,73 @@ def get_footprint_path(version):
 # tomographic. Named by covariance_base() in common.py.
 # ---------------------------------------------------------------------------
 
-def get_onecov_cat_params(version):
+def get_onecov_cat_params(version, tomo_suffix=""):
     """OneCovariance survey parameters (sigma_e, n_e, area) of ``version``'s
-    catalogue entry. Tomographic values are comma-separated strings, one entry
-    per bin."""
-    cov_th = catalogue_entry(version)["cov_th"]
+    catalogue entry, as comma-separated strings with one entry per bin.
+
+    A tomographic covariance reads ``cov_th.tomo`` (per-bin ``sigma_e`` and
+    ``n_e``) when the entry has one; a non-tomographic covariance reads the
+    whole-sample ``cov_th.sigma_e`` and ``cov_th.n_e``. A tomographic covariance
+    of an entry that declares ``shear.tomo_bin_col`` refuses single
+    whole-sample values, which would stand in for every bin."""
+    entry = catalogue_entry(version)
+    cov_th = entry["cov_th"]
+    survey = cov_th.get("tomo", cov_th) if tomo_suffix else cov_th
+
+    def per_bin(value):
+        values = value if isinstance(value, (list, tuple)) else str(value).split(",")
+        return [repr(float(v)) for v in values]
+
     # Both cov_th.sigma_e and OneCovariance use per-component dispersion.
-    sigma_e = ", ".join(repr(float(s)) for s in str(cov_th["sigma_e"]).split(","))
-    return sigma_e, cov_th["n_e"], cov_th["A"]
+    sigma_e, n_e = per_bin(survey["sigma_e"]), per_bin(survey["n_e"])
+    if tomo_suffix and "tomo_bin_col" in entry["shear"] and len(n_e) == 1:
+        raise ValueError(
+            f"{version}: a tomographic covariance needs per-bin n_e and sigma_e "
+            "in cov_th.tomo"
+        )
+    return ", ".join(sigma_e), ", ".join(n_e), cov_th["A"]
+
+
+def onecov_nz_path(version, tomo_suffix=""):
+    """The n(z) file OneCovariance reads for one covariance.
+
+    The catalogue's own ``redshift_path`` for a tomographic covariance or a
+    catalogue without tomographic bins; for a non-tomographic covariance of a
+    catalogue that declares ``shear.tomo_bin_col``, the bin sum written by
+    ``nz_bin_sum`` (the whole-sample n(z), as
+    ``CosmologyValidation.get_redshift`` reads it)."""
+    path = redshift_path(version)
+    if tomo_suffix or "tomo_bin_col" not in catalogue_entry(version)["shear"]:
+        return path
+    return str(COSMO_VAL / "nz" / f"{version}_nz_bin_sum.txt")
+
+
+rule nz_bin_sum:
+    """Whole-sample n(z) of a multi-bin catalogue: z and the sum of its bins.
+
+    The bins' columns must carry their relative weights (integrals summing to
+    one, as the shear-weight fractions); a file whose every column integrates
+    to one would weight the bins equally, and is refused."""
+    input:
+        lambda w: redshift_path(w.version),
+    output:
+        str(COSMO_VAL / "nz" / "{version}_nz_bin_sum.txt"),
+    run:
+        import numpy as np
+
+        table = np.loadtxt(input[0])
+        trapezoid = getattr(np, "trapezoid", None) or np.trapz
+        integrals = trapezoid(table[:, 1:], table[:, 0], axis=0)
+        if np.allclose(integrals, 1.0, atol=0.02):
+            raise ValueError(
+                f"{input[0]}: every bin's n(z) integrates to 1, so their sum "
+                "would weight the bins equally; give each bin its weight fraction"
+            )
+        np.savetxt(
+            output[0],
+            np.column_stack([table[:, 0], table[:, 1:].sum(axis=1)]),
+            header=f"z n(z): sum of the {table.shape[1] - 1} bins of {input[0]}",
+        )
 
 
 def _onecov_args(w):
@@ -114,7 +173,7 @@ rule generate_glass_mock_rhotau_samples:
 
 rule covariance_ini:
     input:
-        nz_file=lambda w: redshift_path(w.version),
+        nz_file=lambda w: onecov_nz_path(w.version, w.tomo_suffix),
         mask=lambda w: [] if w.mask_suffix != "_masked" else [get_footprint_path(w.version)],
     output:
         cov_output(".ini"),
@@ -129,9 +188,9 @@ rule covariance_ini:
         h=PLANCK18["h"],
         omega_b=PLANCK18["Omega_b"],
         hmcode_logT_AGN=7.75,
-        sigma_e_param=lambda w: get_onecov_cat_params(w.version)[0],
-        n_e=lambda w: get_onecov_cat_params(w.version)[1],
-        area=lambda w: get_onecov_cat_params(w.version)[2],
+        sigma_e_param=lambda w: get_onecov_cat_params(w.version, w.tomo_suffix)[0],
+        n_e=lambda w: get_onecov_cat_params(w.version, w.tomo_suffix)[1],
+        area=lambda w: get_onecov_cat_params(w.version, w.tomo_suffix)[2],
         # OneCovariance takes directory and file separately.
         mask_dir=lambda w: (
             os.path.dirname(get_footprint_path(w.version))
@@ -143,8 +202,8 @@ rule covariance_ini:
             if w.mask_suffix == "_masked"
             else ""
         ),
-        nz_dir=lambda w: os.path.dirname(redshift_path(w.version)),
-        nz_file=lambda w: os.path.basename(redshift_path(w.version)),
+        nz_dir=lambda w: os.path.dirname(onecov_nz_path(w.version, w.tomo_suffix)),
+        nz_file=lambda w: os.path.basename(onecov_nz_path(w.version, w.tomo_suffix)),
         num_cores=ONECOV_THREADS,
     threads: 1
     shell:
@@ -335,5 +394,6 @@ ruleorder: covariance_ini > covariance_run > covariance
 
 localrules:
     cosmology_params,
+    nz_bin_sum,
     covariance_ini,
     generate_glass_mock_rhotau_samples,

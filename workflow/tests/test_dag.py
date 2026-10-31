@@ -52,6 +52,49 @@ def test_assemble_resolves(toy):
         }, job.input
 
 
+def test_tomographic_assembly_resolves(toy, grids):
+    version = VERSIONS[0]
+    target = toy.cosmo_val / f"{version}_tomo.sacc"
+    # The toy supplies precomputed OneCovariance inputs, as for the non-tomo DAG.
+    mask = "_masked" if toy.config["covariance"].get("default_masked") else ""
+    for gaussian, grid in (("ng", grids["reporting"]), ("g", grids["integration"])):
+        path = Path(
+            toy.common.covariance_path(
+                version,
+                gaussian,
+                grid["min_sep"],
+                grid["max_sep"],
+                grid["nbins"],
+                mask,
+                "_tomo",
+            )
+        )
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.touch()
+    result = toy.snakemake("-n", str(target))
+    assert result.returncode == 0, result.stdout
+    jobs = parse_jobs(result.stdout)
+    (assembly,) = [j for j in jobs if j.rule == "assemble_sacc"]
+    reporting = toy.common.grid_binning(grids["reporting"])
+    integration = toy.common.grid_binning(grids["integration"])
+    harmonic = toy.common.pseudo_cl_tag(toy.config)
+    names = {Path(f).name for f in assembly.input}
+    assert {
+        f"{version}_xi_{reporting}_tomo.sacc",
+        f"pseudo_cl_{version}_{harmonic}_tomo.sacc",
+        f"pseudo_cl_cov_{version}_{harmonic}_tomo.fits",
+        f"{version}_cosebis_tomo.sacc",
+        f"{version}_pure_eb_tomo.sacc",
+        f"rho_tau_{version}_tomo_bin_all_{reporting}_tomo.sacc",
+    } <= names
+    assert any(name.endswith("_tomo.dat") for name in names)
+    for rule in ("cv_cosebis", "cv_pure_eb"):
+        (job,) = [j for j in jobs if j.rule == rule]
+        inputs = {Path(f).name for f in job.input}
+        assert f"{version}_xi_{integration}_tomo.sacc" in inputs
+        assert any(name.endswith("_tomo.dat") for name in inputs)
+
+
 def test_xi_leaves_a_measurement_only_as_a_part(toy, forced, grids):
     """No job reads or writes a ξ± text dump; the ξ± figures draw the parts."""
     jobs = forced[1]
