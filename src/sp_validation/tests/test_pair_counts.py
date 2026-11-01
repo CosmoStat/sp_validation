@@ -97,11 +97,14 @@ def test_constant_weights_use_one_tree_traversal(tmp_path, monkeypatch, weight):
 
 
 @pytest.mark.parametrize("layout", ["single", "chunked", "joined"])
-def test_hdf5_never_materialises_shapes(tmp_path, monkeypatch, layout):
+@pytest.mark.parametrize("tomographic", [False, True])
+def test_hdf5_never_materialises_shapes(tmp_path, monkeypatch, layout, tomographic):
     cat = tmp_path / "catalogue.fits"  # Detection is by content, not extension.
-    data = np.zeros(4, dtype=[(n, "f8") for n in ("RA", "Dec", "w", "e1", "e2")])
+    data = np.zeros(4, dtype=[(n, "f8") for n in ("RA", "Dec", "w", "e1", "e2", "bin")])
     data["RA"] = [0.0, 0.01, 0.03, 0.07]
     data["w"] = [1.0, 2.0, 3.0, 4.0]
+    data["bin"] = [1, 1, 2, 2]
+    allowed = {"RA", "Dec", "w"} | ({"bin"} if tomographic else set())
     with h5py.File(cat, "w") as f:
         if layout == "single":
             f.create_dataset("data", data=data)
@@ -111,7 +114,7 @@ def test_hdf5_never_materialises_shapes(tmp_path, monkeypatch, layout):
             group.create_dataset("0002", data=data[2:])
             f.attrs["n_tiles"] = 2
         else:
-            f.create_dataset("data", data=data[["RA", "Dec", "e1", "e2"]])
+            f.create_dataset("data", data=data[["RA", "Dec", "e1", "e2", "bin"]])
             f.create_dataset("data_ext", data=data[["w"]])
     original = h5py.Dataset.__getitem__
     reads = []
@@ -123,20 +126,27 @@ def test_hdf5_never_materialises_shapes(tmp_path, monkeypatch, layout):
         # h5py field access recurses with a projected new_dtype and key ().
         projected = kwargs.get("new_dtype")
         if projected is not None:
-            assert set(projected.names) <= {"RA", "Dec", "w"}
+            assert set(projected.names) <= allowed
             return original(dataset, key, *args, **kwargs)
         # Unprojected whole-dataset or shape-field reads remain forbidden.
-        assert isinstance(key, str) and key in ("RA", "Dec", "w"), key
+        assert isinstance(key, str) and key in allowed, key
         reads.append(key)
         return original(dataset, key, *args, **kwargs)
 
     monkeypatch.setattr(h5py.Dataset, "__getitem__", only_pair_fields)
     out = tmp_path / "pairs.npz"
-    measure_pair_counts(cat, out, min_sep=0.1, max_sep=10.0, nbins=1)
-    assert set(reads) == {"RA", "Dec", "w"}
+    measure_pair_counts(
+        cat,
+        out,
+        min_sep=0.1,
+        max_sep=10.0,
+        nbins=1,
+        **({"tomo_bin_col": "bin", "bin_pair": (1, 2)} if tomographic else {}),
+    )
+    assert set(reads) == allowed
     with np.load(out) as z:
-        np.testing.assert_allclose(z["weight"], 35.0)
-        np.testing.assert_allclose(z["weight_squared"], 273.0)
+        np.testing.assert_allclose(z["weight"], 21.0 if tomographic else 35.0)
+        np.testing.assert_allclose(z["weight_squared"], 125.0 if tomographic else 273.0)
 
 
 @pytest.mark.parametrize(

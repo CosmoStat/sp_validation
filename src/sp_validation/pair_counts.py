@@ -74,7 +74,7 @@ def measure_pair_counts(
         selected_ids = ids[np.asarray(bin_pair) - 1]
         selections = [data[tomo_bin_col] == value for value in selected_ids]
     else:
-        selections = [np.ones(len(data), dtype=bool)] * 2
+        selections = [slice(None)] * 2
     auto = bin_pair is None or bin_pair[0] == bin_pair[1]
     weights = np.asarray(data[w_col], dtype=float)
     if (
