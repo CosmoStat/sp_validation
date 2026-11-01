@@ -139,6 +139,8 @@ wildcard_constraints:
 
 rule pseudo_cl:
     """Generate pseudo-Cl data vector (born as SACC) with configurable binning."""
+    input:
+        catalog=get_shear_catalog,
     output:
         pseudo_cl=str(COSMO_VAL / "pseudo_cl_{version}_{binning}_nbins={nbins}{tomo_suffix}.sacc"),
     params:
