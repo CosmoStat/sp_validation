@@ -19,7 +19,10 @@ DATA = Path('/project/6001537/cdaley/cosmo-val-v2-tomo')
 REPO = Path('/project/6001537/cdaley/sp/sp_validation-mockens')
 source = yaml.safe_load((DATA / 'cat_config.yaml').read_text())['SP_v2.0']
 config = yaml.safe_load((DATA / 'nibi_tomo.yaml').read_text())
-entries = {'SP_v2.0': source, 'paths': {'blinds': str(ROOT / 'blinds'), 'output': str(ROOT / 'cosmo_val')}}
+nz_path = Path(source['shear']['redshift_path'])
+entries = {'SP_v2.0': source,
+           'nz': {'subdir': str(nz_path.parent), 'dndz': {'path': str(nz_path)}},
+           'paths': {'blinds': str(ROOT / 'blinds'), 'output': str(ROOT / 'cosmo_val')}}
 versions = [f'MOCK_{s:05d}' for s in range(1, a.seeds + 1)]
 versions += ['MOCK_00001_clean']
 for version in versions:
