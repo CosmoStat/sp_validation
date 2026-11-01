@@ -102,20 +102,39 @@ def plot_objectwise_leakage(coefficients, styles, output):
     plt.close(fig)
 
 
+def leakage_contour_axes(nparam):
+    """getdist names, labels and reference markers of the leakage parameters.
+
+    Three parameters are (alpha, beta, eta); four, with the PSF-size slope,
+    (alpha, beta0, eta, beta1).
+    """
+    if nparam == 3:
+        labels = [r"\alpha", r"\beta", r"\eta"]
+    elif nparam == 4:
+        labels = [r"\alpha", r"\beta_0", r"\eta", r"\beta_1"]
+    else:
+        raise ValueError(f"expected 3 or 4 leakage parameters, got {nparam}")
+    names = [f"x{i}" for i in range(nparam)]
+    markers = dict(zip(names, (0, 1, 1, 0)))
+    return names, labels, markers
+
+
 def plot_rho_tau_fits(products, styles, contours, samples, summary):
     """Render posterior contours and propagated PSF errors from cached arrays."""
     from shear_psf_leakage import plots as psf_plots
 
     versions = list(products)
+    sample_list = [products[v]["flat_samples"] for v in versions]
+    names, labels, markers = leakage_contour_axes(sample_list[0].shape[1])
     psf_plots.plot_contours(
-        [products[v]["flat_samples"] for v in versions],
-        names=["x0", "x1", "x2"],
-        labels=[r"\alpha", r"\beta", r"\eta"],
+        sample_list,
+        names=names,
+        labels=labels,
         savefig=str(contours),
         legend_labels=versions,
         legend_loc="upper right",
         contour_colors=[styles[v]["colour"] for v in versions],
-        markers={"x0": 0, "x1": 1, "x2": 1},
+        markers=markers,
         show=False,
         close=True,
     )

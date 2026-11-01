@@ -549,6 +549,7 @@ def cv_cov_tau(version, fiducial=None):
 # src/sp_validation/tests/test_cv_init_params.py, so no default applies silently.
 CV_INIT_KEYS = (
     "rho_tau_method",
+    "psf_leakage",
     "cov_estimate_method",
     "compute_cov_rho",
     "n_cov",

@@ -11,8 +11,9 @@ Snakemake is in. The ``candide`` tests need candide itself; CI deselects them.
 
 The ``toy`` fixture is a disposable checkout: copies of ``workflow/`` and
 ``papers/cosmo_val/``, this checkout's ``src/`` symlinked in, a blinded and an
-undeclared catalogue, stand-ins for the OneCovariance covariances (their
-inputs live on candide), and both output roots in tmp. The host never opens a
+undeclared catalogue (each with a star catalogue), stand-ins for the
+OneCovariance covariances (their inputs live on candide), and both output
+roots in tmp. The host never opens a
 blind, so there is no blind record.
 """
 
@@ -140,6 +141,7 @@ def _cat_config(data):
     def entry(name, **declaration):
         catalogue = data / f"{name}.fits"
         catalogue.touch()
+        (data / f"{name}_star.fits").touch()
         return {
             "subdir": str(data),
             "pipeline": "SP",
@@ -155,6 +157,7 @@ def _cat_config(data):
                 "e1_col_corrected": "e1_leak_corrected",
                 "e2_col_corrected": "e2_leak_corrected",
             },
+            "psf": {"path": f"{name}_star.fits"},
             **declaration,
         }
 
