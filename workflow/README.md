@@ -223,9 +223,10 @@ shell covariance truncation as the generator, and the spherical spin-2 factor.
 Both the target and the padded lognormal solver's achieved ensemble spectra are
 saved, and every run audits them: the worst scale-relative residual
 max_ℓ |achieved − requested| / sqrt(C_ii C_jj) over the kept shell pairs must
-stay below 1e-4, and the ncorr-banded Gaussian correlation matrix must be
-positive definite at every ℓ (its minimum eigenvalue is 0.23 at dx=200 but
-negative at dx=100, which glass.generate cannot realise).
+stay below 1e-4, and the Gaussian spectra must pass the sampler glass.generate
+runs (cls2cov then iternorm), which needs every shell's conditional variance
+positive at every ℓ. The production shells (dx=200 Mpc) pass; at dx=100 the
+sampler itself refuses the solve.
 `maps.json` records the audit as `solver_audit`; a failing solve is refused.
 The solver runs independent shell pairs in spawned single-thread processes,
 bounded by the rule's threads or the CLI's `--workers` (default OMP_NUM_THREADS).

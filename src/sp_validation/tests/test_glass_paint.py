@@ -505,7 +505,7 @@ def test_solver_audit_passes_a_converged_solve_and_records_it():
     audit = audit_gaussian_solve(matter, achieved, gaussian, nside=16, lmax=31)
     assert audit["worst_residual"] < 1e-5
     assert len(audit["worst_pair"]) == 2
-    assert 0 < audit["min_eigenvalue"] < 1
+    assert 0 < audit["min_conditional_variance"] <= 1
 
 
 def test_solver_audit_refuses_a_missed_request_and_a_non_positive_solve():
@@ -519,5 +519,34 @@ def test_solver_audit_refuses_a_missed_request_and_a_non_positive_solve():
     # A cross larger than its autos allow cannot be realised by glass.generate.
     impossible = [cl.copy() for cl in gaussian]
     impossible[2] = 1.5 * np.sqrt(gaussian[0] * gaussian[1])
-    with pytest.raises(ValueError, match="positive definite"):
+    with pytest.raises(ValueError, match="cannot sample"):
         audit_gaussian_solve(matter, achieved, impossible, nside=16, lmax=31)
+
+
+def test_solver_audit_matches_the_glass_sampler_on_a_chain():
+    """The audit refuses exactly the nearest-neighbour chains glass.generate's sampler refuses."""
+    import glass
+    from glass.fields import cls2cov, iternorm
+
+    from sp_validation.glass_mock import audit_gaussian_solve
+
+    lmax = 31
+    auto = np.full(lmax + 1, 1e-4)
+    for n, rho in ((6, 0.55), (6, 0.6)):
+        gaussian = []
+        for i in range(n):
+            gaussian += [auto] + [rho * auto if k == 1 else 0 * auto for k in range(1, i + 1)]
+        try:
+            for _ in iternorm(cls2cov(gaussian, lmax + 1, n, 3)):
+                pass
+            samples = True
+        except ValueError:
+            samples = False
+        achieved = glass.discretized_cls(gaussian, nside=16, lmax=lmax, ncorr=3)
+        if samples:
+            audit = audit_gaussian_solve(gaussian, achieved, gaussian, nside=16, lmax=lmax)
+            assert 0 < audit["min_conditional_variance"] < 1
+        else:
+            with pytest.raises(ValueError, match="cannot sample"):
+                audit_gaussian_solve(gaussian, achieved, gaussian, nside=16, lmax=lmax)
+    assert not samples  # rho = 0.6 over six shells is refused by the sampler itself
