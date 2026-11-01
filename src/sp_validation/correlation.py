@@ -33,12 +33,14 @@ def _measurement_configs(config):
     return {"means": means, "patched": patched}
 
 
-def measurement_matches(path, config, selection=None):
+def measurement_matches(path, config, selection=None, definition=None):
     """Whether a cache records the current configurations and row selection."""
     metadata = Path(str(path) + ".json")
     if not Path(path).exists() or not metadata.exists():
         return False
     recorded = json.loads(metadata.read_text())
+    if recorded.get("definition") != definition:
+        return False
     recorded_configs = recorded.get("configs")
     if recorded.get("means") != "unpatched" or not isinstance(recorded_configs, dict):
         return False
@@ -54,9 +56,11 @@ def measurement_matches(path, config, selection=None):
     return recorded_configs == expected_configs
 
 
-def write_measurement_metadata(path, config, selection=None):
+def write_measurement_metadata(path, config, selection=None, definition=None):
     """Record both TreeCorr configurations and the row selection beside a product."""
     record = {"means": "unpatched", "configs": _measurement_configs(config)}
+    if definition is not None:
+        record["definition"] = definition
     if selection is not None:
         record["selection"] = selection
     Path(str(path) + ".json").write_text(json.dumps(record) + "\n")

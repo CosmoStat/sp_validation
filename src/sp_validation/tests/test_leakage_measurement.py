@@ -41,6 +41,8 @@ def _write_catalogues(tmp_path, n_star=4000, n_gal=6000):
         [
             fits.Column("RA", "D", array=rng.uniform(10, 12, n_gal)),
             fits.Column("Dec", "D", array=rng.uniform(0, 2, n_gal)),
+            fits.Column("e1_PSF", "D", array=rng.normal(0, 0.02, n_gal)),
+            fits.Column("e2_PSF", "D", array=rng.normal(0, 0.02, n_gal)),
             fits.Column("e1", "D", array=rng.normal(0, 0.3, n_gal)),
             fits.Column("e2", "D", array=rng.normal(0, 0.3, n_gal)),
             fits.Column("w_des", "D", array=rng.uniform(0.5, 2, n_gal)),
@@ -78,6 +80,8 @@ class _Validation(PSFSystematicsMixin):
                     "ra_col": "RA",
                     "dec_col": "Dec",
                     "w_col": "w_des",
+                    "e1_PSF_col": "e1_PSF",
+                    "e2_PSF_col": "e2_PSF",
                     "e1_col": "e1",
                     "e2_col": "e2",
                 },
@@ -286,3 +290,129 @@ def test_theory_covariance_follows_the_selection(tmp_path, monkeypatch):
     fewer[np.flatnonzero(fewer)[0]] = False
     assert covariance(mask_star, fewer) == 2
     assert len(built) == 2
+
+
+def test_field_and_alpha_definitions_invalidate_leakage_cache(tmp_path, monkeypatch):
+    """Old field definitions, responses and galaxy PSF mappings cannot reuse rows."""
+    val = _Validation(tmp_path)
+    products = val.leakage_jackknife(VERSION, measure=True)
+    assert products["alpha_vector"].shape == (9,)
+    assert products["alpha_rows_15"].shape == (15, 9)
+    path = val.leakage_jackknife_path(VERSION)
+    mask_star, mask_gal = _masks(val)
+    params = rho_tau.get_params_rho_tau(val.cc[VERSION])
+
+    def key():
+        return rho_tau.leakage_cache_key(
+            val.treecorr_config,
+            30,
+            [15, 20],
+            False,
+            mask_star,
+            mask_gal,
+            params=params,
+        )
+
+    assert rho_tau.read_leakage_jackknife(path, key()) is not None
+    for field, value in (("R11", 0.8), ("e1_gal_PSF_col", "other_psf")):
+        previous = params[field]
+        params[field] = value
+        assert rho_tau.read_leakage_jackknife(path, key()) is None
+        params[field] = previous
+    monkeypatch.setattr(rho_tau, "TAU_FIELD_DEFINITION", "different-centring")
+    assert rho_tau.read_leakage_jackknife(path, key()) is None
+    monkeypatch.setattr(rho_tau, "TAU_FIELD_DEFINITION", "selected-weighted-mean-v1")
+    monkeypatch.setattr(rho_tau, "ALPHA_TEMPLATE_DEFINITION", "different-alpha")
+    assert rho_tau.read_leakage_jackknife(path, key()) is None
+
+
+def test_ordinary_tau_rejects_old_field_definition(tmp_path, monkeypatch):
+    """An existing FITS and matching masks do not preserve obsolete tau centring."""
+    val = _Validation(tmp_path)
+    outdir = tmp_path / "rho_tau_stats"
+    mask_star, mask_gal = _masks(val)
+    args = (val.cc, VERSION, val.treecorr_config, str(outdir), "base", "base")
+    rho_tau.get_rho_tau(*args, mask_star=mask_star, mask_gal=mask_gal)
+    path = outdir / "tau_stats_base.fits.json"
+    record = json.loads(path.read_text())
+    assert record.pop("definition")["centring"] == rho_tau.TAU_FIELD_DEFINITION
+    path.write_text(json.dumps(record))
+    calls = []
+    compute = rho_tau._compute_stats_with_patches
+
+    def track(handler, kind, *args, **kwargs):
+        calls.append(kind)
+        return compute(handler, kind, *args, **kwargs)
+
+    monkeypatch.setattr(rho_tau, "_compute_stats_with_patches", track)
+    rho_tau.get_rho_tau(*args, mask_star=mask_star, mask_gal=mask_gal)
+    assert calls == ["tau"]
+    calls.clear()
+    rho_tau.get_rho_tau(*args, mask_star=mask_star, mask_gal=mask_gal)
+    assert calls == []
+
+
+def test_measured_alpha_closes_selected_response_calibrated_injection(tmp_path):
+    """The consumer measures the selected, response-calibrated injection derivative."""
+    val = _Validation(tmp_path)
+    val.cc[VERSION]["shear"].update(R11=0.7, R22=1.2)
+    path = val.cc[VERSION]["shear"]["path"]
+    data = fits.getdata(path)
+    mask = np.asarray(data["RA"] > 10.4)
+    val._get_galaxy_mask = lambda *args: mask
+    clean = val.leakage_jackknife(VERSION, measure=True)
+    data["e1"] += 0.1 * data["e1_PSF"]
+    data["e2"] += 0.1 * data["e2_PSF"]
+    fits.BinTableHDU(data).writeto(path, overwrite=True)
+    leaked_host = _fresh(val)
+    leaked_host.force_run = True
+    leaked = leaked_host.leakage_jackknife(VERSION, measure=True)
+    np.testing.assert_allclose(clean["centres"], leaked["centres"], rtol=0, atol=1e-14)
+    np.testing.assert_allclose(
+        clean["vector"][:18], leaked["vector"][:18], rtol=1e-12, atol=1e-18
+    )
+    np.testing.assert_allclose(
+        leaked["vector"][18:] - clean["vector"][18:],
+        0.1 * clean["alpha_vector"],
+        atol=2e-12,
+        rtol=1e-6,
+    )
+    # Use the upstream injection gate's tolerance for TreeCorr field arithmetic.
+    old_alpha = np.concatenate([clean["vector"][3 * i : 3 * i + 3] for i in (0, 2, 5)])
+    assert not np.allclose(
+        leaked["vector"][18:] - clean["vector"][18:],
+        0.1 * old_alpha,
+        atol=2e-12,
+        rtol=1e-6,
+    )
+    for n in (15, 20, 30):
+        np.testing.assert_allclose(
+            leaked[f"rows_{n}"][:, 18:] - clean[f"rows_{n}"][:, 18:],
+            0.1 * clean[f"alpha_rows_{n}"],
+            atol=2e-12,
+            rtol=1e-6,
+        )
+
+
+def test_tau_samples_follow_full_field_definition(tmp_path):
+    """Changing a response or a shear column invalidates samples after tau rebuilds."""
+    from types import SimpleNamespace
+
+    output = SimpleNamespace(_output=str(tmp_path))
+    fitter = SimpleNamespace(tau_stat_handler=SimpleNamespace(catalogs=output))
+    path = tmp_path / "tau_stats_base.fits.json"
+    definition = rho_tau.tau_field_definition({"e1_col": "e1", "R11": 0.8})
+
+    def name():
+        path.write_text(
+            json.dumps({"selection": "same-rows", "definition": definition})
+        )
+        return rho_tau._sample_cache_name(fitter, "base", "lsq", "th")
+
+    original = name()
+    for key, value in (("e1_col", "other_e1"), ("R11", 0.9)):
+        previous = definition[key]
+        definition[key] = value
+        assert name() != original
+        definition[key] = previous
+    assert name() == original

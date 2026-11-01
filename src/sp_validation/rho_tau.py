@@ -1,4 +1,5 @@
 import gc
+import hashlib
 import json
 import os
 import time
@@ -24,6 +25,36 @@ from sp_validation.correlation import (
 # `from sp_validation.rho_tau import SquareRootScale` keeps working.
 from sp_validation.plots import SquareRootScale  # noqa: F401
 from sp_validation.statistics import jackknife_patch_centers
+
+TAU_FIELD_DEFINITION = "selected-weighted-mean-v1"
+ALPHA_TEMPLATE_DEFINITION = "centred-galaxy-psf-v1"
+
+
+def tau_field_definition(params):
+    """Selected galaxy field, including column names and component responses."""
+    return {
+        "centring": TAU_FIELD_DEFINITION,
+        **{
+            key: params.get(key)
+            for key in (
+                "ra_col",
+                "dec_col",
+                "w_col",
+                "e1_col",
+                "e2_col",
+                "R11",
+                "R22",
+                "ra_PSF_col",
+                "dec_PSF_col",
+                "e1_PSF_col",
+                "e2_PSF_col",
+                "e1_star_col",
+                "e2_star_col",
+                "PSF_size",
+                "star_size",
+            )
+        },
+    }
 
 
 def _extract_xip(correlations):
@@ -80,7 +111,12 @@ def _compute_stats_with_patches(
     getattr(handler, f"save_{kind}_stats")(filename)
     getattr(handler, f"load_{kind}_stats")(filename)
     write_measurement_metadata(
-        Path(handler.catalogs._output) / filename, config, selection=selection
+        Path(handler.catalogs._output) / filename,
+        config,
+        selection=selection,
+        definition=tau_field_definition(handler.catalogs._params)
+        if kind == "tau"
+        else None,
     )
     return means
 
@@ -127,7 +163,15 @@ class _CatalogueLoader:
                 "star_flag",
             )
         elif block == "shear":
-            keys = ("ra_col", "dec_col", "w_col", "e1_col", "e2_col")
+            keys = (
+                "ra_col",
+                "dec_col",
+                "w_col",
+                "e1_col",
+                "e2_col",
+                "e1_gal_PSF_col",
+                "e2_gal_PSF_col",
+            )
         else:
             raise KeyError(f"unknown rho/tau catalogue block {block!r}")
 
@@ -207,6 +251,8 @@ def get_params_rho_tau(cat):
     params["w_col"] = cat["shear"]["w_col"]
     params["e1_col"] = cat["shear"]["e1_col"]
     params["e2_col"] = cat["shear"]["e2_col"]
+    params["e1_gal_PSF_col"] = cat["shear"].get("e1_PSF_col")
+    params["e2_gal_PSF_col"] = cat["shear"].get("e2_PSF_col")
     params["tomo_bin_col"] = cat["shear"].get("tomo_bin_col")
     params["R11"] = cat["shear"].get("R11")
     params["R22"] = cat["shear"].get("R22")
@@ -389,7 +435,12 @@ def get_rho_tau(
         )
 
         if (
-            measurement_matches(tau_path, treecorr_config, selection=tau_selection)
+            measurement_matches(
+                tau_path,
+                treecorr_config,
+                selection=tau_selection,
+                definition=tau_field_definition(params),
+            )
             and not force_run
         ):
             print(
@@ -450,6 +501,8 @@ def leakage_cache_key(
     beta_psf_size,
     mask_star=None,
     mask_gal=None,
+    *,
+    params,
 ):
     """The settings and row selections that identify a joint leakage measurement.
 
@@ -464,6 +517,12 @@ def leakage_cache_key(
         if key not in ("num_threads", "var_method", "cross_patch_weight")
     }
     return {
+        "field_definition": tau_field_definition(params),
+        "alpha_template": {
+            "mode": ALPHA_TEMPLATE_DEFINITION,
+            "e1": params.get("e1_gal_PSF_col"),
+            "e2": params.get("e2_gal_PSF_col"),
+        },
         "treecorr_config": config,
         "npatch_fine": int(npatch_fine),
         "patch_counts": sorted(int(n) for n in patch_counts),
@@ -503,8 +562,7 @@ def measure_leakage_jackknife(
     ``beta_psf_size``, and the selections of ``mask_star``/``mask_gal``.
     Stars and galaxies are built into TreeCorr catalogues exactly as
     `get_rho_tau` builds them (``shear_psf_leakage`` field definitions;
-    galaxy ellipticities are centred on the weighted mean of the full,
-    unmasked shear catalogue before ``mask_gal`` selects rows), sharing one
+    galaxy ellipticities are centred on the selected weighted mean), sharing one
     set of ``npatch_fine`` k-means patch centres found on the selected stars. One
     pass of GG correlations, with 'match' cross-patch weights, measures
     rho0..rho5 and tau0, tau2, tau5 and, with ``beta_psf_size``, the
@@ -513,8 +571,10 @@ def measure_leakage_jackknife(
     per-patch-pair results at ``npatch_fine`` and, for every count in
     ``patch_counts``, at Ward-linkage unions of the fine patches.
 
-    Writes ``path`` (``.npz``) and its ``.json`` metadata, and returns the
-    products as a dict: ``theta``, ``vector`` (rho0..rho5, tau0, tau2, tau5
+    Writes the NPZ products and JSON metadata.
+    Alpha point values and matched rows are saved separately as alpha_vector
+    and alpha_rows_<N>; they replace the alpha design column only.
+    Returns the products as a dict: ``theta``, ``vector`` (rho0..rho5, tau0, tau2, tau5
     xi+, flattened), ``rho_xim``, ``rows_<N>`` (one row per patch, the
     vector's order followed, with the slope, by the three u de templates),
     ``centres``, ``groups_<N>``, and with the slope ``template_vector``,
@@ -547,6 +607,9 @@ def measure_leakage_jackknife(
         )
         tau_handler.build_cat_to_compute_tau(
             load("shear"), cat_type="gal", catalog_id="leakage", mask=mask_gal
+        )
+        tau_handler.build_cat_to_compute_tau(
+            load("shear"), cat_type="gal_psf", catalog_id="leakage", mask=mask_gal
         )
         cats = {
             name.removesuffix("_leakage"): cat
@@ -622,6 +685,18 @@ def measure_leakage_jackknife(
         products["slope_xip"] = np.array(xip[n_joint:])
         products["slope_xim"] = np.array(xim[n_joint:])
 
+    # Release the shear tree before building the galaxy-PSF tree.
+    cats["gal"].clear_cache()
+    alpha_correlations = tau_handler.compute_alpha_template("leakage")
+    products["alpha_vector"] = np.concatenate([c.xip for c in alpha_correlations])
+    for n in counts:
+        alpha_rows, error = leakage_fit.treecorr_jackknife_rows(
+            alpha_correlations, groups=None if n == npatch_fine else groups[n]
+        )
+        products[f"alpha_rows_{n}"] = alpha_rows
+        max_check_error = max(max_check_error, error)
+    del alpha_correlations
+
     path.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(path, **products)
     metadata = {
@@ -656,7 +731,12 @@ def fit_leakage(products, npatch, beta_psf_size=False, cross_term=True):
             template_rows=rows[:, n_joint:],
         )
     return leakage_fit.fit_joint_eiv(
-        products["vector"], rows[:, :n_joint], cross_term=cross_term, **template
+        products["vector"],
+        rows[:, :n_joint],
+        alpha_vector=products["alpha_vector"],
+        alpha_rows=products[f"alpha_rows_{npatch}"],
+        cross_term=cross_term,
+        **template,
     )
 
 
@@ -821,7 +901,10 @@ def get_jackknife_cov(
             Path(outdir) / rho_filename, treecorr_config, selection=rho_selection
         )
         and measurement_matches(
-            Path(outdir) / tau_filename, treecorr_config, selection=tau_selection
+            Path(outdir) / tau_filename,
+            treecorr_config,
+            selection=tau_selection,
+            definition=tau_field_definition(get_params_rho_tau(config[version])),
         )
         and not force_run
     ):
@@ -999,7 +1082,12 @@ def _sample_cache_name(psf_fitter, base_tau, sampler, cov_type):
     )
     if not metadata.exists():
         return name
-    selection = json.loads(metadata.read_text()).get("selection")
+    record = json.loads(metadata.read_text())
+    selection = record.get("selection")
+    definition = hashlib.sha256(
+        json.dumps(record.get("definition"), sort_keys=True).encode()
+    ).hexdigest()[:12]
+    name = f"{name}_field={definition}"
     return name if selection is None else f"{name}_selection={selection[:12]}"
 
 

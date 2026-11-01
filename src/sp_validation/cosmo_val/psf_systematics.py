@@ -25,6 +25,7 @@ from .. import blinding, leakage_fit, sacc_io
 from ..io import open_entry
 from ..masks import catalogue_selection
 from ..rho_tau import (
+    get_params_rho_tau,
     get_rho_tau_w_cov,
     get_samples,
     get_samples_eiv,
@@ -444,6 +445,7 @@ class PSFSystematicsMixin:
                 settings["beta_psf_size"],
                 mask_star=mask_star,
                 mask_gal=mask_gal,
+                params=get_params_rho_tau(self.cc[ver]),
             )
             reuse = not (measure and self.force_run)
             products = read_leakage_jackknife(path, key) if reuse else None

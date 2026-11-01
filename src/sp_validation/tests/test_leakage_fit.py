@@ -322,7 +322,18 @@ def test_unconstrained_parameter_is_flagged_not_given_an_error():
     assert result["sigma"] == [None, None, None]
     assert result["parameter_covariance"] is None
     with pytest.raises(ValueError, match="not positive definite"):
-        get_samples_eiv({"vector": vector, "rows_200": rows}, [200], 200)
+        get_samples_eiv(
+            {
+                "vector": vector,
+                "rows_200": rows,
+                "alpha_vector": rho_tau_design(vector[:30].reshape(6, 5))[:, 0],
+                "alpha_rows_200": np.stack(
+                    [rho_tau_design(r[:30].reshape(6, 5))[:, 0] for r in rows]
+                ),
+            },
+            [200],
+            200,
+        )
 
 
 def _production_fitter(tmp_path, rho):
@@ -356,3 +367,50 @@ def test_design_and_xi_sys_match_shear_psf_leakage(tmp_path):
             fitter.compute_xi_psf_sys(a, b, p_or_m=part),
             rtol=1e-12,
         )
+
+
+@pytest.mark.parametrize("slope", [False, True])
+def test_alpha_replaces_only_its_column_and_matched_rows(monkeypatch, slope):
+    """The full joint rows reach the objective with alpha replaced, beta/eta intact."""
+    from sp_validation import leakage_fit
+
+    vector, rows, template, template_rows, _ = _synthetic_joint(14, slope=slope)
+    nbin = len(vector) // 9
+    n_rho = 6 * nbin
+    rng = np.random.default_rng(22)
+    alpha = rng.normal(size=3 * nbin)
+    alpha_rows = rng.normal(size=(len(rows), 3 * nbin))
+    original_vector, original_rows = vector.copy(), rows.copy()
+    expected_x = rho_tau_design(vector[:n_rho].reshape(6, nbin))
+    expected_rows = np.stack([rho_tau_design(r[:n_rho].reshape(6, nbin)) for r in rows])
+    expected_x[:, 0] = alpha
+    expected_rows[:, :, 0] = alpha_rows
+    if slope:
+        expected_x = np.column_stack((expected_x, template))
+        expected_rows = np.concatenate(
+            (expected_rows, template_rows[:, :, None]), axis=2
+        )
+
+    def inspect(x, y, xr, yr, scales, cross_term, start):
+        np.testing.assert_array_equal(x, expected_x)
+        np.testing.assert_array_equal(xr, expected_rows)
+        np.testing.assert_array_equal(y, vector[n_rho:])
+        np.testing.assert_array_equal(yr, rows[:, n_rho:])
+        assert x.shape[1] == (4 if slope else 3)
+        assert cross_term
+        return "inspected"
+
+    monkeypatch.setattr(leakage_fit, "_profile_fit", inspect)
+    assert (
+        fit_joint_eiv(
+            vector,
+            rows,
+            alpha_vector=alpha,
+            alpha_rows=alpha_rows,
+            template_vector=template,
+            template_rows=template_rows,
+        )
+        == "inspected"
+    )
+    np.testing.assert_array_equal(vector, original_vector)
+    np.testing.assert_array_equal(rows, original_rows)
