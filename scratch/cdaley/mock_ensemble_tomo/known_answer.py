@@ -15,6 +15,7 @@ from scipy.stats import chi2
 import yaml
 
 from sp_validation import sacc_io, blinding
+from sp_validation.b_modes import pure_eb_operator, cosebis_operator
 
 ROOT = Path('/project/6001537/cdaley/mock-ensemble-tomo')
 CV = ROOT / 'cosmo_val'
@@ -134,12 +135,47 @@ for k, (stat, stem) in enumerate([
     axes[k].set(title=stat, xlabel='Designed shift', ylabel='Blinded - clean')
 fig.savefig(FIG / 'seed1_blind_known_answer.png', dpi=160)
 plt.close(fig)
+# A pure-E shift is not annihilated exactly by finite-grid E/B quadrature.
+# Verify that the small derived-B response is precisely the estimator's
+# deterministic response to the designed shift, rather than demand zero
+# below its numerical integration accuracy.
+fine_blinded = load('{v}_xi_minsep=0.08_maxsep=300.0_nbins=1000_npatch=1_tomo.sacc', V)
+cut_file = next(CV.glob(f'{U}_cosebis*_tomo_data.npz'))
+cut = tuple(sacc_io.load_npz(cut_file, blind='none')['scale_cut'])
+expected_b = np.zeros(len(clean.mean))
+for pair in pairs:
+    tracers = tuple(sacc_io.source_name(i) for i in pair)
+    view = sacc_io.xi_correlation(fine, pair, grid='integration')
+    r = np.concatenate([fine.indices(t, tracers) for t in (sacc_io.XI_PLUS, sacc_io.XI_MINUS)])
+    delta = fine_blinded.mean[r] - fine.mean[r]
+    op, _, _ = pure_eb_operator(view.weight, int_edges, rep_edges)
+    transformed = op @ delta
+    for index, key in enumerate(('xip_E', 'xim_E', 'xip_B', 'xim_B', 'xip_amb', 'xim_amb')):
+        expected_b[clean.indices(sacc_io.PURE_TYPES[key], tracers)] = transformed[index * 20:(index + 1) * 20]
+    op = cosebis_operator(view.meanr, int_edges[:-1], int_edges[1:], cut, 20)
+    expected_b[clean.indices(sacc_io.COSEBI_BB, tracers)] = (op @ delta)[20:]
+fig, axes = plt.subplots(1, 3, figsize=(12, 3.5), constrained_layout=True)
 for dtype in (sacc_io.CL_BB, sacc_io.CL_EB, sacc_io.COSEBI_BB,
               sacc_io.PURE_TYPES['xip_B'], sacc_io.PURE_TYPES['xim_B']):
     idx = clean.indices(dtype)
-    error = float(np.max(np.abs(sealed.mean[idx] - clean.mean[idx])))
-    blind_metrics[dtype] = dict(max_abs_B_change=error)
-    assert error < 1e-15, (dtype, error)
+    observed = sealed.mean[idx] - clean.mean[idx]
+    sig = np.sqrt(np.diag(C)[idx])
+    error = float(np.max(np.abs(observed)))
+    normalized = float(np.max(np.abs(observed) / sig))
+    residual = float(np.max(np.abs(observed - expected_b[idx]) / sig))
+    blind_metrics[dtype] = dict(max_abs_B_change=error, max_B_change_sigma=normalized,
+                                max_operator_prediction_error_sigma=residual)
+    assert residual < 1e-8, (dtype, residual)
+    assert normalized < .01, (dtype, normalized)
+    types = [sacc_io.COSEBI_BB, sacc_io.PURE_TYPES['xip_B'], sacc_io.PURE_TYPES['xim_B']]
+    if dtype in types:
+        ax = axes[types.index(dtype)]
+        ax.plot(expected_b[idx] / sig, label='Finite-grid operator prediction', lw=1)
+        ax.plot(observed / sig, '.', ms=2, label='Blinded - clean')
+        ax.set(title=dtype.replace('galaxy_shear_', ''), xlabel='Pair/mode index', ylabel='B change / sigma')
+axes[0].legend(fontsize=7)
+fig.savefig(FIG / 'seed1_blind_b_response.png', dpi=160)
+plt.close(fig)
 
 joint = {key: test(np.array(all_residuals[key]), C[np.ix_(rows, rows)]) for key, rows in all_rows.items()}
 # A known realisation needn't have high null PTEs. Reject catastrophic E recovery,
@@ -165,8 +201,11 @@ lines += ['', f'Joint own-sky EE: {joint["cl"]}; joint own-sky xi±: {joint["xi"
           'The reporting-bin xi prediction averages the direct Bessel sum with the integration grid\'s measured pair weights.', '',
           '## Mock blind', '', 'The independently measured clean twin uses identical catalogue bytes.',
           'Blinded minus clean matches the blinding module\'s designed shift for both xi grids and EE.',
-          'BB, EB, COSEBIs B and pure-B are unchanged within the tolerances recorded in `seed1_known_answer.json`.', '',
-          '## Figures', '', '- `figures/seed1_ee_known_answer.png`', '- `figures/seed1_xi_known_answer.png`', '- `figures/seed1_blind_known_answer.png`', '',
+          'Harmonic BB and EB are unchanged to roundoff.',
+          'Finite-grid E/B quadrature gives a small, deterministic B response to the pure-E blind shift: at most 0.00282 sigma for COSEBIs and 0.000237 sigma for pure B.',
+          'The measured response matches the same linear operator applied to the designed xi shift; the gate requires this agreement to 1e-8 sigma and a response below 0.01 sigma.',
+          'These derived B vectors are unchanged at measurement precision, not bitwise unchanged.', '',
+          '## Figures', '', '- `figures/seed1_ee_known_answer.png`', '- `figures/seed1_xi_known_answer.png`', '- `figures/seed1_blind_known_answer.png`', '- `figures/seed1_blind_b_response.png`', '',
           '## Products', '', '`cosmo_val/MOCK_{seed:05d}*` holds the SACC parts, final tomographic SACC, per-pair NPZs and null summary.',
           '`seeds/seed_{seed:05d}/maps/` holds convergence alms and all auto/cross spectra.',
           'Painted catalogues are temporary Snakemake outputs and are deleted after their statistics and geometry audit complete.',

@@ -51,4 +51,8 @@ Pseudo-Cℓ uses the estimator's persisted bandpower windows.
 It uses neither FFTLog nor an extra pixel window.
 Footprint cosmic variance remains, so these comparisons are consistency checks under the data's covariance.
 The gate rejects catastrophic E-recovery PTEs below 1e-4, not low B-null PTEs: their frequency is the ensemble's scientific question.
-The independently measured clean twin must reproduce the mock blind's designed xi/EE shift and unchanged B to numerical precision.
+The independently measured clean twin must reproduce the mock blind's designed xi/EE shift.
+Harmonic B stays unchanged to roundoff.
+Finite-grid E/B quadrature has a small deterministic response to the pure-E shift; the gate verifies it against the same linear operator applied to the designed xi shift, to 1e-8 sigma, and requires it to stay below 0.01 sigma.
+Seed 1 gives at most 0.00282 sigma for COSEBIs B and 0.000237 sigma for pure B.
+The known-answer figure `seed1_blind_b_response.png` shows the prediction and observed response together.

@@ -10,4 +10,5 @@ HERE=/project/6001537/cdaley/sp/sp_validation-mockens/scratch/cdaley/mock_ensemb
 : "${START:?Supply START and END with sbatch --export=ALL,START=2,END=20}"
 : "${END:?Supply START and END}"
 export MEM_MB=680000
+/home/cdaley/sp/snakemake-env/bin/python -c "import json; assert json.load(open('/project/6001537/cdaley/mock-ensemble-tomo/seed1_known_answer.json'))['passed']"
 bash "$HERE/run.sh"
