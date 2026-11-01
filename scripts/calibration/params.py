@@ -178,7 +178,16 @@ add_cols_pre_cal_format["NGMIX_MCAL_FLAGS"] = "J"
 # Create key names for metacal information
 prefix = "NGMIX"
 suffixes = ["1M", "1P", "2M", "2P", "NOSHEAR"]
-centers = ["FLAGS", "G1", "G2", "FLUX", "FLUX_ERR", "T", "T_ERR", "T_PSF_RECONV"]
+centers = [
+    "FLAGS",
+    "G1",
+    "G2",
+    "FLUX",
+    "FLUX_ERR",
+    "T",
+    "T_ERR",
+    "T_PSF_RECONV",
+]
 for center in centers:
     for suffix in suffixes:
         add_cols_pre_cal.append(f"{prefix}_{center}_{suffix}")

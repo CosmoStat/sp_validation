@@ -365,12 +365,29 @@ def open_catalogue(path, hdu=None, column_map=None):
     return catalogue.table()
 
 
-def open_entry(entry):
-    """Return the catalogue a config block names (e.g. a cat_config ``shear``).
+def validate_calibrated_entry(entry):
+    """Validate response/weight identity, also for file-based reader adapters."""
+    if "w_col" in entry and not h5py.is_hdf5(entry["path"]):
+        with fits.open(entry["path"], memmap=True) as hdus:
+            header = hdus[0].header
+            if header.get("RAPPLIED", False):
+                from sp_validation.response import validate_weight_scheme
 
-    The block's ``path``, optional ``hdu`` and optional ``column_map`` go to
-    ``open_catalogue``.
-    """
+                validate_weight_scheme(header["WGHTSCH"], entry["w_col"])
+                if (
+                    entry.get("R", 1) != 1
+                    or entry.get("R11") is not None
+                    or entry.get("R22") is not None
+                ):
+                    raise ValueError(
+                        "Response already applied: cat_config R must be 1 "
+                        "with no per-object response columns"
+                    )
+
+
+def open_entry(entry):
+    """Read a config entry, checking calibrated-response/weight metadata."""
+    validate_calibrated_entry(entry)
     return open_catalogue(
         entry["path"], hdu=entry.get("hdu"), column_map=entry.get("column_map")
     )
