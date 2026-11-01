@@ -45,6 +45,15 @@ def plot_objectwise_leakage(coefficients, styles, output):
         "alpha_0": (r"$\alpha(0)$", ":", "left"),
     }
     handles = []
+    if not coefficients:
+        ax.text(
+            0.5,
+            0.5,
+            "No object-wise leakage coefficients available",
+            ha="center",
+            va="center",
+            transform=ax.transAxes,
+        )
     for ver, bins in coefficients.items():
         style = styles[ver]
         for coeff in bins.values():
