@@ -10,8 +10,11 @@ config can be characterized in isolation — see
 
 Catalogue-painted mocks use ``generate_lensing_maps`` followed by
 ``paint_catalogue`` (CLI: ``scripts/glass_mock/paint_catalogue.py``).
-The maps average the source-plane convergence over one n(z); all galaxies
+The sky averages the source-plane convergence over one n(z); all galaxies
 sample that projected field, not individual source redshifts.
+Its convergence alm is the product: painting evaluates convergence and shear
+exactly at each galaxy position, so the alm's realised spectra are the exact
+known answer for every catalogue statistic, with no pixel window.
 Map gamma2 follows HEALPix, while catalogue e2/g2 have the opposite sign
 so that cosmo_val's ``pol_factor=-1`` restores the HEALPix spin-2 field.
 The catalogue stage preserves row order, positions, weights, and auxiliary
@@ -24,8 +27,8 @@ This module also collects the reusable two-point and PSF-leakage helpers the
 mock post-processing runners in ``scripts/glass_mock/`` share (configuration-
 space ξ±, NaMaster pseudo-Cℓ, harmonic rho/tau, footprint masks).
 
-The ``glass`` dependency is imported lazily inside the map-generation functions
-so that this module — and therefore the import guard — resolves in any
+The ``glass`` and ``ducc0`` dependencies are imported lazily inside the
+functions that use them, so that this module — and therefore the import guard — resolves in any
 environment with CAMB, even one without GLASS installed.
 """
 
@@ -47,9 +50,13 @@ __all__ = [
     "projected_convergence_weights",
     "projected_theory",
     "prepare_lensing_spectra",
+    "shear_alm",
     "convergence_to_shear",
+    "read_sky",
+    "evaluate_alm",
     "generate_lensing_maps",
-    "draw_b_mode_maps",
+    "draw_b_mode_alm",
+    "b_mode_cl",
     "paint_shear",
     "paint_catalogue",
     "downgrade_mask",
@@ -528,26 +535,93 @@ def prepare_lensing_spectra(config, cache_dir, workers=1):
     return pars, shells, spectra, path
 
 
-def convergence_to_shear(kappa, lmax):
-    """GLASS spherical shear conversion without network pixel-weight downloads."""
+def shear_alm(kappa_alm, nside):
+    """Shear E-mode alm of a pixelised convergence alm.
+
+    ``kappa_alm`` is the harmonic transform of an ``nside`` convergence map,
+    which carries the spin-0 pixel window. The transfer applies the spherical
+    spin factor ``-sqrt((l+2)(l-1)/(l(l+1)))`` and swaps that window for the
+    spin-2 one (``pw2/pw0``), as GLASS's ``shear_from_convergence`` does. The
+    shear maps and the painted catalogue both derive from this function.
+    """
     import healpy as hp
 
-    nside = hp.get_nside(kappa)
-    alm = hp.map2alm(kappa, lmax=lmax, pol=False, iter=3)
+    lmax = hp.Alm.getlmax(len(kappa_alm))
     ell = np.arange(lmax + 1, dtype=float)
     factor = np.zeros_like(ell)
     factor[2:] = -np.sqrt((ell[2:] + 2) * (ell[2:] - 1) / (ell[2:] * (ell[2:] + 1)))
     pw0, pw2 = hp.pixwin(nside, pol=True, lmax=lmax)
-    hp.almxfl(alm, factor * pw2 / pw0, inplace=True)
-    return hp.alm2map_spin([alm, np.zeros_like(alm)], nside, 2, lmax)
+    return hp.almxfl(kappa_alm, factor * pw2 / pw0)
+
+
+def convergence_to_shear(kappa, lmax):
+    """HEALPix ``(gamma1, gamma2)`` maps of a convergence map, via ``shear_alm``."""
+    import healpy as hp
+
+    nside = hp.get_nside(kappa)
+    elm = shear_alm(hp.map2alm(kappa, lmax=lmax, pol=False, iter=3), nside)
+    return hp.alm2map_spin([elm, np.zeros_like(elm)], nside, 2, lmax)
+
+
+def read_sky(maps_dir):
+    """Return ``(kappa_alm, nside)`` from a ``generate_lensing_maps`` directory."""
+    from pathlib import Path
+
+    with np.load(Path(maps_dir) / "kappa_alm.npz") as saved:
+        return saved["alm"], int(saved["nside"])
+
+
+def evaluate_alm(alm, ra, dec, *, epsilon=1e-10, nthreads=1):
+    """Evaluate harmonic coefficients exactly at sky positions (degrees).
+
+    ``alm`` has shape ``(1, nalm)`` for a scalar field or ``(2, nalm)`` for the
+    ``(E, B)`` pair of a spin-2 field, in healpy ordering. Returns ``(1, N)``
+    or HEALPix-convention ``(Q, U)`` = ``(gamma1, gamma2)`` of shape ``(2, N)``.
+    This is ``ducc0.sht.experimental.synthesis_general``: a band-limited sum
+    with relative accuracy ``epsilon``, carrying no pixel window. Each call
+    has a fixed setup of about one full-sky synthesis (~4 s at lmax 8192 on 28
+    threads, ~75 s on one) and a negligible per-point cost (16M points in
+    under 5 s on 28 threads), so callers pass millions of positions at a time.
+    """
+    import ducc0
+    import healpy as hp
+
+    alm = np.atleast_2d(alm)
+    if alm.shape[0] not in (1, 2):
+        raise ValueError("alm needs one scalar or two (E, B) rows")
+    ra, dec = np.asarray(ra, dtype=float), np.asarray(dec, dtype=float)
+    if ra.shape != dec.shape or ra.ndim != 1:
+        raise ValueError("Positions must be matching 1D arrays")
+    if not (np.all(np.isfinite(ra)) and np.all(np.isfinite(dec))):
+        raise ValueError("Galaxy positions must be finite")
+    if np.any(np.abs(dec) > 90):
+        raise ValueError("Declination lies outside [-90, 90]")
+    loc = np.empty((len(ra), 2))
+    loc[:, 0] = np.radians(90 - dec)
+    loc[:, 1] = np.radians(np.mod(ra, 360))
+    return ducc0.sht.experimental.synthesis_general(
+        alm=np.ascontiguousarray(alm, dtype=complex),
+        spin=0 if alm.shape[0] == 1 else 2,
+        lmax=hp.Alm.getlmax(alm.shape[1]),
+        loc=loc,
+        epsilon=epsilon,
+        nthreads=nthreads,
+    )
 
 
 def generate_lensing_maps(config, output_dir, cache_dir, workers=1):
-    """Save projected kappa/gamma float32 maps and full-sky known-answer spectra.
+    """Save the projected convergence alm, its maps, and known-answer spectra.
 
     Matter shells are lognormal, with three neighbouring cross-correlations.
     Source-plane convergence is integrated before the linear shear transform,
     avoiding a spherical transform for every source shell.
+    ``kappa_alm.npz`` (complex128 healpy-ordered ``alm`` of the convergence
+    map up to ``lmax``, and ``nside``) is the sky that ``paint_catalogue``
+    evaluates. The float32 ``gamma1``/``gamma2`` maps are its shear E mode
+    synthesised on the grid; ``kappa`` is GLASS's pixel convergence, of which
+    the alm is the band-limited transform. The ``realization_*`` spectra are
+    the alm's own power (KK, EE, KE; the painted field has no B mode), so they
+    are the exact known answer for any statistic of a painted catalogue.
     """
     import json
     import time
@@ -580,17 +654,16 @@ def generate_lensing_maps(config, output_dir, cache_dir, workers=1):
         kappa += spectra["weights"][i] * convergence.kappa
         print(f"Matter shell {i + 1}/{len(shells)}", flush=True)
     generated = time.perf_counter()
-    gamma1, gamma2 = convergence_to_shear(kappa, config.lmax)
+    kappa_alm = hp.map2alm(kappa, lmax=config.lmax, pol=False, iter=3)
+    elm = shear_alm(kappa_alm, config.nside)
+    gamma1, gamma2 = hp.alm2map_spin(
+        [elm, np.zeros_like(elm)], config.nside, 2, config.lmax
+    )
     transformed = time.perf_counter()
+    np.savez(out / "kappa_alm.npz", alm=kappa_alm, nside=config.nside)
     for name, values in (("kappa", kappa), ("gamma1", gamma1), ("gamma2", gamma2)):
         np.save(out / f"{name}.npy", values.astype(np.float32))
-    # Measure the persisted precision, not just the float64 precursor.
     del kappa, gamma1, gamma2, matter, convergence, delta
-    maps = [
-        np.load(out / f"{name}.npy", mmap_mode="r")
-        for name in ("kappa", "gamma1", "gamma2")
-    ]
-    measured = hp.anafast(maps, lmax=config.lmax, pol=True, iter=3)
     theory = {
         key: spectra[key]
         for key in (
@@ -606,12 +679,9 @@ def generate_lensing_maps(config, output_dir, cache_dir, workers=1):
     np.savez(
         out / "spectra.npz",
         **theory,
-        realization_kk=measured[0],
-        realization_ee=measured[1],
-        realization_bb=measured[2],
-        realization_ke=measured[3],
-        realization_eb=measured[4],
-        realization_kb=measured[5],
+        realization_kk=hp.alm2cl(kappa_alm),
+        realization_ee=hp.alm2cl(elm),
+        realization_ke=hp.alm2cl(kappa_alm, elm),
     )
     metadata = dict(
         config=asdict(config),
@@ -619,6 +689,8 @@ def generate_lensing_maps(config, output_dir, cache_dir, workers=1):
         spectra_cache=str(cache),
         source_weights=spectra["weights"].tolist(),
         convention="RING HEALPix gamma; catalogue e2=-gamma2",
+        sky="kappa_alm.npz; gamma E alm = shear_alm(kappa_alm, nside)",
+        realization="alm2cl of the persisted alm: the painted field's spectra",
         reduced_shear="gamma/(1-kappa) of n(z)-projected fields",
         theory="GLASS shell ensemble, ncorr=3, spherical spin factor",
         unconverged_spectra=int(np.sum(spectra["solver_info"] == 0)),
@@ -635,10 +707,11 @@ def generate_lensing_maps(config, output_dir, cache_dir, workers=1):
     return metadata
 
 
-def draw_b_mode_maps(nside, cl_bb, seed):
-    """Seeded pure-B Gaussian spin-2 field in the HEALPix convention.
+def draw_b_mode_alm(cl_bb, seed):
+    """Seeded Gaussian B-mode alm with power spectrum ``cl_bb``.
 
-    ``cl_bb`` is the pixelized target (no additional pixel window is applied).
+    Painting evaluates the alm exactly at each galaxy, so ``cl_bb`` is the
+    target of every catalogue statistic, with no pixel window.
     This uses a local Generator, not healpy's process-global RNG.
     """
     import healpy as hp
@@ -647,77 +720,85 @@ def draw_b_mode_maps(nside, cl_bb, seed):
     if np.any(~np.isfinite(cl_bb)) or np.any(cl_bb < 0):
         raise ValueError("C_BB must be finite and non-negative")
     lmax = len(cl_bb) - 1
-    if lmax < 2 or lmax > 3 * nside - 1 or np.any(cl_bb[:2] != 0):
-        raise ValueError("Spin-2 C_BB needs ell 0,1 zero and lmax <= 3*nside-1")
+    if lmax < 2 or np.any(cl_bb[:2] != 0):
+        raise ValueError("Spin-2 C_BB needs ell 0,1 zero and lmax >= 2")
     rng = np.random.default_rng(seed)
     ell, emm = hp.Alm.getlm(lmax)
     alm = rng.normal(size=len(ell)) + 1j * rng.normal(size=len(ell))
     alm *= np.sqrt(cl_bb[ell] / 2)
     zero = emm == 0
     alm[zero] = alm[zero].real * np.sqrt(2)
-    return hp.alm2map_spin([np.zeros_like(alm), alm], nside, 2, lmax)
+    return alm
+
+
+def b_mode_cl(lmax, amplitude=0.0, path=None):
+    """Injected C_BB on ``ell = 0..lmax``, or ``None`` when nothing is injected.
+
+    ``amplitude`` gives ``A exp[-(ell/2000)^2]``; ``path`` names a two-column
+    ``ell C_BB`` text file, interpolated linearly and zero outside its range.
+    """
+    if not (amplitude or path):
+        return None
+    ell = np.arange(lmax + 1)
+    if path:
+        supplied = np.loadtxt(path)
+        cl = np.interp(ell, supplied[:, 0], supplied[:, 1], left=0, right=0)
+    else:
+        cl = amplitude * np.exp(-((ell / 2000) ** 2))
+    cl[:2] = 0
+    return cl
 
 
 def paint_shear(
-    ra,
-    dec,
     e1,
     e2,
-    maps,
+    signal,
     rng,
     *,
     psf=None,
     alpha=0.0,
     additive=(0.0, 0.0),
-    b_maps=None,
+    b_signal=None,
     shear="gamma",
 ):
-    """Paint one row chunk, with all returned components in catalogue convention.
+    """Paint one block of rows, with all returned components in catalogue convention.
 
-    ``maps=(kappa,gamma1,gamma2)`` and ``b_maps`` are RING HEALPix maps.
-    The calibrated input |e| is preserved by the uniform spin-2 rotation.
+    ``signal=(kappa, gamma1, gamma2)`` and ``b_signal=(b1, b2)`` are the
+    HEALPix-convention fields at the rows' positions (``evaluate_alm``).
+    The calibrated input |e| is preserved by the uniform spin-2 rotation, one
+    ``rng.uniform`` draw per row in row order.
     ``shear='gamma'`` applies gamma directly for pure-E unit-test skies;
     ``shear='reduced'`` applies gamma/(1-kappa). The selected signal is stored
     as ``g1_true/g2_true`` in either case.
     ``e_noise`` is the intrinsic rotated epsilon, not e_mock minus g, because
     ellipticity composition is nonlinear. ``e_injected`` is added afterwards.
     """
-    import healpy as hp
-
-    kappa, gamma1, gamma2 = maps
-    nside = hp.npix2nside(len(kappa))
-    if any(len(m) != len(kappa) for m in maps):
-        raise ValueError("Lensing map sizes differ")
-    values = [np.asarray(v) for v in (ra, dec, e1, e2)]
-    if any(v.shape != values[0].shape for v in values):
-        raise ValueError("Galaxy columns must have matching shapes")
-    if any(np.any(~np.isfinite(v)) for v in values):
-        raise ValueError("Galaxy positions and ellipticities must be finite")
-    if np.any(np.abs(values[1]) > 90):
-        raise ValueError("Declination lies outside [-90, 90]")
-    pix = hp.ang2pix(nside, np.mod(values[0], 360), values[1], lonlat=True)
-    kap = np.asarray(kappa[pix], dtype=float)
+    kap, gamma1, gamma2 = (np.asarray(v, dtype=float) for v in signal)
+    e1, e2 = np.asarray(e1), np.asarray(e2)
+    size = len(kap)
+    if any(np.shape(v) != (size,) for v in (gamma1, gamma2, e1, e2)):
+        raise ValueError("Signal and ellipticity columns must have matching shapes")
+    if not (np.all(np.isfinite(e1)) and np.all(np.isfinite(e2))):
+        raise ValueError("Galaxy ellipticities must be finite")
     if shear not in ("gamma", "reduced"):
         raise ValueError("shear must be 'gamma' or 'reduced'")
     if shear == "reduced" and np.any(np.abs(1 - kap) < 1e-8):
         raise ValueError("Reduced shear is singular at kappa=1")
     # Conjugating HEALPix gamma gives the catalogue's sky-coordinate convention.
-    g = np.asarray(gamma1[pix], dtype=float) - 1j * gamma2[pix]
+    g = gamma1 - 1j * gamma2
     if shear == "reduced":
         g /= 1 - kap
-    noise = np.hypot(values[2], values[3]) * np.exp(
-        2j * rng.uniform(0, np.pi, len(pix))
-    )
+    noise = np.hypot(e1, e2) * np.exp(2j * rng.uniform(0, np.pi, size))
     mock = (g + noise) / (1 + np.conj(g) * noise)
-    injection = np.full(len(pix), complex(*additive), dtype=complex)
+    injection = np.full(size, complex(*additive), dtype=complex)
     if alpha != 0:
         if psf is None:
             raise ValueError("PSF leakage needs two PSF ellipticity columns")
         injection += alpha * (np.asarray(psf[0]) + 1j * np.asarray(psf[1]))
-    if b_maps is not None:
-        if any(len(m) != len(kappa) for m in b_maps):
-            raise ValueError("B-mode and lensing map sizes differ")
-        injection += b_maps[0][pix] - 1j * b_maps[1][pix]
+    if b_signal is not None:
+        if any(np.shape(v) != (size,) for v in b_signal):
+            raise ValueError("B-mode signal and row counts differ")
+        injection += b_signal[0] - 1j * np.asarray(b_signal[1])
     mock += injection
     return dict(
         e1=mock.real,
@@ -739,6 +820,17 @@ ALIASES = ("e1_leak_corrected", "e2_leak_corrected")
 SHAPE_COLUMN = re.compile(
     r"(^|_)[eg][12](_|$)|(^|_)R_?g|^R_|ell|ngmix|uncal|leak_corrected|shear", re.I
 )
+# Rows evaluated per synthesis_general call: amortises its ~one-SHT setup.
+BLOCK_SIZE = 8_000_000
+
+
+def default_threads():
+    """``OMP_NUM_THREADS`` when set, else the CPUs this process may run on."""
+    import os
+
+    if os.environ.get("OMP_NUM_THREADS"):
+        return int(os.environ["OMP_NUM_THREADS"])
+    return len(os.sched_getaffinity(0))
 
 
 def paint_catalogue(
@@ -758,6 +850,9 @@ def paint_catalogue(
     b_cl=None,
     b_seed=None,
     chunk_size=250_000,
+    block_size=BLOCK_SIZE,
+    nthreads=None,
+    epsilon=1e-10,
     column_map=None,
     overwrite=False,
     shear="gamma",
@@ -767,6 +862,17 @@ def paint_catalogue(
 
     Uses the same lazy ``Catalogue`` reader as ``read_catalogue`` with bounded
     row slices, including single-dataset 138M-row HDF5 catalogues.
+    The sky is the convergence alm in ``maps_dir`` (``kappa_alm.npz``). Its
+    convergence, shear E mode (``shear_alm``) and any injected B mode are
+    evaluated exactly at each galaxy position (``evaluate_alm``), so the
+    sky's ``realization_*`` spectra and the B alm's power are the exact known
+    answers of the catalogue's two-point statistics, with no pixel window.
+    Rows are read in ``chunk_size`` slices of the needed columns and evaluated
+    in blocks of ``block_size`` rows on ``nthreads`` threads (default
+    ``default_threads()``): each evaluation pays a fixed setup of about one
+    full-sky synthesis (~4 s at lmax 8192 on 28 threads) and almost nothing
+    per row; memory grows by a few hundred bytes per block row on top of an
+    lmax-dependent constant (~7 GB at lmax 8192).
     The mock carries an allowlist of input columns, in the reader's canonical
     grammar: position, weight, PSF ellipticities and any ``keep`` names. Every
     other input column, including all galaxy shapes and responses, is dropped,
@@ -780,6 +886,7 @@ def paint_catalogue(
     from pathlib import Path
 
     import h5py
+    import healpy as hp
 
     from sp_validation.grammar import materialise
     from sp_validation.io import Catalogue
@@ -790,32 +897,27 @@ def paint_catalogue(
         raise FileExistsError(output)
     if Path(input_path).resolve() == output.resolve():
         raise ValueError("Cannot overwrite the input catalogue")
-    if chunk_size <= 0:
-        raise ValueError("chunk_size must be positive")
+    if chunk_size <= 0 or block_size <= 0:
+        raise ValueError("chunk_size and block_size must be positive")
+    nthreads = default_threads() if nthreads is None else int(nthreads)
     output.parent.mkdir(parents=True, exist_ok=True)
     root = Path(maps_dir)
-    maps = tuple(
-        np.load(root / f"{key}.npy", mmap_mode="r")
-        for key in ("kappa", "gamma1", "gamma2")
+    kappa_alm, nside = read_sky(root)
+    sky = dict(
+        kappa=kappa_alm[None],
+        gamma=np.stack([shear_alm(kappa_alm, nside), np.zeros_like(kappa_alm)]),
     )
-    b_maps = None
     if b_cl is not None:
         if b_seed is None:
             raise ValueError("B-mode injection requires an explicit b_seed")
-        import healpy as hp
-
-        b_maps = draw_b_mode_maps(hp.npix2nside(len(maps[0])), b_cl, b_seed)
-        measured_b = hp.anafast(
-            [np.zeros_like(b_maps[0]), *b_maps], lmax=len(b_cl) - 1, pol=True, iter=3
-        )
+        b_alm = draw_b_mode_alm(b_cl, b_seed)
+        sky["b"] = np.stack([np.zeros_like(b_alm), b_alm])
         b_spectra_path = output.with_suffix(output.suffix + ".bmode_spectra.npz")
         np.savez(
             b_spectra_path,
             ell=np.arange(len(b_cl)),
             target_bb=b_cl,
-            realization_ee=measured_b[1],
-            realization_bb=measured_b[2],
-            realization_eb=measured_b[4],
+            realization_bb=hp.alm2cl(b_alm),
             seed=b_seed,
         )
     rng = np.random.default_rng(seed)
@@ -832,6 +934,9 @@ def paint_catalogue(
     metadata = dict(
         input=str(input_path),
         maps=str(root),
+        painting=f"exact alm evaluation (ducc0 synthesis_general), epsilon={epsilon}",
+        block_size=block_size,
+        nthreads=nthreads,
         rotation_seed=seed,
         alpha=alpha,
         additive=list(additive),
@@ -868,6 +973,7 @@ def paint_catalogue(
             raise KeyError(f"Missing kept columns: {sorted(missing)}")
         if shaped := [name for name in keep if SHAPE_COLUMN.search(name)]:
             raise ValueError(f"Kept columns look like galaxy shapes: {shaped}")
+        needed = [name for name in dtype.names if name in {*kept, *required}]
         shapes = [e1_col, e2_col, *ALIASES]
         output_dtype = np.dtype(
             [(name, dtype[name]) for name in kept]
@@ -881,59 +987,78 @@ def paint_catalogue(
             chunks=(min(chunk_size, max(1, len(cat))),),
         )
         offset = 0
-        timings = dict(read=0.0, paint=0.0, assemble=0.0, write=0.0)
+        timings = dict(read=0.0, evaluate=0.0, paint=0.0, assemble=0.0, write=0.0)
         weight_sums = np.zeros(2)
         moments = {kind: np.zeros((2, 2, 2)) for kind in ("noise", "mock")}
+
+        def paint_block(rows):
+            nonlocal offset
+            tick = time.perf_counter()
+            fields = {
+                key: evaluate_alm(
+                    alm, rows[ra_col], rows[dec_col], epsilon=epsilon, nthreads=nthreads
+                )
+                for key, alm in sky.items()
+            }
+            timings["evaluate"] += time.perf_counter() - tick
+            tick = time.perf_counter()
+            painted = paint_shear(
+                rows[e1_col],
+                rows[e2_col],
+                (fields["kappa"][0], *fields["gamma"]),
+                rng,
+                psf=(rows[psf_cols[0]], rows[psf_cols[1]]) if alpha != 0 else None,
+                alpha=alpha,
+                additive=additive,
+                b_signal=fields.get("b"),
+                shear=shear,
+            )
+            del fields
+            timings["paint"] += time.perf_counter() - tick
+            tick = time.perf_counter()
+            mock = np.empty(len(rows), dtype=output_dtype)
+            for name in kept:
+                mock[name] = rows[name]
+            for name, component in zip(shapes, ("e1", "e2") * 2, strict=True):
+                mock[name] = painted[component]
+            for name in extra:
+                mock[name] = painted[name]
+            del painted
+            # One-point diagnostics use only rotated or mock shapes.
+            # No unrotated data component or rotation angle is retained.
+            weight = np.asarray(rows[w_col], dtype=float)
+            for index, power in enumerate((1, 2)):
+                wp = weight**power
+                weight_sums[index] += np.sum(wp)
+                for kind, pair in (
+                    ("noise", ("e1_noise", "e2_noise")),
+                    ("mock", (e1_col, e2_col)),
+                ):
+                    for component, name in enumerate(pair):
+                        value = np.asarray(mock[name], dtype=float)
+                        moments[kind][index, component] += [
+                            np.sum(wp * value),
+                            np.sum(wp * value**2),
+                        ]
+            timings["assemble"] += time.perf_counter() - tick
+            tick = time.perf_counter()
+            table[offset : offset + len(rows)] = mock
+            timings["write"] += time.perf_counter() - tick
+            offset += len(rows)
+            print(f"Painted {offset}/{len(cat)} rows", flush=True)
+
+        pending, size = [], 0
         for part in cat.chunks.values():
             for lo in range(0, len(part), chunk_size):
                 tick = time.perf_counter()
-                rows = materialise(part[lo : lo + chunk_size])
+                pending.append(materialise(part[lo : lo + chunk_size], needed))
+                size += len(pending[-1])
                 timings["read"] += time.perf_counter() - tick
-                tick = time.perf_counter()
-                painted = paint_shear(
-                    rows[ra_col],
-                    rows[dec_col],
-                    rows[e1_col],
-                    rows[e2_col],
-                    maps,
-                    rng,
-                    psf=(rows[psf_cols[0]], rows[psf_cols[1]]) if alpha != 0 else None,
-                    alpha=alpha,
-                    additive=additive,
-                    b_maps=b_maps,
-                    shear=shear,
-                )
-                timings["paint"] += time.perf_counter() - tick
-                tick = time.perf_counter()
-                mock = np.empty(len(rows), dtype=output_dtype)
-                for name in kept:
-                    mock[name] = rows[name]
-                for name, component in zip(shapes, ("e1", "e2") * 2, strict=True):
-                    mock[name] = painted[component]
-                for name in extra:
-                    mock[name] = painted[name]
-                # One-point diagnostics use only rotated or mock shapes.
-                # No unrotated data component or rotation angle is retained.
-                weight = np.asarray(rows[w_col], dtype=float)
-                for index, power in enumerate((1, 2)):
-                    wp = weight**power
-                    weight_sums[index] += np.sum(wp)
-                    for kind, pair in (
-                        ("noise", ("e1_noise", "e2_noise")),
-                        ("mock", (e1_col, e2_col)),
-                    ):
-                        for component, name in enumerate(pair):
-                            value = np.asarray(mock[name], dtype=float)
-                            moments[kind][index, component] += [
-                                np.sum(wp * value),
-                                np.sum(wp * value**2),
-                            ]
-                timings["assemble"] += time.perf_counter() - tick
-                tick = time.perf_counter()
-                table[offset : offset + len(rows)] = mock
-                timings["write"] += time.perf_counter() - tick
-                offset += len(rows)
-                print(f"Painted {offset}/{len(cat)} rows", flush=True)
+                if size >= block_size:
+                    paint_block(np.concatenate(pending))
+                    pending, size = [], 0
+        if size:
+            paint_block(np.concatenate(pending))
         diagnostics = {}
         for kind, accum in moments.items():
             diagnostics[kind] = {}

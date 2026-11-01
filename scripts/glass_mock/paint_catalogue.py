@@ -1,19 +1,21 @@
 """Generate projected GLASS maps, then paint calibrated catalogue shapes.
 
 Run ``python scripts/glass_mock/paint_catalogue.py {maps,paint} --help``.
-Maps use HEALPix components; catalogue e2 is conjugated for cosmo_val's
+The sky is a convergence alm, evaluated exactly at each galaxy;
+maps use HEALPix components; catalogue e2 is conjugated for cosmo_val's
 ``pol_factor=-1``. Only mock catalogues may be analysed without a blind.
 """
 
 import argparse
 import json
 
-import numpy as np
-
 from sp_validation.glass_mock import (
+    BLOCK_SIZE,
     GlassMockConfig,
+    b_mode_cl,
     generate_lensing_maps,
     paint_catalogue,
+    read_sky,
 )
 
 
@@ -66,11 +68,22 @@ def main():
         "--b-amplitude",
         type=float,
         default=0,
-        help="C_BB=A exp[-(ell/2000)^2], pixelized target",
+        help="C_BB=A exp[-(ell/2000)^2], up to the sky's lmax",
     )
     paint.add_argument("--b-cl", help="Two-column ell C_BB text file")
     paint.add_argument("--b-seed", type=int)
-    paint.add_argument("--chunk-size", type=int, default=250_000)
+    paint.add_argument(
+        "--chunk-size", type=int, default=250_000, help="Rows per read and HDF5 chunk"
+    )
+    paint.add_argument(
+        "--block-size",
+        type=int,
+        default=BLOCK_SIZE,
+        help="Rows per exact-evaluation call; each call costs about one SHT",
+    )
+    paint.add_argument(
+        "--threads", type=int, help="Evaluation threads; default OMP_NUM_THREADS"
+    )
     paint.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()
     if args.command == "maps":
@@ -102,22 +115,11 @@ def main():
         workers = args.workers or int(os.environ.get("OMP_NUM_THREADS", "1"))
         result = generate_lensing_maps(config, args.output, args.cache, workers=workers)
     else:
-        b_cl = None
-        if args.b_amplitude or args.b_cl:
-            from pathlib import Path
+        import healpy as hp
 
-            import healpy as hp
-
-            nside = hp.npix2nside(
-                len(np.load(Path(args.maps) / "kappa.npy", mmap_mode="r"))
-            )
-            ell = np.arange(2 * nside + 1)
-            if args.b_cl:
-                supplied = np.loadtxt(args.b_cl)
-                b_cl = np.interp(ell, supplied[:, 0], supplied[:, 1], left=0, right=0)
-            else:
-                b_cl = args.b_amplitude * np.exp(-((ell / 2000) ** 2))
-            b_cl[:2] = 0
+        kappa_alm, _ = read_sky(args.maps)
+        b_cl = b_mode_cl(hp.Alm.getlmax(len(kappa_alm)), args.b_amplitude, args.b_cl)
+        del kappa_alm
         result = paint_catalogue(
             args.input,
             args.output,
@@ -134,6 +136,8 @@ def main():
             b_cl=b_cl,
             b_seed=args.b_seed,
             chunk_size=args.chunk_size,
+            block_size=args.block_size,
+            nthreads=args.threads,
             overwrite=args.overwrite,
             shear=args.shear,
         )
