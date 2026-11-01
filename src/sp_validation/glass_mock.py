@@ -10,8 +10,8 @@ config can be characterized in isolation — see
 
 Catalogue-painted mocks use ``generate_lensing_maps`` followed by
 ``paint_catalogue`` (CLI: ``scripts/glass_mock/paint_catalogue.py``).
-The sky averages the source-plane convergence over one n(z); all galaxies
-sample that projected field, not individual source redshifts.
+The sky averages source-plane convergence over each n(z) column, using the
+same matter shells for every source bin; galaxies sample their own bin's field.
 Its convergence alm is the product: painting evaluates convergence and shear
 exactly at each galaxy position, so the alm's realised spectra are the exact
 known answer for every catalogue statistic, with no pixel window.
@@ -344,7 +344,7 @@ def projected_convergence_weights(pars, shells, weights):
     return transfer
 
 
-def projected_theory(cls, transfer, nside, lmax, ncorr=3):
+def projected_theory(cls, transfer, nside, lmax, ncorr=3, second_transfer=None):
     """Exact shell-ensemble spectra, before and after HEALPix pixel windows.
 
     The source partition and the finite ``ncorr`` covariance are identical to
@@ -354,13 +354,14 @@ def projected_theory(cls, transfer, nside, lmax, ncorr=3):
     import glass
     import healpy as hp
 
+    other = transfer if second_transfer is None else second_transfer
     kk = np.zeros(lmax + 1)
     for i, ti in enumerate(transfer):
         for j in range(max(0, i - ncorr), i + 1):
             kk += (
-                (1 if i == j else 2)
-                * ti
-                * transfer[j]
+                ((1 if i == j else 2) * ti * transfer[j]
+                 if second_transfer is None else
+                 (ti * other[j] if i == j else ti * other[j] + transfer[j] * other[i]))
                 * glass.getcl(cls, i, j, lmax=lmax)
             )
     ell = np.arange(lmax + 1, dtype=float)
@@ -374,6 +375,20 @@ def projected_theory(cls, transfer, nside, lmax, ncorr=3):
         cl_kk_pixel=kk * pw0**2,
         cl_ee_pixel=kk * factor * pw2**2,
     )
+
+
+def projected_tomographic_theory(cls, transfer, nside, lmax):
+    """All auto/cross spectra, indexed [source bin, source bin, ell].
+
+    A single source keeps the historical one-dimensional product layout.
+    """
+    if np.ndim(transfer) == 1:
+        return projected_theory(cls, transfer, nside, lmax)
+    pairs = [[projected_theory(cls, a, nside, lmax, second_transfer=b)
+              for b in transfer] for a in transfer]
+    return {key: pairs[0][0][key] if key == "ell" else
+            np.array([[pair[key] for pair in row] for row in pairs])
+            for key in pairs[0][0]}
 
 
 def _solve_shell_spectrum(task):
@@ -546,7 +561,7 @@ def prepare_lensing_spectra(config, cache_dir, workers=1):
             "limber",
         )
     }
-    physics.update(lmax=config.lmax, ncorr=3, glass=glass.__version__, schema=2)
+    physics.update(lmax=config.lmax, ncorr=3, glass=glass.__version__, schema=3)
     digest = hashlib.sha256(
         json.dumps(physics, sort_keys=True).encode() + nz_path.read_bytes()
     ).hexdigest()[:20]
@@ -570,13 +585,17 @@ def prepare_lensing_spectra(config, cache_dir, workers=1):
                 np.savez(matter_tmp, **{f"cl_{i}": c for i, c in enumerate(cls)})
                 matter_tmp.replace(matter_path)
             nz = np.loadtxt(nz_path)
-            if nz.ndim != 2 or nz.shape[1] != 2:
-                raise ValueError("Projected non-tomographic maps need two-column n(z)")
-            if nz[-1, 0] > config.zmax and np.any(nz[nz[:, 0] > config.zmax, 1] > 0):
+            if nz.ndim != 2 or nz.shape[1] < 2:
+                raise ValueError("Projected skies need z and at least one n(z) column")
+            if np.any(nz[nz[:, 0] > config.zmax, 1:] > 0):
                 raise ValueError("zmax truncates nonzero source n(z)")
-            weights = source_shell_weights(nz[:, 0], nz[:, 1], shells)
-            transfer = projected_convergence_weights(pars, shells, weights)
-            theory = projected_theory(cls, transfer, config.nside, config.lmax)
+            weights = np.array([source_shell_weights(nz[:, 0], column, shells)
+                                for column in nz[:, 1:].T])
+            transfer = np.array([projected_convergence_weights(pars, shells, w)
+                                 for w in weights])
+            if len(weights) == 1:
+                weights, transfer = weights[0], transfer[0]
+            theory = projected_tomographic_theory(cls, transfer, config.nside, config.lmax)
             discrete = glass.discretized_cls(
                 cls, nside=config.nside, lmax=config.lmax, ncorr=3
             )
@@ -584,7 +603,7 @@ def prepare_lensing_spectra(config, cache_dir, workers=1):
                 glass.lognormal_fields(shells), discrete, workers=workers
             )
             # Solver residuals are recorded and audited below.
-            achieved_theory = projected_theory(
+            achieved_theory = projected_tomographic_theory(
                 achieved, transfer, config.nside, config.lmax
             )
             theory["cl_kk_achieved_pixel"] = achieved_theory["cl_kk"]
@@ -690,7 +709,7 @@ def evaluate_alm(alm, ra, dec, *, epsilon=1e-10, nthreads=1):
     )
 
 
-def generate_lensing_maps(config, output_dir, cache_dir, workers=1):
+def generate_lensing_maps(config, output_dir, cache_dir, workers=1, write_maps=None):
     """Save the projected convergence alm, its maps, and known-answer spectra.
 
     Matter shells are lognormal, with three neighbouring cross-correlations.
@@ -698,9 +717,14 @@ def generate_lensing_maps(config, output_dir, cache_dir, workers=1):
     avoiding a spherical transform for every source shell.
     ``kappa_alm.npz`` (complex128 healpy-ordered ``alm`` of the convergence
     map up to ``lmax``, and ``nside``) is the sky that ``paint_catalogue``
-    evaluates. The float32 ``gamma1``/``gamma2`` maps are its shear E mode
+    evaluates. With K source columns, ``alm`` has shape (K, nalm) and every
+    spectrum has shape (K, K, lmax+1), including cross-bin spectra.
+    K=1 retains the historical one-dimensional arrays.
+    Optional float32 ``gamma1``/``gamma2`` maps are its shear E mode
     synthesised on the grid; ``kappa`` is GLASS's pixel convergence, of which
-    the alm is the band-limited transform. The ``realization_*`` spectra are
+    the alm is the band-limited transform.
+    Maps default off for tomography and on for the legacy single source.
+    The ``realization_*`` spectra are
     the alm's own power (KK, EE, KE; gamma has no B mode), so they are the
     exact known answer for any two-point statistic of a catalogue painted with
     ``shear='gamma'``. Reduced shear adds its own EE and BB terms on top.
@@ -730,22 +754,39 @@ def generate_lensing_maps(config, output_dir, cache_dir, workers=1):
         rng=np.random.default_rng(config.seed),
     )
     convergence = glass.MultiPlaneConvergence(Cosmology_from_camb(pars))
-    kappa = np.zeros(hp.nside2npix(config.nside))
+    weights = np.atleast_2d(spectra["weights"])
+    nbins = len(weights)
+    if write_maps is None:
+        write_maps = nbins == 1  # preserve legacy single-source visual products
+    kappa = np.zeros((nbins, hp.nside2npix(config.nside)))
     for i, delta in enumerate(matter):
         convergence.add_window(delta, shells[i])
-        kappa += spectra["weights"][i] * convergence.kappa
+        for b in range(nbins):
+            kappa[b] += weights[b, i] * convergence.kappa
         print(f"Matter shell {i + 1}/{len(shells)}", flush=True)
     generated = time.perf_counter()
-    kappa_alm = hp.map2alm(kappa, lmax=config.lmax, pol=False, iter=3)
-    elm = shear_alm(kappa_alm, config.nside)
-    gamma1, gamma2 = hp.alm2map_spin(
-        [elm, np.zeros_like(elm)], config.nside, 2, config.lmax
-    )
+    alms, elms = [], []
+    for b in range(nbins):
+        alm = hp.map2alm(kappa[b], lmax=config.lmax, pol=False, iter=3)
+        elm = shear_alm(alm, config.nside)
+        alms.append(alm)
+        elms.append(elm)
+        if write_maps:
+            gamma1, gamma2 = hp.alm2map_spin(
+                [elm, np.zeros_like(elm)], config.nside, 2, config.lmax
+            )
+            suffix = "" if nbins == 1 else f"_bin{b + 1}"
+            for name, values in (("kappa", kappa[b]), ("gamma1", gamma1), ("gamma2", gamma2)):
+                np.save(out / f"{name}{suffix}.npy", values.astype(np.float32))
+            del gamma1, gamma2
     transformed = time.perf_counter()
-    np.savez(out / "kappa_alm.npz", alm=kappa_alm, nside=config.nside)
-    for name, values in (("kappa", kappa), ("gamma1", gamma1), ("gamma2", gamma2)):
-        np.save(out / f"{name}.npy", values.astype(np.float32))
-    del kappa, gamma1, gamma2, matter, convergence, delta
+    np.savez(out / "kappa_alm.npz", alm=alms[0] if nbins == 1 else np.array(alms),
+             nside=config.nside, bin_ids=np.arange(1, nbins + 1))
+    del kappa, matter, convergence, delta
+
+    def cross_spectra(first, second):
+        values = np.array([[hp.alm2cl(a, b) for b in second] for a in first])
+        return values[0, 0] if nbins == 1 else values
     theory = {
         key: spectra[key]
         for key in (
@@ -761,15 +802,18 @@ def generate_lensing_maps(config, output_dir, cache_dir, workers=1):
     np.savez(
         out / "spectra.npz",
         **theory,
-        realization_kk=hp.alm2cl(kappa_alm),
-        realization_ee=hp.alm2cl(elm),
-        realization_ke=hp.alm2cl(kappa_alm, elm),
+        realization_kk=cross_spectra(alms, alms),
+        realization_ee=cross_spectra(elms, elms),
+        realization_ke=cross_spectra(alms, elms),
+        bin_ids=np.arange(1, nbins + 1),
     )
     metadata = dict(
         config=asdict(config),
         lmax=config.lmax,
         spectra_cache=str(cache),
         source_weights=spectra["weights"].tolist(),
+        nbins=nbins,
+        write_maps=write_maps,
         convention="RING HEALPix gamma; catalogue e2=-gamma2",
         sky="kappa_alm.npz; gamma E alm = shear_alm(kappa_alm, nside)",
         realization="alm2cl of the persisted alm: the painted field's spectra",
@@ -939,6 +983,7 @@ def paint_catalogue(
     overwrite=False,
     shear="gamma",
     keep=(),
+    tomo_bin_col=None,
 ):
     """Stream a FITS/HDF5 catalogue into an HDF5 mock (root ``data`` table).
 
@@ -961,6 +1006,9 @@ def paint_catalogue(
     so a mock painted from a blinded catalogue carries no measured shape.
     ``e1_col/e2_col`` and ``e*_leak_corrected`` hold the mock shapes, so the
     corrected-column cosmo_val path stays mock-only.
+    ``tomo_bin_col`` selects rows with IDs 1..K, evaluates each row's own
+    source field, and automatically includes that column in ``keep``.
+    Rotations follow retained input-row order, independently of chunk size.
     Output is atomic; a JSON sidecar and HDF5 attributes record the injection.
     """
     import json
@@ -985,15 +1033,21 @@ def paint_catalogue(
     output.parent.mkdir(parents=True, exist_ok=True)
     root = Path(maps_dir)
     kappa_alm, nside = read_sky(root)
-    sky = dict(
-        kappa=kappa_alm[None],
-        gamma=np.stack([shear_alm(kappa_alm, nside), np.zeros_like(kappa_alm)]),
-    )
+    kappa_alms = np.atleast_2d(kappa_alm)
+    nbins = len(kappa_alms)
+    if nbins > 1 and tomo_bin_col is None:
+        raise ValueError("Tomographic painting requires tomo_bin_col")
+    skies = [dict(kappa=alm[None],
+                  gamma=np.stack([shear_alm(alm, nside), np.zeros_like(alm)]))
+             for alm in kappa_alms]
+    if tomo_bin_col:
+        keep = tuple(dict.fromkeys((*keep, tomo_bin_col)))
     if b_cl is not None:
         if b_seed is None:
             raise ValueError("B-mode injection requires an explicit b_seed")
         b_alm = draw_b_mode_alm(b_cl, b_seed)
-        sky["b"] = np.stack([np.zeros_like(b_alm), b_alm])
+        for sky in skies:
+            sky["b"] = np.stack([np.zeros_like(b_alm), b_alm])
         b_spectra_path = output.with_suffix(output.suffix + ".bmode_spectra.npz")
         np.savez(
             b_spectra_path,
@@ -1029,6 +1083,8 @@ def paint_catalogue(
             ra=ra_col, dec=dec_col, e1=e1_col, e2=e2_col, w=w_col, psf=list(psf_cols)
         ),
         kept=list(keep),
+        tomo_bin_col=tomo_bin_col,
+        nbins=nbins,
         convention="catalogue e2=-HEALPix gamma2; pol_factor=-1",
         shear=shear,
         applied_signal="gamma" if shear == "gamma" else "gamma/(1-kappa)",
@@ -1065,6 +1121,7 @@ def paint_catalogue(
         table = dst.create_dataset(
             "data",
             shape=(len(cat),),
+            maxshape=(None,),
             dtype=output_dtype,
             chunks=(min(chunk_size, max(1, len(cat))),),
         )
@@ -1076,12 +1133,21 @@ def paint_catalogue(
         def paint_block(rows):
             nonlocal offset
             tick = time.perf_counter()
-            fields = {
-                key: evaluate_alm(
-                    alm, rows[ra_col], rows[dec_col], epsilon=epsilon, nthreads=nthreads
-                )
-                for key, alm in sky.items()
-            }
+            if tomo_bin_col:
+                rows = rows[np.isin(rows[tomo_bin_col], np.arange(1, nbins + 1))]
+            if not len(rows):
+                return
+            fields = {key: np.empty((alm.shape[0], len(rows)))
+                      for key, alm in skies[0].items()}
+            for b, sky in enumerate(skies, 1):
+                selected = rows[tomo_bin_col] == b if tomo_bin_col else np.ones(len(rows), dtype=bool)
+                if not np.any(selected):
+                    continue
+                for key, alm in sky.items():
+                    fields[key][:, selected] = evaluate_alm(
+                        alm, rows[ra_col][selected], rows[dec_col][selected],
+                        epsilon=epsilon, nthreads=nthreads
+                    )
             timings["evaluate"] += time.perf_counter() - tick
             tick = time.perf_counter()
             painted = paint_shear(
@@ -1141,6 +1207,7 @@ def paint_catalogue(
                     pending, size = [], 0
         if size:
             paint_block(np.concatenate(pending))
+        table.resize((offset,))
         diagnostics = {}
         for kind, accum in moments.items():
             diagnostics[kind] = {}

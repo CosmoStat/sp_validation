@@ -24,6 +24,7 @@ def main():
     commands = parser.add_subparsers(dest="command", required=True)
     maps = commands.add_parser("maps", help="Generate n(z)-averaged full-sky maps")
     maps.add_argument("--nz", required=True)
+    maps.add_argument("--no-maps", action="store_true", help="Persist only alms and spectra")
     maps.add_argument("--output", required=True)
     maps.add_argument("--cache", required=True)
     maps.add_argument("--seed", type=int, required=True)
@@ -85,6 +86,8 @@ def main():
         "--threads", type=int, help="Evaluation threads; default OMP_NUM_THREADS"
     )
     paint.add_argument("--overwrite", action="store_true")
+    paint.add_argument("--tomo-bin-col", help="1-based source-bin column; discard other rows")
+    paint.add_argument("--keep", nargs="*", default=[], help="Additional safe columns to retain")
     args = parser.parse_args()
     if args.command == "maps":
         from dataclasses import asdict
@@ -113,12 +116,13 @@ def main():
         import os
 
         workers = args.workers or int(os.environ.get("OMP_NUM_THREADS", "1"))
-        result = generate_lensing_maps(config, args.output, args.cache, workers=workers)
+        result = generate_lensing_maps(config, args.output, args.cache, workers=workers,
+                                       write_maps=False if args.no_maps else None)
     else:
         import healpy as hp
 
         kappa_alm, _ = read_sky(args.maps)
-        b_cl = b_mode_cl(hp.Alm.getlmax(len(kappa_alm)), args.b_amplitude, args.b_cl)
+        b_cl = b_mode_cl(hp.Alm.getlmax(kappa_alm.shape[-1]), args.b_amplitude, args.b_cl)
         del kappa_alm
         result = paint_catalogue(
             args.input,
@@ -140,6 +144,8 @@ def main():
             nthreads=args.threads,
             overwrite=args.overwrite,
             shear=args.shear,
+            tomo_bin_col=args.tomo_bin_col,
+            keep=args.keep,
         )
     print(json.dumps(result, indent=2))
 
