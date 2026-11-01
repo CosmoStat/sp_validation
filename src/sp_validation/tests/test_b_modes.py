@@ -715,7 +715,11 @@ def test_pure_eb_npz_carries_what_the_summary_reads(tmp_path):
     results = b_modes.calculate_eb_statistics(results)
 
     out = tmp_path / "pure_eb_data.npz"
-    b_modes.save_pure_eb_results(results, str(out))
+    from types import SimpleNamespace
+
+    b_modes.save_pure_eb_results(
+        results, str(out), derived_from=[SimpleNamespace(metadata={"blind": "none"})]
+    )
     saved = np.load(out)
 
     for stat in ("xip_B", "xim_B", "combined"):

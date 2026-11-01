@@ -7,12 +7,19 @@ correlation/confusion matrices) used when building catalogues.
 :Author: Martin Kilbinger
 """
 
+import functools
+import os
+import subprocess
+from pathlib import Path
+
 import healsparse as hsp
 import numpy as np
 from astropy.io import fits
 from scipy import stats
 
 _KIND_ALIASES = {"smaller_equal": "less_equal"}
+
+REMOTE_SCHEMES = ("arc:", "vos:")
 
 _KIND_OPS = {
     "equal": lambda a, v: a == v,
@@ -25,7 +32,7 @@ _KIND_OPS = {
 }
 
 
-def apply_condition(array, kind, value):
+def apply_condition(array, kind, value, ignore_bits=0):
     """Apply Condition.
 
     Evaluate one mask condition (``kind``/``value``, as specified in mask
@@ -44,6 +51,9 @@ def apply_condition(array, kind, value):
     value : float or list
         value(s) to be used in mask operation; two-element list for "range"
 
+    ignore_bits : int, optional
+        Bits to clear before comparison; requires an integer array.
+
     Returns
     -------
     numpy.ndarray
@@ -53,7 +63,73 @@ def apply_condition(array, kind, value):
     kind = _KIND_ALIASES.get(kind, kind)
     if kind not in _KIND_OPS:
         raise ValueError(f"Unknown mask condition kind: {kind!r}")
+    if ignore_bits:
+        array = np.asarray(array)
+        if not np.issubdtype(array.dtype, np.integer):
+            raise ValueError("ignore_bits requires an integer array")
+        array = array & np.bitwise_not(np.array(ignore_bits, dtype=array.dtype))
     return _KIND_OPS[kind](array, value)
+
+
+def map_path(source):
+    """Return a local path to the sky map ``source`` names.
+
+    ``source`` is a path, or an ``arc:``/``vos:`` URL on CANFAR. A URL is
+    fetched once with ``vcp`` into the mask cache, ``$SP_VALIDATION_MASK_CACHE``
+    or ``~/.cache/sp_validation/masks``, mirroring its remote path, and read
+    from there afterwards.
+    """
+    source = str(source)
+    if not source.startswith(REMOTE_SCHEMES):
+        return source
+    cache = Path(
+        os.environ.get(
+            "SP_VALIDATION_MASK_CACHE", Path.home() / ".cache/sp_validation/masks"
+        )
+    )
+    local = cache / source.split(":", 1)[1].lstrip("/")
+    if not local.exists():
+        local.parent.mkdir(parents=True, exist_ok=True)
+        part = local.with_name(f"{local.name}.part{os.getpid()}")
+        subprocess.run(["vcp", source, str(part)], check=True)
+        os.replace(part, local)
+    return str(local)
+
+
+@functools.lru_cache(maxsize=4)
+def read_map(source):
+    """Return the healsparse map ``source`` names (see :func:`map_path`)."""
+    return hsp.HealSparseMap.read(map_path(source))
+
+
+class MapColumns:
+    """A catalogue whose missing columns are read from sky maps.
+
+    ``maps`` takes a column name to a boolean healsparse map (True = masked).
+    A column the catalogue has is read from the catalogue; a column it lacks
+    is the map's value at each object's ``ra_col``/``dec_col``. So one cut,
+    e.g. ``MASK_8_Manual equal False``, masks galaxies from their column and
+    stars, whose catalogue has no mask columns, from the map.
+    """
+
+    def __init__(self, cat, maps, ra_col="RA", dec_col="Dec"):
+        self._cat = cat
+        self._maps = maps
+        self._ra_col = ra_col
+        self._dec_col = dec_col
+
+    def __len__(self):
+        return len(self._cat)
+
+    def __getitem__(self, col):
+        if col not in self._maps:
+            return self._cat[col]
+        try:
+            return self._cat[col]
+        except (KeyError, ValueError):
+            ra, dec = (np.asarray(self._cat[c]) for c in (self._ra_col, self._dec_col))
+            values = read_map(self._maps[col]).get_values_pos(ra, dec, lonlat=True)
+            return np.asarray(values, dtype=bool)
 
 
 def correlation_matrix(masks, confidence_level=0.9):
@@ -128,6 +204,8 @@ class Mask:
         input data, default is `None`; apply mask if given
     verbose : bool, optional
         verbose output if ``True``; default is ``False``
+    ignore_bits : int, optional
+        Bits to clear before evaluating the condition.
 
     """
 
@@ -140,7 +218,9 @@ class Mask:
         col_name2=None,
         dat=None,
         verbose=False,
+        ignore_bits=0,
     ):
+        self._ignore_bits = ignore_bits
         self._col_name = col_name
         self._label = label
         self._value = value
@@ -177,10 +257,14 @@ class Mask:
     def apply(self, dat):
         if self._kind == "not_equal_2bands":
             self._mask = apply_condition(
-                dat[self._col_name], "not_equal", self._value
-            ) | apply_condition(dat[self._col_name2], "not_equal", self._value)
+                dat[self._col_name], "not_equal", self._value, self._ignore_bits
+            ) | apply_condition(
+                dat[self._col_name2], "not_equal", self._value, self._ignore_bits
+            )
         else:
-            self._mask = apply_condition(dat[self._col_name], self._kind, self._value)
+            self._mask = apply_condition(
+                dat[self._col_name], self._kind, self._value, self._ignore_bits
+            )
 
     def to_bool(self, hsp_mask):
         if self._verbose:
@@ -222,10 +306,14 @@ class Mask:
             sign = "$=$" if latex else "="
         elif self._kind == "not_equal":
             sign = r"$\ne$" if latex else "!="
-        elif self._kind in ("greater_equal", "range"):
-            sign = r"$\leq$" if latex else ">="
-        elif self._kind == "smaller_equal":
-            sign = r"$\geq$" if latex else "<="
+        elif self._kind == "greater_equal":
+            sign = r"$\geq$" if latex else ">="
+        elif self._kind in ("smaller_equal", "less_equal", "range"):
+            sign = r"$\leq$" if latex else "<="
+        elif self._kind == "greater":
+            sign = ">"
+        elif self._kind == "less":
+            sign = "<"
         return sign
 
     def print_condition(self, f_out, latex=False):
@@ -235,8 +323,10 @@ class Mask:
         sign = self.get_sign(latex=latex)
 
         name = self._label if latex else self._col_name
+        if self._ignore_bits:
+            name = f"({name} & ~{self._ignore_bits})"
 
-        if sign is not None:
+        if sign is not None and self._kind != "range":
             print(f"{name} {sign} {self._value}", file=f_out)
 
         if self._kind == "not_equal_2bands":
@@ -266,8 +356,13 @@ class Mask:
         sign = self.get_sign()
         if sign is not None:
             descr = f"{sign}{self._value}"
+        if self._ignore_bits and sign is not None:
+            descr = f"({self._col_name} & ~{self._ignore_bits}) {sign} {self._value}"
         if self._kind == "range":
-            descr = f"{self._value[0]}<={self._col_name}<={self._value[1]}"
+            name = self._col_name
+            if self._ignore_bits:
+                name = f"({name} & ~{self._ignore_bits})"
+            descr = f"{self._value[0]}<={name}<={self._value[1]}"
         if self._kind == "not_equal_2bands":
             descr = f"!={self._value} in {self._col_name} or {self._col_name2}"
         self._descr = descr
@@ -324,11 +419,15 @@ def catalogue_cuts(config):
     return config.get("dat") or []
 
 
-def get_masks_from_config(config, dat, masks_to_apply=None, verbose=False):
+def get_masks_from_config(
+    config, dat, masks_to_apply=None, verbose=False, ra_col="RA", dec_col="Dec"
+):
     """Get Masks From Config.
 
     Return the masks of the config's ``dat`` cut list (``catalogue_cuts``),
-    evaluated on ``dat``.
+    evaluated on ``dat``. A cut on a column ``dat`` lacks reads it from the
+    config's ``maps`` (column name -> healsparse map path or ``arc:``/``vos:``
+    URL), at ``dat``'s ``ra_col``/``dec_col`` (see :class:`MapColumns`).
 
     Parameters
     ----------
@@ -341,6 +440,8 @@ def get_masks_from_config(config, dat, masks_to_apply=None, verbose=False):
         masks to apply exclusively; if `None` (default), use all masks
     verbose : bool, optional
         verbose output if ``True``; default is ``False``
+    ra_col, dec_col : str, optional
+        position columns for map lookups; default ``RA``, ``Dec``
 
     Returns
     -------
@@ -350,6 +451,9 @@ def get_masks_from_config(config, dat, masks_to_apply=None, verbose=False):
         list of indices for given mask column name (label)
 
     """
+    if config.get("maps"):
+        dat = MapColumns(dat, config["maps"], ra_col=ra_col, dec_col=dec_col)
+
     # List to store all mask objects
     masks = []
 
@@ -375,3 +479,34 @@ def get_masks_from_config(config, dat, masks_to_apply=None, verbose=False):
         masks.append(my_mask)
 
     return masks, labels
+
+
+def catalogue_selection(config, dat, cuts=None, ra_col="RA", dec_col="Dec"):
+    """Return the objects of ``dat`` that pass a mask config's cuts.
+
+    The one place a mask config is evaluated on a catalogue, galaxies and PSF
+    stars alike: the AND of :func:`get_masks_from_config`'s masks.
+
+    Parameters
+    ----------
+    config : dict
+        mask config (``dat`` cut list, optional ``maps``)
+    dat : mapping
+        catalogue, indexable by column name
+    cuts : list of str, optional
+        column names of the cuts to apply; default all
+    ra_col, dec_col : str, optional
+        position columns for map lookups
+
+    Returns
+    -------
+    numpy.ndarray
+        boolean, True for objects kept
+    """
+    masks, _ = get_masks_from_config(
+        config, dat, masks_to_apply=cuts, ra_col=ra_col, dec_col=dec_col
+    )
+    keep = np.ones(len(dat), dtype=bool)
+    for my_mask in masks:
+        keep &= np.asarray(my_mask._mask, dtype=bool)
+    return keep

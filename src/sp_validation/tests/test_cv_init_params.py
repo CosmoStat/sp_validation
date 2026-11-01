@@ -56,6 +56,11 @@ def test_every_default_is_forwarded_or_exempt():
     )
 
 
+def test_pseudo_cl_defaults_to_catalogue():
+    cv = CosmologyValidation.__init__
+    assert inspect.signature(cv).parameters["cell_method"].default == "catalog"
+
+
 def test_exemptions_are_live_keywords():
     stale = set(EXEMPT) - _defaulted_keywords()
     assert not stale, f"EXEMPT names keywords the constructor lacks: {sorted(stale)}"

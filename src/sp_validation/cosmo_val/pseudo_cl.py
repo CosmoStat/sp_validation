@@ -24,7 +24,6 @@ from .. import sacc_io
 from ..io import open_entry
 from ..rho_tau import get_params_rho_tau
 from ..statistics import cov_from_one_covariance
-from .sacc_writers import BIN as SACC_BIN
 from .sacc_writers import pseudo_cl_to_sacc
 
 
@@ -51,7 +50,7 @@ def plot_pseudo_cl_spectrum(datasets, spectrum, output_path):
     ``datasets`` maps a version to ``{"ell", "cl", "cov", "style"}``, where
     ``style`` carries the ``marker`` and ``colour`` the version is drawn with.
     """
-    fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(8, 8))
+    fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(8, 8), layout="constrained")
     minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
 
     for panel, scaled in ((ax[0], True), (ax[1], False)):
@@ -77,16 +76,24 @@ def plot_pseudo_cl_spectrum(datasets, spectrum, output_path):
         panel.xaxis.set_ticks(minor_ticks, minor=True)
 
     ax[1].set_xlabel(r"$\ell$")
-    ax[1].set_yscale("log")
+    # A signed scale preserves negative spectra and both ends of error bars.
+    amplitudes = np.concatenate([np.abs(d["cl"]) for d in datasets.values()])
+    positive = amplitudes[np.isfinite(amplitudes) & (amplitudes > 0)]
+    threshold = np.median(positive) if positive.size else 1.0
+    ax[1].set_yscale("symlog", linthresh=threshold)
+    ax[1].yaxis.get_major_locator().set_params(numticks=7)
+    ticks = ax[1].get_yticks()
+    ax[1].set_yticks([t for t in ticks if t == 0 or abs(t) >= 100 * threshold])
+    ax[1].axhline(0, color="grey", linewidth=0.5)
     plt.suptitle(f"Pseudo-Cl {spectrum} (Gaussian covariance)")
     plt.legend()
     plt.savefig(output_path)
     plt.close(fig)
 
 
-def _spectra(part):
-    """The ELL/EE/EB/BE/BB dict of a single-field pseudo-Cl part, whose BE is EB."""
-    ell, ee, bb, eb, _window = sacc_io.get_pseudo_cl(part, SACC_BIN)
+def _spectra(part, bins=(0, 0)):
+    """The ELL/EE/EB/BE/BB view of a sealed part, whose BE is EB."""
+    ell, ee, bb, eb, _window = sacc_io.get_pseudo_cl(part, bins)
     return {"ELL": ell, "EE": ee, "EB": eb, "BE": eb.copy(), "BB": bb}
 
 
@@ -124,17 +131,10 @@ class PseudoClMixin:
         by default to ``pseudo_cl_{ver}.sacc``; ``out_path`` overrides that
         destination (one version only). An existing part is reused only if it
         was sealed under the blind declared now. With
-        ``compute_tomography=True`` every tomographic bin pair is written to its
-        own FITS file and ``out_path`` is not accepted; tomographic pairs are
-        measured only on a public catalogue
-        (:meth:`_refuse_blinded_tomography`).
+        ``compute_tomography=True`` all pairs are written to one sealed SACC
+        part; ``out_path`` overrides its destination for a single version.
         """
         if out_path is not None:
-            if compute_tomography:
-                raise ValueError(
-                    "calculate_pseudo_cl(out_path=...) names the non-tomographic "
-                    "SACC part; call it with compute_tomography=False"
-                )
             if len(self.versions) != 1:
                 raise ValueError(
                     "calculate_pseudo_cl(out_path=...) writes one part to one "
@@ -155,66 +155,65 @@ class PseudoClMixin:
         for ver in self.versions:
             self.print_magenta(ver)
 
-            if ver not in self.pseudo_cls.keys():
-                self._pseudo_cls[ver] = {}
-
+            self._pseudo_cls.setdefault(ver, {})
             if compute_tomography:
-                self._refuse_blinded_tomography(ver)
                 tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
-
                 if tomo_bin_ids is None or tomo_bin_pairs is None:
                     raise ValueError(
                         f"Version {ver} does not have tomography information."
                     )
-
+                index = {b: i for i, b in enumerate(sorted(tomo_bin_ids))}
             else:
                 tomo_bin_pairs = [("all", "all")]
+                index = {"all": 0}
 
-            # Loop on the different tomographic bin pairs
-            for bin_key1, bin_key2 in tomo_bin_pairs:
-                self.print_cyan(f"Tomo Bin Pair: ({bin_key1}, {bin_key2})")
+            path = out_path or self._output_path_pseudo_cl(
+                ver, tomography=compute_tomography
+            )
+            part = None
+            if os.path.exists(path) and not self.force_run:
+                candidate = sacc_io.load(path)
+                if sacc_io.stamp(candidate) == self.blind(ver).name:
+                    part = candidate
+            if part is None:
+                nz = self.sacc_nz(ver, tomography=compute_tomography)
+                if len(nz) != len(index):
+                    raise ValueError(
+                        f"{ver}: the n(z) file has {len(nz)} distribution column(s) "
+                        f"but the catalogue has {len(index)} tomographic bin(s); "
+                        "every bin needs its own n(z)"
+                    )
+                measured = []
+                for a, b in tomo_bin_pairs:
+                    self.print_cyan(f"Tomo Bin Pair: ({a}, {b})")
+                    if self.cell_method == "map":
+                        ell, cl, wsp, nside = self._measure_pseudo_cl_map(
+                            ver, self.nside, a, b
+                        )
+                    elif self.cell_method == "catalog":
+                        ell, cl, wsp, nside = self._measure_pseudo_cl_catalog(ver, a, b)
+                    else:
+                        raise ValueError(f"Unknown cell method: {self.cell_method}")
+                    measured.append(
+                        (
+                            (index[a], index[b]),
+                            {"ell_eff": ell, "cl_all": cl, "wsp": wsp, "nside": nside},
+                        )
+                    )
+                s = pseudo_cl_to_sacc(nz, self.sacc_metadata(ver), measured)
+                part = sacc_io.save(s, path, blind=self.blind(ver))
+            else:
+                self.print_done(f"Skipping Pseudo-Cl's calculation, {path} exists")
 
-                if (
-                    f"tomo_bin_{bin_key1}_tomo_bin_{bin_key2}"
-                    not in self._pseudo_cls[ver].keys()
-                ):
-                    self._pseudo_cls[ver][
-                        f"tomo_bin_{bin_key1}_tomo_bin_{bin_key2}"
-                    ] = {}
-
-                pair_out_path = out_path or self._output_path_pseudo_cl(
-                    ver, tomo_bin_pair=(bin_key1, bin_key2)
+            for a, b in tomo_bin_pairs:
+                key = f"tomo_bin_{a}_tomo_bin_{b}"
+                self._pseudo_cls[ver].setdefault(key, {})["pseudo_cl"] = _spectra(
+                    part, (index[a], index[b])
                 )
-                held = (
-                    self._load_pseudo_cl(ver, pair_out_path, (bin_key1, bin_key2))
-                    if os.path.exists(pair_out_path) and not self.force_run
-                    else None
-                )
-                if held is not None:
-                    self.print_done(
-                        f"Skipping Pseudo-Cl's calculation, {pair_out_path} exists"
-                    )
-                    self._pseudo_cls[ver][f"tomo_bin_{bin_key1}_tomo_bin_{bin_key2}"][
-                        "pseudo_cl"
-                    ] = held
-                    continue
-
-                if self.cell_method == "map":
-                    self.calculate_pseudo_cl_map(
-                        ver, self.nside, pair_out_path, bin_key1, bin_key2
-                    )
-                elif self.cell_method == "catalog":
-                    self.calculate_pseudo_cl_catalog(
-                        ver, pair_out_path, bin_key1, bin_key2
-                    )
-                else:
-                    raise ValueError(f"Unknown cell method: {self.cell_method}")
 
         self.print_done("Done pseudo-Cl's")
 
-    def calculate_pseudo_cl_map(self, ver, nside, out_path, tomo_bin_a, tomo_bin_b):
-        if (tomo_bin_a, tomo_bin_b) != ("all", "all"):
-            self._refuse_blinded_tomography(ver)
+    def _measure_pseudo_cl_map(self, ver, nside, tomo_bin_a, tomo_bin_b):
         assert (tomo_bin_a == "all" and tomo_bin_b == "all") or (
             isinstance(tomo_bin_a, (int, np.integer))
             and isinstance(tomo_bin_b, (int, np.integer))
@@ -305,17 +304,9 @@ class PseudoClMixin:
             # Subtract the noise bias from the pseudo-Cl's
             cl_shear = cl_shear - cl_noise
 
-        self.print_cyan("Saving pseudo-Cl's...")
-        tomo_bin_pair = (tomo_bin_a, tomo_bin_b)
-        self._pseudo_cls[ver][f"tomo_bin_{tomo_bin_a}_tomo_bin_{tomo_bin_b}"][
-            "pseudo_cl"
-        ] = self._save_pseudo_cl(
-            ver, out_path, tomo_bin_pair, ell_eff, cl_shear, wsp, nside=nside
-        )
+        return ell_eff, cl_shear, wsp, nside
 
-    def calculate_pseudo_cl_catalog(self, ver, out_path, tomo_bin_a, tomo_bin_b):
-        if (tomo_bin_a, tomo_bin_b) != ("all", "all"):
-            self._refuse_blinded_tomography(ver)
+    def _measure_pseudo_cl_catalog(self, ver, tomo_bin_a, tomo_bin_b):
         assert (tomo_bin_a == "all" and tomo_bin_b == "all") or (
             isinstance(tomo_bin_a, (int, np.integer))
             and isinstance(tomo_bin_b, (int, np.integer))
@@ -330,11 +321,7 @@ class PseudoClMixin:
             catalog=cat_gal, params=params, tomo_bin_a=tomo_bin_a, tomo_bin_b=tomo_bin_b
         )
 
-        self.print_cyan("Saving pseudo-Cl's...")
-        tomo_bin_pair = (tomo_bin_a, tomo_bin_b)
-        self._pseudo_cls[ver][f"tomo_bin_{tomo_bin_a}_tomo_bin_{tomo_bin_b}"][
-            "pseudo_cl"
-        ] = self._save_pseudo_cl(ver, out_path, tomo_bin_pair, ell_eff, cl_shear, wsp)
+        return ell_eff, cl_shear, wsp, None
 
     def calculate_pseudo_cl_inka_cov(
         self, compute_tomography=True, load_all_block=False
@@ -462,54 +449,71 @@ class PseudoClMixin:
                 cat_gal_a = self._get_tomographic_bin(params, cat_gal, bin_key1)
                 cat_gal_b = self._get_tomographic_bin(params, cat_gal, bin_key2)
 
-                # Compute the n_gal_maps and the wsp object
-                unique_pix_a, idx_a, idx_rep_a = self.get_pixels(
-                    params, nside, cat_gal_a
-                )
-                unique_pix_b, idx_b, idx_rep_b = self.get_pixels(
-                    params, nside, cat_gal_b
-                )
+                if self.cell_method == "map":
+                    unique_pix_a, idx_a, idx_rep_a = self.get_pixels(
+                        params, nside, cat_gal_a
+                    )
+                    unique_pix_b, idx_b, idx_rep_b = self.get_pixels(
+                        params, nside, cat_gal_b
+                    )
+                    n_gal_map_a = self.get_n_gal_map(params, nside, cat_gal_a)
+                    n_gal_map_b = self.get_n_gal_map(params, nside, cat_gal_b)
+                    shear_map_a_e1, shear_map_a_e2 = self.get_shear_map(
+                        params,
+                        self.nside,
+                        cat_gal_a,
+                        unique_pix=unique_pix_a,
+                        idx=idx_a,
+                        idx_rep=idx_rep_a,
+                    )
+                    shear_map_b_e1, shear_map_b_e2 = self.get_shear_map(
+                        params,
+                        self.nside,
+                        cat_gal_b,
+                        unique_pix=unique_pix_b,
+                        idx=idx_b,
+                        idx_rep=idx_rep_b,
+                    )
+                    field_a, field_b, wsp = (
+                        spv_pseudo_cl.get_field_and_workspace_from_map(
+                            b,
+                            mask_a=n_gal_map_a,
+                            e1_map_a=shear_map_a_e1,
+                            e2_map_a=shear_map_a_e2,
+                            mask_b=n_gal_map_b,
+                            e1_map_b=shear_map_b_e1,
+                            e2_map_b=shear_map_b_e2,
+                            pol_factor=self.pol_factor,
+                            return_wsp=True,
+                        )
+                    )
+                    if f"W{bin_key1}" not in n_gal_map_dict:
+                        n_gal_map_dict[f"W{bin_key1}"] = n_gal_map_a
+                    if f"W{bin_key2}" not in n_gal_map_dict:
+                        n_gal_map_dict[f"W{bin_key2}"] = n_gal_map_b
+                else:
+                    # The catalogue estimator's covariance must use the same
+                    # catalogue fields and catalogue coupling as its data vector.
+                    field_a, field_b, wsp = (
+                        spv_pseudo_cl.get_field_and_workspace_from_catalog(
+                            b,
+                            ra_a=cat_gal_a[params["ra_col"]],
+                            dec_a=cat_gal_a[params["dec_col"]],
+                            e1_a=cat_gal_a[params["e1_col"]],
+                            e2_a=cat_gal_a[params["e2_col"]],
+                            w_a=cat_gal_a[params["w_col"]],
+                            ra_b=cat_gal_b[params["ra_col"]],
+                            dec_b=cat_gal_b[params["dec_col"]],
+                            e1_b=cat_gal_b[params["e1_col"]],
+                            e2_b=cat_gal_b[params["e2_col"]],
+                            w_b=cat_gal_b[params["w_col"]],
+                            pol_factor=self.pol_factor,
+                            return_wsp=True,
+                            same_bin=bin_key1 == bin_key2,
+                            retain_catalog=True,
+                        )
+                    )
 
-                # Compute the number density maps
-                n_gal_map_a = self.get_n_gal_map(params, nside, cat_gal_a)
-                n_gal_map_b = self.get_n_gal_map(params, nside, cat_gal_b)
-
-                # Get the shear maps
-                shear_map_a_e1, shear_map_a_e2 = self.get_shear_map(
-                    params,
-                    self.nside,
-                    cat_gal_a,
-                    unique_pix=unique_pix_a,
-                    idx=idx_a,
-                    idx_rep=idx_rep_a,
-                )
-                shear_map_b_e1, shear_map_b_e2 = self.get_shear_map(
-                    params,
-                    self.nside,
-                    cat_gal_b,
-                    unique_pix=unique_pix_b,
-                    idx=idx_b,
-                    idx_rep=idx_rep_b,
-                )
-
-                # Get the fields and workspaces
-                field_a, field_b, wsp = spv_pseudo_cl.get_field_and_workspace_from_map(
-                    b,
-                    mask_a=n_gal_map_a,
-                    e1_map_a=shear_map_a_e1,
-                    e2_map_a=shear_map_a_e2,
-                    mask_b=n_gal_map_b,
-                    e1_map_b=shear_map_b_e1,
-                    e2_map_b=shear_map_b_e2,
-                    pol_factor=self.pol_factor,
-                    return_wsp=True,
-                )
-
-                # Save in the dictionnaries
-                if f"W{bin_key1}" not in n_gal_map_dict:
-                    n_gal_map_dict[f"W{bin_key1}"] = n_gal_map_a
-                if f"W{bin_key2}" not in n_gal_map_dict:
-                    n_gal_map_dict[f"W{bin_key2}"] = n_gal_map_b
                 if f"W{bin_key1}" not in field_dict:
                     field_dict[f"W{bin_key1}"] = field_a
                 if f"W{bin_key2}" not in field_dict:
@@ -525,10 +529,21 @@ class PseudoClMixin:
 
                     cat_gal_ = self._get_tomographic_bin(params, cat_gal, bin_key1)
 
-                    noise_bias_cl = self.get_noise_bias(params, nside, cat_gal_)
+                    if self.cell_method == "catalog":
+                        # NmtCovarianceWorkspace builds the catalogue NN, NS,
+                        # and SN terms from the retained weighted ellipticities.
+                        # Its input Cls (including get_iNKA_cell's cl_guess) must
+                        # contain signal only, or shape noise is counted twice.
+                        noise_bias_cl = np.zeros((4, lmax))
+                    else:
+                        noise_bias_cl = self.get_noise_bias(params, nside, cat_gal_)
 
-                    # If using the analytical noise bias, we need to decouple it
-                    if self.noise_bias_method == "analytic":
+                    # Map-field workspaces do not add noise themselves: decouple
+                    # the analytical map noise before adding it to the theory.
+                    if (
+                        self.noise_bias_method == "analytic"
+                        and self.cell_method == "map"
+                    ):
                         self.print_cyan(
                             "Decoupling the noise bias for the analytic method..."
                         )
@@ -557,24 +572,26 @@ class PseudoClMixin:
                     + noise_bias_cl
                 )
 
-            if self.fiducial_input_inka == "coupled":
-                # Couple the cell if required
+            if self.fiducial_input_inka == "coupled" and self.cell_method == "map":
+                # The map estimator couples spectra with its map workspace and
+                # divides by the number-density mask amplitude.
                 self.print_cyan("Coupling the fiducial Cls.")
                 for bin_key1, bin_key2 in tomo_bin_pairs:
-                    # Get the wsp object
-                    n_gal_map_a = n_gal_map_dict[f"W{bin_key1}"]
-                    n_gal_map_b = n_gal_map_dict[f"W{bin_key2}"]
+                    # Get the coupling workspace for this field pair.
                     wsp = wsp_dict[f"W{bin_key1}xW{bin_key2}"]
 
                     coupling_mat = wsp.get_coupling_matrix()
                     coupling_mat_re = np.reshape(
                         coupling_mat, (4, lmax, 4, lmax), order="F"
                     )
-                    fiducial_cl[f"W{bin_key1}xW{bin_key2}"] = np.tensordot(
+                    coupled_cl = np.tensordot(
                         coupling_mat_re, fiducial_cl[f"W{bin_key1}xW{bin_key2}"]
-                    ) / np.mean(
-                        n_gal_map_a * n_gal_map_b
-                    )  # couple and divide by the product of the mask
+                    )
+                    if self.cell_method == "map":
+                        n_gal_map_a = n_gal_map_dict[f"W{bin_key1}"]
+                        n_gal_map_b = n_gal_map_dict[f"W{bin_key2}"]
+                        coupled_cl /= np.mean(n_gal_map_a * n_gal_map_b)
+                    fiducial_cl[f"W{bin_key1}xW{bin_key2}"] = coupled_cl
 
             # To compute all the blocks in the covariance,
             # we must compute all the (i, j, k, l) bin combinations
@@ -647,6 +664,46 @@ class PseudoClMixin:
                     if bin_key_a2 <= bin_key_b2
                     else fiducial_cl[f"W{bin_key_b2}xW{bin_key_a2}"]
                 )
+
+                if (
+                    self.cell_method == "catalog"
+                    and self.fiducial_input_inka == "coupled"
+                ):
+                    # NaMaster's catalogue iNKA helper applies the catalogue
+                    # mode coupling and its normalization; a raw coupling
+                    # matrix cannot be rescaled like the map mask matrix.
+                    input_cl_a1_b1 = spv_pseudo_cl.nmt.get_iNKA_cell(
+                        field_dict[f"W{bin_key_a1}"],
+                        field_dict[f"W{bin_key_b1}"],
+                        cl_guess=input_cl_a1_b1,
+                        w=wsp_dict[
+                            f"W{min(bin_key_a1, bin_key_b1)}xW{max(bin_key_a1, bin_key_b1)}"
+                        ],
+                    )
+                    input_cl_a1_b2 = spv_pseudo_cl.nmt.get_iNKA_cell(
+                        field_dict[f"W{bin_key_a1}"],
+                        field_dict[f"W{bin_key_b2}"],
+                        cl_guess=input_cl_a1_b2,
+                        w=wsp_dict[
+                            f"W{min(bin_key_a1, bin_key_b2)}xW{max(bin_key_a1, bin_key_b2)}"
+                        ],
+                    )
+                    input_cl_a2_b1 = spv_pseudo_cl.nmt.get_iNKA_cell(
+                        field_dict[f"W{bin_key_a2}"],
+                        field_dict[f"W{bin_key_b1}"],
+                        cl_guess=input_cl_a2_b1,
+                        w=wsp_dict[
+                            f"W{min(bin_key_a2, bin_key_b1)}xW{max(bin_key_a2, bin_key_b1)}"
+                        ],
+                    )
+                    input_cl_a2_b2 = spv_pseudo_cl.nmt.get_iNKA_cell(
+                        field_dict[f"W{bin_key_a2}"],
+                        field_dict[f"W{bin_key_b2}"],
+                        cl_guess=input_cl_a2_b2,
+                        w=wsp_dict[
+                            f"W{min(bin_key_a2, bin_key_b2)}xW{max(bin_key_a2, bin_key_b2)}"
+                        ],
+                    )
 
                 covar_22_22 = spv_pseudo_cl.get_pseudo_cl_iNKA_covariance(
                     input_cl_a1_b1,
@@ -721,8 +778,16 @@ class PseudoClMixin:
                 self.print_done(f"Skipping OneCovariance calculation, {out_dir} exists")
                 self._load_onecovariance_cov(out_dir, ver, tomography)
             else:
-                mask_path = self.cc[ver]["mask"]
+                mask_path = (
+                    self.tomographic_footprint(ver)
+                    if tomography
+                    else self.cc[ver]["mask"]
+                )
                 if not os.path.exists(mask_path):
+                    if mask_path != self.cc[ver]["mask"]:
+                        raise FileNotFoundError(
+                            f"{ver}: tomographic footprint {mask_path} not found"
+                        )
                     print("Mask file does not exist")
                     print("Computing the mask from the binned catalog and saving...")
                     mask = self._get_binned_catalog_mask(ver)
@@ -1069,7 +1134,8 @@ class PseudoClMixin:
         mask_folder = os.path.dirname(os.path.abspath(mask_path))
         config["survey specs"]["mask_directory"] = mask_folder
         config["survey specs"]["mask_file_lensing"] = mask_base
-        config["survey specs"]["survey_area_lensing_in_deg2"] = str(self.area[ver])
+        area = self.tomographic_area(ver) if tomography else self.area[ver]
+        config["survey specs"]["survey_area_lensing_in_deg2"] = str(area)
 
         # Update ellipticity dispersion and effective number density
         # Account for tomography if needed
@@ -1190,19 +1256,10 @@ class PseudoClMixin:
             mask = tomo_bin_id == tomo_bin
             return cat_gal[mask]
 
-    def _output_path_pseudo_cl(self, ver, tomo_bin_pair):
-        """Default pseudo-Cl product path of one bin pair.
-
-        The ``("all", "all")`` pair is the SACC part ``pseudo_cl_{ver}.sacc``;
-        a tomographic pair is a FITS table under ``pseudo_cl/``.
-        """
-        if tuple(tomo_bin_pair) == ("all", "all"):
-            return self._output_path(f"pseudo_cl_{ver}.sacc")
-        bin_key1, bin_key2 = tomo_bin_pair
-        return self._output_path(
-            "pseudo_cl",
-            f"pseudo_cl_from_{self.cell_method}_tomo_bin_{bin_key1}_tomo_bin_{bin_key2}_{ver}_binning_{self.binning}_nbins_{self.n_ell_bins}.fits",
-        )
+    def _output_path_pseudo_cl(self, ver, tomography=False):
+        """Default path of the non-tomographic or tomographic SACC part."""
+        suffix = "_tomo" if tomography else ""
+        return self._output_path(f"pseudo_cl_{ver}{suffix}.sacc")
 
     def _output_path_pseudo_cl_cov(self, ver, method, tomography):
         is_tomo = "tomo" if tomography else "non_tomo"
@@ -1219,36 +1276,6 @@ class PseudoClMixin:
             f"pseudo_cl_cov_from_iNKA_tomo_bin_{bin_key_a1}_tomo_bin_{bin_key_a2}_tomo_bin_{bin_key_b1}_tomo_bin_{bin_key_b2}_{ver}_binning_{self.binning}_nbins_{self.n_ell_bins}.fits",
         )
 
-    def _save_pseudo_cl(
-        self, ver, out_path, tomo_bin_pair, ell_eff, cl_all, wsp, nside=None
-    ):
-        """Write one pair as SACC or FITS and return its spectra as written.
-
-        Forwards ``nside`` for map spectra. The ``("all", "all")`` spectra are
-        those of the part as sealed under the version's blind.
-        """
-        if tuple(tomo_bin_pair) == ("all", "all"):
-            return _spectra(
-                self.pseudo_cl_to_sacc_part(
-                    ver, out_path, ell_eff, cl_all, wsp, nside=nside
-                )
-            )
-        self.save_pseudo_cl(ell_eff, cl_all, out_path)
-        return fits.getdata(out_path)
-
-    def _load_pseudo_cl(self, ver, out_path, tomo_bin_pair):
-        """One bin pair's pseudo-Cl product written by ``_save_pseudo_cl``.
-
-        ``None`` for an ``("all", "all")`` part sealed under a blind other than
-        the one ``ver`` declares now, which must be measured again.
-        """
-        if tuple(tomo_bin_pair) != ("all", "all"):
-            return fits.getdata(out_path)
-        part = sacc_io.load(out_path)
-        if sacc_io.stamp(part) != self.blind(ver).name:
-            return None
-        return _spectra(part)
-
     def pseudo_cl_to_sacc_part(
         self, version, out_path, ell_eff, cl_all, wsp, nside=None
     ):
@@ -1263,34 +1290,14 @@ class PseudoClMixin:
         s = pseudo_cl_to_sacc(
             self.sacc_nz(version),
             self.sacc_metadata(version),
-            ell_eff,
-            cl_all,
-            wsp,
-            nside=nside,
+            [
+                (
+                    (0, 0),
+                    {"ell_eff": ell_eff, "cl_all": cl_all, "wsp": wsp, "nside": nside},
+                )
+            ],
         )
         return sacc_io.save(s, out_path, blind=self.blind(version))
-
-    def save_pseudo_cl(self, ell_eff, pseudo_cl, out_path):
-        """
-        Save a tomographic bin pair's pseudo-Cl's to a FITS file.
-
-        Parameters
-        ----------
-        pseudo_cl : np.array
-            Pseudo-Cl's to save.
-        out_path : str
-            Path to save the pseudo-Cl's to.
-        """
-        # Create columns of the fits file
-        col1 = fits.Column(name="ELL", format="D", array=ell_eff)
-        col2 = fits.Column(name="EE", format="D", array=pseudo_cl[0])
-        col3 = fits.Column(name="EB", format="D", array=pseudo_cl[1])
-        col4 = fits.Column(name="BE", format="D", array=pseudo_cl[2])
-        col5 = fits.Column(name="BB", format="D", array=pseudo_cl[3])
-        coldefs = fits.ColDefs([col1, col2, col3, col4, col5])
-        cell_hdu = fits.BinTableHDU.from_columns(coldefs, name="PSEUDO_CELL")
-
-        cell_hdu.writeto(out_path, overwrite=True)
 
     def _save_iNKA_covariance(self, covar, out_path):
         # covar_22_22 is indexed [ell, pol_a, ell, pol_b]; store each of the
@@ -1319,17 +1326,18 @@ class PseudoClMixin:
             # Merge the tomographic covariance matrices
             tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
 
-            # Get the number of bins from the pseudo_cls attribute
-            # The non-tomographic pseudo-cl are computed from the call
-            # to this attribute if not already computed.
-            n_ell = self._pseudo_cls[ver]["tomo_bin_all_tomo_bin_all"]["pseudo_cl"][
-                "ELL"
-            ].shape[0]
-
             if tomo_bin_ids is None or tomo_bin_pairs is None:
                 raise AssertionError(
                     f"Tomographic bin IDs of version {ver} is not available."
                 )
+
+            # Covariance blocks exist independently of measured spectra.
+            a, b = tomo_bin_pairs[0]
+            first_block = self._output_path_iNKA_block_cov(
+                ver, tomo_bin_quad=(a, b, a, b)
+            )
+            with fits.open(first_block) as block_cov:
+                n_ell = block_cov["COVAR_EE_EE"].data.shape[0]
 
             n_spectra = len(tomo_bin_pairs)
             block_indices = list(

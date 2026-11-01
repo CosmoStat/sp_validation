@@ -26,7 +26,7 @@ def test_config_preserves_covariance_inputs(version, old_sigma):
     namespace = {"catalogue_entry": lambda _: entry}
     exec(compile(ast.parse(function), "covariance.smk", "exec"), namespace)
     sigma, density, _ = namespace["get_onecov_cat_params"](version)
-    sigma = float(sigma)
+    sigma, density = float(sigma), float(density)
     assert sigma == pytest.approx(old_sigma / np.sqrt(2))
     assert sigma**2 / density == pytest.approx(old_sigma**2 / (2 * density))
     # CosmoCov's summed-component input, when constructed from this value.

@@ -6,12 +6,10 @@ Snakemake passes in, (2) calls the slice of the diagnostic suite that rule
 owns, and (3) verifies the declared outputs landed. This module carries the
 common machinery so each rule script stays a few readable lines.
 
-The in-memory ``cv`` object is re-instantiated per rule. The DAG links rules
-through the *real* data products each method writes (rho/tau FITS, ξ± parts,
-pseudo-Cl FITS, E/B npz, leakage pkl); the lazy ``cv`` properties that aren't
-persisted (``c1``/``c2``, ``xi_psf_sys``, ``rho_tau_fits``) are recomputed in
-whichever rule needs them, which is cheap next to the science compute they
-depend on. See common.cv_init_params for the constructor contract.
+Compute rules instantiate ``cv`` independently and link through explicit
+cached data products. Plot rules read those products directly; they don't
+instantiate ``cv`` or enter its lazy catalogue/measurement paths.
+See common.cv_init_params for the compute constructor contract.
 """
 
 import os
@@ -36,13 +34,20 @@ def make_cv(snakemake):
     return CosmologyValidation(**dict(snakemake.params["cv_init"]))
 
 
-def take_reporting_parts(cv, paths):
-    """Hand ``cv`` the reporting ξ± parts at ``paths``, one per version, in order."""
-    from sp_validation import sacc_io
+def prepare_cached_psf(cv):
+    """Attach FITS-only handlers; never enter the catalogue/pair-count path."""
+    from shear_psf_leakage.rho_tau_stat import RhoStat, TauStat
 
-    for version, path in zip(cv.versions, paths, strict=True):
-        part = sacc_io.load(path, blind=cv.blind(version))
-        cv.xi_parts[version, "reporting"] = part
+    output = str(Path(cv.cc["paths"]["output"]) / "rho_tau_stats")
+    cv._rho_stat_handler = RhoStat(
+        output=output, treecorr_config=cv.treecorr_config, verbose=True
+    )
+    cv._tau_stat_handler = TauStat(
+        catalogs=cv._rho_stat_handler.catalogs,
+        output=output,
+        treecorr_config=cv.treecorr_config,
+        verbose=True,
+    )
 
 
 def verify_outputs(snakemake):
@@ -53,12 +58,3 @@ def verify_outputs(snakemake):
             "cosmo_val rule finished but these declared outputs are absent:\n  "
             + "\n  ".join(missing)
         )
-
-
-def touch_sentinels(snakemake):
-    """Create any sentinel outputs (pure-plot rules with no data product)."""
-    for out in snakemake.output:
-        path = Path(out)
-        if path.suffix == ".done":
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.touch()

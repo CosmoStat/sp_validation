@@ -496,6 +496,7 @@ CV_INIT_KEYS = (
     "compute_cov_rho",
     "n_cov",
     "n_sim_cov",
+    "b_target",
     "theta_min",
     "theta_max",
     "nbins",
@@ -513,7 +514,6 @@ CV_INIT_KEYS = (
     "n_ell_bins",
     "ell_step",
     "pol_factor",
-    "cell_method",
     "noise_bias_method",
     "fiducial_input_inka",
     "nrandom_cell",
@@ -536,4 +536,5 @@ def cv_init_params(config):
         catalog_config=CAT_CONFIG,
         output_dir=str(COSMO_VAL),
         **{key: cv[key] for key in CV_INIT_KEYS},
+        cell_method=cv.get("cell_method", "catalog"),
     )
