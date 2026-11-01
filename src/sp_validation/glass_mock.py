@@ -454,13 +454,15 @@ def audit_gaussian_solve(matter, achieved, gaussian, nside, lmax, ncorr=3):
     that ``glass.discretized_cls`` gives the solver. Scaling by the autos
     rather than the pair's own spectrum keeps the measure finite where a
     cross-spectrum crosses zero, which is where GLASS's own convergence flag
-    misfires. The Gaussian spectra must also form, at every ell, a positive
-    definite ``ncorr``-banded correlation matrix, or ``glass.generate`` cannot
-    realise them.
+    misfires. The Gaussian spectra must also pass the sampler that
+    ``glass.generate`` runs (``cls2cov`` then ``iternorm``): each shell's
+    variance conditional on its ``ncorr`` predecessors must stay positive at
+    every ell, or the realisation cannot be drawn.
 
-    Returns ``worst_residual``, ``worst_pair``, ``min_eigenvalue`` and
-    ``min_eigenvalue_ell``; raises ``ValueError`` when the residual exceeds
-    ``SOLVER_TOLERANCE`` or the minimum eigenvalue is not positive.
+    Returns ``worst_residual``, ``worst_pair``, ``min_conditional_variance``
+    (relative to the shell's own variance) and its ``shell`` and ``ell``;
+    raises ``ValueError`` when the residual exceeds ``SOLVER_TOLERANCE`` or
+    the sampler refuses the spectra.
     """
     import glass
 
@@ -479,24 +481,29 @@ def audit_gaussian_solve(matter, achieved, gaussian, nside, lmax, ncorr=3):
         )
         if residual >= worst:
             worst, worst_pair = float(residual), [int(i), int(j)]
+    from glass.fields import cls2cov, iternorm
+
     nfields = len(autos)
-    matrix = np.zeros((lmax + 1, nfields, nfields))
-    for i, j, cl in glass.enumerate_spectra(gaussian):
-        cl = np.asarray(cl)[: lmax + 1]
-        matrix[: len(cl), i, j] = matrix[: len(cl), j, i] = cl
-    diagonal = np.sqrt(np.einsum("lii->li", matrix).clip(min=0))
-    defined = np.all(diagonal > 0, axis=1)
-    norm = diagonal[defined, :, None] * diagonal[defined, None, :]
-    eigen = np.linalg.eigvalsh(matrix[defined] / norm).min(axis=1)
-    lowest = int(np.argmin(eigen))
+    # cls2cov reuses one array between yields, so keep a copy of each row.
+    rows = [row.copy() for row in cls2cov([np.asarray(cl)[: lmax + 1] for cl in gaussian], lmax + 1, nfields, ncorr)]
+    lowest = dict(value=np.inf, shell=None, ell=None)
+    try:
+        for shell, (row, w) in enumerate(zip(rows, iternorm(rows))):
+            variance = row[:, 0]
+            ok = variance > 0
+            ratio = np.where(ok, w[:, -1] ** 2 / np.where(ok, variance, 1), np.inf)
+            ell = int(np.argmin(ratio))
+            if ratio[ell] < lowest["value"]:
+                lowest = dict(value=float(ratio[ell]), shell=shell, ell=ell)
+    except ValueError as error:
+        raise ValueError(f"glass.generate cannot sample these Gaussian spectra: {error}") from error
     audit = dict(
         worst_residual=worst,
         worst_pair=worst_pair,
-        min_eigenvalue=float(eigen[lowest]),
-        min_eigenvalue_ell=int(np.flatnonzero(defined)[lowest]),
+        min_conditional_variance=lowest["value"],
+        min_conditional_variance_shell=lowest["shell"],
+        min_conditional_variance_ell=lowest["ell"],
     )
-    if audit["min_eigenvalue"] <= 0:
-        raise ValueError(f"Gaussian shell spectra are not positive definite: {audit}")
     if worst > SOLVER_TOLERANCE:
         raise ValueError(f"Lognormal solve misses the requested spectra: {audit}")
     return audit
@@ -694,8 +701,9 @@ def generate_lensing_maps(config, output_dir, cache_dir, workers=1):
     evaluates. The float32 ``gamma1``/``gamma2`` maps are its shear E mode
     synthesised on the grid; ``kappa`` is GLASS's pixel convergence, of which
     the alm is the band-limited transform. The ``realization_*`` spectra are
-    the alm's own power (KK, EE, KE; the painted field has no B mode), so they
-    are the exact known answer for any statistic of a painted catalogue.
+    the alm's own power (KK, EE, KE; gamma has no B mode), so they are the
+    exact known answer for any two-point statistic of a catalogue painted with
+    ``shear='gamma'``. Reduced shear adds its own EE and BB terms on top.
     """
     import json
     import time
