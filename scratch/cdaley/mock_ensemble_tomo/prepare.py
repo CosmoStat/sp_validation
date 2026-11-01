@@ -31,6 +31,8 @@ for version in versions:
     entry['subdir'] = str(ROOT / 'seeds' / f'seed_{seed:05d}')
     entry['shear']['path'] = 'painted_clean.h5' if version.endswith('_clean') else 'painted.h5'
     entry['blind'] = 'none' if version.endswith('_clean') else 'mock-ensemble-tomo'
+    for kind in ('psf', 'star'):
+        entry[kind]['path'] = str(Path(source['subdir']) / source[kind]['path'])
     # The covariance, masks, n(z), bin/weight columns and response are unchanged.
     entries[version] = entry
 config['catalog_config'] = str(ROOT / 'cat_config.yaml')
