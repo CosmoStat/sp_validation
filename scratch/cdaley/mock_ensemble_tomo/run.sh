@@ -13,7 +13,8 @@ cd "$R"
 args=()
 for ((s=${START:-1}; s<=${END:-1}; s++)); do
   printf -v v 'MOCK_%05d' "$s"
-  args+=("$R/cosmo_val/${v}_bmode_summary_tomo.json")
+  printf -v tag '%05d' "$s"
+  args+=("$R/seeds/seed_${tag}/complete.json")
 done
 if [ "${START:-1}" = 1 ]; then
   args+=("$R/geometry_audit.json" "$R/cosmo_val/MOCK_00001_clean_bmode_summary_tomo.json")

@@ -71,6 +71,18 @@ rule seed1_clean_control:
     shell:
         'ln -f {input} {output}'
 
+rule ensemble_complete:
+    input:
+        summary=str(ROOT / 'cosmo_val/MOCK_{seed}_bmode_summary_tomo.json'),
+        catalogue=str(ROOT / 'seeds/seed_{seed}/painted.h5'),
+        spectra=str(ROOT / 'seeds/seed_{seed}/maps/spectra.npz'),
+    output:
+        str(ROOT / 'seeds/seed_{seed}/complete.json'),
+    wildcard_constraints:
+        seed=r'\d{5}',
+    script:
+        'complete.py'
+
 rule seed1_geometry:
     input:
         mock=str(ROOT / 'seeds/seed_00001/painted.h5'),
