@@ -2,13 +2,14 @@
 
 import hashlib
 import json
+import os
 from pathlib import Path
 
 import h5py
 import numpy as np
 import yaml
 
-ROOT = Path("/n17data/cdaley/scratch/glass-mock-cv/cvpaint")
+ROOT = Path(os.environ.get("CVPAINT_ROOT", "/n17data/cdaley/scratch/glass-mock-cv/cvpaint"))
 cc = yaml.safe_load((ROOT / "cat_config.yaml").read_text())
 results = {}
 for version in ("GLASS1_clean", "GLASS1_blinded", "GLASS1_psfleak", "GLASS1_addB"):

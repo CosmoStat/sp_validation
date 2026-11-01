@@ -6,6 +6,7 @@ read data shears or any blind outside the explicitly checked mock registry.
 
 import argparse
 import json
+import os
 import shutil
 from pathlib import Path
 
@@ -22,13 +23,15 @@ from astropy.io import fits
 from sp_validation import blinding
 from sp_validation import sacc_io as sio
 
-ROOT = Path("/n17data/cdaley/scratch/glass-mock-cv/cvpaint")
+# CVPAINT_ROOT/MOCK/BLINDS select the site; the defaults are the candide v1.4.6.3 run.
+ROOT = Path(os.environ.get("CVPAINT_ROOT", "/n17data/cdaley/scratch/glass-mock-cv/cvpaint"))
 OUT, FIG = ROOT / "output", ROOT / "figures"
-MOCK = ROOT.parent / "mocks/v1.4.6.3/seed_00001"
+MOCK = Path(os.environ.get("CVPAINT_MOCK", ROOT.parent / "mocks/v1.4.6.3/seed_00001"))
+BLINDS = Path(os.environ.get("CVPAINT_BLINDS", ROOT.parent / "cvmock/blinds"))
 U, B, P, A = "GLASS1_clean", "GLASS1_blinded", "GLASS1_psfleak", "GLASS1_addB"
 REG = yaml.safe_load((ROOT / "cat_config.yaml").read_text())
 assert (
-    Path(REG["paths"]["blinds"]).resolve() == (ROOT.parent / "cvmock/blinds").resolve()
+    Path(REG["paths"]["blinds"]).resolve() == BLINDS.resolve()
 )
 assert all(REG[v]["shear"]["path"].startswith(str(ROOT.parent)) for v in (U, B, P, A))
 METRIC_PATH = ROOT / "metrics.json"
