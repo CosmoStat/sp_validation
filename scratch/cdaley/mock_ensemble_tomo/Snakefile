@@ -1,0 +1,83 @@
+"""Nibi ensemble: one local Snakemake inside each Slurm allocation."""
+import os
+from pathlib import Path
+
+REPO = Path('/project/6001537/cdaley/sp/sp_validation-mockens')
+ROOT = Path('/project/6001537/cdaley/mock-ensemble-tomo')
+HERE = REPO / 'scratch/cdaley/mock_ensemble_tomo'
+module analysis:
+    snakefile: str(REPO / 'workflow/Snakefile')
+    config: config
+use rule * from analysis
+use rule xi from analysis with:
+    benchmark: str(ROOT / 'benchmarks/xi_{version}_{min_sep}_{max_sep}_{nbins}_{npatch}{tomo_suffix}.tsv')
+use rule pseudo_cl from analysis with:
+    benchmark: str(ROOT / 'benchmarks/pseudo_cl_{version}_{binning}_{nbins}{tomo_suffix}.tsv')
+use rule cv_cosebis from analysis with:
+    benchmark: str(ROOT / 'benchmarks/cosebis_{version}{tomo_suffix}.tsv')
+use rule cv_pure_eb from analysis with:
+    benchmark: str(ROOT / 'benchmarks/pure_eb_{version}{tomo_suffix}.tsv')
+use rule assemble_sacc from analysis with:
+    benchmark: str(ROOT / 'benchmarks/assemble_{version}{tomo_suffix}.tsv')
+
+container: config['container']
+
+rule ensemble_sky:
+    benchmark: str(ROOT / 'benchmarks/sky_{seed}.tsv')
+    input:
+        nz='/project/def-mjhudson/cdaley/tomo-nz-v2-full/products/nz_v2_bound9_full_tomo.txt',
+    output:
+        alm=str(ROOT / 'seeds/seed_{seed}/maps/kappa_alm.npz'),
+        spectra=str(ROOT / 'seeds/seed_{seed}/maps/spectra.npz'),
+        metadata=str(ROOT / 'seeds/seed_{seed}/maps/maps.json'),
+    wildcard_constraints:
+        seed=r'\d{5}',
+    threads: 24
+    resources:
+        mem_mb=48000,
+    shell:
+        'env OMP_NUM_THREADS={threads} OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 '
+        'python {REPO}/scripts/glass_mock/paint_catalogue.py maps '
+        '--nz {input.nz} --output {ROOT}/seeds/seed_{wildcards.seed}/maps '
+        '--cache {ROOT}/cache --seed {wildcards.seed} --nside 4096 --lmax 8192 '
+        '--dx 200 --zmax 3.5 --no-maps --workers {threads}'
+
+rule ensemble_paint:
+    benchmark: str(ROOT / 'benchmarks/paint_{seed}.tsv')
+    input:
+        alm=str(ROOT / 'seeds/seed_{seed}/maps/kappa_alm.npz'),
+        catalog='/project/6001537/cdaley/cosmo-val-v2-tomo/catalogue/shape_catalog_bound9_tomo.fits',
+    output:
+        catalog=temp(str(ROOT / 'seeds/seed_{seed}/painted.h5')),
+        metadata=str(ROOT / 'seeds/seed_{seed}/painted.h5.json'),
+    wildcard_constraints:
+        seed=r'\d{5}',
+    threads: 24
+    resources:
+        mem_mb=48000,
+    params:
+        rotation_seed=lambda w: 1000000 + int(w.seed),
+    shell:
+        'python {REPO}/scripts/glass_mock/paint_catalogue.py paint '
+        '--maps {ROOT}/seeds/seed_{wildcards.seed}/maps --input {input.catalog} '
+        '--output {output.catalog} --seed {params.rotation_seed} --shear gamma '
+        '--tomo-bin-col TOM_BIN_ID --threads {threads} --overwrite'
+
+rule seed1_clean_control:
+    input:
+        str(ROOT / 'seeds/seed_00001/painted.h5'),
+    output:
+        temp(str(ROOT / 'seeds/seed_00001/painted_clean.h5')),
+    shell:
+        'ln -f {input} {output}'
+
+rule seed1_geometry:
+    input:
+        mock=str(ROOT / 'seeds/seed_00001/painted.h5'),
+        source='/project/6001537/cdaley/cosmo-val-v2-tomo/catalogue/shape_catalog_bound9_tomo.fits',
+    output:
+        str(ROOT / 'geometry_audit.json'),
+    resources:
+        mem_mb=8000,
+    script:
+        'geometry.py'
