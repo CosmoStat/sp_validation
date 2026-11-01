@@ -684,6 +684,8 @@ def measure_leakage_jackknife(
         products["slope_xip"] = np.array(xip[n_joint:])
         products["slope_xim"] = np.array(xim[n_joint:])
 
+    # Release the shear tree before building the galaxy-PSF tree.
+    cats["gal"].clear_cache()
     alpha_correlations = tau_handler.compute_alpha_template("leakage")
     products["alpha_vector"] = np.concatenate([c.xip for c in alpha_correlations])
     for n in counts:
