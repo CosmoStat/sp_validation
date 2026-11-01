@@ -177,7 +177,7 @@ class RealSpaceMixin:
         read by ``self.results[ver]``. The bin labels are ``None`` unless
         ``compute_tomography``.
         """
-        with self.results[ver].temporarily_read_data():
+        with self.results[ver].temporarily_read_data(psf=False):
             dat = self.results[ver].dat_shear
             g1, g2 = self._calibrated_g(ver)
             return {
