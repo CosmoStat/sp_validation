@@ -480,3 +480,44 @@ def test_painted_spectrum_is_the_alm_spectrum_without_pixel_window(tmp_path):
     pix = hp.ang2pix(nside, ra, dec, lonlat=True)
     ngp = hp.anafast([zero, map1[pix], map2[pix]], lmax=lmax, pol=True, iter=3)
     assert np.min(ngp[1, 2:] / known[2:]) < 0.8
+
+
+def lognormal_request(nside=16, lmax=31):
+    """Three correlated lognormal shells, their discretized request and solve."""
+    import glass
+
+    from sp_validation.glass_mock import solve_shell_spectra
+
+    ell = np.arange(lmax + 1)
+    auto = 1e-4 / (1 + ell) ** 1.5
+    auto[0] = 0
+    matter = [auto, auto, 0.6 * auto, auto, 0.6 * auto, 0.3 * auto]
+    fields = [glass.grf.Lognormal()] * 3
+    discrete = glass.discretized_cls(matter, nside=nside, lmax=lmax, ncorr=3)
+    gaussian, achieved, _ = solve_shell_spectra(fields, discrete)
+    return matter, achieved, gaussian
+
+
+def test_solver_audit_passes_a_converged_solve_and_records_it():
+    from sp_validation.glass_mock import audit_gaussian_solve
+
+    matter, achieved, gaussian = lognormal_request()
+    audit = audit_gaussian_solve(matter, achieved, gaussian, nside=16, lmax=31)
+    assert audit["worst_residual"] < 1e-5
+    assert len(audit["worst_pair"]) == 2
+    assert 0 < audit["min_eigenvalue"] < 1
+
+
+def test_solver_audit_refuses_a_missed_request_and_a_non_positive_solve():
+    from sp_validation.glass_mock import audit_gaussian_solve
+
+    matter, achieved, gaussian = lognormal_request()
+    missed = [cl.copy() for cl in achieved]
+    missed[2][10] += 1e-3 * np.sqrt(achieved[0][10] * achieved[1][10])
+    with pytest.raises(ValueError, match="misses"):
+        audit_gaussian_solve(matter, missed, gaussian, nside=16, lmax=31)
+    # A cross larger than its autos allow cannot be realised by glass.generate.
+    impossible = [cl.copy() for cl in gaussian]
+    impossible[2] = 1.5 * np.sqrt(gaussian[0] * gaussian[1])
+    with pytest.raises(ValueError, match="positive definite"):
+        audit_gaussian_solve(matter, achieved, impossible, nside=16, lmax=31)

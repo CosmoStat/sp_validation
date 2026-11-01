@@ -49,6 +49,7 @@ __all__ = [
     "source_shell_weights",
     "projected_convergence_weights",
     "projected_theory",
+    "audit_gaussian_solve",
     "prepare_lensing_spectra",
     "shear_alm",
     "convergence_to_shear",
@@ -441,12 +442,75 @@ def solve_shell_spectra(fields, cls, workers=1):
     return list(gaussian), list(realized), np.asarray(info)
 
 
+# Largest tolerated scale-relative difference between achieved and requested.
+SOLVER_TOLERANCE = 1e-4
+
+
+def audit_gaussian_solve(matter, achieved, gaussian, nside, lmax, ncorr=3):
+    """Check that the lognormal solve realises the requested shell spectra.
+
+    The residual of each kept pair is ``max_l |achieved - requested| /
+    sqrt(C_ii C_jj)``, against the pixel-windowed, ``ncorr``-banded request
+    that ``glass.discretized_cls`` gives the solver. Scaling by the autos
+    rather than the pair's own spectrum keeps the measure finite where a
+    cross-spectrum crosses zero, which is where GLASS's own convergence flag
+    misfires. The Gaussian spectra must also form, at every ell, a positive
+    definite ``ncorr``-banded correlation matrix, or ``glass.generate`` cannot
+    realise them.
+
+    Returns ``worst_residual``, ``worst_pair``, ``min_eigenvalue`` and
+    ``min_eigenvalue_ell``; raises ``ValueError`` when the residual exceeds
+    ``SOLVER_TOLERANCE`` or the minimum eigenvalue is not positive.
+    """
+    import glass
+
+    requested = glass.discretized_cls(matter, nside=nside, lmax=lmax, ncorr=ncorr)
+    pairs = list(glass.enumerate_spectra(requested))
+    autos = {i: np.asarray(cl) for i, j, cl in pairs if i == j}
+    worst, worst_pair = 0.0, None
+    for (i, j, wanted), got in zip(pairs, achieved, strict=True):
+        if not len(wanted):
+            continue
+        scale = np.sqrt(np.abs(autos[i] * autos[j]))[: len(wanted)]
+        keep = scale > 0
+        residual = np.max(
+            np.abs(np.asarray(got)[: len(wanted)] - wanted)[keep] / scale[keep],
+            initial=0.0,
+        )
+        if residual >= worst:
+            worst, worst_pair = float(residual), [int(i), int(j)]
+    nfields = len(autos)
+    matrix = np.zeros((lmax + 1, nfields, nfields))
+    for i, j, cl in glass.enumerate_spectra(gaussian):
+        cl = np.asarray(cl)[: lmax + 1]
+        matrix[: len(cl), i, j] = matrix[: len(cl), j, i] = cl
+    diagonal = np.sqrt(np.einsum("lii->li", matrix).clip(min=0))
+    defined = np.all(diagonal > 0, axis=1)
+    norm = diagonal[defined, :, None] * diagonal[defined, None, :]
+    eigen = np.linalg.eigvalsh(matrix[defined] / norm).min(axis=1)
+    lowest = int(np.argmin(eigen))
+    audit = dict(
+        worst_residual=worst,
+        worst_pair=worst_pair,
+        min_eigenvalue=float(eigen[lowest]),
+        min_eigenvalue_ell=int(np.flatnonzero(defined)[lowest]),
+    )
+    if audit["min_eigenvalue"] <= 0:
+        raise ValueError(f"Gaussian shell spectra are not positive definite: {audit}")
+    if worst > SOLVER_TOLERANCE:
+        raise ValueError(f"Lognormal solve misses the requested spectra: {audit}")
+    return audit
+
+
 def prepare_lensing_spectra(config, cache_dir, workers=1):
     """Cache seed-independent matter/Gaussian spectra and source theory.
 
     A lock serializes writers. The key includes cosmology, shell geometry,
     resolution, n(z) contents, GLASS version and the correlation truncation.
     No seed enters the key. Cache files contain numeric arrays only.
+    Every call audits the cached solve (``audit_gaussian_solve``), returns the
+    audit as ``spectra["solver_audit"]``, and refuses a solve that misses its
+    request or is not positive definite.
     """
     import fcntl
     import hashlib
@@ -512,7 +576,7 @@ def prepare_lensing_spectra(config, cache_dir, workers=1):
             gls, achieved, solver_info = solve_shell_spectra(
                 glass.lognormal_fields(shells), discrete, workers=workers
             )
-            # Solver residuals are recorded rather than hidden behind a warning.
+            # Solver residuals are recorded and audited below.
             achieved_theory = projected_theory(
                 achieved, transfer, config.nside, config.lmax
             )
@@ -532,6 +596,16 @@ def prepare_lensing_spectra(config, cache_dir, workers=1):
     with np.load(path) as cached:
         spectra = {key: cached[key] for key in cached.files}
     print(f"Using spectra cache: {path}", flush=True)
+    count = int(spectra["nspectra"])
+    spectra["solver_audit"] = audit_gaussian_solve(
+        *(
+            [spectra[f"{kind}_{i}"] for i in range(count)]
+            for kind in ("matter", "achieved", "gaussian")
+        ),
+        nside=config.nside,
+        lmax=config.lmax,
+    )
+    print(f"Gaussian solve audit: {spectra['solver_audit']}", flush=True)
     return pars, shells, spectra, path
 
 
@@ -693,7 +767,7 @@ def generate_lensing_maps(config, output_dir, cache_dir, workers=1):
         realization="alm2cl of the persisted alm: the painted field's spectra",
         reduced_shear="gamma/(1-kappa) of n(z)-projected fields",
         theory="GLASS shell ensemble, ncorr=3, spherical spin factor",
-        unconverged_spectra=int(np.sum(spectra["solver_info"] == 0)),
+        solver_audit=spectra["solver_audit"],
         solver_workers=workers,
         seconds=dict(
             prepare=prepared - start,
