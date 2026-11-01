@@ -155,6 +155,8 @@ class Catalogue:
     - HDF5 comprehensive catalogue: a root ``data`` dataset, joined
       column-wise with ``data_ext`` when present;
     - HDF5 single dataset at the root, of any name;
+    - HDF5 columnar table: a group of row-aligned, non-structured datasets
+      (one dataset per column), at the root or nested under a single group;
     - HDF5 group of per-unit row chunks (one dataset per tile or exposure,
       as ShapePipe writes campaign galaxy and star catalogues), found by
       ``find_dataset_group``, concatenated in dataset-name order, and
@@ -191,7 +193,11 @@ class Catalogue:
                 self._parts = {str(self.hdu): (hdus[self.hdu].data,)}
             self.chunked = False
         self.chunks = {
-            key: grammar.adapt(*parts, column_map=column_map)
+            key: (
+                grammar.V2View(parts, column_map=column_map)
+                if isinstance(parts[0], _ColumnarTable)
+                else grammar.adapt(*parts, column_map=column_map)
+            )
             for key, parts in self._parts.items()
         }
 
@@ -400,13 +406,44 @@ def _first_table_hdu(hdus, path):
     raise ValueError(f"No table HDU in FITS file {path}")
 
 
+class _ColumnarTable:
+    """Lazy structured-table interface over one HDF5 dataset per column.
+
+    A column access returns its Dataset, so V2View's bounded row windows
+    read only the selected rows, never the full 138M-row input column.
+    """
+
+    def __init__(self, group):
+        self.group = group
+        lengths = {len(column) for column in group.values()}
+        if len(lengths) != 1:
+            raise ValueError(f"Column lengths differ in HDF5 group {group.name}")
+        self._length = lengths.pop()
+        self.dtype = np.dtype(
+            [
+                (name, np.dtype((column.dtype, column.shape[1:])))
+                for name, column in group.items()
+            ]
+        )
+
+    def __len__(self):
+        return self._length
+
+    def __getitem__(self, name):
+        return self.group[name]
+
+
 def _hdf5_parts(hdf5_file, path):
     """Return ({chunk name: tuple of row-aligned datasets}, chunked) of a file."""
     data = hdf5_file.get("data")
-    if isinstance(data, h5py.Dataset):
+    if isinstance(data, h5py.Dataset) and data.dtype.names is not None:
         parts = (data,) + ((hdf5_file["data_ext"],) if "data_ext" in hdf5_file else ())
         return {"data": parts}, False
     group = find_dataset_group(hdf5_file)
+    if group and all(
+        column.dtype.names is None and column.ndim >= 1 for column in group.values()
+    ):
+        return {"columns": (_ColumnarTable(group),)}, False
     check_n_units(hdf5_file, group, path)
     chunked = group.name != "/" or len(group) > 1
     return {key: (group[key],) for key in sorted(group)}, chunked
