@@ -365,6 +365,44 @@ def pair_count_reference(config, version):
     return reference
 
 
+def tomographic_covariance_reference(config, version):
+    """Resolve an explicit analytic-covariance reference with the same survey.
+
+    Positions and weights must be audited by the run before declaring this
+    reference; shapes and blinds are deliberately not part of its identity.
+    External producers may be registry entries outside config['versions'].
+    """
+    refs = config.get("covariance", {}).get("tomographic_reference", {})
+    reference = refs.get(version, version)
+    if reference == version:
+        return version
+    if reference not in CATALOG_CONFIG:
+        raise ValueError(f"Unknown tomographic covariance reference {reference!r}")
+    if refs.get(reference, reference) != reference:
+        raise ValueError("Tomographic covariance references cannot chain")
+    entry, source = catalogue_entry(version), catalogue_entry(reference)
+    for key in ("cov_th", "mask"):
+        if entry.get(key) != source.get(key):
+            raise ValueError(f"Tomographic covariance reference requires identical {key}")
+    if entry.get("psf", {}).get("mask_veto") != source.get("psf", {}).get("mask_veto"):
+        raise ValueError("Tomographic covariance reference requires identical mask_veto")
+    for key in ("tomo_bin_col", "w_col", "R"):
+        if entry["shear"].get(key) != source["shear"].get(key):
+            raise ValueError(f"Tomographic covariance reference requires identical {key}")
+    if not entry["shear"].get("tomo_bin_col"):
+        raise ValueError("Tomographic covariance reference requires source bins")
+    if Path(redshift_path(version)).read_bytes() != Path(redshift_path(reference)).read_bytes():
+        raise ValueError("Tomographic covariance reference requires identical n(z)")
+    return reference
+
+
+def reference_product(config, reference, product, root):
+    """Relocate a producer path to an explicit external output root, if given."""
+    external = config.get("covariance", {}).get("reference_roots", {}).get(reference, {}).get(root)
+    local = COSMO_VAL if root == "cosmo_val" else COSMO_INFERENCE
+    return str(Path(external) / Path(product).relative_to(local)) if external else product
+
+
 def measurement_catalogue(version, *, psf=False):
     """Load-bearing catalogue metadata for two-point producer invalidation.
 

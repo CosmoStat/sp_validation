@@ -9,7 +9,7 @@ from sp_validation.glass_mock import b_mode_cl, paint_catalogue, read_sky
 injection = dict(snakemake.params.injection)
 kappa_alm, _ = read_sky(Path(snakemake.input.alm).parent)
 b_cl = b_mode_cl(
-    hp.Alm.getlmax(len(kappa_alm)),
+    hp.Alm.getlmax(kappa_alm.shape[-1]),
     injection.pop("b_amplitude", 0),
     injection.pop("b_cl_path", None),
 )

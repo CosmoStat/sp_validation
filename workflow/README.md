@@ -321,6 +321,44 @@ This option does not share shear vectors, rho/tau, fitted coefficients or
 harmonic covariances, and it does not authorize sharing between different
 positions, weights or selections.
 
+#### Tomographic painted skies and analytic covariance references
+
+An n(z) file containing `z bin1 ... binK` projects one shared GLASS matter
+realisation into K source fields.
+`kappa_alm.npz` holds `alm[K, nalm]` and 1-based `bin_ids`; `spectra.npz`
+holds every auto and cross as `[K, K, ell]`.
+Single-source files retain their old one-dimensional layout and seed output.
+Tomographic skies write no float32 maps by default; `maps --no-maps` also
+suppresses the legacy single-source map products.
+Pass `paint --tomo-bin-col TOM_BIN_ID` to evaluate each retained row's own
+source field; IDs outside 1..K are discarded and the bin column is kept.
+
+Mock entries with audited identical source-bin positions, weights and selection
+can use one analytic covariance for both ξ± grids and pseudo-Cℓ:
+
+```yaml
+covariance:
+  tomographic_reference:
+    GLASS_seed1: SP_v2.0
+  reference_roots:  # optional, for an already completed external data run
+    SP_v2.0:
+      cosmo_val: /data/run/cosmo_val
+      cosmo_inference: /data/run/cosmo_inference
+cosmo_val:
+  include_rho_tau: false  # omit PSF diagnostics from mock SACC assembly
+```
+
+The producer must be present in the catalogue registry but need not be a
+requested run version.
+References cannot chain and must match `cov_th` (including tomographic area,
+mask and per-bin densities/noise), footprint, PSF veto, bin column, weight
+column, response and n(z) contents.
+This declaration shares covariances only, never measured shear vectors.
+External reference roots must already contain the requested products.
+Target `{version}_bmode_summary_tomo.json` for per-pair and joint null PTEs
+using the assembled SACC's full cross-pair covariance.
+COSEBIs products retain every configured scale cut in their per-pair NPZ files.
+
 ### Which `sp_validation` a rule imports: the launched checkout
 
 The image is the frozen *dependency stack*; the `sp_validation` that runs is

@@ -53,10 +53,12 @@ def xi_onecov_covariance(w):
     Gaussian on the integration grid, non-Gaussian otherwise, as cosmo_val's
     covariance inputs are."""
     gaussian = "g" if grid_of(XI_GRIDS, w) == "integration" else "ng"
-    return covariance_path(
-        w.version, gaussian, w.min_sep, w.max_sep, w.nbins,
+    reference = tomographic_covariance_reference(config, w.version) if w.tomo_suffix else w.version
+    product = covariance_path(
+        reference, gaussian, w.min_sep, w.max_sep, w.nbins,
         DEFAULT_MASK_SUFFIX, w.tomo_suffix,
     )
+    return reference_product(config, reference, product, "cosmo_inference")
 
 
 rule xi_onecov:

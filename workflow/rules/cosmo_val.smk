@@ -80,8 +80,9 @@ def cv_pure_eb_figures(version):
 def _grid_cov(version, grid, gaussian, tomo_suffix=""):
     """OneCovariance ξ± covariance on a named grid's own binning."""
     binning = XI_GRIDS[grid]
-    return covariance_path(
-        version,
+    reference = tomographic_covariance_reference(config, version) if tomo_suffix else version
+    product = covariance_path(
+        reference,
         gaussian=gaussian,
         min_sep=binning["min_sep"],
         max_sep=binning["max_sep"],
@@ -89,6 +90,7 @@ def _grid_cov(version, grid, gaussian, tomo_suffix=""):
         mask_suffix=DEFAULT_MASK_SUFFIX,
         tomo_suffix=tomo_suffix,
     )
+    return reference_product(config, reference, product, "cosmo_inference")
 
 
 def cv_xi_cov_integration(version, tomo_suffix=""):
@@ -97,7 +99,7 @@ def cv_xi_cov_integration(version, tomo_suffix=""):
     Both B-mode statistics propagate this Gaussian covariance through their
     linear operators.
     """
-    reference = integration_covariance_reference(config, version)
+    reference = version if tomo_suffix else integration_covariance_reference(config, version)
     return _grid_cov(reference, "integration", "g", tomo_suffix)
 
 
@@ -145,7 +147,9 @@ def cv_pseudo_cl_analysis_sacc(version, tomo_suffix=""):
 
 def cv_pseudo_cl_cov(version, tomo_suffix=""):
     """NaMaster pseudo-Cl covariance FITS (COVAR_EE_EE/BB_BB/EB_EB extensions)."""
-    return str(COSMO_VAL / f"pseudo_cl_cov_{version}_{_PSEUDO_CL_TAG}{tomo_suffix}.fits")
+    reference = tomographic_covariance_reference(config, version) if tomo_suffix else version
+    product = str(COSMO_VAL / f"pseudo_cl_cov_{reference}_{_PSEUDO_CL_TAG}{tomo_suffix}.fits")
+    return reference_product(config, reference, product, "cosmo_val")
 
 
 def cv_xi_cov(version, tomo_suffix=""):
@@ -637,8 +641,9 @@ def cv_assemble_inputs(version, tomo_suffix=""):
         xi_cov=cv_xi_cov(version, tomo_suffix),
         cosebis=cv_cosebis_sacc(version, tomo_suffix),
         pure_eb=cv_pure_eb_sacc(version, tomo_suffix),
-        rho_tau=cv_rho_tau_sacc(version, tomo_suffix),
     )
+    if CV.get("include_rho_tau", True):
+        parts["rho_tau"] = cv_rho_tau_sacc(version, tomo_suffix)
     if CV.get("include_pseudo_cl", False):
         parts["pseudo_cl"] = cv_pseudo_cl_analysis_sacc(version, tomo_suffix)
         parts["pseudo_cl_cov"] = cv_pseudo_cl_cov(version, tomo_suffix)
@@ -666,6 +671,23 @@ rule assemble_sacc:
         runtime=20,
     script:
         "../scripts/assemble_sacc.py"
+
+
+rule cv_summarize_bmodes_tomo:
+    """Per-pair and joint tomographic nulls, with full cross-pair covariance."""
+    input:
+        sacc=lambda w: cv_analysis_sacc(w.version, "_tomo"),
+        pure_eb=lambda w: cv_pure_eb_npz(w.version).replace("_data.npz", "_tomo_data.npz"),
+    output:
+        summary=str(COSMO_VAL / "{version}_bmode_summary_tomo.json"),
+    params:
+        blind=lambda w: blind_of(w.version),
+        scale_cut=CV["fiducial_scale_cut"],
+    resources:
+        mem_mb=8000,
+        runtime=20,
+    script:
+        "../scripts/cv_summarize_bmodes_tomo.py"
 
 
 rule assemble_sacc_all:
