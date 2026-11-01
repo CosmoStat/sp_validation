@@ -258,7 +258,14 @@ stores <code class="docutils literal notranslate"><span class="pre">alpha_mean</
 <dl class="py method">
 <dt class="sig sig-object py" id="sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin._get_star_mask">
 <span class="sig-name descname"><span class="pre">_get_star_mask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ver</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmo_val/psf_systematics.html#PSFSystematicsMixin._get_star_mask"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin._get_star_mask" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin._get_star_mask'">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Return the stars that enter rho/tau for version <code class="docutils literal notranslate"><span class="pre">ver</span></code>.</p>
+<p>A star is kept when the psf block’s <code class="docutils literal notranslate"><span class="pre">PSF_flag</span></code> and <code class="docutils literal notranslate"><span class="pre">star_flag</span></code>
+columns, where configured, are zero, and it passes the block’s
+<code class="docutils literal notranslate"><span class="pre">mask_config</span></code>: a mask config file (relative to the catalogue
+config) whose <code class="docutils literal notranslate"><span class="pre">mask_cuts</span></code> (column names; default all) select the
+stars as they select galaxies. Star catalogues carry no mask columns,
+so those cuts read the config’s <code class="docutils literal notranslate"><span class="pre">maps</span></code> at <code class="docutils literal notranslate"><span class="pre">ra_col</span></code>/<code class="docutils literal notranslate"><span class="pre">dec_col</span></code>.</p>
+</dd></dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.set_params_rho_tau">
 <span class="sig-name descname"><span class="pre">set_params_rho_tau</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ver</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">params</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">params_psf</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmo_val/psf_systematics.html#PSFSystematicsMixin.set_params_rho_tau"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.set_params_rho_tau" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.set_params_rho_tau'">¶</a></dt>
@@ -530,7 +537,7 @@ the tomographic bin. Saved to <code class="docutils literal notranslate"><span c
 </div><footer class="py-6 border-t border-border md:py-0">
 <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
 <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 31 Oct, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.1</a></p>
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 01 Nov, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.1</a></p>
 </div>
 </div>
 </footer>

@@ -215,6 +215,31 @@ cosmo_inference footprint builder (see issue #181).</p>
 </dl>
 </dd></dl>
 <dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.masks.map_path">
+<span class="sig-name descname"><span class="pre">map_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/masks.html#map_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.masks.map_path" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.masks.map_path'">¶</a></dt>
+<dd><p>Return a local path to the sky map <code class="docutils literal notranslate"><span class="pre">source</span></code> names.</p>
+<p><code class="docutils literal notranslate"><span class="pre">source</span></code> is a path, or an <code class="docutils literal notranslate"><span class="pre">arc:</span></code>/<code class="docutils literal notranslate"><span class="pre">vos:</span></code> URL on CANFAR. A URL is
+fetched once with <code class="docutils literal notranslate"><span class="pre">vcp</span></code> into the mask cache, <code class="docutils literal notranslate"><span class="pre">$SP_VALIDATION_MASK_CACHE</span></code>
+or <code class="docutils literal notranslate"><span class="pre">~/.cache/sp_validation/masks</span></code>, mirroring its remote path, and read
+from there afterwards.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.masks.read_map">
+<span class="sig-name descname"><span class="pre">read_map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/masks.html#read_map"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.masks.read_map" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.masks.read_map'">¶</a></dt>
+<dd><p>Return the healsparse map <code class="docutils literal notranslate"><span class="pre">source</span></code> names (see <a class="reference internal" href="#sp_validation.masks.map_path" title="sp_validation.masks.map_path"><code class="xref py py-func docutils literal notranslate"><span class="pre">map_path()</span></code></a>).</p>
+</dd></dl>
+<dl class="py class">
+<dt class="sig sig-object py" id="sp_validation.masks.MapColumns">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">MapColumns</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maps</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ra_col</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'RA'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dec_col</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Dec'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/masks.html#MapColumns"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.masks.MapColumns" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.masks.MapColumns'">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>A catalogue whose missing columns are read from sky maps.</p>
+<p><code class="docutils literal notranslate"><span class="pre">maps</span></code> takes a column name to a boolean healsparse map (True = masked).
+A column the catalogue has is read from the catalogue; a column it lacks
+is the map’s value at each object’s <code class="docutils literal notranslate"><span class="pre">ra_col</span></code>/<code class="docutils literal notranslate"><span class="pre">dec_col</span></code>. So one cut,
+e.g. <code class="docutils literal notranslate"><span class="pre">MASK_8_Manual</span> <span class="pre">equal</span> <span class="pre">False</span></code>, masks galaxies from their column and
+stars, whose catalogue has no mask columns, from the map.</p>
+</dd></dl>
+<dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.masks.correlation_matrix">
 <span class="sig-name descname"><span class="pre">correlation_matrix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">masks</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">confidence_level</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.9</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/masks.html#correlation_matrix"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.masks.correlation_matrix" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.masks.correlation_matrix'">¶</a></dt>
 <dd></dd></dl>
@@ -322,10 +347,12 @@ be silently dropped</p>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.masks.get_masks_from_config">
-<span class="sig-name descname"><span class="pre">get_masks_from_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">masks_to_apply</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/masks.html#get_masks_from_config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.masks.get_masks_from_config" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.masks.get_masks_from_config'">¶</a></dt>
+<span class="sig-name descname"><span class="pre">get_masks_from_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">masks_to_apply</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ra_col</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'RA'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dec_col</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Dec'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/masks.html#get_masks_from_config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.masks.get_masks_from_config" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.masks.get_masks_from_config'">¶</a></dt>
 <dd><p>Get Masks From Config.</p>
 <p>Return the masks of the config’s <code class="docutils literal notranslate"><span class="pre">dat</span></code> cut list (<code class="docutils literal notranslate"><span class="pre">catalogue_cuts</span></code>),
-evaluated on <code class="docutils literal notranslate"><span class="pre">dat</span></code>.</p>
+evaluated on <code class="docutils literal notranslate"><span class="pre">dat</span></code>. A cut on a column <code class="docutils literal notranslate"><span class="pre">dat</span></code> lacks reads it from the
+config’s <code class="docutils literal notranslate"><span class="pre">maps</span></code> (column name -&gt; healsparse map path or <code class="docutils literal notranslate"><span class="pre">arc:</span></code>/<code class="docutils literal notranslate"><span class="pre">vos:</span></code>
+URL), at <code class="docutils literal notranslate"><span class="pre">dat</span></code>’s <code class="docutils literal notranslate"><span class="pre">ra_col</span></code>/<code class="docutils literal notranslate"><span class="pre">dec_col</span></code> (see <a class="reference internal" href="#sp_validation.masks.MapColumns" title="sp_validation.masks.MapColumns"><code class="xref py py-class docutils literal notranslate"><span class="pre">MapColumns</span></code></a>).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -334,6 +361,8 @@ evaluated on <code class="docutils literal notranslate"><span class="pre">dat</s
 <code class="docutils literal notranslate"><span class="pre">CalibrateCat.read_cat</span></code>)</p></li>
 <li><p><strong>masks_to_apply</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.15)"><em>list</em></a><em>, </em><em>optional</em>) – masks to apply exclusively; if <cite>None</cite> (default), use all masks</p></li>
 <li><p><strong>verbose</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.15)"><em>bool</em></a><em>, </em><em>optional</em>) – verbose output if <code class="docutils literal notranslate"><span class="pre">True</span></code>; default is <code class="docutils literal notranslate"><span class="pre">False</span></code></p></li>
+<li><p><strong>ra_col</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a><em>, </em><em>optional</em>) – position columns for map lookups; default <code class="docutils literal notranslate"><span class="pre">RA</span></code>, <code class="docutils literal notranslate"><span class="pre">Dec</span></code></p></li>
+<li><p><strong>dec_col</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a><em>, </em><em>optional</em>) – position columns for map lookups; default <code class="docutils literal notranslate"><span class="pre">RA</span></code>, <code class="docutils literal notranslate"><span class="pre">Dec</span></code></p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -342,6 +371,30 @@ evaluated on <code class="docutils literal notranslate"><span class="pre">dat</s
 <li><p><em>dict</em> – list of indices for given mask column name (label)</p></li>
 </ul>
 </p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.masks.catalogue_selection">
+<span class="sig-name descname"><span class="pre">catalogue_selection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cuts</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ra_col</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'RA'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dec_col</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Dec'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/masks.html#catalogue_selection"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.masks.catalogue_selection" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.masks.catalogue_selection'">¶</a></dt>
+<dd><p>Return the objects of <code class="docutils literal notranslate"><span class="pre">dat</span></code> that pass a mask config’s cuts.</p>
+<p>The one place a mask config is evaluated on a catalogue, galaxies and PSF
+stars alike: the AND of <a class="reference internal" href="#sp_validation.masks.get_masks_from_config" title="sp_validation.masks.get_masks_from_config"><code class="xref py py-func docutils literal notranslate"><span class="pre">get_masks_from_config()</span></code></a>’s masks.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>config</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.15)"><em>dict</em></a>) – mask config (<code class="docutils literal notranslate"><span class="pre">dat</span></code> cut list, optional <code class="docutils literal notranslate"><span class="pre">maps</span></code>)</p></li>
+<li><p><strong>dat</strong> (<em>mapping</em>) – catalogue, indexable by column name</p></li>
+<li><p><strong>cuts</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.15)"><em>list</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a><em>, </em><em>optional</em>) – column names of the cuts to apply; default all</p></li>
+<li><p><strong>ra_col</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a><em>, </em><em>optional</em>) – position columns for map lookups</p></li>
+<li><p><strong>dec_col</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a><em>, </em><em>optional</em>) – position columns for map lookups</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>boolean, True for objects kept</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)">numpy.ndarray</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -367,6 +420,9 @@ evaluated on <code class="docutils literal notranslate"><span class="pre">dat</s
 <div class="sticky top-16 -mt-10 max-h-[calc(100vh-5rem)] h-full overflow-y-auto pt-6 space-y-2"><p class="font-medium">On this page</p>
 <ul>
 <li><a :data-current="activeSection === '#sp_validation.masks.apply_condition'" class="reference internal" href="#sp_validation.masks.apply_condition"><code class="docutils literal notranslate"><span class="pre">apply_condition()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.masks.map_path'" class="reference internal" href="#sp_validation.masks.map_path"><code class="docutils literal notranslate"><span class="pre">map_path()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.masks.read_map'" class="reference internal" href="#sp_validation.masks.read_map"><code class="docutils literal notranslate"><span class="pre">read_map()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.masks.MapColumns'" class="reference internal" href="#sp_validation.masks.MapColumns"><code class="docutils literal notranslate"><span class="pre">MapColumns</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.masks.correlation_matrix'" class="reference internal" href="#sp_validation.masks.correlation_matrix"><code class="docutils literal notranslate"><span class="pre">correlation_matrix()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.masks.confusion_matrix'" class="reference internal" href="#sp_validation.masks.confusion_matrix"><code class="docutils literal notranslate"><span class="pre">confusion_matrix()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.masks.Mask'" class="reference internal" href="#sp_validation.masks.Mask"><code class="docutils literal notranslate"><span class="pre">Mask</span></code></a><ul>
@@ -385,6 +441,7 @@ evaluated on <code class="docutils literal notranslate"><span class="pre">dat</s
 <li><a :data-current="activeSection === '#sp_validation.masks.print_mask_stats'" class="reference internal" href="#sp_validation.masks.print_mask_stats"><code class="docutils literal notranslate"><span class="pre">print_mask_stats()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.masks.catalogue_cuts'" class="reference internal" href="#sp_validation.masks.catalogue_cuts"><code class="docutils literal notranslate"><span class="pre">catalogue_cuts()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.masks.get_masks_from_config'" class="reference internal" href="#sp_validation.masks.get_masks_from_config"><code class="docutils literal notranslate"><span class="pre">get_masks_from_config()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.masks.catalogue_selection'" class="reference internal" href="#sp_validation.masks.catalogue_selection"><code class="docutils literal notranslate"><span class="pre">catalogue_selection()</span></code></a></li>
 </ul>
 </div>
 </aside>
@@ -393,7 +450,7 @@ evaluated on <code class="docutils literal notranslate"><span class="pre">dat</s
 </div><footer class="py-6 border-t border-border md:py-0">
 <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
 <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 31 Oct, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.1</a></p>
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 01 Nov, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.1</a></p>
 </div>
 </div>
 </footer>
