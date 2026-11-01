@@ -32,6 +32,15 @@ params:
   sky_regions: False
   verbose: True
 
+# Sky maps for mask columns a catalogue lacks: a cut on such a column reads
+# the map (True = masked) at each object's position. Galaxy catalogues carry
+# MASK_8_Manual; ShapePipe's PSF-star catalogue does not, so stars selected
+# with this config (a cat_config psf block's mask_config/mask_cuts) take the
+# manual mask from the DR6 bit-8 map. Values are paths or arc:/vos: URLs,
+# fetched once into ~/.cache/sp_validation/masks (sp_validation.masks.map_path).
+maps:
+  MASK_8_Manual: arc:home/mhudson/masks/mask_ugriz_nside131072_n8.hsp
+
 # Masks
 ## Cuts on catalogue columns, in the v2 grammar (sp_validation.grammar)
 dat:
