@@ -141,6 +141,8 @@ glass = [
     "cosmology.compat.camb==0.2.0",
     # fitsio: make_glass_sim.py writes the mock catalogue as FITS.
     "fitsio",
+    # ducc0: paint_catalogue evaluates the sky alm at each galaxy position.
+    "ducc0",
 ]
 # Cosmo-inference workflow runners (workflow/scripts/*). Kept optional: the core
 # library resolves without them, but the container installs this extra so the

@@ -139,6 +139,13 @@ snakemake -n --profile workflow/profiles/default -s workflow/Snakefile \
 The `glass_painted_maps` and `glass_painted_catalogue` rules project a single
 source n(z) through lognormal matter shells, then paint the resulting shear
 onto the positions of a calibrated FITS/HDF5 catalogue.
+The sky is the convergence alm, and painting evaluates convergence and shear
+exactly at each galaxy position (`ducc0` `synthesis_general`), not at the
+nearest pixel: a nearest-pixel lookup samples a piecewise-constant field and
+multiplies every catalogue two-point function by one extra spin-0 pixel window
+pw0², which at nside 4096 suppresses ξ− by 21% at 1′ and C_EE by 1.4% at
+ℓ=1600. With exact evaluation the sky's `realization_*` spectra are the known
+answer of every catalogue statistic.
 The default `shear: gamma` makes the signal pure E with the saved C_EE as its
 known answer; `shear: reduced` applies gamma/(1-kappa) and includes physical
 reduced-shear corrections to EE and BB.
@@ -159,7 +166,9 @@ Add this opt-in configuration to a run config (paths are examples):
 glass_paint:
   output_dir: results/glass_painted
   nz: /path/to/nz_B.txt
-  threads: 28
+  threads: 28          # map generation
+  paint_threads: 16    # exact evaluation per catalogue
+  block_size: 8000000  # rows per evaluation call
   map_config:
     nside: 4096
     harmonic_lmax: 8192
@@ -200,14 +209,25 @@ python scripts/glass_mock/paint_catalogue.py paint --seed 1 \
     --output results/glass_painted/seed_00001/sample_none.h5
 ```
 
-Each sky stores float32 RING `kappa.npy`, `gamma1.npy`, `gamma2.npy`,
-`spectra.npz` (measured full-sky KK, EE, BB and cross spectra; shell-ensemble
-KK/EE with and without pixel windows), and `maps.json` (cosmology, seed,
-source weights, timings and cache key).
+Each sky stores `kappa_alm.npz` (the complex128 convergence alm to lmax and
+its nside: the sky that painting evaluates), float32 RING `kappa.npy`,
+`gamma1.npy`, `gamma2.npy` for maps and visuals,
+`spectra.npz` (the alm's realised KK, EE and KE, which are the painted
+catalogue's known answer; shell-ensemble KK/EE with and without pixel
+windows), and `maps.json` (cosmology, seed, source weights, timings and cache
+key).
+The shear E alm is `shear_alm(kappa_alm, nside)`: the spherical spin factor
+times pw2/pw0, shared by the shear maps and the painter.
 The exact shell theory includes the same source partition and three-neighbour
 shell covariance truncation as the generator, and the spherical spin-2 factor.
 Both the target and the padded lognormal solver's achieved ensemble spectra are
-saved, so solver residuals can be checked quantitatively.
+saved, and every run audits them: the worst scale-relative residual
+max_ℓ |achieved − requested| / sqrt(C_ii C_jj) over the kept shell pairs must
+stay below 1e-4, and the Gaussian spectra must pass the sampler glass.generate
+runs (cls2cov then iternorm), which needs every shell's conditional variance
+positive at every ℓ. The production shells (dx=200 Mpc) pass; at dx=100 the
+sampler itself refuses the solve.
+`maps.json` records the audit as `solver_audit`; a failing solve is refused.
 The solver runs independent shell pairs in spawned single-thread processes,
 bounded by the rule's threads or the CLI's `--workers` (default OMP_NUM_THREADS).
 The locked cache holds seed-independent matter and Gaussian spectra.
@@ -228,17 +248,27 @@ injected mock.
 A JSON sidecar and HDF5 attributes record rotation and injection seeds and
 amplitudes.
 For a B injection, `<catalogue>.bmode_spectra.npz` stores the target BB and
-the realised full-sky EE/BB/EB of the injected field; its path is in the header.
+the realised BB of the injected alm (`alm2cl`), which is the injected field's
+exact known answer; its path is in the header.
 The catalogue header also records weight sums and full-catalogue one-point
 moments of the rotated noise and painted shapes, using both w and w² weights.
 These diagnostics never use unrotated data components.
+Rows are read in `chunk_size` slices of the needed columns and evaluated in
+blocks of `block_size` rows (default 8M) on `paint_threads` threads.
+Each evaluation call has a fixed setup of about one full-sky synthesis
+(~4 s at lmax 8192 on 28 threads, ~75 s on one) and almost no per-row cost
+(16M rows in under 5 s on 28 threads), so large blocks amortise it; memory is
+~7 GB at lmax 8192 plus a few hundred bytes per block row.
 Columnar HDF5 inputs (one row-aligned dataset per column) are read lazily by
-`Catalogue`, so compact 138M-row inputs stay bounded by `chunk_size`.
+`Catalogue`, so compact 138M-row inputs stay bounded by the block size.
+The rotation RNG draws one uniform angle per row in row order, so a seed gives
+the same noise whatever the chunk and block sizes.
 For a calibrated v2 input with a `w` column, set `w_col: w` and R=1 in the
 consumer; `halo_clear` is copied unchanged for subsequent row selections.
 A B-mode injection accepts either `b_amplitude` for
-`C_BB=A exp[-(ell/2000)^2]` or a two-column `b_cl_path`; these specify the
-pixelized target spectrum, without another pixel-window factor.
+`C_BB=A exp[-(ell/2000)^2]` or a two-column `b_cl_path`, up to the sky's lmax.
+The B alm is evaluated exactly at each galaxy like the shear, so the target
+spectrum carries no pixel window.
 Map gamma2 has the HEALPix sign; catalogue e2, g2, noise2 and injected2 have the
 opposite sky-coordinate sign, matching cosmo_val's `pol_factor: -1`.
 `test_glass_paint.py` proves this with the pipeline's NaMaster map estimator,

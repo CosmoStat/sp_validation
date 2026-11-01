@@ -16,7 +16,14 @@ import numpy as np
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from sp_validation.glass_mock import convergence_to_shear, paint_shear
+from sp_validation.glass_mock import (
+    convergence_to_shear,
+    default_threads,
+    evaluate_alm,
+    paint_shear,
+    read_sky,
+    shear_alm,
+)
 from sp_validation.grammar import materialise
 from sp_validation.io import Catalogue
 from sp_validation.pseudo_cl import get_pseudo_cls_map
@@ -32,8 +39,6 @@ def sign_control(output):
     gamma1, gamma2 = convergence_to_shear(kappa, lmax)
     ra, dec = hp.pix2ang(nside, np.arange(len(kappa)), lonlat=True)
     painted = paint_shear(
-        ra,
-        dec,
         np.zeros(len(ra)),
         np.zeros(len(ra)),
         (np.zeros_like(kappa), gamma1, gamma2),
@@ -144,13 +149,6 @@ def map_spectra(maps, output):
         metrics[f"{field}_mean_ratio_ell{lower}_{upper}"] = float(
             np.average(measured[choose] / theory[choose], weights=2 * ell[choose] + 1)
         )
-    axes[0].loglog(
-        centers,
-        bin_spectrum(spectra["realization_bb"]),
-        "x",
-        color="C3",
-        label="BB realization",
-    )
     axes[0].set(
         ylabel=r"$C_\ell$",
         title="Projected GLASS sky: full-sky realization vs shell ensemble",
@@ -170,7 +168,7 @@ def reduced_shear_comparison(maps, output):
     path = output / "reduced_shear_comparison.npz"
     if path.exists():
         with np.load(path) as cached:
-            reduced = cached["reduced"]
+            reduced, gamma = cached["reduced"], cached["gamma"]
     else:
         kappa = np.load(maps / "kappa.npy", mmap_mode="r")
         denominator = 1 - np.asarray(kappa, dtype=float)
@@ -180,26 +178,30 @@ def reduced_shear_comparison(maps, output):
         reduced = hp.anafast(
             [np.zeros(len(kappa)), g1, g2], lmax=int(ell[-1]), pol=True, iter=3
         )
-        np.savez(
-            path,
-            ell=ell,
-            reduced=reduced,
-            gamma_ee=saved["realization_ee"],
-            gamma_bb=saved["realization_bb"],
+        del g1, g2
+        # The same estimator on the gamma maps gives the transform's BB floor.
+        gamma = hp.anafast(
+            [
+                np.zeros(len(kappa)),
+                np.load(maps / "gamma1.npy", mmap_mode="r"),
+                np.load(maps / "gamma2.npy", mmap_mode="r"),
+            ],
+            lmax=int(ell[-1]),
+            pol=True,
+            iter=3,
         )
+        np.savez(path, ell=ell, reduced=reduced, gamma=gamma)
     edges = np.arange(2, min(8000, int(ell[-1])) + 101, 100)
     centers, ee_ratio, bb_ratio, gamma_bb_ratio = [], [], [], []
     for lower, upper in zip(edges[:-1], edges[1:], strict=True):
         selected = (ell >= lower) & (ell < upper)
         weight = 2 * ell[selected] + 1
-        gamma_ee = np.average(saved["realization_ee"][selected], weights=weight)
+        gamma_ee = np.average(gamma[1, selected], weights=weight)
         reduced_ee = np.average(reduced[1, selected], weights=weight)
         centers.append(np.average(ell[selected], weights=weight))
         ee_ratio.append(reduced_ee / gamma_ee)
         bb_ratio.append(np.average(reduced[2, selected], weights=weight) / reduced_ee)
-        gamma_bb_ratio.append(
-            np.average(saved["realization_bb"][selected], weights=weight) / gamma_ee
-        )
+        gamma_bb_ratio.append(np.average(gamma[2, selected], weights=weight) / gamma_ee)
     fig, axes = plt.subplots(2, 1, figsize=(8, 6), sharex=True, constrained_layout=True)
     axes[0].plot(centers, ee_ratio, color="C0")
     axes[0].axhline(1, color="0.5", ls="--")
@@ -235,13 +237,9 @@ def catalogue_noise(source_path, mock_path, maps, output, max_rows=1_000_000):
     samples = []
     evaluated = 0
     part_offset = 0
-    max_truth_error = 0.0
     max_amplitude_error = 0.0
-    lensing = [
-        np.load(maps / f"{name}.npy", mmap_mode="r")
-        for name in ("kappa", "gamma1", "gamma2")
-    ]
-    nside = hp.npix2nside(len(lensing[0]))
+    kappa_alm, nside = read_sky(maps)
+    sky = (kappa_alm[None], np.stack([shear_alm(kappa_alm, nside), 0 * kappa_alm]))
     with Catalogue(source_path) as cat, h5py.File(mock_path) as painted:
         shear_choice = json.loads(painted.attrs["mock_metadata"])["shear"]
         total_rows = len(cat)
@@ -293,21 +291,11 @@ def catalogue_noise(source_path, mock_path, maps, output, max_rows=1_000_000):
                 # Contiguous blocks distributed across the catalogue avoid a
                 # full multi-GB reread while sampling the entire row range.
                 selected = mock
-                pix = hp.ang2pix(nside, selected["RA"], selected["Dec"], lonlat=True)
-                kap = np.asarray(lensing[0][pix], dtype=float)
-                denominator = 1 - kap if shear_choice == "reduced" else 1
-                g1 = np.asarray(lensing[1][pix], dtype=float) / denominator
-                g2 = -np.asarray(lensing[2][pix], dtype=float) / denominator
-                max_truth_error = max(
-                    max_truth_error,
-                    np.max(np.abs(g1 - selected["g1_true"])),
-                    np.max(np.abs(g2 - selected["g2_true"])),
-                )
                 samples.append(
                     np.column_stack(
                         (
-                            g1,
-                            g2,
+                            selected["RA"],
+                            selected["Dec"],
                             selected["g1_true"],
                             selected["g2_true"],
                             selected["e1"],
@@ -321,6 +309,14 @@ def catalogue_noise(source_path, mock_path, maps, output, max_rows=1_000_000):
                 evaluated += len(real)
             part_offset += len(part)
     sample = np.concatenate(samples)
+    # Columns 0-1 become the signal re-evaluated from the sky alm at each row.
+    kap = evaluate_alm(sky[0], sample[:, 0], sample[:, 1], nthreads=default_threads())
+    gamma1, gamma2 = evaluate_alm(
+        sky[1], sample[:, 0], sample[:, 1], nthreads=default_threads()
+    )
+    denominator = 1 - kap[0] if shear_choice == "reduced" else 1
+    sample[:, 0], sample[:, 1] = gamma1 / denominator, -gamma2 / denominator
+    max_truth_error = float(np.max(np.abs(sample[:, :2] - sample[:, 2:4])))
     sigmas = {}
     for kind, accum in moments.items():
         sigmas[kind] = {}
@@ -365,7 +361,7 @@ def catalogue_noise(source_path, mock_path, maps, output, max_rows=1_000_000):
             sample[::100, comp + 2],
             s=3,
             color=color,
-            label=f"g{comp + 1} vs map",
+            label=f"g{comp + 1} vs sky alm",
         )
     ax[0, 2].set(xlabel=f"{shear_choice} at positions", ylabel="saved g_true")
     ax[0, 2].legend()
@@ -409,7 +405,7 @@ def catalogue_noise(source_path, mock_path, maps, output, max_rows=1_000_000):
     text += [
         "",
         f"max |noise amplitude - input amplitude|: {max_amplitude_error:.2g}",
-        f"max |saved g - sampled map g|: {max_truth_error:.2g}",
+        f"max |saved g - sky alm g|: {max_truth_error:.2g}",
         "conditional means: sampled blocks",
     ]
     ax[1, 2].text(0, 1, "\n".join(text), va="top", fontsize=9, family="monospace")

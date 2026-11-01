@@ -153,6 +153,7 @@ rule glass_painted_maps:
     input:
         nz=lambda wc: GLASS_PAINT["nz"],
     output:
+        alm=f"{GLASS_PAINT_MAPS}/kappa_alm.npz",
         kappa=f"{GLASS_PAINT_MAPS}/kappa.npy",
         gamma1=f"{GLASS_PAINT_MAPS}/gamma1.npy",
         gamma2=f"{GLASS_PAINT_MAPS}/gamma2.npy",
@@ -171,12 +172,10 @@ rule glass_painted_maps:
 
 
 rule glass_painted_catalogue:
-    """Rotate calibrated input shapes and paint selected shear in bounded chunks."""
+    """Rotate calibrated input shapes; evaluate the sky's alm at each galaxy."""
     input:
         catalogue=lambda wc: GLASS_PAINT_CATALOGUES[wc.catalogue]["path"],
-        kappa=rules.glass_painted_maps.output.kappa,
-        gamma1=rules.glass_painted_maps.output.gamma1,
-        gamma2=rules.glass_painted_maps.output.gamma2,
+        alm=rules.glass_painted_maps.output.alm,
         metadata=rules.glass_painted_maps.output.metadata,
         b_cl=lambda wc: ([GLASS_PAINT_INJECTIONS[wc.injection]["b_cl_path"]]
                         if GLASS_PAINT_INJECTIONS[wc.injection].get("b_cl_path") else []),
@@ -190,7 +189,8 @@ rule glass_painted_catalogue:
         },
         injection=lambda wc: GLASS_PAINT_INJECTIONS[wc.injection],
         chunk_size=GLASS_PAINT.get("chunk_size", 250000),
-    threads: 4
+        block_size=GLASS_PAINT.get("block_size", 8000000),
+    threads: GLASS_PAINT.get("paint_threads", 16)
     resources:
         mem_mb=32000,
         runtime=60,
