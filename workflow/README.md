@@ -221,7 +221,12 @@ times pw2/pw0, shared by the shear maps and the painter.
 The exact shell theory includes the same source partition and three-neighbour
 shell covariance truncation as the generator, and the spherical spin-2 factor.
 Both the target and the padded lognormal solver's achieved ensemble spectra are
-saved, so solver residuals can be checked quantitatively.
+saved, and every run audits them: the worst scale-relative residual
+max_ℓ |achieved − requested| / sqrt(C_ii C_jj) over the kept shell pairs must
+stay below 1e-4, and the ncorr-banded Gaussian correlation matrix must be
+positive definite at every ℓ (its minimum eigenvalue is 0.23 at dx=200 but
+negative at dx=100, which glass.generate cannot realise).
+`maps.json` records the audit as `solver_audit`; a failing solve is refused.
 The solver runs independent shell pairs in spawned single-thread processes,
 bounded by the rule's threads or the CLI's `--workers` (default OMP_NUM_THREADS).
 The locked cache holds seed-independent matter and Gaussian spectra.
