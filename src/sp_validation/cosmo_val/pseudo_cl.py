@@ -778,8 +778,16 @@ class PseudoClMixin:
                 self.print_done(f"Skipping OneCovariance calculation, {out_dir} exists")
                 self._load_onecovariance_cov(out_dir, ver, tomography)
             else:
-                mask_path = self.cc[ver]["mask"]
+                mask_path = (
+                    self.tomographic_footprint(ver)
+                    if tomography
+                    else self.cc[ver]["mask"]
+                )
                 if not os.path.exists(mask_path):
+                    if mask_path != self.cc[ver]["mask"]:
+                        raise FileNotFoundError(
+                            f"{ver}: tomographic footprint {mask_path} not found"
+                        )
                     print("Mask file does not exist")
                     print("Computing the mask from the binned catalog and saving...")
                     mask = self._get_binned_catalog_mask(ver)
@@ -1126,7 +1134,8 @@ class PseudoClMixin:
         mask_folder = os.path.dirname(os.path.abspath(mask_path))
         config["survey specs"]["mask_directory"] = mask_folder
         config["survey specs"]["mask_file_lensing"] = mask_base
-        config["survey specs"]["survey_area_lensing_in_deg2"] = str(self.area[ver])
+        area = self.tomographic_area(ver) if tomography else self.area[ver]
+        config["survey specs"]["survey_area_lensing_in_deg2"] = str(area)
 
         # Update ellipticity dispersion and effective number density
         # Account for tomography if needed
