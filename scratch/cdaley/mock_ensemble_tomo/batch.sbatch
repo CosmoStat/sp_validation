@@ -12,3 +12,4 @@ HERE=/project/6001537/cdaley/sp/sp_validation-mockens/scratch/cdaley/mock_ensemb
 export MEM_MB=680000
 /home/cdaley/sp/snakemake-env/bin/python -c "import json; assert json.load(open('/project/6001537/cdaley/mock-ensemble-tomo/seed1_known_answer.json'))['passed']"
 bash "$HERE/run.sh"
+/home/cdaley/sp/snakemake-env/bin/python "$HERE/summarize.py"

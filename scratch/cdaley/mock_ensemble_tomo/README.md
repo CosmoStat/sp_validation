@@ -22,6 +22,8 @@ Do not scale before that gate passes.
 
 Then run `sbatch --export=ALL,START=2,END=20 batch.sbatch`.
 Raise END as needed to grow toward 100.
+`summarize.py` indexes completed statistics under each seed, gathers joint/per-pair null PTE CSVs and records measured per-rule costs in `RESULT.md` and `ensemble_summary.json`.
+It does not place data in the ensemble.
 Resubmitting resumes completed Snakemake products; no job sleeps or polls internally.
 If using the fallback account, pass `--account=def-mjhudson` to sbatch.
 
