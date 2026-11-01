@@ -66,6 +66,9 @@ def test_onecov_tomographic_noise_kernel(tmp_path, monkeypatch):
         )
 
     reader = FileInput({})
+    # Nibi's pinned c8755d6d reader expects its usual bias config even for
+    # a shear-only pair table (newer OneCovariance supplies this default).
+    reader.bias_dict.setdefault("logmass_bins", [0.0, 1.0])
     reader.clustering, reader.ggl, reader.cosmicshear = False, False, True
     reader.n_tomo_lens = 2
     reader._FileInput__get_npair_tabs(
