@@ -39,7 +39,7 @@ inputs:
   - id: dr6_bit8_mask
     type: data
     label: "DR6 mask bit 8 (manual star/object masks)"
-    source: "/project/def-mjhudson/unions-wl/masks/dr6-2026-08/mask_ugriz_nside131072_n8.hsp"
+    source: "arc:home/mhudson/masks/mask_ugriz_nside131072_n8.hsp"
   - id: blind_record
     type: data
     label: "The `unions` blind"
@@ -124,12 +124,15 @@ decisions:
     rationale: >-
       Analytic OneCovariance (Gaussian + non-Gaussian + SSC) for ξ± on the
       measured footprint, with the measured per-component σ_e and n_eff of each
-      bin; NaMaster Gaussian covariance for pseudo-Cℓ. Measured pair-count shape
-      noise is implemented for the non-tomographic ξ± only.
-    default: analytic_onecov
+      bin; NaMaster Gaussian covariance for pseudo-Cℓ. The fiducial ξ± shape
+      noise uses independently measured weighted pair counts on each grid and
+      tomographic bin pair (#432); the analytic snapshot is retained for comparison.
+    default: measured_pair_noise
     options:
+      measured_pair_noise:
+        label: "OneCovariance with measured pair-count shape noise (plain and tomographic)"
       analytic_onecov:
-        label: "OneCovariance (ξ±) and NaMaster (Cℓ), analytic"
+        label: "OneCovariance analytic shape noise (comparison snapshot)"
 
   psf_leakage_fit:
     label: "ρ/τ PSF-leakage estimator"
@@ -137,8 +140,8 @@ decisions:
     rationale: >-
       A joint errors-in-variables ρ/τ fit on the jackknife measurement
       (sp_validation #454). PSF stars inside DR6 mask bit 8 (manual masks:
-      M33, globular clusters, dense fields) are vetoed through psf.mask_veto
-      (#457). M33's core is the one dense object whose stars are corrupted
+      M33, globular clusters, dense fields) are vetoed through psf.mask_config
+      and psf.mask_cuts: [MASK_8_Manual] (#457). M33's core is the one dense object whose stars are corrupted
       (~20% oversized), as found in ShapePipe #993.
     default: eiv_bit8_veto
     options:
@@ -152,11 +155,11 @@ decisions:
   bmode_scale_cut:
     label: "B-mode PTE scale cut"
     tags: [stats]
-    rationale: "Paper II's real-space cut; harmonic ℓ 300–1600."
+    rationale: "Paper II's real-space cut; the diagnostic report tests all stored harmonic bands."
     default: paper_ii
     options:
       paper_ii:
-        label: "12′–83′ (ξ±, COSEBIs), ℓ 300–1600 (Cℓ)"
+        label: "12′–83′ (ξ±, COSEBIs), all 32 stored bands (Cℓ)"
 
 outputs:
   - id: tomo_catalogue
@@ -193,4 +196,4 @@ outputs:
     inputs: [tomo_sacc]
     decisions: [bmode_scale_cut]
     recipe:
-      command: "python /project/def-mjhudson/cdaley/cosmo-val-v2-tomo/report/build_report.py"
+      command: "REPORT_JOB=<held-allocation> /project/6001537/cdaley/cosmo-val-v2-tomo/report/render.sh"
