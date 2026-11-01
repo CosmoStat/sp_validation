@@ -179,7 +179,7 @@ class RealSpaceMixin:
         """
         with self.results[ver].temporarily_read_data(psf=False):
             dat = self.results[ver].dat_shear
-            g1, g2 = self._calibrated_g(ver)
+            g1, g2 = self._calibrated_g(ver, catalog=dat)
             return {
                 "ra": np.asarray(dat["RA"]),
                 "dec": np.asarray(dat["Dec"]),
