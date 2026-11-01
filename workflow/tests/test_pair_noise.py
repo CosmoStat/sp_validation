@@ -79,24 +79,43 @@ def test_analytic_flag_removes_pair_dependency(toy):
     assert not any("_pairs_" in p for p in ini.input)
 
 
-def test_implicit_tomographic_default_stays_analytic(toy):
-    with _implicit_noise_setting(toy):
-        result = toy.snakemake("-n", _ini(toy, "_tomo"))
-    assert result.returncode == 0, result.stdout
-    jobs = parse_jobs(result.stdout)
-    assert any(j.rule == "covariance_ini" for j in jobs)
-    assert not any(j.rule == "covariance_pair_counts" for j in jobs)
+def test_tomographic_counts_and_file_order(toy):
+    from test_onecov_inputs import _two_bin_catalogue
 
-
-def test_explicit_pair_counts_leave_tomographic_analytic(toy):
-    """The template's explicit pair_counts governs the non-tomographic
-    covariance; a tomographic one from the same config resolves, analytic."""
-    result = toy.snakemake(
-        "-n",
-        _ini(toy, "_tomo"),
-        config=['covariance={"shape_noise":"pair_counts","default_masked":false}'],
-    )
-    assert result.returncode == 0, result.stdout
-    jobs = parse_jobs(result.stdout)
-    assert any(j.rule == "covariance_ini" for j in jobs)
-    assert not any(j.rule == "covariance_pair_counts" for j in jobs)
+    with _two_bin_catalogue(toy):
+        target = _ini(toy, "_tomo")
+        result = toy.snakemake("-n", target)
+        assert result.returncode == 0, result.stdout
+        jobs = parse_jobs(result.stdout)
+        pairs = [j for j in jobs if j.rule == "covariance_pair_counts_tomo"]
+        assert len(pairs) == 3
+        assert {(j.wildcards["bin1"], j.wildcards["bin2"]) for j in pairs} == {
+            ("1", "1"),
+            ("1", "2"),
+            ("2", "2"),
+        }
+        for job in pairs:
+            for path in job.output:
+                Path(path).parent.mkdir(parents=True, exist_ok=True)
+                Path(path).touch()
+        result = toy.snakemake(target, "--allowed-rules", "covariance_ini")
+        assert result.returncode == 0, result.stdout
+        text = Path(target).read_text()
+        line = next(
+            line for line in text.splitlines() if line.startswith("npair_mm_file")
+        )
+        names = line.split(" = ")[1].split(", ")
+        assert [name.split("_tomo_bin=")[1] for name in names] == [
+            "1-1.txt",
+            "1-2.txt",
+            "2-2.txt",
+        ]
+        assert "survey_area_lensing_in_deg2 = 7.5" in text
+        result = toy.snakemake(
+            "-n", "-F", target, config=['covariance={"shape_noise":"analytic"}']
+        )
+        assert result.returncode == 0, result.stdout
+        assert not any(
+            j.rule.startswith("covariance_pair_counts")
+            for j in parse_jobs(result.stdout)
+        )

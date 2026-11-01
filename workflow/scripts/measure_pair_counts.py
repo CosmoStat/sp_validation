@@ -12,4 +12,6 @@ measure_pair_counts(
     dec_col=snakemake.params.dec_col,
     w_col=snakemake.params.w_col,
     num_threads=snakemake.threads,
+    tomo_bin_col=snakemake.params.get("tomo_bin_col"),
+    bin_pair=snakemake.params.get("bin_pair"),
 )

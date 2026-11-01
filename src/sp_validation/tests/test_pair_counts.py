@@ -137,3 +137,48 @@ def test_hdf5_never_materialises_shapes(tmp_path, monkeypatch, layout):
     with np.load(out) as z:
         np.testing.assert_allclose(z["weight"], 35.0)
         np.testing.assert_allclose(z["weight_squared"], 273.0)
+
+
+@pytest.mark.parametrize(
+    "pair, indices, factor",
+    [
+        ((1, 1), [(1, 2)], 2),
+        ((1, 2), [(1, 3), (1, 4), (2, 3), (2, 4)], 1),
+        ((2, 2), [(3, 4)], 2),
+    ],
+)
+def test_tomographic_pairs_known_answer(tmp_path, pair, indices, factor):
+    # Negative and zero IDs are excluded; sorted positive IDs needn't be consecutive.
+    weights = np.array([100.0, 1.0, 2.0, 3.0, 4.0, 100.0])
+    cat = tmp_path / "tomo.fits"
+    fits.BinTableHDU.from_columns(
+        [
+            fits.Column(name="RA", format="D", array=np.arange(6) * 0.01),
+            fits.Column(name="Dec", format="D", array=np.zeros(6)),
+            fits.Column(name="w", format="D", array=weights),
+            fits.Column(name="TOM_BIN_ID", format="J", array=[0, 2, 2, 4, 4, -1]),
+        ]
+    ).writeto(cat)
+    output = tmp_path / "counts.npz"
+    measure_pair_counts(
+        cat,
+        output,
+        min_sep=0.1,
+        max_sep=10,
+        nbins=1,
+        tomo_bin_col="TOM_BIN_ID",
+        bin_pair=pair,
+    )
+    products = np.array([weights[i] * weights[j] for i, j in indices])
+    with np.load(output) as z:
+        np.testing.assert_allclose(z["weight"], products.sum())
+        np.testing.assert_allclose(z["weight_squared"], (products**2).sum())
+        np.testing.assert_allclose(z["npairs"], len(indices))
+        np.testing.assert_allclose(
+            z[
+                "ordered_effective_pairs"
+                if pair[0] == pair[1]
+                else "effective_cross_pairs"
+            ],
+            factor * products.sum() ** 2 / (products**2).sum(),
+        )
