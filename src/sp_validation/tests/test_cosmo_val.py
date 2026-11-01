@@ -583,6 +583,15 @@ class TestCosmologyValidation:
         np.testing.assert_allclose(xi["a"], xi["b"], rtol=0, atol=1e-12)
         np.testing.assert_allclose(var["a"], var["b"], rtol=1e-10)
 
+    def test_shear_measurement_does_not_read_stars(self, tmp_path):
+        """A shear-only mock needs no stellar catalogue."""
+        params, version = self._write_synthetic_catalogs(tmp_path, with_tomography=True)
+        self._use_tomographic_nz(params, version, tmp_path)
+        cv = CosmologyValidation(versions=[version], npatch=1, **params)
+        cv.results[version].entries["star"]["path"] = str(tmp_path / "absent_stars.fits")
+        part = cv.calculate_2pcf_version(version, npatch=1, compute_tomography=True)
+        assert len(part) == 3
+
     def test_cross_tomographic_pair_shares_patch_centres(self, tmp_path, monkeypatch):
         """Both catalogues in a cross-bin pair use the full-sample centres."""
         import treecorr
