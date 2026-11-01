@@ -3821,7 +3821,7 @@ wheels = [
 [[package]]
 name = "shear-psf-leakage"
 version = "0.2.1"
-source = { git = "https://github.com/CosmoStat/shear_psf_leakage.git?rev=develop#b380ea778277b5cff6c2d5d10c2943890f593ef2" }
+source = { git = "https://github.com/CosmoStat/shear_psf_leakage.git?rev=d0e10d83ecb1978ed56599f0b46326e3d000680e#d0e10d83ecb1978ed56599f0b46326e3d000680e" }
 dependencies = [
     { name = "cs-util" },
     { name = "emcee" },
@@ -4037,7 +4037,7 @@ requires-dist = [
     { name = "sacc", specifier = ">=2.4,<3" },
     { name = "scipy" },
     { name = "seaborn" },
-    { name = "shear-psf-leakage", git = "https://github.com/CosmoStat/shear_psf_leakage.git?rev=develop" },
+    { name = "shear-psf-leakage", git = "https://github.com/CosmoStat/shear_psf_leakage.git?rev=d0e10d83ecb1978ed56599f0b46326e3d000680e" },
     { name = "skyproj" },
     { name = "smokescreen", git = "https://github.com/UNIONS-WL/Smokescreen?rev=main" },
     { name = "sp-validation", extras = ["test", "docs"], marker = "extra == 'develop'" },

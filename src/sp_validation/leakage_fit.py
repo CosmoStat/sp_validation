@@ -1,6 +1,6 @@
 """Numerical tools for joint errors-in-variables PSF-leakage fits.
 
-This module has no catalogue I/O. It builds the production rho-to-tau design,
+This module has no catalogue I/O. It builds the rho-to-tau design and replaces its alpha predictor when supplied,
 profiles noisy templates from a joint delete-one covariance, and provides
 TreeCorr jackknife and patch-grouping helpers.
 """
@@ -321,16 +321,20 @@ def fit_joint_eiv(
     jk_rows,
     *,
     nbin=None,
+    alpha_vector=None,
+    alpha_rows=None,
     template_vector=None,
     template_rows=None,
     scales=None,
     start=None,
     cross_term=True,
 ):
-    """Fit rho0..rho5 to tau0/tau2/tau5 with the joint EIV covariance.
+    """Fit the noisy-predictor model of tau0/tau2/tau5 with joint covariance.
 
     ``vector`` is ordered ``[rho0..rho5, tau0, tau2, tau5]`` and ``jk_rows``
     contains the same delete-one measurements, one row per patch. Optional
+    alpha_vector/alpha_rows replace the alpha predictor and its matched rows,
+    preserving the joint covariance with all other predictors and tau. Optional
     template columns add measured predictors such as ``u * delta_e``; their
     point values and rows have shapes ``(ndata, ntemplate)`` and
     ``(npatch, ndata, ntemplate)``.
@@ -369,6 +373,18 @@ def fit_joint_eiv(
         [rho_tau_design(row[:n_rho].reshape(6, nbin)) for row in jk_rows], axis=0
     )
     y_rows = jk_rows[:, n_rho:]
+    if alpha_vector is not None:
+        alpha_vector = np.asarray(alpha_vector, dtype=float)
+        alpha_rows = np.asarray(alpha_rows, dtype=float)
+        if alpha_vector.shape != (n_data,) or alpha_rows.shape != (
+            len(jk_rows),
+            n_data,
+        ):
+            raise ValueError("alpha vector/rows must match the tau data and patches")
+        x[:, 0] = alpha_vector
+        x_rows[:, :, 0] = alpha_rows
+    elif alpha_rows is not None:
+        raise ValueError("alpha_rows requires alpha_vector")
     if template_vector is not None:
         template_vector = np.asarray(template_vector, dtype=float)
         template_rows = np.asarray(template_rows, dtype=float)
