@@ -1,13 +1,13 @@
 # Pair-count shape noise
 
-Non-tomographic `cosmo_val` workflows use measured effective pairs for OneCovariance's real-space Gaussian shape-noise term by default.
+`cosmo_val` workflows (whole-sample and tomographic) use measured effective pairs for OneCovariance's real-space Gaussian shape-noise term by default.
 Set `covariance.shape_noise: analytic` to recover the uniform-area approximation.
-Other workflows retain their analytic default; tomographic pair-count noise is not implemented and an explicit request fails.
+Other workflows retain their analytic default.
 This changes neither blinding nor the mixed, sample-variance, non-Gaussian or SSC terms.
 
 ## Cache and normalization
 
-`covariance_pair_counts` reads only the configured RA, Dec and weight columns of the same selected shear catalogue as `xi`.
+`covariance_pair_counts` reads only the configured RA, Dec, weight and (for tomography) bin-ID columns of the same selected shear catalogue as `xi`.
 It counts on each requested covariance grid, using TreeCorr NN correlations with weights `w` and `w²`, spherical coordinates, logarithmic bins and `min_top=6`, matching `xi`.
 The cache is independent of cosmology and contains no shapes, signals or blind records.
 The reader projects fields directly from the lazy catalogue chunks, including compound HDF5 datasets, rather than materialising rows containing shape fields.
@@ -43,7 +43,28 @@ No area rescaling or post-run whole-covariance scaling is applied.
 The normalization test checks the uniform-field expectation analytically, including non-unit equal weights and both dispersion conventions.
 A four-object positions-only catalogue checks TreeCorr's unordered convention against explicit pair enumeration.
 HDF5 tests forbid whole-dataset or shape-column reads for single, chunked and joined layouts.
-DAG tests verify the cache-to-ini dependency, analytic opt-out, dispersion boundary and tomographic default/refusal behavior.
+DAG tests verify the cache-to-ini dependency, analytic opt-out, dispersion boundary and tomographic file order and footprint inputs.
+
+## Tomographic pairs
+
+Each positive tomographic bin pair is counted separately, including cross correlations between disjoint bins.
+`shear.tomo_bin_col` names the bin-ID field; zero and negative IDs are excluded, matching ξ± selection.
+One-based indices in filenames refer to the sorted positive catalogue IDs, in the same order as the n(z) columns and `cov_th.tomo` survey parameters.
+The workflow writes `{version}_pairs_minsep=..._maxsep=..._nbins=..._tomo_bin=i-j.npz` and `.txt`, ordered `(1,1), (1,2), …, (2,2), …` in `npair_mm_file`.
+Each cache records the bin indices and the actual catalogue IDs.
+The area's and mask's source remains `cov_th.tomo` as for analytic noise.
+Geometry references must also have identical bin IDs when tomography is enabled.
+
+For an auto pair the table contains **2W²/Q**, with `ordered_effective_pairs` in the cache.
+For a cross pair it contains **W²/Q**, with `effective_cross_pairs` in the cache: TreeCorr counts each cross pair once, and only one of OneCovariance's two Kronecker contractions survives.
+Both yield the independent-shape variance `2 s_i² s_j² Q/W²`.
+Passing 2W²/Q for a cross would underestimate its noise by a factor of two.
+Pure shape noise has no covariance between different unordered bin pairs or between ξ+ and ξ−.
+
+The opt-in test `test_pair_counts_onecov.py` executes the external checkout's actual file reader and real-space noise kernel with unequal bin dispersions and explicit weighted-pair answers.
+Only the Fourier cosmological terms are stubbed to zero; it does not run the full cosmological integration.
+Run it inside the dependency container with `ONECOVARIANCE_PATH` set to the workflow's external source checkout.
+The tomographic probe is verified against candide checkout `70265be3a4bffcfded7b9251a3c4cbe8159d793f`.
 
 ## Existing products
 

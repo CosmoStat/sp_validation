@@ -97,11 +97,14 @@ def test_constant_weights_use_one_tree_traversal(tmp_path, monkeypatch, weight):
 
 
 @pytest.mark.parametrize("layout", ["single", "chunked", "joined"])
-def test_hdf5_never_materialises_shapes(tmp_path, monkeypatch, layout):
+@pytest.mark.parametrize("tomographic", [False, True])
+def test_hdf5_never_materialises_shapes(tmp_path, monkeypatch, layout, tomographic):
     cat = tmp_path / "catalogue.fits"  # Detection is by content, not extension.
-    data = np.zeros(4, dtype=[(n, "f8") for n in ("RA", "Dec", "w", "e1", "e2")])
+    data = np.zeros(4, dtype=[(n, "f8") for n in ("RA", "Dec", "w", "e1", "e2", "bin")])
     data["RA"] = [0.0, 0.01, 0.03, 0.07]
     data["w"] = [1.0, 2.0, 3.0, 4.0]
+    data["bin"] = [1, 1, 2, 2]
+    allowed = {"RA", "Dec", "w"} | ({"bin"} if tomographic else set())
     with h5py.File(cat, "w") as f:
         if layout == "single":
             f.create_dataset("data", data=data)
@@ -111,7 +114,7 @@ def test_hdf5_never_materialises_shapes(tmp_path, monkeypatch, layout):
             group.create_dataset("0002", data=data[2:])
             f.attrs["n_tiles"] = 2
         else:
-            f.create_dataset("data", data=data[["RA", "Dec", "e1", "e2"]])
+            f.create_dataset("data", data=data[["RA", "Dec", "e1", "e2", "bin"]])
             f.create_dataset("data_ext", data=data[["w"]])
     original = h5py.Dataset.__getitem__
     reads = []
@@ -123,17 +126,69 @@ def test_hdf5_never_materialises_shapes(tmp_path, monkeypatch, layout):
         # h5py field access recurses with a projected new_dtype and key ().
         projected = kwargs.get("new_dtype")
         if projected is not None:
-            assert set(projected.names) <= {"RA", "Dec", "w"}
+            assert set(projected.names) <= allowed
             return original(dataset, key, *args, **kwargs)
         # Unprojected whole-dataset or shape-field reads remain forbidden.
-        assert isinstance(key, str) and key in ("RA", "Dec", "w"), key
+        assert isinstance(key, str) and key in allowed, key
         reads.append(key)
         return original(dataset, key, *args, **kwargs)
 
     monkeypatch.setattr(h5py.Dataset, "__getitem__", only_pair_fields)
     out = tmp_path / "pairs.npz"
-    measure_pair_counts(cat, out, min_sep=0.1, max_sep=10.0, nbins=1)
-    assert set(reads) == {"RA", "Dec", "w"}
+    measure_pair_counts(
+        cat,
+        out,
+        min_sep=0.1,
+        max_sep=10.0,
+        nbins=1,
+        **({"tomo_bin_col": "bin", "bin_pair": (1, 2)} if tomographic else {}),
+    )
+    assert set(reads) == allowed
     with np.load(out) as z:
-        np.testing.assert_allclose(z["weight"], 35.0)
-        np.testing.assert_allclose(z["weight_squared"], 273.0)
+        np.testing.assert_allclose(z["weight"], 21.0 if tomographic else 35.0)
+        np.testing.assert_allclose(z["weight_squared"], 125.0 if tomographic else 273.0)
+
+
+@pytest.mark.parametrize(
+    "pair, indices, factor",
+    [
+        ((1, 1), [(1, 2)], 2),
+        ((1, 2), [(1, 3), (1, 4), (2, 3), (2, 4)], 1),
+        ((2, 2), [(3, 4)], 2),
+    ],
+)
+def test_tomographic_pairs_known_answer(tmp_path, pair, indices, factor):
+    # Negative and zero IDs are excluded; sorted positive IDs needn't be consecutive.
+    weights = np.array([100.0, 1.0, 2.0, 3.0, 4.0, 100.0])
+    cat = tmp_path / "tomo.fits"
+    fits.BinTableHDU.from_columns(
+        [
+            fits.Column(name="RA", format="D", array=np.arange(6) * 0.01),
+            fits.Column(name="Dec", format="D", array=np.zeros(6)),
+            fits.Column(name="w", format="D", array=weights),
+            fits.Column(name="TOM_BIN_ID", format="J", array=[0, 2, 2, 4, 4, -1]),
+        ]
+    ).writeto(cat)
+    output = tmp_path / "counts.npz"
+    measure_pair_counts(
+        cat,
+        output,
+        min_sep=0.1,
+        max_sep=10,
+        nbins=1,
+        tomo_bin_col="TOM_BIN_ID",
+        bin_pair=pair,
+    )
+    products = np.array([weights[i] * weights[j] for i, j in indices])
+    with np.load(output) as z:
+        np.testing.assert_allclose(z["weight"], products.sum())
+        np.testing.assert_allclose(z["weight_squared"], (products**2).sum())
+        np.testing.assert_allclose(z["npairs"], len(indices))
+        np.testing.assert_allclose(
+            z[
+                "ordered_effective_pairs"
+                if pair[0] == pair[1]
+                else "effective_cross_pairs"
+            ],
+            factor * products.sum() ** 2 / (products**2).sum(),
+        )

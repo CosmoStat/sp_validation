@@ -301,7 +301,7 @@ The sign-control panel instead uses cosmo_val's NaMaster primitive.
 The default measures weighted pair counts independently for each catalogue.
 A paired mock run can share this non-cosmological geometry calculation after
 verifying **all** selected positions and weights are identical, for example by
-hashing every RA, Dec and weight value in row order.
+hashing every RA, Dec and weight value in row order (and every bin ID for tomography).
 Declare the reference explicitly in the run config:
 
 ```yaml

@@ -2,7 +2,8 @@
 
 TreeCorr auto counts are unordered. OneCovariance's xi_pm noise is
 4*s**4/N_ordered, where s is the per-component dispersion, so supply
-N_ordered = 2*W**2/Q, not raw npairs or W. No shape columns are accessed.
+N_ordered = 2*W**2/Q for autos. Cross bins use W**2/Q and one
+Kronecker contraction. No shape columns are accessed.
 """
 
 from pathlib import Path
@@ -43,17 +44,21 @@ def measure_pair_counts(
     dec_col="Dec",
     w_col="w",
     num_threads=1,
+    tomo_bin_col=None,
+    bin_pair=None,
 ):
     """Cache W, Q and raw counts using positions and weights only.
 
     Uses the xi rule's log binning, spherical metric and min_top=6.
     The adjacent two-column .txt has nominal log-bin centres in arcmin,
     never mean pair separations: OneCovariance must not rebin W²/Q.
+    ``bin_pair`` contains one-based indices into the sorted positive IDs in
+    ``tomo_bin_col``, matching the n(z) column order used by OneCovariance.
     """
     # Catalogue.read materialises whole compound HDF5 chunks before selecting
     # columns. Index the public lazy chunk tables field-by-field instead, so
     # shapes are never loaded, for either FITS or any supported HDF5 layout.
-    columns = (ra_col, dec_col, w_col)
+    columns = (ra_col, dec_col, w_col) + ((tomo_bin_col,) if bin_pair else ())
     with Catalogue(str(catalogue)) as cat:
         data = np.empty(len(cat), dtype=cat.dtype(columns))
         start = 0
@@ -62,6 +67,15 @@ def measure_pair_counts(
             for name in columns:
                 data[name][start:end] = table[name]
             start = end
+    if bin_pair:
+        ids = np.unique(data[tomo_bin_col])
+        ids = ids[ids > 0]
+        # OneCovariance indexes the sorted positive bins from one, as n(z) does.
+        selected_ids = ids[np.asarray(bin_pair) - 1]
+        selections = [data[tomo_bin_col] == value for value in selected_ids]
+    else:
+        selections = [slice(None)] * 2
+    auto = bin_pair is None or bin_pair[0] == bin_pair[1]
     weights = np.asarray(data[w_col], dtype=float)
     if (
         not np.all(np.isfinite(weights))
@@ -83,15 +97,18 @@ def measure_pair_counts(
     )
     counts = []
     for power in (1, 2):
-        cat = treecorr.Catalog(
-            ra=data[ra_col],
-            dec=data[dec_col],
-            w=weights**power,
-            ra_units="deg",
-            dec_units="deg",
-        )
+        cats = [
+            treecorr.Catalog(
+                ra=data[ra_col][mask],
+                dec=data[dec_col][mask],
+                w=weights[mask] ** power,
+                ra_units="deg",
+                dec_units="deg",
+            )
+            for mask in selections[: 1 if auto else 2]
+        ]
         nn = treecorr.NNCorrelation(config)
-        nn.process(cat)
+        nn.process(*cats)
         counts.append(nn.weight.copy())
         print(f"Completed NN weights^{power}", flush=True)
         if constant_weight is not None:
@@ -101,22 +118,30 @@ def measure_pair_counts(
             print("Derived squared-weight counts for constant weights", flush=True)
             break
     W, Q = counts
-    ordered = ordered_effective_pairs(W, Q)
+    # One contraction survives for disjoint cross bins, two for an auto.
+    # OneCovariance therefore needs W²/Q for crosses and 2 W²/Q for autos.
+    effective = ordered_effective_pairs(W, Q) / (1 if auto else 2)
     edges = np.geomspace(float(min_sep), float(max_sep), int(nbins) + 1)
     theta = np.sqrt(edges[:-1] * edges[1:])
     output = Path(output)
     output.parent.mkdir(parents=True, exist_ok=True)
     np.savez(
         output,
+        **(
+            {"bin_pair": np.asarray(bin_pair), "bin_ids": selected_ids}
+            if bin_pair
+            else {}
+        ),
         theta=theta,
         edges=edges,
         npairs=nn.npairs,
         weight=W,
         weight_squared=Q,
-        ordered_effective_pairs=ordered,
+        **{("ordered_effective_pairs" if auto else "effective_cross_pairs"): effective},
     )
     np.savetxt(
         output.with_suffix(".txt"),
-        np.column_stack((theta, ordered)),
-        header="theta_arcmin N_ordered_effective",
+        np.column_stack((theta, effective)),
+        header="theta_arcmin "
+        + ("N_ordered_effective" if auto else "N_cross_effective"),
     )
