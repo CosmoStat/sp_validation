@@ -1,6 +1,8 @@
 # Nibi bound-9 tomographic mock ensemble
 
 This recipe mirrors `/project/6001537/cdaley/cosmo-val-v2-tomo` without writing into it.
+The data worker archived the brief's completed run under `checks/before-develop-20ba864a` before rerunning develop.
+The registry, configuration and covariance references are pinned to that snapshot, so concurrent data work cannot replace the ensemble's reference covariance.
 All outputs and the throwaway `mock-ensemble-tomo` blind live under `/project/6001537/cdaley/mock-ensemble-tomo`.
 The input shapes enter only `paint_catalogue`, which rotates them before composing the mock.
 The source catalogue's shapes and the `unions` blind are never analysed or opened.
