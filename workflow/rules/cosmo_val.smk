@@ -97,7 +97,8 @@ def cv_xi_cov_integration(version, tomo_suffix=""):
     Both B-mode statistics propagate this Gaussian covariance through their
     linear operators.
     """
-    return _grid_cov(version, "integration", "g", tomo_suffix)
+    reference = integration_covariance_reference(config, version)
+    return _grid_cov(reference, "integration", "g", tomo_suffix)
 
 
 def _cosebis_stub(version):

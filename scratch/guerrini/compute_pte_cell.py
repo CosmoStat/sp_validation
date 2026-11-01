@@ -22,8 +22,6 @@ if ipython is not None:
 cv = CosmologyValidation(
     versions=["SP_v1.4.6.3_A", "SP_v1.4.6.3_A_leak_corr"],
     npatch=100,
-    nrandom_cell=25,
-    cell_method="catalog",
 )
 
 # %%

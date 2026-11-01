@@ -1,0 +1,27 @@
+{
+	"data": {
+		"attributes": {
+			"labels": {
+				"description": "ShapePipe — runtime + interactive CLI tools + all extras",
+				"maintainer": "martin.kilbinger@cea.fr",
+				"org.label-schema.build-arch": "amd64",
+				"org.label-schema.build-date": "Saturday_24_October_2026_1:59:7_CEST",
+				"org.label-schema.schema-version": "1.0",
+				"org.label-schema.usage.apptainer.version": "1.5.4-1.el8",
+				"org.label-schema.usage.singularity.deffile.bootstrap": "docker",
+				"org.label-schema.usage.singularity.deffile.from": "ghcr.io/cosmostat/sp_validation:develop",
+				"org.opencontainers.image.base.digest": "sha256:18948e58a669d79d1cd8120be0837f11c372515d915e78ee9b9ed8008073a91a",
+				"org.opencontainers.image.base.name": "ghcr.io/cosmostat/sp_validation:develop",
+				"org.opencontainers.image.created": "2026-10-19T05:12:42.271Z",
+				"org.opencontainers.image.description": "",
+				"org.opencontainers.image.licenses": "MIT",
+				"org.opencontainers.image.revision": "4954b97268d0c68f0094b1c18eab842b27b374a9",
+				"org.opencontainers.image.source": "https://github.com/CosmoStat/sp_validation",
+				"org.opencontainers.image.title": "sp_validation",
+				"org.opencontainers.image.url": "https://github.com/CosmoStat/sp_validation",
+				"org.opencontainers.image.version": "develop"
+			}
+		}
+	},
+	"type": "container"
+}

@@ -27,7 +27,7 @@ narrative:
     tightening under a [10000-Gaussian-sim covariance](#findings.bb_pte_gauss_sims).
     The [iNKA-vs-OneCovariance covariance differs by ~20–25%](#findings.covariance_diff).
   methods: |
-    Pseudo-Cℓ ([estimator](#decisions.estimator), [catalogue-based](#decisions.cell_method))
+    Catalogue-based pseudo-Cℓ ([estimator](#decisions.estimator))
     in [32 sqrt-spaced bandpowers](#decisions.binning), [scale cut 300 < ℓ < 1600](#decisions.scalecut)
     via a [k-contribution criterion](#decisions.scalecut_method). Covariance is
     [iNKA Gaussian + OneCovariance non-Gaussian](#decisions.covariance_method)
@@ -83,22 +83,6 @@ decisions:
     options:
       pseudo_cl_namaster:
         label: "Pseudo-Cℓ (NaMaster)"
-
-  cell_method:
-    label: "Field/map construction"
-    tags: [numerics]
-    rationale: >-
-      Catalogue-based estimator (Wolz et al. 2025) rather than pixelised maps:
-      avoids pixel-window / aliasing bias at small scales and Poisson-noise
-      instabilities in low-density mask regions.
-    default: catalog_based_wolz25
-    options:
-      catalog_based_wolz25:
-        label: "Catalogue-based (Wolz+25, fiducial)"
-        insights: [catalog_cl_ref]
-      pixelised_map:
-        label: "Pixelised HealPix map (DES/HSC-style)"
-        description: "Alternative; susceptible to pixel-window and Poisson bias."
 
   binning:
     label: "Bandpower binning"
@@ -343,8 +327,7 @@ outputs:
     type: data
     label: "Shear Cℓ data vector (EE/EB/BB bandpowers)"
     inputs: [shear_catalog, nz]
-    decisions: [catalog_version, leakage, estimator, cell_method, binning,
-                noise_bias, blinding]
+    decisions: [catalog_version, leakage, estimator, binning, noise_bias, blinding]
     recipe:
       command: >-
         python -m sp_validation.harmonic.measure_cl
@@ -352,7 +335,6 @@ outputs:
         --catalog-version {decisions.catalog_version}
         --leakage {decisions.leakage}
         --estimator {decisions.estimator}
-        --field {decisions.cell_method}
         --binning {decisions.binning}
         --noise-bias {decisions.noise_bias}
         --blind {decisions.blinding}
