@@ -112,11 +112,14 @@ cv = CosmologyValidation(
     catalog_config="/home/guerrini/sp_validation/cosmo_val/cat_config.yaml",
 )
 # %%
-params = get_params_rho_tau(cv.cc["SP_v1.4.5_leak_corr"], survey="SP_v1.4.5_leak_corr")
+params = get_params_rho_tau(cv.cc["SP_v1.4.5_leak_corr"])
 
 # %%
 print("Collecting maps...")
-n_gal, unique_pix, idx, idx_rep = cv.get_n_gal_map(params, nside, cat_gal)
+unique_pix, idx, idx_rep = cv.get_pixels(params, nside, cat_gal)
+n_gal = cv.get_n_gal_map(
+    params, nside, cat_gal, unique_pix=unique_pix, idx=idx, idx_rep=idx_rep
+)
 mask = n_gal > 0
 
 print("Computing noise...")

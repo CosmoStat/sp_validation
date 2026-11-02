@@ -26,6 +26,7 @@ from plotting_utils import (
     get_powspace_bin_edges,
     iter_version_figures,
 )
+from pseudo_cl_io import load_pseudo_cl_data
 
 plt.style.use(PAPER_MPLSTYLE)
 
@@ -44,10 +45,8 @@ def _compute_pte_with_cuts(data, covariance, ell, ell_min, ell_max):
 
 
 def _load_pseudo_cl_data(pseudo_cl_path, pseudo_cl_cov_path):
-    """Load pseudo-Cl data and covariance from FITS files."""
-    hdu = fits.open(pseudo_cl_path)
-    data = hdu["PSEUDO_CELL"].data
-    hdu.close()
+    """Load pseudo-Cl data from SACC and covariance from FITS."""
+    data = load_pseudo_cl_data(pseudo_cl_path)
 
     ell = data["ELL"]
     cl_eb = data["EB"]
@@ -159,17 +158,15 @@ def _create_cl_figure(
 
 # ---------------------------------------------------------------------------
 # Canonical per-version file paths (COSMO_VAL results tree). The DAG read these
-# via _pseudo_cl_path() in claims.smk; the CLI reconstructs them from --results-dir
+# via _pseudo_cl_path() in figures.smk; the CLI reconstructs them from --results-dir
 # so the version sweep is self-contained (lc produces only the fiducial version).
 # ---------------------------------------------------------------------------
-def _pseudo_cl(results_dir, ver, blind="A", nbins=32):
-    return f"{results_dir}/pseudo_cl_{ver}_blind={blind}_powspace_nbins={nbins}.fits"
+def _pseudo_cl(results_dir, ver, nbins=32):
+    return f"{results_dir}/pseudo_cl_{ver}_powspace_nbins={nbins}.sacc"
 
 
-def _pseudo_cl_cov(results_dir, ver, blind="A", nbins=32):
-    return (
-        f"{results_dir}/pseudo_cl_cov_{ver}_blind={blind}_powspace_nbins={nbins}.fits"
-    )
+def _pseudo_cl_cov(results_dir, ver, nbins=32):
+    return f"{results_dir}/pseudo_cl_cov_{ver}_powspace_nbins={nbins}.fits"
 
 
 def _resolve_pseudo_cl_paths(
@@ -178,16 +175,14 @@ def _resolve_pseudo_cl_paths(
     fiducial_version=None,
     fiducial_pseudo_cl_path=None,
     fiducial_pseudo_cl_cov_path=None,
-    blind="A",
     nbins=32,
 ):
     """Resolve the pseudo-Cl and covariance paths for one version in the sweep.
 
     Every version is read from the reconstructed COSMO_VAL pattern, except the
-    fiducial version when explicit override paths are supplied: the lc-produced
-    fiducial FITS files are named `pseudo_cl_{version}.fits` /
-    `pseudo_cl_cov_{version}.fits` (no blind=/nbins= tokens), so pattern
-    reconstruction can't find them and an explicit path is required instead.
+    fiducial version when explicit override paths are supplied: lc-produced
+    fiducial SACC spectrum and FITS covariance files have untagged names, so
+    pattern reconstruction can't find them and explicit paths are required.
     """
     if (
         ver == fiducial_version
@@ -196,8 +191,8 @@ def _resolve_pseudo_cl_paths(
     ):
         return fiducial_pseudo_cl_path, fiducial_pseudo_cl_cov_path
     return (
-        _pseudo_cl(results_dir, ver, blind, nbins),
-        _pseudo_cl_cov(results_dir, ver, blind, nbins),
+        _pseudo_cl(results_dir, ver, nbins),
+        _pseudo_cl_cov(results_dir, ver, nbins),
     )
 
 
@@ -292,7 +287,6 @@ def main(
     )
 
     evidence_data = {
-        "spec_id": "cl_data_vector",
         "generated": datetime.now().isoformat(),
         "evidence": {
             # Full range PTEs
@@ -333,7 +327,10 @@ def _from_cli(argv=None):
     ap.add_argument(
         "--results-dir",
         required=True,
-        help="COSMO_VAL output dir with per-version pseudo_cl_* / pseudo_cl_cov_* FITS",
+        help=(
+            "COSMO_VAL output dir with per-version pseudo_cl_*.sacc and "
+            "pseudo_cl_cov_*.fits"
+        ),
     )
     ap.add_argument("--out", required=True, help="Output directory (lc {output})")
     ap.add_argument(
@@ -349,7 +346,7 @@ def _from_cli(argv=None):
         "--fiducial-pseudo-cl-path",
         default=None,
         help=(
-            "Explicit path to the fiducial version's pseudo-Cl FITS (lc output). "
+            "Explicit path to the fiducial version's pseudo-Cl SACC part (lc output). "
             "Requires --fiducial-version and --fiducial-pseudo-cl-cov-path."
         ),
     )

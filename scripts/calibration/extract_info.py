@@ -34,14 +34,15 @@ import sys
 
 import h5py
 import numpy as np
-from astropy.io import fits
 
 # from sp_validation.catalog import *
 from sp_validation import catalog as spv_cat
+from sp_validation import galaxy
 from sp_validation.calibration import *
 from sp_validation.calibration import metacal
 from sp_validation.galaxy import *
 from sp_validation.io import *
+from sp_validation.io import read_catalogue
 from sp_validation.survey import *
 
 # ## 1. Set-up
@@ -63,15 +64,12 @@ output_ext = output_format
 # ### Load merged (final) galaxy catalogue
 
 # +
-extension = os.path.splitext(galaxy_cat_path)[1]
-if extension == ".fits":
-    print("Loading galaxy .npy file...")
-    dd = np.load(galaxy_cat_path, mmap_mode=mmap_mode)
-else:
-    print("Loading galaxy .hdf5 file...")
-    dd = spv_cat.read_hdf5_file(
-        galaxy_cat_path, name, stats_file, param_path=param_list_path
-    )
+dd = read_catalogue(
+    galaxy_cat_path,
+    columns=spv_cat.read_param_file(param_list_path) if param_list_path else None,
+    column_map=galaxy_column_map,
+    verbose=verbose,
+)
 
 # v1.3 old-grammar compatibility shim.
 # Pre-shapepipe#761 catalogues (e.g. v1.3.x) store ellipticity as a single
@@ -97,16 +95,16 @@ if hasattr(dd, "dtype") and dd.dtype.names is not None:
     for _suf in ("1M", "1P", "2M", "2P", "NOSHEAR"):
         _ell_col = f"{_key_base}_ELL_{_suf}"
         if _ell_col in dd.dtype.names:
-            _shim_add(f"{_key_base}_E1_{_suf}", dd[_ell_col][:, 0])
-            _shim_add(f"{_key_base}_E2_{_suf}", dd[_ell_col][:, 1])
+            _shim_add(f"{_key_base}_G1_{_suf}", dd[_ell_col][:, 0])
+            _shim_add(f"{_key_base}_G2_{_suf}", dd[_ell_col][:, 1])
         _tpsf_col = f"{_key_base}_Tpsf_{_suf}"
         if _tpsf_col in dd.dtype.names:
             _shim_add(f"{_key_base}_T_PSF_RECONV_{_suf}", dd[_tpsf_col])
 
     _psfo_col = f"{_key_base}_ELL_PSFo_NOSHEAR"
     if _psfo_col in dd.dtype.names:
-        _shim_add(f"{_key_base}_E1_PSF_ORIG_NOSHEAR", dd[_psfo_col][:, 0])
-        _shim_add(f"{_key_base}_E2_PSF_ORIG_NOSHEAR", dd[_psfo_col][:, 1])
+        _shim_add(f"{_key_base}_G1_PSF_ORIG_NOSHEAR", dd[_psfo_col][:, 0])
+        _shim_add(f"{_key_base}_G2_PSF_ORIG_NOSHEAR", dd[_psfo_col][:, 1])
 
     _tpsfo_col = f"{_key_base}_T_PSFo_NOSHEAR"
     if _tpsfo_col in dd.dtype.names:
@@ -118,8 +116,8 @@ if hasattr(dd, "dtype") and dd.dtype.names is not None:
     # placeholders, not measured errors -- so deliberately not shimmed here).
     _ellerr_col = f"{_key_base}_ELL_ERR_NOSHEAR"
     if _ellerr_col in dd.dtype.names:
-        _shim_add(f"{_key_base}_E1_ERR_NOSHEAR", dd[_ellerr_col][:, 0])
-        _shim_add(f"{_key_base}_E2_ERR_NOSHEAR", dd[_ellerr_col][:, 1])
+        _shim_add(f"{_key_base}_G1_ERR_NOSHEAR", dd[_ellerr_col][:, 0])
+        _shim_add(f"{_key_base}_G2_ERR_NOSHEAR", dd[_ellerr_col][:, 1])
 
     if _new_names:
         dd = _rfn.append_fields(dd, _new_names, _new_data, usemask=False)
@@ -133,17 +131,16 @@ print_stats(
 # #### Print some quantities to check nothing obvious is wrong with catalogue
 
 # PSF keys
-key_base = shape.upper()
-key_PSF_g1 = f"{key_base}_E1_PSF_ORIG_NOSHEAR"
-key_PSF_g2 = f"{key_base}_E2_PSF_ORIG_NOSHEAR"
-key_PSF_size = f"{key_base}_T_PSF_ORIG_NOSHEAR"
+key_PSF_g1 = "NGMIX_G1_PSF_ORIG_NOSHEAR"
+key_PSF_g2 = "NGMIX_G2_PSF_ORIG_NOSHEAR"
+key_PSF_size = "NGMIX_T_PSF_ORIG_NOSHEAR"
 size_to_fwhm = T_to_fwhm
 
 print_stats("Galaxies:", stats_file, verbose=verbose)
 n_tot = spv_cat.print_some_quantities(dd, stats_file, verbose=verbose)
 spv_cat.print_mean_ellipticity(
     dd,
-    [f"{key_base}_E1_NOSHEAR", f"{key_base}_E2_NOSHEAR"],
+    ["NGMIX_G1_NOSHEAR", "NGMIX_G2_NOSHEAR"],
     1,
     n_tot,
     stats_file,
@@ -167,7 +164,13 @@ print_stats(f"Tiles in input catalogue: {n_found}", stats_file, verbose=verbose)
 # ### Load star catalogue
 
 if star_cat_path:
-    d_star = fits.getdata(star_cat_path, hdu_star_cat)
+    d_star = read_catalogue(
+        star_cat_path,
+        hdu=hdu_star_cat,
+        column_map=star_column_map,
+        key_column="EXPID",
+        verbose=verbose,
+    )
 
     # v1.3 old-grammar compatibility shim (star catalogue).
     # Pre-shapepipe#761 star catalogues name HSM columns with a trailing
@@ -217,14 +220,13 @@ if star_cat_path:
 # #### Match to all objects
 
 if star_cat_path:
-    ind_star, mask_area_tiles, n_star_tot = spv_cat.check_matching(
+    ind_star, n_star_tot = spv_cat.check_matching(
         d_star,
         dd,
         ["RA", "DEC"],
         [col_name_ra, col_name_dec],
         thresh,
         stats_file,
-        name=None,
         verbose=verbose,
     )
 
@@ -236,7 +238,7 @@ if star_cat_path:
 
     m_star = (
         (dd["FLAGS"][ind_star] == 0)
-        & (dd["IMAFLAGS_ISO"][ind_star] == 0)
+        & galaxy.mask_cut(dd, mask_columns)[ind_star]
         & (dd["NGMIX_MCAL_FLAGS"][ind_star] == 0)
         & (dd["NGMIX_E1_PSF_ORIG_NOSHEAR"][ind_star] != -10)
     )
@@ -267,7 +269,7 @@ if star_cat_path:
 
 spv_cat.check_invalid(
     dd,
-    [key_PSF_g1, f"{key_base}_E1_NOSHEAR"],
+    [key_PSF_g1, "NGMIX_G1_NOSHEAR"],
     [-10, -10],
     stats_file,
     name=["`PSF", "galaxy ellipticity"],
@@ -326,8 +328,8 @@ _, _, iv_w = metacal.get_variance_ivweights(dd, sigma_eps_prior, mask=None)
 
 mag = spv_cat.get_col(dd, "MAG_AUTO", None, None)
 snr = spv_cat.get_snr(shape, dd, None, None)
-g1_uncal = dd[f"{key_base}_E1_NOSHEAR"]
-g2_uncal = dd[f"{key_base}_E2_NOSHEAR"]
+g1_uncal = dd["NGMIX_G1_NOSHEAR"]
+g2_uncal = dd["NGMIX_G2_NOSHEAR"]
 
 # Comprehensive catalogue without cuts nor mask applied
 if verbose:
@@ -387,6 +389,7 @@ cut_common = classification_galaxy_base(
     gal_mag_faint=gal_mag_faint,
     flags_keep=flags_keep,
     n_epoch_min=n_epoch_min,
+    mask_columns=mask_columns,
 )
 if shape == "ngmix":
     m_gal = classification_galaxy_ngmix(
@@ -438,7 +441,6 @@ from sp_validation.survey import *
 gal_metacal = metacal(
     dd,
     m_gal,
-    prefix=key_base,
     snr_min=gal_snr_min,
     snr_max=gal_snr_max,
     rel_size_min=gal_rel_size_min,
@@ -566,7 +568,7 @@ shape_IDs = galaxy_IDs[mask]
 write_tile_id_gal_counts(detection_IDs, galaxy_IDs, shape_IDs, fname)
 
 # +
-# Add all weights (for combining weighted averages of subpatches)
+# Add all weights (for combining weighted averages of sub-samples)
 
 w_tot = np.sum(w)
 
@@ -648,19 +650,12 @@ x_range = (0, 200)
 n_bin = 500
 x_cut = gal_snr_min
 
-labels = []
 if shape == "ngmix":
     # Do not apply `mask_ns`, so use all galaxies
-    xs = [
-        dd["NGMIX_FLUX_NOSHEAR"][m_gal] / dd["NGMIX_FLUX_ERR_NOSHEAR"][m_gal],
-        dd["SNR_WIN"][m_gal],
-    ]
-    labels.append(["$F/\\sigma(F)$"])
-
+    xs = [dd["NGMIX_FLUX_NOSHEAR"][m_gal] / dd["NGMIX_FLUX_ERR_NOSHEAR"][m_gal]]
+    labels = ["$F/\\sigma(F)$"]
 else:
     raise ValueError(f"Unknown shape measurement method {shape}")
-
-labels.append("SExtractor SNR")
 
 title = "Galaxies"
 

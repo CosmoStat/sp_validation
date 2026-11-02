@@ -14,9 +14,9 @@ from pathlib import Path
 import healpy as hp
 import matplotlib.pyplot as plt
 import numpy as np
-from astropy.io import fits
 from cs_util import plots as cs_plots
 
+from ..io import open_entry
 from ..survey import (
     additive_bias,
     area_from_coords,
@@ -75,16 +75,12 @@ class CatalogCharacterizationMixin:
         if not os.path.exists(catalog_path):
             raise FileNotFoundError(f"Shear catalog not found: {catalog_path}")
 
-        data = fits.getdata(catalog_path, memmap=True)
+        weight_column = weights_key_override or shear_cfg["w_col"]
+        data = open_entry(shear_cfg)
         n_rows = len(data)
 
         e1 = np.asarray(data[shear_cfg["e1_col"]], dtype=float)
         e2 = np.asarray(data[shear_cfg["e2_col"]], dtype=float)
-
-        weight_column = weights_key_override or shear_cfg["w_col"]
-        if weight_column not in data.columns.names:
-            raise KeyError(f"Weight column '{weight_column}' missing in {catalog_path}")
-
         w = np.asarray(data[weight_column], dtype=float)
 
         if mask_path is not None:
@@ -104,7 +100,7 @@ class CatalogCharacterizationMixin:
         elif cov_th.get("A") is not None:
             area_deg2 = float(cov_th["A"])
         elif nside is not None:
-            area_deg2 = self._area_from_catalog(catalog_path, nside)
+            area_deg2 = self._area_from_catalog(shear_cfg, nside)
         else:
             raise ValueError(
                 f"Unable to determine survey area for {ver}. Provide mask_path or nside."
@@ -131,10 +127,12 @@ class CatalogCharacterizationMixin:
 
         return results
 
-    def _area_from_catalog(self, catalog_path, nside):
-        data = fits.getdata(catalog_path, memmap=True)
-        ra = np.asarray(data["RA"], dtype=float)
-        dec = np.asarray(data["Dec"], dtype=float)
+    def _area_from_catalog(self, shear_cfg, nside):
+        ra_col = shear_cfg.get("ra_col", "RA")
+        dec_col = shear_cfg.get("dec_col", "Dec")
+        data = open_entry(shear_cfg)
+        ra = np.asarray(data[ra_col], dtype=float)
+        dec = np.asarray(data[dec_col], dtype=float)
         return area_from_coords(ra, dec, nside)
 
     def _area_from_mask(self, mask_map_path):
@@ -147,16 +145,35 @@ class CatalogCharacterizationMixin:
             self.calculate_area()
         return self._area
 
+    def tomographic_footprint(self, ver):
+        """Footprint map of ``ver``'s tomographic (binned) sample.
+
+        ``cov_th.tomo.mask`` when the entry has one, since bins can need data
+        the whole sample lacks on part of the sky; otherwise the entry's mask.
+        """
+        tomo = self.cc[ver].get("cov_th", {}).get("tomo", {})
+        return tomo.get("mask", self.cc[ver].get("mask"))
+
+    def tomographic_area(self, ver):
+        """Area in deg² of ``ver``'s tomographic footprint."""
+        if "mask" in self.cc[ver].get("cov_th", {}).get("tomo", {}):
+            return self._area_from_mask(self.tomographic_footprint(ver))
+        return self.area[ver]
+
     @property
     def n_eff_gal(self):
         if not hasattr(self, "_n_eff_gal"):
-            self.calculate_n_eff_gal()
+            self.calculate_n_eff_gal(tomography=False)
+            if self.compute_tomography:
+                self.calculate_n_eff_gal(tomography=True)
         return self._n_eff_gal
 
     @property
     def ellipticity_dispersion(self):
         if not hasattr(self, "_ellipticity_dispersion"):
-            self.calculate_ellipticity_dispersion()
+            self.calculate_ellipticity_dispersion(tomography=False)
+            if self.compute_tomography:
+                self.calculate_ellipticity_dispersion(tomography=True)
         return self._ellipticity_dispersion
 
     def _get_binned_catalog_mask(self, ver):
@@ -202,49 +219,110 @@ class CatalogCharacterizationMixin:
 
         return area
 
-    def calculate_n_eff_gal(self):
+    def calculate_n_eff_gal(self, tomography=False):
         self.print_start("Calculating effective number of galaxy")
-        n_eff_gal = {}
+        if not hasattr(self, "_n_eff_gal"):
+            self._n_eff_gal = {}
         for ver in self.versions:
             self.print_magenta(ver)
+            if ver not in self._n_eff_gal:
+                self._n_eff_gal[ver] = {}
+
+            if tomography:
+                tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
+
+                if tomo_bin_ids is None or tomo_bin_pairs is None:
+                    raise ValueError(
+                        f"Version {ver} does not have tomography information."
+                    )
+
+            else:
+                tomo_bin_ids, tomo_bin_pairs = ["all"], [("all", "all")]
+
+            # Each density is per unit area of the footprint its sample covers.
+            area = self.tomographic_area(ver) if tomography else self.area[ver]
             with self.results[ver].temporarily_read_data():
                 w = self._read_shear_cols(ver, "w_col")
-                n_eff_gal[ver] = n_eff_density(w, self.area[ver])
-                print(f"n_eff_gal = {n_eff_gal[ver]:.2f} gal./arcmin^-2")
+                for tomo_bin_id in tomo_bin_ids:
+                    if tomo_bin_id == "all":
+                        self._n_eff_gal[ver][f"tomo_bin_{tomo_bin_id}"] = n_eff_density(
+                            w, area
+                        )
+                    else:
+                        tomo_bin = self._read_shear_cols(ver, "tomo_bin_col")
+                        mask = tomo_bin == tomo_bin_id
+                        self._n_eff_gal[ver][f"tomo_bin_{tomo_bin_id}"] = n_eff_density(
+                            w[mask], area
+                        )
+                    print(
+                        f"n_eff_gal for tomo_bin_{tomo_bin_id} = {self._n_eff_gal[ver][f'tomo_bin_{tomo_bin_id}']:.2f} gal./arcmin^-2"
+                    )
 
-        self._n_eff_gal = n_eff_gal
         self.print_done("Effective number of galaxy calculation finished")
 
-    def calculate_ellipticity_dispersion(self):
+    def calculate_ellipticity_dispersion(self, tomography=False):
         self.print_start("Calculating ellipticity dispersion")
-        ellipticity_dispersion = {}
+        if not hasattr(self, "_ellipticity_dispersion"):
+            self._ellipticity_dispersion = {}
         for ver in self.versions:
             self.print_magenta(ver)
+            if ver not in self._ellipticity_dispersion:
+                self._ellipticity_dispersion[ver] = {}
+
+            if tomography:
+                tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
+
+                if tomo_bin_ids is None or tomo_bin_pairs is None:
+                    raise ValueError(
+                        f"Version {ver} does not have tomography information."
+                    )
+
+            else:
+                tomo_bin_ids, tomo_bin_pairs = ["all"], [("all", "all")]
+
             with self.results[ver].temporarily_read_data():
                 e1, e2, w = self._read_shear_cols(ver, "e1_col", "e2_col", "w_col")
-                ellipticity_dispersion[ver] = ellipticity_dispersion_stat(e1, e2, w)
-                print(f"Ellipticity dispersion = {ellipticity_dispersion[ver]:.4f}")
-        self._ellipticity_dispersion = ellipticity_dispersion
+                for tomo_bin_id in tomo_bin_ids:
+                    if tomo_bin_id == "all":
+                        self._ellipticity_dispersion[ver][f"tomo_bin_{tomo_bin_id}"] = (
+                            ellipticity_dispersion_stat(e1, e2, w)
+                        )
+                    else:
+                        tomo_bin = self._read_shear_cols(ver, "tomo_bin_col")
+                        mask = tomo_bin == tomo_bin_id
+                        self._ellipticity_dispersion[ver][f"tomo_bin_{tomo_bin_id}"] = (
+                            ellipticity_dispersion_stat(e1[mask], e2[mask], w[mask])
+                        )
+                    print(
+                        f"Ellipticity dispersion for tomo_bin_{tomo_bin_id} = {self._ellipticity_dispersion[ver][f'tomo_bin_{tomo_bin_id}']:.4f}"
+                    )
 
-    def plot_footprints(self):
-        self.print_start("Plotting footprints:")
+    def footprint_maps(self):
+        """Build one sparse count map per version, shared by every region."""
+        from .diagnostic_products import footprint_counts
+
         for ver in self.versions:
-            self.print_magenta(ver)
-
-            fp = cs_plots.FootprintPlotter()
-
-            for region in fp._regions:
-                out_path = self._output_path(f"footprint_{ver}_{region}.png")
-            if os.path.exists(out_path):
-                self.print_done(f"Skipping footprint plot, {out_path} exists")
-            else:
-                with self.results[ver].temporarily_read_data():
-                    hsp_map = fp.create_hsp_map(
+            with self.results[ver].temporarily_read_data():
+                yield (
+                    ver,
+                    footprint_counts(
                         self.results[ver].dat_shear["RA"],
                         self.results[ver].dat_shear["Dec"],
-                    )
-                fp.plot_region(hsp_map, fp._regions[region], outpath=out_path)
-                self.print_done("Footprint plot saved to " + out_path)
+                    ),
+                )
+
+    def plot_footprints(self):
+        """Notebook convenience wrapper; workflow plots use persisted maps."""
+        from .diagnostic_plots import plot_footprint
+
+        for ver, count_map in self.footprint_maps():
+            plot_footprint(
+                count_map,
+                {
+                    region: self._output_path(f"footprint_{ver}_{region}.png")
+                    for region in cs_plots.FootprintPlotter._regions
+                },
+            )
 
     def plot_ellipticity(self, nbins=200):
         out_path = self._output_path("ell_hist.png")
@@ -295,37 +373,22 @@ class CatalogCharacterizationMixin:
             cs_plots.show()
             self.print_done("Ellipticity histograms saved to " + out_path)
 
+    def weight_histograms(self, nbins=200):
+        """Return weight-weighted counts and edges, with independent bins per version."""
+        histograms = {}
+        for ver in self.versions:
+            with self.results[ver].temporarily_read_data():
+                w = self._read_shear_cols(ver, "w_col")
+                histograms[ver] = np.histogram(w, bins=nbins, weights=w)
+        return histograms
+
     def plot_weights(self, nbins=200):
-        out_path = self._output_path("weight_hist.png")
-        if os.path.exists(out_path):
-            self.print_done(f"Skipping weight histograms, {out_path} exists")
-        else:
-            self.print_start("Computing weight histograms:")
+        """Notebook convenience wrapper; workflow plots read cached histograms."""
+        from .diagnostic_plots import plot_weights
 
-            plt.figure(figsize=(10, 7))
-            for ver in self.versions:
-                self.print_magenta(ver)
-                with self.results[ver].temporarily_read_data():
-                    w = self._read_shear_cols(ver, "w_col")
-
-                    plt.hist(
-                        w,
-                        bins=nbins,
-                        density=False,
-                        histtype="step",
-                        weights=w,
-                        label=ver,
-                        color=self.cc[ver]["colour"],
-                    )
-
-            plt.xlabel("$w$")
-            plt.ylabel("frequency")
-            plt.yscale("log")
-            plt.legend()
-            # plt.xlim([-0.01, 1.2])
-            cs_plots.savefig(out_path, close_fig=False)
-            cs_plots.show()
-            self.print_done("Weight histograms saved to " + out_path)
+        plot_weights(
+            self.weight_histograms(nbins), self.cc, self._output_path("weight_hist.png")
+        )
 
     def plot_separation(self, nbins=200):
         self.print_start("Separation histograms")

@@ -10,11 +10,13 @@ import numpy as np
 from ..b_modes import (
     calculate_cosebis,
     find_conservative_scale_cut_key,
+    log_bin_edges,
     plot_cosebis_covariance_matrix,
     plot_cosebis_modes,
     plot_cosebis_scale_cut_heatmap,
     save_cosebis_results,
 )
+from .derived_covariance import xi_covariance
 
 
 class CosebisMixin:
@@ -29,6 +31,7 @@ class CosebisMixin:
         cov_path=None,
         scale_cuts=None,
         evaluate_all_scale_cuts=False,
+        compute_tomography=False,
         min_sep=None,
         max_sep=None,
         nbins=None,
@@ -59,8 +62,8 @@ class CosebisMixin:
         nmodes : int, optional
             Number of COSEBIs modes to compute. Defaults to 10.
         cov_path : str, optional
-            Path to theoretical covariance matrix. When provided, enables analytic
-            covariance calculation.
+            Path to the OneCovariance integration-grid matrix, including all
+            pairs for tomography.
         scale_cuts : list of tuples, optional
             Explicit list of (min_theta, max_theta) scale cuts to evaluate.
             Overrides evaluate_all_scale_cuts when provided.
@@ -68,6 +71,8 @@ class CosebisMixin:
             If True, evaluates COSEBIs for all possible scale cut combinations
             using the reporting binning parameters. Ignored when scale_cuts is
             provided. Defaults to False.
+        compute_tomography : bool, optional
+            If True, computes COSEBIs for all tomographic bin combinations. Defaults to False.s
         min_sep : float, optional
             Minimum separation for reporting binning (only used when
             evaluate_all_scale_cuts=True). Defaults to self.treecorr_config["min_sep"].
@@ -88,55 +93,79 @@ class CosebisMixin:
         """
         self.print_start(f"Computing {version} COSEBIs")
 
-        # Set up parameters with defaults
-        npatch = npatch or self.npatch
-
-        # Always use integration binning for COSEBIs calculation (fine binning)
-        treecorr_config = self._binning(min_sep_int, max_sep_int, nbins_int)
-
-        # Calculate single fine-binned correlation function for COSEBIs
+        # Calculate single fine-binned correlation function for COSEBIs, as the
+        # sealed part: on a blinded catalogue the COSEBIs are concealed with it.
         print(
             f"Computing fine-binned 2PCF with {nbins_int} bins from {min_sep_int} to "
             f"{max_sep_int} arcmin"
         )
-        gg = self.calculate_2pcf(version, npatch=npatch, **treecorr_config)
 
-        if scale_cuts is not None:
-            # Explicit scale cuts provided
-            print(f"Evaluating {len(scale_cuts)} explicit scale cuts")
-            results = calculate_cosebis(
-                gg=gg, nmodes=nmodes, scale_cuts=scale_cuts, cov_path=cov_path
-            )
-        elif evaluate_all_scale_cuts:
-            # Use reporting binning parameters or inherit from class config
-            binning = self._binning(min_sep, max_sep, nbins)
-            min_sep, max_sep, nbins = (
-                binning["min_sep"],
-                binning["max_sep"],
-                binning["nbins"],
-            )
+        ggs = self.calculate_2pcf_version(
+            version,
+            npatch=npatch,
+            compute_tomography=compute_tomography,
+            grid="integration",
+            min_sep=min_sep_int,
+            max_sep=max_sep_int,
+            nbins=nbins_int,
+        )
+        parts = self.xi_tomo_parts if compute_tomography else self.xi_parts
+        part = parts[version, "integration"]
+        covariance, cov_npatch = xi_covariance(part, cov_path)
+        results = {bin_key: None for bin_key in ggs}
 
-            # Generate scale cuts using np.geomspace (no TreeCorr needed)
-            bin_edges = np.geomspace(min_sep, max_sep, nbins + 1)
-            generated_cuts = [
-                (bin_edges[start], bin_edges[stop])
-                for start in range(nbins)
-                for stop in range(start + 1, nbins + 1)
-            ]
+        for bin_key in ggs.keys():
+            rows = ggs[bin_key]._rows
+            pair_cov = covariance[np.ix_(rows, rows)]
+            # The same scale cuts apply to each pair.
+            if scale_cuts is not None:
+                # Explicit scale cuts provided
+                print(f"Evaluating {len(scale_cuts)} explicit scale cuts")
+                results[bin_key] = calculate_cosebis(
+                    gg=ggs[bin_key],
+                    nmodes=nmodes,
+                    scale_cuts=scale_cuts,
+                    cov_xi=pair_cov,
+                    npatch=cov_npatch,
+                )
+            elif evaluate_all_scale_cuts:
+                # Use reporting binning parameters or inherit from class config
+                binning = self._binning(min_sep, max_sep, nbins)
+                min_sep, max_sep, nbins = (
+                    binning["min_sep"],
+                    binning["max_sep"],
+                    binning["nbins"],
+                )
 
-            print(f"Evaluating {len(generated_cuts)} scale cut combinations")
+                # Generate scale cuts using np.geomspace (no TreeCorr needed)
+                bin_edges = np.geomspace(min_sep, max_sep, nbins + 1)
+                generated_cuts = [
+                    (bin_edges[start], bin_edges[stop])
+                    for start in range(nbins)
+                    for stop in range(start + 1, nbins + 1)
+                ]
 
-            # Call b_modes function with scale cuts list
-            results = calculate_cosebis(
-                gg=gg, nmodes=nmodes, scale_cuts=generated_cuts, cov_path=cov_path
-            )
-        else:
-            # Single scale cut behavior: use full range
-            results = calculate_cosebis(
-                gg=gg, nmodes=nmodes, scale_cuts=None, cov_path=cov_path
-            )
-            # Extract single results dict from scale_cuts dictionary
-            results = next(iter(results.values()))
+                print(f"Evaluating {len(generated_cuts)} scale cut combinations")
+
+                # Call b_modes function with scale cuts list
+                results[bin_key] = calculate_cosebis(
+                    gg=ggs[bin_key],
+                    nmodes=nmodes,
+                    scale_cuts=generated_cuts,
+                    cov_xi=pair_cov,
+                    npatch=cov_npatch,
+                )
+            else:
+                # Single scale cut behavior: use full range
+                results[bin_key] = calculate_cosebis(
+                    gg=ggs[bin_key],
+                    nmodes=nmodes,
+                    scale_cuts=None,
+                    cov_xi=pair_cov,
+                    npatch=cov_npatch,
+                )
+                # Extract single results dict from scale_cuts dictionary
+                results[bin_key] = next(iter(results[bin_key].values()))
 
         return results
 
@@ -152,6 +181,7 @@ class CosebisMixin:
         cov_path=None,
         scale_cuts=None,  # Explicit scale cuts
         evaluate_all_scale_cuts=False,  # Grid-based scale cuts
+        compute_tomography=False,
         min_sep=None,
         max_sep=None,
         nbins=None,  # Reporting binning
@@ -187,6 +217,8 @@ class CosebisMixin:
         evaluate_all_scale_cuts : bool
             Whether to evaluate all scale cuts from reporting binning grid
             (default: False). Ignored when scale_cuts is provided.
+        compute_tomography : bool
+            Compute and plot each tomographic bin pair instead of the all-galaxy pair.
         min_sep, max_sep, nbins : float, float, int, optional
             Reporting binning parameters. Only used when evaluate_all_scale_cuts=True.
         fiducial_scale_cut : tuple, optional
@@ -218,7 +250,7 @@ class CosebisMixin:
         # Get or calculate results for this version
         if results is None:
             # Calculate COSEBIs using instance method
-            results = self.calculate_cosebis(
+            results_tomo = self.calculate_cosebis(
                 version,
                 min_sep_int=min_sep_int,
                 max_sep_int=max_sep_int,
@@ -228,55 +260,67 @@ class CosebisMixin:
                 cov_path=cov_path,
                 scale_cuts=scale_cuts,
                 evaluate_all_scale_cuts=evaluate_all_scale_cuts,
+                compute_tomography=compute_tomography,
                 min_sep=min_sep,
                 max_sep=max_sep,
                 nbins=nbins,
             )
-
-        # Generate plots using specialized plotting functions
-        # Extract single result for plotting if multiple scale cuts were evaluated
-        multiple_scale_cuts = isinstance(results, dict) and all(
-            isinstance(k, tuple) for k in results
-        )
-        if multiple_scale_cuts:
-            # Multiple scale cuts: use fiducial_scale_cut if provided, otherwise use
-            # full range (largest scale cut)
-            plot_results = results[
-                find_conservative_scale_cut_key(results, fiducial_scale_cut)
-                if fiducial_scale_cut is not None
-                else max(results, key=lambda x: x[1] - x[0])
-            ]
+        elif results and all(
+            isinstance(key, str) and key.startswith("tomo_bin_") for key in results
+        ):
+            results_tomo = results
         else:
-            # Single result
-            plot_results = results
+            results_tomo = {"tomo_bin_all_tomo_bin_all": results}
 
-        plot_cosebis_modes(
-            plot_results,
-            version,
-            out_stub + "_cosebis.png",
-            fiducial_scale_cut=fiducial_scale_cut,
-        )
-
-        plot_cosebis_covariance_matrix(
-            plot_results, version, var_method, out_stub + "_covariance.png"
-        )
-
-        # Generate scale cut heatmap if we have multiple scale cuts
-        if multiple_scale_cuts and len(results) > 1:
-            # Create temporary gg object with correct binning for mapping
-            treecorr_config_temp = self._binning(min_sep, max_sep, nbins)
-            gg_temp = self.calculate_2pcf(
-                version, npatch=npatch, **treecorr_config_temp
+        for bin_key, bin_results in results_tomo.items():
+            bin_stub = (
+                out_stub
+                if bin_key == "tomo_bin_all_tomo_bin_all"
+                else f"{out_stub}_{bin_key}"
             )
+            multiple_scale_cuts = isinstance(bin_results, dict) and all(
+                isinstance(k, tuple) for k in bin_results
+            )
+            if multiple_scale_cuts:
+                plot_results = bin_results[
+                    find_conservative_scale_cut_key(bin_results, fiducial_scale_cut)
+                    if fiducial_scale_cut is not None
+                    else max(bin_results, key=lambda x: x[1] - x[0])
+                ]
+            else:
+                plot_results = bin_results
 
-            plot_cosebis_scale_cut_heatmap(
-                results,
-                gg_temp,
+            plot_cosebis_modes(
+                plot_results,
                 version,
-                out_stub + "_scalecut_ptes.png",
+                bin_stub + "_cosebis.png",
                 fiducial_scale_cut=fiducial_scale_cut,
             )
+            plot_cosebis_covariance_matrix(
+                plot_results, version, var_method, bin_stub + "_covariance.png"
+            )
 
-        # Save data products and store on instance
-        save_cosebis_results(results, out_stub + "_data.npz", fiducial_scale_cut)
-        self._cosebis_results[version] = results
+            # Stored bin indices refer to the integration grid, including when
+            # the requested cuts were generated from a coarser reporting grid.
+            edges = log_bin_edges(min_sep_int, max_sep_int, nbins_int)
+            if multiple_scale_cuts and len(bin_results) > 1:
+                plot_cosebis_scale_cut_heatmap(
+                    bin_results,
+                    edges,
+                    version,
+                    bin_stub + "_scalecut_ptes.png",
+                    fiducial_scale_cut=fiducial_scale_cut,
+                )
+
+            save_cosebis_results(
+                bin_results,
+                bin_stub + "_data.npz",
+                fiducial_scale_cut,
+                edges,
+                derived_from=[
+                    (self.xi_tomo_parts if compute_tomography else self.xi_parts)[
+                        version, "integration"
+                    ]
+                ],
+            )
+        self._cosebis_results[version] = results_tomo

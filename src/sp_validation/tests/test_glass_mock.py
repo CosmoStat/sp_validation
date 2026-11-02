@@ -21,7 +21,7 @@ characterizes the mock at two depths:
    CAMB params unchanged. When a GLASS-capable image lands, promote this to a
    committed-map ``np.allclose`` check against a reference ``.npy``.
 
-The reference was generated in the production container (CAMB 1.6.5); the
+The reference was generated in the production container (CAMB 2.0.4); the
 tolerance below absorbs cross-version CAMB float drift while still catching a
 genuine config change, which moves these numbers by parts in 10⁰–10⁻³.
 """
@@ -40,7 +40,24 @@ from sp_validation.glass_mock import (
 
 camb = pytest.importorskip("camb")
 
-HAVE_GLASS = importlib.util.find_spec("glass") is not None
+
+def _have(module):
+    """True if ``module`` is importable. False if it or a parent is missing."""
+    try:
+        return importlib.util.find_spec(module) is not None
+    except ModuleNotFoundError:
+        # find_spec imports the parent package, which raises if it is absent.
+        return False
+
+
+HAVE_GLASS = _have("glass")
+
+# The map path needs more than GLASS itself: build_shells and
+# Cosmology_from_camb import ``cosmology.compat.camb``, which ships with the
+# ``cosmology`` API package rather than with GLASS. Gate on it separately so a
+# missing dependency reports as a skip instead of masquerading as the (real,
+# but different) glass/cosmology API incompatibility tracked in the xfail below.
+HAVE_COSMOLOGY_CAMB = _have("cosmology.compat.camb")
 
 REFERENCE = Path(__file__).parent / "data" / "glass_mock_camb_reference.npz"
 
@@ -48,10 +65,10 @@ REFERENCE = Path(__file__).parent / "data" / "glass_mock_camb_reference.npz"
 # nside=16 keeps CAMB cheap; cosmology is config-default (UNIONS fiducial).
 REF_CONFIG = GlassMockConfig(nside=16)
 
-# Cross-version CAMB float tolerance. Scalars and P(k) reproduce to ~1e-12
-# within a version; 1e-6 relative leaves headroom for a CAMB point release
-# while a real config change moves these by >>1e-3.
-RTOL = 1e-6
+# Absorbs CAMB version drift and CAMB's process-global AccuracyTarget (which
+# pyccl sets to 0), each a few 1e-4, while a real config change moves these
+# by >=1e-3.
+RTOL = 5e-4
 ATOL = 0.0
 
 
@@ -131,18 +148,19 @@ def test_config_change_breaks_reference():
 
 
 @pytest.mark.skipif(not HAVE_GLASS, reason="GLASS not installed in this image")
+@pytest.mark.skipif(
+    not HAVE_COSMOLOGY_CAMB,
+    reason="cosmology.compat.camb not installed in this image",
+)
 @pytest.mark.xfail(
     reason=(
-        "glass_mock map path is incompatible with the installed glass/cosmology "
-        "API: cosmology.Cosmology.from_camb returns a CambCosmology lacking "
-        "comoving_distance, which glass.distance_grid / MultiPlaneConvergence "
-        "require. The map path was never exercised before GLASS was added to the "
-        "image. Fix = pin a compatible glass+cosmology pair (or adapt the API "
-        "calls) and verify in the fresh image; then drop this xfail. "
-        "See fiber shapepipe/sp_validation glass-cosmology-api-pin."
+        "glass_mock builds its cosmology with cosmology.compat.camb, which an image "
+        "built before the lock carried glass 2026.2 + cosmology-compat-camb 0.2.0 "
+        "lacks. With those locked pins on the path the test passes; drop this "
+        "xfail once it XPASSes in the image built from the current uv.lock."
     ),
     strict=False,
-    raises=AttributeError,
+    raises=ModuleNotFoundError,
 )
 def test_matter_maps_are_seed_deterministic():
     """Same config + seed → bit-identical matter/lensing maps.
