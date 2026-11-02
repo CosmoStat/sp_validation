@@ -98,3 +98,36 @@ def test_direct_weights_and_writer(tmp_path):
     assert np.trapezoid(grid * mixture, grid) == pytest.approx(
         (8 * 0.275 + 4 * 0.9) / 12, abs=1e-12
     )
+
+
+def test_nz_file_cosmo_val_and_sacc_roundtrip(tmp_path):
+    import sacc
+
+    from sp_validation.cosmo_val import CosmologyValidation
+    from sp_validation.sacc_io import new_sacc
+
+    grid = np.linspace(0, 2, 201)
+    hists = np.array(
+        [
+            nz.deposit(np.array([0.2, 0.4]), np.array([0.5, 0.5]), grid),
+            nz.deposit(np.array([0.8, 1.1]), np.array([0.25, 0.75]), grid),
+        ]
+    )
+    path = tmp_path / "nz.txt"
+    nz.write_nz(path, grid, hists, [2, 3])
+    expected = np.loadtxt(path)
+    reader = object.__new__(CosmologyValidation)
+    reader.cc = {"test": {"shear": {"redshift_path": str(path)}}}
+    z, densities = reader.read_redshift_distribution("test", is_tomography=True)
+    np.testing.assert_array_equal(z, expected[:, 0])
+    np.testing.assert_array_equal(densities, expected[:, 1:])
+    _, summed = reader.read_redshift_distribution("test", is_tomography=False)
+    np.testing.assert_array_equal(summed, densities.sum(1))
+    tracers = new_sacc([(z, d) for d in densities.T])
+    fits_path = tmp_path / "nz.fits"
+    tracers.save_fits(str(fits_path))
+    loaded = sacc.Sacc.load_fits(str(fits_path))
+    for k in range(densities.shape[1]):
+        tracer = loaded.get_tracer(f"source_{k}")
+        np.testing.assert_array_equal(tracer.z, z)
+        np.testing.assert_array_equal(tracer.nz, densities[:, k])

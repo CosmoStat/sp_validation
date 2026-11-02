@@ -16,7 +16,7 @@ DR6_SUFFIX = "_SP_ugriz_photoz_ext.cat"
 def _read_dr6_tile(path):
     columns = ["ALPHA_J2000", "DELTA_J2000"]
     columns += [f"MAG_GAAP_{band}" for band in BANDS]
-    columns += ["Z_B", "BPZ_FILT"]
+    columns += ["Z_B"]
     with fits.open(path, memmap=True) as hdus:
         data = hdus[1].data
         values = {name: np.asarray(data[name]) for name in columns}
@@ -25,7 +25,6 @@ def _read_dr6_tile(path):
         values["DELTA_J2000"].astype("f8"),
         np.column_stack([values[f"MAG_GAAP_{band}"] for band in BANDS]).astype("f4"),
         values["Z_B"].astype("f8"),
-        values["BPZ_FILT"].astype("i1"),
     )
 
 
@@ -40,14 +39,14 @@ def _match_tile(ra, dec, photo_ra, photo_dec):
 
 
 def prepare_nz_photometry(selection_path, dr6_root, output_path):
-    """Write the ``matched_full.npz``-compatible positional photometry cache.
+    """Write matched magnitudes, BPZ, shear weights and source row keys.
 
     The Parquet row order is retained. Missing and unreadable DR6 tiles are
     reported and leave their selection rows unmatched.
     """
     selection = pq.read_table(
         selection_path,
-        columns=["TILE_ID", "NUMBER", "RA", "Dec", "w_des", "FLAGS"],
+        columns=["TILE_ID", "NUMBER", "RA", "Dec", "w_des"],
     )
     encoded = pc.dictionary_encode(selection["TILE_ID"]).combine_chunks()
     tile_names = np.asarray(encoded.dictionary.to_pylist(), dtype=str)
@@ -67,9 +66,7 @@ def prepare_nz_photometry(selection_path, dr6_root, output_path):
 
     mag = np.full((nrows, len(BANDS)), np.nan, dtype="f4")
     zb = np.full(nrows, np.nan, dtype="f8")
-    bpz_filt = np.zeros(nrows, dtype="i1")
-    sep = np.full(nrows, np.nan, dtype="f4")
-    photo_index = np.full(nrows, -1, dtype=np.int32)
+    matched_rows = np.zeros(nrows, dtype=bool)
     tile_has_dr6 = np.zeros(len(tile_names), dtype=bool)
     root = Path(dr6_root)
 
@@ -79,7 +76,7 @@ def prepare_nz_photometry(selection_path, dr6_root, output_path):
             print(f"Missing DR6 tile {tile}: {path}")
             continue
         try:
-            photo_ra, photo_dec, photo_mag, photo_zb, photo_bpz = _read_dr6_tile(path)
+            photo_ra, photo_dec, photo_mag, photo_zb = _read_dr6_tile(path)
         except (OSError, ValueError, fits.verify.VerifyError) as error:
             print(f"Unreadable DR6 tile {tile}: {error}")
             continue
@@ -93,11 +90,8 @@ def prepare_nz_photometry(selection_path, dr6_root, output_path):
         nearest = nearest[matched]
         mag[rows] = photo_mag[nearest]
         zb[rows] = photo_zb[nearest]
-        bpz_filt[rows] = photo_bpz[nearest]
-        sep[rows] = (distance[matched] * 3600).astype("f4")
-        photo_index[rows] = nearest.astype(np.int32)
+        matched_rows[rows] = True
 
-    matched = photo_index >= 0
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     np.savez(
@@ -106,16 +100,10 @@ def prepare_nz_photometry(selection_path, dr6_root, output_path):
         tile=tile_codes.astype(np.int32),
         mag=mag,
         zb=zb,
-        bpz_filt=bpz_filt,
-        sep=sep,
-        photo_index=photo_index,
-        match=matched,
-        tile_has_dr6=tile_has_dr6,
         number=selection["NUMBER"].to_numpy(),
         weight=selection["w_des"].to_numpy().astype("f8"),
-        flags=selection["FLAGS"].to_numpy(),
     )
     missing = len(tile_names) - tile_has_dr6.sum()
     print(
-        f"Matched {matched.sum()} of {nrows} rows; {missing} tiles missing or unreadable"
+        f"Matched {matched_rows.sum()} of {nrows} rows; {missing} tiles missing or unreadable"
     )

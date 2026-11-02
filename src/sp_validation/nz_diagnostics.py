@@ -1,5 +1,6 @@
 """Figures for the direct SOM redshift calibration."""
 
+import json
 from pathlib import Path
 
 import matplotlib
@@ -26,14 +27,14 @@ def _normalise(y, z):
     return y / np.trapezoid(y, z)
 
 
-def _mechanics(path, gm, group, z, weights, grid):
+def _mechanics(path, gm, group, z, weights, grid, side):
     ngroup = int(gm.max()) + 1
     ncal = np.bincount(group, minlength=ngroup)
     zsum = np.bincount(group, weights=z, minlength=ngroup)
     mean_z = np.divide(zsum, ncal, out=np.full(ngroup, np.nan), where=ncal > 0)
     fig, axes = plt.subplots(1, 3, figsize=(14, 4.5), layout="constrained")
     image = axes[0].imshow(
-        mean_z[gm].reshape(101, 101), origin="lower", cmap="viridis", vmin=0, vmax=2
+        mean_z[gm].reshape(side, side), origin="lower", cmap="viridis", vmin=0, vmax=2
     )
     axes[0].set(
         title="SOM groups colored by mean spec-z", xlabel="SOM cell", ylabel="SOM cell"
@@ -93,11 +94,12 @@ def _mechanics(path, gm, group, z, weights, grid):
     _save(fig, path)
 
 
+@matplotlib.rc_context({"text.usetex": False, "font.family": "DejaVu Sans"})
 def render(config, output_dir):
     """Render calibration figures from saved products and explicit input paths.
 
     Required config keys are ``calibration_arrays``, ``model``, ``summary``
-    and ``source_catalogue``. The source catalogue NPZ contains ``weight``,
+    ``side``, ``source_label`` and ``source_catalogue``. The source catalogue NPZ contains ``weight``,
     ``photoz`` and ``mag``. An optional ``source_assignment`` NPZ can provide
     precomputed ``cell`` values; otherwise cells are assigned in chunks.
     Optional keys ``published_nz`` and ``tile_nz`` point to text n(z) files.
@@ -106,8 +108,9 @@ def render(config, output_dir):
     out.mkdir(parents=True, exist_ok=True)
     arrays = np.load(config["calibration_arrays"])
     model = np.load(config["model"])
-    summary = __import__("json").loads(Path(config["summary"]).read_text())
+    summary = json.loads(Path(config["summary"]).read_text())
     source = np.load(config["source_catalogue"])
+    side = config["side"]
 
     z = arrays["z"]
     p = arrays["cal_photoz"]
@@ -184,14 +187,14 @@ def render(config, output_dir):
     ]
     titles = [
         "Calibrators per cell",
-        "Source shear weight per cell",
+        f"Source shear weight per cell ({config['source_label']})",
         "Mean spec-z per group",
         "Spec-z scatter per group",
-        "Mean source BPZ per cell",
+        f"Mean source BPZ per cell ({config['source_label']})",
         "Calibrators per group",
     ]
     for ax, values, title in zip(axes.flat, maps, titles):
-        plane = np.asarray(values).reshape(101, 101)
+        plane = np.asarray(values).reshape(side, side)
         m = np.ma.masked_invalid(plane)
         if title.startswith("Calibrators") or title.startswith("Source"):
             m = np.ma.masked_where(m <= 0, m)
@@ -209,7 +212,7 @@ def render(config, output_dir):
     # Per-bin gold support.
     fig, axes = plt.subplots(1, len(edges) - 1, figsize=(15, 4), layout="constrained")
     for k, ax in enumerate(np.atleast_1d(axes)):
-        passed = gold[k, gm].reshape(101, 101)
+        passed = gold[k, gm].reshape(side, side)
         ax.imshow(
             passed, origin="lower", cmap="YlGn", vmin=0, vmax=1, interpolation="nearest"
         )
@@ -253,14 +256,14 @@ def render(config, output_dir):
         tz, tile = _curve(tile_path)
     for k, ax in enumerate(axes.flat):
         full_curve = _normalise(arrays["bin_hists"][k], grid)
-        ax.plot(grid, full_curve, color=COLORS[0], lw=1.7, label="Full area, z + z2")
+        ax.plot(grid, full_curve, color=COLORS[0], lw=1.7, label=config["full_label"])
         if tile_path:
             ax.plot(
                 tz,
                 _normalise(tile[:, k], tz),
                 color=COLORS[1],
                 lw=1.4,
-                label="600-tile reference",
+                label=config["tile_label"],
             )
         ax.axvspan(edges[k], edges[k + 1], color="0.92", zorder=0)
         ax.set(
@@ -270,31 +273,8 @@ def render(config, output_dir):
         )
         ax.set_xlim(0, 2.2)
         ax.legend(fontsize=8)
-    fig.suptitle("Per-bin n(z): full area compared with 600-tile calibration")
+    fig.suptitle(f"Per-bin n(z): {config['full_label']} vs {config['tile_label']}")
     _save(fig, out / "nz_full_vs_600tiles.png")
-
-    # Coverage at each selection stage, comparing canonical-z-only and z+z2.
-    ret = summary["retention"]
-    stage_names = ["all", "complete_photometry", "bpz_bounds", "gold"]
-    labels = ["All", "Complete\nphotometry", "BPZ\nbounds", "Gold"]
-    x = np.arange(len(labels))
-    fig, ax = plt.subplots(figsize=(8, 4.8), layout="constrained")
-    width = 0.34
-    for j, (key, label, color) in enumerate(
-        (("zonly", "Canonical z only", COLORS[2]), ("both", "z + z2", COLORS[0]))
-    ):
-        values = [100 * ret[key][name] for name in stage_names]
-        bars = ax.bar(x + (j - 0.5) * width, values, width, label=label, color=color)
-        ax.bar_label(bars, fmt="%.1f%%", fontsize=8, padding=2)
-    ax.set(
-        xticks=x,
-        xticklabels=labels,
-        ylabel="Retained bound-9 shear weight (%)",
-        ylim=(0, 110),
-        title="Coverage with and without z2",
-    )
-    ax.legend()
-    _save(fig, out / "coverage_z2.png")
 
     # The sum uses the file columns as delivered; published v1 is normalized
     # independently because it represents a different selected population.
@@ -316,7 +296,7 @@ def render(config, output_dir):
             total,
             color=COLORS[0],
             lw=2,
-            label=f"Four-bin sum, mean {np.trapezoid(grid * total, grid):.4f}",
+            label=f"{config['full_label']}, mean {np.trapezoid(grid * total, grid):.4f}",
         )
         if tile_path:
             tile_total = _normalise(tile.sum(axis=1), tz)
@@ -325,14 +305,14 @@ def render(config, output_dir):
                 tile_total,
                 color=COLORS[1],
                 lw=1.7,
-                label=f"600-tile sum, mean {np.trapezoid(tz * tile_total, tz):.4f}",
+                label=f"{config['tile_label']}, mean {np.trapezoid(tz * tile_total, tz):.4f}",
             )
         axes[0].plot(
             pz,
             published,
             color=COLORS[2],
             lw=2,
-            label=f"Published v1.4.6.3, mean {np.trapezoid(pz * published, pz):.4f}",
+            label=f"{config['published_label']}, mean {np.trapezoid(pz * published, pz):.4f}",
         )
         axes[0].set(xlim=(0, 2.2), ylabel="Normalized n(z)")
         axes[0].legend()
@@ -341,7 +321,7 @@ def render(config, output_dir):
             np.r_[0, np.cumsum((total[1:] + total[:-1]) * np.diff(grid) / 2)],
             color=COLORS[0],
             lw=2,
-            label="Four-bin sum",
+            label=config["full_label"],
         )
         if tile_path:
             axes[1].plot(
@@ -351,14 +331,14 @@ def render(config, output_dir):
                 ],
                 color=COLORS[1],
                 lw=1.7,
-                label="600-tile sum",
+                label=config["tile_label"],
             )
         axes[1].plot(
             pz,
             np.r_[0, np.cumsum((published[1:] + published[:-1]) * np.diff(pz) / 2)],
             color=COLORS[2],
             lw=2,
-            label="Published v1.4.6.3",
+            label=config["published_label"],
         )
         axes[1].set(
             xlim=(0, 2.2),
@@ -368,5 +348,5 @@ def render(config, output_dir):
         )
         _save(fig, out / "summed_bins_vs_v1.png")
 
-    _mechanics(out / "som_calibration_mechanics.png", gm, group, z, weights, grid)
+    _mechanics(out / "som_calibration_mechanics.png", gm, group, z, weights, grid, side)
     return sorted(path.name for path in out.glob("*.png"))

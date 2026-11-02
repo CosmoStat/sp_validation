@@ -80,6 +80,8 @@ def _non_path_key(key: str) -> bool:
 def _pathish_value(value: str) -> bool:
     if not value or any(part in value for part in SKIP_VALUE_PARTS):
         return False
+    if value.startswith(("arc:", "vos:", "https://", "http://")):
+        return False
     return (
         value.startswith(("/", "./", "../", "~"))
         or "/" in value
@@ -91,6 +93,8 @@ def _walk_yaml(
     value, trail: tuple[str, ...] = (), base_dir: Path | None = None
 ) -> Iterator[tuple[str, str, Path | None]]:
     if isinstance(value, dict):
+        if value.get("host", "candide") != "candide":
+            return
         local_base = base_dir
         subdir = value.get("subdir")
         if isinstance(subdir, str) and _pathish_value(subdir):
@@ -298,6 +302,8 @@ def test_cat_config_columns_exist_on_candide():
     for version, entry in config.items():
         if not isinstance(entry, dict) or "subdir" not in entry:
             continue
+        if entry.get("host", "candide") != "candide":
+            continue
         for kind in ("psf", "shear"):
             block = entry.get(kind) or {}
             if "path" not in block:
@@ -328,3 +334,21 @@ def test_cat_config_columns_exist_on_candide():
         for (version, kind), detail in unexpected.items()
     )
     assert not healed, f"known column gaps now pass; drop them: {healed}"
+
+
+def test_yaml_paths_respect_explicit_host():
+    entries = {
+        "local": {"host": "candide", "path": "/data/local.fits"},
+        "remote": {"host": "nibi", "path": "/data/remote.fits"},
+        "unspecified": {"path": "/project/keep-checking.fits"},
+    }
+    assert [(key, value) for key, value, _ in _walk_yaml(entries)] == [
+        ("local.path", "/data/local.fits"),
+        ("unspecified.path", "/project/keep-checking.fits"),
+    ]
+
+
+@pytest.mark.parametrize("scheme", ["arc:", "vos:", "https://", "http://"])
+def test_remote_urls_are_not_local_paths(scheme):
+    assert not _pathish_value(f"{scheme}home/masks/manual.hsp")
+    assert _pathish_value("/data/masks/manual.hsp")
