@@ -1,7 +1,7 @@
 """Byte-compare tests for the SACC -> 2pt-FITS converter.
 
 The converter (:mod:`sp_validation.sacc_io`) must reproduce the CosmoSIS
-2pt-FITS that ``cosmo_inference/scripts/cosmosis_fitting.py`` assembles today,
+2pt-FITS that the retired ``cosmosis_fitting.py`` assembled,
 so the inference chain (``2pt_like`` and Sacha Guerrini's rho/tau
 ``2pt_like_xi_sys`` fork) runs untouched behind it. The strongest possible check
 is *byte* equality, and astropy writes FITS deterministically, so that is what we
@@ -24,9 +24,8 @@ per-mode ``varrho_*`` variances the analysis SACC does not store, so the
 converter copies them from the sidecar exactly as today's assembly does. A teeth
 test pins that a perturbed input moves the output.
 
-The reference builder imports ``cosmosis_fitting.py`` by path (it is a script,
-not a package module), skipping cleanly if a dependency is missing -- the same
-loader pattern as ``test_cosmosis_fitting.py``.
+The reference builder imports the frozen legacy builders from
+``legacy_twopoint_reference.py``; no obsolete preparation CLI is retained.
 """
 
 import importlib.util
@@ -38,18 +37,13 @@ from astropy.io import fits
 
 from sp_validation import sacc_io
 
-_SCRIPT = (
-    Path(__file__).resolve().parents[3]
-    / "cosmo_inference"
-    / "scripts"
-    / "cosmosis_fitting.py"
-)
+_SCRIPT = Path(__file__).with_name("legacy_twopoint_reference.py")
 
 
 def _load_cf():
-    """Import cosmosis_fitting.py by path; skip cleanly if a dep is missing."""
+    """Import the frozen byte-compatibility oracle by path."""
     if not _SCRIPT.exists():
-        pytest.skip(f"cosmosis_fitting.py not found at {_SCRIPT}")
+        pytest.fail(f"legacy byte-compatibility oracle not found at {_SCRIPT}")
     spec = importlib.util.spec_from_file_location("cosmosis_fitting", _SCRIPT)
     module = importlib.util.module_from_spec(spec)
     try:

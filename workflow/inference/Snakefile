@@ -1,0 +1,11 @@
+# Standalone entry point: needs only inference.runs, not measurement configs.
+import os
+import sys
+from pathlib import Path
+
+sys.path.insert(0, os.path.realpath(str(Path(workflow.basedir).parent)))
+import common
+
+common.inject_checkout_pythonpath(config)
+container: common.resolve_container(config.get("container"))
+include: "../rules/inference.smk"

@@ -76,8 +76,8 @@ Optionality: a file's contents are flexible about which components of
               the CosmoSIS "2pt FITS" (``sacc_to_twopoint_fits``) and
               OneCovariance's redshift / covariance files (``write_nz``,
               ``nz_config_stanza``, ``read_nz``, ``covariance_blocks``). The
-              2pt-FITS converter reproduces today's hand-assembled product from
-              ``cosmo_inference/scripts/cosmosis_fitting.py`` HDU-for-HDU and
+              2pt-FITS converter reproduces the historical hand-assembled product
+              from the retired ``cosmosis_fitting.py`` HDU-for-HDU and
               byte-for-byte for one bin (verified against that writer), and
               permutes tomographic products to type-major, pair-ordered layout.
               The OneCovariance
@@ -1235,7 +1235,7 @@ def sacc_to_twopoint_fits(
 ):
     """Convert an analysis SACC to a CosmoSIS 2pt-FITS file.
 
-    The assembled ``HDUList`` matches today's ``cosmosis_fitting.py`` product
+    The assembled ``HDUList`` matches the legacy ``cosmosis_fitting.py`` product
     for the configuration the SACC describes: PRIMARY, NZ_SOURCE, COVMAT, then
     (if present) COVMAT_CELL, XI_PLUS, XI_MINUS, (if present) CELL_EE / CELL_BB,
     and (if the rho/tau sidecars are supplied) TAU_0_PLUS, TAU_2_PLUS,
