@@ -475,23 +475,15 @@ def test_rho_tau_sidecars_required_together(tmp_path):
 # =============================================================================
 
 
-def test_tomographic_sacc_raises(tmp_path):
-    """A multi-bin SACC fails fast instead of silently truncating to (0, 0).
-
-    Review finding (HIGH): ``n_bins`` alone drove the NZDATA column count while
-    the data vector and covariance were read from bin ``(0, 0)`` only, so a
-    2-bin SACC + ``n_bins=2`` emitted a plausible-looking FITS carrying 1/3 of
-    the data. Both the ``n_bins`` and the tracer-pair mismatch must raise.
-    """
+def test_wrong_bin_count_raises(tmp_path):
+    """A wrong n_bins must not silently truncate a tomographic product."""
     inp = _inputs(seed=30)
     s = sacc_io.new_sacc({0: (inp["z"], inp["nz"]), 1: (inp["z"], inp["nz"])})
     for pair in [(0, 0), (0, 1), (1, 1)]:
         sacc_io.add_xi(s, pair, inp["theta"], inp["xip"], inp["xim"], grid="reporting")
     s.add_covariance(np.eye(len(s.mean)))
 
-    with pytest.raises(ValueError, match="single-bin only"):
-        sacc_io.sacc_to_twopoint_fits(s, str(tmp_path / "x.fits"), n_bins=2)
-    with pytest.raises(ValueError, match="single-bin only"):
+    with pytest.raises(ValueError, match="does not match"):
         sacc_io.sacc_to_twopoint_fits(s, str(tmp_path / "x.fits"), n_bins=1)
     assert not (tmp_path / "x.fits").exists()
 

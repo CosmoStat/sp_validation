@@ -78,9 +78,9 @@ Optionality: a file's contents are flexible about which components of
               ``nz_config_stanza``, ``read_nz``, ``covariance_blocks``). The
               2pt-FITS converter reproduces today's hand-assembled product from
               ``cosmo_inference/scripts/cosmosis_fitting.py`` HDU-for-HDU and
-              byte-for-byte (verified against that writer), and is single-bin
-              only today — it fails fast on a multi-bin SACC (tomographic
-              emission lands with the tomographic round). The OneCovariance
+              byte-for-byte for one bin (verified against that writer), and
+              permutes tomographic products to type-major, pair-ordered layout.
+              The OneCovariance
               converters are coupled to SACC by file format only; OneCovariance
               itself is not a dependency.
 """
@@ -1091,7 +1091,9 @@ _QUANT = {
 }
 
 
-def _twopoint_hdu(name, values, ang, *, ang_unit=None):
+def _twopoint_hdu(
+    name, values, ang, *, ang_unit=None, bin1=None, bin2=None, angbin=None
+):
     """Build one 2pt BinTableHDU (BIN1/BIN2/ANGBIN/VALUE/ANG).
 
     Reproduces ``cosmosis_fitting.py._create_2pt_hdu`` /``cl_to_fits`` exactly:
@@ -1100,10 +1102,15 @@ def _twopoint_hdu(name, values, ang, *, ang_unit=None):
     column ("arcmin" for real-space ξ/τ; unset for Cℓ, whose ANG is ℓ).
     """
     nbins = len(values)
-    angbin = np.arange(1, nbins + 1)
+    if angbin is None:
+        angbin = np.arange(1, nbins + 1)
     columns = [
-        fits.Column(name="BIN1", format="K", array=np.ones(nbins)),
-        fits.Column(name="BIN2", format="K", array=np.ones(nbins)),
+        fits.Column(
+            name="BIN1", format="K", array=np.ones(nbins) if bin1 is None else bin1
+        ),
+        fits.Column(
+            name="BIN2", format="K", array=np.ones(nbins) if bin2 is None else bin2
+        ),
         fits.Column(name="ANGBIN", format="K", array=angbin),
         fits.Column(name="VALUE", format="D", array=values),
         fits.Column(name="ANG", format="D", unit=ang_unit, array=ang),
@@ -1184,41 +1191,38 @@ def _cov_hdu(matrix, block_names, block_starts, extname="COVMAT", name_in_ctor=F
     return hdu
 
 
-def _type_major_xi(s, bins):
-    """Return ``(theta, xip, xim)`` for one bin pair from the SACC reporting grid.
+def _twopoint_series(s, name, dtype, pairs, *, angle, ang_unit=None):
+    """One type-major table and its SACC indices, in numeric bin-pair order."""
+    indices, bin1, bin2, angbin = [], [], [], []
+    for i, j in pairs:
+        idx = _indices(s, dtype, _pair((i, j)), grid="reporting")
+        indices.extend(idx)
+        bin1.extend([i + 1] * len(idx))
+        bin2.extend([j + 1] * len(idx))
+        angbin.extend(range(1, len(idx) + 1))
+    indices = np.asarray(indices, dtype=int)
+    hdu = _twopoint_hdu(
+        name,
+        s.mean[indices],
+        [s.data[k].tags[angle] for k in indices],
+        ang_unit=ang_unit,
+        bin1=bin1,
+        bin2=bin2,
+        angbin=angbin,
+    )
+    return hdu, indices
 
-    ``get_xi`` already returns each statistic in insertion (= ascending
-    θ) order; the type-major split (all ξ+, then all ξ−) is exactly the two
-    arrays it hands back, so no further permutation is needed for a single pair.
-    """
-    return get_xi(s, bins, grid="reporting")
 
-
-def _require_single_bin(s, n_bins):
-    """Fail fast unless the SACC is a valid single-bin ξ product.
-
-    The converter emits the single-bin 2pt-FITS today's CosmoSIS pipeline reads
-    (BIN1/BIN2 all 1, one NZ column). A tomographic SACC would otherwise slip
-    through silently — ``n_bins`` alone drives the NZDATA column count while the
-    ξ/covariance are read from bin ``(0, 0)`` only, so a 2-bin file would emit a
-    ``NBIN=2`` n(z) beside a data vector holding just the ``(0, 0)`` pair.
-    Guards both the empty-ξ case and the single-bin contract; tomographic
-    emission lands with the tomographic round.
-    """
-    pairs = s.get_tracer_combinations(XI_PLUS)
-    if not pairs:
-        raise ValueError(
-            f"SACC has no {XI_PLUS} points — nothing to convert; the "
-            "2pt-FITS data vector is built from the ξ± statistics"
-        )
-    expected = (source_name(0), source_name(0))
-    if n_bins != 1 or set(pairs) != {expected}:
-        raise ValueError(
-            f"converter is single-bin only (n_bins=1, ξ pairs == {{{expected}}}); "
-            f"got n_bins={n_bins} and ξ pairs {sorted(pairs)}. Tomographic "
-            "emission (multiple bin pairs, per-pair BIN1/BIN2, one NZ column per "
-            "bin) lands with the tomographic round."
-        )
+def _source_pairs(s, n_bins):
+    """Require the complete upper triangle of reporting ξ source pairs."""
+    indices = s.indices(XI_PLUS, grid="reporting")
+    if len(indices) == 0:
+        raise ValueError(f"SACC has no reporting {XI_PLUS} — nothing to convert")
+    pairs = [(i, j) for i in range(n_bins) for j in range(i, n_bins)]
+    actual = {s.data[k].tracers for k in indices}
+    if actual != {_pair(p) for p in pairs}:
+        raise ValueError(f"n_bins={n_bins} does not match reporting ξ pairs {actual}")
+    return pairs
 
 
 def sacc_to_twopoint_fits(
@@ -1252,11 +1256,9 @@ def sacc_to_twopoint_fits(
         alone cannot rebuild the ``varrho_*`` columns Sacha's fork reads. When
         omitted, a pure ξ (± Cℓ) product is written.
     n_bins : int, optional
-        Number of source tomographic bins. Must be ``1``: this converter emits
-        the single-bin 2pt-FITS today's CosmoSIS pipeline consumes. Tomographic
-        emission (multiple bin pairs, per-pair BIN1/BIN2, one NZ column per bin)
-        lands with the tomographic round; the converter fails fast on anything
-        else rather than silently truncating to bin ``(0, 0)``.
+        Number of source bins (default 1). Emits the complete upper triangle
+        in numeric pair order within each type, with 1-indexed BIN1/BIN2 and
+        one NZ column per bin. The legacy ρ/τ sidecars support one bin only.
 
     Returns
     -------
@@ -1266,27 +1268,29 @@ def sacc_to_twopoint_fits(
     Raises
     ------
     ValueError
-        If the SACC has no ξ points; if ``n_bins != 1`` or the SACC's ξ tracer
-        pairs are anything other than exactly ``{(source_0, source_0)}`` (the
-        single-bin contract); or if exactly one of the ρ/τ sidecars is supplied.
+        If reporting ξ pairs do not match ``n_bins``, or if the legacy ρ/τ
+        sidecars are supplied incompletely or for multiple source bins.
     """
     if (rho_stats_hdu is None) != (tau_stats_hdu is None):
         raise ValueError(
             "rho_stats_hdu and tau_stats_hdu must be supplied together "
             "(the ρ/τ product needs both, or neither for a pure-ξ product)"
         )
-    _require_single_bin(s, n_bins)
+    pairs = _source_pairs(s, n_bins)
     use_rho_tau = rho_stats_hdu is not None
-    bins = (0, 0)
+    if use_rho_tau and n_bins != 1:
+        raise ValueError("the legacy ρ/τ sidecars support one source bin only")
 
     nz_hdu = _nz_hdu(s, n_bins)
-    theta, xip, xim = _type_major_xi(s, bins)
-    xip_hdu = _twopoint_hdu("XI_PLUS", xip, theta, ang_unit="arcmin")
-    xim_hdu = _twopoint_hdu("XI_MINUS", xim, theta, ang_unit="arcmin")
-
-    cell_hdu, cov_cell_hdu = _build_cell(s, bins)
-
-    cov_hdu = _build_covmat(s, bins, use_rho_tau=use_rho_tau)
+    xip_hdu, idx_p = _twopoint_series(
+        s, "XI_PLUS", XI_PLUS, pairs, angle="theta", ang_unit="arcmin"
+    )
+    xim_hdu, idx_m = _twopoint_series(
+        s, "XI_MINUS", XI_MINUS, pairs, angle="theta", ang_unit="arcmin"
+    )
+    theta = xip_hdu.data["ANG"]
+    cell_hdu, cov_cell_hdu = _build_cell(s, pairs)
+    cov_hdu = _build_covmat(s, idx_p, idx_m, use_rho_tau=use_rho_tau)
 
     tau_hdus, rho_hdu = _build_rho_tau(rho_stats_hdu, tau_stats_hdu, theta, use_rho_tau)
 
@@ -1306,7 +1310,7 @@ def sacc_to_twopoint_fits(
     return hdul
 
 
-def _build_cell(s, bins):
+def _build_cell(s, pairs):
     """Build the CELL_EE 2pt HDU plus the COVMAT_CELL HDU from the SACC pseudo-Cℓ.
 
     Returns ``(None, None)`` when the SACC has no pseudo-Cℓ. Only CELL_EE is
@@ -1320,17 +1324,15 @@ def _build_cell(s, bins):
     if CL_EE not in s.get_data_types():
         return None, None
 
-    ell, cl_ee, _cl_bb, _cl_eb, _window = get_pseudo_cl(s, bins)
-    cell_hdu = _twopoint_hdu("CELL_EE", cl_ee, ell)
-    cell_idx = _indices(s, CL_EE, _pair(bins), grid="reporting")
-    cov_cell = s.covariance.dense[np.ix_(cell_idx, cell_idx)]
+    cell_hdu, cell_idx = _twopoint_series(s, "CELL_EE", CL_EE, pairs, angle="ell")
+    cov_cell = s.covariance.get_block(cell_idx)
     cov_cell_hdu = _cov_hdu(
         cov_cell, ["CELL_EE"], [0], extname="COVMAT_CELL", name_in_ctor=True
     )
     return cell_hdu, cov_cell_hdu
 
 
-def _build_covmat(s, bins, *, use_rho_tau):
+def _build_covmat(s, idx_p, idx_m, *, use_rho_tau):
     """Assemble the blocked COVMAT (ξ± type-major, then the τ blocks).
 
     The ξ covariance is pulled from the SACC as the contiguous ξ+/ξ− block for
@@ -1338,12 +1340,9 @@ def _build_covmat(s, bins, *, use_rho_tau):
     ``use_rho_tau`` the τ_0/τ_2 covariance blocks are appended block-diagonally
     with zero ξ↔τ cross-blocks, exactly as ``covdat_to_fits`` builds them.
     """
-    pair = _pair(bins)
-    idx_p = _indices(s, XI_PLUS, pair, grid="reporting")
-    idx_m = _indices(s, XI_MINUS, pair, grid="reporting")
     n_theta = len(idx_p)
     xi_idx = np.concatenate([idx_p, idx_m])  # type-major permutation
-    xi_cov = s.covariance.dense[np.ix_(xi_idx, xi_idx)]
+    xi_cov = s.covariance.get_block(xi_idx)
 
     names = ["XI_PLUS", "XI_MINUS"]
     starts = [0, n_theta]
@@ -1359,7 +1358,7 @@ def _build_covmat(s, bins, *, use_rho_tau):
         idx_tau0 = _indices(s, TAU_PLUS.format(k=0), tau_pair, grid="reporting")
         idx_tau2 = _indices(s, TAU_PLUS.format(k=2), tau_pair, grid="reporting")
         tau_idx = np.concatenate([idx_tau0, idx_tau2])
-        tau_cov = s.covariance.dense[np.ix_(tau_idx, tau_idx)]
+        tau_cov = s.covariance.get_block(tau_idx)
         matrix = _block_diag(matrix, tau_cov)
         names += ["TAU_0_PLUS", "TAU_2_PLUS"]
         starts += [2 * n_theta, 2 * n_theta + len(idx_tau0)]
