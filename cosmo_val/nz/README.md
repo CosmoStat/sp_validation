@@ -4,6 +4,10 @@
 The output is a text file with z in column zero and four densities whose integrals are the retained shear-weight fractions.
 Their sum has unit integral and describes only objects with `TOM_BIN_ID > 0`.
 cosmo_val reads this file through `shear.redshift_path`; it never loads the photometry or runs the calibration.
+The `SP_v2.0` entry in `cat_config.yaml` uses the existing Nibi catalogue and n(z) paths.
+Its `nz.recipe` points here for regeneration; it is passive metadata for the standalone calibrator.
+The equivalent verified file for candide is `/n17data/cdaley/unions/analyses/shear_tomographic/nz_v2_full/calibration/nz_tomo.txt`.
+When copying the file to another site, set that site's `shear.redshift_path` to the local copy.
 
 This is an EGS-only working calibration for validation and null tests.
 It has no independent-field variance or model of spectroscopic selection, and does not support parameter constraints.
