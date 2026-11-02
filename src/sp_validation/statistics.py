@@ -53,6 +53,38 @@ def jackknife_patch_centers(cat, npatch, seed=0, init="tree"):
     return centers
 
 
+def jackknife_weighted_mean(x, w, patch):
+    """Delete-one-patch jackknife of a weighted mean.
+
+    Parameters
+    ----------
+    x, w : array of float
+        Values and weights.
+    patch : array of int
+        Patch index of each value, ``>= 0``.
+
+    Returns
+    -------
+    float
+        Mean of the delete-one estimates over the non-empty patches.
+    float
+        Jackknife error ``sqrt((K - 1) / K sum_k (x_k - mean)^2)``, where
+        ``x_k`` is the weighted mean without patch ``k`` and ``K`` the number of
+        non-empty patches. Unlike resampling single objects, this includes
+        spatially correlated contributions to the error.
+    """
+    x = np.asarray(x, dtype=float)
+    w = np.asarray(w, dtype=float)
+    sw = np.bincount(patch, weights=w)
+    swx = np.bincount(patch, weights=w * x)
+    has_data = sw > 0
+    x_k = (swx.sum() - swx[has_data]) / (sw.sum() - sw[has_data])
+    n_k = len(x_k)
+    mean = np.mean(x_k)
+    err = np.sqrt((n_k - 1) / n_k * np.sum((x_k - mean) ** 2))
+    return float(mean), float(err)
+
+
 def jackknif_weighted_average2(
     data,
     weights,
