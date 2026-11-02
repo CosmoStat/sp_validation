@@ -180,7 +180,7 @@ def render(config, output_dir):
         spec_mean[gm],
         spec_std[gm],
         mean_p,
-        np.zeros(ncell),
+        spec_count[gm],
     ]
     titles = [
         "Calibrators per cell",
@@ -188,19 +188,16 @@ def render(config, output_dir):
         "Mean spec-z per group",
         "Spec-z scatter per group",
         "Mean source BPZ per cell",
-        "Ward-group boundaries",
+        "Calibrators per group",
     ]
     for ax, values, title in zip(axes.flat, maps, titles):
         plane = np.asarray(values).reshape(101, 101)
-        if title.startswith("Ward"):
-            groups = gm.reshape(101, 101)
-            plane = np.zeros_like(groups, dtype=float)
-            plane[1:, :] = groups[1:, :] != groups[:-1, :]
-            plane[:, 1:] += groups[:, 1:] != groups[:, :-1]
         m = np.ma.masked_invalid(plane)
         if title.startswith("Calibrators") or title.startswith("Source"):
             m = np.ma.masked_where(m <= 0, m)
             im = ax.imshow(m, origin="lower", cmap="viridis", norm=LogNorm())
+        elif title.startswith("Mean spec-z"):
+            im = ax.imshow(m, origin="lower", cmap="viridis", vmin=0, vmax=2)
         else:
             im = ax.imshow(m, origin="lower", cmap="viridis")
         ax.set_title(title)
@@ -209,7 +206,7 @@ def render(config, output_dir):
         fig.colorbar(im, ax=ax, fraction=0.046, pad=0.03)
     _save(fig, out / "som_plane.png")
 
-    # Per-bin gold support and weight-per-calibrator distributions.
+    # Per-bin gold support.
     fig, axes = plt.subplots(1, len(edges) - 1, figsize=(15, 4), layout="constrained")
     for k, ax in enumerate(np.atleast_1d(axes)):
         passed = gold[k, gm].reshape(101, 101)
@@ -223,24 +220,6 @@ def render(config, output_dir):
         ax.set_yticks([])
     fig.suptitle("Per-bin gold groups (green) and rejected groups (pale)", y=1.08)
     _save(fig, out / "gold_masks.png")
-
-    fig, axes = plt.subplots(1, len(edges) - 1, figsize=(15, 4), layout="constrained")
-    for k, ax in enumerate(np.atleast_1d(axes)):
-        in_bin = np.isfinite(p) & (p >= edges[k]) & (p < edges[k + 1])
-        ng = np.bincount(group[in_bin], minlength=n_group)
-        wg = np.bincount(group, weights=weights[k], minlength=n_group)
-        ratio = np.divide(
-            wg, ng, out=np.full(n_group, np.nan), where=(ng > 0) & (wg > 0)
-        )
-        vals = ratio[np.isfinite(ratio)]
-        ax.hist(vals, bins=np.geomspace(vals.min(), vals.max(), 36), color=COLORS[0])
-        ax.set_xscale("log")
-        ax.set(
-            title=f"Bin {k + 1}",
-            xlabel="source shear weight / calibrator",
-            ylabel="groups",
-        )
-    _save(fig, out / "reweighting.png")
 
     valid = np.isfinite(p) & (p >= edges[0]) & (p < edges[-1])
     dz = (p[valid] - z[valid]) / (1 + z[valid])
