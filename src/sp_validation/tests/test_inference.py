@@ -2,6 +2,7 @@
 
 import configparser
 import json
+from pathlib import Path
 
 import numpy as np
 from astropy.io import fits
@@ -63,6 +64,26 @@ def test_render_explicit_inputs_and_all_bin_cuts(tmp_path):
     assert ini["nautilus"]["n_live"] == "300"
     assert ini["2pt_like"]["angle_range_XI_PLUS_3_4"] == "12.0 83.0"
     assert len([k for k in ini["2pt_like"] if k.startswith("angle_range")]) == 10
+
+
+def test_psf_template_uses_likelihood_that_consumes_xi_sys(tmp_path):
+    root = Path(__file__).resolve().parents[3]
+    template = (
+        root / "cosmo_inference/cosmosis_config/templates/cosmosis_pipeline_A_psf.ini"
+    )
+    out = tmp_path / "pipeline.ini"
+    render(
+        template,
+        out,
+        fits_path=tmp_path / "data.fits",
+        values=tmp_path / "v.ini",
+        priors=tmp_path / "p.ini",
+        chain=tmp_path / "chain.txt",
+    )
+    ini = configparser.ConfigParser()
+    ini.read(out)
+    assert ini["2pt_like"]["file"].endswith("/likelihood/2pt/2pt_like_xi_sys.py")
+    assert ini["2pt_like"].getboolean("add_xi_sys")
 
 
 def test_weighted_summary(tmp_path):
