@@ -1,0 +1,118 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+SP Validation is a Python package for validating weak-lensing catalogues (galaxy and star shapes) produced by ShapePipe. The package performs:
+
+1. **Shear validation**: Calibrates shear catalogues with metacal information, performs PSF leakage tests
+2. **Post processing**: Further processing of calibrated shear catalogues  
+3. **Cosmology validation**: Diagnostics like rho/tau statistics, E-/B-mode decomposition
+4. **Cosmology inference**: Two-point correlation function analysis using CosmoSIS/CosmoCov
+
+## ASTRA and Lightcone first
+Build analysis stages (n(z) generation included) as ASTRA specs (`astra.yaml`)
+run with Lightcone (`lc`), and record analysis choices there as decisions,
+using the `astra`/`lc` tools wherever they fit.
+
+## Development Commands
+
+### Testing
+Tests live in `src/sp_validation/tests/` and import the full scientific stack,
+so run them inside the container.
+- Run all tests: `pytest` (collects from `src/sp_validation/tests`; coverage on by default)
+- Skip the slow tests: `pytest -m "not slow"`
+- Run a single test: `pytest src/sp_validation/tests/test_cosmo_val.py::test_function_name`
+
+CI runs this same suite inside the freshly-built image before publishing it
+(see `.github/workflows/deploy-image.yml`).
+
+### Linting and Code Quality
+- Check code style: `ruff check`
+- Auto-fix issues: `ruff check --fix`
+- Line length limit: 88 characters
+
+### Installation
+The package is managed with `uv` (see `uv.lock`); the primary runtime environment
+is the container (full scientific stack pre-built). For a local dev environment:
+- Dev install (test + docs extras): `uv pip install -e '.[develop]'`
+- Test extras only: `uv pip install -e '.[test]'`
+
+## Architecture
+
+### Core Package Structure (`src/sp_validation/`)
+- `b_modes.py`: Pure E-/B-mode decomposition (COSEBIS, pseudo-Cℓ)
+- `calibration.py`: Shear calibration — the `metacal` response class, galaxy selection masks (size/SNR), and m/c calibration routines
+- `cat.py`: Catalogue handling and manipulation
+- `cosmo_val.py`: Cosmology validation routines
+- `cosmology.py`: Cosmological calculations and theory
+- `blinding.py`: Blinds, the theory `theory(params, s)` they shift by, and `conceal`, which shifts a SACC by one
+- `galaxy.py`: Galaxy-specific processing
+- `grammar.py`: Column grammars: ShapePipe v1 -> v2 adapter and `column_map` renames (`adapt`)
+- `io.py`: Input/output; the catalogue reader (`read_catalogue`, `Catalogue`), which detects FITS/HDF5 layouts
+- `plots.py`: Plotting functions
+- `rho_tau.py`: Rho and tau statistics calculations
+- `statistics.py`: Cosmology-independent statistics (jackknife resampling, χ²/PTE, covariance↔correlation, OneCovariance reshaping)
+- `survey.py`: Survey-level operations
+- `util.py`: General utilities
+
+### External Tools Integration
+- **CosmoSIS**: Cosmological inference pipeline (requires separate installation)
+- **CosmoCov**: Covariance matrix calculations (requires separate installation)
+- **TreeCorr**: Two-point correlation functions
+- **Healpy/HealSparse**: Sky map handling
+
+### Cosmology Inference Pipeline (`cosmo_inference/`)
+Orchestrated through Snakemake, not a standalone driver; see
+`cosmo_inference/README.md`. From the repository root:
+
+```bash
+snakemake --profile workflow/profiles/candide -s workflow/Snakefile \
+    inference_fiducial --configfile <run config>
+```
+
+### Configuration
+Main configuration in `scripts/calibration/params.py` with parameters:
+- `campaign`: Campaign name (the ShapePipe tile list); names the input products
+- `data_dir`: Input data directory
+- `galaxy_cat_path`: Galaxy catalogue path (.fits/.hdf5)
+- `star_cat_path`: Star catalogue path (.hdf5, or a v1 .fits)
+
+### Key Dependencies
+- astropy, numpy, scipy for core calculations
+- treecorr for correlation functions
+- healpy/healsparse for sky maps
+- emcee for MCMC sampling
+- pyccl for cosmological calculations
+
+## Blinded catalogues
+Each `cosmo_val/cat_config.yaml` entry declares `blind: none` or a blind's name.
+- For an entry with `blind: <name>`, signal (ξ±, Cℓ, any cosmological statistic) leaves the function that measures it only concealed: compute it and `sacc_io.save(..., blind=)` it in that function and return the saved part, as `CosmologyValidation` and the workflow do. Never measure it from the file and keep the raw values.
+- Never set `blind: none` to get a run through.
+- Never print, paste or commit a `.blind.json`.
+
+## Container Usage
+Nothing is hand-built. CI publishes `ghcr.io/cosmostat/sp_validation:<branch>` on
+every push, and each person keeps their own copy at
+`~/.cache/sp_validation/sp_validation.sif`, managed by the `spv-container` CLI:
+
+```bash
+spv-container pull            # fetch :develop there (do it from a compute node)
+spv-container status          # which layer is live, and how current it is
+spv-container exec <command>  # one-off run inside it
+```
+
+Need a package the image lacks mid-analysis? `spv-container sandbox`, then
+`spv-container exec --writable pip install <pkg>`; the sandbox then takes
+precedence over the SIF everywhere, workflow jobs included.
+
+Every rule runs inside that image, wrapped by Snakemake itself (`--profile
+workflow/profiles/candide` on the cluster, `workflow/profiles/default -j N`
+elsewhere). The `sp_validation` a rule imports comes from the *launched
+checkout*, not the image.
+
+`workflow/README.md` is the full story — profiles, image resolution, refresh.
+
+## Notebook Configuration
+- The CosmologyValidation class must be initialized in cosmo_val

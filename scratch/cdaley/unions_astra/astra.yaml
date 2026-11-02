@@ -1,0 +1,230 @@
+version: "0.0.10"
+name: "UNIONS-3500 weak-lensing release (Papers II–IV)"
+tags: [unions, weak-lensing, cosmic-shear]
+
+authors:
+  - "Cail Daley"
+
+narrative:
+  summary: |
+    The UNIONS-3500 cosmic-shear release as a single ASTRA project, spanning
+    three papers that share one shear catalogue and one fiducial setup but
+    diverge in statistic and estimator: **Paper II** ([bmodes](#analyses.bmodes),
+    Daley et al.) validates B-modes with three E/B-separable statistics;
+    **Paper III** ([cosmic_shear_2d](#analyses.cosmic_shear_2d), Goh et al.)
+    measures the configuration-space two-point functions ξ±(θ) and infers
+    S₈; **Paper IV** ([harmonic](#analyses.harmonic), Guerrini et al.) does the
+    same in harmonic space with pseudo-Cℓ. This project stops at **inference
+    data products** — data vectors, covariances, and the cosmological-constraint
+    findings — and does not model the MCMC chains themselves.
+
+    What is genuinely shared hoists here: the [catalogue version](#decisions.catalog_version)
+    (ShapePipe v1.4.6.3, the adopted size-cut fiducial), [metacalibration](#decisions.shear_calibration),
+    the [PSF-leakage correction](#decisions.leakage_correction), the [SOM n(z)](#inputs.nz),
+    the [Planck 2018 fiducial cosmology](#decisions.fiducial_cosmology), the
+    [GLASS validation mocks](#inputs.glass_mocks), and the [external blinding](#decisions.blinding)
+    coordinated by Koen Kuijken. Where the papers truly diverge — covariance
+    method most of all (CosmoCov in config space; NaMaster iNKA + OneCovariance
+    in harmonic space) — the decision stays local to the paper.
+  methods: |
+    Three external sub-analyses: [bmodes](#analyses.bmodes),
+    [cosmic_shear_2d](#analyses.cosmic_shear_2d), [harmonic](#analyses.harmonic).
+    Shared methodological choices live here and are pulled down with `from:`:
+    [catalog_version](#decisions.catalog_version), [shear_calibration](#decisions.shear_calibration),
+    [leakage_correction](#decisions.leakage_correction), [fiducial_cosmology](#decisions.fiducial_cosmology),
+    and [blinding](#decisions.blinding). Each paper owns its statistic,
+    scale cuts, estimator, binning, covariance method, and (for III/IV) the
+    full modelling stack (non-linear power, baryons, intrinsic alignment).
+  inputs: |
+    The common [shear_catalog](#inputs.shear_catalog) (ShapePipe v1.4.6.3,
+    61,378,891 galaxies over 2894 deg² effective, n_eff ≈ 4.96 arcmin⁻²,
+    σ_e = 0.27), the SOM [nz](#inputs.nz), and the 350 [glass_mocks](#inputs.glass_mocks)
+    are shared inputs aliased into each paper.
+  outputs: |
+    The release-level products are re-exported from the sub-analyses: the Paper II
+    [bmode_pte_table](#outputs.bmode_pte_table), the Paper III
+    [config_constraints](#outputs.config_constraints), and the Paper IV
+    [harmonic_constraints](#outputs.harmonic_constraints).
+
+inputs:
+  - id: shear_catalog
+    type: data
+    label: "UNIONS-3500 ShapePipe shear catalogue (v1.4.6.3, fiducial size-cut)"
+    source: "/n17data/UNIONS/WL/"
+    description: >-
+      The fiducial UNIONS weak-lensing sample: ShapePipe v1.4 catalogue,
+      size-cut variant (r_h,gal/r_h,psf > 0.707), leakage-corrected,
+      metacalibration-calibrated ellipticities. 61,378,891 galaxies covering
+      A_eff = 2894 deg² after masking; n_eff = 4.96 arcmin⁻²; per-component
+      shape noise σ_e = 0.27. CFIS r-band. Adopted as the fiducial for
+      Papers II, III, and IV. Config-string v1.4.6.3 is config-derived (Paper I,
+      Table H.1).
+  - id: nz
+    type: data
+    label: "SOM redshift distribution n(z)"
+    source: "/n17data/UNIONS/WL/nz/"
+    description: >-
+      Single-bin source n(z) from a self-organising map (101×101 cells,
+      hierarchically clustered to ~5000 resolution elements) trained on the
+      colour-redshift relation, calibrated with ~65,500 spec-z (DEEP2, VVDS,
+      VIPERS) and CFHTLenS ugriz in the W3 field (44.2 deg²). Mean of 1000
+      realisations. Method derived in Paper III (Goh et al.) Sect. 3.3.
+  - id: glass_mocks
+    type: data
+    label: "GLASS lognormal validation mocks (~350)"
+    source: "/n17data/UNIONS/WL/glass/"
+    description: >-
+      ~350 GLASS (Tessore et al. 2023) lognormal simulated catalogues
+      reproducing the UNIONS footprint, galaxy positions/number density,
+      weights, shape noise, and n(z) under the Planck 2018 cosmology, with no
+      PSF systematics. Paper II uses 350; Paper III uses 341; Paper IV uses
+      350. Used for pipeline/covariance validation and the harmonic config-vs-
+      Cℓ cross-correlation.
+
+decisions:
+  catalog_version:
+    label: "Shear catalogue version / variant"
+    tags: [data-selection]
+    rationale: >-
+      Paper II validates four ShapePipe v1.4 variants and adopts the size-cut
+      catalogue (tightened r_h,gal/r_h,psf > 0.707) as the release fiducial;
+      only that variant passes all B-mode statistics at the adopted cuts.
+      Papers III and IV consume the adopted fiducial. Version string v1.4.6.3
+      is config-derived (TeX refers to Paper I Table H.1).
+    default: size_cut_v1_4_6_3
+    options:
+      initial_v1_4_5:
+        label: "Initial (loose size cut > 0.5)"
+        description: "Loose size cut r_h,gal/r_h,psf > 0.5. Fails harmonic B-mode null test (Paper III)."
+      size_cut_v1_4_6_3:
+        label: "Size-cut (fiducial)"
+        description: "Tightened size cut > 0.707. Adopted fiducial for Papers II–IV; passes all statistics at adopted cuts."
+      masked_v1_4_8:
+        label: "Masked (bright/faint-star halo masking)"
+        description: >-
+          Size cut plus bright-star (r<12) and faint-star (12<r<18) halo
+          masking; reduces sky coverage by 13%. Paper III found this masking
+          introduced spurious B-mode contamination and did not employ it.
+      relaxed_flags_v1_4_11_3:
+        label: "Relaxed SExtractor flags"
+        description: "Relaxes flags to include deblended objects; +23% effective galaxy density. ξ⁻^B failure boundary approaches adopted cuts."
+
+  shear_calibration:
+    label: "Shear calibration (metacalibration)"
+    tags: [calibration]
+    rationale: >-
+      Ellipticities calibrated via metacalibration: galaxy images artificially
+      sheared to measure the 2×2 response matrix R, yielding γ = R⁻¹(e − c).
+      Shared across all three papers (set by the catalogue). A residual
+      multiplicative bias m is handled per-paper as a nuisance parameter.
+    default: metacalibration
+    options:
+      metacalibration:
+        label: "Metacalibration (Huff & Mandelbaum 2017; Sheldon & Huff 2017)"
+        insights: [metacal_selfcal]
+
+  leakage_correction:
+    label: "Object-wise PSF-leakage correction"
+    tags: [calibration]
+    rationale: >-
+      Object-wise PSF-leakage correction (Paper I), modelling PSF contamination
+      via binned regression in S/N and galaxy-PSF size ratio. The
+      leakage-corrected catalogues are the fiducial used for cosmological
+      inference in Papers III and IV; Paper II reports both corrected and
+      uncorrected. The correction shifts B-mode PTEs by ≲ 0.05 and S₈ by
+      ≈ +0.02 σ (harmonic) — minimal impact.
+    default: corrected
+    options:
+      corrected:
+        label: "Leakage-corrected"
+        description: "Fiducial. Used for inference in Papers III and IV."
+      uncorrected:
+        label: "No object-wise leakage correction"
+        description: "Comparison variant (Paper II reports both; Paper III sensitivity row)."
+
+  fiducial_cosmology:
+    label: "Fiducial cosmology for covariances / mocks"
+    tags: [physics]
+    rationale: >-
+      Planck 2018 is the fiducial cosmology used to generate the GLASS mocks
+      and (in config space) the CosmoCov covariance. Paper III's CosmoCov input
+      cosmology follows Table 1 of the OneCovariance paper (a Planck-class
+      ΛCDM). astropy Planck18 parameter values are config-derived, not in TeX.
+    default: planck18
+    options:
+      planck18:
+        label: "Planck 2018 ΛCDM"
+        insights: [planck18_cosmology]
+      onecov_table1:
+        label: "OneCovariance Table 1 fiducial (Paper III CosmoCov input)"
+        description: "Planck-class ΛCDM adopted as the CosmoCov input cosmology in Paper III."
+
+  blinding:
+    label: "Blinding strategy"
+    tags: [stats]
+    rationale: >-
+      Analysis choices and scale cuts were fixed within a blinded framework.
+      An external coordinator (Koen Kuijken) generated three blinded n(z)
+      distributions by applying random Δz shifts; PTEs/results were evaluated
+      across blinds and the most conservative reported. The internal A/B/C
+      labelling and "fiducial = blind B" mapping are config/script-derived, not
+      stated in the TeX.
+    default: external_three_nz
+    options:
+      external_three_nz:
+        label: "External coordinator, three blinded n(z)"
+        description: >-
+          Three blinded n(z) via random Δz shifts (Kuijken). Conservative
+          (min/max-across-blinds) reporting. Primary authors were inadvertently
+          unblinded in late stages (no setup changes induced).
+
+prior_insights:
+  metacal_selfcal:
+    id: metacal_selfcal
+    label: "Metacalibration"
+    claim: >-
+      Metacalibration self-calibrates shear measurement biases directly from
+      the imaging by artificially shearing galaxy images to measure the shear
+      response, without external calibration simulations.
+    created_at: "2026-06-13T00:00:00"
+    derived: false
+    evidence:
+      - id: e1
+        doi: "10.48550/arXiv.1702.02600"
+        quote:
+          exact: "Metacalibration: Direct Self-Calibration of Biases in Shear Measurement"
+      - id: e2
+        doi: "10.3847/1538-4357/aa704b"
+        quote:
+          exact: "Practical Weak-lensing Shear Measurement with Metacalibration"
+
+  planck18_cosmology:
+    id: planck18_cosmology
+    label: "Planck 2018 cosmology"
+    claim: >-
+      The Planck 2018 results provide the fiducial ΛCDM cosmological parameters
+      used to generate the survey mocks and covariances and as the external
+      comparison for the cosmic-shear constraints.
+    created_at: "2026-06-13T00:00:00"
+    derived: false
+    evidence:
+      - id: e1
+        doi: "10.1051/0004-6361/201833910"
+        quote:
+          exact: "Planck 2018 results"
+
+outputs:
+  - id: bmode_pte_table
+    from: bmodes.pte_table
+  - id: config_constraints
+    from: cosmic_shear_2d.cosmo_constraints
+  - id: harmonic_constraints
+    from: harmonic.cosmo_constraints
+
+analyses:
+  bmodes:
+    path: ./analyses/bmodes
+  cosmic_shear_2d:
+    path: ./analyses/cosmic_shear_2d
+  harmonic:
+    path: ./analyses/harmonic

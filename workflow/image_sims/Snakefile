@@ -1,0 +1,45 @@
+"""Standalone entry point for the image-simulation m-bias workflow.
+
+Run the sp_validation-side chain (merge -> extract -> calibrate -> m-bias),
+optionally including the ShapePipe pipeline stage, without pulling in the
+cosmology-validation config the top-level ``workflow/Snakefile`` requires.
+
+The one drive command on candide, with the committed SLURM profile owning
+scheduling and container wrapping:
+
+    snakemake --profile workflow/profiles/candide \\
+        -s workflow/image_sims/Snakefile \\
+        im_mbias --configfile my_run.yaml
+
+``configfile:`` below loads the operational defaults, so ``my_run.yaml`` need
+only carry the science knobs (and any operational override); Snakemake
+deep-merges the two.  Off-cluster, drop ``--profile`` and add ``-j N``.
+
+Put targets *before* ``--configfile``: it takes one-or-more paths, so a target
+after it is swallowed as a config path ("No such file: im_mbias").  Always
+dry-run first with ``-n``.
+
+The same rules are also included in the main workflow under
+``if "image_sims" in config``.
+"""
+
+import os
+import sys
+
+# Shared helpers from the generic workflow one directory up -- resolve_container
+# in particular, so `sif: null` here falls back to the same image every other
+# entry point runs. Snakemake's `include:` shares Python globals, so
+# image_sims.smk sees this import.
+sys.path.insert(0, os.path.realpath(os.path.join(str(workflow.basedir), "..")))
+import common
+
+
+configfile: "workflow/image_sims/config.yaml"
+
+
+include: "../rules/image_sims.smk"
+
+
+rule all:
+    input:
+        f"{GRIDS_BASE}/results/m_bias_results.yaml",

@@ -1,0 +1,13 @@
+figure.titlesize : 14
+figure.titleweight : bold
+figure.autolayout : True
+axes.titlesize : 14
+legend.fontsize : 8
+lines.linewidth : 1.5
+lines.markersize : 4
+axes.labelsize : 16
+xtick.labelsize : 14
+ytick.labelsize : 14
+text.usetex : True
+font.family : serif
+font.size : 16

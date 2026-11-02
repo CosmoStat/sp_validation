@@ -1,1 +1,0 @@
-/home/cdaley/.claude/skills/conducting-research/templates/scripts/generate_claims_dashboard.py

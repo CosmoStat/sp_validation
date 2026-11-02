@@ -1,0 +1,514 @@
+version: "0.0.10"
+name: "Paper II — B-mode validation (Daley et al.)"
+tags: [unions, b-modes, null-tests]
+
+authors:
+  - "Cail Daley"
+
+narrative:
+  summary: |
+    B-mode validation for UNIONS-3500 cosmic shear using three E/B-separable
+    statistics — pure-mode correlation functions ξ±^B(θ), COSEBI B-mode
+    amplitudes B_n, and harmonic-space C_ℓ^BB. The goal is a null test: after
+    [fiducial scale cuts](#decisions.scale_cuts_config), all three statistics
+    pass with [minimum PTE = 0.18](#findings.min_pte_combined), and only the
+    [size-cut fiducial catalogue](#../decisions.catalog_version) passes
+    everything. This is a validation paper — its inference data products are
+    the B-mode data vectors and their covariances feeding the PTE table.
+  findings: |
+    All three statistics pass at fiducial cuts ([min PTE 0.18](#findings.min_pte_combined));
+    fiducial PTEs are [COSEBI n≤6 = 0.78](#findings.pte_fid_cosebi6),
+    [n≤20 = 0.94](#findings.pte_fid_cosebi20), [ξ+^B = 0.31](#findings.pte_fid_xip),
+    [ξ−^B = 0.26](#findings.pte_fid_xim), [ξ_tot^B = 0.18](#findings.pte_fid_xitot),
+    [C_ℓ^BB = 0.30](#findings.pte_fid_cl). Over the full angular range COSEBI
+    n=1 shows a [>4σ excess](#findings.cosebi_n1_excess) (full-range PTE
+    [1.37e-05](#findings.pte_full_cosebi6)) traced to the [MegaCam CCD scale](#findings.ccd_scale).
+    Robustness: a [look-elsewhere sensitivity test](#findings.look_elsewhere_sensitivity)
+    still passes (0.09), the [leakage correction shifts PTEs by ≲0.05](#findings.leak_corr_shift),
+    the [Hartlap correction is ≤2%](#findings.hartlap_correction), and the
+    [COSEBI GLASS bias is <0.3σ](#findings.cosebi_glass_bias).
+  methods: |
+    Three statistics ([statistics](#decisions.statistics)) on a single source
+    bin: [pure-mode ξ±^B](#decisions.pure_eb_method) on a [1000-bin grid](#decisions.pure_eb_grid),
+    [COSEBIs](#decisions.cosebi_nmodes) (config-space and a [96-bin harmonic
+    transform](#decisions.cosebi_harmonic_bins)), and [catalogue-based C_ℓ](#decisions.cl_estimator)
+    in [32 bandpowers](#decisions.cl_binning). Covariances are propagated from
+    the CosmoCov ξ± covariance ([Monte-Carlo for pure-mode](#decisions.cov_method_pureeb),
+    [analytic transform for COSEBIs](#decisions.cov_cosebi)), kept
+    [Gaussian-only](#decisions.gaussian_only_cov). [Config-space](#decisions.scale_cuts_config)
+    and [harmonic-space scale cuts](#decisions.scale_cuts_harmonic) plus a
+    [uniform PTE threshold 0.05](#decisions.pte_threshold) define pass/fail; a
+    [look-elsewhere treatment](#decisions.look_elsewhere) requires stable
+    regions, and the pipeline is validated on [GLASS mocks](#decisions.mock_validation).
+  inputs: |
+    Consumes the shared [shear_catalog](#inputs.shear_catalog), [nz](#inputs.nz),
+    and [glass_mocks](#inputs.glass_mocks), and the parent CosmoCov config-space
+    [xi_covariance](#inputs.xi_covariance).
+  outputs: |
+    B-mode [data vectors](#outputs.bmode_data_vectors), their
+    [covariances](#outputs.bmode_covariances), and the [PTE table](#outputs.pte_table).
+
+inputs:
+  - id: shear_catalog
+    from: ../shear_catalog
+  - id: nz
+    from: ../nz
+  - id: glass_mocks
+    from: ../glass_mocks
+  - id: xi_covariance
+    type: data
+    label: "Finely-binned CosmoCov ξ±(θ) covariance"
+    source: "/n17data/UNIONS/WL/cosmocov/"
+    description: >-
+      CosmoCov covariance of ξ±(θ) on a 1000-bin logarithmic grid spanning
+      θ = 0.5–300 arcmin, Gaussian-only, under the Planck 2018 fiducial
+      cosmology and the UNIONS survey properties. Shared with Paper III's
+      config-space covariance; here it is the seed for all B-mode covariances
+      (MC propagation for pure-mode; linear transform for COSEBIs).
+
+decisions:
+  catalog_version:
+    from: ../catalog_version
+  shear_calibration:
+    from: ../shear_calibration
+  leakage_correction:
+    from: ../leakage_correction
+  fiducial_cosmology:
+    from: ../fiducial_cosmology
+  blinding:
+    from: ../blinding
+
+  statistics:
+    label: "E/B-separable statistic"
+    tags: [stats]
+    rationale: >-
+      Three independent E/B-separable statistics cross-check the B-mode null:
+      pure-mode correlation functions, COSEBIs, and harmonic-space power
+      spectra. A signal seen in all three is robust.
+    default: all_three
+    options:
+      pure_eb:
+        label: "Pure-mode ξ±^B(θ)"
+      cosebis:
+        label: "COSEBI B-mode amplitudes B_n"
+      cl_bb:
+        label: "Harmonic C_ℓ^BB"
+      all_three:
+        label: "All three (fiducial)"
+        insights: [pure_eb_method_ref]
+
+  pure_eb_method:
+    label: "Pure-mode decomposition method"
+    tags: [stats]
+    rationale: >-
+      Decompose ξ±(θ) into pure E, pure B, and ambiguous components following
+      Schneider et al. 2022, computing pure-mode CFs directly from the finely
+      binned ξ± rather than reconstructing from COSEBI coefficients.
+    default: schneider22_direct
+    options:
+      schneider22_direct:
+        label: "Schneider+22, direct from binned ξ±"
+        insights: [pure_eb_method_ref]
+      schneider22_from_cosebi:
+        label: "Schneider+22, reconstructed from COSEBIs"
+        description: "Alternative path via COSEBI coefficients; not used."
+
+  pure_eb_grid:
+    label: "Integral-transform grid for pure modes"
+    tags: [numerics]
+    rationale: >-
+      The S± / V± boundary functions are evaluated on a separate 1000-bin
+      logarithmic grid over θ = 0.5–300 arcmin; the extended range reduces
+      edge effects. A 10000-bin grid confirms convergence.
+    default: log_1000_0p5_300
+    options:
+      log_1000_0p5_300:
+        label: "1000 log bins, 0.5–300 arcmin (fiducial)"
+      log_10000_0p5_300:
+        label: "10000 log bins (convergence check)"
+
+  cosebi_nmodes:
+    label: "COSEBI mode set"
+    tags: [stats]
+    rationale: >-
+      The E-mode signal saturates by n ≈ 5–6, so n ≤ 6 carries most
+      cosmological information; B-mode PTEs are also reported for n ≤ 20 over
+      the θ = 1–250 arcmin angular range.
+    default: n_le_6
+    options:
+      n_le_6:
+        label: "n ≤ 6 (fiducial information content)"
+      n_le_20:
+        label: "n ≤ 20 (full mode set)"
+
+  cosebi_harmonic_bins:
+    label: "COSEBI harmonic-transform bandpower binning"
+    tags: [numerics]
+    rationale: >-
+      The harmonic-space COSEBI path uses 96 sqrt-spaced bandpower bins,
+      balancing resolution against deconvolution. Validated on GLASS mocks so
+      that n ≤ 6 agree between the config-space and harmonic paths (paper
+      states agreement; no quantitative tolerance is quoted).
+    default: sqrt_96
+    options:
+      sqrt_96:
+        label: "96 sqrt-spaced bandpowers (fiducial)"
+
+  cl_estimator:
+    label: "C_ℓ estimator"
+    tags: [stats]
+    rationale: >-
+      Catalogue-based pseudo-Cℓ estimator (Wolz et al. 2025): the mask is
+      represented as delta functions at source positions and spin-2 transforms
+      computed on the irregular grid via ducc, avoiding pixelisation artifacts.
+      Analytic shot-noise subtraction; MASTER deconvolution via NaMaster.
+    default: catalog_based_wolz25
+    options:
+      catalog_based_wolz25:
+        label: "Catalogue-based (Wolz+25)"
+        insights: [catalog_cl_ref]
+
+  cl_binning:
+    label: "C_ℓ bandpower binning"
+    tags: [numerics]
+    rationale: "32 bandpowers, square-root (ℓ^0.5) spacing over 8 ≤ ℓ ≤ 2048."
+    default: sqrt_32_8_2048
+    options:
+      sqrt_32_8_2048:
+        label: "32 sqrt-spaced bandpowers, 8–2048 (fiducial)"
+
+  cov_method_pureeb:
+    label: "Pure-mode covariance method"
+    tags: [stats]
+    rationale: >-
+      No closed form for the pure-mode covariance, so draw N_samples = 2000
+      realisations of ξ±(θ) from the finely binned CosmoCov covariance,
+      propagate each through the integral transforms, and apply the Hartlap
+      correction to the inverse — at most a 2% correction for N_obs ≤ 40.
+    default: mc_2000_hartlap
+    options:
+      mc_2000_hartlap:
+        label: "Monte-Carlo (N=2000) + Hartlap"
+
+  cov_cosebi:
+    label: "COSEBI covariance method"
+    tags: [stats]
+    rationale: >-
+      For COSEBIs the covariance follows analytically from the linear
+      transform C_{B_n B_m} = Tᵀ C_ξ T, where T encodes the COSEBI filters.
+    default: analytic_transform
+    options:
+      analytic_transform:
+        label: "Analytic linear transform of C_ξ"
+
+  gaussian_only_cov:
+    label: "Gaussian-only covariance for null tests"
+    tags: [stats]
+    rationale: >-
+      For all B-mode null tests, retain only the Gaussian part of the
+      covariance; omitting connected trispectrum and super-sample terms
+      underestimates the variance, so the reported PTEs are conservative.
+    default: gaussian_only
+    options:
+      gaussian_only:
+        label: "Gaussian-only (conservative)"
+      full:
+        label: "Full (Gaussian + cNG + SSC)"
+        description: "Not used for null tests."
+
+  scale_cuts_config:
+    label: "Configuration-space scale cuts"
+    tags: [scale-cuts]
+    rationale: >-
+      Fiducial 12–83 arcmin (full range 1–250 arcmin). The lower cut excludes
+      most intra-CCD pair separations (MegaCam's 40 CCDs span 6–14 arcmin),
+      where B-mode contamination concentrates. COSEBIs use the same unified
+      range.
+    default: arcmin_12_83
+    options:
+      arcmin_12_83:
+        label: "12–83 arcmin (fiducial)"
+      arcmin_1_250:
+        label: "1–250 arcmin (full range)"
+
+  scale_cuts_harmonic:
+    label: "Harmonic-space scale cuts"
+    tags: [scale-cuts]
+    rationale: >-
+      Fiducial 300 < ℓ < 1600 (full range 8 ≤ ℓ ≤ 2048). Excludes low-ℓ
+      outliers (~125, 250) and elevated power above ℓ ≈ 1600.
+    default: ell_300_1600
+    options:
+      ell_300_1600:
+        label: "300 < ℓ < 1600 (fiducial)"
+      ell_8_2048:
+        label: "8 ≤ ℓ ≤ 2048 (full range)"
+
+  pte_threshold:
+    label: "PTE pass/fail threshold"
+    tags: [stats]
+    rationale: >-
+      Uniform threshold PTE = 0.05 for all tests, with χ²_B = d_Bᵀ C_BB⁻¹ d_B
+      and ν = number of data points.
+    default: uniform_0p05
+    options:
+      uniform_0p05:
+        label: "Uniform PTE = 0.05"
+
+  look_elsewhere:
+    label: "Look-elsewhere treatment"
+    tags: [stats]
+    rationale: >-
+      No explicit look-elsewhere correction across scale-cut combinations
+      (tests strongly correlated within and across statistics); instead require
+      adopted cuts to lie in broad stable regions passing all three frameworks.
+      A sensitivity test lowers the minimum PTE from 0.18 to 0.09, still above
+      threshold.
+    default: no_correction_stable_region
+    options:
+      no_correction_stable_region:
+        label: "No correction; require stable region"
+
+  mock_validation:
+    label: "Pipeline validation on GLASS mocks"
+    tags: [validation]
+    rationale: >-
+      Validate on 350 GLASS lognormal mocks matching footprint, positions,
+      weights, and Planck 2018 cosmology (no PSF systematics). All three
+      statistics recover B-modes consistent with zero; COSEBI mean B_n biased
+      by < 0.3σ per mode over 100 realisations.
+    default: glass_350
+    options:
+      glass_350:
+        label: "350 GLASS mocks"
+        insights: [glass_mocks_ref]
+
+prior_insights:
+  pure_eb_method_ref:
+    id: pure_eb_method_ref
+    label: "Pure-mode CFs (Schneider+22)"
+    claim: >-
+      Pure E/B-mode correlation functions cleanly separate E and B modes for
+      cosmic shear, demonstrated on KiDS-1000.
+    created_at: "2026-06-13T00:00:00"
+    derived: false
+    evidence:
+      - id: e1
+        doi: "10.1051/0004-6361/202142479"
+        quote:
+          exact: "Pure-mode correlation functions for cosmic shear and application to KiDS-1000"
+
+  catalog_cl_ref:
+    id: catalog_cl_ref
+    label: "Catalogue-based pseudo-Cℓ (Wolz+25)"
+    claim: >-
+      A catalogue-based pseudo-Cℓ estimator represents the mask as delta
+      functions at source positions, avoiding pixelisation bias.
+    created_at: "2026-06-13T00:00:00"
+    derived: false
+    evidence:
+      - id: e1
+        doi: "10.1088/1475-7516/2025/01/028"
+        quote:
+          exact: "Catalog-based pseudo-Cls"
+
+  glass_mocks_ref:
+    id: glass_mocks_ref
+    label: "GLASS mocks (Tessore+23)"
+    claim: >-
+      GLASS generates lognormal large-scale-structure realisations suitable for
+      weak-lensing pipeline and covariance validation.
+    created_at: "2026-06-13T00:00:00"
+    derived: false
+    evidence:
+      - id: e1
+        doi: "10.21105/astro.2302.01942"
+        quote:
+          exact: "GLASS: Generator for Large Scale Structure"
+
+outputs:
+  - id: bmode_data_vectors
+    type: data
+    label: "B-mode data vectors (ξ±^B, B_n, C_ℓ^BB)"
+    inputs: [shear_catalog, nz]
+    decisions: [catalog_version, leakage_correction, statistics, pure_eb_method,
+                pure_eb_grid, cosebi_nmodes, cosebi_harmonic_bins, cl_estimator,
+                cl_binning, blinding]
+    recipe:
+      command: >-
+        python -m sp_validation.bmodes.measure
+        --catalog {inputs.shear_catalog} --nz {inputs.nz}
+        --catalog-version {decisions.catalog_version}
+        --leakage {decisions.leakage_correction}
+        --statistic {decisions.statistics}
+        --pure-eb-method {decisions.pure_eb_method}
+        --pure-eb-grid {decisions.pure_eb_grid}
+        --cosebi-nmodes {decisions.cosebi_nmodes}
+        --cosebi-harmonic-bins {decisions.cosebi_harmonic_bins}
+        --cl-estimator {decisions.cl_estimator}
+        --cl-binning {decisions.cl_binning}
+        --blind {decisions.blinding}
+        --out {output}
+
+  - id: bmode_covariances
+    type: data
+    label: "B-mode covariances (Gaussian-only)"
+    inputs: [xi_covariance, glass_mocks]
+    decisions: [cov_method_pureeb, cov_cosebi, gaussian_only_cov, cosebi_nmodes,
+                cl_binning, fiducial_cosmology]
+    recipe:
+      command: >-
+        python -m sp_validation.bmodes.covariance
+        --xi-cov {inputs.xi_covariance} --mocks {inputs.glass_mocks}
+        --pure-eb-cov {decisions.cov_method_pureeb}
+        --cosebi-cov {decisions.cov_cosebi}
+        --cov-scope {decisions.gaussian_only_cov}
+        --cosebi-nmodes {decisions.cosebi_nmodes}
+        --cl-binning {decisions.cl_binning}
+        --cosmology {decisions.fiducial_cosmology}
+        --out {output}
+
+  - id: pte_table
+    type: table
+    label: "B-mode PTE table (per statistic × catalogue × scale cut)"
+    inputs: [bmode_data_vectors, bmode_covariances]
+    decisions: [scale_cuts_config, scale_cuts_harmonic, pte_threshold,
+                look_elsewhere, mock_validation]
+    recipe:
+      command: >-
+        python -m sp_validation.bmodes.pte
+        --data {inputs.bmode_data_vectors} --cov {inputs.bmode_covariances}
+        --config-cuts {decisions.scale_cuts_config}
+        --harmonic-cuts {decisions.scale_cuts_harmonic}
+        --threshold {decisions.pte_threshold}
+        --look-elsewhere {decisions.look_elsewhere}
+        --validation {decisions.mock_validation}
+        --out {output}
+
+findings:
+  min_pte_combined:
+    id: min_pte_combined
+    claim: "After fiducial cuts, all three statistics pass; minimum PTE = 0.18 (ξ_tot^B joint)."
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    evidence:
+      - id: e1
+        artifact: pte_table
+        quote: { exact: "minimum PTE $= \\configPteSixThreeCombined$" }
+
+  pte_fid_cosebi6:
+    id: pte_fid_cosebi6
+    claim: "Fiducial COSEBI n≤6 PTE = 0.78."
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    evidence:
+      - id: e1
+        artifact: pte_table
+
+  pte_fid_cosebi20:
+    id: pte_fid_cosebi20
+    claim: "Fiducial COSEBI n≤20 PTE = 0.94."
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    evidence:
+      - id: e1
+        artifact: pte_table
+
+  pte_fid_xip:
+    id: pte_fid_xip
+    claim: "Fiducial ξ+^B PTE = 0.31."
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    evidence:
+      - id: e1
+        artifact: pte_table
+
+  pte_fid_xim:
+    id: pte_fid_xim
+    claim: "Fiducial ξ−^B PTE = 0.26."
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    evidence:
+      - id: e1
+        artifact: pte_table
+
+  pte_fid_xitot:
+    id: pte_fid_xitot
+    claim: "Fiducial ξ_tot^B (joint) PTE = 0.18."
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    evidence:
+      - id: e1
+        artifact: pte_table
+
+  pte_fid_cl:
+    id: pte_fid_cl
+    claim: "Fiducial C_ℓ^BB PTE = 0.30 (300 < ℓ < 1600)."
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    evidence:
+      - id: e1
+        artifact: pte_table
+
+  pte_full_cosebi6:
+    id: pte_full_cosebi6
+    claim: "Full-range COSEBI n≤6 PTE = 1.37e-05 (fails)."
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    evidence:
+      - id: e1
+        artifact: pte_table
+
+  cosebi_n1_excess:
+    id: cosebi_n1_excess
+    claim: "On the full range, COSEBI n=1 shows a >4σ excess with oscillatory structure through 20 modes; scale cuts suppress it below 1σ."
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    evidence:
+      - id: e1
+        artifact: bmode_data_vectors
+
+  look_elsewhere_sensitivity:
+    id: look_elsewhere_sensitivity
+    claim: "A look-elsewhere sensitivity test lowers the minimum PTE across all statistics from 0.18 to 0.09, still above 0.05."
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    evidence:
+      - id: e1
+        artifact: pte_table
+
+  leak_corr_shift:
+    id: leak_corr_shift
+    claim: "The object-wise PSF-leakage correction shifts individual PTEs by ≲ 0.05 across all catalogue versions and statistics; no pass/fail conclusion changes."
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    evidence:
+      - id: e1
+        artifact: pte_table
+
+  hartlap_correction:
+    id: hartlap_correction
+    claim: "For N_samples = 2000 and N_obs ≤ 40, the Hartlap correction to the inverse covariance is at most 2%."
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    evidence:
+      - id: e1
+        artifact: bmode_covariances
+
+  cosebi_glass_bias:
+    id: cosebi_glass_bias
+    claim: "On GLASS mocks the mean COSEBI B_n is biased by less than 0.3σ per mode (100 realisations)."
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    evidence:
+      - id: e1
+        artifact: bmode_data_vectors
+
+  ccd_scale:
+    id: ccd_scale
+    claim: "MegaCam's 40 CCDs span 6–14 arcmin; UNIONS dithers by ~1/3 of the FoV (~19 arcmin); observed B-mode contamination concentrates at θ ≲ 12 arcmin."
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    evidence:
+      - id: e1
+        artifact: bmode_data_vectors

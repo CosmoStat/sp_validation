@@ -1,0 +1,250 @@
+"""Generate pseudo-Cl covariances (no data vector).
+
+Dual-mode. Under Snakemake (``script:`` directive) the injected ``snakemake``
+object supplies the parameters, the covariance is computed in a private
+working directory and moved to the tagged output filename the rule declares;
+as a standalone CLI (argparse) the same compute runs from explicit flags and
+the native ``pseudo_cl/pseudo_cl_cov_non_tomo_{ver}_from_iNKA_…fits`` (with its
+``iNKA_block_{ver}/`` block) is left in place under ``--out`` (each lc/ASTRA
+recipe gets its own output directory, so the methods' skip-if-exists never
+reuses another configuration's covariance). The CLI form is what the lightcone/ASTRA recipe calls, so the
+measurement is driven directly (no nested Snakemake) with lc handling
+orchestration:
+
+    python generate_pseudo_cl_cov.py \
+        --ver SP_v1.4.6.3_leak_corr \
+        --cat-config /path/to/cosmo_val/cat_config.yaml \
+        --out <output_dir> \
+        --binning powspace --nbins 32 --power 0.5
+
+Supports two binning modes:
+- Linear binning with configurable nbins for COSEBIS
+- Power-space binning with configurable nbins for standard C_ell analysis
+
+See generate_pseudo_cl.py for data vector generation.
+"""
+
+import argparse
+import gc
+import json
+import os
+import shutil
+import tempfile
+
+from astropy.io import fits
+
+from sp_validation.cosmo_val import CosmologyValidation
+
+
+def generate_pseudo_cl_cov(
+    version: str,
+    output_dir: str,
+    cat_config: str,
+    nside: int = 1024,
+    npatch: int = 1,
+    cosmo_params: dict = None,
+    binning: str = "powspace",
+    nbins: int = 32,
+    power: float = 0.5,
+    compute_tomography: bool = False,
+):
+    """Generate a pseudo-Cl covariance into ``output_dir``.
+
+    Parameters
+    ----------
+    version : str
+        Catalog version (e.g., "SP_v1.4.6_leak_corr")
+    output_dir : str
+        Output directory of the ``CosmologyValidation`` run. The covariance is
+        written to its native path under ``output_dir/pseudo_cl/``; callers
+        that need a tagged filename move it themselves (see
+        ``_from_snakemake``).
+    cat_config : str
+        Path to catalog configuration YAML
+    nside : int
+        HEALPix nside for map-based estimation
+    npatch : int
+        Number of jackknife patches
+    cosmo_params : dict, optional
+        Cosmological parameters. Keys: Omega_m, sigma_8, n_s, h, Omega_b.
+        If None, uses Planck 2018 defaults.
+    binning : str
+        Binning mode: "linear", "logspace", or "powspace"
+    nbins : int
+        Number of ell bins
+    power : float
+        Power for powspace binning (0.5 = sqrt spacing)
+    compute_tomography : bool
+        Compute the covariance over all tomographic pairs when true.
+
+    Returns
+    -------
+    str
+        Path to the native iNKA covariance FITS.
+    """
+    os.makedirs(output_dir, exist_ok=True)
+
+    if binning == "linear":
+        ell_step = max(1, (2048 - 2) // nbins)
+        bin_str = f"nbins={nbins} (ell_step={ell_step})"
+    elif binning == "logspace":
+        bin_str = f"nbins={nbins} (geomspace)"
+    else:
+        bin_str = f"nbins={nbins}, power={power}"
+
+    print(f"\n{'=' * 60}")
+    print(f"Generating pseudo-Cl covariance for {version}")
+    print(f"Binning: {binning} ({bin_str})")
+    if cosmo_params:
+        print(
+            f"Cosmology: Om={cosmo_params.get('Omega_m')}, s8={cosmo_params.get('sigma_8')}"
+        )
+    else:
+        print("Cosmology: Planck 2018 defaults")
+    print(f"{'=' * 60}\n")
+
+    # Remap config cosmology param names to get_cosmo() expected names
+    if cosmo_params:
+        cosmo_params = {
+            "Omega_m": cosmo_params.get("Omega_m"),
+            "Omega_b": cosmo_params.get("Omega_b"),
+            "h": cosmo_params.get("h"),
+            "sig8": cosmo_params.get("sigma_8"),
+            "ns": cosmo_params.get("n_s"),
+        }
+
+    # Build CV kwargs based on binning mode
+    cv_kwargs = dict(
+        versions=[version],
+        catalog_config=cat_config,
+        output_dir=output_dir,
+        binning=binning,
+        nside=nside,
+        cell_method="catalog",
+        nrandom_cell=100,
+        cosmo_params=cosmo_params,
+        npatch=npatch,
+        theta_min=1.0,
+        theta_max=250.0,
+        nbins=20,
+    )
+    if binning == "linear":
+        cv_kwargs["ell_step"] = ell_step
+    else:
+        cv_kwargs["n_ell_bins"] = nbins
+        cv_kwargs["power"] = power
+
+    cv = CosmologyValidation(**cv_kwargs)
+
+    print("Calculating covariance...")
+    cv.calculate_pseudo_cl_inka_cov(compute_tomography=compute_tomography)
+
+    # Report on the native product (moved by the Snakemake caller, if any)
+    src_cov = cv._output_path_pseudo_cl_cov(
+        version, "iNKA", tomography=compute_tomography
+    )
+    if os.path.exists(src_cov):
+        with fits.open(src_cov) as hdul:
+            # CV outputs covariance blocks as COVAR_XX_YY extensions
+            n_row, n_col = hdul["COVAR_BB_BB"].data.shape
+            print(f"Generated BB covariance block: {n_row}x{n_col}")
+    return src_cov
+
+
+def _from_snakemake(smk):
+    p = smk.params
+    output_cov = smk.output.pseudo_cl_cov
+    out_dir = os.path.dirname(output_cov)
+    os.makedirs(out_dir, exist_ok=True)
+    # The iNKA blocks and the merged covariance are cached under names that
+    # carry the binning only, so the job computes in a directory of its own and
+    # never picks up a block another configuration left behind. On NFS, files
+    # still held open at exit leave .nfs placeholders that block the removal,
+    # so a leftover work directory is tolerated rather than failing the job.
+    with tempfile.TemporaryDirectory(
+        dir=out_dir, prefix=".pseudo_cl_cov_", ignore_cleanup_errors=True
+    ) as work:
+        src_cov = generate_pseudo_cl_cov(
+            version=p["version"],
+            output_dir=work,
+            cat_config=p["cat_config"],
+            nside=int(p["nside"]),
+            npatch=int(p["npatch"]),
+            cosmo_params=p.get("cosmo_params", None),
+            binning=p["binning"],
+            nbins=int(p["nbins"]),
+            power=float(p.get("power", 0.5)),
+            compute_tomography=p.get("compute_tomography", False),
+        )
+        shutil.move(src_cov, output_cov)
+        gc.collect()
+    print(f"Saved to: {output_cov}")
+
+
+def _from_cli(argv=None):
+    ap = argparse.ArgumentParser(
+        description="Pseudo-Cl covariance for one catalog version."
+    )
+    ap.add_argument(
+        "--ver",
+        required=True,
+        help="Catalog version key in cat_config, e.g. SP_v1.4.6.3_leak_corr",
+    )
+    ap.add_argument(
+        "--cat-config", required=True, help="Absolute path to cat_config.yaml"
+    )
+    ap.add_argument("--out", required=True, help="Output directory (lc {output})")
+    ap.add_argument(
+        "--nside", type=int, default=1024, help="HEALPix nside for map estimation"
+    )
+    ap.add_argument(
+        "--npatch",
+        type=int,
+        default=1,
+        help="Jackknife patch count (paper fiducial: 1)",
+    )
+    ap.add_argument(
+        "--binning",
+        choices=["linear", "logspace", "powspace"],
+        default="powspace",
+        help="Ell binning mode",
+    )
+    ap.add_argument("--nbins", type=int, required=True, help="Number of ell bins")
+    ap.add_argument(
+        "--power",
+        type=float,
+        default=0.5,
+        help="Power for powspace binning (0.5 = sqrt spacing)",
+    )
+    ap.add_argument(
+        "--cosmo-json",
+        default=None,
+        help="Path to a Planck18-style cosmology JSON; omit for Planck18 defaults",
+    )
+    a = ap.parse_args(argv)
+
+    cosmo_params = None
+    if a.cosmo_json:
+        with open(a.cosmo_json) as f:
+            cosmo_params = json.load(f)
+
+    generate_pseudo_cl_cov(
+        version=a.ver,
+        output_dir=a.out,
+        cat_config=a.cat_config,
+        nside=a.nside,
+        npatch=a.npatch,
+        cosmo_params=cosmo_params,
+        binning=a.binning,
+        nbins=a.nbins,
+        power=a.power,
+    )
+
+
+if __name__ == "__main__":
+    try:
+        snakemake  # noqa: F821 — injected by Snakemake's script: directive
+    except NameError:
+        _from_cli()
+    else:
+        _from_snakemake(snakemake)  # noqa: F821

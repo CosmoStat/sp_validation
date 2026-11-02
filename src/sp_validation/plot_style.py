@@ -10,9 +10,6 @@
 """
 
 import matplotlib as mpl
-import matplotlib.pylab as plt
-from matplotlib.collections import PatchCollection
-from matplotlib.patches import Polygon
 
 mpl.rcParams["lines.linewidth"] = 2
 mpl.rcParams["lines.markersize"] = 10

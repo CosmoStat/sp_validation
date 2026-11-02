@@ -9,21 +9,14 @@ Write FITS file with added columns.
 
 """
 
-import sys
 import pickle
-
+import sys
 from optparse import OptionParser
 
-from lmfit import Parameters
 from astropy.io import fits
-from astropy.table import Table, Column
-
+from astropy.table import Column, Table
 from cs_util import logging
-
 from shear_psf_leakage.leakage import func_bias_2d
-
-from sp_validation import cat
-from sp_validation import util
 
 
 def params_default():
@@ -90,10 +83,7 @@ def parse_options(p_def):
         dest="e1_col",
         default=p_def["e1_col"],
         type="string",
-        help=(
-            "e1 column name in galaxy catalogue,"
-            + f" default='{p_def['e1_col']}'"
-        ),
+        help=("e1 column name in galaxy catalogue," + f" default='{p_def['e1_col']}'"),
     )
     parser.add_option(
         "",
@@ -101,10 +91,7 @@ def parse_options(p_def):
         dest="e2_col",
         default=p_def["e2_col"],
         type="string",
-        help=(
-            "e2 column name in galaxy catalogue,"
-            + f" default='{p_def['e2_col']}'"
-        ),
+        help=("e2 column name in galaxy catalogue," + f" default='{p_def['e2_col']}'"),
     )
     parser.add_option(
         "",
@@ -198,9 +185,7 @@ def main(argv=None):
     t = Table(dat_shear)
     t.add_column(Column(name="e1_cor", data=e1_cor))
     t.add_column(Column(name="e2_cor", data=e2_cor))
-    print(
-        "Saving alpha-corrected ellipticities to" + f' {params["output_path"]}'
-    )
+    print("Saving alpha-corrected ellipticities to" + f" {params['output_path']}")
     t.write(params["output_path"], overwrite=True, format="fits")
 
     return 0

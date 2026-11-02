@@ -6,14 +6,9 @@
 # (cf file get_matched_catalogue.py in src/sp_validation for the creation of the matched catalogues)
 
 
-
-from astropy.table import Table
 import numpy as np
+from astropy.table import Table
 from calibration import fill_cat_gal, get_alpha_leakage_per_object
-
-
-
-
 
 
 class ResponseMatrix:
@@ -24,7 +19,6 @@ class ResponseMatrix:
         self.R22 = R22
 
 
-
 def get_R(cat, weights=None):
     """
     Compute weighted mean response matrix.
@@ -33,19 +27,14 @@ def get_R(cat, weights=None):
 
     for i in range(2):
         for j in range(2):
-            R[i, j] = np.average(cat[f'R_g{i+1}{j+1}'], weights=weights)
+            R[i, j] = np.average(cat[f"R_g{i + 1}{j + 1}"], weights=weights)
 
     return R
 
 
-
 def process_matched_catalogue(
-        input_path,
-        output_path=None,
-        weight_column="w_iv",
-        num_bins=20,
-        weight_type="iv"
-    ):
+    input_path, output_path=None, weight_column="w_iv", num_bins=20, weight_type="iv"
+):
     """
     Function to:
     - read matched catalogue
@@ -75,44 +64,33 @@ def process_matched_catalogue(
 
     df = table.to_pandas()
 
-
     # Computing response matrix
-    g_uncorr = np.array([df['e1_uncal'], df['e2_uncal']])
+    g_uncorr = np.array([df["e1_uncal"], df["e2_uncal"]])
 
-    gal_metacal = ResponseMatrix(
-        df['R_g11'],
-        df['R_g12'],
-        df['R_g21'],
-        df['R_g22']
-    )
+    gal_metacal = ResponseMatrix(df["R_g11"], df["R_g12"], df["R_g21"], df["R_g22"])
 
     cat = {}
-    fill_cat_gal(cat, df, g_uncorr, gal_metacal,
-                 mask1=None, mask2=None,
-                 purpose="weights")
+    fill_cat_gal(
+        cat, df, g_uncorr, gal_metacal, mask1=None, mask2=None, purpose="weights"
+    )
 
     weights = df[weight_column]
     R = get_R(cat, weights=weights)
 
-
     # Metacalibration correction
     R_inv = np.linalg.inv(R)
-    e_cal = R_inv.dot(np.array(df[['e1_uncal', 'e2_uncal']].T))
+    e_cal = R_inv.dot(np.array(df[["e1_uncal", "e2_uncal"]].T))
 
-    df['e1'] = e_cal[0, :]
-    df['e2'] = e_cal[1, :]
-
+    df["e1"] = e_cal[0, :]
+    df["e2"] = e_cal[1, :]
 
     # PSF leakage correction
     alpha_1, alpha_2 = get_alpha_leakage_per_object(
-        df,
-        num_bins=num_bins,
-        weight_type=weight_type
+        df, num_bins=num_bins, weight_type=weight_type
     )
 
-    df['e1_leak_corrected'] = df['e1'] - alpha_1 * df["e1_PSF"]
-    df['e2_leak_corrected'] = df['e2'] - alpha_2 * df["e2_PSF"]
-
+    df["e1_leak_corrected"] = df["e1"] - alpha_1 * df["e1_PSF"]
+    df["e2_leak_corrected"] = df["e2"] - alpha_2 * df["e2_PSF"]
 
     # Save catalogue
     output_path = output_path or input_path
@@ -123,7 +101,6 @@ def process_matched_catalogue(
     print(f"Catalogue processed and saved to: {output_path}")
 
     return output_table
-
 
 
 # Example of usage
