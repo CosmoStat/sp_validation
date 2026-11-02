@@ -83,7 +83,7 @@ def test_psf_template_uses_likelihood_that_consumes_xi_sys(tmp_path):
     ini = configparser.ConfigParser()
     ini.read(out)
     assert ini["2pt_like"]["file"].endswith("/likelihood/2pt/2pt_like_xi_sys.py")
-    assert ini["2pt_like"].getboolean("add_xi_sys")
+    assert ini["2pt_like"]["add_xi_sys"] == "T"
 
 
 def test_weighted_summary(tmp_path):
