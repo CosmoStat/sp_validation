@@ -71,6 +71,8 @@ rule inference_chain:
         runtime=lambda w: inference_run(w).get("runtime", 720),
     shell:
         "eval \"$(python -m cosmosis.configure)\"; "
+        # Each rule is one allocated node; the image has no srun executable.
+        "PRTE_MCA_ras=^slurm PRTE_MCA_plm=^slurm "
         "OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 mpiexec {params.mpi_args} -n {threads} "
         "cosmosis --mpi {input.ini:q} > {log:q} 2>&1"
 

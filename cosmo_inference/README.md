@@ -75,8 +75,8 @@ Run sampling as `mpiexec -n N cosmosis --mpi`, never `--smp`.
 PolyChord requires its optional sampler package; Nautilus is available in the current image.
 Use resumable settings for long runs.
 
-On a single allocated Nibi node, the container has no `srun` binary.
-Disable Open MPI's attempt to rediscover Slurm and let it use the node already allocated:
+Each chain rule runs on one allocated node and disables Open MPI's attempt to rediscover Slurm, because the image has no `srun` binary.
+For manual single-node launches, use the same environment settings:
 
 ```bash
 export APPTAINERENV_PRTE_MCA_ras='^slurm'
