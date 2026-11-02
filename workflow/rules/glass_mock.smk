@@ -139,6 +139,65 @@ rule mock_cosebis_bias_test:
         "../scripts/mock_cosebis_bias_test.py"
 
 
+# Catalogue-painted mocks are opt-in: no real catalogue is a default target.
+# See workflow/README.md for the glass_paint configuration and CLI.
+GLASS_PAINT = config.get("glass_paint", {})
+GLASS_PAINT_ROOT = GLASS_PAINT.get("output_dir", "results/glass_painted")
+GLASS_PAINT_MAPS = f"{GLASS_PAINT_ROOT}/seed_{{seed}}/maps"
+GLASS_PAINT_CATALOGUES = GLASS_PAINT.get("catalogues", {})
+GLASS_PAINT_INJECTIONS = GLASS_PAINT.get("injections", {"none": {}})
+
+
+rule glass_painted_maps:
+    """One n(z)-averaged lognormal sky, shared by all catalogue/injection choices."""
+    input:
+        nz=lambda wc: GLASS_PAINT["nz"],
+    output:
+        kappa=f"{GLASS_PAINT_MAPS}/kappa.npy",
+        gamma1=f"{GLASS_PAINT_MAPS}/gamma1.npy",
+        gamma2=f"{GLASS_PAINT_MAPS}/gamma2.npy",
+        spectra=f"{GLASS_PAINT_MAPS}/spectra.npz",
+        metadata=f"{GLASS_PAINT_MAPS}/maps.json",
+    params:
+        output=lambda wc: GLASS_PAINT_MAPS.format(seed=wc.seed),
+        cache=GLASS_PAINT.get("cache_dir", f"{GLASS_PAINT_ROOT}/cache"),
+        map_config=GLASS_PAINT.get("map_config", {}),
+    threads: GLASS_PAINT.get("threads", 28)
+    resources:
+        mem_mb=160000,
+        runtime=240,
+    script:
+        "../scripts/run_glass_painted_maps.py"
+
+
+rule glass_painted_catalogue:
+    """Rotate calibrated input shapes and paint selected shear in bounded chunks."""
+    input:
+        catalogue=lambda wc: GLASS_PAINT_CATALOGUES[wc.catalogue]["path"],
+        kappa=rules.glass_painted_maps.output.kappa,
+        gamma1=rules.glass_painted_maps.output.gamma1,
+        gamma2=rules.glass_painted_maps.output.gamma2,
+        metadata=rules.glass_painted_maps.output.metadata,
+        b_cl=lambda wc: ([GLASS_PAINT_INJECTIONS[wc.injection]["b_cl_path"]]
+                        if GLASS_PAINT_INJECTIONS[wc.injection].get("b_cl_path") else []),
+    output:
+        catalogue=f"{GLASS_PAINT_ROOT}/seed_{{seed}}/{{catalogue}}_{{injection}}.h5",
+        metadata=f"{GLASS_PAINT_ROOT}/seed_{{seed}}/{{catalogue}}_{{injection}}.h5.json",
+    params:
+        columns=lambda wc: {
+            key: value for key, value in GLASS_PAINT_CATALOGUES[wc.catalogue].items()
+            if key != "path"
+        },
+        injection=lambda wc: GLASS_PAINT_INJECTIONS[wc.injection],
+        chunk_size=GLASS_PAINT.get("chunk_size", 250000),
+    threads: 4
+    resources:
+        mem_mb=32000,
+        runtime=60,
+    script:
+        "../scripts/run_glass_painted_catalogue.py"
+
+
 localrules:
     glass_mock_all_xi,
     glass_mock_all_pseudo_cl,
