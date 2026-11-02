@@ -13,7 +13,7 @@ COLORS = ("#146e7c", "#d2791c", "#322d61", "#898989")
 
 
 def _save(fig, path):
-    fig.savefig(path, dpi=100, bbox_inches="tight")
+    fig.savefig(path, dpi=100, bbox_inches="tight", pil_kwargs={"optimize": True})
     plt.close(fig)
 
 
