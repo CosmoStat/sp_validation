@@ -124,8 +124,9 @@ RUN bash -c 'set -eo pipefail; \
     cmds=$(python -m cosmosis.configure); \
     eval "$cmds"; \
     export GSL_INC=/usr/include GSL_LIB=/usr/lib/x86_64-linux-gnu; \
+    export FFTW_INCLUDE_DIR=/usr/include FFTW_LIBRARY=/usr/lib/x86_64-linux-gnu; \
     make -C shear; \
-    test -f shear/cl_to_xi_nicaea/nicaea_interface.so'
+    python -c "import ctypes; ctypes.CDLL(\"shear/cl_to_xi_nicaea/nicaea_interface.so\")"'
 
 # Install sp_validation itself (editable) into the same venv; deps are already
 # satisfied by the sync above.

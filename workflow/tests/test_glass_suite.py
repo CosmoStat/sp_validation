@@ -16,7 +16,6 @@ def test_paper_glass_suite(paper):
     assert config["glass_mocks"]["data_dir"] == (
         "/n09data/guerrini/glass_mock_v1.4.6.3_v2/results"
     )
-    assert "glass_mock_data_dir" not in config["inference"]
     assert config["glass_mocks"]["seed_range"] == [1, 350]
 
 
@@ -64,7 +63,6 @@ def test_glass_rules_share_suite(toy, tmp_path, suite):
         "covariance_glass_mock",
         "glass_mock_all_xi",
         "glass_mock_all_pseudo_cl",
-        "inference_glass_mocks",
         "mock_cosebis_bias_test",
         "--configfile",
         str(config_path),
@@ -75,7 +73,6 @@ def test_glass_rules_share_suite(toy, tmp_path, suite):
         ("covariance_glass_mock", 1, 4),
         ("glass_mock_xi_fine", 100, 1),
         ("glass_mock_pseudo_cl", 100, 1),
-        ("inference_prep_glass_mock", 2, 2),
     ):
         selected = [job for job in jobs if job.rule == rule]
         assert len(selected) == count
