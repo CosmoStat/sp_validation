@@ -41,6 +41,10 @@ NOT_COLUMNS = {
     "R",
     "R11",
     "R22",
+    "CSL_DIR",
+    "DEFAULT",
+    "FITS_FILE",
+    "SCRATCH",
     # FITS header keywords (response/c units, weighting and spatial products)
     "CE_{}",
     "CG_{}",
@@ -91,6 +95,11 @@ NOT_COLUMNS = {
     "ELL",
     "NAME_{}",
     "STRT_{}",
+    # CosmoSIS/twopoint FITS products
+    "ANG",
+    "COVMAT",
+    "XI_MINUS",
+    "XI_PLUS",
     # in-memory tables sp_validation builds itself
     "C11",
     "C22",
