@@ -39,7 +39,7 @@ for manifest in completed:
         stage = path.stem.split('_')[0]
         if stage == 'xi':
             stage = 'xi_integration' if '_1000_' in path.name else 'xi_reporting'
-        threads = 1 if stage in ('pure', 'assemble') else 24
+        threads = 1 if stage in ('pure', 'assemble') or (stage == 'cosebis' and seed > 1) else 24
         components[stage] = dict(wall_s=float(b['s']), max_rss_mib=float(b['max_rss']),
                                   cpu_h=float(b['cpu_time']) / 3600,
                                   scheduled_core_h=float(b['s']) * threads / 3600)

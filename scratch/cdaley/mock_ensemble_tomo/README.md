@@ -43,6 +43,9 @@ Reporting ξ uses `npatch=1` instead of 100 to omit a discarded jackknife pass.
 `process_gg` publishes unpatched means regardless of npatch, so this changes no reported correlation, pair weight or separation.
 The final SACC receives the data's analytic covariance, not the part's cheap shot-noise placeholder.
 The reporting and integration angular grids, approximation controls and final analytic covariance remain the data run's.
+Seed-1 xi peaked at 90.4 GiB RSS on both grids, so production reserves 110 GB per xi rule rather than 128 GB; this allows six integration jobs per whole-node allocation without changing any estimator settings.
+Seed-1 COSEBIs used about one CPU and 4 GiB RSS despite requesting 24 threads and 48 GB.
+Production requests one thread and 12 GB for that same single-threaded transform; BLAS stays single-threaded and no statistic changes.
 No PSF, leakage, rho/tau or workflow plotting targets run.
 
 ## Known-answer convention

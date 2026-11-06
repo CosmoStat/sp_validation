@@ -22,11 +22,14 @@ fi
 if [ -n "${TARGETS:-}" ]; then
   read -r -a args <<< "$TARGETS"
 fi
-exec /home/cdaley/sp/snakemake-env/bin/snakemake \
+/home/cdaley/sp/snakemake-env/bin/snakemake \
   --profile "$REPO/workflow/profiles/default" --workflow-profile none \
   -s "$HERE/Snakefile" --configfile "$R/config.yaml" \
   --cores "${SLURM_CPUS_PER_TASK:-72}" --resources mem_mb="${MEM_MB:-340000}" \
-  --set-resources xi:mem_mb=128000 pseudo_cl:mem_mb=48000 \
-  --set-threads xi=24 pseudo_cl=24 cv_cosebis=24 \
+  --set-resources xi:mem_mb=110000 pseudo_cl:mem_mb=48000 cv_cosebis:mem_mb=12000 \
+  --set-threads xi=24 pseudo_cl=24 cv_cosebis=1 \
   --apptainer-args '--cleanenv --bind /project,/home' \
   --rerun-incomplete --printshellcmds "${args[@]}" "$@"
+if [ -n "${SLURM_JOB_ID:-}" ]; then
+  /home/cdaley/sp/snakemake-env/bin/python "$HERE/summarize.py"
+fi
