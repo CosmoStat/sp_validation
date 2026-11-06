@@ -145,6 +145,21 @@ class CatalogCharacterizationMixin:
             self.calculate_area()
         return self._area
 
+    def tomographic_footprint(self, ver):
+        """Footprint map of ``ver``'s tomographic (binned) sample.
+
+        ``cov_th.tomo.mask`` when the entry has one, since bins can need data
+        the whole sample lacks on part of the sky; otherwise the entry's mask.
+        """
+        tomo = self.cc[ver].get("cov_th", {}).get("tomo", {})
+        return tomo.get("mask", self.cc[ver].get("mask"))
+
+    def tomographic_area(self, ver):
+        """Area in deg² of ``ver``'s tomographic footprint."""
+        if "mask" in self.cc[ver].get("cov_th", {}).get("tomo", {}):
+            return self._area_from_mask(self.tomographic_footprint(ver))
+        return self.area[ver]
+
     @property
     def n_eff_gal(self):
         if not hasattr(self, "_n_eff_gal"):
@@ -224,18 +239,20 @@ class CatalogCharacterizationMixin:
             else:
                 tomo_bin_ids, tomo_bin_pairs = ["all"], [("all", "all")]
 
+            # Each density is per unit area of the footprint its sample covers.
+            area = self.tomographic_area(ver) if tomography else self.area[ver]
             with self.results[ver].temporarily_read_data():
                 w = self._read_shear_cols(ver, "w_col")
                 for tomo_bin_id in tomo_bin_ids:
                     if tomo_bin_id == "all":
                         self._n_eff_gal[ver][f"tomo_bin_{tomo_bin_id}"] = n_eff_density(
-                            w, self.area[ver]
+                            w, area
                         )
                     else:
                         tomo_bin = self._read_shear_cols(ver, "tomo_bin_col")
                         mask = tomo_bin == tomo_bin_id
                         self._n_eff_gal[ver][f"tomo_bin_{tomo_bin_id}"] = n_eff_density(
-                            w[mask], self.area[ver]
+                            w[mask], area
                         )
                     print(
                         f"n_eff_gal for tomo_bin_{tomo_bin_id} = {self._n_eff_gal[ver][f'tomo_bin_{tomo_bin_id}']:.2f} gal./arcmin^-2"
@@ -280,25 +297,32 @@ class CatalogCharacterizationMixin:
                         f"Ellipticity dispersion for tomo_bin_{tomo_bin_id} = {self._ellipticity_dispersion[ver][f'tomo_bin_{tomo_bin_id}']:.4f}"
                     )
 
-    def plot_footprints(self):
-        self.print_start("Plotting footprints:")
+    def footprint_maps(self):
+        """Build one sparse count map per version, shared by every region."""
+        from .diagnostic_products import footprint_counts
+
         for ver in self.versions:
-            self.print_magenta(ver)
-
-            fp = cs_plots.FootprintPlotter()
-
-            for region in fp._regions:
-                out_path = self._output_path(f"footprint_{ver}_{region}.png")
-            if os.path.exists(out_path):
-                self.print_done(f"Skipping footprint plot, {out_path} exists")
-            else:
-                with self.results[ver].temporarily_read_data():
-                    hsp_map = fp.create_hsp_map(
+            with self.results[ver].temporarily_read_data():
+                yield (
+                    ver,
+                    footprint_counts(
                         self.results[ver].dat_shear["RA"],
                         self.results[ver].dat_shear["Dec"],
-                    )
-                fp.plot_region(hsp_map, fp._regions[region], outpath=out_path)
-                self.print_done("Footprint plot saved to " + out_path)
+                    ),
+                )
+
+    def plot_footprints(self):
+        """Notebook convenience wrapper; workflow plots use persisted maps."""
+        from .diagnostic_plots import plot_footprint
+
+        for ver, count_map in self.footprint_maps():
+            plot_footprint(
+                count_map,
+                {
+                    region: self._output_path(f"footprint_{ver}_{region}.png")
+                    for region in cs_plots.FootprintPlotter._regions
+                },
+            )
 
     def plot_ellipticity(self, nbins=200):
         out_path = self._output_path("ell_hist.png")
@@ -349,37 +373,22 @@ class CatalogCharacterizationMixin:
             cs_plots.show()
             self.print_done("Ellipticity histograms saved to " + out_path)
 
+    def weight_histograms(self, nbins=200):
+        """Return weight-weighted counts and edges, with independent bins per version."""
+        histograms = {}
+        for ver in self.versions:
+            with self.results[ver].temporarily_read_data():
+                w = self._read_shear_cols(ver, "w_col")
+                histograms[ver] = np.histogram(w, bins=nbins, weights=w)
+        return histograms
+
     def plot_weights(self, nbins=200):
-        out_path = self._output_path("weight_hist.png")
-        if os.path.exists(out_path):
-            self.print_done(f"Skipping weight histograms, {out_path} exists")
-        else:
-            self.print_start("Computing weight histograms:")
+        """Notebook convenience wrapper; workflow plots read cached histograms."""
+        from .diagnostic_plots import plot_weights
 
-            plt.figure(figsize=(10, 7))
-            for ver in self.versions:
-                self.print_magenta(ver)
-                with self.results[ver].temporarily_read_data():
-                    w = self._read_shear_cols(ver, "w_col")
-
-                    plt.hist(
-                        w,
-                        bins=nbins,
-                        density=False,
-                        histtype="step",
-                        weights=w,
-                        label=ver,
-                        color=self.cc[ver]["colour"],
-                    )
-
-            plt.xlabel("$w$")
-            plt.ylabel("frequency")
-            plt.yscale("log")
-            plt.legend()
-            # plt.xlim([-0.01, 1.2])
-            cs_plots.savefig(out_path, close_fig=False)
-            cs_plots.show()
-            self.print_done("Weight histograms saved to " + out_path)
+        plot_weights(
+            self.weight_histograms(nbins), self.cc, self._output_path("weight_hist.png")
+        )
 
     def plot_separation(self, nbins=200):
         self.print_start("Separation histograms")

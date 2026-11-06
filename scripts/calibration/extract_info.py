@@ -286,15 +286,3 @@ if output_ext == ".hdf5":
         if verbose:
             print(f"  Warning: could not add n_tiles attribute: {e}")
 # -
-
-do_selection_calibration = False
-if not do_selection_calibration:
-    if verbose:
-        print("No selection and calibration; exiting here")
-    sys.exit(0)
-else:
-    raise ValueError(
-        "Direct extraction calibration has no shared weight_scheme/selection "
-        "configuration. Run calibrate_comprehensive_cat.py with mask_v2.0.yaml "
-        "on the comprehensive five-branch product instead."
-    )

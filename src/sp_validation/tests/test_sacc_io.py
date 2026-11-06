@@ -1074,3 +1074,18 @@ def test_merge_partial_files():
     assert cl_bb is not None and cl_eb is None
     n, E, B = sio.get_cosebis(merged, (0, 0))
     assert B is None
+
+
+def test_read_onecov_matrix_skips_the_header(tmp_path):
+    """OneCovariance's `style = matrix` file reads back as the dense matrix."""
+    cov = np.array([[2.0, 0.5], [0.5, 3.0]])
+    path = tmp_path / "cov.dat"
+    np.savetxt(path, cov, fmt="%.6e", header="OneCovariance covariance matrix")
+    np.testing.assert_allclose(sio.read_onecov_matrix(path), cov)
+
+
+def test_read_onecov_matrix_refuses_a_non_square_file(tmp_path):
+    path = tmp_path / "cov.dat"
+    np.savetxt(path, np.ones((2, 3)))
+    with pytest.raises(ValueError, match="not square"):
+        sio.read_onecov_matrix(path)

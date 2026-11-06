@@ -626,6 +626,7 @@ def get_field_and_workspace_from_catalog(
     pol_factor=-1,
     return_wsp=True,
     same_bin=False,
+    retain_catalog=False,
 ):
     """Create a NaMaster field and workspace from the input catalog.
 
@@ -680,6 +681,7 @@ def get_field_and_workspace_from_catalog(
         lmax_mask=lmax,
         spin=2,
         lonlat=True,
+        retain_catalog=retain_catalog,
     )
 
     if (
@@ -698,6 +700,7 @@ def get_field_and_workspace_from_catalog(
             lmax_mask=lmax,
             spin=2,
             lonlat=True,
+            retain_catalog=retain_catalog,
         )
     else:
         field_b = field_a
@@ -995,6 +998,10 @@ def get_pseudo_cl_iNKA_covariance(
     b,
 ):
     """Compute the iNKA covariance for pseudo-Cl.
+
+    Input spectra include noise for map fields, but signal only for catalogue
+    fields: NaMaster constructs the latter's noise and mixed terms directly
+    from the retained weighted ellipticities (``retain_catalog=True``).
 
     Parameters
     ----------

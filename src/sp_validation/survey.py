@@ -241,9 +241,8 @@ def ellipticity_dispersion(e1, e2, w):
     """Per-component weighted ellipticity dispersion.
 
     Computes ``sqrt(0.5 · (⟨e1²⟩ + ⟨e2²⟩))`` where each component average is
-    weighted by ``w²``. This is the *per-component* RMS convention; it differs by
-    a factor ``√2`` from the summed-component ``sigma_e`` returned by
-    :func:`effective_survey_stats`. Keep the two conventions distinct.
+    weighted by ``w²``. This is the same per-component RMS convention as
+    :func:`effective_survey_stats`.
 
     Parameters
     ----------
@@ -298,10 +297,8 @@ def additive_bias(e1, e2, w, R):
 def effective_survey_stats(e1, e2, w, area_deg2):
     """Effective survey statistics for a shear catalogue.
 
-    Bundles the area-dependent number density and the summed-component shape
-    noise. Here ``sigma_e = sqrt(Σ[w²(e1² + e2²)] / Σw²)`` sums over *both*
-    components (no ``0.5`` factor); this is distinct from the per-component
-    :func:`ellipticity_dispersion`, differing by a factor ``√2``.
+    Bundles the area-dependent number density and per-component shape noise:
+    ``sigma_e = sqrt(Σ[w²(e1² + e2²)] / (2 Σw²))``.
 
     Parameters
     ----------
@@ -325,7 +322,7 @@ def effective_survey_stats(e1, e2, w, area_deg2):
     sum_w2 = float(np.sum(w**2))
     sum_w2_e2 = float(np.sum((w**2) * (e1**2 + e2**2)))
 
-    sigma_e = np.sqrt(sum_w2_e2 / sum_w2) if sum_w2 > 0 else 0.0
+    sigma_e = np.sqrt(sum_w2_e2 / (2 * sum_w2)) if sum_w2 > 0 else 0.0
 
     return {
         "n_eff": n_eff_density(w, area_deg2),

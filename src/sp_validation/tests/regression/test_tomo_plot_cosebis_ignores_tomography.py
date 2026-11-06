@@ -45,12 +45,17 @@ def _make_cv(tmp_path):
     fits.BinTableHDU(t).writeto(cat)
     out = tmp_path / "out"
     out.mkdir()
+    # One n(z) column per bin: the tomographic ξ± part gives each bin a tracer.
+    z = np.linspace(0.05, 2.0, 20)
+    nz_path = tmp_path / "nz_tomo.txt"
+    np.savetxt(nz_path, np.column_stack([z, np.exp(-((z - 0.5) ** 2)), z * 0 + 1]))
     cfg = {
         VER: {
             "blind": "none",
             "subdir": str(tmp_path),
             "shear": {
                 "path": str(cat),
+                "redshift_path": str(nz_path),
                 "e1_col": "e1",
                 "e2_col": "e2",
                 "w_col": "w",

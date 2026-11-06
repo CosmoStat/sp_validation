@@ -1,15 +1,20 @@
-"""Rule cv_objectwise_leakage: object-wise vs scale-dependent PSF leakage.
+"""Cache regression coefficients and alpha summaries, without rendering."""
 
-plot_objectwise_leakage triggers calculate_objectwise_leakage, which itself
-triggers calculate_scale_dependent_leakage — the whole leakage chain runs here.
-Writes leakage_{version}/ products (the object-wise regression .pkl is the
-durable artifact) and leakage_coefficients.png. Sentinel-tracked because the
-per-version leakage product paths are built inside shear_psf_leakage.
-"""
+import json
 
-from cv_runner import _unbuffer_streams, make_cv, touch_sentinels
+from cv_runner import make_cv, prepare_cached_psf, verify_outputs
 
-_unbuffer_streams()
 cv = make_cv(snakemake)
-cv.plot_objectwise_leakage()
-touch_sentinels(snakemake)
+prepare_cached_psf(cv)
+cv.calculate_objectwise_leakage(tomography=False)
+cv.calculate_alpha_leakage_summaries(tomography=False)
+coefficients = {
+    ver: {
+        bin_id: {k: [v.nominal_value, v.std_dev] for k, v in coeff.items()}
+        for bin_id, coeff in bins.items()
+    }
+    for ver, bins in cv.leakage_coeff.items()
+}
+with open(snakemake.output.coefficients, "w") as stream:
+    json.dump(coefficients, stream, indent=2)
+verify_outputs(snakemake)
