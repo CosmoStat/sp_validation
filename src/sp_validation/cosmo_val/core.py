@@ -406,6 +406,13 @@ class CosmologyValidation(
                     section["path"] = (
                         str(path) if path.is_absolute() else str(subdir / path)
                     )
+            # A psf block's mask config is a config file, not data: relative
+            # to the catalogue config, not to subdir.
+            psf = cc[ver].get("psf")
+            if isinstance(psf, dict) and psf.get("mask_config"):
+                psf["mask_config"] = str(
+                    self.catalog_config_path.parent / psf["mask_config"]
+                )
 
         resolve_paths_for_version("nz")
         processed = {"nz"}
@@ -618,24 +625,6 @@ class CosmologyValidation(
             entry = base
         catalogues = self._config_as_read
         return blinding.open_blind(blinding.blind_of(catalogues, entry), catalogues)
-
-    def _refuse_blinded_tomography(self, version):
-        """Refuse to measure tomographic shear signal on a blinded catalogue.
-
-        A statistic is blinded by sealing its SACC part, whose tracers carry
-        the n(z) the blind's theory shifts it by. ξ± (and ⟨M_ap²⟩, derived from
-        it) is born as such a part for every tomographic bin pair; the
-        tomographic pseudo-Cℓ are still FITS tables with no per-bin tracer, so
-        on a blinded catalogue they would hold true values.
-        """
-        blind = self.blind(version)
-        if blind.name != blinding.NONE.name:
-            raise blinding.BlindingError(
-                f"{version} is blinded under {blind.name}, and blinding covers "
-                "its tomographic ξ± and non-tomographic statistics only; other "
-                "tomographic shear statistics are measured on public "
-                "(`blind: none`) catalogues"
-            )
 
     def basename(
         self,

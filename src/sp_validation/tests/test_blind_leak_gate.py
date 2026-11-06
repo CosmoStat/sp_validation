@@ -148,6 +148,35 @@ def produce(config_path, version, blind, output):
         ),
         outputs={"pseudo_cl": str(paths["cl"])},
     )
+    paths["tomo_integration"] = output / "tomo_integration.sacc"
+    script(
+        "run_2pcf.py",
+        params=dict(
+            ver=version,
+            **INTEGRATION,
+            npatch=1,
+            grid="integration",
+            cat_config=str(config_path),
+            output_dir=str(output),
+            compute_tomography=True,
+        ),
+        outputs={"sacc": str(paths["tomo_integration"])},
+    )
+    paths["tomo_cl"] = output / "tomo_cl.sacc"
+    script(
+        "generate_pseudo_cl.py",
+        params=dict(
+            version=version,
+            cat_config=str(config_path),
+            nside=32,
+            npatch=1,
+            binning="powspace",
+            nbins=4,
+            power=0.5,
+            compute_tomography=True,
+        ),
+        outputs={"pseudo_cl": str(paths["tomo_cl"])},
+    )
     # Covariance is exempt from blinding. A positive synthetic analytic matrix
     # avoids OneCovariance/external survey masks and keeps this a small gate.
     covariance = output / "cov.txt"
@@ -197,6 +226,53 @@ def produce(config_path, version, blind, output):
             ),
         },
     )
+    tomo_cov = output / "tomo_integration_cov.dat"
+    np.savetxt(tomo_cov, np.eye(6 * INTEGRATION["nbins"]) * 1e-10)
+    paths["tomo_pure"] = output / "tomo_pure.sacc"
+    paths["tomo_cosebis"] = output / "tomo_cosebis.sacc"
+    script(
+        "cv_pure_eb.py",
+        params=dict(
+            version=version,
+            blind=blind,
+            fiducial_scale_cut=CUT,
+            integration=INTEGRATION,
+            **REPORTING,
+        ),
+        inputs={
+            "xi_integration": str(paths["tomo_integration"]),
+            "cov_integration": str(tomo_cov),
+        },
+        outputs={"npz": str(output / "tomo_pure.npz"), "sacc": str(paths["tomo_pure"])},
+    )
+    script(
+        "cv_cosebis.py",
+        params=dict(
+            version=version,
+            blind=blind,
+            fiducial_scale_cut=CUT,
+            nmodes=2,
+            scale_cuts=CUTS,
+            **INTEGRATION,
+        ),
+        inputs={"xi": str(paths["tomo_integration"]), "cov": str(tomo_cov)},
+        outputs={
+            "npz": str(output / "tomo_cosebis.npz"),
+            "sacc": str(paths["tomo_cosebis"]),
+        },
+    )
+    script(
+        "run_rho_tau.py",
+        params=dict(
+            ver=version,
+            **REPORTING,
+            npatch=1,
+            cat_config=str(config_path),
+            output_dir=str(output),
+            compute_tomography=True,
+        ),
+    )
+    paths["tomo_rho_tau"] = next(output.rglob("rho_tau_*_tomo.sacc"))
     return paths, pure["results"], cosebis["results"]
 
 
@@ -276,6 +352,45 @@ def references_and_shifts(
         np.testing.assert_allclose(
             derived.covariance.dense, np.eye(len(part.mean)) * 1e-10
         )
+
+    for name in ("tomo_integration", "tomo_cl", "tomo_pure", "tomo_cosebis"):
+        raw_part = sacc_io.load(raw_paths[name], blind="none")
+        sealed_part = sacc_io.load(sealed_paths[name], blind=blind)
+        if name in ("tomo_integration", "tomo_cl"):
+            np.testing.assert_allclose(
+                sealed_part.mean,
+                raw_part.mean + shift_for(raw_part, blind),
+                rtol=1e-9,
+                atol=1e-20,
+            )
+        for pair in ((0, 0), (0, 1), (1, 1)):
+            tracers = tuple(f"source_{i}" for i in pair)
+            found = False
+            for kind in set(dp.data_type for dp in raw_part.data):
+                rows = raw_part.indices(kind, tracers=tracers)
+                if len(rows) and np.any(
+                    ~np.isclose(
+                        raw_part.mean[rows],
+                        sealed_part.mean[rows],
+                        rtol=5e-6,
+                        atol=1e-25,
+                    )
+                ):
+                    reference(
+                        f"{name}/{pair}/{kind}",
+                        raw_part.mean[rows],
+                        sealed_part.mean[rows],
+                    )
+                    found = True
+            assert found, f"No shifted {name} values for {pair}"
+    raw_tau = sacc_io.load(raw_paths["tomo_rho_tau"], blind="none")
+    sealed_tau = sacc_io.load(sealed_paths["tomo_rho_tau"], blind=blind)
+    np.testing.assert_allclose(raw_tau.mean, sealed_tau.mean, rtol=1e-10, atol=1e-20)
+    for i in range(2):
+        for k in (0, 2, 5):
+            theta, plus, minus = sacc_io.get_tau(sealed_tau, (i, i), k)
+            assert len(theta) == REPORTING["nbins"]
+            assert np.all(np.isfinite(plus)) and np.all(np.isfinite(minus))
 
     raw = sacc_io.load(raw_paths["integration"])
     shifted = raw.copy()
@@ -364,8 +479,8 @@ def references_and_shifts(
     # Check SACC numerical values too: a stamp and nonempty output aren't enough.
     nz = {0: sacc_io.get_nz(raw, 0)}
     expected_parts = {
-        "pure": pure_eb_to_sacc(nz, {}, expected_pure["theta"], expected_pure),
-        "cosebis": cosebis_to_sacc(nz, {}, expected_cosebis[CUT], CUT),
+        "pure": pure_eb_to_sacc(nz, {}, [((0, 0), expected_pure)]),
+        "cosebis": cosebis_to_sacc(nz, {}, [((0, 0), expected_cosebis[CUT])], CUT),
     }
     for name, expected in expected_parts.items():
         part = sacc_io.load(sealed_paths["cl"].parent / f"{name}.sacc", blind=blind)
@@ -461,6 +576,41 @@ def render(paths, version, blind, cat_config):
             pseudo_cl_cov=str(cov_cl),
         ),
         outputs={"sacc": str(assembled)},
+    )
+    tomo_cov_cl = out / "tomo_cl_cov.fits"
+    fits.HDUList(
+        [
+            fits.PrimaryHDU(),
+            *[
+                fits.ImageHDU(np.eye(12) * 1e-12, name=f"COVAR_{k}_{k}")
+                for k in ("EE", "BB", "EB")
+            ],
+        ]
+    ).writeto(tomo_cov_cl)
+    tomo_cov_xi = out / "tomo_reporting_cov.txt"
+    np.savetxt(tomo_cov_xi, np.eye(6 * REPORTING["nbins"]) * 1e-10)
+    tomo_assembled = out / "assembled_tomo.sacc"
+    tomo_names = ("xi_reporting", "pseudo_cl", "cosebis", "pure_eb", "rho_tau")
+    tomo_parts = (
+        paths["tomo"],
+        paths["tomo_cl"],
+        paths["tomo_cosebis"],
+        paths["tomo_pure"],
+        paths["tomo_rho_tau"],
+    )
+    script(
+        "assemble_sacc.py",
+        params=dict(version=version, blind=blind, expected=list(tomo_names)),
+        inputs={
+            **dict(zip(tomo_names, map(str, tomo_parts))),
+            "xi_cov": str(tomo_cov_xi),
+            "pseudo_cl_cov": str(tomo_cov_cl),
+        },
+        outputs={"sacc": str(tomo_assembled)},
+    )
+    np.testing.assert_array_equal(
+        sacc_io.load(tomo_assembled, blind=blind).mean,
+        np.concatenate([sacc_io.load(p, blind=blind).mean for p in tomo_parts]),
     )
     n_figures = 10  # Four pure-E/B, three COSEBIs, three Cℓ on both APIs.
     if (SCRIPTS / "cv_plot_diagnostic.py").exists():
@@ -603,7 +753,7 @@ def test_workflow_emits_no_unblinded_signal(tmp_path, monkeypatch, capfd, caplog
     observed = []
     observe_renderers(observed, monkeypatch)
     # Observe high-level returns and retained state without replacing computation.
-    for name in ("calculate_2pcf_version", "calculate_pseudo_cl_catalog"):
+    for name in ("calculate_2pcf_version", "calculate_pseudo_cl"):
         original = getattr(CosmologyValidation, name)
 
         def watch(self, *args, _original=original, **kwargs):
@@ -619,14 +769,6 @@ def test_workflow_emits_no_unblinded_signal(tmp_path, monkeypatch, capfd, caplog
         )
         render(sealed_paths, version, "gate", config_path)
         assert_dashboard_refuses_stale_public(raw_paths, config_path, version)
-        cv = CosmologyValidation(
-            versions=[version],
-            catalog_config=str(config_path),
-            output_dir=str(tmp_path / "sealed"),
-            npatch=1,
-        )
-        with pytest.raises(blinding.BlindingError, match="tomographic"):
-            cv.calculate_pseudo_cl(compute_tomography=True)
     captured = capfd.readouterr()
     logs = captured.out + captured.err + caplog.text
     references, concealed = references_and_shifts(

@@ -394,20 +394,6 @@ def render(
         "full",
     )
 
-    try:
-        PSF.xi_sys_comparison(rt, figs.path("psf_xi_sys_comparison"), xi=xi)
-    except ValueError as exc:
-        print(f"Skipping psf_xi_sys_comparison: {exc}")
-    else:
-        figs.add(
-            "psf_xi_sys_comparison",
-            "leakage",
-            "θξ± from α–β–η coefficient draws (68% band) and blinded data with "
-            "run covariance errors, θ in arcmin. "
-            "The data include cosmological signal.",
-            "full",
-        )
-
     cell_path = ref.weight_cells
     if cell_path is not None:
         bias_cells = dict(np.load(cell_path, allow_pickle=False))

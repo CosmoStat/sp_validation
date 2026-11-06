@@ -15,37 +15,17 @@ matching what the B-mode PTE reads today.
 
 import argparse
 
-import numpy as np
-
 from sp_validation import sacc_io
 from sp_validation.blinding import Blind
 from sp_validation.cosmo_val.sacc_writers import (
     assemble_analysis_sacc,
+    namaster_cl_covariance,
     onecov_xi_covariance,
 )
-
-# NaMaster iNKA covariance FITS: per-spectrum HDU names, in SACC insertion order.
-_CL_HDUS = ("COVAR_EE_EE", "COVAR_BB_BB", "COVAR_EB_EB")
 
 # Canonical part order — the order points are inserted in, which must match the
 # covariance block order. Missing parts are simply skipped.
 CANONICAL = ("xi_reporting", "pseudo_cl", "cosebis", "pure_eb", "rho_tau")
-
-
-def _pseudo_cl_cov_block(cov_fits):
-    """Block-diagonal ``[EE; BB; EB]`` from the NaMaster iNKA covariance FITS."""
-    from astropy.io import fits
-
-    with fits.open(cov_fits) as hdul:
-        missing = [name for name in _CL_HDUS if name not in {h.name for h in hdul}]
-        if missing:
-            raise ValueError(f"{cov_fits} lacks the pseudo-Cℓ cov HDUs {missing}")
-        blocks = [np.asarray(hdul[name].data, float) for name in _CL_HDUS]
-    n = blocks[0].shape[0]
-    full = np.zeros((3 * n, 3 * n))
-    for i, block in enumerate(blocks):
-        full[i * n : (i + 1) * n, i * n : (i + 1) * n] = block
-    return full
 
 
 # The statistics whose analysis covariance is external, and the input each one
@@ -79,7 +59,7 @@ def _attach_cov(part, name, xi_cov, pseudo_cl_cov):
     block = (
         onecov_xi_covariance(part, sacc_io.read_onecov_matrix(supplied))
         if name == "xi_reporting"
-        else _pseudo_cl_cov_block(supplied)
+        else namaster_cl_covariance(part, supplied)
     )
     if part.covariance is not None:
         print(

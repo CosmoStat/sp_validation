@@ -16,6 +16,7 @@ from ..b_modes import (
     plot_cosebis_scale_cut_heatmap,
     save_cosebis_results,
 )
+from .derived_covariance import xi_covariance
 
 
 class CosebisMixin:
@@ -61,9 +62,8 @@ class CosebisMixin:
         nmodes : int, optional
             Number of COSEBIs modes to compute. Defaults to 10.
         cov_path : str, optional
-            Path to theoretical covariance matrix. When provided, enables analytic
-            covariance calculation for a single pair. Cannot be combined with
-            ``compute_tomography=True``.
+            Path to the OneCovariance integration-grid matrix, including all
+            pairs for tomography.
         scale_cuts : list of tuples, optional
             Explicit list of (min_theta, max_theta) scale cuts to evaluate.
             Overrides evaluate_all_scale_cuts when provided.
@@ -93,12 +93,6 @@ class CosebisMixin:
         """
         self.print_start(f"Computing {version} COSEBIs")
 
-        if cov_path is not None and compute_tomography:
-            raise ValueError(
-                "cov_path holds a single ξ± covariance; it cannot serve every "
-                "tomographic bin pair."
-            )
-
         # Calculate single fine-binned correlation function for COSEBIs, as the
         # sealed part: on a blinded catalogue the COSEBIs are concealed with it.
         print(
@@ -115,12 +109,15 @@ class CosebisMixin:
             max_sep=max_sep_int,
             nbins=nbins_int,
         )
-        results = {
-            bin_key: None for bin_key in ggs.keys()
-        }  # Initialize results dictionary
+        parts = self.xi_tomo_parts if compute_tomography else self.xi_parts
+        part = parts[version, "integration"]
+        covariance, cov_npatch = xi_covariance(part, cov_path)
+        results = {bin_key: None for bin_key in ggs}
 
         for bin_key in ggs.keys():
-            # LG TO-DO: account for tomographic scale-cuts
+            rows = ggs[bin_key]._rows
+            pair_cov = covariance[np.ix_(rows, rows)]
+            # The same scale cuts apply to each pair.
             if scale_cuts is not None:
                 # Explicit scale cuts provided
                 print(f"Evaluating {len(scale_cuts)} explicit scale cuts")
@@ -128,7 +125,8 @@ class CosebisMixin:
                     gg=ggs[bin_key],
                     nmodes=nmodes,
                     scale_cuts=scale_cuts,
-                    cov_path=cov_path,
+                    cov_xi=pair_cov,
+                    npatch=cov_npatch,
                 )
             elif evaluate_all_scale_cuts:
                 # Use reporting binning parameters or inherit from class config
@@ -154,12 +152,17 @@ class CosebisMixin:
                     gg=ggs[bin_key],
                     nmodes=nmodes,
                     scale_cuts=generated_cuts,
-                    cov_path=cov_path,
+                    cov_xi=pair_cov,
+                    npatch=cov_npatch,
                 )
             else:
                 # Single scale cut behavior: use full range
                 results[bin_key] = calculate_cosebis(
-                    gg=ggs[bin_key], nmodes=nmodes, scale_cuts=None, cov_path=cov_path
+                    gg=ggs[bin_key],
+                    nmodes=nmodes,
+                    scale_cuts=None,
+                    cov_xi=pair_cov,
+                    npatch=cov_npatch,
                 )
                 # Extract single results dict from scale_cuts dictionary
                 results[bin_key] = next(iter(results[bin_key].values()))
@@ -314,6 +317,10 @@ class CosebisMixin:
                 bin_stub + "_data.npz",
                 fiducial_scale_cut,
                 edges,
-                derived_from=[self.xi_parts[version, "integration"]],
+                derived_from=[
+                    (self.xi_tomo_parts if compute_tomography else self.xi_parts)[
+                        version, "integration"
+                    ]
+                ],
             )
         self._cosebis_results[version] = results_tomo

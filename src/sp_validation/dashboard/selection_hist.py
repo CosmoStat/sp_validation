@@ -7,6 +7,8 @@ import h5py
 import numpy as np
 import yaml
 
+from sp_validation.masks import apply_condition
+
 
 def build(path, config, expected, chunk=500_000):
     """Apply recorded data cuts and the noshear metacal cuts cumulatively."""
@@ -35,21 +37,12 @@ def build(path, config, expected, chunk=500_000):
             mask = np.ones(len(rows), dtype=bool)
             stages = [mask.copy()]
             for cut in cuts:
-                x, v = rows[cut["col_name"]], cut["value"]
-                kind = cut["kind"]
-                if kind == "equal":
-                    keep = x == v
-                elif kind == "not_equal":
-                    keep = x != v
-                elif kind == "smaller_equal":
-                    keep = x <= v
-                elif kind == "greater_equal":
-                    keep = x >= v
-                elif kind == "range":
-                    keep = (x >= v[0]) & (x <= v[1])
-                else:
-                    raise ValueError(f"Unsupported selection {kind}")
-                mask &= keep
+                mask &= apply_condition(
+                    rows[cut["col_name"]],
+                    cut["kind"],
+                    cut["value"],
+                    ignore_bits=cut.get("ignore_bits", 0),
+                )
                 stages.append(mask.copy())
             mc = cfg["metacal"]
             with np.errstate(divide="ignore", invalid="ignore"):

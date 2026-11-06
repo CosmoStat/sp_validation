@@ -11,6 +11,11 @@ SP Validation is a Python package for validating weak-lensing catalogues (galaxy
 3. **Cosmology validation**: Diagnostics like rho/tau statistics, E-/B-mode decomposition
 4. **Cosmology inference**: Two-point correlation function analysis using CosmoSIS/CosmoCov
 
+## ASTRA and Lightcone first
+Build analysis stages (n(z) generation included) as ASTRA specs (`astra.yaml`)
+run with Lightcone (`lc`), and record analysis choices there as decisions,
+using the `astra`/`lc` tools wherever they fit.
+
 ## Development Commands
 
 ### Testing

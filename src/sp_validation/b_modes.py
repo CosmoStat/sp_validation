@@ -385,7 +385,37 @@ def covariance_label(npatch):
     return "analytic" if npatch is None else f"jackknife ({npatch} patches)"
 
 
-def calculate_cosebis(gg, nmodes=10, scale_cuts=None, cov_path=None):
+def cosebis_operator(theta, left_edges, right_edges, scale_cut, nmodes):
+    """COSEBIs map from full-grid ``[ξ+; ξ−]`` to ``[En; Bn]``.
+
+    The covariance convention sets all E×B blocks to zero after propagation,
+    matching cosmo_numba's single-pair covariance convention.
+    """
+    from cosmo_numba.B_modes.cosebis import COSEBIS
+    from scipy.integrate import simpson
+
+    theta = np.asarray(theta)
+    start, stop = bins_from_edges(left_edges, right_edges, *scale_cut)
+    inds = np.arange(start, stop)
+    cut = theta[inds]
+    kernel = COSEBIS(
+        theta_min=cut.min(), theta_max=cut.max(), N_max=nmodes, precision=120
+    )
+    rad = np.deg2rad(cut / 60)
+    weights = simpson(np.eye(len(cut)), x=rad, axis=1) * rad / 2
+    plus = kernel.get_Tp_log(cut) * weights
+    minus = kernel.get_Tm_log(cut) * weights
+    operator = np.zeros((2 * nmodes, 2 * len(theta)))
+    operator[:nmodes, inds] = plus
+    operator[nmodes:, inds] = plus
+    operator[:nmodes, inds + len(theta)] = minus
+    operator[nmodes:, inds + len(theta)] = -minus
+    return operator
+
+
+def calculate_cosebis(
+    gg, nmodes=10, scale_cuts=None, cov_path=None, *, cov_xi=None, npatch=None
+):
     """
     Calculate COSEBIs modes from a correlation function for multiple scale cuts.
 
@@ -409,7 +439,15 @@ def calculate_cosebis(gg, nmodes=10, scale_cuts=None, cov_path=None):
         Each results dictionary contains 'En', 'Bn', 'cov', 'chi2_E', 'chi2_B',
         'pte_B', 'scale_cut', and 'mask' entries.
     """
-    cov_xipm = np.loadtxt(cov_path) if cov_path is not None else gg.cov
+    if cov_xi is not None and cov_path is not None:
+        raise ValueError("give cov_xi or cov_path, not both")
+    cov_xipm = (
+        cov_xi
+        if cov_xi is not None
+        else np.loadtxt(cov_path)
+        if cov_path is not None
+        else gg.cov
+    )
     return cosebis_scan_from_xi(
         gg.meanr,
         gg.xip,
@@ -420,7 +458,9 @@ def calculate_cosebis(gg, nmodes=10, scale_cuts=None, cov_path=None):
         nmodes=nmodes,
         scale_cuts=scale_cuts,
         # A theory covariance has no jackknife realisations to debias.
-        npatch=None if cov_path is not None else gg.npatch1,
+        npatch=npatch
+        if cov_xi is not None
+        else (None if cov_path is not None else gg.npatch1),
     )
 
 
