@@ -7,7 +7,7 @@ import numpy as np
 import yaml
 
 from sp_validation.io import Catalogue
-from sp_validation.masks import apply_condition, catalogue_cuts
+from sp_validation.masks import catalogue_cuts, catalogue_selection
 
 # -------------------------
 # Spatially-structured cuts: these define the survey footprint.
@@ -51,6 +51,8 @@ def apply_masks(data, mask_config, footprint_only=False):
         Dictionary parsed from the YAML mask configuration file.
         Expected structure:
             - mask_config["dat"]     : list of cuts applied to `data`
+            - mask_config["maps"]    : optional sky maps for cut columns
+              `data` lacks (see sp_validation.masks.MapColumns)
             - mask_config["metacal"] : derived-quantity parameters
               (e.g. relative size limits)
 
@@ -69,17 +71,14 @@ def apply_masks(data, mask_config, footprint_only=False):
         False indicates the object is masked (removed).
     """
 
-    # Initialize mask
-    mask = np.ones(len(data), dtype=bool)
-
-    for cut in catalogue_cuts(mask_config):
-        col = cut["col_name"]
-        if footprint_only and col not in SPATIAL_CUTS:
-            continue
-        kind = cut["kind"]
-        value = cut["value"]
-
-        mask &= apply_condition(data[col], kind, value, cut.get("ignore_bits", 0))
+    cuts = None
+    if footprint_only:
+        cuts = [
+            cut["col_name"]
+            for cut in catalogue_cuts(mask_config)
+            if cut["col_name"] in SPATIAL_CUTS
+        ]
+    mask = catalogue_selection(mask_config, data, cuts=cuts)
 
     # --- metacal relative size (skip for footprint-only) ---
     if not footprint_only:
