@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'linux'",
@@ -3844,7 +3844,7 @@ wheels = [
 [[package]]
 name = "shear-psf-leakage"
 version = "0.2.1"
-source = { git = "https://github.com/CosmoStat/shear_psf_leakage.git?rev=develop#a1e7e5b97b88544a15e79abd99ec59fb61e42601" }
+source = { git = "https://github.com/CosmoStat/shear_psf_leakage.git?rev=d0e10d83ecb1978ed56599f0b46326e3d000680e#d0e10d83ecb1978ed56599f0b46326e3d000680e" }
 dependencies = [
     { name = "cs-util" },
     { name = "emcee" },
@@ -4060,7 +4060,7 @@ requires-dist = [
     { name = "sacc", specifier = ">=2.4,<3" },
     { name = "scipy" },
     { name = "seaborn" },
-    { name = "shear-psf-leakage", git = "https://github.com/CosmoStat/shear_psf_leakage.git?rev=develop" },
+    { name = "shear-psf-leakage", git = "https://github.com/CosmoStat/shear_psf_leakage.git?rev=d0e10d83ecb1978ed56599f0b46326e3d000680e" },
     { name = "skyproj" },
     { name = "smokescreen", git = "https://github.com/UNIONS-WL/Smokescreen?rev=main" },
     { name = "sp-validation", extras = ["test", "docs"], marker = "extra == 'develop'" },

@@ -117,3 +117,33 @@ def test_corrected_tau_loader_needs_no_assembled_or_fit(tmp_path, monkeypatch):
     monkeypatch.setattr(P, "declared_blind", lambda c, v: "toy")
     monkeypatch.setattr(P, "load_tau", lambda s, c, b: (s, c, b))
     assert P.load_corrected_tau(tmp_path, "V_leak_corr", "config") == (part, cov, "toy")
+
+
+def test_slope_samples_use_the_tau_slope_template(rt, tmp_path, monkeypatch):
+    """(α, β₀, η, β₁) draws add β₁ ⟨u δe, ·⟩ to τ; without the template, raise."""
+    samples = np.array([[0.1, 1.0, 2.0, 3.0]])
+    template = np.arange(9.0).reshape(3, 3) * 1e-6
+    with pytest.raises(ValueError, match="tau_slope_template"):
+        psf.tau_model_samples(rt, 2, samples)
+    rt["fit"]["tau_slope_template"] = template
+    rho = 1e-5 * (0.1 + 1.0 + 2.0)
+    for k, row in ((0, 0), (2, 1), (5, 2)):
+        np.testing.assert_allclose(
+            psf.tau_model_samples(rt, k, samples)[0], rho + 3.0 * template[row]
+        )
+    rt["fit"]["flat_samples"] = np.random.default_rng(1).normal(size=(64, 4))
+    saved = []
+    monkeypatch.setattr(psf.S, "save", lambda fig, *args: saved.append(fig))
+    psf.coefficient_draws(rt, tmp_path / "draws.png")
+    assert "$\\beta_1$" in [ax.get_xlabel() for ax in saved[0].axes]
+    plt.close(saved[0])
+
+
+def test_contour_axes_follow_the_parameter_count():
+    from sp_validation.cosmo_val.diagnostic_plots import leakage_contour_axes
+
+    names, labels, markers = leakage_contour_axes(4)
+    assert names == ["x0", "x1", "x2", "x3"]
+    assert labels[3] == r"\beta_1"
+    assert markers == {"x0": 0, "x1": 1, "x2": 1, "x3": 0}
+    assert leakage_contour_axes(3)[1] == [r"\alpha", r"\beta", r"\eta"]
