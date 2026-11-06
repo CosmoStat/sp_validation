@@ -114,6 +114,35 @@ def _onecov_tool(key, default=None):
     return lookup
 
 
+def _pair_noise_enabled(w):
+    """Whether this covariance uses measured pair counts on its own grid."""
+    default = "pair_counts" if "cosmo_val" in config else "analytic"
+    mode = config.get("covariance", {}).get("shape_noise", default)
+    if mode not in ("pair_counts", "analytic"):
+        raise ValueError("covariance.shape_noise must be pair_counts or analytic")
+    return mode == "pair_counts"
+
+
+def _pair_count_path(w, suffix=".txt", pair=None):
+    # This explicit reference is for catalogues with verified identical
+    # positions, weights and selection. No shear or rho/tau product is shared.
+    reference = pair_count_reference(config, w.version)
+    return str(COSMO_VAL / (
+        f"{reference}_pairs_minsep={w.min_sep}_maxsep={w.max_sep}"
+        f"_nbins={w.nbins}"
+        + (f"_tomo_bin={pair[0]}-{pair[1]}" if pair else "") + suffix
+    ))
+
+
+def _pair_count_paths(w):
+    if not w.tomo_suffix:
+        return [_pair_count_path(w)]
+    # The ordered n(z) columns and survey parameters define the bin order.
+    n = len(get_onecov_cat_params(w.version, w.tomo_suffix)[1].split(","))
+    return [_pair_count_path(w, pair=(i, j))
+            for i in range(1, n + 1) for j in range(i, n + 1)]
+
+
 # Number of cores to use to execute OneCovariance
 ONECOV_THREADS = 8
 
@@ -183,9 +212,55 @@ rule generate_glass_mock_rhotau_samples:
         "../scripts/generate_glass_mock_rhotau_samples.py"
 
 
+rule covariance_pair_counts:
+    """Non-cosmological cache: positions and weights only, no blind access."""
+    input:
+        catalog=get_shear_catalog,
+    output:
+        cache=str(COSMO_VAL / "{version}_pairs_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}.npz"),
+        tabulated=str(COSMO_VAL / "{version}_pairs_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}.txt"),
+    params:
+        ra_col=lambda w: catalogue_entry(w.version)["shear"].get("ra_col", "RA"),
+        dec_col=lambda w: catalogue_entry(w.version)["shear"].get("dec_col", "Dec"),
+        w_col=lambda w: catalogue_entry(w.version)["shear"]["w_col"],
+    threads: 24
+    resources:
+        mem_mb=40000,
+        disk_mb=20000,
+        runtime=600,
+    script:
+        "../scripts/measure_pair_counts.py"
+
+
+rule covariance_pair_counts_tomo:
+    """Non-cosmological cache: positions and weights only, no blind access."""
+    input:
+        catalog=get_shear_catalog,
+    output:
+        cache=str(COSMO_VAL / "{version}_pairs_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_tomo_bin={bin1}-{bin2}.npz"),
+        tabulated=str(COSMO_VAL / "{version}_pairs_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_tomo_bin={bin1}-{bin2}.txt"),
+    params:
+        ra_col=lambda w: catalogue_entry(w.version)["shear"].get("ra_col", "RA"),
+        dec_col=lambda w: catalogue_entry(w.version)["shear"].get("dec_col", "Dec"),
+        w_col=lambda w: catalogue_entry(w.version)["shear"]["w_col"],
+        tomo_bin_col=lambda w: catalogue_entry(w.version)["shear"]["tomo_bin_col"],
+        bin_pair=lambda w: (int(w.bin1), int(w.bin2)),
+    wildcard_constraints:
+        bin1=r"[1-9][0-9]*",
+        bin2=r"[1-9][0-9]*",
+    threads: 24
+    resources:
+        mem_mb=40000,
+        disk_mb=20000,
+        runtime=600,
+    script:
+        "../scripts/measure_pair_counts.py"
+
+
 rule covariance_ini:
     input:
         nz_file=lambda w: onecov_nz_path(w.version, w.tomo_suffix),
+        npair=lambda w: _pair_count_paths(w) if _pair_noise_enabled(w) else [],
         mask=lambda w: (
             [] if w.mask_suffix != "_masked"
             else [get_footprint_path(w.version, w.tomo_suffix)]
@@ -220,6 +295,12 @@ rule covariance_ini:
         nz_dir=lambda w: os.path.dirname(onecov_nz_path(w.version, w.tomo_suffix)),
         nz_file=lambda w: os.path.basename(onecov_nz_path(w.version, w.tomo_suffix)),
         num_cores=ONECOV_THREADS,
+        pair_section=lambda w: (
+            "[tabulated inputs files]\n"
+            f"npair_directory = {COSMO_VAL}\n"
+            "npair_mm_file = " + ", ".join(os.path.basename(p) for p in _pair_count_paths(w))
+            if _pair_noise_enabled(w) else ""
+        ),
     threads: 1
     shell:
         """
@@ -262,6 +343,8 @@ mask_file_lensing = {params.mask_file}
 ellipticity_dispersion = {params.sigma_e_param}
 survey_area_lensing_in_deg2 = {params.area}
 n_eff_lensing = {params.n_e}
+
+{params.pair_section}
 
 [redshift]
 zlens_directory = {params.nz_dir}
