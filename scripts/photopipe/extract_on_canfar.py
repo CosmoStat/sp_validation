@@ -94,7 +94,8 @@ def extract_shard(root, output, prefix, tiles):
     current = {tile: sources(root, tile) for tile in tiles}
     if manifest_path.exists() and shard.exists():
         previous = json.loads(manifest_path.read_text())["tiles"]
-        if {t: previous[t]["sources"] for t in previous} == current:
+        unreadable = any(r["status"] == "unreadable" for r in previous.values())
+        if not unreadable and {t: previous[t]["sources"] for t in previous} == current:
             return prefix, "unchanged"
     records = {}
     writer = None
