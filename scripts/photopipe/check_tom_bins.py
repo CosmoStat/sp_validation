@@ -1,5 +1,10 @@
 #!/usr/bin/env python
-"""Check the merge: frozen SOM assignment on matched magnitudes against reference TOM_BIN_IDs."""
+"""Compare frozen SOM assignment on the merged magnitudes with reference TOM_BIN_IDs.
+
+The reference comes from the _SP_ugriz PhotoPipe run and the merge from the run
+on Stephen Gwyn's detections, so objects near a bin edge legitimately differ.
+Row-level agreement measures how far the two photometries are apart.
+"""
 
 import argparse
 import json
