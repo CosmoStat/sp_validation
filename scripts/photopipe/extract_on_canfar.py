@@ -6,9 +6,12 @@ per RA prefix (``ra=314.parquet``, one row group per tile) and a JSON manifest
 beside it naming every file read, with its size, mtime and read time. A shard
 whose sources are unchanged is skipped, so rerunning picks up only new vintages.
 
-Everything comes from ``_SP_ugriz_photoz_ext.cat`` (dereddened GAaP magnitudes);
-``MASK`` comes from ``_SP_ugriz_photoz_finalmask.cat`` where that file exists
-and is null otherwise.
+Everything comes from ``_ugriz_photoz_ext.cat`` (dereddened GAaP magnitudes);
+``MASK`` comes from ``_ugriz_photoz_finalmask.cat`` where that file exists and
+is null otherwise. These are PhotoPipe's runs on Stephen Gwyn's DR6 detections,
+so ``SeqNr`` is his ``NUMBER``, the ID the shape catalogue carries. The
+``_SP_ugriz`` files are a separate run on other detections, with their own
+numbering.
 """
 
 import argparse
@@ -25,8 +28,8 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 ROOT = "/arc/projects/unions/catalogues/unions/GAaP_photometry/UNIONS_DR6"
-EXT = "_SP_ugriz_photoz_ext.cat"
-FINALMASK = "_SP_ugriz_photoz_finalmask.cat"
+EXT = "_ugriz_photoz_ext.cat"
+FINALMASK = "_ugriz_photoz_finalmask.cat"
 BANDS = ("u", "g", "r", "i", "z", "z2")
 COLUMNS = ["SeqNr", "ALPHA_J2000", "DELTA_J2000"]
 for prefix in ("MAG_GAAP", "MAGERR_GAAP", "FLAG_GAAP", "MAG_LIM", "EXTINCTION"):

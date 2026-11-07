@@ -28,10 +28,10 @@ def write_shapes(path):
         pa.table(
             dict(
                 _healpix_29=np.arange(4),
-                XWIN_WORLD=np.array([10.01, 10.0, 10.5, 10.0]),
+                XWIN_WORLD=np.array([10.01, 10.0, 10.01, 10.0]),
                 YWIN_WORLD=np.array([20.0, 20.0 + 0.2 / 3600, 20.0, 20.0]),
                 TILE_ID=np.array([24.237, 24.237, 24.237, 300.25]),
-                NUMBER=np.array([7, 8, 9, 1], np.int32),
+                NUMBER=np.array([2, 1, 9, 1], np.int32),
                 _source_row=np.array([3, 2, 1, 0]),
             )
         ),
@@ -39,7 +39,7 @@ def write_shapes(path):
     )
 
 
-def test_merge_pixel_keeps_shape_rows_and_marks_no_match(tmp_path):
+def test_merge_pixel_joins_on_id_and_marks_no_match(tmp_path):
     write_extract(tmp_path)
     shape_path = tmp_path / "shapes.parquet"
     write_shapes(shape_path)
@@ -61,3 +61,16 @@ def test_merge_pixel_keeps_shape_rows_and_marks_no_match(tmp_path):
     assert abs(merged["MATCH_SEP_ARCSEC"][1].as_py() - 0.2) < 1e-3
     assert "ALPHA_J2000" not in merged.column_names
     assert sorted((c["tile"], c["n_matched"]) for c in counts) == [("024.237", 2), ("300.250", 0)]
+
+
+def test_merge_pixel_counts_pairs_whose_positions_disagree(tmp_path):
+    write_extract(tmp_path)
+    shape_path = tmp_path / "shapes.parquet"
+    write_shapes(shape_path)
+    table = pq.read_table(shape_path).drop_columns("XWIN_WORLD")
+    table = table.append_column("XWIN_WORLD", pa.array(np.array([10.0, 10.01, 10.0, 10.0])))
+    pq.write_table(table, shape_path)
+    index = pm.load_extract(tmp_path)
+    output = tmp_path / "out" / "pixel.parquet"
+    counts, _ = pm.merge_pixel(shape_path, output, index, pm._photopipe_schema(index))
+    assert [c["n_far"] for c in counts if c["tile"] == "024.237"] == [2]

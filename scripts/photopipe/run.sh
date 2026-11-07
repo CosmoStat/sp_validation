@@ -53,8 +53,8 @@ if has_stage stage; then
 fi
 
 if has_stage merge; then
-    sbatch --wait -A "$ACCOUNT" -c 48 --mem=360G -t 6:00:00 -J photopipe-merge \
+    sbatch --wait -A "$ACCOUNT" -c 32 --mem=180G -t 3:00:00 -J photopipe-merge \
         -o "$PRODUCT/merge-%j.log" --wrap "module load apptainer; \
-        apptainer exec -B /project,/scratch --env PYTHONPATH=$CODE/src $SIF python $CODE/scripts/photopipe/merge_shapes.py $SHAPES $EXTRACT $PRODUCT --workers 48 && \
+        apptainer exec -B /project,/scratch --env PYTHONPATH=$CODE/src $SIF python $CODE/scripts/photopipe/merge_shapes.py $SHAPES $EXTRACT $PRODUCT --workers 32 && \
         apptainer exec -B /project,/scratch --env PYTHONPATH=$CODE/src $SIF python $CODE/scripts/photopipe/check_tom_bins.py $PRODUCT --model $NZ/som_assignment_model.npz --reference $NZ/tom_bin_full.parquet --workers 32"
 fi

@@ -4,8 +4,12 @@ The inputs are the shape HATS catalogue and the column extract written by
 ``scripts/photopipe/extract_on_canfar.py``. The output is a HATS catalogue with
 one row for each shape row, in the same pixel and the same order, keyed by
 ``_source_row``. PhotoPipe columns are null where ``PHOTOPIPE_STATUS`` is not
-``MATCHED``. A shape object is matched to the nearest PhotoPipe position of its
-own tile within ``MATCH_RADIUS_ARCSEC``.
+``MATCHED``.
+
+Both catalogues number objects with Stephen Gwyn's DR6 IDs, so the join is exact
+on (tile, ``NUMBER`` = ``SeqNr``). Position plays no part in it:
+``MATCH_SEP_ARCSEC`` records the separation of each joined pair, and per-tile
+counts of pairs beyond ``SANITY_RADIUS_ARCSEC`` expose a tile whose IDs disagree.
 """
 
 import json
@@ -19,9 +23,7 @@ import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from .nz_photometry import _match_tile
-
-MATCH_RADIUS_ARCSEC = 0.8
+SANITY_RADIUS_ARCSEC = 0.8
 MATCHED, NO_COUNTERPART, NO_TILE = 0, 1, 2
 SHAPE_COLUMNS = ["_healpix_29", "XWIN_WORLD", "YWIN_WORLD", "TILE_ID", "NUMBER", "_source_row"]
 POSITIONS = ["ALPHA_J2000", "DELTA_J2000"]
@@ -48,6 +50,11 @@ def _photopipe_schema(index):
     return pq.read_schema(shard)
 
 
+def _separation_arcsec(ra, dec, other_ra, other_dec):
+    delta_ra = (ra - other_ra + 180) % 360 - 180
+    return np.hypot(delta_ra * np.cos(np.radians(dec)), dec - other_dec) * 3600
+
+
 def merge_pixel(shape_path, output_path, index, schema):
     """Write the matched table of one pixel and return per-tile match counts."""
     shapes = pq.read_table(shape_path, columns=SHAPE_COLUMNS)
@@ -64,23 +71,34 @@ def merge_pixel(shape_path, output_path, index, schema):
         rows = np.flatnonzero(tile_of_row == code)
         record = index.get(tile)
         if record is None or record["row_group"] is None:
-            counts.append(dict(tile=tile, n_shape=len(rows), n_matched=0, has_tile=False))
+            counts.append(dict(tile=tile, n_shape=len(rows), n_matched=0, n_far=0, has_tile=False))
             continue
         photo = pq.ParquetFile(record["shard"]).read_row_group(record["row_group"])
-        distance, nearest = _match_tile(
-            ra[rows],
-            dec[rows],
-            photo["ALPHA_J2000"].to_numpy(),
-            photo["DELTA_J2000"].to_numpy(),
+        ids = photo["SeqNr"].to_numpy()
+        numbers = shapes["NUMBER"].to_numpy()[rows]
+        position = np.minimum(np.searchsorted(ids, numbers), len(ids) - 1)
+        matched = ids[position] == numbers
+        pairs = position[matched]
+        distance = _separation_arcsec(
+            ra[rows[matched]],
+            dec[rows[matched]],
+            photo["ALPHA_J2000"].to_numpy()[pairs],
+            photo["DELTA_J2000"].to_numpy()[pairs],
         )
-        distance = distance * 3600
-        matched = distance < MATCH_RADIUS_ARCSEC
         status[rows] = np.where(matched, MATCHED, NO_COUNTERPART)
-        separation[rows[matched]] = distance[matched]
-        photo_row[rows[matched]] = nearest[matched] + offset
+        separation[rows[matched]] = distance
+        photo_row[rows[matched]] = pairs + offset
         pieces.append(photo)
         offset += photo.num_rows
-        counts.append(dict(tile=tile, n_shape=len(rows), n_matched=int(matched.sum()), has_tile=True))
+        counts.append(
+            dict(
+                tile=tile,
+                n_shape=len(rows),
+                n_matched=int(matched.sum()),
+                n_far=int((distance > SANITY_RADIUS_ARCSEC).sum()),
+                has_tile=True,
+            )
+        )
 
     photo = pa.concat_tables(pieces) if pieces else schema.empty_table()
     taken = photo.take(pa.array(photo_row, mask=status != MATCHED))
@@ -158,10 +176,11 @@ def _write_provenance(output, shapes, extract, index, counts):
     for pixel_counts in counts:
         for entry in pixel_counts:
             total = totals.setdefault(
-                entry["tile"], dict(n_shape=0, n_matched=0, has_tile=entry["has_tile"])
+                entry["tile"], dict(n_shape=0, n_matched=0, n_far=0, has_tile=entry["has_tile"])
             )
             total["n_shape"] += entry["n_shape"]
             total["n_matched"] += entry["n_matched"]
+            total["n_far"] += entry["n_far"]
     tiles = sorted(totals)
     pq.write_table(
         pa.table(
@@ -169,6 +188,7 @@ def _write_provenance(output, shapes, extract, index, counts):
                 tile=tiles,
                 n_shape=[totals[t]["n_shape"] for t in tiles],
                 n_matched=[totals[t]["n_matched"] for t in tiles],
+                n_far=[totals[t]["n_far"] for t in tiles],
                 has_tile=[totals[t]["has_tile"] for t in tiles],
             )
         ),
@@ -182,9 +202,11 @@ def _write_provenance(output, shapes, extract, index, counts):
         shapes=str(shapes),
         shapes_source_manifest_sha256=_property(shapes, "source_manifest_sha256"),
         extract=str(extract),
-        match_radius_arcsec=MATCH_RADIUS_ARCSEC,
+        join="(TILE_ID, NUMBER) = (tile, SeqNr)",
+        sanity_radius_arcsec=SANITY_RADIUS_ARCSEC,
         n_shape=n_shape,
         n_matched=n_matched,
+        n_far=sum(t["n_far"] for t in totals.values()),
         n_tiles_shape=len(totals),
         n_tiles_without_photopipe=sum(not t["has_tile"] for t in totals.values()),
     )
