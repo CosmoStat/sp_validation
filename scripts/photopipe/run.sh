@@ -53,6 +53,7 @@ if has_stage stage; then
 fi
 
 if has_stage merge; then
+    mkdir -p "$PRODUCT"
     sbatch --wait -A "$ACCOUNT" -c 32 --mem=180G -t 3:00:00 -J photopipe-merge \
         -o "$PRODUCT/merge-%j.log" --wrap "module load apptainer; \
         apptainer exec -B /project,/scratch --env PYTHONPATH=$CODE/src $SIF python $CODE/scripts/photopipe/merge_shapes.py $SHAPES $EXTRACT $PRODUCT --workers 32 && \
