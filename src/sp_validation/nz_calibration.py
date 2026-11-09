@@ -86,14 +86,15 @@ def z_magnitudes(mag, offset, use_z2=True):
 def source_groups(
     mag, photoz, weight, model, *, offset, use_z2=True, chunk=1_000_000, workers=1
 ):
-    """Assign eligible sources to BPZ bins and SOM groups in bounded chunks.
+    """Assign eligible sources to BPZ bins and SOM cells in bounded chunks.
 
-    Ineligible sources have preliminary bin and group -1.
+    Returns the preliminary bin, the map cell and the z channel of each source;
+    ineligible sources have bin and cell -1.
     BPZ intervals include the lower edge and exclude the upper edge.
     """
     edges = model["edges"]
     prelim = np.full(len(weight), -1, np.int8)
-    group = np.full(len(weight), -1, np.int16)
+    cells = np.full(len(weight), -1, np.int32)
     channel = np.zeros(len(weight), np.int8)
     tree = cKDTree(model["code"])
     for start in range(0, len(weight), chunk):
@@ -112,9 +113,9 @@ def source_groups(
         _, cell = tree.query(
             (features(m[valid]) - model["center"]) / model["scale"], workers=workers
         )
-        group[rows] = model["group_map"][cell]
+        cells[rows] = cell
         prelim[rows] = np.searchsorted(edges, p[valid], side="right") - 1
-    return prelim, group, channel
+    return prelim, cells, channel
 
 
 def gold_threshold(cal_z, cal_photoz, floor=0.4, nmad_factor=5):

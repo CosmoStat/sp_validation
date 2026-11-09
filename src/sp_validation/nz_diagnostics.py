@@ -96,21 +96,20 @@ def _mechanics(path, gm, group, z, weights, grid, side):
 
 @matplotlib.rc_context({"text.usetex": False, "font.family": "DejaVu Sans"})
 def render(config, output_dir):
-    """Render calibration figures from saved products and explicit input paths.
+    """Render calibration figures from a run's saved products.
 
-    Required config keys are ``calibration_arrays``, ``model``, ``summary``
-    ``side``, ``source_label`` and ``source_catalogue``. The source catalogue NPZ contains ``weight``,
-    ``photoz`` and ``mag``. An optional ``source_assignment`` NPZ can provide
-    precomputed ``cell`` values; otherwise cells are assigned in chunks.
-    Optional keys ``published_nz`` and ``tile_nz`` point to text n(z) files.
+    Required config keys are ``calibration_arrays``, ``model``, ``summary`` and
+    ``side``. Optional ``reference_nz`` (with ``reference_label``) overlays an
+    earlier n(z) file, and ``published_nz`` (with ``published_label``) a
+    non-tomographic one.
     """
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
     arrays = np.load(config["calibration_arrays"])
     model = np.load(config["model"])
     summary = json.loads(Path(config["summary"]).read_text())
-    source = np.load(config["source_catalogue"])
     side = config["side"]
+    label = config.get("label", "This calibration")
 
     z = arrays["z"]
     p = arrays["cal_photoz"]
@@ -121,37 +120,10 @@ def render(config, output_dir):
     weights = arrays["cal_weights"]
     grid = arrays["grid"]
     gm = model["group_map"]
-    src_w = source["weight"]
-    src_p = source["photoz"]
-    src_mag = source["mag"]
-    usable = (
-        np.isfinite(src_mag).all(axis=1)
-        & (src_mag > 0).all(axis=1)
-        & (src_mag < 50).all(axis=1)
-        & (src_w > 0)
-        & np.isfinite(src_p)
-        & (src_p >= edges[0])
-        & (src_p < edges[-1])
-    )
-    if config.get("source_assignment"):
-        cells = np.load(config["source_assignment"])["cell"][usable]
-    else:
-        from . import nz_calibration
-
-        valid_mag = src_mag[usable]
-        cells = np.empty(len(valid_mag), dtype=np.int32)
-        chunk_size = config.get("assignment_chunk_size", 200_000)
-        for start in range(0, len(valid_mag), chunk_size):
-            stop = min(start + chunk_size, len(valid_mag))
-            _, cells[start:stop] = nz_calibration.assign(
-                valid_mag[start:stop], model, workers=config.get("workers", 1)
-            )
-    cells, src_w, src_p = cells, src_w[usable], src_p[usable]
     ncell = len(gm)
-    src_weight_cell = np.bincount(cells, weights=src_w, minlength=ncell)
-    src_p_cell = np.bincount(cells, weights=src_w * src_p, minlength=ncell)
+    src_weight_cell = arrays["source_weight_cell"]
     mean_p = np.divide(
-        src_p_cell,
+        arrays["source_photoz_cell"],
         src_weight_cell,
         out=np.full(ncell, np.nan),
         where=src_weight_cell > 0,
@@ -187,10 +159,10 @@ def render(config, output_dir):
     ]
     titles = [
         "Calibrators per cell",
-        f"Source shear weight per cell ({config['source_label']})",
+        "Source shear weight per cell",
         "Mean spec-z per group",
         "Spec-z scatter per group",
-        f"Mean source BPZ per cell ({config['source_label']})",
+        "Mean source BPZ per cell",
         "Calibrators per group",
     ]
     for ax, values, title in zip(axes.flat, maps, titles):
@@ -251,19 +223,19 @@ def render(config, output_dir):
     _save(fig, out / "bpz_vs_specz.png")
 
     fig, axes = plt.subplots(2, 2, figsize=(11, 7.5), sharex=True, layout="constrained")
-    tile_path = config.get("tile_nz")
-    if tile_path:
-        tz, tile = _curve(tile_path)
+    reference_path = config.get("reference_nz")
+    if reference_path:
+        tz, reference = _curve(reference_path)
     for k, ax in enumerate(axes.flat):
         full_curve = _normalise(arrays["bin_hists"][k], grid)
-        ax.plot(grid, full_curve, color=COLORS[0], lw=1.7, label=config["full_label"])
-        if tile_path:
+        ax.plot(grid, full_curve, color=COLORS[0], lw=1.7, label=label)
+        if reference_path:
             ax.plot(
                 tz,
-                _normalise(tile[:, k], tz),
+                _normalise(reference[:, k], tz),
                 color=COLORS[1],
                 lw=1.4,
-                label=config["tile_label"],
+                label=config["reference_label"],
             )
         ax.axvspan(edges[k], edges[k + 1], color="0.92", zorder=0)
         ax.set(
@@ -273,8 +245,9 @@ def render(config, output_dir):
         )
         ax.set_xlim(0, 2.2)
         ax.legend(fontsize=8)
-    fig.suptitle(f"Per-bin n(z): {config['full_label']} vs {config['tile_label']}")
-    _save(fig, out / "nz_full_vs_600tiles.png")
+    versus = f" vs {config['reference_label']}" if reference_path else ""
+    fig.suptitle(f"Per-bin n(z): {label}{versus}")
+    _save(fig, out / "nz_vs_reference.png")
 
     # The sum uses the file columns as delivered; published v1 is normalized
     # independently because it represents a different selected population.
@@ -296,16 +269,16 @@ def render(config, output_dir):
             total,
             color=COLORS[0],
             lw=2,
-            label=f"{config['full_label']}, mean {np.trapezoid(grid * total, grid):.4f}",
+            label=f"{label}, mean {np.trapezoid(grid * total, grid):.4f}",
         )
-        if tile_path:
-            tile_total = _normalise(tile.sum(axis=1), tz)
+        if reference_path:
+            reference_total = _normalise(reference.sum(axis=1), tz)
             axes[0].plot(
                 tz,
-                tile_total,
+                reference_total,
                 color=COLORS[1],
                 lw=1.7,
-                label=f"{config['tile_label']}, mean {np.trapezoid(tz * tile_total, tz):.4f}",
+                label=f"{config['reference_label']}, mean {np.trapezoid(tz * reference_total, tz):.4f}",
             )
         axes[0].plot(
             pz,
@@ -321,17 +294,20 @@ def render(config, output_dir):
             np.r_[0, np.cumsum((total[1:] + total[:-1]) * np.diff(grid) / 2)],
             color=COLORS[0],
             lw=2,
-            label=config["full_label"],
+            label=label,
         )
-        if tile_path:
+        if reference_path:
             axes[1].plot(
                 tz,
                 np.r_[
-                    0, np.cumsum((tile_total[1:] + tile_total[:-1]) * np.diff(tz) / 2)
+                    0,
+                    np.cumsum(
+                        (reference_total[1:] + reference_total[:-1]) * np.diff(tz) / 2
+                    ),
                 ],
                 color=COLORS[1],
                 lw=1.7,
-                label=config["tile_label"],
+                label=config["reference_label"],
             )
         axes[1].plot(
             pz,

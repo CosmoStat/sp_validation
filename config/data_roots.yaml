@@ -4,12 +4,16 @@
 # nowhere stays `${name}` and fails when opened.
 # The same relative layout must hold under every directory of a root.
 
-# Provisional v2 SOM n(z) products (nz_v2_tomo.txt, tom_bin_full.parquet, ...).
+# v2 SOM n(z) products (config/calibration/nz/v2.yaml).
 nz_v2:
-  - /project/rrg-kyi/cdaley/unions/data/nz-v2-full-products                 # fir
-  - /project/def-mjhudson/cdaley/tomo-nz-v2-full/products                    # nibi
-  - /n17data/cdaley/unions/analyses/shear_tomographic/nz_v2_full/products    # candide
+  - /project/rrg-kyi/cdaley/unions/data/nz-v2                               # fir
+  - /project/6001537/cdaley/nz-v2                                           # nibi
+
+# UNIONS data staged on a cluster: v2.x/, photopipe-dr6/, photopipe-dr6-specz/.
+unions_data:
+  - /project/rrg-kyi/cdaley/unions/data                                     # fir
 
 # Blinded v2 tomographic cosmo_val catalogue.
 v2_tomo:
+  - /project/rrg-kyi/cdaley/unions/data/v2.x/cosmo-val-v2-tomo               # fir
   - /project/6001537/cdaley/cosmo-val-v2-tomo/catalogue                      # nibi

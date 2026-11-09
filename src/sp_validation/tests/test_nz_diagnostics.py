@@ -19,8 +19,6 @@ def test_recipe_map_labels_and_percentages(tmp_path, monkeypatch):
         for key in [
             "calibration_arrays",
             "model",
-            "source_catalogue",
-            "source_assignment",
         ]
     }
     np.savez(
@@ -34,15 +32,10 @@ def test_recipe_map_labels_and_percentages(tmp_path, monkeypatch):
         cal_weights=weights,
         grid=grid,
         bin_hists=np.ones((4, len(grid))),
+        source_weight_cell=np.arange(1.0, 5.0),
+        source_photoz_cell=np.arange(1.0, 5.0) * np.linspace(0.2, 1.0, 4),
     )
     np.savez(paths["model"], group_map=np.arange(4))
-    np.savez(
-        paths["source_catalogue"],
-        mag=np.ones((4, 5)) * 20,
-        weight=np.arange(1, 5),
-        photoz=np.linspace(0.2, 1.0, 4),
-    )
-    np.savez(paths["source_assignment"], cell=np.arange(4))
     summary = tmp_path / "summary.json"
     summary.write_text(
         json.dumps(
@@ -59,11 +52,10 @@ def test_recipe_map_labels_and_percentages(tmp_path, monkeypatch):
         paths,
         summary=summary,
         side=2,
-        source_label="Reference sample",
-        full_label="Full sample",
-        tile_label="Small sample",
+        label="Full sample",
+        reference_label="Small sample",
         published_label="Published sample",
-        tile_nz=comparison,
+        reference_nz=comparison,
         published_nz=comparison,
     )
     texts = []
@@ -83,4 +75,4 @@ def test_recipe_map_labels_and_percentages(tmp_path, monkeypatch):
     assert "Full sample" in texts
     assert "Small sample" in texts
     assert any(text.startswith("Published sample, mean") for text in texts)
-    assert any("Reference sample" in text for text in texts)
+    assert "Source shear weight per cell" in texts

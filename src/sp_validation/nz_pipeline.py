@@ -1,4 +1,17 @@
-"""Run the catalogue's saved n(z) recipe independently of cosmo_val."""
+"""Run an n(z) recipe: SOM direct calibration of a shear catalogue's bins.
+
+``prepare`` builds the two inputs (:mod:`sp_validation.nz_inputs`); ``run``
+trains the SOM on the calibrators, groups its cells, assigns every source,
+selects gold groups on the sources themselves, and writes the products:
+
+- ``nz_tomo.txt``: z and one density per bin, integrating to the bin's share of
+  the retained shear weight (cosmo_val's ``shear.redshift_path``);
+- ``nz_nontomo.txt``: their sum, the n(z) of every ``TOM_BIN_ID > 0`` row;
+- ``tom_bin.parquet``: ``TOM_BIN_ID`` and ``ZBAND`` row-aligned with the
+  catalogue, with its ``TILE_ID`` and ``NUMBER``;
+- ``realisations.npz``: draws of every bin at once (:mod:`nz_ensemble`);
+- ``calibration_arrays.npz``, ``som_model.npz``, ``summary.json`` and the recipe.
+"""
 
 import argparse
 import json
@@ -10,41 +23,32 @@ import pyarrow.parquet as pq
 import yaml
 
 from . import nz_calibration as nz
+from .data_roots import load_yaml
 
 
-def rebuild_model(config, workers):
-    """Train/group the map and derive gold on the recipe's reference sample."""
-    cal = np.load(config["inputs"]["calibrators"])
-    settings = config["som"]
-    model = nz.train(cal["mag"], workers=workers, **settings)
-    model["group_map"] = nz.group_cells(model, config["groups"])
-    model["edges"] = np.array(config["edges"])
-    source = np.load(config["inputs"]["gold_reference"])
-    prelim, group, _ = nz.source_groups(
-        source["mag"],
-        source["photoz"],
-        source["weight"],
-        model,
-        offset=config["z2_offset"],
-        use_z2=False,
-        workers=workers,
+def prepare(config, workers=1):
+    """Write the calibrator and source files the recipe names."""
+    from . import nz_inputs
+
+    inputs = config["inputs"]
+    cal = inputs["calibrators"]
+    np.savez(
+        cal["output"],
+        **nz_inputs.calibrators(
+            cal["specz_dir"],
+            cal["compilation"],
+            cal["surveys"],
+            cal["z_min"],
+            config["z2_offset"],
+        ),
     )
-    _, cal_cell = nz.assign(cal["mag"], model, workers=workers)
-    est = nz.calibrate(
-        prelim,
-        group,
-        source["weight"],
-        source["photoz"],
-        cal["z"],
-        cal["photoz"],
-        model["group_map"][cal_cell],
-        model["edges"],
-        config["groups"],
-        output_grid(config),
-        threshold=nz.gold_threshold(cal["z"], cal["photoz"], **config["gold_qc"]),
+    src = inputs["sources"]
+    np.savez(
+        src["output"],
+        **nz_inputs.sources(
+            src["catalogue"], src["shapes"], src["photometry"], workers=workers
+        ),
     )
-    model["gold"] = est["gold"]
-    return model
 
 
 def output_grid(config):
@@ -54,39 +58,33 @@ def output_grid(config):
     )
 
 
-def run(config, output, *, workers=1, rebuild=False):
-    """Recalibrate full-area weights with the frozen SOM, edges and gold masks."""
+def run(config, output, *, workers=1):
+    """Calibrate the recipe's catalogue and write its n(z) products to ``output``."""
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
-    model = (
-        rebuild_model(config, workers)
-        if rebuild
-        else dict(np.load(config["inputs"]["model"]))
-    )
-    edges = np.asarray(config["edges"])
-    # The recipe and the frozen definition describe the same catalogue selection.
-    np.testing.assert_array_equal(model["edges"], edges)
-    np.savez(output / "som_assignment_model.npz", **model)
-    cal = np.load(config["inputs"]["calibrators"])
+    cal = np.load(config["inputs"]["calibrators"]["output"])
+    src = np.load(config["inputs"]["sources"]["output"])
+    edges = np.asarray(config["edges"], float)
+    grid = output_grid(config)
+    n_groups = config["groups"]
+
+    model = nz.train(cal["mag"], workers=workers, **config["som"])
+    model["group_map"] = nz.group_cells(model, n_groups)
+    model["edges"] = edges
     _, cal_cell = nz.assign(cal["mag"], model, workers=workers)
     cal_group = model["group_map"][cal_cell]
-    data = np.load(config["photometry"]["output"])
-    mag, photoz, weight = data["mag"], data["zb"], data["weight"]
-    grid = output_grid(config)
-    total_weight = weight.sum()
-    prelim, group, channel = nz.source_groups(
-        mag,
+
+    weight, photoz = src["weight"], src["photoz"]
+    prelim, cell, channel = nz.source_groups(
+        src["mag"],
         photoz,
         weight,
         model,
         offset=config["z2_offset"],
-        use_z2=True,
         workers=workers,
     )
-    print(
-        f"Assigned: {np.count_nonzero(prelim >= 0)} eligible rows",
-        flush=True,
-    )
+    group = np.where(cell >= 0, model["group_map"][np.maximum(cell, 0)], -1)
+    threshold = nz.gold_threshold(cal["z"], cal["photoz"], **config["gold_qc"])
     est = nz.calibrate(
         prelim,
         group,
@@ -96,47 +94,33 @@ def run(config, output, *, workers=1, rebuild=False):
         cal["photoz"],
         cal_group,
         edges,
-        config["groups"],
+        n_groups,
         grid,
-        gold=model["gold"],
+        threshold=threshold,
     )
     tom = nz.tom_bin_ids(prelim, group, est["gold"])
-    retained = sum(b["weight_sum"] for b in est["bins"])
-    complete = (
-        nz.detected(mag[:, :4]).all(1)
-        & (channel > 0)
-        & np.isfinite(weight)
-        & (weight > 0)
-    )
-    retention = dict(
-        all=1.0,
-        complete_photometry=float(weight[complete].sum() / total_weight),
-        bpz_bounds=float(weight[prelim >= 0].sum() / total_weight),
-        gold=float(retained / total_weight),
-    )
+    total_weight = float(weight.sum())
     for b in est["bins"]:
-        b["weight_fraction_of_all"] = b["weight_sum"] / float(total_weight)
-    nz.write_nz(
-        output / "nz_tomo.txt",
-        grid,
-        est["bin_hists"],
-        [b["weight_sum"] for b in est["bins"]],
-    )
-    tile = pa.DictionaryArray.from_arrays(
-        pa.array(data["tile"]), pa.array(data["tile_names"].astype(str))
-    ).cast(pa.string())
+        b["weight_fraction_of_all"] = b["weight_sum"] / total_weight
+
+    fractions = [b["weight_sum"] for b in est["bins"]]
+    nz.write_nz(output / "nz_tomo.txt", grid, est["bin_hists"], fractions)
+    mixture = (np.asarray(fractions) / np.sum(fractions)) @ est["bin_hists"]
+    nz.write_nz(output / "nz_nontomo.txt", grid, mixture[None], [1.0])
     pq.write_table(
         pa.table(
             dict(
-                TILE_ID=tile,
-                NUMBER=data["number"],
+                TILE_ID=src["tile"],
+                NUMBER=src["number"],
                 TOM_BIN_ID=tom,
                 ZBAND=channel,
             )
         ),
         output / "tom_bin.parquet",
     )
-    print("TOM_BIN_ID counts:", np.bincount(tom, minlength=len(edges)), flush=True)
+    np.savez(output / "som_model.npz", **model)
+    eligible = cell >= 0
+    n_cells = len(model["code"])
     np.savez_compressed(
         output / "calibration_arrays.npz",
         z=cal["z"],
@@ -148,19 +132,30 @@ def run(config, output, *, workers=1, rebuild=False):
         gold=est["gold"],
         cal_weights=est["cal_weights"],
         bin_hists=est["bin_hists"],
-    )
-    summary = dict(
-        bins=est["bins"],
-        retention=retention,
-        total_weight=float(total_weight),
-        n_rows=len(weight),
-        retained_rows=sum(b["n_rows"] for b in est["bins"]),
-        retained_weight_fraction=retention["gold"],
-        gold_qc_threshold=nz.gold_threshold(
-            cal["z"], cal["photoz"], **config["gold_qc"]
+        source_weight_cell=np.bincount(
+            cell[eligible], weights=weight[eligible], minlength=n_cells
         ),
-        method=config["name"],
+        source_photoz_cell=np.bincount(
+            cell[eligible],
+            weights=weight[eligible] * photoz[eligible],
+            minlength=n_cells,
+        ),
+    )
+    complete = nz.detected(src["mag"][:, :4]).all(1) & (channel > 0) & (weight > 0)
+    summary = dict(
+        name=config["name"],
         limitation=config["limitation"],
+        bins=est["bins"],
+        n_rows=len(weight),
+        n_calibrators=len(cal["z"]),
+        total_weight=total_weight,
+        retention=dict(
+            complete_photometry=float(weight[complete].sum() / total_weight),
+            bpz_bounds=float(weight[prelim >= 0].sum() / total_weight),
+            gold=float(np.sum(fractions) / total_weight),
+        ),
+        tom_bin_counts=np.bincount(tom, minlength=len(edges)).tolist(),
+        gold_qc_threshold=threshold,
     )
     (output / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     (output / "recipe.yaml").write_text(yaml.safe_dump(config, sort_keys=False))
@@ -178,26 +173,26 @@ def run(config, output, *, workers=1, rebuild=False):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("recipe")
-    parser.add_argument("--output", help="override recipe output directory")
+    parser.add_argument("--prepare", action="store_true", help="build the inputs first")
+    parser.add_argument("--output", help="override the recipe's output directory")
     parser.add_argument("--workers", type=int, default=1)
-    parser.add_argument("--rebuild-model", action="store_true")
     parser.add_argument("--figures", metavar="DIRECTORY")
     args = parser.parse_args(argv)
-    config = yaml.safe_load(Path(args.recipe).read_text())
+    config = load_yaml(args.recipe)
+    if args.prepare:
+        prepare(config, workers=args.workers)
     output = Path(args.output or config["output"])
-    run(config, output, workers=args.workers, rebuild=args.rebuild_model)
+    run(config, output, workers=args.workers)
     if args.figures:
         from .nz_diagnostics import render
 
         render(
             dict(
-                config["diagnostics"],
+                config.get("diagnostics", {}),
                 calibration_arrays=output / "calibration_arrays.npz",
-                model=output / "som_assignment_model.npz",
+                model=output / "som_model.npz",
                 summary=output / "summary.json",
-                source_catalogue=config["inputs"]["gold_reference"],
                 side=config["som"]["side"],
-                workers=args.workers,
             ),
             args.figures,
         )

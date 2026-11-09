@@ -63,9 +63,9 @@ def test_bin_edges_and_gold_ids():
     bpz = np.array([0.099, 0.1, 0.37, 0.55, 0.76, 1.2, 0.4], dtype="f8")
     weight = np.ones(7)
     weight[-1] = 0
-    prelim, group, _ = nz.source_groups(mag, bpz, weight, model, offset=0, chunk=2)
+    prelim, cell, _ = nz.source_groups(mag, bpz, weight, model, offset=0, chunk=2)
     np.testing.assert_array_equal(prelim, [-1, 0, 1, 2, 3, -1, -1])
-    ids = nz.tom_bin_ids(prelim, group, np.array([[1], [1], [0], [1]], bool))
+    ids = nz.tom_bin_ids(prelim, cell, np.array([[1], [1], [0], [1]], bool))
     np.testing.assert_array_equal(ids, [0, 1, 2, 0, 4, 0, 0])
 
 
