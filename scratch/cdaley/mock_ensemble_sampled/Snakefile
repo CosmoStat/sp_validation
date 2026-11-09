@@ -40,9 +40,9 @@ rule sampled_sky:
     params:
         rng_seed=lambda w: config['sampled']['seed_offset'] + int(w.seed),
         number=lambda w: int(w.seed),
-    threads: 48
+    threads: 24
     resources:
-        mem_mb=200000,
+        mem_mb=60000,
     shell:
         'cd {GEN} && env PYTHONPATH={GEN}/src OMP_NUM_THREADS={threads} '
         'python {HERE}/sky.py {ROOT}/gen/results/gls_4096_limber_True.npy '

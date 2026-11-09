@@ -24,4 +24,4 @@ if [ -n "${TARGETS:-}" ]; then read -r -a args <<< "$TARGETS"; fi
   --set-resources xi:mem_mb=110000 pseudo_cl:mem_mb=48000 cv_cosebis:mem_mb=12000 \
   --set-threads xi=24 pseudo_cl=24 cv_cosebis=1 \
   --apptainer-args '--cleanenv --bind /project,/home,/scratch' \
-  --rerun-incomplete --printshellcmds "${args[@]}" "$@"
+  --rerun-incomplete --keep-going --printshellcmds "${args[@]}" "$@"
