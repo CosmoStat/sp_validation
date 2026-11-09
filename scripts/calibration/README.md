@@ -87,6 +87,10 @@ group keeps its source weight (`sp_validation.nz_ensemble`):
   calibrators share a redshift, which is how the SOM suppresses sample
   variance (3× in ⟨z⟩ on v2).
 
+The draws are recentred on the calibration's n(z): renormalising positive
+weights within groups is nonlinear, and on v2 it moves the raw ensemble mean
+by up to +0.003 in ⟨z⟩ (0.75σ), an estimator bias, not a redshift shift.
+
 Held fixed: the SOM, its groups, gold masks and source weights. Left out:
 photometric zero points and the z2 offset (shared by every bin; the
 `z2offset_lo/hi` products bracket the latter), SOM training stochasticity,

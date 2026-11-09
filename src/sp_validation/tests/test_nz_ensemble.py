@@ -92,3 +92,10 @@ def test_density_variance_matches_box_integral():
         pk = np.exp(np.interp(np.log(kk), np.log(kg), lp))
         total += wx * np.einsum("i,j,ij->", w[1], w[2], pk)
     assert cov[i, i] == pytest.approx(8 * total / (2 * np.pi) ** 3, rel=0.03)
+
+
+def test_draws_are_centred_on_the_calibration():
+    z, w, g, _ = toy()
+    cov = np.diag(np.full(len(GRID), 0.5))
+    real = ne.realisations(z, w, g, GRID, 50, density=cov, seed=6)
+    np.testing.assert_allclose(real.mean(0), ne.histograms(z, w, GRID), atol=1e-12)
