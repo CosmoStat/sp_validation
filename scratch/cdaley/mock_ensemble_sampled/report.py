@@ -156,7 +156,7 @@ def table_additive(add, n):
 
 
 def e_diagnostics(s, mocks):
-    """Ensemble/analytic variance per E element, and data z (blinded; see caveat)."""
+    """Ensemble/analytic variance per E element. Uses the mocks only: the data's E is blinded."""
     c = np.asarray(s.covariance.dense)
     out = {}
     for name, (dtype, tag, (lo, hi)) in E_TYPES.items():
@@ -168,8 +168,7 @@ def e_diagnostics(s, mocks):
             m = mocks[:, r]
             out[name][label(p)] = dict(
                 coordinate=x.tolist(),
-                variance_ratio=(m.var(axis=0, ddof=1) / np.diag(c)[r]).tolist(),
-                data_z=((s.mean[r] - m.mean(axis=0)) / m.std(axis=0, ddof=1)).tolist())
+                variance_ratio=(m.var(axis=0, ddof=1) / np.diag(c)[r]).tolist())
     return out
 
 
@@ -208,11 +207,11 @@ def fig_pair_ptes(result):
     return png(fig)
 
 
-def fig_z(result, ediag):
-    names = list(B_ELEMENTS) + list(E_TYPES)
+def fig_z(result):
+    names = list(B_ELEMENTS)
     fig, axes = plt.subplots(len(names), 1, figsize=(11, 1.25 * len(names) + 1), layout="constrained")
     for ax, name in zip(axes, names):
-        src = result["elements"][name] if name in B_ELEMENTS else ediag[name]
+        src = result["elements"][name]
         blocks, ticks, pos = [], [], 0
         for p in PAIRS:
             z = np.asarray(src[label(p)]["data_z"])
@@ -226,9 +225,9 @@ def fig_z(result, ediag):
         ax.axhspan(-2, 2, color="#d6eaf8", zorder=-1)
         ax.set_xticks(ticks, [label(p) for p in PAIRS], fontsize=6)
         ax.set_xlim(-.5, len(z) - .5)
-        ax.set_ylabel(name + (" *" if name in E_TYPES else ""), fontsize=7, rotation=0, ha="right")
+        ax.set_ylabel(name, fontsize=7, rotation=0, ha="right")
         ax.tick_params(axis="y", labelsize=6)
-    fig.suptitle("Data z against the ensemble, per element (blue band |z|<2; * E-modes are blinded)", fontsize=9)
+    fig.suptitle("B modes: data z against the ensemble, per element (blue band |z| < 2)", fontsize=9)
     return png(fig)
 
 
@@ -291,7 +290,7 @@ def main():
     readings = Path(args.readings).read_text() if args.readings else ""
     figs = out / "figures"
     bands = "".join(f"<details><summary>{k}</summary>{img(figs / f'band_{k}.png', k)}</details>"
-                    for k in ("xip_B", "xim_B", "cosebis_B", "cl_bb", "cl_eb", "xip_E", "xim_E", "cosebis_E", "cl_ee"))
+                    for k in ("xip_B", "xim_B", "cosebis_B", "cl_bb", "cl_eb"))
     page = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Mocks vs data</title>
@@ -309,6 +308,8 @@ details{{margin:.4em 0}} summary{{cursor:pointer;color:var(--accent)}}
 </style></head><body>
 <p class="mute">Mocks ↔ data, UNIONS v2 tomographic · {n} sampled GLASS mocks · Claude Opus 5.5 on behalf of Cail</p>
 <h1>The blinded v2 tomographic data inside a sampled GLASS ensemble</h1>
+<div class="box"><p><b>B modes only.</b> The blind adds t(hidden) − t(fiducial) to every E-mode data vector, and the true cosmology differs from the mocks' Planck18 too, so the data's ξ± and Cℓ^EE are not expected to sit inside this ensemble. This report shows no E-mode data offsets. The blind adds no B mode, so the B-mode null tests are untouched by it and are the report's content.</p>
+<p><b>Inputs.</b> The data vector is the blinded tomographic run of 1 November (sp_validation <code>run/tomo1101</code> @ 7081c2d0, blind <code>unions</code>), with the first v2 n(z) and its four tomographic bins. The mocks use the same n(z), the same tomographic footprint, and each bin's n_eff and per-component σ_e. The recalibrated n(z) of 9 November needs its own data vector and ensemble.</p></div>
 {readings}
 <h2>Joint null tests</h2>
 <p>All ten bin pairs together, with the selections and analytic covariance of the blinded report. <b>Ensemble PTE</b> is the fraction of the {n} mocks with χ² at least the data's (resolution 1/{n}). <b>s</b> is the mocks' mean χ²/dof: 1 if the analytic covariance describes the mocks. The <b>recalibrated PTE</b> rescales the covariance by s (68% bootstrap range in brackets).</p>
@@ -320,16 +321,24 @@ details{{margin:.4em 0}} summary{{cursor:pointer;color:var(--accent)}}
 <h2>Per pair</h2>
 {img(fig_pair_ptes(result), 'per-pair PTEs')}
 <h2>Per element</h2>
-<p>Each bar is one band of one pair: (data − mock mean)/mock std. The B-mode rows test whether the data look like a draw from the mocks. The E-mode rows (*) carry two different blinds (the data's and the mocks' throwaway one) and the mocks' Planck18 cosmology, so their offsets are not a measurement of anything. Read only their scatter.</p>
-{img(fig_z(result, ediag), 'data z per element')}
+<p>Each bar is one band of one pair: (data − mock mean)/mock std. The ξ± rows cover all 20 reporting bins, 1–250′, not only the 12–83′ cut.</p>
+{img(fig_z(result), 'data z per element')}
 <h2>Analytic vs ensemble covariance</h2>
-<p>The mocks share the data's analytic covariance (pair-count shape noise, the data run's own files). The map below averages ensemble variance / analytic variance over each pair's elements, inside the same cuts as the tests (ξ± 12–83′, Cℓ 300–1600, all COSEBIs).</p>
+<p>The mocks share the data's analytic covariance (pair-count shape noise, the data run's own files). The map below averages ensemble variance / analytic variance over each pair's elements. B rows cover every element; E rows use ξ± 12–83′, Cℓ^EE 300–1600 and all COSEBIs. These ratios use only the mocks, so the blind does not enter. The E rows test the Gaussian covariance against lognormal mocks at the mocks' Planck18 cosmology.</p>
 {img(fig_variance(result, ediag, lo, hi), 'variance ratios')}
 <details><summary>Per-element variance ratios and eigenmode variances</summary>
 {''.join(img(figs / f'covariance_{k}.png', k) for k in KEYS)}{img(figs / 'covariance_xi_scale_split.png', 'xi scale split')}</details>
 <h2>Bands</h2>
 <p>Pointwise 68% and 95% mock bands with the data, per pair.</p>
 {bands}
+<h2>What sampled mocks cannot match</h2>
+<ul>
+<li><b>Weights and shape noise.</b> Mock galaxies have unit weight and Gaussian intrinsic ellipticity with the data's per-component σ_e, at the data's n_eff. The data's real weight distribution and |e| distribution are absent.</li>
+<li><b>Positions.</b> Galaxies are sampled from the lognormal matter field with linear bias 1.2 inside the tomographic footprint. Neither the real positions nor the real pair counts are used, so the mocks' shape-noise pair counts differ from the data's measured ones, which the analytic covariance uses.</li>
+<li><b>Systematics.</b> There is no PSF leakage, additive shear, multiplicative bias, intrinsic alignment, photo-z error or baryonic effect beyond the generator's HMCode power spectrum. No additive B mode exists in the mocks by construction.</li>
+<li><b>Resolution.</b> nside 4096 with ℓ_max = 4096. Shear maps are pixelised at 0.86′, so the smallest ξ± bins (1–2′) carry a pixel window the data lack. Every test here uses θ ≥ 2′ or ℓ ≤ 2048.</li>
+<li><b>Bin 0.</b> The data's non-tomographic remainder has no mock twin, so the whole-sample tests are not placed here.</li>
+</ul>
 <h2>Provenance</h2>
 <p class="mute">Row definitions: sampled mocks have their own positions and unit weights, so their measured mean θ differs from the data's by at most {diffs['max_theta_rel']:.1e} (relative), their pseudo-Cℓ bandpower windows by at most {diffs['max_window_rel']:.1e} of the peak weight, and their pure-E/B covariance blocks (built on each catalogue's θ grid) by at most {diffs['max_cov_rel_sigma']:.1e} σ. All tests use the data's covariance; the data's ρ/τ rows are dropped.</p>
 <p class="mute">Data: <code>{html.escape(data)}</code> (run/tomo1101 @ 7081c2d0, blind <code>unions</code>, never unblinded). Mocks: <code>{ROOT}/cosmo_val/MOCK_*_tomo.sacc</code>, generated by <code>scripts/glass_mock/make_glass_sim.py</code> (sp_validation develop @ 08b37ee0) and measured by <code>run/mock-ensemble-sampled</code> (cosmo_val estimators of c8f7b522, equal to the data run's). Numbers: <code>{out}/placement.json</code>.</p>
