@@ -3,8 +3,8 @@
 Run inside the sp_validation container on an allocated candide compute node:
 
 ```bash
-python scratch/cdaley/nz_som_reproduction/reproduce.py cosmo_val/nz/v2_bound9.yaml scratch/nz-reproduction --workers 16
-python scratch/cdaley/nz_som_reproduction/reproduce.py cosmo_val/nz/v2_bound9.yaml scratch/nz-rebuild --workers 16 --rebuild-model
+python scratch/cdaley/nz_som_reproduction/reproduce.py config/calibration/nz/v2_bound9.yaml scratch/nz-reproduction --workers 16
+python scratch/cdaley/nz_som_reproduction/reproduce.py config/calibration/nz/v2_bound9.yaml scratch/nz-rebuild --workers 16 --rebuild-model
 ```
 
 Both commands compare the output against `reference.yaml` and assert zero `TOM_BIN_ID` differences across every source row and per-bin mean redshift differences below 1e-4.

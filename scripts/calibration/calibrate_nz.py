@@ -1,4 +1,4 @@
-"""Run a saved SOM n(z) recipe outside cosmo_val (see cosmo_val/nz/README.md)."""
+"""Run a saved SOM n(z) recipe (see scripts/calibration/README.md)."""
 
 from sp_validation.nz_pipeline import main
 
