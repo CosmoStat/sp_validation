@@ -90,6 +90,65 @@ def load_aligned(data_path, pattern):
     return s, np.asarray(vectors), paths, diffs
 
 
+ADDITIVE_B = 2.6e-11  # the plain run's additive B level: C_BB ≈ A·exp[−(ℓ/2000)²]
+
+
+def gls_amp(d, t, c):
+    ci = np.linalg.solve(c, t)
+    return float(ci @ d / (t @ ci)), float((t @ ci) ** -.5)
+
+
+def additive_tests(s, mocks, result):
+    """Statistics an additive B component would move, on the data and on every mock.
+
+    The Cℓ^BB template amplitude is the data leg's (emode-clbb `clbb_template`):
+    GLS amplitude of ADDITIVE_B·exp(−(ℓ/2000)²) with the data covariance, common
+    to all pairs, autos only and crosses only. The mean signed σ-offset averages
+    d/σ_analytic over a test's selected elements: an additive component pushes it
+    one way, noise averages it out.
+    """
+    c = np.asarray(s.covariance.dense)
+    out = {}
+    rs = {p: rows(s, sacc_io.CL_BB, p) for p in PAIRS}
+    ells = {p: np.array([s.data[i].tags["ell"] for i in r]) for p, r in rs.items()}
+    for name, keep in (("common", lambda p: True), ("autos", lambda p: p[0] == p[1]),
+                       ("crosses", lambda p: p[0] != p[1])):
+        r = np.concatenate([rs[p] for p in PAIRS if keep(p)])
+        t = np.concatenate([ADDITIVE_B * np.exp(-(ells[p] / 2000) ** 2) for p in PAIRS if keep(p)])
+        cr = c[np.ix_(r, r)]
+        data, sigma = gls_amp(s.mean[r], t, cr)
+        out[f"clbb_template_{name}"] = dict(data=data, sigma=sigma,
+                                            mocks=[gls_amp(m[r], t, cr)[0] for m in mocks])
+    sd = np.sqrt(np.diag(c))
+    for k in ("xip_B", "xim_B", "combined", "cl_bb", "small"):
+        r = np.asarray(result["statistics"][k]["joint"]["rows"])
+        out[f"mean_offset_{k}"] = dict(data=float(np.mean(s.mean[r] / sd[r])),
+                                       mocks=(mocks[:, r] / sd[r]).mean(axis=1).tolist())
+    for v in out.values():
+        m = np.asarray(v["mocks"])
+        v["z"] = float((v["data"] - m.mean()) / m.std(ddof=1))
+        v["rank_above"] = int(np.count_nonzero(m >= v["data"]))
+    return out
+
+
+def table_additive(add, n):
+    names = {"clbb_template_common": "Cℓ^BB template amplitude, all pairs",
+             "clbb_template_autos": "Cℓ^BB template amplitude, autos",
+             "clbb_template_crosses": "Cℓ^BB template amplitude, crosses",
+             "mean_offset_xip_B": "mean d/σ, ξ+ B 12–83′", "mean_offset_xim_B": "mean d/σ, ξ− B 12–83′",
+             "mean_offset_combined": "mean d/σ, ξ± B 12–83′", "mean_offset_cl_bb": "mean d/σ, Cℓ^BB",
+             "mean_offset_small": "mean d/σ, ξ± B 2–20′"}
+    out = ['<table><tr><th>statistic</th><th>data</th><th>mock mean ± std</th><th>data z</th><th>mocks ≥ data</th></tr>']
+    for k, label_ in names.items():
+        v = add[k]
+        m = np.asarray(v["mocks"])
+        extra = f" (GLS σ {v['sigma']:.2f})" if "sigma" in v else ""
+        out.append(f"<tr><td>{label_}</td><td>{v['data']:.3f}{extra}</td><td>{m.mean():.3f} ± {m.std(ddof=1):.3f}</td>"
+                   f"<td>{v['z']:+.2f}</td><td>{v['rank_above']}/{n}</td></tr>")
+    out.append("</table>")
+    return "\n".join(out)
+
+
 def e_diagnostics(s, mocks):
     """Ensemble/analytic variance per E element, and data z (blinded; see caveat)."""
     c = np.asarray(s.covariance.dense)
@@ -215,6 +274,7 @@ def main():
     ediag = e_diagnostics(s, mocks)
     result["e_modes"] = ediag
     result["definition_differences"] = diffs
+    result["additive"] = additive_tests(s, mocks, result)
     result["inputs"] = dict(data=data, mocks=paths, edges=edges)
     (out / "placement.json").write_text(json.dumps(result, indent=1, allow_nan=False))
     from figures import render
@@ -248,6 +308,9 @@ details{{margin:.4em 0}} summary{{cursor:pointer;color:var(--accent)}}
 <p>All ten bin pairs together, with the selections and analytic covariance of the blinded report. <b>Ensemble PTE</b> is the fraction of the {n} mocks with χ² at least the data's (resolution 1/{n}). <b>s</b> is the mocks' mean χ²/dof: 1 if the analytic covariance describes the mocks. The <b>recalibrated PTE</b> rescales the covariance by s (68% bootstrap range in brackets).</p>
 {table_joint(result)}
 {img(fig_joint(result, n), 'joint chi2 histograms')}
+<h2>Is the excess additive?</h2>
+<p>χ² is blind to sign. An additive B component (PSF leakage, a shared shear offset) also shows as a coherent sign across bands and pairs, and in the data leg's Cℓ^BB template (ADDITIVE_B·e^{{−(ℓ/2000)²}}, GLS amplitude with the data covariance). The mocks give each statistic's null distribution.</p>
+{table_additive(result['additive'], n)}
 <h2>Per pair</h2>
 {img(fig_pair_ptes(result), 'per-pair PTEs')}
 <h2>Per element</h2>
