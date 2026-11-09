@@ -36,17 +36,23 @@ E_TYPES = {"xip_E": (sacc_io.XI_PLUS, "theta", (12, 83)), "xim_E": (sacc_io.XI_M
 B_ELEMENTS = ("xip_B", "xim_B", "cosebis_B", "cl_bb", "cl_eb")
 
 
+def compact(raw):
+    """Palette-quantised PNG: line plots need few colours, and the page stays small."""
+    from PIL import Image
+    buf = io.BytesIO()
+    Image.open(io.BytesIO(raw)).convert("RGB").quantize(colors=96).save(buf, format="PNG", optimize=True)
+    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+
+
 def png(fig):
     buf = io.BytesIO()
     fig.savefig(buf, format="png", dpi=130)
     plt.close(fig)
-    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+    return compact(buf.getvalue())
 
 
 def img(path_or_uri, alt):
-    uri = path_or_uri
-    if not str(uri).startswith("data:"):
-        uri = "data:image/png;base64," + base64.b64encode(Path(uri).read_bytes()).decode()
+    uri = path_or_uri if str(path_or_uri).startswith("data:") else compact(Path(path_or_uri).read_bytes())
     return f'<img src="{uri}" alt="{html.escape(alt)}">'
 
 
