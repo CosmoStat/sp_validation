@@ -622,7 +622,7 @@ wheels = [
 
 [[package]]
 name = "cosmosis"
-version = "3.26"
+version = "3.27.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "dulwich" },
@@ -640,7 +640,7 @@ dependencies = [
     { name = "threadpoolctl" },
     { name = "zeus-mcmc" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/46/27/923408c09bc803b349a216974481fc075cb56f54b1ea949efe1233a294f1/cosmosis-3.26.tar.gz", hash = "sha256:bbeed481411d2bfa83d0b14bcc3d16a0b80dcf1c1f099e5066d10e4711c36508", size = 421446, upload-time = "2026-09-03T09:22:44.179Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/df/a9/5b68ef628b8f05b077f1874108de2a5f2e05e77a1ff6e942b519a0395e5f/cosmosis-3.27.1.tar.gz", hash = "sha256:d3864a4b4e263c8d644391fd224301aeff74803e954248dfd1ae4e836d8a5187", size = 423668, upload-time = "2026-11-06T09:11:18.54Z" }
 
 [[package]]
 name = "coverage"
