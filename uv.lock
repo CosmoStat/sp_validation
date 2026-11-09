@@ -3997,6 +3997,7 @@ docs = [
 ]
 glass = [
     { name = "cosmology-compat-camb" },
+    { name = "ducc0" },
     { name = "fitsio" },
     { name = "glass" },
     { name = "glass-ext-camb" },
@@ -4023,6 +4024,7 @@ requires-dist = [
     { name = "cosmology-compat-camb", marker = "extra == 'glass'", specifier = "==0.2.0" },
     { name = "cosmosis", marker = "extra == 'workflow'", specifier = ">=3.25" },
     { name = "cs-util", git = "https://github.com/CosmoStat/cs_util.git?rev=develop" },
+    { name = "ducc0", marker = "extra == 'glass'" },
     { name = "emcee" },
     { name = "fast-pt", marker = "extra == 'workflow'", specifier = ">=3.2,<4" },
     { name = "fitsio", marker = "extra == 'glass'" },
