@@ -1,6 +1,6 @@
 """CLI: harmonic-space PSF-leakage rho_0 / tau_0 for one GLASS mock.
 
-Thin wrapper around ``sp_validation.glass_mock.compute_leakage_harmony``.
+Thin wrapper around ``sp_validation.mocks.glass.compute_leakage_harmony``.
 """
 
 import argparse
@@ -8,8 +8,8 @@ import argparse
 import numpy as np
 from astropy.io import fits
 
-from sp_validation.glass_mock import compute_leakage_harmony
 from sp_validation.io import open_catalogue
+from sp_validation.mocks.glass import compute_leakage_harmony
 
 
 def get_parser():

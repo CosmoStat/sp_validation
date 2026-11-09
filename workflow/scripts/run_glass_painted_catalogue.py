@@ -4,10 +4,10 @@ from pathlib import Path
 
 import healpy as hp
 
-from sp_validation.glass_mock import b_mode_cl, paint_catalogue, read_sky
+from sp_validation.mocks.painted import b_mode_cl, paint_catalogue, read_sky
 
 injection = dict(snakemake.params.injection)
-kappa_alm, _ = read_sky(Path(snakemake.input.alm).parent)
+kappa_alm = read_sky(Path(snakemake.input.alm).parent)
 b_cl = b_mode_cl(
     hp.Alm.getlmax(len(kappa_alm)),
     injection.pop("b_amplitude", 0),

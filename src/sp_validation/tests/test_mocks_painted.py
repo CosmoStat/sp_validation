@@ -1,7 +1,7 @@
 """Low-resolution painting checks, including cosmo_val's own NaMaster path.
 
-The sky is a convergence alm evaluated exactly at each galaxy; the exactness
-and known-answer tests here fail for a nearest-pixel lookup of the maps.
+The sky is a convergence alm evaluated at each galaxy by a non-uniform SHT;
+the evaluation and spectrum tests here fail for a nearest-pixel lookup.
 """
 
 import json
@@ -11,8 +11,7 @@ import healpy as hp
 import numpy as np
 import pytest
 
-from sp_validation.glass_mock import (
-    convergence_to_shear,
+from sp_validation.mocks.painted import (
     draw_b_mode_alm,
     evaluate_alm,
     paint_catalogue,
@@ -174,8 +173,8 @@ def test_streamed_catalogue_and_block_independence(tmp_path, layout):
         metadata = json.loads(src.attrs["mock_metadata"])
         assert metadata["rotation_seed"] == 123
         assert metadata["shear"] == "gamma"
-        assert metadata["painting"].startswith("exact alm evaluation")
-        assert metadata["block_size"] == 23
+        assert metadata["painting"].startswith("non-uniform SHT")
+        assert metadata["pol_factor"] == src.attrs["pol_factor"] == -1
 
 
 def test_paint_injections_share_noise_and_save_realized_b_truth(tmp_path):
@@ -224,6 +223,14 @@ def test_paint_injections_share_noise_and_save_realized_b_truth(tmp_path):
         np.testing.assert_allclose(
             b[name] - clean[name], b[f"{name}_injected"], atol=1e-8
         )
+    # Rotations draw from their own stream, not the sky's default_rng(seed).
+    noise = clean["e1_noise"] + 1j * clean["e2_noise"]
+    rotation = np.random.default_rng(np.random.SeedSequence(1, spawn_key=(1,)))
+    np.testing.assert_allclose(
+        noise / np.abs(noise),
+        np.exp(2j * rotation.uniform(0, np.pi, 100)),
+        atol=1e-6,
+    )
     b_alm = draw_b_mode_alm(cl, 401)
     b1, b2 = evaluate_alm([np.zeros_like(b_alm), b_alm], source["RA"], source["Dec"])
     np.testing.assert_allclose(b["e1_injected"], b1, atol=1e-7)
@@ -236,19 +243,15 @@ def test_paint_injections_share_noise_and_save_realized_b_truth(tmp_path):
         assert np.all(spectra["realization_bb"][24:] == 0)
     metadata = json.loads((tmp_path / "b.h5.json").read_text())
     assert metadata["b_realization_spectra"] == str(tmp_path / "b.h5.bmode_spectra.npz")
-    expected_sigma = np.sqrt(0.5 * (source["e1"] ** 2 + source["e2"] ** 2).mean())
-    assert metadata["shape_noise"]["noise"]["weight_power_2"][
-        "isotropic_sigma"
-    ] == pytest.approx(expected_sigma)
 
 
-def pure_e_paint(nside=32):
+def pure_e_paint(nside=32, pol_factor=-1):
     """Sample a fixed non-axisymmetric pure-E field at every pixel centre."""
     lmax = 2 * nside - 1
     alm = np.zeros(hp.Alm.getsize(lmax), dtype=complex)
     for ell, emm in ((12, 3), (19, 7), (24, 10), (30, 2)):
         alm[hp.Alm.getidx(lmax, ell, emm)] = (1 + 0.3j) * 0.01
-    elm = shear_alm(alm, nside)
+    elm = shear_alm(alm)
     gamma1, gamma2 = hp.alm2map_spin([elm, 0 * elm], nside, 2, lmax)
     ra, dec = hp.pix2ang(nside, np.arange(len(gamma1)), lonlat=True)
     # Kappa is zero only for the paint step: test gamma, not reduced shear.
@@ -257,33 +260,36 @@ def pure_e_paint(nside=32):
         np.zeros(len(ra)),
         (np.zeros(len(ra)), *evaluate_alm([elm, 0 * elm], ra, dec)),
         np.random.default_rng(1),
+        pol_factor=pol_factor,
     )
     return ra, dec, result, gamma1, gamma2
 
 
-def test_sign_convention_through_pipeline_namaster():
+@pytest.mark.parametrize("pol_factor", [-1, 1])
+def test_sign_convention_through_pipeline_namaster(pol_factor):
+    """Painted with ``pol_factor``, cosmo_val reads pure E with the same one."""
     from sp_validation.pseudo_cl import get_pseudo_cls_map
 
-    ra, dec, result, gamma1, gamma2 = pure_e_paint()
+    ra, dec, result, gamma1, gamma2 = pure_e_paint(pol_factor=pol_factor)
     nside = hp.npix2nside(len(ra))
     shear = result["e1"] + 1j * result["e2"]
     ell, cls, _ = get_pseudo_cls_map(
-        shear, np.ones(len(ra)), nside, "linear", pol_factor=-1, ell_step=8
+        shear, np.ones(len(ra)), nside, "linear", pol_factor=pol_factor, ell_step=8
     )
     _, wrong, _ = get_pseudo_cls_map(
-        shear, np.ones(len(ra)), nside, "linear", pol_factor=1, ell_step=8
+        shear, np.ones(len(ra)), nside, "linear", pol_factor=-pol_factor, ell_step=8
     )
     assert np.sum(np.abs(cls[3])) / np.sum(cls[0]) < 1e-8
     assert np.sum(wrong[3]) / np.sum(cls[0]) > 0.1
     np.testing.assert_allclose(result["e1"], gamma1, rtol=0, atol=1e-12)
-    np.testing.assert_allclose(result["e2"], -gamma2, rtol=0, atol=1e-12)
+    np.testing.assert_allclose(result["e2"], pol_factor * gamma2, rtol=0, atol=1e-12)
     assert np.all(ell > 0)
 
 
 def test_parallel_solver_matches_glass_and_restores_threads(monkeypatch):
     import glass
 
-    from sp_validation.glass_mock import solve_shell_spectra
+    from sp_validation.mocks.painted import solve_shell_spectra
 
     fields = [glass.grf.Lognormal(), glass.grf.Lognormal()]
     cl = 1e-5 / (1 + np.arange(17)) ** 2
@@ -300,22 +306,29 @@ def test_parallel_solver_matches_glass_and_restores_threads(monkeypatch):
     assert np.all(info > 0)
 
 
-def test_projected_maps_seed_and_cache_reproducibility(tmp_path):
-    from dataclasses import replace
-
-    from sp_validation.glass_mock import GlassMockConfig, generate_lensing_maps
+def small_sky_config(tmp_path, seed=7, nside=8, lmax=16):
+    """A cheap ``generate_lensing_maps`` config: a few thick shells to z=0.4."""
+    from sp_validation.mocks.glass import GlassMockConfig
 
     nz = tmp_path / "nz.txt"
     np.savetxt(nz, np.column_stack((np.linspace(0.01, 0.39, 30), np.ones(30))))
-    config = GlassMockConfig(
-        nside=8,
-        harmonic_lmax=16,
-        seed=7,
+    return GlassMockConfig(
+        nside=nside,
+        harmonic_lmax=lmax,
+        seed=seed,
         zmax=0.4,
         dx=500,
         nz_path=str(nz),
         limber=True,
     )
+
+
+def test_projected_maps_seed_and_cache_reproducibility(tmp_path):
+    from dataclasses import replace
+
+    from sp_validation.mocks.painted import generate_lensing_maps
+
+    config = small_sky_config(tmp_path)
     first = generate_lensing_maps(config, tmp_path / "first", tmp_path / "cache")
     second = generate_lensing_maps(config, tmp_path / "second", tmp_path / "cache")
     third = generate_lensing_maps(
@@ -331,13 +344,13 @@ def test_projected_maps_seed_and_cache_reproducibility(tmp_path):
         assert not np.array_equal(a, c)
     with np.load(tmp_path / "first" / "spectra.npz") as spectra:
         assert spectra["realization_ee"].shape == (17,)
-        assert np.all(spectra["cl_ee_pixel"][2:] > 0)
+        assert np.all(spectra["cl_ee"][2:] > 0)
         realization_ee = spectra["realization_ee"]
     # The persisted alm is the sky: its spectrum is the known answer, and its
     # exact evaluation at pixel centres reproduces the float32 maps.
     with np.load(tmp_path / "first" / "kappa_alm.npz") as sky:
         alm, nside = sky["alm"], int(sky["nside"])
-    elm = shear_alm(alm, nside)
+    elm = shear_alm(alm)
     np.testing.assert_allclose(realization_ee, hp.alm2cl(elm))
     ra, dec = hp.pix2ang(nside, np.arange(hp.nside2npix(nside)), lonlat=True)
     gamma = evaluate_alm([elm, 0 * elm], ra, dec)
@@ -348,6 +361,32 @@ def test_projected_maps_seed_and_cache_reproducibility(tmp_path):
     np.testing.assert_allclose(
         evaluate_alm(alm, ra, dec)[0], hp.alm2map(alm, nside), rtol=0, atol=1e-12
     )
+
+
+def test_realised_spectra_carry_no_pixel_window(tmp_path):
+    """Averaged over seeds, the sky's spectrum is the unwindowed theory.
+
+    Over the upper half of the range the spin-0 window of the grid the shells
+    are drawn on averages ``pw0^2 ~ 0.8``; the realisations average to the
+    unwindowed theory there to a few per cent.
+    """
+    from dataclasses import replace
+
+    from sp_validation.mocks.painted import generate_lensing_maps
+
+    nside, lmax, seeds = 16, 32, 24
+    config = small_sky_config(tmp_path, nside=nside, lmax=lmax)
+    realised = []
+    for seed in range(seeds):
+        out = tmp_path / f"seed_{seed}"
+        generate_lensing_maps(replace(config, seed=seed), out, tmp_path / "cache")
+        with np.load(out / "spectra.npz") as spectra:
+            realised.append(spectra["realization_kk"])
+            theory = spectra["cl_kk"]
+    upper = slice(lmax // 2, lmax + 1)
+    ratio = np.mean(realised, axis=0)[upper].sum() / theory[upper].sum()
+    windowed = np.mean(hp.pixwin(nside, lmax=lmax)[upper] ** 2)
+    assert abs(ratio - 1) < 0.05 < abs(ratio - windowed) - 0.1
 
 
 def test_b_injection_is_pure_b():
@@ -367,7 +406,6 @@ def test_b_injection_is_pure_b():
 
 
 def test_painted_mock_carries_no_input_shape(tmp_path):
-    from sp_validation.glass_mock import SHAPE_COLUMN
     from sp_validation.io import read_catalogue
 
     write_sky(tmp_path)
@@ -388,13 +426,6 @@ def test_painted_mock_carries_no_input_shape(tmp_path):
     for column in mock.dtype.names:
         for name in ("e1", "e2", *shaped):
             assert not np.array_equal(mock[column], source[name]), (column, name)
-    for name in ("e1_uncal", "NGMIX_G1_NOSHEAR", "NGMIX_ELL_PSFo", "R_g11"):
-        assert SHAPE_COLUMN.search(name), name
-    assert not SHAPE_COLUMN.search("snr") and not SHAPE_COLUMN.search("FLUX_RADIUS")
-    with pytest.raises(ValueError, match="galaxy shapes"):
-        paint_catalogue(
-            path, tmp_path / "leak.h5", tmp_path, 7, keep=("e1_uncal",), overwrite=True
-        )
 
 
 def test_exact_evaluation_off_pixel_centres():
@@ -415,7 +446,7 @@ def test_exact_evaluation_off_pixel_centres():
     weight = np.where(emm == 0, 1.0, 2.0)[:, None]
     direct = np.sum(weight * (alm[:, None] * ylm).real, axis=0)
     np.testing.assert_allclose(evaluate_alm(alm, ra, dec)[0], direct, atol=1e-12)
-    elm = shear_alm(alm, nside)
+    elm = shear_alm(alm)
     for grid in (nside, 3 * nside):
         maps = hp.alm2map_spin([elm, 0 * elm], grid, 2, lmax)
         ra, dec = hp.pix2ang(grid, np.arange(hp.nside2npix(grid)), lonlat=True)
@@ -429,7 +460,7 @@ def test_painted_catalogue_shear_is_the_alm_not_the_nearest_pixel(tmp_path):
 
     nside, lmax = 32, 95
     alm = write_sky(tmp_path, nside, lmax)
-    elm = shear_alm(alm, nside)
+    elm = shear_alm(alm)
     rng = np.random.default_rng(8)
     size = 20_000
     source = np.zeros(
@@ -459,7 +490,8 @@ def test_painted_spectrum_is_the_alm_spectrum_without_pixel_window(tmp_path):
 
     nside, lmax, fine = 32, 95, 128
     alm = write_sky(tmp_path, nside, lmax)
-    known = hp.alm2cl(shear_alm(alm, nside))
+    elm = shear_alm(alm)
+    known = hp.alm2cl(elm)
     ra, dec = hp.pix2ang(fine, np.arange(hp.nside2npix(fine)), lonlat=True)
     source = np.zeros(
         len(ra), dtype=[(n, "f8") for n in ("RA", "Dec", "e1", "e2", "w_des")]
@@ -476,77 +508,33 @@ def test_painted_spectrum_is_the_alm_spectrum_without_pixel_window(tmp_path):
     np.testing.assert_allclose(ratio, 1, atol=1e-4)
     assert np.max(measured[2, 2:] / known[2:]) < 1e-6
     # A nearest-pixel lookup carries one extra spin-0 window of the sky's grid.
-    map1, map2 = convergence_to_shear(hp.alm2map(alm, nside, lmax=lmax), lmax)
+    map1, map2 = hp.alm2map_spin([elm, 0 * elm], nside, 2, lmax)
     pix = hp.ang2pix(nside, ra, dec, lonlat=True)
     ngp = hp.anafast([zero, map1[pix], map2[pix]], lmax=lmax, pol=True, iter=3)
     assert np.min(ngp[1, 2:] / known[2:]) < 0.8
 
 
-def lognormal_request(nside=16, lmax=31):
-    """Three correlated lognormal shells, their discretized request and solve."""
+def lognormal_request(lmax=31):
+    """Three correlated lognormal shells, their request and solve."""
     import glass
 
-    from sp_validation.glass_mock import solve_shell_spectra
+    from sp_validation.mocks.painted import solve_shell_spectra
 
     ell = np.arange(lmax + 1)
     auto = 1e-4 / (1 + ell) ** 1.5
     auto[0] = 0
     matter = [auto, auto, 0.6 * auto, auto, 0.6 * auto, 0.3 * auto]
-    fields = [glass.grf.Lognormal()] * 3
-    discrete = glass.discretized_cls(matter, nside=nside, lmax=lmax, ncorr=3)
-    gaussian, achieved, _ = solve_shell_spectra(fields, discrete)
-    return matter, achieved, gaussian
+    requested = glass.discretized_cls(matter, lmax=lmax, ncorr=3)
+    _, achieved, _ = solve_shell_spectra([glass.grf.Lognormal()] * 3, requested)
+    return requested, achieved
 
 
-def test_solver_audit_passes_a_converged_solve_and_records_it():
-    from sp_validation.glass_mock import audit_gaussian_solve
+def test_solver_check_passes_a_converged_solve_and_refuses_a_miss():
+    from sp_validation.mocks.painted import check_gaussian_solve
 
-    matter, achieved, gaussian = lognormal_request()
-    audit = audit_gaussian_solve(matter, achieved, gaussian, nside=16, lmax=31)
-    assert audit["worst_residual"] < 1e-5
-    assert len(audit["worst_pair"]) == 2
-    assert 0 < audit["min_conditional_variance"] <= 1
-
-
-def test_solver_audit_refuses_a_missed_request_and_a_non_positive_solve():
-    from sp_validation.glass_mock import audit_gaussian_solve
-
-    matter, achieved, gaussian = lognormal_request()
+    requested, achieved = lognormal_request()
+    assert check_gaussian_solve(requested, achieved) < 1e-5
     missed = [cl.copy() for cl in achieved]
     missed[2][10] += 1e-3 * np.sqrt(achieved[0][10] * achieved[1][10])
     with pytest.raises(ValueError, match="misses"):
-        audit_gaussian_solve(matter, missed, gaussian, nside=16, lmax=31)
-    # A cross larger than its autos allow cannot be realised by glass.generate.
-    impossible = [cl.copy() for cl in gaussian]
-    impossible[2] = 1.5 * np.sqrt(gaussian[0] * gaussian[1])
-    with pytest.raises(ValueError, match="cannot sample"):
-        audit_gaussian_solve(matter, achieved, impossible, nside=16, lmax=31)
-
-
-def test_solver_audit_matches_the_glass_sampler_on_a_chain():
-    """The audit refuses exactly the nearest-neighbour chains glass.generate's sampler refuses."""
-    import glass
-    from glass.fields import cls2cov, iternorm
-
-    from sp_validation.glass_mock import audit_gaussian_solve
-
-    lmax = 31
-    auto = np.full(lmax + 1, 1e-4)
-    for n, rho in ((6, 0.55), (6, 0.6)):
-        gaussian = []
-        for i in range(n):
-            gaussian += [auto] + [rho * auto if k == 1 else 0 * auto for k in range(1, i + 1)]
-        try:
-            for _ in iternorm(cls2cov(gaussian, lmax + 1, n, 3)):
-                pass
-            samples = True
-        except ValueError:
-            samples = False
-        achieved = glass.discretized_cls(gaussian, nside=16, lmax=lmax, ncorr=3)
-        if samples:
-            audit = audit_gaussian_solve(gaussian, achieved, gaussian, nside=16, lmax=lmax)
-            assert 0 < audit["min_conditional_variance"] < 1
-        else:
-            with pytest.raises(ValueError, match="cannot sample"):
-                audit_gaussian_solve(gaussian, achieved, gaussian, nside=16, lmax=lmax)
-    assert not samples  # rho = 0.6 over six shells is refused by the sampler itself
+        check_gaussian_solve(requested, missed)

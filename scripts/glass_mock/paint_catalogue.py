@@ -1,17 +1,17 @@
-"""Generate projected GLASS maps, then paint calibrated catalogue shapes.
+"""Generate projected GLASS skies, then paint calibrated catalogue shapes.
 
 Run ``python scripts/glass_mock/paint_catalogue.py {maps,paint} --help``.
-The sky is a convergence alm, evaluated exactly at each galaxy;
-maps use HEALPix components; catalogue e2 is conjugated for cosmo_val's
-``pol_factor=-1``. Only mock catalogues may be analysed without a blind.
+The sky is a convergence alm, evaluated at each galaxy by a non-uniform SHT.
+Maps use HEALPix components; catalogue e2 is ``--pol-factor`` times HEALPix
+gamma2 (``-1`` for UNIONS, as cosmo_val reads it).
 """
 
 import argparse
 import json
 
-from sp_validation.glass_mock import (
+from sp_validation.mocks.glass import GlassMockConfig
+from sp_validation.mocks.painted import (
     BLOCK_SIZE,
-    GlassMockConfig,
     b_mode_cl,
     generate_lensing_maps,
     paint_catalogue,
@@ -51,7 +51,14 @@ def main():
         "--shear",
         choices=["gamma", "reduced"],
         default="gamma",
-        help="Default gamma gives a pure-E known-answer sky",
+        help="Default gamma gives a pure-E sky",
+    )
+    paint.add_argument(
+        "--pol-factor",
+        type=int,
+        choices=[1, -1],
+        default=-1,
+        help="Catalogue e2 = pol_factor * HEALPix gamma2; -1 for UNIONS",
     )
     for key, default in (
         ("ra", "RA"),
@@ -117,7 +124,7 @@ def main():
     else:
         import healpy as hp
 
-        kappa_alm, _ = read_sky(args.maps)
+        kappa_alm = read_sky(args.maps)
         b_cl = b_mode_cl(hp.Alm.getlmax(len(kappa_alm)), args.b_amplitude, args.b_cl)
         del kappa_alm
         result = paint_catalogue(
@@ -140,6 +147,7 @@ def main():
             nthreads=args.threads,
             overwrite=args.overwrite,
             shear=args.shear,
+            pol_factor=args.pol_factor,
         )
     print(json.dumps(result, indent=2))
 

@@ -125,10 +125,10 @@ docs = [
     # 6.0.3 is a broken wheel on PyPI (dist-info only, no python module)
     "sphinxawesome-theme>=5.3,!=6.0.3"
 ]
-# GLASS mock generation (sp_validation.glass_mock). Kept optional: the core
+# GLASS mock generation (sp_validation.mocks.glass). Kept optional: the core
 # library and its import guard resolve without GLASS (the production container
 # ships it via the ``glass`` extra). glass reads its cosmology through the
-# Cosmology API (``comoving_distance``, ``H_over_H0``, ...); ``glass_mock``
+# Cosmology API (``comoving_distance``, ``H_over_H0``, ...); ``mocks.glass``
 # supplies it from CAMB via ``cosmology.compat.camb``. ``matter_cls`` lives in the
 # separate ``glass.ext.camb`` package (absent from glass core >=2024.2), so it is
 # pinned explicitly.

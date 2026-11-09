@@ -1,6 +1,7 @@
 """Snakemake entry point for projected, catalogue-independent mock maps."""
 
-from sp_validation.glass_mock import GlassMockConfig, generate_lensing_maps
+from sp_validation.mocks.glass import GlassMockConfig
+from sp_validation.mocks.painted import generate_lensing_maps
 
 
 def main():

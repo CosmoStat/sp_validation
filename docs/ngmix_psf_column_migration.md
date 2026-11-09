@@ -177,7 +177,7 @@ dropping the argument here is what keeps the container green once #27 lands.)
   `config/calibration/mask_v1.X.*.yaml` ×10 (`NGMIX_ELL_PSFo_NOSHEAR_0/_1`).
 - **rho/τ + covariance** — `src/sp_validation/rho_tau.py`,
   `src/sp_validation/cosmo_val/psf_systematics.py`,
-  `src/sp_validation/glass_mock.py`.
+  `src/sp_validation/mocks/glass.py`.
 - **Scripts** — `scripts/calibration/{extract_info,params,calibrate_comprehensive_cat}.py`,
   `scripts/apply_alpha_snr_size_bin.py`, `scripts/examples/demo_*.py`.
 - **Papers** — `papers/catalog/2025_12_*`, `papers/catalog/{hist_mag,2025_09_19_alpha_leakage_correction}.py`,
