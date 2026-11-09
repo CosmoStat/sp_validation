@@ -202,6 +202,10 @@ def configure(workflow_config):
     global CATALOG_CONFIG, DEFAULT_MASK_SUFFIX, FIDUCIAL, PLANCK18
 
     inject_checkout_pythonpath(workflow_config)
+    # Jobs run with --cleanenv; hand them the same root overrides the host used.
+    for name, value in list(os.environ.items()):
+        if name.startswith("SPV_ROOT_"):
+            os.environ[f"APPTAINERENV_{name}"] = value
     warn_if_image_stale()
     CATALOG_CONFIG = _data_roots.load_yaml(CAT_CONFIG)
     FIDUCIAL = workflow_config["fiducial"]
