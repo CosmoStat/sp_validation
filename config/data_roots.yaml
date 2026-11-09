@@ -1,0 +1,15 @@
+# Named data roots. A config writes `${name}/relative/path`; each root lists the
+# directory that holds it on each machine, and the first that exists is used.
+# A copy elsewhere is reached with SPV_ROOT_<NAME>=<dir>; a root that resolves
+# nowhere stays `${name}` and fails when opened.
+# The same relative layout must hold under every directory of a root.
+
+# Provisional v2 SOM n(z) products (nz_v2_tomo.txt, tom_bin_full.parquet, ...).
+nz_v2:
+  - /project/rrg-kyi/cdaley/unions/data/nz-v2-full-products                 # fir
+  - /project/def-mjhudson/cdaley/tomo-nz-v2-full/products                    # nibi
+  - /n17data/cdaley/unions/analyses/shear_tomographic/nz_v2_full/products    # candide
+
+# Blinded v2 tomographic cosmo_val catalogue.
+v2_tomo:
+  - /project/6001537/cdaley/cosmo-val-v2-tomo/catalogue                      # nibi
