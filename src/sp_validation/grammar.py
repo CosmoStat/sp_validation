@@ -320,6 +320,8 @@ BLOCK_BYTES = 256 * 1024**2
 
 def _read_window(table, name, start, stop):
     """Read rows ``start:stop`` of column ``name``, and only those."""
+    if hasattr(table, "read_window"):
+        return table.read_window(name, start, stop)
     if isinstance(table, h5py.Dataset):
         return table.fields(name)[start:stop]
     return table[name][start:stop]
@@ -388,8 +390,8 @@ def _row_key(rows):
 class V2View:
     """Lazy v2-grammar view of one table, or of row-aligned tables joined.
 
-    Wraps numpy structured arrays, FITS_recs or h5py Datasets without reading
-    them. ``view[name]`` returns one column as an array (computed on access for
+    Wraps numpy structured arrays, FITS_recs, h5py Datasets or ParquetTables
+    without reading them. ``view[name]`` returns one column as an array (computed on access for
     derived columns); a list of names returns a structured array of those
     columns; ``view[()]``, ``view[...]`` and any other row key (slice, boolean
     mask, index array) select rows and return a view over them.
@@ -480,7 +482,7 @@ class V2View:
         """Materialise the presented columns as a numpy structured array.
 
         Over h5py Datasets, each dataset is read once, for all the columns
-        requested of it.
+        requested of it; over a ParquetTable, each file is.
         """
         names = self._names if names is None else list(names)
         missing = [name for name in names if name not in self._names]
@@ -500,11 +502,19 @@ class V2View:
                     table = _take(base, self._rows, list(fields[id(base)]))
                     taken.update((f, table[f]) for f in table.dtype.names)
             read = taken.__getitem__
-        else:
-            read = self._read
         out = np.empty(len(self), dtype=[(n, self.dtype[n]) for n in names])
+        into = {}
+        if not self._on_disk:
+            into = {
+                source: out[name]
+                for name, (rule, source) in sources.items()
+                if rule is None or rule.kind == "rename"
+            }
+            read = self._read_many([source for _, source in sources.values()], into).get
         for name, (rule, source) in sources.items():
             column = read(source)
+            if source in into and column is into[source]:
+                continue
             out[name] = column if rule is None else rule.apply(column)
         return out
 
@@ -543,19 +553,47 @@ class V2View:
             local = np.arange(local.start, local.stop, local.step, dtype=np.intp)
         return rows[local]
 
-    def _read(self, name):
-        base = self._owner[name]
+    def _window(self):
+        """Return (lo, hi, pick): this view's rows are ``pick(base[lo:hi])``."""
         rows = self._rows
         if rows is None:
-            return base[name]
+            return 0, self._n_base, lambda window: window
         if len(rows) == 0:
-            return _read_window(base, name, 0, 0)
+            return 0, 0, lambda window: window
         if isinstance(rows, range):
             lo, hi = min(rows[0], rows[-1]), max(rows[0], rows[-1]) + 1
-            window = _read_window(base, name, lo, hi)
-            return window[rows.start - lo :: rows.step][: len(rows)]
+            return lo, hi, lambda w: w[rows.start - lo :: rows.step][: len(rows)]
         lo, hi = int(rows.min()), int(rows.max()) + 1
-        return _read_window(base, name, lo, hi)[rows - lo]
+        return lo, hi, lambda window: window[rows - lo]
+
+    def _read(self, name):
+        base = self._owner[name]
+        if self._rows is None:
+            return base[name]
+        lo, hi, pick = self._window()
+        return pick(_read_window(base, name, lo, hi))
+
+    def _read_many(self, names, into=None):
+        """Return {name: column}, reading the columns of a base that has
+        ``read_columns`` (a ``ParquetTable``) in one pass, and the rest
+        one by one. Over all rows, those columns are read straight into the
+        arrays ``into`` holds for them, which are returned."""
+        lo, hi, pick = self._window()
+        into = into if self._rows is None else {}
+        grouped = {}
+        for name in dict.fromkeys(names):
+            base = self._owner[name]
+            if hasattr(base, "read_columns"):
+                grouped.setdefault(id(base), (base, []))[1].append(name)
+        out = {}
+        for base, group in grouped.values():
+            targets = {name: into[name] for name in group if name in into}
+            columns = base.read_columns(group, lo, hi, out=targets or None)
+            out.update((name, pick(column)) for name, column in columns.items())
+        for name in names:
+            if name not in out:
+                out[name] = self._read(name)
+        return out
 
     def _column(self, name):
         if name not in self._names:
@@ -582,7 +620,8 @@ def adapt(table, *tables, column_map=None):
     ``V2View`` given no ``column_map``; otherwise the result is a ``V2View``.
     Each table is anything whose ``dtype.names`` lists its columns and whose
     ``table[name]`` reads one: a numpy structured array, FITS_rec, h5py
-    Dataset or ``V2View``. Joined tables must have equal lengths and disjoint
+    Dataset, ``V2View`` or ``sp_validation.io.ParquetTable`` (whose
+    ``read_window`` reads a row range of one column). Joined tables must have equal lengths and disjoint
     column names. ``column_map`` (``{v2 name: name in the table}``, see the
     module docstring) renames a foreign convention's columns; over a
     ``V2View`` it renames the columns that view presents.
@@ -601,7 +640,7 @@ def materialise(table, names=None):
     ``names`` restricts the output to those v2-grammar columns.
     """
     view = adapt(table)
-    if isinstance(view, V2View):
+    if hasattr(view, "to_structured"):
         return view.to_structured(names)
     view = view[()] if isinstance(view, h5py.Dataset) else view
     if names is None:

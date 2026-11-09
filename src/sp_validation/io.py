@@ -13,9 +13,11 @@
 
 import os
 import re
+from concurrent.futures import ThreadPoolExecutor
 
 import h5py
 import numpy as np
+import pyarrow.parquet as pq
 import tqdm
 from astropy.io import fits
 
@@ -134,7 +136,7 @@ def read_binned_quantity(filename):
 # -- catalogues ---------------------------------------------------------------
 #
 # A catalogue is one table of objects. How its rows are stored (the container)
-# is detected here from the file's contents; which names its columns carry is
+# is detected here from the path's contents; which names its columns carry is
 # the column grammar's business (``sp_validation.grammar``). Every table this
 # module hands out is presented through ``grammar.adapt``, which maps ShapePipe
 # v1 names to v2 and passes any other naming convention through untouched,
@@ -146,10 +148,11 @@ N_UNITS_ATTRS = {"n_tiles": "tile", "n_exposures": "exposure"}
 
 
 class Catalogue:
-    """An open catalogue file, presented as row chunks in the v2 grammar.
+    """An open catalogue, presented as row chunks in the v2 grammar.
 
-    The container is detected from the file contents (``h5py.is_hdf5``), not
-    from its extension. Supported layouts:
+    The container is detected from the path's contents (a directory holding
+    ``hats.properties``, or ``h5py.is_hdf5``), not from its extension.
+    Supported layouts:
 
     - FITS: one table HDU, ``hdu`` or by default the first table HDU;
     - HDF5 comprehensive catalogue: a root ``data`` dataset, joined
@@ -158,16 +161,23 @@ class Catalogue:
     - HDF5 group of per-unit row chunks (one dataset per tile or exposure,
       as ShapePipe writes campaign galaxy and star catalogues), found by
       ``find_dataset_group``, concatenated in dataset-name order, and
-      checked against a declared ``n_tiles`` or ``n_exposures`` count.
+      checked against a declared ``n_tiles`` or ``n_exposures`` count;
+    - HATS catalogue directory: one chunk per HEALPix partition (named by
+      its path, ``"Norder=5/Npix=1151"``), in ``partition_info.csv`` order,
+      each a ``ParquetTable``; ``whole`` spans them all. Rows come in sky
+      order, not the tile order of the HDF5 the catalogue was built from;
+      a ``_source_row`` column, where the builder wrote one, maps them back.
 
-    Nothing is read on opening: ``chunks`` maps each chunk name to a lazy
-    table. Use as a context manager, or ``close`` when done; tables read into
-    memory stay valid after closing.
+    Nothing but metadata is read on opening: ``chunks`` maps each chunk name
+    to a lazy table, and ``whole`` is one lazy table over the catalogue, or
+    ``None`` for HDF5 row chunks, which have no single on-disk table. Use as
+    a context manager, or ``close`` when done; tables read into memory stay
+    valid after closing.
 
     Parameters
     ----------
     path : str or os.PathLike
-        catalogue file
+        catalogue file, or HATS catalogue directory
     hdu : int, optional
         FITS HDU to read; ignored for HDF5. Default is ``None``, the first
         table HDU
@@ -181,8 +191,12 @@ class Catalogue:
         self.path = os.fspath(path)
         self.column_map = column_map
         self._file = None
-        if h5py.is_hdf5(self.path):
-            self.hdu = None
+        self.hdu = None
+        whole = None
+        if is_hats(self.path):
+            whole, self._parts = _hats_parts(self.path)
+            self.chunked = True
+        elif h5py.is_hdf5(self.path):
             self._file = h5py.File(self.path, "r")
             self._parts, self.chunked = _hdf5_parts(self._file, self.path)
         else:
@@ -194,6 +208,12 @@ class Catalogue:
             key: grammar.adapt(*parts, column_map=column_map)
             for key, parts in self._parts.items()
         }
+        if whole is not None:
+            self.whole = grammar.adapt(whole, column_map=column_map)
+        elif len(self.chunks) == 1:
+            self.whole = next(iter(self.chunks.values()))
+        else:
+            self.whole = None
 
     def __enter__(self):
         return self
@@ -213,28 +233,29 @@ class Catalogue:
     def dtype(self, columns=None):
         """Return the structured dtype ``read(columns)`` produces.
 
-        Each column's dtype is promoted across every chunk (``group_dtype``).
+        Each column's dtype is promoted across every chunk (``group_dtype``);
+        a catalogue with one lazy table (``whole``) has one schema.
 
         Raises
         ------
         KeyError
             if a chunk lacks one of ``columns``, naming the chunk
         """
+        tables = self.chunks if self.whole is None else {"catalogue": self.whole}
         if columns is not None:
-            for key, table in self.chunks.items():
+            for key, table in tables.items():
                 _check_columns(table.dtype, columns, self.path, key)
-        return group_dtype(self.chunks, columns)
+        return group_dtype(tables, columns)
 
     def table(self):
-        """Return the catalogue as one table, lazily when it is not chunked.
+        """Return the catalogue as one table, lazily where one exists.
 
-        An unchunked catalogue is returned as its lazy table (a FITS_rec, an
-        h5py Dataset or a ``grammar.V2View``), valid while the file is open;
-        a chunked one is read into memory (``read``).
+        ``whole`` (a FITS_rec, an h5py Dataset, a ``ParquetTable`` or a
+        ``grammar.V2View``) is returned as is, valid while the file is open
+        (a ``ParquetTable`` always); HDF5 row chunks are read into memory
+        (``read``).
         """
-        if len(self.chunks) == 1:
-            return next(iter(self.chunks.values()))
-        return self.read()
+        return self.read() if self.whole is None else self.whole
 
     def iter_chunks(self, columns=None, verbose=False):
         """Yield the row chunks one at a time, in memory, restricted to ``columns``.
@@ -283,8 +304,8 @@ class Catalogue:
         dtype_out = self.dtype(columns)
         keys = list(self.chunks)
         add_key = key_column is not None and self.chunked
-        if not add_key and len(keys) == 1:
-            return grammar.materialise(self.chunks[keys[0]], columns)
+        if not add_key and self.whole is not None:
+            return grammar.materialise(self.whole, columns)
 
         if add_key:
             key_values = _chunk_numbers(keys, key_column, dtype_out, self.path)
@@ -316,10 +337,11 @@ class Catalogue:
     def _load(self, key):
         """Return chunk ``key`` in memory, or lazily when the file is unchunked.
 
-        A chunk (one tile or exposure) is small, so it is read whole, which is
-        faster than column by column; an unchunked table is read per column.
+        An HDF5 chunk (one tile or exposure) is small, so it is read whole,
+        which is faster than column by column; any other table (a HATS
+        partition included) is read per column.
         """
-        if not self.chunked:
+        if not self.chunked or self._file is None:
             return self.chunks[key]
         parts = (part[()] for part in self._parts[key])
         return grammar.adapt(*parts, column_map=self.column_map)
@@ -347,22 +369,23 @@ def read_catalogue(
 def open_catalogue(path, hdu=None, column_map=None):
     """Return a catalogue as one table, reading no data up front.
 
-    A FITS table is memory-mapped and an unchunked HDF5 table read column by
-    column on access (its file stays open while the table is referenced), so
-    a consumer pays only for the columns it indexes, derived v2 columns
-    included. A chunked HDF5 catalogue has no single on-disk table and is
-    read into memory. Parameters as for ``Catalogue``.
+    A FITS table is memory-mapped, and an unchunked HDF5 table or a HATS
+    catalogue read column by column on access (an HDF5 file stays open while
+    the table is referenced), so a consumer pays only for the columns it
+    indexes, derived v2 columns included. HDF5 row chunks have no single
+    on-disk table and are read into memory. Parameters as for ``Catalogue``.
 
     Returns
     -------
-    astropy.io.fits.FITS_rec, h5py.Dataset, grammar.V2View or numpy.ndarray
+    astropy.io.fits.FITS_rec, h5py.Dataset, ParquetTable, grammar.V2View or
+    numpy.ndarray
         catalogue data in the v2 grammar
     """
     catalogue = Catalogue(path, hdu=hdu, column_map=column_map)
-    if catalogue.chunked:
+    if catalogue.whole is None:
         with catalogue:
             return catalogue.read()
-    return catalogue.table()
+    return catalogue.whole
 
 
 def open_entry(entry):
@@ -374,6 +397,216 @@ def open_entry(entry):
     return open_catalogue(
         entry["path"], hdu=entry.get("hdu"), column_map=entry.get("column_map")
     )
+
+
+#: Upper bound on the threads reading parquet files at once.
+MAX_READ_THREADS = 32
+
+
+def _read_threads():
+    return min(MAX_READ_THREADS, len(os.sched_getaffinity(0)))
+
+
+def _properties(path):
+    """Return the ``key=value`` lines of a HATS properties file as a dict."""
+    with open(path) as handle:
+        return dict(
+            line.strip().split("=", 1)
+            for line in handle
+            if "=" in line and not line.startswith("#")
+        )
+
+
+def hats_catalogue_dir(path):
+    """Return the HATS catalogue directory at ``path``, or ``None``.
+
+    ``path`` is a catalogue (holding ``hats.properties``) or a collection
+    (holding ``collection.properties``, as ``lsdb`` writes by default), whose
+    primary catalogue is returned.
+    """
+    path = os.fspath(path)
+    collection = os.path.join(path, "collection.properties")
+    if os.path.isfile(collection):
+        path = os.path.join(path, _properties(collection)["hats_primary_table_url"])
+    return path if os.path.isfile(os.path.join(path, "hats.properties")) else None
+
+
+def is_hats(path):
+    """Return whether ``path`` is a HATS catalogue or collection directory."""
+    return hats_catalogue_dir(path) is not None
+
+
+def _hats_parts(path):
+    """Return (whole-catalogue ParquetTable, {partition: (its ParquetTable,)})."""
+    path = hats_catalogue_dir(path)
+    properties = _properties(os.path.join(path, "hats.properties"))
+    suffix = properties.get("hats_npix_suffix", ".parquet")
+    if suffix != ".parquet":
+        raise ValueError(
+            f"HATS catalogue {path}: partitions with suffix {suffix!r} are not"
+            + " supported, only single .parquet files"
+        )
+    pixels = np.loadtxt(
+        os.path.join(path, "partition_info.csv"),
+        delimiter=",",
+        skiprows=1,
+        dtype=np.int64,
+        ndmin=2,
+    )
+    keys, files = [], []
+    for order, pixel in pixels:
+        key = f"Norder={order}/Npix={pixel}"
+        keys.append(key)
+        files.append(
+            os.path.join(
+                path,
+                "dataset",
+                f"Norder={order}",
+                f"Dir={pixel // 10000 * 10000}",
+                f"Npix={pixel}.parquet",
+            )
+        )
+    common = os.path.join(path, "dataset", "_common_metadata")
+    schema = pq.read_schema(common if os.path.isfile(common) else files[0])
+    with ThreadPoolExecutor(_read_threads()) as pool:
+        parts = list(
+            pool.map(lambda file: _ParquetFile(file, pq.read_metadata(file)), files)
+        )
+    whole = ParquetTable(parts, schema)
+    return whole, {
+        key: (ParquetTable([part], schema),)
+        for key, part in zip(keys, parts, strict=True)
+    }
+
+
+class _ParquetFile:
+    """One parquet file, read by row windows of some columns.
+
+    Only the row-group sizes are kept from the footer: a parsed footer holds
+    every column's statistics (~2 MB each on run1-snap3-hats, GBs over a
+    catalogue), so each read parses it afresh, once for all its columns.
+    """
+
+    def __init__(self, path, footer):
+        self.path = path
+        self.n_rows = footer.num_rows
+        sizes = [footer.row_group(i).num_rows for i in range(footer.num_row_groups)]
+        self.group_starts = np.concatenate([[0], np.cumsum(sizes)])
+
+    def read(self, names, start, stop):
+        """Return {name: rows ``start:stop``}, reading only their row groups."""
+        first = int(np.searchsorted(self.group_starts, start, side="right")) - 1
+        last = int(np.searchsorted(self.group_starts, stop, side="left"))
+        table = pq.ParquetFile(self.path).read_row_groups(
+            range(first, last), columns=list(names), use_threads=False
+        )
+        table = table.slice(start - self.group_starts[first], stop - start)
+        out = {}
+        for name in names:
+            column = table.column(name)
+            if column.null_count and not np.issubdtype(
+                np.dtype(column.type.to_pandas_dtype()), np.floating
+            ):
+                raise ValueError(
+                    f"Column {name!r} of {self.path} holds nulls, which a"
+                    + f" {column.type} numpy column cannot represent"
+                )
+            out[name] = column.to_numpy()
+        return out
+
+
+class ParquetTable:
+    """A lazy table over parquet files read in sequence (a HATS catalogue).
+
+    Quacks like the other tables ``grammar.adapt`` presents: ``dtype`` (from
+    the parquet schema, without reading rows), ``len``, ``table[name]`` reads
+    one column, a list of names reads a structured array, and any other row
+    key (slice, boolean mask, index array) returns a lazy ``grammar.V2View``
+    over those rows. ``read_columns`` reads only the files and row groups a
+    row range touches, so a slice of a few rows costs a few row groups, and
+    reads several columns for the price of one footer per file. Files are
+    read in parallel threads (at most ``MAX_READ_THREADS``). Null values read
+    as NaN in floating columns and raise in any other.
+    """
+
+    def __init__(self, files, schema):
+        self._files = list(files)
+        self._starts = np.concatenate([[0], np.cumsum([f.n_rows for f in files])])
+        self.dtype = np.dtype(
+            [(field.name, np.dtype(field.type.to_pandas_dtype())) for field in schema]
+        )
+
+    @property
+    def names(self):
+        return self.dtype.names
+
+    @property
+    def shape(self):
+        return (len(self),)
+
+    def __len__(self):
+        return int(self._starts[-1])
+
+    def __repr__(self):
+        return (
+            f"ParquetTable({len(self)} rows, {len(self.dtype.names)} columns,"
+            + f" {len(self._files)} files)"
+        )
+
+    def __getitem__(self, key):
+        if isinstance(key, str):
+            return self.read_window(key, 0, len(self))
+        if isinstance(key, list) and key and all(isinstance(k, str) for k in key):
+            return self.to_structured(key)
+        return grammar.V2View((self,))[key]
+
+    def __array__(self, dtype=None, copy=None):
+        out = self.to_structured()
+        return out if dtype is None else out.astype(dtype)
+
+    def to_structured(self, names=None):
+        """Read ``names`` (default all) into a numpy structured array."""
+        names = self.dtype.names if names is None else list(names)
+        out = np.empty(len(self), dtype=[(name, self.dtype[name]) for name in names])
+        self.read_columns(names, 0, len(self), out={name: out[name] for name in names})
+        return out
+
+    def read_window(self, name, start, stop):
+        """Return rows ``start:stop`` of column ``name``, and only those."""
+        return self.read_columns([name], start, stop)[name]
+
+    def read_columns(self, names, start, stop, out=None):
+        """Return {name: rows ``start:stop``} for each of ``names``.
+
+        ``out``, {name: array of ``stop - start`` rows} for some of ``names``,
+        receives their rows in place (e.g. the fields of a structured array).
+        """
+        missing = [name for name in names if name not in self.dtype.names]
+        if missing:
+            raise KeyError(f"columns {missing} not in catalogue")
+        start, stop, _ = slice(start, stop).indices(len(self))
+        size = max(stop - start, 0)
+        out = dict(out or {})
+        for name in names:
+            if name not in out:
+                out[name] = np.empty(size, dtype=self.dtype[name])
+        jobs = []
+        for file, lo, hi in zip(self._files, self._starts, self._starts[1:]):
+            a, b = max(start, lo), min(stop, hi)
+            if a < b:
+                jobs.append((file, a - lo, b - lo, a - start))
+
+        def read(job):
+            file, a, b, at = job
+            for name, values in file.read(names, a, b).items():
+                out[name][at : at + b - a] = values
+
+        if len(jobs) == 1:
+            read(jobs[0])
+        elif jobs:
+            with ThreadPoolExecutor(_read_threads()) as pool:
+                list(pool.map(read, jobs))
+        return out
 
 
 def _first_table_hdu(hdus, path):
