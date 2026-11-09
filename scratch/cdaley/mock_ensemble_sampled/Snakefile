@@ -1,0 +1,76 @@
+"""Sampled GLASS ensemble on Fir: generate, measure as the data were, index.
+
+One local Snakemake inside each Slurm allocation (run.sh). The statistics come
+from this checkout's workflow, unchanged; the catalogues come from Sacha's
+`make_glass_sim.py` on a develop checkout (config['sampled']).
+"""
+from pathlib import Path
+
+HERE = Path(workflow.basedir)
+REPO = HERE.parents[2]
+ROOT = Path('/project/rrg-kyi/cdaley/unions/analyses/mock-ensemble-sampled').resolve()
+GEN = Path(config['sampled']['generator_checkout'])
+
+module analysis:
+    snakefile: str(REPO / 'workflow/Snakefile')
+    config: config
+use rule * from analysis
+use rule xi from analysis with:
+    benchmark: str(ROOT / 'benchmarks/xi_{version}_{min_sep}_{max_sep}_{nbins}_{npatch}{tomo_suffix}.tsv')
+use rule pseudo_cl from analysis with:
+    benchmark: str(ROOT / 'benchmarks/pseudo_cl_{version}_{binning}_{nbins}{tomo_suffix}.tsv')
+
+container: config['container']
+
+wildcard_constraints:
+    seed=r'\d{5}',
+
+
+rule sampled_sky:
+    """Sacha's generator, unchanged: lognormal GLASS sky, galaxies sampled in the footprint.
+
+    sky.py only caches the seed-independent Gaussian-spectrum solve."""
+    benchmark: str(ROOT / 'benchmarks/sky_{seed}.tsv')
+    input:
+        config['sampled']['glass_config'],
+    output:
+        temp(str(ROOT / 'gen/results/unions_v2_tomo_glass_sim_{seed}_4096.fits')),
+    log:
+        str(ROOT / 'logs/sky_{seed}.log'),
+    params:
+        rng_seed=lambda w: config['sampled']['seed_offset'] + int(w.seed),
+        number=lambda w: int(w.seed),
+    threads: 48
+    resources:
+        mem_mb=200000,
+    shell:
+        'cd {GEN} && env PYTHONPATH={GEN}/src OMP_NUM_THREADS={threads} '
+        'python {HERE}/sky.py {ROOT}/gen/results/gls_4096_limber_True.npy '
+        'scripts/glass_mock/make_glass_sim.py -c {input} '
+        '-s {params.rng_seed} -N {params.number} > {log} 2>&1'
+
+
+rule sampled_catalogue:
+    """Rename to the data entry's columns; unit weights, zero PSF."""
+    input:
+        rules.sampled_sky.output,
+    output:
+        str(ROOT / 'catalogues/MOCK_{seed}.fits'),
+    resources:
+        mem_mb=40000,
+    script:
+        'catalogue.py'
+
+
+rule sampled_complete:
+    input:
+        summary=str(ROOT / 'cosmo_val/MOCK_{seed}_bmode_summary_tomo.json'),
+    output:
+        str(ROOT / 'seeds/MOCK_{seed}.json'),
+    run:
+        import datetime, json
+        version = f'MOCK_{wildcards.seed}'
+        products = sorted(p.name for p in (ROOT / 'cosmo_val').iterdir() if version in p.name)
+        Path(output[0]).write_text(json.dumps(dict(
+            seed=int(wildcards.seed), products=products,
+            time_utc=datetime.datetime.now(datetime.timezone.utc).isoformat()), indent=2))
