@@ -60,6 +60,9 @@ resolve_image = _container.resolve_image
 # Each catalogue's declared blind (``blinding.blind_of``).
 _blinding = _load_checkout_module("blinding")
 
+# Named data roots in configs (``data_roots.load_yaml``); PyYAML comes with Snakemake.
+_data_roots = _load_checkout_module("data_roots")
+
 # Every job inherits this launch's environment (the slurm executor submits with
 # --export=ALL), and the Snakemake each job step starts keeps its source cache
 # under XDG_CACHE_HOME, which a login shell may point at node-local storage.
@@ -197,11 +200,10 @@ def warn_if_image_stale():
 def configure(workflow_config):
     """Install config-derived values after Snakemake has loaded configfiles."""
     global CATALOG_CONFIG, DEFAULT_MASK_SUFFIX, FIDUCIAL, PLANCK18
-    from snakemake.common.configfile import load_configfile
 
     inject_checkout_pythonpath(workflow_config)
     warn_if_image_stale()
-    CATALOG_CONFIG = load_configfile(CAT_CONFIG)
+    CATALOG_CONFIG = _data_roots.load_yaml(CAT_CONFIG)
     FIDUCIAL = workflow_config["fiducial"]
     DEFAULT_MASK_SUFFIX = (
         "_masked" if workflow_config["covariance"].get("default_masked", False) else ""
