@@ -337,14 +337,14 @@ def _cl(params, s, rows):
 
 
 def main(argv=None):
-    import yaml
+    from sp_validation.data_roots import load_yaml
 
     parser = argparse.ArgumentParser(prog="python -m sp_validation.blinding")
     parser.add_argument("command", choices=("init",))
     parser.add_argument("blind")
     parser.add_argument("--cat-config", default=str(REPO_CAT_CONFIG))
     a = parser.parse_args(argv)
-    init(a.blind, yaml.safe_load(Path(a.cat_config).read_text()))
+    init(a.blind, load_yaml(a.cat_config))
     return 0
 
 

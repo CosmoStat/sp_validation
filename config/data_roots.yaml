@@ -1,0 +1,22 @@
+# Named data roots. A config writes `${name}/relative/path`; each root lists the
+# directory that holds it on each machine, and the first that exists is used.
+# A copy elsewhere is reached with SPV_ROOT_<NAME>=<dir>; a root that resolves
+# nowhere stays `${name}` and fails when opened.
+# The same relative layout must hold under every directory of a root.
+
+# Provisional v2 bound-9 SOM n(z) products (config/calibration/nz/v2_bound9.yaml).
+nz_v2:
+  - /project/rrg-kyi/cdaley/unions/data/nz-v2-full-products    # fir
+  - /project/def-mjhudson/cdaley/tomo-nz-v2-full/products       # nibi
+
+# Inputs and working area of the v2 bound-9 n(z) calibration.
+nz_v2_work:
+  - /n17data/cdaley/unions/analyses/shear_tomographic/nz_v2_full  # candide
+
+# DR6 PhotoPipe tiles (UNIONS.<tile>_*ugriz_photoz_ext.cat).
+photopipe_dr6:
+  - /n17data/UNIONS/WL/photometry/UNIONS_DR6                    # candide
+
+# Blinded v2 tomographic cosmo_val catalogue.
+v2_tomo:
+  - /project/6001537/cdaley/cosmo-val-v2-tomo/catalogue          # nibi

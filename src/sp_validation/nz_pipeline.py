@@ -10,6 +10,7 @@ import pyarrow.parquet as pq
 import yaml
 
 from . import nz_calibration as nz
+from .data_roots import load_yaml
 
 
 def rebuild_model(config, workers):
@@ -175,7 +176,7 @@ def main(argv=None):
     parser.add_argument("--rebuild-model", action="store_true")
     parser.add_argument("--figures", metavar="DIRECTORY")
     args = parser.parse_args(argv)
-    config = yaml.safe_load(Path(args.recipe).read_text())
+    config = load_yaml(args.recipe)
     output = Path(args.output or config["output"])
     run(config, output, workers=args.workers, rebuild=args.rebuild_model)
     if args.figures:
