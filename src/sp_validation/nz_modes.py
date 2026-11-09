@@ -136,29 +136,30 @@ def fisher_metric(fisher):
     return metric
 
 
-def observable_metric(theory, cov, step=0.05):
+def observable_metric(theory, cov, step=0.1):
     """Metric of a data vector: Jᵀ C⁻¹ J along each ensemble direction.
 
     ``theory(nz)`` maps an ``(n_bin, n_z)`` n(z) to the data vector, and
-    ``cov`` is its covariance. J is a central difference of ``step`` times
-    each direction, which is one standard deviation of the ensemble.
+    ``cov`` is its covariance. J is a central difference along each direction,
+    scaled so the perturbation peaks at ``step`` times the peak of the mean
+    n(z). A fixed amplitude keeps every direction in the linear regime and
+    well above the theory's numerical noise, however small its variance.
     """
     cov = np.asarray(cov)
 
     def metric(mean, directions):
-        jac = np.stack(
-            [
-                (theory(mean + step * d) - theory(mean - step * d)) / (2 * step)
-                for d in directions
-            ],
-            axis=1,
-        )
+        peak = np.abs(mean).max()
+        columns = []
+        for d in directions:
+            h = step * peak / np.abs(d).max()
+            columns.append((theory(mean + h * d) - theory(mean - h * d)) / (2 * h))
+        jac = np.stack(columns, axis=1)
         return jac.T @ np.linalg.solve(cov, jac)
 
     return metric
 
 
-def sacc_metric(s, params=None, step=0.05):
+def sacc_metric(s, params=None, step=0.1):
     """Metric of a SACC data vector under :func:`sp_validation.blinding.shear`.
 
     Uses every data point in ``s`` (cut it to the statistic and scales the
@@ -266,10 +267,23 @@ def main(argv=None):
     )
     p.add_argument("-o", "--output", required=True, help="modes .npz")
     p.add_argument("--statistic", choices=sorted(SHEAR_TYPES), default="xi")
-    p.add_argument("--scales", type=float, nargs=2, metavar=("MIN", "MAX"))
+    p.add_argument(
+        "--scales",
+        type=float,
+        nargs=2,
+        metavar=("MIN", "MAX"),
+        required=True,
+        help="the analysis scale cut: θ in arcmin for xi, ℓ for cl",
+    )
     p.add_argument("--threshold", type=float, default=0.01)
     p.add_argument("--n-modes", type=int)
-    p.add_argument("--A-IA", type=float, default=0.0, dest="a_ia")
+    p.add_argument(
+        "--A-IA",
+        type=float,
+        required=True,
+        dest="a_ia",
+        help="NLA amplitude at which the metric is evaluated; IA changes the modes",
+    )
     a = p.parse_args(argv)
 
     s = cut_sacc(sacc.Sacc.load_fits(a.sacc), a.statistic, a.scales)

@@ -271,6 +271,8 @@ def test_cli_on_a_two_bin_xi_sacc(tmp_path):
             "--scales",
             "8",
             "80",
+            "--A-IA",
+            "1",
         ]
     )
     modes = nz_modes.NzModes.load(out)
