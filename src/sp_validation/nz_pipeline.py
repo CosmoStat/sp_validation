@@ -164,6 +164,14 @@ def run(config, output, *, workers=1, rebuild=False):
     )
     (output / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     (output / "recipe.yaml").write_text(yaml.safe_dump(config, sort_keys=False))
+    if "ensemble" in config:
+        from .nz_ensemble import run as draw
+
+        draw(
+            output / "calibration_arrays.npz",
+            output / "realisations.npz",
+            config["ensemble"],
+        )
     return summary
 
 

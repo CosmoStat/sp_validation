@@ -68,6 +68,32 @@ The calibration sample, `inputs/matched_calibration.npz`, holds the v1.4.6.3
 sample's fiducial spectroscopic `Z_B` as `z`, DR6 BPZ `Z_B` as `photoz`, and
 detected ugriz magnitudes as `mag`.
 
+**Realisations.** With an `ensemble` section in the recipe, step 6 also
+writes `realisations.npz`: `z` and `realisations` (n_draw, n_bin, n_z), each
+bin unit-integral, every bin drawn together; `python -m
+sp_validation.nz_ensemble calibration_arrays.npz -o realisations.npz` draws
+from an existing run. A draw multiplies each calibrator's weight by
+q_i = m_i (1 + δ(z_i)) and renormalises within its (bin, SOM group), so every
+group keeps its source weight (`sp_validation.nz_ensemble`):
+
+- *Calibrator shot noise*: m_i are multinomial bootstrap counts of the
+  11,114 spectra. Bins are calibrated by disjoint calibrators (split by BPZ),
+  so this term is independent between bins.
+- *Sample variance of the EGS field*: δ(z) is a lognormal galaxy density
+  along the line of sight, per Δz = 0.01 cell, with covariance from the
+  nonlinear matter power seen through a 2° × 0.25° footprint (the DEEP2/3
+  strip) times bias² (b = 1.3). It is shared by every bin and is what
+  correlates them. Within-group renormalisation cancels δ wherever a group's
+  calibrators share a redshift, which is how the SOM suppresses sample
+  variance (3× in ⟨z⟩ on v2).
+
+Held fixed: the SOM, its groups, gold masks and source weights. Left out:
+photometric zero points and the z2 offset (shared by every bin; the
+`z2offset_lo/hi` products bracket the latter), SOM training stochasticity,
+spectroscopic selection and incompleteness, spec-z errors, redshift-space
+smearing of δ, and any bias evolution. The footprint and bias are
+assumptions, and the δ term scales with b.
+
 **Limits.** The calibrators are 11,114 EGS DEEP2/3 spectra: no
 field-to-field variance and no model of spectroscopic selection, so the n(z)
 is for validation, null tests and mocks, not parameter constraints. It
