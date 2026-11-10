@@ -1,9 +1,10 @@
 """Written readings for the sampled-ensemble report, filled from the placement numbers.
 
-    python readings.py --old placement-n66 --new placement-nz468-oldmocks > readings.html
+    python readings.py --old <first-bin placement> --new <#468 vector on first-bin mocks> --matched <#468 vector on #468 mocks> > readings.html
 
 --old is the placement of the first-bin data vector, --new the placement of the
-#468-bin vector against the same mocks, with its resample.json.
+#468-bin vector against the same mocks, with its resample.json, and --matched the
+#468-bin vector in its own ensemble.
 """
 import argparse
 import json
@@ -14,6 +15,12 @@ import numpy as np
 
 from placement import KEYS
 from report import NAMES, png
+
+
+ADD_ROWS = (("clbb_template_common", "Cℓ^BB template amplitude, all pairs"),
+            ("clbb_template_crosses", "Cℓ^BB template amplitude, crosses"),
+            ("mean_offset_cl_bb", "mean d/σ, Cℓ^BB"),
+            ("mean_offset_small", "mean d/σ, ξ± B 2–20′"))
 
 
 def z(chi2, dof):
@@ -53,15 +60,20 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--old", required=True)
     ap.add_argument("--new", required=True)
+    ap.add_argument("--matched", required=True, help="placement of the #468 vector in the #468-bin ensemble")
     args = ap.parse_args()
     old = json.loads((Path(args.old) / "placement.json").read_text())
     new = json.loads((Path(args.new) / "placement.json").read_text())
     rs = json.loads((Path(args.new) / "resample.json").read_text())
+    mt = json.loads((Path(args.matched) / "placement.json").read_text())
     n = old["n_mocks"]
     J = {k: old["statistics"][k]["joint"] for k in KEYS}
     A = old["additive"]
     t, tc = rs["clbb_template_common"], rs["clbb_template_crosses"]
     te = rs["clbb_template_common_empirical_rho"]
+    MA, MJ = mt["additive"], {k: mt["statistics"][k]["joint"] for k in KEYS}
+    ms_xi = [MJ[k]["s"] for k in ("xip_B", "xim_B", "combined", "small")]
+    ms_cl = [MJ[k]["s"] for k in ("cl_bb", "cl_eb")]
     T = rs["tests"]
     s_xi = [J[k]["s"] for k in ("xip_B", "xim_B", "combined", "small")]
     s_cl = [J[k]["s"] for k in ("cl_bb", "cl_eb")]
@@ -71,11 +83,10 @@ def main():
     snew = [new["statistics"][k]["joint"]["s"] for k in KEYS]
 
     print(f"""<h2>Readings</h2>
-<p class="lede"><b>The data's B-mode excess is coherent and additive. The #468 rebinning's better B nulls are noise resampling, and they neither strengthen nor weaken that.</b>
-On the first bins, {n} sampled GLASS mocks put the Cℓ^BB additive-template amplitude at {A['clbb_template_common']['z']:+.1f}σ
-(0 of {n} mocks reach it) and the mean signed Cℓ^BB offset at {A['mean_offset_cl_bb']['z']:+.1f}σ (0 of {n}).
-The #468 bins lower the joint χ² by what resampling about a quarter of the shape noise predicts. Their own template amplitude, {t['new']:.2f} ± {t['new_sigma']:.2f}, is again reached by none of the mocks;
-the two binnings share too much noise for the comparison to tell a fixed component from a fluctuation.</p>
+<p class="lede"><b>The data's B-mode excess is coherent and additive, on both binnings.</b>
+Each data vector sits in its own matched ensemble of sampled GLASS mocks. The Cℓ^BB additive-template amplitude is {A['clbb_template_common']['z']:+.1f}σ on the first bins
+({A['clbb_template_common']['rank_above']} of {n} mocks reach it) and {MA['clbb_template_common']['z']:+.1f}σ on the #468 bins ({MA['clbb_template_common']['rank_above']} of {mt['n_mocks']}).
+The #468 bins' better B-null χ² is what resampling about a quarter of the shape noise does; it neither strengthens nor weakens the excess.</p>
 
 <h3>First bins, {n} mocks</h3>
 <ul>
@@ -94,7 +105,17 @@ Candidates I haven't separated: E→B leakage of the finite-range pure-mode deco
 whether the data share it is the painted ensemble's question, since painted mocks keep the real positions.</li>
 </ul>
 
-<h3>The #468 bins against the same mocks</h3>
+<h3>The #468 bins in their own ensemble</h3>
+<p>A second ensemble of {mt['n_mocks']} sampled mocks matches the #468 vector: its n(z), its tomographic footprint (4,065 deg²), each bin's n_eff and σ_e, and its own analytic covariance.
+It reproduces the first ensemble's covariance picture (s = {min(ms_xi):.2f}–{max(ms_xi):.2f} for the ξ-based B tests, {min(ms_cl):.2f}–{max(ms_cl):.2f} for Cℓ).</p>
+<table><tr><th>statistic</th><th>first bins: data (z, mocks ≥ data)</th><th>#468 bins: data (z, mocks ≥ data)</th></tr>
+{''.join(f"<tr><td>{lab}</td><td>{A[k]['data']:.3f} ({A[k]['z']:+.1f}σ, {A[k]['rank_above']}/{n})</td><td>{MA[k]['data']:.3f} ({MA[k]['z']:+.1f}σ, {MA[k]['rank_above']}/{mt['n_mocks']})</td></tr>" for k, lab in ADD_ROWS)}
+{''.join(f"<tr><td>χ² {NAMES[k]}: recalibrated PTE</td><td>{J[k]['recalibrated_pte']:.3f} ({J[k]['rank_upper_count']}/{n} mocks ≥ data)</td><td>{MJ[k]['recalibrated_pte']:.3f} ({MJ[k]['rank_upper_count']}/{mt['n_mocks']})</td></tr>" for k in ("xim_B", "combined", "cl_bb"))}
+</table>
+<p>The sign-coherent statistics stay outside both ensembles, at slightly lower significance on the #468 bins, while the χ²-only failures soften to ξ−B alone.
+That is the pattern of a fixed additive component plus partly refreshed noise, though, as the next section shows, the two binnings can't separate it from a fluctuation on their own.</p>
+
+<h3>Is the rebinning's change real? The #468 vector against the first-bin mocks</h3>
 <p>The remeasured data vector (sp_validation #468 bins and dz = 0.05 n(z), same code) is placed against the first-bin mocks.
 <b>The mocks are on the old bins</b>: old n(z), the old footprint (3,815 deg² against 4,065) and the old per-bin noise, so their variance exceeds the new covariance
 (s = {min(snew):.2f}–{max(snew):.2f}) and the ensemble PTEs of this placement run high. Comparisons against the mock spread are conservative for the same reason:
@@ -122,7 +143,6 @@ The cross-covariance is F (C_old + C_new)/2 F with F = √(f_i f_j) (A_new/A_old
 <ul>
 <li>The additive B is a data systematic for the data leg; the fitted PSF model explains ~26–30% of it there. The mocks contain none by construction, so the next mock ingredient is
 PSF leakage injected at the measured per-bin α, to see whether the data's amplitude and its pair pattern follow.</li>
-<li>A new-bin ensemble (#468 n(z), footprint and per-bin noise) replaces this placement for the #468 vector; it's started on Fir.</li>
 </ul>""")
 
 
