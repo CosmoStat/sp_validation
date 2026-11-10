@@ -134,6 +134,87 @@ snakemake -n --profile workflow/profiles/default -s workflow/Snakefile \
     --configfile papers/bmodes/config/config.yaml
 ```
 
+### Catalogue-painted GLASS mocks
+
+A painted mock is the real shear catalogue with its cosmological signal
+replaced by a GLASS sky. Positions, weights, PSF columns and each galaxy's |e|
+are kept; every ellipticity is rotated to a random angle and sheared by the
+sky. Each seed draws an independent sky and independent rotations, so only the
+geometry is fixed, as it is for the one real data vector: the scatter across
+seeds is the variance conditional on the survey we have. The sampled mocks
+above (`unions_glass_sim_*.fits`) draw synthetic galaxies with Gaussian shape
+noise instead; neither kind has source clustering correlated with the sky. The
+code is `sp_validation.mocks.painted`, built on the GLASS core in
+`sp_validation.mocks.glass`.
+
+Two rules, opt-in from a run config:
+
+- `glass_painted_maps`: one sky per seed, projected through a single source n(z)
+  (nside 4096, lmax 8192, zmax 3.5 by default). ~8 min on 24 cores.
+- `glass_painted_catalogue`: paints one catalogue with one injection,
+  evaluating the sky at each galaxy with a non-uniform spherical-harmonic
+  transform. A few minutes per 100M rows.
+
+```yaml
+glass_paint:
+  output_dir: results/glass_painted
+  nz: /path/to/nz_B.txt
+  threads: 28          # map generation
+  paint_threads: 16    # catalogue painting
+  map_config: {nside: 4096, harmonic_lmax: 8192, zmax: 3.5, limber: true}
+  catalogues:
+    sample:
+      path: /path/to/calibrated_catalogue.fits
+      ra_col: RA
+      dec_col: Dec
+      w_col: w_des
+      e1_col: e1
+      e2_col: e2
+      psf_cols: [e1_PSF, e2_PSF]
+      pol_factor: -1   # catalogue e2 = pol_factor * HEALPix gamma2
+      shear: gamma     # pure E; `reduced` applies gamma/(1-kappa)
+  injections:
+    none: {}
+    leakage: {alpha: 0.1}
+    additive_b: {b_amplitude: 2.6e-11, b_seed: 401}
+```
+
+The target is then `results/glass_painted/seed_00001/sample_none.h5`. The same
+two stages run without Snakemake as `scripts/glass_mock/paint_catalogue.py
+{maps,paint}`. Painted catalogues are measured like any other: register them
+in `cat_config.yaml` and run cosmo_val, which writes SACC.
+
+| output | holds |
+|---|---|
+| `maps/kappa_alm.npz` | the sky: the convergence alm that painting evaluates |
+| `maps/spectra.npz` | `realization_{kk,ee,ke}`, the alm's own spectra, beside the shell-ensemble theory `cl_{kk,ee}` |
+| `maps/maps.json` | cosmology, seed, source weights, spectra cache, `pol_factor: 1` (HEALPix) |
+| `maps/{kappa,gamma1,gamma2}.npy` | float32 RING maps, for plots |
+| `<catalogue>_<injection>.h5` | `data` table: kept input columns, `e1/e2` (also under `e*_leak_corrected`), `e*_noise`, `g*_true`, `kappa_true`, `e*_injected`; `pol_factor` attribute |
+| `….h5.json` | seeds, injection, column map, `pol_factor` |
+| `….h5.bmode_spectra.npz` | target and realised C_BB of a B injection |
+
+- **No pixel window.** The matter shells are drawn from unwindowed spectra and
+  the sky is evaluated at each galaxy, never read off a map, so painted spectra
+  scatter around `cl_{kk,ee}` with no window. Skies stay as alms in npz: they
+  are inputs to painting, not data vectors.
+- **Same noise everywhere.** The seed fixes the rotation angles (one per row,
+  from a stream independent of the sky's), so every injection of a catalogue
+  shares its noise, and the difference between two mocks is exactly the
+  injection. Leakage `alpha e_PSF` uses the real PSF at the real positions, so
+  it has the data's spatial structure.
+- **Exact answer on the footprint.** `realization_*` is the sky's full-sky
+  spectrum; a footprint measurement scatters around it by the footprint's
+  sample variance, and the same pipeline on the noise-free `g*_true` columns
+  gives that footprint's exact answer.
+- **Allowlisted columns.** Mock registry entries run with `blind: none`, so a
+  measured shape carried through (`e*_uncal`, say) would be measured
+  unblinded. Only position, weight, PSF and explicit `keep` columns survive.
+- **Signs.** Maps follow HEALPix; catalogue e2 is `pol_factor` times HEALPix
+  gamma2, `-1` for UNIONS, matching cosmo_val's `pol_factor: -1`.
+- **Spectra cache.** The lognormal solve is checked against its request to
+  1e-4 and cached by cosmology, shells, n(z), lmax and GLASS version.
+
 ### Which `sp_validation` a rule imports: the launched checkout
 
 The image is the frozen *dependency stack*; the `sp_validation` that runs is

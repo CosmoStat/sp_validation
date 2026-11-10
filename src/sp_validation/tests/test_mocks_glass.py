@@ -32,7 +32,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from sp_validation.glass_mock import (
+from sp_validation.mocks.glass import (
     GlassMockConfig,
     build_camb_params,
     camb_sigma8,
@@ -168,7 +168,7 @@ def test_matter_maps_are_seed_deterministic():
     When GLASS lands in the image, replace/augment this with a committed-map
     ``np.allclose`` reference for a full map-level characterization.
     """
-    from sp_validation.glass_mock import (
+    from sp_validation.mocks.glass import (
         build_shells,
         generate_matter_maps,
         matter_shell_cls,
