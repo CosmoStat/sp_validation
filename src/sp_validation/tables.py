@@ -11,7 +11,9 @@ A table is anything with
   ``{name: array}`` for some of ``names``, receives their values in place
   (e.g. the fields of a structured array) and is what is returned for them;
 - ``row_major``: whether reading any column reads whole rows from disk, so a
-  selection of rows is best read for every column at once.
+  selection of rows is best read for every column at once;
+- ``concurrent``: whether reads of several such tables gain from running in
+  parallel threads.
 
 ``ArrayTable`` (a numpy structured array or FITS_rec, in memory or
 memory-mapped), ``HDF5Table`` (an h5py compound dataset) and ``ParquetFile``
@@ -80,6 +82,7 @@ class ArrayTable:
     """
 
     row_major = False
+    concurrent = False
 
     def __init__(self, array):
         self.array = array
@@ -110,12 +113,14 @@ class HDF5Table:
     """An h5py compound dataset.
 
     Its rows are stored whole, so a selection is read in one pass for every
-    column wanted: contiguous rows at once, other selections in blocks of
-    ``BLOCK_BYTES`` of whole rows over their span, skipping blocks that hold
-    no selected row, so each byte of the file is read at most once.
+    column wanted, in blocks of ``BLOCK_BYTES`` of whole rows over its span
+    written straight into the output, skipping blocks that hold no selected
+    row: each byte of the file is read at most once. h5py serialises all
+    reads on one lock, so datasets are not read concurrently.
     """
 
     row_major = True
+    concurrent = False
 
     def __init__(self, dataset):
         self.dataset = dataset
@@ -126,34 +131,32 @@ class HDF5Table:
 
     def read(self, names, rows=None, out=None):
         names = list(names)
+        n = len(self) if rows is None else len(rows)
+        out = dict(out or {})
+        for name in names:
+            if name not in out:
+                out[name] = np.empty(n, dtype=self.dtype[name])
         source = self.dataset.fields(names)
+        block = max(1, BLOCK_BYTES // self.dtype.itemsize)
         span = _contiguous(rows, len(self))
         if span is not None:
-            table = source[span[0] : span[1]]
-        else:
-            table = self._take(source, np.asarray(rows, dtype=np.intp), names)
-        return _deliver({name: table[name] for name in names}, out)
-
-    def _take(self, source, rows, names):
-        out = np.empty(len(rows), dtype=[(name, self.dtype[name]) for name in names])
-        if len(rows) == 0:
+            for start in range(span[0], span[1], block):
+                end = min(start + block, span[1])
+                chunk = source[start:end]
+                for name in names:
+                    out[name][start - span[0] : end - span[0]] = chunk[name]
             return out
-        order = None
-        if np.any(rows[1:] < rows[:-1]):
-            order = np.argsort(rows, kind="stable")
-            rows = rows[order]
-        block = max(1, BLOCK_BYTES // self.dtype.itemsize)
-        done = 0
-        start, stop = int(rows[0]), int(rows[-1]) + 1
-        while done < len(rows):
+        rows = np.asarray(rows, dtype=np.intp)
+        order = np.argsort(rows, kind="stable")
+        rows = rows[order]
+        done, start, stop = 0, 0, (int(rows[-1]) + 1 if n else 0)
+        while done < n:
             start = max(start, int(rows[done]))
             end = min(start + block, stop)
             upto = int(np.searchsorted(rows, end, side="left"))
             chunk = source[start:end][rows[done:upto] - start]
-            if order is None:
-                out[done:upto] = chunk
-            else:
-                out[order[done:upto]] = chunk
+            for name in names:
+                out[name][order[done:upto]] = chunk[name]
             done, start = upto, end
         return out
 
@@ -169,6 +172,7 @@ class ParquetFile:
     """
 
     row_major = False
+    concurrent = True
 
     def __init__(self, path, footer, dtype):
         self.path = path
@@ -223,16 +227,18 @@ def parquet_dtype(schema):
 
 
 class ConcatTable:
-    """Tables stacked end to end, read in parallel threads.
+    """Tables stacked end to end.
 
     Its columns are those every table has, each promoted to hold all of them
-    (``group_dtype``). At most ``MAX_READ_THREADS`` tables are read at once.
+    (``group_dtype``). ``concurrent`` tables are read in parallel threads, at
+    most ``MAX_READ_THREADS`` at once.
     """
 
     def __init__(self, tables):
         self.tables = list(tables)
         self.starts = np.concatenate([[0], np.cumsum([len(t) for t in self.tables])])
         self.row_major = any(table.row_major for table in self.tables)
+        self.concurrent = all(table.concurrent for table in self.tables)
         common = set.intersection(*(set(t.dtype.names) for t in self.tables))
         self.dtype = group_dtype(
             self.tables, [n for n in self.tables[0].dtype.names if n in common]
@@ -276,8 +282,9 @@ class ConcatTable:
                 for name, column in table.read(names, local).items():
                     out[name][at] = column
 
-        if len(jobs) == 1:
-            read(jobs[0])
+        if len(jobs) == 1 or not self.concurrent:
+            for job in jobs:
+                read(job)
         elif jobs:
             threads = min(MAX_READ_THREADS, len(os.sched_getaffinity(0)))
             with ThreadPoolExecutor(threads) as pool:

@@ -355,6 +355,7 @@ class V2View:
         self._names, self._derived = _resolve(tuple(self._owner), column_map)
         self._dtype = dtype
         self.row_major = any(base.row_major for base in self._bases)
+        self.concurrent = all(base.concurrent for base in self._bases)
 
     @property
     def names(self):

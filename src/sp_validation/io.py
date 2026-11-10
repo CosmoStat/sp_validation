@@ -26,6 +26,7 @@ from sp_validation.tables import (
     MAX_READ_THREADS,
     ConcatTable,
     ParquetFile,
+    as_table,
     group_dtype,
     parquet_dtype,
 )
@@ -178,7 +179,7 @@ class Catalogue:
 
     Nothing but metadata is read on opening: ``chunks`` maps each chunk name
     to a lazy ``grammar.V2View``, and ``whole`` is one lazy view over them
-    all, whose reads run over the chunks in parallel threads. Use as a
+    all (HATS partitions are read in parallel threads). Use as a
     context manager, or ``close`` when done; arrays read stay valid after
     closing.
 
@@ -207,12 +208,16 @@ class Catalogue:
         else:
             self.hdu, parts = _fits_parts(self.path, hdu)
             self.chunked = False
+        parts = {key: tuple(map(as_table, tables)) for key, tables in parts.items()}
         self.chunks = {
             key: grammar.adapt(*tables, column_map=column_map)
             for key, tables in parts.items()
         }
-        views = list(self.chunks.values())
-        self.whole = views[0] if len(views) == 1 else grammar.adapt(ConcatTable(views))
+        if len(parts) == 1:
+            (self.whole,) = self.chunks.values()
+        else:
+            stacked = ConcatTable(table for (table,) in parts.values())
+            self.whole = grammar.adapt(stacked, column_map=column_map)
 
     def __enter__(self):
         return self
@@ -245,8 +250,15 @@ class Catalogue:
         return group_dtype(self.chunks, columns)
 
     def table(self):
-        """Return the catalogue as one lazy table (``whole``), valid while
-        the file is open."""
+        """Return the catalogue as one table.
+
+        That is ``whole``, lazy and valid while the file is open, except for
+        a chunked catalogue of ``row_major`` tables (HDF5 tiles or
+        exposures), which is read into memory: read a column at a time, it
+        would re-read every chunk for each column.
+        """
+        if self.chunked and self.whole.row_major:
+            return self.read()
         return self.whole
 
     def iter_chunks(self, columns=None, verbose=False):
@@ -338,14 +350,20 @@ def read_catalogue(
 
 
 def open_catalogue(path, hdu=None, column_map=None):
-    """Return a catalogue as one lazy ``grammar.V2View``, reading no data up front.
+    """Return a catalogue as one table (``Catalogue.table``).
 
-    A FITS table is memory-mapped, and HDF5 and HATS catalogues are read on
-    access (an HDF5 file stays open while the view is referenced), so a
-    consumer pays only for the columns it indexes, derived v2 columns
-    included. Parameters as for ``Catalogue``.
+    A FITS table is memory-mapped, and an unchunked HDF5 table or a HATS
+    catalogue is a lazy ``grammar.V2View`` read on access (an HDF5 file stays
+    open while the view is referenced), so a consumer pays only for the
+    columns it indexes, derived v2 columns included. HDF5 row chunks are
+    read into memory. Parameters as for ``Catalogue``.
+
+    Returns
+    -------
+    grammar.V2View or numpy.ndarray
+        catalogue data in the v2 grammar
     """
-    return Catalogue(path, hdu=hdu, column_map=column_map).whole
+    return Catalogue(path, hdu=hdu, column_map=column_map).table()
 
 
 def open_entry(entry):

@@ -225,3 +225,20 @@ def test_open_catalogue_reads_lazily(foreign, tmp_path, layout):
         assert all(isinstance(base, tables.HDF5Table) for base in table._bases)
     npt.assert_array_equal(table["RA"], foreign["alpha"])
     npt.assert_array_equal(table["star_e2"], foreign["star_e2"])
+
+
+def test_chunked_catalogue_applies_column_map_once(tmp_path):
+    """A mapped name the v1 rules would recognise stays as the map presents it."""
+    path = tmp_path / "tiles.hdf5"
+    tile = np.zeros(3, dtype=[("RA", "f8"), ("MYFIT_ELL_NOSHEAR", "f8", (2,))])
+    tile["MYFIT_ELL_NOSHEAR"] = [[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]]
+    with h5py.File(path, "w") as handle:
+        for name in ("tile1", "tile2"):
+            handle.create_dataset(f"tiles/{name}", data=tile)
+    column_map = {"NGMIX_*": "MYFIT_*"}
+    with io.Catalogue(path, column_map=column_map) as catalogue:
+        assert catalogue.whole.names == ("RA", "NGMIX_ELL_NOSHEAR")
+        out = catalogue.read()
+    npt.assert_array_equal(
+        out["NGMIX_ELL_NOSHEAR"], np.tile(tile["MYFIT_ELL_NOSHEAR"], (2, 1))
+    )
