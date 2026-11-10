@@ -163,6 +163,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.catalog_builders.html">sp_validation.catalog_builders</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.container.html">sp_validation.container</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.correlation.html">sp_validation.correlation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.data_roots.html">sp_validation.data_roots</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.format.html">sp_validation.format</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.galaxy.html">sp_validation.galaxy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.glass_mock.html">sp_validation.glass_mock</a></li>
@@ -625,14 +626,14 @@
 <div class="viewcode-block" id="main">
 <a class="viewcode-back" href="../../sp_validation.blinding.html#sp_validation.blinding.main">[docs]</a>
 </span><span id="line-339"><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="n">argv</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-</span><span id="line-340">    <span class="kn">import</span><span class="w"> </span><span class="nn">yaml</span>
+</span><span id="line-340">    <span class="kn">from</span><span class="w"> </span><span class="nn">sp_validation.data_roots</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_yaml</span>
 </span><span id="line-341">
 </span><span id="line-342">    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">prog</span><span class="o">=</span><span class="s2">"python -m sp_validation.blinding"</span><span class="p">)</span>
 </span><span id="line-343">    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"command"</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="p">(</span><span class="s2">"init"</span><span class="p">,))</span>
 </span><span id="line-344">    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"blind"</span><span class="p">)</span>
 </span><span id="line-345">    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--cat-config"</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">REPO_CAT_CONFIG</span><span class="p">))</span>
 </span><span id="line-346">    <span class="n">a</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">(</span><span class="n">argv</span><span class="p">)</span>
-</span><span id="line-347">    <span class="n">init</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">blind</span><span class="p">,</span> <span class="n">yaml</span><span class="o">.</span><span class="n">safe_load</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">cat_config</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">()))</span>
+</span><span id="line-347">    <span class="n">init</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">blind</span><span class="p">,</span> <span class="n">load_yaml</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">cat_config</span><span class="p">))</span>
 </span><span id="line-348">    <span class="k">return</span> <span class="mi">0</span></div>
 
 </span><span id="line-349">
@@ -647,7 +648,7 @@
       </div><footer class="py-6 border-t border-border md:py-0">
     <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
       <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-        <p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini&nbsp;Last updated: 09 Nov, 2026.&nbsp;Built with <a class="font-medium underline underline-offset-4"
+        <p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini&nbsp;Last updated: 10 Nov, 2026.&nbsp;Built with <a class="font-medium underline underline-offset-4"
     href="https://www.sphinx-doc.org"
     rel="noreferrer">Sphinx 9.1.1</a></p>
 </div>
