@@ -1,7 +1,7 @@
 """Give every shape object its PhotoPipe row, on the shape catalogue's HATS partitions.
 
 The inputs are the shape HATS catalogue and the column extract written by
-``scripts/photopipe/extract_on_canfar.py``. The output is a HATS catalogue with
+``scripts/assembly/extract_photopipe.py``. The output is a HATS catalogue with
 one row for each shape row, in the same pixel and the same order, keyed by
 ``_source_row``. PhotoPipe columns are null where ``PHOTOPIPE_STATUS`` is not
 ``MATCHED``.

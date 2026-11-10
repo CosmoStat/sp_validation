@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Extract PhotoPipe science columns from the DR6 tile tree, next to the data.
+"""Extract PhotoPipe science columns from the DR6 tile tree, next to the data (PhotoPipe join, step 1).
 
 Runs in a CANFAR headless session with /arc mounted. Writes one Parquet shard
 per RA prefix (``ra=314.parquet``, one row group per tile) and a JSON manifest
