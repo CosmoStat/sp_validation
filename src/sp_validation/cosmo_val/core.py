@@ -11,6 +11,8 @@ import yaml
 from cs_util.cosmo import get_cosmo
 from shear_psf_leakage import leakage, run_object, run_scale
 
+from sp_validation.data_roots import load_yaml
+
 from .. import blinding, io
 from ..b_modes import (
     _get_pte_from_scale_cut,
@@ -416,8 +418,7 @@ class CosmologyValidation(
         self.treecorr_config = self._binning()
 
         self.catalog_config_path = Path(catalog_config)
-        with self.catalog_config_path.open("r") as file:
-            self.cc = cc = yaml.load(file, Loader=yaml.FullLoader)
+        self.cc = cc = load_yaml(self.catalog_config_path)
         # The config as written, before virtual versions and resolved paths:
         # what each catalogue's blind is checked against.
         self._config_as_read = copy.deepcopy(cc)
