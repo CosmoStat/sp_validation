@@ -239,6 +239,30 @@ def headroom(ax, top=0.0, bottom=0.0):
     ax.set_ylim(lo - bottom * span, hi + top * span)
 
 
+ELL_TICKS = [100, 400, 900, 1600]
+
+
+def ell_axis(ax, lo=8, hi=2048):
+    """Square-root ℓ axis, as the harmonic-space papers draw power spectra.
+
+    Power-law bandpowers with exponent 1/2 land evenly spaced on it. Major
+    ticks at the squares 100, 400, 900, 1600; minor ticks every 100.
+    """
+    ax.set_xscale("function", functions=(np.sqrt, np.square))
+    ax.set_xlim(lo, hi)
+    ticks = [t for t in ELL_TICKS if lo <= t <= hi]
+    ax.set_xticks(ticks)
+    ax.set_xticklabels([f"${t}$" for t in ticks])
+    minor = range(100, int(hi) + 1, 100)
+    ax.set_xticks([t for t in minor if lo <= t <= hi and t not in ticks], minor=True)
+
+
+def sigma_bands(ax):
+    """±1σ and ±2σ bands behind a data vector drawn in units of its σ."""
+    ax.axhspan(-2, 2, color=INK, alpha=0.045, lw=0, zorder=0)
+    ax.axhspan(-1, 1, color=INK, alpha=0.065, lw=0, zorder=0)
+
+
 def zero_line(ax):
     ax.axhline(0, color=INK, ls=(0, (4, 3)), lw=0.7, alpha=0.6, zorder=1)
 

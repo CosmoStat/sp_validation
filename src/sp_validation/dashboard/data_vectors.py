@@ -93,7 +93,7 @@ def _cl_shade(cl, ell_cut):
 
 
 def ell_cl(cl, out, ell_cut, layout="wide", blind=None):
-    """Blinded ℓ C_ℓ^EE on a linear ℓ axis; BB and EB are drawn with the B modes."""
+    """Blinded ℓ C_ℓ^EE on the square-root ℓ axis; BB and EB are drawn with the B modes."""
     ell = cl["ell"]
     top = np.max(ell * (cl["EE"] + cl["sigma_EE"]))
     p = int(np.floor(np.log10(top)))
@@ -110,7 +110,7 @@ def ell_cl(cl, out, ell_cut, layout="wide", blind=None):
             color=S.COLOR_TOTAL,
             **{**S.DATA_VECTOR_MARK, "markersize": 3.8},
         )
-        ax.set_xlim(0, cl["ell_hi"][-1] + 30)
+        S.ell_axis(ax, cl["ell_lo"][0], cl["ell_hi"][-1])
         S.shade_outside(ax, *_cl_shade(cl, ell_cut))
         ax.set_xlabel(r"$\ell$")
         ax.set_ylabel(rf"$\ell\, C_\ell \times 10^{{{-p}}}$")
@@ -253,15 +253,11 @@ def cl_bmodes(cl, out, ell_cut):
                 markeredgecolor=color,
                 **S.DATA_VECTOR_MARK,
             )
-            ax.set_xscale("function", functions=(np.sqrt, np.square))
             ax.set_ylabel(rf"{label}$/\sigma$")
             S.label_box(ax, label)
         for ax in axes:
-            ax.set_xlim(ell.min() * 0.85, cl["ell_hi"][-1] * 1.02)
+            S.ell_axis(ax, ell.min() * 0.85, cl["ell_hi"][-1] * 1.02)
             S.shade_outside(ax, *_cl_shade(cl, ell_cut))
-            ax.set_xticks([100, 400, 900, 1600])
-            ax.set_xticklabels(["$100$", "$400$", "$900$", "$1600$"])
-            ax.set_xticks([i * 100 for i in range(1, 21)], minor=True)
         lim = np.ceil(extent + 0.4)
         axes[0].set_ylim(-lim, lim)
         axes[0].yaxis.set_major_locator(plt.MultipleLocator(2))
