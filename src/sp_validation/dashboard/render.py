@@ -220,7 +220,7 @@ def render(
     figs.add(
         "cl",
         "data_vectors",
-        "Blinded E-mode angular power spectrum C_ℓ^EE, multiplied by ℓ: NaMaster "
+        "Blinded E-mode angular power spectrum Cℓ EE, multiplied by ℓ: NaMaster "
         "pseudo-Cℓ, corrected for the survey mask. Error bars are from the "
         f"Gaussian covariance. Shading marks bands outside the fiducial {lcut}.",
         "full",

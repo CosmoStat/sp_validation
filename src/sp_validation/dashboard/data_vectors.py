@@ -224,7 +224,7 @@ def cosebis(co, out, full_cut=(1.0, 250.0), n_subset=6):
         lim = np.ceil(extent + 0.4)
         ax.set_ylim(-lim, lim)
         ax.yaxis.set_major_locator(plt.MultipleLocator(2))
-        S.label_box(ax, "COSEBIs")
+        S.label_box(ax, "COSEBIs", loc="upper right")
         _legend(fig, handles, 2)
         return S.save(fig, out, "half")
 
