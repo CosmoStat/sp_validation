@@ -91,6 +91,168 @@ def plot_pseudo_cl_spectrum(datasets, spectrum, output_path):
     plt.close(fig)
 
 
+def plot_pseudo_cl_grid(
+    spectra,
+    tomo_bins,
+    versions,
+    styles,
+    pol_list,
+    color_for_pol,
+    grouped_legend,
+    ell_factor="ell",
+    offset=0.15,
+    tomography=True,
+    savefig=None,
+    show=True,
+):
+    """
+    Draw pseudo-C_ell spectra in a grid of tomographic bin pairs.
+
+    Parameters
+    ----------
+    spectra : dict
+        ``spectra[ver][(tomo_bin_a, tomo_bin_b)]`` holds ``"ell"`` and, for
+        each polarisation in ``pol_list``, ``(C_ell, sigma)``.
+    tomo_bins : dict
+        ``{ver: {"ids": ..., "pairs": ...}}`` as
+        ``_get_tomo_bins_for_versions`` returns it.
+    versions : list
+        Versions to draw, in jitter order.
+    styles : dict
+        ``{ver: (label, colour)}``.
+    pol_list : list
+        Polarisations to draw (e.g. ``["EE", "BB"]``).
+    color_for_pol : callable
+        ``(version colour, pol, pol_list) -> colour``.
+    grouped_legend : callable
+        ``(fig, fmt_dict) -> legend axes``.
+    ell_factor : {"None", "ell", "ell(ell+1)"}
+        Factor to multiply the C_ell by.
+    offset : float
+        Jitter between versions, in units of the bandpower spacing.
+    tomography : bool
+        Whether the spectra are tomographic (a grid) or one panel.
+    savefig : str, optional
+        Path to save the figure.
+    show : bool
+        Whether to show the figure.
+
+    Returns
+    -------
+    fig, axs, legend_ax
+    """
+
+    def get_ell_factor(ell):
+        """Given some ell, return the ell_factor for the plot."""
+        if ell_factor == "None":
+            return 1
+        elif ell_factor == "ell":
+            return ell
+        elif ell_factor == "ell(ell+1)":
+            return ell * (ell + 1)
+
+    fmt_dict = {"EE": "o", "BB": "s", "EB": "^", "BE": "v"}
+    max_key = max(tomo_bins, key=lambda k: len(tomo_bins[k]["ids"]))
+    n_tomo_bins_plot = len(tomo_bins[max_key]["ids"])
+    reference_tomo_bin_pairs = tomo_bins[max_key]["pairs"]
+
+    fig, axs = plt.subplots(
+        n_tomo_bins_plot,
+        n_tomo_bins_plot,
+        figsize=(12, 12),
+        sharex=True,
+        sharey=True,
+    )
+
+    for j, ver in enumerate(versions):
+        # Plot the pseudo-cl for each tomo bin of the considered version
+        for tomo_bin_a, tomo_bin_b in tomo_bins[ver]["pairs"]:
+            if tomography:
+                ax = axs[tomo_bin_b - 1, tomo_bin_a - 1]
+            else:
+                ax = axs
+            spectrum = spectra[ver][(tomo_bin_a, tomo_bin_b)]
+            ver_label, ver_color = styles[ver]
+
+            ell = spectrum["ell"]
+
+            ell_widths = np.diff(ell)
+            ell_widths = np.append(
+                ell_widths, ell_widths[-1]
+            )  # Assume last bin width is same as second last
+
+            # Better jittering: symmetric around original ell values
+            jitter_fraction = (j - (len(versions) - 1) / 2) * offset
+            jittered_ell = ell + jitter_fraction * ell_widths
+            ell_factor_ = get_ell_factor(ell)
+
+            for pol in pol_list:
+                pol_color = color_for_pol(ver_color, pol, pol_list)
+                ax.errorbar(
+                    jittered_ell,
+                    ell_factor_ * spectrum[pol][0],
+                    yerr=spectrum[pol][1] * ell_factor_,
+                    fmt=fmt_dict[pol],
+                    label=ver_label + f" {pol}",
+                    color=pol_color,
+                    capsize=2,
+                )
+
+    # Draw to extract the yaxis text offset
+    fig.canvas.draw()
+
+    if ell_factor == "None":
+        ell_label = r"$C_\ell$"
+    elif ell_factor == "ell":
+        ell_label = r"$\ell C_\ell$"
+    else:
+        ell_label = r"$\ell(\ell+1) C_\ell$"
+
+    for tomo_bin_a, tomo_bin_b in reference_tomo_bin_pairs:
+        if tomography:
+            ax = axs[tomo_bin_b - 1, tomo_bin_a - 1]
+        else:
+            ax = axs
+        ax.text(
+            0.8,
+            0.95,
+            f"{tomo_bin_a}-{tomo_bin_b}",
+            transform=ax.transAxes,
+            verticalalignment="top",
+        )
+        ax.axhline(0, color="black", ls="--")
+        ax.set_xlim(ell.min(), ell.max())
+        ax.set_xscale("squareroot")
+        ax.set_xticks(np.array([100, 400, 900, 1600]))
+        ax.minorticks_on()
+        minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
+        ax.xaxis.set_ticks(minor_ticks, minor=True)
+        ax.tick_params(axis="both", which="both", direction="in")
+        if tomo_bin_b == 6 or tomo_bin_b == "all":
+            ax.set_xlabel(r"$\ell$")
+        if tomo_bin_a == 1 or tomo_bin_a == "all":
+            text_offset = ax.yaxis.get_offset_text().get_text()
+            ax.yaxis.get_offset_text().set_visible(False)
+            ax.set_ylabel(f"{ell_label}{text_offset}")
+        else:
+            ax.yaxis.get_offset_text().set_visible(False)
+        if tomo_bin_a != tomo_bin_b:
+            ax = axs[tomo_bin_a - 1, tomo_bin_b - 1]
+            ax.set_visible(False)
+
+    # Setup the legend
+    plt.subplots_adjust(hspace=0.0, wspace=0.0)  # Remove space between subplots
+
+    legend_ax = grouped_legend(fig, fmt_dict)
+
+    if savefig is not None:
+        plt.savefig(savefig, dpi=300, bbox_inches="tight")
+    if show:
+        plt.show()
+
+    return fig, axs, legend_ax
+
+
 def _spectra(part, bins=(0, 0)):
     """The ELL/EE/EB/BE/BB view of a sealed part, whose BE is EB."""
     ell, ee, bb, eb, _window = sacc_io.get_pseudo_cl(part, bins)
@@ -1465,15 +1627,6 @@ class PseudoClMixin:
                 f"Invalid ell_factor: {ell_factor}. Valid options are: ['None', 'ell', 'ell(ell+1)']"
             )
 
-        def get_ell_factor(ell):
-            """Given some ell, return the ell_factor for the plot."""
-            if ell_factor == "None":
-                return 1
-            elif ell_factor == "ell":
-                return ell
-            elif ell_factor == "ell(ell+1)":
-                return ell * (ell + 1)
-
         # Check that all items in the list are valid polarisation
         valid_pols = ["EE", "BB", "EB", "BE"]
         for pol in pol_list:
@@ -1482,120 +1635,49 @@ class PseudoClMixin:
                     f"Invalid polarization type: {pol}. Valid options are: {valid_pols}"
                 )
 
-        fmt_dict = {"EE": "o", "BB": "s", "EB": "^", "BE": "v"}
-        # From all the versions, get the maximum number of tomo_bin_ids
         tomo_bins = self._get_tomo_bins_for_versions(versions, tomography=tomography)
-
-        max_key = max(tomo_bins, key=lambda k: len(tomo_bins[k]["ids"]))
-        n_tomo_bins_plot = len(tomo_bins[max_key]["ids"])
-        reference_tomo_bin_pairs = tomo_bins[max_key]["pairs"]
-
-        fig, axs = plt.subplots(
-            n_tomo_bins_plot,
-            n_tomo_bins_plot,
-            figsize=(12, 12),
-            sharex=True,
-            sharey=True,
-        )
-
-        for j, ver in enumerate(versions):
-            # Plot the pseudo-cl for each tomo bin of the considered version
+        spectra = {}
+        for ver in versions:
+            spectra[ver] = {}
             for tomo_bin_a, tomo_bin_b in tomo_bins[ver]["pairs"]:
-                if tomography:
-                    ax = axs[tomo_bin_b - 1, tomo_bin_a - 1]
-                else:
-                    ax = axs
                 ver_tomo_info = self._pseudo_cls[ver][
                     f"tomo_bin_{tomo_bin_a}_tomo_bin_{tomo_bin_b}"
                 ]
-                ver_label = self.cc[ver]["label"] if "label" in self.cc[ver] else ver
-                ver_color = (
-                    self.cc[ver]["colour"] if "colour" in self.cc[ver] else "black"
-                )
-
                 pseudo_cls = ver_tomo_info["pseudo_cl"]
                 cov = ver_tomo_info["cov"]
-
-                ell = pseudo_cls["ELL"]
-
-                ell_widths = np.diff(ell)
-                ell_widths = np.append(
-                    ell_widths, ell_widths[-1]
-                )  # Assume last bin width is same as second last
-
-                # Better jittering: symmetric around original ell values
-                jitter_fraction = (j - (len(versions) - 1) / 2) * offset
-                jittered_ell = ell + jitter_fraction * ell_widths
-                ell_factor_ = get_ell_factor(ell)
-
-                for pol in pol_list:
-                    pol_color = self.get_pol_color(ver_color, pol, pol_list)
-                    ax.errorbar(
-                        jittered_ell,
-                        ell_factor_ * pseudo_cls[pol],
-                        yerr=np.sqrt(np.diag(cov[f"COVAR_{pol}_{pol}"].data))
-                        * ell_factor_,
-                        fmt=fmt_dict[pol],
-                        label=ver_label + f" {pol}",
-                        color=pol_color,
-                        capsize=2,
-                    )
-
-        # Draw to extract the yaxis text offset
-        fig.canvas.draw()
-
-        if ell_factor == "None":
-            ell_label = r"$C_\ell$"
-        elif ell_factor == "ell":
-            ell_label = r"$\ell C_\ell$"
-        else:
-            ell_label = r"$\ell(\ell+1) C_\ell$"
-
-        for tomo_bin_a, tomo_bin_b in reference_tomo_bin_pairs:
-            if tomography:
-                ax = axs[tomo_bin_b - 1, tomo_bin_a - 1]
-            else:
-                ax = axs
-            ax.text(
-                0.8,
-                0.95,
-                f"{tomo_bin_a}-{tomo_bin_b}",
-                transform=ax.transAxes,
-                verticalalignment="top",
+                spectra[ver][(tomo_bin_a, tomo_bin_b)] = {
+                    "ell": pseudo_cls["ELL"],
+                    **{
+                        pol: (
+                            pseudo_cls[pol],
+                            np.sqrt(np.diag(cov[f"COVAR_{pol}_{pol}"].data)),
+                        )
+                        for pol in pol_list
+                    },
+                }
+        styles = {
+            ver: (
+                self.cc[ver]["label"] if "label" in self.cc[ver] else ver,
+                self.cc[ver]["colour"] if "colour" in self.cc[ver] else "black",
             )
-            ax.axhline(0, color="black", ls="--")
-            ax.set_xlim(ell.min(), ell.max())
-            ax.set_xscale("squareroot")
-            ax.set_xticks(np.array([100, 400, 900, 1600]))
-            ax.minorticks_on()
-            minor_ticks = [i * 10 for i in range(1, 10)] + [
-                i * 100 for i in range(1, 21)
-            ]
-            ax.xaxis.set_ticks(minor_ticks, minor=True)
-            ax.tick_params(axis="both", which="both", direction="in")
-            if tomo_bin_b == 6 or tomo_bin_b == "all":
-                ax.set_xlabel(r"$\ell$")
-            if tomo_bin_a == 1 or tomo_bin_a == "all":
-                text_offset = ax.yaxis.get_offset_text().get_text()
-                ax.yaxis.get_offset_text().set_visible(False)
-                ax.set_ylabel(f"{ell_label}{text_offset}")
-            else:
-                ax.yaxis.get_offset_text().set_visible(False)
-            if tomo_bin_a != tomo_bin_b:
-                ax = axs[tomo_bin_a - 1, tomo_bin_b - 1]
-                ax.set_visible(False)
-
-        # Setup the legend
-        plt.subplots_adjust(hspace=0.0, wspace=0.0)  # Remove space between subplots
-
-        legend_ax = self._add_grouped_legend(fig, versions, self.cc, pol_list, fmt_dict)
-
-        if savefig is not None:
-            plt.savefig(savefig, dpi=300, bbox_inches="tight")
-        if show:
-            plt.show()
-
-        return fig, axs, legend_ax
+            for ver in versions
+        }
+        return plot_pseudo_cl_grid(
+            spectra,
+            tomo_bins,
+            versions,
+            styles,
+            pol_list,
+            self.get_pol_color,
+            lambda fig, fmt_dict: self._add_grouped_legend(
+                fig, versions, self.cc, pol_list, fmt_dict
+            ),
+            ell_factor=ell_factor,
+            offset=offset,
+            tomography=tomography,
+            savefig=savefig,
+            show=show,
+        )
 
     def _add_grouped_legend(
         self,
