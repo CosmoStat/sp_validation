@@ -39,6 +39,8 @@ NOT_COLUMNS = {
     "R",
     "R11",
     "R22",
+    # DR6 photometry columns, outside the ShapePipe schema
+    "Z_B",
     # FITS header keywords
     "EXTNAME",
     "R_S11",
