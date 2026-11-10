@@ -17,13 +17,27 @@ OUTPUT = "${unions_data}/photopipe-dr6"
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("extract", help="directory of ra=*.parquet shards and manifests from step 1")
-    parser.add_argument("--shapes", default=SHAPES, help="shape HATS catalogue (default: %(default)s)")
-    parser.add_argument("--output", default=OUTPUT, help="product directory (default: %(default)s)")
+    parser.add_argument(
+        "extract", help="directory of ra=*.parquet shards and manifests from step 1"
+    )
+    parser.add_argument(
+        "--shapes", default=SHAPES, help="shape HATS catalogue (default: %(default)s)"
+    )
+    parser.add_argument(
+        "--output", default=OUTPUT, help="product directory (default: %(default)s)"
+    )
     parser.add_argument("--workers", type=int, default=1)
-    parser.add_argument("--pixels", type=int, nargs="*", help="restrict to these pixels")
+    parser.add_argument(
+        "--pixels", type=int, nargs="*", help="restrict to these pixels"
+    )
     args = parser.parse_args()
-    merge(expand(args.shapes), args.extract, expand(args.output), args.workers, args.pixels)
+    merge(
+        expand(args.shapes),
+        args.extract,
+        expand(args.output),
+        args.workers,
+        args.pixels,
+    )
 
 
 if __name__ == "__main__":
