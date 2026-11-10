@@ -9,7 +9,9 @@ selects gold groups on the sources themselves, and writes the products:
 - ``nz_nontomo.txt``: their sum, the n(z) of every ``TOM_BIN_ID > 0`` row;
 - ``tom_bin.parquet``: ``TOM_BIN_ID`` and ``ZBAND`` row-aligned with the
   catalogue, with its ``TILE_ID`` and ``NUMBER``;
-- ``realisations.npz``: draws of every bin at once (:mod:`nz_ensemble`);
+- ``realisations.npz``: draws of every bin at once (:mod:`nz_ensemble`), from
+  ``ensemble_inputs.npz`` (per-group source tables, their response to
+  magnitude offsets, and the calibrators' BPZ gradients);
 - ``calibration_arrays.npz``, ``som_model.npz``, ``summary.json`` and the recipe.
 """
 
@@ -160,13 +162,25 @@ def run(config, output, *, workers=1):
     (output / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     (output / "recipe.yaml").write_text(yaml.safe_dump(config, sort_keys=False))
     if "ensemble" in config:
-        from .nz_ensemble import run as draw
+        from . import nz_ensemble
 
-        draw(
-            output / "calibration_arrays.npz",
-            output / "realisations.npz",
-            config["ensemble"],
+        np.savez_compressed(
+            output / "ensemble_inputs.npz",
+            cal_photoz_gradient=nz_ensemble.photoz_gradient(
+                cal["mag"], cal["photoz"], model
+            ),
+            **nz_ensemble.ensemble_inputs(
+                src["mag"],
+                photoz,
+                weight,
+                prelim,
+                channel,
+                model,
+                offset=config["z2_offset"],
+                workers=workers,
+            ),
         )
+        nz_ensemble.run(output, output / "realisations.npz", config["ensemble"])
     return summary
 
 

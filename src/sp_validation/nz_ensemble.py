@@ -1,61 +1,176 @@
 """Realisations of the SOM n(z) calibration, every bin in each draw.
 
 A calibrated bin is a weighted histogram of calibrator redshifts: calibrator
-i in SOM group g of bin k carries S_kg / N_kg, the group's source shear weight
-over its number of in-bin calibrators (:func:`nz_calibration.calibrate`). A
-draw replaces each calibrator's unit count by a random factor q_i and keeps
-every group's source weight fixed,
+i in gold SOM group g of bin k carries S_kg / N_kg, the group's source shear
+weight over its number of in-bin calibrators (:func:`nz_calibration.calibrate`).
+A draw perturbs what enters that sum and recalibrates,
 
     w_i = S_kg q_i / Σ_{j ∈ g, k} q_j,
 
-so a group only redistributes its weight among its own calibrators, and a
-group whose factors all vanish drops out, as an unsupported group does in the
-calibration. Two sources enter q_i = m_i (1 + δ(z_i)):
+so a gold group whose calibrators all leave it drops out, as an unsupported
+group does in the calibration. Each term is switched on by its key in the
+recipe's ``ensemble`` section.
 
-- **calibrator shot noise**: m_i are multinomial bootstrap counts;
-- **sample variance of the calibration field**: δ(z) is the galaxy density
-  contrast along the line of sight through the spectroscopic footprint, a
-  lognormal field on the output grid whose covariance is the nonlinear matter
-  power spectrum seen through the footprint and each grid cell, times a
-  linear bias squared (:func:`density_covariance`).
+Statistical terms, through the factors q_i = m_i (1 + δ(z_i)):
 
-Every bin uses its own calibrators (they are split by BPZ), so shot noise is
-independent between bins; δ(z) is shared, and is what correlates them. The
-SOM, groups, gold masks and source weights are held fixed.
+- ``bootstrap``: m_i are multinomial bootstrap counts (calibrator shot noise);
+- ``density``: δ(z) is the galaxy density contrast along the line of sight
+  through the spectroscopic footprint, a lognormal field on the output grid
+  whose covariance is the nonlinear matter power seen through the footprint
+  and each grid cell, times a linear bias squared (:func:`density_covariance`).
+
+Systematic terms:
+
+- ``zero_points``: a zero-point error δ of the calibration field relative to
+  the sources, drawn as Gaussian colour offsets (u-g, g-r, r-i, i-z) and a
+  grey offset. The calibrators trained the SOM, so its cells would have moved
+  with them: the error offsets every source by +δ against the SOM, which moves
+  source weight between groups (S_kg), and moves each calibrator's BPZ, and so
+  its bin, by -δ along the local BPZ gradient of the calibrators;
+- ``z2_offset``: an error ε in the constant that maps z2 onto z, offsetting
+  the z band of every source measured through z2 (the calibrators have none);
+- ``specz_failure``: each calibrator's redshift is, with this probability,
+  replaced by the redshift of a random calibrator;
+- ``nmad_factor``: the gold-QC factor drawn uniformly from a range; gold is
+  re-derived at that factor from the calibration's own spectra and sources,
+  so the bins' source selection moves with it.
+
+Source tables respond to the offsets through a Jacobian computed once
+(:func:`ensemble_inputs`). The SOM and its groups are held fixed. The other
+terms leave the gold selection alone: the ensemble describes the catalogue's
+fixed ``TOM_BIN_ID`` selection, so a gold group that loses its spectra drops
+out rather than a new group entering.
 """
 
 import argparse
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
+import yaml
+from scipy.spatial import cKDTree
 
-from .nz_calibration import deposit
+from . import nz_calibration as nz
 
-
-def source_weights(cal_weights, cal_group, n_groups):
-    """Per-(bin, group) source weight S_kg implied by calibrator weights."""
-    return np.stack(
-        [np.bincount(cal_group, weights=w, minlength=n_groups) for w in cal_weights]
-    )
-
-
-def reweight(cal_weights, cal_group, q):
-    """Calibrator weights (n_bin, n_cal) with factors ``q`` at fixed S_kg."""
-    n_groups = cal_group.max() + 1
-    source = source_weights(cal_weights, cal_group, n_groups)
-    out = np.zeros_like(cal_weights)
-    for k, w in enumerate(cal_weights):
-        member = w > 0
-        qk = np.where(member, q, 0.0)
-        den = np.bincount(cal_group, weights=qk, minlength=n_groups)
-        ratio = np.divide(source[k], den, out=np.zeros(n_groups), where=den > 0)
-        out[k] = ratio[cal_group] * qk
-    return out
+#: Offsets the source tables respond to: the calibration field's five bands
+#: (as a source offset) and the z2 mapping.
+DIRECTIONS = ("u", "g", "r", "i", "z", "z2")
 
 
 def histograms(cal_z, cal_weights, grid):
     """Unit-integral n(z) per bin from calibrator weights."""
-    return np.stack([deposit(cal_z, w / w.sum(), grid) for w in cal_weights])
+    return np.stack([nz.deposit(cal_z, w / w.sum(), grid) for w in cal_weights])
+
+
+def members(photoz, edges):
+    """Calibrators in each bin's BPZ interval, (n_bin, n_cal)."""
+    return np.stack(
+        [(photoz >= lo) & (photoz < hi) for lo, hi in zip(edges[:-1], edges[1:])]
+    )
+
+
+def group_tables(prelim, group, weight, photoz, n_bin, n_groups):
+    """Source weight and weighted BPZ summed per (bin, group)."""
+    index = prelim.astype(np.int64) * n_groups + group
+    size = n_bin * n_groups
+    w = np.bincount(index, weights=weight, minlength=size)
+    p = np.bincount(index, weights=weight * photoz, minlength=size)
+    return w.reshape(n_bin, n_groups), p.reshape(n_bin, n_groups)
+
+
+def ensemble_inputs(
+    mag, photoz, weight, prelim, channel, model, *, offset, step=0.02, workers=1
+):
+    """Per-(bin, group) source tables and their Jacobian in :data:`DIRECTIONS`.
+
+    ``prelim`` and ``channel`` are :func:`nz_calibration.source_groups` of the
+    sources at the recipe's z2 ``offset``. Each direction is a magnitude
+    offset of the sources against the SOM: one band for every source, or z for
+    the sources measured through z2. Sources fill the cells densely, so the
+    tables move linearly over a few hundredths of a magnitude; central
+    differences at ±``step`` give the derivatives.
+    """
+    n_bin, n_groups = len(model["edges"]) - 1, int(model["group_map"].max()) + 1
+    rows = np.flatnonzero(prelim >= 0)
+    m, _ = nz.z_magnitudes(mag[rows], offset)
+    x = (nz.features(m) - model["center"]) / model["scale"]
+    del m
+    via_z2 = channel[rows] == 2
+    tree = cKDTree(model["code"])
+    bins, weight, photoz = prelim[rows], weight[rows], photoz[rows]
+    base = model["group_map"][tree.query(x, workers=workers)[1]]
+
+    def tables(direction, size):
+        d = np.zeros((1, 5))
+        d[0, min(direction, 4)] = size
+        shift = nz.features(d)[0] / model["scale"]
+        moved = via_z2 if DIRECTIONS[direction] == "z2" else np.ones(len(rows), bool)
+        group = base.copy()
+        cell = tree.query(x[moved] + shift, workers=workers)[1]
+        group[moved] = model["group_map"][cell]
+        return np.array(group_tables(bins, group, weight, photoz, n_bin, n_groups))
+
+    fiducial = np.array(group_tables(bins, base, weight, photoz, n_bin, n_groups))
+    jacobian = np.array(
+        [
+            (tables(k, step) - tables(k, -step)) / (2 * step)
+            for k in range(len(DIRECTIONS))
+        ]
+    )
+    return dict(
+        directions=np.array(DIRECTIONS),
+        source_weight=fiducial[0],
+        source_photoz=fiducial[1],
+        source_weight_jacobian=jacobian[:, 0],
+        source_photoz_jacobian=jacobian[:, 1],
+    )
+
+
+def photoz_gradient(mag, photoz, model, k=64):
+    """d BPZ / d m (n_cal, 5) of each calibrator, from its k nearest in the SOM space.
+
+    A least-squares plane of BPZ in ugriz through the neighbours.
+    """
+    x = (nz.features(mag) - model["center"]) / model["scale"]
+    _, near = cKDTree(x).query(x, k)
+    grad = np.empty((len(mag), 5))
+    for i, j in enumerate(near):
+        a = np.column_stack([mag[j] - mag[i], np.ones(k)])
+        grad[i] = np.linalg.lstsq(a, photoz[j], rcond=None)[0][:5]
+    return grad
+
+
+def calibrator_weights(group, member, q, source, gold):
+    """Weights (n_bin, n_cal): S_kg q_i / Σ_{j ∈ g, k} q_j over gold groups."""
+    n_groups = source.shape[1]
+    out = np.zeros(member.shape)
+    for k in range(len(member)):
+        qk = np.where(member[k], q, 0.0)
+        den = np.bincount(group, weights=qk, minlength=n_groups)
+        keep = gold[k] & (den > 0)
+        ratio = np.divide(source[k], den, out=np.zeros(n_groups), where=keep)
+        out[k] = ratio[group] * qk
+    return out
+
+
+def gold_masks(z, photoz, group, member, source, source_photoz, floor, factor):
+    """Re-derive every bin's gold mask, as :func:`nz_calibration.calibrate` does."""
+    n_groups = source.shape[1]
+    threshold = nz.gold_threshold(z, photoz, floor, factor)
+    masks = []
+    for k in range(len(member)):
+        g = group[member[k]]
+        count = np.bincount(g, minlength=n_groups)
+        zsum = np.bincount(g, weights=z[member[k]], minlength=n_groups)
+        masks.append(nz.gold_mask(source[k], source_photoz[k], count, zsum, threshold))
+    return np.array(masks)
+
+
+def band_offsets(colours, grey):
+    """Offsets of (u, g, r, i, z) from colour offsets (u-g, g-r, r-i, i-z) and r."""
+    du_g, dg_r, dr_i, di_z = colours
+    g, i = grey + dg_r, grey - dr_i
+    return np.array([g + du_g, g, grey, i, i - di_z])
 
 
 def density_covariance(grid, field, bias, cosmo, n_phi=4096, max_sep=500.0):
@@ -131,85 +246,165 @@ def lognormal(cov, n_draw, rng):
     return np.exp(gauss - 0.5 * np.diag(g))
 
 
-def realisations(cal_z, cal_weights, cal_group, grid, n_draw, *, density=None, seed=0):
-    """n(z) draws (n_draw, n_bin, n_z), unit integral per bin.
+@dataclass
+class Calibration:
+    """A calibration run's state: what a draw perturbs and recalibrates.
 
-    The draws are recentred so their mean is the calibration's own n(z): the
-    within-group ratio is nonlinear in the factors and shifts the raw mean by
-    a fraction of the scatter, which is estimator bias, not a redshift shift.
-    ``density`` is the covariance of δ on ``grid`` (:func:`density_covariance`);
-    ``None`` keeps only calibrator shot noise.
+    ``source`` and ``source_photoz`` are the (n_bin, n_groups) source tables,
+    ``jacobian`` and ``photoz_jacobian`` their derivatives in
+    :data:`DIRECTIONS`, and ``photoz_gradient`` each calibrator's d BPZ / d m.
     """
-    rng = np.random.default_rng(seed)
-    n_cal = len(cal_z)
-    counts = rng.multinomial(n_cal, np.full(n_cal, 1 / n_cal), size=n_draw)
-    if density is None:
-        factor = np.ones((n_draw, n_cal))
-    else:
-        cell = np.clip(
-            np.rint((cal_z - grid[0]) / (grid[1] - grid[0])), 0, len(grid) - 1
+
+    z: np.ndarray
+    photoz: np.ndarray
+    group: np.ndarray
+    weights: np.ndarray
+    gold: np.ndarray
+    edges: np.ndarray
+    grid: np.ndarray
+    source: np.ndarray
+    source_photoz: np.ndarray
+    jacobian: np.ndarray
+    photoz_jacobian: np.ndarray
+    photoz_gradient: np.ndarray
+    gold_qc: dict
+
+    @classmethod
+    def load(cls, directory):
+        """Read a calibration run's output directory."""
+        directory = Path(directory)
+        a = np.load(directory / "calibration_arrays.npz")
+        e = np.load(directory / "ensemble_inputs.npz")
+        recipe = yaml.safe_load((directory / "recipe.yaml").read_text())
+        return cls(
+            z=a["z"],
+            photoz=a["cal_photoz"],
+            group=a["cal_group"],
+            weights=a["cal_weights"],
+            gold=a["gold"],
+            edges=a["edges"],
+            grid=a["grid"],
+            source=e["source_weight"],
+            source_photoz=e["source_photoz"],
+            jacobian=e["source_weight_jacobian"],
+            photoz_jacobian=e["source_photoz_jacobian"],
+            photoz_gradient=e["cal_photoz_gradient"],
+            gold_qc=recipe["gold_qc"],
         )
-        factor = lognormal(density, n_draw, rng)[:, cell.astype(int)]
-    draws = np.stack(
-        [
-            histograms(cal_z, reweight(cal_weights, cal_group, m * f), grid)
-            for m, f in zip(counts, factor)
-        ]
-    )
-    return draws - draws.mean(0) + histograms(cal_z, cal_weights, grid)
+
+    @property
+    def member(self):
+        return members(self.photoz, self.edges)
+
+    def fiducial(self):
+        """The calibration's own unit-integral n(z) per bin."""
+        return histograms(self.z, self.weights, self.grid)
+
+    def offset(self, bands=np.zeros(5), z2=0.0):
+        """Source tables and calibrator BPZ for a field offset and a z2 error.
+
+        ``bands`` is the calibration field's (u, g, r, i, z) zero-point error,
+        ``z2`` the error of the z2 mapping. Source tables are clipped at zero.
+        """
+        v = np.r_[bands, z2]
+        source = np.maximum(self.source + np.tensordot(v, self.jacobian, 1), 0)
+        source_photoz = self.source_photoz + np.tensordot(v, self.photoz_jacobian, 1)
+        return source, source_photoz, self.photoz - self.photoz_gradient @ bands
 
 
-def run(arrays, output, settings, cosmo=None):
-    """Write ``realisations.npz`` from a calibration's ``calibration_arrays.npz``."""
-    a = np.load(arrays)
-    grid = a["grid"]
+def realisations(cal, settings, density=None):
+    """Draws (n_draw, n_bin, n_z) and their raw mean before recentring.
+
+    ``settings`` is the recipe's ``ensemble`` section; ``density`` is the
+    covariance of δ on the grid (:func:`density_covariance`) when the density
+    term is on. The draws are recentred so their mean is the calibration's own
+    n(z): the terms are zero-mean in their inputs, but the calibration is
+    nonlinear in them, and the raw mean is returned so its offset can be
+    reported.
+    """
+    rng = np.random.default_rng(settings.get("seed", 0))
+    n_draw, n_cal = settings["draws"], len(cal.z)
+    zp = settings.get("zero_points")
+    if density is not None:
+        overdensity = lognormal(density, n_draw, rng)
+        step = cal.grid[1] - cal.grid[0]
+    draws = []
+    for n in range(n_draw):
+        z, gold = cal.z, cal.gold
+        if settings.get("specz_failure"):
+            fail = rng.random(n_cal) < settings["specz_failure"]
+            z = z.copy()
+            z[fail] = rng.choice(cal.z, fail.sum())
+        bands = np.zeros(5)
+        if zp:
+            bands = band_offsets(
+                rng.normal(0, zp["colours"]), rng.normal(0, zp["grey"])
+            )
+        z2 = rng.normal(0, settings["z2_offset"]) if settings.get("z2_offset") else 0.0
+        source, source_photoz, photoz = cal.offset(bands, z2)
+        member = members(photoz, cal.edges)
+        if settings.get("nmad_factor"):
+            gold = gold_masks(
+                cal.z,
+                cal.photoz,
+                cal.group,
+                cal.member,
+                cal.source,
+                cal.source_photoz,
+                cal.gold_qc["floor"],
+                rng.uniform(*settings["nmad_factor"]),
+            )
+        q = np.ones(n_cal)
+        if settings.get("bootstrap"):
+            q = rng.multinomial(n_cal, np.full(n_cal, 1 / n_cal)).astype(float)
+        if density is not None:
+            cell = np.clip(np.rint((z - cal.grid[0]) / step), 0, len(cal.grid) - 1)
+            q = q * overdensity[n, cell.astype(int)]
+        w = calibrator_weights(cal.group, member, q, source, gold)
+        draws.append(histograms(z, w, cal.grid))
+    draws = np.array(draws)
+    raw = draws.mean(0)
+    return draws - raw + cal.fiducial(), raw
+
+
+def run(directory, output, settings, cosmo=None):
+    """Write realisations of the calibration in ``directory`` to ``output``."""
+    cal = Calibration.load(directory)
     density = None
-    if settings.get("bias", 0):
+    if settings.get("density"):
         if cosmo is None:
             from .blinding import cosmology, fiducial
 
             cosmo = cosmology(fiducial())
-        density = density_covariance(grid, settings["field"], settings["bias"], cosmo)
-    real = realisations(
-        a["z"],
-        a["cal_weights"],
-        a["cal_group"],
-        grid,
-        settings["draws"],
-        density=density,
-        seed=settings.get("seed", 0),
-    )
+        d = settings["density"]
+        density = density_covariance(cal.grid, d["field"], d["bias"], cosmo)
+    real, raw = realisations(cal, settings, density)
     np.savez_compressed(
         output,
-        z=grid,
+        z=cal.grid,
         realisations=real,
-        fiducial=histograms(a["z"], a["cal_weights"], grid),
-        field=np.asarray(settings.get("field", [0, 0]), float),
-        bias=float(settings.get("bias", 0)),
-        seed=settings.get("seed", 0),
+        fiducial=cal.fiducial(),
+        raw_mean=raw,
+        settings=yaml.safe_dump(settings),
     )
     return real
 
 
 def main(argv=None):
     p = argparse.ArgumentParser(prog="python -m sp_validation.nz_ensemble")
-    p.add_argument("arrays", help="calibration_arrays.npz of a calibration run")
+    p.add_argument("directory", help="output directory of a calibration run")
     p.add_argument("-o", "--output", required=True, help="realisations .npz")
-    p.add_argument("--draws", type=int, default=1000)
-    p.add_argument("--seed", type=int, default=0)
     p.add_argument(
-        "--field",
-        type=float,
-        nargs=2,
-        default=(2.0, 0.25),
-        metavar=("WIDTH", "HEIGHT"),
-        help="spectroscopic footprint in degrees",
-    )
-    p.add_argument(
-        "--bias", type=float, default=1.3, help="calibrator galaxy bias; 0 drops δ(z)"
+        "--settings",
+        help="YAML ensemble section; the run's recipe.yaml ensemble by default",
     )
     a = p.parse_args(argv)
-    run(a.arrays, Path(a.output), vars(a))
+    if a.settings:
+        settings = yaml.safe_load(Path(a.settings).read_text())
+    else:
+        recipe = yaml.safe_load((Path(a.directory) / "recipe.yaml").read_text())
+        settings = recipe["ensemble"]
+    run(a.directory, Path(a.output), settings)
     return 0
 
 

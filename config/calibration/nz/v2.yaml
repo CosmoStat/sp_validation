@@ -30,11 +30,19 @@ gold_qc:
 z2_offset: -0.1104888916015625
 # The step is the delivered n(z) resolution; the README says why 0.05.
 grid: {min: 0, max: 5, step: 0.05}
-# n(z) realisations (sp_validation.nz_ensemble): calibrator bootstrap and the
-# line-of-sight density through the EGS spectroscopic footprint (DEEP2/3 strip).
+# n(z) realisations (sp_validation.nz_ensemble). Each key switches a term on;
+# the README says why each size.
 ensemble:
   draws: 2000
   seed: 1
-  field: [2.0, 0.25]  # degrees
-  bias: 1.3
+  bootstrap: true            # calibrator shot noise
+  density:                   # line-of-sight density through the DEEP2/3 strip
+    field: [2.0, 0.25]       # degrees
+    bias: 1.3
+  zero_points:               # EGS against the wide field, mag
+    colours: [0.022, 0.020, 0.012, 0.021]  # u-g g-r r-i i-z: stellar-locus scatter of 3.4 deg² patches
+    grey: 0.01               # Pan-STARRS 3π uniformity
+  z2_offset: 0.02            # mag, error of the z2 -> z constant
+  specz_failure: 0.01        # 1 - the compilation's DEEP2/3 confidence (0.99)
+  nmad_factor: [4, 6]        # gold-QC factor, around the fiducial 5
 output: ${nz_v2}
