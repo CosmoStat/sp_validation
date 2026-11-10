@@ -6,8 +6,9 @@ import pytest
 from sp_validation import nz_calibration as nz
 
 
-def test_deposition_conserves_mass_and_mean():
-    grid = np.linspace(0, 5, 501)
+@pytest.mark.parametrize("n_z", [501, 101])
+def test_deposition_conserves_mass_and_mean(n_z):
+    grid = np.linspace(0, 5, n_z)
     z = np.array([0.0, 0.007, 0.2851, 4.999, 5.0])
     weight = np.array([1.0, 2.0, 3.0, 0.5, 7.0])
     density = nz.deposit(z, weight, grid)

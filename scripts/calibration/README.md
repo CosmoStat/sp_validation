@@ -62,8 +62,14 @@ edges included. Within a bin, a group is gold when it holds in-bin
 calibrators and their mean spec-z agrees with its sources' weighted mean BPZ
 within max(0.4, 5 NMAD of spec-z − BPZ); the test runs on every source of the
 catalogue. Each spectrum carries its group's source shear weight divided by
-the group's number of in-bin calibrators. Deposition on [0, 5] with Δz = 0.01
-conserves mass and first moment. Canonical z takes precedence; detected z2
+the group's number of in-bin calibrators. The spectra are deposited linearly
+onto the recipe's grid ([0, 5] in steps of 0.05), which conserves each bin's
+mass and mean and broadens it by about step²/6 in variance. The step sets the
+delivered resolution: finer grids resolve the line-of-sight structure of the
+single calibration field, which is not a property of the source population.
+Against a 0.01 grid, 0.05 moves the ξ± theory (12–83′) by Δχ² < 0.01 without
+intrinsic alignments and 0.06 with A_IA = 1, and leaves ⟨z⟩ unchanged.
+Canonical z takes precedence; detected z2
 fills missing z after the recipe's offset, for sources and calibrators alike.
 
 **Realisations.** With an `ensemble` section in the recipe, the run also
@@ -78,7 +84,7 @@ group keeps its source weight (`sp_validation.nz_ensemble`):
   spectra. Bins are calibrated by disjoint calibrators (split by BPZ),
   so this term is independent between bins.
 - *Sample variance of the EGS field*: δ(z) is a lognormal galaxy density
-  along the line of sight, per Δz = 0.01 cell, with covariance from the
+  along the line of sight, per grid cell, with covariance from the
   nonlinear matter power seen through a 2° × 0.25° footprint (the DEEP2/3
   strip) times bias² (b = 1.3). It is shared by every bin and is what
   correlates them. Within-group renormalisation cancels δ wherever a group's

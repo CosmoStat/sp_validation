@@ -28,7 +28,8 @@ gold_qc:
   nmad_factor: 5
 # Canonical z takes precedence over z2.
 z2_offset: -0.1104888916015625
-grid: {min: 0, max: 5, step: 0.01}
+# The step is the delivered n(z) resolution; the README says why 0.05.
+grid: {min: 0, max: 5, step: 0.05}
 # n(z) realisations (sp_validation.nz_ensemble): calibrator bootstrap and the
 # line-of-sight density through the EGS spectroscopic footprint (DEEP2/3 strip).
 ensemble:
