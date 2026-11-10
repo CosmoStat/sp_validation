@@ -16,7 +16,6 @@ covariance, never the catalogue. Usage::
 """
 
 import argparse
-import json
 import os
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
@@ -37,11 +36,9 @@ def _paths(run_dir, version):
 
 def _grid(run_dir):
     """Reporting edges and integration binning from the run's configuration."""
-    import yaml
+    from .products import run_config
 
-    cfg = yaml.safe_load(
-        json.loads((Path(run_dir) / "provenance.json").read_text())["config"]
-    )
+    cfg = run_config(run_dir)
     cv = cfg["cosmo_val"]
     edges = np.geomspace(cv["theta_min"], cv["theta_max"], cv["nbins"] + 1)
     integ = cv["integration"]
