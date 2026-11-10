@@ -26,6 +26,27 @@ wildcard_constraints:
     seed=r'\d{5}',
 
 
+rule sampled_mask:
+    """The generator's footprint cache, written once before any seed reads it.
+
+    make_glass_sim.py writes <output_path>/mask_nside_<nside>.fits on first use;
+    seeds starting together would race on it."""
+    input:
+        config['sampled']['glass_config'],
+    output:
+        str(ROOT / 'gen/mask_nside_4096.fits'),
+    resources:
+        mem_mb=8000,
+    shell:
+        'cd {GEN} && env PYTHONPATH={GEN}/src python -c "'
+        'import sys, os, yaml, healpy as hp; '
+        'from sp_validation.glass_mock import downgrade_mask; '
+        'c = yaml.safe_load(open(sys.argv[1])); '
+        'tmp = sys.argv[2] + \'.tmp.fits\'; '
+        'hp.write_map(tmp, downgrade_mask(hp.read_map(c[\'mask_path\']), c[\'nside\']), overwrite=True); '
+        'os.replace(tmp, sys.argv[2])" {input} {output}'
+
+
 rule sampled_sky:
     """Sacha's generator, unchanged: lognormal GLASS sky, galaxies sampled in the footprint.
 
@@ -33,6 +54,7 @@ rule sampled_sky:
     benchmark: str(ROOT / 'benchmarks/sky_{seed}.tsv')
     input:
         config['sampled']['glass_config'],
+        rules.sampled_mask.output,
     output:
         temp(str(ROOT / 'gen/results/unions_v2_tomo_glass_sim_{seed}_4096.fits')),
     log:
@@ -46,7 +68,7 @@ rule sampled_sky:
     shell:
         'cd {GEN} && env PYTHONPATH={GEN}/src OMP_NUM_THREADS={threads} '
         'python {HERE}/sky.py {ROOT}/gen/results/gls_4096_limber_True.npy '
-        'scripts/glass_mock/make_glass_sim.py -c {input} '
+        'scripts/glass_mock/make_glass_sim.py -c {input[0]} '
         '-s {params.rng_seed} -N {params.number} > {log} 2>&1'
 
 
