@@ -42,8 +42,16 @@ def run_config(run_dir):
     return yaml.safe_load(text)
 
 
+# Tomographic products share a run directory with the plain suite; their names
+# carry ``_tomo`` other than the whole-sample ``_tomo_bin_all`` tag.
+_TOMOGRAPHIC = re.compile(r"_tomo(?!_bin_all)")
+
+
 def _one(pattern):
-    matches = sorted(glob.glob(str(pattern)))
+    """The single plain-suite file matching ``pattern``."""
+    matches = sorted(
+        m for m in glob.glob(str(pattern)) if not _TOMOGRAPHIC.search(Path(m).name)
+    )
     if len(matches) != 1:
         raise FileNotFoundError(f"expected one match for {pattern}, found {matches}")
     return Path(matches[0])
