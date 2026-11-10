@@ -350,18 +350,13 @@ def read_catalogue(
 
 
 def open_catalogue(path, hdu=None, column_map=None):
-    """Return a catalogue as one table (``Catalogue.table``).
+    """Return a catalogue as one table in the v2 grammar (``Catalogue.table``).
 
-    A FITS table is memory-mapped, and an unchunked HDF5 table or a HATS
-    catalogue is a lazy ``grammar.V2View`` read on access (an HDF5 file stays
-    open while the view is referenced), so a consumer pays only for the
-    columns it indexes, derived v2 columns included. HDF5 row chunks are
-    read into memory. Parameters as for ``Catalogue``.
-
-    Returns
-    -------
-    grammar.V2View or numpy.ndarray
-        catalogue data in the v2 grammar
+    FITS, unchunked HDF5 and HATS catalogues open as a lazy ``grammar.V2View``
+    (FITS memory-mapped; an HDF5 file stays open while the view is
+    referenced), so a consumer pays only for the columns it indexes, derived
+    v2 columns included. HDF5 row chunks are read into a numpy array.
+    Parameters as for ``Catalogue``.
     """
     return Catalogue(path, hdu=hdu, column_map=column_map).table()
 

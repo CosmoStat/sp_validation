@@ -56,6 +56,15 @@ def read_structured(table, names=None, rows=None):
     return out
 
 
+def _outputs(dtype, names, n, out):
+    """Return ``out`` with an empty ``n``-row array added for each other name."""
+    out = dict(out or {})
+    for name in names:
+        if name not in out:
+            out[name] = np.empty(n, dtype=dtype[name])
+    return out
+
+
 def _deliver(columns, out):
     """Copy ``columns`` into the arrays ``out`` holds for some of them."""
     for name, target in (out or {}).items():
@@ -132,10 +141,7 @@ class HDF5Table:
     def read(self, names, rows=None, out=None):
         names = list(names)
         n = len(self) if rows is None else len(rows)
-        out = dict(out or {})
-        for name in names:
-            if name not in out:
-                out[name] = np.empty(n, dtype=self.dtype[name])
+        out = _outputs(self.dtype, names, n, out)
         source = self.dataset.fields(names)
         block = max(1, BLOCK_BYTES // self.dtype.itemsize)
         span = _contiguous(rows, len(self))
@@ -250,10 +256,7 @@ class ConcatTable:
     def read(self, names, rows=None, out=None):
         names = list(names)
         n = len(self) if rows is None else len(rows)
-        out = dict(out or {})
-        for name in names:
-            if name not in out:
-                out[name] = np.empty(n, dtype=self.dtype[name])
+        out = _outputs(self.dtype, names, n, out)
         jobs = []
         span = _contiguous(rows, len(self))
         if span is not None:
@@ -293,24 +296,7 @@ class ConcatTable:
 
 
 def promote_dtypes(dtype_a, dtype_b):
-    """Promote Dtypes.
-
-    Return a scalar dtype that holds both input dtypes without truncation
-    or overflow.
-
-    Parameters
-    ----------
-    dtype_a : numpy.dtype
-        first input dtype
-    dtype_b : numpy.dtype
-        second input dtype
-
-    Returns
-    -------
-    numpy.dtype
-        promoted dtype
-
-    """
+    """Return a scalar dtype holding both dtypes without truncation or overflow."""
     if dtype_a == dtype_b:
         return dtype_a
     if dtype_a.kind in "SU" and dtype_b.kind in "SU":
