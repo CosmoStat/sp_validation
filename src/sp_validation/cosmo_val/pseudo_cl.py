@@ -97,13 +97,21 @@ def plot_pseudo_cl_grid(
     versions,
     styles,
     pol_list,
-    color_for_pol,
-    grouped_legend,
+    color_for_pol=None,
+    grouped_legend=None,
     ell_factor="ell",
     offset=0.15,
     tomography=True,
     savefig=None,
     show=True,
+    axs=None,
+    sigma_units=False,
+    pol_style=None,
+    pol_offset=0.0,
+    pair_label=True,
+    ell_range=None,
+    minor_ticks=None,
+    zero_line=None,
 ):
     """
     Draw pseudo-C_ell spectra in a grid of tomographic bin pairs.
@@ -122,10 +130,11 @@ def plot_pseudo_cl_grid(
         ``{ver: (label, colour)}``.
     pol_list : list
         Polarisations to draw (e.g. ``["EE", "BB"]``).
-    color_for_pol : callable
-        ``(version colour, pol, pol_list) -> colour``.
-    grouped_legend : callable
-        ``(fig, fmt_dict) -> legend axes``.
+    color_for_pol : callable, optional
+        ``(version colour, pol, pol_list) -> colour``; the version colour
+        if None.
+    grouped_legend : callable, optional
+        ``(fig, fmt_dict) -> legend axes``; no legend if None.
     ell_factor : {"None", "ell", "ell(ell+1)"}
         Factor to multiply the C_ell by.
     offset : float
@@ -136,6 +145,23 @@ def plot_pseudo_cl_grid(
         Path to save the figure.
     show : bool
         Whether to show the figure.
+    axs : array of Axes, optional
+        Grid to draw into (row ``tomo_bin_b - 1``, column ``tomo_bin_a - 1``);
+        a 12-inch grid with shared axes and no spacing if None.
+    sigma_units : bool
+        Draw each C_ell divided by its sigma, without error bars.
+    pol_style : dict, optional
+        ``{pol: errorbar kwargs}`` overriding the marker, colour and caps.
+    pol_offset : float
+        Jitter between polarisations, in units of the bandpower spacing.
+    pair_label : bool
+        Write the bin pair inside each panel.
+    ell_range : tuple, optional
+        x limits; the first and last bandpower if None.
+    minor_ticks : list, optional
+        Minor ell ticks; every 10 below 100 and every 100 above if None.
+    zero_line : dict, optional
+        axhline kwargs of the zero line; black dashed if None.
 
     Returns
     -------
@@ -156,13 +182,18 @@ def plot_pseudo_cl_grid(
     n_tomo_bins_plot = len(tomo_bins[max_key]["ids"])
     reference_tomo_bin_pairs = tomo_bins[max_key]["pairs"]
 
-    fig, axs = plt.subplots(
-        n_tomo_bins_plot,
-        n_tomo_bins_plot,
-        figsize=(12, 12),
-        sharex=True,
-        sharey=True,
-    )
+    own_axes = axs is None
+    if own_axes:
+        fig, axs = plt.subplots(
+            n_tomo_bins_plot,
+            n_tomo_bins_plot,
+            figsize=(12, 12),
+            sharex=True,
+            sharey=True,
+        )
+    else:
+        fig = np.ravel(axs)[0].figure
+    pol_style = pol_style or {}
 
     for j, ver in enumerate(versions):
         # Plot the pseudo-cl for each tomo bin of the considered version
@@ -186,22 +217,33 @@ def plot_pseudo_cl_grid(
             jittered_ell = ell + jitter_fraction * ell_widths
             ell_factor_ = get_ell_factor(ell)
 
-            for pol in pol_list:
-                pol_color = color_for_pol(ver_color, pol, pol_list)
+            for i_pol, pol in enumerate(pol_list):
+                pol_color = (
+                    ver_color
+                    if color_for_pol is None
+                    else color_for_pol(ver_color, pol, pol_list)
+                )
+                pol_jitter = (i_pol - (len(pol_list) - 1) / 2) * pol_offset
+                value, sigma = spectrum[pol]
                 ax.errorbar(
-                    jittered_ell,
-                    ell_factor_ * spectrum[pol][0],
-                    yerr=spectrum[pol][1] * ell_factor_,
-                    fmt=fmt_dict[pol],
-                    label=ver_label + f" {pol}",
-                    color=pol_color,
-                    capsize=2,
+                    jittered_ell + pol_jitter * ell_widths,
+                    value / sigma if sigma_units else ell_factor_ * value,
+                    yerr=None if sigma_units else sigma * ell_factor_,
+                    **{
+                        "fmt": fmt_dict[pol],
+                        "label": ver_label + f" {pol}",
+                        "color": pol_color,
+                        "capsize": 2,
+                        **pol_style.get(pol, {}),
+                    },
                 )
 
     # Draw to extract the yaxis text offset
     fig.canvas.draw()
 
-    if ell_factor == "None":
+    if sigma_units:
+        ell_label = r"$C_\ell / \sigma_\ell$"
+    elif ell_factor == "None":
         ell_label = r"$C_\ell$"
     elif ell_factor == "ell":
         ell_label = r"$\ell C_\ell$"
@@ -213,20 +255,25 @@ def plot_pseudo_cl_grid(
             ax = axs[tomo_bin_b - 1, tomo_bin_a - 1]
         else:
             ax = axs
-        ax.text(
-            0.8,
-            0.95,
-            f"{tomo_bin_a}-{tomo_bin_b}",
-            transform=ax.transAxes,
-            verticalalignment="top",
-        )
-        ax.axhline(0, color="black", ls="--")
-        ax.set_xlim(ell.min(), ell.max())
+        if pair_label:
+            ax.text(
+                0.8,
+                0.95,
+                f"{tomo_bin_a}-{tomo_bin_b}",
+                transform=ax.transAxes,
+                verticalalignment="top",
+            )
+        ax.axhline(0, **(zero_line or {"color": "black", "ls": "--"}))
+        ax.set_xlim(*(ell_range or (ell.min(), ell.max())))
         ax.set_xscale("squareroot")
         ax.set_xticks(np.array([100, 400, 900, 1600]))
         ax.minorticks_on()
-        minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
-        ax.xaxis.set_ticks(minor_ticks, minor=True)
+        ax.xaxis.set_ticks(
+            minor_ticks
+            if minor_ticks is not None
+            else [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)],
+            minor=True,
+        )
         ax.tick_params(axis="both", which="both", direction="in")
         if tomo_bin_b == 6 or tomo_bin_b == "all":
             ax.set_xlabel(r"$\ell$")
@@ -241,9 +288,10 @@ def plot_pseudo_cl_grid(
             ax.set_visible(False)
 
     # Setup the legend
-    plt.subplots_adjust(hspace=0.0, wspace=0.0)  # Remove space between subplots
+    if own_axes:
+        plt.subplots_adjust(hspace=0.0, wspace=0.0)  # Remove space between subplots
 
-    legend_ax = grouped_legend(fig, fmt_dict)
+    legend_ax = None if grouped_legend is None else grouped_legend(fig, fmt_dict)
 
     if savefig is not None:
         plt.savefig(savefig, dpi=300, bbox_inches="tight")

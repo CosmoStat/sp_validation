@@ -71,6 +71,11 @@ def plot_tau_stats_tomo(
     plot_theta_times_tau=False,
     fmt="",
     capsize=2,
+    fig=None,
+    errorbar_kw=None,
+    row_label=None,
+    titles=None,
+    legend=True,
 ):
     """
     Draw tau_{0,2,5} per tomographic bin: one row per bin (and component),
@@ -88,6 +93,21 @@ def plot_tau_stats_tomo(
         Versions to draw and their colours.
     labels : dict
         ``{ver: legend label}``.
+    fig : Figure, optional
+        Figure to draw into, sized and laid out by the caller; a new
+        20 x 10 inch figure, tight-laid-out, if None.
+    errorbar_kw : dict, optional
+        Extra errorbar kwargs (markers, sizes).
+    row_label : callable, optional
+        ``(tomo_bin_id, "+" or "-") -> y label`` of a row's first panel.
+    titles : list of str, optional
+        Column titles for tau_0, tau_2, tau_5.
+    legend : bool
+        Draw the version legend below the last row.
+
+    Returns
+    -------
+    fig, all_axs
     """
     # Write the whole script for the tomography. It does not exist in shear_psf_leakage
     e_obs = r"e^\mathrm{obs}"
@@ -97,7 +117,7 @@ def plot_tau_stats_tomo(
 
     factor_theta_label = r"\theta" if plot_theta_times_tau else r""
 
-    titles = [
+    titles = titles or [
         rf"$\tau_0 = \langle {e_obs} {e_psf} \rangle$",
         rf"${factor_theta_label} \tau_2 = {factor_theta_label} \langle {e_obs} {delta_e_psf} \rangle$",
         rf"${factor_theta_label} \tau_5 = {factor_theta_label} \langle {e_obs} {delta_T_psf} \rangle$",
@@ -113,7 +133,9 @@ def plot_tau_stats_tomo(
 
     n_rows = n_tomo_bins_plot * (1 + plot_tau_m)
 
-    fig = plt.figure(figsize=(20 * (1 + plot_tau_m), 10 * (1 + plot_tau_m)))
+    own_figure = fig is None
+    if own_figure:
+        fig = plt.figure(figsize=(20 * (1 + plot_tau_m), 10 * (1 + plot_tau_m)))
     gs = fig.add_gridspec(n_rows, 3, wspace=0.1, hspace=0)
     all_axs = gs.subplots(sharex="col")
 
@@ -161,6 +183,7 @@ def plot_tau_stats_tomo(
                     label=ver_label,
                     capsize=capsize,
                     color=color,
+                    **(errorbar_kw or {}),
                 )
 
         # Set the style of the plot
@@ -168,7 +191,11 @@ def plot_tau_stats_tomo(
             axs[i].set_xscale("log")
             axs[i].set_xlim(theta.min() * 0.9, theta.max() * 1.1)
             if i == 0:
-                axs[i].set_ylabel(f"Bin {tomo_bin_id}\n `{p_or_m_label}' comp.")
+                axs[i].set_ylabel(
+                    f"Bin {tomo_bin_id}\n `{p_or_m_label}' comp."
+                    if row_label is None
+                    else row_label(tomo_bin_id, p_or_m_label)
+                )
             if k == n_rows - 1:
                 axs[i].set_xlabel(r"$\theta$ [arcmin]")
             if k == 0:
@@ -188,7 +215,7 @@ def plot_tau_stats_tomo(
             )  # Move scale factor slightly above axis
             axs[i].yaxis.get_offset_text().set_ha("left")
 
-        if k == n_rows - 1:
+        if legend and k == n_rows - 1:
             axs[1].legend(
                 loc="upper center",
                 bbox_to_anchor=(0.5, -0.5),  # (x, y) relative to the axes
@@ -196,7 +223,8 @@ def plot_tau_stats_tomo(
                 frameon=False,
             )
 
-    plt.tight_layout()
+    if own_figure:
+        plt.tight_layout()
 
     if savefig is not None:
         plt.savefig(savefig, dpi=300, bbox_inches="tight")
@@ -206,6 +234,8 @@ def plot_tau_stats_tomo(
 
     if close:
         plt.close()
+
+    return fig, all_axs
 
 
 class PSFSystematicsMixin:
