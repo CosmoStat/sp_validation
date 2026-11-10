@@ -16,9 +16,6 @@ papers, and so that several people can run it side by side without colliding.
    results/              analysis products + diagnostic plots (contents gitignored, dir kept)
    docs/  tests/  config/
 
-The analysis runs in four stages, assemble, calibrate, validate and infer;
-:doc:`stages` maps them onto this tree.
-
 Analysis versus presentation
 -----------------------------
 
