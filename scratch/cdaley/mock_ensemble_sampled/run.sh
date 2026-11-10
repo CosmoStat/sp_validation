@@ -1,7 +1,7 @@
 #!/bin/bash
-# Drive seeds START..END through one local Snakemake inside the current allocation.
+# Drive seeds START..END of the run root ROOT through one local Snakemake inside the current allocation.
 set -euo pipefail
-R=$(readlink -f /project/rrg-kyi/cdaley/unions/analyses/mock-ensemble-sampled)
+R=$(readlink -f "${ROOT:?run root}")
 HERE=$(cd "$(dirname "$0")" && pwd)
 REPO=$(cd "$HERE/../../.." && pwd)
 module load apptainer

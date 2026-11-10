@@ -8,7 +8,7 @@ from pathlib import Path
 
 HERE = Path(workflow.basedir)
 REPO = HERE.parents[2]
-ROOT = Path('/project/rrg-kyi/cdaley/unions/analyses/mock-ensemble-sampled').resolve()
+ROOT = Path(config['sampled']['root'])
 GEN = Path(config['sampled']['generator_checkout'])
 
 module analysis:

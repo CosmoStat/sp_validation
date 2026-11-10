@@ -5,9 +5,9 @@
 #SBATCH --cpus-per-task=192
 #SBATCH --mem=700G
 #SBATCH --time=12:00:00
-#SBATCH --output=/project/rrg-kyi/cdaley/unions/analyses/mock-ensemble-sampled/logs/batch-%j.log
-# sbatch --export=ALL,START=2,END=5 batch.sbatch
+#SBATCH --output=logs/batch-%j.log
+# From the run root: sbatch --export=ALL,ROOT=$PWD,START=2,END=5 batch.sbatch
 set -euo pipefail
-: "${START:?}" "${END:?}"
+: "${ROOT:?}" "${START:?}" "${END:?}"
 export MEM_MB=680000
 bash /project/rrg-kyi/cdaley/unions/code/wt-mockens-cv/scratch/cdaley/mock_ensemble_sampled/run.sh
