@@ -61,6 +61,7 @@ def main():
     J = {k: old["statistics"][k]["joint"] for k in KEYS}
     A = old["additive"]
     t, tc = rs["clbb_template_common"], rs["clbb_template_crosses"]
+    te = rs["clbb_template_common_empirical_rho"]
     T = rs["tests"]
     s_xi = [J[k]["s"] for k in ("xip_B", "xim_B", "combined", "small")]
     s_cl = [J[k]["s"] for k in ("cl_bb", "cl_eb")]
@@ -70,12 +71,11 @@ def main():
     snew = [new["statistics"][k]["joint"]["s"] for k in KEYS]
 
     print(f"""<h2>Readings</h2>
-<p class="lede"><b>The data's B-mode excess is coherent and additive, and the #468 rebinning doesn't remove it.</b>
+<p class="lede"><b>The data's B-mode excess is coherent and additive. The #468 rebinning's better B nulls are noise resampling, and they neither strengthen nor weaken that.</b>
 On the first bins, {n} sampled GLASS mocks put the Cℓ^BB additive-template amplitude at {A['clbb_template_common']['z']:+.1f}σ
 (0 of {n} mocks reach it) and the mean signed Cℓ^BB offset at {A['mean_offset_cl_bb']['z']:+.1f}σ (0 of {n}).
-The #468 bins lower the joint χ² by what resampling about a quarter of the shape noise predicts, while the template amplitude persists:
-{t['old']:.2f} ± {t['old_sigma']:.2f} on the first bins, {t['new']:.2f} ± {t['new_sigma']:.2f} on the #468 bins,
-{t['joint']:.2f} ± {t['joint_sigma']:.2f} ({t['joint_z']:.1f}σ) from both together.</p>
+The #468 bins lower the joint χ² by what resampling about a quarter of the shape noise predicts. Their own template amplitude, {t['new']:.2f} ± {t['new_sigma']:.2f}, is again reached by none of the mocks;
+the two binnings share too much noise for the comparison to tell a fixed component from a fluctuation.</p>
 
 <h3>First bins, {n} mocks</h3>
 <ul>
@@ -100,22 +100,23 @@ whether the data share it is the painted ensemble's question, since painted mock
 (s = {min(snew):.2f}–{max(snew):.2f}) and the ensemble PTEs of this placement run high. Comparisons against the mock spread are conservative for the same reason:
 the template amplitude {an['data']:.2f} is reached by {an['rank_above']} of {n} mocks ({an['z']:+.1f}σ).</p>
 <p><b>Noise resampling, calibrated.</b> In each bin a fraction f = {min(f.values()):.2f}–{max(f.values()):.2f} of the galaxy count is shared between the two binnings
-(from <code>bin_changes.json</code>), so the two vectors share about {100 * noise_kept:.0f}% of their shape-noise variance; the measured correlation of the B elements is {rs['empirical_corr']:.2f},
-a little above that, as a shared signal would make it. Given the old vector, the new one is Gaussian under pure noise, and drawing from that conditional gives the χ² the #468 bins would show if the old excess were noise:</p>
+(from <code>bin_changes.json</code>). With the area growth (shared pairs live only in the old {100 * (1 - 1 / rs['area_ratio']):.0f}%-smaller area), the two vectors share about {100 * noise_kept:.0f}% of their shape-noise variance.
+That is a lower bound: E→B leakage and any real B signal correlate fully between the runs, and real weights may differ from counts. The measured correlation of the B elements is {rs['empirical_corr']:.2f}.
+Given the old vector, the new one is Gaussian under pure noise, and drawing from that conditional gives the χ² the #468 bins would show if the old excess were noise:</p>
 <table><tr><th>statistic</th><th>dof</th><th>first bins χ² (PTE)</th><th>#468 bins χ² (PTE)</th><th>predicted by resampling alone, median [68%]</th></tr>
 {''.join(f"<tr><td>{NAMES[k]}</td><td>{T[k]['dof']}</td><td>{T[k]['chi2_old']:.1f} ({T[k]['pte_old']:.3f})</td><td>{T[k]['chi2_new']:.1f} ({T[k]['pte_new']:.3f})</td><td>{T[k]['h0_chi2_new_median']:.1f} [{T[k]['h0_chi2_new_68'][0]:.1f}, {T[k]['h0_chi2_new_68'][1]:.1f}]</td></tr>" for k in KEYS)}
 </table>
 <p>The χ² moved as resampling predicts: the PTE improvements (ξ±B 0.006 → 0.10, Cℓ^BB 0.017 → 0.099) are regression of the fresh quarter of the noise toward its mean.
 They would happen whether or not a systematic is present, so they say nothing about whether the first bins were wrong.</p>
-<p><b>The template amplitude persists.</b> Pure noise would carry the old {t['old']:.2f} to {t['h0_new_given_old'][0]:.2f} ± {t['h0_new_given_old'][1]:.2f}; a fixed additive B would keep it.
-The #468 bins give {t['new']:.2f}: {(t['new'] - t['h0_new_given_old'][0]) / t['h0_new_given_old'][1]:+.1f}σ from the noise prediction and {t['constant_a_diff_z']:+.1f}σ from constancy, so the rebinning alone only mildly prefers a fixed component.
-What it shows is that the excess didn't go away.
-In the cross-pairs, where noise bias can't enter, it barely moves: {tc['old']:.2f} → {tc['new']:.2f} (noise alone predicts {tc['h0_new_given_old'][0]:.2f} ± {tc['h0_new_given_old'][1]:.2f}).
-With the correlation between the runs accounted for, both together give {t['joint']:.2f} ± {t['joint_sigma']:.2f}, {t['joint_z']:.1f}σ on the analytic σ, which the first-bin mocks calibrate
-(mock spread {np.std(A['clbb_template_common']['mocks'], ddof=1):.2f} against GLS σ {t['old_sigma']:.2f}).</p>
+<p><b>The template amplitude can't discriminate either.</b> If the first-bin excess were pure noise, the shared noise would still carry {t['old']:.2f} to {t['h0_new_given_old'][0]:.2f} ± {t['h0_new_given_old'][1]:.2f} (about 3σ) on the #468 bins; a fixed component would keep it near {t['old']:.2f}.
+The #468 bins give {t['new']:.2f}: {(t['new'] - t['h0_new_given_old'][0]) / t['h0_new_given_old'][1]:+.1f}σ from the noise prediction and {t['constant_a_diff_z']:+.1f}σ from constancy, a likelihood ratio near 1.
+The cross-pairs behave the same way ({tc['old']:.2f} → {tc['new']:.2f}; noise alone predicts {tc['h0_new_given_old'][0]:.2f} ± {tc['h0_new_given_old'][1]:.2f}).
+Combining the runs with their correlation gives {t['joint']:.2f} ± {t['joint_sigma']:.2f} ({t['joint_z']:.1f}σ), which is the first-bin result restated: the new bins shrink σ by only {100 * (1 - t['joint_sigma'] / t['old_sigma']):.0f}%.
+With the measured correlation in place of the model, the numbers barely move (noise prediction {te['h0_new_given_old'][0]:.2f} ± {te['h0_new_given_old'][1]:.2f}, constancy {te['constant_a_diff_z']:+.1f}σ, joint {te['joint_z']:.1f}σ).
+So the evidence for an additive component is the first-bin amplitude against the mocks, whose spread ({np.std(A['clbb_template_common']['mocks'], ddof=1):.2f}) calibrates the GLS σ ({t['old_sigma']:.2f}); the rebinning leaves it where it was.</p>
 {fig_rebin_img(old, new, rs)}
-<p class="mute">Model behind the prediction: for pair (i, j) the shape-noise correlation between the binnings is f_i f_j, with f_i = (galaxies in bin i in both) / √(N_i,old N_i,new) from unit counts;
-real weights would change it slightly. The cross-covariance is F (C_old + C_new)/2 F with F = √(f_i f_j) per row. Numbers: <code>placement-nz468-oldmocks/resample.json</code>.</p>
+<p class="mute">Model behind the prediction: for pair (i, j) the shape-noise correlation between the binnings is f_i f_j √(A_new/A_old), with f_i = (galaxies in bin i in both) / √(N_i,old N_i,new) from unit counts.
+The cross-covariance is F (C_old + C_new)/2 F with F = √(f_i f_j) (A_new/A_old)^¼ per row. The template shape (ADDITIVE_B e^{{−(ℓ/2000)²}}) was fitted to the non-tomographic run's B modes of largely the same galaxies, so its significance is mildly a posteriori. Numbers: <code>placement-nz468-oldmocks/resample.json</code>.</p>
 
 <h3>What follows</h3>
 <ul>
