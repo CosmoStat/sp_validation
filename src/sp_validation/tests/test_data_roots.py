@@ -36,5 +36,5 @@ def test_unresolved_and_undeclared_tokens_stay(tmp_path):
 def test_repo_configs_load():
     root = data_roots.ROOTS_FILE.parents[1]
     catalogues = data_roots.load_yaml(root / "cosmo_val" / "cat_config.yaml")
-    redshift = catalogues["SP_v2.0"]["shear"]["redshift_path"]
-    assert redshift.endswith("/nz_v2_tomo.txt")
+    redshift = catalogues["SP_v2.0.0"]["shear"]["redshift_path"]
+    assert redshift.endswith("/v2.0.0/nz/nz_tomo.txt")

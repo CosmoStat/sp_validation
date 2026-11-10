@@ -13,7 +13,7 @@
 # Measured on the #425 snapshot (10,094 tiles, 73.0M galaxies, 5.76M valid-HSM
 # star detections), 8 cores; see MEASURED below. Pass the variables with
 # --export, e.g.
-#   sbatch --export=ALL,CATALOGUE_DIR=.../run-r425/catalogue,VERSION=SP_v2.0,\
+#   sbatch --export=ALL,CATALOGUE_DIR=.../run-r425/catalogue,VERSION=SP_v2.0.0,\
 #     OUT_DIR=.../catpaper/products,GAIA=.../gaia_dr3_G20_ruwe1p4_unions20k.fits \
 #     scripts/dashboard/build_correlations.sbatch
 # Stage Gaia beforehand on a login node (compute nodes may lack internet):

@@ -1292,9 +1292,9 @@ GLASS_mock_validation:
     e2_col: e2
     path: /n17data/UNIONS/WL/v1.6.x/unions_shapepipe_star_2024_v1.6.a.fits
   patch_number: 150
-SP_v2.0:
+SP_v2.0.0:
   blind: unions
-  subdir: ${v2_tomo}
+  subdir: ${unions_v2}/v2.0.0/catalogs
   pipeline: SP
   colour: violet
   getdist_colour: 0.0, 0.5, 1.0
@@ -1308,19 +1308,19 @@ SP_v2.0:
     sigma_e_convention: per_component
     n_psf: 0.580817039505617
     tomo:
-      A: 3814.775466932069
-      mask: ${v2_tomo}/footprint-tomo-nside4096-ring.fits
+      A: 4064.826575087593
+      mask: ${unions_v2}/v2.0.0/masks/footprint-tomo-nside4096-ring.fits
       n_e:
-      - 0.7427992141190386
-      - 0.9163698955600097
-      - 1.006977964461924
-      - 1.3252290285029567
+      - 0.7411356430953595
+      - 0.9298936395962948
+      - 1.0063469881643465
+      - 1.3730045371063258
       sigma_e:
-      - 0.28814703635003425
-      - 0.2851918267345306
-      - 0.28830578863062367
-      - 0.27332974092856765
-  mask: ${v2_tomo}/footprint-nside4096-ring.fits
+      - 0.2880424446582742
+      - 0.28588903640802443
+      - 0.28764455696308633
+      - 0.27374882842794857
+  mask: ${unions_v2}/v2.0.0/masks/footprint-nside4096-ring.fits
   shear:
     path: shape_catalog_tomo.fits
     R: 1.0
@@ -1331,7 +1331,7 @@ SP_v2.0:
     e2_col: e2
     e1_PSF_col: e1_PSF
     e2_PSF_col: e2_PSF
-    redshift_path: ${nz_v2}/nz_v2_tomo.txt
+    redshift_path: ${unions_v2}/v2.0.0/nz/nz_tomo.txt
     tomo_bin_col: TOM_BIN_ID
   psf:
     path: stars.hdf5
