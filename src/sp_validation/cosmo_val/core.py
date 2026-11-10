@@ -621,6 +621,9 @@ class CosmologyValidation(
             obj.entries = self.cc[ver]
             obj._params.update(set_params(ver))
             obj.check_params()
+            # Concurrent producers of one version share this directory, and
+            # prepare_output's exists-then-mkdir races between them.
+            os.makedirs(obj._params["output_dir"], exist_ok=True)
             obj.prepare_output()
 
         return results
