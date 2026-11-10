@@ -28,14 +28,18 @@ def row_key(tile_ids, numbers):
 
 def load_reference(path):
     table = pq.read_table(path, columns=["TILE_ID", "NUMBER", "TOM_BIN_ID"])
-    tiles = np.char.replace(table["TILE_ID"].to_numpy().astype("U7"), ".", "").astype(np.int64)
+    tiles = np.char.replace(table["TILE_ID"].to_numpy().astype("U7"), ".", "").astype(
+        np.int64
+    )
     keys = row_key(tiles, table["NUMBER"].to_numpy())
     order = np.argsort(keys)
     return keys[order], table["TOM_BIN_ID"].to_numpy()[order]
 
 
 def check_pixel(path):
-    columns = ["TILE_ID", "NUMBER", "PHOTOPIPE_STATUS", "Z_B"] + [f"MAG_GAAP_{b}" for b in BANDS]
+    columns = ["TILE_ID", "NUMBER", "PHOTOPIPE_STATUS", "Z_B"] + [
+        f"MAG_GAAP_{b}" for b in BANDS
+    ]
     table = pq.read_table(path, columns=columns)
     tile = np.rint(table["TILE_ID"].to_numpy() * 1000).astype(np.int64)
     keys = row_key(tile, table["NUMBER"].to_numpy())
@@ -57,7 +61,12 @@ def check_pixel(path):
     unmatched = np.bincount(expected[status != 0], minlength=N_BINS)
     differ = found != expected
     tiles, tile_mismatch = np.unique(tile[shared][differ], return_counts=True)
-    return confusion, unmatched, len(shared), dict(zip(tiles.tolist(), tile_mismatch.tolist()))
+    return (
+        confusion,
+        unmatched,
+        len(shared),
+        dict(zip(tiles.tolist(), tile_mismatch.tolist())),
+    )
 
 
 def main():
@@ -71,7 +80,9 @@ def main():
     MODEL = dict(np.load(args.model))
     REFERENCE_KEYS, REFERENCE_BINS = load_reference(args.reference)
     product = Path(args.product)
-    paths = sorted((product / "catalogue/dataset").glob("Norder=*/Dir=*/Npix=*.parquet"))
+    paths = sorted(
+        (product / "catalogue/dataset").glob("Norder=*/Dir=*/Npix=*.parquet")
+    )
     confusion = np.zeros((N_BINS, N_BINS), np.int64)
     unmatched = np.zeros(N_BINS, np.int64)
     shared, by_tile = 0, {}

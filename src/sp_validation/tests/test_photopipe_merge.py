@@ -18,7 +18,13 @@ def write_extract(directory):
         )
     )
     pq.write_table(table, directory / "ra=024.parquet")
-    record = dict(status="ok", rows=2, row_group=0, read_at=0.0, sources=dict(ext=None, finalmask=None))
+    record = dict(
+        status="ok",
+        rows=2,
+        row_group=0,
+        read_at=0.0,
+        sources=dict(ext=None, finalmask=None),
+    )
     (directory / "ra=024.json").write_text(json.dumps(dict(tiles={"024.237": record})))
 
 
@@ -60,7 +66,10 @@ def test_merge_pixel_joins_on_id_and_marks_no_match(tmp_path):
     assert merged["MATCH_SEP_ARCSEC"].to_pylist()[2:] == [None, None]
     assert abs(merged["MATCH_SEP_ARCSEC"][1].as_py() - 0.2) < 1e-3
     assert "ALPHA_J2000" not in merged.column_names
-    assert sorted((c["tile"], c["n_matched"]) for c in counts) == [("024.237", 2), ("300.250", 0)]
+    assert sorted((c["tile"], c["n_matched"]) for c in counts) == [
+        ("024.237", 2),
+        ("300.250", 0),
+    ]
 
 
 def test_merge_pixel_counts_pairs_whose_positions_disagree(tmp_path):
@@ -68,7 +77,9 @@ def test_merge_pixel_counts_pairs_whose_positions_disagree(tmp_path):
     shape_path = tmp_path / "shapes.parquet"
     write_shapes(shape_path)
     table = pq.read_table(shape_path).drop_columns("XWIN_WORLD")
-    table = table.append_column("XWIN_WORLD", pa.array(np.array([10.0, 10.01, 10.0, 10.0])))
+    table = table.append_column(
+        "XWIN_WORLD", pa.array(np.array([10.0, 10.01, 10.0, 10.0]))
+    )
     pq.write_table(table, shape_path)
     index = pm.load_extract(tmp_path)
     output = tmp_path / "out" / "pixel.parquet"

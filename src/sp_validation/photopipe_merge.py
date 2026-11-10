@@ -25,7 +25,14 @@ import pyarrow.parquet as pq
 
 SANITY_RADIUS_ARCSEC = 0.8
 MATCHED, NO_COUNTERPART, NO_TILE = 0, 1, 2
-SHAPE_COLUMNS = ["_healpix_29", "XWIN_WORLD", "YWIN_WORLD", "TILE_ID", "NUMBER", "_source_row"]
+SHAPE_COLUMNS = [
+    "_healpix_29",
+    "XWIN_WORLD",
+    "YWIN_WORLD",
+    "TILE_ID",
+    "NUMBER",
+    "_source_row",
+]
 POSITIONS = ["ALPHA_J2000", "DELTA_J2000"]
 
 
@@ -71,7 +78,9 @@ def merge_pixel(shape_path, output_path, index, schema):
         rows = np.flatnonzero(tile_of_row == code)
         record = index.get(tile)
         if record is None or record["row_group"] is None:
-            counts.append(dict(tile=tile, n_shape=len(rows), n_matched=0, n_far=0, has_tile=False))
+            counts.append(
+                dict(tile=tile, n_shape=len(rows), n_matched=0, n_far=0, has_tile=False)
+            )
             continue
         photo = pq.ParquetFile(record["shard"]).read_row_group(record["row_group"])
         ids = photo["SeqNr"].to_numpy()
@@ -114,7 +123,11 @@ def merge_pixel(shape_path, output_path, index, schema):
     output_path.parent.mkdir(parents=True, exist_ok=True)
     temporary = output_path.with_suffix(".tmp")
     pq.write_table(
-        table, temporary, compression="zstd", compression_level=3, row_group_size=100_000
+        table,
+        temporary,
+        compression="zstd",
+        compression_level=3,
+        row_group_size=100_000,
     )
     temporary.replace(output_path)
     return counts, table.schema
@@ -163,8 +176,12 @@ def _write_provenance(output, shapes, extract, index, counts):
                 status=[index[t]["status"] for t in tiles],
                 rows=[index[t]["rows"] for t in tiles],
                 read_at=[index[t]["read_at"] for t in tiles],
-                ext_mtime=[(index[t]["sources"]["ext"] or {}).get("mtime") for t in tiles],
-                ext_size=[(index[t]["sources"]["ext"] or {}).get("size") for t in tiles],
+                ext_mtime=[
+                    (index[t]["sources"]["ext"] or {}).get("mtime") for t in tiles
+                ],
+                ext_size=[
+                    (index[t]["sources"]["ext"] or {}).get("size") for t in tiles
+                ],
                 finalmask_mtime=[
                     (index[t]["sources"]["finalmask"] or {}).get("mtime") for t in tiles
                 ],
@@ -176,7 +193,8 @@ def _write_provenance(output, shapes, extract, index, counts):
     for pixel_counts in counts:
         for entry in pixel_counts:
             total = totals.setdefault(
-                entry["tile"], dict(n_shape=0, n_matched=0, n_far=0, has_tile=entry["has_tile"])
+                entry["tile"],
+                dict(n_shape=0, n_matched=0, n_far=0, has_tile=entry["has_tile"]),
             )
             total["n_shape"] += entry["n_shape"]
             total["n_matched"] += entry["n_matched"]

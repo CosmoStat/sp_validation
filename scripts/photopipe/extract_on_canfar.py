@@ -102,7 +102,9 @@ def extract_shard(root, output, prefix, tiles):
     temporary = shard.with_suffix(".tmp")
     row_group = 0
     for tile in tiles:
-        record = dict(sources=current[tile], read_at=time.time(), rows=0, row_group=None)
+        record = dict(
+            sources=current[tile], read_at=time.time(), rows=0, row_group=None
+        )
         records[tile] = record
         if current[tile]["ext"] is None:
             record["status"] = "missing"
