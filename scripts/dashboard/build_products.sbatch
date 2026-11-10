@@ -31,8 +31,12 @@ expected=$(run -c 'import fitsio,sys; print(fitsio.FITS(sys.argv[1])[1].get_nrow
 run -m sp_validation.dashboard.field_maps \
     --galaxies "$galaxies" --stars "$catdir/stars.hdf5" \
     --version "$version" --out-dir "$stage"
-run -m sp_validation.dashboard.selection_hist \
-    --catalogue "$catdir/shape_catalog_comprehensive_ngmix.hdf5" \
-    --config "$catdir/config_mask.yaml" --expected "$expected" --version "$version" \
-    --out "$stage/selection_hist_${version}.npz"
+# A selection histogram already in the product directory is kept: it is the
+# slow comprehensive-catalogue pass, and can be built ahead by its own job.
+if [ ! -e "$out/selection_hist_${version}.npz" ]; then
+    run -m sp_validation.dashboard.selection_hist \
+        --catalogue "$catdir/shape_catalog_comprehensive_ngmix.hdf5" \
+        --config "$catdir/config_mask.yaml" --expected "$expected" --version "$version" \
+        --out "$stage/selection_hist_${version}.npz"
+fi
 mv "$stage"/*.npz "$out/"
