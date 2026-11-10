@@ -55,11 +55,11 @@ E_TYPES = {"xip_E": (sacc_io.XI_PLUS, "theta", (12, 83)), "xim_E": (sacc_io.XI_M
 B_ELEMENTS = ("xip_B", "xim_B", "cosebis_B", "cl_bb", "cl_eb")
 
 
-def compact(raw):
+def compact(raw, colors=96):
     """Palette-quantised PNG: line plots need few colours, and the page stays small."""
     from PIL import Image
     buf = io.BytesIO()
-    Image.open(io.BytesIO(raw)).convert("RGB").quantize(colors=96).save(buf, format="PNG", optimize=True)
+    Image.open(io.BytesIO(raw)).convert("RGB").quantize(colors=colors).save(buf, format="PNG", optimize=True)
     return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
@@ -70,8 +70,8 @@ def png(fig):
     return compact(buf.getvalue())
 
 
-def img(path_or_uri, alt):
-    uri = path_or_uri if str(path_or_uri).startswith("data:") else compact(Path(path_or_uri).read_bytes())
+def img(path_or_uri, alt, colors=96):
+    uri = path_or_uri if str(path_or_uri).startswith("data:") else compact(Path(path_or_uri).read_bytes(), colors)
     return f'<img src="{uri}" alt="{html.escape(alt)}">'
 
 
@@ -314,7 +314,7 @@ def main():
     lo, hi = result["sampling_variance_bands_gaussian"]["0.95"]
     readings = Path(args.readings).read_text() if args.readings else ""
     figs = out / "figures"
-    bands = "".join(f"<details><summary>{k}</summary>{img(figs / f'band_{k}.png', k)}</details>"
+    bands = "".join(f"<details><summary>{k}</summary>{img(figs / f'band_{k}.png', k, 16)}</details>"
                     for k in ("xip_B", "xim_B", "cosebis_B", "cl_bb", "cl_eb"))
     page = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -352,7 +352,7 @@ details{{margin:.4em 0}} summary{{cursor:pointer;color:var(--accent)}}
 <p>The mocks share the data's analytic covariance (pair-count shape noise, the data run's own files). The map below averages ensemble variance / analytic variance over each pair's elements. B rows cover every element; E rows use ξ± 12–83′, Cℓ^EE 300–1600 and all COSEBIs. These ratios use only the mocks, so the blind does not enter. The E rows test the Gaussian covariance against lognormal mocks at the mocks' Planck18 cosmology.</p>
 {img(fig_variance(result, ediag, lo, hi), 'variance ratios')}
 <details><summary>Per-element variance ratios and eigenmode variances</summary>
-{''.join(img(figs / f'covariance_{k}.png', k) for k in KEYS)}{img(figs / 'covariance_xi_scale_split.png', 'xi scale split')}</details>
+{''.join(img(figs / f'covariance_{k}.png', k, 16) for k in KEYS)}{img(figs / 'covariance_xi_scale_split.png', 'xi scale split', 16)}</details>
 <h2>Bands</h2>
 <p>Pointwise 68% and 95% mock bands with the data, per pair.</p>
 {bands}
