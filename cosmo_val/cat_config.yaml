@@ -1331,7 +1331,7 @@ SP_v2.0:
     e2_col: e2
     e1_PSF_col: e1_PSF
     e2_PSF_col: e2_PSF
-    redshift_path: ${nz_v2}/nz_v2_tomo.txt
+    redshift_path: ${nz_v2}/nz_tomo.txt
     tomo_bin_col: TOM_BIN_ID
   psf:
     path: stars.hdf5

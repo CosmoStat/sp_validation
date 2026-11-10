@@ -73,6 +73,8 @@ NOT_COLUMNS = {
     "W_DES",  # response-product FITS images, not parent catalogue columns
     "W_COUNT",
     "W_EDGES",
+    # DR6 photometry columns, outside the ShapePipe schema
+    "Z_B",
     "EXTNAME",
     "R_S11",
     "R_S12",
