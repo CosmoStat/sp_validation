@@ -114,7 +114,7 @@ def ell_cl(cl, out, ell_cut, layout="wide", blind=None):
         S.shade_outside(ax, *_cl_shade(cl, ell_cut))
         ax.set_xlabel(r"$\ell$")
         ax.set_ylabel(rf"$\ell\, C_\ell \times 10^{{{-p}}}$")
-        S.label_box(ax, r"$C_\ell^{EE}$")
+        S.label_box(ax, r"$C_\ell^{EE}$", loc="upper right")
         if blind:
             fig.suptitle(" ", fontsize=7)
             S.blind_stamp(fig, blind)
@@ -258,7 +258,8 @@ def cl_bmodes(cl, out, ell_cut):
         for ax in axes:
             S.ell_axis(ax, ell.min() * 0.85, cl["ell_hi"][-1] * 1.02)
             S.shade_outside(ax, *_cl_shade(cl, ell_cut))
-        lim = np.ceil(extent + 0.4)
+        # Headroom above the data for the label boxes.
+        lim = np.ceil(extent + 1.4)
         axes[0].set_ylim(-lim, lim)
         axes[0].yaxis.set_major_locator(plt.MultipleLocator(2))
         axes[-1].set_xlabel(r"$\ell$")

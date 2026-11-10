@@ -238,7 +238,8 @@ def render(
         "Blinded ξ± (black) split into pure E modes (blue), pure B modes (red) and "
         "ambiguous modes that cannot be assigned to either (grey), all multiplied "
         "by θ. Lensing makes no B modes, so they are a null test. Shading marks "
-        f"scales outside the fiducial {tcut}.",
+        f"scales outside the fiducial {tcut}; the vertical range is set by the "
+        "points inside it.",
         "full",
         narrow=True,
     )
