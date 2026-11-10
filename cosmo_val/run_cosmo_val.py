@@ -134,7 +134,6 @@ cv.plot_ratio_xi_sys_xi(offset=0.1)
 #    max_sep_int=300,
 #    nbins_int=100,
 #    npatch=256,
-#    var_method="jackknife",
 # )
 
 # %%

@@ -2,12 +2,12 @@ import argparse
 from multiprocessing import Pool, cpu_count
 from pathlib import Path
 
-import h5py
 import healpy as hp
 import numpy as np
 import yaml
 
-from sp_validation.masks import apply_condition
+from sp_validation.io import Catalogue
+from sp_validation.masks import apply_condition, catalogue_cuts
 
 # -------------------------
 # Spatially-structured cuts: these define the survey footprint.
@@ -17,40 +17,40 @@ from sp_validation.masks import apply_condition
 SPATIAL_CUTS = {
     "overlap",
     "IMAFLAGS_ISO",
+    "MASK_1_Faint_star_halos",
+    "MASK_2_Bright_star_halos",
+    "MASK_4_Stars",
+    "MASK_8_Manual",
+    "MASK_16_u",
+    "MASK_32_g",
+    "MASK_64_r",
+    "MASK_128_i",
+    "MASK_256_z",
+    "MASK_1024_Maximask",
+    "MASK_2048_z2",
     "N_EPOCH",
-    "4_Stars",
-    "8_Manual",
-    "64_r",
-    "1024_Maximask",
     "npoint3",
-    "1_Faint_star_halos",
-    "2_Bright_star_halos",
 }
 
 # -------------------------
 # Masking logic
 
 
-def apply_masks(data, data_ext, mask_config, footprint_only=False):
+def apply_masks(data, mask_config, footprint_only=False):
     """
     Construct a boolean mask selecting galaxies that satisfy all
     masking criteria defined in the YAML configuration file.
 
     Parameters
     ----------
-    data : numpy.ndarray or structured array
-        Slice of the HDF5 "data" group containing per-object
-        measurements (e.g. FLAGS, mag, NGMIX quantities).
-
-    data_ext : numpy.ndarray or structured array
-        Slice of the HDF5 "data_ext" group containing external or
-        post-processing flags (e.g. star masks, footprint flags).
+    data : numpy.ndarray, structured array or grammar.V2View
+        Slice of the catalogue in the v2 column grammar, as
+        ``sp_validation.io.Catalogue`` presents it.
 
     mask_config : dict
         Dictionary parsed from the YAML mask configuration file.
         Expected structure:
             - mask_config["dat"]     : list of cuts applied to `data`
-            - mask_config["dat_ext"] : list of cuts applied to `data_ext`
             - mask_config["metacal"] : derived-quantity parameters
               (e.g. relative size limits)
 
@@ -72,8 +72,7 @@ def apply_masks(data, data_ext, mask_config, footprint_only=False):
     # Initialize mask
     mask = np.ones(len(data), dtype=bool)
 
-    # --- dat group ---
-    for cut in mask_config.get("dat", []):
+    for cut in catalogue_cuts(mask_config):
         col = cut["col_name"]
         if footprint_only and col not in SPATIAL_CUTS:
             continue
@@ -81,16 +80,6 @@ def apply_masks(data, data_ext, mask_config, footprint_only=False):
         value = cut["value"]
 
         mask &= apply_condition(data[col], kind, value)
-
-    # --- dat_ext group ---
-    for cut in mask_config.get("dat_ext", []):
-        col = cut["col_name"]
-        if footprint_only and col not in SPATIAL_CUTS:
-            continue
-        kind = cut["kind"]
-        value = cut["value"]
-
-        mask &= apply_condition(data_ext[col], kind, value)
 
     # --- metacal relative size (skip for footprint-only) ---
     if not footprint_only:
@@ -113,7 +102,7 @@ def apply_masks(data, data_ext, mask_config, footprint_only=False):
 # Process one chunk
 def process_chunk(args):
     """
-    Process a chunk of the HDF5 catalogue and return the unique
+    Process a chunk of the catalogue and return the unique
     HEALPix pixels containing unmasked galaxies,to be executed in
     parallel. It reads a slice of the catalogue, applies
     the defined masking criteria, converts the sky positions
@@ -129,7 +118,7 @@ def process_chunk(args):
             - stop : int
                 Ending row index of the chunk (exclusive).
             - filename : str
-                Path to the input HDF5 catalogue.
+                Path to the input catalogue.
             - nside : int
                 HEALPix NSIDE parameter defining map resolution.
             - mask_config : dict
@@ -144,11 +133,11 @@ def process_chunk(args):
     """
 
     start, stop, filename, nside, mask_config, footprint_only = args
-    with h5py.File(filename, "r") as f:
-        data = f["data"][start:stop]
-        data_ext = f["data_ext"][start:stop]
+    column_map = mask_config.get("params", {}).get("column_map")
+    with Catalogue(filename, column_map=column_map) as catalogue:
+        data = catalogue.table()[start:stop]
 
-    mask = apply_masks(data, data_ext, mask_config, footprint_only=footprint_only)
+    mask = apply_masks(data, mask_config, footprint_only=footprint_only)
 
     ra = data["RA"][mask]
     dec = data["Dec"][mask]
@@ -163,19 +152,19 @@ def process_chunk(args):
 
 # -------------------------
 # Build mask map in parallel
-def build_mask_map_hdf5(
+def build_mask_map(
     filename, mask_config, nside, chunk_size=1_000_000, footprint_only=False
 ):
     """
-    Build a binary HEALPix mask map from an HDF5 galaxy catalogue.
+    Build a binary HEALPix mask map from a galaxy catalogue.
 
     The catalogue is processed in chunks to limit memory usage.
 
     Parameters
     ----------
     filename : str
-        Path to the input HDF5 catalogue containing "data" and
-        "data_ext" groups
+        Path to the input catalogue, in any container
+        ``sp_validation.io.Catalogue`` reads
     mask_config : dict
         Dictionary parsed from the YAML mask configuration file
     nside : int
@@ -196,8 +185,8 @@ def build_mask_map_hdf5(
               in that pixel,
             - 0 indicates no retained galaxies.
     """
-    with h5py.File(filename, "r") as f:
-        nrows = f["data"].shape[0]
+    with Catalogue(filename) as catalogue:
+        nrows = len(catalogue)
 
     chunks = [
         (i, min(i + chunk_size, nrows), filename, nside, mask_config, footprint_only)
@@ -249,7 +238,7 @@ if __name__ == "__main__":
         print(f"Footprint-only mode: applying only spatial cuts {SPATIAL_CUTS}")
 
     # Build mask map from comprehensive catalogue
-    mask_map = build_mask_map_hdf5(
+    mask_map = build_mask_map(
         filename,
         mask_config,
         nside,

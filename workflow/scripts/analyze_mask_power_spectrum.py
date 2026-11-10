@@ -72,8 +72,6 @@ def export_power_spectrum(
 
 def main():
     """Process single mask power spectrum (Snakemake script entry point)."""
-    from snakemake.script import snakemake
-
     mask_path = snakemake.input.mask
     output_path = str(snakemake.output.power_spectrum)
 

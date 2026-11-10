@@ -57,7 +57,6 @@ def apply_condition(array, kind, value):
 
 
 def correlation_matrix(masks, confidence_level=0.9):
-
     n_key = len(masks)
     print(n_key)
 
@@ -75,7 +74,6 @@ def correlation_matrix(masks, confidence_level=0.9):
 
 
 def confusion_matrix(prediction, observation):
-
     result = {}
 
     result["true_pos"] = sum(prediction & observation)
@@ -120,14 +118,22 @@ class Mask:
     kind : str
         operation type; see :func:`apply_condition` for the allowed values,
         plus "not_equal_2bands", which keeps objects whose value differs
-        from ``value`` in ``col_name`` *or* ``col_name2`` (two-band OR)
+        from ``value`` in ``col_name`` *or* ``col_name2`` (two-band OR), and
+        "covered_2bands", which keeps objects that have one band both
+        measured and inside that band's footprint (see :meth:`apply`)
     value : float or list
         value(s) to be used in mask operation
     col_name2 : str, optional
-        name of second column; required for (and only used by) kind
-        "not_equal_2bands"
+        name of second column; required for kinds "not_equal_2bands" and
+        "covered_2bands"
+    mag_col, mag_col2 : str, optional
+        magnitude column belonging to ``col_name`` and ``col_name2``;
+        required for (and only used by) kind "covered_2bands"
     dat : numpy.ndarray, optional
         input data, default is `None`; apply mask if given
+    dat_other : numpy.ndarray, optional
+        the catalogue's other group, holding ``mag_col``/``mag_col2`` when
+        those sit in a different group than the footprint bits
     verbose : bool, optional
         verbose output if ``True``; default is ``False``
 
@@ -140,17 +146,32 @@ class Mask:
         kind=None,
         value=0,
         col_name2=None,
+        mag_col=None,
+        mag_col2=None,
         dat=None,
+        dat_other=None,
         verbose=False,
     ):
-
         self._col_name = col_name
         self._label = label
         self._value = value
         self._kind = kind
         if kind == "not_equal_2bands" and col_name2 is None:
             raise ValueError("kind 'not_equal_2bands' requires col_name2")
+        if kind == "covered_2bands":
+            if None in (col_name2, mag_col, mag_col2):
+                raise ValueError(
+                    "kind 'covered_2bands' requires col_name2, mag_col and mag_col2"
+                )
+            if dat_other is None:
+                raise ValueError(
+                    "kind 'covered_2bands' requires dat_other: the magnitudes sit "
+                    "in a different catalogue group than the footprint bits"
+                )
         self._col_name2 = col_name2
+        self._mag_col = mag_col
+        self._mag_col2 = mag_col2
+        self._dat_other = dat_other
         self._num_ok = None
         self._verbose = verbose
 
@@ -161,7 +182,6 @@ class Mask:
             self.apply(dat)
 
     def __repr__(self):
-
         return (
             f"Mask(col_name={self._col_name}, label={self._label}, kind={self._kind},"
             + f" value={self._value})"
@@ -169,7 +189,6 @@ class Mask:
 
     @classmethod
     def from_list(cls, masks, label="combined", verbose=False):
-
         if verbose:
             print(f"Combining {len(masks)} masks")
 
@@ -179,17 +198,32 @@ class Mask:
 
         return my_mask
 
-    def apply(self, dat):
+    def _band_measured_and_covered(self, dat, bit_col, mag_col):
+        """One band: magnitude present, and the footprint bit says covered.
 
+        The bit is set where the band has no imaging, so a covered position
+        has it ``False``.
+        """
+        measured = apply_condition(self._dat_other[mag_col], "not_equal", self._value)
+        return measured & ~np.asarray(dat[bit_col], dtype=bool)
+
+    def apply(self, dat):
         if self._kind == "not_equal_2bands":
             self._mask = apply_condition(
                 dat[self._col_name], "not_equal", self._value
             ) | apply_condition(dat[self._col_name2], "not_equal", self._value)
+        elif self._kind == "covered_2bands":
+            # Each footprint bit is only asked about where its own band
+            # supplies a magnitude, so requiring both bands at once -- which
+            # no object outside the overlap of the two surveys can satisfy --
+            # is avoided. Keep an object with at least one usable band.
+            self._mask = self._band_measured_and_covered(
+                dat, self._col_name, self._mag_col
+            ) | self._band_measured_and_covered(dat, self._col_name2, self._mag_col2)
         else:
             self._mask = apply_condition(dat[self._col_name], self._kind, self._value)
 
     def to_bool(self, hsp_mask):
-
         if self._verbose:
             print("to_bool: get valid pixels")
         valid_pixels = hsp_mask.valid_pixels
@@ -224,7 +258,6 @@ class Mask:
         self.print_strings(self._col_name, self._label, si, sf, f_out=f_out)
 
     def get_sign(self, latex=False):
-
         sign = None
         if self._kind == "equal":
             sign = "$=$" if latex else "="
@@ -237,7 +270,6 @@ class Mask:
         return sign
 
     def print_condition(self, f_out, latex=False):
-
         if self._value is None:
             return ""
 
@@ -251,6 +283,14 @@ class Mask:
         if self._kind == "not_equal_2bands":
             print(
                 f"{name} != {self._value} or {self._col_name2} != {self._value}",
+                file=f_out,
+            )
+
+        if self._kind == "covered_2bands":
+            print(
+                f"({self._mag_col} != {self._value} and {name} = False)"
+                f" or ({self._mag_col2} != {self._value}"
+                f" and {self._col_name2} = False)",
                 file=f_out,
             )
 
@@ -273,18 +313,21 @@ class Mask:
 
         """
         sign = self.get_sign()
-        if sign is not None:
-            descr = f"{sign}{self._value}"
+        descr = f"{sign}{self._value}" if sign is not None else str(self._kind)
         if self._kind == "range":
             descr = f"{self._value[0]}<={self._col_name}<={self._value[1]}"
         if self._kind == "not_equal_2bands":
             descr = f"!={self._value} in {self._col_name} or {self._col_name2}"
+        if self._kind == "covered_2bands":
+            descr = (
+                f"{self._mag_col}!={self._value} and {self._col_name}=False, or "
+                f"{self._mag_col2}!={self._value} and {self._col_name2}=False"
+            )
         self._descr = descr
 
         # Create description for FITS header
 
     def add_summary_to_FITS_header(self, header):
-
         header_new = fits.Header()
 
         self.create_descr()
@@ -311,19 +354,42 @@ def print_mask_stats(num_obj, masks, mask_combined):
     mask_combined.print_stats(num_obj)
 
 
-def get_masks_from_config(config, dat, dat_ext, masks_to_apply=None, verbose=False):
+def catalogue_cuts(config):
+    """Return the catalogue cuts of a mask config: its ``dat`` list.
+
+    Every cut names a column of the one v2-grammar table
+    ``CalibrateCat.read_cat`` returns, mask columns included.
+
+    Raises
+    ------
+    ValueError
+        if the config also has a ``dat_ext`` list, whose cuts would otherwise
+        be silently dropped
+    """
+    if "dat_ext" in config:
+        names = [cut.get("col_name") for cut in config["dat_ext"] or []]
+        raise ValueError(
+            f"mask config has a 'dat_ext' cut list {names}, which is not read:"
+            + " move its entries into 'dat', renaming the mask columns"
+            + " {b}_{label} to MASK_{b}_{label} (e.g. 4_Stars -> MASK_4_Stars;"
+            + " see sp_validation.grammar.MASK_LABELS)"
+        )
+    return config.get("dat") or []
+
+
+def get_masks_from_config(config, dat, masks_to_apply=None, verbose=False):
     """Get Masks From Config.
 
-    Return mask information from yaml config structure.
+    Return the masks of the config's ``dat`` cut list (``catalogue_cuts``),
+    evaluated on ``dat``.
 
     Parameters
     ----------
     config : dict
         config information
-    dat : numpy.ndarray
-        input data
-    det_ext : numpy.ndarray
-        input extended data
+    dat : numpy.ndarray or grammar.V2View
+        input catalogue, in the v2 column grammar (e.g. from
+        ``CalibrateCat.read_cat``)
     masks_to_apply: list, optional
         masks to apply exclusively; if `None` (default), use all masks
     verbose : bool, optional
@@ -343,40 +409,23 @@ def get_masks_from_config(config, dat, dat_ext, masks_to_apply=None, verbose=Fal
     # Dict to associate labels with index in mask list
     labels = {}
 
-    # Loop over mask sections from config file
-    config_data = {key: config[key] for key in ["dat", "dat_ext"] if key in config}
-    idx = 0
-    for section, mask_list in config_data.items():
-        # Set data source
-        dat_source = dat if section == "dat" else dat_ext
+    for mask_params in catalogue_cuts(config):
+        if masks_to_apply is not None and mask_params["col_name"] not in masks_to_apply:
+            if verbose:
+                print(f"Skipping mask {mask_params['col_name']}")
+            continue
 
-        # Loop over mask information in this section
-        for mask_params in mask_list:
-            use_this_mask = False
-            if masks_to_apply is not None:
-                if mask_params["col_name"] in masks_to_apply:
-                    use_this_mask = True
-            else:
-                use_this_mask = True
+        # Ensure 'range' kind has exactly two values
+        value = mask_params["value"]
+        if mask_params["kind"] == "range" and (
+            not isinstance(value, list) or len(value) != 2
+        ):
+            raise ValueError(f"Range kind requires a list of two values, got {value}")
 
-            if use_this_mask:
-                # Ensure 'range' kind has exactly two values
-                value = mask_params["value"]
-                if mask_params["kind"] == "range" and (
-                    not isinstance(value, list) or len(value) != 2
-                ):
-                    raise ValueError(
-                        f"Range kind requires a list of two values, got {value}"
-                    )
-
-                # Create mask instance and append to list
-                my_mask = Mask(**mask_params, dat=dat_source, verbose=verbose)
-                masks.append(my_mask)
-                labels[my_mask._col_name] = idx
-                idx += 1
-            else:
-                if verbose:
-                    print(f"Skipping mask {mask_params['col_name']}")
-                continue
+        # Create mask instance and append to list; covered_2bands reads its
+        # magnitudes from the same table as the footprint bits
+        my_mask = Mask(**mask_params, dat=dat, dat_other=dat, verbose=verbose)
+        labels[my_mask._col_name] = len(masks)
+        masks.append(my_mask)
 
     return masks, labels

@@ -4,7 +4,7 @@ Computes mode-coupling-corrected pseudo-Cℓ bandpowers using the catalog-based
 NaMaster estimator. Matches the real data pipeline binning exactly.
 
 Mock catalogs have columns: RA, Dec, e1, e2, w.
-Polarization convention: pol_factor=True → field=[e1, -e2] (matches pipeline).
+Polarization convention: pol_factor=-1 → field=[e1, -e2] (matches pipeline).
 """
 
 import numpy as np
@@ -49,7 +49,7 @@ ell_eff = b.get_effective_ells()
 print(f"Binning: {nbins} powspace bins, ell=[{ell_eff[0]:.1f}, {ell_eff[-1]:.1f}]")
 
 # Create NaMaster spin-2 field from catalog
-# pol_factor=True: e2 sign flip to match IAU polarization convention
+# pol_factor=-1: e2 sign flip to match IAU polarization convention
 print("Creating NaMaster field...")
 f_all = nmt.NmtFieldCatalog(
     positions=[ra, dec],

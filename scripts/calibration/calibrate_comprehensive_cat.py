@@ -41,7 +41,7 @@ obj._params
 
 # %%
 # Get data. Set load_into_memory to False for very large files
-dat, dat_ext = obj.read_cat(load_into_memory=False)
+dat = obj.read_cat(load_into_memory=False)
 
 # %%
 n_test = -1
@@ -49,14 +49,13 @@ n_test = -1
 if n_test > 0:
     print(f"MKDEBUG testing only first {n_test} objects")
     dat = dat[:n_test]
-    dat_ext = dat_ext[:n_test]
 
 
 # ## Masking
 
 # %%
 # ### Pre-processing ShapePipe flags
-masks, labels = sp_joint.get_masks_from_config(config, dat, dat_ext, verbose=True)
+masks, labels = sp_joint.get_masks_from_config(config, dat, verbose=True)
 
 mask_combined = sp_joint.Mask.from_list(
     masks,
@@ -179,19 +178,23 @@ else:
 add_cols = [
     "w_iv",
     "FLUX_RADIUS",
-    "FWHM_IMAGE",
-    "FWHM_WORLD",
     "MAGERR_AUTO",
-    "MAG_WIN",
-    "MAGERR_WIN",
-    "FLUX_AUTO",
-    "FLUXERR_AUTO",
-    "FLUX_APER",
-    "FLUXERR_APER",
     "NGMIX_T_NOSHEAR",
     "NGMIX_T_PSF_RECONV_NOSHEAR",
     "fwhm_PSF",
 ]
+
+# PhotoPipe photo-z and multi-band photometry, when fill_photoz_bands.py has
+# put them in the input. Selected against what the input actually holds, for
+# two reasons: no catalogue carries every key (v1.6.c.3 has no Z_ML), and the
+# image-simulation runs share this script with none of these columns at all.
+photoz_cols = [key for key in cat.PHOTOZ_KEYS if key in set(dat.dtype.names or ())]
+if photoz_cols:
+    print(f"Copying {len(photoz_cols)} PhotoPipe columns to the output catalogue")
+else:
+    print("No PhotoPipe columns found in the input; none copied")
+add_cols = add_cols + photoz_cols
+
 add_cols_data = {}
 for key in add_cols:
     add_cols_data[key] = cat.get_col(dat, key, mask_combined._mask, mask_metacal)
@@ -327,6 +330,6 @@ plt.show(block=False)
 plt.savefig("confusion_matrix.png")
 
 
-obj.close_hd5()
+obj.close_cat()
 
 # %%

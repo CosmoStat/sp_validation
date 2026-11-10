@@ -16,6 +16,7 @@ output_path = snakemake.output.gg  # noqa: F821
 min_sep = snakemake.params.min_sep  # noqa: F821
 max_sep = snakemake.params.max_sep  # noqa: F821
 nbins = snakemake.params.nbins  # noqa: F821
+num_threads = snakemake.threads  # noqa: F821
 
 # Load mock catalog
 with fits.open(catalog_path) as hdul:
@@ -45,7 +46,11 @@ gg = treecorr.GGCorrelation(
     sep_units="arcmin",
 )
 
-print(f"Running treecorr: {nbins} bins, [{min_sep}, {max_sep}] arcmin...")
-gg.process(cat)
+print(
+    f"Running treecorr: {nbins} bins, [{min_sep}, {max_sep}] arcmin, "
+    f"{num_threads} threads..."
+)
+# TreeCorr's own default is every CPU on the node, not the job's share of it.
+gg.process(cat, num_threads=num_threads)
 gg.write(output_path)
 print(f"Saved to {output_path}")

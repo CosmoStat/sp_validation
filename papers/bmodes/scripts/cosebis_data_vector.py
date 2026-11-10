@@ -1,4 +1,4 @@
-"""COSEBIs data vector claim.
+"""COSEBIs data vector figure.
 
 Single-panel figure showing B-mode COSEBIS for each catalog version.
 Overplots fiducial and full angular range scale cuts.
@@ -17,12 +17,12 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-import treecorr
 from plotting_utils import (
     FIG_WIDTH_SINGLE,
     PAPER_MPLSTYLE,
 )
 
+from sp_validation import sacc_io
 from sp_validation.b_modes import calculate_cosebis
 
 plt.style.use(PAPER_MPLSTYLE)
@@ -153,21 +153,11 @@ def main(config, xi_integration, cov_integration, out_dir):
         "full": full_scale_cut,
     }
 
-    min_sep_int = float(config["fiducial"]["min_sep_int"])
-    max_sep_int = float(config["fiducial"]["max_sep_int"])
-    nbins_int = int(config["fiducial"]["nbins_int"])
-
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # Load the fiducial fine-binned 2PCF once (integration grid)
-    gg = treecorr.GGCorrelation(
-        min_sep=min_sep_int,
-        max_sep=max_sep_int,
-        nbins=nbins_int,
-        sep_units="arcmin",
-    )
-    gg.read(xi_integration)
+    gg = sacc_io.xi_correlation(sacc_io.load(xi_integration))
 
     # Compute the E_n / B_n data vectors + T^T C_xi T mode covariance at both
     # scale cuts. Same calculate_cosebis call as the original per-version loop.
@@ -207,7 +197,6 @@ def main(config, xi_integration, cov_integration, out_dir):
     plt.close(fig)
 
     evidence_data = {
-        "spec_id": "cosebis_data_vector",
         "generated": datetime.now().isoformat(),
         "evidence": {
             "version": version,
@@ -236,7 +225,7 @@ def _from_cli(argv=None):
     ap.add_argument(
         "--xi-integration",
         required=True,
-        help="Fiducial fine-binned (1000-bin) TreeCorr xi_pm .txt dump",
+        help="Fiducial fine-binned (1000-bin) ξ± SACC part",
     )
     ap.add_argument(
         "--cov-integration",

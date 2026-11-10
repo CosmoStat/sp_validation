@@ -1,10 +1,10 @@
-"""Generate LaTeX macros from claim evidence.
+"""Generate LaTeX macros and PTE tables from the figure rules' evidence.json.
 
-Reads evidence.json files and produces:
+Produces:
 - claims_macros.tex: LaTeX macro definitions for paper values
 - pte_table_results.tex: PTE results table for main text
 - pte_table_appendix.tex: PTE table for appendix
-- evidence.json: Dashboard dependency tracking
+- evidence.json (CLI only): which inputs the tables were built from
 """
 
 import json
@@ -78,80 +78,40 @@ def generate_macros(
 ):
     """Generate LaTeX macros from evidence files.
 
-    Macro names are kept simple. The spec (bmodes_paper.md)
-    determines which values go into the paper. Fiducial version from config.
+    Macro names are kept simple. Fiducial version from config.
 
     ``config_pte_path`` / ``harmonic_pte_path`` override the
-    ``claims_dir/<spec_id>/evidence.json`` location for the two PTE-matrix
+    ``claims_dir/<rule>/evidence.json`` location for the two PTE-matrix
     evidence files (used by the CLI form, where each lc output lands at its own
     absolute results path rather than under a shared tapestry tree). When
-    ``None`` the original ``claims_dir``-relative layout is used.
+    ``None`` the ``claims_dir``-relative layout is used.
     """
     macros = []
-    macros.append("% Auto-generated from claim evidence")
+    macros.append("% Auto-generated from figure evidence.json summaries")
     macros.append("% Regenerate: snakemake paper_macros")
     macros.append("% See workflow/config/bmodes_paper.md for paper choices")
     macros.append("")
 
-    # COSEBIS version comparison - extract fiducial version, n=6
-    cosebis_path = claims_dir / "cosebis_version_comparison" / "evidence.json"
-    if cosebis_path.exists():
-        with open(cosebis_path) as f:
-            cosebis_ev = json.load(f).get("evidence", {})
-
-        macros.append(f"% cosebis ({fiducial_version}, n=6)")
-
-        # Fiducial scale cut - use pte_6_min (conservative across blinds)
-        fiducial = cosebis_ev.get("fiducial", {})
-        fid_versions = fiducial.get("versions", {})
-        fid_data = fid_versions.get(fiducial_version, {})
-        if "pte_6_min" in fid_data:
-            macros.append(
-                f"\\newcommand{{\\cosebisfiducialPte}}{{{_format_value(fid_data['pte_6_min'])}}}"
-            )
-
-        # Full range
-        full = cosebis_ev.get("full", {})
-        full_versions = full.get("versions", {})
-        full_data = full_versions.get(fiducial_version, {})
-        if "pte_6_min" in full_data:
-            macros.append(
-                f"\\newcommand{{\\cosebisfullPte}}{{{_format_value(full_data['pte_6_min'])}}}"
-            )
-
-        # Scale cuts from fiducial
-        if "scale_cut_arcmin" in fiducial:
-            cuts = fiducial["scale_cut_arcmin"]
-            macros.append(
-                f"\\newcommand{{\\cosebisthetaMin}}{{{_format_value(cuts[0])}}}"
-            )
-            macros.append(
-                f"\\newcommand{{\\cosebisthetaMax}}{{{_format_value(cuts[1])}}}"
-            )
-
-        macros.append("")
-
-    # Pure E/B data vector - use min across blinds (cache for reuse below)
+    # Pure E/B data vector
     eb_path = claims_dir / "pure_eb_data_vector" / "evidence.json"
-    eb_fid = {}  # cached for PTE variation section
     if eb_path.exists():
         with open(eb_path) as f:
             eb_ev = json.load(f).get("evidence", {})
 
-        macros.append("% pure_eb_data_vector (min across blinds per spec)")
+        macros.append("% pure_eb_data_vector")
 
-        # Fiducial PTEs - use pte_joint_min (conservative across blinds)
+        # Fiducial PTEs
         eb_fid = eb_ev.get("fiducial", {})
-        if "pte_joint_min" in eb_fid:
+        if "pte_joint" in eb_fid:
             macros.append(
-                f"\\newcommand{{\\ebfiducialPte}}{{{_format_value(eb_fid['pte_joint_min'])}}}"
+                f"\\newcommand{{\\ebfiducialPte}}{{{_format_value(eb_fid['pte_joint'])}}}"
             )
 
         # Full range PTEs
         full = eb_ev.get("full", {})
-        if "pte_joint_min" in full:
+        if "pte_joint" in full:
             macros.append(
-                f"\\newcommand{{\\ebfullPte}}{{{_format_value(full['pte_joint_min'])}}}"
+                f"\\newcommand{{\\ebfullPte}}{{{_format_value(full['pte_joint'])}}}"
             )
 
         # Scale cuts from fiducial
@@ -196,50 +156,6 @@ def generate_macros(
             macros.append(f"\\newcommand{{\\ebcovNbins}}{{\\num{{{ev['n_bins']}}}}}")
 
         macros.append("")
-
-    # Covariance blind consistency
-    cov_path = claims_dir / "covariance_blind_consistency" / "evidence.json"
-    if cov_path.exists():
-        with open(cov_path) as f:
-            data = json.load(f)
-        ev = data.get("evidence", {})
-
-        macros.append("% covariance_blind_consistency")
-
-        # Max deviations across blinds
-        xip = ev.get("xip", {})
-        xim = ev.get("xim", {})
-        xip_max = max(
-            xip.get("B_to_A", {}).get("max_dev", 0),
-            xip.get("C_to_A", {}).get("max_dev", 0),
-        )
-        xim_max = max(
-            xim.get("B_to_A", {}).get("max_dev", 0),
-            xim.get("C_to_A", {}).get("max_dev", 0),
-        )
-        macros.append(
-            f"\\newcommand{{\\covXipMaxDev}}{{{_format_value(xip_max * 100)}\\%}}"
-        )
-        macros.append(
-            f"\\newcommand{{\\covXimMaxDev}}{{{_format_value(xim_max * 100)}\\%}}"
-        )
-
-        macros.append("")
-
-    # PTE variation across blinds (reuse eb_fid cached above)
-    if eb_fid:
-        joint_ptes = [
-            eb_fid.get(f"pte_joint_{b}")
-            for b in ["A", "B", "C"]
-            if f"pte_joint_{b}" in eb_fid
-        ]
-        if joint_ptes:
-            macros.append("% PTE variation across blinds (fiducial scale cuts)")
-            joint_delta = max(joint_ptes) - min(joint_ptes)
-            macros.append(
-                f"\\newcommand{{\\ebJointPteDelta}}{{{_format_value(joint_delta)}}}"
-            )
-            macros.append("")
 
     # Config-space PTE matrices - generate table
     if config_pte_path is None:
@@ -592,14 +508,11 @@ def generate_pte_tables(
 
 
 def generate_evidence(
-    spec_id: str,
-    spec_path: str,
     depends_on: list[str],
     claims_dir: Path,
     output_path: Path,
 ):
-    """Generate evidence.json for dashboard dependency tracking."""
-    # Collect summary from dependent claims
+    """Record which evidence files the tables were built from."""
     summary = {}
     for dep in depends_on:
         dep_evidence = claims_dir / dep / "evidence.json"
@@ -614,8 +527,6 @@ def generate_evidence(
             summary[dep] = {"has_evidence": False}
 
     evidence = {
-        "spec_id": spec_id,
-        "spec_path": spec_path,
         "depends_on": depends_on,
         "generated": datetime.now().isoformat(),
         "evidence": {
@@ -640,38 +551,17 @@ def _from_snakemake(smk):
     versions = config["versions"]
     version_labels = config["plotting"]["version_labels"]
 
-    # Separate macro file from PTE tables and evidence
-    # Only claims_macros.tex gets macro content; PTE tables generated separately
     macro_file = [Path(p) for p in smk.output if p.endswith("claims_macros.tex")]
-    evidence_outputs = [Path(p) for p in smk.output if p.endswith("evidence.json")]
 
     print(f"Generating macros from {tapestry_dir}")
     generate_macros(tapestry_dir, macro_file, fiducial_version)
 
-    # Generate PTE tables (separate files, not macro content)
-    if macro_file:
+    # The B-modes paper rule also writes the two PTE tables beside its macros
+    if len(smk.output) > 1:
         paper_dir = macro_file[0].parent
         print(f"Generating PTE tables to {paper_dir}")
         generate_pte_tables(
             tapestry_dir, paper_dir, fiducial_version, versions, version_labels, config
-        )
-
-    # Generate evidence.json if requested
-    # Dependencies derived from snakemake inputs (rules.X.output declarations)
-    rule_inputs = smk.input.keys()
-    input_deps = [
-        k for k in rule_inputs if k.endswith("_evidence") or k == "covariance_evidence"
-    ]
-    depends_on = [d.replace("_evidence", "") for d in input_deps]
-
-    for evidence_path in evidence_outputs:
-        spec_id = evidence_path.parent.name  # e.g., xi_cosmology_paper
-        generate_evidence(
-            spec_id=spec_id,
-            spec_path=f"workflow/config/{spec_id}.md",
-            depends_on=depends_on,
-            claims_dir=tapestry_dir,
-            output_path=evidence_path,
         )
 
 
@@ -701,8 +591,8 @@ def _from_cli(argv=None):
         "--claims-dir",
         default=None,
         help=(
-            "Optional tapestry-style dir holding <spec_id>/evidence.json for the "
-            "extra claims_macros.tex macros (cosebis/pure_eb/harmonic_config); "
+            "Optional tapestry-style dir holding <rule>/evidence.json for the "
+            "extra claims_macros.tex macros (pure_eb/harmonic_config); "
             "the two PTE tables need only the two --*-evidence paths above."
         ),
     )
@@ -746,8 +636,6 @@ def _from_cli(argv=None):
     )
 
     generate_evidence(
-        spec_id="pte_summary_evidence",
-        spec_path="analyses/null_tests/astra.yaml#pte_summary_evidence",
         depends_on=["config_space_pte_matrices", "harmonic_space_pte_matrices"],
         claims_dir=claims_dir,
         output_path=out_dir / "evidence.json",

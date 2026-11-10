@@ -9,6 +9,7 @@ import numpy as np
 from astropy.io import fits
 
 from sp_validation.glass_mock import compute_leakage_harmony
+from sp_validation.io import open_catalogue
 
 
 def get_parser():
@@ -53,7 +54,7 @@ if __name__ == "__main__":
     print("Catalog data loaded successfully.")
 
     print("Loading the star catalog data...")
-    cat_star = fits.getdata(f"{args.star_cat_path}")
+    cat_star = open_catalogue(args.star_cat_path)
     print("Star catalog data loaded successfully.")
 
     print("Computing leakage in harmonic space...")

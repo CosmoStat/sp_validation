@@ -1,3 +1,0 @@
-Would reformat: scripts/check_filled_fields.py
-Would reformat: scripts/fill_photoz_bands.py
-2 files would be reformatted, 231 files already formatted

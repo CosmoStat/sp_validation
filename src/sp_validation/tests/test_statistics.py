@@ -15,9 +15,11 @@ import numpy.testing as npt
 from scipy import stats
 
 from sp_validation.statistics import (
+    calibrate_min_pte,
     chi2_and_pte,
     corr_from_cov,
     cov_from_one_covariance,
+    effective_number_of_tests,
     jackknif_weighted_average2,
 )
 
@@ -150,47 +152,186 @@ def test_chi2_and_pte_diagonal_reduces_to_sum_of_squares():
 
 
 def test_cov_from_one_covariance_selects_gaussian_column():
-    """Pin the reshaped matrix and prove the gaussian column selection.
-
-    WHAT IS PINNED: ``cov_from_one_covariance`` reads a flat OneCovariance
-    table with one row per ``(i, j)`` pair (row-major, ``k = i*n_bins + j``)
-    and lays the chosen column into a square matrix. Column 10 carries the
-    Gaussian-only term (``gaussian=True``); column 9 the Gaussian+non-Gaussian
-    term (``gaussian=False``). With a deterministic table whose entries encode
-    their row and column, both reshaped matrices are pinned as literals.
-
-    WHY TEETH: the only difference between the two calls is the column index
-    (10 vs 9), so the two pinned matrices differ by exactly 1 in every entry,
-    proving the gaussian flag selects the right column. A companion check
-    places a unique tag ``10*i + j`` in column 10 and asserts the reshape is
-    row-major (``cov[i, j]`` lands at row ``i*n_bins + j``), so a transposed
-    or column-major refactor would change the recovered matrix.
-    """
-    # Two-bin table -> 4 rows; entry (row k, col c) = 10*k + c, so the
-    # chosen-column values are distinct and self-documenting. Row k carries
-    # the (i, j) pair with k = i*n_bins + j, so rows 0..3 -> (0,0),(0,1),
-    # (1,0),(1,1). Column 10 holds values 10, 20, 30, 40; column 9 holds
-    # 9, 19, 29, 39.
-    one_cov = np.array([np.arange(11.0) + 10.0 * k for k in range(4)])
+    """Pin the reshaped matrix and prove the gaussian column selection."""
+    # obs, ell1, ell2, s1, s2, tomoi, tomoj, tomok, tomol, cov, covg, covng, covssc
+    one_cov = np.array(
+        [
+            [0.0, 10.0, 10.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 99.0, 100.0, 0.0, 0.0],
+            [0.0, 10.0, 20.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 100.0, 101.0, 0.0, 0.0],
+            [0.0, 20.0, 20.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 110.0, 111.0, 0.0, 0.0],
+        ]
+    )
 
     cov_gauss = cov_from_one_covariance(one_cov, gaussian=True)
     cov_nongauss = cov_from_one_covariance(one_cov, gaussian=False)
 
-    npt.assert_allclose(cov_gauss, [[10.0, 20.0], [30.0, 40.0]], rtol=1e-12)
-    npt.assert_allclose(cov_nongauss, [[9.0, 19.0], [29.0, 39.0]], rtol=1e-12)
+    npt.assert_allclose(cov_gauss, [[100.0, 101.0], [101.0, 111.0]], rtol=1e-12)
+    npt.assert_allclose(cov_nongauss, [[99.0, 100.0], [100.0, 110.0]], rtol=1e-12)
 
-    # TEETH: the gaussian flag shifts the column by one, so every entry of the
-    # gaussian matrix exceeds its non-gaussian counterpart by exactly 1.
+    # TEETH: the gaussian flag shifts the column by one, so every entry of
+    # the gaussian matrix exceeds its non-gaussian counterpart by exactly 1.
     npt.assert_allclose(cov_gauss - cov_nongauss, 1.0, rtol=1e-12)
 
-    # TEETH: the (i, j) -> row k = i*n_bins + j layout is row-major. Tag
-    # column 10 with 10*i + j and check it lands at cov[i, j], not cov[j, i].
-    tagged = np.zeros((4, 11))
-    for i in range(2):
-        for j in range(2):
-            tagged[i * 2 + j, 10] = 10.0 * i + j
+
+def test_cov_from_one_covariance_orders_tomo_blocks():
+    """Pin the tomo-block ordering against ``combinations_with_replacement``."""
+    # obs, ell1, ell2, s1, s2, tomoi, tomoj, tomok, tomol, cov, covg, covng, covssc
+    one_cov = np.array(
+        [
+            [
+                0.0,
+                10.0,
+                10.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                -1.0,
+                0.0,
+                0.0,
+                0.0,
+            ],  # (a,b)=(0,0)
+            [
+                0.0,
+                10.0,
+                10.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                2.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+            ],  # (0,1)
+            [
+                0.0,
+                10.0,
+                10.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                2.0,
+                2.0,
+                1.0,
+                2.0,
+                0.0,
+                0.0,
+            ],  # (0,2)
+            [
+                0.0,
+                10.0,
+                10.0,
+                1.0,
+                1.0,
+                1.0,
+                2.0,
+                1.0,
+                2.0,
+                10.0,
+                11.0,
+                0.0,
+                0.0,
+            ],  # (1,1)
+            [
+                0.0,
+                10.0,
+                10.0,
+                1.0,
+                1.0,
+                1.0,
+                2.0,
+                2.0,
+                2.0,
+                11.0,
+                12.0,
+                0.0,
+                0.0,
+            ],  # (1,2)
+            [
+                0.0,
+                10.0,
+                10.0,
+                1.0,
+                1.0,
+                2.0,
+                2.0,
+                2.0,
+                2.0,
+                21.0,
+                22.0,
+                0.0,
+                0.0,
+            ],  # (2,2)
+        ]
+    )
+
+    cov_gauss = cov_from_one_covariance(one_cov, gaussian=True)
+
     npt.assert_allclose(
-        cov_from_one_covariance(tagged, gaussian=True),
-        [[0.0, 1.0], [10.0, 11.0]],
+        cov_gauss,
+        [[0.0, 1.0, 2.0], [1.0, 11.0, 12.0], [2.0, 12.0, 22.0]],
         rtol=1e-12,
     )
+
+
+def test_calibrate_min_pte_independent_uniform_ptes():
+    """Independent uniform PTEs recover the Sidak threshold and k_eff = k."""
+    rng = np.random.default_rng(1)
+    alpha, k = 0.05, 6
+    cal = calibrate_min_pte(rng.uniform(size=(200_000, k)), alpha=alpha)
+    expected = 1.0 - (1.0 - alpha) ** (1.0 / k)
+    npt.assert_allclose(cal.threshold, expected, rtol=0.02)
+    npt.assert_allclose(cal.k_eff, k, rtol=0.02)
+    assert cal.threshold_interval[0] <= cal.threshold <= cal.threshold_interval[1]
+    assert cal.k_eff_interval[0] <= cal.k_eff <= cal.k_eff_interval[1]
+    npt.assert_allclose(effective_number_of_tests(expected, alpha), k)
+
+
+def test_calibrate_min_pte_perfectly_correlated_is_one_test():
+    """Identical columns collapse to one test: threshold alpha, k_eff 1."""
+    rng = np.random.default_rng(2)
+    column = rng.uniform(size=(100_000, 1))
+    cal = calibrate_min_pte(np.repeat(column, 8, axis=1), alpha=0.05)
+    npt.assert_allclose(cal.threshold, 0.05, rtol=0.03)
+    npt.assert_allclose(cal.k_eff, 1.0, rtol=0.03)
+
+
+def test_calibrate_min_pte_two_sided_independent():
+    """Two-sided PTEs 2 min(p, 1 - p) are uniform, so Sidak still holds."""
+    rng = np.random.default_rng(3)
+    cal = calibrate_min_pte(rng.uniform(size=(200_000, 4)), alpha=0.05, two_sided=True)
+    npt.assert_allclose(cal.k_eff, 4.0, rtol=0.03)
+
+
+def test_min_pte_global_pte():
+    """Global p-value is the mock fraction with min PTE <= the data's."""
+    mock_ptes = np.array([[0.1, 0.9], [0.5, 0.2], [0.3, 0.7], [0.8, 0.6]])
+    cal = calibrate_min_pte(mock_ptes, alpha=0.25)
+    # Mock minima: 0.1, 0.2, 0.3, 0.6.
+    p, (lo, hi) = cal.global_pte([0.9, 0.2])
+    assert p == 0.5
+    assert lo < 0.5 < hi
+    assert cal.global_pte([0.05, 0.5])[0] == 0.0
+    assert cal.global_pte([0.99, 0.95])[0] == 1.0
+    # Two-sided: a suspiciously good PTE of 0.99 counts like 0.02.
+    two = calibrate_min_pte(mock_ptes, alpha=0.25, two_sided=True)
+    assert two.global_pte([0.99, 0.5])[0] == 0.0
+
+
+def test_global_pte_is_calibrated_under_the_null():
+    """For null data the global p-value is uniform: P(p <= alpha) ~ alpha."""
+    rng = np.random.default_rng(4)
+    mean = np.zeros(5)
+    cov = 0.6 * np.ones((5, 5)) + 0.4 * np.eye(5)
+    to_pte = lambda z: stats.norm.sf(z)  # noqa: E731
+    cal = calibrate_min_pte(to_pte(rng.multivariate_normal(mean, cov, 4000)))
+    data = to_pte(rng.multivariate_normal(mean, cov, 4000))
+    p = np.array([cal.global_pte(row)[0] for row in data])
+    npt.assert_allclose(np.mean(p <= 0.05), 0.05, atol=0.012)
+    assert 1.0 < cal.k_eff < 5.0
