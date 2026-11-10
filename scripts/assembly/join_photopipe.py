@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-"""Give every shape row its PhotoPipe row (PhotoPipe join, step 2).
+"""Join every shape row to its PhotoPipe row: the comprehensive catalogue (PhotoPipe join, step 2).
 
 Reads the shape HATS catalogue and the column extract from step 1, and writes
-the joined catalogue under ``OUTPUT/catalogue`` (``sp_validation.photopipe_merge``).
+the comprehensive catalogue under ``OUTPUT/catalogue`` (``sp_validation.photopipe_merge``).
 Paths may name data roots (``config/data_roots.yaml``), as in ``${unions_data}/...``.
 """
 
@@ -12,7 +12,7 @@ from sp_validation.data_roots import expand
 from sp_validation.photopipe_merge import merge
 
 SHAPES = "${unions_data}/v2.x/run1-snap3-hats/catalogue"
-OUTPUT = "${unions_data}/photopipe-dr6"
+OUTPUT = "${unions_data}/v2.x/run1-snap3-comprehensive"
 
 
 def main():

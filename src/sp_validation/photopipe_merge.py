@@ -1,10 +1,12 @@
-"""Give every shape object its PhotoPipe row, on the shape catalogue's HATS partitions.
+"""Join PhotoPipe to the shape catalogue: the comprehensive catalogue.
 
 The inputs are the shape HATS catalogue and the column extract written by
 ``scripts/assembly/extract_photopipe.py``. The output is a HATS catalogue with
-one row for each shape row, in the same pixel and the same order, keyed by
-``_source_row``. PhotoPipe columns are null where ``PHOTOPIPE_STATUS`` is not
-``MATCHED``.
+every shape column and every PhotoPipe column, one row for each shape row, in
+the same pixel and the same order. PhotoPipe columns are null where
+``PHOTOPIPE_STATUS`` is not ``MATCHED``. ``SeqNr`` becomes ``PHOTOPIPE_SEQNR``,
+and a PhotoPipe column whose name the shapes already use takes the prefix
+``PHOTOPIPE_`` (``MAG_AUTO``, ``MAGERR_AUTO``, ``FLUX_RADIUS``).
 
 Both catalogues number objects with Stephen Gwyn's DR6 IDs, so the join is exact
 on (tile, ``NUMBER`` = ``SeqNr``). Position plays no part in it:
@@ -25,15 +27,7 @@ import pyarrow.parquet as pq
 
 SANITY_RADIUS_ARCSEC = 0.8
 MATCHED, NO_COUNTERPART, NO_TILE = 0, 1, 2
-SHAPE_COLUMNS = [
-    "_healpix_29",
-    "XWIN_WORLD",
-    "YWIN_WORLD",
-    "TILE_ID",
-    "NUMBER",
-    "_source_row",
-]
-POSITIONS = ["ALPHA_J2000", "DELTA_J2000"]
+PREFIX = "PHOTOPIPE_"
 
 
 def tile_name(tile_id):
@@ -64,7 +58,7 @@ def _separation_arcsec(ra, dec, other_ra, other_dec):
 
 def merge_pixel(shape_path, output_path, index, schema):
     """Write the matched table of one pixel and return per-tile match counts."""
-    shapes = pq.read_table(shape_path, columns=SHAPE_COLUMNS)
+    shapes = pq.read_table(shape_path)
     ra = shapes["XWIN_WORLD"].to_numpy()
     dec = shapes["YWIN_WORLD"].to_numpy()
     tile_ids, tile_of_row = np.unique(shapes["TILE_ID"].to_numpy(), return_inverse=True)
@@ -117,9 +111,13 @@ def merge_pixel(shape_path, output_path, index, schema):
         "MATCH_SEP_ARCSEC", pa.array(separation, mask=status != MATCHED)
     )
     for name in taken.column_names:
-        if name not in POSITIONS:
-            target = "PHOTOPIPE_SEQNR" if name == "SeqNr" else name
-            table = table.append_column(target, taken[name])
+        if name == "SeqNr":
+            target = PREFIX + "SEQNR"
+        elif name in shapes.column_names:
+            target = PREFIX + name
+        else:
+            target = name
+        table = table.append_column(target, taken[name])
     output_path.parent.mkdir(parents=True, exist_ok=True)
     temporary = output_path.with_suffix(".tmp")
     pq.write_table(
@@ -138,8 +136,8 @@ def _write_hats_metadata(shapes, catalogue, schema, nrows):
         shutil.copy(shapes / name, catalogue / name)
     lines = (shapes / "hats.properties").read_text().splitlines()
     replacements = dict(
-        obs_collection="unions_full_photopipe",
-        hats_cols_default="XWIN_WORLD YWIN_WORLD PHOTOPIPE_STATUS Z_B",
+        obs_collection="unions_comprehensive",
+        hats_cols_default="XWIN_WORLD YWIN_WORLD TILE_ID NUMBER PHOTOPIPE_STATUS Z_B",
         hats_builder="sp_validation.photopipe_merge",
     )
     updated = []
@@ -237,7 +235,7 @@ def _merge_worker(arguments):
 
 
 def merge(shapes, extract, output, workers=1, pixels=None):
-    """Build the matched HATS catalogue under ``output/catalogue``."""
+    """Build the comprehensive HATS catalogue under ``output/catalogue``."""
     shapes, output = Path(shapes), Path(output)
     catalogue = output / "catalogue"
     index = load_extract(extract)

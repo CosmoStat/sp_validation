@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Extract PhotoPipe science columns from the DR6 tile tree, next to the data (PhotoPipe join, step 1).
+"""Extract every PhotoPipe column from the DR6 tile tree, next to the data (PhotoPipe join, step 1).
 
 Runs in a CANFAR headless session with /arc mounted. Writes one Parquet shard
 per RA prefix (``ra=314.parquet``, one row group per tile) and a JSON manifest
@@ -30,27 +30,6 @@ import pyarrow.parquet as pq
 ROOT = "/arc/projects/unions/catalogues/unions/GAaP_photometry/UNIONS_DR6"
 EXT = "_ugriz_photoz_ext.cat"
 FINALMASK = "_ugriz_photoz_finalmask.cat"
-BANDS = ("u", "g", "r", "i", "z", "z2")
-COLUMNS = ["SeqNr", "ALPHA_J2000", "DELTA_J2000"]
-for prefix in ("MAG_GAAP", "MAGERR_GAAP", "FLAG_GAAP", "MAG_LIM", "EXTINCTION"):
-    COLUMNS += [f"{prefix}_{band}" for band in BANDS]
-COLUMNS += [
-    "Z_B",
-    "Z_B_MIN",
-    "Z_B_MAX",
-    "T_B",
-    "ODDS",
-    "Z_ML",
-    "T_ML",
-    "CHI_SQUARED_BPZ",
-    "M_0",
-    "BPZ_FILT",
-    "NBPZ_FILT",
-    "BPZ_NONDETFILT",
-    "NBPZ_NONDETFILT",
-    "BPZ_FLAGFILT",
-    "NBPZ_FLAGFILT",
-]
 
 
 def stat(path):
@@ -69,20 +48,22 @@ def sources(root, tile):
     )
 
 
-def native(array):
-    return array.astype(array.dtype.newbyteorder("="))
+def arrow(array):
+    if array.dtype.kind == "S":
+        return pa.array(np.char.decode(array, "ascii"), pa.string())
+    return pa.array(array.astype(array.dtype.newbyteorder("=")))
 
 
 def read_tile(root, tile):
     directory = root / f"UNIONS.{tile}"
-    data = fitsio.read(directory / f"UNIONS.{tile}{EXT}", ext=1, columns=COLUMNS)
-    arrays = {name: pa.array(native(data[name])) for name in COLUMNS}
+    data = fitsio.read(directory / f"UNIONS.{tile}{EXT}", ext=1)
+    arrays = {name: arrow(data[name]) for name in data.dtype.names}
     path = directory / f"UNIONS.{tile}{FINALMASK}"
     if path.exists():
         masked = fitsio.read(path, ext=1, columns=["SeqNr", "MASK"])
         if not np.array_equal(masked["SeqNr"], data["SeqNr"]):
             raise ValueError("finalmask rows differ from ext")
-        arrays["MASK"] = pa.array(native(masked["MASK"]))
+        arrays["MASK"] = arrow(masked["MASK"])
     else:
         arrays["MASK"] = pa.nulls(len(data), pa.int32())
     return pa.table(arrays)

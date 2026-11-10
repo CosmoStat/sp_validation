@@ -14,6 +14,7 @@ def write_extract(directory):
             ALPHA_J2000=np.array([10.0, 10.01]),
             DELTA_J2000=np.array([20.0, 20.0]),
             MAG_GAAP_r=np.array([21.0, 22.0], np.float32),
+            MAG_AUTO=np.array([20.5, 21.5], np.float32),
             MASK=pa.nulls(2, pa.int32()),
         )
     )
@@ -39,6 +40,7 @@ def write_shapes(path):
                 TILE_ID=np.array([24.237, 24.237, 24.237, 300.25]),
                 NUMBER=np.array([2, 1, 9, 1], np.int32),
                 _source_row=np.array([3, 2, 1, 0]),
+                MAG_AUTO=np.array([1.0, 2.0, 3.0, 4.0], np.float32),
             )
         ),
         path,
@@ -65,7 +67,9 @@ def test_merge_pixel_joins_on_id_and_marks_no_match(tmp_path):
     assert merged["MAG_GAAP_r"].to_pylist() == [22.0, 21.0, None, None]
     assert merged["MATCH_SEP_ARCSEC"].to_pylist()[2:] == [None, None]
     assert abs(merged["MATCH_SEP_ARCSEC"][1].as_py() - 0.2) < 1e-3
-    assert "ALPHA_J2000" not in merged.column_names
+    assert merged["MAG_AUTO"].to_pylist() == [1.0, 2.0, 3.0, 4.0]
+    assert merged["PHOTOPIPE_MAG_AUTO"].to_pylist() == [21.5, 20.5, None, None]
+    assert merged["ALPHA_J2000"].to_pylist() == [10.01, 10.0, None, None]
     assert sorted((c["tile"], c["n_matched"]) for c in counts) == [
         ("024.237", 2),
         ("300.250", 0),
