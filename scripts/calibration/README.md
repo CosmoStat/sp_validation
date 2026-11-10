@@ -45,8 +45,8 @@ and `ZBAND` row-aligned with the catalogue), `realisations.npz`,
 Sources and calibrators share one photometry: PhotoPipe's run on Stephen
 Gwyn's DR6 detections (`UNIONS.<tile>_ugriz_photoz_ext.cat`, dereddened GAaP
 ugriz, z2 and BPZ). Each catalogue row is found in the ShapePipe HATS
-catalogue by exact position, and the PhotoPipe HATS catalogue beside it is
-joined row for row on (tile, `NUMBER` = `SeqNr`) (`sp_validation.nz_inputs`).
+catalogue by exact position, and the PhotoPipe HATS catalogue beside it
+(built by `scripts/assembly/`) is joined row for row on (tile, `NUMBER` = `SeqNr`) (`sp_validation.nz_inputs`).
 
 **Calibrators** are the DEEP2 and DEEP3 spectra in the EGS field that
 PhotoPipe matched to its own objects (`UNIONS.<tile>_ugriz_photoz_ext_specz.cat`,

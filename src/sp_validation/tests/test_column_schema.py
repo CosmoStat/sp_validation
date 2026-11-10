@@ -74,6 +74,8 @@ NOT_COLUMNS = {
     "W_COUNT",
     "W_EDGES",
     # DR6 photometry columns, outside the ShapePipe schema
+    "ALPHA_J2000",
+    "DELTA_J2000",
     "Z_B",
     "EXTNAME",
     "R_S11",
