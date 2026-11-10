@@ -18,7 +18,6 @@ import json
 from pathlib import Path
 
 import numpy as np
-import yaml
 
 from . import covariance as CV
 from . import data_vectors as DV
@@ -61,10 +60,9 @@ def coefficient_draw_caption(samples):
 
 def run_config(run_dir):
     """Scale cuts from the run's recorded configuration, when present."""
-    prov = Path(run_dir) / "provenance.json"
     cuts = {"theta": (12.0, 83.0), "ell": (300, 1600), "theta_full": (1.0, 250.0)}
-    if prov.exists():
-        cfg = yaml.safe_load(json.loads(prov.read_text())["config"])
+    if (Path(run_dir) / "provenance.json").exists():
+        cfg = P.run_config(run_dir)
         cuts["theta"] = tuple(map(float, cfg["cosmo_val"]["fiducial_scale_cut"]))
         cuts["ell"] = (
             int(cfg["cl"]["fiducial_ell_min"]),

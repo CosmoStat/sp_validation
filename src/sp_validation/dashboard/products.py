@@ -23,6 +23,25 @@ from sp_validation.b_modes import load_cosebis_results, load_pure_eb_results
 from sp_validation.data_roots import load_yaml
 
 
+def run_config(run_dir):
+    """The run's workflow configuration, parsed from its provenance record.
+
+    Provenance either embeds the configuration text (``config``) or names the
+    file (``config_path``) with its SHA-256, which must match.
+    """
+    import hashlib
+
+    import yaml
+
+    prov = json.loads((Path(run_dir) / "provenance.json").read_text())
+    if "config" in prov:
+        return yaml.safe_load(prov["config"])
+    text = Path(prov["config_path"]).read_bytes()
+    if hashlib.sha256(text).hexdigest() != prov["config_sha256"]:
+        raise ValueError(f"{prov['config_path']} differs from the run's recorded config")
+    return yaml.safe_load(text)
+
+
 def _one(pattern):
     matches = sorted(glob.glob(str(pattern)))
     if len(matches) != 1:
