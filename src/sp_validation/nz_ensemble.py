@@ -22,11 +22,13 @@ Statistical terms, through the factors q_i = m_i (1 + δ(z_i)):
 Systematic terms:
 
 - ``zero_points``: a zero-point error δ of the calibration field relative to
-  the sources, drawn as Gaussian colour offsets (u-g, g-r, r-i, i-z) and a
-  grey offset. The calibrators trained the SOM, so its cells would have moved
-  with them: the error offsets every source by +δ against the SOM, which moves
-  source weight between groups (S_kg), and moves each calibrator's BPZ, and so
-  its bin, by -δ along the local BPZ gradient of the calibrators;
+  the sources, drawn as Gaussian colour offsets (u-g, g-r, r-i, i-z) with
+  standard deviations ``colour_sigma`` and correlations ``colour_corr``, and a
+  grey offset of standard deviation ``grey``. The calibrators
+  trained the SOM, and training is translation-equivariant, so correcting
+  their photometry by -δ moves the cells with them: every source moves by +δ
+  against the SOM, shifting the catalogue's weight between groups, and each
+  calibrator's BPZ, and so its bin, moves by -δ along its local gradient;
 - ``z2_offset``: an error ε in the constant that maps z2 onto z, offsetting
   the z band of every source measured through z2 (the calibrators have none);
 - ``specz_failure``: each calibrator's redshift is, with this probability,
@@ -35,11 +37,12 @@ Systematic terms:
   re-derived at that factor from the calibration's own spectra and sources,
   so the bins' source selection moves with it.
 
-Source tables respond to the offsets through a Jacobian computed once
-(:func:`ensemble_inputs`). The SOM and its groups are held fixed. The other
-terms leave the gold selection alone: the ensemble describes the catalogue's
-fixed ``TOM_BIN_ID`` selection, so a gold group that loses its spectra drops
-out rather than a new group entering.
+The offsets enter to first order: a draw adds half the difference between
+the recalibrations at +v and -v, which cancels what is even in the offsets
+(groups losing their last in-bin calibrator at either sign). Every term but
+``nmad_factor`` keeps the catalogue's selection: the gold groups' sources, wherever the
+offsets move them, calibrated by whichever calibrators share their group.
+The SOM and its groups are held fixed.
 """
 
 import argparse
@@ -79,16 +82,21 @@ def group_tables(prelim, group, weight, photoz, n_bin, n_groups):
 
 
 def ensemble_inputs(
-    mag, photoz, weight, prelim, channel, model, *, offset, step=0.02, workers=1
+    mag, photoz, weight, prelim, channel, model, gold, *, offset, step=0.02, workers=1
 ):
-    """Per-(bin, group) source tables and their Jacobian in :data:`DIRECTIONS`.
+    """Per-(bin, group) source tables, and the catalogue's response to offsets.
 
     ``prelim`` and ``channel`` are :func:`nz_calibration.source_groups` of the
-    sources at the recipe's z2 ``offset``. Each direction is a magnitude
-    offset of the sources against the SOM: one band for every source, or z for
-    the sources measured through z2. Sources fill the cells densely, so the
-    tables move linearly over a few hundredths of a magnitude; central
-    differences at ±``step`` give the derivatives.
+    sources at the recipe's z2 ``offset``; ``gold`` is the calibration's gold
+    mask. ``source_weight`` and ``source_photoz`` sum every source with BPZ in
+    a bin, as the gold test does. ``catalogue_jacobian`` is the derivative, in
+    each of :data:`DIRECTIONS`, of the weight per (bin, group) of the catalogue's
+    own sources (those in gold at the fiducial), so the selection stays the
+    catalogue's while its sources move between groups. A direction is a
+    magnitude offset of the sources against the SOM: one band for every
+    source, or z for the sources measured through z2. Sources fill the cells
+    densely, so the tables move linearly over a few hundredths of a magnitude;
+    central differences at ±``step`` give the derivatives.
     """
     n_bin, n_groups = len(model["edges"]) - 1, int(model["group_map"].max()) + 1
     rows = np.flatnonzero(prelim >= 0)
@@ -99,6 +107,7 @@ def ensemble_inputs(
     tree = cKDTree(model["code"])
     bins, weight, photoz = prelim[rows], weight[rows], photoz[rows]
     base = model["group_map"][tree.query(x, workers=workers)[1]]
+    catalogue = np.where(gold[bins, base], weight, 0.0)
 
     def tables(direction, size):
         d = np.zeros((1, 5))
@@ -108,9 +117,9 @@ def ensemble_inputs(
         group = base.copy()
         cell = tree.query(x[moved] + shift, workers=workers)[1]
         group[moved] = model["group_map"][cell]
-        return np.array(group_tables(bins, group, weight, photoz, n_bin, n_groups))
+        return group_tables(bins, group, catalogue, photoz, n_bin, n_groups)[0]
 
-    fiducial = np.array(group_tables(bins, base, weight, photoz, n_bin, n_groups))
+    source, source_photoz = group_tables(bins, base, weight, photoz, n_bin, n_groups)
     jacobian = np.array(
         [
             (tables(k, step) - tables(k, -step)) / (2 * step)
@@ -119,14 +128,13 @@ def ensemble_inputs(
     )
     return dict(
         directions=np.array(DIRECTIONS),
-        source_weight=fiducial[0],
-        source_photoz=fiducial[1],
-        source_weight_jacobian=jacobian[:, 0],
-        source_photoz_jacobian=jacobian[:, 1],
+        source_weight=source,
+        source_photoz=source_photoz,
+        catalogue_jacobian=jacobian,
     )
 
 
-def photoz_gradient(mag, photoz, model, k=64):
+def photoz_gradient(mag, photoz, model, k=128):
     """d BPZ / d m (n_cal, 5) of each calibrator, from its k nearest in the SOM space.
 
     A least-squares plane of BPZ in ugriz through the neighbours.
@@ -140,15 +148,18 @@ def photoz_gradient(mag, photoz, model, k=64):
     return grad
 
 
-def calibrator_weights(group, member, q, source, gold):
-    """Weights (n_bin, n_cal): S_kg q_i / Σ_{j ∈ g, k} q_j over gold groups."""
+def calibrator_weights(group, member, q, source):
+    """Weights (n_bin, n_cal): S_kg q_i / Σ_{j ∈ g, k} q_j.
+
+    ``source`` is the weight to calibrate per (bin, group), zero outside the
+    selection; a group with weight but no in-bin calibrator drops out.
+    """
     n_groups = source.shape[1]
     out = np.zeros(member.shape)
     for k in range(len(member)):
         qk = np.where(member[k], q, 0.0)
         den = np.bincount(group, weights=qk, minlength=n_groups)
-        keep = gold[k] & (den > 0)
-        ratio = np.divide(source[k], den, out=np.zeros(n_groups), where=keep)
+        ratio = np.divide(source[k], den, out=np.zeros(n_groups), where=den > 0)
         out[k] = ratio[group] * qk
     return out
 
@@ -250,9 +261,10 @@ def lognormal(cov, n_draw, rng):
 class Calibration:
     """A calibration run's state: what a draw perturbs and recalibrates.
 
-    ``source`` and ``source_photoz`` are the (n_bin, n_groups) source tables,
-    ``jacobian`` and ``photoz_jacobian`` their derivatives in
-    :data:`DIRECTIONS`, and ``photoz_gradient`` each calibrator's d BPZ / d m.
+    ``source`` and ``source_photoz`` are the (n_bin, n_groups) tables of every
+    source with BPZ in a bin, ``jacobian`` the catalogue's response in
+    :data:`DIRECTIONS` (:func:`ensemble_inputs`), and ``photoz_gradient`` each
+    calibrator's d BPZ / d m.
     """
 
     z: np.ndarray
@@ -265,7 +277,6 @@ class Calibration:
     source: np.ndarray
     source_photoz: np.ndarray
     jacobian: np.ndarray
-    photoz_jacobian: np.ndarray
     photoz_gradient: np.ndarray
     gold_qc: dict
 
@@ -286,8 +297,7 @@ class Calibration:
             grid=a["grid"],
             source=e["source_weight"],
             source_photoz=e["source_photoz"],
-            jacobian=e["source_weight_jacobian"],
-            photoz_jacobian=e["source_photoz_jacobian"],
+            jacobian=e["catalogue_jacobian"],
             photoz_gradient=e["cal_photoz_gradient"],
             gold_qc=recipe["gold_qc"],
         )
@@ -300,16 +310,21 @@ class Calibration:
         """The calibration's own unit-integral n(z) per bin."""
         return histograms(self.z, self.weights, self.grid)
 
-    def offset(self, bands=np.zeros(5), z2=0.0):
-        """Source tables and calibrator BPZ for a field offset and a z2 error.
+    def calibrate(self, z, q, gold, v=None):
+        """Unit-integral n(z) per bin of the selection ``gold``.
 
-        ``bands`` is the calibration field's (u, g, r, i, z) zero-point error,
-        ``z2`` the error of the z2 mapping. Source tables are clipped at zero.
+        ``v`` holds offsets in :data:`DIRECTIONS`: the calibration field's
+        (u, g, r, i, z) zero-point error and the z2 mapping error. The
+        catalogue's sources move between groups along the Jacobian, and each
+        calibrator's BPZ moves by -grad·δ, the change correcting its
+        photometry would make.
         """
-        v = np.r_[bands, z2]
-        source = np.maximum(self.source + np.tensordot(v, self.jacobian, 1), 0)
-        source_photoz = self.source_photoz + np.tensordot(v, self.photoz_jacobian, 1)
-        return source, source_photoz, self.photoz - self.photoz_gradient @ bands
+        source, photoz = self.source * gold, self.photoz
+        if v is not None:
+            source = np.maximum(source + np.tensordot(v, self.jacobian, 1), 0)
+            photoz = photoz - self.photoz_gradient @ v[:5]
+        w = calibrator_weights(self.group, members(photoz, self.edges), q, source)
+        return histograms(z, w, self.grid)
 
 
 def realisations(cal, settings, density=None):
@@ -325,6 +340,9 @@ def realisations(cal, settings, density=None):
     rng = np.random.default_rng(settings.get("seed", 0))
     n_draw, n_cal = settings["draws"], len(cal.z)
     zp = settings.get("zero_points")
+    if zp:
+        sigma = np.asarray(zp["colour_sigma"], float)
+        colour_cov = np.outer(sigma, sigma) * np.asarray(zp["colour_corr"], float)
     if density is not None:
         overdensity = lognormal(density, n_draw, rng)
         step = cal.grid[1] - cal.grid[0]
@@ -335,14 +353,6 @@ def realisations(cal, settings, density=None):
             fail = rng.random(n_cal) < settings["specz_failure"]
             z = z.copy()
             z[fail] = rng.choice(cal.z, fail.sum())
-        bands = np.zeros(5)
-        if zp:
-            bands = band_offsets(
-                rng.normal(0, zp["colours"]), rng.normal(0, zp["grey"])
-            )
-        z2 = rng.normal(0, settings["z2_offset"]) if settings.get("z2_offset") else 0.0
-        source, source_photoz, photoz = cal.offset(bands, z2)
-        member = members(photoz, cal.edges)
         if settings.get("nmad_factor"):
             gold = gold_masks(
                 cal.z,
@@ -354,14 +364,22 @@ def realisations(cal, settings, density=None):
                 cal.gold_qc["floor"],
                 rng.uniform(*settings["nmad_factor"]),
             )
+        v = np.zeros(len(DIRECTIONS))
+        if zp:
+            colours = rng.multivariate_normal(np.zeros(4), colour_cov)
+            v[:5] = band_offsets(colours, rng.normal(0, zp["grey"]))
+        if settings.get("z2_offset"):
+            v[5] = rng.normal(0, settings["z2_offset"])
         q = np.ones(n_cal)
         if settings.get("bootstrap"):
             q = rng.multinomial(n_cal, np.full(n_cal, 1 / n_cal)).astype(float)
         if density is not None:
             cell = np.clip(np.rint((z - cal.grid[0]) / step), 0, len(cal.grid) - 1)
             q = q * overdensity[n, cell.astype(int)]
-        w = calibrator_weights(cal.group, member, q, source, gold)
-        draws.append(histograms(z, w, cal.grid))
+        h = cal.calibrate(z, q, gold)
+        if v.any():
+            h = h + 0.5 * (cal.calibrate(z, q, gold, v) - cal.calibrate(z, q, gold, -v))
+        draws.append(h)
     draws = np.array(draws)
     raw = draws.mean(0)
     return draws - raw + cal.fiducial(), raw

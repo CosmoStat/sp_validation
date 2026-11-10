@@ -40,7 +40,13 @@ ensemble:
     field: [2.0, 0.25]       # degrees
     bias: 1.3
   zero_points:               # EGS against the wide field, mag
-    colours: [0.022, 0.020, 0.012, 0.021]  # u-g g-r r-i i-z: stellar-locus scatter of 3.4 deg² patches
+    # u-g g-r r-i i-z: stellar-locus offsets of 3.4 deg² patches, noise removed
+    colour_sigma: [0.0215, 0.0194, 0.0119, 0.0208]
+    colour_corr:
+      - [1.0, -0.59, 0.13, -0.13]
+      - [-0.59, 1.0, -0.05, 0.16]
+      - [0.13, -0.05, 1.0, -0.49]
+      - [-0.13, 0.16, -0.49, 1.0]
     grey: 0.01               # Pan-STARRS 3π uniformity
   z2_offset: 0.02            # mag, error of the z2 -> z constant
   specz_failure: 0.01        # 1 - the compilation's DEEP2/3 confidence (0.99)

@@ -78,7 +78,7 @@ def mean_z(cal, h):
 def test_no_terms_reproduce_the_calibration(run):
     cal, _ = run
     w = ne.calibrator_weights(
-        cal.group, cal.member, np.ones(len(cal.z)), cal.source, cal.gold
+        cal.group, cal.member, np.ones(len(cal.z)), cal.source * cal.gold
     )
     np.testing.assert_allclose(w, cal.weights, rtol=1e-12)
     gold = ne.gold_masks(
@@ -92,7 +92,7 @@ def test_no_terms_reproduce_the_calibration(run):
 def test_factors_keep_each_group_weight(run):
     cal, _ = run
     q = np.random.default_rng(1).exponential(size=len(cal.z))
-    w = ne.calibrator_weights(cal.group, cal.member, q, cal.source, cal.gold)
+    w = ne.calibrator_weights(cal.group, cal.member, q, cal.source * cal.gold)
     for k in range(len(w)):
         kept = np.bincount(cal.group, weights=w[k], minlength=cal.source.shape[1])
         np.testing.assert_allclose(
@@ -100,10 +100,10 @@ def test_factors_keep_each_group_weight(run):
         )
 
 
-def test_offsets_move_weight_between_groups_only(run):
-    """Every direction keeps each bin's source weight; the z2 one moves some."""
+def test_offsets_move_catalogue_weight_between_groups_only(run):
+    """Every direction keeps each bin's catalogue weight; the z2 one moves some."""
     cal, _ = run
-    np.testing.assert_allclose(cal.jacobian.sum(-1), 0, atol=1e-6 * cal.source.sum())
+    np.testing.assert_allclose(cal.jacobian.sum(-1), 0, atol=1e-9 * cal.source.sum())
     assert np.abs(cal.jacobian[ne.DIRECTIONS.index("z2")]).sum() > 0
 
 
@@ -124,13 +124,20 @@ def test_band_offsets_reproduce_colours():
 
 def test_zero_offsets_change_nothing(run):
     cal, _ = run
-    _, raw = draw(cal, n=3, zero_points=dict(colours=[0, 0, 0, 0], grey=0), z2_offset=0)
+    _, raw = draw(
+        cal,
+        n=3,
+        zero_points=dict(colour_sigma=[0] * 4, colour_corr=np.eye(4), grey=0),
+        z2_offset=0,
+    )
     np.testing.assert_allclose(raw, cal.fiducial(), atol=1e-12)
 
 
 def test_zero_points_spread_the_draws(run):
     cal, _ = run
-    real, _ = draw(cal, zero_points=dict(colours=[0.05] * 4, grey=0.02))
+    real, _ = draw(
+        cal, zero_points=dict(colour_sigma=[0.05] * 4, colour_corr=np.eye(4), grey=0.02)
+    )
     assert mean_z(cal, real).std(0).min() > 0
     np.testing.assert_allclose(real.mean(0), cal.fiducial(), atol=1e-12)
 
@@ -156,7 +163,7 @@ def test_density_cancels_in_redshift_pure_groups(run):
     pure = replace(
         pure,
         weights=ne.calibrator_weights(
-            pure.group, pure.member, np.ones(len(pure.z)), cal.source, cal.gold
+            pure.group, pure.member, np.ones(len(pure.z)), cal.source * cal.gold
         ),
     )
     cov = np.diag(np.full(len(cal.grid), 0.3))
@@ -214,3 +221,14 @@ def test_draws_are_centred_on_the_calibration(run):
     cov = np.diag(np.full(len(cal.grid), 0.5))
     real, _ = ne.realisations(cal, dict(draws=50, seed=6, bootstrap=True), density=cov)
     np.testing.assert_allclose(real.mean(0), cal.fiducial(), atol=1e-12)
+
+
+def test_offset_response_is_odd(run):
+    """A draw at -v mirrors the draw at +v about the unperturbed calibration."""
+    cal, _ = run
+    q, v = np.ones(len(cal.z)), np.array([0.03, -0.02, 0.01, 0.02, -0.03, 0.02])
+    up = cal.calibrate(cal.z, q, cal.gold, v)
+    down = cal.calibrate(cal.z, q, cal.gold, -v)
+    mid = cal.calibrate(cal.z, q, cal.gold)
+    np.testing.assert_allclose(mid, cal.fiducial(), atol=1e-12)
+    assert not np.allclose(up, down)

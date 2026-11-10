@@ -176,6 +176,7 @@ def run(config, output, *, workers=1):
                 prelim,
                 channel,
                 model,
+                est["gold"],
                 offset=config["z2_offset"],
                 workers=workers,
             ),

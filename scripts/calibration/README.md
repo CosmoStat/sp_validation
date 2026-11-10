@@ -97,20 +97,24 @@ Statistical terms, through q_i = m_i (1 + δ(z_i)):
 Systematic terms:
 
 - `zero_points`: a zero-point error of EGS against the wide field. The
-  spectra trained the SOM, so its cells would have moved with them; the error
-  is applied as an offset of every source against the SOM, which moves source
-  weight between groups, and as a shift of each spectrum's BPZ along its local
-  BPZ gradient (a plane through its 64 nearest spectra), which can move it
-  between bins. Offsetting the spectra against the fixed SOM instead would
-  barely move them: they sit at the cell centres they trained, and a 0.02 mag
-  offset changes the group of 0.8% of them. Sizes are measured with stellar-
-  locus regression on the 46,700 stars (spec-z < 0.002, 17 < r < 21) of
-  PhotoPipe's DR6 spec-z match: the colour offset of each 3.4 deg² patch (about
-  the EGS footprint) at |b| > 30° scatters by 0.022, 0.020, 0.012 and 0.021 mag
-  in u−g, g−r, r−i and i−z, less the patches' own noise. The grey term,
-  0.01 mag, is the Pan-STARRS 3π uniformity the DR6 griz calibration inherits.
-  EGS itself sits at +0.009, +0.035, −0.013 and +0.055 (± 0.009, 0.005, 0.004,
-  0.005) off the survey locus; its i−z is redder than 99% of patches.
+  spectra trained the SOM, and training is translation-equivariant, so
+  correcting their photometry would move the cells with them: the error acts
+  as an offset of every source against the SOM, which moves the catalogue's
+  weight between groups, and as a shift of each spectrum's BPZ along its
+  local BPZ gradient (a plane through its 128 nearest spectra), which can move
+  it between bins. Sizes come from stellar-locus regression on the 46,700
+  stars (spec-z < 0.002, 17 < r < 21) of PhotoPipe's DR6 spec-z match: the
+  colour offsets of 3.4 deg² patches (about the EGS footprint) at |b| > 30°,
+  less each patch's own noise, have σ = 0.022, 0.019, 0.012, 0.021 mag in
+  u−g, g−r, r−i, i−z, with correlations −0.59 (u−g, g−r) and −0.49 (r−i, i−z),
+  the signature of single-band errors. The grey term, 0.01 mag, is the
+  Pan-STARRS 3π uniformity the DR6 griz calibration inherits. Offsets along
+  the stellar locus are invisible to this regression, so that component is
+  unmeasured. EGS itself sits at +0.009, +0.035, −0.013 and +0.055
+  (± 0.009, 0.005, 0.004, 0.005) off the survey locus; its i−z is redder than
+  99% of patches. The stars are spectroscopic targets (colour-selected SDSS
+  stars over most of the sky, DEEP2/3's faint stars in EGS), so a population
+  difference could mimic part of that offset.
 - `z2_offset`: an error in the constant that maps z2 onto z, applied to the z
   band of every source measured through z2 (a third of the gold weight; the
   spectra have none). σ = 0.02 mag: stars in z2-only areas sit 0.006–0.017 mag
@@ -118,20 +122,27 @@ Systematic terms:
   colour term the stars don't.
 - `specz_failure`: each spectrum's redshift is, with probability 0.01,
   replaced by the redshift of a random spectrum. PhotoPipe's compilation
-  (2026-10-19) gives every DEEP2/3 redshift confidence 0.99. Newman et al.
+  (2026-10-19) gives every DEEP2/3 redshift confidence 0.99; Newman et al.
   (2013) measure 0.75% (Q = 3) and 0.15% (Q = 4) failures from repeats, so
-  0.01 is conservative.
+  0.01 is conservative. Failures pull a bin toward the spectra's mean
+  redshift, so this term is a one-sided bias more than a scatter: the raw
+  ensemble mean moves bin 1 by +0.004, and the delivered n(z), which already
+  holds the real failures, is biased by about as much the other way. The
+  recentred draws keep only the scatter.
 - `nmad_factor`: the gold-QC factor drawn uniformly in [4, 6] around the
   fiducial 5 (threshold 0.40–0.56 with the 0.4 floor); gold is re-derived at
   that factor, so the bins' source selection moves with it. The other terms
   keep the catalogue's gold selection.
 
-Source tables respond to the offsets linearly (central differences at
-±0.02 mag; checked against exact reassignment at 0.05 mag). The draws are
-recentred on the calibration's n(z): the calibration is nonlinear in its
-inputs, which moves the raw ensemble mean by up to 0.005 in ⟨z⟩. Most of it
-is estimator bias; spec-z failures alone pull bin 1 up by 0.004 toward the
-calibrators' mean redshift, which is what random failures would do.
+The zero-point and z2 offsets enter to first order: each draw adds half the
+difference between the recalibrations at +v and −v. That keeps the
+catalogue's response linear (its source tables are; central differences at
+±0.02 mag, checked against exact reassignment at 0.05 mag) and cancels what is
+even in the offsets: a group whose last in-bin spectrum leaves the bin loses
+its sources' weight at either sign. Every term but `nmad_factor` keeps the
+catalogue's selection, its gold sources wherever the offsets move them. The
+draws are recentred on the calibration's n(z); the raw ensemble mean moves by
+up to 0.004 in ⟨z⟩, mostly from spec-z failures.
 
 Held fixed: the SOM and its groups. Left out: spectroscopic selection and
 incompleteness (DEEP2's [OII] leaves the spectral window above z ≈ 1.4, so
