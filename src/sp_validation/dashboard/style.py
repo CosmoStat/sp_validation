@@ -213,6 +213,32 @@ def theta_ticks(ax):
     ax.set_xticklabels(["$1$", "$10$", "$100$"])
 
 
+def power_of_ten(values):
+    """Exponent ``p`` that brings the largest finite ``|values|`` into [1, 10)."""
+    top = np.nanmax(np.abs(np.asarray(values, dtype=float)))
+    return int(np.floor(np.log10(top))) if top > 0 else 0
+
+
+def fmt_sci(value, digits=2):
+    """``value`` to ``digits`` significant figures in mathtext, as a×10^p when small or large."""
+    if value == 0 or 1e-2 <= abs(value) < 1e3:
+        return f"${value:.{digits}g}$"
+    p = int(np.floor(np.log10(abs(value))))
+    return rf"${value / 10**p:.{digits}g}\times10^{{{p}}}$"
+
+
+def plain_log_formatter():
+    """Log-axis tick labels as plain numbers (1, 10, 100, 0.5), not powers of ten."""
+    return mpl.ticker.FuncFormatter(lambda v, _: f"${v:g}$")
+
+
+def headroom(ax, top=0.0, bottom=0.0):
+    """Extend a linear y range by these fractions, to clear in-panel text."""
+    lo, hi = ax.get_ylim()
+    span = hi - lo
+    ax.set_ylim(lo - bottom * span, hi + top * span)
+
+
 def zero_line(ax):
     ax.axhline(0, color=INK, ls=(0, (4, 3)), lw=0.7, alpha=0.6, zorder=1)
 

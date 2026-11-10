@@ -261,44 +261,47 @@ def rho_stats(rt, out):
 
 
 def xi_sys(rt, xi, out):
-    """Blinded θξ± and PSF coefficient-draw bands in native units."""
+    """Blinded θξ± with the PSF-systematic θξ±^sys from the coefficient draws."""
     fit = rt["fit"]
     theta = np.asarray(fit["theta"])
+    data_theta = np.asarray(xi["theta"])
     with S.figure_style():
         fig, axes = plt.subplots(1, 2, figsize=(7.2, 2.7))
         for ax, sign, key in zip(axes, ("+", "-"), ("plus", "minus")):
+            field = "xip" if sign == "+" else "xim"
+            data = data_theta * xi[field]
+            error = data_theta * xi[f"sigma_{field}"]
+            p = S.power_of_ten(np.concatenate([data + error, data - error]))
             lo, med, hi = np.percentile(
-                fit[f"samples_{key}"] * theta[None, :], [16, 50, 84], axis=0
+                fit[f"samples_{key}"] * theta[None, :] / 10**p, [16, 50, 84], axis=0
             )
             S.zero_line(ax)
-            ax.fill_between(
-                theta,
-                lo,
-                hi,
-                color=MODEL,
-                alpha=0.3,
-                lw=0,
-                label="coefficient draws (68%)",
-            )
+            ax.fill_between(theta, lo, hi, color=MODEL, alpha=0.3, lw=0)
             ax.plot(theta, med, color=MODEL, lw=1.1)
-            data_theta = np.asarray(xi["theta"])
-            field = "xip" if sign == "+" else "xim"
             ax.errorbar(
                 data_theta,
-                data_theta * xi[field],
-                yerr=data_theta * xi[f"sigma_{field}"],
+                data / 10**p,
+                yerr=error / 10**p,
                 marker="o",
                 color=S.INK,
-                label=rf"$\xi_{sign}$ (blinded)",
                 **S.DATA_VECTOR_MARK,
             )
-            ax.set_ylabel(rf"$\theta\,\xi_{sign}(\theta)$ [arcmin]")
-            ax.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
-            ax.legend(loc="upper left")
+            ax.set_ylabel(
+                rf"$\theta\,\xi_{sign} \times 10^{{{-p}}}$ [arcmin]"
+            )
+            S.label_box(ax, rf"$\xi_{sign}$")
             S.theta_axis(ax)
-            ax.set_xticks([1, 10, 100])
-            ax.set_xticklabels(["$1$", "$10$", "$100$"])
+            S.theta_ticks(ax)
             ax.set_xlabel(r"$\theta$ [arcmin]")
+        handles = [
+            Line2D([], [], ls="none", marker="o", color=S.INK, markersize=4),
+            Line2D([], [], color=MODEL, lw=4, alpha=0.4),
+        ]
+        labels = [
+            r"$\theta\,\xi_\pm$, blinded",
+            r"$\theta\,\xi_\pm^{\rm sys}$ from $\alpha,\beta,\eta$ draws (68%)",
+        ]
+        fig.legend(handles, labels, loc="outside upper center", ncol=2)
         return S.save(fig, out, "full")
 
 
@@ -314,7 +317,8 @@ def theta_tau(rt, out, corrected=None):
         for ax, k in zip(axes, (2, 5)):
             theta = np.asarray(rt["theta_tau"])
             model = tau_model_samples(rt, k, rt["fit"]["flat_samples"]) * theta[None, :]
-            lo, med, hi = np.percentile(model, [16, 50, 84], axis=0)
+            p = S.power_of_ten(np.percentile(model, [16, 84], axis=0))
+            lo, med, hi = np.percentile(model / 10**p, [16, 50, 84], axis=0)
             S.zero_line(ax)
             ax.fill_between(theta, lo, hi, color=MODEL, alpha=0.3, lw=0)
             ax.plot(theta, med, color=MODEL, lw=1.1)
@@ -323,8 +327,8 @@ def theta_tau(rt, out, corrected=None):
                 inputs.append((corrected, "leakage-corrected", SERIES[1], "s"))
             for data, label, color, marker in inputs:
                 th = np.asarray(data["theta_tau"])
-                val = th * np.asarray(data["tau"][k]["p"])
-                var = np.asarray(data["tau"][k]["var_p"])
+                val = th * np.asarray(data["tau"][k]["p"]) / 10**p
+                var = np.asarray(data["tau"][k]["var_p"]) / 10 ** (2 * p)
                 ax.plot(th, val, color=color, marker=marker, ms=3, lw=0.7, label=label)
                 valid = np.isfinite(var) & (var > 0)
                 ax.errorbar(
@@ -339,8 +343,8 @@ def theta_tau(rt, out, corrected=None):
             ax.set_xticks([1, 10, 100])
             ax.set_xticklabels(["$1$", "$10$", "$100$"])
             ax.set_xlabel(r"$\theta$ [arcmin]")
-            ax.set_ylabel(rf"$\theta\,\tau_{{{k},+}}$ [arcmin]")
-            ax.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
+            ax.set_ylabel(rf"$\theta\,\tau_{{{k},+}} \times 10^{{{-p}}}$ [arcmin]")
+            S.label_box(ax, rf"$\tau_{{{k}}}$", loc="upper left" if k == 2 else "lower left")
         handles, labels = axes[0].get_legend_handles_labels()
         handles.append(Line2D([], [], color=MODEL, lw=4, alpha=0.4))
         labels.append(r"raw $\alpha,\beta,\eta$ coefficient draws (68%)")

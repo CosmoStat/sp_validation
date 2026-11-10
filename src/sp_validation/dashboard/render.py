@@ -122,11 +122,11 @@ CORRELATIONS = [
         TG.alpha_mag,
         "psf_alpha_mag",
         "leakage",
-        "Scale-dependent leakage α(θ) = τ₀/ρ₀ for all galaxies and in galaxy-magnitude "
-        "tertiles (calibrated e₁, e₂ rescaled to each bin's shear response plus the "
-        "global selection response, w_des; jackknife errors). The selection "
-        "response is larger for the faint bin, so its |α| is likely underestimated "
-        "by ~10–20%. The paper's DES-Y3 comparison is omitted.",
+        "Scale-dependent PSF leakage α(θ) = τ₀,₊/ρ₀,₊ for all galaxies and in "
+        "tertiles of galaxy r magnitude, with jackknife errors. Each bin is "
+        "calibrated with its own shear response plus the global selection "
+        "response; the faint bin's selection response is larger, so its |α| is "
+        "likely underestimated by about 10–20%.",
         "full",
     ),
     (
@@ -134,9 +134,10 @@ CORRELATIONS = [
         TG.gamma_stars,
         "tan_psf_stars",
         "tangential",
-        "Galaxy γt and γ× around PSF validation stars (valid HSM, one entry per star), "
-        "all and by star magnitude; calibrated e₁, e₂ with w_des, no random "
-        "subtraction; jackknife errors, χ²/ν against zero.",
+        "Tangential (γt) and cross (γ×) shear of galaxies around PSF validation "
+        "stars, counted once per star, for all stars and in bins of star "
+        "magnitude. Jackknife errors; χ²/ν is against zero. No random points are "
+        "subtracted.",
         "full",
     ),
     (
@@ -144,9 +145,11 @@ CORRELATIONS = [
         TG.lambda_stars,
         "tan_lambda",
         "tangential",
-        "PSF validation stars around galaxy positions: tangential and cross PSF-model "
-        "ellipticity (λ₁) and star-minus-model residual (λ₃), minus the same around "
-        "footprint randoms. Not a null test: it traces the PSF field.",
+        "Tangential and cross components of the PSF-model ellipticity (λ₁) and of "
+        "the star-minus-model ellipticity residual (λ₃) of PSF validation stars "
+        "around galaxy positions, minus the same around random points in the "
+        "footprint. This traces the pattern of the PSF on the sky; it is not a "
+        "null test.",
         "full",
     ),
     (
@@ -154,7 +157,9 @@ CORRELATIONS = [
         TG.gamma_tiles,
         "tan_tiles",
         "tangential",
-        "θγt and θγ× of galaxies around tile centres; jackknife errors.",
+        "Tangential and cross shear of galaxies around tile centres, multiplied "
+        "by θ, a test for systematics tied to the tiling. Jackknife errors; "
+        "χ²/ν is against zero.",
         "full",
     ),
     (
@@ -162,8 +167,9 @@ CORRELATIONS = [
         TG.gamma_gaia,
         "tan_gaia",
         "tangential",
-        "Galaxy γt and γ× around Gaia DR3 stars (RUWE < 1.4) in three G bins, minus "
-        "the same around footprint randoms; jackknife errors.",
+        "Tangential and cross shear of galaxies around Gaia DR3 stars "
+        "(RUWE < 1.4) in three bins of G magnitude, minus the same around random "
+        "points in the footprint. Jackknife errors; χ²/ν is against zero.",
         "full",
     ),
 ]
@@ -205,14 +211,18 @@ def render(
     figs.add(
         "xi_pm",
         "data_vectors",
-        "Blinded ξ± on the 20-bin reporting grid; errors from the analytic covariance.",
+        "Blinded shear correlation functions ξ₊ and ξ₋, multiplied by θ, in 20 "
+        "logarithmic bins from 1′ to 250′. Error bars are from the analytic "
+        "covariance.",
         "full",
         narrow=True,
     )
     figs.add(
         "cl",
         "data_vectors",
-        f"Blinded Cℓ EE (NaMaster, mode-decoupled) as ℓCℓ. Shaded: outside {lcut}.",
+        "Blinded E-mode angular power spectrum C_ℓ^EE, multiplied by ℓ: NaMaster "
+        "pseudo-Cℓ, corrected for the survey mask. Error bars are from the "
+        f"Gaussian covariance. Shading marks bands outside the fiducial {lcut}.",
         "full",
         narrow=True,
     )
@@ -225,7 +235,10 @@ def render(
     figs.add(
         "bmode_pure_eb",
         "bmodes",
-        f"Pure-mode decomposition of ξ±. Shaded: outside the fiducial {tcut}; full range 1′–250′.",
+        "Blinded ξ± (black) split into pure E modes (blue), pure B modes (red) and "
+        "ambiguous modes that cannot be assigned to either (grey), all multiplied "
+        "by θ. Lensing makes no B modes, so they are a null test. Shading marks "
+        f"scales outside the fiducial {tcut}.",
         "full",
         narrow=True,
     )
@@ -233,15 +246,19 @@ def render(
     figs.add(
         "bmode_cosebis",
         "bmodes",
-        f"COSEBIs Bₙ/σₙ at the fiducial {tcut} (filled) and over the full range (open). "
-        "Shaded: modes beyond n = 6.",
+        "B-mode COSEBIs Bₙ (complete orthogonal sets of E/B-integrals, a compact "
+        "E/B split of ξ±) in units of their uncertainty, over the fiducial "
+        f"{tcut} (filled) and the full {full_cut[0]:g}′–{full_cut[1]:g}′ (open). "
+        "The headline null test uses n ≤ 6; higher modes are shaded.",
         "half",
     )
     DV.cl_bmodes(cl, figs.path("bmode_cl"), ell_cut)
     figs.add(
         "bmode_cl",
         "bmodes",
-        f"Cℓ BB and EB in units of their uncertainty. Shaded: outside {lcut}.",
+        "Pseudo-Cℓ B-mode (BB) and E×B (EB) power spectra in units of their "
+        "uncertainty; lensing makes neither. Shading marks bands outside "
+        f"{lcut}.",
         "half",
     )
     cg = P.load_cosebis_grid(ref.cosebis_grid, blind) if ref.cosebis_grid else None
@@ -253,10 +270,12 @@ def render(
     figs.add(
         "ptes_config",
         "bmodes",
-        "B-mode PTE for every (θmin, θmax) cut on the 20-bin reporting grid: pure "
-        "ξ+B, pure ξ−B"
-        + (" and COSEBIs Bₙ (n ≤ 6)" if cg is not None else "")
-        + "; the fiducial cut is outlined.",
+        "Probability to exceed (PTE) the χ² of the B modes against zero, for every "
+        "choice of smallest and largest scale on the 20-bin grid: pure-mode ξ₊ᴮ, "
+        "pure-mode ξ₋ᴮ"
+        + (" and COSEBIs Bₙ with n ≤ 6" if cg is not None else "")
+        + ". Saturated colours mark PTE below 0.05 or above 0.95; the fiducial "
+        "cut is outlined.",
         "full",
         narrow=True,
         group="scale_cuts",
@@ -264,7 +283,8 @@ def render(
     figs.add(
         "ptes_harmonic",
         "bmodes",
-        f"Cℓ BB PTE for every band range; the fiducial {lcut} is outlined.",
+        "PTE of the Cℓ BB χ² against zero for every choice of lowest and highest "
+        f"band; the fiducial {lcut} is outlined.",
         "half",
         group="scale_cuts",
     )
@@ -326,9 +346,10 @@ def render(
         figs.add(
             "star_residuals",
             "leakage",
-            "PSF validation stars (valid HSM): "
-            "star-minus-model ellipticity and fourth moments, and half-light "
-            "radius residual from √(T★/T_PSF) − 1. Means and σ use all finite detections.",
+            "Residuals of PSF validation stars against the PSF model at their "
+            "positions: ellipticity (Δe), fourth-order moments (ΔM⁽⁴⁾) and size, "
+            "as √(T★/T_PSF) − 1 with T the second-moment size. Means and σ use "
+            "every finite detection.",
             "full",
         )
     else:
@@ -346,21 +367,24 @@ def render(
     figs.add(
         "psf_theta_tau",
         "leakage",
-        "Galaxy–PSF correlations θτ₂,+ and θτ₅,+ (θ in arcmin). "
+        "Galaxy–PSF cross-correlations τ₂,₊ and τ₅,₊, multiplied by θ, "
         + (
-            "Raw and object-wise leakage-corrected catalogues overlaid. "
+            "for the raw and the object-wise leakage-corrected catalogues. "
             if corrected_tau is not None
-            else "Raw catalogue only. "
+            else "for the catalogue without leakage correction. "
         )
-        + "Band: raw α–β–η coefficient draws (68%); no corrected fit is implied. "
-        "Errors: theory τ covariance; bars omitted for nonpositive variances.",
+        + "The band is the 68% range of the α, β, η leakage model of the raw "
+        "catalogue over coefficient-resampling draws. Error bars are from the "
+        "analytic τ covariance; points whose variance is not positive have none.",
         "full",
     )
     figs.add(
         "psf_tau",
         "leakage",
-        "Galaxy–PSF correlations τ₀,₂,₅ with the 68% coefficient-resampling band "
-        "of the α, β, η leakage model.",
+        "Galaxy–PSF cross-correlations τ₀, τ₂ and τ₅, fitted by the PSF leakage "
+        "model with coefficients α (leakage), β (ellipticity residual) and η "
+        "(size residual). The band is the model's 68% range over "
+        "coefficient-resampling draws.",
         "full",
     )
     PSF.coefficient_draws(rt, figs.path("psf_coefficient_draws"))
@@ -375,20 +399,29 @@ def render(
     figs.add(
         "psf_alpha",
         "leakage",
-        "Every estimate of the leakage coefficient: object-wise, scale-dependent and ρ/τ fit.",
+        "Every estimate of the PSF leakage coefficient. Object-wise: regressions "
+        "of galaxy on PSF ellipticity per component (a₁₁, a₂₂) and their mean. "
+        "Scale-dependent α(θ) = τ₀,₊/ρ₀,₊: its weighted mean, the intercept of a "
+        "linear fit in θ, and its value at the smallest θ. ρ/τ fit: α of the "
+        "leakage model.",
         "half",
     )
     PSF.rho_stats(rt, figs.path("psf_rho"))
     figs.add(
-        "psf_rho", "leakage", "ρ statistics of the PSF model and its residuals.", "full"
+        "psf_rho",
+        "leakage",
+        "ρ statistics: auto- and cross-correlations of the PSF-model ellipticity "
+        "and of the star-minus-model residuals in ellipticity (ρ₀–ρ₂) and in "
+        "size-weighted ellipticity (ρ₃–ρ₅). Absolute values; open markers are "
+        "negative.",
+        "full",
     )
     PSF.xi_sys(rt, xi, figs.path("psf_xi_sys"))
     figs.add(
         "psf_xi_sys",
         "leakage",
-        "Signed θξ± data (blinded) with analytic errors and θξ±sys from "
-        "coefficient draws (68% band), θ in arcmin. "
-        "The data include cosmological signal; no noisy data division is used.",
+        "Blinded θξ± with analytic errors, beside the PSF contribution θξ±ˢʸˢ "
+        "that the leakage model predicts (68% range over coefficient draws).",
         "full",
     )
 
@@ -404,11 +437,12 @@ def render(
             figs.add(
                 "object_leakage_bins",
                 "leakage",
-                "Weighted regressions of calibrated e₁, e₂ against the corresponding "
-                "PSF model ellipticity at each galaxy, without an object-wise "
-                "leakage correction. Eight equal-count resolution bins each have "
-                "eight equal-count SNR bins. Hatching marks |α| < 2σ; σ is the "
-                "weighted least-squares fit uncertainty.",
+                "PSF leakage α₁, α₂ from weighted regressions of calibrated galaxy "
+                "ellipticity on the PSF-model ellipticity at each galaxy, without "
+                "object-wise leakage correction, in eight equal-count bins of "
+                "resolution each split into eight equal-count bins of "
+                "signal-to-noise. Hatched cells have |α| < 2σ, with σ the fit "
+                "uncertainty.",
                 "full",
             )
         else:
@@ -420,13 +454,12 @@ def render(
             figs.add(
                 "additive_bias",
                 "leakage",
-                "Linear fits to weighted means of calibrated ellipticity in "
-                "20 fixed bins of each standardised property. "
-                "Error bars and significances use inverse-variance fits to binned "
-                "means with independent-galaxy shape-noise errors; they omit "
-                "spatially correlated noise, notably for RA and Dec. "
-                "Galaxy size is √T and the size ratio is T/T_PSF; only objects "
-                "inside the fixed property ranges are used.",
+                "Change of the weighted mean calibrated ellipticity per standard "
+                "deviation of each galaxy or PSF property (left), and that slope "
+                "over its fit uncertainty (right; dotted at ±2). Slopes are fits "
+                "to the means in 20 bins of each property, with shape-noise "
+                "errors that omit spatially correlated noise, which matters most "
+                "for RA and Dec. Galaxy size is √T; the size ratio is T/T_PSF.",
                 "full",
             )
         else:
@@ -445,10 +478,9 @@ def render(
         figs.add(
             "selection_hist",
             "survey",
-            "Cumulative v2 catalogue selections; histograms show magnitudes 15–30. "
-            "The paper's chip-defect/IMA_FLAGS, stellar-halo and pointing-count "
-            "stages have no corresponding cut in this run. The configured tile "
-            "overlap and r-band coverage cuts are included.",
+            "Detections per r-magnitude bin after each successive catalogue "
+            "selection, from all detections to the shear sample (black), over "
+            "magnitudes 15–30.",
             "full",
         )
     else:
@@ -463,8 +495,10 @@ def render(
             figs.add(
                 "weights",
                 "survey",
-                "Counts, weights, mean diagonal galaxy response and per-component "
-                "uncalibrated ellipticity RMS on the weight grid.",
+                "Galaxy count, shape weight, mean diagonal shear response and "
+                "per-component RMS of the uncalibrated ellipticity in the cells of "
+                "signal-to-noise and galaxy-to-PSF size ratio on which the weights "
+                "are defined.",
                 "full",
                 narrow=True,
             )
@@ -478,10 +512,11 @@ def render(
             figs.add(
                 "response_histogram",
                 "survey",
-                "Galaxy metacal response components over −5 to 5; at most "
+                "Metacalibration shear-response components of the selected "
+                "galaxies between −5 and 5; at most "
                 f"{100 * np.max(cells['response_outside']) / int(cells['n_rows']):.2f}% "
-                "of entries per component lie outside this range or are non-finite. "
-                "v2 has no metacal star shapes.",
+                "of galaxies per component lie outside this range or are "
+                "non-finite.",
                 "half",
             )
         else:
@@ -494,9 +529,9 @@ def render(
             figs.add(
                 "sky_stars",
                 "survey",
-                "PSF validation stars (valid HSM): star "
-                "detections per sky area, counted once per exposure, and "
-                "star-minus-model T divided by model T; HEALPix nside 256.",
+                "PSF validation stars per HEALPix pixel (nside 256): detections "
+                "per unit area, counted once per exposure, and the mean "
+                "fractional size residual (T★ − T_PSF)/T_PSF.",
                 "full",
             )
         else:
@@ -506,8 +541,8 @@ def render(
             figs.add(
                 "sky_magnitude",
                 "survey",
-                "PSF FWHM and unweighted mean galaxy r magnitude per "
-                "HEALPix nside-256 pixel.",
+                "PSF FWHM and mean galaxy r magnitude per HEALPix pixel "
+                "(nside 256).",
                 "full",
             )
         else:
@@ -516,7 +551,8 @@ def render(
         figs.add(
             "sky_footprint",
             "survey",
-            "Effective source density in a zenithal equal-area projection centred on the patch.",
+            "Effective source density of the shear catalogue, in a zenithal "
+            "equal-area projection centred on each patch.",
             "full",
         )
         field_sets = ["galaxies"]
@@ -536,7 +572,8 @@ def render(
         figs.add(
             "sky_galaxies",
             "survey",
-            "Galaxy fields: ellipticity dispersion, mean weight and weighted mean e₁, e₂.",
+            "Galaxy fields per pixel: ellipticity dispersion per component, mean "
+            "weight, and weighted mean ellipticity ⟨e₁⟩, ⟨e₂⟩.",
             "full",
             narrow=True,
         )
@@ -545,9 +582,9 @@ def render(
             figs.add(
                 "sky_psf",
                 "survey",
-                "PSF fields: model FWHM at galaxies, and star-minus-model size and "
-                "ellipticity residuals for PSF validation stars (valid HSM); "
-                f"size residual normalised by the model (median {100 * dt:+.2f}%).",
+                "PSF fields per pixel: model FWHM at galaxy positions, and for PSF "
+                "validation stars the fractional size residual (median "
+                f"{100 * dt:+.2f}%) and the star-minus-model ellipticity residuals.",
                 "full",
                 narrow=True,
             )
@@ -558,7 +595,8 @@ def render(
     figs.add(
         "cov_xi",
         "survey",
-        "ξ± reporting-grid covariance (analytic, masked).",
+        "Correlation matrix of the analytic ξ± covariance on the 20-bin grid, "
+        "including the survey mask.",
         "half",
         group="covariance",
     )
@@ -571,7 +609,7 @@ def render(
     figs.add(
         "cov_pure_eb",
         "survey",
-        "Pure E, B and ambiguous modes of ξ±.",
+        "Correlation matrix of the pure E, pure B and ambiguous modes of ξ±.",
         "half",
         group="covariance",
     )
@@ -585,7 +623,7 @@ def render(
     figs.add(
         "cov_cosebis",
         "survey",
-        "COSEBIs E and B modes at the fiducial cut.",
+        f"Correlation matrix of the COSEBIs E and B modes over {tcut}.",
         "half",
         group="covariance",
     )
@@ -598,7 +636,7 @@ def render(
     figs.add(
         "cov_cl",
         "survey",
-        "Cℓ EE, EB and BB (Gaussian, NaMaster).",
+        "Correlation matrix of the Gaussian pseudo-Cℓ covariance of EE, EB and BB.",
         "half",
         group="covariance",
     )
