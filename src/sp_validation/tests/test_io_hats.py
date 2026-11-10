@@ -3,7 +3,7 @@
 A catalogue written as HATS (by ``lsdb``, as a collection) and as one HDF5
 dataset reads to the same rows, matched on a row ID since HATS orders rows by
 sky position; each partition is a chunk, the whole catalogue opens as one lazy
-``ParquetTable``, and a row window reads only the row groups it touches.
+view, and a row window or index reads only the row groups it touches.
 """
 
 import h5py
@@ -15,7 +15,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from sp_validation import grammar, io
+from sp_validation import grammar, io, tables
 
 N = 3000
 
@@ -90,7 +90,7 @@ def test_partitions_are_chunks(paths, catalogue):
 def test_open_catalogue_is_lazy_and_maps_columns(paths, catalogue):
     _, hats = paths
     table = io.open_catalogue(hats)
-    assert isinstance(table, io.ParquetTable)
+    assert isinstance(table, grammar.V2View) and not table.renames
     order = table["ROW"]
     npt.assert_array_equal(table["w"], catalogue["w"][order])
 
@@ -127,12 +127,17 @@ def test_windows_read_only_their_row_groups(tmp_path):
     for i, (lo, hi) in enumerate([(0, 45), (45, 100)]):
         path = tmp_path / f"part{i}.parquet"
         pq.write_table(pa.table({"x": values[lo:hi]}), path, row_group_size=7)
-        files.append(io._ParquetFile(str(path), pq.read_metadata(path)))
-    table = io.ParquetTable(files, pq.read_schema(files[0].path))
+        dtype = tables.parquet_dtype(pq.read_schema(path))
+        files.append(tables.ParquetFile(str(path), pq.read_metadata(path), dtype))
+    table = grammar.adapt(tables.ConcatTable(files))
     assert len(table) == 100
     rng = np.random.default_rng(1)
     for start, stop in [(0, 0), (0, 100), (44, 46), (6, 8), (93, 100)] + [
         tuple(sorted(rng.integers(0, 101, 2))) for _ in range(20)
     ]:
-        npt.assert_array_equal(table.read_window("x", start, stop), values[start:stop])
+        window = table.read(["x"], range(start, stop))["x"]
+        npt.assert_array_equal(window, values[start:stop])
     npt.assert_array_equal(table[10:20]["x"], values[10:20])
+    index = rng.integers(0, 100, 50)
+    npt.assert_array_equal(table.read(["x"], index)["x"], values[index])
+    npt.assert_array_equal(table[index][::-3]["x"], values[index][::-3])

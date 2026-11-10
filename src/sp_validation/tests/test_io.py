@@ -15,7 +15,7 @@ import numpy.testing as npt
 import pytest
 from astropy.io import fits
 
-from sp_validation import grammar, io
+from sp_validation import grammar, io, tables
 from sp_validation.rho_tau import _CatalogueLoader
 
 N = 60
@@ -220,8 +220,8 @@ def test_open_catalogue_reads_lazily(foreign, tmp_path, layout):
     gc.collect()  # the HDF5 file stays open while the table is referenced
     assert isinstance(table, grammar.V2View)
     if layout == "fits":
-        assert all(_memory_mapped(base) for base in table._bases)
+        assert all(_memory_mapped(base.array) for base in table._bases)
     else:
-        assert all(isinstance(base, h5py.Dataset) for base in table._bases)
+        assert all(isinstance(base, tables.HDF5Table) for base in table._bases)
     npt.assert_array_equal(table["RA"], foreign["alpha"])
     npt.assert_array_equal(table["star_e2"], foreign["star_e2"])
