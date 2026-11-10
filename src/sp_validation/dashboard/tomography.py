@@ -7,6 +7,12 @@ B-mode null tests that have no natural physical scale (C_ℓ, COSEBIs) are drawn
 in units of their own standard deviation over ±1σ and ±2σ bands, one y range
 for every pair; power spectra use the square-root ℓ axis (:func:`style.ell_axis`).
 
+The C_ℓ grids and the τ rows are drawn by Sacha Guerrini's harmonic-space and
+PSF functions (:func:`sp_validation.cosmo_val.pseudo_cl.plot_pseudo_cl_grid`,
+:func:`sp_validation.cosmo_val.psf_systematics.plot_tau_stats_tomo`) through
+their style hooks; this module adds bands, headers and legends on the axes they
+return.
+
 Two-point inputs are SACC objects as :func:`sp_validation.sacc_io.load` returns
 them. E-mode vectors are drawn as stored, concealed under their blind, with no
 theory beside them.
@@ -23,6 +29,7 @@ from . import style as S
 XI_SCALE = 1e-4
 # Page accents for the source bins, ordered by redshift.
 BIN_COLORS = ["#3D5BA0", "#3F8278", "#C49333", "#BC4538"]
+PSF_MODEL = "#3D5BA0"  # page cobalt, as in dashboard.psf
 
 
 def pairs(nbin):
@@ -117,11 +124,6 @@ def _marker(marker, color, label, filled=True, ms=4.5):
     )
 
 
-def _sqrt_jitter(ell, offset):
-    """Shift ℓ by ``offset`` in √ℓ, so the shift looks the same at every ℓ."""
-    return (np.sqrt(ell) + offset) ** 2
-
-
 def _label_edges(fig_axes, nbin, xlabel, ylabel):
     for p, ax in fig_axes.items():
         if p[1] == nbin - 1:
@@ -155,33 +157,98 @@ CL_B_ROWS = [  # data type, PTE key, marker, filled, colour, name
     (sacc_io.CL_BB, "BB", "o", True, S.COLOR_CL_BB, "BB"),
     (sacc_io.CL_EB, "EB", "D", False, S.COLOR_CL_EB, "EB"),
 ]
+ELL_MINOR = [t for t in range(100, 2001, 100) if t not in S.ELL_TICKS]
+
+
+def _grid(nbin, sharey):
+    """The triangle as the harmonic-space grid functions index it."""
+    fig, ax_of, key = triangle(nbin, sharey=sharey)
+    return fig, ax_of, key, np.array(fig.axes).reshape(nbin, nbin)
+
+
+def _spectra(s, dtypes, nbin):
+    """``(spectra, tomo_bins)`` of one SACC in the layout of
+    :func:`sp_validation.cosmo_val.pseudo_cl.plot_pseudo_cl_grid`."""
+    err = sigma(s)
+    spectra = {}
+    for p in pairs(nbin):
+        d = {}
+        for pol, dtype in dtypes.items():
+            d["ell"], value, e = series(s, dtype, p, "ell", err)
+            d[pol] = (value, e)
+        spectra[(p[0] + 1, p[1] + 1)] = d
+    bins = {"ids": list(range(1, nbin + 1)), "pairs": list(spectra)}
+    return {"data": spectra}, {"data": bins}
+
+
+def _cl_grid(s, axs, dtypes, pol_style, ell_range, **kw):
+    """Draw with Sacha Guerrini's tomographic C_ℓ grid in the house style."""
+    from sp_validation.cosmo_val.pseudo_cl import plot_pseudo_cl_grid
+
+    spectra, bins = _spectra(s, dtypes, len(axs))
+    plot_pseudo_cl_grid(
+        spectra,
+        bins,
+        ["data"],
+        {"data": ("", None)},
+        list(dtypes),
+        savefig=None,
+        show=False,
+        axs=axs,
+        pol_style=pol_style,
+        pair_label=False,
+        ell_range=ell_range,
+        minor_ticks=ELL_MINOR,
+        zero_line={"color": S.INK, "ls": (0, (4, 3)), "lw": 0.7, "alpha": 0.6},
+        **kw,
+    )
+    return spectra["data"]
 
 
 def cl_bmodes(s, out, ptes=None, nbin=4, ell_range=(6, 2100)):
     """Pseudo-C_ℓ BB and EB per bin pair in units of their σ, on the √ℓ axis.
 
-    ``ptes``: ``{pair: {"BB": pte, "EB": pte}}``. BB is offset left and EB
-    right by a fixed step in √ℓ so the two never sit on one another.
+    Drawn by :func:`~sp_validation.cosmo_val.pseudo_cl.plot_pseudo_cl_grid`
+    (``sigma_units``, BB and EB offset by half a bandpower); this adds the
+    ±1σ/±2σ bands, the pair headers with ``ptes``
+    (``{pair: {"BB": pte, "EB": pte}}``) and the legend.
     """
-    err = sigma(s)
     ptes = ptes or {}
     with S.figure_style():
-        fig, ax_of, key = triangle(nbin, sharey=True)
-        extent = 0
+        fig, ax_of, key, axs = _grid(nbin, sharey=True)
+        style = {
+            n: {
+                "fmt": m,
+                "color": c,
+                "markersize": 3.2,
+                "markeredgewidth": 0.8,
+                "markerfacecolor": c if f else S.RAG,
+                "zorder": 3,
+            }
+            for _, n, m, f, c, _ in CL_B_ROWS
+        }
+        data = _cl_grid(
+            s,
+            axs,
+            {k: dt for dt, k, *_ in CL_B_ROWS},
+            style,
+            ell_range,
+            sigma_units=True,
+            pol_offset=0.5,
+        )
+        extent = max(
+            np.max(np.abs(d[k][0] / d[k][1]))
+            for d in data.values()
+            for _, k, *_ in CL_B_ROWS
+        )
         for p, ax in ax_of.items():
             S.sigma_bands(ax)
-            S.zero_line(ax)
-            for (dtype, _, mk, filled, col, _), off in zip(CL_B_ROWS, (-0.35, 0.35)):
-                ell, c, e = series(s, dtype, p, "ell", err)
-                y = c / e
-                extent = max(extent, np.max(np.abs(y)))
-                _sigma_units(ax, _sqrt_jitter(ell, off), y, mk, col, filled)
-            S.ell_axis(ax, *ell_range)
             pair_header(
                 ax, p, [(n, ptes.get(p, {}).get(k)) for _, k, _, _, _, n in CL_B_ROWS]
             )
         _sigma_ylim(ax, extent)
         _label_edges(ax_of, nbin, r"$\ell$", r"$C_\ell / \sigma_\ell$")
+        key.set_visible(True)
         _key(
             key,
             [_marker(m, c, rf"$C_\ell^{{{n}}}$", f) for _, _, m, f, c, n in CL_B_ROWS]
@@ -191,30 +258,27 @@ def cl_bmodes(s, out, ptes=None, nbin=4, ell_range=(6, 2100)):
 
 
 def cl_ee(s, out, blind, nbin=4, ell_range=(6, 2100)):
-    """Blinded ℓ C_ℓ^EE per bin pair on the √ℓ axis, as stored (concealed)."""
-    err = sigma(s)
-    data = {p: series(s, sacc_io.CL_EE, p, "ell", err) for p in pairs(nbin)}
-    top = max(np.max(ell * (c + e)) for ell, c, e in data.values())
-    pw = int(np.floor(np.log10(top)))
+    """Blinded ℓ C_ℓ^EE per bin pair on the √ℓ axis, as stored (concealed).
+
+    Drawn by :func:`~sp_validation.cosmo_val.pseudo_cl.plot_pseudo_cl_grid`
+    on one y range for every pair; this adds the pair headers and legend.
+    """
     with S.figure_style():
-        fig, ax_of, key = triangle(nbin)
-        for p, ax in ax_of.items():
-            ell, c, e = data[p]
-            S.zero_line(ax)
-            ax.errorbar(
-                ell,
-                ell * c / 10.0**pw,
-                yerr=ell * e / 10.0**pw,
-                marker="o",
-                color=S.COLOR_E,
-                **{**S.DATA_VECTOR_MARK, "markersize": 2.6},
-            )
-            S.ell_axis(ax, *ell_range)
-            ax.tick_params(axis="y", labelsize=8)
-            pair_header(ax, p)
-        _label_edges(
-            ax_of, nbin, r"$\ell$", rf"$\ell\,C_\ell^{{EE}} \times 10^{{{-pw}}}$"
+        fig, ax_of, key, axs = _grid(nbin, sharey=True)
+        mark = {**S.DATA_VECTOR_MARK, "markersize": 2.6}
+        mark.pop("ls")
+        _cl_grid(
+            s,
+            axs,
+            {"EE": sacc_io.CL_EE},
+            {"EE": {"fmt": "o", "color": S.COLOR_E, **mark}},
+            ell_range,
         )
+        for p, ax in ax_of.items():
+            pair_header(ax, p)
+            if p[1] == nbin - 1:
+                ax.set_xlabel(r"$\ell$")
+        key.set_visible(True)
         _key(key, [_marker("o", S.COLOR_E, r"$C_\ell^{EE}$ (blinded)")])
         S.blind_stamp(fig, blind, where="bottom")
         return S.save(fig, out, "full")
@@ -411,49 +475,69 @@ def tau_bins(theta, tau, model, out):
     """τ_{0,2,5}+ per source bin with each bin's fitted leakage model.
 
     ``tau[i][k] = (value, σ)`` and ``model[i][k]`` on ``theta``, bin ``i``,
-    ``k`` in (0, 2, 5).
+    ``k`` in (0, 2, 5). Drawn by
+    :func:`~sp_validation.cosmo_val.psf_systematics.plot_tau_stats_tomo`
+    (one row per bin, θτ for τ2 and τ5); this adds the model lines.
     """
+    from sp_validation.cosmo_val.psf_systematics import plot_tau_stats_tomo
+
     nbin = len(tau)
+    data = {
+        i + 1: {"theta": theta, **{(str(k), "p"): tau[i][k] for k in (0, 2, 5)}}
+        for i in range(nbin)
+    }
+    mark = {**S.DATA_VECTOR_MARK, "markersize": 2.6}
+    mark.pop("ls")
     with S.figure_style():
-        fig, axes = plt.subplots(1, 3, figsize=(7.2, 2.5), sharex=True)
-        for ax, k in zip(axes, (0, 2, 5)):
-            top = max(np.max(np.abs(theta * tau[i][k][0])) for i in range(nbin))
-            pw = int(np.floor(np.log10(top)))
-            sc = 10.0**pw
-            S.zero_line(ax)
-            for i in range(nbin):
-                v, e = tau[i][k]
-                off = 10 ** (0.018 * (i - (nbin - 1) / 2))
-                ax.errorbar(
-                    theta * off,
-                    theta * v / sc,
-                    yerr=theta * e / sc,
-                    marker="o",
-                    color=BIN_COLORS[i],
-                    **{**S.DATA_VECTOR_MARK, "markersize": 2.6},
-                )
-                ax.plot(theta, theta * model[i][k] / sc, color=BIN_COLORS[i], lw=0.9)
-            S.theta_axis(ax)
-            S.theta_ticks(ax)
-            ax.set_xlabel(r"$\theta$ [arcmin]")
-            ax.set_ylabel(rf"$\theta\,\tau_{{{k},+}} \times 10^{{{-pw}}}$")
-            S.header(ax, rf"$\tau_{{{k},+}}$")
+        fig = plt.figure(figsize=(7.2, 1.45 * nbin + 0.9))
+        fig.get_layout_engine().set(hspace=0.04)
+        _, axs = plot_tau_stats_tomo(
+            {"data": data},
+            {"data": {"ids": list(data)}},
+            ["data"],
+            [S.INK],
+            {"data": "measured"},
+            savefig=None,
+            show=False,
+            close=False,
+            plot_theta_times_tau=True,
+            fmt="o",
+            capsize=mark.pop("capsize", 1.6),
+            fig=fig,
+            errorbar_kw=mark,
+            row_label=lambda b, _: f"bin {b}",
+            titles=[r"$\tau_{0,+}$", r"$\theta\,\tau_{2,+}$", r"$\theta\,\tau_{5,+}$"],
+            legend=False,
+        )
+        for i in range(nbin):
+            for col, k in enumerate((0, 2, 5)):
+                ax = axs[i][col]
+                f = 1.0 if k == 0 else theta
+                ax.plot(theta, f * model[i][k], color=PSF_MODEL, lw=1.0, zorder=1)
+                S.zero_line(ax)
+                ax.set_xticks([1, 10, 100])
+                ax.set_xticklabels(["$1$", "$10$", "$100$"])
         fig.legend(
             handles=[
                 Line2D(
                     [],
                     [],
-                    color=BIN_COLORS[i],
+                    color=S.INK,
                     marker="o",
-                    ms=3.5,
-                    lw=0.9,
-                    label=f"bin {i + 1}",
-                )
-                for i in range(nbin)
-            ]
-            + [Line2D([], [], color=S.INK, lw=0.9, label="fitted model")],
+                    ms=3,
+                    ls="none",
+                    label=r"measured $\tau_{k,+}$",
+                ),
+                Line2D(
+                    [],
+                    [],
+                    color=PSF_MODEL,
+                    lw=1.0,
+                    label=r"fitted $\alpha, \beta, \eta$ model",
+                ),
+            ],
             loc="outside upper center",
-            ncol=nbin + 1,
+            ncol=2,
         )
         return S.save(fig, out, "full")
 
