@@ -27,9 +27,11 @@ fi
 CVPAINT_THREADS=$SLURM_CPUS_PER_TASK bash "$HERE/run.sh" --rerun-incomplete cosmo_val_all > "$L/all.log" 2>&1
 rc=$?; echo "cosmo_val_all rc=$rc $(date -Is)"
 [ $rc -eq 0 ] && git -C "$REPO" rev-parse HEAD > "$CVPAINT_ROOT/workflow_complete"
+mkdir -p "$CVPAINT_ROOT/figures"
 for part in harmonic additive blind_xi xi decompositions psf scan; do
   bash "$HERE/analyze.sh" $part > "$L/validate_$part.log" 2>&1
-  echo "validate $part rc=$? $(date -Is)"
+  prc=$?; echo "validate $part rc=$prc $(date -Is)"
+  [ $prc -eq 0 ] || rc=1
 done
 [ $rc -eq 0 ] && touch "$CVPAINT_ROOT/validation_complete"
 echo "done $(date -Is)"
