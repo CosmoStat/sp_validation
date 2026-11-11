@@ -146,6 +146,7 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.sacc_io.html">sp_validation.sacc_io</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.statistics.html">sp_validation.statistics</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.survey.html">sp_validation.survey</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.tables.html">sp_validation.tables</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.version.html">sp_validation.version</a></li>
 </ul>
 </li>
@@ -773,19 +774,16 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar._map_rules"><code class="docutils literal notranslate"><span class="pre">_map_rules()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar._resolve"><code class="docutils literal notranslate"><span class="pre">_resolve()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.v2_names"><code class="docutils literal notranslate"><span class="pre">v2_names()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.BLOCK_BYTES"><code class="docutils literal notranslate"><span class="pre">BLOCK_BYTES</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar._read_window"><code class="docutils literal notranslate"><span class="pre">_read_window()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar._take"><code class="docutils literal notranslate"><span class="pre">_take()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar._row_key"><code class="docutils literal notranslate"><span class="pre">_row_key()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.V2View"><code class="docutils literal notranslate"><span class="pre">V2View</span></code></a><ul>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.V2View.names"><code class="docutils literal notranslate"><span class="pre">V2View.names</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.V2View.keys"><code class="docutils literal notranslate"><span class="pre">V2View.keys()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.V2View.renames"><code class="docutils literal notranslate"><span class="pre">V2View.renames</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.V2View.dtype"><code class="docutils literal notranslate"><span class="pre">V2View.dtype</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.V2View.shape"><code class="docutils literal notranslate"><span class="pre">V2View.shape</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.V2View.to_structured"><code class="docutils literal notranslate"><span class="pre">V2View.to_structured()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.V2View._select"><code class="docutils literal notranslate"><span class="pre">V2View._select()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.V2View._read"><code class="docutils literal notranslate"><span class="pre">V2View._read()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.V2View._column"><code class="docutils literal notranslate"><span class="pre">V2View._column()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.V2View.read"><code class="docutils literal notranslate"><span class="pre">V2View.read()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.V2View._local_rows"><code class="docutils literal notranslate"><span class="pre">V2View._local_rows()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.V2View._base_rows"><code class="docutils literal notranslate"><span class="pre">V2View._base_rows()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.grammar.html#sp_validation.grammar.V2View._field_dtype"><code class="docutils literal notranslate"><span class="pre">V2View._field_dtype()</span></code></a></li>
 </ul>
 </li>
@@ -819,19 +817,21 @@
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.io.html#sp_validation.io.Catalogue.table"><code class="docutils literal notranslate"><span class="pre">Catalogue.table()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.io.html#sp_validation.io.Catalogue.iter_chunks"><code class="docutils literal notranslate"><span class="pre">Catalogue.iter_chunks()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.io.html#sp_validation.io.Catalogue.read"><code class="docutils literal notranslate"><span class="pre">Catalogue.read()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.io.html#sp_validation.io.Catalogue._load"><code class="docutils literal notranslate"><span class="pre">Catalogue._load()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io.read_catalogue"><code class="docutils literal notranslate"><span class="pre">read_catalogue()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io.open_catalogue"><code class="docutils literal notranslate"><span class="pre">open_catalogue()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io.open_entry"><code class="docutils literal notranslate"><span class="pre">open_entry()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io._properties"><code class="docutils literal notranslate"><span class="pre">_properties()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io.hats_catalogue_dir"><code class="docutils literal notranslate"><span class="pre">hats_catalogue_dir()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io.is_hats"><code class="docutils literal notranslate"><span class="pre">is_hats()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io._fits_parts"><code class="docutils literal notranslate"><span class="pre">_fits_parts()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io._hats_parts"><code class="docutils literal notranslate"><span class="pre">_hats_parts()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io._first_table_hdu"><code class="docutils literal notranslate"><span class="pre">_first_table_hdu()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io._hdf5_parts"><code class="docutils literal notranslate"><span class="pre">_hdf5_parts()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io._chunk_numbers"><code class="docutils literal notranslate"><span class="pre">_chunk_numbers()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io._check_columns"><code class="docutils literal notranslate"><span class="pre">_check_columns()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io.find_dataset_group"><code class="docutils literal notranslate"><span class="pre">find_dataset_group()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io.promote_dtypes"><code class="docutils literal notranslate"><span class="pre">promote_dtypes()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io.group_dtype"><code class="docutils literal notranslate"><span class="pre">group_dtype()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io.check_n_units"><code class="docutils literal notranslate"><span class="pre">check_n_units()</span></code></a></li>
 </ul>
 </li>
@@ -1045,6 +1045,42 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.survey.html#sp_validation.survey.effective_survey_stats"><code class="docutils literal notranslate"><span class="pre">effective_survey_stats()</span></code></a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="sp_validation.tables.html">sp_validation.tables</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.tables.html#sp_validation.tables.MAX_READ_THREADS"><code class="docutils literal notranslate"><span class="pre">MAX_READ_THREADS</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.tables.html#sp_validation.tables.BLOCK_BYTES"><code class="docutils literal notranslate"><span class="pre">BLOCK_BYTES</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.tables.html#sp_validation.tables.as_table"><code class="docutils literal notranslate"><span class="pre">as_table()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.tables.html#sp_validation.tables.read_structured"><code class="docutils literal notranslate"><span class="pre">read_structured()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.tables.html#sp_validation.tables._outputs"><code class="docutils literal notranslate"><span class="pre">_outputs()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.tables.html#sp_validation.tables._deliver"><code class="docutils literal notranslate"><span class="pre">_deliver()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.tables.html#sp_validation.tables._contiguous"><code class="docutils literal notranslate"><span class="pre">_contiguous()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.tables.html#sp_validation.tables.ArrayTable"><code class="docutils literal notranslate"><span class="pre">ArrayTable</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.tables.html#sp_validation.tables.ArrayTable.row_major"><code class="docutils literal notranslate"><span class="pre">ArrayTable.row_major</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.tables.html#sp_validation.tables.ArrayTable.concurrent"><code class="docutils literal notranslate"><span class="pre">ArrayTable.concurrent</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.tables.html#sp_validation.tables.ArrayTable.read"><code class="docutils literal notranslate"><span class="pre">ArrayTable.read()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.tables.html#sp_validation.tables.HDF5Table"><code class="docutils literal notranslate"><span class="pre">HDF5Table</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.tables.html#sp_validation.tables.HDF5Table.row_major"><code class="docutils literal notranslate"><span class="pre">HDF5Table.row_major</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.tables.html#sp_validation.tables.HDF5Table.concurrent"><code class="docutils literal notranslate"><span class="pre">HDF5Table.concurrent</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.tables.html#sp_validation.tables.HDF5Table.read"><code class="docutils literal notranslate"><span class="pre">HDF5Table.read()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.tables.html#sp_validation.tables.ParquetFile"><code class="docutils literal notranslate"><span class="pre">ParquetFile</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.tables.html#sp_validation.tables.ParquetFile.row_major"><code class="docutils literal notranslate"><span class="pre">ParquetFile.row_major</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.tables.html#sp_validation.tables.ParquetFile.concurrent"><code class="docutils literal notranslate"><span class="pre">ParquetFile.concurrent</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.tables.html#sp_validation.tables.ParquetFile.read"><code class="docutils literal notranslate"><span class="pre">ParquetFile.read()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.tables.html#sp_validation.tables.ParquetFile._window"><code class="docutils literal notranslate"><span class="pre">ParquetFile._window()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.tables.html#sp_validation.tables.parquet_dtype"><code class="docutils literal notranslate"><span class="pre">parquet_dtype()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.tables.html#sp_validation.tables.ConcatTable"><code class="docutils literal notranslate"><span class="pre">ConcatTable</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.tables.html#sp_validation.tables.ConcatTable.read"><code class="docutils literal notranslate"><span class="pre">ConcatTable.read()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.tables.html#sp_validation.tables.promote_dtypes"><code class="docutils literal notranslate"><span class="pre">promote_dtypes()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.tables.html#sp_validation.tables.group_dtype"><code class="docutils literal notranslate"><span class="pre">group_dtype()</span></code></a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="sp_validation.version.html">sp_validation.version</a></li>
 </ul>
 </div>
@@ -1080,7 +1116,7 @@
 </div><footer class="py-6 border-t border-border md:py-0">
 <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
 <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 10 Nov, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.1</a></p>
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 11 Nov, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.1</a></p>
 </div>
 </div>
 </footer>

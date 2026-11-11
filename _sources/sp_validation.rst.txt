@@ -44,4 +44,5 @@ Submodules
    sp_validation.sacc_io
    sp_validation.statistics
    sp_validation.survey
+   sp_validation.tables
    sp_validation.version

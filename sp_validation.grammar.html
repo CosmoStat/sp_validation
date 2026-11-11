@@ -146,6 +146,7 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.sacc_io.html">sp_validation.sacc_io</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.statistics.html">sp_validation.statistics</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.survey.html">sp_validation.survey</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.tables.html">sp_validation.tables</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.version.html">sp_validation.version</a></li>
 </ul>
 </li>
@@ -327,7 +328,8 @@ vector column <code class="docutils literal notranslate"><span class="pre">sourc
 <dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.grammar.column_names">
 <span class="sig-name descname"><span class="pre">column_names</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">table</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#column_names"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar.column_names" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.column_names'">¶</a></dt>
-<dd><p>Return the column names of a structured array, FITS_rec or h5py Dataset.</p>
+<dd><p>Return the column names of a table, structured array, FITS_rec or h5py
+Dataset.</p>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.grammar.detect_generation">
@@ -360,47 +362,25 @@ tables that carry only some of its columns.</p>
 <dd><p>Return the column names a table with columns <code class="docutils literal notranslate"><span class="pre">names</span></code> presents.</p>
 <p>Header-only counterpart of <code class="docutils literal notranslate"><span class="pre">adapt</span></code>.</p>
 </dd></dl>
-<dl class="py data">
-<dt class="sig sig-object py" id="sp_validation.grammar.BLOCK_BYTES">
-<span class="sig-name descname"><span class="pre">BLOCK_BYTES</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">268435456</span></span><a class="headerlink" href="#sp_validation.grammar.BLOCK_BYTES" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.BLOCK_BYTES'">¶</a></dt>
-<dd><p>Bytes of whole HDF5 rows read per block when selecting rows of a dataset.</p>
-</dd></dl>
-<dl class="py function">
-<dt class="sig sig-object py" id="sp_validation.grammar._read_window">
-<span class="sig-name descname"><span class="pre">_read_window</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stop</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#_read_window"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar._read_window" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar._read_window'">¶</a></dt>
-<dd><p>Read rows <code class="docutils literal notranslate"><span class="pre">start:stop</span></code> of column <code class="docutils literal notranslate"><span class="pre">name</span></code>, and only those.</p>
-</dd></dl>
-<dl class="py function">
-<dt class="sig sig-object py" id="sp_validation.grammar._take">
-<span class="sig-name descname"><span class="pre">_take</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rows</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fields</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#_take"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar._take" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar._take'">¶</a></dt>
-<dd><p>Return rows <code class="docutils literal notranslate"><span class="pre">rows</span></code> of <code class="docutils literal notranslate"><span class="pre">table</span></code> as an in-memory structured array.</p>
-<p><code class="docutils literal notranslate"><span class="pre">rows</span></code> is <code class="docutils literal notranslate"><span class="pre">None</span></code> (all rows), a <code class="docutils literal notranslate"><span class="pre">range</span></code> or an integer index array;
-<code class="docutils literal notranslate"><span class="pre">fields</span></code> restricts the output to those columns. An h5py Dataset is read
-in one pass: whole rows in blocks of <code class="docutils literal notranslate"><span class="pre">BLOCK_BYTES</span></code> over the span of the
-selection, skipping blocks that hold no selected row, so each byte of the
-file is read at most once however many columns are wanted.</p>
-</dd></dl>
-<dl class="py function">
-<dt class="sig sig-object py" id="sp_validation.grammar._row_key">
-<span class="sig-name descname"><span class="pre">_row_key</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rows</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#_row_key"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar._row_key" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar._row_key'">¶</a></dt>
-<dd><p>Return <code class="docutils literal notranslate"><span class="pre">rows</span></code> (a <code class="docutils literal notranslate"><span class="pre">range</span></code> or index array) as a numpy row index.</p>
-</dd></dl>
 <dl class="py class">
 <dt class="sig sig-object py" id="sp_validation.grammar.V2View">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">V2View</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bases</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rows</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#V2View"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar.V2View" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.V2View'">¶</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Lazy v2-grammar view of one table, or of row-aligned tables joined.</p>
-<p>Wraps numpy structured arrays, FITS_recs or h5py Datasets without reading
-them. <code class="docutils literal notranslate"><span class="pre">view[name]</span></code> returns one column as an array (computed on access for
-derived columns); a list of names returns a structured array of those
-columns; <code class="docutils literal notranslate"><span class="pre">view[()]</span></code>, <code class="docutils literal notranslate"><span class="pre">view[...]</span></code> and any other row key (slice, boolean
-mask, index array) select rows and return a view over them.</p>
-<p>Selecting rows of a view over h5py Datasets reads the selected rows of
-every column into memory in one pass per dataset, as indexing the Dataset
-itself would, and wraps them in a view over the in-memory arrays: reading
-many columns of a selection one at a time would otherwise re-read the whole
-span of rows for each. Over in-memory tables, selection stays lazy.</p>
-<p>Column names are case-sensitive, unlike a FITS_rec’s.</p>
+<p>The tables are anything <code class="docutils literal notranslate"><span class="pre">sp_validation.tables</span></code> describes (numpy
+structured arrays, FITS_recs and h5py Datasets are wrapped on the way
+in), read only when indexed. <code class="docutils literal notranslate"><span class="pre">view[name]</span></code> returns one column as an
+array (computed on access for derived columns); a list of names returns a
+structured array of those columns; <code class="docutils literal notranslate"><span class="pre">view[()]</span></code>, <code class="docutils literal notranslate"><span class="pre">view[...]</span></code> and any
+other row key (slice, boolean mask, index array) select rows and return a
+view over them.</p>
+<p>Selecting rows of a view over a <code class="docutils literal notranslate"><span class="pre">row_major</span></code> table (an HDF5 dataset)
+reads the selected rows of every column in one pass, and returns a view
+over them in memory: reading many columns of a selection one at a time
+would otherwise re-read the whole span of rows for each. Over any other
+table, selection stays lazy.</p>
+<p>A view is itself a table, so a view can be presented again under a
+<code class="docutils literal notranslate"><span class="pre">column_map</span></code>. Column names are case-sensitive, unlike a FITS_rec’s.</p>
 <dl class="py property">
 <dt class="sig sig-object py" id="sp_validation.grammar.V2View.names">
 <span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">names</span></span><a class="headerlink" href="#sp_validation.grammar.V2View.names" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.V2View.names'">¶</a></dt>
@@ -410,6 +390,11 @@ span of rows for each. Over in-memory tables, selection stays lazy.</p>
 <dt class="sig sig-object py" id="sp_validation.grammar.V2View.keys">
 <span class="sig-name descname"><span class="pre">keys</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#V2View.keys"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar.V2View.keys" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.V2View.keys'">¶</a></dt>
 <dd><p>Presented column names.</p>
+</dd></dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="sp_validation.grammar.V2View.renames">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">renames</span></span><a class="headerlink" href="#sp_validation.grammar.V2View.renames" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.V2View.renames'">¶</a></dt>
+<dd><p>Whether any presented column differs from the stored one of its name.</p>
 </dd></dl>
 <dl class="py property">
 <dt class="sig sig-object py" id="sp_validation.grammar.V2View.dtype">
@@ -424,40 +409,43 @@ span of rows for each. Over in-memory tables, selection stays lazy.</p>
 <dt class="sig sig-object py" id="sp_validation.grammar.V2View.to_structured">
 <span class="sig-name descname"><span class="pre">to_structured</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#V2View.to_structured"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar.V2View.to_structured" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.V2View.to_structured'">¶</a></dt>
 <dd><p>Materialise the presented columns as a numpy structured array.</p>
-<p>Over h5py Datasets, each dataset is read once, for all the columns
-requested of it.</p>
+<p>Each table is read once, for all the columns requested of it.</p>
 </dd></dl>
 <dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.grammar.V2View._select">
-<span class="sig-name descname"><span class="pre">_select</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#V2View._select"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar.V2View._select" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.V2View._select'">¶</a></dt>
-<dd><p>Base rows of <code class="docutils literal notranslate"><span class="pre">key</span></code> applied to this view’s rows.</p>
+<dt class="sig sig-object py" id="sp_validation.grammar.V2View.read">
+<span class="sig-name descname"><span class="pre">read</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">names</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rows</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#V2View.read"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar.V2View.read" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.V2View.read'">¶</a></dt>
+<dd><p>Return {name: column} for presented <code class="docutils literal notranslate"><span class="pre">names</span></code> at <code class="docutils literal notranslate"><span class="pre">rows</span></code> of this
+view (the table interface; see <code class="docutils literal notranslate"><span class="pre">sp_validation.tables</span></code>).</p>
+<p>Each table is read once, for all the columns requested of it; a
+column presented under a new name only is read straight into <code class="docutils literal notranslate"><span class="pre">out</span></code>.</p>
 </dd></dl>
 <dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.grammar.V2View._read">
-<span class="sig-name descname"><span class="pre">_read</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#V2View._read"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar.V2View._read" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.V2View._read'">¶</a></dt>
-<dd></dd></dl>
+<dt class="sig sig-object py" id="sp_validation.grammar.V2View._local_rows">
+<span class="sig-name descname"><span class="pre">_local_rows</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#V2View._local_rows"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar.V2View._local_rows" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.V2View._local_rows'">¶</a></dt>
+<dd><p>Rows of this view that row key <code class="docutils literal notranslate"><span class="pre">key</span></code> selects.</p>
+</dd></dl>
 <dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.grammar.V2View._column">
-<span class="sig-name descname"><span class="pre">_column</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#V2View._column"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar.V2View._column" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.V2View._column'">¶</a></dt>
-<dd></dd></dl>
+<dt class="sig sig-object py" id="sp_validation.grammar.V2View._base_rows">
+<span class="sig-name descname"><span class="pre">_base_rows</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">local</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#V2View._base_rows"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar.V2View._base_rows" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.V2View._base_rows'">¶</a></dt>
+<dd><p>Rows of the tables that this view’s rows <code class="docutils literal notranslate"><span class="pre">local</span></code> are.</p>
+</dd></dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="sp_validation.grammar.V2View._field_dtype">
 <span class="sig-name descname"><span class="pre">_field_dtype</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#V2View._field_dtype"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar.V2View._field_dtype" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.V2View._field_dtype'">¶</a></dt>
-<dd><p>Dtype (with any subarray shape) <code class="docutils literal notranslate"><span class="pre">_column(name)</span></code> returns.</p>
+<dd><p>Dtype (with any subarray shape) a read of column <code class="docutils literal notranslate"><span class="pre">name</span></code> returns.</p>
 </dd></dl>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.grammar.adapt">
-<span class="sig-name descname"><span class="pre">adapt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">table</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">tables</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#adapt"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar.adapt" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.adapt'">¶</a></dt>
-<dd><p>Present <code class="docutils literal notranslate"><span class="pre">table</span></code> (joined with any further <code class="docutils literal notranslate"><span class="pre">tables</span></code>) in the v2 grammar.</p>
-<p>A single table with nothing to rename is returned unchanged, as is a
-<code class="docutils literal notranslate"><span class="pre">V2View</span></code> given no <code class="docutils literal notranslate"><span class="pre">column_map</span></code>; otherwise the result is a <code class="docutils literal notranslate"><span class="pre">V2View</span></code>.
-Each table is anything whose <code class="docutils literal notranslate"><span class="pre">dtype.names</span></code> lists its columns and whose
-<code class="docutils literal notranslate"><span class="pre">table[name]</span></code> reads one: a numpy structured array, FITS_rec, h5py
-Dataset or <code class="docutils literal notranslate"><span class="pre">V2View</span></code>. Joined tables must have equal lengths and disjoint
-column names. <code class="docutils literal notranslate"><span class="pre">column_map</span></code> (<code class="docutils literal notranslate"><span class="pre">{v2</span> <span class="pre">name:</span> <span class="pre">name</span> <span class="pre">in</span> <span class="pre">the</span> <span class="pre">table}</span></code>, see the
-module docstring) renames a foreign convention’s columns; over a
-<code class="docutils literal notranslate"><span class="pre">V2View</span></code> it renames the columns that view presents.</p>
+<span class="sig-name descname"><span class="pre">adapt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">table</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">tables_</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/grammar.html#adapt"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.grammar.adapt" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.grammar.adapt'">¶</a></dt>
+<dd><p>Present <code class="docutils literal notranslate"><span class="pre">table</span></code> (joined with any further tables) in the v2 grammar.</p>
+<p>Returns a <code class="docutils literal notranslate"><span class="pre">V2View</span></code>; a <code class="docutils literal notranslate"><span class="pre">V2View</span></code> given alone and no <code class="docutils literal notranslate"><span class="pre">column_map</span></code> is
+returned unchanged. Each table is a table (<code class="docutils literal notranslate"><span class="pre">sp_validation.tables</span></code>), a
+numpy structured array, FITS_rec or h5py Dataset. Joined tables must have
+equal lengths and disjoint column names. <code class="docutils literal notranslate"><span class="pre">column_map</span></code> (<code class="docutils literal notranslate"><span class="pre">{v2</span> <span class="pre">name:</span>
+<span class="pre">name</span> <span class="pre">in</span> <span class="pre">the</span> <span class="pre">table}</span></code>, see the module docstring) renames a foreign
+convention’s columns; over a <code class="docutils literal notranslate"><span class="pre">V2View</span></code> it renames the columns that view
+presents.</p>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.grammar.materialise">
@@ -508,19 +496,16 @@ module docstring) renames a foreign convention’s columns; over a
 <li><a :data-current="activeSection === '#sp_validation.grammar._map_rules'" class="reference internal" href="#sp_validation.grammar._map_rules"><code class="docutils literal notranslate"><span class="pre">_map_rules()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.grammar._resolve'" class="reference internal" href="#sp_validation.grammar._resolve"><code class="docutils literal notranslate"><span class="pre">_resolve()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.grammar.v2_names'" class="reference internal" href="#sp_validation.grammar.v2_names"><code class="docutils literal notranslate"><span class="pre">v2_names()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.grammar.BLOCK_BYTES'" class="reference internal" href="#sp_validation.grammar.BLOCK_BYTES"><code class="docutils literal notranslate"><span class="pre">BLOCK_BYTES</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.grammar._read_window'" class="reference internal" href="#sp_validation.grammar._read_window"><code class="docutils literal notranslate"><span class="pre">_read_window()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.grammar._take'" class="reference internal" href="#sp_validation.grammar._take"><code class="docutils literal notranslate"><span class="pre">_take()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.grammar._row_key'" class="reference internal" href="#sp_validation.grammar._row_key"><code class="docutils literal notranslate"><span class="pre">_row_key()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.grammar.V2View'" class="reference internal" href="#sp_validation.grammar.V2View"><code class="docutils literal notranslate"><span class="pre">V2View</span></code></a><ul>
 <li><a :data-current="activeSection === '#sp_validation.grammar.V2View.names'" class="reference internal" href="#sp_validation.grammar.V2View.names"><code class="docutils literal notranslate"><span class="pre">V2View.names</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.grammar.V2View.keys'" class="reference internal" href="#sp_validation.grammar.V2View.keys"><code class="docutils literal notranslate"><span class="pre">V2View.keys()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.grammar.V2View.renames'" class="reference internal" href="#sp_validation.grammar.V2View.renames"><code class="docutils literal notranslate"><span class="pre">V2View.renames</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.grammar.V2View.dtype'" class="reference internal" href="#sp_validation.grammar.V2View.dtype"><code class="docutils literal notranslate"><span class="pre">V2View.dtype</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.grammar.V2View.shape'" class="reference internal" href="#sp_validation.grammar.V2View.shape"><code class="docutils literal notranslate"><span class="pre">V2View.shape</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.grammar.V2View.to_structured'" class="reference internal" href="#sp_validation.grammar.V2View.to_structured"><code class="docutils literal notranslate"><span class="pre">V2View.to_structured()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.grammar.V2View._select'" class="reference internal" href="#sp_validation.grammar.V2View._select"><code class="docutils literal notranslate"><span class="pre">V2View._select()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.grammar.V2View._read'" class="reference internal" href="#sp_validation.grammar.V2View._read"><code class="docutils literal notranslate"><span class="pre">V2View._read()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.grammar.V2View._column'" class="reference internal" href="#sp_validation.grammar.V2View._column"><code class="docutils literal notranslate"><span class="pre">V2View._column()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.grammar.V2View.read'" class="reference internal" href="#sp_validation.grammar.V2View.read"><code class="docutils literal notranslate"><span class="pre">V2View.read()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.grammar.V2View._local_rows'" class="reference internal" href="#sp_validation.grammar.V2View._local_rows"><code class="docutils literal notranslate"><span class="pre">V2View._local_rows()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.grammar.V2View._base_rows'" class="reference internal" href="#sp_validation.grammar.V2View._base_rows"><code class="docutils literal notranslate"><span class="pre">V2View._base_rows()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.grammar.V2View._field_dtype'" class="reference internal" href="#sp_validation.grammar.V2View._field_dtype"><code class="docutils literal notranslate"><span class="pre">V2View._field_dtype()</span></code></a></li>
 </ul>
 </li>
@@ -534,7 +519,7 @@ module docstring) renames a foreign convention’s columns; over a
 </div><footer class="py-6 border-t border-border md:py-0">
 <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
 <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 10 Nov, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.1</a></p>
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 11 Nov, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.1</a></p>
 </div>
 </div>
 </footer>
