@@ -11,7 +11,7 @@ import yaml
 from cs_util.cosmo import get_cosmo
 from shear_psf_leakage import leakage, run_object, run_scale
 
-from sp_validation.data_roots import load_yaml
+from sp_validation.data_roots import load_yaml, localise
 
 from .. import blinding, io
 from ..b_modes import (
@@ -414,6 +414,10 @@ class CosmologyValidation(
                 psf["mask_config"] = str(
                     self.catalog_config_path.parent / psf["mask_config"]
                 )
+            # Inputs on a vos: root are fetched now, those of this version only.
+            for key, value in cc[ver].items():
+                if key not in ("subdir", "blind"):
+                    cc[ver][key] = localise(value)
 
         resolve_paths_for_version("nz")
         processed = {"nz"}
@@ -617,7 +621,7 @@ class CosmologyValidation(
                 raise ValueError(f"no catalogue {version} in the catalogue config")
             entry = base
         catalogues = self._config_as_read
-        return blinding.open_blind(blinding.blind_of(catalogues, entry), catalogues)
+        return blinding.entry_blind(catalogues, entry)
 
     def basename(
         self,

@@ -1293,7 +1293,7 @@ GLASS_mock_validation:
     path: /n17data/UNIONS/WL/v1.6.x/unions_shapepipe_star_2024_v1.6.a.fits
   patch_number: 150
 SP_v2.0.0:
-  blind: unions
+  blind: ${unions_v2}/v2.0.0/blind/unions.blind.json
   subdir: ${unions_v2}/v2.0.0/catalogs
   pipeline: SP
   colour: violet
