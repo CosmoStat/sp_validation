@@ -8,6 +8,15 @@ from sp_validation.dashboard import products as P
 from sp_validation.dashboard import psf
 
 
+def assert_scaled(actual, expected):
+    """``actual`` is ``expected`` divided by the axis's power of ten."""
+    actual, expected = np.asarray(actual, float), np.asarray(expected, float)
+    i = np.flatnonzero(actual)[0]
+    k = np.log10(expected[i] / actual[i])
+    assert np.isclose(k, round(k)), k
+    np.testing.assert_allclose(actual * 10 ** round(k), expected)
+
+
 @pytest.fixture
 def rt():
     theta = np.array([1.0, 10.0, 100.0])
@@ -52,14 +61,12 @@ def test_theta_tau_scaling_and_own_grid(rt, overlay, tmp_path, monkeypatch):
     assert len(fig.axes) == 2
     for ax, k in zip(fig.axes, (2, 5)):
         lines = {line.get_label(): line for line in ax.lines}
-        np.testing.assert_allclose(
-            lines["raw"].get_ydata(), rt["theta_tau"] * rt["tau"][k]["p"]
-        )
+        assert_scaled(lines["raw"].get_ydata(), rt["theta_tau"] * rt["tau"][k]["p"])
         if overlay:
             np.testing.assert_allclose(
                 lines["leakage-corrected"].get_xdata(), corrected["theta_tau"]
             )
-            np.testing.assert_allclose(
+            assert_scaled(
                 lines["leakage-corrected"].get_ydata(),
                 corrected["theta_tau"] * rt["tau"][k]["p"],
             )
@@ -76,22 +83,20 @@ def test_xi_native_units_both_signs(rt, xi, tmp_path, monkeypatch):
     fig = saved[0]
     assert len(fig.axes) == 2
     for ax, field in zip(fig.axes, ("xip", "xim")):
-        np.testing.assert_allclose(ax.lines[1].get_ydata(), rt["theta"] * 1e-7)
+        assert_scaled(ax.lines[1].get_ydata(), rt["theta"] * 1e-7)
         container = ax.containers[0]
-        np.testing.assert_allclose(
-            container.lines[0].get_ydata(), xi["theta"] * xi[field]
-        )
+        assert_scaled(container.lines[0].get_ydata(), xi["theta"] * xi[field])
         segments = container.lines[2][0].get_segments()
-        np.testing.assert_allclose(
+        assert_scaled(
             [s[1, 1] - s[0, 1] for s in segments],
             2 * xi["theta"] * xi[f"sigma_{field}"],
         )
         assert ax.get_yscale() == "linear"
-        labels = ax.get_legend_handles_labels()[1]
-        assert sorted(labels, key=lambda s: "blinded" in s) == [
-            "coefficient draws (68%)",
-            rf"$\xi_{'+' if field == 'xip' else '-'}$ (blinded)",
-        ]
+    labels = [text.get_text() for text in fig.legends[0].get_texts()]
+    assert labels == [
+        r"$\theta\,\xi_\pm$, blinded",
+        r"$\theta\,\xi_\pm^{\rm sys}$ from $\alpha,\beta,\eta$ draws (68%)",
+    ]
     fig.savefig(tmp_path / "xi.png")
     plt.close(fig)
 

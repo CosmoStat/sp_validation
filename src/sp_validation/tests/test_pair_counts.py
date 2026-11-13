@@ -127,6 +127,7 @@ def test_hdf5_never_materialises_shapes(tmp_path, monkeypatch, layout, tomograph
         projected = kwargs.get("new_dtype")
         if projected is not None:
             assert set(projected.names) <= allowed
+            reads.extend(projected.names)
             return original(dataset, key, *args, **kwargs)
         # Unprojected whole-dataset or shape-field reads remain forbidden.
         assert isinstance(key, str) and key in allowed, key
