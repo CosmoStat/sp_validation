@@ -412,10 +412,10 @@ EOF
 
 
 rule covariance_run:
-    """Run OneCovariance on its generated .ini.
+    """Run OneCovariance on its generated .ini, in the workflow container.
 
-    `container: None` on purpose: OneCovariance runs from a host checkout under
-    environment-modules, set by tools.onecov_executable.
+    The image carries OneCovariance's dependencies; tools.onecov_executable
+    names the OneCovariance checkout.
     """
     input:
         rules.covariance_ini.output,
@@ -425,19 +425,11 @@ rule covariance_run:
         outdir=lambda w: covariance_dir(*_onecov_args(w)),
         onecov=_onecov_tool("onecov_executable"),
         python_executable=_onecov_tool("python_executable", "python"),
-    container:
-        None
     threads: ONECOV_THREADS
     shell:
         """
-        module unload gcc || true
-        module load gcc
-        module unload intelpython || true
-        module load intelpython/3-2024.1.0
-        module load openmpi
-
-        cd {params.outdir}
-        {params.python_executable} {params.onecov} {input}
+        cd {params.outdir:q}
+        {params.python_executable:q} {params.onecov:q} {input:q}
         """
 
 
