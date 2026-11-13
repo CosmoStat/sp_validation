@@ -13,13 +13,24 @@
 
 import os
 import re
+from concurrent.futures import ThreadPoolExecutor
 
 import h5py
 import numpy as np
+import pyarrow.parquet as pq
 import tqdm
 from astropy.io import fits
 
 from sp_validation import grammar
+from sp_validation.tables import (
+    MAX_READ_THREADS,
+    ConcatTable,
+    ParquetFile,
+    _deliver,
+    as_table,
+    group_dtype,
+    parquet_dtype,
+)
 
 
 def make_out_dirs(output_dir, plot_dir, plot_subdirs, verbose=False):
@@ -133,12 +144,13 @@ def read_binned_quantity(filename):
 
 # -- catalogues ---------------------------------------------------------------
 #
-# A catalogue is one table of objects. How its rows are stored (the container)
-# is detected here from the file's contents; which names its columns carry is
-# the column grammar's business (``sp_validation.grammar``). Every table this
-# module hands out is presented through ``grammar.adapt``, which maps ShapePipe
-# v1 names to v2 and passes any other naming convention through untouched,
-# unless a ``column_map`` renames it.
+# A catalogue is one table of objects, stored as row chunks. How the rows are
+# stored (the container) is detected here from the path's contents, and each
+# chunk handed to ``sp_validation.tables`` as a table; which names its columns
+# carry is the column grammar's business (``sp_validation.grammar``). Every
+# table this module hands out is presented through ``grammar.adapt``, which
+# maps ShapePipe v1 names to v2 and passes any other naming convention through
+# untouched, unless a ``column_map`` renames it.
 
 #: Root attributes in which a chunked ShapePipe product declares its chunk
 #: count, with the name of one chunk (for error messages).
@@ -146,10 +158,11 @@ N_UNITS_ATTRS = {"n_tiles": "tile", "n_exposures": "exposure"}
 
 
 class Catalogue:
-    """An open catalogue file, presented as row chunks in the v2 grammar.
+    """An open catalogue, presented as row chunks in the v2 grammar.
 
-    The container is detected from the file contents (``h5py.is_hdf5``), not
-    from its extension. Supported layouts:
+    The container is detected from the path's contents (a directory holding
+    ``hats.properties``, or ``h5py.is_hdf5``), not from its extension.
+    Supported layouts:
 
     - FITS: one table HDU, ``hdu`` or by default the first table HDU;
     - HDF5 comprehensive catalogue: a root ``data`` dataset, joined
@@ -160,16 +173,23 @@ class Catalogue:
     - HDF5 group of per-unit row chunks (one dataset per tile or exposure,
       as ShapePipe writes campaign galaxy and star catalogues), found by
       ``find_dataset_group``, concatenated in dataset-name order, and
-      checked against a declared ``n_tiles`` or ``n_exposures`` count.
+      checked against a declared ``n_tiles`` or ``n_exposures`` count;
+    - HATS catalogue directory, or an lsdb collection holding one: one chunk
+      per HEALPix partition (named by its path, ``"Norder=5/Npix=1151"``), in
+      ``partition_info.csv`` order. Rows come in sky order, not the tile
+      order of the HDF5 the catalogue was built from; a ``_source_row``
+      column, where the builder wrote one, maps them back.
 
-    Nothing is read on opening: ``chunks`` maps each chunk name to a lazy
-    table. Use as a context manager, or ``close`` when done; tables read into
-    memory stay valid after closing.
+    Nothing but metadata is read on opening: ``chunks`` maps each chunk name
+    to a lazy ``grammar.V2View``, and ``whole`` is one lazy view over them
+    all (HATS partitions are read in parallel threads). Use as a
+    context manager, or ``close`` when done; arrays read stay valid after
+    closing.
 
     Parameters
     ----------
     path : str or os.PathLike
-        catalogue file
+        catalogue file, or HATS catalogue directory
     hdu : int, optional
         FITS HDU to read; ignored for HDF5. Default is ``None``, the first
         table HDU
@@ -181,25 +201,26 @@ class Catalogue:
 
     def __init__(self, path, hdu=None, column_map=None):
         self.path = os.fspath(path)
-        self.column_map = column_map
+        self.hdu = None
         self._file = None
-        if h5py.is_hdf5(self.path):
-            self.hdu = None
+        if is_hats(self.path):
+            parts, self.chunked = _hats_parts(self.path), True
+        elif h5py.is_hdf5(self.path):
             self._file = h5py.File(self.path, "r")
-            self._parts, self.chunked = _hdf5_parts(self._file, self.path)
+            parts, self.chunked = _hdf5_parts(self._file, self.path)
         else:
-            with fits.open(self.path, memmap=True) as hdus:
-                self.hdu = _first_table_hdu(hdus, self.path) if hdu is None else hdu
-                self._parts = {str(self.hdu): (hdus[self.hdu].data,)}
+            self.hdu, parts = _fits_parts(self.path, hdu)
             self.chunked = False
+        parts = {key: tuple(map(as_table, tables)) for key, tables in parts.items()}
         self.chunks = {
-            key: (
-                grammar.V2View(parts, column_map=column_map)
-                if isinstance(parts[0], _ColumnarTable)
-                else grammar.adapt(*parts, column_map=column_map)
-            )
-            for key, parts in self._parts.items()
+            key: grammar.adapt(*tables, column_map=column_map)
+            for key, tables in parts.items()
         }
+        if len(parts) == 1:
+            (self.whole,) = self.chunks.values()
+        else:
+            stacked = ConcatTable(table for (table,) in parts.values())
+            self.whole = grammar.adapt(stacked, column_map=column_map)
 
     def __enter__(self):
         return self
@@ -214,7 +235,7 @@ class Catalogue:
             self._file = None
 
     def __len__(self):
-        return sum(len(table) for table in self.chunks.values())
+        return len(self.whole)
 
     def dtype(self, columns=None):
         """Return the structured dtype ``read(columns)`` produces.
@@ -227,20 +248,21 @@ class Catalogue:
             if a chunk lacks one of ``columns``, naming the chunk
         """
         if columns is not None:
-            for key, table in self.chunks.items():
-                _check_columns(table.dtype, columns, self.path, key)
+            for key, view in self.chunks.items():
+                _check_columns(view.dtype, columns, self.path, key)
         return group_dtype(self.chunks, columns)
 
     def table(self):
-        """Return the catalogue as one table, lazily when it is not chunked.
+        """Return the catalogue as one table.
 
-        An unchunked catalogue is returned as its lazy table (a FITS_rec, an
-        h5py Dataset or a ``grammar.V2View``), valid while the file is open;
-        a chunked one is read into memory (``read``).
+        That is ``whole``, lazy and valid while the file is open, except for
+        a chunked catalogue of ``row_major`` tables (HDF5 tiles or
+        exposures), which is read into memory: read a column at a time, it
+        would re-read every chunk for each column.
         """
-        if len(self.chunks) == 1:
-            return next(iter(self.chunks.values()))
-        return self.read()
+        if self.chunked and self.whole.row_major:
+            return self.read()
+        return self.whole
 
     def iter_chunks(self, columns=None, verbose=False):
         """Yield the row chunks one at a time, in memory, restricted to ``columns``.
@@ -249,14 +271,14 @@ class Catalogue:
         shape) so never holds more than one chunk on top of its output.
         """
         self.dtype(columns)
-        for key in tqdm.tqdm(list(self.chunks), disable=not verbose):
-            yield grammar.materialise(self._load(key), columns)
+        for view in tqdm.tqdm(list(self.chunks.values()), disable=not verbose):
+            yield view.to_structured(columns)
 
     def read(self, columns=None, key_column=None, verbose=False):
         """Read the catalogue into one numpy structured array.
 
-        Chunks are copied one at a time into a preallocated output, so peak
-        memory is the output plus one chunk.
+        Chunks are read in parallel threads straight into a preallocated
+        output, so peak memory is the output plus the chunks in flight.
 
         Parameters
         ----------
@@ -287,48 +309,28 @@ class Catalogue:
             not begin with an integer
         """
         dtype_out = self.dtype(columns)
-        keys = list(self.chunks)
+        names = list(dtype_out.names)
         add_key = key_column is not None and self.chunked
-        if not add_key and len(keys) == 1:
-            return grammar.materialise(self.chunks[keys[0]], columns)
-
         if add_key:
-            key_values = _chunk_numbers(keys, key_column, dtype_out, self.path)
+            key_values = _chunk_numbers(self.chunks, key_column, dtype_out, self.path)
             dtype_out = np.dtype(dtype_out.descr + [(key_column, "i8")])
 
         n_rows = len(self)
         if verbose:
             print(
-                f"Reading {len(keys)} datasets,"
+                f"Reading {len(self.chunks)} datasets,"
                 + f" estimating {dtype_out.itemsize * n_rows / 1024**3:.1f}"
                 + f" Gb memory for the ({len(dtype_out.names)} x {n_rows})"
                 + " data array ..."
             )
-
         out = np.empty(n_rows, dtype=dtype_out)
-        start = 0
-        for key in tqdm.tqdm(keys, disable=not verbose):
-            data = self._load(key)
-            end = start + len(data)
-            for name in dtype_out.names:
-                if add_key and name == key_column:
-                    out[name][start:end] = key_values[key]
-                else:
-                    out[name][start:end] = data[name]
-            start = end
-            del data
+        self.whole.read(names, out={name: out[name] for name in names})
+        if add_key:
+            start = 0
+            for key, view in self.chunks.items():
+                out[key_column][start : start + len(view)] = key_values[key]
+                start += len(view)
         return out
-
-    def _load(self, key):
-        """Return chunk ``key`` in memory, or lazily when the file is unchunked.
-
-        A chunk (one tile or exposure) is small, so it is read whole, which is
-        faster than column by column; an unchunked table is read per column.
-        """
-        if not self.chunked:
-            return self.chunks[key]
-        parts = (part[()] for part in self._parts[key])
-        return grammar.adapt(*parts, column_map=self.column_map)
 
 
 def read_catalogue(
@@ -343,7 +345,7 @@ def read_catalogue(
 
     Returns
     -------
-    numpy.ndarray or astropy.io.fits.FITS_rec
+    numpy.ndarray
         catalogue data
     """
     with Catalogue(path, hdu=hdu, column_map=column_map) as catalogue:
@@ -351,24 +353,15 @@ def read_catalogue(
 
 
 def open_catalogue(path, hdu=None, column_map=None):
-    """Return a catalogue as one table, reading no data up front.
+    """Return a catalogue as one table in the v2 grammar (``Catalogue.table``).
 
-    A FITS table is memory-mapped and an unchunked HDF5 table read column by
-    column on access (its file stays open while the table is referenced), so
-    a consumer pays only for the columns it indexes, derived v2 columns
-    included. A chunked HDF5 catalogue has no single on-disk table and is
-    read into memory. Parameters as for ``Catalogue``.
-
-    Returns
-    -------
-    astropy.io.fits.FITS_rec, h5py.Dataset, grammar.V2View or numpy.ndarray
-        catalogue data in the v2 grammar
+    FITS, unchunked HDF5 and HATS catalogues open as a lazy ``grammar.V2View``
+    (FITS memory-mapped; an HDF5 file stays open while the view is
+    referenced), so a consumer pays only for the columns it indexes, derived
+    v2 columns included. HDF5 row chunks are read into a numpy array.
+    Parameters as for ``Catalogue``.
     """
-    catalogue = Catalogue(path, hdu=hdu, column_map=column_map)
-    if catalogue.chunked:
-        with catalogue:
-            return catalogue.read()
-    return catalogue.table()
+    return Catalogue(path, hdu=hdu, column_map=column_map).table()
 
 
 def validate_calibrated_entry(entry):
@@ -399,6 +392,85 @@ def open_entry(entry):
     )
 
 
+def _properties(path):
+    """Return the ``key=value`` lines of a HATS properties file as a dict."""
+    with open(path) as handle:
+        return dict(
+            line.strip().split("=", 1)
+            for line in handle
+            if "=" in line and not line.startswith("#")
+        )
+
+
+def hats_catalogue_dir(path):
+    """Return the HATS catalogue directory at ``path``, or ``None``.
+
+    ``path`` is a catalogue (holding ``hats.properties``) or a collection
+    (holding ``collection.properties``, as ``lsdb`` writes by default), whose
+    primary catalogue is returned.
+    """
+    path = os.fspath(path)
+    collection = os.path.join(path, "collection.properties")
+    if os.path.isfile(collection):
+        path = os.path.join(path, _properties(collection)["hats_primary_table_url"])
+    return path if os.path.isfile(os.path.join(path, "hats.properties")) else None
+
+
+def is_hats(path):
+    """Return whether ``path`` is a HATS catalogue or collection directory."""
+    return hats_catalogue_dir(path) is not None
+
+
+def _fits_parts(path, hdu):
+    """Return (HDU, {HDU: (its table,)}) of a FITS file, memory-mapped."""
+    with fits.open(path, memmap=True) as hdus:
+        hdu = _first_table_hdu(hdus, path) if hdu is None else hdu
+        return hdu, {str(hdu): (hdus[hdu].data,)}
+
+
+def _hats_parts(path):
+    """Return {partition: (its ParquetFile,)} of a HATS catalogue."""
+    path = hats_catalogue_dir(path)
+    properties = _properties(os.path.join(path, "hats.properties"))
+    suffix = properties.get("hats_npix_suffix", ".parquet")
+    if suffix != ".parquet":
+        raise ValueError(
+            f"HATS catalogue {path}: partitions with suffix {suffix!r} are not"
+            + " supported, only single .parquet files"
+        )
+    pixels = np.loadtxt(
+        os.path.join(path, "partition_info.csv"),
+        delimiter=",",
+        skiprows=1,
+        dtype=np.int64,
+        ndmin=2,
+    )
+    keys, files = [], []
+    for order, pixel in pixels:
+        keys.append(f"Norder={order}/Npix={pixel}")
+        files.append(
+            os.path.join(
+                path,
+                "dataset",
+                f"Norder={order}",
+                f"Dir={pixel // 10000 * 10000}",
+                f"Npix={pixel}.parquet",
+            )
+        )
+    common = os.path.join(path, "dataset", "_common_metadata")
+    dtype = parquet_dtype(
+        pq.read_schema(common if os.path.isfile(common) else files[0])
+    )
+    threads = min(MAX_READ_THREADS, len(os.sched_getaffinity(0)))
+    with ThreadPoolExecutor(threads) as pool:
+        parts = list(
+            pool.map(
+                lambda file: ParquetFile(file, pq.read_metadata(file), dtype), files
+            )
+        )
+    return {key: (part,) for key, part in zip(keys, parts, strict=True)}
+
+
 def _first_table_hdu(hdus, path):
     for index, hdu in enumerate(hdus):
         if isinstance(hdu, (fits.BinTableHDU, fits.TableHDU)):
@@ -407,11 +479,15 @@ def _first_table_hdu(hdus, path):
 
 
 class _ColumnarTable:
-    """Lazy structured-table interface over one HDF5 dataset per column.
+    """An HDF5 group holding one dataset per column, as a table
+    (``sp_validation.tables``).
 
-    A column access returns its Dataset, so V2View's bounded row windows
-    read only the selected rows, never the full 138M-row input column.
+    A read touches only the span of rows it selects, never a whole input
+    column.
     """
+
+    row_major = False
+    concurrent = False
 
     def __init__(self, group):
         self.group = group
@@ -429,8 +505,20 @@ class _ColumnarTable:
     def __len__(self):
         return self._length
 
-    def __getitem__(self, name):
-        return self.group[name]
+    def read(self, names, rows=None, out=None):
+        if rows is None:
+            span, pick = (0, self._length), None
+        elif isinstance(rows, range) and rows.step == 1:
+            span, pick = (rows.start, max(rows.start, rows.stop)), None
+        else:
+            rows = np.asarray(rows, dtype=np.intp)
+            span = (int(rows.min()), int(rows.max()) + 1) if len(rows) else (0, 0)
+            pick = rows - span[0]
+        columns = {}
+        for name in names:
+            column = self.group[name][span[0] : span[1]]
+            columns[name] = column if pick is None else column[pick]
+        return _deliver(columns, out)
 
 
 def _hdf5_parts(hdf5_file, path):
@@ -521,105 +609,6 @@ def find_dataset_group(hdf5_file):
                 + f" {hdf5_file.file.filename}, found {len(keys)}: {keys[:5]}"
             )
         node = node[keys[0]]
-
-
-def promote_dtypes(dtype_a, dtype_b):
-    """Promote Dtypes.
-
-    Return a scalar dtype that holds both input dtypes without truncation
-    or overflow.
-
-    Parameters
-    ----------
-    dtype_a : numpy.dtype
-        first input dtype
-    dtype_b : numpy.dtype
-        second input dtype
-
-    Returns
-    -------
-    numpy.dtype
-        promoted dtype
-
-    """
-    if dtype_a == dtype_b:
-        return dtype_a
-    if dtype_a.kind in "SU" and dtype_b.kind in "SU":
-        kind = "U" if "U" in (dtype_a.kind, dtype_b.kind) else "S"
-        size_a = dtype_a.itemsize // (4 if dtype_a.kind == "U" else 1)
-        size_b = dtype_b.itemsize // (4 if dtype_b.kind == "U" else 1)
-        return np.dtype(f"{kind}{max(size_a, size_b)}")
-
-    return np.promote_types(dtype_a, dtype_b)
-
-
-def group_dtype(tables, columns=None):
-    """Group Dtype.
-
-    Build the structured output dtype of a group of row-chunk tables,
-    promoting each column across *every* table. A campaign that was
-    partially reprocessed can carry e.g. ``S7`` tile IDs in one tile and
-    ``S12`` in another, or ``f4`` next to ``f8``; taking the dtype of the
-    first table alone would silently truncate the others.
-
-    Note that ShapePipe currently writes ``TILE_ID`` as ``f8`` (the tile
-    ``183.307`` arrives as the float ``183.307``), not as a string, so the
-    string-promotion branch above is for a future string-valued ``TILE_ID``
-    and is not exercised by today's products.
-
-    TODO: whether ``TILE_ID`` should be a string is an open schema decision.
-    A float cannot represent the ID exactly and cannot be compared for
-    equality safely; changing it is a breaking product change, so it is left
-    as-is here and this reader deliberately handles both.
-
-    Parameters
-    ----------
-    tables : list or dict
-        row-chunk tables (h5py Datasets, or their ``grammar.adapt`` views),
-        optionally keyed by dataset name for error messages
-    columns : list of str, optional
-        columns to keep; default is ``None`` (all columns of the first table)
-
-    Returns
-    -------
-    numpy.dtype
-        structured output dtype
-
-    Raises
-    ------
-    KeyError
-        if a table lacks one of the columns, naming the tables that do
-
-    """
-    if not hasattr(tables, "items"):
-        tables = dict(enumerate(tables))
-    dtypes = {key: table.dtype for key, table in tables.items()}
-    first = next(iter(dtypes.values()))
-    names = columns if columns is not None else list(first.names)
-
-    missing = {
-        key: [name for name in names if name not in dtype.names]
-        for key, dtype in dtypes.items()
-    }
-    missing = {key: cols for key, cols in missing.items() if cols}
-    if missing:
-        key, cols = next(iter(missing.items()))
-        raise KeyError(
-            f"{len(missing)} of {len(tables)} tables lack columns"
-            + f" {'requested' if columns is not None else 'of the first table'},"
-            + f" e.g. table {key!r} lacks {cols}; tables lacking some:"
-            + f" {list(missing)[:20]}. Request columns without them."
-        )
-    dtypes = list(dtypes.values())
-
-    fields = []
-    for name in names:
-        promoted = dtypes[0][name]
-        for dtype in dtypes[1:]:
-            promoted = promote_dtypes(promoted, dtype[name])
-        fields.append((name, promoted))
-
-    return np.dtype(fields)
 
 
 def check_n_units(hdf5_file, group, file_path):
