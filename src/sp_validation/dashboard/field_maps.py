@@ -27,7 +27,7 @@ Usage (inside the container)::
 
     python -m sp_validation.dashboard.field_maps \\
         --galaxies shape_catalog_cut_ngmix.fits --stars stars.hdf5 \\
-        --version SP_v2.0 --out-dir cosmo_val/
+        --version SP_v2.0.0 --out-dir cosmo_val/
 """
 
 import argparse
