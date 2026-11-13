@@ -10,11 +10,11 @@ set -euo pipefail
 
 : "${ACCOUNT:?Slurm account for the join job}"
 : "${CANFAR_USER:?CANFAR user whose arc home holds the extract}"
-EXTRACT=${EXTRACT:-$SCRATCH/photopipe-dr6/extract}
+EXTRACT=${EXTRACT:-$SCRATCH/photopipe-dr6-full/extract}
 SIF=${SIF:-$HOME/.cache/sp_validation/sp_validation.sif}
 STREAMS=${STREAMS:-8}
 STAGES=${STAGES:-extract stage join}
-ARC=home/$CANFAR_USER/photopipe-dr6
+ARC=home/$CANFAR_USER/photopipe-dr6-full
 
 API=https://ws-uv.canfar.net
 CERT=$HOME/.ssl/cadcproxy.pem
@@ -25,6 +25,7 @@ has_stage() { [[ " $STAGES " == *" $1 "* ]]; }
 curl_api() { curl -sS --retry 5 --retry-all-errors -m 120 --cert "$CERT" "$@"; }
 
 if has_stage extract; then
+    vmkdir -p "arc:$ARC"
     vcp "$CODE/scripts/assembly/extract_photopipe.py" "arc:$ARC/extract_photopipe.py"
     vrm "arc:$ARC/extract/COMPLETE" 2>/dev/null || true
     session=$(curl_api -X POST "$API/skaha/v1/session" \
@@ -51,8 +52,8 @@ if has_stage stage; then
 fi
 
 if has_stage join; then
-    sbatch --wait -A "$ACCOUNT" -c 32 --mem=180G -t 3:00:00 -J photopipe-join \
+    sbatch --wait -A "$ACCOUNT" -c 32 --mem=500G -t 6:00:00 -J photopipe-join \
         -o "$EXTRACT/join-%j.log" --wrap "module load apptainer; \
         apptainer exec -B /project,/scratch --env PYTHONPATH=$CODE/src $SIF \
-        python $CODE/scripts/assembly/join_photopipe.py $EXTRACT --workers 32"
+        python $CODE/scripts/assembly/join_photopipe.py $EXTRACT --workers 24"
 fi

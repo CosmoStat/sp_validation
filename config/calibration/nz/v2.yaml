@@ -15,7 +15,7 @@ inputs:
     # The cosmo_val catalogue of SP_v2.0, its shapes and their PhotoPipe join.
     catalogue: ${v2_tomo}/shape_catalog_tomo.fits
     shapes: ${unions_data}/v2.x/run1-snap3-hats/catalogue
-    photometry: ${unions_data}/photopipe-dr6/catalogue
+    photometry: ${unions_data}/v2.x/run1-snap3-comprehensive/catalogue
     output: ${nz_v2}/inputs/sources.npz
 som:
   side: 101
