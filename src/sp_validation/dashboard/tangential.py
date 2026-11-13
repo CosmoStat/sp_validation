@@ -95,7 +95,7 @@ def _gamma_panels(
         # Room below the data for the legend (the y axis is shared).
         lo, hi = axes[0].get_ylim()
         rows = -(-len(series) // ncol)
-        axes[0].set_ylim(lo - 0.16 * rows * (hi - lo), hi)
+        axes[0].set_ylim(lo - 0.16 * rows * (hi - lo), hi + 0.2 * (hi - lo))
         axes[1].yaxis.set_tick_params(labelleft=True)
         if header:
             S.header(axes[0], header)
@@ -176,6 +176,7 @@ def lambda_stars(product, out):
                     **S.DATA_VECTOR_MARK,
                 )
                 ax.set_ylabel(rf"${sym},{{\,{csym}}}\ [10^{{-{exponent}}}]$")
+                S.headroom(ax, top=0.3, bottom=0.18)
                 S.label_box(ax, rf"{what}, ${csym}$", loc="upper right")
                 S.note(ax, _chi2_label(chi2, nu), loc="lower right")
                 if ax in axes[0]:

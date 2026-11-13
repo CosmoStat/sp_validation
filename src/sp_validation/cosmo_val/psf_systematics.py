@@ -48,6 +48,196 @@ RHO_TAU_METHODS = ("eiv", "lsq", "emcee", "none")
 
 
 # TODO: Reorganise the order of functions so it is more readable
+def jittered_theta_for(theta, idx, n_versions, offset):
+    """Get the jittered theta values for better visualisation."""
+    theta_widths = np.diff(theta)
+    theta_widths = np.append(theta_widths, theta_widths[-1])
+    jitter_fraction = (idx - (n_versions - 1) / 2) * offset
+    jittered_theta = theta + jitter_fraction * theta_widths
+    return jittered_theta
+
+
+def plot_tau_stats_tomo(
+    tau,
+    tomo_bins,
+    versions,
+    colors,
+    labels,
+    offset=0,
+    savefig=None,
+    show=True,
+    close=True,
+    plot_tau_m=False,
+    plot_theta_times_tau=False,
+    fmt="",
+    capsize=2,
+    fig=None,
+    errorbar_kw=None,
+    row_label=None,
+    titles=None,
+    legend=True,
+):
+    """
+    Draw tau_{0,2,5} per tomographic bin: one row per bin (and component),
+    one column per tau statistic, versions overlaid.
+
+    Parameters
+    ----------
+    tau : dict
+        ``tau[ver][tomo_bin_id]`` holds ``"theta"`` and, for each
+        ``(k, p_or_m)`` with ``k`` in ``"0", "2", "5"`` and ``p_or_m`` in
+        ``"p", "m"``, the pair ``(tau, sigma)``.
+    tomo_bins : dict
+        ``{ver: {"ids": ..., "pairs": ...}}``.
+    versions, colors : list
+        Versions to draw and their colours.
+    labels : dict
+        ``{ver: legend label}``.
+    fig : Figure, optional
+        Figure to draw into, sized and laid out by the caller; a new
+        20 x 10 inch figure, tight-laid-out, if None.
+    errorbar_kw : dict, optional
+        Extra errorbar kwargs (markers, sizes).
+    row_label : callable, optional
+        ``(tomo_bin_id, "+" or "-") -> y label`` of a row's first panel.
+    titles : list of str, optional
+        Column titles for tau_0, tau_2, tau_5.
+    legend : bool
+        Draw the version legend below the last row.
+
+    Returns
+    -------
+    fig, all_axs
+    """
+    # Write the whole script for the tomography. It does not exist in shear_psf_leakage
+    e_obs = r"e^\mathrm{obs}"
+    e_psf = r"e^\mathrm{PSF}"
+    delta_e_psf = r"\delta e^\mathrm{PSF}"
+    delta_T_psf = r"\delta T^\mathrm{PSF}"
+
+    factor_theta_label = r"\theta" if plot_theta_times_tau else r""
+
+    titles = titles or [
+        rf"$\tau_0 = \langle {e_obs} {e_psf} \rangle$",
+        rf"${factor_theta_label} \tau_2 = {factor_theta_label} \langle {e_obs} {delta_e_psf} \rangle$",
+        rf"${factor_theta_label} \tau_5 = {factor_theta_label} \langle {e_obs} {delta_T_psf} \rangle$",
+    ]
+
+    dict_index_tau = {
+        0: "0",
+        1: "2",
+        2: "5",
+    }
+
+    n_tomo_bins_plot = max(len(bins["ids"]) for bins in tomo_bins.values())
+
+    n_rows = n_tomo_bins_plot * (1 + plot_tau_m)
+
+    own_figure = fig is None
+    if own_figure:
+        fig = plt.figure(figsize=(20 * (1 + plot_tau_m), 10 * (1 + plot_tau_m)))
+    gs = fig.add_gridspec(n_rows, 3, wspace=0.1, hspace=0)
+    all_axs = gs.subplots(sharex="col")
+
+    for k in range(n_rows):
+        axs = all_axs[k]
+
+        tomo_bin_id = k // 2 + 1 if plot_tau_m else k + 1
+        is_m_component = k % 2 if plot_tau_m else 0
+
+        for file_idx, (ver, color) in enumerate(zip(versions, colors)):
+            # Check if the tomo bin is valid for this version
+            if tomo_bin_id not in tomo_bins[ver]["ids"]:
+                continue
+
+            tau_bin = tau[ver][tomo_bin_id]
+
+            # Plot the different tau-stats per row
+            for i in range(3):
+                p_or_m = "m" if is_m_component else "p"
+                p_or_m_label = "-" if is_m_component else "+"
+
+                # Get the jittered angular scale for the x-axis
+                theta = tau_bin["theta"]
+
+                jittered_theta = jittered_theta_for(
+                    theta, file_idx, len(versions), offset
+                )
+
+                factor_theta = (
+                    np.ones_like(jittered_theta)
+                    if (i == 0) or not plot_theta_times_tau
+                    else theta
+                )
+
+                y_plot = tau_bin[(dict_index_tau[i], p_or_m)][0] * factor_theta
+
+                yerr_plot = tau_bin[(dict_index_tau[i], p_or_m)][1] * factor_theta
+
+                ver_label = labels[ver]
+                axs[i].errorbar(
+                    jittered_theta,
+                    y_plot,
+                    yerr=yerr_plot,
+                    fmt=fmt,
+                    label=ver_label,
+                    capsize=capsize,
+                    color=color,
+                    **(errorbar_kw or {}),
+                )
+
+        # Set the style of the plot
+        for i in range(3):
+            axs[i].set_xscale("log")
+            axs[i].set_xlim(theta.min() * 0.9, theta.max() * 1.1)
+            if i == 0:
+                axs[i].set_ylabel(
+                    f"Bin {tomo_bin_id}\n `{p_or_m_label}' comp."
+                    if row_label is None
+                    else row_label(tomo_bin_id, p_or_m_label)
+                )
+            if k == n_rows - 1:
+                axs[i].set_xlabel(r"$\theta$ [arcmin]")
+            if k == 0:
+                axs[i].set_title(titles[i])
+
+            # --- Force scientific notation and scaling ---
+            axs[i].ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
+            axs[i].yaxis.offsetText.set_visible(True)
+
+            # --- Make it look clean ---
+            axs[i].yaxis.set_major_locator(
+                mticker.MaxNLocator(nbins=5)
+            )  # Fewer, rounded ticks
+            # axs[i].yaxis.get_offset_text().set_fontsize(10)        # Smaller ×10⁻⁴ label
+            axs[i].yaxis.get_offset_text().set_position(
+                (0, 1.02)
+            )  # Move scale factor slightly above axis
+            axs[i].yaxis.get_offset_text().set_ha("left")
+
+        if legend and k == n_rows - 1:
+            axs[1].legend(
+                loc="upper center",
+                bbox_to_anchor=(0.5, -0.5),  # (x, y) relative to the axes
+                ncol=3,  # number of columns
+                frameon=False,
+            )
+
+    if own_figure:
+        plt.tight_layout()
+
+    if savefig is not None:
+        plt.savefig(savefig, dpi=300, bbox_inches="tight")
+
+    if show:
+        plt.show()
+
+    if close:
+        plt.close()
+
+    return fig, all_axs
+
+
 class PSFSystematicsMixin:
     # --- property definitions ---
     @property
@@ -997,47 +1187,15 @@ class PSFSystematicsMixin:
         out_dir = f"{self.cc['paths']['output']}/rho_tau_stats"
 
         if tomography:
-            # Write the whole script for the tomography. It does not exist in shear_psf_leakage
-            e_obs = r"e^\mathrm{obs}"
-            e_psf = r"e^\mathrm{PSF}"
-            delta_e_psf = r"\delta e^\mathrm{PSF}"
-            delta_T_psf = r"\delta T^\mathrm{PSF}"
-
-            factor_theta_label = r"\theta" if plot_theta_times_tau else r""
-
-            titles = [
-                rf"$\tau_0 = \langle {e_obs} {e_psf} \rangle$",
-                rf"${factor_theta_label} \tau_2 = {factor_theta_label} \langle {e_obs} {delta_e_psf} \rangle$",
-                rf"${factor_theta_label} \tau_5 = {factor_theta_label} \langle {e_obs} {delta_T_psf} \rangle$",
-            ]
-
-            dict_index_tau = {
-                0: "0",
-                1: "2",
-                2: "5",
-            }
-
-            # From all the versions, get the maximum number of tomo_bin_ids
             tomo_bins = self._get_tomo_bins_for_versions(
                 versions, tomography=tomography
             )
-
             n_tomo_bins_plot = max(len(bins["ids"]) for bins in tomo_bins.values())
-
-            n_rows = n_tomo_bins_plot * (1 + plot_tau_m)
-
-            fig = plt.figure(figsize=(20 * (1 + plot_tau_m), 10 * (1 + plot_tau_m)))
-            gs = fig.add_gridspec(n_rows, 3, wspace=0.1, hspace=0)
-            all_axs = gs.subplots(sharex="col")
-
-            for k in range(n_rows):
-                axs = all_axs[k]
-
-                tomo_bin_id = k // 2 + 1 if plot_tau_m else k + 1
-                is_m_component = k % 2 if plot_tau_m else 0
-
-                for file_idx, (ver, color) in enumerate(zip(versions, colors)):
-                    # Check if the tomo bin is valid for this version
+            components = ("p", "m") if plot_tau_m else ("p",)
+            tau = {}
+            for ver in versions:
+                tau[ver] = {}
+                for tomo_bin_id in range(1, n_tomo_bins_plot + 1):
                     if tomo_bin_id not in tomo_bins[ver]["ids"]:
                         continue
 
@@ -1052,102 +1210,46 @@ class PSFSystematicsMixin:
                         )
                         cov_tau = np.load(cov_tau_path)
 
-                    # Plot the different tau-stats per row
-                    for i in range(3):
-                        p_or_m = "m" if is_m_component else "p"
-                        p_or_m_label = "-" if is_m_component else "+"
-
-                        # Get the jittered angular scale for the x-axis
-                        theta = self.tau_stat_handler.tau_stats["theta"]
-                        num_theta_bins = theta.shape[0]
-
-                        jittered_theta = self._get_jittered_theta(
-                            theta, file_idx, len(versions), offset
-                        )
-
-                        factor_theta = (
-                            np.ones_like(jittered_theta)
-                            if (i == 0) or not plot_theta_times_tau
-                            else theta
-                        )
-
-                        y_plot = (
-                            self.tau_stat_handler.tau_stats[
-                                f"tau_{dict_index_tau[i]}_{p_or_m}"
-                            ]
-                            * factor_theta
-                        )
-
-                        if cov_type is None or p_or_m == "m":
-                            cov_diag = self.tau_stat_handler.tau_stats[
-                                "vartau_" + dict_index_tau[i] + "_" + p_or_m
-                            ]
-                        else:
-                            cov_diag = np.diag(
-                                cov_tau[
-                                    i * num_theta_bins : (i + 1) * num_theta_bins,
-                                    i * num_theta_bins : (i + 1) * num_theta_bins,
+                    theta = self.tau_stat_handler.tau_stats["theta"]
+                    num_theta_bins = theta.shape[0]
+                    tau_bin = {"theta": theta}
+                    for i, k in enumerate(("0", "2", "5")):
+                        for p_or_m in components:
+                            if cov_type is None or p_or_m == "m":
+                                cov_diag = self.tau_stat_handler.tau_stats[
+                                    "vartau_" + k + "_" + p_or_m
                                 ]
+                            else:
+                                cov_diag = np.diag(
+                                    cov_tau[
+                                        i * num_theta_bins : (i + 1) * num_theta_bins,
+                                        i * num_theta_bins : (i + 1) * num_theta_bins,
+                                    ]
+                                )
+                            tau_bin[(k, p_or_m)] = (
+                                self.tau_stat_handler.tau_stats[f"tau_{k}_{p_or_m}"],
+                                np.sqrt(cov_diag),
                             )
+                    tau[ver][tomo_bin_id] = tau_bin
 
-                        yerr_plot = np.sqrt(cov_diag) * factor_theta
-
-                        ver_label = (
-                            self.cc[ver]["label"] if "label" in self.cc[ver] else ver
-                        )
-                        axs[i].errorbar(
-                            jittered_theta,
-                            y_plot,
-                            yerr=yerr_plot,
-                            fmt=fmt,
-                            label=ver_label,
-                            capsize=capsize,
-                            color=color,
-                        )
-
-                # Set the style of the plot
-                for i in range(3):
-                    axs[i].set_xscale("log")
-                    axs[i].set_xlim(theta.min() * 0.9, theta.max() * 1.1)
-                    if i == 0:
-                        axs[i].set_ylabel(f"Bin {tomo_bin_id}\n `{p_or_m_label}' comp.")
-                    if k == n_rows - 1:
-                        axs[i].set_xlabel(r"$\theta$ [arcmin]")
-                    if k == 0:
-                        axs[i].set_title(titles[i])
-
-                    # --- Force scientific notation and scaling ---
-                    axs[i].ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
-                    axs[i].yaxis.offsetText.set_visible(True)
-
-                    # --- Make it look clean ---
-                    axs[i].yaxis.set_major_locator(
-                        mticker.MaxNLocator(nbins=5)
-                    )  # Fewer, rounded ticks
-                    # axs[i].yaxis.get_offset_text().set_fontsize(10)        # Smaller ×10⁻⁴ label
-                    axs[i].yaxis.get_offset_text().set_position(
-                        (0, 1.02)
-                    )  # Move scale factor slightly above axis
-                    axs[i].yaxis.get_offset_text().set_ha("left")
-
-                if k == n_rows - 1:
-                    axs[1].legend(
-                        loc="upper center",
-                        bbox_to_anchor=(0.5, -0.5),  # (x, y) relative to the axes
-                        ncol=3,  # number of columns
-                        frameon=False,
-                    )
-
-            plt.tight_layout()
-
-            if savefig is not None:
-                plt.savefig(savefig, dpi=300, bbox_inches="tight")
-
-            if show:
-                plt.show()
-
-            if close:
-                plt.close()
+            plot_tau_stats_tomo(
+                tau,
+                tomo_bins,
+                versions,
+                colors,
+                {
+                    ver: self.cc[ver]["label"] if "label" in self.cc[ver] else ver
+                    for ver in versions
+                },
+                offset=offset,
+                savefig=savefig,
+                show=show,
+                close=close,
+                plot_tau_m=plot_tau_m,
+                plot_theta_times_tau=plot_theta_times_tau,
+                fmt=fmt,
+                capsize=capsize,
+            )
 
         else:
             filenames = [f"tau_stats_{self.basename(ver)}.fits" for ver in versions]
@@ -1831,11 +1933,7 @@ class PSFSystematicsMixin:
 
     def _get_jittered_theta(self, theta, idx, n_versions, offset):
         """Get the jittered theta values for better visualisation."""
-        theta_widths = np.diff(theta)
-        theta_widths = np.append(theta_widths, theta_widths[-1])
-        jitter_fraction = (idx - (n_versions - 1) / 2) * offset
-        jittered_theta = theta + jitter_fraction * theta_widths
-        return jittered_theta
+        return jittered_theta_for(theta, idx, n_versions, offset)
 
     def _get_ax_plus(self, axs, tomo_bin_a, tomo_bin_b):
         if (tomo_bin_a == "all") ^ (tomo_bin_b == "all"):

@@ -15,6 +15,7 @@
 # Usage, from the repository root on a login node:
 #   scripts/dashboard/build_dashboard.sh CATALOGUE_DIR RUN_DIR VERSION OUT_DIR \
 #       [--gaia GAIA_FITS] [--after JOBID] [--cat-config CAT_CONFIG]
+# A selection histogram already in OUT_DIR/products is kept, like the grid.
 # Products go to OUT_DIR/products, figures and figures.json to OUT_DIR/figures.
 # ACCOUNT (default def-sfabbro) and SPV_IMAGE (default the pinned SIF) are read
 # from the environment.

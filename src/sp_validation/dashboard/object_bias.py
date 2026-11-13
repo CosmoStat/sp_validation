@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.collections import PolyCollection
 from matplotlib.patches import Rectangle
-from matplotlib.ticker import MaxNLocator, ScalarFormatter
+from matplotlib.ticker import MaxNLocator
 
 from . import style as S
 from .sky import DIVERGING
@@ -66,12 +66,20 @@ def leakage(cells, out):
             )
             ax.add_collection(mesh)
             ax.set_xscale("log")
+            ax.xaxis.set_major_formatter(S.plain_log_formatter())
             ax.set_xlim(sedges.min(), sedges.max())
             ax.set_ylim(redges[0], redges[-1])
             ax.set_xlabel("SNR")
             ax.set_ylabel(r"$r_{\rm PSF}/(r_{\rm PSF}+r_{\rm gal})$")
             S.colorbar(fig, mesh, ax, title)
         return S.save(fig, out, "full")
+
+
+NAMES = {
+    "galaxy size": r"galaxy $\sqrt{T}$",
+    "PSF e1": r"PSF $e_1$",
+    "PSF e2": r"PSF $e_2$",
+}
 
 
 def bias_fit(s):
@@ -95,20 +103,18 @@ def bias_fit(s):
 
 def bias(cells, out):
     """Slopes and fit significances for weighted binned means."""
-    names = [
-        r"galaxy $\sqrt{T}$" if name == "galaxy size" else name
-        for name in cells["bias_names"]
-    ]
+    names = [NAMES.get(str(name), str(name)) for name in cells["bias_names"]]
     fits = np.array([[bias_fit(s) for s in row] for row in cells["bias_sums"]])
+    p = S.power_of_ten(fits[:, :, 0])
     with S.figure_style():
         fig, axes = plt.subplots(1, 2, figsize=(7.2, 4.5), sharey=True)
         y = np.arange(len(names))
         for component, color in enumerate(("#3D5BA0", "#BC4538")):
             value, err = fits[:, component, 0], fits[:, component, 1]
             axes[0].errorbar(
-                value,
+                value / 10**p,
                 y + (component - 0.5) * 0.18,
-                xerr=err,
+                xerr=err / 10**p,
                 fmt="o",
                 ms=3,
                 color=color,
@@ -120,11 +126,10 @@ def bias(cells, out):
         for ax in axes:
             ax.axvline(0, color=S.INK_MUTED, lw=0.7)
         axes[0].set_yticks(y, names)
-        axes[0].set_xlabel(r"$\Delta e$ per $1\sigma$ of property")
-        formatter = ScalarFormatter(useMathText=True)
-        formatter.set_powerlimits((-2, 2))
-        axes[0].xaxis.set_major_formatter(formatter)
+        axes[0].set_xlabel(rf"$\Delta e$ per $1\sigma$ of property $\times 10^{{{-p}}}$")
         axes[0].xaxis.set_major_locator(MaxNLocator(5))
-        axes[1].set_xlabel("Slope / fit uncertainty")
-        axes[0].legend()
+        for edge in (-2, 2):
+            axes[1].axvline(edge, color=S.INK_MUTED, lw=0.6, ls=":")
+        axes[1].set_xlabel(r"Slope / fit uncertainty")
+        axes[0].legend(loc="upper left")
         return S.save(fig, out, "full")

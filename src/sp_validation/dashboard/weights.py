@@ -38,8 +38,13 @@ def weights(cells, out, layout="wide"):
             )
             ax.set_xscale("log")
             ax.set_yscale("log")
+            for axis in (ax.xaxis, ax.yaxis):
+                axis.set_major_formatter(S.plain_log_formatter())
+                axis.set_minor_formatter(mpl.ticker.NullFormatter())
+            ratio = cells["size_ratio_edges"]
+            ax.set_yticks([t for t in (1, 2, 3, 5, 9) if ratio[0] <= t <= ratio[-1]])
             ax.set_xlabel("SNR")
-            ax.set_ylabel("Galaxy / PSF T")
+            ax.set_ylabel(r"$T_{\rm gal}/T_{\rm PSF}$")
             S.colorbar(fig, mesh, ax, label, pad=0.02)
         return S.save(fig, out, "full" if layout == "wide" else "half")
 
@@ -49,10 +54,14 @@ def response_histogram(cells, out):
     edges = cells["response_edges"]
     with S.figure_style():
         fig, ax = plt.subplots(figsize=(3.6, 2.8))
-        for hist, label in zip(
-            cells["response_hist"], (r"$R_{11}$", r"$R_{22}$", r"$R_{12}$", r"$R_{21}$")
-        ):
-            ax.stairs(hist, edges, label=label)
+        styles = (
+            (r"$R_{11}$", S.COLOR_E, "-"),
+            (r"$R_{22}$", S.INK, (0, (3, 2))),
+            (r"$R_{12}$", S.CINNABAR, "-"),
+            (r"$R_{21}$", S.INK_MUTED, (0, (3, 2))),
+        )
+        for hist, (label, color, ls) in zip(cells["response_hist"], styles):
+            ax.stairs(hist, edges, label=label, color=color, ls=ls, lw=1.0)
         ax.set_yscale("log")
         ax.set_xlabel("Galaxy shear response")
         ax.set_ylabel("Number of galaxies")
