@@ -366,8 +366,9 @@ def open_catalogue(path, hdu=None, column_map=None):
 
 def validate_calibrated_entry(entry):
     """Validate response/weight identity, also for file-based reader adapters."""
-    if "w_col" in entry and not h5py.is_hdf5(entry["path"]):
-        with fits.open(entry["path"], memmap=True) as hdus:
+    path = entry["path"]
+    if "w_col" in entry and not is_hats(path) and not h5py.is_hdf5(path):
+        with fits.open(path, memmap=True) as hdus:
             header = hdus[0].header
             if header.get("RAPPLIED", False):
                 from sp_validation.response import validate_weight_scheme
