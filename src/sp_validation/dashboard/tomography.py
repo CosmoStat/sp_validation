@@ -366,7 +366,7 @@ def xi_pure_b(s, out, scale_cut, ptes=None, nbin=4, theta_range=(0.9, 280)):
         _key(
             key,
             [_marker(m, c, rf"$\xi_{sg}^B$") for _, _, m, c, _, sg in rows],
-            title=rf"PTE at ${scale_cut[0]:g}'\!-\!{scale_cut[1]:g}'$",
+            title=rf"PTE at ${scale_cut[0]:g}'\!-\!{scale_cut[1]:g}'$" if ptes else None,
         )
         return S.save(fig, out, "full")
 
