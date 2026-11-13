@@ -188,6 +188,11 @@ variable <code class="docutils literal notranslate"><span class="pre">SPV_ROOT_&
 file doesn’t list. A root with no directory on this machine stays written as
 <code class="docutils literal notranslate"><span class="pre">${name}</span></code>, so a path into it fails when opened and names the missing root.</p>
 <p>Only declared root names are substituted; any other <code class="docutils literal notranslate"><span class="pre">${...}</span></code> passes through.</p>
+<p>A root may be a CADC VOSpace URI, <code class="docutils literal notranslate"><span class="pre">vos:cfis/weak_lensing/ShapePipe/v2.x</span></code>, so
+a release is read straight from the vault: <a class="reference internal" href="#sp_validation.data_roots.local" title="sp_validation.data_roots.local"><code class="xref py py-func docutils literal notranslate"><span class="pre">local()</span></code></a> fetches a <code class="docutils literal notranslate"><span class="pre">vos:</span></code>
+path, file or directory, once into <code class="docutils literal notranslate"><span class="pre">~/.cache/sp_validation/vos/</span></code> and returns
+the copy. It authenticates with the CADC proxy certificate
+<code class="docutils literal notranslate"><span class="pre">~/.ssl/cadcproxy.pem</span></code> (<code class="docutils literal notranslate"><span class="pre">cadc-get-cert</span> <span class="pre">-u</span> <span class="pre">&lt;user&gt;</span></code> writes it).</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.data_roots.roots">
 <span class="sig-name descname"><span class="pre">roots</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">roots_file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">PosixPath('/__w/sp_validation/sp_validation/config/data_roots.yaml')</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/data_roots.html#roots"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.data_roots.roots" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.data_roots.roots'">¶</a></dt>
@@ -202,6 +207,20 @@ file doesn’t list. A root with no directory on this machine stays written as
 <dt class="sig sig-object py" id="sp_validation.data_roots.load_yaml">
 <span class="sig-name descname"><span class="pre">load_yaml</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">roots_file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">PosixPath('/__w/sp_validation/sp_validation/config/data_roots.yaml')</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/data_roots.html#load_yaml"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.data_roots.load_yaml" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.data_roots.load_yaml'">¶</a></dt>
 <dd><p>Read a YAML config with its data roots expanded for this machine.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.data_roots.local">
+<span class="sig-name descname"><span class="pre">local</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/data_roots.html#local"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.data_roots.local" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.data_roots.local'">¶</a></dt>
+<dd><p>A local path for <code class="docutils literal notranslate"><span class="pre">path</span></code>: itself, or for a <code class="docutils literal notranslate"><span class="pre">vos:</span></code> URI its cached copy.</p>
+<p>A directory is fetched whole, its files in parallel; a copy is complete
+once it exists (files are written beside it and renamed, a directory is
+marked by <code class="docutils literal notranslate"><span class="pre">&lt;dir&gt;.complete</span></code>), so an interrupted fetch resumes.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.data_roots.localise">
+<span class="sig-name descname"><span class="pre">localise</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/data_roots.html#localise"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.data_roots.localise" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.data_roots.localise'">¶</a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">value</span></code> with every <code class="docutils literal notranslate"><span class="pre">vos:</span></code> string fetched (<a class="reference internal" href="#sp_validation.data_roots.local" title="sp_validation.data_roots.local"><code class="xref py py-func docutils literal notranslate"><span class="pre">local()</span></code></a>), recursing
+into containers.</p>
 </dd></dl>
 </section>
 </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
@@ -227,6 +246,8 @@ file doesn’t list. A root with no directory on this machine stays written as
 <li><a :data-current="activeSection === '#sp_validation.data_roots.roots'" class="reference internal" href="#sp_validation.data_roots.roots"><code class="docutils literal notranslate"><span class="pre">roots()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.data_roots.expand'" class="reference internal" href="#sp_validation.data_roots.expand"><code class="docutils literal notranslate"><span class="pre">expand()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.data_roots.load_yaml'" class="reference internal" href="#sp_validation.data_roots.load_yaml"><code class="docutils literal notranslate"><span class="pre">load_yaml()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.data_roots.local'" class="reference internal" href="#sp_validation.data_roots.local"><code class="docutils literal notranslate"><span class="pre">local()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.data_roots.localise'" class="reference internal" href="#sp_validation.data_roots.localise"><code class="docutils literal notranslate"><span class="pre">localise()</span></code></a></li>
 </ul>
 </div>
 </aside>

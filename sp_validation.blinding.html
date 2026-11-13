@@ -187,8 +187,9 @@ drawn once, <code class="docutils literal notranslate"><span class="pre">python<
 committed (<code class="docutils literal notranslate"><span class="pre">*.blind.json</span></code> is gitignored). The private
 <code class="docutils literal notranslate"><span class="pre">git@github.com:UNIONS-WL/blinds.git</span></code> repository is cloned on each machine to
 <code class="docutils literal notranslate"><span class="pre">~/.sp_validation/blinds</span></code> (mode 0700), the catalogue config’s <code class="docutils literal notranslate"><span class="pre">paths.blinds</span></code>.
-Each catalogue entry declares <code class="docutils literal notranslate"><span class="pre">blind:</span> <span class="pre">none</span></code> (public) or <code class="docutils literal notranslate"><span class="pre">blind:</span> <span class="pre">&lt;name&gt;</span></code>
-(<a class="reference internal" href="#sp_validation.blinding.blind_of" title="sp_validation.blinding.blind_of"><code class="xref py py-func docutils literal notranslate"><span class="pre">blind_of()</span></code></a>).</p>
+Each catalogue entry declares <code class="docutils literal notranslate"><span class="pre">blind:</span> <span class="pre">none</span></code> (public), <code class="docutils literal notranslate"><span class="pre">blind:</span> <span class="pre">&lt;name&gt;</span></code> (the
+registry’s record) or <code class="docutils literal notranslate"><span class="pre">blind:</span> <span class="pre">&lt;path&gt;/&lt;name&gt;.blind.json</span></code> (a record shipped
+with the data, as in a release; <a class="reference internal" href="#sp_validation.blinding.blind_of" title="sp_validation.blinding.blind_of"><code class="xref py py-func docutils literal notranslate"><span class="pre">blind_of()</span></code></a>, <a class="reference internal" href="#sp_validation.blinding.entry_blind" title="sp_validation.blinding.entry_blind"><code class="xref py py-func docutils literal notranslate"><span class="pre">entry_blind()</span></code></a>).</p>
 <p><a class="reference internal" href="#sp_validation.blinding.conceal" title="sp_validation.blinding.conceal"><code class="xref py py-func docutils literal notranslate"><span class="pre">conceal()</span></code></a> adds the blind’s shift, t(hidden) − t(fiducial), to every row
 of a SACC; Smokescreen draws the hidden point from the seed and evaluates the
 theory t at both points.</p>
@@ -247,11 +248,26 @@ standard library.</p>
 <span class="sig-name descname"><span class="pre">_shear_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">entry</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/blinding.html#_shear_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.blinding._shear_file" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.blinding._shear_file'">¶</a></dt>
 <dd></dd></dl>
 <dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.blinding._declared">
+<span class="sig-name descname"><span class="pre">_declared</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">entry</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/blinding.html#_declared"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.blinding._declared" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.blinding._declared'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.blinding._name">
+<span class="sig-name descname"><span class="pre">_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">blind</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/blinding.html#_name"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.blinding._name" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.blinding._name'">¶</a></dt>
+<dd><p>The name of a declared blind: itself, or a record path’s file stem.</p>
+</dd></dl>
+<dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.blinding.blind_of">
 <span class="sig-name descname"><span class="pre">blind_of</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catalogues</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">entry</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/blinding.html#blind_of"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.blinding.blind_of" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.blinding.blind_of'">¶</a></dt>
-<dd><p>The <code class="docutils literal notranslate"><span class="pre">blind:</span></code> of catalogue-config entry <code class="docutils literal notranslate"><span class="pre">entry</span></code>.</p>
+<dd><p>The name of the blind catalogue-config entry <code class="docutils literal notranslate"><span class="pre">entry</span></code> declares.</p>
 <p>Refuses an entry that declares none, and entries reading one shear file
 under different blinds.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.blinding.entry_blind">
+<span class="sig-name descname"><span class="pre">entry_blind</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catalogues</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">entry</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/blinding.html#entry_blind"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.blinding.entry_blind" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.blinding.entry_blind'">¶</a></dt>
+<dd><p>The <a class="reference internal" href="#sp_validation.blinding.Blind" title="sp_validation.blinding.Blind"><code class="xref py py-class docutils literal notranslate"><span class="pre">Blind</span></code></a> of catalogue-config entry <code class="docutils literal notranslate"><span class="pre">entry</span></code>: the record its
+<code class="docutils literal notranslate"><span class="pre">blind:</span></code> path names, or the registry’s record of its blind name.</p>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.blinding.registry">
@@ -363,7 +379,10 @@ then 200 log-spaced up to 6·10⁴.</p>
 </ul>
 </li>
 <li><a :data-current="activeSection === '#sp_validation.blinding._shear_file'" class="reference internal" href="#sp_validation.blinding._shear_file"><code class="docutils literal notranslate"><span class="pre">_shear_file()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.blinding._declared'" class="reference internal" href="#sp_validation.blinding._declared"><code class="docutils literal notranslate"><span class="pre">_declared()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.blinding._name'" class="reference internal" href="#sp_validation.blinding._name"><code class="docutils literal notranslate"><span class="pre">_name()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.blinding.blind_of'" class="reference internal" href="#sp_validation.blinding.blind_of"><code class="docutils literal notranslate"><span class="pre">blind_of()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.blinding.entry_blind'" class="reference internal" href="#sp_validation.blinding.entry_blind"><code class="docutils literal notranslate"><span class="pre">entry_blind()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.blinding.registry'" class="reference internal" href="#sp_validation.blinding.registry"><code class="docutils literal notranslate"><span class="pre">registry()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.blinding.open_blind'" class="reference internal" href="#sp_validation.blinding.open_blind"><code class="docutils literal notranslate"><span class="pre">open_blind()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.blinding.conceal'" class="reference internal" href="#sp_validation.blinding.conceal"><code class="docutils literal notranslate"><span class="pre">conceal()</span></code></a></li>

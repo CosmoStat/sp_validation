@@ -242,7 +242,7 @@
 </span><span id="line-11"><span class="kn">from</span><span class="w"> </span><span class="nn">cs_util.cosmo</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_cosmo</span>
 </span><span id="line-12"><span class="kn">from</span><span class="w"> </span><span class="nn">shear_psf_leakage</span><span class="w"> </span><span class="kn">import</span> <span class="n">leakage</span><span class="p">,</span> <span class="n">run_object</span><span class="p">,</span> <span class="n">run_scale</span>
 </span><span id="line-13">
-</span><span id="line-14"><span class="kn">from</span><span class="w"> </span><span class="nn">sp_validation.data_roots</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_yaml</span>
+</span><span id="line-14"><span class="kn">from</span><span class="w"> </span><span class="nn">sp_validation.data_roots</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_yaml</span><span class="p">,</span> <span class="n">localise</span>
 </span><span id="line-15">
 </span><span id="line-16"><span class="kn">from</span><span class="w"> </span><span class="nn">..</span><span class="w"> </span><span class="kn">import</span> <span class="n">blinding</span><span class="p">,</span> <span class="n">io</span>
 </span><span id="line-17"><span class="kn">from</span><span class="w"> </span><span class="nn">..b_modes</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
@@ -373,7 +373,7 @@
 </span><span id="line-125"><span class="sd">        Catalog version identifiers to analyze. Appending '_leak_corr' to a base</span>
 </span><span id="line-126"><span class="sd">        version creates a virtual catalog using leakage-corrected ellipticity columns</span>
 </span><span id="line-127"><span class="sd">        (e1_col_corrected/e2_col_corrected) from the base version configuration.</span>
-</span><span id="line-128"><span class="sd">    catalog_config : str, default './cat_config.yaml'</span>
+</span><span id="line-128"><span class="sd">    catalog_config : str, default the repository's ``cosmo_val/cat_config.yaml``</span>
 </span><span id="line-129"><span class="sd">        Path to catalog configuration YAML defining survey metadata, file paths,</span>
 </span><span id="line-130"><span class="sd">        and analysis settings for each version.</span>
 </span><span id="line-131"><span class="sd">    output_dir : str, optional</span>
@@ -538,7 +538,7 @@
 </span><span id="line-284">    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
 </span><span id="line-285">        <span class="bp">self</span><span class="p">,</span>
 </span><span id="line-286">        <span class="n">versions</span><span class="p">,</span>
-</span><span id="line-287">        <span class="n">catalog_config</span><span class="o">=</span><span class="s2">"./cat_config.yaml"</span><span class="p">,</span>
+</span><span id="line-287">        <span class="n">catalog_config</span><span class="o">=</span><span class="n">blinding</span><span class="o">.</span><span class="n">REPO_CAT_CONFIG</span><span class="p">,</span>
 </span><span id="line-288">        <span class="n">output_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
 </span><span id="line-289">        <span class="n">rho_tau_method</span><span class="o">=</span><span class="s2">"lsq"</span><span class="p">,</span>
 </span><span id="line-290">        <span class="n">cov_estimate_method</span><span class="o">=</span><span class="s2">"th"</span><span class="p">,</span>
@@ -668,480 +668,484 @@
 </span><span id="line-414">                <span class="n">psf</span><span class="p">[</span><span class="s2">"mask_config"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span>
 </span><span id="line-415">                    <span class="bp">self</span><span class="o">.</span><span class="n">catalog_config_path</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="n">psf</span><span class="p">[</span><span class="s2">"mask_config"</span><span class="p">]</span>
 </span><span id="line-416">                <span class="p">)</span>
-</span><span id="line-417">
-</span><span id="line-418">        <span class="n">resolve_paths_for_version</span><span class="p">(</span><span class="s2">"nz"</span><span class="p">)</span>
-</span><span id="line-419">        <span class="n">processed</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"nz"</span><span class="p">}</span>
-</span><span id="line-420">        <span class="n">final_versions</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="line-421">        <span class="n">leak_suffix</span> <span class="o">=</span> <span class="s2">"_leak_corr"</span>
-</span><span id="line-422">
-</span><span id="line-423">        <span class="k">def</span><span class="w"> </span><span class="nf">ensure_version_exists</span><span class="p">(</span><span class="n">ver</span><span class="p">):</span>
-</span><span id="line-424">            <span class="k">if</span> <span class="n">ver</span> <span class="ow">in</span> <span class="n">processed</span><span class="p">:</span>
-</span><span id="line-425">                <span class="k">return</span>
+</span><span id="line-417">            <span class="c1"># Inputs on a vos: root are fetched now, those of this version only.</span>
+</span><span id="line-418">            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="line-419">                <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"subdir"</span><span class="p">,</span> <span class="s2">"blind"</span><span class="p">):</span>
+</span><span id="line-420">                    <span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">localise</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+</span><span id="line-421">
+</span><span id="line-422">        <span class="n">resolve_paths_for_version</span><span class="p">(</span><span class="s2">"nz"</span><span class="p">)</span>
+</span><span id="line-423">        <span class="n">processed</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"nz"</span><span class="p">}</span>
+</span><span id="line-424">        <span class="n">final_versions</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="line-425">        <span class="n">leak_suffix</span> <span class="o">=</span> <span class="s2">"_leak_corr"</span>
 </span><span id="line-426">
-</span><span id="line-427">            <span class="k">if</span> <span class="n">ver</span> <span class="ow">in</span> <span class="n">cc</span><span class="p">:</span>
-</span><span id="line-428">                <span class="n">resolve_paths_for_version</span><span class="p">(</span><span class="n">ver</span><span class="p">)</span>
-</span><span id="line-429">                <span class="n">processed</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">ver</span><span class="p">)</span>
-</span><span id="line-430">                <span class="k">return</span>
-</span><span id="line-431">
-</span><span id="line-432">            <span class="n">seed_base</span><span class="p">,</span> <span class="n">seed_label</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_split_seed_variant</span><span class="p">(</span><span class="n">ver</span><span class="p">)</span>
-</span><span id="line-433">
-</span><span id="line-434">            <span class="k">if</span> <span class="n">ver</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="n">leak_suffix</span><span class="p">):</span>
-</span><span id="line-435">                <span class="n">base_ver</span> <span class="o">=</span> <span class="n">ver</span><span class="p">[:</span> <span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="n">leak_suffix</span><span class="p">)]</span>
-</span><span id="line-436">                <span class="n">ensure_version_exists</span><span class="p">(</span><span class="n">base_ver</span><span class="p">)</span>
-</span><span id="line-437">                <span class="n">shear_cfg</span> <span class="o">=</span> <span class="n">cc</span><span class="p">[</span><span class="n">base_ver</span><span class="p">][</span><span class="s2">"shear"</span><span class="p">]</span>
-</span><span id="line-438">                <span class="k">if</span> <span class="p">(</span>
-</span><span id="line-439">                    <span class="s2">"e1_col_corrected"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">shear_cfg</span>
-</span><span id="line-440">                    <span class="ow">or</span> <span class="s2">"e2_col_corrected"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">shear_cfg</span>
-</span><span id="line-441">                <span class="p">):</span>
-</span><span id="line-442">                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-</span><span id="line-443">                        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">base_ver</span><span class="si">}</span><span class="s2"> does not have e1_col_corrected/e2_col_corrected "</span>
-</span><span id="line-444">                        <span class="sa">f</span><span class="s2">"fields; cannot create </span><span class="si">{</span><span class="n">ver</span><span class="si">}</span><span class="s2">"</span>
-</span><span id="line-445">                    <span class="p">)</span>
-</span><span id="line-446">                <span class="k">if</span> <span class="n">ver</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">cc</span><span class="p">:</span>
-</span><span id="line-447">                    <span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">cc</span><span class="p">[</span><span class="n">base_ver</span><span class="p">])</span>
-</span><span id="line-448">                    <span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">"shear"</span><span class="p">][</span><span class="s2">"e1_col"</span><span class="p">]</span> <span class="o">=</span> <span class="n">shear_cfg</span><span class="p">[</span><span class="s2">"e1_col_corrected"</span><span class="p">]</span>
-</span><span id="line-449">                    <span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">"shear"</span><span class="p">][</span><span class="s2">"e2_col"</span><span class="p">]</span> <span class="o">=</span> <span class="n">shear_cfg</span><span class="p">[</span><span class="s2">"e2_col_corrected"</span><span class="p">]</span>
-</span><span id="line-450">                <span class="n">resolve_paths_for_version</span><span class="p">(</span><span class="n">ver</span><span class="p">)</span>
-</span><span id="line-451">                <span class="n">processed</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">ver</span><span class="p">)</span>
-</span><span id="line-452">                <span class="k">return</span>
-</span><span id="line-453">
-</span><span id="line-454">            <span class="k">if</span> <span class="n">seed_base</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-455">                <span class="n">ensure_version_exists</span><span class="p">(</span><span class="n">seed_base</span><span class="p">)</span>
-</span><span id="line-456">                <span class="k">if</span> <span class="n">ver</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">cc</span><span class="p">:</span>
-</span><span id="line-457">                    <span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">cc</span><span class="p">[</span><span class="n">seed_base</span><span class="p">])</span>
-</span><span id="line-458">                    <span class="n">seed_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_materialize_seed_path</span><span class="p">(</span>
-</span><span id="line-459">                        <span class="n">cc</span><span class="p">[</span><span class="n">seed_base</span><span class="p">],</span>
-</span><span id="line-460">                        <span class="n">seed_label</span><span class="p">,</span>
-</span><span id="line-461">                        <span class="n">ver</span><span class="p">,</span>
-</span><span id="line-462">                        <span class="n">seed_base</span><span class="p">,</span>
-</span><span id="line-463">                        <span class="n">catalog_config</span><span class="p">,</span>
-</span><span id="line-464">                    <span class="p">)</span>
-</span><span id="line-465">                    <span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">"shear"</span><span class="p">][</span><span class="s2">"path"</span><span class="p">]</span> <span class="o">=</span> <span class="n">seed_path</span>
-</span><span id="line-466">                <span class="n">resolve_paths_for_version</span><span class="p">(</span><span class="n">ver</span><span class="p">)</span>
-</span><span id="line-467">                <span class="n">processed</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">ver</span><span class="p">)</span>
-</span><span id="line-468">                <span class="k">return</span>
-</span><span id="line-469">
-</span><span id="line-470">            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
-</span><span id="line-471">                <span class="sa">f</span><span class="s2">"Version string </span><span class="si">{</span><span class="n">ver</span><span class="si">}</span><span class="s2"> not found in config file </span><span class="si">{</span><span class="n">catalog_config</span><span class="si">}</span><span class="s2">"</span>
-</span><span id="line-472">            <span class="p">)</span>
+</span><span id="line-427">        <span class="k">def</span><span class="w"> </span><span class="nf">ensure_version_exists</span><span class="p">(</span><span class="n">ver</span><span class="p">):</span>
+</span><span id="line-428">            <span class="k">if</span> <span class="n">ver</span> <span class="ow">in</span> <span class="n">processed</span><span class="p">:</span>
+</span><span id="line-429">                <span class="k">return</span>
+</span><span id="line-430">
+</span><span id="line-431">            <span class="k">if</span> <span class="n">ver</span> <span class="ow">in</span> <span class="n">cc</span><span class="p">:</span>
+</span><span id="line-432">                <span class="n">resolve_paths_for_version</span><span class="p">(</span><span class="n">ver</span><span class="p">)</span>
+</span><span id="line-433">                <span class="n">processed</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">ver</span><span class="p">)</span>
+</span><span id="line-434">                <span class="k">return</span>
+</span><span id="line-435">
+</span><span id="line-436">            <span class="n">seed_base</span><span class="p">,</span> <span class="n">seed_label</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_split_seed_variant</span><span class="p">(</span><span class="n">ver</span><span class="p">)</span>
+</span><span id="line-437">
+</span><span id="line-438">            <span class="k">if</span> <span class="n">ver</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="n">leak_suffix</span><span class="p">):</span>
+</span><span id="line-439">                <span class="n">base_ver</span> <span class="o">=</span> <span class="n">ver</span><span class="p">[:</span> <span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="n">leak_suffix</span><span class="p">)]</span>
+</span><span id="line-440">                <span class="n">ensure_version_exists</span><span class="p">(</span><span class="n">base_ver</span><span class="p">)</span>
+</span><span id="line-441">                <span class="n">shear_cfg</span> <span class="o">=</span> <span class="n">cc</span><span class="p">[</span><span class="n">base_ver</span><span class="p">][</span><span class="s2">"shear"</span><span class="p">]</span>
+</span><span id="line-442">                <span class="k">if</span> <span class="p">(</span>
+</span><span id="line-443">                    <span class="s2">"e1_col_corrected"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">shear_cfg</span>
+</span><span id="line-444">                    <span class="ow">or</span> <span class="s2">"e2_col_corrected"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">shear_cfg</span>
+</span><span id="line-445">                <span class="p">):</span>
+</span><span id="line-446">                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-447">                        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">base_ver</span><span class="si">}</span><span class="s2"> does not have e1_col_corrected/e2_col_corrected "</span>
+</span><span id="line-448">                        <span class="sa">f</span><span class="s2">"fields; cannot create </span><span class="si">{</span><span class="n">ver</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-449">                    <span class="p">)</span>
+</span><span id="line-450">                <span class="k">if</span> <span class="n">ver</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">cc</span><span class="p">:</span>
+</span><span id="line-451">                    <span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">cc</span><span class="p">[</span><span class="n">base_ver</span><span class="p">])</span>
+</span><span id="line-452">                    <span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">"shear"</span><span class="p">][</span><span class="s2">"e1_col"</span><span class="p">]</span> <span class="o">=</span> <span class="n">shear_cfg</span><span class="p">[</span><span class="s2">"e1_col_corrected"</span><span class="p">]</span>
+</span><span id="line-453">                    <span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">"shear"</span><span class="p">][</span><span class="s2">"e2_col"</span><span class="p">]</span> <span class="o">=</span> <span class="n">shear_cfg</span><span class="p">[</span><span class="s2">"e2_col_corrected"</span><span class="p">]</span>
+</span><span id="line-454">                <span class="n">resolve_paths_for_version</span><span class="p">(</span><span class="n">ver</span><span class="p">)</span>
+</span><span id="line-455">                <span class="n">processed</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">ver</span><span class="p">)</span>
+</span><span id="line-456">                <span class="k">return</span>
+</span><span id="line-457">
+</span><span id="line-458">            <span class="k">if</span> <span class="n">seed_base</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-459">                <span class="n">ensure_version_exists</span><span class="p">(</span><span class="n">seed_base</span><span class="p">)</span>
+</span><span id="line-460">                <span class="k">if</span> <span class="n">ver</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">cc</span><span class="p">:</span>
+</span><span id="line-461">                    <span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">cc</span><span class="p">[</span><span class="n">seed_base</span><span class="p">])</span>
+</span><span id="line-462">                    <span class="n">seed_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_materialize_seed_path</span><span class="p">(</span>
+</span><span id="line-463">                        <span class="n">cc</span><span class="p">[</span><span class="n">seed_base</span><span class="p">],</span>
+</span><span id="line-464">                        <span class="n">seed_label</span><span class="p">,</span>
+</span><span id="line-465">                        <span class="n">ver</span><span class="p">,</span>
+</span><span id="line-466">                        <span class="n">seed_base</span><span class="p">,</span>
+</span><span id="line-467">                        <span class="n">catalog_config</span><span class="p">,</span>
+</span><span id="line-468">                    <span class="p">)</span>
+</span><span id="line-469">                    <span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">"shear"</span><span class="p">][</span><span class="s2">"path"</span><span class="p">]</span> <span class="o">=</span> <span class="n">seed_path</span>
+</span><span id="line-470">                <span class="n">resolve_paths_for_version</span><span class="p">(</span><span class="n">ver</span><span class="p">)</span>
+</span><span id="line-471">                <span class="n">processed</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">ver</span><span class="p">)</span>
+</span><span id="line-472">                <span class="k">return</span>
 </span><span id="line-473">
-</span><span id="line-474">        <span class="k">for</span> <span class="n">ver</span> <span class="ow">in</span> <span class="n">versions</span><span class="p">:</span>
-</span><span id="line-475">            <span class="n">ensure_version_exists</span><span class="p">(</span><span class="n">ver</span><span class="p">)</span>
-</span><span id="line-476">            <span class="n">final_versions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ver</span><span class="p">)</span>
+</span><span id="line-474">            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
+</span><span id="line-475">                <span class="sa">f</span><span class="s2">"Version string </span><span class="si">{</span><span class="n">ver</span><span class="si">}</span><span class="s2"> not found in config file </span><span class="si">{</span><span class="n">catalog_config</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-476">            <span class="p">)</span>
 </span><span id="line-477">
-</span><span id="line-478">        <span class="bp">self</span><span class="o">.</span><span class="n">versions</span> <span class="o">=</span> <span class="n">final_versions</span>
-</span><span id="line-479">
-</span><span id="line-480">        <span class="k">if</span> <span class="n">output_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-481">            <span class="n">cc</span><span class="p">[</span><span class="s2">"paths"</span><span class="p">][</span><span class="s2">"output"</span><span class="p">]</span> <span class="o">=</span> <span class="n">output_dir</span>
-</span><span id="line-482">
-</span><span id="line-483">        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">cc</span><span class="p">[</span><span class="s2">"paths"</span><span class="p">][</span><span class="s2">"output"</span><span class="p">],</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="line-484">
-</span><span id="line-485">        <span class="c1"># B-mode results storage for summarize_bmodes()</span>
-</span><span id="line-486">        <span class="bp">self</span><span class="o">.</span><span class="n">_pure_eb_results</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="line-487">        <span class="bp">self</span><span class="o">.</span><span class="n">_cosebis_results</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="line-488">        <span class="c1"># The sealed ξ± parts calculate_2pcf_version made, by (version, grid):</span>
-</span><span id="line-489">        <span class="c1"># the ("all", "all") pair, and every tomographic bin pair.</span>
-</span><span id="line-490">        <span class="bp">self</span><span class="o">.</span><span class="n">xi_parts</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="line-491">        <span class="bp">self</span><span class="o">.</span><span class="n">xi_tomo_parts</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="line-492">
+</span><span id="line-478">        <span class="k">for</span> <span class="n">ver</span> <span class="ow">in</span> <span class="n">versions</span><span class="p">:</span>
+</span><span id="line-479">            <span class="n">ensure_version_exists</span><span class="p">(</span><span class="n">ver</span><span class="p">)</span>
+</span><span id="line-480">            <span class="n">final_versions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ver</span><span class="p">)</span>
+</span><span id="line-481">
+</span><span id="line-482">        <span class="bp">self</span><span class="o">.</span><span class="n">versions</span> <span class="o">=</span> <span class="n">final_versions</span>
+</span><span id="line-483">
+</span><span id="line-484">        <span class="k">if</span> <span class="n">output_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-485">            <span class="n">cc</span><span class="p">[</span><span class="s2">"paths"</span><span class="p">][</span><span class="s2">"output"</span><span class="p">]</span> <span class="o">=</span> <span class="n">output_dir</span>
+</span><span id="line-486">
+</span><span id="line-487">        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">cc</span><span class="p">[</span><span class="s2">"paths"</span><span class="p">][</span><span class="s2">"output"</span><span class="p">],</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-488">
+</span><span id="line-489">        <span class="c1"># B-mode results storage for summarize_bmodes()</span>
+</span><span id="line-490">        <span class="bp">self</span><span class="o">.</span><span class="n">_pure_eb_results</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-491">        <span class="bp">self</span><span class="o">.</span><span class="n">_cosebis_results</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-492">        <span class="c1"># The sealed ξ± parts calculate_2pcf_version made, by (version, grid):</span>
+</span><span id="line-493">        <span class="c1"># the ("all", "all") pair, and every tomographic bin pair.</span>
+</span><span id="line-494">        <span class="bp">self</span><span class="o">.</span><span class="n">xi_parts</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-495">        <span class="bp">self</span><span class="o">.</span><span class="n">xi_tomo_parts</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-496">
 <div class="viewcode-block" id="CosmologyValidation._output_path">
 <a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation._output_path">[docs]</a>
-</span><span id="line-493">    <span class="k">def</span><span class="w"> </span><span class="nf">_output_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">parts</span><span class="p">):</span>
-</span><span id="line-494"><span class="w">        </span><span class="sd">"""Absolute path under the catalog config's output directory.</span>
-</span><span id="line-495">
-</span><span id="line-496"><span class="sd">        Joins ``*parts`` onto ``self.cc["paths"]["output"]`` and absolutises</span>
-</span><span id="line-497"><span class="sd">        the result, mirroring the ``os.path.abspath(f"{output}/...")`` pattern</span>
-</span><span id="line-498"><span class="sd">        used throughout the mixins. A single ``parts`` string may contain</span>
-</span><span id="line-499"><span class="sd">        ``/`` separators.</span>
-</span><span id="line-500"><span class="sd">        """</span>
-</span><span id="line-501">        <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="s2">"paths"</span><span class="p">][</span><span class="s2">"output"</span><span class="p">],</span> <span class="o">*</span><span class="n">parts</span><span class="p">))</span></div>
+</span><span id="line-497">    <span class="k">def</span><span class="w"> </span><span class="nf">_output_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">parts</span><span class="p">):</span>
+</span><span id="line-498"><span class="w">        </span><span class="sd">"""Absolute path under the catalog config's output directory.</span>
+</span><span id="line-499">
+</span><span id="line-500"><span class="sd">        Joins ``*parts`` onto ``self.cc["paths"]["output"]`` and absolutises</span>
+</span><span id="line-501"><span class="sd">        the result, mirroring the ``os.path.abspath(f"{output}/...")`` pattern</span>
+</span><span id="line-502"><span class="sd">        used throughout the mixins. A single ``parts`` string may contain</span>
+</span><span id="line-503"><span class="sd">        ``/`` separators.</span>
+</span><span id="line-504"><span class="sd">        """</span>
+</span><span id="line-505">        <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="s2">"paths"</span><span class="p">][</span><span class="s2">"output"</span><span class="p">],</span> <span class="o">*</span><span class="n">parts</span><span class="p">))</span></div>
 
-</span><span id="line-502">
+</span><span id="line-506">
 <div class="viewcode-block" id="CosmologyValidation.sacc_nz">
 <a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation.sacc_nz">[docs]</a>
-</span><span id="line-503">    <span class="k">def</span><span class="w"> </span><span class="nf">sacc_nz</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">version</span><span class="p">,</span> <span class="n">tomography</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-</span><span id="line-504"><span class="w">        </span><span class="sd">"""``nz`` mapping ``{i: (z, nz_i)}`` for the SACC writers.</span>
-</span><span id="line-505">
-</span><span id="line-506"><span class="sd">        Non-tomographic parts carry the ("all", "all") pair only, so the</span>
-</span><span id="line-507"><span class="sd">        whole-survey n(z) of :meth:`get_redshift` is bin 0. With</span>
-</span><span id="line-508"><span class="sd">        ``tomography``, bin ``i`` is column ``i + 1`` of the ``redshift_path``</span>
-</span><span id="line-509"><span class="sd">        file (column 0 is z), one per tomographic bin.</span>
-</span><span id="line-510"><span class="sd">        """</span>
-</span><span id="line-511">        <span class="k">if</span> <span class="ow">not</span> <span class="n">tomography</span><span class="p">:</span>
-</span><span id="line-512">            <span class="k">return</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_redshift</span><span class="p">(</span><span class="n">version</span><span class="p">))}</span>
-</span><span id="line-513">        <span class="n">z</span><span class="p">,</span> <span class="n">dndz</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_redshift_distribution</span><span class="p">(</span><span class="n">version</span><span class="p">,</span> <span class="n">is_tomography</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="line-514">        <span class="k">return</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">dndz</span><span class="p">[:,</span> <span class="n">i</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">dndz</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])}</span></div>
+</span><span id="line-507">    <span class="k">def</span><span class="w"> </span><span class="nf">sacc_nz</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">version</span><span class="p">,</span> <span class="n">tomography</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+</span><span id="line-508"><span class="w">        </span><span class="sd">"""``nz`` mapping ``{i: (z, nz_i)}`` for the SACC writers.</span>
+</span><span id="line-509">
+</span><span id="line-510"><span class="sd">        Non-tomographic parts carry the ("all", "all") pair only, so the</span>
+</span><span id="line-511"><span class="sd">        whole-survey n(z) of :meth:`get_redshift` is bin 0. With</span>
+</span><span id="line-512"><span class="sd">        ``tomography``, bin ``i`` is column ``i + 1`` of the ``redshift_path``</span>
+</span><span id="line-513"><span class="sd">        file (column 0 is z), one per tomographic bin.</span>
+</span><span id="line-514"><span class="sd">        """</span>
+</span><span id="line-515">        <span class="k">if</span> <span class="ow">not</span> <span class="n">tomography</span><span class="p">:</span>
+</span><span id="line-516">            <span class="k">return</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_redshift</span><span class="p">(</span><span class="n">version</span><span class="p">))}</span>
+</span><span id="line-517">        <span class="n">z</span><span class="p">,</span> <span class="n">dndz</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_redshift_distribution</span><span class="p">(</span><span class="n">version</span><span class="p">,</span> <span class="n">is_tomography</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-518">        <span class="k">return</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">dndz</span><span class="p">[:,</span> <span class="n">i</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">dndz</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])}</span></div>
 
-</span><span id="line-515">
+</span><span id="line-519">
 <div class="viewcode-block" id="CosmologyValidation.sacc_metadata">
 <a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation.sacc_metadata">[docs]</a>
-</span><span id="line-516">    <span class="k">def</span><span class="w"> </span><span class="nf">sacc_metadata</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">version</span><span class="p">):</span>
-</span><span id="line-517"><span class="w">        </span><span class="sd">"""Provenance metadata stored on every SACC part for ``version``."""</span>
-</span><span id="line-518">        <span class="k">return</span> <span class="p">{</span>
-</span><span id="line-519">            <span class="s2">"catalogue_version"</span><span class="p">:</span> <span class="n">version</span><span class="p">,</span>
-</span><span id="line-520">            <span class="s2">"sp_validation_version"</span><span class="p">:</span> <span class="n">__version__</span><span class="p">,</span>
-</span><span id="line-521">            <span class="s2">"npatch"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">npatch</span><span class="p">,</span>
-</span><span id="line-522">        <span class="p">}</span></div>
+</span><span id="line-520">    <span class="k">def</span><span class="w"> </span><span class="nf">sacc_metadata</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">version</span><span class="p">):</span>
+</span><span id="line-521"><span class="w">        </span><span class="sd">"""Provenance metadata stored on every SACC part for ``version``."""</span>
+</span><span id="line-522">        <span class="k">return</span> <span class="p">{</span>
+</span><span id="line-523">            <span class="s2">"catalogue_version"</span><span class="p">:</span> <span class="n">version</span><span class="p">,</span>
+</span><span id="line-524">            <span class="s2">"sp_validation_version"</span><span class="p">:</span> <span class="n">__version__</span><span class="p">,</span>
+</span><span id="line-525">            <span class="s2">"npatch"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">npatch</span><span class="p">,</span>
+</span><span id="line-526">        <span class="p">}</span></div>
 
-</span><span id="line-523">
+</span><span id="line-527">
 <div class="viewcode-block" id="CosmologyValidation.get_redshift">
 <a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation.get_redshift">[docs]</a>
-</span><span id="line-524">    <span class="k">def</span><span class="w"> </span><span class="nf">get_redshift</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">version</span><span class="p">):</span>
-</span><span id="line-525"><span class="w">        </span><span class="sd">"""Load the whole-survey redshift distribution of a catalog version.</span>
-</span><span id="line-526">
-</span><span id="line-527"><span class="sd">        The ``redshift_path`` file holds z in column 0 and one n(z) column per</span>
-</span><span id="line-528"><span class="sd">        tomographic bin (a single column for a non-tomographic version); the</span>
-</span><span id="line-529"><span class="sd">        whole-survey n(z) is their sum, as</span>
-</span><span id="line-530"><span class="sd">        ``read_redshift_distribution(version, is_tomography=False)`` returns it.</span>
-</span><span id="line-531">
-</span><span id="line-532"><span class="sd">        Parameters</span>
-</span><span id="line-533"><span class="sd">        ----------</span>
-</span><span id="line-534"><span class="sd">        version : str</span>
-</span><span id="line-535"><span class="sd">            Catalog version identifier</span>
-</span><span id="line-536">
-</span><span id="line-537"><span class="sd">        Returns</span>
-</span><span id="line-538"><span class="sd">        -------</span>
-</span><span id="line-539"><span class="sd">        z : ndarray</span>
-</span><span id="line-540"><span class="sd">            Redshift values</span>
-</span><span id="line-541"><span class="sd">        nz : ndarray</span>
-</span><span id="line-542"><span class="sd">            n(z) probability density</span>
-</span><span id="line-543"><span class="sd">        """</span>
-</span><span id="line-544">        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_redshift_distribution</span><span class="p">(</span><span class="n">version</span><span class="p">,</span> <span class="n">is_tomography</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
-
-</span><span id="line-545">
-<div class="viewcode-block" id="CosmologyValidation._write_catalog_config">
-<a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation._write_catalog_config">[docs]</a>
-</span><span id="line-546">    <span class="k">def</span><span class="w"> </span><span class="nf">_write_catalog_config</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-</span><span id="line-547">        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">catalog_config_path</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">"w"</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
-</span><span id="line-548">            <span class="n">yaml</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">,</span> <span class="n">file</span><span class="p">,</span> <span class="n">sort_keys</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
+</span><span id="line-528">    <span class="k">def</span><span class="w"> </span><span class="nf">get_redshift</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">version</span><span class="p">):</span>
+</span><span id="line-529"><span class="w">        </span><span class="sd">"""Load the whole-survey redshift distribution of a catalog version.</span>
+</span><span id="line-530">
+</span><span id="line-531"><span class="sd">        The ``redshift_path`` file holds z in column 0 and one n(z) column per</span>
+</span><span id="line-532"><span class="sd">        tomographic bin (a single column for a non-tomographic version); the</span>
+</span><span id="line-533"><span class="sd">        whole-survey n(z) is their sum, as</span>
+</span><span id="line-534"><span class="sd">        ``read_redshift_distribution(version, is_tomography=False)`` returns it.</span>
+</span><span id="line-535">
+</span><span id="line-536"><span class="sd">        Parameters</span>
+</span><span id="line-537"><span class="sd">        ----------</span>
+</span><span id="line-538"><span class="sd">        version : str</span>
+</span><span id="line-539"><span class="sd">            Catalog version identifier</span>
+</span><span id="line-540">
+</span><span id="line-541"><span class="sd">        Returns</span>
+</span><span id="line-542"><span class="sd">        -------</span>
+</span><span id="line-543"><span class="sd">        z : ndarray</span>
+</span><span id="line-544"><span class="sd">            Redshift values</span>
+</span><span id="line-545"><span class="sd">        nz : ndarray</span>
+</span><span id="line-546"><span class="sd">            n(z) probability density</span>
+</span><span id="line-547"><span class="sd">        """</span>
+</span><span id="line-548">        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_redshift_distribution</span><span class="p">(</span><span class="n">version</span><span class="p">,</span> <span class="n">is_tomography</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
 
 </span><span id="line-549">
+<div class="viewcode-block" id="CosmologyValidation._write_catalog_config">
+<a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation._write_catalog_config">[docs]</a>
+</span><span id="line-550">    <span class="k">def</span><span class="w"> </span><span class="nf">_write_catalog_config</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="line-551">        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">catalog_config_path</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">"w"</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+</span><span id="line-552">            <span class="n">yaml</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">,</span> <span class="n">file</span><span class="p">,</span> <span class="n">sort_keys</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
+
+</span><span id="line-553">
 <div class="viewcode-block" id="CosmologyValidation.color_reset">
 <a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation.color_reset">[docs]</a>
-</span><span id="line-550">    <span class="k">def</span><span class="w"> </span><span class="nf">color_reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-</span><span id="line-551">        <span class="nb">print</span><span class="p">(</span><span class="n">colorama</span><span class="o">.</span><span class="n">Fore</span><span class="o">.</span><span class="n">BLACK</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">""</span><span class="p">)</span></div>
+</span><span id="line-554">    <span class="k">def</span><span class="w"> </span><span class="nf">color_reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="line-555">        <span class="nb">print</span><span class="p">(</span><span class="n">colorama</span><span class="o">.</span><span class="n">Fore</span><span class="o">.</span><span class="n">BLACK</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">""</span><span class="p">)</span></div>
 
-</span><span id="line-552">
+</span><span id="line-556">
 <div class="viewcode-block" id="CosmologyValidation._cprint">
 <a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation._cprint">[docs]</a>
-</span><span id="line-553">    <span class="k">def</span><span class="w"> </span><span class="nf">_cprint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">color</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">):</span>
-</span><span id="line-554"><span class="w">        </span><span class="sd">"""Print ``msg`` in ``color``, then restore the default foreground."""</span>
-</span><span id="line-555">        <span class="nb">print</span><span class="p">(</span><span class="n">color</span> <span class="o">+</span> <span class="n">msg</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="n">end</span><span class="p">)</span>
-</span><span id="line-556">        <span class="bp">self</span><span class="o">.</span><span class="n">color_reset</span><span class="p">()</span></div>
+</span><span id="line-557">    <span class="k">def</span><span class="w"> </span><span class="nf">_cprint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">color</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">):</span>
+</span><span id="line-558"><span class="w">        </span><span class="sd">"""Print ``msg`` in ``color``, then restore the default foreground."""</span>
+</span><span id="line-559">        <span class="nb">print</span><span class="p">(</span><span class="n">color</span> <span class="o">+</span> <span class="n">msg</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="n">end</span><span class="p">)</span>
+</span><span id="line-560">        <span class="bp">self</span><span class="o">.</span><span class="n">color_reset</span><span class="p">()</span></div>
 
-</span><span id="line-557">
+</span><span id="line-561">
 <div class="viewcode-block" id="CosmologyValidation.print_blue">
 <a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation.print_blue">[docs]</a>
-</span><span id="line-558">    <span class="k">def</span><span class="w"> </span><span class="nf">print_blue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">):</span>
-</span><span id="line-559">        <span class="bp">self</span><span class="o">.</span><span class="n">_cprint</span><span class="p">(</span><span class="n">colorama</span><span class="o">.</span><span class="n">Fore</span><span class="o">.</span><span class="n">BLUE</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="n">end</span><span class="p">)</span></div>
-
-</span><span id="line-560">
-<div class="viewcode-block" id="CosmologyValidation.print_start">
-<a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation.print_start">[docs]</a>
-</span><span id="line-561">    <span class="k">def</span><span class="w"> </span><span class="nf">print_start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">):</span>
-</span><span id="line-562">        <span class="nb">print</span><span class="p">()</span>
-</span><span id="line-563">        <span class="bp">self</span><span class="o">.</span><span class="n">print_blue</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="n">end</span><span class="p">)</span></div>
+</span><span id="line-562">    <span class="k">def</span><span class="w"> </span><span class="nf">print_blue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">):</span>
+</span><span id="line-563">        <span class="bp">self</span><span class="o">.</span><span class="n">_cprint</span><span class="p">(</span><span class="n">colorama</span><span class="o">.</span><span class="n">Fore</span><span class="o">.</span><span class="n">BLUE</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="n">end</span><span class="p">)</span></div>
 
 </span><span id="line-564">
+<div class="viewcode-block" id="CosmologyValidation.print_start">
+<a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation.print_start">[docs]</a>
+</span><span id="line-565">    <span class="k">def</span><span class="w"> </span><span class="nf">print_start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">):</span>
+</span><span id="line-566">        <span class="nb">print</span><span class="p">()</span>
+</span><span id="line-567">        <span class="bp">self</span><span class="o">.</span><span class="n">print_blue</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="n">end</span><span class="p">)</span></div>
+
+</span><span id="line-568">
 <div class="viewcode-block" id="CosmologyValidation.print_done">
 <a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation.print_done">[docs]</a>
-</span><span id="line-565">    <span class="k">def</span><span class="w"> </span><span class="nf">print_done</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
-</span><span id="line-566">        <span class="bp">self</span><span class="o">.</span><span class="n">print_blue</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span></div>
+</span><span id="line-569">    <span class="k">def</span><span class="w"> </span><span class="nf">print_done</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+</span><span id="line-570">        <span class="bp">self</span><span class="o">.</span><span class="n">print_blue</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span></div>
 
-</span><span id="line-567">
+</span><span id="line-571">
 <div class="viewcode-block" id="CosmologyValidation.print_magenta">
 <a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation.print_magenta">[docs]</a>
-</span><span id="line-568">    <span class="k">def</span><span class="w"> </span><span class="nf">print_magenta</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
-</span><span id="line-569">        <span class="bp">self</span><span class="o">.</span><span class="n">_cprint</span><span class="p">(</span><span class="n">colorama</span><span class="o">.</span><span class="n">Fore</span><span class="o">.</span><span class="n">MAGENTA</span><span class="p">,</span> <span class="n">msg</span><span class="p">)</span></div>
+</span><span id="line-572">    <span class="k">def</span><span class="w"> </span><span class="nf">print_magenta</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+</span><span id="line-573">        <span class="bp">self</span><span class="o">.</span><span class="n">_cprint</span><span class="p">(</span><span class="n">colorama</span><span class="o">.</span><span class="n">Fore</span><span class="o">.</span><span class="n">MAGENTA</span><span class="p">,</span> <span class="n">msg</span><span class="p">)</span></div>
 
-</span><span id="line-570">
+</span><span id="line-574">
 <div class="viewcode-block" id="CosmologyValidation.print_green">
 <a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation.print_green">[docs]</a>
-</span><span id="line-571">    <span class="k">def</span><span class="w"> </span><span class="nf">print_green</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
-</span><span id="line-572">        <span class="bp">self</span><span class="o">.</span><span class="n">_cprint</span><span class="p">(</span><span class="n">colorama</span><span class="o">.</span><span class="n">Fore</span><span class="o">.</span><span class="n">GREEN</span><span class="p">,</span> <span class="n">msg</span><span class="p">)</span></div>
+</span><span id="line-575">    <span class="k">def</span><span class="w"> </span><span class="nf">print_green</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+</span><span id="line-576">        <span class="bp">self</span><span class="o">.</span><span class="n">_cprint</span><span class="p">(</span><span class="n">colorama</span><span class="o">.</span><span class="n">Fore</span><span class="o">.</span><span class="n">GREEN</span><span class="p">,</span> <span class="n">msg</span><span class="p">)</span></div>
 
-</span><span id="line-573">
+</span><span id="line-577">
 <div class="viewcode-block" id="CosmologyValidation.print_cyan">
 <a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation.print_cyan">[docs]</a>
-</span><span id="line-574">    <span class="k">def</span><span class="w"> </span><span class="nf">print_cyan</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
-</span><span id="line-575">        <span class="bp">self</span><span class="o">.</span><span class="n">_cprint</span><span class="p">(</span><span class="n">colorama</span><span class="o">.</span><span class="n">Fore</span><span class="o">.</span><span class="n">CYAN</span><span class="p">,</span> <span class="n">msg</span><span class="p">)</span></div>
+</span><span id="line-578">    <span class="k">def</span><span class="w"> </span><span class="nf">print_cyan</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+</span><span id="line-579">        <span class="bp">self</span><span class="o">.</span><span class="n">_cprint</span><span class="p">(</span><span class="n">colorama</span><span class="o">.</span><span class="n">Fore</span><span class="o">.</span><span class="n">CYAN</span><span class="p">,</span> <span class="n">msg</span><span class="p">)</span></div>
 
-</span><span id="line-576">
+</span><span id="line-580">
 <div class="viewcode-block" id="CosmologyValidation.init_results">
 <a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation.init_results">[docs]</a>
-</span><span id="line-577">    <span class="k">def</span><span class="w"> </span><span class="nf">init_results</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">objectwise</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-</span><span id="line-578">        <span class="c1"># Branch is loop-invariant: pick the leakage class and its parameter</span>
-</span><span id="line-579">        <span class="c1"># builder once, then apply per version.</span>
-</span><span id="line-580">        <span class="n">make_leakage</span><span class="p">,</span> <span class="n">set_params</span> <span class="o">=</span> <span class="p">(</span>
-</span><span id="line-581">            <span class="p">(</span><span class="n">_LeakageObject</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">set_params_leakage_object</span><span class="p">)</span>
-</span><span id="line-582">            <span class="k">if</span> <span class="n">objectwise</span>
-</span><span id="line-583">            <span class="k">else</span> <span class="p">(</span><span class="n">_LeakageScale</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">set_params_leakage_scale</span><span class="p">)</span>
-</span><span id="line-584">        <span class="p">)</span>
-</span><span id="line-585">
-</span><span id="line-586">        <span class="n">results</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="line-587">        <span class="k">for</span> <span class="n">ver</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">versions</span><span class="p">:</span>
-</span><span id="line-588">            <span class="n">obj</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span> <span class="o">=</span> <span class="n">make_leakage</span><span class="p">()</span>
-</span><span id="line-589">            <span class="n">obj</span><span class="o">.</span><span class="n">entries</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span>
-</span><span id="line-590">            <span class="n">obj</span><span class="o">.</span><span class="n">_params</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">set_params</span><span class="p">(</span><span class="n">ver</span><span class="p">))</span>
-</span><span id="line-591">            <span class="n">obj</span><span class="o">.</span><span class="n">check_params</span><span class="p">()</span>
-</span><span id="line-592">            <span class="n">obj</span><span class="o">.</span><span class="n">prepare_output</span><span class="p">()</span>
-</span><span id="line-593">
-</span><span id="line-594">        <span class="k">return</span> <span class="n">results</span></div>
+</span><span id="line-581">    <span class="k">def</span><span class="w"> </span><span class="nf">init_results</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">objectwise</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+</span><span id="line-582">        <span class="c1"># Branch is loop-invariant: pick the leakage class and its parameter</span>
+</span><span id="line-583">        <span class="c1"># builder once, then apply per version.</span>
+</span><span id="line-584">        <span class="n">make_leakage</span><span class="p">,</span> <span class="n">set_params</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="line-585">            <span class="p">(</span><span class="n">_LeakageObject</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">set_params_leakage_object</span><span class="p">)</span>
+</span><span id="line-586">            <span class="k">if</span> <span class="n">objectwise</span>
+</span><span id="line-587">            <span class="k">else</span> <span class="p">(</span><span class="n">_LeakageScale</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">set_params_leakage_scale</span><span class="p">)</span>
+</span><span id="line-588">        <span class="p">)</span>
+</span><span id="line-589">
+</span><span id="line-590">        <span class="n">results</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-591">        <span class="k">for</span> <span class="n">ver</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">versions</span><span class="p">:</span>
+</span><span id="line-592">            <span class="n">obj</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span> <span class="o">=</span> <span class="n">make_leakage</span><span class="p">()</span>
+</span><span id="line-593">            <span class="n">obj</span><span class="o">.</span><span class="n">entries</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span>
+</span><span id="line-594">            <span class="n">obj</span><span class="o">.</span><span class="n">_params</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">set_params</span><span class="p">(</span><span class="n">ver</span><span class="p">))</span>
+</span><span id="line-595">            <span class="n">obj</span><span class="o">.</span><span class="n">check_params</span><span class="p">()</span>
+</span><span id="line-596">            <span class="n">obj</span><span class="o">.</span><span class="n">prepare_output</span><span class="p">()</span>
+</span><span id="line-597">
+</span><span id="line-598">        <span class="k">return</span> <span class="n">results</span></div>
 
-</span><span id="line-595">
-</span><span id="line-596">    <span class="nd">@property</span>
-</span><span id="line-597">    <span class="k">def</span><span class="w"> </span><span class="nf">results</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-</span><span id="line-598">        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"_results"</span><span class="p">):</span>
-</span><span id="line-599">            <span class="bp">self</span><span class="o">.</span><span class="n">_results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_results</span><span class="p">(</span><span class="n">objectwise</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-</span><span id="line-600">        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_results</span>
-</span><span id="line-601">
-</span><span id="line-602">    <span class="nd">@property</span>
-</span><span id="line-603">    <span class="k">def</span><span class="w"> </span><span class="nf">results_objectwise</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-</span><span id="line-604">        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"_results_objectwise"</span><span class="p">):</span>
-</span><span id="line-605">            <span class="bp">self</span><span class="o">.</span><span class="n">_results_objectwise</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_results</span><span class="p">(</span><span class="n">objectwise</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="line-606">        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_results_objectwise</span>
-</span><span id="line-607">
+</span><span id="line-599">
+</span><span id="line-600">    <span class="nd">@property</span>
+</span><span id="line-601">    <span class="k">def</span><span class="w"> </span><span class="nf">results</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="line-602">        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"_results"</span><span class="p">):</span>
+</span><span id="line-603">            <span class="bp">self</span><span class="o">.</span><span class="n">_results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_results</span><span class="p">(</span><span class="n">objectwise</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</span><span id="line-604">        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_results</span>
+</span><span id="line-605">
+</span><span id="line-606">    <span class="nd">@property</span>
+</span><span id="line-607">    <span class="k">def</span><span class="w"> </span><span class="nf">results_objectwise</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="line-608">        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"_results_objectwise"</span><span class="p">):</span>
+</span><span id="line-609">            <span class="bp">self</span><span class="o">.</span><span class="n">_results_objectwise</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_results</span><span class="p">(</span><span class="n">objectwise</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-610">        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_results_objectwise</span>
+</span><span id="line-611">
 <div class="viewcode-block" id="CosmologyValidation.blind">
 <a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation.blind">[docs]</a>
-</span><span id="line-608">    <span class="k">def</span><span class="w"> </span><span class="nf">blind</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">version</span><span class="p">):</span>
-</span><span id="line-609"><span class="w">        </span><span class="sd">"""The blind every SACC this object writes for ``version`` is saved</span>
-</span><span id="line-610"><span class="sd">        under, as the catalogue config declares it."""</span>
-</span><span id="line-611">        <span class="n">entry</span> <span class="o">=</span> <span class="n">version</span>
-</span><span id="line-612">        <span class="k">while</span> <span class="n">entry</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config_as_read</span><span class="p">:</span>
-</span><span id="line-613">            <span class="n">base</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">"_leak_corr$"</span><span class="p">,</span> <span class="s2">""</span><span class="p">,</span> <span class="n">entry</span><span class="p">)</span>
-</span><span id="line-614">            <span class="k">if</span> <span class="n">base</span> <span class="o">==</span> <span class="n">entry</span><span class="p">:</span>
-</span><span id="line-615">                <span class="n">base</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_split_seed_variant</span><span class="p">(</span><span class="n">entry</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">or</span> <span class="n">entry</span>
-</span><span id="line-616">            <span class="k">if</span> <span class="n">base</span> <span class="o">==</span> <span class="n">entry</span><span class="p">:</span>
-</span><span id="line-617">                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"no catalogue </span><span class="si">{</span><span class="n">version</span><span class="si">}</span><span class="s2"> in the catalogue config"</span><span class="p">)</span>
-</span><span id="line-618">            <span class="n">entry</span> <span class="o">=</span> <span class="n">base</span>
-</span><span id="line-619">        <span class="n">catalogues</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config_as_read</span>
-</span><span id="line-620">        <span class="k">return</span> <span class="n">blinding</span><span class="o">.</span><span class="n">open_blind</span><span class="p">(</span><span class="n">blinding</span><span class="o">.</span><span class="n">blind_of</span><span class="p">(</span><span class="n">catalogues</span><span class="p">,</span> <span class="n">entry</span><span class="p">),</span> <span class="n">catalogues</span><span class="p">)</span></div>
+</span><span id="line-612">    <span class="k">def</span><span class="w"> </span><span class="nf">blind</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">version</span><span class="p">):</span>
+</span><span id="line-613"><span class="w">        </span><span class="sd">"""The blind every SACC this object writes for ``version`` is saved</span>
+</span><span id="line-614"><span class="sd">        under, as the catalogue config declares it."""</span>
+</span><span id="line-615">        <span class="n">entry</span> <span class="o">=</span> <span class="n">version</span>
+</span><span id="line-616">        <span class="k">while</span> <span class="n">entry</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config_as_read</span><span class="p">:</span>
+</span><span id="line-617">            <span class="n">base</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">"_leak_corr$"</span><span class="p">,</span> <span class="s2">""</span><span class="p">,</span> <span class="n">entry</span><span class="p">)</span>
+</span><span id="line-618">            <span class="k">if</span> <span class="n">base</span> <span class="o">==</span> <span class="n">entry</span><span class="p">:</span>
+</span><span id="line-619">                <span class="n">base</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_split_seed_variant</span><span class="p">(</span><span class="n">entry</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">or</span> <span class="n">entry</span>
+</span><span id="line-620">            <span class="k">if</span> <span class="n">base</span> <span class="o">==</span> <span class="n">entry</span><span class="p">:</span>
+</span><span id="line-621">                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"no catalogue </span><span class="si">{</span><span class="n">version</span><span class="si">}</span><span class="s2"> in the catalogue config"</span><span class="p">)</span>
+</span><span id="line-622">            <span class="n">entry</span> <span class="o">=</span> <span class="n">base</span>
+</span><span id="line-623">        <span class="n">catalogues</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config_as_read</span>
+</span><span id="line-624">        <span class="k">return</span> <span class="n">blinding</span><span class="o">.</span><span class="n">entry_blind</span><span class="p">(</span><span class="n">catalogues</span><span class="p">,</span> <span class="n">entry</span><span class="p">)</span></div>
 
-</span><span id="line-621">
+</span><span id="line-625">
 <div class="viewcode-block" id="CosmologyValidation.basename">
 <a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation.basename">[docs]</a>
-</span><span id="line-622">    <span class="k">def</span><span class="w"> </span><span class="nf">basename</span><span class="p">(</span>
-</span><span id="line-623">        <span class="bp">self</span><span class="p">,</span>
-</span><span id="line-624">        <span class="n">version</span><span class="p">,</span>
-</span><span id="line-625">        <span class="n">tomo_bin_a</span><span class="o">=</span><span class="s2">"all"</span><span class="p">,</span>
-</span><span id="line-626">        <span class="n">tomo_bin_b</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-</span><span id="line-627">        <span class="n">treecorr_config</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-</span><span id="line-628">        <span class="n">npatch</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-</span><span id="line-629">    <span class="p">):</span>
-</span><span id="line-630">        <span class="n">cfg</span> <span class="o">=</span> <span class="n">treecorr_config</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">treecorr_config</span>
-</span><span id="line-631">        <span class="n">patches</span> <span class="o">=</span> <span class="n">npatch</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">npatch</span>
-</span><span id="line-632">        <span class="n">tomo_bin_a_str</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"tomo_bin_</span><span class="si">{</span><span class="n">tomo_bin_a</span><span class="si">}</span><span class="s2">"</span>
-</span><span id="line-633">        <span class="n">tomo_bin_b_str</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"_tomo_bin_</span><span class="si">{</span><span class="n">tomo_bin_b</span><span class="si">}</span><span class="s2">"</span> <span class="k">if</span> <span class="n">tomo_bin_b</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">""</span>
-</span><span id="line-634">        <span class="k">return</span> <span class="p">(</span>
-</span><span id="line-635">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">version</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">tomo_bin_a_str</span><span class="si">}{</span><span class="n">tomo_bin_b_str</span><span class="si">}</span><span class="s2">_minsep=</span><span class="si">{</span><span class="n">cfg</span><span class="p">[</span><span class="s1">'min_sep'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span>
-</span><span id="line-636">            <span class="sa">f</span><span class="s2">"_maxsep=</span><span class="si">{</span><span class="n">cfg</span><span class="p">[</span><span class="s1">'max_sep'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span>
-</span><span id="line-637">            <span class="sa">f</span><span class="s2">"_nbins=</span><span class="si">{</span><span class="n">cfg</span><span class="p">[</span><span class="s1">'nbins'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span>
-</span><span id="line-638">            <span class="sa">f</span><span class="s2">"_npatch=</span><span class="si">{</span><span class="n">patches</span><span class="si">}</span><span class="s2">"</span>
-</span><span id="line-639">        <span class="p">)</span></div>
+</span><span id="line-626">    <span class="k">def</span><span class="w"> </span><span class="nf">basename</span><span class="p">(</span>
+</span><span id="line-627">        <span class="bp">self</span><span class="p">,</span>
+</span><span id="line-628">        <span class="n">version</span><span class="p">,</span>
+</span><span id="line-629">        <span class="n">tomo_bin_a</span><span class="o">=</span><span class="s2">"all"</span><span class="p">,</span>
+</span><span id="line-630">        <span class="n">tomo_bin_b</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-631">        <span class="n">treecorr_config</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-632">        <span class="n">npatch</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-633">    <span class="p">):</span>
+</span><span id="line-634">        <span class="n">cfg</span> <span class="o">=</span> <span class="n">treecorr_config</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">treecorr_config</span>
+</span><span id="line-635">        <span class="n">patches</span> <span class="o">=</span> <span class="n">npatch</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">npatch</span>
+</span><span id="line-636">        <span class="n">tomo_bin_a_str</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"tomo_bin_</span><span class="si">{</span><span class="n">tomo_bin_a</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-637">        <span class="n">tomo_bin_b_str</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"_tomo_bin_</span><span class="si">{</span><span class="n">tomo_bin_b</span><span class="si">}</span><span class="s2">"</span> <span class="k">if</span> <span class="n">tomo_bin_b</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">""</span>
+</span><span id="line-638">        <span class="k">return</span> <span class="p">(</span>
+</span><span id="line-639">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">version</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">tomo_bin_a_str</span><span class="si">}{</span><span class="n">tomo_bin_b_str</span><span class="si">}</span><span class="s2">_minsep=</span><span class="si">{</span><span class="n">cfg</span><span class="p">[</span><span class="s1">'min_sep'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-640">            <span class="sa">f</span><span class="s2">"_maxsep=</span><span class="si">{</span><span class="n">cfg</span><span class="p">[</span><span class="s1">'max_sep'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-641">            <span class="sa">f</span><span class="s2">"_nbins=</span><span class="si">{</span><span class="n">cfg</span><span class="p">[</span><span class="s1">'nbins'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-642">            <span class="sa">f</span><span class="s2">"_npatch=</span><span class="si">{</span><span class="n">patches</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-643">        <span class="p">)</span></div>
 
-</span><span id="line-640">
+</span><span id="line-644">
 <div class="viewcode-block" id="CosmologyValidation._binning">
 <a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation._binning">[docs]</a>
-</span><span id="line-641">    <span class="k">def</span><span class="w"> </span><span class="nf">_binning</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">min_sep</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">max_sep</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">nbins</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">extra</span><span class="p">):</span>
-</span><span id="line-642"><span class="w">        </span><span class="sd">"""Means-pass TreeCorr config with min_sep/max_sep/nbins overridden.</span>
-</span><span id="line-643">
-</span><span id="line-644"><span class="sd">        None falls back to the instance's treecorr_config value for that key;</span>
-</span><span id="line-645"><span class="sd">        any further keys in `extra` override on top. The shared two-pass</span>
-</span><span id="line-646"><span class="sd">        measurement removes ``bin_slop`` from the patched config, leaving</span>
-</span><span id="line-647"><span class="sd">        TreeCorr's default for covariance and resampling products.</span>
-</span><span id="line-648"><span class="sd">        """</span>
-</span><span id="line-649">        <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
-</span><span id="line-650">            <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">treecorr_config</span><span class="p">,</span>
-</span><span id="line-651">            <span class="s2">"min_sep"</span><span class="p">:</span> <span class="n">min_sep</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">treecorr_config</span><span class="p">[</span><span class="s2">"min_sep"</span><span class="p">],</span>
-</span><span id="line-652">            <span class="s2">"max_sep"</span><span class="p">:</span> <span class="n">max_sep</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">treecorr_config</span><span class="p">[</span><span class="s2">"max_sep"</span><span class="p">],</span>
-</span><span id="line-653">            <span class="s2">"nbins"</span><span class="p">:</span> <span class="n">nbins</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">treecorr_config</span><span class="p">[</span><span class="s2">"nbins"</span><span class="p">],</span>
-</span><span id="line-654">            <span class="o">**</span><span class="n">extra</span><span class="p">,</span>
-</span><span id="line-655">        <span class="p">}</span>
-</span><span id="line-656">        <span class="n">bin_size</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s2">"max_sep"</span><span class="p">]</span> <span class="o">/</span> <span class="n">config</span><span class="p">[</span><span class="s2">"min_sep"</span><span class="p">])</span> <span class="o">/</span> <span class="n">config</span><span class="p">[</span><span class="s2">"nbins"</span><span class="p">]</span>
-</span><span id="line-657">        <span class="c1"># This is the means tolerance; measure_with_patches drops it for the</span>
-</span><span id="line-658">        <span class="c1"># patched covariance pass so TreeCorr uses its standard default there.</span>
-</span><span id="line-659">        <span class="n">config</span><span class="p">[</span><span class="s2">"bin_slop"</span><span class="p">]</span> <span class="o">=</span> <span class="n">extra</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"bin_slop"</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">b_target</span> <span class="o">/</span> <span class="n">bin_size</span><span class="p">))</span>
-</span><span id="line-660">        <span class="k">return</span> <span class="n">config</span></div>
+</span><span id="line-645">    <span class="k">def</span><span class="w"> </span><span class="nf">_binning</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">min_sep</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">max_sep</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">nbins</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">extra</span><span class="p">):</span>
+</span><span id="line-646"><span class="w">        </span><span class="sd">"""Means-pass TreeCorr config with min_sep/max_sep/nbins overridden.</span>
+</span><span id="line-647">
+</span><span id="line-648"><span class="sd">        None falls back to the instance's treecorr_config value for that key;</span>
+</span><span id="line-649"><span class="sd">        any further keys in `extra` override on top. The shared two-pass</span>
+</span><span id="line-650"><span class="sd">        measurement removes ``bin_slop`` from the patched config, leaving</span>
+</span><span id="line-651"><span class="sd">        TreeCorr's default for covariance and resampling products.</span>
+</span><span id="line-652"><span class="sd">        """</span>
+</span><span id="line-653">        <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="line-654">            <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">treecorr_config</span><span class="p">,</span>
+</span><span id="line-655">            <span class="s2">"min_sep"</span><span class="p">:</span> <span class="n">min_sep</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">treecorr_config</span><span class="p">[</span><span class="s2">"min_sep"</span><span class="p">],</span>
+</span><span id="line-656">            <span class="s2">"max_sep"</span><span class="p">:</span> <span class="n">max_sep</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">treecorr_config</span><span class="p">[</span><span class="s2">"max_sep"</span><span class="p">],</span>
+</span><span id="line-657">            <span class="s2">"nbins"</span><span class="p">:</span> <span class="n">nbins</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">treecorr_config</span><span class="p">[</span><span class="s2">"nbins"</span><span class="p">],</span>
+</span><span id="line-658">            <span class="o">**</span><span class="n">extra</span><span class="p">,</span>
+</span><span id="line-659">        <span class="p">}</span>
+</span><span id="line-660">        <span class="n">bin_size</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s2">"max_sep"</span><span class="p">]</span> <span class="o">/</span> <span class="n">config</span><span class="p">[</span><span class="s2">"min_sep"</span><span class="p">])</span> <span class="o">/</span> <span class="n">config</span><span class="p">[</span><span class="s2">"nbins"</span><span class="p">]</span>
+</span><span id="line-661">        <span class="c1"># This is the means tolerance; measure_with_patches drops it for the</span>
+</span><span id="line-662">        <span class="c1"># patched covariance pass so TreeCorr uses its standard default there.</span>
+</span><span id="line-663">        <span class="n">config</span><span class="p">[</span><span class="s2">"bin_slop"</span><span class="p">]</span> <span class="o">=</span> <span class="n">extra</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"bin_slop"</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">b_target</span> <span class="o">/</span> <span class="n">bin_size</span><span class="p">))</span>
+</span><span id="line-664">        <span class="k">return</span> <span class="n">config</span></div>
 
-</span><span id="line-661">
+</span><span id="line-665">
 <div class="viewcode-block" id="CosmologyValidation._read_shear_cols">
 <a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation._read_shear_cols">[docs]</a>
-</span><span id="line-662">    <span class="k">def</span><span class="w"> </span><span class="nf">_read_shear_cols</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ver</span><span class="p">,</span> <span class="o">*</span><span class="n">keys</span><span class="p">):</span>
-</span><span id="line-663"><span class="w">        </span><span class="sd">"""Read shear-catalog columns by their config-key names.</span>
-</span><span id="line-664">
-</span><span id="line-665"><span class="sd">        Each key in ``*keys`` (e.g. ``"e1_col"``, ``"w_col"``) is resolved to a</span>
-</span><span id="line-666"><span class="sd">        column name via ``self.cc[ver]["shear"][key]`` and indexed out of</span>
-</span><span id="line-667"><span class="sd">        ``self.results[ver].dat_shear``. Must be called inside a</span>
-</span><span id="line-668"><span class="sd">        ``self.results[ver].temporarily_read_data()`` context, since it touches</span>
-</span><span id="line-669"><span class="sd">        ``dat_shear`` directly.</span>
-</span><span id="line-670">
-</span><span id="line-671"><span class="sd">        Returns one array per key (a bare array, not a 1-tuple, when a single</span>
-</span><span id="line-672"><span class="sd">        key is requested).</span>
-</span><span id="line-673"><span class="sd">        """</span>
-</span><span id="line-674">        <span class="n">cols</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span>
-</span><span id="line-675">            <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span><span class="o">.</span><span class="n">dat_shear</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">"shear"</span><span class="p">][</span><span class="n">key</span><span class="p">]]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span>
-</span><span id="line-676">        <span class="p">)</span>
-</span><span id="line-677">        <span class="k">return</span> <span class="n">cols</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">cols</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">cols</span></div>
+</span><span id="line-666">    <span class="k">def</span><span class="w"> </span><span class="nf">_read_shear_cols</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ver</span><span class="p">,</span> <span class="o">*</span><span class="n">keys</span><span class="p">):</span>
+</span><span id="line-667"><span class="w">        </span><span class="sd">"""Read shear-catalog columns by their config-key names.</span>
+</span><span id="line-668">
+</span><span id="line-669"><span class="sd">        Each key in ``*keys`` (e.g. ``"e1_col"``, ``"w_col"``) is resolved to a</span>
+</span><span id="line-670"><span class="sd">        column name via ``self.cc[ver]["shear"][key]`` and indexed out of</span>
+</span><span id="line-671"><span class="sd">        ``self.results[ver].dat_shear``. Must be called inside a</span>
+</span><span id="line-672"><span class="sd">        ``self.results[ver].temporarily_read_data()`` context, since it touches</span>
+</span><span id="line-673"><span class="sd">        ``dat_shear`` directly.</span>
+</span><span id="line-674">
+</span><span id="line-675"><span class="sd">        Returns one array per key (a bare array, not a 1-tuple, when a single</span>
+</span><span id="line-676"><span class="sd">        key is requested).</span>
+</span><span id="line-677"><span class="sd">        """</span>
+</span><span id="line-678">        <span class="n">cols</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span>
+</span><span id="line-679">            <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span><span class="o">.</span><span class="n">dat_shear</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">"shear"</span><span class="p">][</span><span class="n">key</span><span class="p">]]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span>
+</span><span id="line-680">        <span class="p">)</span>
+</span><span id="line-681">        <span class="k">return</span> <span class="n">cols</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">cols</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">cols</span></div>
 
-</span><span id="line-678">
+</span><span id="line-682">
 <div class="viewcode-block" id="CosmologyValidation._calibrated_g">
 <a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation._calibrated_g">[docs]</a>
-</span><span id="line-679">    <span class="k">def</span><span class="w"> </span><span class="nf">_calibrated_g</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ver</span><span class="p">):</span>
-</span><span id="line-680"><span class="w">        </span><span class="sd">"""Calibrated shear components ``(g1, g2)`` for a catalog version.</span>
-</span><span id="line-681">
-</span><span id="line-682"><span class="sd">        Applies additive-bias subtraction and the multiplicative response:</span>
-</span><span id="line-683"><span class="sd">        ``g = (e − c) / R``. For DES the response is the catalog-averaged</span>
-</span><span id="line-684"><span class="sd">        per-component ``R11``/``R22`` (column names in the config); for every</span>
-</span><span id="line-685"><span class="sd">        other version it is the scalar ``R`` from the config.</span>
-</span><span id="line-686">
-</span><span id="line-687"><span class="sd">        Must be called inside a ``self.results[ver].temporarily_read_data()``</span>
-</span><span id="line-688"><span class="sd">        context, since it reads ``dat_shear`` columns.</span>
-</span><span id="line-689"><span class="sd">        """</span>
-</span><span id="line-690">        <span class="n">e1</span><span class="p">,</span> <span class="n">e2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_shear_cols</span><span class="p">(</span><span class="n">ver</span><span class="p">,</span> <span class="s2">"e1_col"</span><span class="p">,</span> <span class="s2">"e2_col"</span><span class="p">)</span>
-</span><span id="line-691">        <span class="k">if</span> <span class="n">ver</span> <span class="o">==</span> <span class="s2">"DES"</span><span class="p">:</span>
-</span><span id="line-692">            <span class="n">R1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span><span class="o">.</span><span class="n">dat_shear</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">"shear"</span><span class="p">][</span><span class="s2">"R11"</span><span class="p">]])</span>
-</span><span id="line-693">            <span class="n">R2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span><span class="o">.</span><span class="n">dat_shear</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">"shear"</span><span class="p">][</span><span class="s2">"R22"</span><span class="p">]])</span>
-</span><span id="line-694">        <span class="k">else</span><span class="p">:</span>
-</span><span id="line-695">            <span class="n">R1</span> <span class="o">=</span> <span class="n">R2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">"shear"</span><span class="p">][</span><span class="s2">"R"</span><span class="p">]</span>
-</span><span id="line-696">        <span class="k">return</span> <span class="p">(</span><span class="n">e1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">c1</span><span class="p">[</span><span class="n">ver</span><span class="p">])</span> <span class="o">/</span> <span class="n">R1</span><span class="p">,</span> <span class="p">(</span><span class="n">e2</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">c2</span><span class="p">[</span><span class="n">ver</span><span class="p">])</span> <span class="o">/</span> <span class="n">R2</span></div>
+</span><span id="line-683">    <span class="k">def</span><span class="w"> </span><span class="nf">_calibrated_g</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ver</span><span class="p">):</span>
+</span><span id="line-684"><span class="w">        </span><span class="sd">"""Calibrated shear components ``(g1, g2)`` for a catalog version.</span>
+</span><span id="line-685">
+</span><span id="line-686"><span class="sd">        Applies additive-bias subtraction and the multiplicative response:</span>
+</span><span id="line-687"><span class="sd">        ``g = (e − c) / R``. For DES the response is the catalog-averaged</span>
+</span><span id="line-688"><span class="sd">        per-component ``R11``/``R22`` (column names in the config); for every</span>
+</span><span id="line-689"><span class="sd">        other version it is the scalar ``R`` from the config.</span>
+</span><span id="line-690">
+</span><span id="line-691"><span class="sd">        Must be called inside a ``self.results[ver].temporarily_read_data()``</span>
+</span><span id="line-692"><span class="sd">        context, since it reads ``dat_shear`` columns.</span>
+</span><span id="line-693"><span class="sd">        """</span>
+</span><span id="line-694">        <span class="n">e1</span><span class="p">,</span> <span class="n">e2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_shear_cols</span><span class="p">(</span><span class="n">ver</span><span class="p">,</span> <span class="s2">"e1_col"</span><span class="p">,</span> <span class="s2">"e2_col"</span><span class="p">)</span>
+</span><span id="line-695">        <span class="k">if</span> <span class="n">ver</span> <span class="o">==</span> <span class="s2">"DES"</span><span class="p">:</span>
+</span><span id="line-696">            <span class="n">R1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span><span class="o">.</span><span class="n">dat_shear</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">"shear"</span><span class="p">][</span><span class="s2">"R11"</span><span class="p">]])</span>
+</span><span id="line-697">            <span class="n">R2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span><span class="o">.</span><span class="n">dat_shear</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">"shear"</span><span class="p">][</span><span class="s2">"R22"</span><span class="p">]])</span>
+</span><span id="line-698">        <span class="k">else</span><span class="p">:</span>
+</span><span id="line-699">            <span class="n">R1</span> <span class="o">=</span> <span class="n">R2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">"shear"</span><span class="p">][</span><span class="s2">"R"</span><span class="p">]</span>
+</span><span id="line-700">        <span class="k">return</span> <span class="p">(</span><span class="n">e1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">c1</span><span class="p">[</span><span class="n">ver</span><span class="p">])</span> <span class="o">/</span> <span class="n">R1</span><span class="p">,</span> <span class="p">(</span><span class="n">e2</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">c2</span><span class="p">[</span><span class="n">ver</span><span class="p">])</span> <span class="o">/</span> <span class="n">R2</span></div>
 
-</span><span id="line-697">
-</span><span id="line-698">    <span class="nd">@property</span>
-</span><span id="line-699">    <span class="k">def</span><span class="w"> </span><span class="nf">colors</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-</span><span id="line-700">        <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">"colour"</span><span class="p">]</span> <span class="k">for</span> <span class="n">ver</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">versions</span><span class="p">]</span>
 </span><span id="line-701">
+</span><span id="line-702">    <span class="nd">@property</span>
+</span><span id="line-703">    <span class="k">def</span><span class="w"> </span><span class="nf">colors</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="line-704">        <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">"colour"</span><span class="p">]</span> <span class="k">for</span> <span class="n">ver</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">versions</span><span class="p">]</span>
+</span><span id="line-705">
 <div class="viewcode-block" id="CosmologyValidation.summarize_bmodes">
 <a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation.summarize_bmodes">[docs]</a>
-</span><span id="line-702">    <span class="k">def</span><span class="w"> </span><span class="nf">summarize_bmodes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fiducial_scale_cut</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">83</span><span class="p">),</span> <span class="n">versions</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-</span><span id="line-703"><span class="w">        </span><span class="sd">"""Print and return B-mode PTE summary across all statistics.</span>
-</span><span id="line-704">
-</span><span id="line-705"><span class="sd">        Collects the PTEs of the non-tomographic ``("all", "all")`` pair from</span>
-</span><span id="line-706"><span class="sd">        pure E/B, COSEBIs, and pseudo-Cl at the specified fiducial scale cut.</span>
-</span><span id="line-707"><span class="sd">        Statistics that haven't been computed show '--'.</span>
+</span><span id="line-706">    <span class="k">def</span><span class="w"> </span><span class="nf">summarize_bmodes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fiducial_scale_cut</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">83</span><span class="p">),</span> <span class="n">versions</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+</span><span id="line-707"><span class="w">        </span><span class="sd">"""Print and return B-mode PTE summary across all statistics.</span>
 </span><span id="line-708">
-</span><span id="line-709"><span class="sd">        Parameters</span>
-</span><span id="line-710"><span class="sd">        ----------</span>
-</span><span id="line-711"><span class="sd">        fiducial_scale_cut : tuple, optional</span>
-</span><span id="line-712"><span class="sd">            (min_theta, max_theta) for extracting PTEs (default: (12, 83)).</span>
-</span><span id="line-713"><span class="sd">        versions : list, optional</span>
-</span><span id="line-714"><span class="sd">            Versions to summarize. Uses self.versions if None.</span>
-</span><span id="line-715">
-</span><span id="line-716"><span class="sd">        Returns</span>
-</span><span id="line-717"><span class="sd">        -------</span>
-</span><span id="line-718"><span class="sd">        dict</span>
-</span><span id="line-719"><span class="sd">            ``{version: {statistic: pte_value, ...}, ...}``</span>
-</span><span id="line-720"><span class="sd">        """</span>
-</span><span id="line-721">        <span class="n">versions</span> <span class="o">=</span> <span class="n">versions</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">versions</span>
-</span><span id="line-722">        <span class="n">summary</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="line-723">        <span class="n">cov_methods</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
-</span><span id="line-724">        <span class="n">pair</span> <span class="o">=</span> <span class="s2">"tomo_bin_all_tomo_bin_all"</span>
-</span><span id="line-725">
-</span><span id="line-726">        <span class="k">for</span> <span class="n">ver</span> <span class="ow">in</span> <span class="n">versions</span><span class="p">:</span>
-</span><span id="line-727">            <span class="n">row</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="line-728">
-</span><span id="line-729">            <span class="c1"># Pure E/B PTEs from stored results</span>
-</span><span id="line-730">            <span class="n">pure_eb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pure_eb_results</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ver</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">pair</span><span class="p">)</span>
-</span><span id="line-731">            <span class="k">if</span> <span class="n">pure_eb</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-732">                <span class="n">edges</span> <span class="o">=</span> <span class="p">(</span><span class="n">pure_eb</span><span class="p">[</span><span class="s2">"left_edges"</span><span class="p">],</span> <span class="n">pure_eb</span><span class="p">[</span><span class="s2">"right_edges"</span><span class="p">])</span>
-</span><span id="line-733">                <span class="k">try</span><span class="p">:</span>
-</span><span id="line-734">                    <span class="k">for</span> <span class="n">stat</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"xip_B"</span><span class="p">,</span> <span class="s2">"xim_B"</span><span class="p">,</span> <span class="s2">"combined"</span><span class="p">):</span>
-</span><span id="line-735">                        <span class="n">row</span><span class="p">[</span><span class="n">stat</span><span class="p">]</span> <span class="o">=</span> <span class="n">_get_pte_from_scale_cut</span><span class="p">(</span>
-</span><span id="line-736">                            <span class="n">pure_eb</span><span class="p">[</span><span class="s2">"pte_matrices"</span><span class="p">][</span><span class="n">stat</span><span class="p">],</span> <span class="n">edges</span><span class="p">,</span> <span class="n">fiducial_scale_cut</span>
-</span><span id="line-737">                        <span class="p">)</span>
-</span><span id="line-738">                <span class="k">except</span> <span class="ne">RuntimeError</span><span class="p">:</span>
-</span><span id="line-739">                    <span class="c1"># The scale cut selects no bin of this grid.</span>
-</span><span id="line-740">                    <span class="k">pass</span>
-</span><span id="line-741">                <span class="n">cov_methods</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">covariance_label</span><span class="p">(</span><span class="n">pure_eb</span><span class="p">[</span><span class="s2">"npatch"</span><span class="p">]))</span>
-</span><span id="line-742">
-</span><span id="line-743">            <span class="c1"># COSEBIs PTE from stored results</span>
-</span><span id="line-744">            <span class="n">cosebis</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cosebis_results</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ver</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">pair</span><span class="p">)</span>
-</span><span id="line-745">            <span class="k">if</span> <span class="n">cosebis</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-746">                <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">cosebis</span><span class="p">):</span>
-</span><span id="line-747">                    <span class="n">key</span> <span class="o">=</span> <span class="n">find_conservative_scale_cut_key</span><span class="p">(</span><span class="n">cosebis</span><span class="p">,</span> <span class="n">fiducial_scale_cut</span><span class="p">)</span>
-</span><span id="line-748">                    <span class="n">row</span><span class="p">[</span><span class="s2">"COSEBIS"</span><span class="p">]</span> <span class="o">=</span> <span class="n">cosebis</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="s2">"pte_B"</span><span class="p">]</span>
-</span><span id="line-749">                <span class="k">else</span><span class="p">:</span>
-</span><span id="line-750">                    <span class="n">row</span><span class="p">[</span><span class="s2">"COSEBIS"</span><span class="p">]</span> <span class="o">=</span> <span class="n">cosebis</span><span class="p">[</span><span class="s2">"pte_B"</span><span class="p">]</span>
-</span><span id="line-751">
-</span><span id="line-752">            <span class="c1"># Pseudo-Cl BB PTE, once both the spectrum and its covariance are</span>
-</span><span id="line-753">            <span class="c1"># loaded (_pseudo_cls is lazy; read it without triggering computation)</span>
-</span><span id="line-754">            <span class="n">pseudo_cl</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"_pseudo_cls"</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ver</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">pair</span><span class="p">,</span> <span class="p">{})</span>
-</span><span id="line-755">            <span class="k">if</span> <span class="s2">"pseudo_cl"</span> <span class="ow">in</span> <span class="n">pseudo_cl</span> <span class="ow">and</span> <span class="s2">"cov"</span> <span class="ow">in</span> <span class="n">pseudo_cl</span><span class="p">:</span>
-</span><span id="line-756">                <span class="n">cl_bb</span> <span class="o">=</span> <span class="n">pseudo_cl</span><span class="p">[</span><span class="s2">"pseudo_cl"</span><span class="p">][</span><span class="s2">"BB"</span><span class="p">]</span>
-</span><span id="line-757">                <span class="n">cov_bb</span> <span class="o">=</span> <span class="n">pseudo_cl</span><span class="p">[</span><span class="s2">"cov"</span><span class="p">][</span><span class="s2">"COVAR_BB_BB"</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
-</span><span id="line-758">                <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span><span class="p">[</span><span class="s2">"C_l_BB"</span><span class="p">]</span> <span class="o">=</span> <span class="n">chi2_and_pte</span><span class="p">(</span><span class="n">cl_bb</span><span class="p">,</span> <span class="n">cov_bb</span><span class="p">)</span>
-</span><span id="line-759">                <span class="n">cov_methods</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">"Gaussian (NaMaster)"</span><span class="p">)</span>
-</span><span id="line-760">
-</span><span id="line-761">            <span class="n">summary</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span> <span class="o">=</span> <span class="n">row</span>
-</span><span id="line-762">
-</span><span id="line-763">        <span class="n">print_bmode_summary</span><span class="p">(</span><span class="n">summary</span><span class="p">,</span> <span class="n">fiducial_scale_cut</span><span class="p">,</span> <span class="n">cov_methods</span><span class="p">)</span>
-</span><span id="line-764">        <span class="k">return</span> <span class="n">summary</span></div>
+</span><span id="line-709"><span class="sd">        Collects the PTEs of the non-tomographic ``("all", "all")`` pair from</span>
+</span><span id="line-710"><span class="sd">        pure E/B, COSEBIs, and pseudo-Cl at the specified fiducial scale cut.</span>
+</span><span id="line-711"><span class="sd">        Statistics that haven't been computed show '--'.</span>
+</span><span id="line-712">
+</span><span id="line-713"><span class="sd">        Parameters</span>
+</span><span id="line-714"><span class="sd">        ----------</span>
+</span><span id="line-715"><span class="sd">        fiducial_scale_cut : tuple, optional</span>
+</span><span id="line-716"><span class="sd">            (min_theta, max_theta) for extracting PTEs (default: (12, 83)).</span>
+</span><span id="line-717"><span class="sd">        versions : list, optional</span>
+</span><span id="line-718"><span class="sd">            Versions to summarize. Uses self.versions if None.</span>
+</span><span id="line-719">
+</span><span id="line-720"><span class="sd">        Returns</span>
+</span><span id="line-721"><span class="sd">        -------</span>
+</span><span id="line-722"><span class="sd">        dict</span>
+</span><span id="line-723"><span class="sd">            ``{version: {statistic: pte_value, ...}, ...}``</span>
+</span><span id="line-724"><span class="sd">        """</span>
+</span><span id="line-725">        <span class="n">versions</span> <span class="o">=</span> <span class="n">versions</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">versions</span>
+</span><span id="line-726">        <span class="n">summary</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-727">        <span class="n">cov_methods</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+</span><span id="line-728">        <span class="n">pair</span> <span class="o">=</span> <span class="s2">"tomo_bin_all_tomo_bin_all"</span>
+</span><span id="line-729">
+</span><span id="line-730">        <span class="k">for</span> <span class="n">ver</span> <span class="ow">in</span> <span class="n">versions</span><span class="p">:</span>
+</span><span id="line-731">            <span class="n">row</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-732">
+</span><span id="line-733">            <span class="c1"># Pure E/B PTEs from stored results</span>
+</span><span id="line-734">            <span class="n">pure_eb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pure_eb_results</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ver</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">pair</span><span class="p">)</span>
+</span><span id="line-735">            <span class="k">if</span> <span class="n">pure_eb</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-736">                <span class="n">edges</span> <span class="o">=</span> <span class="p">(</span><span class="n">pure_eb</span><span class="p">[</span><span class="s2">"left_edges"</span><span class="p">],</span> <span class="n">pure_eb</span><span class="p">[</span><span class="s2">"right_edges"</span><span class="p">])</span>
+</span><span id="line-737">                <span class="k">try</span><span class="p">:</span>
+</span><span id="line-738">                    <span class="k">for</span> <span class="n">stat</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"xip_B"</span><span class="p">,</span> <span class="s2">"xim_B"</span><span class="p">,</span> <span class="s2">"combined"</span><span class="p">):</span>
+</span><span id="line-739">                        <span class="n">row</span><span class="p">[</span><span class="n">stat</span><span class="p">]</span> <span class="o">=</span> <span class="n">_get_pte_from_scale_cut</span><span class="p">(</span>
+</span><span id="line-740">                            <span class="n">pure_eb</span><span class="p">[</span><span class="s2">"pte_matrices"</span><span class="p">][</span><span class="n">stat</span><span class="p">],</span> <span class="n">edges</span><span class="p">,</span> <span class="n">fiducial_scale_cut</span>
+</span><span id="line-741">                        <span class="p">)</span>
+</span><span id="line-742">                <span class="k">except</span> <span class="ne">RuntimeError</span><span class="p">:</span>
+</span><span id="line-743">                    <span class="c1"># The scale cut selects no bin of this grid.</span>
+</span><span id="line-744">                    <span class="k">pass</span>
+</span><span id="line-745">                <span class="n">cov_methods</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">covariance_label</span><span class="p">(</span><span class="n">pure_eb</span><span class="p">[</span><span class="s2">"npatch"</span><span class="p">]))</span>
+</span><span id="line-746">
+</span><span id="line-747">            <span class="c1"># COSEBIs PTE from stored results</span>
+</span><span id="line-748">            <span class="n">cosebis</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cosebis_results</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ver</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">pair</span><span class="p">)</span>
+</span><span id="line-749">            <span class="k">if</span> <span class="n">cosebis</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-750">                <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">cosebis</span><span class="p">):</span>
+</span><span id="line-751">                    <span class="n">key</span> <span class="o">=</span> <span class="n">find_conservative_scale_cut_key</span><span class="p">(</span><span class="n">cosebis</span><span class="p">,</span> <span class="n">fiducial_scale_cut</span><span class="p">)</span>
+</span><span id="line-752">                    <span class="n">row</span><span class="p">[</span><span class="s2">"COSEBIS"</span><span class="p">]</span> <span class="o">=</span> <span class="n">cosebis</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="s2">"pte_B"</span><span class="p">]</span>
+</span><span id="line-753">                <span class="k">else</span><span class="p">:</span>
+</span><span id="line-754">                    <span class="n">row</span><span class="p">[</span><span class="s2">"COSEBIS"</span><span class="p">]</span> <span class="o">=</span> <span class="n">cosebis</span><span class="p">[</span><span class="s2">"pte_B"</span><span class="p">]</span>
+</span><span id="line-755">
+</span><span id="line-756">            <span class="c1"># Pseudo-Cl BB PTE, once both the spectrum and its covariance are</span>
+</span><span id="line-757">            <span class="c1"># loaded (_pseudo_cls is lazy; read it without triggering computation)</span>
+</span><span id="line-758">            <span class="n">pseudo_cl</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"_pseudo_cls"</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ver</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">pair</span><span class="p">,</span> <span class="p">{})</span>
+</span><span id="line-759">            <span class="k">if</span> <span class="s2">"pseudo_cl"</span> <span class="ow">in</span> <span class="n">pseudo_cl</span> <span class="ow">and</span> <span class="s2">"cov"</span> <span class="ow">in</span> <span class="n">pseudo_cl</span><span class="p">:</span>
+</span><span id="line-760">                <span class="n">cl_bb</span> <span class="o">=</span> <span class="n">pseudo_cl</span><span class="p">[</span><span class="s2">"pseudo_cl"</span><span class="p">][</span><span class="s2">"BB"</span><span class="p">]</span>
+</span><span id="line-761">                <span class="n">cov_bb</span> <span class="o">=</span> <span class="n">pseudo_cl</span><span class="p">[</span><span class="s2">"cov"</span><span class="p">][</span><span class="s2">"COVAR_BB_BB"</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+</span><span id="line-762">                <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span><span class="p">[</span><span class="s2">"C_l_BB"</span><span class="p">]</span> <span class="o">=</span> <span class="n">chi2_and_pte</span><span class="p">(</span><span class="n">cl_bb</span><span class="p">,</span> <span class="n">cov_bb</span><span class="p">)</span>
+</span><span id="line-763">                <span class="n">cov_methods</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">"Gaussian (NaMaster)"</span><span class="p">)</span>
+</span><span id="line-764">
+</span><span id="line-765">            <span class="n">summary</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span> <span class="o">=</span> <span class="n">row</span>
+</span><span id="line-766">
+</span><span id="line-767">        <span class="n">print_bmode_summary</span><span class="p">(</span><span class="n">summary</span><span class="p">,</span> <span class="n">fiducial_scale_cut</span><span class="p">,</span> <span class="n">cov_methods</span><span class="p">)</span>
+</span><span id="line-768">        <span class="k">return</span> <span class="n">summary</span></div>
 
-</span><span id="line-765">
+</span><span id="line-769">
 <div class="viewcode-block" id="CosmologyValidation._get_tomo_bins">
 <a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation._get_tomo_bins">[docs]</a>
-</span><span id="line-766">    <span class="k">def</span><span class="w"> </span><span class="nf">_get_tomo_bins</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">version</span><span class="p">):</span>
-</span><span id="line-767"><span class="w">        </span><span class="sd">"""</span>
-</span><span id="line-768"><span class="sd">        Return the tomo_bin_ids for a given version. If the version does not have tomography, return None.</span>
-</span><span id="line-769">
-</span><span id="line-770"><span class="sd">        Returns</span>
-</span><span id="line-771"><span class="sd">        -------</span>
-</span><span id="line-772"><span class="sd">        tomo_bin_ids : list or None</span>
-</span><span id="line-773"><span class="sd">            List of unique tomographic bin IDs for the version, or None if no tomography is available</span>
-</span><span id="line-774"><span class="sd">        tomo_bin_pairs : list of tuples or None</span>
-</span><span id="line-775"><span class="sd">            List of unique pairs of tomographic bin IDs (including self-pairs) for the version, or None if no tomography is available</span>
-</span><span id="line-776"><span class="sd">        """</span>
-</span><span id="line-777">        <span class="k">if</span> <span class="s2">"tomo_bin_col"</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">version</span><span class="p">][</span><span class="s2">"shear"</span><span class="p">]:</span>
-</span><span id="line-778">            <span class="bp">self</span><span class="o">.</span><span class="n">print_cyan</span><span class="p">(</span>
-</span><span id="line-779">                <span class="sa">f</span><span class="s2">"Extracting tomography information from version </span><span class="si">{</span><span class="n">version</span><span class="si">}</span><span class="s2">."</span>
-</span><span id="line-780">            <span class="p">)</span>
-</span><span id="line-781">            <span class="n">cat_gal</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">open_entry</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">version</span><span class="p">][</span><span class="s2">"shear"</span><span class="p">])</span>
-</span><span id="line-782">            <span class="n">tomo_bin</span> <span class="o">=</span> <span class="n">cat_gal</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">version</span><span class="p">][</span><span class="s2">"shear"</span><span class="p">][</span><span class="s2">"tomo_bin_col"</span><span class="p">]]</span>
-</span><span id="line-783">            <span class="n">tomo_bin_ids</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">tomo_bin</span><span class="p">)</span>
-</span><span id="line-784">            <span class="n">tomo_bin_ids</span> <span class="o">=</span> <span class="n">tomo_bin_ids</span><span class="p">[</span>
-</span><span id="line-785">                <span class="n">tomo_bin_ids</span> <span class="o">&gt;</span> <span class="mi">0</span>
-</span><span id="line-786">            <span class="p">]</span>  <span class="c1"># Exclude zero or negative bins</span>
-</span><span id="line-787">            <span class="bp">self</span><span class="o">.</span><span class="n">print_cyan</span><span class="p">(</span>
-</span><span id="line-788">                <span class="sa">f</span><span class="s2">"Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">tomo_bin_ids</span><span class="p">)</span><span class="si">}</span><span class="s2"> tomographic bins for version </span><span class="si">{</span><span class="n">version</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">tomo_bin_ids</span><span class="si">}</span><span class="s2">."</span>
-</span><span id="line-789">            <span class="p">)</span>
-</span><span id="line-790">
-</span><span id="line-791">            <span class="n">tomo_bin_pairs</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span>
-</span><span id="line-792">                <span class="n">itertools</span><span class="o">.</span><span class="n">combinations_with_replacement</span><span class="p">(</span><span class="n">tomo_bin_ids</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+</span><span id="line-770">    <span class="k">def</span><span class="w"> </span><span class="nf">_get_tomo_bins</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">version</span><span class="p">):</span>
+</span><span id="line-771"><span class="w">        </span><span class="sd">"""</span>
+</span><span id="line-772"><span class="sd">        Return the tomo_bin_ids for a given version. If the version does not have tomography, return None.</span>
+</span><span id="line-773">
+</span><span id="line-774"><span class="sd">        Returns</span>
+</span><span id="line-775"><span class="sd">        -------</span>
+</span><span id="line-776"><span class="sd">        tomo_bin_ids : list or None</span>
+</span><span id="line-777"><span class="sd">            List of unique tomographic bin IDs for the version, or None if no tomography is available</span>
+</span><span id="line-778"><span class="sd">        tomo_bin_pairs : list of tuples or None</span>
+</span><span id="line-779"><span class="sd">            List of unique pairs of tomographic bin IDs (including self-pairs) for the version, or None if no tomography is available</span>
+</span><span id="line-780"><span class="sd">        """</span>
+</span><span id="line-781">        <span class="k">if</span> <span class="s2">"tomo_bin_col"</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">version</span><span class="p">][</span><span class="s2">"shear"</span><span class="p">]:</span>
+</span><span id="line-782">            <span class="bp">self</span><span class="o">.</span><span class="n">print_cyan</span><span class="p">(</span>
+</span><span id="line-783">                <span class="sa">f</span><span class="s2">"Extracting tomography information from version </span><span class="si">{</span><span class="n">version</span><span class="si">}</span><span class="s2">."</span>
+</span><span id="line-784">            <span class="p">)</span>
+</span><span id="line-785">            <span class="n">cat_gal</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">open_entry</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">version</span><span class="p">][</span><span class="s2">"shear"</span><span class="p">])</span>
+</span><span id="line-786">            <span class="n">tomo_bin</span> <span class="o">=</span> <span class="n">cat_gal</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">version</span><span class="p">][</span><span class="s2">"shear"</span><span class="p">][</span><span class="s2">"tomo_bin_col"</span><span class="p">]]</span>
+</span><span id="line-787">            <span class="n">tomo_bin_ids</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">tomo_bin</span><span class="p">)</span>
+</span><span id="line-788">            <span class="n">tomo_bin_ids</span> <span class="o">=</span> <span class="n">tomo_bin_ids</span><span class="p">[</span>
+</span><span id="line-789">                <span class="n">tomo_bin_ids</span> <span class="o">&gt;</span> <span class="mi">0</span>
+</span><span id="line-790">            <span class="p">]</span>  <span class="c1"># Exclude zero or negative bins</span>
+</span><span id="line-791">            <span class="bp">self</span><span class="o">.</span><span class="n">print_cyan</span><span class="p">(</span>
+</span><span id="line-792">                <span class="sa">f</span><span class="s2">"Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">tomo_bin_ids</span><span class="p">)</span><span class="si">}</span><span class="s2"> tomographic bins for version </span><span class="si">{</span><span class="n">version</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">tomo_bin_ids</span><span class="si">}</span><span class="s2">."</span>
 </span><span id="line-793">            <span class="p">)</span>
-</span><span id="line-794">            <span class="k">return</span> <span class="n">tomo_bin_ids</span><span class="p">,</span> <span class="n">tomo_bin_pairs</span>
-</span><span id="line-795">        <span class="k">else</span><span class="p">:</span>
-</span><span id="line-796">            <span class="bp">self</span><span class="o">.</span><span class="n">print_cyan</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Version </span><span class="si">{</span><span class="n">version</span><span class="si">}</span><span class="s2"> does not have tomography information."</span><span class="p">)</span>
-</span><span id="line-797">            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span></div>
+</span><span id="line-794">
+</span><span id="line-795">            <span class="n">tomo_bin_pairs</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span>
+</span><span id="line-796">                <span class="n">itertools</span><span class="o">.</span><span class="n">combinations_with_replacement</span><span class="p">(</span><span class="n">tomo_bin_ids</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+</span><span id="line-797">            <span class="p">)</span>
+</span><span id="line-798">            <span class="k">return</span> <span class="n">tomo_bin_ids</span><span class="p">,</span> <span class="n">tomo_bin_pairs</span>
+</span><span id="line-799">        <span class="k">else</span><span class="p">:</span>
+</span><span id="line-800">            <span class="bp">self</span><span class="o">.</span><span class="n">print_cyan</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Version </span><span class="si">{</span><span class="n">version</span><span class="si">}</span><span class="s2"> does not have tomography information."</span><span class="p">)</span>
+</span><span id="line-801">            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span></div>
 
-</span><span id="line-798">
+</span><span id="line-802">
 <div class="viewcode-block" id="CosmologyValidation._get_tomo_bins_for_versions">
 <a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation._get_tomo_bins_for_versions">[docs]</a>
-</span><span id="line-799">    <span class="k">def</span><span class="w"> </span><span class="nf">_get_tomo_bins_for_versions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">versions</span><span class="p">,</span> <span class="n">tomography</span><span class="p">):</span>
-</span><span id="line-800"><span class="w">        </span><span class="sd">"""</span>
-</span><span id="line-801"><span class="sd">        Return a dictionary of tomo_bin_ids and tomo_bin_pairs for each version in versions.</span>
-</span><span id="line-802">
-</span><span id="line-803"><span class="sd">        Parameters</span>
-</span><span id="line-804"><span class="sd">        ----------</span>
-</span><span id="line-805"><span class="sd">        versions : list of str</span>
-</span><span id="line-806"><span class="sd">            List of catalog version identifiers</span>
-</span><span id="line-807"><span class="sd">        tomography : bool</span>
-</span><span id="line-808"><span class="sd">            If True, assumes tomography else returns the format for non-tomographic versions.</span>
-</span><span id="line-809">
-</span><span id="line-810"><span class="sd">        Returns</span>
-</span><span id="line-811"><span class="sd">        -------</span>
-</span><span id="line-812"><span class="sd">        dict</span>
-</span><span id="line-813"><span class="sd">            Dictionary with version as key and a dictionary containing 'ids' and 'pairs' as values.</span>
-</span><span id="line-814"><span class="sd">            Example: {version1: {'ids': tomo_bin_ids1, 'pairs': tomo_bin_pairs1}, ...}</span>
-</span><span id="line-815"><span class="sd">        """</span>
-</span><span id="line-816">        <span class="n">tomo_bins</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="line-817">        <span class="k">for</span> <span class="n">ver</span> <span class="ow">in</span> <span class="n">versions</span><span class="p">:</span>
-</span><span id="line-818">            <span class="k">if</span> <span class="n">tomography</span><span class="p">:</span>
-</span><span id="line-819">                <span class="n">tomo_bin_ids</span><span class="p">,</span> <span class="n">tomo_bin_pairs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_tomo_bins</span><span class="p">(</span><span class="n">ver</span><span class="p">)</span>
-</span><span id="line-820">            <span class="k">else</span><span class="p">:</span>
-</span><span id="line-821">                <span class="n">tomo_bin_ids</span><span class="p">,</span> <span class="n">tomo_bin_pairs</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"all"</span><span class="p">],</span> <span class="p">[(</span><span class="s2">"all"</span><span class="p">,</span> <span class="s2">"all"</span><span class="p">)]</span>
-</span><span id="line-822">
-</span><span id="line-823">            <span class="n">tomo_bins</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"ids"</span><span class="p">:</span> <span class="n">tomo_bin_ids</span><span class="p">,</span> <span class="s2">"pairs"</span><span class="p">:</span> <span class="n">tomo_bin_pairs</span><span class="p">}</span>
-</span><span id="line-824">
-</span><span id="line-825">        <span class="k">return</span> <span class="n">tomo_bins</span></div>
+</span><span id="line-803">    <span class="k">def</span><span class="w"> </span><span class="nf">_get_tomo_bins_for_versions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">versions</span><span class="p">,</span> <span class="n">tomography</span><span class="p">):</span>
+</span><span id="line-804"><span class="w">        </span><span class="sd">"""</span>
+</span><span id="line-805"><span class="sd">        Return a dictionary of tomo_bin_ids and tomo_bin_pairs for each version in versions.</span>
+</span><span id="line-806">
+</span><span id="line-807"><span class="sd">        Parameters</span>
+</span><span id="line-808"><span class="sd">        ----------</span>
+</span><span id="line-809"><span class="sd">        versions : list of str</span>
+</span><span id="line-810"><span class="sd">            List of catalog version identifiers</span>
+</span><span id="line-811"><span class="sd">        tomography : bool</span>
+</span><span id="line-812"><span class="sd">            If True, assumes tomography else returns the format for non-tomographic versions.</span>
+</span><span id="line-813">
+</span><span id="line-814"><span class="sd">        Returns</span>
+</span><span id="line-815"><span class="sd">        -------</span>
+</span><span id="line-816"><span class="sd">        dict</span>
+</span><span id="line-817"><span class="sd">            Dictionary with version as key and a dictionary containing 'ids' and 'pairs' as values.</span>
+</span><span id="line-818"><span class="sd">            Example: {version1: {'ids': tomo_bin_ids1, 'pairs': tomo_bin_pairs1}, ...}</span>
+</span><span id="line-819"><span class="sd">        """</span>
+</span><span id="line-820">        <span class="n">tomo_bins</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-821">        <span class="k">for</span> <span class="n">ver</span> <span class="ow">in</span> <span class="n">versions</span><span class="p">:</span>
+</span><span id="line-822">            <span class="k">if</span> <span class="n">tomography</span><span class="p">:</span>
+</span><span id="line-823">                <span class="n">tomo_bin_ids</span><span class="p">,</span> <span class="n">tomo_bin_pairs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_tomo_bins</span><span class="p">(</span><span class="n">ver</span><span class="p">)</span>
+</span><span id="line-824">            <span class="k">else</span><span class="p">:</span>
+</span><span id="line-825">                <span class="n">tomo_bin_ids</span><span class="p">,</span> <span class="n">tomo_bin_pairs</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"all"</span><span class="p">],</span> <span class="p">[(</span><span class="s2">"all"</span><span class="p">,</span> <span class="s2">"all"</span><span class="p">)]</span>
+</span><span id="line-826">
+</span><span id="line-827">            <span class="n">tomo_bins</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"ids"</span><span class="p">:</span> <span class="n">tomo_bin_ids</span><span class="p">,</span> <span class="s2">"pairs"</span><span class="p">:</span> <span class="n">tomo_bin_pairs</span><span class="p">}</span>
+</span><span id="line-828">
+</span><span id="line-829">        <span class="k">return</span> <span class="n">tomo_bins</span></div>
 </div>
 
 </span></code></pre></div>
