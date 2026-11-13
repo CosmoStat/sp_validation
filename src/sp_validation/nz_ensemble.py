@@ -35,7 +35,12 @@ Systematic terms:
   replaced by the redshift of a random calibrator;
 - ``nmad_factor``: the gold-QC factor drawn uniformly from a range; gold is
   re-derived at that factor from the calibration's own spectra and sources,
-  so the bins' source selection moves with it.
+  so the bins' source selection moves with it;
+- ``specz_selection``: the calibrators are one spectroscopic selection, and
+  spectra chosen otherwise put other redshifts at the same colours. A draw
+  adds a Gaussian multiple, of this standard deviation, of the difference
+  between the n(z) calibrated on the recipe's alternative calibrators and the
+  calibration's own (:func:`selection_shift`).
 
 The offsets enter to first order: a draw adds half the difference between
 the recalibrations at +v and -v, which cancels what is even in the offsets
@@ -164,6 +169,17 @@ def calibrator_weights(group, member, q, source):
     return out
 
 
+def selection_shift(z, photoz, group, edges, source, grid, fiducial):
+    """n(z) of alternative calibrators on the same selection, minus ``fiducial``.
+
+    ``source`` is the gold source weight per (bin, group). The alternative
+    calibrators weigh the groups they reach in a bin, so each bin's shift
+    integrates to zero.
+    """
+    w = calibrator_weights(group, members(photoz, edges), np.ones(len(z)), source)
+    return histograms(z, w, grid) - fiducial
+
+
 def gold_masks(z, photoz, group, member, source, source_photoz, floor, factor):
     """Re-derive every bin's gold mask, as :func:`nz_calibration.calibrate` does."""
     n_groups = source.shape[1]
@@ -279,6 +295,7 @@ class Calibration:
     jacobian: np.ndarray
     photoz_gradient: np.ndarray
     gold_qc: dict
+    selection: np.ndarray | None = None
 
     @classmethod
     def load(cls, directory):
@@ -300,6 +317,7 @@ class Calibration:
             jacobian=e["catalogue_jacobian"],
             photoz_gradient=e["cal_photoz_gradient"],
             gold_qc=recipe["gold_qc"],
+            selection=e["selection_shift"] if "selection_shift" in e else None,
         )
 
     @property
@@ -379,6 +397,8 @@ def realisations(cal, settings, density=None):
         h = cal.calibrate(z, q, gold)
         if v.any():
             h = h + 0.5 * (cal.calibrate(z, q, gold, v) - cal.calibrate(z, q, gold, -v))
+        if settings.get("specz_selection"):
+            h = h + rng.normal(0, settings["specz_selection"]) * cal.selection
         draws.append(h)
     draws = np.array(draws)
     raw = draws.mean(0)

@@ -149,6 +149,18 @@ def test_every_spectrum_failing_erases_colour_information(run):
     np.testing.assert_allclose(mean_z(cal, raw), cal.z.mean(), atol=0.01)
 
 
+def test_selection_shift_scales_the_draws(run):
+    """Alternative calibrators 0.05 higher in z spread each bin's mean by 0.05."""
+    cal, _ = run
+    source = cal.source * cal.gold
+    args = (cal.photoz, cal.group, cal.edges, source, cal.grid, cal.fiducial())
+    np.testing.assert_allclose(ne.selection_shift(cal.z, *args), 0, atol=1e-12)
+    shifted = replace(cal, selection=ne.selection_shift(cal.z + 0.05, *args))
+    np.testing.assert_allclose(mean_z(cal, shifted.selection), 0.05, atol=1e-3)
+    real, _ = draw(shifted, n=400, specz_selection=1.0)
+    np.testing.assert_allclose(mean_z(cal, real).std(0), 0.05, rtol=0.15)
+
+
 def test_gold_factor_moves_selection(run):
     cal, _ = run
     loose = replace(cal, gold_qc=dict(floor=0.0, nmad_factor=5))

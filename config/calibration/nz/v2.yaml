@@ -1,5 +1,5 @@
 name: v2_DR6_BPZ_SOM_EGS_tomo
-limitation: EGS-only calibration (DEEP2/3) for validation and null tests; no independent-field variance or spectroscopic-selection model.
+limitation: EGS-only calibration (DEEP2/3) for validation and null tests; no independent-field variance.
 inputs:
   calibrators:
     # PhotoPipe's spec-z matches on Stephen Gwyn's DR6 detections, staged per
@@ -11,6 +11,13 @@ inputs:
     surveys: [deep2_final, deep3_final]
     z_min: 0.002  # stars
     output: ${nz_v2}/inputs/calibrators.npz
+    # Every other survey with 100 or more spectra in the field: the alternative
+    # calibrators of the ensemble's specz_selection term.
+    selection:
+      surveys: [deep2_final, deep3_final, DESI_dr1_iron, NED, SIMBAD,
+                herschel_help, SPITZER_DATAFUSION, HETDEX_PSC_PDR1_V1.5,
+                SDSS_QSO, c3r2_dr2, rcsed_final, SDSS_BHM_v6_2_1, candels_v2]
+      output: ${nz_v2}/inputs/calibrators_selection.npz
   sources:
     # The cosmo_val catalogue of SP_v2.0, its shapes and their PhotoPipe join.
     catalogue: ${v2_tomo}/shape_catalog_tomo.fits
@@ -51,4 +58,5 @@ ensemble:
   z2_offset: 0.02            # mag, error of the z2 -> z constant
   specz_failure: 0.01        # 1 - the compilation's DEEP2/3 confidence (0.99)
   nmad_factor: [4, 6]        # gold-QC factor, around the fiducial 5
+  specz_selection: 0.5       # of the shift to the alternative calibrators
 output: ${nz_v2}

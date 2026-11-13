@@ -133,6 +133,18 @@ Systematic terms:
   fiducial 5 (threshold 0.40–0.56 with the 0.4 floor); gold is re-derived at
   that factor, so the bins' source selection moves with it. The other terms
   keep the catalogue's gold selection.
+- `specz_selection`: DEEP2/3 are one spectroscopic selection, and spectra
+  chosen otherwise put other redshifts at the same colours. The recipe's
+  `inputs.calibrators.selection` names every survey of the compilation with
+  100 or more spectra in the field (23,800 spectra against 9,920); calibrating
+  the same gold sources on them moves ⟨z⟩ by +0.098, +0.015, +0.024, +0.025.
+  A draw adds a Gaussian multiple of that difference with σ = 0.5, which puts
+  the alternative at 2σ: DEEP2/3 cannot measure most redshifts above 1.4, and
+  targeted surveys over-represent them. Bin 1 is set by catastrophic outliers:
+  0.4% of its DEEP2/3 calibrators lie above z = 1.5, against about 5% of the
+  other surveys', and without those objects its shift is +0.021. Clustering
+  redshifts against DESI DR1 bound each bin's mean to about ±0.02 and cannot
+  see these tails, so the size is a prior.
 
 The zero-point and z2 offsets enter to first order: each draw adds half the
 difference between the recalibrations at +v and −v. That keeps the
