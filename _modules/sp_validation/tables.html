@@ -571,89 +571,44 @@
 
 </span><span id="line-296">
 </span><span id="line-297">
-<div class="viewcode-block" id="promote_dtypes">
-<a class="viewcode-back" href="../../sp_validation.tables.html#sp_validation.tables.promote_dtypes">[docs]</a>
-</span><span id="line-298"><span class="k">def</span><span class="w"> </span><span class="nf">promote_dtypes</span><span class="p">(</span><span class="n">dtype_a</span><span class="p">,</span> <span class="n">dtype_b</span><span class="p">):</span>
-</span><span id="line-299"><span class="w">    </span><span class="sd">"""Return a scalar dtype holding both dtypes without truncation or overflow."""</span>
-</span><span id="line-300">    <span class="k">if</span> <span class="n">dtype_a</span> <span class="o">==</span> <span class="n">dtype_b</span><span class="p">:</span>
-</span><span id="line-301">        <span class="k">return</span> <span class="n">dtype_a</span>
-</span><span id="line-302">    <span class="k">if</span> <span class="n">dtype_a</span><span class="o">.</span><span class="n">kind</span> <span class="ow">in</span> <span class="s2">"SU"</span> <span class="ow">and</span> <span class="n">dtype_b</span><span class="o">.</span><span class="n">kind</span> <span class="ow">in</span> <span class="s2">"SU"</span><span class="p">:</span>
-</span><span id="line-303">        <span class="n">kind</span> <span class="o">=</span> <span class="s2">"U"</span> <span class="k">if</span> <span class="s2">"U"</span> <span class="ow">in</span> <span class="p">(</span><span class="n">dtype_a</span><span class="o">.</span><span class="n">kind</span><span class="p">,</span> <span class="n">dtype_b</span><span class="o">.</span><span class="n">kind</span><span class="p">)</span> <span class="k">else</span> <span class="s2">"S"</span>
-</span><span id="line-304">        <span class="n">size_a</span> <span class="o">=</span> <span class="n">dtype_a</span><span class="o">.</span><span class="n">itemsize</span> <span class="o">//</span> <span class="p">(</span><span class="mi">4</span> <span class="k">if</span> <span class="n">dtype_a</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s2">"U"</span> <span class="k">else</span> <span class="mi">1</span><span class="p">)</span>
-</span><span id="line-305">        <span class="n">size_b</span> <span class="o">=</span> <span class="n">dtype_b</span><span class="o">.</span><span class="n">itemsize</span> <span class="o">//</span> <span class="p">(</span><span class="mi">4</span> <span class="k">if</span> <span class="n">dtype_b</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s2">"U"</span> <span class="k">else</span> <span class="mi">1</span><span class="p">)</span>
-</span><span id="line-306">        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">kind</span><span class="si">}{</span><span class="nb">max</span><span class="p">(</span><span class="n">size_a</span><span class="p">,</span><span class="w"> </span><span class="n">size_b</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-</span><span id="line-307">
-</span><span id="line-308">    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">promote_types</span><span class="p">(</span><span class="n">dtype_a</span><span class="p">,</span> <span class="n">dtype_b</span><span class="p">)</span></div>
-
-</span><span id="line-309">
-</span><span id="line-310">
 <div class="viewcode-block" id="group_dtype">
 <a class="viewcode-back" href="../../sp_validation.tables.html#sp_validation.tables.group_dtype">[docs]</a>
-</span><span id="line-311"><span class="k">def</span><span class="w"> </span><span class="nf">group_dtype</span><span class="p">(</span><span class="n">tables</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-</span><span id="line-312"><span class="w">    </span><span class="sd">"""Group Dtype.</span>
-</span><span id="line-313">
-</span><span id="line-314"><span class="sd">    Build the structured output dtype of a group of row-chunk tables,</span>
-</span><span id="line-315"><span class="sd">    promoting each column across *every* table. A campaign that was</span>
-</span><span id="line-316"><span class="sd">    partially reprocessed can carry e.g. ``S7`` tile IDs in one tile and</span>
-</span><span id="line-317"><span class="sd">    ``S12`` in another, or ``f4`` next to ``f8``; taking the dtype of the</span>
-</span><span id="line-318"><span class="sd">    first table alone would silently truncate the others.</span>
-</span><span id="line-319">
-</span><span id="line-320"><span class="sd">    Note that ShapePipe currently writes ``TILE_ID`` as ``f8`` (the tile</span>
-</span><span id="line-321"><span class="sd">    ``183.307`` arrives as the float ``183.307``), not as a string, so the</span>
-</span><span id="line-322"><span class="sd">    string-promotion branch above is for a future string-valued ``TILE_ID``</span>
-</span><span id="line-323"><span class="sd">    and is not exercised by today's products.</span>
-</span><span id="line-324">
-</span><span id="line-325"><span class="sd">    TODO: whether ``TILE_ID`` should be a string is an open schema decision.</span>
-</span><span id="line-326"><span class="sd">    A float cannot represent the ID exactly and cannot be compared for</span>
-</span><span id="line-327"><span class="sd">    equality safely; changing it is a breaking product change, so it is left</span>
-</span><span id="line-328"><span class="sd">    as-is here and this reader deliberately handles both.</span>
-</span><span id="line-329">
-</span><span id="line-330"><span class="sd">    Parameters</span>
-</span><span id="line-331"><span class="sd">    ----------</span>
-</span><span id="line-332"><span class="sd">    tables : list or dict</span>
-</span><span id="line-333"><span class="sd">        row-chunk tables (anything with a structured ``dtype``), optionally</span>
-</span><span id="line-334"><span class="sd">        keyed by dataset name for error messages</span>
-</span><span id="line-335"><span class="sd">    columns : list of str, optional</span>
-</span><span id="line-336"><span class="sd">        columns to keep; default is ``None`` (all columns of the first table)</span>
-</span><span id="line-337">
-</span><span id="line-338"><span class="sd">    Returns</span>
-</span><span id="line-339"><span class="sd">    -------</span>
-</span><span id="line-340"><span class="sd">    numpy.dtype</span>
-</span><span id="line-341"><span class="sd">        structured output dtype</span>
-</span><span id="line-342">
-</span><span id="line-343"><span class="sd">    Raises</span>
-</span><span id="line-344"><span class="sd">    ------</span>
-</span><span id="line-345"><span class="sd">    KeyError</span>
-</span><span id="line-346"><span class="sd">        if a table lacks one of the columns, naming the tables that do</span>
-</span><span id="line-347">
-</span><span id="line-348"><span class="sd">    """</span>
-</span><span id="line-349">    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">tables</span><span class="p">,</span> <span class="s2">"items"</span><span class="p">):</span>
-</span><span id="line-350">        <span class="n">tables</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">enumerate</span><span class="p">(</span><span class="n">tables</span><span class="p">))</span>
-</span><span id="line-351">    <span class="n">dtypes</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">table</span><span class="o">.</span><span class="n">dtype</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">table</span> <span class="ow">in</span> <span class="n">tables</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
-</span><span id="line-352">    <span class="n">first</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">dtypes</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
-</span><span id="line-353">    <span class="n">names</span> <span class="o">=</span> <span class="n">columns</span> <span class="k">if</span> <span class="n">columns</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">list</span><span class="p">(</span><span class="n">first</span><span class="o">.</span><span class="n">names</span><span class="p">)</span>
-</span><span id="line-354">    <span class="c1"># Chunks of one product usually share a dtype; compare each distinct one.</span>
-</span><span id="line-355">    <span class="n">distinct</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">dict</span><span class="o">.</span><span class="n">fromkeys</span><span class="p">(</span><span class="n">dtypes</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
-</span><span id="line-356">    <span class="n">lacking</span> <span class="o">=</span> <span class="p">{</span><span class="n">dtype</span><span class="p">:</span> <span class="p">[</span><span class="n">n</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">names</span> <span class="k">if</span> <span class="n">n</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">dtype</span><span class="o">.</span><span class="n">names</span><span class="p">]</span> <span class="k">for</span> <span class="n">dtype</span> <span class="ow">in</span> <span class="n">distinct</span><span class="p">}</span>
-</span><span id="line-357">    <span class="n">missing</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">lacking</span><span class="p">[</span><span class="n">dtype</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">dtype</span> <span class="ow">in</span> <span class="n">dtypes</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">lacking</span><span class="p">[</span><span class="n">dtype</span><span class="p">]}</span>
-</span><span id="line-358">    <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
-</span><span id="line-359">        <span class="n">key</span><span class="p">,</span> <span class="n">cols</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">missing</span><span class="o">.</span><span class="n">items</span><span class="p">()))</span>
-</span><span id="line-360">        <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
-</span><span id="line-361">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">missing</span><span class="p">)</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">tables</span><span class="p">)</span><span class="si">}</span><span class="s2"> tables lack columns"</span>
-</span><span id="line-362">            <span class="o">+</span> <span class="sa">f</span><span class="s2">" </span><span class="si">{</span><span class="s1">'requested'</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">columns</span><span class="w"> </span><span class="ow">is</span><span class="w"> </span><span class="ow">not</span><span class="w"> </span><span class="kc">None</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">'of the first table'</span><span class="si">}</span><span class="s2">,"</span>
-</span><span id="line-363">            <span class="o">+</span> <span class="sa">f</span><span class="s2">" e.g. table </span><span class="si">{</span><span class="n">key</span><span class="si">!r}</span><span class="s2"> lacks </span><span class="si">{</span><span class="n">cols</span><span class="si">}</span><span class="s2">; tables lacking some:"</span>
-</span><span id="line-364">            <span class="o">+</span> <span class="sa">f</span><span class="s2">" </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">missing</span><span class="p">)[:</span><span class="mi">20</span><span class="p">]</span><span class="si">}</span><span class="s2">. Request columns without them."</span>
-</span><span id="line-365">        <span class="p">)</span>
-</span><span id="line-366">    <span class="n">dtypes</span> <span class="o">=</span> <span class="n">distinct</span>
-</span><span id="line-367">
-</span><span id="line-368">    <span class="n">fields</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="line-369">    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">names</span><span class="p">:</span>
-</span><span id="line-370">        <span class="n">promoted</span> <span class="o">=</span> <span class="n">dtypes</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">name</span><span class="p">]</span>
-</span><span id="line-371">        <span class="k">for</span> <span class="n">dtype</span> <span class="ow">in</span> <span class="n">dtypes</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
-</span><span id="line-372">            <span class="n">promoted</span> <span class="o">=</span> <span class="n">promote_dtypes</span><span class="p">(</span><span class="n">promoted</span><span class="p">,</span> <span class="n">dtype</span><span class="p">[</span><span class="n">name</span><span class="p">])</span>
-</span><span id="line-373">        <span class="n">fields</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">name</span><span class="p">,</span> <span class="n">promoted</span><span class="p">))</span>
-</span><span id="line-374">
-</span><span id="line-375">    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="n">fields</span><span class="p">)</span></div>
+</span><span id="line-298"><span class="k">def</span><span class="w"> </span><span class="nf">group_dtype</span><span class="p">(</span><span class="n">tables</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+</span><span id="line-299"><span class="w">    </span><span class="sd">"""Return the structured dtype of a group of row-chunk tables.</span>
+</span><span id="line-300">
+</span><span id="line-301"><span class="sd">    Each column is promoted across every table (``np.promote_types``), so a</span>
+</span><span id="line-302"><span class="sd">    partially reprocessed campaign carrying ``S7`` and ``S12`` tile IDs, or</span>
+</span><span id="line-303"><span class="sd">    ``f4`` next to ``f8``, reads without truncation. ``tables`` is a list or a</span>
+</span><span id="line-304"><span class="sd">    dict keyed by name for error messages; ``columns`` defaults to those of the</span>
+</span><span id="line-305"><span class="sd">    first table. Raises ``KeyError`` naming the tables that lack a column.</span>
+</span><span id="line-306"><span class="sd">    """</span>
+</span><span id="line-307">    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">tables</span><span class="p">,</span> <span class="s2">"items"</span><span class="p">):</span>
+</span><span id="line-308">        <span class="n">tables</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">enumerate</span><span class="p">(</span><span class="n">tables</span><span class="p">))</span>
+</span><span id="line-309">    <span class="n">dtypes</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">table</span><span class="o">.</span><span class="n">dtype</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">table</span> <span class="ow">in</span> <span class="n">tables</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+</span><span id="line-310">    <span class="n">first</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">dtypes</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
+</span><span id="line-311">    <span class="n">names</span> <span class="o">=</span> <span class="n">columns</span> <span class="k">if</span> <span class="n">columns</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">list</span><span class="p">(</span><span class="n">first</span><span class="o">.</span><span class="n">names</span><span class="p">)</span>
+</span><span id="line-312">    <span class="c1"># Chunks of one product usually share a dtype; compare each distinct one.</span>
+</span><span id="line-313">    <span class="n">distinct</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">dict</span><span class="o">.</span><span class="n">fromkeys</span><span class="p">(</span><span class="n">dtypes</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
+</span><span id="line-314">    <span class="n">lacking</span> <span class="o">=</span> <span class="p">{</span><span class="n">dtype</span><span class="p">:</span> <span class="p">[</span><span class="n">n</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">names</span> <span class="k">if</span> <span class="n">n</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">dtype</span><span class="o">.</span><span class="n">names</span><span class="p">]</span> <span class="k">for</span> <span class="n">dtype</span> <span class="ow">in</span> <span class="n">distinct</span><span class="p">}</span>
+</span><span id="line-315">    <span class="n">missing</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">lacking</span><span class="p">[</span><span class="n">dtype</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">dtype</span> <span class="ow">in</span> <span class="n">dtypes</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">lacking</span><span class="p">[</span><span class="n">dtype</span><span class="p">]}</span>
+</span><span id="line-316">    <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
+</span><span id="line-317">        <span class="n">key</span><span class="p">,</span> <span class="n">cols</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">missing</span><span class="o">.</span><span class="n">items</span><span class="p">()))</span>
+</span><span id="line-318">        <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
+</span><span id="line-319">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">missing</span><span class="p">)</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">tables</span><span class="p">)</span><span class="si">}</span><span class="s2"> tables lack columns"</span>
+</span><span id="line-320">            <span class="o">+</span> <span class="sa">f</span><span class="s2">" </span><span class="si">{</span><span class="s1">'requested'</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">columns</span><span class="w"> </span><span class="ow">is</span><span class="w"> </span><span class="ow">not</span><span class="w"> </span><span class="kc">None</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">'of the first table'</span><span class="si">}</span><span class="s2">,"</span>
+</span><span id="line-321">            <span class="o">+</span> <span class="sa">f</span><span class="s2">" e.g. table </span><span class="si">{</span><span class="n">key</span><span class="si">!r}</span><span class="s2"> lacks </span><span class="si">{</span><span class="n">cols</span><span class="si">}</span><span class="s2">; tables lacking some:"</span>
+</span><span id="line-322">            <span class="o">+</span> <span class="sa">f</span><span class="s2">" </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">missing</span><span class="p">)[:</span><span class="mi">20</span><span class="p">]</span><span class="si">}</span><span class="s2">. Request columns without them."</span>
+</span><span id="line-323">        <span class="p">)</span>
+</span><span id="line-324">    <span class="n">dtypes</span> <span class="o">=</span> <span class="n">distinct</span>
+</span><span id="line-325">
+</span><span id="line-326">    <span class="n">fields</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="line-327">    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">names</span><span class="p">:</span>
+</span><span id="line-328">        <span class="n">promoted</span> <span class="o">=</span> <span class="n">dtypes</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">name</span><span class="p">]</span>
+</span><span id="line-329">        <span class="k">for</span> <span class="n">dtype</span> <span class="ow">in</span> <span class="n">dtypes</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+</span><span id="line-330">            <span class="n">promoted</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">promote_types</span><span class="p">(</span><span class="n">promoted</span><span class="p">,</span> <span class="n">dtype</span><span class="p">[</span><span class="n">name</span><span class="p">])</span>
+</span><span id="line-331">        <span class="n">fields</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">name</span><span class="p">,</span> <span class="n">promoted</span><span class="p">))</span>
+</span><span id="line-332">
+</span><span id="line-333">    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="n">fields</span><span class="p">)</span></div>
 
 </span></code></pre></div>
     </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
