@@ -295,56 +295,14 @@ class ConcatTable:
         return out
 
 
-def promote_dtypes(dtype_a, dtype_b):
-    """Return a scalar dtype holding both dtypes without truncation or overflow."""
-    if dtype_a == dtype_b:
-        return dtype_a
-    if dtype_a.kind in "SU" and dtype_b.kind in "SU":
-        kind = "U" if "U" in (dtype_a.kind, dtype_b.kind) else "S"
-        size_a = dtype_a.itemsize // (4 if dtype_a.kind == "U" else 1)
-        size_b = dtype_b.itemsize // (4 if dtype_b.kind == "U" else 1)
-        return np.dtype(f"{kind}{max(size_a, size_b)}")
-
-    return np.promote_types(dtype_a, dtype_b)
-
-
 def group_dtype(tables, columns=None):
-    """Group Dtype.
+    """Return the structured dtype of a group of row-chunk tables.
 
-    Build the structured output dtype of a group of row-chunk tables,
-    promoting each column across *every* table. A campaign that was
-    partially reprocessed can carry e.g. ``S7`` tile IDs in one tile and
-    ``S12`` in another, or ``f4`` next to ``f8``; taking the dtype of the
-    first table alone would silently truncate the others.
-
-    Note that ShapePipe currently writes ``TILE_ID`` as ``f8`` (the tile
-    ``183.307`` arrives as the float ``183.307``), not as a string, so the
-    string-promotion branch above is for a future string-valued ``TILE_ID``
-    and is not exercised by today's products.
-
-    TODO: whether ``TILE_ID`` should be a string is an open schema decision.
-    A float cannot represent the ID exactly and cannot be compared for
-    equality safely; changing it is a breaking product change, so it is left
-    as-is here and this reader deliberately handles both.
-
-    Parameters
-    ----------
-    tables : list or dict
-        row-chunk tables (anything with a structured ``dtype``), optionally
-        keyed by dataset name for error messages
-    columns : list of str, optional
-        columns to keep; default is ``None`` (all columns of the first table)
-
-    Returns
-    -------
-    numpy.dtype
-        structured output dtype
-
-    Raises
-    ------
-    KeyError
-        if a table lacks one of the columns, naming the tables that do
-
+    Each column is promoted across every table (``np.promote_types``), so a
+    partially reprocessed campaign carrying ``S7`` and ``S12`` tile IDs, or
+    ``f4`` next to ``f8``, reads without truncation. ``tables`` is a list or a
+    dict keyed by name for error messages; ``columns`` defaults to those of the
+    first table. Raises ``KeyError`` naming the tables that lack a column.
     """
     if not hasattr(tables, "items"):
         tables = dict(enumerate(tables))
@@ -369,7 +327,7 @@ def group_dtype(tables, columns=None):
     for name in names:
         promoted = dtypes[0][name]
         for dtype in dtypes[1:]:
-            promoted = promote_dtypes(promoted, dtype[name])
+            promoted = np.promote_types(promoted, dtype[name])
         fields.append((name, promoted))
 
     return np.dtype(fields)

@@ -34,7 +34,6 @@ from sp_validation.masks import (
 from . import calibration, format, grammar
 from . import catalog as sp_cat
 from . import io as sp_io
-from .tables import promote_dtypes
 
 # Names re-exported for external code that resolves them off this module.
 __all__ = [
@@ -230,10 +229,6 @@ class BaseCat(object):
 
         """
         self._catalogue.close()
-
-
-# Column-dtype promotion is shared with the catalogue reader.
-_promote = promote_dtypes
 
 
 def _checked_assign(target, start, end, values, name):
@@ -455,7 +450,7 @@ class JointCat(BaseCat):
             # a later file is not silently truncated or overflowed.
             promoted = subs[0]
             for sub in subs[1:]:
-                promoted = _promote(promoted, sub)
+                promoted = np.promote_types(promoted, sub)
             fields.append((name, self.dtype_out(name, promoted)))
         fields.append(("campaign", np.dtype(f"S{n_char_campaign}")))
 
