@@ -39,9 +39,11 @@ from .diagnostic_plots import leakage_contour_axes
 def _corr_2d(x, y, weights, order, mix, stats_file):
     """``shear_psf_leakage.leakage.corr_2d``, solved by trust-region least squares.
 
-    lmfit's default solver is MINPACK, which indexes its residuals-by-parameters
-    Jacobian with 32-bit integers: two components of 191M galaxies with six
-    parameters overflow it. The model, loss and parameter errors are corr_2d's.
+    lmfit's default solver (MINPACK) and the trust-region solver's SVD (LAPACK)
+    both index the residuals-by-parameters Jacobian with 32-bit integers: two
+    components of 191M galaxies with six parameters overflow them. The
+    iterative LSMR trust-region solver does not factorise the Jacobian. The
+    model, loss and parameter errors are corr_2d's.
     """
     from lmfit import Parameters, minimize
 
@@ -54,7 +56,7 @@ def _corr_2d(x, y, weights, order, mix, stats_file):
     err = 1 / np.sqrt(weights) if weights is not None else np.ones_like(y[0])
     res = minimize(
         leakage.loss_bias_2d, params, args=(x, y, err, order, mix),
-        method="least_squares",
+        method="least_squares", tr_solver="lsmr",
     )
     if stats_file:
         leakage.print_stats(f"2D fit order={order} mix={mix}:", stats_file)
