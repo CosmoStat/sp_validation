@@ -34,6 +34,7 @@ from sp_validation.masks import (
 from . import calibration, format, grammar
 from . import catalog as sp_cat
 from . import io as sp_io
+from .tables import promote_dtypes
 
 # Names re-exported for external code that resolves them off this module.
 __all__ = [
@@ -122,7 +123,7 @@ class BaseCat(object):
 
         Returns
         -------
-        numpy.ndarray, astropy.io.fits.FITS_rec, h5py.Dataset or grammar.V2View
+        numpy.ndarray or grammar.V2View
             catalogue data
 
         """
@@ -231,8 +232,8 @@ class BaseCat(object):
         self._catalogue.close()
 
 
-# Column-dtype promotion is shared with the catalogue reader in ``io``.
-_promote = sp_io.promote_dtypes
+# Column-dtype promotion is shared with the catalogue reader.
+_promote = promote_dtypes
 
 
 def _checked_assign(target, start, end, values, name):
