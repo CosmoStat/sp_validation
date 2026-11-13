@@ -34,6 +34,32 @@ from ..rho_tau import (
     read_leakage_jackknife,
 )
 from .diagnostic_plots import leakage_contour_axes
+
+
+def _corr_2d(x, y, weights, order, mix, stats_file):
+    """``shear_psf_leakage.leakage.corr_2d``, solved by trust-region least squares.
+
+    lmfit's default solver is MINPACK, which indexes its residuals-by-parameters
+    Jacobian with 32-bit integers: two components of 191M galaxies with six
+    parameters overflow it. The model, loss and parameter errors are corr_2d's.
+    """
+    from lmfit import Parameters, minimize
+
+    params = Parameters()
+    names = ["a11", "a22", "c1", "c2"] + (["a12", "a21"] if mix else [])
+    if order == "quad":
+        names += ["q111", "q222"] + (["q112", "q122", "q212", "q211"] if mix else [])
+    for name in names:
+        params.add(name, value=0.0)
+    err = 1 / np.sqrt(weights) if weights is not None else np.ones_like(y[0])
+    res = minimize(
+        leakage.loss_bias_2d, params, args=(x, y, err, order, mix),
+        method="least_squares",
+    )
+    if stats_file:
+        leakage.print_stats(f"2D fit order={order} mix={mix}:", stats_file)
+        leakage.print_fit_report(res, file=stats_file)
+    return res.params
 from .sacc_writers import rho_tau_to_sacc
 
 # Settings of the joint rho/tau leakage measurement and its 'eiv' fit; the
@@ -537,14 +563,8 @@ class PSFSystematicsMixin:
                     results_obj._dat[results_obj._params[key]]
                     for key in ("e1_PSF_col", "e2_PSF_col")
                 ]
-                results_obj.par_best_fit = leakage.corr_2d(
-                    x,
-                    e,
-                    weights=weights,
-                    order=order,
-                    mix=mix,
-                    stats_file=results_obj._stats_file,
-                    verbose=results_obj._params["verbose"],
+                results_obj.par_best_fit = _corr_2d(
+                    x, e, weights, order, mix, results_obj._stats_file
                 )
                 leakage.save_to_file(results_obj.par_best_fit, out_path)
 
