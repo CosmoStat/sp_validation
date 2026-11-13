@@ -74,33 +74,81 @@ fills missing z after the recipe's offset, for sources and calibrators alike.
 
 **Realisations.** With an `ensemble` section in the recipe, the run also
 writes `realisations.npz`: `z` and `realisations` (n_draw, n_bin, n_z), each
-bin unit-integral, every bin drawn together; `python -m
-sp_validation.nz_ensemble calibration_arrays.npz -o realisations.npz` draws
-from an existing run. A draw multiplies each calibrator's weight by
-q_i = m_i (1 + δ(z_i)) and renormalises within its (bin, SOM group), so every
-group keeps its source weight (`sp_validation.nz_ensemble`):
+bin unit-integral, every bin drawn together, plus `ensemble_inputs.npz`, what
+the draws need from the sources. `python -m sp_validation.nz_ensemble <run
+directory> -o realisations.npz [--settings ensemble.yaml]` draws from an
+existing run. A draw perturbs the calibration's inputs and recalibrates: each
+in-bin spectrum of a gold group carries the group's source weight S_kg times
+q_i / Σ_group q_j (`sp_validation.nz_ensemble`). Each key of the `ensemble`
+section switches one term on.
 
-- *Calibrator shot noise*: m_i are multinomial bootstrap counts of the
-  spectra. Bins are calibrated by disjoint calibrators (split by BPZ),
-  so this term is independent between bins.
-- *Sample variance of the EGS field*: δ(z) is a lognormal galaxy density
-  along the line of sight, per grid cell, with covariance from the
-  nonlinear matter power seen through a 2° × 0.25° footprint (the DEEP2/3
-  strip) times bias² (b = 1.3). It is shared by every bin and is what
-  correlates them. Within-group renormalisation cancels δ wherever a group's
-  calibrators share a redshift, which is how the SOM suppresses sample
+Statistical terms, through q_i = m_i (1 + δ(z_i)):
+
+- `bootstrap`: m_i are multinomial bootstrap counts of the spectra. Bins are
+  calibrated by disjoint spectra (split by BPZ), so this term is independent
+  between bins.
+- `density`: δ(z) is a lognormal galaxy density along the line of sight,
+  per grid cell, with covariance from the nonlinear matter power seen through
+  a 2° × 0.25° footprint (the DEEP2/3 strip) times bias² (b = 1.3). It is
+  shared by every bin. Within-group renormalisation cancels δ wherever a
+  group's spectra share a redshift, which is how the SOM suppresses sample
   variance.
 
-The draws are recentred on the calibration's n(z): renormalising positive
-weights within groups is nonlinear, which moves the raw ensemble mean by a few
-thousandths in ⟨z⟩: an estimator bias, not a redshift shift.
+Systematic terms:
 
-Held fixed: the SOM, its groups, gold masks and source weights. Left out:
-photometric zero points and the z2 offset (shared by every bin), SOM
-training stochasticity (on v2, seeds move ⟨z⟩ by up to 0.0015 in bin 4),
-spectroscopic selection and incompleteness, spec-z errors, redshift-space
-smearing of δ, and any bias evolution. The footprint and bias are
-assumptions, and the δ term scales with b.
+- `zero_points`: a zero-point error of EGS against the wide field. The
+  spectra trained the SOM, and training is translation-equivariant, so
+  correcting their photometry would move the cells with them: the error acts
+  as an offset of every source against the SOM, which moves the catalogue's
+  weight between groups, and as a shift of each spectrum's BPZ along its
+  local BPZ gradient (a plane through its 128 nearest spectra), which can move
+  it between bins. Sizes come from stellar-locus regression on the 46,700
+  stars (spec-z < 0.002, 17 < r < 21) of PhotoPipe's DR6 spec-z match: the
+  colour offsets of 3.4 deg² patches (about the EGS footprint) at |b| > 30°,
+  less each patch's own noise, have σ = 0.022, 0.019, 0.012, 0.021 mag in
+  u−g, g−r, r−i, i−z, with correlations −0.59 (u−g, g−r) and −0.49 (r−i, i−z),
+  the signature of single-band errors. The grey term, 0.01 mag, is the
+  Pan-STARRS 3π uniformity the DR6 griz calibration inherits. Offsets along
+  the stellar locus are invisible to this regression, so that component is
+  unmeasured. EGS itself sits at +0.009, +0.035, −0.013 and +0.055
+  (± 0.009, 0.005, 0.004, 0.005) off the survey locus; its i−z is redder than
+  99% of patches. The stars are spectroscopic targets (colour-selected SDSS
+  stars over most of the sky, DEEP2/3's faint stars in EGS), so a population
+  difference could mimic part of that offset.
+- `z2_offset`: an error in the constant that maps z2 onto z, applied to the z
+  band of every source measured through z2 (a third of the gold weight; the
+  spectra have none). σ = 0.02 mag: stars in z2-only areas sit 0.006–0.017 mag
+  off the canonical i−z locus after the mapping, and galaxies may carry a
+  colour term the stars don't.
+- `specz_failure`: each spectrum's redshift is, with probability 0.01,
+  replaced by the redshift of a random spectrum. PhotoPipe's compilation
+  (2026-10-19) gives every DEEP2/3 redshift confidence 0.99; Newman et al.
+  (2013) measure 0.75% (Q = 3) and 0.15% (Q = 4) failures from repeats, so
+  0.01 is conservative. Failures pull a bin toward the spectra's mean
+  redshift, so this term is a one-sided bias more than a scatter: the raw
+  ensemble mean moves bin 1 by +0.004, and the delivered n(z), which already
+  holds the real failures, is biased by about as much the other way. The
+  recentred draws keep only the scatter.
+- `nmad_factor`: the gold-QC factor drawn uniformly in [4, 6] around the
+  fiducial 5 (threshold 0.40–0.56 with the 0.4 floor); gold is re-derived at
+  that factor, so the bins' source selection moves with it. The other terms
+  keep the catalogue's gold selection.
+
+The zero-point and z2 offsets enter to first order: each draw adds half the
+difference between the recalibrations at +v and −v. That keeps the
+catalogue's response linear (its source tables are; central differences at
+±0.02 mag, checked against exact reassignment at 0.05 mag) and cancels what is
+even in the offsets: a group whose last in-bin spectrum leaves the bin loses
+its sources' weight at either sign. Every term but `nmad_factor` keeps the
+catalogue's selection, its gold sources wherever the offsets move them. The
+draws are recentred on the calibration's n(z); the raw ensemble mean moves by
+up to 0.004 in ⟨z⟩, mostly from spec-z failures.
+
+Held fixed: the SOM and its groups. Left out: spectroscopic selection and
+incompleteness (DEEP2's [OII] leaves the spectral window above z ≈ 1.4, so
+spectra at higher redshift are missing, not wrong), method bias calibrated on
+simulations, SOM training stochasticity (on v2, seeds move ⟨z⟩ by up to
+0.0015 in bin 4), redshift-space smearing of δ, and bias evolution.
 
 **Limits.** The calibrators are about 9,900 EGS DEEP2/3 spectra: no
 field-to-field variance and no model of spectroscopic selection, so the n(z)
