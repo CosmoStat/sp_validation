@@ -99,9 +99,8 @@ def local(path):
         files, stack = [], [path]
         while stack:
             uri = stack.pop()
-            for name in client.listdir(uri, force=True):
-                child = f"{uri}/{name}"
-                (stack if client.isdir(child) else files).append(child)
+            for child in client.get_node(uri, limit=None, force=True).node_list:
+                (stack if child.isdir() else files).append(f"{uri}/{child.name}")
         from concurrent.futures import ThreadPoolExecutor
 
         with ThreadPoolExecutor(8) as pool:

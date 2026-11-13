@@ -56,8 +56,12 @@ class FakeVault:
     def isdir(self, uri):
         return self._path(uri).is_dir()
 
-    def listdir(self, uri, force=False):
-        return sorted(p.name for p in self._path(uri).iterdir())
+    def get_node(self, uri, limit=None, force=False):
+        children = [
+            types.SimpleNamespace(name=p.name, isdir=p.is_dir)
+            for p in sorted(self._path(uri).iterdir())
+        ]
+        return types.SimpleNamespace(node_list=children)
 
     def copy(self, uri, dest):
         Path(dest).write_bytes(self._path(uri).read_bytes())
