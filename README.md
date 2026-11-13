@@ -129,7 +129,8 @@ what the run reads from the CADC vault into `~/.cache/sp_validation/vos/`
 (about 15 GB, once), which needs membership of the CADC group `cfis-read` and a
 proxy certificate (`cadc-get-cert -u <user>` writes `~/.ssl/cadcproxy.pem`).
 Cℓ_EE is written concealed under the UNIONS blind; Cℓ_BB and Cℓ_EB are not
-blinded. The SACC lands in `output/`.
+blinded. The SACC lands in `output/`. All ten bin pairs take 3 min on 32 cores
+and 11 GB of memory, plus about 10 min for the first fetch from the vault.
 
 ## Cosmology inference
 
