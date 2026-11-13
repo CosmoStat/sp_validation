@@ -303,9 +303,7 @@ def references_and_shifts(
         raw = sacc_io.load(raw_paths[grid], blind="none")
         sealed = sacc_io.load(sealed_paths[grid], blind=blind)
         delta = shift_for(raw, blind)
-        np.testing.assert_allclose(
-            sealed.mean, raw.mean + delta, rtol=1e-9, atol=1e-25
-        )
+        np.testing.assert_allclose(sealed.mean, raw.mean + delta, rtol=1e-9, atol=1e-25)
         kinds = (
             (sacc_io.CL_EE,) if grid == "cl" else (sacc_io.XI_PLUS, sacc_io.XI_MINUS)
         )
