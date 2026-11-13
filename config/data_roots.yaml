@@ -17,3 +17,7 @@ unions_data:
 v2_tomo:
   - /project/rrg-kyi/cdaley/unions/data/v2.x/cosmo-val-v2-tomo               # fir
   - /project/6001537/cdaley/cosmo-val-v2-tomo/catalogue                      # nibi
+
+# DESI DR1 LSS catalogues (https://data.desi.lbl.gov/public/dr1/survey/catalogs/dr1/LSS/iron/LSScats/).
+desi_dr1:
+  - /project/6001537/cdaley/desi-dr1                                        # nibi

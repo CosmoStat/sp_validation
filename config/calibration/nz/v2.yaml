@@ -59,4 +59,23 @@ ensemble:
   specz_failure: 0.01        # 1 - the compilation's DEEP2/3 confidence (0.99)
   nmad_factor: [4, 6]        # gold-QC factor, around the fiducial 5
   specz_selection: 0.5       # of the shift to the alternative calibrators
+# Clustering redshifts of the gold bins (sp_validation.nz_clustering): a check
+# on the n(z), not a product.
+clustering:
+  reference:
+    # DESI DR1 LSS clustering catalogues, v1.5:
+    # <tracer>_{NGC,SGC}_clustering.dat.fits and _<i>_clustering.ran.fits
+    directory: ${desi_dr1}/LSScats-v1.5
+    randoms: 2               # random files per cap
+    slices:                  # tracer: [z_min, z_max, slice width]
+      BGS_BRIGHT: [0.05, 0.40, 0.05]
+      LRG: [0.40, 0.80, 0.05]
+      ELG_LOPnotqso: [0.80, 1.60, 0.05]
+      QSO: [1.60, 3.00, 0.10]
+  footprint: ${v2_tomo}/footprint-nside4096-ring.fits
+  annulus: [1.5, 5.0]        # comoving Mpc/h
+  patches: 100               # jackknife
+  gate: [LRG, 0.40, 1.10, 0.05]  # half of this tracer as the known answer
+  core: [[0.05, 0.50], [0.25, 0.70], [0.40, 0.90], [0.60, 1.40]]  # fit window per bin
+  output: ${nz_v2}/clustering
 output: ${nz_v2}

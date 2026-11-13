@@ -12,6 +12,7 @@ selection a redshift distribution. Run them in order. See
 | 3 | `demo_apply_hsp_masks.py` | Add the structural and coverage (HealSparse) masks. |
 | 4 | `calibrate_comprehensive_cat.py` | Galaxy selection + metacalibration. Uses the mask configs in `config/calibration/`. |
 | 5 | `calibrate_nz.py` | SOM direct calibration: the tomographic n(z) file, each row's `TOM_BIN_ID` and n(z) realisations. |
+| 5b | `clustering_nz.py` | Check of step 5: clustering redshifts of the gold bins against DESI DR1. |
 
 `params.py` is the shared parameter template (paths, column names, survey
 constants) imported by `extract_info.py`; copy and edit it per run.
@@ -143,8 +144,7 @@ Systematic terms:
   targeted surveys over-represent them. Bin 1 is set by catastrophic outliers:
   0.4% of its DEEP2/3 calibrators lie above z = 1.5, against about 5% of the
   other surveys', and without those objects its shift is +0.021. Clustering
-  redshifts against DESI DR1 bound each bin's mean to about ±0.02 and cannot
-  see these tails, so the size is a prior.
+  redshifts (step 5b) cannot see these tails, so the size is a prior.
 
 The zero-point and z2 offsets enter to first order: each draw adds half the
 difference between the recalibrations at +v and −v. That keeps the
@@ -156,14 +156,45 @@ catalogue's selection, its gold sources wherever the offsets move them. The
 draws are recentred on the calibration's n(z); the raw ensemble mean moves by
 up to 0.004 in ⟨z⟩, mostly from spec-z failures.
 
-Held fixed: the SOM and its groups. Left out: spectroscopic selection and
-incompleteness (DEEP2's [OII] leaves the spectral window above z ≈ 1.4, so
-spectra at higher redshift are missing, not wrong), method bias calibrated on
+Held fixed: the SOM and its groups. Left out: method bias calibrated on
 simulations, SOM training stochasticity (on v2, seeds move ⟨z⟩ by up to
 0.0015 in bin 4), redshift-space smearing of δ, and bias evolution.
 
 **Limits.** The calibrators are about 9,900 EGS DEEP2/3 spectra: no
-field-to-field variance and no model of spectroscopic selection, so the n(z)
+field-to-field variance, and spectroscopic selection enters only as the
+`specz_selection` prior, so the n(z)
 is for validation, null tests and mocks, not parameter constraints. It
 describes only `TOM_BIN_ID > 0` rows; a non-tomographic measurement pairs
 `nz_nontomo.txt` with those rows, not with the whole catalogue.
+
+## Clustering redshifts (step 5b)
+
+An independent check of a finished step-5 run (`sp_validation.nz_clustering`),
+configured by the recipe's `clustering` section:
+
+```bash
+python scripts/calibration/clustering_nz.py config/calibration/nz/v2.yaml \
+    --prepare --measure --workers 32 --figures DIRECTORY
+```
+
+`--prepare` cuts the DESI DR1 clustering catalogues (BGS_BRIGHT, LRG,
+ELG_LOPnotqso, QSO; data and randoms) and the run's gold sources to their
+overlap and draws 100 jackknife patches. `--measure` counts pairs in redshift
+slices of the reference (about 80 minutes on 32 cores). Without either flag
+the script only redoes the analysis, which writes `clustering.json` and two
+figures.
+
+**Estimator.** In each reference slice the annulus is fixed at 1.5–5 Mpc/h
+comoving. The slice's autocorrelation gives the reference bias, and its
+cross-correlation with a bin gives n(z) b_u(z) of that bin, both against the
+nonlinear matter correlation at the fiducial cosmology. The sources' bias is
+unknown, modelled as b_u ∝ (1+z)^α, so only the shape of each bin inside its
+core window is tested: χ² of the SOM n(z) with amplitude and α free, and the
+shift n(z − Δz) preferred at fixed α. Errors are jackknife variances.
+
+**Gate.** A random half of DESI LRG plays the unknown sample against the other
+half; its n(z) is known and must be recovered. Read it before the bins.
+
+**Reach.** The check tests each bin's core. It cannot see the high-redshift
+tails (QSO slices are too sparse and magnification competes there), and
+scales below 1.5 Mpc/h fail the gate.
