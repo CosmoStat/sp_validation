@@ -9,6 +9,7 @@ export COSMO_VAL=$R/cosmo_val COSMO_INFERENCE=$R/cosmo_inference
 export SPV_CONTAINER=/project/rrg-kyi/cdaley/unions/analyses/mock-ensemble-tomo/inputs/containers/sp_validation-ddd58fe0.sif
 export PYTHONUNBUFFERED=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
 export APPTAINERENV_OPENBLAS_NUM_THREADS=1 APPTAINERENV_MKL_NUM_THREADS=1
+export APPTAINERENV_PYTHONPATH=$HERE/nroots-shim
 export APPTAINERENV_TMPDIR=$R/tmp APPTAINERENV_MPLCONFIGDIR=$R/cache/mpl
 cd "$R"
 args=()

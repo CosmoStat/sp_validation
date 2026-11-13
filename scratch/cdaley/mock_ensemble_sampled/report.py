@@ -25,6 +25,7 @@ ROOT = UNIONS / "analyses/mock-ensemble-sampled"
 PAINTED = UNIONS / "analyses/mock-ensemble-tomo"
 DATA = PAINTED / "inputs/data-current/cosmo_val"
 NZ468 = UNIONS / "analyses/cosmo-val-v2-tomo-nz468/cosmo_val"
+ALLTILES = UNIONS / "analyses/cosmo-val-v2-tomo-alltiles/cosmo_val"
 # Blinded data vectors the ensemble can hold. The pure-E/B θ edges are config
 # values (1–250′, 20 bins), equal in both runs, so both read the first run's file.
 DATASETS = {
@@ -42,6 +43,12 @@ DATASETS = {
               "(3,815 deg², against 4,065 for the new bins) and the old per-bin n_eff and σ_e. B-mode nulls "
               "depend on the bins mainly through their noise level, which the recalibrated PTE absorbs; "
               "the new-bin ensemble replaces this placement when it exists."),
+    "alltiles": dict(
+        sacc=ALLTILES / "SP_v2.0_tomo.sacc", code="run/tomo-nz468 = run/tomo1101 @ 7081c2d0",
+        about="The data vector is the blinded tomographic run on all 22,901 run-1 tiles of the calibrated "
+              "v2.0.0 sample, with the #468 bins and the n(z) recomputed on it (same code, 7081c2d0; blind "
+              "<code>unions</code>). The mocks match it: that n(z), its tomographic footprint (4,582 deg²) and "
+              "each bin's n_eff and per-component σ_e, and every mock carries that run's own analytic covariance."),
 }
 sys.path.insert(0, str(PAINTED / "placement"))
 

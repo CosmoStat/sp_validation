@@ -30,7 +30,7 @@ a = p.parse_args()
 
 UNIONS = Path("/project/rrg-kyi/cdaley/unions").resolve()
 ROOT, DATA, nz, CAT = (x.resolve() for x in (a.root, a.data_run, a.nz, a.catalogue))
-# Whole-sample footprint, stars and PSF catalogue: identical for every v2 tomographic run.
+# Whole-sample footprint, stars and PSF catalogue of the 20,515-tile v2 runs.
 INPUTS = UNIONS / "analyses/mock-ensemble-tomo/inputs"
 REPO = Path(__file__).resolve().parents[3]
 
@@ -38,8 +38,15 @@ source = yaml.safe_load((DATA / "cat_config.yaml").read_text())["SP_v2.0"]
 config = yaml.safe_load((DATA / "nibi_tomo.yaml").read_text())
 
 # Relocate the data entry's Nibi paths to Fir.
+
+
+def local(name):
+    """The data run's own copy of a whole-sample input if its catalogue directory has one."""
+    return str(CAT / name if (CAT / name).exists() else INPUTS / "catalogue" / name)
+
+
 source["subdir"] = str(INPUTS / "catalogue")
-source["mask"] = str(INPUTS / "catalogue/footprint-nside4096-ring.fits")
+source["mask"] = local("footprint-nside4096-ring.fits")
 source["cov_th"]["tomo"]["mask"] = str(CAT / "footprint-tomo-nside4096-ring.fits")
 source["shear"]["redshift_path"] = str(nz)
 source["psf"]["mask_config"] = str(REPO / "config/calibration/mask_v2.0.yaml")
@@ -72,7 +79,7 @@ for version in versions:
     entry["shear"]["path"] = f"{version}.fits"
     entry["blind"] = "mock-ensemble-tomo"
     for kind in ("psf", "star"):
-        entry[kind]["path"] = str(INPUTS / "catalogue" / source[kind]["path"])
+        entry[kind]["path"] = local(source[kind]["path"])
     entries[version] = entry
 
 config["catalog_config"] = str(ROOT / "cat_config.yaml")
