@@ -3,7 +3,7 @@
 The catalogue config's ``SP_v2.0.0`` entry is the one description of the
 release: calibrated catalogue, n(z), masks and blind. Without a local copy,
 sp_validation fetches what the run reads from the CADC vault into
-``~/.cache/sp_validation/vos/`` (about 15 GB). Cℓ_EE is written concealed
+``~/.cache/sp_validation/vos/`` (about 15 GB, once). Cℓ_EE is written concealed
 under the UNIONS blind; Cℓ_BB and Cℓ_EB are not blinded.
 
 Run inside the sp_validation container (``run_demo.sh``). The SACC lands in
