@@ -2,6 +2,7 @@
 
 Run inside the sp_validation container (see run_demo.sh).
 """
+
 import ssl
 from pathlib import Path
 
@@ -25,7 +26,9 @@ async def cadc_client(loop=None, certfile=None, **kwargs):
 
 
 def vault(path):
-    return UPath(f"{ROOT}/{path}", get_client=cadc_client, client_kwargs={"certfile": CERT})
+    return UPath(
+        f"{ROOT}/{path}", get_client=cadc_client, client_kwargs={"certfile": CERT}
+    )
 
 
 # 1. The columns a shear power spectrum needs, for one bin, saved locally.
@@ -36,7 +39,9 @@ gal.to_parquet(f"bin{BIN}.parquet")
 ra, dec, e1, e2, w = (gal[c].to_numpy() for c in columns[:5])
 
 # 2. Pseudo-Cℓ with NaMaster on the catalogue (no map), cosmo_val's binning.
-b = pseudo_cl.make_namaster_bin(*pseudo_cl.pseudo_cl_geometry(1024), "powspace", n_ell_bins=32)
+b = pseudo_cl.make_namaster_bin(
+    *pseudo_cl.pseudo_cl_geometry(1024), "powspace", n_ell_bins=32
+)
 f, _, wsp = pseudo_cl.get_field_and_workspace_from_catalog(b, ra, dec, e1, e2, w)
 ee, eb, _, bb = wsp.decouple_cell(nmt.compute_coupled_cell(f, f))
 window_ells, window = pseudo_cl.bandpower_window_from_workspace(wsp)
@@ -45,5 +50,16 @@ window_ells, window = pseudo_cl.bandpower_window_from_workspace(wsp)
 z, nz = sacc_io.read_nz("nz_tomo.txt")
 s = sacc_io.new_sacc({BIN - 1: (z, nz[:, BIN - 1])})
 pair = (BIN - 1, BIN - 1)
-sacc_io.add_pseudo_cl(s, pair, b.get_effective_ells(), ee, bb, eb, window_ells=window_ells, window_weights=window)
-sacc_io.save(s, f"bin{BIN}_blinded.sacc", blind=Blind("unions", Path("unions.blind.json")))
+sacc_io.add_pseudo_cl(
+    s,
+    pair,
+    b.get_effective_ells(),
+    ee,
+    bb,
+    eb,
+    window_ells=window_ells,
+    window_weights=window,
+)
+sacc_io.save(
+    s, f"bin{BIN}_blinded.sacc", blind=Blind("unions", Path("unions.blind.json"))
+)
