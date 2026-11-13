@@ -125,7 +125,7 @@ class CosmologyValidation(
         Catalog version identifiers to analyze. Appending '_leak_corr' to a base
         version creates a virtual catalog using leakage-corrected ellipticity columns
         (e1_col_corrected/e2_col_corrected) from the base version configuration.
-    catalog_config : str, default './cat_config.yaml'
+    catalog_config : str, default the repository's ``cosmo_val/cat_config.yaml``
         Path to catalog configuration YAML defining survey metadata, file paths,
         and analysis settings for each version.
     output_dir : str, optional
@@ -284,7 +284,7 @@ class CosmologyValidation(
     def __init__(
         self,
         versions,
-        catalog_config="./cat_config.yaml",
+        catalog_config=blinding.REPO_CAT_CONFIG,
         output_dir=None,
         rho_tau_method="lsq",
         cov_estimate_method="th",
