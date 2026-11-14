@@ -52,3 +52,48 @@ def test_add_to_pixel_keeps_rows_groups_and_metadata(tmp_path):
     result = written.read()
     assert result.drop_columns("OBJECT_ID").equals(table)
     assert result["OBJECT_ID"].to_pylist() == [24237000000 + n for n in [5, 3, 4, 1, 2]]
+
+
+def test_add_to_catalogue_writes_a_valid_hats_catalogue(tmp_path):
+    import hats
+    from hats.catalog import PartitionInfo, TableProperties
+    from hats.io.validation import is_valid_catalog
+    from hats.pixel_math import HealpixPixel
+
+    from sp_validation.object_id import add_to_catalogue
+
+    source = tmp_path / "source"
+    pixel = source / "dataset/Norder=0/Dir=0/Npix=4.parquet"
+    pixel.parent.mkdir(parents=True)
+    pq.write_table(
+        pa.table(
+            dict(
+                _healpix_29=np.arange(3) + 4 * 4**29,
+                ra=np.full(3, 10.0),
+                dec=np.full(3, 0.0),
+                TILE_ID=np.full(3, 24.237),
+                NUMBER=np.array([3, 1, 2], np.int32),
+            )
+        ),
+        pixel,
+    )
+    pq.write_metadata(pq.read_schema(pixel), source / "dataset/_common_metadata")
+    PartitionInfo.from_healpix([HealpixPixel(0, 4)]).write_to_file(
+        source / "partition_info.csv"
+    )
+    TableProperties(
+        catalog_name="source",
+        catalog_type="object",
+        total_rows=3,
+        ra_column="ra",
+        dec_column="dec",
+        default_columns=["ra", "dec"],
+    ).to_properties_file(source)
+
+    add_to_catalogue(source, tmp_path / "out", name="shapes")
+
+    assert is_valid_catalog(tmp_path / "out", strict=True)
+    catalogue = hats.read_hats(tmp_path / "out")
+    assert catalogue.catalog_name == "shapes"
+    assert catalogue.catalog_info.default_columns == ["ra", "dec", "OBJECT_ID"]
+    assert "OBJECT_ID" in catalogue.schema.names
