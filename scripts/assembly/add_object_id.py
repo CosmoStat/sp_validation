@@ -3,15 +3,15 @@
 
 Rewrites each pixel file of the shape HATS catalogue as
 ``COLLECTION/shapes`` with ``OBJECT_ID`` inserted after ``NUMBER``
-(``sp_validation.object_id``), keeping rows, row groups and metadata. Paths
+(``sp_validation.assembly.object_id``), keeping rows, row groups and metadata. Paths
 may name data roots (``config/data_roots.yaml``), as in ``${unions_data}/...``.
 """
 
 import argparse
 
+from sp_validation.assembly.hats_collection import PRIMARY
+from sp_validation.assembly.object_id import add_to_catalogue
 from sp_validation.data_roots import expand
-from sp_validation.hats_collection import PRIMARY
-from sp_validation.object_id import add_to_catalogue
 
 SHAPES = "${unions_data}/v2.x/run1-snap3-hats/catalogue"
 COLLECTION = "${unions_data}/v2.x/run1-snap3-collection"

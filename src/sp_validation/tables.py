@@ -17,8 +17,8 @@ A table is anything with
 
 ``ArrayTable`` (a numpy structured array or FITS_rec, in memory or
 memory-mapped), ``HDF5Table`` (an h5py compound dataset) and ``ParquetFile``
-store rows; ``AlignedFile`` is a parquet file row-aligned with another (a HATS
-extension's pixel file); ``ConcatTable`` stacks tables end to end. ``grammar.V2View``
+store rows; ``JoinedFile`` is a HATS extension's pixel file joined to its
+primary's on a key; ``ConcatTable`` stacks tables end to end. ``grammar.V2View``
 presents any of them in the v2 column grammar, and is itself a table.
 """
 
@@ -249,37 +249,58 @@ def parquet_dtype(schema, footers=()):
     )
 
 
-class AlignedFile:
-    """A parquet file whose rows are those of another file, in the same order.
+class JoinedFile:
+    """A HATS extension's pixel file, joined to its primary's on a key.
 
-    A HATS extension's pixel file beside its primary's: ``dtype`` is the
-    extension's own columns, ``names``. Every read also reads the join columns
-    ``keys``, (this file's, the primary's), at the same rows and raises unless
-    they agree (nulls at the same rows agree), so a file whose rows are not
-    aligned fails instead of being joined wrongly.
+    ``dtype`` names the extension's own columns. A read returns them for the
+    primary's rows: each row takes the extension row whose join column equals
+    its own (``keys``: this file's join column, the primary's), and a row with
+    none takes null (NaN in a floating column, None in a string column;
+    another column cannot hold null, and a read that needs one raises).
+    ``file`` is ``None`` where the extension has no file for the pixel. An
+    extension may hold the primary's rows in its own order or only some of
+    them; one holding them in the same order is read at the same rows.
     """
 
     row_major = False
     concurrent = True
 
-    def __init__(self, file, primary, keys, names):
-        self.file, self.primary, self.keys = file, primary, keys
-        self.dtype = np.dtype([(name, file.dtype[name]) for name in names])
+    def __init__(self, file, primary, keys, dtype):
+        self.file, self.primary, self.keys, self.dtype = file, primary, keys, dtype
 
     def __len__(self):
-        return len(self.file)
+        return len(self.primary)
 
     def read(self, names, rows=None, out=None):
-        ids = [
-            side.read([key], rows)[key]
-            for side, key in zip((self.file, self.primary), self.keys, strict=True)
-        ]
-        if not np.array_equal(*ids, equal_nan=True):
-            raise ValueError(
-                f"{self.file.path} is not row-aligned with {self.primary.path}:"
-                + f" {self.keys} differ"
-            )
-        return self.file.read(names, rows, out)
+        ids = self.primary.read([self.keys[1]], rows)[self.keys[1]]
+        out = _outputs(self.dtype, names, len(ids), out)
+        found = np.zeros(len(ids), bool)
+        if self.file is not None:
+            if len(self.file) == len(self.primary):
+                own = self.file.read([self.keys[0]], rows)[self.keys[0]]
+                if np.array_equal(own, ids):
+                    return self.file.read(names, rows, out)
+            own = self.file.read([self.keys[0]])[self.keys[0]]
+            order = np.argsort(own, kind="stable")
+            at = order[
+                np.minimum(np.searchsorted(own, ids, sorter=order), len(own) - 1)
+            ]
+            found = own[at] == ids
+            columns = self.file.read(names, at[found])
+        missing = ~found
+        for name in names:
+            target = out[name]
+            if missing.any():
+                if target.dtype.kind not in "fO":
+                    raise ValueError(
+                        f"The extension beside {self.primary.path} has no row for"
+                        + f" {missing.sum()} primary rows, and its {target.dtype}"
+                        + f" column {name!r} cannot hold null"
+                    )
+                target[missing] = np.nan if target.dtype.kind == "f" else None
+            if found.any():
+                target[found] = columns[name]
+        return out
 
 
 class ConcatTable:

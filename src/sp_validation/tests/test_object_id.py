@@ -3,7 +3,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from sp_validation.object_id import NUMBER_LIMIT, add_to_pixel, object_id
+from sp_validation.assembly.object_id import NUMBER_LIMIT, add_to_pixel, object_id
 
 
 def test_every_tile_id_converts_to_its_integer():
@@ -79,7 +79,7 @@ def test_add_to_catalogue_writes_a_valid_hats_catalogue(tmp_path):
     from hats.io.validation import is_valid_catalog
     from hats.pixel_math import HealpixPixel
 
-    from sp_validation.object_id import add_to_catalogue
+    from sp_validation.assembly.object_id import add_to_catalogue
 
     source = tmp_path / "source"
     pixel = source / "dataset/Norder=0/Dir=0/Npix=4.parquet"
