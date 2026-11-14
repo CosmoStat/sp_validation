@@ -1,0 +1,7 @@
+sp\_validation.catalogue\_match
+-------------------------------
+
+.. automodule:: sp_validation.catalogue_match
+   :members:
+   :show-inheritance:
+   :undoc-members:
