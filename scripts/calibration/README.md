@@ -129,7 +129,8 @@ Systematic terms:
   redshift, so this term is a one-sided bias more than a scatter: the raw
   ensemble mean moves bin 1 by +0.004, and the delivered n(z), which already
   holds the real failures, is biased by about as much the other way. The
-  recentred draws keep only the scatter.
+  recentred draws keep only the scatter, up to the small mean shift clipping
+  can add (below).
 - `nmad_factor`: the gold-QC factor drawn uniformly in [4, 6] around the
   fiducial 5 (threshold 0.40–0.56 with the 0.4 floor); gold is re-derived at
   that factor, so the bins' source selection moves with it. The other terms
