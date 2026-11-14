@@ -84,7 +84,7 @@ def test_profiled_shift_with_correlated_noise():
     assert boundary["alpha"] == 4
 
 
-def test_analysis_reports_null_and_profile_without_changing_nz(tmp_path, monkeypatch):
+def test_analysis_reports_profile_and_renders_figures(tmp_path, monkeypatch):
     """Exercise diagnostic serialization and figures without modifying SOM products."""
     monkeypatch.setattr(nc, "fiducial_cosmology", lambda: None)
     monkeypatch.setattr(nc, "kernel", lambda *args: 0.01)
@@ -104,21 +104,16 @@ def test_analysis_reports_null_and_profile_without_changing_nz(tmp_path, monkeyp
     out = dict(z_edges=edges, samples=["auto", "bin1", "bin2", "bin3", "bin4"],
                xi=xi, jackknife=jk)
     np.savez(data / "xcorr_LRG.npz", **out)
-    np.savez(data / "null_LRG.npz", **{**out, "xi": xi * 0})
     np.savez(data / "xcorr_gate.npz", z_edges=edges, samples=["auto", "half"],
              xi=xi[:, :2], jackknife=jk[:, :, :2])
     np.savez(data / "LRG_dat.npz", z=rng.uniform(0.3, 0.9, 2000), w=np.ones(2000))
     config = dict(output=str(tmp_path), clustering=dict(
         output=str(data.parent), reference=dict(slices={"LRG": [0.3, 0.9, 0.05]}),
         annulus=[1.5, 5], core=[[0.3, 0.9]] * 4, gate=["LRG", 0.3, 0.9, 0.05],
-        randoms_null=True,
     ))
     result = nc.analyse(config, tmp_path / "figures")
     assert "profiled_shift" in result["bins"][0]["fits"]["calibration"]
     assert np.asarray(result["bins"][0]["covariance"]).shape == (n, n)
-    null = result["randoms_null"]["LRG"]["bins"]["bin1"]
-    np.testing.assert_allclose(null["w"], 0)
-    assert len(null["err"]) == n
     assert (data.parent / "clustering.json").exists()
     for name in ("clustering_gate.png", "clustering_nz.png"):
         assert (tmp_path / "figures" / name).stat().st_size > 1000
@@ -173,36 +168,6 @@ def test_overlapping_tracers_recover_same_nz_with_different_biases(tmp_path, mon
 def test_precision_requires_enough_patches():
     with pytest.raises(ValueError, match="patches"):
         nc.jackknife_precision(np.ones((6, 4)))
-
-
-def test_actual_selection_randoms_null():
-    """Independent random halves cancel a non-uniform, weighted selection."""
-    import treecorr
-
-    rng = np.random.default_rng(42)
-    n = 40000
-    ra = 6 * rng.beta(2, 1, n)
-    ran = dict(ra=ra, dec=rng.uniform(0, 5, n),
-               z=rng.uniform(0.4, 0.5, n), w=0.5 + ra / 6)
-    # The gold sources may have their own angular modulation.
-    u = dict(ra=6 * rng.beta(1, 2, 8000), dec=rng.uniform(0, 5, 8000),
-             w=rng.uniform(0.5, 2, 8000))
-    dat, denom = nc.randoms_split(ran)
-    assert len(dat["z"]) + len(denom["z"]) == n
-    for cat in (dat, denom):
-        np.testing.assert_allclose(cat["w"], 0.5 + cat["ra"] / 6)
-    centers = treecorr.Catalog(
-        ra=ran["ra"], dec=ran["dec"], ra_units="deg", dec_units="deg",
-        npatch=20, rng=np.random.default_rng(1),
-    ).patch_centers
-    out = nc.correlate(dat, denom, {"bin1": tuple(u[c] for c in ("ra", "dec", "w"))},
-                       nc.slice_edges(0.4, 0.5, 0.05), centers, nc.fiducial_cosmology())
-    sel = nc.R_EDGES[:-1] >= 1.5
-    w = out["xi"][:, 1, sel].mean(-1)
-    rows = out["jackknife"][:, :, 1, sel].mean(-1)
-    err = np.sqrt(np.diag(nc.jackknife_covariance(rows)))
-    assert np.all(np.abs(w) < 3 * err)
-    assert np.all(err < 0.03)
 
 
 def test_correlate_finds_no_signal_between_random_points():

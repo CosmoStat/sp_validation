@@ -189,12 +189,7 @@ overlap and draws 100 jackknife patches.
 Gold sources are selected by the union of random-occupied `source_nside` pixels (default 256); rerun preparation and measurement at 512 or 1024 to check footprint-resolution stability.
 This is an approximate union footprint, not a tracer-specific overlap definition.
 `--measure` counts pairs in redshift slices of the reference.
-With `randoms_null: true`, it also measures the same gold sources against two disjoint random-derived catalogues for each tracer, preserving their DESI Z and WEIGHT conventions.
-The seeded split uses one half as null data and the other as its denominator; weight-sum normalization is the same as for the signal.
-`clustering.json` reports these raw angular nulls and their full jackknife covariance under `randoms_null`, per tracer, slice and source bin.
-They are not divided by the null catalogue's auto-bias or subtracted from the signal.
 Without either flag the script only redoes the analysis, which writes `clustering.json` and two figures.
-A measurement including nulls takes more pair counts than a signal-only run.
 
 **Estimator.** In each reference slice the annulus is fixed at 1.5–5 Mpc/h
 comoving. The slice's autocorrelation gives the reference bias, and its

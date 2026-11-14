@@ -16,8 +16,6 @@ section:
 - ``analyse`` turns the counts into n(z) b(z) per bin, runs the known-answer
   gate, compares the SOM n(z) (and the alternative calibrators' of the
   ensemble's ``specz_selection`` term) and writes ``clustering.json``.
-  When ``randoms_null`` is enabled, it also reports raw angular nulls per
-  tracer, slice and source bin from disjoint random-derived reference samples.
 
 Estimator. With w the mean of ξ over the annulus' log-spaced bins, Δz the slice
 width and M = (H/c) ⟨Π(r)⟩, Π(r) = ∫ dk k/2π P_nl(k) J0(kr), the thin-slice
@@ -246,13 +244,6 @@ def measure(config, workers=1):
         edges = reference_edges(cl, tracer)
         out = correlate(dat, ran, bins, edges, centers, cosmo, workers)
         np.savez(data / f"xcorr_{tracer}.npz", **out)
-        if cl.get("randoms_null", False):
-            null_data, null_random = randoms_split(ran)
-            out = correlate(
-                null_data, null_random, bins, edges,
-                centers, cosmo, workers,
-            )
-            np.savez(data / f"null_{tracer}.npz", **out)
 
     tracer, lo, hi, dz = cl["gate"]
     dat, ran = dict(np.load(data / f"{tracer}_dat.npz")), np.load(data / f"{tracer}_ran.npz")
@@ -261,17 +252,6 @@ def measure(config, workers=1):
     dat = {k: v[~half] for k, v in dat.items()}
     out = correlate(dat, ran, unknown, slice_edges(lo, hi, dz), centers, cosmo, workers)
     np.savez(data / "xcorr_gate.npz", **out)
-
-
-def randoms_split(ran):
-    """Disjoint random-derived data and denominator, retaining Z and WEIGHT.
-
-    A seeded Bernoulli split preserves the angular/redshift selection and weight
-    distribution in both halves. Pair-count normalization uses their weight
-    sums, just as for the data; reusing the same points would suppress noise.
-    """
-    half = np.random.default_rng(2027).random(len(ran["z"])) < 0.5
-    return ({k: ran[k][half] for k in ran}, {k: ran[k][~half] for k in ran})
 
 
 def _gate_half(n):
@@ -571,30 +551,11 @@ def tracer_overlaps(config, cosmo, comparison):
     return out
 
 
-def randoms_null(config, cosmo):
-    """Raw angular cross-correlation nulls, not divided by a null auto-bias."""
-    cl = config["clustering"]
-    out = {}
-    for tracer in cl["reference"]["slices"]:
-        m = Measurement(np.load(_data(cl) / f"null_{tracer}.npz"), cl["annulus"], cosmo)
-        bins = {}
-        for i, sample in enumerate(m.samples[1:], 1):
-            cov = jackknife_covariance(m.jk[:, :, i])
-            bins[sample] = dict(
-                w=m.w[:, i].tolist(), err=np.sqrt(np.diag(cov)).tolist(),
-                covariance=cov.tolist(),
-            )
-        out[tracer] = dict(z_lo=m.edges[:-1].tolist(), z_hi=m.edges[1:].tolist(), bins=bins)
-    return out
-
-
 def analyse(config, figures=None):
     """Write diagnostic ``clustering.json`` and figures; leave delivered n(z) alone."""
     cosmo = fiducial_cosmology()
     cl = config["clustering"]
     result = dict(annulus=cl["annulus"], gate=gate(config, cosmo), **compare(config, cosmo))
-    if cl.get("randoms_null", False):
-        result["randoms_null"] = randoms_null(config, cosmo)
     if cl["reference"].get("overlaps"):
         result["tracer_overlaps"] = tracer_overlaps(config, cosmo, result)
     (Path(cl["output"]) / "clustering.json").write_text(json.dumps(result, indent=1) + "\n")

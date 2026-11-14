@@ -81,7 +81,6 @@ clustering:
   footprint: ${v2_tomo}/footprint-nside4096-ring.fits
   annulus: [1.5, 5.0]        # comoving Mpc/h
   patches: 100               # jackknife
-  randoms_null: true         # gold sources × disjoint DESI random halves
   source_nside: 256          # random-occupied source mask; rerun at 512/1024
   gate: [LRG, 0.40, 1.10, 0.05]  # half of this tracer as the known answer
   core: [[0.05, 0.50], [0.25, 0.70], [0.40, 0.90], [0.60, 1.40]]  # fit window per bin
