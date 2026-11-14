@@ -38,12 +38,7 @@ _REAL_FILES = {
     "glass_mock_00001": _DATA / "glass_mock_00001" / "cosmosis_glass_mock_00001.fits",
 }
 
-_SCRIPT = (
-    Path(__file__).resolve().parents[3]
-    / "cosmo_inference"
-    / "scripts"
-    / "cosmosis_fitting.py"
-)
+_SCRIPT = Path(__file__).with_name("legacy_twopoint_reference.py")
 
 
 def _load_cf():

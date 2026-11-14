@@ -122,15 +122,16 @@ of it: expect to edit the default profile's `--bind` list for your machine.
 
 Set `glass_mocks.data_dir` in the paper config to the suite's `results` directory.
 Both paper configs use `/n09data/guerrini/glass_mock_v1.4.6.3_v2/results`, the suite supplying Paper II's 350 mocks.
-Catalogue measurements, mock covariance, and inference preparation all read this key.
+Catalogue measurements and mock covariance read this key.
 Generated mock products carry the parent directory's suite name (`glass_mock_v1.4.6.3_v2`) in their output paths, so suites don't share products.
-`glass_mocks.version` labels the inference product version within a suite; `seed_range` selects the covariance and inference seeds.
+`seed_range` selects the covariance seeds.
+Inference consumes named SACC inputs under `inference.runs`; see [`cosmo_inference/README.md`](../cosmo_inference/README.md).
 The fine-grid measurement aggregators use the first 100 mocks.
 Sampled tau statistics depend on the real catalogue, not the mock suite, and retain their catalogue-derived inputs and output paths.
 
 ```bash
 snakemake -n --profile workflow/profiles/default -s workflow/Snakefile \
-    covariance_glass_mock glass_mock_all_xi inference_glass_mocks \
+    covariance_glass_mock glass_mock_all_xi \
     --configfile papers/bmodes/config/config.yaml
 ```
 
