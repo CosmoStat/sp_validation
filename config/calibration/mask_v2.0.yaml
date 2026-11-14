@@ -157,6 +157,7 @@ metacal:
   # Correct relative size for ellipticity?
   gal_size_corr_ell: False
 
+  # @sc [decision:dr6_catalogue.weights_and_response]
   # DES case d: one fixed no-shear W, evaluated on each branch's SNR/size.
   weight_scheme: des
   w_col: w_des

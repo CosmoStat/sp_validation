@@ -83,6 +83,7 @@ NOT_COLUMNS = {
     # DESI LSS catalogue columns (nz_clustering reads the tracer catalogues)
     "WEIGHT",
     "Z",
+    # FITS header keywords
     "EXTNAME",
     "R_S11",
     "R_S12",
@@ -113,6 +114,7 @@ NOT_COLUMNS = {
     # in-memory tables sp_validation builds itself
     "C11",
     "C22",
+    "SIZE_RATIO",
     "SNR",
     "T",
     # NaMaster field/workspace dicts keyed by bin; cosmology parameter dicts

@@ -19,6 +19,7 @@ from ..b_modes import (
     covariance_label,
     find_conservative_scale_cut_key,
 )
+from ..sample import snapshot
 from ..statistics import chi2_and_pte
 from ..survey import additive_bias
 from ..version import __version__
@@ -443,6 +444,10 @@ class CosmologyValidation(
             for key, value in cc[ver].items():
                 if key not in ("subdir", "blind"):
                     cc[ver][key] = localise(value)
+            # A catalogue built from another snapshot than its entry names
+            # stops the run here, before anything is measured.
+            if isinstance(cc[ver].get("shear"), dict):
+                snapshot.check(cc[ver]["shear"])
 
         resolve_paths_for_version("nz")
         processed = {"nz"}
