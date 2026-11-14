@@ -212,10 +212,11 @@ Passing this gate does not validate that kernel or rule out tracer-side distorti
 Read it before the bins.
 
 **Overlapping tracers.** `clustering.reference.overlaps` optionally lists `[tracer1, tracer2, z_min, z_max]` windows.
-For example, `[[BGS_BRIGHT, LRG, 0.30, 0.50], [LRG, ELG_LOPnotqso, 0.70, 0.90]]` extends both members of each pair into the same slices.
+For example, `[[LRG, ELG_LOPnotqso, 0.80, 1.10]]` measures both tracers over the same slices.
 Both input catalogues must actually contain data and randoms in those windows; changing the recipe cannot undo a catalogue's hard redshift cut.
-Use matching slice widths and edges for the two tracers.
-Rerun measurement after enabling the windows.
+Window edges must lie on each tracer's nominal dz grid, with matching slice widths.
+Preparation checks data and randoms for redshift support in every requested overlap slice after the footprint cut, and fails if any is empty.
+Rerun preparation and measurement after enabling the windows.
 Extra slices are excluded from the nominal SOM-comparison fit, so overlap points are not counted twice there.
 `tracer_overlaps` reports each source bin's reference-bias-corrected n(z)b_u(z), the covariance of the paired jackknife differences, χ², degrees of freedom and PTE.
 `consistent_95` records PTE ≥ 0.05; this threshold is a diagnostic, not evidence that all tracer systematics are absent.

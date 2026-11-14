@@ -76,7 +76,7 @@ clustering:
       QSO: [1.60, 3.00, 0.10]
     # Optional [tracer1, tracer2, z_min, z_max] windows, extending both measurements.
     # Both catalogues must contain data/randoms there, on the same slice grid.
-    # Example: [[BGS_BRIGHT, LRG, 0.30, 0.50], [LRG, ELG_LOPnotqso, 0.70, 0.90]]
+    # Example: [[LRG, ELG_LOPnotqso, 0.80, 1.10]]
     overlaps: []
   footprint: ${v2_tomo}/footprint-nside4096-ring.fits
   annulus: [1.5, 5.0]        # comoving Mpc/h

@@ -57,11 +57,32 @@ def slice_edges(lo, hi, dz):
 
 def reference_edges(cl, tracer):
     """Nominal slices extended to any requested common tracer windows."""
-    lo, hi, dz = cl["reference"]["slices"][tracer]
-    for first, second, a, b in cl["reference"].get("overlaps", []):
+    origin, hi, dz = cl["reference"]["slices"][tracer]
+    lo = origin
+    for first, second, window_lo, window_hi in cl["reference"].get("overlaps", []):
         if tracer in (first, second):
-            lo, hi = min(lo, a), max(hi, b)
+            steps = (np.array([window_lo, window_hi]) - origin) / dz
+            if not np.allclose(steps, np.rint(steps), rtol=0, atol=1e-6):
+                raise ValueError(f"{tracer} overlap edges must lie on its dz={dz:g} grid")
+            if not np.isclose(cl["reference"]["slices"][first][2], cl["reference"]["slices"][second][2]):
+                raise ValueError("Overlap tracers need matching slice widths")
+            lo, hi = min(lo, window_lo), max(hi, window_hi)
     return slice_edges(lo, hi, dz)
+
+
+def check_overlap_support(cl, tracer, kind, z):
+    """Require data and randoms in every requested overlap slice."""
+    dz = cl["reference"]["slices"][tracer][2]
+    for first, second, lo, hi in cl["reference"].get("overlaps", []):
+        if tracer in (first, second):
+            edges = slice_edges(lo, hi, dz)
+            counts = np.histogram(z[z < hi], edges)[0]
+            if np.any(counts == 0):
+                index = int(np.flatnonzero(counts == 0)[0])
+                raise ValueError(
+                    f"{tracer} {kind} lacks redshift support in overlap slice "
+                    f"[{edges[index]:g}, {edges[index + 1]:g}); check catalogue cuts"
+                )
 
 
 def _data(config):
@@ -106,6 +127,8 @@ def prepare(config):
     import treecorr
 
     cl = config["clustering"]
+    for tracer in cl["reference"]["slices"]:
+        reference_edges(cl, tracer)
     data = _data(cl)
     data.mkdir(parents=True, exist_ok=True)
     foot = hp.read_map(cl["footprint"]).astype(bool)
@@ -121,6 +144,7 @@ def prepare(config):
                 coarse[hp.ang2pix(source_nside, d["RA"], d["DEC"], lonlat=True)] = True
                 fine[hp.ang2pix(1024, d["RA"], d["DEC"], lonlat=True)] = True
             d = d[foot[hp.ang2pix(nside, d["RA"], d["DEC"], lonlat=True)]]
+            check_overlap_support(cl, tracer, kind, d["Z"])
             np.savez(
                 data / f"{tracer}_{kind}.npz",
                 ra=d["RA"].astype("f8"),
@@ -448,13 +472,13 @@ def compare(config, cosmo):
     for name in cl["reference"]["slices"]:
         m = Measurement(np.load(data / f"xcorr_{name}.npz"), cl["annulus"], cosmo)
         bins = m.samples[1:]
-        a, b, _ = cl["reference"]["slices"][name]
-        nominal = (m.edges[:-1] >= a - 1e-6) & (m.edges[1:] <= b + 1e-6)
+        nominal_lo, nominal_hi, _ = cl["reference"]["slices"][name]
+        nominal = (m.edges[:-1] >= nominal_lo - 1e-6) & (m.edges[1:] <= nominal_hi + 1e-6)
         lo += list(m.edges[:-1][nominal])
         hi += list(m.edges[1:][nominal])
         tracer += [name] * int(nominal.sum())
-        nb.append([m.nb(b)[nominal] for b in bins])
-        rows.append([m.nb(b, jk=True)[:, nominal] for b in bins])
+        nb.append([m.nb(sample)[nominal] for sample in bins])
+        rows.append([m.nb(sample, jk=True)[:, nominal] for sample in bins])
         bias.append(m.bias()[nominal])
     lo, hi = np.array(lo), np.array(hi)
     z = (lo + hi) / 2

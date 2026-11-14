@@ -120,6 +120,39 @@ def test_analysis_reports_profile_and_renders_figures(tmp_path, monkeypatch):
     assert product.read_bytes() == before
 
 
+@pytest.mark.parametrize("window", [(0.31, 0.5), (0.3, 0.51)])
+def test_overlap_edges_must_preserve_nominal_grid(window):
+    cl = dict(reference=dict(slices={"A": [0.2, 0.4, 0.05], "B": [0.4, 0.7, 0.05]},
+                             overlaps=[["A", "B", *window]]))
+    with pytest.raises(ValueError, match="dz=.*grid"):
+        nc.reference_edges(cl, "A")
+
+
+@pytest.mark.parametrize("missing", ["dat", "ran"])
+def test_prepare_rejects_unsupported_overlap_before_sources(tmp_path, monkeypatch, missing):
+    import healpy as hp
+
+    monkeypatch.setattr(hp, "read_map", lambda _: np.ones(12))
+
+    def reference(directory, tracer, kind, n_random):
+        z = np.arange(0.825, 1.1, 0.05)
+        if kind == missing:
+            z = z[z >= 0.9]
+        cat = np.zeros(len(z), dtype=[(name, "f8") for name in ("RA", "DEC", "Z", "WEIGHT")])
+        cat["Z"], cat["WEIGHT"] = z, 1
+        return cat
+
+    monkeypatch.setattr(nc, "_read_reference", reference)
+    cl = dict(output=str(tmp_path), footprint="unused", reference=dict(
+        directory="unused", randoms=1,
+        slices={"LRG": [0.4, 0.8, 0.05], "ELG": [0.8, 1.6, 0.05]},
+        overlaps=[["LRG", "ELG", 0.8, 1.1]],
+    ))
+    # No source configuration: preparation must stop at reference support.
+    with pytest.raises(ValueError, match=f"LRG {missing} lacks redshift support"):
+        nc.prepare(dict(clustering=cl))
+
+
 def test_overlapping_tracers_recover_same_nz_with_different_biases(tmp_path, monkeypatch):
     monkeypatch.setattr(nc, "kernel", lambda *args: 0.001)
     data = tmp_path / "data"
