@@ -36,13 +36,11 @@ import h5py
 
 # from sp_validation.catalog import *
 from sp_validation import catalog as spv_cat
-from sp_validation import galaxy
-from sp_validation.calibration import *
+from sp_validation import galaxy, response
 from sp_validation.calibration import metacal
-from sp_validation.galaxy import *
-from sp_validation.io import *
-from sp_validation.io import read_catalogue
-from sp_validation.survey import *
+from sp_validation.galaxy import T_to_fwhm, classification_galaxy_overlap_ra_dec
+from sp_validation.io import open_stats_file, print_stats, read_catalogue
+from sp_validation.survey import get_area, missing_tiles
 
 # ## 1. Set-up
 
@@ -237,6 +235,11 @@ if add_cols:
 if add_cols_pre_cal:
     for key in add_cols_pre_cal:
         ext_cols_pre_cal[key] = dd[key]
+
+# Retain upstream branch errors when supplied, even with older params files.
+# Historical HDF5 merges omitted them; that must not block DES extraction.
+# Modern IV rejects an incomplete set at calibration, rather than freezing W.
+ext_cols_pre_cal.update(response.branch_error_columns(dd))
 
 # Flag to cut duplicate objects in overlapping region with neighbouring tiles
 ext_cols_pre_cal["overlap"] = cut_overlap

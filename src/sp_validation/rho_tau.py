@@ -154,6 +154,7 @@ class _CatalogueLoader:
     def __call__(self, block):
         if block not in self._cache:
             entry = self._info[block]
+            io.validate_calibrated_entry(entry)
             with io.Catalogue(
                 entry["path"], hdu=entry.get("hdu"), column_map=entry.get("column_map")
             ) as catalogue:

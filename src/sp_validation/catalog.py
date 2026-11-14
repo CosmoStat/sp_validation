@@ -414,7 +414,7 @@ def write_shape_catalog(
         signal-to-noise ratio, default is `None`
     g : np.ndarray, optional
         calibrated reduced shear estimate components, corrected for
-        multiplicative and additive bias, g = R^-1 g_uncal - c;
+        multiplicative and additive bias, g = R^-1 (g_uncal - c_e);
         expected type is arrays(2, ngal) of float;
         default is ``None`` (no calibrated shears written)
     g1_uncal, g2_uncal : np.ndarray, optional
@@ -432,9 +432,9 @@ def write_shape_catalog(
     R_select : 2x2 matrix of float, optional
         Global selection response matrix, default is ``None``
     c : array(2) of float, optional, default is ``None``
-        additive shear bias
+        additive bias c_e in raw ellipticity units (c_g = R^-1 c_e)
     c_err : array(2) of float, optional, default is ``None``
-        error of c
+        error of the raw weighted mean c_e; historical products may store scatter
     alpha_leakage : float, optional
         Mean scale-dependent PSF leakage, default is ``None``
     sigma_epsilon: float, optional
@@ -603,7 +603,7 @@ def write_shape_catalog(
             primary_header["c1_err"] = (c_err[0], "Standard deviation of c_1")
             primary_header["c2_err"] = (c_err[1], "Standard deviation of c_2")
 
-        primary_header["w"] = "DES weight"
+        primary_header["w"] = f"{w_type} weight"
 
         if sigma_epsilon is not None:
             primary_header["sig_eps"] = (sigma_epsilon, "Shape noise RMS")

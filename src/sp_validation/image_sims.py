@@ -51,8 +51,14 @@ def _load_cat(path, w_cols):
     scheme in a multi-weight run.
     """
     with fits.open(path) as hdul:
+        if hdul[0].header.get("RAPPLIED", False):
+            from sp_validation.response import validate_weight_scheme
+
+            for col in w_cols:
+                validate_weight_scheme(hdul[0].header["WGHTSCH"], col)
         data = hdul[1].data
         cat = {
+            "weight_scheme": hdul[0].header.get("WGHTSCH"),
             "ra": data["RA"].copy(),
             "dec": data["Dec"].copy(),
             "e1": data["e1"].copy(),
@@ -65,6 +71,27 @@ def _load_cat(path, w_cols):
                 if _is_unweighted(scheme)
                 else data[scheme].copy()
             )
+        if cat["weight_scheme"] is not None:
+            if hdul[0].header.get("MEANSUB", False):
+                raise ValueError(
+                    "Constant-shear simulations must not subtract branch means"
+                )
+            cat["raw"] = np.array([data["e1_uncal"], data["e2_uncal"]])
+            cat["tiles"] = np.char.strip(np.asarray(data["TILE_ID"]).astype(str))
+            if "R_JK" not in hdul:
+                raise ValueError(
+                    "Modern m uncertainties require shared-tile R_JK responses"
+                )
+            jk = hdul["R_JK"].data
+            cat["jk_labels"] = np.char.strip(np.asarray(jk["TILE_ID"]).astype(str))
+            cat["jk_R"] = np.array(
+                [[jk[f"R_{i}{j}"] for j in (1, 2)] for i in (1, 2)]
+            ).transpose(2, 0, 1)
+            cat["W_policy"] = hdul[0].header.get("WPOLICY", "unknown")
+            if cat["W_policy"] == "refit":
+                # These means include each deletion's refitted numerator weights,
+                # not merely a refitted response applied to fixed-W means.
+                cat["jk_g"] = np.array([jk["c_g1"], jk["c_g2"]]).T
         return cat
 
 
@@ -97,13 +124,14 @@ class ImageSimMBias:
           (required); ``"none"`` (or a ``null`` entry) means unit weights,
           any other entry is a FITS column name. The **first** entry is the
           primary result surfaced at the top level of ``run()``'s output. Our
-          fiducial run leads with the unweighted scheme (``["none", ...]``),
-          per the #227 verdict that shape weights are excluded from sim
-          calibration; the unweighted m also avoids the ``cov(w, e)`` residual
-          weighted estimators carry on constant-shear sims.
+          modern production run uses the weight matching the stored response
+          (DES case d: ``["w_des"]``) and ``pair_match=False``.
+          Symmetric pair weights with a full-population response are refused.
         - w_col : str or None, *deprecated* single weight scheme; accepted for
           back-compat and used as ``[w_col]`` only when ``w_cols`` is absent.
-        - n_bootstrap : int, number of bootstrap resamples for errors (required)
+        - conditional_bootstrap : bool, optional fixed-response object-bootstrap
+          diagnostic for modern products (default False); never the headline error
+        - n_bootstrap : int, number of conditional diagnostic draws (required)
         - bootstrap_seed : int, seed for the per-pair bootstrap RNG (required);
           makes the bootstrap errors bit-reproducible. The resample indices are
           drawn once per pair and shared across every weight scheme, so the
@@ -152,14 +180,24 @@ class ImageSimMBias:
         grids_dir = self.cfg["grids_dir"]
         num = self.cfg["num"]
         cat_name = self.cfg.get("catalog_name", "shape_catalog_cut_ngmix.fits")
+        # Grid sims live in ``{branch}_grid_{num}``; other families (e.g.
+        # blended) in ``{branch}_{num}``.
+        sims_type = self.cfg.get("sims_type", "grid")
+        suffix = f"_grid_{num}" if sims_type == "grid" else f"_{num}"
         # ``sim_names`` (incl. the unsheared reference) comes from the config's
         # branch map. The +g/-g pool estimator pairs the sheared sims directly;
         # the reference is loaded for completeness and null-test diagnostics.
         for name in self.sim_names:
-            path = f"{grids_dir}/{name}_grid_{num}/{cat_name}"
+            path = f"{grids_dir}/{name}{suffix}/{cat_name}"
             if verbose:
                 print(f"  Loading {path}")
             self.cats[name] = _load_cat(path, self.w_cols)
+            if self.pair_match and self.cats[name]["weight_scheme"] is not None:
+                raise ValueError(
+                    "Modern response products require pair_match=False: headline m "
+                    "uses full populations and separately normalized branch weights; "
+                    "symmetric pair weights do not match the stored response."
+                )
             if verbose:
                 print(f"    {len(self.cats[name]['ra'])} objects")
 
@@ -228,24 +266,13 @@ class ImageSimMBias:
         e_p = self.cats[name_p][e_key][idx_p]
         e_m = self.cats[name_m][e_key][idx_m]
 
-        # Draw the bootstrap resample indices *once*, before the weight-scheme
-        # loop, and reuse them for every scheme -- the schemes then differ only
-        # in their weighting, never in their draws (so a scheme comparison is a
-        # clean weighting comparison). Pre-drawing the full ``(n_boot, n)`` block
-        # in one call is bit-identical to drawing ``rng.integers(0, n, n)`` once
-        # per replicate (numpy fills the block row-major), so the numbers match a
-        # single-scheme, per-iteration bootstrap to the last bit.
-        rng = np.random.default_rng(seed=self.boot_seed)
-        if self.pair_match:
-            n = len(e_p)
-            ib = rng.integers(0, n, (self.n_boot, n))
-        else:
-            n_p, n_m = len(e_p), len(e_m)
-            ib_p = rng.integers(0, n_p, (self.n_boot, n_p))
-            ib_m = rng.integers(0, n_m, (self.n_boot, n_m))
+        # Generate one draw at a time: no catalogue-sized n_boot x N array.
+        # Reset the seed per scheme so comparisons use identical draws.
+        n_p, n_m = len(e_p), len(e_m)
 
         res = {}
         for scheme in self.w_cols:
+            rng = np.random.default_rng(seed=self.boot_seed)
             w_p = self.cats[name_p]["w"][scheme][idx_p]
             w_m = self.cats[name_m]["w"][scheme][idx_m]
             m_boot = np.empty(self.n_boot)
@@ -265,8 +292,9 @@ class ImageSimMBias:
                 # sims, so the per-object cancellation in `d` is preserved in
                 # the error estimate.
                 for i in range(self.n_boot):
-                    m_boot[i] = np.average(d[ib[i]], weights=w[ib[i]])
-                    c_boot[i] = np.average(s[ib[i]], weights=w[ib[i]])
+                    ib = rng.integers(0, n_p, n_p)
+                    m_boot[i] = np.average(d[ib], weights=w[ib])
+                    c_boot[i] = np.average(s[ib], weights=w[ib])
             else:
                 # No matching: difference/sum the two independent weighted means.
                 mean_ep = np.average(e_p, weights=w_p)
@@ -278,8 +306,10 @@ class ImageSimMBias:
                 # Unpaired bootstrap: the +g and -g arrays generally differ in
                 # length, so each side is resampled independently per replicate.
                 for i in range(self.n_boot):
-                    ep_b = np.average(e_p[ib_p[i]], weights=w_p[ib_p[i]])
-                    em_b = np.average(e_m[ib_m[i]], weights=w_m[ib_m[i]])
+                    ib_p = rng.integers(0, n_p, n_p)
+                    ib_m = rng.integers(0, n_m, n_m)
+                    ep_b = np.average(e_p[ib_p], weights=w_p[ib_p])
+                    em_b = np.average(e_m[ib_m], weights=w_m[ib_m])
                     m_boot[i] = (ep_b - em_b) / (2 * self.g_in) - 1
                     c_boot[i] = (ep_b + em_b) / 2
 
@@ -287,8 +317,108 @@ class ImageSimMBias:
 
         return res
 
+    def _run_tile_jackknife(self, verbose):
+        """Delete the same parent tile on every external-shear branch.
+
+        R_JK carries responses recomputed upstream from all five metacal
+        selections, including sheared-only selected rows. Raw selected shapes
+        supply each deletion's numerator; never invert the full-sample response
+        to approximate a deleted response.
+        """
+        cats = [self.cats[name] for p, m, _ in self.pairs for name in (p, m)]
+        labels = np.sort(cats[0]["jk_labels"])
+        if len(labels) < 2:
+            raise ValueError("At least two shared tiles are required")
+        for cat in cats:
+            if not np.array_equal(np.sort(cat["jk_labels"]), labels):
+                raise ValueError(
+                    "External branches must have identical parent R_JK tiles"
+                )
+            if not np.all(np.isin(cat["tiles"], labels)):
+                raise ValueError("Selected tiles are missing from parent R_JK")
+        order = [
+            key for _, _, comp in self.pairs for key in (f"m{comp + 1}", f"c{comp + 1}")
+        ]
+        results = dict(
+            weights={},
+            estimator="full_population_branch_normalized",
+            uncertainty="shared_tile_response_jackknife",
+            W_policy=cats[0]["W_policy"],
+            covariance_order=order,
+            jackknife_tiles=labels.tolist(),
+        )
+        for scheme in self.w_cols:
+            estimates, deleted = [], []
+            for p, m, comp in self.pairs:
+                means, jk_means = [], []
+                for name in (p, m):
+                    cat = self.cats[name]
+                    w = cat["w"][scheme]
+                    means.append(np.average(cat[f"e{comp + 1}"], weights=w))
+                    if cat["W_policy"] == "refit":
+                        by_label = dict(zip(cat["jk_labels"], cat["jk_g"], strict=True))
+                        jk_means.append(np.array([by_label[t][comp] for t in labels]))
+                        continue
+                    by_label = dict(zip(cat["jk_labels"], cat["jk_R"], strict=True))
+                    calibrated = []
+                    for tile in labels:
+                        keep = cat["tiles"] != tile
+                        raw_mean = np.average(
+                            cat["raw"][:, keep], axis=1, weights=w[keep]
+                        )
+                        calibrated.append(
+                            np.linalg.solve(by_label[tile], raw_mean)[comp]
+                        )
+                    jk_means.append(np.asarray(calibrated))
+                estimates.extend(
+                    (
+                        (means[0] - means[1]) / (2 * self.g_in) - 1,
+                        (means[0] + means[1]) / 2,
+                    )
+                )
+                deleted.extend(
+                    (
+                        (jk_means[0] - jk_means[1]) / (2 * self.g_in) - 1,
+                        (jk_means[0] + jk_means[1]) / 2,
+                    )
+                )
+            draws = np.array(deleted).T
+            delta = draws - draws.mean(axis=0)
+            cov = (len(labels) - 1) / len(labels) * delta.T @ delta
+            result = dict(zip(order, map(float, estimates), strict=True))
+            result.update(
+                {
+                    f"{key}_err": float(error)
+                    for key, error in zip(order, np.sqrt(np.diag(cov)), strict=True)
+                }
+            )
+            result["mc_covariance"] = cov.tolist()
+            result["mc_jackknife"] = draws.tolist()
+            results["weights"][scheme] = result
+            if verbose:
+                print(
+                    f"[{scheme}] shared-tile response jackknife ({len(labels)} tiles)"
+                )
+                for key in order:
+                    print(f"  {key} = {result[key]:+.6f} ± {result[key + '_err']:.6f}")
+        results.update(results["weights"][self.w_cols[0]])
+        # Optional, explicitly conditional diagnostic; never replace science errors.
+        if self.cfg.get("conditional_bootstrap", False):
+            diagnostic = {scheme: {} for scheme in self.w_cols}
+            for p, m, comp in self.pairs:
+                for scheme, values in self._m_c_pair(p, m, comp, False).items():
+                    diagnostic[scheme][f"m{comp + 1}_err"] = float(values[1])
+                    diagnostic[scheme][f"c{comp + 1}_err"] = float(values[3])
+            results["conditional_object_bootstrap_fixed_response"] = diagnostic
+        return results
+
     def run(self, verbose=True):
         """Compute m and c for both shear components and every weight scheme.
+
+        Modern products use shared-tile, response-recalibrating jackknife errors
+        and export mc_covariance in covariance_order, including m/c cross terms.
+        W_policy records whether the upstream deleted responses held W fixed.
+        Legacy object-bootstrap errors are labelled conditional on fixed R.
 
         Returns
         -------
@@ -299,7 +429,20 @@ class ImageSimMBias:
             reader that wants the headline m/c never has to know the scheme
             name.
         """
-        results = {"weights": {scheme: {} for scheme in self.w_cols}}
+        modern = [cat.get("weight_scheme") is not None for cat in self.cats.values()]
+        if any(modern):
+            if not all(modern) or self.pair_match:
+                raise ValueError(
+                    "Modern response products require full populations on all branches"
+                )
+            return self._run_tile_jackknife(verbose)
+        results = {
+            "weights": {scheme: {} for scheme in self.w_cols},
+            "estimator": "legacy_symmetric_pairs"
+            if self.pair_match
+            else "full_population",
+            "uncertainty": "conditional_object_bootstrap_fixed_response",
+        }
         for name_p, name_m, comp in self.pairs:
             label = f"g{comp + 1}"
             if verbose:

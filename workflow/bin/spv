@@ -1,0 +1,211 @@
+#!/usr/bin/env bash
+# spv -- launcher for sp_validation's image-sims workflow; the counterpart of
+# ShapePipe's workflow/bin/sp.
+#
+# Usage:
+#   spv run -c FILE [-t TARGET]... [SNAKEMAKE ARGS...]
+#                      run the image-sims workflow for the run config FILE.
+#                      Default target: im_mbias (init -> extract -> calibrate
+#                      -> m-bias). Snapshots the code into the state dir first
+#                      and runs out of the copy, so editing the checkout
+#                      mid-run cannot reach the jobs. -n is a dry run.
+#   spv status -c FILE [FLAGS...]
+#   spv status DIR [FLAGS...]
+#                      disk-scan status of ShapePipe campaigns: one sp run
+#                      config, or every sp_*.yaml in DIR (default flag -S).
+#                      Read-only; see workflow/scripts/status_sims.py --help.
+#   spv -c FILE -- [SNAKEMAKE ARGS...]
+#                      snakemake on this run's existing snapshot (--unlock,
+#                      --summary, ...); no new snapshot.
+#
+# Configs: workflow/image_sims/config.yaml is the main config (defaults); FILE
+# is the user's run config, which must set image_sims.grids_base and
+# image_sims.shapepipe_repo and may override anything else. Snakemake
+# deep-merges the two. image_sims.sp_validation_repo is set by spv (to the
+# snapshot) and need not be in FILE.
+#
+# Environment:
+#   SPV_PROFILE       workflow/profiles/<name> (default candide)
+#   SPV_STATE_DIR     snakemake state + code snapshot
+#                     (default <grids_base>/spv-state)
+#   TMPDIR, APPTAINER_TMPDIR
+#                     temporary directories of the head, the jobs and
+#                     apptainer; on candide REQUIRED, absolute, and not under
+#                     /tmp or /scratch (see tmp_guard)
+#
+# Example (candide):
+#   export TMPDIR=/n23data1/$USER/tmp APPTAINER_TMPDIR=/n23data1/$USER/tmp
+#   workflow/bin/spv run -c ~/runs/grid_3/spv_grid_3.yaml -n
+set -euo pipefail
+
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+PROFILE="${SPV_PROFILE:-candide}"
+
+usage() { sed -n '2,/^set -euo/p' "${BASH_SOURCE[0]}" | sed '$d; s/^# \{0,1\}//'; }
+
+# --- temporary directories ---------------------------------------------------
+# The slurm executor exports this shell's environment to every job, TMPDIR
+# literally. On candide the login node's TMPDIR (/scratch/$USER/tmp) cannot be
+# created on a compute node, so Slurm falls back to the node's shared 31 GB
+# /tmp; inside the container the profile's --cleanenv drops TMPDIR and the host
+# /tmp is mounted. Where apptainer cannot mount the image it unpacks all of it
+# into its temporary directory -- that filled /tmp on n35 (2026-09-30). Hence:
+# on candide both directories must be a path every node sees, outside /tmp and
+# /scratch, and the same path goes into the container (snapshot_code).
+tmp_guard() {
+  local v val bad
+  for v in TMPDIR APPTAINER_TMPDIR; do
+    val="${!v:-}"; bad=""
+    if [ -z "$val" ]; then bad="unset"
+    elif [[ "$val" != /* ]]; then bad="not absolute"
+    elif [ "$val" = /tmp ] || [[ "$val" == /tmp/* ]]; then bad="under /tmp"
+    elif [ "$PROFILE" = candide ] && [[ "$val" == /scratch/* ]]; then
+      bad="under /scratch, which compute nodes cannot create"
+    fi
+    if [ -n "$bad" ]; then
+      if [ "$PROFILE" = candide ]; then
+        echo "spv: $v is $bad (${val:-<empty>}). On candide set TMPDIR and" \
+             "APPTAINER_TMPDIR to a directory every node sees, e.g." \
+             "/n23data1/\$USER/tmp, before \`spv run\`." >&2
+        exit 2
+      fi
+      echo "spv: warning: $v is $bad (${val:-<empty>})" >&2
+      continue
+    fi
+    mkdir -p "$val"
+  done
+  [ -z "${APPTAINER_TMPDIR:-}" ] || export SINGULARITY_TMPDIR="$APPTAINER_TMPDIR"
+}
+
+# --- arguments ---------------------------------------------------------------
+cmd="${1:-}"
+case "$cmd" in ""|-h|--help) usage; exit 0 ;; esac
+[ "$cmd" = run ] || [ "$cmd" = status ] && shift || cmd=passthrough
+
+RUN_CONFIG=""; TARGETS=(); REST=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -c|--config-file) [ $# -ge 2 ] || { echo "spv: $1 needs a file" >&2; exit 2; }
+                      RUN_CONFIG="$2"; shift 2 ;;
+    -t|--target)      [ $# -ge 2 ] || { echo "spv: $1 needs a target" >&2; exit 2; }
+                      TARGETS+=("$2"); shift 2 ;;
+    --)               shift; REST+=("$@"); break ;;
+    *)                REST+=("$1"); shift ;;
+  esac
+done
+
+# --- status: read-only, no state dir -------------------------------------------
+if [ "$cmd" = status ]; then
+  STATUS="$REPO/workflow/scripts/status_sims.py"
+  flags=(); dir=""
+  for a in ${REST[@]+"${REST[@]}"}; do
+    if [ -z "$dir" ] && [ -d "$a" ]; then dir="$a"; else flags+=("$a"); fi
+  done
+  [ ${#flags[@]} -gt 0 ] || flags=(-S)
+  if [ -n "$RUN_CONFIG" ]; then
+    exec python3 "$STATUS" -c "$RUN_CONFIG" "${flags[@]}"
+  fi
+  [ -n "$dir" ] || { echo "spv status: give -c <sp run config> or a directory" >&2; exit 2; }
+  shopt -s nullglob; cfgs=("$dir"/sp_*.yaml)
+  [ ${#cfgs[@]} -gt 0 ] || { echo "spv status: no sp_*.yaml in $dir" >&2; exit 2; }
+  rc=0
+  for c in "${cfgs[@]}"; do
+    echo; echo "############## $(basename "$c" .yaml) ##############"
+    python3 "$STATUS" -c "$c" "${flags[@]}" || rc=$?
+  done
+  exit $rc
+fi
+
+# --- run / passthrough: the campaign's state dir --------------------------------
+[ -n "$RUN_CONFIG" ] || { echo "spv: -c <run config> is required" >&2; exit 2; }
+[ -f "$RUN_CONFIG" ] || { echo "spv: run config $RUN_CONFIG does not exist" >&2; exit 2; }
+RUN_CONFIG="$(cd "$(dirname "$RUN_CONFIG")" && pwd)/$(basename "$RUN_CONFIG")"
+[ -d "$REPO/workflow/profiles/$PROFILE" ] || {
+  echo "spv: no profile workflow/profiles/$PROFILE (SPV_PROFILE=$PROFILE)" >&2; exit 2; }
+command -v snakemake >/dev/null || { echo "spv: snakemake is not on PATH" >&2; exit 2; }
+
+GRIDS_BASE="$(python3 - "$REPO/workflow/image_sims/config.yaml" "$RUN_CONFIG" <<'PY'
+import sys, yaml
+main, user = (yaml.safe_load(open(p)) or {} for p in sys.argv[1:3])
+val = (user.get("image_sims") or {}).get("grids_base") \
+    or (main.get("image_sims") or {}).get("grids_base")
+print(val or "")
+PY
+)"
+[ -n "$GRIDS_BASE" ] || { echo "spv: image_sims.grids_base is not set in $RUN_CONFIG" >&2; exit 2; }
+STATE_DIR="${SPV_STATE_DIR:-$GRIDS_BASE/spv-state}"
+SNAPSHOT="$STATE_DIR/code"
+tmp_guard
+
+# --- the launch code snapshot ---------------------------------------------------
+# As in ShapePipe's sp: the jobs re-read the Snakefile, rules and scripts when
+# they start, so a run executed straight from the checkout picks up whatever is
+# edited there meanwhile. spv copies what it launches into $STATE_DIR/code and
+# runs entirely out of it; image_sims.sp_validation_repo points there. Refreshed
+# wholesale on every `spv run`.
+snapshot_code() {
+  mkdir -p "$SNAPSHOT"
+  rsync -a --delete --copy-links --exclude '__pycache__' --exclude '*.egg-info' \
+    "$REPO/workflow" "$REPO/src" "$REPO/scripts" "$REPO/config" "$SNAPSHOT/"
+  cp "$RUN_CONFIG" "$SNAPSHOT/run_config.yaml"
+
+  # Temporary directory inside the container: --cleanenv drops TMPDIR, so the
+  # head's TMPDIR goes in as a literal --env (tempfile, joblib). It must lie
+  # under a --bind, or the container could not write it.
+  python3 - "$SNAPSHOT/workflow/profiles/$PROFILE/config.yaml" "${TMPDIR:-}" <<'PY'
+import re, sys, yaml
+path, tmp = sys.argv[1], sys.argv[2]
+prof = yaml.safe_load(open(path))
+args = prof.get("apptainer-args", "")
+if tmp and not tmp.startswith("/tmp"):
+    roots = [r for b in re.findall(r"--bind (\S+)", args)
+             for r in (s.split(":")[0] for s in b.split(","))]
+    if not any(tmp == r or tmp.startswith(r.rstrip("/") + "/") for r in roots):
+        sys.exit(f"spv: TMPDIR {tmp} is not under any --bind of the profile "
+                 f"({', '.join(roots)}); the container could not write it")
+    args = re.sub(r"\s*--env (TMPDIR|JOBLIB_TEMP_FOLDER)=\S+", "", args)
+    prof["apptainer-args"] = f"{args} --env TMPDIR={tmp} --env JOBLIB_TEMP_FOLDER={tmp}"
+    with open(path, "w") as fh:
+        fh.write("# Launch snapshot of the profile, rewritten by spv.\n")
+        yaml.safe_dump(prof, fh, sort_keys=False)
+    print(f"spv: temporary directory {tmp} (head, jobs and container)", file=sys.stderr)
+PY
+
+  python3 - "$SNAPSHOT/snapshot.json" "$REPO" <<'PY'
+import json, subprocess, sys, time
+out, repo = sys.argv[1], sys.argv[2]
+def git(*a):
+    p = subprocess.run(["git", "-C", repo, *a], capture_output=True, text=True)
+    return p.stdout.strip() if p.returncode == 0 else None
+status = git("status", "--porcelain")
+json.dump({"_comment": "Code snapshot taken by `spv run`; the run executes "
+                       "this tree, never the checkout.",
+           "source": repo, "taken_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+           "head": git("rev-parse", "HEAD"),
+           "branch": git("rev-parse", "--abbrev-ref", "HEAD"),
+           "dirty": bool(status),
+           "dirty_files": status.splitlines() if status else []},
+          open(out, "w"), indent=2)
+PY
+  echo "spv: code snapshot refreshed at $SNAPSHOT" >&2
+}
+
+sm() {
+  [ -f "$SNAPSHOT/workflow/image_sims/Snakefile" ] || {
+    echo "spv: no snapshot at $SNAPSHOT yet; run \`spv run\` first" >&2; exit 2; }
+  cd "$STATE_DIR"
+  # Targets and the caller's arguments BEFORE --configfile/--config: both take
+  # one-or-more values and would swallow a target that follows them.
+  snakemake ${TARGETS[@]+"${TARGETS[@]}"} ${REST[@]+"${REST[@]}"} \
+            -s "$SNAPSHOT/workflow/image_sims/Snakefile" \
+            --profile "$SNAPSHOT/workflow/profiles/$PROFILE" \
+            --directory "$STATE_DIR" \
+            --configfile "$SNAPSHOT/run_config.yaml" \
+            --config "image_sims={\"sp_validation_repo\": \"$SNAPSHOT\"}"
+}
+
+if [ "$cmd" = run ]; then
+  snapshot_code
+  [ ${#TARGETS[@]} -gt 0 ] || TARGETS=(im_mbias)
+fi
+sm
