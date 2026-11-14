@@ -42,6 +42,7 @@ NOT_COLUMNS = {
     # DR6 photometry columns, outside the ShapePipe schema
     "ALPHA_J2000",
     "DELTA_J2000",
+    "PHOTOPIPE_STATUS",
     "Z_B",
     # FITS header keywords
     "EXTNAME",
