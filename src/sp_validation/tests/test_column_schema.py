@@ -77,6 +77,9 @@ NOT_COLUMNS = {
     "ALPHA_J2000",
     "DELTA_J2000",
     "Z_B",
+    # DESI LSS catalogue columns (nz_clustering reads the tracer catalogues)
+    "WEIGHT",
+    "Z",
     "EXTNAME",
     "R_S11",
     "R_S12",
