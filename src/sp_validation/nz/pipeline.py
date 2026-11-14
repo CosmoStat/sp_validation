@@ -50,7 +50,7 @@ def run(recipe, output=None, *, workers=1):
     config = load_yaml(recipe)
     output = Path(output or config["output"])
     cal = inputs.calibrators(
-        **config["inputs"]["calibrators"], offset=config["z2_offset"]
+        **config["inputs"]["calibrators"], offset=config["z2_offset"], workers=workers
     )
     src = inputs.sources(**config["inputs"]["sources"], workers=workers)
     summary = calibrate(config, cal, src, output, workers=workers)

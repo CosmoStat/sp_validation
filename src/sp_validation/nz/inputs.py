@@ -4,20 +4,15 @@ Both come from PhotoPipe's run on Stephen Gwyn's DR6 detections, so sources
 and calibrators share one photometry. Sources are the rows of a calibrated
 shear catalogue; each takes its photometry from the v2 collection (shapes
 with their PhotoPipe extension, :mod:`sp_validation.hats_collection`) by its
-DR6 object ID. Calibrators are the spectra PhotoPipe matched to its own
-objects (``UNIONS.<tile>_ugriz_photoz_ext_specz.cat``), named by survey
-through the redshift compilation beside them.
+DR6 object ID. Calibrators are the objects of the same collection that its
+spec-z extension gives a spectrum from the recipe's surveys.
 
 @sc [decision:nz.photometry_as_delivered]
 """
 
-import glob
 from concurrent.futures import ThreadPoolExecutor
-from pathlib import Path
 
-import fitsio
 import numpy as np
-import pandas as pd
 
 from ..io import Catalogue, read_catalogue
 from ..object_id import OBJECT_ID, object_id
@@ -29,69 +24,57 @@ MAGS = [f"MAG_GAAP_{band}" for band in BANDS]
 NO_ID, UNMATCHED = -2, -1
 
 
-def _compilation(path):
-    """Read a redshift compilation (ra, dec, zspec, zspec_err, wspec, ref)."""
-    table = pd.read_csv(
-        path,
-        sep=r"\s+",
-        skiprows=1,
-        header=None,
-        names=["index", "ra", "dec", "z", "z_err", "w", "survey"],
-    )
-    return dict(zip(zip(table["ra"].round(7), table["dec"].round(7)), table["survey"]))
+def calibrators(photometry, surveys, field, z_min, offset, workers=1):
+    """Return the calibration sample: spectra from ``surveys`` in ``field`` with
+    complete ugriz.
 
-
-def calibrators(specz_dir, compilation, surveys, z_min, offset):
-    """Return the calibration sample: spectra from ``surveys`` with complete ugriz.
-
-    ``specz_dir`` holds, per tile, ``UNIONS.<tile>_ugriz_photoz_ext_specz.cat`` and
-    ``UNIONS.<tile>_redshifts-<compilation>.asc``. A spectrum matched in several
-    overlapping tiles is kept once. Missing z is filled from z2 + ``offset``, as
-    for sources.
+    ``photometry`` is the collection, whose spec-z extension gives each object
+    its matched spectrum (``Z_SPEC``, ``Z_SPEC_SURVEY``, and the spectrum's own
+    position ``Z_SPEC_RA``, ``Z_SPEC_DEC``). ``field`` bounds that position,
+    ``{"ra": [min, max], "dec": [min, max]}`` in degrees: a survey can observe
+    several fields, selected differently. A spectrum matched to several
+    objects, as in overlapping tiles, is kept once, at the lowest
+    ``OBJECT_ID``. Missing z is filled from z2 + ``offset``, as for sources.
+    Rows come in ``OBJECT_ID`` order.
 
     @sc [decision:nz.calibrator_set]
     """
-    columns = ["ALPHA_J2000_spec", "DELTA_J2000_spec", "z_spec_spec", "Z_B"]
-    parts = []
-    for path in sorted(glob.glob(f"{specz_dir}/UNIONS.*_ugriz_photoz_ext_specz.cat")):
-        tile = Path(path).name.split("_")[0].removeprefix("UNIONS.")
-        data = fitsio.read(path, ext=1, columns=columns + MAGS)
-        if len(data) == 0:
-            continue
-        names = _compilation(f"{specz_dir}/UNIONS.{tile}_redshifts-{compilation}.asc")
-        survey = np.array(
-            [
-                names.get((round(ra, 7), round(dec, 7)), "")
-                for ra, dec in zip(data["ALPHA_J2000_spec"], data["DELTA_J2000_spec"])
-            ]
-        )
-        parts.append((tile, data, survey))
-    data = np.concatenate([d for _, d, _ in parts])
-    survey = np.concatenate([s for _, _, s in parts])
-    tile = np.concatenate([[t] * len(d) for t, d, _ in parts])
+    spectrum = ["Z_SPEC", "Z_SPEC_SURVEY", "Z_SPEC_RA", "Z_SPEC_DEC"]
+    columns = [OBJECT_ID, *spectrum, "Z_B", *MAGS]
+
+    def select(view):
+        survey = view.read(["Z_SPEC_SURVEY"])["Z_SPEC_SURVEY"]
+        rows = np.flatnonzero(np.isin(survey.astype(str), surveys))
+        return view.read(columns, rows) if len(rows) else None
+
+    with Catalogue(photometry) as collection, ThreadPoolExecutor(workers) as pool:
+        parts = [p for p in pool.map(select, collection.chunks.values()) if p]
+    data = {name: np.concatenate([p[name] for p in parts]) for name in columns}
     mag, _ = nz.z_magnitudes(
         np.column_stack([data[m] for m in MAGS]).astype("f8"), offset
     )
-    z = data["z_spec_spec"].astype("f8")
+    ra, dec = data["Z_SPEC_RA"], data["Z_SPEC_DEC"]
     keep = (
-        np.isin(survey, surveys)
-        & nz.detected(mag).all(1)
+        nz.detected(mag).all(1)
         & np.isfinite(data["Z_B"])
-        & (z > z_min)
-    )
-    position = np.round(data["ALPHA_J2000_spec"], 7) * 1e4 + np.round(
-        data["DELTA_J2000_spec"], 7
+        & (data["Z_SPEC"] > z_min)
+        & (ra >= field["ra"][0])
+        & (ra <= field["ra"][1])
+        & (dec >= field["dec"][0])
+        & (dec <= field["dec"][1])
     )
     rows = np.flatnonzero(keep)
-    rows = np.sort(rows[np.unique(position[rows], return_index=True)[1]])
+    rows = rows[np.argsort(data[OBJECT_ID][rows])]
+    position = np.column_stack([data["Z_SPEC_RA"][rows], data["Z_SPEC_DEC"][rows]])
+    rows = rows[np.sort(np.unique(position, axis=0, return_index=True)[1])]
     return dict(
-        z=z[rows],
+        z=data["Z_SPEC"][rows].astype("f8"),
         photoz=data["Z_B"][rows].astype("f8"),
         mag=mag[rows],
-        survey=survey[rows],
-        ra=data["ALPHA_J2000_spec"][rows].astype("f8"),
-        dec=data["DELTA_J2000_spec"][rows].astype("f8"),
-        tile=tile[rows],
+        survey=data["Z_SPEC_SURVEY"][rows].astype(str),
+        object_id=data[OBJECT_ID][rows],
+        ra=data["Z_SPEC_RA"][rows],
+        dec=data["Z_SPEC_DEC"][rows],
     )
 
 

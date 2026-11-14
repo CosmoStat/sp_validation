@@ -3,13 +3,14 @@ limitation: EGS-only calibration (DEEP2/3) for validation and null tests; no ind
 inputs:
   # @sc [decision:nz.calibrator_set]
   calibrators:
-    # PhotoPipe's spec-z matches on Stephen Gwyn's DR6 detections, staged per
-    # tile from arc:projects/unions/catalogues/unions/GAaP_photometry/UNIONS_DR6/
-    # (UNIONS.<tile>/UNIONS.<tile>_ugriz_photoz_ext_specz.cat and
-    # specz/UNIONS.<tile>_redshifts-<compilation>.asc) over the EGS field.
-    specz_dir: ${unions_data}/photopipe-dr6-specz
-    compilation: "20261019"
+    # The spectra the collection's spec-z extension matches to PhotoPipe's
+    # objects (by its own sky match), selected by survey and by the
+    # spectrum's position. DEEP2 is in the EGS and in Field 2 (RA 252,
+    # Dec 35), which DEEP2 preselected by BRI colour to z > 0.7; only the EGS,
+    # the field the ensemble's density term describes, is used.
+    photometry: ${unions_v2}/run1-snap3-collection
     surveys: [deep2_final, deep3_final]
+    field: {ra: [213.0, 217.0], dec: [51.5, 54.0]}  # EGS
     z_min: 0.002  # stars
   # @sc [decision:nz.source_photometry_join]
   sources:

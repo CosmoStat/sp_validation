@@ -54,12 +54,13 @@ inputs:
       OBJECT_ID.
   - id: egs_spectra
     type: data
-    label: "DEEP2/DEEP3 spectra in EGS matched by PhotoPipe"
-    source: "${unions_data}/photopipe-dr6-specz"
+    label: "The collection's spec-z extension"
+    source: "${unions_v2}/run1-snap3-collection/specz"
     description: >-
-      Per tile, PhotoPipe's spec-z matches to its own objects
-      (UNIONS.<tile>_ugriz_photoz_ext_specz.cat) and the redshift compilation
-      naming each spectrum's survey (UNIONS.<tile>_redshifts-<compilation>.asc).
+      PhotoPipe's spec-z matches to its own objects (UNIONS_DR6_ugriz_specz.cat,
+      compilation of 2026-10-19), joined to the collection on OBJECT_ID by
+      sp_validation.specz_merge: Z_SPEC, Z_SPEC_SURVEY and the spectrum's own
+      position, 4.7 million rows over 36 surveys.
 
 decisions:
   source_photometry_join:
@@ -142,23 +143,33 @@ decisions:
     label: "Spectroscopic calibration sample"
     tags: [calibration, data-selection]
     rationale: >-
-      Calibrators are the DEEP2 and DEEP3 spectra in EGS that PhotoPipe
-      matched to its own objects (compilation 20261019), so they share the
-      sources' photometry: about 9,900 spectra, each kept once, with z >
-      0.002 (removing stars) and complete ugriz. Our code applies no
-      redshift-quality cut; the compilation gives every DEEP2/3 entry
-      confidence 0.99, read as a secure-redshift selection made upstream (not
-      confirmed). One field means no field-to-field variance beyond the
-      ensemble's line-of-sight term and no model of DEEP2/3 targeting or
-      redshift success.
-      Values: v2.yaml#inputs.calibrators.compilation = "20261019";
-      v2.yaml#inputs.calibrators.surveys = ["deep2_final", "deep3_final"];
+      Calibrators are a selection on the collection's spec-z extension, so
+      they share the sources' photometry by construction: the DEEP2 and DEEP3
+      spectra whose position lies in the EGS, each kept once (a spectrum
+      matched in two overlapping tiles keeps its lowest OBJECT_ID), with z >
+      0.002 (removing stars) and complete ugriz after the z2 fill: about
+      9,900. The field bound matters because DEEP2 also covers Field 2 (RA
+      252°, Dec 35°, 3,900 matched spectra), which DEEP2 preselected by BRI
+      colour to z > 0.7; a SOM trained on both fields would calibrate the low
+      bins on a sample missing low-z galaxies, and the ensemble's density term
+      describes one 2° × 0.25° strip. Our code applies no redshift-quality
+      cut; the compilation gives every DEEP2/3 entry confidence 0.99, read
+      as a secure-redshift selection made upstream (not confirmed). One field
+      means no field-to-field variance beyond the ensemble's line-of-sight
+      term and no model of DEEP2/3 targeting or redshift success.
+      Values: v2.yaml#inputs.calibrators.surveys = ["deep2_final", "deep3_final"];
+      v2.yaml#inputs.calibrators.field = {"ra": [213.0, 217.0], "dec": [51.5, 54.0]};
       v2.yaml#inputs.calibrators.z_min = 0.002.
     default: deep2_deep3_egs
     options:
       deep2_deep3_egs:
         label: "DEEP2 + DEEP3 in EGS"
-        description: "PhotoPipe's own matches; one field."
+        description: "PhotoPipe's own matches; one field, bounded by position."
+      deep2_both_fields:
+        label: "DEEP2 in EGS and Field 2 + DEEP3"
+        description: >-
+          13,800 spectra, but Field 2's colour preselection removes z < 0.7
+          galaxies there; not taken.
       add_desi_dr1:
         label: "Add DESI DR1 on the same tiles"
         description: >-

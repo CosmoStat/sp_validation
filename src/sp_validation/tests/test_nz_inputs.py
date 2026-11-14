@@ -9,75 +9,11 @@ from sp_validation.nz import inputs
 MAGS = inputs.MAGS
 
 
-def _specz_tile(directory, tile, ra, dec, z, mags, surveys):
-    n = len(ra)
-    data = np.zeros(
-        n,
-        dtype=[
-            ("SeqNr", "i4"),
-            ("ALPHA_J2000_spec", "f8"),
-            ("DELTA_J2000_spec", "f8"),
-            ("z_spec_spec", "f4"),
-            ("Z_B", "f8"),
-        ]
-        + [(m, "f4") for m in MAGS],
-    )
-    data["SeqNr"] = np.arange(1, n + 1)
-    data["ALPHA_J2000_spec"], data["DELTA_J2000_spec"] = ra, dec
-    data["z_spec_spec"], data["Z_B"] = z, z
-    for k, m in enumerate(MAGS):
-        data[m] = mags[:, k]
-    fitsio.write(
-        str(directory / f"UNIONS.{tile}_ugriz_photoz_ext_specz.cat"), data, clobber=True
-    )
-    lines = [" ra dec zspec zspec_err wspec ref"]
-    lines += [
-        f"{i} {r:.10f} {d:.10f} {zz} 0.0 1.0 {s}"
-        for i, (r, d, zz, s) in enumerate(zip(ra, dec, z, surveys))
-    ]
-    (directory / f"UNIONS.{tile}_redshifts-test.asc").write_text("\n".join(lines))
-
-
-def test_calibrators_select_survey_photometry_and_deduplicate(tmp_path):
-    good = np.tile([22.0, 21.5, 21.0, 20.5, 20.0, -99.0], (4, 1))
-    z2_only = good[0].copy()
-    z2_only[4], z2_only[5] = 99.0, 20.1
-    no_u = good[0].copy()
-    no_u[0] = -99.0
-    ra = np.array([214.1, 214.2, 214.3, 214.4])
-    dec = np.full(4, 52.5)
-    _specz_tile(
-        tmp_path,
-        "260.286",
-        ra,
-        dec,
-        np.array([0.5, 0.6, 0.7, 0.0001]),
-        np.vstack([good[:2], no_u, good[3]]),
-        ["deep2_final", "DESI_dr1_iron", "deep3_final", "deep2_final"],
-    )
-    # The first spectrum again, in an overlapping tile, and a z2-only one.
-    _specz_tile(
-        tmp_path,
-        "261.286",
-        np.array([ra[0], 214.5]),
-        np.array([dec[0], 52.5]),
-        np.array([0.5, 0.9]),
-        np.vstack([good[0], z2_only]),
-        ["deep2_final", "deep3_final"],
-    )
-    cal = inputs.calibrators(
-        tmp_path, "test", ["deep2_final", "deep3_final"], z_min=0.002, offset=-0.1
-    )
-    np.testing.assert_allclose(cal["z"], [0.5, 0.9], rtol=1e-6)
-    np.testing.assert_array_equal(cal["survey"], ["deep2_final", "deep3_final"])
-    np.testing.assert_allclose(cal["mag"][1, 4], 20.0, rtol=1e-6)
-    assert cal["mag"].shape == (2, 5)
-
-
-def _collection(root, object_ids, photoz, status, mags):
-    """Write a one-pixel collection: shapes with OBJECT_ID, PhotoPipe beside."""
+def _collection(root, object_ids, photoz, status, mags, specz=None):
+    """Write a one-pixel collection: shapes with OBJECT_ID, PhotoPipe beside,
+    and, given ``specz`` (columns of its rows), a sparse spec-z extension."""
     properties = "hats_npix_suffix=.parquet\n"
-    for name, table in (
+    tables = [
         ("shapes", {"OBJECT_ID": object_ids}),
         (
             "photopipe/photopipe",
@@ -88,7 +24,12 @@ def _collection(root, object_ids, photoz, status, mags):
                 **{m: pa.array(mags[:, k], pa.float32()) for k, m in enumerate(MAGS)},
             },
         ),
-    ):
+    ]
+    extensions = ["photopipe"]
+    if specz is not None:
+        tables.append(("specz/specz", specz))
+        extensions.append("specz")
+    for name, table in tables:
         directory = root / name
         (directory / "dataset/Norder=0/Dir=0").mkdir(parents=True)
         pq.write_table(
@@ -96,14 +37,62 @@ def _collection(root, object_ids, photoz, status, mags):
         )
         (directory / "hats.properties").write_text(properties)
         (directory / "partition_info.csv").write_text("Norder,Npix\n0,0\n")
+    listed = " ".join(f"{e} {e}.properties" for e in extensions)
     (root / "collection.properties").write_text(
-        "hats_primary_table_url=shapes\nall_extensions=photopipe photopipe.properties\n"
+        f"hats_primary_table_url=shapes\nall_extensions={listed}\n"
     )
-    (root / "photopipe.properties").write_text(
-        "hats_assn_join_table_url=photopipe/photopipe\nhats_col_assn_join=OBJECT_ID\n"
-        "hats_col_assn_primary=OBJECT_ID\n"
-        f"hats_ext_cols=PHOTOPIPE_STATUS Z_B {' '.join(MAGS)}\n"
+    columns = {
+        "photopipe": f"PHOTOPIPE_STATUS Z_B {' '.join(MAGS)}",
+        "specz": "Z_SPEC Z_SPEC_SURVEY Z_SPEC_RA Z_SPEC_DEC",
+    }
+    for extension in extensions:
+        (root / f"{extension}.properties").write_text(
+            f"hats_assn_join_table_url={extension}/{extension}\n"
+            "hats_col_assn_join=OBJECT_ID\nhats_col_assn_primary=OBJECT_ID\n"
+            f"hats_ext_cols={columns[extension]}\n"
+        )
+
+
+def test_calibrators_select_survey_field_photometry_and_deduplicate(tmp_path):
+    """A calibrator is a spectrum from a listed survey, inside the field, on an
+    object with complete ugriz (z filled from z2), kept once."""
+    good = [22.0, 21.5, 21.0, 20.5, 20.0, -99.0]
+    z2_only = [22.0, 21.5, 21.0, 20.5, 99.0, 20.1]
+    no_u = [-99.0, 21.5, 21.0, 20.5, 20.0, 20.0]
+    # Objects 1-7 carry spectra; 8 has none. Object 6 is object 1's spectrum
+    # matched again in an overlapping tile.
+    ids = pa.array(np.arange(1, 9, dtype=np.int64))
+    mags = np.array([good, good, no_u, good, z2_only, good, good, good])
+    ra = [214.1, 214.2, 214.3, 214.4, 214.5, 214.1, 252.5]
+    dec = [52.5, 52.5, 52.5, 52.5, 52.5, 52.5, 35.0]
+    specz = dict(
+        OBJECT_ID=pa.array([7, 6, 5, 4, 3, 2, 1], pa.int64()),
+        Z_SPEC=pa.array([0.8, 0.5, 0.9, 0.0001, 0.7, 0.6, 0.5], pa.float32()),
+        Z_SPEC_SURVEY=[
+            "deep2_final",
+            "deep2_final",
+            "deep3_final",
+            "deep2_final",
+            "deep3_final",
+            "DESI_dr1_iron",
+            "deep2_final",
+        ],
+        Z_SPEC_RA=ra[::-1],
+        Z_SPEC_DEC=dec[::-1],
     )
+    _collection(tmp_path, ids, np.full(8, 0.5), [0] * 8, mags, specz=specz)
+    cal = inputs.calibrators(
+        tmp_path,
+        ["deep2_final", "deep3_final"],
+        {"ra": [213.0, 217.0], "dec": [51.5, 54.0]},
+        z_min=0.002,
+        offset=-0.1,
+    )
+    np.testing.assert_array_equal(cal["object_id"], [1, 5])
+    np.testing.assert_allclose(cal["z"], [0.5, 0.9], rtol=1e-6)
+    np.testing.assert_array_equal(cal["survey"], ["deep2_final", "deep3_final"])
+    np.testing.assert_allclose(cal["mag"][1, 4], 20.0, rtol=1e-6)
+    assert cal["mag"].shape == (2, 5)
 
 
 def _catalogue(path, tile, number, weight):
@@ -120,9 +109,11 @@ def test_sources_join_on_object_id_in_catalogue_order(tmp_path):
     tile = np.array([1.001, 1.001, 2.002, 2.002, 1.001, 3.003])
     number = np.array([10, 20, 10, 40, -1, 7], np.int32)
     _catalogue(tmp_path / "catalogue.fits", tile, number, [1, 2, 3, 4, 5, 6])
-    # The collection holds the first four out of order, plus an object the
-    # catalogue lacks and one with a null ID.
-    ids = pa.array([2002000010, 1001000020, 9009000001, 2002000040, None, 1001000010])
+    # The collection holds the first four out of order, plus two objects the
+    # catalogue lacks (its OBJECT_ID has no nulls: the index is built on it).
+    ids = pa.array(
+        [2002000010, 1001000020, 9009000001, 2002000040, 9009000002, 1001000010]
+    )
     photoz = np.array([0.3, 0.2, 9.0, 0.4, 8.0, 0.1])
     mags = np.arange(6)[:, None] + np.full((6, 6), 20.0)
     _collection(tmp_path / "collection", ids, photoz, [0, 0, 0, 2, 0, 0], mags)

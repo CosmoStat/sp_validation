@@ -67,12 +67,13 @@ compared. `summary.json` reports, under `match`, the shear weight of rows
 with no ID, with an ID the collection lacks, in a tile without PhotoPipe,
 absent from PhotoPipe in a tile it covers, and undetected in each band.
 
-**Calibrators** are the DEEP2 and DEEP3 spectra in the EGS field that
-PhotoPipe matched to its own objects (`UNIONS.<tile>_ugriz_photoz_ext_specz.cat`,
-surveys named by the redshift compilation beside it), one row per spectrum,
-with complete ugriz. Stage them from
-`arc:projects/unions/catalogues/unions/GAaP_photometry/UNIONS_DR6/UNIONS.<tile>/`
-for the tiles around RA 215°, Dec 52.8°.
+**Calibrators** are a selection on the same collection's spec-z extension
+(`specz/`, PhotoPipe's matches to its own objects, joined on `OBJECT_ID`;
+`sp_validation.nz.inputs.calibrators`): spectra from the recipe's surveys
+(DEEP2 and DEEP3) whose position lies in the recipe's field (the EGS; DEEP2's
+Field 2 at RA 252° was colour-preselected to z > 0.7 and stays out), one row
+per spectrum, with complete ugriz after the z2 fill. Nothing is staged
+separately.
 
 **Method.** A 101×101, 60-epoch batch SOM of all ten ugriz colours plus r,
 standardized per feature and trained on the calibrators, grouped into 2,000
