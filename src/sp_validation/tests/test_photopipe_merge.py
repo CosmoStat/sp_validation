@@ -14,6 +14,7 @@ def write_extract(directory):
             ALPHA_J2000=np.array([10.0, 10.01]),
             DELTA_J2000=np.array([20.0, 20.0]),
             MAG_GAAP_r=np.array([21.0, 22.0], np.float32),
+            MAG_AUTO=np.array([20.0, 21.0], np.float32),
             MASK=pa.nulls(2, pa.int32()),
         )
     )
@@ -38,7 +39,7 @@ def write_shapes(path):
                 YWIN_WORLD=np.array([20.0, 20.0 + 0.2 / 3600, 20.0, 20.0]),
                 TILE_ID=np.array([24.237, 24.237, 24.237, 300.25]),
                 NUMBER=np.array([2, 1, 9, 1], np.int32),
-                _source_row=np.array([3, 2, 1, 0]),
+                MAG_AUTO=np.full(4, 19.0, np.float32),
             )
         ),
         path,
@@ -54,7 +55,15 @@ def test_merge_pixel_joins_on_id_and_marks_no_match(tmp_path):
     counts, _ = pm.merge_pixel(shape_path, output, index, pm._photopipe_schema(index))
     merged = pq.read_table(output)
 
-    assert merged["_source_row"].to_pylist() == [3, 2, 1, 0]
+    assert merged.column_names[:6] == [
+        "_healpix_29",
+        "OBJECT_ID",
+        "XWIN_WORLD",
+        "YWIN_WORLD",
+        "PHOTOPIPE_STATUS",
+        "MATCH_SEP_ARCSEC",
+    ]
+    assert merged["_healpix_29"].to_pylist() == [0, 1, 2, 3]
     assert merged["OBJECT_ID"].to_pylist() == [
         24237000002,
         24237000001,
@@ -71,7 +80,9 @@ def test_merge_pixel_joins_on_id_and_marks_no_match(tmp_path):
     assert merged["MAG_GAAP_r"].to_pylist() == [22.0, 21.0, None, None]
     assert merged["MATCH_SEP_ARCSEC"].to_pylist()[2:] == [None, None]
     assert abs(merged["MATCH_SEP_ARCSEC"][1].as_py() - 0.2) < 1e-3
-    assert "ALPHA_J2000" not in merged.column_names
+    assert merged["ALPHA_J2000"].to_pylist() == [10.01, 10.0, None, None]
+    assert merged["PHOTOPIPE_MAG_AUTO"].to_pylist() == [21.0, 20.0, None, None]
+    assert "TILE_ID" not in merged.column_names
     assert sorted((c["tile"], c["n_matched"]) for c in counts) == [
         ("024.237", 2),
         ("300.250", 0),

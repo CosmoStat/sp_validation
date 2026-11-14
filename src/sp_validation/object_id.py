@@ -13,6 +13,8 @@ from pathlib import Path
 import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
+from hats.catalog import TableProperties
+from hats.io.parquet_metadata import write_parquet_metadata
 
 OBJECT_ID = "OBJECT_ID"
 NUMBER_LIMIT = 10**6
@@ -69,9 +71,6 @@ def add_to_catalogue(source, output, workers=1, name=None):
     and properties are those of ``source``, with ``OBJECT_ID`` among the default
     columns, which ``lsdb``'s ``id_search`` needs; ``name`` renames the catalogue.
     """
-    from hats.catalog import TableProperties
-    from hats.io.parquet_metadata import write_parquet_metadata
-
     source, output = Path(source), Path(output)
     paths = sorted((source / "dataset").glob("Norder=*/Dir=*/Npix=*.parquet"))
     jobs = [(path, output / path.relative_to(source)) for path in paths]
@@ -89,5 +88,7 @@ def add_to_catalogue(source, output, workers=1, name=None):
     properties.copy_and_update(
         catalog_name=name or properties.catalog_name,
         default_columns=[*(properties.default_columns or []), OBJECT_ID],
-        hats_builder="sp_validation.object_id",
+        **TableProperties.new_provenance_dict(
+            output, builder="sp_validation.object_id"
+        ),
     ).to_properties_file(output)
