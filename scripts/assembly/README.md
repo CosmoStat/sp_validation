@@ -6,8 +6,9 @@ together into the catalogues calibrate reads. See `docs/source/stages.md`.
 ## The v2 collection (ShapePipe v2 + PhotoPipe DR6)
 
 The v2 catalogue is one HATS collection: the shapes as the primary catalogue,
-an index on the DR6 object ID, and PhotoPipe as an extension. A PhotoPipe
-rerun replaces `photopipe/` and leaves the shapes alone.
+an index on the DR6 object ID, and two extensions, PhotoPipe's photometry and
+the spectroscopic redshifts PhotoPipe matched to DR6 objects. A PhotoPipe
+rerun replaces `photopipe/` and `specz/` and leaves the shapes alone.
 
 ```
 COLLECTION/
@@ -18,7 +19,14 @@ COLLECTION/
 │   │                       shape coordinates and every PhotoPipe column
 │   ├── collection.properties
 │   └── BUILD.json, match_by_tile.parquet, photopipe_sources.parquet
-├── photopipe.properties    the extension, joined to the primary on OBJECT_ID
+├── specz/                  extension data
+│   ├── specz/              one row per shape object with a spectrum: the keys,
+│   │                       Z_SPEC, Z_SPEC_ERR, Z_SPEC_CONFIDENCE, Z_SPEC_SURVEY,
+│   │                       Z_SPEC_RA, Z_SPEC_DEC
+│   ├── collection.properties
+│   └── BUILD.json
+├── photopipe.properties    the extensions, each joined to the primary on OBJECT_ID
+├── specz.properties
 └── collection.properties
 ```
 
@@ -27,28 +35,32 @@ COLLECTION/
 (194.248 and `NUMBER` 32402 give 194248032402), null where `NUMBER` < 0
 (`sp_validation.object_id`).
 
-How the shapes and PhotoPipe relate:
+How the shapes and an extension relate:
 
-1. **Join on the object key within the pixel.** Both catalogues have the same
-   HATS pixels, and an object is in the same pixel in both; that much HATS
-   guarantees. The key is `OBJECT_ID`, which `photopipe.properties` names.
-   HATS says nothing about row position inside a pixel file.
-2. **Row-for-row alignment is our convention on top.** The join writes each
-   PhotoPipe pixel file with the rows of the matching shape file, in the same
-   order, so reading the same pixel from both gives aligned rows with no join.
-   `sp_validation.io` reads the collection this way and checks `OBJECT_ID`
-   on both sides. A file rewritten by another tool keeps (1) and may lose (2).
+1. **Join on the object key within the pixel.** Each extension file is on a
+   pixel of the shapes, and an object is in the same pixel in both; that much
+   HATS guarantees. The key is `OBJECT_ID`, which `<extension>.properties`
+   names, with the join style `left`: a shape row without an extension row
+   takes nulls. `sp_validation.io` and `lsdb` both join this way.
+2. **PhotoPipe is dense, spec-z sparse.** A PhotoPipe pixel file holds every
+   row of the shape file, in the same order. A spec-z file holds only the
+   objects with a spectrum, in the shapes' order, and a pixel without one has
+   no file: 4.7M rows against the shapes' 773M. Written dense, spec-z would
+   repeat the four key columns on every shape row to carry a few columns on
+   0.6% of them.
 
 | Step | Script | Runs on | Does |
 |------|--------|---------|------|
 | 1 | `extract_photopipe.py` | CANFAR, beside the tile tree | Read every column of every `UNIONS.<tile>_ugriz_photoz_ext.cat` (and `MASK` from `_finalmask`) into one Parquet shard per RA prefix, with a manifest of the files read. Unchanged shards are skipped. |
 | 2 | `join_photopipe.py` | a Slurm job, in the image | Join the extract to the shapes on (tile, `NUMBER` = `SeqNr`) and write `COLLECTION/photopipe/`: the catalogue `photopipe/` and its provenance. |
 | 3 | `add_object_id.py` | a Slurm job, in the image | Rewrite every shape pixel file with `OBJECT_ID` after `NUMBER`, rows and row groups unchanged, as `COLLECTION/shapes`. |
-| 4 | `build_collection.py` | a Slurm job, in the image | Build the `OBJECT_ID` index with `hats_import` and write the properties files that make `COLLECTION` a collection with PhotoPipe as its extension. |
+| 4 | `join_specz.py` | a Slurm job, in the image | Find each row of PhotoPipe's spec-z match in `COLLECTION/photopipe/` and write `COLLECTION/specz/`. |
+| 5 | `build_collection.py` | a Slurm job, in the image | Build the `OBJECT_ID` index with `hats_import` and write the properties files that make `COLLECTION` a collection with PhotoPipe and spec-z as its extensions. |
 
-Steps 2 and 3 are independent; step 4 needs both. The layout is the one
-`hats_import`'s extension split writes. `join_photopipe.sh` runs steps 1 and
-2 and the copy between them from a login node, in about 100 minutes from cold:
+Steps 2 and 3 are independent; step 4 needs step 2, and step 5 needs the
+others. The layout is the one `hats_import`'s extension split writes.
+`join_photopipe.sh` runs steps 1 and 2 and the copy between them from a login
+node, in about 100 minutes from cold:
 
 ```bash
 ACCOUNT=<slurm account> CANFAR_USER=<canfar user> scripts/assembly/join_photopipe.sh
@@ -68,10 +80,29 @@ joined pair's separation as a check. PhotoPipe's `SeqNr` becomes
 `PHOTOPIPE_SEQNR`, and the PhotoPipe columns whose names the shapes already
 use take the prefix `PHOTOPIPE_` (`MAG_AUTO`, `MAGERR_AUTO`, `FLUX_RADIUS`).
 
-Reading: `sp_validation.io.read_catalogue(COLLECTION, columns)` takes shape
-and PhotoPipe columns by name. `lsdb.open_catalog(COLLECTION)` opens the
-primary, and `catalog.id_search(values={"OBJECT_ID": [...]})` reads only the
-pixels holding those IDs (open it with `OBJECT_ID` among the columns). lsdb
-0.11.1 does not read extensions (`lsdb.read_hats` on `photopipe.properties`
-raises `NotImplementedError`); `photopipe/` opens with `lsdb.open_catalog` as
-a catalogue of its own.
+**Spec-z.** PhotoPipe matched DR6 objects to a compilation of spectra on
+every tile; `${unions_data}/photopipe-dr6-specz-all/` holds the result, the
+per-tile `UNIONS.<tile>_ugriz_photoz_ext_specz.cat` files concatenated in tile
+order into `UNIONS_DR6_ugriz_specz.cat` (4,746,631 rows, the PhotoPipe columns
+of each object and the spectrum's position and redshift), and the compilation
+itself, `asc/UNIONS.<tile>_redshifts-20261019.asc` (`ra dec zspec zspec_err
+wspec ref`). The table has no tile column and its `SeqNr` renumbers rows; the
+object's DR6 number is `Pair_0_spec`. Step 4 finds each row in the PhotoPipe
+extension by that number and its exact position, which gives `OBJECT_ID`, and
+takes the survey (`ref`) and confidence (`wspec`) from the compilation by the
+spectrum's exact position. Rows pairing several objects (`N_0` > 1) or several
+spectra (`N_1` > 1) average them and are left out (5,469). Of the rest,
+4,733,015 are shape objects; a spectrum in a tile overlap is on the object in
+each tile (4,515,100 distinct spectra). Selecting `Z_SPEC_SURVEY` in
+`deep2_final`, `deep3_final` with the n(z) photometry cuts gives the EGS
+calibrators.
+
+Reading: `sp_validation.io.read_catalogue(COLLECTION, columns)` takes shape,
+PhotoPipe and spec-z columns by name; a spec-z column is NaN (None for
+`Z_SPEC_SURVEY`) where the object has no spectrum. `lsdb.open_catalog(COLLECTION)`
+opens the primary, `catalog.load_extension("specz")` (or `"photopipe"`) joins
+an extension, and `catalog.id_search(values={"OBJECT_ID": [...]})` reads only
+the pixels holding those IDs (open it with `OBJECT_ID` among the columns).
+`lsdb.read_hats` on an extension's properties file raises
+`NotImplementedError`; `photopipe/` and `specz/` also open with
+`lsdb.open_catalog` as catalogues of their own.

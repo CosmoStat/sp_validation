@@ -1,10 +1,10 @@
 #!/usr/bin/env python
-"""Index the shapes on OBJECT_ID and add PhotoPipe as an extension (collection, step 4).
+"""Index the shapes on OBJECT_ID and add PhotoPipe and spec-z as extensions (step 5).
 
-Needs ``COLLECTION/shapes`` (step 3) and ``COLLECTION/photopipe`` (step 2), and
-writes the ``OBJECT_ID`` index and every properties file of the collection
-(``sp_validation.hats_collection``). Paths may name data roots
-(``config/data_roots.yaml``), as in ``${unions_data}/...``.
+Needs ``COLLECTION/shapes`` (step 3), ``COLLECTION/photopipe`` (step 2) and
+``COLLECTION/specz`` (step 4), and writes the ``OBJECT_ID`` index and every
+properties file of the collection (``sp_validation.hats_collection``). Paths
+may name data roots (``config/data_roots.yaml``), as in ``${unions_data}/...``.
 """
 
 import argparse

@@ -1,8 +1,9 @@
-"""A HATS collection with an extension reads as one table.
+"""A HATS collection with extensions reads as one table.
 
-The extension's pixel files hold the primary's rows in the same order; the
-reader takes each column from the catalogue that holds it and checks the join
-column on both sides.
+The reader takes each column from the catalogue that holds it and joins each
+extension to the primary on the join column, within the pixel: a dense
+extension holds every primary row (here in the same order), a sparse one only
+some, on some pixels.
 """
 
 import shutil
@@ -26,6 +27,48 @@ from hats.io import paths as hats_paths
 from sp_validation import io
 
 N = 2000
+
+
+def _sparse_table(primary):
+    """Spec-z-like columns for every fifth row of one primary pixel file, shuffled."""
+    ids = primary["OBJECT_ID"].to_numpy()
+    rows = np.flatnonzero(ids % 5 == 0)[::-1]
+    return pa.table(
+        dict(
+            OBJECT_ID=pa.array(ids[rows]),
+            Z_SPEC=pa.array(ids[rows] / N),
+            N_SPEC=pa.array((ids[rows] % 4).astype(np.int16)),
+            SURVEY=pa.array([f"s{i}" for i in ids[rows]]),
+        )
+    )
+
+
+def _write_extension(path, name, table, files, columns):
+    """Write ``table(file)`` for each primary pixel file, and its properties."""
+    primary = path / CollectionProperties.read_from_dir(path).hats_primary_table_url
+    extension = path / name
+    written = []
+    for file in files:
+        target = extension / file.relative_to(primary)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        pq.write_table(table(pq.read_table(file)), target)
+        written.append(hats_paths.get_healpix_from_path(str(target)))
+    PartitionInfo.from_healpix(written).write_to_file(
+        hats_paths.get_partition_info_pointer(extension)
+    )
+    schema = table(pq.read_table(file)).schema
+    pq.write_metadata(schema, extension / "dataset" / "_common_metadata")
+    TableProperties.read_from_dir(primary).copy_and_update(
+        catalog_name=name, default_columns=None
+    ).to_properties_file(extension)
+    ExtensionProperties(
+        name=name,
+        primary_catalog=path.name,
+        primary_column="OBJECT_ID",
+        join_catalog=name,
+        join_column="OBJECT_ID",
+        extension_columns=columns,
+    ).to_properties_file(path)
 
 
 def _extension_table(primary):
@@ -61,32 +104,22 @@ def collection(tmp_path_factory):
     ).write_catalog(root / "coll", catalog_name="shapes", progress_bar=False)
     path = root / "coll"
     primary = path / CollectionProperties.read_from_dir(path).hats_primary_table_url
-
-    extension = path / "photo"
-    for file in sorted((primary / "dataset").rglob("Npix=*.parquet")):
-        target = extension / file.relative_to(primary)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        pq.write_table(_extension_table(pq.read_table(file)), target)
-    pixels = PartitionInfo.read_from_dir(primary).get_healpix_pixels()
-    PartitionInfo.from_healpix(pixels).write_to_file(
-        hats_paths.get_partition_info_pointer(extension)
+    files = sorted((primary / "dataset").rglob("Npix=*.parquet"))
+    _write_extension(
+        path, "photo", _extension_table, files, ["Z_B", "FLAG", "STATUS", "NAME"]
     )
-    schema = _extension_table(pq.read_table(file)).schema
-    pq.write_metadata(schema, extension / "dataset" / "_common_metadata")
-    TableProperties.read_from_dir(primary).copy_and_update(
-        catalog_name="photo", default_columns=None
-    ).to_properties_file(extension)
-    ExtensionProperties(
-        name="photo",
-        primary_catalog="coll",
-        primary_column="OBJECT_ID",
-        join_catalog="photo",
-        join_column="OBJECT_ID",
-        extension_columns=["Z_B", "FLAG", "STATUS", "NAME"],
-    ).to_properties_file(path)
+    # The sparse extension has no file for the first pixel.
+    _write_extension(
+        path, "specz", _sparse_table, files[1:], ["Z_SPEC", "N_SPEC", "SURVEY"]
+    )
     properties = CollectionProperties.read_from_dir(path)
     properties.model_copy(
-        update=dict(all_extensions={"photo": "photo.properties"})
+        update=dict(
+            all_extensions={
+                "photo": "photo.properties",
+                "specz": "specz.properties",
+            }
+        )
     ).to_properties_file(path)
     return path, frame
 
@@ -112,11 +145,53 @@ def test_integer_column_without_nulls_keeps_its_dtype(collection):
     assert out.dtype["STATUS"] == np.int8
 
 
-def test_misaligned_extension_raises(collection, tmp_path):
+def test_sparse_extension_leaves_rows_without_a_match_null(collection):
+    path, frame = collection
+    primary = path / "shapes"
+    first = sorted((primary / "dataset").rglob("Npix=*.parquet"))[0]
+    absent = pq.read_table(first, columns=["OBJECT_ID"])["OBJECT_ID"].to_numpy()
+    out = io.read_catalogue(path, columns=["OBJECT_ID", "Z_SPEC", "N_SPEC", "SURVEY"])
+    ids = out["OBJECT_ID"]
+    has = (ids % 5 == 0) & ~np.isin(ids, absent)
+
+    npt.assert_array_equal(out["Z_SPEC"], np.where(has, ids / N, np.nan))
+    # An integer column of an extension that lacks rows reads as float64.
+    assert out.dtype["N_SPEC"] == np.float64
+    npt.assert_array_equal(out["N_SPEC"], np.where(has, ids % 4, np.nan))
+    assert list(out["SURVEY"]) == [f"s{i}" if h else None for i, h in zip(ids, has)]
+
+
+def test_some_rows_read_as_the_same_rows_of_the_whole(collection):
+    path, _ = collection
+    columns = ["OBJECT_ID", "G1", "Z_B", "STATUS", "Z_SPEC", "SURVEY"]
+    whole = io.read_catalogue(path, columns=columns)
+    rows = np.arange(len(whole))[3::7]
+    some = io.open_catalogue(path)[rows]
+    for name in columns:
+        npt.assert_array_equal(some[name], whole[name][rows])
+
+
+def test_extension_rows_join_on_the_key_in_any_order(collection, tmp_path):
     path, _ = collection
     copy = Path(shutil.copytree(path, tmp_path / "coll"))
     file = next(iter(sorted((copy / "photo" / "dataset").rglob("Npix=*.parquet"))))
     table = pq.read_table(file)
     pq.write_table(table.take(np.arange(table.num_rows)[::-1]), file)
-    with pytest.raises(ValueError, match="not row-aligned"):
-        io.read_catalogue(copy, columns=["G1", "Z_B"])
+    columns = ["OBJECT_ID", "Z_B", "STATUS"]
+    reordered = io.read_catalogue(copy, columns=columns)
+    original = io.read_catalogue(path, columns=columns)
+    for name in columns:
+        npt.assert_array_equal(reordered[name], original[name])
+
+
+def test_dense_extension_without_a_key_cannot_null_an_integer(collection, tmp_path):
+    path, _ = collection
+    copy = Path(shutil.copytree(path, tmp_path / "coll"))
+    file = next(iter(sorted((copy / "photo" / "dataset").rglob("Npix=*.parquet"))))
+    table = pq.read_table(file)
+    ids = table["OBJECT_ID"].to_numpy().copy()
+    ids[0] = -1
+    table = table.set_column(1, "OBJECT_ID", pa.array(ids))
+    pq.write_table(table, file)
+    with pytest.raises(ValueError, match="cannot hold null"):
+        io.read_catalogue(copy, columns=["G1", "STATUS"])
