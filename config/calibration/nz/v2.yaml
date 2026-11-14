@@ -59,7 +59,7 @@ ensemble:
   specz_failure: 0.01        # 1 - the compilation's DEEP2/3 confidence (0.99)
   nmad_factor: [4, 6]        # gold-QC factor, around the fiducial 5
   specz_selection: 0.5       # input scale along the alternative-calibrator difference;
-                             # positivity/recentring set the realised output width
+                             # clipping/normalisation can change the output width
 # Clustering redshifts of the gold bins (sp_validation.nz_clustering): a check
 # on the n(z). It does not update delivered n(z) or supply calibration/inference
 # priors. SOM and WZ stay two separate estimates, compared but not combined.

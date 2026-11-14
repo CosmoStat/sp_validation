@@ -345,39 +345,28 @@ class Calibration:
         return histograms(z, w, self.grid)
 
 
-def positive_recentre(draws, fiducial, grid):
-    """Positive draws with unit integrals and the exact fiducial ensemble mean.
+def clip_and_normalise(draws, grid):
+    """Clip negative cells, normalise each draw, and report clipping per bin.
 
-    Map centred fractional perturbations through exp(asinh(x)): this positive
-    log-space link is 1 + x at first order, so small-perturbation widths are
-    unchanged, while large negative excursions cannot cross zero. Unlike a
-    clipped Gaussian, it retains variation on both sides of the fiducial.
-    Alternating multiplicative scalings impose the mean and integral constraints.
-    A zero fiducial cell must be zero in every non-negative, mean-preserving draw;
-    uncertainty outside that support requires changing the fiducial itself.
+    The clipped fraction is negative mass divided by absolute input mass,
+    averaged over draws. Clipping can change both the mean and the scatter.
     """
-    relative = np.divide(draws - draws.mean(0), fiducial,
-                         out=np.zeros_like(draws), where=fiducial > 0)
-    positive = fiducial * np.exp(np.arcsinh(relative))
-    for _ in range(10000):
-        positive /= np.trapezoid(positive, grid, axis=-1)[..., None]
-        mean = positive.mean(0)
-        positive *= np.divide(fiducial, mean, out=np.zeros_like(mean), where=mean > 0)
-        if np.max(np.abs(np.trapezoid(positive, grid, axis=-1) - 1)) < 1e-12:
-            return positive
-    raise RuntimeError("Positive n(z) recentring did not converge")
+    negative = np.trapezoid(np.maximum(-draws, 0), grid, axis=-1)
+    absolute = np.trapezoid(np.abs(draws), grid, axis=-1)
+    positive = np.maximum(draws, 0)
+    positive /= np.trapezoid(positive, grid, axis=-1)[..., None]
+    return positive, (negative / absolute).mean(0)
 
 
-def realisations(cal, settings, density=None):
+def realisations(cal, settings, density=None, diagnostics=None):
     """Draws (n_draw, n_bin, n_z) and their raw mean before recentring.
 
     ``settings`` is the recipe's ``ensemble`` section; ``density`` is the
     covariance of δ on the grid (:func:`density_covariance`) when the density
-    term is on. A positive log-space link and multiplicative recentring keep
-    each draw unit-integral and the mean equal to the calibration's own n(z).
-    Input scales describe first-order perturbations, not Gaussian output
-    widths. The additive raw mean is returned to diagnose nonlinear input
-    responses before the positive transformation.
+    term is on. Additive draws are recentred on the calibration's n(z), then
+    negative cells are clipped and each draw is normalised. Clipping can move
+    the ensemble mean. ``diagnostics``, when supplied, records per-bin clipping
+    fractions and the nominal and realised selection-only mean-z scatter.
     """
     rng = np.random.default_rng(settings.get("seed", 0))
     n_draw, n_cal = settings["draws"], len(cal.z)
@@ -388,7 +377,7 @@ def realisations(cal, settings, density=None):
     if density is not None:
         overdensity = lognormal(density, n_draw, rng)
         step = cal.grid[1] - cal.grid[0]
-    draws = []
+    draws, selection_coefficients = [], []
     for n in range(n_draw):
         z, gold = cal.z, cal.gold
         if settings.get("specz_failure"):
@@ -422,11 +411,28 @@ def realisations(cal, settings, density=None):
         if v.any():
             h = h + 0.5 * (cal.calibrate(z, q, gold, v) - cal.calibrate(z, q, gold, -v))
         if settings.get("specz_selection"):
-            h = h + rng.normal(0, settings["specz_selection"]) * cal.selection
+            coefficient = rng.normal(0, settings["specz_selection"])
+            selection_coefficients.append(coefficient)
+            h = h + coefficient * cal.selection
         draws.append(h)
     draws = np.array(draws)
     raw = draws.mean(0)
-    return positive_recentre(draws, cal.fiducial(), cal.grid), raw
+    fiducial = cal.fiducial()
+    real, clipped = clip_and_normalise(draws - raw + fiducial, cal.grid)
+    if diagnostics is not None:
+        diagnostics["clipped_mass_fraction"] = clipped
+        if selection_coefficients:
+            coefficients = np.array(selection_coefficients)
+            selection = fiducial + (coefficients - coefficients.mean())[:, None, None] * cal.selection
+            selection, clipped = clip_and_normalise(selection, cal.grid)
+            diagnostics["selection_mean_z_std_nominal"] = settings["specz_selection"] * np.abs(
+                np.trapezoid(cal.selection * cal.grid, cal.grid, axis=-1)
+            )
+            diagnostics["selection_mean_z_std_realised"] = np.trapezoid(
+                selection * cal.grid, cal.grid, axis=-1
+            ).std(0)
+            diagnostics["selection_clipped_mass_fraction"] = clipped
+    return real, raw
 
 
 def run(directory, output, settings, cosmo=None):
@@ -440,7 +446,8 @@ def run(directory, output, settings, cosmo=None):
             cosmo = cosmology(fiducial())
         d = settings["density"]
         density = density_covariance(cal.grid, d["field"], d["bias"], cosmo)
-    real, raw = realisations(cal, settings, density)
+    diagnostics = {}
+    real, raw = realisations(cal, settings, density, diagnostics)
     np.savez_compressed(
         output,
         z=cal.grid,
@@ -448,6 +455,7 @@ def run(directory, output, settings, cosmo=None):
         fiducial=cal.fiducial(),
         raw_mean=raw,
         settings=yaml.safe_dump(settings),
+        **diagnostics,
     )
     return real
 

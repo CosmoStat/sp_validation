@@ -139,7 +139,8 @@ def test_zero_points_spread_the_draws(run):
         cal, zero_points=dict(colour_sigma=[0.05] * 4, colour_corr=np.eye(4), grey=0.02)
     )
     assert mean_z(cal, real).std(0).min() > 0
-    np.testing.assert_allclose(real.mean(0), cal.fiducial(), atol=1e-12)
+    assert np.all(real >= 0)
+    np.testing.assert_allclose(np.trapezoid(real, cal.grid, axis=-1), 1, atol=1e-12)
 
 
 def test_every_spectrum_failing_erases_colour_information(run):
@@ -150,7 +151,7 @@ def test_every_spectrum_failing_erases_colour_information(run):
 
 
 def test_selection_shift_scales_the_draws(run):
-    """A selection perturbation spreads physical draws without moving their mean."""
+    """Selection draws retain alternative support and remain physical."""
     cal, _ = run
     source = cal.source * cal.gold
     args = (cal.photoz, cal.group, cal.edges, source, cal.grid, cal.fiducial())
@@ -160,37 +161,36 @@ def test_selection_shift_scales_the_draws(run):
     real, _ = draw(shifted, n=400, specz_selection=1.0)
     narrower, _ = draw(shifted, n=400, specz_selection=0.5)
     assert np.all(real >= 0)
-    np.testing.assert_allclose(real.mean(0), cal.fiducial(), atol=1e-12)
     np.testing.assert_allclose(np.trapezoid(real, cal.grid, axis=-1), 1, atol=1e-12)
     assert np.all(mean_z(cal, real).std(0) > mean_z(cal, narrower).std(0))
-    # At large amplitude positivity changes the Gaussian input width.
-    assert np.all(mean_z(cal, real).std(0) < 0.05)
+    assert np.any(real[:, cal.fiducial() == 0] > 0)
 
 
-def test_positive_recentre_preserves_small_perturbation_width():
-    grid = np.linspace(0, 1, 101)
-    fid = np.ones((1, len(grid)))
-    direction = (grid - 0.5)[None, :]
-    t = np.random.default_rng(1).normal(0, 0.001, 1000)
-    draws = fid + t[:, None, None] * direction
-    positive = ne.positive_recentre(draws, fid, grid)
-    np.testing.assert_allclose(positive.mean(0), fid, atol=1e-12)
-    np.testing.assert_allclose(np.trapezoid(positive, grid, axis=-1), 1, atol=1e-12)
-    before = np.trapezoid(draws * grid, grid, axis=-1).std(0)
-    after = np.trapezoid(positive * grid, grid, axis=-1).std(0)
-    np.testing.assert_allclose(after, before, rtol=1e-5)
+def test_selection_width_without_clipping_is_recorded(run, tmp_path, monkeypatch):
+    cal, _ = run
+    fid = cal.fiducial()
+    selection = fid * (cal.grid - mean_z(cal, fid)[:, None])
+    cal = replace(cal, selection=selection)
+    monkeypatch.setattr(ne.Calibration, "load", lambda _: cal)
+    path = tmp_path / "ensemble.npz"
+    real = ne.run(tmp_path, path, dict(draws=400, seed=1, specz_selection=0.05))
+    saved = np.load(path)
+    nominal = 0.05 * np.abs(mean_z(cal, selection))
+    np.testing.assert_allclose(mean_z(cal, real).std(0), nominal, rtol=0.15)
+    np.testing.assert_allclose(saved["selection_mean_z_std_nominal"], nominal)
+    np.testing.assert_allclose(saved["selection_mean_z_std_realised"], mean_z(cal, real).std(0))
+    np.testing.assert_array_equal(saved["selection_clipped_mass_fraction"], 0)
+    np.testing.assert_array_equal(saved["clipped_mass_fraction"], 0)
 
 
-def test_positive_recentre_handles_negative_draws_and_zero_support():
-    grid = np.linspace(0, 1, 11)
-    fid = np.r_[0, np.ones(9), 0][None, :] / 0.9
-    draws = fid + np.random.default_rng(3).normal(0, 10, (100, 1, 11))
-    assert draws.min() < 0
-    positive = ne.positive_recentre(draws, fid, grid)
+def test_clipping_preserves_positive_support_and_reports_removed_mass():
+    grid = np.array([0., 1., 2.])
+    draws = np.array([[[-1., 1., 1.]], [[1., -1., 3.]]])
+    positive, clipped = ne.clip_and_normalise(draws, grid)
     assert np.all(positive >= 0)
-    assert np.all(positive[..., [0, -1]] == 0)
-    np.testing.assert_allclose(positive.mean(0), fid, atol=1e-12)
-    np.testing.assert_allclose(np.trapezoid(positive, grid, axis=-1), 1, atol=1e-12)
+    np.testing.assert_allclose(np.trapezoid(positive, grid, axis=-1), 1)
+    assert positive[1, 0, 0] > 0
+    np.testing.assert_allclose(clipped, [(0.5 / 2 + 1 / 3) / 2])
 
 
 def test_gold_factor_moves_selection(run):
@@ -260,11 +260,12 @@ def test_density_variance_matches_box_integral():
     assert cov[i, i] == pytest.approx(8 * total / (2 * np.pi) ** 3, rel=0.03)
 
 
-def test_draws_are_centred_on_the_calibration(run):
+def test_combined_draws_are_nonnegative_and_normalised(run):
     cal, _ = run
     cov = np.diag(np.full(len(cal.grid), 0.5))
     real, _ = ne.realisations(cal, dict(draws=50, seed=6, bootstrap=True), density=cov)
-    np.testing.assert_allclose(real.mean(0), cal.fiducial(), atol=1e-12)
+    assert np.all(real >= 0)
+    np.testing.assert_allclose(np.trapezoid(real, cal.grid, axis=-1), 1, atol=1e-12)
 
 
 def test_offset_response_is_odd(run):
