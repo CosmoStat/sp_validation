@@ -55,6 +55,12 @@ def test_merge_pixel_joins_on_id_and_marks_no_match(tmp_path):
     merged = pq.read_table(output)
 
     assert merged["_source_row"].to_pylist() == [3, 2, 1, 0]
+    assert merged["OBJECT_ID"].to_pylist() == [
+        24237000002,
+        24237000001,
+        24237000009,
+        300250000001,
+    ]
     assert merged["PHOTOPIPE_STATUS"].to_pylist() == [
         pm.MATCHED,
         pm.MATCHED,

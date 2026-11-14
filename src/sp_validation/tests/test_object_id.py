@@ -1,0 +1,54 @@
+import numpy as np
+import pyarrow as pa
+import pyarrow.parquet as pq
+import pytest
+
+from sp_validation.object_id import NUMBER_LIMIT, add_to_pixel, object_id
+
+
+def test_every_tile_id_converts_to_its_integer():
+    xxx, yyy = np.meshgrid(np.arange(361), np.arange(1000), indexing="ij")
+    tile_id = np.array([float(f"{x}.{y:03d}") for x, y in zip(xxx.flat, yyy.flat)])
+    ids = object_id(tile_id, np.zeros(tile_id.size, np.int32)).to_numpy()
+    np.testing.assert_array_equal(
+        ids, (xxx.ravel() * 1000 + yyy.ravel()) * NUMBER_LIMIT
+    )
+
+
+def test_object_id_packs_tile_and_number():
+    ids = object_id([194.248, 24.237, 24.237], np.array([32402, 1, -1], np.int32))
+    assert ids.to_pylist() == [194248032402, 24237000001, None]
+
+
+def test_number_beyond_six_digits_raises():
+    with pytest.raises(ValueError, match="NUMBER"):
+        object_id([194.248], [NUMBER_LIMIT])
+
+
+def test_add_to_pixel_keeps_rows_groups_and_metadata(tmp_path):
+    table = pa.table(
+        dict(
+            _healpix_29=np.arange(5),
+            TILE_ID=np.full(5, 24.237),
+            NUMBER=np.array([5, 3, 4, 1, 2], np.int32),
+            G1=np.linspace(0, 1, 5),
+        )
+    ).replace_schema_metadata({"origin": "test"})
+    source = tmp_path / "in.parquet"
+    pq.write_table(table, source, row_group_size=2)
+    output = tmp_path / "out" / "Npix=1.parquet"
+    add_to_pixel(source, output)
+
+    written = pq.ParquetFile(output)
+    assert written.metadata.num_row_groups == 3
+    assert written.schema_arrow.names == [
+        "_healpix_29",
+        "TILE_ID",
+        "NUMBER",
+        "OBJECT_ID",
+        "G1",
+    ]
+    assert written.schema_arrow.metadata == {b"origin": b"test"}
+    result = written.read()
+    assert result.drop_columns("OBJECT_ID").equals(table)
+    assert result["OBJECT_ID"].to_pylist() == [24237000000 + n for n in [5, 3, 4, 1, 2]]
