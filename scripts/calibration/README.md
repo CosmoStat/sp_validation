@@ -139,9 +139,9 @@ Systematic terms:
   `inputs.calibrators.selection` names every survey of the compilation with
   100 or more spectra in the field (23,800 spectra against 9,920); calibrating
   the same gold sources on them moves ⟨z⟩ by +0.098, +0.015, +0.024, +0.025.
-  A draw adds a Gaussian multiple of that difference with σ = 0.5, which puts
-  the alternative at 2σ: DEEP2/3 cannot measure most redshifts above 1.4, and
-  targeted surveys over-represent them. Bin 1 is set by catastrophic outliers:
+  A Gaussian coefficient with σ = 0.5 sets the input perturbation along that difference.
+  DEEP2/3 cannot measure most redshifts above 1.4, and targeted surveys over-represent them.
+  Positivity and recentring change the output width at large perturbations, so the alternative is not an output 2σ contour. Bin 1 is set by catastrophic outliers:
   0.4% of its DEEP2/3 calibrators lie above z = 1.5, against about 5% of the
   other surveys', and without those objects its shift is +0.021. Clustering
   redshifts (step 5b) cannot see these tails, so the size is a prior.
@@ -153,8 +153,12 @@ catalogue's response linear (its source tables are; central differences at
 even in the offsets: a group whose last in-bin spectrum leaves the bin loses
 its sources' weight at either sign. Every term but `nmad_factor` keeps the
 catalogue's selection, its gold sources wherever the offsets move them. The
-draws are recentred on the calibration's n(z); the raw ensemble mean moves by
-up to 0.004 in ⟨z⟩, mostly from spec-z failures.
+draws use a positive log-space link exp(asinh(x)) for the centred fractional perturbation x.
+This agrees with the additive response at first order but compresses large excursions.
+Multiplicative row and column scaling keeps each draw unit-integral and its ensemble mean equal to the calibration's n(z).
+Cells with zero fiducial density stay zero: no non-negative ensemble can have a zero mean there otherwise.
+The Gaussian input scales are not guaranteed output widths; measure the realised scatter rather than interpreting them as Gaussian n(z) priors.
+The saved raw mean describes the additive input perturbations, before the positive link and recentring.
 
 Held fixed: the SOM and its groups. Left out: method bias calibrated on
 simulations, SOM training stochasticity (on v2, seeds move ⟨z⟩ by up to

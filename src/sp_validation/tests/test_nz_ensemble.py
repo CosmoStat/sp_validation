@@ -150,7 +150,7 @@ def test_every_spectrum_failing_erases_colour_information(run):
 
 
 def test_selection_shift_scales_the_draws(run):
-    """Alternative calibrators 0.05 higher in z spread each bin's mean by 0.05."""
+    """A selection perturbation spreads physical draws without moving their mean."""
     cal, _ = run
     source = cal.source * cal.gold
     args = (cal.photoz, cal.group, cal.edges, source, cal.grid, cal.fiducial())
@@ -158,7 +158,39 @@ def test_selection_shift_scales_the_draws(run):
     shifted = replace(cal, selection=ne.selection_shift(cal.z + 0.05, *args))
     np.testing.assert_allclose(mean_z(cal, shifted.selection), 0.05, atol=1e-3)
     real, _ = draw(shifted, n=400, specz_selection=1.0)
-    np.testing.assert_allclose(mean_z(cal, real).std(0), 0.05, rtol=0.15)
+    narrower, _ = draw(shifted, n=400, specz_selection=0.5)
+    assert np.all(real >= 0)
+    np.testing.assert_allclose(real.mean(0), cal.fiducial(), atol=1e-12)
+    np.testing.assert_allclose(np.trapezoid(real, cal.grid, axis=-1), 1, atol=1e-12)
+    assert np.all(mean_z(cal, real).std(0) > mean_z(cal, narrower).std(0))
+    # At large amplitude positivity changes the Gaussian input width.
+    assert np.all(mean_z(cal, real).std(0) < 0.05)
+
+
+def test_positive_recentre_preserves_small_perturbation_width():
+    grid = np.linspace(0, 1, 101)
+    fid = np.ones((1, len(grid)))
+    direction = (grid - 0.5)[None, :]
+    t = np.random.default_rng(1).normal(0, 0.001, 1000)
+    draws = fid + t[:, None, None] * direction
+    positive = ne.positive_recentre(draws, fid, grid)
+    np.testing.assert_allclose(positive.mean(0), fid, atol=1e-12)
+    np.testing.assert_allclose(np.trapezoid(positive, grid, axis=-1), 1, atol=1e-12)
+    before = np.trapezoid(draws * grid, grid, axis=-1).std(0)
+    after = np.trapezoid(positive * grid, grid, axis=-1).std(0)
+    np.testing.assert_allclose(after, before, rtol=1e-5)
+
+
+def test_positive_recentre_handles_negative_draws_and_zero_support():
+    grid = np.linspace(0, 1, 11)
+    fid = np.r_[0, np.ones(9), 0][None, :] / 0.9
+    draws = fid + np.random.default_rng(3).normal(0, 10, (100, 1, 11))
+    assert draws.min() < 0
+    positive = ne.positive_recentre(draws, fid, grid)
+    assert np.all(positive >= 0)
+    assert np.all(positive[..., [0, -1]] == 0)
+    np.testing.assert_allclose(positive.mean(0), fid, atol=1e-12)
+    np.testing.assert_allclose(np.trapezoid(positive, grid, axis=-1), 1, atol=1e-12)
 
 
 def test_gold_factor_moves_selection(run):

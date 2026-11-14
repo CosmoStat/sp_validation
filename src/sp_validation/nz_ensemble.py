@@ -345,15 +345,39 @@ class Calibration:
         return histograms(z, w, self.grid)
 
 
+def positive_recentre(draws, fiducial, grid):
+    """Positive draws with unit integrals and the exact fiducial ensemble mean.
+
+    Map centred fractional perturbations through exp(asinh(x)): this positive
+    log-space link is 1 + x at first order, so small-perturbation widths are
+    unchanged, while large negative excursions cannot cross zero. Unlike a
+    clipped Gaussian, it retains variation on both sides of the fiducial.
+    Alternating multiplicative scalings impose the mean and integral constraints.
+    A zero fiducial cell must be zero in every non-negative, mean-preserving draw;
+    uncertainty outside that support requires changing the fiducial itself.
+    """
+    relative = np.divide(draws - draws.mean(0), fiducial,
+                         out=np.zeros_like(draws), where=fiducial > 0)
+    positive = fiducial * np.exp(np.arcsinh(relative))
+    for _ in range(10000):
+        positive /= np.trapezoid(positive, grid, axis=-1)[..., None]
+        mean = positive.mean(0)
+        positive *= np.divide(fiducial, mean, out=np.zeros_like(mean), where=mean > 0)
+        if np.max(np.abs(np.trapezoid(positive, grid, axis=-1) - 1)) < 1e-12:
+            return positive
+    raise RuntimeError("Positive n(z) recentring did not converge")
+
+
 def realisations(cal, settings, density=None):
     """Draws (n_draw, n_bin, n_z) and their raw mean before recentring.
 
     ``settings`` is the recipe's ``ensemble`` section; ``density`` is the
     covariance of δ on the grid (:func:`density_covariance`) when the density
-    term is on. The draws are recentred so their mean is the calibration's own
-    n(z): the terms are zero-mean in their inputs, but the calibration is
-    nonlinear in them, and the raw mean is returned so its offset can be
-    reported.
+    term is on. A positive log-space link and multiplicative recentring keep
+    each draw unit-integral and the mean equal to the calibration's own n(z).
+    Input scales describe first-order perturbations, not Gaussian output
+    widths. The additive raw mean is returned to diagnose nonlinear input
+    responses before the positive transformation.
     """
     rng = np.random.default_rng(settings.get("seed", 0))
     n_draw, n_cal = settings["draws"], len(cal.z)
@@ -402,7 +426,7 @@ def realisations(cal, settings, density=None):
         draws.append(h)
     draws = np.array(draws)
     raw = draws.mean(0)
-    return draws - raw + cal.fiducial(), raw
+    return positive_recentre(draws, cal.fiducial(), cal.grid), raw
 
 
 def run(directory, output, settings, cosmo=None):
