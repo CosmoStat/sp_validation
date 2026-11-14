@@ -35,7 +35,8 @@ def build(collection, workers=1):
     """Index ``COLLECTION/shapes`` on ``OBJECT_ID`` and add the PhotoPipe extension.
 
     ``COLLECTION/shapes`` and ``COLLECTION/photopipe/photopipe`` exist; this
-    writes the index and every properties file of the collection.
+    writes the index and every properties file of the collection. An index
+    already at ``COLLECTION/shapes_OBJECT_ID`` is kept, so remove it to rebuild.
     """
     collection = Path(collection)
     args = (

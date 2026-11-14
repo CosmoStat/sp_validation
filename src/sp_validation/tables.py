@@ -223,27 +223,28 @@ class ParquetFile:
                     f"Column {name!r} of {self.path} holds nulls, which a"
                     + f" {column.type} numpy column cannot represent"
                 )
-            columns[name] = column.to_numpy()
+            columns[name] = column.to_numpy().astype(self.dtype[name], copy=False)
         return columns
 
 
-def parquet_dtype(schema, footer=None):
+def parquet_dtype(schema, footers=()):
     """Return the numpy structured dtype of a parquet schema.
 
-    Given the file's ``footer``, an integer column holding nulls reads as
+    An integer column holding nulls in any of the files ``footers`` reads as
     float64, NaN where null, as a float column's nulls do.
     """
-    dtype = [(field.name, np.dtype(field.type.to_pandas_dtype())) for field in schema]
-    if footer is None:
-        return np.dtype(dtype)
-    nulls = np.zeros(len(dtype), np.int64)
-    for group in range(footer.num_row_groups):
-        row_group = footer.row_group(group)
-        nulls += [row_group.column(i).statistics.null_count for i in range(len(dtype))]
+    nulls = np.zeros(len(schema), np.int64)
+    for footer in footers:
+        for group in range(footer.num_row_groups):
+            row_group = footer.row_group(group)
+            nulls += [
+                row_group.column(i).statistics.null_count for i in range(len(schema))
+            ]
+    kinds = [np.dtype(field.type.to_pandas_dtype()) for field in schema]
     return np.dtype(
         [
-            (name, np.float64 if count and kind.kind in "iu" else kind)
-            for (name, kind), count in zip(dtype, nulls, strict=True)
+            (field.name, np.float64 if count and kind.kind in "iu" else kind)
+            for field, kind, count in zip(schema, kinds, nulls, strict=True)
         ]
     )
 

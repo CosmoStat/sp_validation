@@ -474,13 +474,11 @@ def _hats_files(path, pixels):
     common = os.path.join(path, "dataset", "_common_metadata")
     schema = pq.read_schema(common if os.path.isfile(common) else files[0])
 
-    def part(file):
-        footer = pq.read_metadata(file)
-        return ParquetFile(file, footer, parquet_dtype(schema, footer))
-
     threads = min(MAX_READ_THREADS, len(os.sched_getaffinity(0)))
     with ThreadPoolExecutor(threads) as pool:
-        return list(pool.map(part, files))
+        footers = list(pool.map(pq.read_metadata, files))
+    dtype = parquet_dtype(schema, footers)
+    return [ParquetFile(file, footer, dtype) for file, footer in zip(files, footers)]
 
 
 def _first_table_hdu(hdus, path):
