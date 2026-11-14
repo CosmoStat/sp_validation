@@ -66,7 +66,8 @@ def add_to_catalogue(source, output, workers=1, name=None):
 
     Each pixel file keeps its rows in order, so a catalogue aligned row for row
     with ``source`` stays aligned with ``output``. The partitioning, sky maps
-    and properties are those of ``source``; ``name`` renames the catalogue.
+    and properties are those of ``source``, with ``OBJECT_ID`` among the default
+    columns, which ``lsdb``'s ``id_search`` needs; ``name`` renames the catalogue.
     """
     from hats.catalog import TableProperties
     from hats.io.parquet_metadata import write_parquet_metadata
@@ -79,15 +80,14 @@ def add_to_catalogue(source, output, workers=1, name=None):
             if done % 100 == 0:
                 print(f"{done}/{len(jobs)} pixels", flush=True)
 
-    for name in ("partition_info.csv", "point_map.fits", "skymap.fits"):
-        shutil.copy(source / name, output / name)
-    for skymap in source.glob("skymap.*.fits"):
-        shutil.copy(skymap, output / skymap.name)
+    for path in [source / "partition_info.csv", *source.glob("*.fits")]:
+        shutil.copy(path, output / path.name)
     properties = TableProperties.read_from_dir(source)
     rows = write_parquet_metadata(output, create_metadata=False)
     if rows != properties.total_rows:
         raise ValueError(f"wrote {rows} rows, {source} has {properties.total_rows}")
     properties.copy_and_update(
         catalog_name=name or properties.catalog_name,
+        default_columns=[*(properties.default_columns or []), OBJECT_ID],
         hats_builder="sp_validation.object_id",
     ).to_properties_file(output)

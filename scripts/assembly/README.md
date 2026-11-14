@@ -44,3 +44,50 @@ other detections, with their own numbering, and are not used.
 `PHOTOPIPE_STATUS` is 0 for a joined row, 1 when the tile has no row with that
 ID, 2 when the tile has no PhotoPipe file; `MATCH_SEP_ARCSEC` records each
 joined pair's separation as a check.
+
+## HATS collection (ShapePipe v2)
+
+Turns a catalogue holding the shape and PhotoPipe columns in each pixel file
+(the v2.0.0 release's `catalogs/comprehensive`) into one HATS collection:
+
+```
+comprehensive/
+├── shapes/                 primary: the shape catalogue's columns and OBJECT_ID
+├── shapes_OBJECT_ID/       index: OBJECT_ID -> pixel, the default index
+├── photopipe/              extension: the PhotoPipe columns, with OBJECT_ID,
+│                           _healpix_29 and the coordinates (a collection of its own)
+├── photopipe.properties    the extension, joined to the primary on OBJECT_ID
+└── collection.properties
+```
+
+`OBJECT_ID` is the DR6 object ID in one int64,
+`10**6 * tile + NUMBER` with the tile as the integer `XXXYYY`
+(194.248 and `NUMBER` 32402 give 194248032402), null where `NUMBER` < 0
+(`sp_validation.object_id`). The PhotoPipe join writes it too.
+
+| Step | Script | Runs in | Does |
+|------|--------|---------|------|
+| 3 | `add_object_id.py` | the image | Rewrite every pixel file with `OBJECT_ID` after `NUMBER`, rows and row groups unchanged, to `WORK/merged/shapes`. |
+| 4 | `index_object_id.py` | `uv run` | Build the `OBJECT_ID` index with `hats_import` and make `WORK/merged` a collection with it as the default index. |
+| 5 | `split_photopipe.py` | `uv run` | Split `WORK/merged` with `hats_import`'s extension split: the shape catalogue's columns stay in the primary, the others go to the extension, and the index follows `OBJECT_ID` into the primary. Writes `WORK/comprehensive`. |
+
+Each step runs on a Slurm allocation; steps 4 and 5 need `hats-import`, which
+the image lacks, so they run under `uv run` (dependencies in the script header):
+
+```bash
+WORK=$SCRATCH/v2-collection
+apptainer exec -B /project,/scratch --env PYTHONPATH=$PWD/src $SIF \
+    python scripts/assembly/add_object_id.py $WORK --workers 32
+PYTHONPATH=$PWD/src uv run scripts/assembly/index_object_id.py $WORK --workers 32
+PYTHONPATH=$PWD/src uv run scripts/assembly/split_photopipe.py $WORK --workers 32
+```
+
+`WORK/merged` can be deleted once step 5 is done. The split keeps each pixel
+file's rows in order, so the same pixel of `shapes` and `photopipe` holds the
+same objects in the same order, as in the PhotoPipe join.
+
+Reading: `lsdb.open_catalog(WORK/comprehensive)` opens the primary, and
+`catalog.id_search(values={"OBJECT_ID": [...]})` reads only the pixels holding
+those IDs. lsdb 0.11.1 does not read extensions (`lsdb.read_hats` on
+`photopipe.properties` raises `NotImplementedError`); `photopipe/` opens with
+`lsdb.open_catalog` as a catalogue of its own.
