@@ -25,7 +25,7 @@ in the same order, and a pixel without one has no file.
 from pathlib import Path
 
 import pyarrow.parquet as pq
-from hats.catalog import CollectionProperties, ExtensionProperties
+from hats.catalog import CollectionProperties, ExtensionProperties, TableProperties
 from hats_import.collection.arguments import CollectionArguments
 from hats_import.pipeline import pipeline
 
@@ -62,6 +62,10 @@ def build(collection, workers=1):
         )
     )
     pipeline(args)
+    index = collection / f"{PRIMARY}_{OBJECT_ID}"
+    TableProperties.read_from_dir(index).model_copy(
+        update=dict(primary_catalog=PRIMARY)
+    ).to_properties_file(index)
 
     for name, product in EXTENSIONS.items():
         extension = collection / name

@@ -276,6 +276,10 @@ class JoinedFile:
         out = _outputs(self.dtype, names, len(ids), out)
         found = np.zeros(len(ids), bool)
         if self.file is not None:
+            if len(self.file) == len(self.primary):
+                own = self.file.read([self.keys[0]], rows)[self.keys[0]]
+                if np.array_equal(own, ids):
+                    return self.file.read(names, rows, out)
             own = self.file.read([self.keys[0]])[self.keys[0]]
             order = np.argsort(own, kind="stable")
             at = order[

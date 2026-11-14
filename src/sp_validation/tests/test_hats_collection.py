@@ -87,6 +87,9 @@ def test_build_indexes_shapes_and_lists_the_extensions(tmp_path):
     assert is_valid_catalog(collection / "specz" / "specz", strict=True)
     properties = CollectionProperties.read_from_dir(collection)
     assert properties.default_index == "OBJECT_ID"
+    # The index names its primary relative to the collection, so a copy still reads.
+    index = TableProperties.read_from_dir(collection / "shapes_OBJECT_ID")
+    assert index.primary_catalog == "shapes"
     assert properties.all_extensions == {
         "photopipe": "photopipe.properties",
         "specz": "specz.properties",

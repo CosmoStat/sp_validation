@@ -161,6 +161,16 @@ def test_sparse_extension_leaves_rows_without_a_match_null(collection):
     assert list(out["SURVEY"]) == [f"s{i}" if h else None for i, h in zip(ids, has)]
 
 
+def test_some_rows_read_as_the_same_rows_of_the_whole(collection):
+    path, _ = collection
+    columns = ["OBJECT_ID", "G1", "Z_B", "STATUS", "Z_SPEC", "SURVEY"]
+    whole = io.read_catalogue(path, columns=columns)
+    rows = np.arange(len(whole))[3::7]
+    some = io.open_catalogue(path)[rows]
+    for name in columns:
+        npt.assert_array_equal(some[name], whole[name][rows])
+
+
 def test_extension_rows_join_on_the_key_in_any_order(collection, tmp_path):
     path, _ = collection
     copy = Path(shutil.copytree(path, tmp_path / "coll"))
