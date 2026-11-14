@@ -179,6 +179,8 @@ def toy(tmp_path_factory):
         REPO / "papers" / "cosmo_val", root / "papers" / "cosmo_val", ignore=skip
     )
     (root / "src").symlink_to(REPO / "src")
+    (root / "config").mkdir()
+    shutil.copy(REPO / "config" / "data_roots.yaml", root / "config")
 
     (root / "data").mkdir()
     (root / "cosmo_val").mkdir()
