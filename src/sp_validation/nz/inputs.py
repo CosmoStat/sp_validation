@@ -51,7 +51,7 @@ def calibrators(specz_dir, compilation, surveys, z_min, offset):
 
     @sc [decision:nz.calibrator_set]
     """
-    columns = ["SeqNr", "ALPHA_J2000_spec", "DELTA_J2000_spec", "z_spec_spec", "Z_B"]
+    columns = ["ALPHA_J2000_spec", "DELTA_J2000_spec", "z_spec_spec", "Z_B"]
     parts = []
     for path in sorted(glob.glob(f"{specz_dir}/UNIONS.*_ugriz_photoz_ext_specz.cat")):
         tile = Path(path).name.split("_")[0].removeprefix("UNIONS.")
@@ -92,7 +92,6 @@ def calibrators(specz_dir, compilation, surveys, z_min, offset):
         ra=data["ALPHA_J2000_spec"][rows].astype("f8"),
         dec=data["DELTA_J2000_spec"][rows].astype("f8"),
         tile=tile[rows],
-        seqnr=data["SeqNr"][rows],
     )
 
 
