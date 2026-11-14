@@ -243,3 +243,18 @@ def test_entries_reading_one_file_declare_one_blind(tmp_path):
         bd.blind_of(catalogues, "TWIN")
     catalogues["TWIN"]["blind"] = "y3"
     assert bd.blind_of(catalogues, "TWIN") == "y3"
+
+
+def test_entry_reads_a_shipped_blind_record(tmp_path):
+    record = tmp_path / "release" / "blind" / "y3.blind.json"
+    record.parent.mkdir(parents=True)
+    record.write_text("{}")
+    catalogues = {
+        "paths": {"blinds": str(tmp_path / "registry")},
+        "Y3": {"blind": str(record), "subdir": "/d", "shear": {"path": "y3.fits"}},
+        "TWIN": {"blind": "y3", "subdir": "/d", "shear": {"path": "y3.fits"}},
+    }
+    assert bd.blind_of(catalogues, "Y3") == "y3"
+    assert bd.entry_blind(catalogues, "Y3") == bd.Blind("y3", record)
+    with pytest.raises(bd.BlindingError, match="cannot read blind y3"):
+        bd.entry_blind(catalogues, "TWIN")

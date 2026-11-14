@@ -1,19 +1,28 @@
 # Named data roots. A config writes `${name}/relative/path`; each root lists the
 # directory that holds it on each machine, and the first that exists is used.
+# A `vos:` entry always resolves: what a run reads is fetched from the CADC
+# vault into ~/.cache/sp_validation/vos/ (sp_validation.data_roots.local).
 # A copy elsewhere is reached with SPV_ROOT_<NAME>=<dir>; a root that resolves
 # nowhere stays `${name}` and fails when opened.
 # The same relative layout must hold under every directory of a root.
 
-# v2 SOM n(z) products (config/calibration/nz/v2.yaml).
+# Working directories of the v2 SOM n(z) build (config/calibration/nz/v2.yaml).
 nz_v2:
   - /project/rrg-kyi/cdaley/unions/data/nz-v2                               # fir
   - /project/6001537/cdaley/nz-v2                                           # nibi
+
+v2_tomo:
+  - /project/rrg-kyi/cdaley/unions/data/v2.x/cosmo-val-v2-tomo               # fir
+  - /project/6001537/cdaley/cosmo-val-v2-tomo/catalogue                      # nibi
 
 # UNIONS data staged on a cluster: v2.x/, photopipe-dr6/, photopipe-dr6-specz/.
 unions_data:
   - /project/rrg-kyi/cdaley/unions/data                                     # fir
 
-# Blinded v2 tomographic cosmo_val catalogue.
-v2_tomo:
-  - /project/rrg-kyi/cdaley/unions/data/v2.x/cosmo-val-v2-tomo               # fir
-  - /project/6001537/cdaley/cosmo-val-v2-tomo/catalogue                      # nibi
+# UNIONS v2 releases, one directory per release (v2.0.0/, v2.0.1/, ...), each
+# laid out as on VOSpace (vos:cfis/weak_lensing/ShapePipe/v2.x/): catalogs/,
+# masks/, nz/, data_vector/, blind/. A cat_config entry SP_v<x.y.z> reads
+# `${unions_v2}/v<x.y.z>/`; a new release is a new directory, not a new root.
+unions_v2:
+  - /project/rrg-kyi/cdaley/unions/data/v2.x                                 # fir
+  - vos:cfis/weak_lensing/ShapePipe/v2.x                                     # anywhere else
