@@ -113,6 +113,6 @@ def add_to_catalogue(source, output, workers=1, name=None):
         catalog_name=name or properties.catalog_name,
         default_columns=[*(properties.default_columns or []), OBJECT_ID],
         **TableProperties.new_provenance_dict(
-            output, builder="sp_validation.object_id"
+            output, builder="sp_validation.assembly.object_id"
         ),
     ).to_properties_file(output)

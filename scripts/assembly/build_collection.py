@@ -3,14 +3,14 @@
 
 Needs ``COLLECTION/shapes`` (step 3), ``COLLECTION/photopipe`` (step 2) and
 ``COLLECTION/specz`` (step 4), and writes the ``OBJECT_ID`` index and every
-properties file of the collection (``sp_validation.hats_collection``). Paths
+properties file of the collection (``sp_validation.assembly.hats_collection``). Paths
 may name data roots (``config/data_roots.yaml``), as in ``${unions_data}/...``.
 """
 
 import argparse
 
+from sp_validation.assembly.hats_collection import build
 from sp_validation.data_roots import expand
-from sp_validation.hats_collection import build
 
 COLLECTION = "${unions_data}/v2.x/run1-snap3-collection"
 

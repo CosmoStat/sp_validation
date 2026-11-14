@@ -12,9 +12,9 @@ from hats.io.paths import get_healpix_from_path
 from hats.io.validation import is_valid_catalog, is_valid_collection
 
 from sp_validation import io
-from sp_validation.hats_collection import build
-from sp_validation.object_id import add_to_catalogue
-from sp_validation.photopipe_merge import KEYS
+from sp_validation.assembly.hats_collection import build
+from sp_validation.assembly.object_id import add_to_catalogue
+from sp_validation.assembly.photopipe_merge import KEYS
 
 N = 1000
 

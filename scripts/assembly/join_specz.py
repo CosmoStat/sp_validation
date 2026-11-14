@@ -4,14 +4,14 @@
 Reads PhotoPipe's match of DR6 objects to spectra (one FITS table over every
 tile) and the redshift compilation it used, finds each matched object in the
 collection's PhotoPipe extension (step 2), and writes the spec-z extension
-``COLLECTION/specz`` (``sp_validation.specz_merge``). Paths may name data roots
+``COLLECTION/specz`` (``sp_validation.assembly.specz_merge``). Paths may name data roots
 (``config/data_roots.yaml``), as in ``${unions_data}/...``.
 """
 
 import argparse
 
+from sp_validation.assembly.specz_merge import merge
 from sp_validation.data_roots import expand
-from sp_validation.specz_merge import merge
 
 MATCHES = "${unions_data}/photopipe-dr6-specz-all/UNIONS_DR6_ugriz_specz.cat"
 COMPILATION = "${unions_data}/photopipe-dr6-specz-all/asc"

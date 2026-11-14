@@ -4,7 +4,7 @@ The inputs are the shape HATS catalogue and the column extract written by
 ``scripts/assembly/extract_photopipe.py``. The output, ``OUTPUT/photopipe``, is
 a HATS catalogue with one row for each shape row, in the same pixel and the
 same order, holding ``_healpix_29``, the DR6 object ID ``OBJECT_ID``
-(``sp_validation.object_id``), the shape coordinates and every PhotoPipe
+(``sp_validation.assembly.object_id``), the shape coordinates and every PhotoPipe
 column. It is the data of the collection's ``photopipe`` extension
 (``scripts/assembly/build_collection.py``), joined to the shapes on
 ``OBJECT_ID``; a PhotoPipe rerun replaces it and leaves the shapes alone.
@@ -34,7 +34,7 @@ import pyarrow.compute as pc
 import pyarrow.parquet as pq
 from hats.catalog import TableProperties
 
-from sp_validation.object_id import OBJECT_ID, with_object_id
+from sp_validation.assembly.object_id import OBJECT_ID, with_object_id
 
 SANITY_RADIUS_ARCSEC = 0.8
 MATCHED, NO_COUNTERPART, NO_TILE = 0, 1, 2
@@ -179,7 +179,7 @@ def _write_hats_metadata(shapes, catalogue, schema, nrows):
         catalog_name=NAME,
         default_columns=None,
         **TableProperties.new_provenance_dict(
-            catalogue, builder="sp_validation.photopipe_merge"
+            catalogue, builder="sp_validation.assembly.photopipe_merge"
         ),
     ).to_properties_file(catalogue)
     pq.write_metadata(schema, catalogue / "dataset" / "_common_metadata")

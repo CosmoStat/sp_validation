@@ -33,7 +33,7 @@ COLLECTION/
 `OBJECT_ID` is the DR6 object ID in one int64,
 `10**6 * tile + NUMBER` with the tile as the integer `XXXYYY`
 (194.248 and `NUMBER` 32402 give 194248032402), null where `NUMBER` < 0
-(`sp_validation.object_id`).
+(`sp_validation.assembly.object_id`).
 
 How the shapes and an extension relate:
 

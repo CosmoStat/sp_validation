@@ -43,8 +43,8 @@ from hats.catalog import PartitionInfo, TableProperties
 from hats.io.parquet_metadata import write_parquet_metadata
 from hats.io.paths import get_healpix_from_path
 
-from sp_validation.photopipe_merge import KEYS
-from sp_validation.photopipe_merge import NAME as PHOTOPIPE
+from sp_validation.assembly.photopipe_merge import KEYS
+from sp_validation.assembly.photopipe_merge import NAME as PHOTOPIPE
 
 NAME = "specz"
 #: Columns of the matched table that identify the object and give the spectrum.
@@ -201,7 +201,7 @@ def merge(collection, matches, compilation, workers=1):
         healpix_order=coordinates.healpix_order,
         hats_max_rows=max(n for _, n, _ in written),
         **TableProperties.new_provenance_dict(
-            catalogue, builder="sp_validation.specz_merge"
+            catalogue, builder="sp_validation.assembly.specz_merge"
         ),
     ).to_properties_file(catalogue)
 

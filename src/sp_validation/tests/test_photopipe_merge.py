@@ -4,7 +4,7 @@ import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from sp_validation import photopipe_merge as pm
+from sp_validation.assembly import photopipe_merge as pm
 
 
 def write_extract(directory):

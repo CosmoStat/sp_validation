@@ -10,8 +10,8 @@ import pyarrow.parquet as pq
 from hats.catalog import PartitionInfo
 from hats.io.validation import is_valid_catalog
 
-from sp_validation import specz_merge as sm
-from sp_validation.specz_merge import MATCH_COLUMNS
+from sp_validation.assembly import specz_merge as sm
+from sp_validation.assembly.specz_merge import MATCH_COLUMNS
 
 N = 600
 

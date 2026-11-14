@@ -3,14 +3,14 @@
 
 Reads the shape HATS catalogue and the column extract from step 1, and writes
 the PhotoPipe extension of the collection: the catalogue ``OUTPUT/photopipe``
-and its provenance beside it (``sp_validation.photopipe_merge``).
+and its provenance beside it (``sp_validation.assembly.photopipe_merge``).
 Paths may name data roots (``config/data_roots.yaml``), as in ``${unions_data}/...``.
 """
 
 import argparse
 
+from sp_validation.assembly.photopipe_merge import merge
 from sp_validation.data_roots import expand
-from sp_validation.photopipe_merge import merge
 
 SHAPES = "${unions_data}/v2.x/run1-snap3-hats/catalogue"
 OUTPUT = "${unions_data}/v2.x/run1-snap3-collection/photopipe"

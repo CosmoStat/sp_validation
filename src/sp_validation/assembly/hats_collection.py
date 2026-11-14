@@ -4,13 +4,13 @@
 
     COLLECTION/
     ├── shapes/                primary: the shape catalogue with OBJECT_ID
-    │                          (sp_validation.object_id.add_to_catalogue)
+    │                          (sp_validation.assembly.object_id.add_to_catalogue)
     ├── shapes_OBJECT_ID/      index: OBJECT_ID -> pixel, the default index
     ├── photopipe/             extension data, a collection of its own, holding
-    │   ├── photopipe/         the PhotoPipe catalogue (sp_validation.photopipe_merge)
+    │   ├── photopipe/         the PhotoPipe catalogue (sp_validation.assembly.photopipe_merge)
     │   └── collection.properties
     ├── specz/                 extension data: the spec-z catalogue
-    │   ├── specz/             (sp_validation.specz_merge)
+    │   ├── specz/             (sp_validation.assembly.specz_merge)
     │   └── collection.properties
     ├── photopipe.properties   the extensions, each joined to the primary on OBJECT_ID
     ├── specz.properties
@@ -29,9 +29,9 @@ from hats.catalog import CollectionProperties, ExtensionProperties, TablePropert
 from hats_import.collection.arguments import CollectionArguments
 from hats_import.pipeline import pipeline
 
-from sp_validation import photopipe_merge, specz_merge
-from sp_validation.object_id import OBJECT_ID
-from sp_validation.photopipe_merge import KEYS
+from sp_validation.assembly import photopipe_merge, specz_merge
+from sp_validation.assembly.object_id import OBJECT_ID
+from sp_validation.assembly.photopipe_merge import KEYS
 
 PRIMARY = "shapes"
 #: Each extension's name and the kind of data it serves.
