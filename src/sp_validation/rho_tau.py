@@ -10,7 +10,7 @@ from astropy.table import Table
 from shear_psf_leakage.rho_tau_cov import CovTauTh
 from shear_psf_leakage.rho_tau_stat import RhoStat, TauStat
 
-from sp_validation import grammar, io
+from sp_validation import io
 from sp_validation.correlation import (
     measure_with_patches,
     measurement_matches,
@@ -157,9 +157,7 @@ class _CatalogueLoader:
             with io.Catalogue(
                 entry["path"], hdu=entry.get("hdu"), column_map=entry.get("column_map")
             ) as catalogue:
-                if catalogue.hdu == 1 and not isinstance(
-                    catalogue.table(), grammar.V2View
-                ):
+                if catalogue.hdu == 1 and not catalogue.table().renames:
                     self._cache[block] = catalogue.path
                 else:
                     if self._temporary_directory is None:
