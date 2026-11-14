@@ -1,4 +1,4 @@
-"""Check a SOM n(z) run with clustering redshifts (see scripts/calibration/README.md)."""
+"""Diagnose a SOM n(z) with WZ; no n(z) updates or priors (see README.md)."""
 
 from sp_validation.nz_clustering import main
 

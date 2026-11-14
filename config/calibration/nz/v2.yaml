@@ -61,7 +61,8 @@ ensemble:
   specz_selection: 0.5       # input scale along the alternative-calibrator difference;
                              # positivity/recentring set the realised output width
 # Clustering redshifts of the gold bins (sp_validation.nz_clustering): a check
-# on the n(z), not a product.
+# on the n(z). It does not update delivered n(z) or supply calibration/inference
+# priors. The low-bin SOM+WZ combination is not implemented.
 clustering:
   reference:
     # DESI DR1 LSS clustering catalogues, v1.5:

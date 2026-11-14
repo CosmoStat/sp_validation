@@ -1,6 +1,7 @@
-"""Clustering redshifts of the tomographic bins against spectroscopic tracers.
+"""Diagnostic clustering redshifts of gold bins against spectroscopic tracers.
 
-An independent check of the SOM n(z) (:mod:`sp_validation.nz_pipeline`): the
+This diagnostic does not update the delivered n(z) or supply calibration or
+inference priors. It checks the SOM n(z) (:mod:`sp_validation.nz_pipeline`): the
 gold sources of each bin are cross-correlated with a spectroscopic reference
 sample cut into thin redshift slices. Run from the recipe's ``clustering``
 section:
@@ -12,8 +13,10 @@ section:
   in an annulus fixed in comoving separation, and the same for the gate, where
   a random half of one tracer plays the unknown sample;
 - ``analyse`` turns the counts into n(z) b(z) per bin, runs the known-answer
-  gate, fits the calibration's n(z) (and the alternative calibrators' of the
+  gate, compares the SOM n(z) (and the alternative calibrators' of the
   ensemble's ``specz_selection`` term) and writes ``clustering.json``.
+  When ``randoms_null`` is enabled, it also reports raw angular nulls per
+  tracer, slice and source bin from disjoint random-derived reference samples.
 
 Estimator. With w the mean of ξ over the annulus' log-spaced bins, Δz the slice
 width and M = (H/c) ⟨Π(r)⟩, Π(r) = ∫ dk k/2π P_nl(k) J0(kr), the thin-slice
@@ -22,8 +25,9 @@ Limber kernel of the matter averaged over the same bins:
     b_r² = w_rr Δz / M,    n_u b_u = w_ur / sqrt(w_rr Δz M).
 
 The source bias is unknown, b_u ∝ (1+z)^α, so a bin's n(z) is tested through
-its shape inside a core window, with amplitude and α free. χ² uses the
-jackknife variances: slices are nearly uncorrelated.
+its shape inside a core window, with amplitude and α free. Shifts profile over
+both using the full slice jackknife covariance and an approximate Hartlap
+precision correction. Profile intervals are diagnostics, not validated priors.
 """
 
 import argparse
@@ -439,7 +443,7 @@ def candidates(run):
 
 
 def compare(config, cosmo):
-    """n(z) b(z) of every bin on the reference slices, and its fits.
+    """Diagnostic n(z) b(z) comparisons; no calibration products or priors.
 
     Per bin and candidate n(z), inside the bin's core window: χ² with amplitude
     and bias slope α free, and a shift n(z - Δz) profiled over amplitude and α.
@@ -522,7 +526,7 @@ def randoms_null(config, cosmo):
 
 
 def analyse(config, figures=None):
-    """Write ``clustering.json`` (gate and bins) and, optionally, its figures."""
+    """Write diagnostic ``clustering.json`` and figures; leave delivered n(z) alone."""
     cosmo = fiducial_cosmology()
     cl = config["clustering"]
     result = dict(annulus=cl["annulus"], gate=gate(config, cosmo), **compare(config, cosmo))
@@ -587,14 +591,14 @@ def render(result, grid, cands, directory):
         shift = fit["profiled_shift"]
         text = f"bin {k + 1}   χ² = " + ", ".join(
             f"{f['chi2']:.1f}" for f in b["fits"].values()
-        ) + f" / {fit['dof']}   Δz = {shift['best']:+.3f} [{shift['lo']:+.3f}, {shift['hi']:+.3f}]"
-        text += f"  α = {shift['alpha']:.2f}" + (" (prior edge)" if shift["alpha_boundary"] else "")
+        ) + f" / {fit['dof']}   profile Δz = {shift['best']:+.3f} [{shift['lo']:+.3f}, {shift['hi']:+.3f}]"
+        text += f"  α(profile) = {shift['alpha']:.2f}" + (" (prior edge)" if shift["alpha_boundary"] else "")
         ax.text(0.99, 0.93, text, transform=ax.transAxes, ha="right", va="top", fontsize=8)
         ax.set_ylabel("n(z)")
     axes[0].legend(fontsize=7, loc="center right")
     axes[-1].set(xlabel="z", xlim=(0, 2.6))
     fig.suptitle(f"Gold bins × spectroscopic slices, {r_lo:g}–{r_hi:g} Mpc/h; "
-                 "fit window shaded", fontsize=10)
+                 "diagnostic only; fit window shaded", fontsize=10)
     _save(fig, directory / "clustering_nz.png")
 
 

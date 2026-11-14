@@ -173,8 +173,10 @@ describes only `TOM_BIN_ID > 0` rows; a non-tomographic measurement pairs
 
 ## Clustering redshifts (step 5b)
 
-An independent check of a finished step-5 run (`sp_validation.nz_clustering`),
-configured by the recipe's `clustering` section:
+Clustering redshifts are a diagnostic of a finished step-5 run (`sp_validation.nz_clustering`).
+They do not update the delivered n(z), constrain the ensemble, or supply calibration or inference priors.
+The low-bin SOM+WZ combination is not implemented.
+Configure the diagnostic with the recipe's `clustering` section:
 
 ```bash
 python scripts/calibration/clustering_nz.py config/calibration/nz/v2.yaml \
@@ -183,21 +185,36 @@ python scripts/calibration/clustering_nz.py config/calibration/nz/v2.yaml \
 
 `--prepare` cuts the DESI DR1 clustering catalogues (BGS_BRIGHT, LRG,
 ELG_LOPnotqso, QSO; data and randoms) and the run's gold sources to their
-overlap and draws 100 jackknife patches. `--measure` counts pairs in redshift
-slices of the reference (about 80 minutes on 32 cores). Without either flag
-the script only redoes the analysis, which writes `clustering.json` and two
-figures.
+overlap and draws 100 jackknife patches.
+Gold sources are selected by the union of random-occupied `source_nside` pixels (default 256); rerun preparation and measurement at 512 or 1024 to check footprint-resolution stability.
+This is an approximate union footprint, not a tracer-specific overlap definition.
+`--measure` counts pairs in redshift slices of the reference.
+With `randoms_null: true`, it also measures the same gold sources against two disjoint random-derived catalogues for each tracer, preserving their DESI Z and WEIGHT conventions.
+The seeded split uses one half as null data and the other as its denominator; weight-sum normalization is the same as for the signal.
+`clustering.json` reports these raw angular nulls and their full jackknife covariance under `randoms_null`, per tracer, slice and source bin.
+They are not divided by the null catalogue's auto-bias or subtracted from the signal.
+Without either flag the script only redoes the analysis, which writes `clustering.json` and two figures.
+A measurement including nulls takes more pair counts than a signal-only run.
 
 **Estimator.** In each reference slice the annulus is fixed at 1.5–5 Mpc/h
 comoving. The slice's autocorrelation gives the reference bias, and its
 cross-correlation with a bin gives n(z) b_u(z) of that bin, both against the
 nonlinear matter correlation at the fiducial cosmology. The sources' bias is
 unknown, modelled as b_u ∝ (1+z)^α, so only the shape of each bin inside its
-core window is tested: χ² of the SOM n(z) with amplitude and α free, and the
-shift n(z − Δz) preferred at fixed α. Errors are jackknife variances.
+core window is tested.
+Fits use the full slice jackknife covariance within that window, with the precision multiplied by (N_patch − N_slice − 2)/(N_patch − 1).
+This Hartlap correction is approximate for spatial jackknife patches; mock coverage validation is still needed.
+`profiled_shift` reports the shift n(z − Δz) after profiling over amplitude and α ∈ [−3, 4], a grid-based Δχ² = 1 interval, and whether α reaches the prior boundary.
+`shift_boundary` flags intervals reaching the shift search limits [−0.2, 0.2].
+Fixed-α fits remain as sensitivity diagnostics, but the figure quotes the profiled result.
+Plotted point errors are marginal jackknife standard deviations; they do not imply diagonal fitting.
+These intervals are not n(z) priors.
 
 **Gate.** A random half of DESI LRG plays the unknown sample against the other
-half; its n(z) is known and must be recovered. Read it before the bins.
+half; its n(z) is known and must be recovered.
+Both halves share tracer selection and bias, and their bias ratio cancels the matter kernel.
+Passing this gate does not validate that kernel or rule out tracer-side distortions for gold sources.
+Read it before the bins.
 
 **Reach.** The check tests each bin's core. It cannot see the high-redshift
 tails (QSO slices are too sparse and magnification competes there), and

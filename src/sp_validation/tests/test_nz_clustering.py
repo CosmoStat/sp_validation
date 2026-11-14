@@ -84,6 +84,47 @@ def test_profiled_shift_with_correlated_noise():
     assert boundary["alpha"] == 4
 
 
+def test_analysis_reports_null_and_profile_without_changing_nz(tmp_path, monkeypatch):
+    """Exercise diagnostic serialization and figures without modifying SOM products."""
+    monkeypatch.setattr(nc, "fiducial_cosmology", lambda: None)
+    monkeypatch.setattr(nc, "kernel", lambda *args: 0.01)
+    rng = np.random.default_rng(5)
+    data = tmp_path / "clustering" / "data"
+    data.mkdir(parents=True)
+    grid = np.linspace(0, 2, 101)
+    hists = np.array([gaussian(grid, z) for z in (0.45, 0.5, 0.55, 0.6)])
+    product = tmp_path / "calibration_arrays.npz"
+    np.savez(product, grid=grid, bin_hists=hists)
+    before = product.read_bytes()
+    edges = nc.slice_edges(0.3, 0.9, 0.05)
+    n = len(edges) - 1
+    xi = np.ones((n, 5, len(nc.R_EDGES) - 1)) * 0.2
+    xi[:, 1:] *= 0.3
+    jk = xi + rng.normal(0, 0.002, (80, *xi.shape))
+    out = dict(z_edges=edges, samples=["auto", "bin1", "bin2", "bin3", "bin4"],
+               xi=xi, jackknife=jk)
+    np.savez(data / "xcorr_LRG.npz", **out)
+    np.savez(data / "null_LRG.npz", **{**out, "xi": xi * 0})
+    np.savez(data / "xcorr_gate.npz", z_edges=edges, samples=["auto", "half"],
+             xi=xi[:, :2], jackknife=jk[:, :, :2])
+    np.savez(data / "LRG_dat.npz", z=rng.uniform(0.3, 0.9, 2000), w=np.ones(2000))
+    config = dict(output=str(tmp_path), clustering=dict(
+        output=str(data.parent), reference=dict(slices={"LRG": [0.3, 0.9, 0.05]}),
+        annulus=[1.5, 5], core=[[0.3, 0.9]] * 4, gate=["LRG", 0.3, 0.9, 0.05],
+        randoms_null=True,
+    ))
+    result = nc.analyse(config, tmp_path / "figures")
+    assert "profiled_shift" in result["bins"][0]["fits"]["calibration"]
+    assert np.asarray(result["bins"][0]["covariance"]).shape == (n, n)
+    null = result["randoms_null"]["LRG"]["bins"]["bin1"]
+    np.testing.assert_allclose(null["w"], 0)
+    assert len(null["err"]) == n
+    assert (data.parent / "clustering.json").exists()
+    for name in ("clustering_gate.png", "clustering_nz.png"):
+        assert (tmp_path / "figures" / name).stat().st_size > 1000
+    assert product.read_bytes() == before
+
+
 def test_precision_requires_enough_patches():
     with pytest.raises(ValueError, match="patches"):
         nc.jackknife_precision(np.ones((6, 4)))
