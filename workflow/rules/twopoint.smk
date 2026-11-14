@@ -148,8 +148,8 @@ rule pseudo_cl:
         binning="{binning}",
         nbins=lambda w: int(w.nbins),
         power=0.5,
-        compute_tomography=lambda w: w.tomo_suffix == "_tomo",
         catalogue=lambda w: measurement_catalogue(w.version),
+        compute_tomography=lambda w: w.tomo_suffix == "_tomo",
         blind=lambda w: blind_of(w.version),
     resources:
         mem_mb=32000,
@@ -172,8 +172,8 @@ rule pseudo_cl_cov:
         binning="{binning}",
         nbins=lambda w: int(w.nbins),
         power=0.5,
-        compute_tomography=lambda w: w.tomo_suffix == "_tomo",
         catalogue=lambda w: measurement_catalogue(w.version),
+        compute_tomography=lambda w: w.tomo_suffix == "_tomo",
     resources:
         mem_mb=16000,
         runtime=180,
