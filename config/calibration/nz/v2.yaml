@@ -15,13 +15,16 @@ inputs:
     # from the v2 collection (shapes with their PhotoPipe extension) by its
     # DR6 object ID.
     catalogue: ${unions_v2}/v2.0.0/catalogs/calibrated
-    photometry: ${unions_data}/v2.x/run1-snap3-collection
+    photometry: ${unions_v2}/run1-snap3-collection
 som:
   side: 101
   epochs: 60
   seed: 42
 groups: 2000
-edges: [0.10, 0.37, 0.55, 0.76, 1.20]
+# Tomographic bins: equal shear weight in DR6 BPZ, computed by each run from
+# its sources with complete photometry and BPZ in range, before gold
+# (summary.json records the edges). The README says why.
+bins: {count: 4, range: [0.10, 1.20]}
 gold_qc:
   floor: 0.4
   nmad_factor: 5
@@ -29,7 +32,7 @@ gold_qc:
 z2_offset: -0.1104888916015625
 # The step is the delivered n(z) resolution; the README says why 0.05.
 grid: {min: 0, max: 5, step: 0.05}
-# n(z) realisations (sp_validation.nz_ensemble). Each key switches a term on;
+# n(z) realisations (sp_validation.nz.ensemble). Each key switches a term on;
 # the README says why each size.
 ensemble:
   draws: 2000
@@ -50,3 +53,4 @@ ensemble:
   z2_offset: 0.02            # mag, error of the z2 -> z constant
   specz_failure: 0.01        # 1 - the compilation's DEEP2/3 confidence (0.99)
   nmad_factor: [4, 6]        # gold-QC factor, around the fiducial 5
+output: ${unions_v2}/v2.0.0/nz

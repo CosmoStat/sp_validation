@@ -4,9 +4,9 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from sp_validation import nz_inputs
+from sp_validation.nz import inputs
 
-MAGS = nz_inputs.MAGS
+MAGS = inputs.MAGS
 
 
 def _specz_tile(directory, tile, ra, dec, z, mags, surveys):
@@ -65,7 +65,7 @@ def test_calibrators_select_survey_photometry_and_deduplicate(tmp_path):
         np.vstack([good[0], z2_only]),
         ["deep2_final", "deep3_final"],
     )
-    cal = nz_inputs.calibrators(
+    cal = inputs.calibrators(
         tmp_path, "test", ["deep2_final", "deep3_final"], z_min=0.002, offset=-0.1
     )
     np.testing.assert_allclose(cal["z"], [0.5, 0.9], rtol=1e-6)
@@ -127,10 +127,10 @@ def test_sources_join_on_object_id_in_catalogue_order(tmp_path):
     mags = np.arange(6)[:, None] + np.full((6, 6), 20.0)
     _collection(tmp_path / "collection", ids, photoz, [0, 0, 0, 2, 0, 0], mags)
 
-    out = nz_inputs.sources(tmp_path / "catalogue.fits", tmp_path / "collection")
+    out = inputs.sources(tmp_path / "catalogue.fits", tmp_path / "collection")
     np.testing.assert_allclose(out["photoz"], [0.1, 0.2, 0.3, 0.4, np.nan, np.nan])
     np.testing.assert_array_equal(
-        out["status"], [0, 0, 0, 2, nz_inputs.NO_ID, nz_inputs.UNMATCHED]
+        out["status"], [0, 0, 0, 2, inputs.NO_ID, inputs.UNMATCHED]
     )
     np.testing.assert_array_equal(out["weight"], [1, 2, 3, 4, 5, 6])
     np.testing.assert_allclose(out["mag"][:4, 0], [25, 21, 20, 23])
@@ -141,12 +141,12 @@ def test_sources_join_on_object_id_in_catalogue_order(tmp_path):
 def test_sources_refuse_a_repeated_object_id(tmp_path):
     _catalogue(tmp_path / "catalogue.fits", [1.001, 1.001], [10, 10], [1, 1])
     with pytest.raises(ValueError, match="repeats an OBJECT_ID"):
-        nz_inputs.sources(tmp_path / "catalogue.fits", tmp_path / "none")
+        inputs.sources(tmp_path / "catalogue.fits", tmp_path / "none")
     _catalogue(tmp_path / "single.fits", [1.001], [10], [1])
     ids = pa.array([1001000010, 1001000010])
     _collection(tmp_path / "collection", ids, np.zeros(2), [0, 0], np.zeros((2, 6)))
     with pytest.raises(ValueError, match="repeats 1 OBJECT_IDs"):
-        nz_inputs.sources(tmp_path / "single.fits", tmp_path / "collection")
+        inputs.sources(tmp_path / "single.fits", tmp_path / "collection")
 
 
 def test_match_report_partitions_the_shear_weight():
@@ -156,9 +156,9 @@ def test_match_report_partitions_the_shear_weight():
     no_z = [22.0, 21.5, 21.0, 20.5, 99.0, -99.0]
     nan = [np.nan] * 6
     mag = np.array([good, z2_only, no_u, no_z, nan, nan, nan, nan])
-    status = np.array([0, 0, 0, 0, 1, 2, nz_inputs.UNMATCHED, nz_inputs.NO_ID])
+    status = np.array([0, 0, 0, 0, 1, 2, inputs.UNMATCHED, inputs.NO_ID])
     weight = np.array([1, 2, 3, 4, 5, 6, 7, 8.0])
-    report = nz_inputs.match_report(status, mag, weight)
+    report = inputs.match_report(status, mag, weight)
     undetected = report.pop("undetected")
     assert report == dict(
         no_object_id=8 / 36,

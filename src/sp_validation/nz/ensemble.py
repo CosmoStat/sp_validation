@@ -2,7 +2,7 @@
 
 A calibrated bin is a weighted histogram of calibrator redshifts: calibrator
 i in gold SOM group g of bin k carries S_kg / N_kg, the group's source shear
-weight over its number of in-bin calibrators (:func:`nz_calibration.calibrate`).
+weight over its number of in-bin calibrators (:func:`calibration.calibrate`).
 A draw perturbs what enters that sum and recalibrates,
 
     w_i = S_kg q_i / Σ_{j ∈ g, k} q_j,
@@ -46,6 +46,7 @@ The SOM and its groups are held fixed.
 """
 
 import argparse
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -53,7 +54,7 @@ import numpy as np
 import yaml
 from scipy.spatial import cKDTree
 
-from . import nz_calibration as nz
+from . import calibration as nz
 
 #: Offsets the source tables respond to: the calibration field's five bands
 #: (as a source offset) and the z2 mapping.
@@ -86,7 +87,7 @@ def ensemble_inputs(
 ):
     """Per-(bin, group) source tables, and the catalogue's response to offsets.
 
-    ``prelim`` and ``channel`` are :func:`nz_calibration.source_groups` of the
+    ``prelim`` and ``channel`` are :func:`calibration.source_groups` of the
     sources at the recipe's z2 ``offset``; ``gold`` is the calibration's gold
     mask. ``source_weight`` and ``source_photoz`` sum every source with BPZ in
     a bin, as the gold test does. ``catalogue_jacobian`` is the derivative, in
@@ -165,7 +166,7 @@ def calibrator_weights(group, member, q, source):
 
 
 def gold_masks(z, photoz, group, member, source, source_photoz, floor, factor):
-    """Re-derive every bin's gold mask, as :func:`nz_calibration.calibrate` does."""
+    """Re-derive every bin's gold mask, as :func:`calibration.calibrate` does."""
     n_groups = source.shape[1]
     threshold = nz.gold_threshold(z, photoz, floor, factor)
     masks = []
@@ -286,7 +287,6 @@ class Calibration:
         directory = Path(directory)
         a = np.load(directory / "calibration_arrays.npz")
         e = np.load(directory / "ensemble_inputs.npz")
-        recipe = yaml.safe_load((directory / "recipe.yaml").read_text())
         return cls(
             z=a["z"],
             photoz=a["cal_photoz"],
@@ -299,7 +299,7 @@ class Calibration:
             source_photoz=e["source_photoz"],
             jacobian=e["catalogue_jacobian"],
             photoz_gradient=e["cal_photoz_gradient"],
-            gold_qc=recipe["gold_qc"],
+            gold_qc=json.loads(str(a["gold_qc"])),
         )
 
     @property
@@ -386,12 +386,12 @@ def realisations(cal, settings, density=None):
 
 
 def run(directory, output, settings, cosmo=None):
-    """Write realisations of the calibration in ``directory`` to ``output``."""
+    """Write realisations of the calibration run in ``directory`` to ``output``."""
     cal = Calibration.load(directory)
     density = None
     if settings.get("density"):
         if cosmo is None:
-            from .blinding import cosmology, fiducial
+            from ..blinding import cosmology, fiducial
 
             cosmo = cosmology(fiducial())
         d = settings["density"]
@@ -409,20 +409,17 @@ def run(directory, output, settings, cosmo=None):
 
 
 def main(argv=None):
-    p = argparse.ArgumentParser(prog="python -m sp_validation.nz_ensemble")
+    p = argparse.ArgumentParser(prog="python -m sp_validation.nz.ensemble")
     p.add_argument("directory", help="output directory of a calibration run")
     p.add_argument("-o", "--output", required=True, help="realisations .npz")
     p.add_argument(
         "--settings",
-        help="YAML ensemble section; the run's recipe.yaml ensemble by default",
+        help="YAML ensemble section; the run's recipe ensemble by default",
     )
     a = p.parse_args(argv)
-    if a.settings:
-        settings = yaml.safe_load(Path(a.settings).read_text())
-    else:
-        recipe = yaml.safe_load((Path(a.directory) / "recipe.yaml").read_text())
-        settings = recipe["ensemble"]
-    run(a.directory, Path(a.output), settings)
+    settings = a.settings or Path(a.directory) / "recipe.yaml"
+    settings = yaml.safe_load(Path(settings).read_text())
+    run(a.directory, Path(a.output), settings.get("ensemble", settings))
     return 0
 
 

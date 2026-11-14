@@ -17,9 +17,9 @@ import fitsio
 import numpy as np
 import pandas as pd
 
-from . import nz_calibration as nz
-from .io import Catalogue, read_catalogue
-from .object_id import OBJECT_ID, object_id
+from ..io import Catalogue, read_catalogue
+from ..object_id import OBJECT_ID, object_id
+from . import calibration as nz
 
 BANDS = ("u", "g", "r", "i", "z", "z2")
 MAGS = [f"MAG_GAAP_{band}" for band in BANDS]

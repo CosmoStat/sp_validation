@@ -36,7 +36,7 @@ python scripts/calibration/calibrate_nz.py config/calibration/nz/v2.yaml --prepa
 
 `--prepare` builds the two inputs (a minute on 32 cores); later runs reuse
 them. `--output DIRECTORY` redirects the products and `--figures DIRECTORY`
-renders diagnostics. The products (`sp_validation.nz_pipeline`) are
+renders diagnostics. The products (`sp_validation.nz.pipeline`) are
 `nz_tomo.txt`, `nz_nontomo.txt` (their sum), `tom_bin.parquet` (`TOM_BIN_ID`
 and `ZBAND` row-aligned with the catalogue; `TOM_BIN_ID` is 1 to 4 for the
 four bins and 0 for a galaxy in no bin, and cosmo_val drops IDs ≤ 0), `realisations.npz`,
@@ -47,7 +47,7 @@ Sources and calibrators share one photometry: PhotoPipe's run on Stephen
 Gwyn's DR6 detections (`UNIONS.<tile>_ugriz_photoz_ext.cat`, dereddened GAaP
 ugriz, z2 and BPZ). Each catalogue row is found in the ShapePipe HATS
 catalogue by exact position, and the PhotoPipe HATS catalogue beside it
-(built by `scripts/assembly/`) is joined row for row on (tile, `NUMBER` = `SeqNr`) (`sp_validation.nz_inputs`).
+(built by `scripts/assembly/`) is joined row for row on (tile, `NUMBER` = `SeqNr`) (`sp_validation.nz.inputs`).
 
 **Calibrators** are the DEEP2 and DEEP3 spectra in the EGS field that
 PhotoPipe matched to its own objects (`UNIONS.<tile>_ugriz_photoz_ext_specz.cat`,
@@ -76,11 +76,11 @@ fills missing z after the recipe's offset, for sources and calibrators alike.
 **Realisations.** With an `ensemble` section in the recipe, the run also
 writes `realisations.npz`: `z` and `realisations` (n_draw, n_bin, n_z), each
 bin unit-integral, every bin drawn together, plus `ensemble_inputs.npz`, what
-the draws need from the sources. `python -m sp_validation.nz_ensemble <run
+the draws need from the sources. `python -m sp_validation.nz.ensemble <run
 directory> -o realisations.npz [--settings ensemble.yaml]` draws from an
 existing run. A draw perturbs the calibration's inputs and recalibrates: each
 in-bin spectrum of a gold group carries the group's source weight S_kg times
-q_i / Σ_group q_j (`sp_validation.nz_ensemble`). Each key of the `ensemble`
+q_i / Σ_group q_j (`sp_validation.nz.ensemble`). Each key of the `ensemble`
 section switches one term on.
 
 Statistical terms, through q_i = m_i (1 + δ(z_i)):

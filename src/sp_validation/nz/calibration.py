@@ -83,6 +83,26 @@ def z_magnitudes(mag, offset, use_z2=True):
     return out, channel
 
 
+def quantile_edges(mag, photoz, weight, *, range, count, offset):
+    """Return BPZ bin edges holding equal shear weight between ``range``.
+
+    The weight is that of sources with complete photometry and BPZ inside
+    ``range`` (lower edge included), before any gold selection. An interior
+    edge is the BPZ value at which the weight below it is nearest to k/count,
+    so it is one of the values BPZ takes.
+
+    @sc [decision:nz.tomographic_bins]
+    """
+    lo, hi = range
+    m, _ = z_magnitudes(mag, offset)
+    keep = detected(m).all(1) & (photoz >= lo) & (photoz < hi) & (weight > 0)
+    values, index = np.unique(photoz[keep], return_inverse=True)
+    below = np.r_[0, np.cumsum(np.bincount(index, weights=weight[keep]))]
+    targets = np.arange(1, count) / count * below[-1]
+    inner = values[abs(below[:-1, None] - targets).argmin(0)]
+    return np.r_[lo, inner, hi]
+
+
 def source_groups(
     mag, photoz, weight, model, *, offset, use_z2=True, chunk=1_000_000, workers=1
 ):
