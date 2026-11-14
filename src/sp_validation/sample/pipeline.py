@@ -392,6 +392,7 @@ def run(recipe, output=None, *, workers=1):
         )
 
     staging = catalogs / "calibrated.staging"
+    shutil.rmtree(staging, ignore_errors=True)  # left by an interrupted build
     staging.mkdir(parents=True)
     with io.Catalogue(source) as catalogue:
         pixels = list(catalogue.chunks)

@@ -14,12 +14,12 @@ from shear_psf_leakage import leakage, run_object, run_scale
 from sp_validation.data_roots import load_yaml, localise
 
 from .. import blinding, io
-from ..sample import snapshot
 from ..b_modes import (
     _get_pte_from_scale_cut,
     covariance_label,
     find_conservative_scale_cut_key,
 )
+from ..sample import snapshot
 from ..statistics import chi2_and_pte
 from ..survey import additive_bias
 from ..version import __version__

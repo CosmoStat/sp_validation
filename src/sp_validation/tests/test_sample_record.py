@@ -38,7 +38,9 @@ def read_cited():
     cited = set()
     for directory in ("src", "scripts", "config", "workflow"):
         for path in (ROOT / directory).rglob("*"):
-            if path.suffix in (".py", ".yaml", ".yml") and path != Path(__file__):
+            if path.suffix in (".py", ".yaml", ".yml", ".smk") and path != Path(
+                __file__
+            ):
                 for meta in TAG.findall(path.read_text()):
                     for item in meta.split(","):
                         key, _, value = item.strip().partition(":")
@@ -48,7 +50,9 @@ def read_cited():
 
 
 def read_configs():
-    return {name: yaml.safe_load((ROOT / path).read_text()) for name, path in FILES.items()}
+    return {
+        name: yaml.safe_load((ROOT / path).read_text()) for name, path in FILES.items()
+    }
 
 
 def pins(decision):

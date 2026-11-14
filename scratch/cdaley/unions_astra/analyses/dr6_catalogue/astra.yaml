@@ -20,7 +20,8 @@ narrative:
     applies the [selection](#decisions.selection_cuts), weights and calibrates
     with [one weight table and one response](#decisions.weights_and_response),
     subtracts [one additive bias](#decisions.additive_bias) and applies
-    [no object-wise leakage correction](#decisions.leakage_correction). The
+    [no object-wise leakage correction](#decisions.leakage_correction), as
+    [a rule of the Snakemake workflow](#decisions.orchestrator). The
     survey area is that of the [occupied pixels](#decisions.footprint). The
     optional [catalogue-match audit](#outputs.catalogue_match_audit) tabulates
     ShapePipe's external-catalogue join counts per tile; the
@@ -230,6 +231,38 @@ decisions:
         label: "ShapePipe coverage maps with the structural masks"
         description: "The geometric footprint, independent of galaxy density."
 
+  orchestrator:
+    label: "The sample is built by a Snakemake rule"
+    tags: [infrastructure]
+    rationale: >-
+      The build is one library call, sp_validation.sample.pipeline.run, on a
+      recipe; a Snakemake rule (workflow/rules/calibrate.smk) declares its
+      products and runs it in the sp_validation image with the checkout's
+      src, as every validation rule runs. Lightcone (lc 0.5.1.dev32, 14 Nov
+      2026) was considered for this stage and not taken, for two reasons read
+      from its engine: an lc project is a git-annex dataset whose image lc
+      builds itself from a pinned base and the project's lock, so
+      sp_validation's clones would all need git-annex and the image could
+      not be built on Fir, where apptainer only runs images; and an lc
+      output is one file under the checkout's results/, where the catalogue
+      is a HATS directory of 1,847 files that cosmo_val and lsdb read in
+      place under the release directory. The build needs no scheduler
+      fan-out: it takes 3 minutes on 60 cores.
+      Values: none.
+    default: snakemake_rule
+    options:
+      snakemake_rule:
+        label: "Rule in sp_validation's Snakemake workflow"
+        description: "Runs in the image, writes the release layout directly."
+      lightcone:
+        label: "Lightcone project (astra.yaml recipes run with lc)"
+        description: >-
+          Per-output run records and staleness from the spec; needs a
+          single-file catalogue and a git-annex dataset.
+      script:
+        label: "Script run by hand"
+        description: "The previous state: run scripts outside the repository."
+
   catalogue_match_tile_selection:
     label: "External paired-fraction tile selection"
     tags: [data-selection]
@@ -294,7 +327,8 @@ outputs:
     inputs: [snapshot_manifest, shapes]
     decisions:
       [snapshot_record, overlap_cut, selection_cuts, weights_and_response,
-       additive_bias, leakage_correction, catalogue_match_tile_selection]
+       additive_bias, leakage_correction, catalogue_match_tile_selection,
+       orchestrator]
     description: >-
       catalogs/calibrated/: a HATS catalogue of RA, Dec, calibrated e1, e2,
       w_des, e1_PSF, e2_PSF, SIZE_RATIO, SNR, N_EPOCH, TILE_KEY, TILE_ID,

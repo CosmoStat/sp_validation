@@ -57,3 +57,8 @@ if "cosmo_val" in config:
 # carries an `image_sims` block; standalone runs use workflow/image_sims/Snakefile.
 if "image_sims" in config:
     include: "rules/image_sims.smk"
+
+# The calibrated shear sample (calibrate.smk). Active only when the config
+# carries a `calibrate` block; standalone runs use workflow/calibrate/Snakefile.
+if "calibrate" in config:
+    include: "rules/calibrate.smk"

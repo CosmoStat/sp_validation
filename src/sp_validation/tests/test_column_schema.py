@@ -97,6 +97,7 @@ NOT_COLUMNS = {
     # in-memory tables sp_validation builds itself
     "C11",
     "C22",
+    "SIZE_RATIO",
     "SNR",
     "T",
     # NaMaster field/workspace dicts keyed by bin; cosmology parameter dicts

@@ -1,0 +1,12 @@
+# The calibrate stage's defaults (workflow/rules/calibrate.smk).
+calibrate:
+  # The sample recipe: snapshot, shapes, selection and release directory.
+  recipe: config/calibration/sample/v2.yaml
+  # Build somewhere other than the recipe's `output` (the release directory):
+  # output: /path/to/a/new/directory
+  # A catalogue the sample should reproduce, compared object by object:
+  # reference: /path/to/catalogs/calibrated
+
+# The image every rule runs in; default as `spv-container` resolves it
+# (workflow/README.md). A path to a .sif overrides it.
+# container: /path/to/sp_validation.sif

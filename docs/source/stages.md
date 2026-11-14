@@ -8,7 +8,7 @@ does not yet match.
 | Stage | Does | Code | Hands on |
 |---|---|---|---|
 | **Assemble** | Joins per-campaign ShapePipe outputs, star catalogues, structural masks and PhotoPipe photometry into one comprehensive catalogue | `scripts/calibration/` steps 1–3 (`extract_info.py`, `create_joint_comprehensive_cat.py`, `demo_apply_hsp_masks.py`); the v2 PhotoPipe join and the v2 HATS collection (`scripts/assembly/`, `photopipe_merge.py`, `object_id.py`, `hats_collection.py`); `catalog_builders.JointCat`, `ApplyHspMasks`; `scripts/merge_psf_cat.py`, `combine_hp_masks.py`, `fill_photoz_bands.py` | comprehensive catalogue (`final_cat_*.hdf5`, or for v2 a HATS collection: shapes, PhotoPipe extension and `OBJECT_ID` index), star catalogue, photometry joined row for row |
-| **Calibrate** | Selection, metacal response and weights, PSF-leakage correction, multiplicative bias from image sims, and the redshift distribution | `scripts/calibration/` steps 4–5; `calibration.py`, `catalog_builders.CalibrateCat`, `nz_inputs.py`, `nz_calibration.py`, `nz_pipeline.py`, `nz_ensemble.py`; `config/calibration/` (`mask_*.yaml`, `nz/*.yaml`); `scripts/apply_alpha*.py`; `image_sims.py`, `workflow/rules/image_sims.smk` | a `cosmo_val/cat_config.yaml` entry: shear catalogue, PSF and star catalogues, footprint mask, n(z) file and bin column, blind |
+| **Calibrate** | Selection, metacal response and weights, PSF-leakage correction, multiplicative bias from image sims, and the redshift distribution | `workflow/rules/calibrate.smk`, `sample/` and `config/calibration/sample/` (the v2 sample); `scripts/calibration/`; `calibration.py`, `response.py`, `catalog_builders.CalibrateCat`, `nz_inputs.py`, `nz_calibration.py`, `nz_pipeline.py`, `nz_ensemble.py`; `config/calibration/` (`mask_*.yaml`, `nz/*.yaml`); `scripts/apply_alpha*.py`; `image_sims.py`, `workflow/rules/image_sims.smk` | a `cosmo_val/cat_config.yaml` entry: shear catalogue, PSF and star catalogues, footprint mask, n(z) file and bin column, blind |
 | **Validate** | Two-point statistics, PSF systematics, B-mode and other nulls, covariance, all blinded | `src/sp_validation/cosmo_val/`, `cosmo_val/`, `workflow/rules/{cosmo_val,twopoint,covariance,masks}.smk`, `blinding.py`, `sacc_io.py` | `{version}.sacc`: concealed data vector, covariance and n(z) tracers; null-test verdicts |
 | **Infer** | Likelihood, priors, sampler | `cosmo_inference/`, `workflow/rules/inference.smk` | chains |
 
@@ -31,7 +31,7 @@ The n(z) is calibrated, not validated:
    `UNIONS.<tile>_ugriz_photoz_ext.cat` PhotoPipe run both number objects with
    Stephen Gwyn's DR6 IDs, so the join is exact on (tile, `NUMBER` = `SeqNr`).
 2. **Calibrate** runs the SOM recipe (`config/calibration/nz/v2.yaml`,
-   `scripts/calibration/` step 5) on that photometry and the spectra
+   `scripts/calibration/calibrate_nz.py`) on that photometry and the spectra
    PhotoPipe matched to the same objects, and writes the n(z) file, its
    realisations and each row's `TOM_BIN_ID`.
 3. **Validate** reads the file through `shear.redshift_path` and the bins
@@ -62,7 +62,8 @@ wherever its roots resolve. A root's directories share one relative layout.
   mechanical; only the v2 collection lives in `scripts/assembly/` so far.
 - **`catalog_builders.py` holds both assemble (`JointCat`, `ApplyHspMasks`)
   and calibrate (`CalibrateCat`) classes.**
-- **Only validate and infer are workflow rules.** Assemble and calibrate run
-  as ordered scripts, apart from the image-sim bias.
+- **Assemble and the n(z) are not workflow rules.** Validate, infer and the
+  calibrated sample (`workflow/rules/calibrate.smk`) are; assembly and the
+  n(z) recipe run as ordered scripts, apart from the image-sim bias.
 - **Most catalogue entries carry candide paths.** Only `SP_v2.0` is written
   with roots; the others move as their data land on a reachable machine.
