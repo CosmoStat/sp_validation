@@ -84,7 +84,7 @@ def prepare(config):
     """Cut reference and sources to their overlap; draw the jackknife patches.
 
     Reference points are kept inside the survey footprint (a boolean HEALPix
-    map), gold sources inside nside-256 pixels that hold a reference random.
+    map), gold sources inside ``source_nside`` pixels that hold a reference random.
     Patches are k-means clusters of the nside-1024 pixels that hold a random
     and are more than half inside the footprint.
     """
@@ -98,13 +98,15 @@ def prepare(config):
     data.mkdir(parents=True, exist_ok=True)
     foot = hp.read_map(cl["footprint"]).astype(bool)
     nside = hp.npix2nside(len(foot))
-    coarse, fine = np.zeros(hp.nside2npix(256), bool), np.zeros(hp.nside2npix(1024), bool)
+    source_nside = cl.get("source_nside", 256)
+    coarse = np.zeros(hp.nside2npix(source_nside), bool)
+    fine = np.zeros(hp.nside2npix(1024), bool)
     ref = cl["reference"]
     for tracer in ref["slices"]:
         for kind in ("dat", "ran"):
             d = _read_reference(ref["directory"], tracer, kind, ref["randoms"])
             if kind == "ran":
-                coarse[hp.ang2pix(256, d["RA"], d["DEC"], lonlat=True)] = True
+                coarse[hp.ang2pix(source_nside, d["RA"], d["DEC"], lonlat=True)] = True
                 fine[hp.ang2pix(1024, d["RA"], d["DEC"], lonlat=True)] = True
             d = d[foot[hp.ang2pix(nside, d["RA"], d["DEC"], lonlat=True)]]
             np.savez(
@@ -121,7 +123,7 @@ def prepare(config):
     tom = pq.read_table(
         Path(config["output"]) / "tom_bin.parquet", columns=["TOM_BIN_ID"]
     )["TOM_BIN_ID"].to_numpy()
-    keep = (tom > 0) & coarse[hp.ang2pix(256, cat["RA"], cat["Dec"], lonlat=True)]
+    keep = (tom > 0) & coarse[hp.ang2pix(source_nside, cat["RA"], cat["Dec"], lonlat=True)]
     np.savez(
         data / "sources.npz",
         ra=cat["RA"][keep].astype("f8"),
@@ -227,6 +229,13 @@ def measure(config, workers=1):
         dat, ran = np.load(data / f"{tracer}_dat.npz"), np.load(data / f"{tracer}_ran.npz")
         out = correlate(dat, ran, bins, slice_edges(lo, hi, dz), centers, cosmo, workers)
         np.savez(data / f"xcorr_{tracer}.npz", **out)
+        if cl.get("randoms_null", False):
+            null_data, null_random = randoms_split(ran)
+            out = correlate(
+                null_data, null_random, bins, slice_edges(lo, hi, dz),
+                centers, cosmo, workers,
+            )
+            np.savez(data / f"null_{tracer}.npz", **out)
 
     tracer, lo, hi, dz = cl["gate"]
     dat, ran = dict(np.load(data / f"{tracer}_dat.npz")), np.load(data / f"{tracer}_ran.npz")
@@ -235,6 +244,17 @@ def measure(config, workers=1):
     dat = {k: v[~half] for k, v in dat.items()}
     out = correlate(dat, ran, unknown, slice_edges(lo, hi, dz), centers, cosmo, workers)
     np.savez(data / "xcorr_gate.npz", **out)
+
+
+def randoms_split(ran):
+    """Disjoint random-derived data and denominator, retaining Z and WEIGHT.
+
+    A seeded Bernoulli split preserves the angular/redshift selection and weight
+    distribution in both halves. Pair-count normalization uses their weight
+    sums, just as for the data; reusing the same points would suppress noise.
+    """
+    half = np.random.default_rng(2027).random(len(ran["z"])) < 0.5
+    return ({k: ran[k][half] for k in ran}, {k: ran[k][~half] for k in ran})
 
 
 def _gate_half(n):
@@ -425,11 +445,30 @@ def compare(config, cosmo):
     return out
 
 
+def randoms_null(config, cosmo):
+    """Raw angular cross-correlation nulls, not divided by a null auto-bias."""
+    cl = config["clustering"]
+    out = {}
+    for tracer in cl["reference"]["slices"]:
+        m = Measurement(np.load(_data(cl) / f"null_{tracer}.npz"), cl["annulus"], cosmo)
+        bins = {}
+        for i, sample in enumerate(m.samples[1:], 1):
+            cov = jackknife_covariance(m.jk[:, :, i])
+            bins[sample] = dict(
+                w=m.w[:, i].tolist(), err=np.sqrt(np.diag(cov)).tolist(),
+                covariance=cov.tolist(),
+            )
+        out[tracer] = dict(z_lo=m.edges[:-1].tolist(), z_hi=m.edges[1:].tolist(), bins=bins)
+    return out
+
+
 def analyse(config, figures=None):
     """Write ``clustering.json`` (gate and bins) and, optionally, its figures."""
     cosmo = fiducial_cosmology()
     cl = config["clustering"]
     result = dict(annulus=cl["annulus"], gate=gate(config, cosmo), **compare(config, cosmo))
+    if cl.get("randoms_null", False):
+        result["randoms_null"] = randoms_null(config, cosmo)
     (Path(cl["output"]) / "clustering.json").write_text(json.dumps(result, indent=1) + "\n")
     if figures:
         render(result, *candidates(config["output"]), figures)

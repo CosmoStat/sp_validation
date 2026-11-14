@@ -46,6 +46,36 @@ def test_shift_fit_recovers_a_shift():
     assert fit["lo"] <= 0.03 <= fit["hi"]
 
 
+def test_actual_selection_randoms_null():
+    """Independent random halves cancel a non-uniform, weighted selection."""
+    import treecorr
+
+    rng = np.random.default_rng(42)
+    n = 40000
+    ra = 6 * rng.beta(2, 1, n)
+    ran = dict(ra=ra, dec=rng.uniform(0, 5, n),
+               z=rng.uniform(0.4, 0.5, n), w=0.5 + ra / 6)
+    # The gold sources may have their own angular modulation.
+    u = dict(ra=6 * rng.beta(1, 2, 8000), dec=rng.uniform(0, 5, 8000),
+             w=rng.uniform(0.5, 2, 8000))
+    dat, denom = nc.randoms_split(ran)
+    assert len(dat["z"]) + len(denom["z"]) == n
+    for cat in (dat, denom):
+        np.testing.assert_allclose(cat["w"], 0.5 + cat["ra"] / 6)
+    centers = treecorr.Catalog(
+        ra=ran["ra"], dec=ran["dec"], ra_units="deg", dec_units="deg",
+        npatch=20, rng=np.random.default_rng(1),
+    ).patch_centers
+    out = nc.correlate(dat, denom, {"bin1": tuple(u[c] for c in ("ra", "dec", "w"))},
+                       nc.slice_edges(0.4, 0.5, 0.05), centers, nc.fiducial_cosmology())
+    sel = nc.R_EDGES[:-1] >= 1.5
+    w = out["xi"][:, 1, sel].mean(-1)
+    rows = out["jackknife"][:, :, 1, sel].mean(-1)
+    err = np.sqrt(np.diag(nc.jackknife_covariance(rows)))
+    assert np.all(np.abs(w) < 3 * err)
+    assert np.all(err < 0.03)
+
+
 def test_correlate_finds_no_signal_between_random_points():
     rng = np.random.default_rng(0)
 
