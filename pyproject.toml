@@ -119,6 +119,8 @@ test = [
     # Writes the HATS catalogues the reader tests read. The image ships it, so
     # cross-matches and cone searches on HATS catalogues work there too.
     "lsdb",
+    # Builds the v2 collection's OBJECT_ID index (scripts/assembly/).
+    "hats-import",
     "pytest",
     "pytest-cov",
     "ruff"
