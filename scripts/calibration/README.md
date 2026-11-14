@@ -38,25 +38,37 @@ alternatives are recorded as decisions in
 `scratch/cdaley/unions_astra/analyses/dr6_catalogue/astra.yaml`.
 
 To build it you need this checkout, `apptainer` and `snakemake` on the host
-(`uv tool install --python 3.12 snakemake`), the image
+(`uv tool install --python 3.12 snakemake`, or `uvx --python 3.12 snakemake`
+in place of `snakemake` below to run it without installing), the image
 (`spv-container pull`, see `workflow/README.md`), and the snapshot and its
-collection under the `unions_v2` data root. On a cluster, run inside an
-allocation: the build is one job that uses the cores you give it (`-j`), and
-takes about 35 CPU-minutes and 2.5 GiB per core for v2 (3 minutes on 60
-cores). From the repository root:
+collection under the `unions_v2` data root. From the repository root:
 
 ```bash
 snakemake --profile workflow/profiles/default -s workflow/calibrate/Snakefile -j 32 \
-    --apptainer-args "--cleanenv --bind /home,<disks holding the data and the checkout>" \
-    --config calibrate='{recipe: config/calibration/sample/v2.yaml, output: /path/to/a/new/directory}'
+    -d /path/to/a/working/directory \
+    --apptainer-args "--cleanenv --bind /home,/project,/scratch" \
+    --config calibrate='{recipe: config/calibration/sample/v2.yaml, output: /path/to/a/new/directory, reference: /path/to/catalogs/calibrated}' \
+        container=/path/to/sp_validation.sif
 ```
 
-Without `output` the products go to the recipe's own `output`, the release
-directory `${unions_v2}/v2.0.0`. Adding `reference: /path/to/catalogs/calibrated`
-also compares the sample with that catalogue, object by object, and fails if
-they differ. `container: /path/to/sp_validation.sif` under `--config` names an
-image other than your own. The build refuses to write over an existing
-`catalogs/calibrated`.
+- `-j` is the number of cores. The build is one job that uses all of them:
+  3 minutes on 60 cores and 6.5 minutes on 16 for v2, comparison included,
+  with about 2.5 GiB per core.
+- On a cluster, the whole command runs inside an allocation, since the profile
+  runs jobs where Snakemake runs:
+  `srun --jobid=<allocation> -n 1 -c 32 bash -c 'module load apptainer && snakemake ... -j 32'`.
+- `-d` keeps Snakemake's state (`.snakemake/`) out of the checkout. `recipe`
+  stays relative to the repository root.
+- `--bind` lists the disks that hold the data, the checkout and the output,
+  after `/home`.
+- `output` is where the products go. Without it they go to the recipe's own
+  `output`, the release directory `${unions_v2}/v2.0.0`. The build refuses to
+  write over an existing `catalogs/calibrated`.
+- `reference` is optional: a catalogue the sample should reproduce. The two
+  are compared object by object into `provenance/calibrated_comparison.json`,
+  and the run fails unless its `agree` is true.
+- `container` is optional: an image other than your own
+  (`~/.cache/sp_validation/sp_validation.sif`).
 
 What it does (`sp_validation.sample.pipeline`): reads the shapes one HEALPix
 pixel at a time, in parallel; cuts tile overlaps against every tile of the
