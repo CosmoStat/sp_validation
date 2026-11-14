@@ -1,11 +1,8 @@
 """Known-answer checks for the SOM n(z) realisations."""
 
 from dataclasses import replace
-from pathlib import Path
 
 import numpy as np
-import pyarrow as pa
-import pyarrow.parquet as pq
 import pytest
 
 from sp_validation import nz_ensemble as ne
@@ -42,9 +39,8 @@ def toy_run(tmp_path, n_cal=1500, n_src=30_000, seed=0):
         mag=smag,
         photoz=sz + rng.normal(0, 0.03, n_src),
         weight=rng.uniform(0.5, 1.5, n_src),
-        # DR6 IDs; the last source has none (NUMBER -1, TILE_ID NaN).
-        tile=np.append(np.full(n_src - 1, 194.248), np.nan),
-        number=np.append(np.arange(1, n_src), -1),
+        tile=np.zeros(n_src),
+        number=np.arange(n_src),
     )
     config = dict(
         name="toy",
@@ -69,16 +65,6 @@ def toy_run(tmp_path, n_cal=1500, n_src=30_000, seed=0):
 @pytest.fixture(scope="module")
 def run(tmp_path_factory):
     return toy_run(tmp_path_factory.mktemp("nz"))
-
-
-def test_tom_bin_carries_the_object_id(run):
-    _, config = run
-    output = Path(config["inputs"]["sources"]["output"]).parent / "run"
-    table = pq.read_table(output / "tom_bin.parquet")
-    ids = table["OBJECT_ID"]
-    assert ids.type == pa.int64()
-    assert ids[0].as_py() == 194248000001
-    assert ids.null_count == 1 and not ids[-1].is_valid
 
 
 def draw(cal, n=40, **terms):

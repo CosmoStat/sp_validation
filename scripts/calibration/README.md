@@ -38,8 +38,7 @@ python scripts/calibration/calibrate_nz.py config/calibration/nz/v2.yaml --prepa
 them. `--output DIRECTORY` redirects the products and `--figures DIRECTORY`
 renders diagnostics. The products (`sp_validation.nz_pipeline`) are
 `nz_tomo.txt`, `nz_nontomo.txt` (their sum), `tom_bin.parquet` (`TOM_BIN_ID`
-and `ZBAND` row-aligned with the catalogue, with each row's DR6 `TILE_ID`,
-`NUMBER` and `OBJECT_ID`, the key of the v2 collection; `TOM_BIN_ID` is 1 to 4 for the
+and `ZBAND` row-aligned with the catalogue; `TOM_BIN_ID` is 1 to 4 for the
 four bins and 0 for a galaxy in no bin, and cosmo_val drops IDs ≤ 0), `realisations.npz`,
 `calibration_arrays.npz`, `som_model.npz` and `summary.json`.
 
