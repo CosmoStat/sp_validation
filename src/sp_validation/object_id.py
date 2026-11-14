@@ -15,6 +15,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 from hats.catalog import TableProperties
 from hats.io.parquet_metadata import write_parquet_metadata
+from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
 OBJECT_ID = "OBJECT_ID"
 NUMBER_LIMIT = 10**6
@@ -41,9 +42,28 @@ def with_object_id(table):
     return table.add_column(table.schema.get_field_index("NUMBER") + 1, OBJECT_ID, ids)
 
 
+def _encodings(file):
+    """Return the ``ParquetWriter`` arguments that reproduce the column encodings
+    of ``file``, with ``OBJECT_ID`` encoded as ``_healpix_29`` is."""
+    group = file.metadata.row_group(0)
+    dictionary, encoding = [], {}
+    for column in (group.column(i) for i in range(group.num_columns)):
+        if "RLE_DICTIONARY" in column.encodings:
+            dictionary.append(column.path_in_schema)
+        else:
+            # RLE alone is the levels' encoding, unless the data use it too
+            data = [e for e in column.encodings if e != "RLE"] or ["RLE"]
+            encoding[column.path_in_schema] = data[0]
+    if SPATIAL_INDEX_COLUMN in dictionary:
+        dictionary.append(OBJECT_ID)
+    else:
+        encoding[OBJECT_ID] = encoding[SPATIAL_INDEX_COLUMN]
+    return dict(use_dictionary=dictionary, column_encoding=encoding)
+
+
 def add_to_pixel(source, output):
-    """Rewrite one pixel file with ``OBJECT_ID``, keeping its rows, row groups
-    and schema metadata."""
+    """Rewrite one pixel file with ``OBJECT_ID``, keeping its rows, row groups,
+    column encodings and schema metadata."""
     file = pq.ParquetFile(source)
     output.parent.mkdir(parents=True, exist_ok=True)
     temporary = output.with_suffix(".tmp")
@@ -52,7 +72,11 @@ def add_to_pixel(source, output):
         table = with_object_id(file.read_row_group(group))
         if writer is None:
             writer = pq.ParquetWriter(
-                temporary, table.schema, compression="zstd", compression_level=3
+                temporary,
+                table.schema,
+                compression="zstd",
+                compression_level=3,
+                **_encodings(file),
             )
         writer.write_table(table, row_group_size=table.num_rows)
     writer.close()

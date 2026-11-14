@@ -30,6 +30,7 @@ from pathlib import Path
 
 import numpy as np
 import pyarrow as pa
+import pyarrow.compute as pc
 import pyarrow.parquet as pq
 from hats.catalog import TableProperties
 
@@ -42,6 +43,9 @@ PREFIX = "PHOTOPIPE_"
 SHAPE_COLUMNS = ["_healpix_29", "XWIN_WORLD", "YWIN_WORLD", "TILE_ID", "NUMBER"]
 #: The shape columns the extension carries: the keys, in hats-import's order.
 KEYS = ["_healpix_29", OBJECT_ID, "XWIN_WORLD", "YWIN_WORLD"]
+#: A float column with at most this fraction of distinct values is stored as a
+#: dictionary (magnitude sentinels, gridded redshifts), any other as split bytes.
+DICTIONARY_FRACTION = 0.01
 
 
 def tile_name(tile_id):
@@ -68,6 +72,24 @@ def _photopipe_schema(index):
 def _separation_arcsec(ra, dec, other_ra, other_dec):
     delta_ra = (ra - other_ra + 180) % 360 - 180
     return np.hypot(delta_ra * np.cos(np.radians(dec)), dec - other_dec) * 3600
+
+
+def _encodings(table):
+    """Return the ``pq.write_table`` encodings of a pixel table: delta for the
+    integer keys, split bytes for float columns with many distinct values, a
+    dictionary for everything else."""
+    dictionary, encoding = [], {}
+    for field in table.schema:
+        if field.name in ("_healpix_29", OBJECT_ID):
+            encoding[field.name] = "DELTA_BINARY_PACKED"
+        elif pa.types.is_floating(field.type) and (
+            pc.count_distinct(table[field.name]).as_py()
+            > DICTIONARY_FRACTION * table.num_rows
+        ):
+            encoding[field.name] = "BYTE_STREAM_SPLIT"
+        else:
+            dictionary.append(field.name)
+    return dict(use_dictionary=dictionary, column_encoding=encoding)
 
 
 def merge_pixel(shape_path, output_path, index, schema):
@@ -141,6 +163,7 @@ def merge_pixel(shape_path, output_path, index, schema):
         compression="zstd",
         compression_level=3,
         row_group_size=100_000,
+        **_encodings(table),
     )
     temporary.replace(output_path)
     return counts, table.schema

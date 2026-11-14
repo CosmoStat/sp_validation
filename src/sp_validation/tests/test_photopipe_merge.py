@@ -83,6 +83,15 @@ def test_merge_pixel_joins_on_id_and_marks_no_match(tmp_path):
     assert merged["ALPHA_J2000"].to_pylist() == [10.01, 10.0, None, None]
     assert merged["PHOTOPIPE_MAG_AUTO"].to_pylist() == [21.0, 20.0, None, None]
     assert "TILE_ID" not in merged.column_names
+    group = pq.ParquetFile(output).metadata.row_group(0)
+    encodings = {
+        group.column(i).path_in_schema: group.column(i).encodings
+        for i in range(group.num_columns)
+    }
+    assert "DELTA_BINARY_PACKED" in encodings["_healpix_29"]
+    assert "DELTA_BINARY_PACKED" in encodings["OBJECT_ID"]
+    assert "BYTE_STREAM_SPLIT" in encodings["MAG_GAAP_r"]
+    assert "RLE_DICTIONARY" in encodings["PHOTOPIPE_STATUS"]
     assert sorted((c["tile"], c["n_matched"]) for c in counts) == [
         ("024.237", 2),
         ("300.250", 0),

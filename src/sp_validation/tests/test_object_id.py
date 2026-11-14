@@ -25,7 +25,7 @@ def test_number_beyond_six_digits_raises():
         object_id([194.248], [NUMBER_LIMIT])
 
 
-def test_add_to_pixel_keeps_rows_groups_and_metadata(tmp_path):
+def test_add_to_pixel_keeps_rows_groups_encodings_and_metadata(tmp_path):
     table = pa.table(
         dict(
             _healpix_29=np.arange(5),
@@ -35,7 +35,13 @@ def test_add_to_pixel_keeps_rows_groups_and_metadata(tmp_path):
         )
     ).replace_schema_metadata({"origin": "test"})
     source = tmp_path / "in.parquet"
-    pq.write_table(table, source, row_group_size=2)
+    pq.write_table(
+        table,
+        source,
+        row_group_size=2,
+        use_dictionary=["TILE_ID", "NUMBER"],
+        column_encoding=dict(_healpix_29="DELTA_BINARY_PACKED", G1="BYTE_STREAM_SPLIT"),
+    )
     output = tmp_path / "out" / "Npix=1.parquet"
     add_to_pixel(source, output)
 
@@ -49,6 +55,19 @@ def test_add_to_pixel_keeps_rows_groups_and_metadata(tmp_path):
         "G1",
     ]
     assert written.schema_arrow.metadata == {b"origin": b"test"}
+    group = written.metadata.row_group(0)
+    encodings = {
+        group.column(i).path_in_schema: group.column(i).encodings
+        for i in range(group.num_columns)
+    }
+    original = pq.ParquetFile(source).metadata.row_group(0)
+    for i in range(original.num_columns):
+        column = original.column(i)
+        assert encodings[column.path_in_schema] == column.encodings
+    assert encodings["OBJECT_ID"] == encodings["_healpix_29"]
+    assert "DELTA_BINARY_PACKED" in encodings["OBJECT_ID"]
+    assert "BYTE_STREAM_SPLIT" in encodings["G1"]
+    assert "RLE_DICTIONARY" in encodings["NUMBER"]
     result = written.read()
     assert result.drop_columns("OBJECT_ID").equals(table)
     assert result["OBJECT_ID"].to_pylist() == [24237000000 + n for n in [5, 3, 4, 1, 2]]
