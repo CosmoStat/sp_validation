@@ -1323,6 +1323,12 @@ SP_v2.0.0:
   mask: ${unions_v2}/v2.0.0/masks/footprint-nside4096-ring.fits
   shear:
     path: calibrated
+    # The ShapePipe snapshot the catalogue must have been built from
+    # (sp_validation.sample.snapshot); a catalogue recording another fails.
+    snapshot:
+      name: run1-snap3
+      tiles: 22901
+      manifest_sha256: 44884ea3e8ecff0786ab5b911c911d685efb55932b84f9540bc9c443283f90c7
     R: 1.0
     ra_col: RA
     dec_col: Dec

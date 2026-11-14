@@ -14,6 +14,7 @@ from shear_psf_leakage import leakage, run_object, run_scale
 from sp_validation.data_roots import load_yaml, localise
 
 from .. import blinding, io
+from ..sample import snapshot
 from ..b_modes import (
     _get_pte_from_scale_cut,
     covariance_label,
@@ -419,6 +420,10 @@ class CosmologyValidation(
             for key, value in cc[ver].items():
                 if key not in ("subdir", "blind"):
                     cc[ver][key] = localise(value)
+            # A catalogue built from another snapshot than its entry names
+            # stops the run here, before anything is measured.
+            if isinstance(cc[ver].get("shear"), dict):
+                snapshot.check(cc[ver]["shear"])
 
         resolve_paths_for_version("nz")
         processed = {"nz"}

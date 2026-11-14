@@ -118,7 +118,7 @@ def with_derived(data, tiles):
     extract_info.py``): ``RA``, ``Dec``, ``mag``, ``e1_PSF``, ``e2_PSF``, and
     ``overlap``, True for an object kept by the tile-overlap cut.
 
-    @sc [decision:sample.overlap_cut] overlap-neighbours-are-snapshot-tiles
+    @sc [decision:dr6_catalogue.overlap_cut] overlap-neighbours-are-snapshot-tiles
     A tile's neighbours are looked up among ``tiles``, every tile of the
     snapshot, never among the tiles of the rows in hand.
     """
@@ -218,7 +218,7 @@ def select(data, selection, tiles):
 def calibrate(rows, table, estimate):
     """Return the catalogue columns of staged ``rows``.
 
-    @sc [decision:sample.additive_bias] calibrated-e-is-inverse-R-of-centred-g
+    @sc [decision:dr6_catalogue.additive_bias,decision:dr6_catalogue.leakage_correction] calibrated-e-is-inverse-R-of-centred-g
     ``(e1, e2) = R⁻¹ (g − c_e)`` with the sample's one ``R`` and ``c_e``, and
     ``w_des`` is the sample's table at the galaxy's own S/N and size.
     """
@@ -300,6 +300,8 @@ def write_hats_metadata(target, pixels, record):
         total_rows=rows,
         ra_column="RA",
         dec_column="Dec",
+        healpix_column=SPATIAL_INDEX_COLUMN,
+        healpix_order=SPATIAL_INDEX_ORDER,
         skymap_order=order,
         **{snapshot.PROPERTIES[name]: value for name, value in record.items()},
         **TableProperties.new_provenance_dict(target, builder="sp_validation.sample"),
@@ -365,7 +367,7 @@ def run(recipe, output=None, *, workers=1):
     The catalogue is never overwritten: a directory already holding one is
     refused.
 
-    @sc [decision:sample.snapshot_record] sample-is-the-whole-snapshot
+    @sc [decision:dr6_catalogue.snapshot_record] sample-is-the-whole-snapshot
     The catalogue read is the snapshot's: it declares the manifest's SHA-256
     as its source, and holds exactly the manifest's object count of every
     tile. The sample then records that snapshot.
@@ -391,9 +393,9 @@ def run(recipe, output=None, *, workers=1):
 
     staging = catalogs / "calibrated.staging"
     staging.mkdir(parents=True)
-    with io.Catalogue(config["catalogue"]) as catalogue:
+    with io.Catalogue(source) as catalogue:
         pixels = list(catalogue.chunks)
-    start = (config["catalogue"], selection, tiles, staging)
+    start = (source, selection, tiles, staging)
     with ProcessPoolExecutor(workers, initializer=_start, initargs=start) as pool:
         total = None
         for done, result in enumerate(pool.map(measure, pixels), 1):

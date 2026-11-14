@@ -69,7 +69,7 @@ def recorded(catalogue):
 def check(entry):
     """Fail when a shear entry's catalogue was built from another snapshot.
 
-    @sc [decision:sample.snapshot_record] entry-snapshot-is-catalogue-snapshot
+    @sc [decision:dr6_catalogue.snapshot_record] entry-snapshot-is-catalogue-snapshot
     An entry with a ``snapshot`` block (``name``, ``tiles``,
     ``manifest_sha256``) is measured only on a catalogue recording exactly
     that snapshot; an entry without one is not checked.

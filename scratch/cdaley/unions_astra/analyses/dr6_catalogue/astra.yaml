@@ -1,37 +1,57 @@
 version: "0.0.10"
-name: "DR6 shear-catalogue selection (ShapePipe v2)"
-tags: [unions, weak-lensing, shear-catalogue, data-selection]
+name: "DR6 calibrated shear sample (ShapePipe v2)"
+tags: [unions, weak-lensing, shear-catalogue, data-selection, calibration]
 
 authors:
   - "Cail Daley"
 
 narrative:
   summary: |
-    Selection of the DR6 ShapePipe v2 shear catalogue by
-    `config/calibration/mask_v2.0.yaml` and the calibration scripts. Papers
-    II–IV consume the v1.4.6.3 catalogue, so nothing here reaches their data
-    vectors; this sub-analysis holds the choices that select the DR6
-    catalogue itself.
+    The calibrated shear sample of the DR6 ShapePipe v2 catalogue: the recipe
+    `config/calibration/sample/v2.yaml`, run by
+    `scripts/calibration/calibrate_sample.py` (`sp_validation.sample`), selects
+    galaxies from a ShapePipe snapshot's shapes with
+    `config/calibration/mask_v2.0.yaml`, metacalibrates them, and writes the
+    catalogue cosmo_val measures. Papers II–IV consume the v1.4.6.3 catalogue,
+    so nothing here reaches their data vectors.
   methods: |
-    The optional [catalogue-match audit](#outputs.catalogue_match_audit)
-    tabulates ShapePipe's published external-catalogue join counts per tile.
-    The [paired-fraction tile selection](#decisions.catalogue_match_tile_selection)
+    The build reads a [whole snapshot and records it](#decisions.snapshot_record),
+    cuts tile overlaps against [every tile of the snapshot](#decisions.overlap_cut),
+    applies the [selection](#decisions.selection_cuts), weights and calibrates
+    with [one weight table and one response](#decisions.weights_and_response),
+    subtracts [one additive bias](#decisions.additive_bias) and applies
+    [no object-wise leakage correction](#decisions.leakage_correction). The
+    survey area is that of the [occupied pixels](#decisions.footprint). The
+    optional [catalogue-match audit](#outputs.catalogue_match_audit) tabulates
+    ShapePipe's external-catalogue join counts per tile; the
+    [paired-fraction tile selection](#decisions.catalogue_match_tile_selection)
     keeps that fraction diagnostic-only.
   inputs: |
-    The [v2_catalogue](#inputs.v2_catalogue) and its published
+    The snapshot's [manifest](#inputs.snapshot_manifest) and
+    [shapes](#inputs.shapes), and the published
     [tile_manifests](#inputs.tile_manifests).
   outputs: |
-    The [catalogue_match_audit](#outputs.catalogue_match_audit) table and the
-    [selected_catalogue](#outputs.selected_catalogue).
+    The [calibrated_sample](#outputs.calibrated_sample) with its
+    [response](#outputs.response) and [footprint](#outputs.footprint), and the
+    [catalogue_match_audit](#outputs.catalogue_match_audit) table.
 
 inputs:
-  - id: v2_catalogue
+  - id: snapshot_manifest
     type: data
-    label: "ShapePipe v2 comprehensive catalogue (DR6)"
-    source: "unions_shapepipe_comprehensive_2025_v2.0.hdf5"
+    label: "ShapePipe snapshot manifest"
+    source: "${unions_v2}/run1-snap3/MANIFEST.json"
     description: >-
-      The comprehensive ShapePipe v2 catalogue named by mask_v2.0.yaml's
-      input_path, before galaxy selection and metacalibration.
+      ShapePipe's list of the snapshot's published tiles with the object
+      count of each; its SHA-256 identifies the snapshot.
+  - id: shapes
+    type: data
+    label: "v2 collection: the snapshot's shapes"
+    source: "${unions_v2}/run1-snap3-collection"
+    description: >-
+      Every object of the snapshot with every ShapePipe column (uncalibrated
+      ngmix and metacal branches, flags, mask bits), as the assemble stage
+      wrote it: a HATS catalogue whose properties name the manifest it was
+      built from.
   - id: tile_manifests
     type: data
     label: "Published ShapePipe tile manifests"
@@ -42,6 +62,174 @@ inputs:
       paired fraction and the warning budget.
 
 decisions:
+  snapshot_record:
+    label: "The sample is a whole snapshot, and says which"
+    tags: [data-selection]
+    rationale: >-
+      The build reads one snapshot: the shapes must name the manifest's
+      SHA-256 as their source and hold exactly the manifest's object count of
+      every tile, or the build stops. The catalogue then records the
+      snapshot's name, tile count and manifest SHA-256 in its HATS
+      properties, and a cat_config entry that names a snapshot is measured
+      only on a catalogue recording the same one. The first v2 sample was
+      built when 20,515 of run 1's 22,901 tiles were published; nothing
+      compared its tile set with the finished snapshot, and every product
+      derived from it inherited a 540 deg² gap, found by eye
+      (CosmoStat/sp_validation#480).
+      Values: sample.snapshot.PROPERTIES = {"name": "snapshot_name", "tiles": "snapshot_tiles", "manifest_sha256": "snapshot_manifest_sha256"}.
+    default: recorded_and_checked
+    options:
+      recorded_and_checked:
+        label: "Recorded in the catalogue, checked by validation"
+        description: "Build and validation both fail on a tile set other than the snapshot's."
+      unrecorded:
+        label: "No record"
+        description: >-
+          The previous state: a sample of a partial tile set is
+          indistinguishable from a complete one.
+
+  overlap_cut:
+    label: "Tile-overlap cut on the snapshot's tile set"
+    tags: [data-selection]
+    rationale: >-
+      Neighbouring tiles share a strip of sky, so an object there is
+      detected in both. Each object is kept only on its own tile's side of
+      the RA midpoint to each neighbour, and inside its tile's Dec range. A
+      tile's neighbours are looked up among every tile of the snapshot. Taken
+      among the tiles of the rows in hand, a batch or pixel of the catalogue
+      keeps both copies wherever the neighbour is in another batch; and a
+      sample cannot be extended by appending tiles, because their
+      neighbours' cuts change (297 tiles lost 39,781 galaxies when run 1
+      grew from 20,515 to 22,901 tiles).
+      Values: none.
+    default: snapshot_tiles
+    options:
+      snapshot_tiles:
+        label: "Neighbours among the snapshot's tiles"
+        description: "The cut is the same however the catalogue is chunked."
+      tiles_in_hand:
+        label: "Neighbours among the tiles being processed"
+        description: "Correct only when the whole catalogue is in memory at once."
+
+  selection_cuts:
+    label: "Galaxy selection"
+    tags: [data-selection]
+    rationale: >-
+      mask_v2.0.yaml: SExtractor FLAGS ≤ 2 ignoring bit 16 (incomplete
+      aperture data, which preferentially flags large galaxies and biases m
+      in image simulations); outside star bodies, manual masks, MaxiMask and
+      r-band gaps (mask bits 4, 8, 1024, 64; the star-halo bits 1 and 2 are
+      not cut); at least two epochs; 15 ≤ mag ≤ 30; ngmix fitted without a
+      moments failure and with a valid PSF ellipticity; then, per metacal
+      branch, 10 < S/N < 500 and 0.707 < T/T_PSF < 9 with the branch's fit
+      flag zero. The upper size bound 9 and the ignored bit were adopted in
+      CosmoStat/sp_validation#448.
+      Values: mask_v2.0.yaml#dat.FLAGS.value = 2;
+      mask_v2.0.yaml#dat.FLAGS.ignore_bits = 16;
+      mask_v2.0.yaml#dat.mag.value = [15, 30];
+      mask_v2.0.yaml#metacal.gal_snr_min = 10;
+      mask_v2.0.yaml#metacal.gal_snr_max = 500;
+      mask_v2.0.yaml#metacal.gal_rel_size_min = 0.707;
+      mask_v2.0.yaml#metacal.gal_rel_size_max = 9;
+      v2.yaml#selection = "config/calibration/mask_v2.0.yaml".
+    default: bound_9_bit_16_ignored
+    options:
+      bound_9_bit_16_ignored:
+        label: "T/T_PSF < 9, FLAGS ignoring bit 16"
+        description: "The v2.0.0 selection."
+      bound_3_strict_flags:
+        label: "T/T_PSF < 3, FLAGS ≤ 2 on every bit"
+        description: "The v1 selection: drops large galaxies and biases m in image simulations."
+      with_star_halos:
+        label: "Also cut star halos (bits 1 and 2)"
+        description: "Removes about 13% of the area; Paper III found the masking added B-modes in v1."
+
+  weights_and_response:
+    label: "One weight table and one response for the sample"
+    tags: [calibration]
+    rationale: >-
+      DES-style weights (case d of CosmoStat/sp_validation#425): one table
+      W(S/N, T/T_PSF) on 20 × 20 logarithmic cells between the cuts, fitted on
+      the no-shear selection of the whole sample as mean(trace R/2)² /
+      mean(|e|²/2), cells with fewer than 3 galaxies pooled with their
+      neighbours; each metacal branch is weighted by the table at its own S/N
+      and size. R = R_shear + R_selection is one 2 × 2 matrix for the sample,
+      every branch mean normalised by its own weights. The table is fitted
+      on the galaxies it weights; #425 measures what that costs in image
+      simulations. Because a weight depends on a galaxy only through its
+      cell, table and response follow from per-cell sums that add over
+      chunks of the catalogue.
+      Values: mask_v2.0.yaml#metacal.weight_scheme = "des";
+      mask_v2.0.yaml#metacal.des_num_bins = 20.
+    default: des_table_on_the_sample
+    options:
+      des_table_on_the_sample:
+        label: "DES table fitted on the sample"
+        description: "Case d."
+      inverse_variance:
+        label: "Inverse-variance weights"
+        description: "weight_scheme iv: no fitted table; R falls from 0.79 to about 0.71 (#425)."
+      refit_per_region:
+        label: "Table and response per region"
+        description: "Follows depth variations, at the cost of noisier tables and a response that differs across the footprint."
+
+  additive_bias:
+    label: "Additive bias subtracted once for the sample"
+    tags: [calibration]
+    rationale: >-
+      The catalogue's e is R⁻¹(g − c_e), with c_e the weighted mean of the
+      uncalibrated no-shear ellipticity over the whole sample (1.8e-5 and
+      1.1e-4 on v2.0.0). Patches of the footprint scatter around it by about
+      3e-4, which validation measures; no spatially varying c is removed.
+      Values: none.
+    default: global_mean
+    options:
+      global_mean:
+        label: "One c_e for the sample"
+        description: "The catalogue's weighted mean ellipticity is zero by construction."
+      not_subtracted:
+        label: "Leave c in the catalogue"
+        description: "Estimators must subtract it themselves."
+
+  leakage_correction:
+    label: "No object-wise PSF-leakage correction"
+    tags: [calibration]
+    rationale: >-
+      [HARDCODED] The build has no leakage step: e1, e2 carry whatever PSF
+      leakage the shapes have, and e1_PSF, e2_PSF ride along so validation
+      can measure it (the ρ and τ statistics and the leakage α). The v1
+      catalogue applied a binned object-wise correction (the project's
+      leakage_correction decision); v2 measures the leakage first.
+      Values: none.
+    default: uncorrected
+    options:
+      uncorrected:
+        label: "Uncorrected, PSF ellipticity carried"
+        description: "Leakage is measured and modelled downstream."
+      object_wise:
+        label: "Binned object-wise correction"
+        description: "As v1: α(S/N, size) × e_PSF subtracted per galaxy."
+
+  footprint:
+    label: "Survey area from occupied pixels"
+    tags: [stats]
+    rationale: >-
+      The sample's footprint is the set of HEALPix pixels at nside 4096
+      (0.86′) holding at least one galaxy, and its area, n_eff and σ_e are
+      taken over those pixels. At 7 galaxies per arcmin² a pixel inside the
+      footprint is empty by chance about 0.6% of the time, so the area is
+      slightly underestimated and holes smaller than a pixel are not
+      resolved.
+      Values: v2.yaml#footprint_nside = 4096.
+    default: occupied_nside_4096
+    options:
+      occupied_nside_4096:
+        label: "Occupied pixels, nside 4096"
+        description: "Needs only the catalogue."
+      coverage_and_masks:
+        label: "ShapePipe coverage maps with the structural masks"
+        description: "The geometric footprint, independent of galaxy density."
+
   catalogue_match_tile_selection:
     label: "External paired-fraction tile selection"
     tags: [data-selection]
@@ -100,21 +288,43 @@ decisions:
           not justify masking retained neighbours.
 
 outputs:
+  - id: calibrated_sample
+    type: data
+    label: "Calibrated shear sample"
+    inputs: [snapshot_manifest, shapes]
+    decisions:
+      [snapshot_record, overlap_cut, selection_cuts, weights_and_response,
+       additive_bias, leakage_correction, catalogue_match_tile_selection]
+    description: >-
+      catalogs/calibrated/: a HATS catalogue of RA, Dec, calibrated e1, e2,
+      w_des, e1_PSF, e2_PSF, SIZE_RATIO, SNR, N_EPOCH, TILE_KEY, TILE_ID,
+      NUMBER and OBJECT_ID, recording its snapshot in its properties.
+  - id: response
+    type: data
+    label: "Response, additive bias and weight table"
+    inputs: [snapshot_manifest, shapes]
+    decisions: [snapshot_record, overlap_cut, selection_cuts, weights_and_response]
+    description: >-
+      catalogs/response.json (R and its shear and selection parts, c_e, c_g,
+      branch populations) and catalogs/des_weights.fits (the table, readable
+      as a des_weight_product).
+  - id: footprint
+    type: data
+    label: "Footprint and survey statistics"
+    inputs: [snapshot_manifest, shapes]
+    decisions:
+      [snapshot_record, overlap_cut, selection_cuts, weights_and_response,
+       additive_bias, footprint]
+    description: >-
+      masks/footprint-nside4096-ring.fits and catalogs/survey.json: occupied
+      pixels, area, n_eff and σ_e per component.
   - id: catalogue_match_audit
     type: table
     label: "Per-tile catalogue-match audit"
-    inputs: [v2_catalogue, tile_manifests]
+    inputs: [tile_manifests]
     decisions: [catalogue_match_tile_selection]
     description: >-
       catalogue_match_audit.csv from scripts/calibration/extract_info.py when
       catalogue_match_manifests is set: per-tile catalogue rows, join counts
       and warnings, distinguishing a missing manifest, missing match metadata
       and a measured empty external catalogue.
-  - id: selected_catalogue
-    type: data
-    label: "Selected, metacalibrated DR6 shear catalogue"
-    inputs: [v2_catalogue]
-    decisions: [catalogue_match_tile_selection]
-    description: >-
-      Output of scripts/calibration/calibrate_comprehensive_cat.py under
-      mask_v2.0.yaml, including its N_EPOCH >= 2 cut.

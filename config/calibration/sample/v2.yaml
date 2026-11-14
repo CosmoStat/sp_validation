@@ -1,15 +1,15 @@
 name: v2_run1
-# @sc [decision:sample.snapshot_record]
+# @sc [decision:dr6_catalogue.snapshot_record]
 # The ShapePipe snapshot (the directory holding MANIFEST.json) and its shapes
 # as the assemble stage wrote them (scripts/assembly/): the primary catalogue
 # of the v2 collection.
 snapshot: ${unions_v2}/run1-snap3
 catalogue: ${unions_v2}/run1-snap3-collection
-# @sc [decision:sample.selection]
+# @sc [decision:dr6_catalogue.selection_cuts]
 # The cuts and the metacal block (S/N and size range, weight scheme), relative
 # to the repository root.
 selection: config/calibration/mask_v2.0.yaml
-# @sc [decision:sample.footprint]
+# @sc [decision:dr6_catalogue.footprint]
 footprint_nside: 4096
 # The release directory: catalogs/calibrated/ and the files beside it, masks/
 # and provenance/ (sp_validation.sample.pipeline lists them).
