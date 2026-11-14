@@ -60,9 +60,8 @@ ensemble:
   nmad_factor: [4, 6]        # gold-QC factor, around the fiducial 5
   specz_selection: 0.5       # input scale along the alternative-calibrator difference;
                              # clipping/normalisation can change the output width
-# Clustering redshifts of the gold bins (sp_validation.nz_clustering): a check
-# on the n(z). It does not update delivered n(z) or supply calibration/inference
-# priors. SOM and WZ stay two separate estimates, compared but not combined.
+# Clustering redshifts of the gold bins (sp_validation.nz_clustering).
+# See scripts/calibration/README.md for scope and estimator conventions.
 clustering:
   reference:
     # DESI DR1 LSS clustering catalogues, v1.5:

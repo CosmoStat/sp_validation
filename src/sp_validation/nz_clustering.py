@@ -1,7 +1,7 @@
-"""Diagnostic clustering redshifts of gold bins against spectroscopic tracers.
+"""Clustering redshifts of gold bins against spectroscopic tracers.
 
-This diagnostic does not update the delivered n(z) or supply calibration or
-inference priors. SOM and WZ stay separate estimates, compared but not combined.
+WZ is a diagnostic estimate compared with SOM, not combined with it, and does
+not update the delivered n(z) or supply priors.
 It checks the SOM n(z) (:mod:`sp_validation.nz_pipeline`): the
 gold sources of each bin are cross-correlated with a spectroscopic reference
 sample cut into thin redshift slices. Run from the recipe's ``clustering``
@@ -26,7 +26,7 @@ Limber kernel of the matter averaged over the same bins:
 The source bias is unknown, b_u ∝ (1+z)^α, so a bin's n(z) is tested through
 its shape inside a core window, with amplitude and α free. Shifts profile over
 both using the full slice jackknife covariance and an approximate Hartlap
-precision correction. Profile intervals are diagnostics, not validated priors.
+precision correction.
 """
 
 import argparse
@@ -381,8 +381,8 @@ def shift_fit(y, precision, model_at):
 def profiled_shift_fit(y, precision, model_at, z):
     """Profile amplitude and α ∈ [-3, 4] at each shift; Δχ² = 1 interval.
 
-    The interval is a grid-based profile interval, not a marginalized posterior
-    or an n(z) prior. Boundary flags identify a fit limited by the search box.
+    The grid-based interval includes shifts with Δχ² ≤ 1 after profiling.
+    Boundary flags identify an interval limited by the search box.
     """
     tilt = (1 + z)[None, :] ** ALPHAS[:, None]
     chi2 = []
@@ -463,7 +463,7 @@ def candidates(run):
 
 
 def compare(config, cosmo):
-    """Diagnostic n(z) b(z) comparisons; no calibration products or priors.
+    """n(z) b(z) comparisons on the reference slices.
 
     Per bin and candidate n(z), inside the bin's core window: χ² with amplitude
     and bias slope α free, and a shift n(z - Δz) profiled over amplitude and α.
@@ -537,7 +537,6 @@ def tracer_overlaps(config, cosmo, comparison):
     is equality of n b_u. A common amplitude and (1+z)^α from the nominal SOM
     comparison also express each estimate as n(z); they cancel from χ².
     The covariance of the difference retains the cross-tracer jackknife terms.
-    This is a tracer-consistency diagnostic, not a joint n(z) calibration.
     """
     from scipy.stats import chi2
 
@@ -579,7 +578,7 @@ def tracer_overlaps(config, cosmo, comparison):
 
 
 def analyse(config, figures=None):
-    """Write diagnostic ``clustering.json`` and figures; leave delivered n(z) alone."""
+    """Write ``clustering.json`` and, optionally, its figures."""
     cosmo = fiducial_cosmology()
     cl = config["clustering"]
     result = dict(annulus=cl["annulus"], gate=gate(config, cosmo), **compare(config, cosmo))
@@ -651,7 +650,7 @@ def render(result, grid, cands, directory):
     axes[0].legend(fontsize=7, loc="center right")
     axes[-1].set(xlabel="z", xlim=(0, 2.6))
     fig.suptitle(f"Gold bins × spectroscopic slices, {r_lo:g}–{r_hi:g} Mpc/h; "
-                 "diagnostic only; fit window shaded", fontsize=10)
+                 "fit window shaded", fontsize=10)
     _save(fig, directory / "clustering_nz.png")
 
 
