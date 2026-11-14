@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import numpy as np
 import treecorr
+import yaml
 from cs_util import plots as cs_plots
 from shear_psf_leakage import leakage
 from shear_psf_leakage import plots as psfleak_plots
@@ -20,6 +21,7 @@ from uncertainties import ufloat
 
 from .. import blinding, sacc_io
 from ..io import open_entry
+from ..masks import catalogue_selection
 from ..rho_tau import (
     get_rho_tau_w_cov,
     get_samples,
@@ -76,8 +78,7 @@ class PSFSystematicsMixin:
     def calculate_rho_tau_stats(self, tomography=True):
         """Measure ρ/τ statistics per version and tomographic bin.
 
-        Without ``tomography`` the single bin is ``"all"``, and its SACC part is
-        written per version (``rho_tau_to_sacc_part``).
+        Write one SACC part per version, with ρ once and τ for each source bin.
         """
         out_dir = f"{self.cc['paths']['output']}/rho_tau_stats"
         if not os.path.exists(out_dir):
@@ -100,7 +101,9 @@ class PSFSystematicsMixin:
             # Get the selection for stars
             mask_star = self._get_star_mask(ver)
 
-            for tomo_bin_id in tomo_bin_ids:
+            tau_tables = []
+            tau_covariances = []
+            for index, tomo_bin_id in enumerate(sorted(tomo_bin_ids)):
                 self.print_cyan(f"Computing for the tomographic bin: {tomo_bin_id}")
                 base_rho = self.basename(ver)
                 base_tau = self.basename(ver, tomo_bin_a=tomo_bin_id)
@@ -122,41 +125,57 @@ class PSFSystematicsMixin:
                     cov_rho=self.compute_cov_rho,
                     npatch=self.npatch,
                 )
-                if not tomography:
-                    self.rho_tau_to_sacc_part(
-                        ver, out_dir, base_tau, rho_stat_handler, tau_stat_handler
-                    )
+                tau_tables.append((index, tau_stat_handler.tau_stats))
+                tau_covariances.append((index, base_tau))
+
+            self.rho_tau_to_sacc_part(
+                ver,
+                out_dir,
+                self.basename(ver),
+                rho_stat_handler,
+                tau_tables,
+                tau_covariances,
+                tomography=tomography,
+            )
         self.print_done("Rho stats finished")
 
         self._rho_stat_handler = rho_stat_handler
         self._tau_stat_handler = tau_stat_handler
 
     def rho_tau_to_sacc_part(
-        self, version, out_dir, base, rho_stat_handler, tau_stat_handler
+        self,
+        version,
+        out_dir,
+        base,
+        rho_stat_handler,
+        tau_tables,
+        tau_bases,
+        tomography=False,
     ):
         """Write the ρ/τ SACC part for one version, under the version's blind.
 
-        ρ_0…ρ_5 autos and τ_0/τ_2/τ_5 leakage from the handler tables. The
-        ``CovTauTh`` theory covariance ``cov_tau_{base}_th.npy`` is passed as
-        ``tau_cov_th`` when it exists; without it the τ block falls back —
-        loudly — to a variance diagonal.
+        The part contains ρ_0…ρ_5 and τ_0/τ_2/τ_5 per source bin.
+        Each available ``CovTauTh`` block is attached to its bin; otherwise
+        its τ covariance falls back to a variance diagonal.
         """
-        tau_cov_path = os.path.join(out_dir, f"cov_tau_{base}_th.npy")
-        tau_cov_th = np.load(tau_cov_path) if os.path.exists(tau_cov_path) else None
-        if tau_cov_th is None:
-            self.print_magenta(
-                f"No τ theory covariance at {tau_cov_path}; writing ρ/τ SACC part "
-                "with a diagonal placeholder covariance (τ inference block is a "
-                "variance diagonal, not CovTauTh)."
-            )
+        covariances = []
+        for index, tau_base in tau_bases:
+            tau_cov_path = os.path.join(out_dir, f"cov_tau_{tau_base}_th.npy")
+            if os.path.exists(tau_cov_path):
+                covariances.append((index, np.load(tau_cov_path)))
+            else:
+                self.print_magenta(
+                    f"No τ theory covariance at {tau_cov_path}; using a variance diagonal."
+                )
         s = rho_tau_to_sacc(
-            self.sacc_nz(version),
+            self.sacc_nz(version, tomography=tomography),
             self.sacc_metadata(version),
             rho_stat_handler.rho_stats,
-            tau_stat_handler.tau_stats,
-            tau_cov_th=tau_cov_th,
+            tau_tables,
+            tau_cov_th_by_bin=covariances or None,
         )
-        out_path = os.path.join(out_dir, f"rho_tau_{base}.sacc")
+        suffix = "_tomo" if tomography else ""
+        out_path = os.path.join(out_dir, f"rho_tau_{base}{suffix}.sacc")
         sacc_io.save(s, out_path, blind=self.blind(version), theory=blinding.no_signal)
 
     def calculate_rho_tau_fits(self, tomography=True, track_result=True):
@@ -358,16 +377,31 @@ class PSFSystematicsMixin:
         return gal_mask
 
     def _get_star_mask(self, ver):
-        cat_star = open_entry(self.cc[ver]["psf"])
-        PSF_flag = self.cc[ver]["psf"].get("PSF_flag")
-        star_flag = self.cc[ver]["psf"].get("star_flag")
-        if PSF_flag is not None:
-            if star_flag is not None:
-                star_mask = (cat_star[PSF_flag] == 0) & (cat_star[star_flag] == 0)
-            else:
-                star_mask = cat_star[PSF_flag] == 0
-        else:
-            star_mask = np.ones(len(cat_star), dtype=bool)
+        """Return the stars that enter rho/tau for version ``ver``.
+
+        A star is kept when the psf block's ``PSF_flag`` and ``star_flag``
+        columns, where configured, are zero, and it passes the block's
+        ``mask_config``: a mask config file (relative to the catalogue
+        config) whose ``mask_cuts`` (column names; default all) select the
+        stars as they select galaxies. Star catalogues carry no mask columns,
+        so those cuts read the config's ``maps`` at ``ra_col``/``dec_col``.
+        """
+        entry = self.cc[ver]["psf"]
+        cat_star = open_entry(entry)
+        star_mask = np.ones(len(cat_star), dtype=bool)
+        for key in ("PSF_flag", "star_flag"):
+            if entry.get(key) is not None:
+                star_mask &= cat_star[entry[key]] == 0
+        if entry.get("mask_config"):
+            with open(entry["mask_config"]) as f:
+                mask_config = yaml.safe_load(f)
+            star_mask &= catalogue_selection(
+                mask_config,
+                cat_star,
+                cuts=entry.get("mask_cuts"),
+                ra_col=entry["ra_col"],
+                dec_col=entry["dec_col"],
+            )
         return star_mask
 
     def set_params_rho_tau(self, ver, params, params_psf):

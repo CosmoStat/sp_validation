@@ -9,7 +9,7 @@ per version; the first version is the reference for every other figure.
 
 Usage (inside the container)::
 
-    python -m sp_validation.dashboard.render --run-dir RUN --version SP_v2.0 \\
+    python -m sp_validation.dashboard.render --run-dir RUN --version SP_v2.0.0 \\
         --maps-dir PRODUCTS --out RUN/dashboard-figures
 """
 
@@ -393,20 +393,6 @@ def render(
         "The data include cosmological signal; no noisy data division is used.",
         "full",
     )
-
-    try:
-        PSF.xi_sys_comparison(rt, figs.path("psf_xi_sys_comparison"), xi=xi)
-    except ValueError as exc:
-        print(f"Skipping psf_xi_sys_comparison: {exc}")
-    else:
-        figs.add(
-            "psf_xi_sys_comparison",
-            "leakage",
-            "θξ± from α–β–η coefficient draws (68% band) and blinded data with "
-            "run covariance errors, θ in arcmin. "
-            "The data include cosmological signal.",
-            "full",
-        )
 
     cell_path = ref.weight_cells
     if cell_path is not None:

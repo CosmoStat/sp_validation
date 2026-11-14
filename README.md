@@ -115,7 +115,22 @@ be processed further with post-processing scripts. See
 
 ## Cosmology validation
 
-TBD.
+In one command, set up the container and compute the blinded tomographic
+pseudo-Cℓ of the UNIONS v2.0.0 release:
+
+```bash
+apptainer pull sp_validation.sif docker://ghcr.io/cosmostat/sp_validation:develop
+apptainer exec sp_validation.sif python -c 'from sp_validation.cosmo_val import CosmologyValidation; CosmologyValidation(["SP_v2.0.0"], compute_tomography=True).calculate_pseudo_cl()'
+```
+
+The catalogue config's `SP_v2.0.0` entry describes the release: calibrated
+catalogue, n(z), masks and blind. Without a local copy, sp_validation fetches
+what the run reads from the CADC vault into `~/.cache/sp_validation/vos/`
+(about 15 GB, once), which needs membership of the CADC group `cfis-read` and a
+proxy certificate (`cadc-get-cert -u <user>` writes `~/.ssl/cadcproxy.pem`).
+Cℓ_EE is written concealed under the UNIONS blind; Cℓ_BB and Cℓ_EB are not
+blinded. The SACC lands in `output/`. All ten bin pairs take 3 min on 32 cores
+and 11 GB of memory, plus about 10 min for the first fetch from the vault.
 
 ## Cosmology inference
 

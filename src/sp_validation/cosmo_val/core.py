@@ -11,6 +11,8 @@ import yaml
 from cs_util.cosmo import get_cosmo
 from shear_psf_leakage import leakage, run_object, run_scale
 
+from sp_validation.data_roots import load_yaml, localise
+
 from .. import blinding, io
 from ..b_modes import (
     _get_pte_from_scale_cut,
@@ -123,7 +125,7 @@ class CosmologyValidation(
         Catalog version identifiers to analyze. Appending '_leak_corr' to a base
         version creates a virtual catalog using leakage-corrected ellipticity columns
         (e1_col_corrected/e2_col_corrected) from the base version configuration.
-    catalog_config : str, default './cat_config.yaml'
+    catalog_config : str, default the repository's ``cosmo_val/cat_config.yaml``
         Path to catalog configuration YAML defining survey metadata, file paths,
         and analysis settings for each version.
     output_dir : str, optional
@@ -282,7 +284,7 @@ class CosmologyValidation(
     def __init__(
         self,
         versions,
-        catalog_config="./cat_config.yaml",
+        catalog_config=blinding.REPO_CAT_CONFIG,
         output_dir=None,
         rho_tau_method="lsq",
         cov_estimate_method="th",
@@ -391,8 +393,7 @@ class CosmologyValidation(
         self.treecorr_config = self._binning()
 
         self.catalog_config_path = Path(catalog_config)
-        with self.catalog_config_path.open("r") as file:
-            self.cc = cc = yaml.load(file, Loader=yaml.FullLoader)
+        self.cc = cc = load_yaml(self.catalog_config_path)
         # The config as written, before virtual versions and resolved paths:
         # what each catalogue's blind is checked against.
         self._config_as_read = copy.deepcopy(cc)
@@ -406,6 +407,17 @@ class CosmologyValidation(
                     section["path"] = (
                         str(path) if path.is_absolute() else str(subdir / path)
                     )
+            # A psf block's mask config is a config file, not data: relative
+            # to the catalogue config, not to subdir.
+            psf = cc[ver].get("psf")
+            if isinstance(psf, dict) and psf.get("mask_config"):
+                psf["mask_config"] = str(
+                    self.catalog_config_path.parent / psf["mask_config"]
+                )
+            # Inputs on a vos: root are fetched now, those of this version only.
+            for key, value in cc[ver].items():
+                if key not in ("subdir", "blind"):
+                    cc[ver][key] = localise(value)
 
         resolve_paths_for_version("nz")
         processed = {"nz"}
@@ -609,25 +621,7 @@ class CosmologyValidation(
                 raise ValueError(f"no catalogue {version} in the catalogue config")
             entry = base
         catalogues = self._config_as_read
-        return blinding.open_blind(blinding.blind_of(catalogues, entry), catalogues)
-
-    def _refuse_blinded_tomography(self, version):
-        """Refuse to measure tomographic shear signal on a blinded catalogue.
-
-        A statistic is blinded by sealing its SACC part, whose tracers carry
-        the n(z) the blind's theory shifts it by. ξ± (and ⟨M_ap²⟩, derived from
-        it) is born as such a part for every tomographic bin pair; the
-        tomographic pseudo-Cℓ are still FITS tables with no per-bin tracer, so
-        on a blinded catalogue they would hold true values.
-        """
-        blind = self.blind(version)
-        if blind.name != blinding.NONE.name:
-            raise blinding.BlindingError(
-                f"{version} is blinded under {blind.name}, and blinding covers "
-                "its tomographic ξ± and non-tomographic statistics only; other "
-                "tomographic shear statistics are measured on public "
-                "(`blind: none`) catalogues"
-            )
+        return blinding.entry_blind(catalogues, entry)
 
     def basename(
         self,

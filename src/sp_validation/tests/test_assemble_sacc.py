@@ -110,27 +110,24 @@ def _write_parts(tmp_path, *, with_pseudo_cl=True, cov_less=("xi_reporting",)):
     cl = sw.pseudo_cl_to_sacc(
         nz,
         META,
-        ell,
-        cl_all,
-        _Wsp(),
+        [((0, 0), {"ell_eff": ell, "cl_all": cl_all, "wsp": _Wsp()})],
         covariance=None if "pseudo_cl" in cov_less else _spd(9, 2),
     )
 
     co = sw.cosebis_to_sacc(
         nz,
         META,
-        {
-            "En": np.arange(1, 6) * 1e-6,
-            "Bn": np.arange(1, 6) * 1e-7,
-            "cov": _spd(10, 3),
-        },
+        [((0, 0), {"En": np.arange(1, 6) * 1e-6, "Bn": np.arange(1, 6) * 1e-7})],
         (1.0, 100.0),
+        covariance=_spd(10, 3),
     )
 
     eb_arrays = {
         key: np.arange(6) * (i + 1) * 1e-6 for i, key in enumerate(sio.PURE_KEYS)
     }
-    eb = sw.pure_eb_to_sacc(nz, META, theta, eb_arrays, covariance=_spd(36, 4))
+    eb = sw.pure_eb_to_sacc(
+        nz, META, [((0, 0), {"theta": theta, **eb_arrays})], covariance=_spd(36, 4)
+    )
 
     rho = {"theta": theta}
     tau = {"theta": theta}
@@ -143,7 +140,7 @@ def _write_parts(tmp_path, *, with_pseudo_cl=True, cov_less=("xi_reporting",)):
         for suffix in ("p", "m"):
             tau[f"tau_{k}_{suffix}"] = rng.normal(size=6) * 1e-6
             tau[f"vartau_{k}_{suffix}"] = rng.uniform(1e-14, 1e-13, 6)
-    rt = sw.rho_tau_to_sacc(nz, META, rho, tau)
+    rt = sw.rho_tau_to_sacc(nz, META, rho, [(0, tau)])
 
     parts = {
         "xi_reporting": xi,

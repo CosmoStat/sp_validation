@@ -11,21 +11,7 @@ from sp_validation.dashboard.field_maps import (
     weight_grid_edges,
 )
 from sp_validation.dashboard.object_bias import bias_fit, leakage_fit, slopes
-from sp_validation.dashboard.psf import xi_sys_comparison
 from sp_validation.dashboard.sky import Zenithal, coarsen, footprint_parts, quantity
-
-
-def test_xi_sys_comparison_uses_fit_grid_without_tau(tmp_path):
-    rt = {
-        "fit": {
-            "theta": np.array([1.0, 2.0]),
-            "samples_plus": np.ones((3, 2)),
-            "samples_minus": np.ones((3, 2)),
-        }
-    }
-    out = tmp_path / "plot.png"
-    xi_sys_comparison(rt, out)
-    assert out.exists()
 
 
 def test_leakage_quantile_bins():

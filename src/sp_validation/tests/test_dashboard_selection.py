@@ -18,9 +18,11 @@ def test_cumulative_selection_and_expected_count(tmp_path):
         "NGMIX_T_NOSHEAR",
         "NGMIX_T_PSF_RECONV_NOSHEAR",
     ]
-    rows = np.zeros(4, dtype=[(name, "f8") for name in names])
+    rows = np.zeros(
+        4, dtype=[(name, "i4" if name == "FLAGS" else "f8") for name in names]
+    )
     rows["mag"] = [20, 21, 22, 23]
-    rows["FLAGS"] = [0, 0, 3, 0]
+    rows["FLAGS"] = [16, 0, 19, 0]
     rows["NGMIX_FLUX_NOSHEAR"] = [20, 5, 20, 20]
     rows["NGMIX_FLUX_ERR_NOSHEAR"] = 1
     rows["NGMIX_T_NOSHEAR"] = 1
@@ -38,6 +40,7 @@ def test_cumulative_selection_and_expected_count(tmp_path):
                         "label": "flags",
                         "kind": "smaller_equal",
                         "value": 2,
+                        "ignore_bits": 16,
                     }
                 ],
                 "metacal": {

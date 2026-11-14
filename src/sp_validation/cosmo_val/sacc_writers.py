@@ -1,17 +1,10 @@
-"""Born-as-SACC writers for the cosmo_val data products.
+"""Pair-native SACC writers and covariance helpers for cosmo_val products.
 
-A thin, pure layer between the ``cosmo_val`` mixins (which compute statistics as
-TreeCorr / NaMaster / b_modes arrays) and :mod:`sp_validation.sacc_io` (which
-knows the file layout). Each ``*_to_sacc`` function turns one already-computed
-statistic into a single-statistic SACC — a *part* — carrying that statistic's
-own covariance as its one block. :func:`assemble_analysis_sacc` rebuilds the
-single ``{version}.sacc`` analysis file from these parts.
-
-ξ± is written over any set of bin pairs (:func:`xi_pairs_to_sacc`), and
-:func:`onecov_xi_covariance` puts OneCovariance's ξ± matrix in a part's
-order. The other statistics are single-bin today (``bins=(0, 0)``); their
-interface is tomography-native so a future round supplies real bin pairs
-unchanged.
+Each writer turns a computed statistic into a single-statistic SACC part.
+Pairs are inserted in the supplied order, typically (0, 0), (0, 1), …, with
+points and covariances pair-major. Covariance helpers map OneCovariance ξ± and
+NaMaster iNKA matrices to the part's point order. :func:`assemble_analysis_sacc`
+combines the parts and their covariance blocks into an analysis file.
 """
 
 import numpy as np
@@ -26,8 +19,6 @@ TAU_K = (0, 2, 5)  # τ_0, τ_2, τ_5
 
 # NaMaster spin-2 × spin-2 decoupled-spectrum row order (EE, EB, BE, BB).
 _NMT_EE, _NMT_EB, _NMT_BB = 0, 1, 3
-
-BIN = (0, 0)
 
 
 def xi_pairs_to_sacc(nz, metadata, pairs, *, grid, variances=None, covariance=None):
@@ -93,7 +84,12 @@ def xi_to_sacc(
         "weight": weight,
     }
     return xi_pairs_to_sacc(
-        nz, metadata, [(BIN, xi)], grid=grid, variances=variances, covariance=covariance
+        nz,
+        metadata,
+        [((0, 0), xi)],
+        grid=grid,
+        variances=variances,
+        covariance=covariance,
     )
 
 
@@ -149,68 +145,125 @@ def onecov_xi_covariance(s, cov):
     return cov[np.ix_(order, order)]
 
 
-def pseudo_cl_to_sacc(nz, metadata, ell_eff, cl_all, wsp, covariance=None, nside=None):
-    """One pseudo-Cℓ part: EE/BB/EB with the shared bandpower window.
+def namaster_cl_covariance(s, cov_fits):
+    """Map iNKA pair-major covariance HDUs to a pseudo-Cℓ part's order.
 
-    ``cl_all`` is NaMaster's decoupled ``(4, nbp)`` array (EE, EB, BE, BB); the
-    window comes from :func:`bandpower_window_from_workspace`. Supply ``nside``
-    only for HEALPix-map spectra, whose measured spectrum includes ``pw²(ℓ)``;
-    catalogue-based spectra have no pixel window. ``covariance``, when given,
-    is the dense ``[EE; BB; EB]``-ordered block matching insertion.
+    Each same-polarisation HDU is ordered by source pair, then increasing ℓ.
+    Cross-polarisation blocks are zero, including across source pairs.
     """
-    window_ells, window_weights = bandpower_window_from_workspace(wsp, nside)
+    from astropy.io import fits
+
+    hdus = {
+        sio.CL_EE: "COVAR_EE_EE",
+        sio.CL_BB: "COVAR_BB_BB",
+        sio.CL_EB: "COVAR_EB_EB",
+    }
+    if not s.data or any(dp.data_type not in hdus for dp in s.data):
+        raise ValueError("namaster_cl_covariance takes a pseudo-Cℓ part only")
+
+    def pair(dp):
+        return tuple(sorted(int(t.removeprefix("source_")) for t in dp.tracers))
+
+    pairs = sorted({pair(dp) for dp in s.data})
+    ells = {}
+    for dp in s.data:
+        ells.setdefault((dp.data_type, pair(dp)), []).append(dp.tags["ell"])
+    if set(ells) != {(dtype, p) for dtype in hdus for p in pairs}:
+        raise ValueError("every pair must carry EE, BB and EB")
+    grids = [sorted(values) for values in ells.values()]
+    if any(grid != grids[0] for grid in grids) or len(set(grids[0])) != len(grids[0]):
+        raise ValueError("every spectrum must have the same distinct ℓ points")
+    nell = len(grids[0])
+    size = len(pairs) * nell
+    with fits.open(cov_fits) as hdul:
+        missing = [name for name in hdus.values() if name not in hdul]
+        if missing:
+            raise ValueError(f"{cov_fits} lacks the pseudo-Cℓ cov HDUs {missing}")
+        blocks = {
+            dtype: np.asarray(hdul[name].data, float) for dtype, name in hdus.items()
+        }
+    if any(block.shape != (size, size) for block in blocks.values()):
+        raise ValueError(f"iNKA covariance blocks must have shape {(size, size)}")
+    result = np.zeros((len(s.data), len(s.data)))
+    for dtype, block in blocks.items():
+        positions = [i for i, dp in enumerate(s.data) if dp.data_type == dtype]
+        order = [
+            pairs.index(pair(s.data[i])) * nell + grids[0].index(s.data[i].tags["ell"])
+            for i in positions
+        ]
+        result[np.ix_(positions, positions)] = block[np.ix_(order, order)]
+    return result
+
+
+def pseudo_cl_to_sacc(nz, metadata, pairs, covariance=None):
+    """Write pair-major EE/BB/EB spectra and their bandpower windows.
+
+    Each payload contains ``ell_eff``, NaMaster's ``cl_all`` in row order
+    [EE, EB, BE, BB], and ``wsp``. Supply ``nside`` only for HEALPix-map
+    spectra, to include the squared pixel window pw²(ℓ); catalogue spectra
+    have no pixel window. Covariance follows the pair-major insertion order.
+    """
     s = sio.new_sacc(nz, metadata)
-    sio.add_pseudo_cl(
-        s,
-        BIN,
-        ell_eff,
-        cl_all[_NMT_EE],
-        cl_all[_NMT_BB],
-        cl_all[_NMT_EB],
-        window_ells=window_ells,
-        window_weights=window_weights,
-    )
+    for bins, payload in pairs:
+        cl_all = payload["cl_all"]
+        window_ells, window_weights = bandpower_window_from_workspace(
+            payload["wsp"], payload.get("nside")
+        )
+        sio.add_pseudo_cl(
+            s,
+            bins,
+            payload["ell_eff"],
+            cl_all[_NMT_EE],
+            cl_all[_NMT_BB],
+            cl_all[_NMT_EB],
+            window_ells=window_ells,
+            window_weights=window_weights,
+        )
     if covariance is not None:
         s.add_covariance(np.asarray(covariance))
     return s
 
 
-def cosebis_to_sacc(nz, metadata, result, scale_cut):
-    """One COSEBIs part at the fiducial scale cut.
+def cosebis_to_sacc(nz, metadata, pairs, scale_cut, covariance=None):
+    """Write each pair's COSEBIs in [En; Bn] order at the scale cut.
 
-    ``result`` is a single scale-cut result dict from
-    ``b_modes.calculate_cosebis`` — ``{"En", "Bn", "cov", ...}`` — where ``cov``
-    is the ``[En; Bn]``-ordered COSEBIs covariance.
+    Each payload contains ``En`` and ``Bn``. The supplied covariance follows
+    that pair-major order and has its E×B and B×E blocks zeroed, including
+    across pairs.
     """
     s = sio.new_sacc(nz, metadata)
-    sio.add_cosebis(s, BIN, result["En"], scale_cut, Bn=result["Bn"])
-    s.add_covariance(np.asarray(result["cov"]))
-    return s
-
-
-def pure_eb_to_sacc(nz, metadata, theta, eb, covariance=None):
-    """One pure-E/B part: the six ``sacc_io.PURE_KEYS`` blocks.
-
-    ``eb`` is a mapping with the six keys (``xip_E`` … ``xim_amb``); each array
-    is sampled at ``theta``. ``covariance``, when given, is the dense block in
-    ``PURE_KEYS`` order (matching ``b_modes._EB_KEYS`` and the insertion order).
-    """
-    s = sio.new_sacc(nz, metadata)
-    sio.add_pure_eb(s, BIN, theta, **{key: eb[key] for key in sio.PURE_KEYS})
+    for bins, result in pairs:
+        sio.add_cosebis(s, bins, result["En"], scale_cut, Bn=result["Bn"])
     if covariance is not None:
         s.add_covariance(np.asarray(covariance))
     return s
 
 
-def rho_tau_to_sacc(nz, metadata, rho_stats, tau_stats, tau_cov_th=None):
+def pure_eb_to_sacc(nz, metadata, pairs, covariance=None):
+    """Write each pair's ``theta`` and six arrays in ``PURE_KEYS`` order.
+
+    The order is ``xip_E``, ``xim_E``, ``xip_B``, ``xim_B``, ``xip_amb``,
+    ``xim_amb``; the covariance follows this order within each pair.
+    """
+    s = sio.new_sacc(nz, metadata)
+    for bins, eb in pairs:
+        sio.add_pure_eb(s, bins, eb["theta"], **{key: eb[key] for key in sio.PURE_KEYS})
+    if covariance is not None:
+        s.add_covariance(np.asarray(covariance))
+    return s
+
+
+def rho_tau_to_sacc(nz, metadata, rho_stats, tau_by_bin, tau_cov_th_by_bin=None):
     """One ρ/τ part: ρ_0…ρ_5 autos and τ_0/τ_2/τ_5 leakage.
 
-    ``rho_stats`` / ``tau_stats`` are the ``shear_psf_leakage`` handler tables
-    (columns ``theta``, ``rho_{k}_p``, ``varrho_{k}_p``, … and the τ analogue).
-    ρ carries a ``varrho`` diagonal; τ carries a ``vartau`` diagonal, with
-    ``tau_cov_th`` — a ``(3·nbin, 3·nbin)`` k-major matrix over the τ-plus points
-    only — scattered into the τ-plus rows/columns when given. ``tau_cov_th=None``
-    leaves the τ block fully diagonal.
+    ``rho_stats`` contains ``theta``, ``rho_{k}_p``, ``rho_{k}_m``,
+    ``varrho_{k}_p`` and ``varrho_{k}_m`` for k=0,…,5. Each table in
+    ``tau_by_bin`` contains ``theta``, ``tau_{k}_p``, ``tau_{k}_m``,
+    ``vartau_{k}_p`` and ``vartau_{k}_m`` for k=0,2,5.
+    ρ carries a variance diagonal. Each τ block has a variance diagonal,
+    with its optional CovTauTh matrix scattered into its plus rows. CovTauTh
+    has shape (3·nθ, 3·nθ), ordered k-major (0, 2, 5), plus only.
+    Cross-bin covariances are approximated as zero.
     """
     s = sio.new_sacc(nz, metadata)
     theta_rho = np.asarray(rho_stats["theta"])
@@ -222,51 +275,57 @@ def rho_tau_to_sacc(nz, metadata, rho_stats, tau_stats, tau_cov_th=None):
             np.asarray(rho_stats[f"rho_{k}_p"]),
             np.asarray(rho_stats[f"rho_{k}_m"]),
         )
-    theta_tau = np.asarray(tau_stats["theta"])
-    for k in TAU_K:
-        sio.add_tau(
-            s,
-            BIN,
-            k,
-            theta_tau,
-            np.asarray(tau_stats[f"tau_{k}_p"]),
-            np.asarray(tau_stats[f"tau_{k}_m"]),
-        )
-    nbin = len(theta_tau)
     rho_var = np.concatenate(
         [
             np.concatenate([rho_stats[f"varrho_{k}_p"], rho_stats[f"varrho_{k}_m"]])
             for k in RHO_K
         ]
     )
-    tau_var = np.concatenate(
-        [
-            np.concatenate([tau_stats[f"vartau_{k}_p"], tau_stats[f"vartau_{k}_m"]])
-            for k in TAU_K
-        ]
-    )
-    if tau_cov_th is None:
-        s.add_covariance(np.concatenate([rho_var, tau_var]))
-        return s
-    tau_cov_th = np.asarray(tau_cov_th)
-    n_plus = len(TAU_K) * nbin
-    if tau_cov_th.shape != (n_plus, n_plus):
-        raise ValueError(
-            f"tau_cov_th shape {tau_cov_th.shape} does not match the "
-            f"{n_plus} τ-plus points ({len(TAU_K)} indices × {nbin} bins) — "
-            "CovTauTh.build_cov returns one (plus-folded) component per τ index"
+    theory = dict(tau_cov_th_by_bin or [])
+    blocks = [np.diag(rho_var)]
+    diagonals = [rho_var]
+    for bin_index, tau_stats in tau_by_bin:
+        theta = np.asarray(tau_stats["theta"])
+        for k in TAU_K:
+            sio.add_tau(
+                s,
+                (bin_index, bin_index),
+                k,
+                theta,
+                np.asarray(tau_stats[f"tau_{k}_p"]),
+                np.asarray(tau_stats[f"tau_{k}_m"]),
+            )
+        tau_var = np.concatenate(
+            [
+                np.concatenate([tau_stats[f"vartau_{k}_p"], tau_stats[f"vartau_{k}_m"]])
+                for k in TAU_K
+            ]
         )
-    n_rho, n_tau = len(rho_var), len(tau_var)
-    tau_block = np.diag(tau_var)
-    # τ-plus local positions in the τ block, k-major (per-k layout is [+; −]).
-    plus = np.concatenate(
-        [np.arange(2 * i * nbin, 2 * i * nbin + nbin) for i in range(len(TAU_K))]
-    )
-    tau_block[np.ix_(plus, plus)] = tau_cov_th
-    full = np.zeros((n_rho + n_tau, n_rho + n_tau))
-    full[:n_rho, :n_rho] = np.diag(rho_var)
-    full[n_rho:, n_rho:] = tau_block
-    s.add_covariance(full)
+        diagonals.append(tau_var)
+        block = np.diag(tau_var)
+        cov = theory.get(bin_index)
+        if cov is not None:
+            cov = np.asarray(cov)
+            nbin = len(theta)
+            n_plus = len(TAU_K) * nbin
+            if cov.shape != (n_plus, n_plus):
+                raise ValueError(
+                    f"tau_cov_th shape {cov.shape} does not match {n_plus} τ-plus points"
+                )
+            plus = np.concatenate(
+                [
+                    np.arange(2 * i * nbin, 2 * i * nbin + nbin)
+                    for i in range(len(TAU_K))
+                ]
+            )
+            block[np.ix_(plus, plus)] = cov
+        blocks.append(block)
+    if not theory:
+        s.add_covariance(np.concatenate(diagonals))
+    else:
+        from scipy.linalg import block_diag
+
+        s.add_covariance(block_diag(*blocks))
     return s
 
 
