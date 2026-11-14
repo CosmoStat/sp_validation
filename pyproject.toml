@@ -116,6 +116,9 @@ environments = ["sys_platform == 'linux'"]
 
 [project.optional-dependencies]
 test = [
+    # Writes the HATS catalogues the reader tests read. The image ships it, so
+    # cross-matches and cone searches on HATS catalogues work there too.
+    "lsdb",
     "pytest",
     "pytest-cov",
     "ruff"
