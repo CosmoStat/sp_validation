@@ -23,8 +23,8 @@ from hats.io.validation import is_valid_catalog
 from numpy.lib.recfunctions import append_fields
 
 from sp_validation import calibration, io, masks, response
+from sp_validation.assembly.object_id import OBJECT_ID, object_id
 from sp_validation.galaxy import classification_galaxy_overlap_ra_dec
-from sp_validation.object_id import OBJECT_ID, object_id
 from sp_validation.sample import compare, pipeline, snapshot
 from sp_validation.survey import effective_survey_stats
 

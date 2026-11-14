@@ -52,9 +52,9 @@ from hats.pixel_math.spatial_index import (
 )
 
 from .. import calibration, io, masks, response
+from ..assembly.object_id import OBJECT_ID, object_id
 from ..data_roots import load_yaml
 from ..galaxy import classification_galaxy_overlap_ra_dec
-from ..object_id import OBJECT_ID, object_id
 from ..survey import effective_survey_stats
 from . import snapshot
 

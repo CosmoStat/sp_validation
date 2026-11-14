@@ -15,7 +15,7 @@ from pathlib import Path
 import numpy as np
 
 from .. import io
-from ..object_id import NUMBER_LIMIT, OBJECT_ID
+from ..assembly.object_id import NUMBER_LIMIT, OBJECT_ID
 from .pipeline import tile_key
 
 #: Columns copied from the shape catalogue or derived from it row by row.
