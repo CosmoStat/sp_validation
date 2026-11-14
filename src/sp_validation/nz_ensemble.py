@@ -35,7 +35,12 @@ Systematic terms:
   replaced by the redshift of a random calibrator;
 - ``nmad_factor``: the gold-QC factor drawn uniformly from a range; gold is
   re-derived at that factor from the calibration's own spectra and sources,
-  so the bins' source selection moves with it.
+  so the bins' source selection moves with it;
+- ``specz_selection``: the calibrators are one spectroscopic selection, and
+  spectra chosen otherwise put other redshifts at the same colours. A draw
+  adds a Gaussian multiple, of this standard deviation, of the difference
+  between the n(z) calibrated on the recipe's alternative calibrators and the
+  calibration's own (:func:`selection_shift`).
 
 The offsets enter to first order: a draw adds half the difference between
 the recalibrations at +v and -v, which cancels what is even in the offsets
@@ -164,6 +169,17 @@ def calibrator_weights(group, member, q, source):
     return out
 
 
+def selection_shift(z, photoz, group, edges, source, grid, fiducial):
+    """n(z) of alternative calibrators on the same selection, minus ``fiducial``.
+
+    ``source`` is the gold source weight per (bin, group). The alternative
+    calibrators weigh the groups they reach in a bin, so each bin's shift
+    integrates to zero.
+    """
+    w = calibrator_weights(group, members(photoz, edges), np.ones(len(z)), source)
+    return histograms(z, w, grid) - fiducial
+
+
 def gold_masks(z, photoz, group, member, source, source_photoz, floor, factor):
     """Re-derive every bin's gold mask, as :func:`nz_calibration.calibrate` does."""
     n_groups = source.shape[1]
@@ -279,6 +295,7 @@ class Calibration:
     jacobian: np.ndarray
     photoz_gradient: np.ndarray
     gold_qc: dict
+    selection: np.ndarray | None = None
 
     @classmethod
     def load(cls, directory):
@@ -300,6 +317,7 @@ class Calibration:
             jacobian=e["catalogue_jacobian"],
             photoz_gradient=e["cal_photoz_gradient"],
             gold_qc=recipe["gold_qc"],
+            selection=e["selection_shift"] if "selection_shift" in e else None,
         )
 
     @property
@@ -327,15 +345,28 @@ class Calibration:
         return histograms(z, w, self.grid)
 
 
-def realisations(cal, settings, density=None):
+def clip_and_normalise(draws, grid):
+    """Clip negative cells, normalise each draw, and report clipping per bin.
+
+    The clipped fraction is negative mass divided by absolute input mass,
+    averaged over draws. Clipping can change both the mean and the scatter.
+    """
+    negative = np.trapezoid(np.maximum(-draws, 0), grid, axis=-1)
+    absolute = np.trapezoid(np.abs(draws), grid, axis=-1)
+    positive = np.maximum(draws, 0)
+    positive /= np.trapezoid(positive, grid, axis=-1)[..., None]
+    return positive, (negative / absolute).mean(0)
+
+
+def realisations(cal, settings, density=None, diagnostics=None):
     """Draws (n_draw, n_bin, n_z) and their raw mean before recentring.
 
     ``settings`` is the recipe's ``ensemble`` section; ``density`` is the
     covariance of δ on the grid (:func:`density_covariance`) when the density
-    term is on. The draws are recentred so their mean is the calibration's own
-    n(z): the terms are zero-mean in their inputs, but the calibration is
-    nonlinear in them, and the raw mean is returned so its offset can be
-    reported.
+    term is on. Additive draws are recentred on the calibration's n(z), then
+    negative cells are clipped and each draw is normalised. Clipping can move
+    the ensemble mean. ``diagnostics``, when supplied, records per-bin clipping
+    fractions and the nominal and realised selection-only mean-z scatter.
     """
     rng = np.random.default_rng(settings.get("seed", 0))
     n_draw, n_cal = settings["draws"], len(cal.z)
@@ -346,7 +377,7 @@ def realisations(cal, settings, density=None):
     if density is not None:
         overdensity = lognormal(density, n_draw, rng)
         step = cal.grid[1] - cal.grid[0]
-    draws = []
+    draws, selection_coefficients = [], []
     for n in range(n_draw):
         z, gold = cal.z, cal.gold
         if settings.get("specz_failure"):
@@ -379,10 +410,29 @@ def realisations(cal, settings, density=None):
         h = cal.calibrate(z, q, gold)
         if v.any():
             h = h + 0.5 * (cal.calibrate(z, q, gold, v) - cal.calibrate(z, q, gold, -v))
+        if settings.get("specz_selection"):
+            coefficient = rng.normal(0, settings["specz_selection"])
+            selection_coefficients.append(coefficient)
+            h = h + coefficient * cal.selection
         draws.append(h)
     draws = np.array(draws)
     raw = draws.mean(0)
-    return draws - raw + cal.fiducial(), raw
+    fiducial = cal.fiducial()
+    real, clipped = clip_and_normalise(draws - raw + fiducial, cal.grid)
+    if diagnostics is not None:
+        diagnostics["clipped_mass_fraction"] = clipped
+        if selection_coefficients:
+            coefficients = np.array(selection_coefficients)
+            selection = fiducial + (coefficients - coefficients.mean())[:, None, None] * cal.selection
+            selection, clipped = clip_and_normalise(selection, cal.grid)
+            diagnostics["selection_mean_z_std_nominal"] = settings["specz_selection"] * np.abs(
+                np.trapezoid(cal.selection * cal.grid, cal.grid, axis=-1)
+            )
+            diagnostics["selection_mean_z_std_realised"] = np.trapezoid(
+                selection * cal.grid, cal.grid, axis=-1
+            ).std(0)
+            diagnostics["selection_clipped_mass_fraction"] = clipped
+    return real, raw
 
 
 def run(directory, output, settings, cosmo=None):
@@ -396,7 +446,8 @@ def run(directory, output, settings, cosmo=None):
             cosmo = cosmology(fiducial())
         d = settings["density"]
         density = density_covariance(cal.grid, d["field"], d["bias"], cosmo)
-    real, raw = realisations(cal, settings, density)
+    diagnostics = {}
+    real, raw = realisations(cal, settings, density, diagnostics)
     np.savez_compressed(
         output,
         z=cal.grid,
@@ -404,6 +455,7 @@ def run(directory, output, settings, cosmo=None):
         fiducial=cal.fiducial(),
         raw_mean=raw,
         settings=yaml.safe_dump(settings),
+        **diagnostics,
     )
     return real
 

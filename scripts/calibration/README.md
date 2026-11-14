@@ -12,6 +12,7 @@ selection a redshift distribution. Run them in order. See
 | 3 | `demo_apply_hsp_masks.py` | Add the structural and coverage (HealSparse) masks. |
 | 4 | `calibrate_comprehensive_cat.py` | Galaxy selection + metacalibration. Uses the mask configs in `config/calibration/`. |
 | 5 | `calibrate_nz.py` | SOM direct calibration: the tomographic n(z) file, each row's `TOM_BIN_ID` and n(z) realisations. |
+| 5b | `clustering_nz.py` | Check of step 5: clustering redshifts of the gold bins against DESI DR1. |
 
 `params.py` is the shared parameter template (paths, column names, survey
 constants) imported by `extract_info.py`; copy and edit it per run.
@@ -128,11 +129,26 @@ Systematic terms:
   redshift, so this term is a one-sided bias more than a scatter: the raw
   ensemble mean moves bin 1 by +0.004, and the delivered n(z), which already
   holds the real failures, is biased by about as much the other way. The
-  recentred draws keep only the scatter.
+  recentred draws keep only the scatter, up to the small mean shift clipping
+  can add (below).
 - `nmad_factor`: the gold-QC factor drawn uniformly in [4, 6] around the
   fiducial 5 (threshold 0.40–0.56 with the 0.4 floor); gold is re-derived at
   that factor, so the bins' source selection moves with it. The other terms
   keep the catalogue's gold selection.
+- `specz_selection`: DEEP2/3 are one spectroscopic selection, and spectra
+  chosen otherwise put other redshifts at the same colours. The recipe's
+  `inputs.calibrators.selection` names every survey of the compilation with
+  100 or more spectra in the field (23,800 spectra against 9,920); calibrating
+  the same gold sources on them moves ⟨z⟩ by +0.098, +0.015, +0.024, +0.025.
+  A Gaussian coefficient with σ = 0.5 sets the input perturbation along that difference.
+  DEEP2/3 cannot measure most redshifts above 1.4, and targeted surveys over-represent them.
+  Negative cells are clipped and each draw is renormalised, which can change the mean and scatter.
+  The saved per-bin `selection_mean_z_std_nominal` and `selection_mean_z_std_realised` compare the input mean-z width with the width after clipping for the selection term alone.
+  `selection_clipped_mass_fraction` reports the removed negative mass divided by absolute input mass, averaged over selection-only draws.
+  `clipped_mass_fraction` reports the same quantity for the full ensemble. Bin 1 is set by catastrophic outliers:
+  0.4% of its DEEP2/3 calibrators lie above z = 1.5, against about 5% of the
+  other surveys', and without those objects its shift is +0.021. Clustering
+  redshifts (step 5b) cannot see these tails, so the size is a prior.
 
 The zero-point and z2 offsets enter to first order: each draw adds half the
 difference between the recalibrations at +v and −v. That keeps the
@@ -141,17 +157,71 @@ catalogue's response linear (its source tables are; central differences at
 even in the offsets: a group whose last in-bin spectrum leaves the bin loses
 its sources' weight at either sign. Every term but `nmad_factor` keeps the
 catalogue's selection, its gold sources wherever the offsets move them. The
-draws are recentred on the calibration's n(z); the raw ensemble mean moves by
-up to 0.004 in ⟨z⟩, mostly from spec-z failures.
+draws are additively recentred on the calibration's n(z), then negative cells are clipped and each draw is normalised to unit integral.
+Clipping can move the ensemble mean and alter its width; it does not force zero-fiducial cells to remain zero.
+The saved raw mean describes the additive draws before recentring and clipping.
 
-Held fixed: the SOM and its groups. Left out: spectroscopic selection and
-incompleteness (DEEP2's [OII] leaves the spectral window above z ≈ 1.4, so
-spectra at higher redshift are missing, not wrong), method bias calibrated on
+Held fixed: the SOM and its groups. Left out: method bias calibrated on
 simulations, SOM training stochasticity (on v2, seeds move ⟨z⟩ by up to
 0.0015 in bin 4), redshift-space smearing of δ, and bias evolution.
 
 **Limits.** The calibrators are about 9,900 EGS DEEP2/3 spectra: no
-field-to-field variance and no model of spectroscopic selection, so the n(z)
+field-to-field variance, and spectroscopic selection enters only as the
+`specz_selection` prior, so the n(z)
 is for validation, null tests and mocks, not parameter constraints. It
 describes only `TOM_BIN_ID > 0` rows; a non-tomographic measurement pairs
 `nz_nontomo.txt` with those rows, not with the whole catalogue.
+
+## Clustering redshifts (step 5b)
+
+Clustering redshifts provide a separate diagnostic estimate compared with SOM, not combined with it; they do not update the delivered n(z), constrain its ensemble or supply priors.
+Configure `sp_validation.nz_clustering` with the recipe's `clustering` section:
+
+```bash
+python scripts/calibration/clustering_nz.py config/calibration/nz/v2.yaml \
+    --prepare --measure --workers 32 --figures DIRECTORY
+```
+
+`--prepare` cuts the DESI DR1 clustering catalogues (BGS_BRIGHT, LRG,
+ELG_LOPnotqso, QSO; data and randoms) and the run's gold sources to their
+overlap and draws 100 jackknife patches.
+Gold sources are selected by the union of random-occupied `source_nside` pixels (default 256); rerun preparation and measurement at 512 or 1024 to check footprint-resolution stability.
+This is an approximate union footprint, not a tracer-specific overlap definition.
+`--measure` counts pairs in redshift slices of the reference.
+Without either flag the script only redoes the analysis, which writes `clustering.json` and two figures.
+
+**Estimator.** In each reference slice the annulus is fixed at 1.5–5 Mpc/h
+comoving. The slice's autocorrelation gives the reference bias, and its
+cross-correlation with a bin gives n(z) b_u(z) of that bin, both against the
+nonlinear matter correlation at the fiducial cosmology. The sources' bias is
+unknown, modelled as b_u ∝ (1+z)^α, so only the shape of each bin inside its
+core window is tested.
+Fits use the full slice jackknife covariance within that window, with the precision multiplied by (N_patch − N_slice − 2)/(N_patch − 1).
+This Hartlap correction is approximate for spatial jackknife patches; mock coverage validation is still needed.
+`profiled_shift` reports the shift n(z − Δz) after profiling over amplitude and α ∈ [−3, 4], a grid-based Δχ² = 1 interval, and whether α reaches the prior boundary anywhere inside that interval.
+`shift_boundary` flags intervals reaching the shift search limits [−0.2, 0.2].
+Fixed-α fits remain as sensitivity diagnostics, but the figure quotes the profiled result.
+Plotted point errors are marginal jackknife standard deviations; they do not imply diagonal fitting.
+
+**Gate.** A random half of DESI LRG plays the unknown sample against the other
+half; its n(z) is known and must be recovered.
+Both halves share tracer selection and bias, and their bias ratio cancels the matter kernel.
+Passing this gate does not validate that kernel or rule out tracer-side distortions for gold sources.
+Read it before the bins.
+
+**Overlapping tracers.** `clustering.reference.overlaps` optionally lists `[tracer1, tracer2, z_min, z_max]` windows.
+For example, `[[LRG, ELG_LOPnotqso, 0.80, 1.10]]` measures both tracers over the same slices.
+Both input catalogues must actually contain data and randoms in those windows; changing the recipe cannot undo a catalogue's hard redshift cut.
+Window edges must lie on each tracer's nominal dz grid, with matching slice widths.
+Preparation checks data and randoms for redshift support in every requested overlap slice after the footprint cut, and fails if any is empty.
+Rerun preparation and measurement after enabling the windows.
+Extra slices are excluded from the nominal SOM-comparison fit, so overlap points are not counted twice there.
+`tracer_overlaps` reports each source bin's reference-bias-corrected n(z)b_u(z), the covariance of the paired jackknife differences, χ², degrees of freedom and PTE.
+`consistent_95` records PTE ≥ 0.05; this threshold is a diagnostic, not evidence that all tracer systematics are absent.
+The common source bias cancels in this equality test even when the two reference biases evolve differently.
+For display, each tracer's `n` and `n_err` divide by the same amplitude and (1+z)^α fitted in the nominal comparison.
+That common scaling leaves the consistency statistic unchanged; its uncertainty is not included in the displayed conditional n(z) errors.
+
+**Reach.** The check tests each bin's core. It cannot see the high-redshift
+tails (QSO slices are too sparse and magnification competes there), and
+scales below 1.5 Mpc/h fail the gate.
