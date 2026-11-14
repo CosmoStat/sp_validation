@@ -41,6 +41,9 @@ NOT_COLUMNS = {
     "R22",
     # DR6 photometry columns, outside the ShapePipe schema
     "Z_B",
+    # DESI LSS catalogue columns (nz_clustering reads the tracer catalogues)
+    "WEIGHT",
+    "Z",
     # FITS header keywords
     "EXTNAME",
     "R_S11",
