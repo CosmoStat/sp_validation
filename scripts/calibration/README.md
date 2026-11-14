@@ -175,7 +175,7 @@ describes only `TOM_BIN_ID > 0` rows; a non-tomographic measurement pairs
 
 Clustering redshifts are a diagnostic of a finished step-5 run (`sp_validation.nz_clustering`).
 They do not update the delivered n(z), constrain the ensemble, or supply calibration or inference priors.
-The low-bin SOM+WZ combination is not implemented.
+SOM n(z) and clustering redshifts stay two separate estimates, compared but not combined.
 Configure the diagnostic with the recipe's `clustering` section:
 
 ```bash
@@ -215,6 +215,19 @@ half; its n(z) is known and must be recovered.
 Both halves share tracer selection and bias, and their bias ratio cancels the matter kernel.
 Passing this gate does not validate that kernel or rule out tracer-side distortions for gold sources.
 Read it before the bins.
+
+**Overlapping tracers.** `clustering.reference.overlaps` optionally lists `[tracer1, tracer2, z_min, z_max]` windows.
+For example, `[[BGS_BRIGHT, LRG, 0.30, 0.50], [LRG, ELG_LOPnotqso, 0.70, 0.90]]` extends both members of each pair into the same slices.
+Both input catalogues must actually contain data and randoms in those windows; changing the recipe cannot undo a catalogue's hard redshift cut.
+Use matching slice widths and edges for the two tracers.
+Rerun measurement after enabling the windows.
+Extra slices are excluded from the nominal SOM-comparison fit, so overlap points are not counted twice there.
+`tracer_overlaps` reports each source bin's reference-bias-corrected n(z)b_u(z), the covariance of the paired jackknife differences, χ², degrees of freedom and PTE.
+`consistent_95` records PTE ≥ 0.05; this threshold is a diagnostic, not evidence that all tracer systematics are absent.
+The common source bias cancels in this equality test even when the two reference biases evolve differently.
+For display, each tracer's `n` and `n_err` divide by the same amplitude and (1+z)^α fitted in the nominal comparison.
+That common scaling leaves the consistency statistic unchanged; its uncertainty is not included in the displayed conditional n(z) errors.
+This does not combine SOM and WZ or combine the tracers into a calibrated n(z).
 
 **Reach.** The check tests each bin's core. It cannot see the high-redshift
 tails (QSO slices are too sparse and magnification competes there), and

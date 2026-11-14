@@ -1,7 +1,8 @@
 """Diagnostic clustering redshifts of gold bins against spectroscopic tracers.
 
 This diagnostic does not update the delivered n(z) or supply calibration or
-inference priors. It checks the SOM n(z) (:mod:`sp_validation.nz_pipeline`): the
+inference priors. SOM and WZ stay separate estimates, compared but not combined.
+It checks the SOM n(z) (:mod:`sp_validation.nz_pipeline`): the
 gold sources of each bin are cross-correlated with a spectroscopic reference
 sample cut into thin redshift slices. Run from the recipe's ``clustering``
 section:
@@ -54,6 +55,15 @@ def fiducial_cosmology():
 
 def slice_edges(lo, hi, dz):
     return np.round(np.arange(lo, hi + dz / 2, dz), 6)
+
+
+def reference_edges(cl, tracer):
+    """Nominal slices extended to any requested common tracer windows."""
+    lo, hi, dz = cl["reference"]["slices"][tracer]
+    for first, second, a, b in cl["reference"].get("overlaps", []):
+        if tracer in (first, second):
+            lo, hi = min(lo, a), max(hi, b)
+    return slice_edges(lo, hi, dz)
 
 
 def _data(config):
@@ -191,6 +201,8 @@ def correlate(dat, ran, unknowns, edges, centers, cosmo, threads=1):
         )
         sd = (dat["z"] >= lo) & (dat["z"] < hi)
         sr = (ran["z"] >= lo) & (ran["z"] < hi)
+        if not sd.any() or not sr.any():
+            raise ValueError(f"Empty reference slice [{lo:g}, {hi:g}); check catalogue redshift support")
         D = catalog(dat["ra"][sd], dat["dec"][sd], dat["w"][sd])
         R = catalog(ran["ra"][sr], ran["dec"][sr], ran["w"][sr])
         dd, dr, rr = (treecorr.NNCorrelation(**kw) for _ in range(3))
@@ -229,14 +241,15 @@ def measure(config, workers=1):
         f"bin{k}": tuple(src[c][src["bin"] == k] for c in ("ra", "dec", "w"))
         for k in range(1, src["bin"].max() + 1)
     }
-    for tracer, (lo, hi, dz) in cl["reference"]["slices"].items():
+    for tracer in cl["reference"]["slices"]:
         dat, ran = np.load(data / f"{tracer}_dat.npz"), np.load(data / f"{tracer}_ran.npz")
-        out = correlate(dat, ran, bins, slice_edges(lo, hi, dz), centers, cosmo, workers)
+        edges = reference_edges(cl, tracer)
+        out = correlate(dat, ran, bins, edges, centers, cosmo, workers)
         np.savez(data / f"xcorr_{tracer}.npz", **out)
         if cl.get("randoms_null", False):
             null_data, null_random = randoms_split(ran)
             out = correlate(
-                null_data, null_random, bins, slice_edges(lo, hi, dz),
+                null_data, null_random, bins, edges,
                 centers, cosmo, workers,
             )
             np.savez(data / f"null_{tracer}.npz", **out)
@@ -455,12 +468,14 @@ def compare(config, cosmo):
     for name in cl["reference"]["slices"]:
         m = Measurement(np.load(data / f"xcorr_{name}.npz"), cl["annulus"], cosmo)
         bins = m.samples[1:]
-        lo += list(m.edges[:-1])
-        hi += list(m.edges[1:])
-        tracer += [name] * len(m.z)
-        nb.append([m.nb(b) for b in bins])
-        rows.append([m.nb(b, jk=True) for b in bins])
-        bias.append(m.bias())
+        a, b, _ = cl["reference"]["slices"][name]
+        nominal = (m.edges[:-1] >= a - 1e-6) & (m.edges[1:] <= b + 1e-6)
+        lo += list(m.edges[:-1][nominal])
+        hi += list(m.edges[1:][nominal])
+        tracer += [name] * int(nominal.sum())
+        nb.append([m.nb(b)[nominal] for b in bins])
+        rows.append([m.nb(b, jk=True)[:, nominal] for b in bins])
+        bias.append(m.bias()[nominal])
     lo, hi = np.array(lo), np.array(hi)
     z = (lo + hi) / 2
     nb, rows = np.concatenate(nb, 1), np.concatenate(rows, 2)  # (bin, [patch,] slice)
@@ -508,6 +523,54 @@ def compare(config, cosmo):
     return out
 
 
+def tracer_overlaps(config, cosmo, comparison):
+    """Compare reference-bias-corrected estimates on identical overlap slices.
+
+    Both tracers see the same sources and source bias, so the null hypothesis
+    is equality of n b_u. A common amplitude and (1+z)^α from the nominal SOM
+    comparison also express each estimate as n(z); they cancel from χ².
+    The covariance of the difference retains the cross-tracer jackknife terms.
+    This is a tracer-consistency diagnostic, not a joint n(z) calibration.
+    """
+    from scipy.stats import chi2
+
+    cl = config["clustering"]
+    out = []
+    for first, second, lo, hi in cl["reference"].get("overlaps", []):
+        measurements, indices = [], []
+        for tracer in (first, second):
+            m = Measurement(np.load(_data(cl) / f"xcorr_{tracer}.npz"), cl["annulus"], cosmo)
+            sel = np.flatnonzero((m.edges[:-1] >= lo - 1e-6) & (m.edges[1:] <= hi + 1e-6))
+            measurements.append(m)
+            indices.append(sel)
+        a, b = measurements
+        ia, ib = indices
+        if not len(ia) or len(ia) != len(ib) or not np.allclose(a.edges[:-1][ia], b.edges[:-1][ib]) or not np.allclose(a.dz[ia], b.dz[ib]):
+            raise ValueError("Overlap tracers need identical non-empty redshift slices")
+        bins = {}
+        for k, sample in enumerate(a.samples[1:]):
+            ya, yb = a.nb(sample)[ia], b.nb(sample)[ib]
+            ja, jb = a.nb(sample, jk=True)[:, ia], b.nb(sample, jk=True)[:, ib]
+            diff, rows = ya - yb, ja - jb
+            cov = jackknife_covariance(rows)
+            statistic = float(diff @ jackknife_precision(rows) @ diff)
+            pte = float(chi2.sf(statistic, len(diff)))
+            fit = comparison["bins"][k]["fits"]["calibration"]
+            scale = fit["amplitude"] * (1 + a.z[ia]) ** fit["alpha"]
+            bins[sample] = dict(
+                nb={first: ya.tolist(), second: yb.tolist()},
+                n={first: (ya / scale).tolist(), second: (yb / scale).tolist()},
+                n_err={first: (np.sqrt(np.diag(jackknife_covariance(ja))) / np.abs(scale)).tolist(),
+                       second: (np.sqrt(np.diag(jackknife_covariance(jb))) / np.abs(scale)).tolist()},
+                source_amplitude=fit["amplitude"], source_alpha=fit["alpha"],
+                difference=diff.tolist(), difference_covariance=cov.tolist(),
+                chi2=statistic, dof=len(diff), pte=pte, consistent_95=pte >= 0.05,
+            )
+        out.append(dict(tracers=[first, second], z_lo=a.edges[:-1][ia].tolist(),
+                        z_hi=a.edges[1:][ia].tolist(), bins=bins))
+    return out
+
+
 def randoms_null(config, cosmo):
     """Raw angular cross-correlation nulls, not divided by a null auto-bias."""
     cl = config["clustering"]
@@ -532,6 +595,8 @@ def analyse(config, figures=None):
     result = dict(annulus=cl["annulus"], gate=gate(config, cosmo), **compare(config, cosmo))
     if cl.get("randoms_null", False):
         result["randoms_null"] = randoms_null(config, cosmo)
+    if cl["reference"].get("overlaps"):
+        result["tracer_overlaps"] = tracer_overlaps(config, cosmo, result)
     (Path(cl["output"]) / "clustering.json").write_text(json.dumps(result, indent=1) + "\n")
     if figures:
         render(result, *candidates(config["output"]), figures)

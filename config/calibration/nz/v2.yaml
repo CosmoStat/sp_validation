@@ -62,7 +62,7 @@ ensemble:
                              # positivity/recentring set the realised output width
 # Clustering redshifts of the gold bins (sp_validation.nz_clustering): a check
 # on the n(z). It does not update delivered n(z) or supply calibration/inference
-# priors. The low-bin SOM+WZ combination is not implemented.
+# priors. SOM and WZ stay two separate estimates, compared but not combined.
 clustering:
   reference:
     # DESI DR1 LSS clustering catalogues, v1.5:
@@ -74,6 +74,10 @@ clustering:
       LRG: [0.40, 0.80, 0.05]
       ELG_LOPnotqso: [0.80, 1.60, 0.05]
       QSO: [1.60, 3.00, 0.10]
+    # Optional [tracer1, tracer2, z_min, z_max] windows, extending both measurements.
+    # Both catalogues must contain data/randoms there, on the same slice grid.
+    # Example: [[BGS_BRIGHT, LRG, 0.30, 0.50], [LRG, ELG_LOPnotqso, 0.70, 0.90]]
+    overlaps: []
   footprint: ${v2_tomo}/footprint-nside4096-ring.fits
   annulus: [1.5, 5.0]        # comoving Mpc/h
   patches: 100               # jackknife

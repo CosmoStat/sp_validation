@@ -125,6 +125,51 @@ def test_analysis_reports_null_and_profile_without_changing_nz(tmp_path, monkeyp
     assert product.read_bytes() == before
 
 
+def test_overlapping_tracers_recover_same_nz_with_different_biases(tmp_path, monkeypatch):
+    monkeypatch.setattr(nc, "kernel", lambda *args: 0.001)
+    data = tmp_path / "data"
+    data.mkdir()
+    cl = dict(output=str(tmp_path), annulus=[1.5, 5], reference=dict(
+        slices={"A": [0.2, 0.4, 0.05], "B": [0.4, 0.7, 0.05]},
+        overlaps=[["A", "B", 0.3, 0.5]],
+    ))
+    np.testing.assert_allclose(nc.reference_edges(cl, "A"), nc.slice_edges(0.2, 0.5, 0.05))
+    np.testing.assert_allclose(nc.reference_edges(cl, "B"), nc.slice_edges(0.3, 0.7, 0.05))
+    rng = np.random.default_rng(7)
+    shared = rng.normal(0, 0.01, (80, 10))
+    for tracer, norm, slope in (("A", 1.2, 0.5), ("B", 2.0, 2.5)):
+        edges = nc.reference_edges(cl, tracer)
+        z = (edges[:-1] + edges[1:]) / 2
+        index = np.rint((z - 0.225) / 0.05).astype(int)
+        br = norm * (1 + z) ** slope
+        nb = 2 * gaussian(z, 0.45) * (1 + z) ** 1.3
+        xi = np.zeros((len(z), 2, len(nc.R_EDGES) - 1))
+        xi[:, 0] = (br**2 * 0.001 / 0.05)[:, None]
+        xi[:, 1] = (nb * br * 0.001)[:, None]
+        jk = np.broadcast_to(xi, (80, *xi.shape)).copy()
+        fluctuation = shared[:, index] + rng.normal(0, 0.002, (80, len(z)))
+        jk[:, :, 1] += (fluctuation * br * 0.001)[..., None]
+        np.savez(data / f"xcorr_{tracer}.npz", z_edges=edges,
+                 samples=["auto", "bin1"], xi=xi, jackknife=jk)
+    comparison = dict(bins=[dict(fits={"calibration": dict(amplitude=2, alpha=1.3)})])
+    out = nc.tracer_overlaps(dict(clustering=cl), None, comparison)[0]
+    result = out["bins"]["bin1"]
+    z = (np.array(out["z_lo"]) + out["z_hi"]) / 2
+    for tracer in ("A", "B"):
+        np.testing.assert_allclose(result["n"][tracer], gaussian(z, 0.45), rtol=1e-12)
+    assert result["consistent_95"]
+    assert result["dof"] == 4
+    assert result["pte"] == pytest.approx(1)
+    # Paired patches remove the common source fluctuation from the difference.
+    assert np.diag(result["difference_covariance"]).max() < 0.002
+    original = dict(np.load(data / "xcorr_B.npz"))
+    original["xi"][:, 1] *= 1.2
+    np.savez(data / "xcorr_B.npz", **original)
+    bad = nc.tracer_overlaps(dict(clustering=cl), None, comparison)[0]["bins"]["bin1"]
+    assert not bad["consistent_95"]
+    assert bad["pte"] < 0.05
+
+
 def test_precision_requires_enough_patches():
     with pytest.raises(ValueError, match="patches"):
         nc.jackknife_precision(np.ones((6, 4)))
