@@ -49,11 +49,14 @@ decisions:
       No tile is removed on its external_paired_fraction; the audit reports
       the fraction and ShapePipe's warnings without rejecting objects.
       [HARDCODED] MIN_EXTERNAL_PAIRED_FRACTION is a module constant with no
-      config key. In 439 measured published tiles under mask_v2.0.yaml
-      (2,321,814 selected galaxies), all 15 sampled tiles below 0.98 pairing,
-      including one empty tile, yield zero selected galaxies, so a 0.98 cut
-      would remove nothing. That depends on the N_EPOCH >= 2 cut: of those
-      tiles only 207.238 retains objects past it (three
+      config key. On 22,683 of the 22,901 run-1 tiles of the v2.0.0 release,
+      measured against its mask_v2.0.yaml selection (191,016,178 galaxies),
+      all 18 tiles below 0.98 pairing, including one empty tile, yield zero
+      selected galaxies, so a 0.98 cut would remove nothing; the lowest-pairing
+      tile that selects galaxies is at 0.981. The other 218 tiles (0.72% of
+      the selected galaxies) have no external count on Fir and are
+      unmeasured. The zero yield depends on the N_EPOCH >= 2 cut: of the
+      tiles below 0.98 only 207.238 retains objects past it (three
       detections, lost at the fit cut), and a one-epoch selection would admit
       a different population needing a new assessment. Stricter thresholds
       remove galaxies with no measured improvement, and with no selected
@@ -72,14 +75,18 @@ decisions:
       cut_below_0_98:
         label: "Reject tiles below 0.98"
         description: >-
-          Removes the 15 audited tiles below 0.98, which contribute zero
+          Removes the 18 measured tiles below 0.98, which contribute zero
           selected galaxies under N_EPOCH >= 2: no change to the sample.
       cut_below_0_99:
         label: "Reject tiles below 0.99"
-        description: "Removes 11,002 selected galaxies (0.474% of the measured sample)."
+        description: >-
+          Removes 198 tiles and 675,307 selected galaxies (0.354% of the
+          sample, 0.367% of its shear weight).
       cut_below_0_995:
         label: "Reject tiles below 0.995"
-        description: "Removes 424,394 selected galaxies (18.28% of the measured sample)."
+        description: >-
+          Removes 3,072 tiles and 20,855,054 selected galaxies (10.92% of the
+          sample, 11.16% of its shear weight).
       reject_warning_tiles:
         label: "Reject tiles with a ShapePipe match warning"
         description: >-

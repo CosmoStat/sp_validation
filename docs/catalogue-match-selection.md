@@ -7,10 +7,16 @@ Missing metadata remains distinct from a measured empty external catalogue.
 
 ## Evidence and limits
 
-The publication census contains 22,901 tile manifests; 27 carry `catalogue_match`.
-Join counts recovered from existing logs extend the measurement to 439 distinct published tiles.
-The comparison uses `config/calibration/mask_v2.0.yaml`, including its overlap, mask, epoch, fit, S/N and size selection.
-The sampled catalogues yield 2,321,814 selected galaxies.
+The census covers the v2.0.0 release: 22,901 run-1 tiles and its selected sample of 191,016,178 galaxies under `config/calibration/mask_v2.0.yaml` (overlap, `(FLAGS & ~16) <= 2`, the four standard masks, `N_EPOCH >= 2`, valid fits, 10 < S/N < 500, 0.707 < T/T_PSF < 9).
+ShapePipe's published catalogue keeps exactly the paired objects, so the external paired fraction is its row count over the DR6 external (PhotoPipe) catalogue's row count.
+The release provenance (`match_by_tile.parquet`, `photopipe_sources.parquet`) gives both on 22,678 tiles, and on the 434 tiles also measured from published manifests or logs both counts agree exactly.
+Join counts recovered from logs add four tiles absent from the PhotoPipe extract, and empty tile 177.257 has a measured empty external catalogue: 22,683 tiles in all.
+The remaining 218 tiles, with 1,373,435 selected galaxies (0.72%), have no external count on Fir.
+Of the 22,901 manifests, 27 carry `catalogue_match`.
+
+All 18 measured tiles below 0.98 pairing yield zero selected galaxies; the lowest-pairing tile with selected galaxies is 611.236 at 0.9811.
+Only 207.238 keeps objects past `N_EPOCH >= 2` (three, lost at the fit cut); 592.237 (0.839, 52 objects) is emptied by the overlap cut and the rest by the epoch cut.
+A 0.99 cut would remove 198 tiles and 675,307 selected galaxies (0.354% of the sample, 0.367% of its shear weight); a 0.995 cut, 3,072 tiles and 10.92%.
 
 The two published warning tiles, 058.220 and 207.238, are sparse coverage edges.
 Their positive-weight image areas are approximately 0.00955 and 0.04191 deg².
@@ -25,12 +31,13 @@ The #975 guard adds a 50-object allowance for nonempty joins, so some tiles belo
 Published batches did run #975: Fir batch `fir-b0093` was rerun on `aad8cbce`, and the Nibi chair records #975 resumes for the earlier eight diagnostic rejections.
 The retained Nibi batch logs identify 11 rejected tiles; the Fir chair's exhaustive scan of 285 live and superseded trees identifies three nonempty rejections and one empty-tile crash.
 The union is 14 pairing rejections plus empty tile 177.257.
-All 15 have a published catalogue and tile manifest in the complete `latest` inventory; each yields zero selected galaxies.
+All 15 have a published catalogue and tile manifest in the complete `latest` inventory; each is among the 18 tiles below 0.98 and yields zero selected galaxies.
 The Nibi log scan adds 038.229 and 039.221 to the chair's notes, and the Fir scan adds 134.283 and 131.285 to the initial diagnostic sample.
 There are no observed guard-rejected tiles still unpublished or omitted from this comparison.
+The other three tiles below 0.98 (592.237, 210.238, 228.238) have no logged rejection.
 
-The count-available sample is not random, although the complete observed guard-rejection population is included.
-Mean uncalibrated ellipticities and per-exposure stellar PSF residuals are diagnostics, not a shear-calibration bound.
+The warning-tile spatial checks and per-exposure stellar PSF residuals come from a 439-tile sample measured under the earlier selection (`FLAGS <= 2`, T/T_PSF < 3); those two tiles yield zero galaxies under both.
+Per-tile mean calibrated ellipticities and PSF residuals are diagnostics, not a shear-calibration bound.
 Nominal rejected tile area is 0.25 deg² per tile; this is not masked survey area.
 
 ## Audit
