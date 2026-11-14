@@ -72,9 +72,10 @@ HDF5 splits one catalogue over its ``data`` and ``data_ext`` datasets.
 
 from dataclasses import dataclass
 
-import h5py
 import numpy as np
 from cs_util.size import sigma_to_T
+
+from sp_validation import tables
 
 #: Metacal shear types carried by the ngmix columns.
 SHEARS = ("NOSHEAR", "1P", "1M", "2P", "2M")
@@ -200,7 +201,8 @@ V2_MARKERS = frozenset(rule.v2 for rule in V1_RULES)
 
 
 def column_names(table):
-    """Return the column names of a structured array, FITS_rec or h5py Dataset."""
+    """Return the column names of a table, structured array, FITS_rec or h5py
+    Dataset."""
     names = getattr(getattr(table, "dtype", None), "names", None)
     if names is None:
         raise TypeError(f"cannot list the columns of a {type(table).__name__}")
@@ -314,97 +316,29 @@ def v2_names(names, column_map=None):
     return _resolve(tuple(names), column_map)[0]
 
 
-#: Bytes of whole HDF5 rows read per block when selecting rows of a dataset.
-BLOCK_BYTES = 256 * 1024**2
-
-
-def _read_window(table, name, start, stop):
-    """Read rows ``start:stop`` of column ``name``, and only those."""
-    if isinstance(table, h5py.Dataset):
-        return table.fields(name)[start:stop]
-    return table[name][start:stop]
-
-
-def _take(table, rows, fields=None):
-    """Return rows ``rows`` of ``table`` as an in-memory structured array.
-
-    ``rows`` is ``None`` (all rows), a ``range`` or an integer index array;
-    ``fields`` restricts the output to those columns. An h5py Dataset is read
-    in one pass: whole rows in blocks of ``BLOCK_BYTES`` over the span of the
-    selection, skipping blocks that hold no selected row, so each byte of the
-    file is read at most once however many columns are wanted.
-    """
-    if not isinstance(table, h5py.Dataset):
-        out = table if rows is None else table[_row_key(rows)]
-        if fields is None:
-            return np.asarray(out)
-        taken = np.empty(len(out), dtype=[(f, out.dtype[f]) for f in fields])
-        for f in fields:
-            taken[f] = out[f]
-        return taken
-
-    if fields is None:
-        source, dtype = table, table.dtype
-    else:
-        fields = list(fields)
-        source = table.fields(fields)
-        dtype = np.dtype([(f, table.dtype[f]) for f in fields])
-    if rows is None:
-        rows = range(len(table))
-    if isinstance(rows, range) and rows.step == 1:
-        return source[rows.start : rows.stop]
-
-    rows = np.asarray(rows, dtype=np.intp)
-    out = np.empty(len(rows), dtype=dtype)
-    if len(rows) == 0:
-        return out
-    order = None
-    if np.any(rows[1:] < rows[:-1]):
-        order = np.argsort(rows, kind="stable")
-        rows = rows[order]
-    block = max(1, BLOCK_BYTES // table.dtype.itemsize)
-    done = 0
-    start, stop = int(rows[0]), int(rows[-1]) + 1
-    while done < len(rows):
-        start = max(start, int(rows[done]))
-        end = min(start + block, stop)
-        upto = int(np.searchsorted(rows, end, side="left"))
-        chunk = source[start:end][rows[done:upto] - start]
-        if order is None:
-            out[done:upto] = chunk
-        else:
-            out[order[done:upto]] = chunk
-        done, start = upto, end
-    return out
-
-
-def _row_key(rows):
-    """Return ``rows`` (a ``range`` or index array) as a numpy row index."""
-    if isinstance(rows, range):
-        return slice(rows.start, rows.stop if rows.stop >= 0 else None, rows.step)
-    return rows
-
-
 class V2View:
     """Lazy v2-grammar view of one table, or of row-aligned tables joined.
 
-    Wraps numpy structured arrays, FITS_recs or h5py Datasets without reading
-    them. ``view[name]`` returns one column as an array (computed on access for
-    derived columns); a list of names returns a structured array of those
-    columns; ``view[()]``, ``view[...]`` and any other row key (slice, boolean
-    mask, index array) select rows and return a view over them.
+    The tables are anything ``sp_validation.tables`` describes (numpy
+    structured arrays, FITS_recs and h5py Datasets are wrapped on the way
+    in), read only when indexed. ``view[name]`` returns one column as an
+    array (computed on access for derived columns); a list of names returns a
+    structured array of those columns; ``view[()]``, ``view[...]`` and any
+    other row key (slice, boolean mask, index array) select rows and return a
+    view over them.
 
-    Selecting rows of a view over h5py Datasets reads the selected rows of
-    every column into memory in one pass per dataset, as indexing the Dataset
-    itself would, and wraps them in a view over the in-memory arrays: reading
-    many columns of a selection one at a time would otherwise re-read the whole
-    span of rows for each. Over in-memory tables, selection stays lazy.
+    Selecting rows of a view over a ``row_major`` table (an HDF5 dataset)
+    reads the selected rows of every column in one pass, and returns a view
+    over them in memory: reading many columns of a selection one at a time
+    would otherwise re-read the whole span of rows for each. Over any other
+    table, selection stays lazy.
 
-    Column names are case-sensitive, unlike a FITS_rec's.
+    A view is itself a table, so a view can be presented again under a
+    ``column_map``. Column names are case-sensitive, unlike a FITS_rec's.
     """
 
     def __init__(self, bases, rows=None, dtype=None, column_map=None):
-        self._bases = tuple(bases)
+        self._bases = tuple(tables.as_table(base) for base in bases)
         n_rows = {len(base) for base in self._bases}
         if len(n_rows) != 1:
             raise ValueError(f"cannot join tables of lengths {sorted(n_rows)}")
@@ -419,8 +353,9 @@ class V2View:
         self._rows = rows
         self._column_map = column_map
         self._names, self._derived = _resolve(tuple(self._owner), column_map)
-        self._on_disk = any(isinstance(base, h5py.Dataset) for base in self._bases)
         self._dtype = dtype
+        self.row_major = any(base.row_major for base in self._bases)
+        self.concurrent = all(base.concurrent for base in self._bases)
 
     @property
     def names(self):
@@ -432,12 +367,20 @@ class V2View:
         return self._names
 
     @property
+    def renames(self):
+        """Whether any presented column differs from the stored one of its name."""
+        return bool(self._derived)
+
+    @property
     def dtype(self):
         """Numpy dtype of the presented columns (found without reading rows)."""
         if self._dtype is None:
-            self._dtype = np.dtype(
-                [(name, self._field_dtype(name)) for name in self._names]
-            )
+            if not self._derived and len(self._bases) == 1:
+                self._dtype = self._bases[0].dtype
+            else:
+                self._dtype = np.dtype(
+                    [(name, self._field_dtype(name)) for name in self._names]
+                )
         return self._dtype
 
     @property
@@ -455,7 +398,7 @@ class V2View:
 
     def __getitem__(self, key):
         if isinstance(key, str):
-            return self._column(key)
+            return self.read([key])[key]
         if isinstance(key, list) and key and all(isinstance(k, str) for k in key):
             return self.to_structured(key)
         if isinstance(key, (int, np.integer)):
@@ -464,9 +407,12 @@ class V2View:
             key = slice(None)
         elif isinstance(key, tuple):
             raise IndexError(f"cannot select rows with the tuple {key!r}")
-        rows = self._select(key)
-        if self._on_disk:
-            bases = [_take(base, rows) for base in self._bases]
+        rows = self._base_rows(self._local_rows(key))
+        if self.row_major:
+            bases = [
+                tables.ArrayTable(tables.read_structured(base, rows=rows))
+                for base in self._bases
+            ]
             return V2View(bases, dtype=self._dtype, column_map=self._column_map)
         return V2View(
             self._bases, rows=rows, dtype=self._dtype, column_map=self._column_map
@@ -479,55 +425,68 @@ class V2View:
     def to_structured(self, names=None):
         """Materialise the presented columns as a numpy structured array.
 
-        Over h5py Datasets, each dataset is read once, for all the columns
-        requested of it.
+        Each table is read once, for all the columns requested of it.
         """
         names = self._names if names is None else list(names)
+        return tables.read_structured(self, names)
+
+    def read(self, names, rows=None, out=None):
+        """Return {name: column} for presented ``names`` at ``rows`` of this
+        view (the table interface; see ``sp_validation.tables``).
+
+        Each table is read once, for all the columns requested of it; a
+        column presented under a new name only is read straight into ``out``.
+        """
+        names = list(names)
         missing = [name for name in names if name not in self._names]
         if missing:
             raise KeyError(f"columns {missing} not in catalogue")
-        sources = {
-            name: self._derived[name] if name in self._derived else (None, name)
-            for name in names
-        }
-        if self._on_disk:
-            fields = {}
-            for _, source in sources.values():
-                fields.setdefault(id(self._owner[source]), {})[source] = None
-            taken = {}
-            for base in self._bases:
-                if id(base) in fields:
-                    table = _take(base, self._rows, list(fields[id(base)]))
-                    taken.update((f, table[f]) for f in table.dtype.names)
-            read = taken.__getitem__
-        else:
-            read = self._read
-        out = np.empty(len(self), dtype=[(n, self.dtype[n]) for n in names])
+        rows = self._rows if rows is None else self._base_rows(rows)
+        out = out or {}
+        sources = {name: self._derived.get(name, (None, name)) for name in names}
+        wanted = {}
         for name, (rule, source) in sources.items():
-            column = read(source)
-            out[name] = column if rule is None else rule.apply(column)
-        return out
+            targets = wanted.setdefault(id(self._owner[source]), {})
+            if name in out and (rule is None or rule.kind == "rename"):
+                targets.setdefault(source, out[name])
+            else:
+                targets.setdefault(source, None)
+        values = {}
+        for base in self._bases:
+            if id(base) in wanted:
+                targets = wanted[id(base)]
+                into = {s: t for s, t in targets.items() if t is not None}
+                values.update(base.read(list(targets), rows, out=into))
+        columns = {}
+        for name, (rule, source) in sources.items():
+            column = values[source] if rule is None else rule.apply(values[source])
+            if name in out and column is not out[name]:
+                out[name][...] = column
+                column = out[name]
+            columns[name] = column
+        return columns
 
-    def _select(self, key):
-        """Base rows of ``key`` applied to this view's rows."""
+    def _local_rows(self, key):
+        """Rows of this view that row key ``key`` selects."""
         n = len(self)
         if isinstance(key, slice):
-            local = range(n)[key]
-        else:
-            key = np.asarray(key)
-            if key.dtype == bool:
-                if key.shape != (n,):
-                    raise IndexError(f"boolean mask of shape {key.shape} for {n} rows")
-                local = np.flatnonzero(key)
-            elif key.size == 0:
-                local = np.empty(0, dtype=np.intp)
-            elif key.dtype.kind in "iu" and key.ndim == 1:
-                local = np.where(key < 0, key + n, key).astype(np.intp)
-                if local.min() < 0 or local.max() >= n:
-                    raise IndexError(f"row index out of range for {n} rows")
-            else:
-                raise IndexError(f"cannot select rows with {key!r}")
+            return range(n)[key]
+        key = np.asarray(key)
+        if key.dtype == bool:
+            if key.shape != (n,):
+                raise IndexError(f"boolean mask of shape {key.shape} for {n} rows")
+            return np.flatnonzero(key)
+        if key.size == 0:
+            return np.empty(0, dtype=np.intp)
+        if key.dtype.kind in "iu" and key.ndim == 1:
+            local = np.where(key < 0, key + n, key).astype(np.intp)
+            if local.min() < 0 or local.max() >= n:
+                raise IndexError(f"row index out of range for {n} rows")
+            return local
+        raise IndexError(f"cannot select rows with {key!r}")
 
+    def _base_rows(self, local):
+        """Rows of the tables that this view's rows ``local`` are."""
         rows = self._rows
         if rows is None:
             return local
@@ -538,61 +497,35 @@ class V2View:
                     rows.start + local.stop * rows.step,
                     rows.step * local.step,
                 )
-            return rows.start + local * rows.step
+            return rows.start + np.asarray(local, dtype=np.intp) * rows.step
         if isinstance(local, range):
             local = np.arange(local.start, local.stop, local.step, dtype=np.intp)
         return rows[local]
 
-    def _read(self, name):
-        base = self._owner[name]
-        rows = self._rows
-        if rows is None:
-            return base[name]
-        if len(rows) == 0:
-            return _read_window(base, name, 0, 0)
-        if isinstance(rows, range):
-            lo, hi = min(rows[0], rows[-1]), max(rows[0], rows[-1]) + 1
-            window = _read_window(base, name, lo, hi)
-            return window[rows.start - lo :: rows.step][: len(rows)]
-        lo, hi = int(rows.min()), int(rows.max()) + 1
-        return _read_window(base, name, lo, hi)[rows - lo]
-
-    def _column(self, name):
-        if name not in self._names:
-            raise KeyError(f"column {name!r} not in catalogue")
-        if name not in self._derived:
-            return self._read(name)
-        rule, source = self._derived[name]
-        return rule.apply(self._read(source))
-
     def _field_dtype(self, name):
-        """Dtype (with any subarray shape) ``_column(name)`` returns."""
-        if name in self._derived:
-            rule, source = self._derived[name]
-            column = rule.apply(_read_window(self._owner[source], source, 0, 0))
-        else:
-            column = _read_window(self._owner[name], name, 0, 0)
+        """Dtype (with any subarray shape) a read of column ``name`` returns."""
+        rule, source = self._derived.get(name, (None, name))
+        dtype = self._owner[source].dtype[source]
+        if rule is None:
+            return dtype
+        column = rule.apply(np.empty(0, dtype=dtype))
         return np.dtype((column.dtype, column.shape[1:]))
 
 
-def adapt(table, *tables, column_map=None):
-    """Present ``table`` (joined with any further ``tables``) in the v2 grammar.
+def adapt(table, *tables_, column_map=None):
+    """Present ``table`` (joined with any further tables) in the v2 grammar.
 
-    A single table with nothing to rename is returned unchanged, as is a
-    ``V2View`` given no ``column_map``; otherwise the result is a ``V2View``.
-    Each table is anything whose ``dtype.names`` lists its columns and whose
-    ``table[name]`` reads one: a numpy structured array, FITS_rec, h5py
-    Dataset or ``V2View``. Joined tables must have equal lengths and disjoint
-    column names. ``column_map`` (``{v2 name: name in the table}``, see the
-    module docstring) renames a foreign convention's columns; over a
-    ``V2View`` it renames the columns that view presents.
+    Returns a ``V2View``; a ``V2View`` given alone and no ``column_map`` is
+    returned unchanged. Each table is a table (``sp_validation.tables``), a
+    numpy structured array, FITS_rec or h5py Dataset. Joined tables must have
+    equal lengths and disjoint column names. ``column_map`` (``{v2 name:
+    name in the table}``, see the module docstring) renames a foreign
+    convention's columns; over a ``V2View`` it renames the columns that view
+    presents.
     """
-    if not tables and (
-        (isinstance(table, V2View) and column_map is None)
-        or not _resolve(column_names(table), column_map)[1]
-    ):
+    if not tables_ and isinstance(table, V2View) and column_map is None:
         return table
-    return V2View((table,) + tables, column_map=column_map)
+    return V2View((table,) + tables_, column_map=column_map)
 
 
 def materialise(table, names=None):
@@ -600,13 +533,4 @@ def materialise(table, names=None):
 
     ``names`` restricts the output to those v2-grammar columns.
     """
-    view = adapt(table)
-    if isinstance(view, V2View):
-        return view.to_structured(names)
-    view = view[()] if isinstance(view, h5py.Dataset) else view
-    if names is None:
-        return view
-    out = np.empty(len(view), dtype=[(name, view.dtype[name]) for name in names])
-    for name in names:
-        out[name] = view[name]
-    return out
+    return adapt(table).to_structured(names)

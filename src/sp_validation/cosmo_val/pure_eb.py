@@ -17,6 +17,7 @@ from ..b_modes import (
     plot_pure_eb_correlations,
     save_pure_eb_results,
 )
+from .derived_covariance import xi_covariance
 
 
 class PureEBMixin:
@@ -59,9 +60,8 @@ class PureEBMixin:
             instead of the non-tomographic pair. Defaults to False.
         cov_path_int : str, optional
             Analytic ξ± covariance on the integration grid. Without it the
-            covariance is the jackknife the integration-grid part carries. One
-            file holds one pair's covariance, so it cannot be combined with
-            ``compute_tomography``.
+            covariance is the jackknife the integration-grid part carries. The
+            OneCovariance file includes all pairs for tomography.
 
         Returns
         -------
@@ -74,12 +74,6 @@ class PureEBMixin:
             integration-grid ξ±.
         """
         self.print_start(f"Computing {version} pure E/B")
-
-        if cov_path_int is not None and compute_tomography:
-            raise ValueError(
-                "cov_path_int holds a single ξ± covariance; it cannot serve every "
-                "tomographic bin pair."
-            )
 
         integration = self._binning(min_sep_int, max_sep_int, nbins_int)
         integration_edges = np.geomspace(
@@ -99,12 +93,13 @@ class PureEBMixin:
             nbins=integration["nbins"],
         )
 
+        parts = self.xi_tomo_parts if compute_tomography else self.xi_parts
+        covariance, cov_npatch = xi_covariance(
+            parts[version, "integration"], cov_path_int
+        )
         results = {}
         for bin_key, gg_int in ggs_int.items():
-            if cov_path_int is not None:
-                cov_xi, cov_npatch = np.loadtxt(cov_path_int), None
-            else:
-                cov_xi, cov_npatch = gg_int.cov, gg_int.npatch1
+            cov_xi = covariance[np.ix_(gg_int._rows, gg_int._rows)]
             results[bin_key] = calculate_pure_eb_correlation(
                 gg_int.meanr,
                 gg_int.xip,
@@ -290,6 +285,10 @@ class PureEBMixin:
                 save_pure_eb_results(
                     version_results,
                     out_stub + "_data.npz",
-                    derived_from=[self.xi_parts[version, "integration"]],
+                    derived_from=[
+                        (self.xi_tomo_parts if compute_tomography else self.xi_parts)[
+                            version, "integration"
+                        ]
+                    ],
                 )
                 self._pure_eb_results[version][bin_key] = version_results

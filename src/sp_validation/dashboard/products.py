@@ -20,6 +20,7 @@ import numpy as np
 
 from sp_validation import sacc_io
 from sp_validation.b_modes import load_cosebis_results, load_pure_eb_results
+from sp_validation.data_roots import load_yaml
 
 
 def _one(pattern):
@@ -140,11 +141,10 @@ def declared_blind(cat_config, version):
     stamp, so a stale product of a catalogue that has since been put under a
     blind is refused by the loaders rather than drawn.
     """
-    import yaml
 
     from sp_validation import blinding
 
-    catalogues = yaml.safe_load(Path(cat_config).read_text())
+    catalogues = load_yaml(cat_config)
     return blinding.blind_of(catalogues, catalogue_name(catalogues, version))
 
 
@@ -282,6 +282,14 @@ def load_rho_tau(sacc_path, tau_cov_path, psf_fit_path, blind):
         theta, p, m = sacc_io.get_rho(s, k)
         idx = s.indices(sacc_io.RHO_PLUS.format(k=k))
         rho[k] = {"p": p, "m": m, "sigma_p": np.sqrt(np.abs(np.diag(cov)[idx]))}
+    result = load_tau(sacc_path, tau_cov_path, blind)
+    result.update(theta=theta, rho=rho, fit=dict(np.load(psf_fit_path)))
+    return result
+
+
+def load_tau(sacc_path, tau_cov_path, blind):
+    """τ-only SACC part and theory covariance; no cosmology or fit required."""
+    s = sacc_io.load(sacc_path, blind=blind)
     tau = {}
     for k in (0, 2, 5):
         theta_tau, p, m = sacc_io.get_tau(s, (0,), k)
@@ -291,15 +299,15 @@ def load_rho_tau(sacc_path, tau_cov_path, psf_fit_path, blind):
     for i, k in enumerate((0, 2, 5)):
         var = np.diag(tau_cov)[i * n : (i + 1) * n]
         tau[k]["var_p"] = var
-    fit = dict(np.load(psf_fit_path))
-    return {
-        "theta": theta,
-        "theta_tau": theta_tau,
-        "rho": rho,
-        "tau": tau,
-        "tau_cov": tau_cov,
-        "fit": fit,
-    }
+    return {"theta_tau": theta_tau, "tau": tau, "tau_cov": tau_cov}
+
+
+def load_corrected_tau(run_dir, version, cat_config):
+    """Resolve a τ-only run explicitly, avoiding a corrected full-DAG run."""
+    stats = Path(run_dir) / "cosmo_val" / "rho_tau_stats"
+    part = _one(stats / f"rho_tau_{version}_tomo_bin_all_*.sacc")
+    cov = _one(stats / f"cov_tau_{version}_tomo_bin_all_*_th.npy")
+    return load_tau(part, cov, declared_blind(cat_config, version))
 
 
 def load_json(path):

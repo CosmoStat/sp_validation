@@ -77,7 +77,7 @@ def cv_pure_eb_figures(version):
     }
 
 
-def _grid_cov(version, grid, gaussian):
+def _grid_cov(version, grid, gaussian, tomo_suffix=""):
     """OneCovariance ξ± covariance on a named grid's own binning."""
     binning = XI_GRIDS[grid]
     return covariance_path(
@@ -87,17 +87,17 @@ def _grid_cov(version, grid, gaussian):
         max_sep=binning["max_sep"],
         nbins=binning["nbins"],
         mask_suffix=DEFAULT_MASK_SUFFIX,
+        tomo_suffix=tomo_suffix,
     )
 
 
-def cv_xi_cov_integration(version):
+def cv_xi_cov_integration(version, tomo_suffix=""):
     """OneCovariance Gaussian ξ± covariance on the integration grid.
 
-    The one analytic covariance both B-mode statistics take: the pure-E/B Monte
-    Carlo draws from it and COSEBIs carry it through their kernel. Gaussian
-    because B-modes only need the scatter a Gaussian field would give.
+    Both B-mode statistics propagate this Gaussian covariance through their
+    linear operators.
     """
-    return _grid_cov(version, "integration", "g")
+    return _grid_cov(version, "integration", "g", tomo_suffix)
 
 
 def _cosebis_stub(version):
@@ -137,46 +137,46 @@ def cv_cosebis_figures(version):
 _PSEUDO_CL_TAG = pseudo_cl_tag(config)
 
 
-def cv_pseudo_cl_analysis_sacc(version):
+def cv_pseudo_cl_analysis_sacc(version, tomo_suffix=""):
     """Tagged pseudo-Cl SACC part: the harmonic block of the analysis file."""
-    return str(COSMO_VAL / f"pseudo_cl_{version}_{_PSEUDO_CL_TAG}.sacc")
+    return str(COSMO_VAL / f"pseudo_cl_{version}_{_PSEUDO_CL_TAG}{tomo_suffix}.sacc")
 
 
-def cv_pseudo_cl_cov(version):
+def cv_pseudo_cl_cov(version, tomo_suffix=""):
     """NaMaster pseudo-Cl covariance FITS (COVAR_EE_EE/BB_BB/EB_EB extensions)."""
-    return str(COSMO_VAL / f"pseudo_cl_cov_{version}_{_PSEUDO_CL_TAG}.fits")
+    return str(COSMO_VAL / f"pseudo_cl_cov_{version}_{_PSEUDO_CL_TAG}{tomo_suffix}.fits")
 
 
-def cv_xi_cov(version):
+def cv_xi_cov(version, tomo_suffix=""):
     """OneCovariance ξ± covariance on the reporting grid, the terminal file's."""
-    return _grid_cov(version, "reporting", "ng")
+    return _grid_cov(version, "reporting", "ng", tomo_suffix)
 
 
-def cv_cosebis_sacc(version):
+def cv_cosebis_sacc(version, tomo_suffix=""):
     """COSEBIs SACC part, at the fiducial scale cut."""
-    return str(COSMO_VAL / f"{version}_cosebis.sacc")
+    return str(COSMO_VAL / f"{version}_cosebis{tomo_suffix}.sacc")
 
 
-def cv_pure_eb_sacc(version):
+def cv_pure_eb_sacc(version, tomo_suffix=""):
     """Pure-E/B SACC part."""
-    return str(COSMO_VAL / f"{version}_pure_eb.sacc")
+    return str(COSMO_VAL / f"{version}_pure_eb{tomo_suffix}.sacc")
 
 
-def cv_rho_tau_sacc(version):
+def cv_rho_tau_sacc(version, tomo_suffix=""):
     """ρ/τ SACC part."""
     return str(
-        COSMO_VAL / "rho_tau_stats" / f"rho_tau_{cv_basename(version, CV_FIDUCIAL)}.sacc"
+        COSMO_VAL / "rho_tau_stats" / f"rho_tau_{cv_basename(version, CV_FIDUCIAL)}{tomo_suffix}.sacc"
     )
 
 
-def cv_xi_sacc(version, grid):
+def cv_xi_sacc(version, grid, tomo_suffix=""):
     """ξ± SACC part for a version on a named grid, named by that grid's binning."""
-    return str(COSMO_VAL / f"{version}_xi_{xi_binning(grid)}.sacc")
+    return str(COSMO_VAL / f"{version}_xi_{xi_binning(grid)}{tomo_suffix}.sacc")
 
 
-def cv_analysis_sacc(version):
+def cv_analysis_sacc(version, tomo_suffix=""):
     """Terminal assembled analysis file {version}.sacc."""
-    return str(COSMO_VAL / f"{version}.sacc")
+    return str(COSMO_VAL / f"{version}{tomo_suffix}.sacc")
 
 
 # The CosmologyValidation constructor kwargs every cv_runner rule passes.
@@ -483,11 +483,11 @@ rule cv_pure_eb:
     the integration-grid ξ± covariance pushed exactly through it.
     """
     input:
-        xi_integration=lambda w: cv_xi_sacc(w.version, "integration"),
-        cov_integration=lambda w: cv_xi_cov_integration(w.version),
+        xi_integration=lambda w: cv_xi_sacc(w.version, "integration", w.tomo_suffix),
+        cov_integration=lambda w: cv_xi_cov_integration(w.version, w.tomo_suffix),
     output:
-        npz=cv_pure_eb_npz("{version}"),
-        sacc=cv_pure_eb_sacc("{version}"),
+        npz=cv_pure_eb_npz("{version}").replace("_data.npz", "{tomo_suffix}_data.npz"),
+        sacc=cv_pure_eb_sacc("{version}", "{tomo_suffix}"),
     params:
         version="{version}",
         blind=lambda w: blind_of(w.version),
@@ -510,11 +510,11 @@ rule cv_cosebis:
     on the same grid through the same kernel as the modes.
     """
     input:
-        xi=lambda w: cv_xi_sacc(w.version, "integration"),
-        cov=lambda w: cv_xi_cov_integration(w.version),
+        xi=lambda w: cv_xi_sacc(w.version, "integration", w.tomo_suffix),
+        cov=lambda w: cv_xi_cov_integration(w.version, w.tomo_suffix),
     output:
-        npz=cv_cosebis_npz("{version}"),
-        sacc=cv_cosebis_sacc("{version}"),
+        npz=cv_cosebis_npz("{version}").replace("_data.npz", "{tomo_suffix}_data.npz"),
+        sacc=cv_cosebis_sacc("{version}", "{tomo_suffix}"),
     params:
         version="{version}",
         blind=lambda w: blind_of(w.version),
@@ -598,30 +598,30 @@ rule cv_summarize_bmodes:
 # the covariance inputs below.
 
 
-def cv_assemble_inputs(version):
+def cv_assemble_inputs(version, tomo_suffix=""):
     """The per-statistic SACC parts + covariance inputs assemble_sacc consumes.
 
     Each part's filename carries enough to bind its producing rule's wildcards.
     """
     parts = dict(
-        xi_reporting=cv_xi_sacc(version, "reporting"),
-        xi_cov=cv_xi_cov(version),
-        cosebis=cv_cosebis_sacc(version),
-        pure_eb=cv_pure_eb_sacc(version),
-        rho_tau=cv_rho_tau_sacc(version),
+        xi_reporting=cv_xi_sacc(version, "reporting", tomo_suffix),
+        xi_cov=cv_xi_cov(version, tomo_suffix),
+        cosebis=cv_cosebis_sacc(version, tomo_suffix),
+        pure_eb=cv_pure_eb_sacc(version, tomo_suffix),
+        rho_tau=cv_rho_tau_sacc(version, tomo_suffix),
     )
     if CV.get("include_pseudo_cl", False):
-        parts["pseudo_cl"] = cv_pseudo_cl_analysis_sacc(version)
-        parts["pseudo_cl_cov"] = cv_pseudo_cl_cov(version)
+        parts["pseudo_cl"] = cv_pseudo_cl_analysis_sacc(version, tomo_suffix)
+        parts["pseudo_cl_cov"] = cv_pseudo_cl_cov(version, tomo_suffix)
     return parts
 
 
 rule assemble_sacc:
     """Assemble the terminal {version}.sacc from the per-statistic SACC parts."""
     input:
-        unpack(lambda w: cv_assemble_inputs(w.version)),
+        unpack(lambda w: cv_assemble_inputs(w.version, w.tomo_suffix)),
     output:
-        sacc=cv_analysis_sacc("{version}"),
+        sacc=cv_analysis_sacc("{version}", "{tomo_suffix}"),
     params:
         version="{version}",
         blind=lambda w: blind_of(w.version),
@@ -629,7 +629,7 @@ rule assemble_sacc:
         # silently drop one.
         expected=lambda w: [
             k
-            for k in cv_assemble_inputs(w.version)
+            for k in cv_assemble_inputs(w.version, w.tomo_suffix)
             if k not in ("xi_cov", "pseudo_cl_cov")
         ],
     resources:

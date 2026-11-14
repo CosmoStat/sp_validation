@@ -21,7 +21,7 @@ The pinned primitives (the exact functions Track B2 moves):
 * ``get_n_gal_map``          -- weighted galaxy number-density map
 * ``get_pseudo_cls_map``     -- map-based pseudo-Cl (decoupled EE/EB/BE/BB)
 * ``get_pseudo_cls_catalog`` -- catalog-based pseudo-Cl (NmtFieldCatalog)
-* ``calculate_pseudo_cl_catalog`` -- the deterministic end-to-end catalog path
+* ``_measure_pseudo_cl_catalog`` -- the deterministic end-to-end catalog path
 * ``apply_random_rotation``  -- pinned by INVARIANT + seed reproducibility (see below)
 
 REPRODUCIBILITY / TOLERANCE (measured over 3 independent container processes)
@@ -32,7 +32,7 @@ REPRODUCIBILITY / TOLERANCE (measured over 3 independent container processes)
   float-noise floor of 0, yet a hair of margin so an exact-equality assertion
   doesn't make the suite brittle to a future NaMaster build.
 * ``get_pseudo_cls_catalog`` (the ``NmtFieldCatalog`` path) and the end-to-end
-  ``calculate_pseudo_cl_catalog`` are NOT bitwise-reproducible: their reduction
+  ``_measure_pseudo_cl_catalog`` are NOT bitwise-reproducible: their reduction
   order drifts at the ~2e-12 relative level (worst case measured 2.1e-12,
   absolute 2.7e-19). Pinned at ``rtol=1e-6 / atol=1e-12`` -- ~6 orders of
   magnitude above that float-noise floor (no flakiness margin consumed) yet
@@ -61,7 +61,6 @@ import yaml
 from sp_validation import sacc_io
 from sp_validation.cosmo_val import CosmologyValidation
 from sp_validation.cosmo_val.pseudo_cl import _apply_pixel_window_to_fiducial_cl
-from sp_validation.cosmo_val.sacc_writers import BIN as SACC_BIN
 from sp_validation.pseudo_cl import (
     apply_random_rotation,
     bandpower_window_from_workspace,
@@ -458,7 +457,7 @@ def test_get_n_gal_map(cv, cat_and_params):
 # get_pseudo_cls_map -- map-based pseudo-Cl (bitwise-stable)
 # ===========================================================================
 def _build_shear_map(cv, cat_gal, params):
-    """Replicate calculate_pseudo_cl_map's weighted shear-map construction."""
+    """Replicate _measure_pseudo_cl_map's weighted shear-map construction."""
     unique_pix, _idx, idx_rep = cv.get_pixels(params, NSIDE, cat_gal)
     n_gal = cv.get_n_gal_map(
         params, NSIDE, cat_gal, unique_pix=unique_pix, idx=_idx, idx_rep=idx_rep
@@ -785,34 +784,30 @@ def test_apply_random_rotation_reproducible_with_seed(cv, cat_and_params):
 
 
 # ===========================================================================
-# calculate_pseudo_cl_catalog -- deterministic end-to-end catalog path
+# _measure_pseudo_cl_catalog -- deterministic end-to-end catalog path
 # ===========================================================================
-def test_calculate_pseudo_cl_catalog_end_to_end(cv, tmp_path, monkeypatch):
+def test__measure_pseudo_cl_catalog_end_to_end(cv, tmp_path, monkeypatch):
     """Catalog SACC output retains the unwindowed workspace bandpower window."""
     ver = cv._test_version
     cv.cell_method = "catalog"
     cv._pseudo_cls = {ver: {"tomo_bin_all_tomo_bin_all": {}}}
     saved = {}
-    save_pseudo_cl = cv._save_pseudo_cl
+    measure = cv._measure_pseudo_cl_catalog
 
-    def capture_workspace(
-        ver, out_path, tomo_bin_pair, ell_eff, cl_all, wsp, nside=None
-    ):
-        saved["workspace"] = wsp
-        saved["nside"] = nside
-        return save_pseudo_cl(
-            ver, out_path, tomo_bin_pair, ell_eff, cl_all, wsp, nside=nside
-        )
+    def capture_workspace(*args):
+        result = measure(*args)
+        saved["workspace"], saved["nside"] = result[2:]
+        return result
 
-    monkeypatch.setattr(cv, "_save_pseudo_cl", capture_workspace)
+    monkeypatch.setattr(cv, "_measure_pseudo_cl_catalog", capture_workspace)
     out_path = cv._output_path(f"pseudo_cl_{ver}.sacc")
-    cv.calculate_pseudo_cl_catalog(ver, out_path, tomo_bin_a="all", tomo_bin_b="all")
+    cv.calculate_pseudo_cl(compute_tomography=False, out_path=out_path)
 
     assert os.path.exists(out_path)
     s = sacc_io.load(out_path)
-    ell, ee, bb, eb, window = sacc_io.get_pseudo_cl(s, SACC_BIN)
+    ell, ee, bb, eb, window = sacc_io.get_pseudo_cl(s, (0, 0))
     assert window is not None  # the shared BandpowerWindow rides the part
-    readback = cv._load_pseudo_cl(ver, out_path, ("all", "all"))
+    readback = cv._pseudo_cls[ver]["tomo_bin_all_tomo_bin_all"]["pseudo_cl"]
     npt.assert_array_equal(readback["BE"], eb)
     assert not np.shares_memory(readback["BE"], readback["EB"])
     assert saved["nside"] is None
@@ -889,30 +884,26 @@ def test_calculate_pseudo_cl_catalog_end_to_end(cv, tmp_path, monkeypatch):
     npt.assert_allclose(ee, cl_prim[0], rtol=RTOL_CAT, atol=ATOL_CAT)
 
 
-def test_calculate_pseudo_cl_map_sacc_pixel_window(cv, monkeypatch):
+def test__measure_pseudo_cl_map_sacc_pixel_window(cv, monkeypatch):
     """Map SACC output multiplies its workspace window by pw²(ℓ)."""
     ver = cv._test_version
     cv.cell_method = "map"
     cv.noise_bias_method = "analytic"
     cv._pseudo_cls = {ver: {"tomo_bin_all_tomo_bin_all": {}}}
     saved = {}
-    save_pseudo_cl = cv._save_pseudo_cl
+    measure = cv._measure_pseudo_cl_map
 
-    def capture_workspace(
-        ver, out_path, tomo_bin_pair, ell_eff, cl_all, wsp, nside=None
-    ):
-        saved["workspace"] = wsp
-        saved["nside"] = nside
-        return save_pseudo_cl(
-            ver, out_path, tomo_bin_pair, ell_eff, cl_all, wsp, nside=nside
-        )
+    def capture_workspace(*args):
+        result = measure(*args)
+        saved["workspace"], saved["nside"] = result[2:]
+        return result
 
-    monkeypatch.setattr(cv, "_save_pseudo_cl", capture_workspace)
+    monkeypatch.setattr(cv, "_measure_pseudo_cl_map", capture_workspace)
     out_path = cv._output_path(f"pseudo_cl_map_{ver}.sacc")
-    cv.calculate_pseudo_cl_map(ver, NSIDE, out_path, "all", "all")
+    cv.calculate_pseudo_cl(compute_tomography=False, out_path=out_path)
 
     s = sacc_io.load(out_path)
-    _ell, _ee, _bb, _eb, window = sacc_io.get_pseudo_cl(s, SACC_BIN)
+    _ell, _ee, _bb, _eb, window = sacc_io.get_pseudo_cl(s, (0, 0))
     assert saved["nside"] == NSIDE
     window_ells, unwindowed_weights = bandpower_window_from_workspace(
         saved["workspace"]
@@ -947,11 +938,18 @@ def test_fiducial_pixel_window_applies_only_to_map():
         npt.assert_array_equal(fiducial[key], cl)
 
 
-def test_calculate_pseudo_cl_catalog_end_to_end_tomo(cv, tmp_path):
-    """End-to-end catalog path: FITS round-trip of ell + EE/EB/BB.
+def test_calculate_pseudo_cl_tomography_requires_one_nz_per_bin(cv):
+    """Missing n(z) columns are rejected before measuring any pair."""
+    cv.cell_method = "catalog"
+    with pytest.raises(ValueError, match=r"n\(z\).*[2] tomographic"):
+        cv.calculate_pseudo_cl(compute_tomography=True)
+
+
+def test__measure_pseudo_cl_catalog_end_to_end_tomo(cv, tmp_path):
+    """End-to-end catalog path: SACC round-trip of ell + EE/EB/BB.
 
     The catalog method has no random noise debiasing, so it is reproducible to
-    the same ~2e-12 catalog-path float noise. save_pseudo_cl stores ELL/EE/EB/BB
+    the same ~2e-12 catalog-path float noise. The part stores ELL/EE/EB/BB
     (it drops the BE row); we pin the round-tripped table.
     """
     ver = cv._test_version
@@ -962,26 +960,23 @@ def test_calculate_pseudo_cl_catalog_end_to_end_tomo(cv, tmp_path):
             "tomo_bin_2_tomo_bin_2": {},
         }
     }
-    out_path = cv._output_path(f"pseudo_cl_cat_{ver}.fits")
-    tomo_bin_ids, tomo_bin_pairs = cv._get_tomo_bins(ver)
+    cv.cell_method = "catalog"
+    nz_path = tmp_path / "nz_tomo.txt"
+    z = np.linspace(0.1, 2, 20)
+    np.savetxt(nz_path, np.column_stack((z, np.exp(-z), np.exp(-2 * z))))
+    cv.cc[ver]["shear"]["redshift_path"] = str(nz_path)
+    _, tomo_bin_pairs = cv._get_tomo_bins(ver)
+    tagged = cv._output_path(f"pseudo_cl_{ver}_tagged_tomo.sacc")
+    cv.calculate_pseudo_cl(compute_tomography=True, out_path=tagged)
+    assert os.path.exists(tagged)
+    assert not os.path.exists(cv._output_path_pseudo_cl(ver, tomography=True))
 
     result_to_compare = np.load(REFERENCE_TOMO, allow_pickle=True)["arr_0"].item()
     for tomo_bin_a, tomo_bin_b in tomo_bin_pairs:
-        out_path = cv._output_path(
-            f"pseudo_cl_cat_{ver}_{tomo_bin_a}_{tomo_bin_b}.fits"
-        )
-        cv.calculate_pseudo_cl_catalog(
-            ver, out_path, tomo_bin_a=tomo_bin_a, tomo_bin_b=tomo_bin_b
-        )
-
-        assert os.path.exists(out_path)
-        d = fits.getdata(out_path)
-        # FITS gives big-endian f8; normalize for value comparison.
-        ell = np.asarray(d["ELL"], dtype=np.float64)
-        ee = np.asarray(d["EE"], dtype=np.float64)
-        eb = np.asarray(d["EB"], dtype=np.float64)
-        be = np.asarray(d["BE"], dtype=np.float64)
-        bb = np.asarray(d["BB"], dtype=np.float64)
+        d = cv._pseudo_cls[ver][f"tomo_bin_{tomo_bin_a}_tomo_bin_{tomo_bin_b}"][
+            "pseudo_cl"
+        ]
+        ell, ee, eb, bb = (d[key] for key in ("ELL", "EE", "EB", "BB"))
 
         npt.assert_allclose(
             ell,
@@ -1008,14 +1003,6 @@ def test_calculate_pseudo_cl_catalog_end_to_end_tomo(cv, tmp_path):
             atol=ATOL_CAT,
         )
         npt.assert_allclose(
-            be,
-            result_to_compare[f"tomo_bin_{tomo_bin_a}_tomo_bin_{tomo_bin_b}"][
-                "pseudo_cl"
-            ]["BE"],
-            rtol=RTOL_CAT,
-            atol=ATOL_CAT,
-        )
-        npt.assert_allclose(
             bb,
             result_to_compare[f"tomo_bin_{tomo_bin_a}_tomo_bin_{tomo_bin_b}"][
                 "pseudo_cl"
@@ -1025,7 +1012,7 @@ def test_calculate_pseudo_cl_catalog_end_to_end_tomo(cv, tmp_path):
         )
 
         # The end-to-end catalog EE matches the primitive get_pseudo_cls_catalog EE
-        # (same computation, FITS round-trip) -- consistency, not an independent pin.
+        # (same computation, SACC round-trip) -- consistency, not an independent pin.
         cat_gal = fits.getdata(cv.cc[ver]["shear"]["path"])
         params = get_params_rho_tau(cv.cc[ver])
         _, cl_prim, _ = cv.get_pseudo_cls_catalog(
@@ -1055,13 +1042,4 @@ def test_calculate_pseudo_cl_out_path_rejects_multiversion(cv):
     with pytest.raises(ValueError, match="one part to one path"):
         cv.calculate_pseudo_cl(
             compute_tomography=False, out_path=cv._output_path("pseudo_cl_x.sacc")
-        )
-
-
-def test_calculate_pseudo_cl_out_path_rejects_tomography(cv):
-    """out_path names the non-tomographic SACC part; tomographic pairs keep
-    their own per-pair paths, so asking for both must fail loudly."""
-    with pytest.raises(ValueError, match="compute_tomography=False"):
-        cv.calculate_pseudo_cl(
-            compute_tomography=True, out_path=cv._output_path("pseudo_cl_x.sacc")
         )
