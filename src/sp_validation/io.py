@@ -24,6 +24,7 @@ from astropy.io import fits
 from sp_validation import grammar
 from sp_validation.tables import (
     MAX_READ_THREADS,
+    AlignedFile,
     ConcatTable,
     ParquetFile,
     _deliver,
@@ -174,9 +175,11 @@ class Catalogue:
       as ShapePipe writes campaign galaxy and star catalogues), found by
       ``find_dataset_group``, concatenated in dataset-name order, and
       checked against a declared ``n_tiles`` or ``n_exposures`` count;
-    - HATS catalogue directory, or an lsdb collection holding one: one chunk
+    - HATS catalogue directory, or a collection holding one: one chunk
       per HEALPix partition (named by its path, ``"Norder=5/Npix=1151"``), in
-      ``partition_info.csv`` order. Rows come in sky order, not the tile
+      ``partition_info.csv`` order. A collection's extensions join its
+      primary column-wise, each pixel file read beside the primary's and
+      checked against it on the join columns (``tables.AlignedFile``). Rows come in sky order, not the tile
       order of the HDF5 the catalogue was built from; a ``_source_row``
       column, where the builder wrote one, maps them back.
 
@@ -219,8 +222,8 @@ class Catalogue:
         if len(parts) == 1:
             (self.whole,) = self.chunks.values()
         else:
-            stacked = ConcatTable(table for (table,) in parts.values())
-            self.whole = grammar.adapt(stacked, column_map=column_map)
+            stacked = [ConcatTable(column) for column in zip(*parts.values())]
+            self.whole = grammar.adapt(*stacked, column_map=column_map)
 
     def __enter__(self):
         return self
@@ -429,8 +432,48 @@ def _fits_parts(path, hdu):
 
 
 def _hats_parts(path):
-    """Return {partition: (its ParquetFile,)} of a HATS catalogue."""
-    path = hats_catalogue_dir(path)
+    """Return {partition: (its ParquetFile, ...)} of a HATS catalogue.
+
+    For a collection with extensions (``all_extensions``), each partition's
+    tuple holds the primary's file, then for each extension an ``AlignedFile``
+    presenting the extension's own columns (``hats_ext_cols``) of that pixel,
+    checked against the primary on the join columns.
+    """
+    primary = hats_catalogue_dir(path)
+    pixels = np.loadtxt(
+        os.path.join(primary, "partition_info.csv"),
+        delimiter=",",
+        skiprows=1,
+        dtype=np.int64,
+        ndmin=2,
+    )
+    keys = [f"Norder={order}/Npix={pixel}" for order, pixel in pixels]
+    files = _hats_files(primary, pixels)
+    tables = [files]
+    collection = os.path.join(path, "collection.properties")
+    if os.path.isfile(collection):
+        listed = _properties(collection).get("all_extensions", "").split()
+        for listing in listed[1::2]:
+            listing = os.path.join(path, listing)
+            extension = _properties(listing)
+            data = hats_catalogue_dir(
+                os.path.join(
+                    os.path.dirname(listing), extension["hats_assn_join_table_url"]
+                )
+            )
+            join = (extension["hats_col_assn_join"], extension["hats_col_assn_primary"])
+            names = extension["hats_ext_cols"].split()
+            tables.append(
+                [
+                    AlignedFile(file, of, join, names)
+                    for file, of in zip(_hats_files(data, pixels), files, strict=True)
+                ]
+            )
+    return dict(zip(keys, zip(*tables, strict=True), strict=True))
+
+
+def _hats_files(path, pixels):
+    """Return the ParquetFile of each of ``pixels`` of the HATS catalogue ``path``."""
     properties = _properties(os.path.join(path, "hats.properties"))
     suffix = properties.get("hats_npix_suffix", ".parquet")
     if suffix != ".parquet":
@@ -438,37 +481,24 @@ def _hats_parts(path):
             f"HATS catalogue {path}: partitions with suffix {suffix!r} are not"
             + " supported, only single .parquet files"
         )
-    pixels = np.loadtxt(
-        os.path.join(path, "partition_info.csv"),
-        delimiter=",",
-        skiprows=1,
-        dtype=np.int64,
-        ndmin=2,
-    )
-    keys, files = [], []
-    for order, pixel in pixels:
-        keys.append(f"Norder={order}/Npix={pixel}")
-        files.append(
-            os.path.join(
-                path,
-                "dataset",
-                f"Norder={order}",
-                f"Dir={pixel // 10000 * 10000}",
-                f"Npix={pixel}.parquet",
-            )
+    files = [
+        os.path.join(
+            path,
+            "dataset",
+            f"Norder={order}",
+            f"Dir={pixel // 10000 * 10000}",
+            f"Npix={pixel}.parquet",
         )
+        for order, pixel in pixels
+    ]
     common = os.path.join(path, "dataset", "_common_metadata")
-    dtype = parquet_dtype(
-        pq.read_schema(common if os.path.isfile(common) else files[0])
-    )
+    schema = pq.read_schema(common if os.path.isfile(common) else files[0])
+
     threads = min(MAX_READ_THREADS, len(os.sched_getaffinity(0)))
     with ThreadPoolExecutor(threads) as pool:
-        parts = list(
-            pool.map(
-                lambda file: ParquetFile(file, pq.read_metadata(file), dtype), files
-            )
-        )
-    return {key: (part,) for key, part in zip(keys, parts, strict=True)}
+        footers = list(pool.map(pq.read_metadata, files))
+    dtype = parquet_dtype(schema, footers)
+    return [ParquetFile(file, footer, dtype) for file, footer in zip(files, footers)]
 
 
 def _first_table_hdu(hdus, path):
