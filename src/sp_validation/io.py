@@ -24,8 +24,8 @@ from astropy.io import fits
 from sp_validation import grammar
 from sp_validation.tables import (
     MAX_READ_THREADS,
-    AlignedFile,
     ConcatTable,
+    JoinedFile,
     ParquetFile,
     as_table,
     group_dtype,
@@ -175,8 +175,8 @@ class Catalogue:
     - HATS catalogue directory, or a collection holding one: one chunk
       per HEALPix partition (named by its path, ``"Norder=5/Npix=1151"``), in
       ``partition_info.csv`` order. A collection's extensions join its
-      primary column-wise, each pixel file read beside the primary's and
-      checked against it on the join columns (``tables.AlignedFile``). Rows come in sky order, not the tile
+      primary column-wise, each pixel file joined to the primary's on the
+      join columns (``tables.JoinedFile``). Rows come in sky order, not the tile
       order of the HDF5 the catalogue was built from; a ``_source_row``
       column, where the builder wrote one, maps them back.
 
@@ -415,18 +415,13 @@ def _hats_parts(path):
     """Return {partition: (its ParquetFile, ...)} of a HATS catalogue.
 
     For a collection with extensions (``all_extensions``), each partition's
-    tuple holds the primary's file, then for each extension an ``AlignedFile``
+    tuple holds the primary's file, then for each extension a ``JoinedFile``
     presenting the extension's own columns (``hats_ext_cols``) of that pixel,
-    checked against the primary on the join columns.
+    joined to the primary on the join columns. An extension holding fewer rows
+    than the primary leaves rows null, so its integer columns read as float64.
     """
     primary = hats_catalogue_dir(path)
-    pixels = np.loadtxt(
-        os.path.join(primary, "partition_info.csv"),
-        delimiter=",",
-        skiprows=1,
-        dtype=np.int64,
-        ndmin=2,
-    )
+    pixels = _hats_pixels(primary)
     keys = [f"Norder={order}/Npix={pixel}" for order, pixel in pixels]
     files = _hats_files(primary, pixels)
     tables = [files]
@@ -441,15 +436,40 @@ def _hats_parts(path):
                     os.path.dirname(listing), extension["hats_assn_join_table_url"]
                 )
             )
+            own = _hats_pixels(data)
+            by_pixel = dict(zip(map(tuple, own), _hats_files(data, own)))
             join = (extension["hats_col_assn_join"], extension["hats_col_assn_primary"])
-            names = extension["hats_ext_cols"].split()
+            dtype = next(iter(by_pixel.values())).dtype
+            sparse = sum(map(len, by_pixel.values())) < sum(map(len, files))
+            dtype = np.dtype(
+                [
+                    (
+                        name,
+                        np.float64
+                        if sparse and dtype[name].kind in "iu"
+                        else dtype[name],
+                    )
+                    for name in extension["hats_ext_cols"].split()
+                ]
+            )
             tables.append(
                 [
-                    AlignedFile(file, of, join, names)
-                    for file, of in zip(_hats_files(data, pixels), files, strict=True)
+                    JoinedFile(by_pixel.get(tuple(pixel)), file, join, dtype)
+                    for pixel, file in zip(pixels, files, strict=True)
                 ]
             )
     return dict(zip(keys, zip(*tables, strict=True), strict=True))
+
+
+def _hats_pixels(path):
+    """Return the (order, pixel) rows of a HATS catalogue's ``partition_info.csv``."""
+    return np.loadtxt(
+        os.path.join(path, "partition_info.csv"),
+        delimiter=",",
+        skiprows=1,
+        dtype=np.int64,
+        ndmin=2,
+    )
 
 
 def _hats_files(path, pixels):
