@@ -1,1 +1,1 @@
-"""Redshift distributions: calibration, uncertainty and their summaries."""
+"""The redshift distribution of a shear catalogue: calibration, realisations, modes."""
