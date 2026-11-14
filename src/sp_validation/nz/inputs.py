@@ -32,10 +32,13 @@ def calibrators(photometry, surveys, field, z_min, offset, workers=1):
     its matched spectrum (``Z_SPEC``, ``Z_SPEC_SURVEY``, and the spectrum's own
     position ``Z_SPEC_RA``, ``Z_SPEC_DEC``). ``field`` bounds that position,
     ``{"ra": [min, max], "dec": [min, max]}`` in degrees: a survey can observe
-    several fields, selected differently. A spectrum matched to several
-    objects, as in overlapping tiles, is kept once, at the lowest
-    ``OBJECT_ID``. Missing z is filled from z2 + ``offset``, as for sources.
-    Rows come in ``OBJECT_ID`` order.
+    several fields, selected differently. ``Z_B`` and the magnitudes come
+    from the PhotoPipe extension of the same collection (the reader joins the
+    extensions on ``OBJECT_ID``). A spectrum matched to several objects, as in
+    overlapping tiles, is kept once, at the lowest ``OBJECT_ID``; the copies
+    are told apart by their position, which the extension carries bit for bit
+    from the compilation. Missing z is filled from z2 + ``offset``, as for
+    sources. Rows come in ``OBJECT_ID`` order.
 
     @sc [decision:nz.calibrator_set]
     """
