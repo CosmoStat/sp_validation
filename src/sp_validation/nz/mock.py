@@ -14,17 +14,18 @@ Rungs (:func:`draw`), one change each:
   ⟨z⟩_true of the ``TOM_BIN_ID`` sources is consistent with zero in every
   bin, scattering by the calibrators' shot noise, which the bootstrap term
   of the ensemble reproduces (σ_boot / scatter ≈ 1).
-  Found (40 realisations at the v2 recipe): σ_boot / scatter 0.84–1.27, but
-  Δ⟨z⟩ is −0.0007 to −0.0021 (2–7 standard errors), because the spectra that
-  calibrate also decide gold (bins 1–3) and train the SOM (bin 4).
 - **1, magnitude-selected spectra.** Calibrators are kept with probability
   falling smoothly through r = 23.5 (DEEP2-like), a selection on r alone.
   Prediction: the raw calibrator n(z) of each BPZ bin is biased low, so the
-  naive estimator (unweighted mean spec-z of the in-bin calibrators) fails;
-  direct calibration still recovers ⟨z⟩ because r is a SOM feature, up to
-  the residual dependence of z on r inside a group, small against the scatter.
-  Found: that residual is about −0.002 in bins 1–3, as large as the scatter,
-  and grows as the groups coarsen.
+  naive estimator (unweighted mean spec-z of the in-bin calibrators) fails
+  against the truth of the bin's sources before gold; direct calibration
+  still recovers ⟨z⟩ because r is a SOM feature, up to the residual
+  dependence of z on r inside a group.
+
+``scripts/calibration/nz_mock_ladder.py`` scores an ensemble of realisations
+against these predictions. What a rung shows holds for this BPZ surrogate:
+it is drawn from the true redshift, where the data's BPZ is a function of
+the photometry the SOM sees, and the size of Δ⟨z⟩ depends on that.
 """
 
 import numpy as np
@@ -134,8 +135,7 @@ def draw(rung, seed, n_cal, n_src, z2_fraction=0.2):
 
     The sources depend on ``seed`` only, so both rungs of a seed calibrate
     the same sources. A fraction ``z2_fraction`` of sources has z undetected
-    and is measured through z2. Calibrators keep complete ugriz and BPZ, as
-    :func:`.inputs.calibrators` does.
+    and is measured through z2. Calibrators keep complete ugriz and BPZ.
     """
     rng = np.random.default_rng(seed)
     s = population(n_src, rng)

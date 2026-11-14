@@ -80,7 +80,6 @@ def realisation(seed, *, rung, config, n_cal, n_src, output, keep_products=True)
                 truth_pre_gold=float(np.average(z[prelim], weights=w[prelim])),
                 naive=float(cal["z"][in_bin].mean()),
                 sigma_boot=float(boot[:, k].std()),
-                boot_mean_shift=float(boot[:, k].mean() - b["mean"]),
                 gold_fraction=b["gold_fraction"],
                 weight_fraction=b["weight_fraction"],
                 calibrators_in_bin=b["calibrators_in_bpZ_bin"],
@@ -136,7 +135,6 @@ def score(records):
                 gold_shift=np.mean([x["truth"] - x["truth_pre_gold"] for x in b]),
                 gold_fraction=np.mean([x["gold_fraction"] for x in b]),
                 weight_fraction=np.mean([x["weight_fraction"] for x in b]),
-                boot_mean_shift=np.mean([x["boot_mean_shift"] for x in b]),
                 biased=bool(abs(delta.mean()) > BIAS_SE * se),
                 miscalibrated=bool(not RATIO[0] <= ratio <= RATIO[1]),
                 naive_fails=bool(

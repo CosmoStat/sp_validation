@@ -47,6 +47,16 @@ bins and 0 for a galaxy in no bin, and cosmo_val drops IDs ≤ 0),
 `som_model.npz`, `summary.json` and `recipe.yaml`, the recipe file byte for
 byte.
 
+A run redefines the bins, so its `nz_tomo.txt` describes its own
+`tom_bin.parquet` and no earlier `TOM_BIN_ID`. Write that column into the
+catalogue (the rows are aligned) whenever the n(z) a `cat_config` entry reads
+is replaced.
+
+**On mocks.** `scripts/calibration/nz_mock_ladder.py` runs a recipe's
+calibration on mock galaxies with known redshifts (`sp_validation.nz.mock`)
+and scores each bin's mean redshift against the truth of its own
+`TOM_BIN_ID` sources, over an ensemble of realisations.
+
 **Sources** are the rows of the released calibrated shear catalogue, with its
 `w_des`. Sources and calibrators share one photometry: PhotoPipe's run on
 Stephen Gwyn's DR6 detections (dereddened GAaP ugriz, z2 and BPZ), used as
