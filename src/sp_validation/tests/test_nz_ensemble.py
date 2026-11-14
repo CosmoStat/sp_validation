@@ -4,6 +4,7 @@ from dataclasses import replace
 
 import numpy as np
 import pytest
+import yaml
 
 from sp_validation import nz_ensemble as ne
 from sp_validation import nz_pipeline
@@ -28,27 +29,25 @@ def toy_run(tmp_path, n_cal=1500, n_src=30_000, seed=0):
     sz, smag = galaxies(n_src)
     smag = np.column_stack([smag, smag[:, 4] + 0.1])  # z2 = z + 0.1
     smag[: n_src // 3, 4] = np.nan  # a third measured through z2 only
+    out = tmp_path / "run"
+    (out / "inputs").mkdir(parents=True)
     np.savez(
-        tmp_path / "cal.npz",
+        out / "inputs/calibrators.npz",
         z=cz,
         photoz=cz + rng.normal(0, 0.03, n_cal),
         mag=cmag,
     )
     np.savez(
-        tmp_path / "src.npz",
+        out / "inputs/sources.npz",
         mag=smag,
         photoz=sz + rng.normal(0, 0.03, n_src),
         weight=rng.uniform(0.5, 1.5, n_src),
-        tile=np.zeros(n_src),
-        number=np.arange(n_src),
+        status=np.zeros(n_src, np.int8),
+        object_id=np.arange(n_src),
     )
     config = dict(
         name="toy",
         limitation="toy",
-        inputs=dict(
-            calibrators=dict(output=str(tmp_path / "cal.npz")),
-            sources=dict(output=str(tmp_path / "src.npz")),
-        ),
         som=dict(side=8, epochs=10, seed=1),
         groups=30,
         edges=[0.1, 0.37, 0.55, 0.76, 1.2],
@@ -57,8 +56,8 @@ def toy_run(tmp_path, n_cal=1500, n_src=30_000, seed=0):
         grid=dict(min=0, max=5, step=0.05),
         ensemble=dict(draws=3, seed=0),
     )
-    out = tmp_path / "run"
-    nz_pipeline.run(config, out)
+    (tmp_path / "recipe.yaml").write_text(yaml.safe_dump(config))
+    nz_pipeline.run(tmp_path / "recipe.yaml", out)
     return ne.Calibration.load(out), config
 
 

@@ -10,13 +10,12 @@ inputs:
     compilation: "20261019"
     surveys: [deep2_final, deep3_final]
     z_min: 0.002  # stars
-    output: ${nz_v2}/inputs/calibrators.npz
   sources:
-    # The cosmo_val catalogue of SP_v2.0, its shapes and their PhotoPipe join.
-    catalogue: ${v2_tomo}/shape_catalog_tomo.fits
-    shapes: ${unions_data}/v2.x/run1-snap3-hats/catalogue
-    photometry: ${unions_data}/photopipe-dr6/catalogue
-    output: ${nz_v2}/inputs/sources.npz
+    # The released calibrated shear catalogue; each row's photometry comes
+    # from the v2 collection (shapes with their PhotoPipe extension) by its
+    # DR6 object ID.
+    catalogue: ${unions_v2}/v2.0.0/catalogs/calibrated
+    photometry: ${unions_data}/v2.x/run1-snap3-collection
 som:
   side: 101
   epochs: 60
@@ -51,4 +50,3 @@ ensemble:
   z2_offset: 0.02            # mag, error of the z2 -> z constant
   specz_failure: 0.01        # 1 - the compilation's DEEP2/3 confidence (0.99)
   nmad_factor: [4, 6]        # gold-QC factor, around the fiducial 5
-output: ${nz_v2}

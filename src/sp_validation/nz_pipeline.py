@@ -1,55 +1,53 @@
 """Run an n(z) recipe: SOM direct calibration of a shear catalogue's bins.
 
-``prepare`` builds the two inputs (:mod:`sp_validation.nz_inputs`); ``run``
-trains the SOM on the calibrators, groups its cells, assigns every source,
-selects gold groups on the sources themselves, and writes the products:
+A recipe names its inputs and every choice of the calibration; the output
+directory is the run's. ``prepare`` builds the two inputs
+(:mod:`sp_validation.nz_inputs`) in ``inputs/``; ``run`` trains the SOM on the
+calibrators, groups its cells, assigns every source, selects gold groups on
+the sources themselves, and writes the products:
 
 - ``nz_tomo.txt``: z and one density per bin, integrating to the bin's share of
   the retained shear weight (cosmo_val's ``shear.redshift_path``);
 - ``nz_nontomo.txt``: their sum, the n(z) of every ``TOM_BIN_ID > 0`` row;
-- ``tom_bin.parquet``: ``TOM_BIN_ID`` and ``ZBAND`` row-aligned with the
-  catalogue, with its ``TILE_ID`` and ``NUMBER``;
+- ``tom_bin.parquet``: ``OBJECT_ID``, ``TOM_BIN_ID`` and ``ZBAND``, row-aligned
+  with the catalogue;
 - ``realisations.npz``: draws of every bin at once (:mod:`nz_ensemble`), from
   ``ensemble_inputs.npz`` (per-group source tables, their response to
   magnitude offsets, and the calibrators' BPZ gradients);
-- ``calibration_arrays.npz``, ``som_model.npz``, ``summary.json`` and the recipe.
+- ``calibration_arrays.npz``, ``som_model.npz`` and ``summary.json``, which
+  carries the photometry match (:func:`nz_inputs.match_report`);
+- ``recipe.yaml``: the recipe file, byte for byte.
 """
 
 import argparse
 import json
+import shutil
 from pathlib import Path
 
 import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
-import yaml
 
 from . import nz_calibration as nz
 from .data_roots import load_yaml
+from .object_id import OBJECT_ID
 
 
-def prepare(config, workers=1):
-    """Write the calibrator and source files the recipe names."""
+def prepare(config, output, workers=1):
+    """Write the recipe's calibrators and sources to ``output/inputs``."""
     from . import nz_inputs
 
-    inputs = config["inputs"]
-    cal = inputs["calibrators"]
+    inputs = Path(output) / "inputs"
+    inputs.mkdir(parents=True, exist_ok=True)
     np.savez(
-        cal["output"],
+        inputs / "calibrators.npz",
         **nz_inputs.calibrators(
-            cal["specz_dir"],
-            cal["compilation"],
-            cal["surveys"],
-            cal["z_min"],
-            config["z2_offset"],
+            **config["inputs"]["calibrators"], offset=config["z2_offset"]
         ),
     )
-    src = inputs["sources"]
     np.savez(
-        src["output"],
-        **nz_inputs.sources(
-            src["catalogue"], src["shapes"], src["photometry"], workers=workers
-        ),
+        inputs / "sources.npz",
+        **nz_inputs.sources(**config["inputs"]["sources"], workers=workers),
     )
 
 
@@ -60,12 +58,16 @@ def output_grid(config):
     )
 
 
-def run(config, output, *, workers=1):
-    """Calibrate the recipe's catalogue and write its n(z) products to ``output``."""
+def run(recipe, output, *, workers=1):
+    """Calibrate the catalogue of the recipe file ``recipe`` from the inputs in
+    ``output/inputs`` and write its n(z) products to ``output``."""
+    from . import nz_inputs
+
+    config = load_yaml(recipe)
     output = Path(output)
-    output.mkdir(parents=True, exist_ok=True)
-    cal = np.load(config["inputs"]["calibrators"]["output"])
-    src = np.load(config["inputs"]["sources"]["output"])
+    shutil.copyfile(recipe, output / "recipe.yaml")
+    cal = np.load(output / "inputs/calibrators.npz")
+    src = np.load(output / "inputs/sources.npz")
     edges = np.asarray(config["edges"], float)
     grid = output_grid(config)
     n_groups = config["groups"]
@@ -112,8 +114,7 @@ def run(config, output, *, workers=1):
     pq.write_table(
         pa.table(
             dict(
-                TILE_ID=src["tile"],
-                NUMBER=src["number"],
+                **{OBJECT_ID: pa.array(src["object_id"], mask=src["object_id"] < 0)},
                 TOM_BIN_ID=tom,
                 ZBAND=channel,
             )
@@ -143,7 +144,6 @@ def run(config, output, *, workers=1):
             minlength=n_cells,
         ),
     )
-    complete = nz.detected(src["mag"][:, :4]).all(1) & (channel > 0) & (weight > 0)
     summary = dict(
         name=config["name"],
         limitation=config["limitation"],
@@ -151,8 +151,8 @@ def run(config, output, *, workers=1):
         n_rows=len(weight),
         n_calibrators=len(cal["z"]),
         total_weight=total_weight,
+        match=nz_inputs.match_report(src["status"], src["mag"], weight),
         retention=dict(
-            complete_photometry=float(weight[complete].sum() / total_weight),
             bpz_bounds=float(weight[prelim >= 0].sum() / total_weight),
             gold=float(np.sum(fractions) / total_weight),
         ),
@@ -160,7 +160,6 @@ def run(config, output, *, workers=1):
         gold_qc_threshold=threshold,
     )
     (output / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
-    (output / "recipe.yaml").write_text(yaml.safe_dump(config, sort_keys=False))
     if "ensemble" in config:
         from . import nz_ensemble
 
@@ -188,16 +187,16 @@ def run(config, output, *, workers=1):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("recipe")
+    parser.add_argument("output", help="the run's directory")
     parser.add_argument("--prepare", action="store_true", help="build the inputs first")
-    parser.add_argument("--output", help="override the recipe's output directory")
     parser.add_argument("--workers", type=int, default=1)
     parser.add_argument("--figures", metavar="DIRECTORY")
     args = parser.parse_args(argv)
     config = load_yaml(args.recipe)
+    output = Path(args.output)
     if args.prepare:
-        prepare(config, workers=args.workers)
-    output = Path(args.output or config["output"])
-    run(config, output, workers=args.workers)
+        prepare(config, output, workers=args.workers)
+    run(args.recipe, output, workers=args.workers)
     if args.figures:
         from .nz_diagnostics import render
 

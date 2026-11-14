@@ -1,29 +1,30 @@
 """Inputs of the SOM n(z): source photometry and the spectroscopic calibrators.
 
 Both come from PhotoPipe's run on Stephen Gwyn's DR6 detections, so sources
-and calibrators share one photometry. Sources are the rows of a cosmo_val
-shear catalogue; each is found in the ShapePipe HATS catalogue by exact
-position, and the PhotoPipe HATS catalogue is row-aligned with those shapes
-(joined on tile and DR6 ID). Calibrators are the spectra PhotoPipe matched to
-its own objects (``UNIONS.<tile>_ugriz_photoz_ext_specz.cat``), named by
-survey through the redshift compilation beside them.
+and calibrators share one photometry. Sources are the rows of a calibrated
+shear catalogue; each takes its photometry from the v2 collection (shapes
+with their PhotoPipe extension, :mod:`sp_validation.hats_collection`) by its
+DR6 object ID. Calibrators are the spectra PhotoPipe matched to its own
+objects (``UNIONS.<tile>_ugriz_photoz_ext_specz.cat``), named by survey
+through the redshift compilation beside them.
 """
 
 import glob
-from multiprocessing import Pool
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import fitsio
-import healpy as hp
 import numpy as np
 import pandas as pd
-import pyarrow.parquet as pq
 
 from . import nz_calibration as nz
+from .io import Catalogue, read_catalogue
+from .object_id import OBJECT_ID, object_id
 
 BANDS = ("u", "g", "r", "i", "z", "z2")
 MAGS = [f"MAG_GAAP_{band}" for band in BANDS]
-HEALPIX_ORDER = 29
+#: ``status`` of a source the photometry was not looked up for or lacks.
+NO_ID, UNMATCHED = -2, -1
 
 
 def _compilation(path):
@@ -91,96 +92,81 @@ def calibrators(specz_dir, compilation, surveys, z_min, offset):
     )
 
 
-_SHARED = {}
-
-
-def _match_pixel(path):
-    """Match catalogue rows to one shape HATS pixel file by exact position."""
-    shapes, photometry = _SHARED["shapes"], _SHARED["photometry"]
-    order, pixel, ra, dec = (_SHARED[k] for k in ("order", "pixel", "ra", "dec"))
-    shape = pq.read_table(
-        path, columns=["_healpix_29", "XWIN_WORLD", "YWIN_WORLD", "TILE_ID", "NUMBER"]
-    )
-    h = shape["_healpix_29"].to_numpy()
-    lo, hi = np.searchsorted(pixel[order], [h.min(), h.max() + 1])
-    if hi == lo:
-        return None
-    rows = order[lo:hi]
-    sort = np.argsort(h, kind="stable")
-    start = np.searchsorted(h[sort], pixel[rows], side="left")
-    stop = np.searchsorted(h[sort], pixel[rows], side="right")
-    x, y = shape["XWIN_WORLD"].to_numpy(), shape["YWIN_WORLD"].to_numpy()
-    match = np.full(len(rows), -1, np.int64)
-    for k in range(int((stop - start).max())):
-        candidate = sort[np.minimum(start + k, len(sort) - 1)]
-        same = (
-            (start + k < stop)
-            & (match < 0)
-            & (x[candidate] == ra[rows])
-            & (y[candidate] == dec[rows])
-        )
-        match[same] = candidate[same]
-    found = match >= 0
-    rows, match = rows[found], match[found]
-    photo = pq.read_table(
-        Path(photometry) / Path(path).relative_to(shapes),
-        columns=["PHOTOPIPE_STATUS", "Z_B"] + MAGS,
-    )
-
-    def column(table, name):
-        return table[name].to_numpy(zero_copy_only=False)[match]
-
-    return dict(
-        row=rows,
-        tile=column(shape, "TILE_ID"),
-        number=column(shape, "NUMBER"),
-        status=np.nan_to_num(column(photo, "PHOTOPIPE_STATUS"), nan=-1),
-        photoz=column(photo, "Z_B"),
-        mag=np.column_stack([column(photo, m) for m in MAGS]),
-    )
-
-
-def sources(catalogue, shapes, photometry, workers=1):
+def sources(catalogue, photometry, workers=1):
     """Return PhotoPipe magnitudes, BPZ and ``w_des`` for every catalogue row.
 
-    ``catalogue`` is a cosmo_val shear catalogue (FITS with RA, Dec, w_des);
-    ``shapes`` and ``photometry`` are the ShapePipe and PhotoPipe HATS
-    catalogue directories. Rows absent from the shapes keep ``number`` -1 and
-    NaN photometry; ``status`` is PhotoPipe's join state (0 joined).
+    ``catalogue`` is a calibrated shear catalogue with ``TILE_ID``, ``NUMBER``
+    and ``w_des``; ``photometry`` is the collection holding ``OBJECT_ID`` and
+    the PhotoPipe columns. ``status`` is PhotoPipe's join state for the object
+    (0 photometry, 1 its tile has PhotoPipe but not the object, 2 its tile has
+    no PhotoPipe), ``NO_ID`` for a row with no DR6 number and ``UNMATCHED``
+    for an ID the collection lacks; both keep NaN photometry.
+
+    @sc [decision:nz.source_photometry_join]
     """
-    data = fitsio.read(catalogue, ext=1, columns=["RA", "Dec", "w_des"])
-    ra, dec = data["RA"].astype("f8"), data["Dec"].astype("f8")
-    weight = data["w_des"].astype("f8")
-    del data
-    pixel = hp.ang2pix(2**HEALPIX_ORDER, ra, dec, nest=True, lonlat=True)
-    _SHARED.update(
-        shapes=Path(shapes),
-        photometry=Path(photometry),
-        order=np.argsort(pixel, kind="stable"),
-        pixel=pixel,
-        ra=ra,
-        dec=dec,
-    )
-    n = len(ra)
+    shear = read_catalogue(catalogue, columns=["TILE_ID", "NUMBER", "w_des"])
+    ids = np.asarray(object_id(shear["TILE_ID"], shear["NUMBER"]).fill_null(-1))
+    n = len(ids)
+    order = np.argsort(ids, kind="stable")
+    ordered = ids[order]
+    identified = ordered >= 0
+    if (np.diff(ordered[identified]) == 0).any():
+        raise ValueError(f"{catalogue} repeats an OBJECT_ID")
     out = dict(
+        object_id=ids,
+        weight=shear["w_des"].astype("f8"),
         mag=np.full((n, len(BANDS)), np.nan, np.float32),
         photoz=np.full(n, np.nan),
-        tile=np.full(n, np.nan),
-        number=np.full(n, -1, np.int32),
-        status=np.full(n, -1, np.int8),
+        status=np.where(ids < 0, NO_ID, UNMATCHED).astype(np.int8),
     )
+    del shear
     hits = np.zeros(n, np.int8)
-    paths = sorted(Path(shapes).glob("dataset/Norder=*/Dir=*/Npix=*.parquet"))
-    with Pool(workers) as pool:
-        for part in pool.imap_unordered(_match_pixel, paths, chunksize=4):
-            if part is None:
-                continue
-            rows = part.pop("row")
-            hits[rows] += 1
-            for key, value in part.items():
-                out[key][rows] = value
-    _SHARED.clear()
+    columns = [OBJECT_ID, "PHOTOPIPE_STATUS", "Z_B", *MAGS]
+
+    def match(view):
+        part = view.read(columns)
+        at = np.minimum(np.searchsorted(ordered, part[OBJECT_ID]), n - 1)
+        found = (ordered[at] == part[OBJECT_ID]) & (part[OBJECT_ID] >= 0)
+        return order[at[found]], {name: part[name][found] for name in columns[1:]}
+
+    with Catalogue(photometry) as collection, ThreadPoolExecutor(workers) as pool:
+        for rows, part in pool.map(match, collection.chunks.values()):
+            np.add.at(hits, rows, 1)
+            out["status"][rows] = part["PHOTOPIPE_STATUS"]
+            out["photoz"][rows] = part["Z_B"]
+            out["mag"][rows] = np.column_stack([part[m] for m in MAGS])
     if (hits > 1).any():
-        raise ValueError(f"{(hits > 1).sum()} catalogue rows match several shapes")
-    out["weight"] = weight
+        raise ValueError(f"{photometry} repeats {(hits > 1).sum()} OBJECT_IDs")
     return out
+
+
+def match_report(status, mag, weight):
+    """Return where the shear weight without complete photometry is lost.
+
+    Fractions of the total shear weight, exclusive and in this order: rows
+    with no object ID, IDs absent from the photometry, objects in a tile
+    without PhotoPipe, objects PhotoPipe lacks in a tile it has, and objects
+    with photometry but a band undetected (``incomplete``); the rest is
+    ``complete``. ``undetected`` gives, of the total, the weight of objects
+    with photometry undetected in each band (an object can miss several);
+    ``z`` there is z and z2 both.
+    """
+    total = weight.sum()
+
+    def share(rows):
+        return float(weight[rows].sum() / total)
+
+    seen = nz.detected(mag)
+    seen = np.column_stack([seen[:, :4], seen[:, 4] | seen[:, 5]])
+    joined = status == 0
+    return dict(
+        no_object_id=share(status == NO_ID),
+        unmatched_by_id=share(status == UNMATCHED),
+        tile_without_photopipe=share(status == 2),
+        object_without_photopipe=share(status == 1),
+        incomplete=share(joined & ~seen.all(1)),
+        complete=share(joined & seen.all(1)),
+        undetected={
+            band: share(joined & ~seen[:, k]) for k, band in enumerate(BANDS[:5])
+        },
+    )
