@@ -5,9 +5,21 @@ together into the catalogues calibrate reads. See `docs/source/stages.md`.
 
 ## PhotoPipe join (ShapePipe v2)
 
-Gives every row of the v2 shape HATS catalogue its PhotoPipe DR6 row, as a HATS
-catalogue on the same pixels, in the same order, keyed by `_source_row`.
+Gives every row of the v2 shape HATS catalogue its PhotoPipe DR6 row, as a
+second HATS catalogue beside the shapes: a PhotoPipe rerun replaces this
+catalogue and leaves the shapes alone.
 The n(z) recipe (`config/calibration/nz/v2.yaml`) reads it as `photometry`.
+
+How the two catalogues relate:
+
+1. **Join on the object key within the pixel.** Both catalogues have the same
+   HATS pixels, and an object is in the same pixel in both; that much HATS
+   guarantees. The key is `_source_row`, or equally (`TILE_ID`, `NUMBER`), the
+   DR6 object ID. HATS says nothing about row position inside a pixel file.
+2. **Row-for-row alignment is our convention on top.** This build writes each
+   pixel file with the rows of the matching shape file, in the same order, so
+   reading the same pixel from both gives aligned rows with no join. A file
+   rewritten by another tool keeps (1) and may lose (2).
 
 | Step | Script | Runs on | Does |
 |------|--------|---------|------|

@@ -2,9 +2,10 @@
 
 The inputs are the shape HATS catalogue and the column extract written by
 ``scripts/assembly/extract_photopipe.py``. The output is a HATS catalogue with
-one row for each shape row, in the same pixel and the same order, keyed by
-``_source_row``. PhotoPipe columns are null where ``PHOTOPIPE_STATUS`` is not
-``MATCHED``.
+one row for each shape row, in the same pixel, keyed by ``_source_row``; a
+reader joins the two on that key within a pixel. By convention the rows of each
+pixel file are also in the shape file's order. PhotoPipe columns are null where
+``PHOTOPIPE_STATUS`` is not ``MATCHED``.
 
 Both catalogues number objects with Stephen Gwyn's DR6 IDs, so the join is exact
 on (tile, ``NUMBER`` = ``SeqNr``). Position plays no part in it:
