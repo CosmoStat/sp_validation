@@ -11,7 +11,8 @@ selects gold groups on the sources themselves, and writes the products:
   catalogue, with its ``TILE_ID`` and ``NUMBER``;
 - ``realisations.npz``: draws of every bin at once (:mod:`nz_ensemble`), from
   ``ensemble_inputs.npz`` (per-group source tables, their response to
-  magnitude offsets, and the calibrators' BPZ gradients);
+  magnitude offsets, the calibrators' BPZ gradients, and the n(z) shift of the
+  alternative calibrators);
 - ``calibration_arrays.npz``, ``som_model.npz``, ``summary.json`` and the recipe.
 """
 
@@ -44,6 +45,17 @@ def prepare(config, workers=1):
             config["z2_offset"],
         ),
     )
+    if "selection" in cal:
+        np.savez(
+            cal["selection"]["output"],
+            **nz_inputs.calibrators(
+                cal["specz_dir"],
+                cal["compilation"],
+                cal["selection"]["surveys"],
+                cal["z_min"],
+                config["z2_offset"],
+            ),
+        )
     src = inputs["sources"]
     np.savez(
         src["output"],
@@ -164,22 +176,37 @@ def run(config, output, *, workers=1):
     if "ensemble" in config:
         from . import nz_ensemble
 
+        tables = nz_ensemble.ensemble_inputs(
+            src["mag"],
+            photoz,
+            weight,
+            prelim,
+            channel,
+            model,
+            est["gold"],
+            offset=config["z2_offset"],
+            workers=workers,
+        )
+        selection = config["inputs"]["calibrators"].get("selection")
+        if selection:
+            alt = np.load(selection["output"])
+            on_grid = alt["z"] <= grid[-1]
+            _, alt_cell = nz.assign(alt["mag"][on_grid], model, workers=workers)
+            tables["selection_shift"] = nz_ensemble.selection_shift(
+                alt["z"][on_grid],
+                alt["photoz"][on_grid],
+                model["group_map"][alt_cell],
+                edges,
+                tables["source_weight"] * est["gold"],
+                grid,
+                est["bin_hists"],
+            )
         np.savez_compressed(
             output / "ensemble_inputs.npz",
             cal_photoz_gradient=nz_ensemble.photoz_gradient(
                 cal["mag"], cal["photoz"], model
             ),
-            **nz_ensemble.ensemble_inputs(
-                src["mag"],
-                photoz,
-                weight,
-                prelim,
-                channel,
-                model,
-                est["gold"],
-                offset=config["z2_offset"],
-                workers=workers,
-            ),
+            **tables,
         )
         nz_ensemble.run(output, output / "realisations.npz", config["ensemble"])
     return summary

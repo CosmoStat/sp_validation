@@ -26,3 +26,7 @@ unions_data:
 unions_v2:
   - /project/rrg-kyi/cdaley/unions/data/v2.x                                 # fir
   - vos:cfis/weak_lensing/ShapePipe/v2.x                                     # anywhere else
+
+# DESI DR1 LSS catalogues (https://data.desi.lbl.gov/public/dr1/survey/catalogs/dr1/LSS/iron/LSScats/).
+desi_dr1:
+  - /project/6001537/cdaley/desi-dr1                                        # nibi
