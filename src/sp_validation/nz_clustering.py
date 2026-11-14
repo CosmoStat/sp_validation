@@ -394,12 +394,15 @@ def profiled_shift_fit(y, precision, model_at, z):
     chi2 = np.array(chi2)
     prof = chi2.min(axis=1)
     i = int(prof.argmin())
-    j = int(chi2[i].argmin())
-    inside = SHIFTS[prof <= prof[i] + 1]
+    alpha_indices = chi2.argmin(axis=1)
+    j = int(alpha_indices[i])
+    accepted = prof <= prof[i] + 1
+    inside = SHIFTS[accepted]
+    boundary = (alpha_indices == 0) | (alpha_indices == len(ALPHAS) - 1)
     return dict(
         best=float(SHIFTS[i]), lo=float(inside.min()), hi=float(inside.max()),
         chi2=float(prof[i]), alpha=float(ALPHAS[j]),
-        alpha_boundary=bool(j == 0 or j == len(ALPHAS) - 1),
+        alpha_boundary=bool(boundary[accepted].any()),
         alpha_prior=[float(ALPHAS[0]), float(ALPHAS[-1])],
         shift_boundary=bool(inside.min() == SHIFTS[0] or inside.max() == SHIFTS[-1]),
     )
@@ -642,7 +645,7 @@ def render(result, grid, cands, directory):
         text = f"bin {k + 1}   χ² = " + ", ".join(
             f"{f['chi2']:.1f}" for f in b["fits"].values()
         ) + f" / {fit['dof']}   profile Δz = {shift['best']:+.3f} [{shift['lo']:+.3f}, {shift['hi']:+.3f}]"
-        text += f"  α(profile) = {shift['alpha']:.2f}" + (" (prior edge)" if shift["alpha_boundary"] else "")
+        text += f"  α(profile) = {shift['alpha']:.2f}" + (" (interval at prior edge)" if shift["alpha_boundary"] else "")
         ax.text(0.99, 0.93, text, transform=ax.transAxes, ha="right", va="top", fontsize=8)
         ax.set_ylabel("n(z)")
     axes[0].legend(fontsize=7, loc="center right")

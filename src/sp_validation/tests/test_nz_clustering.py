@@ -84,6 +84,24 @@ def test_profiled_shift_with_correlated_noise():
     assert boundary["alpha"] == 4
 
 
+def test_alpha_boundary_includes_entire_shift_interval(monkeypatch):
+    monkeypatch.setattr(nc, "ALPHAS", np.array([-1., 0., 1.]))
+    monkeypatch.setattr(nc, "SHIFTS", np.array([-0.1, 0., 0.1]))
+    z = np.linspace(0.2, 1, 8)
+
+    def model(s):
+        return (1 + z) ** (-10 * s) * (1 + 2 * s**2 * z**2)
+
+    fit = nc.profiled_shift_fit(np.ones(8), np.eye(8) * 100, model, z)
+    assert fit["best"] == 0
+    assert fit["alpha"] == 0
+    assert fit["alpha_boundary"]
+    # The edge solutions leave the interval when the data are more precise.
+    tight = nc.profiled_shift_fit(np.ones(8), np.eye(8) * 1e8, model, z)
+    assert tight["lo"] == tight["hi"] == 0
+    assert not tight["alpha_boundary"]
+
+
 def test_analysis_reports_profile_and_renders_figures(tmp_path, monkeypatch):
     """Exercise diagnostic serialization and figures without modifying SOM products."""
     monkeypatch.setattr(nc, "fiducial_cosmology", lambda: None)

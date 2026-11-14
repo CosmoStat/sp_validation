@@ -199,7 +199,7 @@ unknown, modelled as b_u ∝ (1+z)^α, so only the shape of each bin inside its
 core window is tested.
 Fits use the full slice jackknife covariance within that window, with the precision multiplied by (N_patch − N_slice − 2)/(N_patch − 1).
 This Hartlap correction is approximate for spatial jackknife patches; mock coverage validation is still needed.
-`profiled_shift` reports the shift n(z − Δz) after profiling over amplitude and α ∈ [−3, 4], a grid-based Δχ² = 1 interval, and whether α reaches the prior boundary.
+`profiled_shift` reports the shift n(z − Δz) after profiling over amplitude and α ∈ [−3, 4], a grid-based Δχ² = 1 interval, and whether α reaches the prior boundary anywhere inside that interval.
 `shift_boundary` flags intervals reaching the shift search limits [−0.2, 0.2].
 Fixed-α fits remain as sensitivity diagnostics, but the figure quotes the profiled result.
 Plotted point errors are marginal jackknife standard deviations; they do not imply diagonal fitting.
