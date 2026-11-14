@@ -166,7 +166,7 @@ def sacc_metric(s, params=None, step=0.1):
     analysis uses first) and its covariance. Tracers ``source_0`` … carry the
     n(z); the z grid of the realisations must be theirs.
     """
-    from . import blinding
+    from .. import blinding
 
     params = blinding.fiducial() if params is None else params
     work = copy.deepcopy(s)
@@ -257,9 +257,9 @@ def main(argv=None):
 
     import sacc
 
-    from . import blinding
+    from .. import blinding
 
-    p = argparse.ArgumentParser(prog="python -m sp_validation.nz_modes")
+    p = argparse.ArgumentParser(prog="python -m sp_validation.nz.modes")
     p.add_argument("sacc", help="SACC with source tracers and a covariance")
     p.add_argument(
         "realisations",

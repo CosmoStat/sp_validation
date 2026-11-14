@@ -51,7 +51,7 @@ is the container (full scientific stack pre-built). For a local dev environment:
 - `cat.py`: Catalogue handling and manipulation
 - `cosmo_val.py`: Cosmology validation routines
 - `cosmology.py`: Cosmological calculations and theory
-- `nz_modes.py`: Likelihood-aware n(z) modes (William d'Assignies Doumerg's method): the few n(z) distortions a data vector can see, as nuisance parameters
+- `nz/modes.py`: Likelihood-aware n(z) modes (William d'Assignies Doumerg's method): the few n(z) distortions a data vector can see, as nuisance parameters
 - `blinding.py`: Blinds, the theory `theory(params, s)` they shift by, and `conceal`, which shifts a SACC by one
 - `galaxy.py`: Galaxy-specific processing
 - `grammar.py`: Column grammars: ShapePipe v1 -> v2 adapter and `column_map` renames (`adapt`)

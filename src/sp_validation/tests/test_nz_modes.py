@@ -5,7 +5,7 @@ William's own ``generate_modes.py`` and ``Fisher_Cell_CS_IA.py`` (9 Nov 2026)
 on the two cases of his ``IA modes_2bins.ipynb``: two bins, 2000 realisations,
 with and without a low-z bump. The test rebuilds the same inputs (his toy
 generator, same seed and draw order) and his toy C_ℓ observable, then runs them
-through :func:`nz_modes.observable_metric`, which differentiates along the
+through :func:`sp_validation.nz.modes.observable_metric`, which differentiates along the
 ensemble's directions instead of forming his full 400 × 400 Fisher matrix.
 """
 
@@ -14,7 +14,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from sp_validation import nz_modes
+from sp_validation.nz import modes as nz_modes
 
 REFERENCE = Path(__file__).parent / "data" / "nz_modes_william_reference.npz"
 
