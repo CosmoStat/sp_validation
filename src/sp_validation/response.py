@@ -42,25 +42,36 @@ def evaluate_w(table, snr, size):
     return w
 
 
-def fit_w(snr, size, e, response, edges_s, edges_r, min_count=0):
-    """Fit W = mean(trace R/2)^2 / mean(|e|^2/2), unweighted per cell.
+def cell_moments(snr, size, e, response, edges_s, edges_r):
+    """Per-cell training moments of the DES table, flat over (SNR, size) cells.
 
-    Uses second moments, not centered variances. Fitting and evaluation share
-    the same boundary convention. Below min_count, pool moments over the
-    smallest clipped concentric square of cells reaching min_count; if the
-    entire training set is smaller, use its moments. Populated cells are exact.
-    The returned counts are unmerged training counts.
+    Returns the count, the summed response and the summed ``|e|^2 / 2`` of the
+    rows whose coordinates, shapes and response are all finite. Moments of
+    disjoint row sets add, so a catalogue too large for memory is fitted from
+    the sum of its chunks' moments (``table_from_moments``).
     """
-    shape = (len(edges_s) - 1, len(edges_r) - 1)
-    idx = cell_index(snr, edges_s) * shape[1] + cell_index(size, edges_r)
+    n_cells = (len(edges_s) - 1) * (len(edges_r) - 1)
+    idx = cell_index(snr, edges_s) * (len(edges_r) - 1) + cell_index(size, edges_r)
     valid = np.isfinite(snr) & np.isfinite(size)
     valid &= np.all(np.isfinite(e), axis=0) & np.isfinite(response)
     idx = idx[valid]
-    count = np.bincount(idx, minlength=np.prod(shape))
-    rsum = np.bincount(idx, weights=response[valid], minlength=len(count))
+    count = np.bincount(idx, minlength=n_cells)
+    rsum = np.bincount(idx, weights=response[valid], minlength=n_cells)
     esum = np.bincount(
-        idx, weights=np.mean(e[:, valid] ** 2, axis=0), minlength=len(count)
+        idx, weights=np.mean(e[:, valid] ** 2, axis=0), minlength=n_cells
     )
+    return count, rsum, esum
+
+
+def table_from_moments(count, rsum, esum, edges_s, edges_r, min_count=0):
+    """The DES table W = mean(trace R/2)^2 / mean(|e|^2/2) of ``cell_moments``.
+
+    Uses second moments, not centered variances. Below min_count, pool moments
+    over the smallest clipped concentric square of cells reaching min_count; if
+    the entire training set is smaller, use its moments. Populated cells are
+    exact. The returned counts are unmerged training counts.
+    """
+    shape = (len(edges_s) - 1, len(edges_r) - 1)
     w = np.divide(
         rsum**2, count * esum, out=np.zeros_like(rsum), where=(count * esum) > 0
     )
@@ -82,6 +93,88 @@ def fit_w(snr, size, e, response, edges_s, edges_r, min_count=0):
                     w[i * shape[1] + j] = r**2 / (n * e2) if n * e2 > 0 else 0
                     break
     return edges_s, edges_r, w.reshape(shape), count.reshape(shape)
+
+
+def fit_w(snr, size, e, response, edges_s, edges_r, min_count=0):
+    """Fit the DES table, unweighted per cell, on rows held in memory.
+
+    Fitting and evaluation share the same boundary convention
+    (``cell_index``); ``table_from_moments`` gives the definition.
+    """
+    moments = cell_moments(snr, size, e, response, edges_s, edges_r)
+    return table_from_moments(*moments, edges_s, edges_r, min_count)
+
+
+def cell_sums(branches, masks, coordinates, rg, edges_s, edges_r):
+    """Per-cell sums from which ``responses`` follows for any table on the edges.
+
+    A table weight depends on a row only through its (SNR, size) cell, so every
+    weighted mean of ``responses`` is a ratio of per-cell sums contracted with
+    the table. For each branch, over its selection and in the cells of its own
+    ``coordinates[b] = (snr, size)``: the row count ``n``, the summed no-shear
+    shapes ``ns_e`` and the summed own shapes ``own_e``; and for the no-shear
+    selection the summed per-object response ``rg``. Rows with a nonfinite
+    coordinate carry zero table weight and are left out. Sums of disjoint row
+    sets add (``responses_from_sums`` reads their total).
+    """
+    n_cells = (len(edges_s) - 1) * (len(edges_r) - 1)
+    sums = {"n": {}, "ns_e": {}, "own_e": {}}
+    for b, idx in masks.items():
+        snr, size = (x[idx] for x in coordinates[b])
+        finite = np.isfinite(snr) & np.isfinite(size)
+        idx = idx[finite]
+        cell = cell_index(snr[finite], edges_s) * (len(edges_r) - 1)
+        cell += cell_index(size[finite], edges_r)
+
+        def total(values, cell=cell):
+            return np.bincount(cell, weights=values, minlength=n_cells)
+
+        sums["n"][b] = np.bincount(cell, minlength=n_cells)
+        sums["ns_e"][b] = np.array([total(x[idx]) for x in branches["ns"]])
+        sums["own_e"][b] = np.array([total(x[idx]) for x in branches[b]])
+        if b == "ns":
+            sums["rg"] = np.array(
+                [[total(rg[i, j, finite]) for j in range(2)] for i in range(2)]
+            )
+    return sums
+
+
+def add_sums(a, b):
+    """Add two results of ``cell_sums`` or ``cell_moments``, or any equally
+    nested arrays."""
+    if isinstance(a, dict):
+        return {key: add_sums(a[key], b[key]) for key in a}
+    if isinstance(a, tuple):
+        return tuple(add_sums(x, y) for x, y in zip(a, b, strict=True))
+    return a + b
+
+
+def responses_from_sums(sums, table, step):
+    """``responses`` from ``cell_sums`` and one table, with the branch
+    populations: ``counts`` and ``weight_sums`` per branch."""
+    w = table[2].ravel()
+    den = {b: n @ w for b, n in sums["n"].items()}
+    if not all(np.isfinite(d) and d > 0 for d in den.values()):
+        raise ValueError(f"Empty or invalid weighted population: {den}")
+    shear = sums["rg"] @ w / den["ns"]
+    selection = np.empty((2, 2))
+    joint = np.empty((2, 2))
+    for j, (p, m) in enumerate((("p1", "m1"), ("p2", "m2"))):
+        for name, out in (("ns_e", selection), ("own_e", joint)):
+            plus, minus = (sums[name][b] @ w / den[b] for b in (p, m))
+            out[:, j] = (plus - minus) / (2 * step)
+    total = shear + selection
+    ce = sums["ns_e"]["ns"] @ w / den["ns"]
+    return dict(
+        shear=shear,
+        selection=selection,
+        total=total,
+        joint=joint,
+        c_e=ce,
+        c_g=np.linalg.solve(total, ce),
+        counts={b: int(n.sum()) for b, n in sums["n"].items()},
+        weight_sums={b: float(d) for b, d in den.items()},
+    )
 
 
 def responses(branches, masks, weights, rg, step, keep=None):

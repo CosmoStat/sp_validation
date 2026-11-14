@@ -16,7 +16,6 @@ import warnings
 import numpy as np
 import regions
 from astropy import coordinates as coords
-from astropy import units
 from astropy.nddata import bitmask
 from astropy.wcs import WCS
 from cs_util import cfis
@@ -135,11 +134,15 @@ def mask_cut(dd, mask_columns=None):
     return ~masked
 
 
-def classification_galaxy_overlap_ra_dec(dd, ra_key="XWIN_WORLD", dec_key="YWIN_WORLD"):
+def classification_galaxy_overlap_ra_dec(
+    dd, ra_key="XWIN_WORLD", dec_key="YWIN_WORLD", tiles=None
+):
     """Classification Galaxy Overlap Ra Dec.
 
     Return mask corresponding to non-overlapping tile areas using
-    simple cuts in RA and Dec.
+    simple cuts in RA and Dec: an object is kept inside its tile's Dec
+    range, and on its tile's side of the RA midpoint to each neighbouring
+    tile of the same row.
 
     Parameters
     ----------
@@ -149,95 +152,45 @@ def classification_galaxy_overlap_ra_dec(dd, ra_key="XWIN_WORLD", dec_key="YWIN_
         key name for right ascension column, default is 'XWIN_WORLD'
     dec_key : str, optional
         key name for declination column, default is 'YWIN_WORLD'
+    tiles : iterable of str, optional
+        IDs (``"194.248"``) of every tile of the survey, which decide whether
+        a tile has a neighbour. Give them whenever ``dd`` is part of a
+        catalogue: with the default, the tiles present in ``dd``, an object
+        in the strip shared with a tile outside ``dd`` is kept in both.
 
     Returns
     -------
-    list of bool
+    array of bool
         mask where `True` indicates galaxy to retain, and
         `False` being in overlapping region, to remove
 
     """
-    # Unique set of tile IDs in data
-    tile_ID_list = set(dd["TILE_ID"])
+    unique, inverse = np.unique(dd["TILE_ID"], return_inverse=True)
+    ids = [f"{tile:07.3f}" for tile in unique]
+    tiles = set(ids if tiles is None else tiles)
 
-    # Transform to string format
-    tile_ID_str_list = []
-    for ID in tile_ID_list:
-        tile_ID_str_list.append(f"{ID:07.3f}")
+    def centre(nix, niy):
+        ra, dec = cfis.get_tile_coord_from_nixy([f"{nix:03d}"], [f"{niy:03d}"])
+        return ra[0].value, dec[0].value
 
-    # Extract integer numbers from tile IDs
-    nix = []
-    niy = []
-    for ID in tile_ID_str_list:
-        x, y = cfis.get_tile_number(ID)
-        nix.append(x)
-        niy.append(y)
-
-    # Get RA and Dec coordinates of tile centers
-    ra_cen, dec_cen = cfis.get_tile_coord_from_nixy(nix, niy)
-
-    # Create limits on Dec by adding/subtracting half of the tile size
-    delta_dec = cfis.Cfis().size["tile"] / 2
-    dec_upper = dec_cen + delta_dec
-    dec_lower = dec_cen - delta_dec
-
-    # Create mask for Dec coordinates
-
-    # Initialise global Dec mask
-    mask_dec = np.full(len(dd), True)
-
-    # Loop over tiles and mask objects outside the Dec limits
-    for idx, tile_ID in enumerate(tile_ID_list):
-        # Get indices of galaxies on this tile ID
-        idx_ID = dd["TILE_ID"] == tile_ID
-
-        # Set mask for this tile ID
-        mask_dec_ID = (dd[idx_ID][dec_key] < dec_upper[idx].value) & (
-            dd[idx_ID][dec_key] >= dec_lower[idx].value
-        )
-
-        # Apply to global mask
-        mask_dec[idx_ID] = mask_dec_ID
-
-    # Create limits on RA by finding half-point to neigbouring tiles
-    ra_upper_list = []
-    ra_lower_list = []
-
-    for idx, tile_ID in enumerate(tile_ID_str_list):
-        # Find tile ID towards increasing RA
-        ID_upper = f"{int(nix[idx]) + 1:03d}.{int(niy[idx]):03d}"
-        if ID_upper in tile_ID_str_list:
-            # If found: compute halfway RA
-            idx_upper = tile_ID_str_list.index(ID_upper)
-            ra_upper = (ra_cen[idx] + ra_cen[idx_upper]) / 2
-        else:
-            # If not: no cut desired, set to large value
-            ra_upper = 370 * units.deg
-
-        # Add to list of cuts
-        ra_upper_list.append(ra_upper)
-
-        # Repeat towards decreasing RA
-        ID_lower = f"{int(nix[idx]) - 1:03d}.{int(niy[idx]):03d}"
-        if ID_lower in tile_ID_str_list:
-            idx_lower = tile_ID_str_list.index(ID_lower)
-            ra_lower = (ra_cen[idx] + ra_cen[idx_lower]) / 2
-        else:
-            ra_lower = -1 * units.deg
-
-        ra_lower_list.append(ra_lower)
-
-    # See above for Dec: Repeat for RA
-    mask_ra = np.full(len(dd), True)
-
-    for idx, tile_ID in enumerate(tile_ID_list):
-        idx_ID = dd["TILE_ID"] == tile_ID
-        mask_ra_ID = (dd[idx_ID][ra_key] < ra_upper_list[idx].value) & (
-            dd[idx_ID][ra_key] >= ra_lower_list[idx].value
-        )
-        mask_ra[idx_ID] = mask_ra_ID
-
-    return mask_dec & mask_ra
+    half = (cfis.Cfis().size["tile"] / 2).value
+    ra_lower, ra_upper, dec_cen = (np.empty(len(ids)) for _ in range(3))
+    for i, tile in enumerate(ids):
+        nix, niy = (int(n) for n in cfis.get_tile_number(tile))
+        ra_cen, dec_cen[i] = centre(nix, niy)
+        # Without a neighbour there is no cut on that side
+        ra_lower[i], ra_upper[i] = -1, 370
+        if f"{nix - 1:03d}.{niy:03d}" in tiles:
+            ra_lower[i] = (ra_cen + centre(nix - 1, niy)[0]) / 2
+        if f"{nix + 1:03d}.{niy:03d}" in tiles:
+            ra_upper[i] = (ra_cen + centre(nix + 1, niy)[0]) / 2
+    ra, dec = dd[ra_key], dd[dec_key]
+    return (
+        (ra >= ra_lower[inverse])
+        & (ra < ra_upper[inverse])
+        & (dec >= dec_cen[inverse] - half)
+        & (dec < dec_cen[inverse] + half)
+    )
 
 
 def classification_galaxy_base(

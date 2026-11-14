@@ -23,11 +23,12 @@ from sp_validation.io import read_catalogue
 from sp_validation.statistics import jackknif_weighted_average2
 
 
-def metacal_from_config(data, mask, cm, verbose=False):
+def metacal_from_config(data, mask, cm, verbose=False, global_response=True):
     """One calibration entry point; old release configs are explicitly legacy.
 
     Missing weight_scheme preserves their historical R/c/unsquared IV policy.
     New production configurations must declare des or iv and matching w_col.
+    ``global_response`` is passed on to ``metacal``.
     """
     modern = "weight_scheme" in cm
     return metacal(
@@ -47,6 +48,7 @@ def metacal_from_config(data, mask, cm, verbose=False):
         des_weight_product=cm.get("des_weight_product"),
         w_col=cm.get("w_col"),
         verbose=verbose,
+        global_response=global_response,
     )
 
 
@@ -87,6 +89,29 @@ def load_des_weight_product(product):
         ):
             raise ValueError("Invalid DES table or edges in calibration product")
         return (es, er, w, count), hdr["DESNMIN"]
+
+
+def save_des_weight_product(path, table, min_count):
+    """Write a DES weight table as a product ``load_des_weight_product`` reads.
+
+    ``table`` is ``(S/N edges, size edges, W, training counts)`` as
+    ``response.table_from_moments`` returns it, fitted with ``min_count``.
+    """
+    es, er, w, count = table
+    header = fits.Header()
+    header["WGHTSCH"] = "des"
+    header["WSNRCOL"] = "FLUX/FLUX_ERR"
+    header["WSIZDEF"] = "T/T_PSF_RECONV"
+    header["DESNMIN"] = (min_count, "Minimum DES training count")
+    header["DESMERGE"] = "concentric square; pooled moments"
+    fits.HDUList(
+        [
+            fits.PrimaryHDU(header=header),
+            fits.ImageHDU(w, name="W_DES"),
+            fits.ImageHDU(count, name="W_COUNT"),
+            fits.ImageHDU(np.array([es, er]), name="W_EDGES"),
+        ]
+    ).writeto(path)
 
 
 def save_response_product(path, gm, groups=None):
@@ -891,6 +916,12 @@ class metacal:
         of weights; default is 0.34
     verbose : bool, optional, default=False
         verbose output if True
+    global_response : bool, optional, default=True
+        fit the weights and the catalogue's response and additive bias on
+        ``data``. With ``False`` the object holds only the branch selections
+        (``mask_dict``) and the per-object shear response (``R_shear``), for a
+        caller that sums them over the chunks of a larger catalogue
+        (``sp_validation.sample``)
 
     """
 
@@ -914,7 +945,9 @@ class metacal:
         des_min_count=3,
         des_weight_product=None,
         w_col=None,
+        global_response=True,
     ):
+        self._global_response = global_response
         if weight_scheme is not None and global_R_weight is not None:
             raise ValueError("Use weight_scheme, not both response weight knobs")
         if weight_scheme is None and not legacy_response:
@@ -1098,6 +1131,8 @@ class metacal:
             raise ValueError(f"Invalid masking type '{self._masking_type}'")
 
         self._shear_response()
+        if not self._global_response:
+            return
         if self._legacy_response:
             self._selection_response()
             self._total_response()
