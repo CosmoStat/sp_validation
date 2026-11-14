@@ -8,7 +8,8 @@ selects gold groups on the sources themselves, and writes the products:
   the retained shear weight (cosmo_val's ``shear.redshift_path``);
 - ``nz_nontomo.txt``: their sum, the n(z) of every ``TOM_BIN_ID > 0`` row;
 - ``tom_bin.parquet``: ``TOM_BIN_ID`` and ``ZBAND`` row-aligned with the
-  catalogue, with its ``TILE_ID`` and ``NUMBER``;
+  catalogue, with its ``TILE_ID``, ``NUMBER`` and DR6 ``OBJECT_ID``
+  (:mod:`sp_validation.object_id`, null where ``NUMBER`` is -1);
 - ``realisations.npz``: draws of every bin at once (:mod:`nz_ensemble`), from
   ``ensemble_inputs.npz`` (per-group source tables, their response to
   magnitude offsets, and the calibrators' BPZ gradients);
@@ -26,6 +27,7 @@ import yaml
 
 from . import nz_calibration as nz
 from .data_roots import load_yaml
+from .object_id import object_id
 
 
 def prepare(config, workers=1):
@@ -114,6 +116,7 @@ def run(config, output, *, workers=1):
             dict(
                 TILE_ID=src["tile"],
                 NUMBER=src["number"],
+                OBJECT_ID=object_id(src["tile"], src["number"]),
                 TOM_BIN_ID=tom,
                 ZBAND=channel,
             )
