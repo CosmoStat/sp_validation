@@ -34,5 +34,5 @@ include: "../rules/calibrate.smk"
 
 rule all:
     input:
-        rules.calibrated_sample.output,
+        rules.calibrated_sample.output.done,
         rules.compare_calibrated_sample.output if config["calibrate"].get("reference") else [],

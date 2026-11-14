@@ -86,9 +86,13 @@ def compare_pixel(pixel):
         histogram={},
     )
     for name in (*COPIED, *CALIBRATED):
-        difference = np.abs(a[name][ia].astype(float) - b[name][ib].astype(float))
+        x, y = a[name][ia].astype(float), b[name][ib].astype(float)
+        difference = np.abs(x - y)
         if name == "w_des":
-            difference /= np.abs(b[name][ib])
+            difference = np.divide(difference, np.abs(y), where=y != 0, out=difference)
+        # NaN in both is equal; NaN in one is a difference no tolerance admits.
+        difference[np.isnan(x) & np.isnan(y)] = 0
+        difference[np.isnan(difference)] = np.inf
         result["largest"][name] = float(difference.max(initial=0))
         if name in CALIBRATED:
             logs = np.log10(np.maximum(difference, 10 ** LOG_EDGES[0]))
@@ -104,7 +108,8 @@ def compare(new, reference, *, tolerance=1e-10, workers=1):
     dict
         ``rows`` of each sample; ``paired`` on ID and on position; rows
         ``only_new`` and ``only_reference``; ``largest_difference`` per column
-        (absolute, relative for ``w_des``); ``histogram``, of log10 of the
+        (absolute, relative for ``w_des`` where the reference weight is not
+        zero; infinite where one value is NaN and the other not); ``histogram``, of log10 of the
         calibrated columns' differences on ``log_edges``; and ``agree``:
         every row paired, the copied columns equal and the calibrated ones
         within ``tolerance``

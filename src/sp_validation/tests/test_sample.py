@@ -8,6 +8,8 @@ galaxies, weights, response and calibrated shapes.
 
 import hashlib
 import json
+import shutil
+from pathlib import Path
 
 import lsdb
 import numpy as np
@@ -24,6 +26,7 @@ from sp_validation import calibration, io, masks, response
 from sp_validation.galaxy import classification_galaxy_overlap_ra_dec
 from sp_validation.object_id import OBJECT_ID, object_id
 from sp_validation.sample import compare, pipeline, snapshot
+from sp_validation.survey import effective_survey_stats
 
 TILES = ["200.290", "201.290", "201.291", "202.290"]
 SELECTION = yaml.safe_load(
@@ -225,6 +228,13 @@ def test_run_writes_the_in_memory_sample_as_hats(built):
     assert min_count == 3
     survey = json.loads((release / "catalogs/survey.json").read_text())
     assert survey["rows"] == len(out) and survey["area_deg2"] > 0
+    stats = effective_survey_stats(
+        expected["e"][0], expected["e"][1], expected["w"], survey["area_deg2"]
+    )
+    for name, value in stats.items():
+        assert survey["samples"]["all"][name] == pytest.approx(value, rel=1e-10)
+    assert np.ptp(expected["w"]) > 0  # the weights matter to these statistics
+    assert out["NUMBER"].dtype == built["data"]["NUMBER"].dtype
     flow = json.loads(
         (release / "provenance/calibrated_tile_accounting.json").read_text()
     )
@@ -272,6 +282,21 @@ def test_run_refuses_a_stale_catalogue_or_an_existing_sample(built):
     with pytest.raises(ValueError, match="not complete"):
         rerun("partial", manifest | dict(status="partial"))
 
+    # Shapes that name the manifest but hold other rows than it lists.
+    moved = json.loads(json.dumps(manifest))
+    moved["tiles"][TILES[0]]["objects"] += 1
+    moved["tiles"][TILES[1]]["objects"] -= 1
+    shapes_copy = root / "shapes-moved"
+    shutil.copytree(root / "shapes", shapes_copy)
+    sha = hashlib.sha256(json.dumps(moved).encode()).hexdigest()
+    primary = io.hats_catalogue_dir(shapes_copy)
+    for name in ("hats.properties", "properties"):
+        path = Path(primary) / name
+        path.write_text(path.read_text().replace(built["sha"], sha))
+    config = config | dict(catalogue=str(shapes_copy))
+    with pytest.raises(ValueError, match="2 tiles hold other rows"):
+        rerun("moved", moved)
+
 
 def test_compare_pairs_rows_and_finds_a_changed_shape(built, tmp_path):
     target = built["root"] / "release/catalogs/calibrated"
@@ -297,8 +322,6 @@ def test_compare_pairs_rows_and_finds_a_changed_shape(built, tmp_path):
     npt.assert_array_equal(data["RA"][a], legacy["RA"][b])
 
     changed = tmp_path / "changed"
-    import shutil
-
     shutil.copytree(target, changed)
     file = next(changed.glob("dataset/Norder=*/Dir=*/Npix=*.parquet"))
     table = pq.read_table(file)
@@ -310,3 +333,41 @@ def test_compare_pairs_rows_and_finds_a_changed_shape(built, tmp_path):
     assert not result["agree"]
     assert result["largest_difference"]["e1"] == pytest.approx(1e-6, rel=1e-6)
     assert result["largest_difference"]["e2"] == 0
+
+    # A row missing from one sample, and a NaN where the other has a value.
+    pq.write_table(pq.read_table(file).slice(1), file)
+    result = compare.compare(changed, target)
+    assert (result["only_new"], result["only_reference"]) == (0, 1)
+    assert not result["agree"] and result["largest_difference"]["e1"] == 0
+    files = sorted(changed.glob("dataset/Norder=*/Dir=*/Npix=*.parquet"))
+    table = pq.read_table(files[-1])
+    w = table["w_des"].to_numpy().copy()
+    w[0] = np.nan
+    table = table.set_column(table.schema.get_field_index("w_des"), "w_des", [w])
+    pq.write_table(table, files[-1])
+    result = compare.compare(changed, target)
+    assert result["largest_difference"]["w_des"] == np.inf and not result["agree"]
+
+
+def test_cell_sums_give_the_response_of_table_weights():
+    """With nonfinite coordinates and rows outside the table, which the
+    metacal selection never passes on."""
+    rng = np.random.default_rng(2)
+    n = 400
+    edges = np.logspace(1, 2, 5), np.logspace(0, 1, 4)
+    shapes = {b: tuple(rng.normal(0, 0.2, (2, n))) for b in response.BRANCHES}
+    coordinates = {
+        b: (10 ** rng.uniform(0.8, 2.2, n), 10 ** rng.uniform(-0.2, 1.2, n))
+        for b in response.BRANCHES
+    }
+    coordinates["p1"][0][:5] = np.nan
+    coordinates["ns"][1][5:9] = np.inf
+    selected = {b: np.flatnonzero(rng.uniform(size=n) < 0.7) for b in response.BRANCHES}
+    rg = rng.normal(0.7, 0.1, (2, 2, len(selected["ns"])))
+    table = (*edges, rng.uniform(0.5, 2, (4, 3)), None)
+    weights = {b: response.evaluate_w(table, *coordinates[b]) for b in shapes}
+    expected = response.responses(shapes, selected, weights, rg, 0.01)
+    sums = response.cell_sums(shapes, selected, coordinates, rg, *edges)
+    found = response.responses_from_sums(sums, table, 0.01)
+    for name, value in expected.items():
+        npt.assert_allclose(found[name], value, rtol=1e-10, atol=1e-13, err_msg=name)

@@ -63,10 +63,12 @@ snakemake --profile workflow/profiles/default -s workflow/calibrate/Snakefile -j
   after `/home`.
 - `output` is where the products go. Without it they go to the recipe's own
   `output`, the release directory `${unions_v2}/v2.0.0`. The build refuses to
-  write over an existing `catalogs/calibrated`.
+  write over an existing `catalogs/calibrated`, a partial one left by an
+  interrupted build included: remove it yourself to build there again.
 - `reference` is optional: a catalogue the sample should reproduce. The two
   are compared object by object into `provenance/calibrated_comparison.json`,
-  and the run fails unless its `agree` is true.
+  and the run fails unless its `agree` is true (the report is then kept as
+  `calibrated_comparison.json.failed`).
 - `container` is optional: an image other than your own
   (`~/.cache/sp_validation/sp_validation.sif`).
 

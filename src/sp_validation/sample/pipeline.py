@@ -267,8 +267,8 @@ def measure(pixel):
 def write(job):
     """Pass 2 of one pixel: write its file of the catalogue, return its rows."""
     pixel, target, table, estimate = job
-    rows = pq.read_table(_staged(pixel)).to_pydict()
-    rows = {name: np.asarray(column) for name, column in rows.items()}
+    staged = pq.read_table(_staged(pixel))
+    rows = {name: staged[name].to_numpy() for name in staged.column_names}
     if not len(rows["RA"]):
         return 0
     order, number = (int(part.split("=")[1]) for part in pixel.split("/"))
