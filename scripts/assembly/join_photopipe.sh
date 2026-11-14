@@ -10,7 +10,7 @@ set -euo pipefail
 
 : "${ACCOUNT:?Slurm account for the join job}"
 : "${CANFAR_USER:?CANFAR user whose arc home holds the extract}"
-EXTRACT=${EXTRACT:-$SCRATCH/photopipe-dr6/extract}
+EXTRACT=${EXTRACT:-$SCRATCH/photopipe-dr6-full/extract}
 SIF=${SIF:-$HOME/.cache/sp_validation/sp_validation.sif}
 STREAMS=${STREAMS:-8}
 STAGES=${STAGES:-extract stage join}
@@ -25,6 +25,7 @@ has_stage() { [[ " $STAGES " == *" $1 "* ]]; }
 curl_api() { curl -sS --retry 5 --retry-all-errors -m 120 --cert "$CERT" "$@"; }
 
 if has_stage extract; then
+    vmkdir -p "arc:$ARC"
     vcp "$CODE/scripts/assembly/extract_photopipe.py" "arc:$ARC/extract_photopipe.py"
     vrm "arc:$ARC/extract/COMPLETE" 2>/dev/null || true
     session=$(curl_api -X POST "$API/skaha/v1/session" \

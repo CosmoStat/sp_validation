@@ -1,11 +1,19 @@
-"""Give every shape object its PhotoPipe row, on the shape catalogue's HATS partitions.
+"""Give every shape object its PhotoPipe row: the PhotoPipe extension of the v2 collection.
 
 The inputs are the shape HATS catalogue and the column extract written by
-``scripts/assembly/extract_photopipe.py``. The output is a HATS catalogue with
-one row for each shape row, in the same pixel, keyed by ``_source_row``; a
-reader joins the two on that key within a pixel. By convention the rows of each
-pixel file are also in the shape file's order. PhotoPipe columns are null where
-``PHOTOPIPE_STATUS`` is not ``MATCHED``.
+``scripts/assembly/extract_photopipe.py``. The output, ``OUTPUT/photopipe``, is
+a HATS catalogue with one row for each shape row, in the same pixel and the
+same order, holding ``_healpix_29``, the DR6 object ID ``OBJECT_ID``
+(``sp_validation.assembly.object_id``), the shape coordinates and every PhotoPipe
+column. It is the data of the collection's ``photopipe`` extension
+(``scripts/assembly/build_collection.py``), joined to the shapes on
+``OBJECT_ID``; a PhotoPipe rerun replaces it and leaves the shapes alone.
+
+PhotoPipe columns are null where ``PHOTOPIPE_STATUS`` is not ``MATCHED``.
+``SeqNr`` becomes ``PHOTOPIPE_SEQNR``, and a PhotoPipe column whose name the
+shapes already use takes the prefix ``PHOTOPIPE_`` (``MAG_AUTO``,
+``MAGERR_AUTO``, ``FLUX_RADIUS``), so the two catalogues' column names are
+disjoint apart from the keys.
 
 Both catalogues number objects with Stephen Gwyn's DR6 IDs, so the join is exact
 on (tile, ``NUMBER`` = ``SeqNr``). Position plays no part in it:
@@ -22,19 +30,22 @@ from pathlib import Path
 
 import numpy as np
 import pyarrow as pa
+import pyarrow.compute as pc
 import pyarrow.parquet as pq
+from hats.catalog import TableProperties
+
+from sp_validation.assembly.object_id import OBJECT_ID, with_object_id
 
 SANITY_RADIUS_ARCSEC = 0.8
 MATCHED, NO_COUNTERPART, NO_TILE = 0, 1, 2
-SHAPE_COLUMNS = [
-    "_healpix_29",
-    "XWIN_WORLD",
-    "YWIN_WORLD",
-    "TILE_ID",
-    "NUMBER",
-    "_source_row",
-]
-POSITIONS = ["ALPHA_J2000", "DELTA_J2000"]
+NAME = "photopipe"
+PREFIX = "PHOTOPIPE_"
+SHAPE_COLUMNS = ["_healpix_29", "XWIN_WORLD", "YWIN_WORLD", "TILE_ID", "NUMBER"]
+#: The shape columns the extension carries: the keys, in hats-import's order.
+KEYS = ["_healpix_29", OBJECT_ID, "XWIN_WORLD", "YWIN_WORLD"]
+#: A float column with at most this fraction of distinct values is stored as a
+#: dictionary (magnitude sentinels, gridded redshifts), any other as split bytes.
+DICTIONARY_FRACTION = 0.01
 
 
 def tile_name(tile_id):
@@ -63,9 +74,28 @@ def _separation_arcsec(ra, dec, other_ra, other_dec):
     return np.hypot(delta_ra * np.cos(np.radians(dec)), dec - other_dec) * 3600
 
 
+def _encodings(table):
+    """Return the ``pq.write_table`` encodings of a pixel table: delta for the
+    integer keys, split bytes for float columns with many distinct values, a
+    dictionary for everything else."""
+    dictionary, encoding = [], {}
+    for field in table.schema:
+        if field.name in ("_healpix_29", OBJECT_ID):
+            encoding[field.name] = "DELTA_BINARY_PACKED"
+        elif pa.types.is_floating(field.type) and (
+            pc.count_distinct(table[field.name]).as_py()
+            > DICTIONARY_FRACTION * table.num_rows
+        ):
+            encoding[field.name] = "BYTE_STREAM_SPLIT"
+        else:
+            dictionary.append(field.name)
+    return dict(use_dictionary=dictionary, column_encoding=encoding)
+
+
 def merge_pixel(shape_path, output_path, index, schema):
     """Write the matched table of one pixel and return per-tile match counts."""
     shapes = pq.read_table(shape_path, columns=SHAPE_COLUMNS)
+    shape_names = pq.read_schema(shape_path).names
     ra = shapes["XWIN_WORLD"].to_numpy()
     dec = shapes["YWIN_WORLD"].to_numpy()
     tile_ids, tile_of_row = np.unique(shapes["TILE_ID"].to_numpy(), return_inverse=True)
@@ -112,15 +142,19 @@ def merge_pixel(shape_path, output_path, index, schema):
 
     photo = pa.concat_tables(pieces) if pieces else schema.empty_table()
     taken = photo.take(pa.array(photo_row, mask=status != MATCHED))
-    table = shapes
+    table = with_object_id(shapes).select(KEYS)
     table = table.append_column("PHOTOPIPE_STATUS", pa.array(status))
     table = table.append_column(
         "MATCH_SEP_ARCSEC", pa.array(separation, mask=status != MATCHED)
     )
     for name in taken.column_names:
-        if name not in POSITIONS:
-            target = "PHOTOPIPE_SEQNR" if name == "SeqNr" else name
-            table = table.append_column(target, taken[name])
+        if name == "SeqNr":
+            target = PREFIX + "SEQNR"
+        elif name in shape_names:
+            target = PREFIX + name
+        else:
+            target = name
+        table = table.append_column(target, taken[name])
     output_path.parent.mkdir(parents=True, exist_ok=True)
     temporary = output_path.with_suffix(".tmp")
     pq.write_table(
@@ -129,6 +163,7 @@ def merge_pixel(shape_path, output_path, index, schema):
         compression="zstd",
         compression_level=3,
         row_group_size=100_000,
+        **_encodings(table),
     )
     temporary.replace(output_path)
     return counts, table.schema
@@ -137,21 +172,17 @@ def merge_pixel(shape_path, output_path, index, schema):
 def _write_hats_metadata(shapes, catalogue, schema, nrows):
     for name in ("partition_info.csv", "point_map.fits", "skymap.fits"):
         shutil.copy(shapes / name, catalogue / name)
-    lines = (shapes / "hats.properties").read_text().splitlines()
-    replacements = dict(
-        obs_collection="unions_full_photopipe",
-        hats_cols_default="XWIN_WORLD YWIN_WORLD PHOTOPIPE_STATUS Z_B",
-        hats_builder="sp_validation.photopipe_merge",
-    )
-    updated = []
-    for line in lines:
-        key = line.split("=")[0]
-        updated.append(f"{key}={replacements[key]}" if key in replacements else line)
-    (catalogue / "hats.properties").write_text("\n".join(updated) + "\n")
-    shutil.copy(catalogue / "hats.properties", catalogue / "properties")
-    pq.write_metadata(schema, catalogue / "dataset" / "_common_metadata")
-    if nrows != int(_property(shapes, "hats_nrows")):
+    properties = TableProperties.read_from_dir(shapes)
+    if nrows != properties.total_rows:
         raise ValueError(f"merged {nrows} rows, shape catalogue has a different count")
+    properties.copy_and_update(
+        catalog_name=NAME,
+        default_columns=None,
+        **TableProperties.new_provenance_dict(
+            catalogue, builder="sp_validation.assembly.photopipe_merge"
+        ),
+    ).to_properties_file(catalogue)
+    pq.write_metadata(schema, catalogue / "dataset" / "_common_metadata")
 
 
 def _property(catalogue, key):
@@ -238,9 +269,9 @@ def _merge_worker(arguments):
 
 
 def merge(shapes, extract, output, workers=1, pixels=None):
-    """Build the matched HATS catalogue under ``output/catalogue``."""
+    """Build the PhotoPipe HATS catalogue under ``output/photopipe``."""
     shapes, output = Path(shapes), Path(output)
-    catalogue = output / "catalogue"
+    catalogue = output / NAME
     index = load_extract(extract)
     schema = _photopipe_schema(index)
     paths = sorted((shapes / "dataset").glob("Norder=*/Dir=*/Npix=*.parquet"))
