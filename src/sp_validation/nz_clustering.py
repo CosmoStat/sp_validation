@@ -319,15 +319,34 @@ def slice_average(grid, nz, lo, hi, shift=0.0):
     return (np.interp(hi, fine, c) - np.interp(lo, fine, c)) / (hi - lo)
 
 
-def amplitude_fit(y, ivar, model):
-    """χ² of y = A model at the best amplitude."""
-    A = (model * ivar * y).sum() / (model * ivar * model).sum()
-    return float(((y - A * model) ** 2 * ivar).sum())
+def jackknife_precision(rows):
+    """Full inverse covariance with a Hartlap finite-patch correction.
+
+    Spatial jackknife rows are not independent mocks: this is an approximate
+    correction, not a coverage validation. There must be more patches than
+    fitted slices plus two, and the selected covariance must be nonsingular.
+    """
+    n, p = rows.shape
+    if n <= p + 2:
+        raise ValueError("Full-covariance fit needs more patches than slices + 2")
+    factor = (n - p - 2) / (n - 1)
+    return factor * np.linalg.inv(jackknife_covariance(rows))
 
 
-def shift_fit(y, ivar, model_at):
+def amplitude(y, precision, model):
+    """Generalized least-squares amplitude for y = A model."""
+    return (model @ precision @ y) / (model @ precision @ model)
+
+
+def amplitude_fit(y, precision, model):
+    """χ² of y = A model at the best amplitude, using the full precision."""
+    residual = y - amplitude(y, precision, model) * model
+    return float(residual @ precision @ residual)
+
+
+def shift_fit(y, precision, model_at):
     """Shift minimising χ² of ``model_at(shift)``, with its Δχ² = 1 interval."""
-    prof = np.array([amplitude_fit(y, ivar, model_at(s)) for s in SHIFTS])
+    prof = np.array([amplitude_fit(y, precision, model_at(s)) for s in SHIFTS])
     i = int(np.argmin(prof))
     inside = SHIFTS[prof <= prof[i] + 1]
     return dict(
@@ -335,6 +354,33 @@ def shift_fit(y, ivar, model_at):
         lo=float(inside.min()),
         hi=float(inside.max()),
         chi2=float(prof[i]),
+    )
+
+
+def profiled_shift_fit(y, precision, model_at, z):
+    """Profile amplitude and α ∈ [-3, 4] at each shift; Δχ² = 1 interval.
+
+    The interval is a grid-based profile interval, not a marginalized posterior
+    or an n(z) prior. Boundary flags identify a fit limited by the search box.
+    """
+    tilt = (1 + z)[None, :] ** ALPHAS[:, None]
+    chi2 = []
+    for s in SHIFTS:
+        models = model_at(s)[None, :] * tilt
+        my = models @ precision @ y
+        mm = np.einsum("ai,ij,aj->a", models, precision, models)
+        chi2.append(y @ precision @ y - my**2 / mm)
+    chi2 = np.array(chi2)
+    prof = chi2.min(axis=1)
+    i = int(prof.argmin())
+    j = int(chi2[i].argmin())
+    inside = SHIFTS[prof <= prof[i] + 1]
+    return dict(
+        best=float(SHIFTS[i]), lo=float(inside.min()), hi=float(inside.max()),
+        chi2=float(prof[i]), alpha=float(ALPHAS[j]),
+        alpha_boundary=bool(j == 0 or j == len(ALPHAS) - 1),
+        alpha_prior=[float(ALPHAS[0]), float(ALPHAS[-1])],
+        shift_boundary=bool(inside.min() == SHIFTS[0] or inside.max() == SHIFTS[-1]),
     )
 
 
@@ -355,7 +401,9 @@ def gate(config, cosmo):
     half = _gate_half(len(dat["z"]))
     z, w = dat["z"][half], dat["w"][half]
     n, rows = m.nb("half") / m.bias(), m.nb("half", jk=True) / m.bias(jk=True)
-    var = np.diag(jackknife_covariance(rows))
+    cov = jackknife_covariance(rows)
+    var = np.diag(cov)
+    precision = jackknife_precision(rows)
     truth = np.histogram(z, m.edges, weights=w)[0] / w.sum() / m.dz
     fine = np.linspace(0, m.edges[-1] + 1, 20001)
     density = np.histogram(z, fine, weights=w)[0] / w.sum() / np.diff(fine)
@@ -370,12 +418,13 @@ def gate(config, cosmo):
         n=n.tolist(),
         err=np.sqrt(var).tolist(),
         truth=truth.tolist(),
-        chi2=float(((n - truth) ** 2 / var).sum()),
+        covariance=cov.tolist(),
+        chi2=float((n - truth) @ precision @ (n - truth)),
         dof=len(n),
         mean_z=float(mean(n)),
         mean_z_err=float(np.sqrt(jackknife_covariance(mean(rows)[:, None])[0, 0])),
         mean_z_truth=float(mean(truth)),
-        shift=shift_fit(n, 1 / var, lambda s: slice_average(centres, density, lo, hi, s)),
+        shift=shift_fit(n, precision, lambda s: slice_average(centres, density, lo, hi, s)),
     )
 
 
@@ -393,7 +442,8 @@ def compare(config, cosmo):
     """n(z) b(z) of every bin on the reference slices, and its fits.
 
     Per bin and candidate n(z), inside the bin's core window: χ² with amplitude
-    and bias slope α free, and the shift n(z - Δz) preferred at fixed α.
+    and bias slope α free, and a shift n(z - Δz) profiled over amplitude and α.
+    Fits use the full slice covariance with a finite-patch precision correction.
     """
     cl = config["clustering"]
     data = _data(cl)
@@ -419,28 +469,37 @@ def compare(config, cosmo):
         bins=[],
     )
     for k, window in enumerate(cl["core"]):
-        var = np.diag(jackknife_covariance(rows[k]))
+        cov = jackknife_covariance(rows[k])
+        var = np.diag(cov)
         core = (lo >= window[0] - 1e-6) & (hi <= window[1] + 1e-6)
-        ivar = core / var
+        precision = jackknife_precision(rows[k][:, core])
+        y = nb[k, core]
         fits = {}
         for name, hists in cands.items():
-            base = slice_average(grid, hists[k], lo, hi)
-            chi2 = np.array([amplitude_fit(nb[k], ivar, base * (1 + z) ** a) for a in ALPHAS])
+            def model_at(s):
+                return slice_average(grid, hists[k], lo[core], hi[core], s)
+
+            base = model_at(0)
+            chi2 = np.array([amplitude_fit(y, precision, base * (1 + z[core]) ** a) for a in ALPHAS])
+            alpha = float(ALPHAS[chi2.argmin()])
             fits[name] = dict(
                 chi2=float(chi2.min()),
-                alpha=float(ALPHAS[chi2.argmin()]),
+                alpha=alpha,
+                amplitude=float(amplitude(y, precision, base * (1 + z[core]) ** alpha)),
                 dof=int(core.sum()) - 2,
+                profiled_shift=profiled_shift_fit(y, precision, model_at, z[core]),
                 shift={
                     f"{a:g}": shift_fit(
-                        nb[k],
-                        ivar,
-                        lambda s, a=a: slice_average(grid, hists[k], lo, hi, s) * (1 + z) ** a,
+                        y,
+                        precision,
+                        lambda s, a=a: model_at(s) * (1 + z[core]) ** a,
                     )
                     for a in SHIFT_ALPHAS
                 },
             )
         out["bins"].append(
-            dict(nb=nb[k].tolist(), nb_err=np.sqrt(var).tolist(), core=list(window), fits=fits)
+            dict(nb=nb[k].tolist(), nb_err=np.sqrt(var).tolist(), covariance=cov.tolist(),
+                 core=list(window), patches=len(rows[k]), fits=fits)
         )
     return out
 
@@ -516,11 +575,8 @@ def render(result, grid, cands, directory):
                              layout="constrained")
     for k, (b, ax) in enumerate(zip(result["bins"], axes)):
         fit = b["fits"]["calibration"]
-        core = (lo >= b["core"][0] - 1e-6) & (hi <= b["core"][1] + 1e-6)
-        ivar = core / np.array(b["nb_err"]) ** 2
         tilt = (1 + z) ** fit["alpha"]
-        model = slice_average(grid, cands["calibration"][k], lo, hi) * tilt
-        A = (model * ivar * b["nb"]).sum() / (model * ivar * model).sum()
+        A = fit["amplitude"]
         ax.errorbar(z, np.array(b["nb"]) / tilt / A, np.array(b["nb_err"]) / tilt / A,
                     fmt="o", ms=3, lw=1, color=COLORS[0], label="clustering × DESI DR1")
         for name, hists in cands.items():
@@ -528,10 +584,11 @@ def render(result, grid, cands, directory):
                     label=labels[name])
         ax.axvspan(*b["core"], color=COLORS[0], alpha=0.07, lw=0)
         ax.axhline(0, color="k", lw=0.5)
-        shift = fit["shift"]["1"]
+        shift = fit["profiled_shift"]
         text = f"bin {k + 1}   χ² = " + ", ".join(
             f"{f['chi2']:.1f}" for f in b["fits"].values()
         ) + f" / {fit['dof']}   Δz = {shift['best']:+.3f} [{shift['lo']:+.3f}, {shift['hi']:+.3f}]"
+        text += f"  α = {shift['alpha']:.2f}" + (" (prior edge)" if shift["alpha_boundary"] else "")
         ax.text(0.99, 0.93, text, transform=ax.transAxes, ha="right", va="top", fontsize=8)
         ax.set_ylabel("n(z)")
     axes[0].legend(fontsize=7, loc="center right")

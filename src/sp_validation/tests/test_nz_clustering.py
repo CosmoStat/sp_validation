@@ -39,11 +39,54 @@ def test_shift_fit_recovers_a_shift():
     y = 3.0 * nc.slice_average(grid, gaussian(grid, 0.6), lo, hi, 0.03)
     fit = nc.shift_fit(
         y,
-        np.full(len(y), 1e4),
+        np.eye(len(y)) * 1e4,
         lambda s: nc.slice_average(grid, gaussian(grid, 0.6), lo, hi, s),
     )
     assert fit["best"] == pytest.approx(0.03, abs=0.0026)
     assert fit["lo"] <= 0.03 <= fit["hi"]
+
+
+def test_profiled_shift_with_correlated_noise():
+    rng = np.random.default_rng(12)
+    grid = np.linspace(0, 2, 401)
+    lo = nc.slice_edges(0.15, 1.15, 0.05)[:-1]
+    hi, z = lo + 0.05, lo + 0.025
+    nz = gaussian(grid, 0.5, 0.09) + 0.6 * gaussian(grid, 0.85, 0.07)
+
+    def model(s):
+        return nc.slice_average(grid, nz, lo, hi, s)
+
+    cov = 0.03**2 * (0.8 ** np.abs(np.subtract.outer(np.arange(len(z)), np.arange(len(z)))))
+    # Generate leave-one-out rows with exactly this sample covariance.
+    n = 200
+    rows = rng.multivariate_normal(np.zeros(len(z)), cov / (n - 1), n)
+    precision = nc.jackknife_precision(rows)
+    np.testing.assert_allclose(
+        precision @ nc.jackknife_covariance(rows),
+        np.eye(len(z)) * (n - len(z) - 2) / (n - 1), atol=1e-12,
+    )
+    y = 2 * model(0.03) * (1 + z) ** 2 + rng.multivariate_normal(np.zeros(len(z)), cov)
+    fit = nc.profiled_shift_fit(y, precision, model, z)
+    fixed = nc.shift_fit(y, precision, lambda s: model(s) * (1 + z) ** 2)
+    assert fit["best"] == pytest.approx(0.03, abs=0.005)
+    assert fit["lo"] <= 0.03 <= fit["hi"]
+    assert fit["hi"] - fit["lo"] >= fixed["hi"] - fixed["lo"]
+    assert not fit["alpha_boundary"]
+    assert fit["alpha"] == pytest.approx(2, abs=0.4)
+    m = model(0)
+    A = (m @ precision @ y) / (m @ precision @ m)
+    residual = y - A * m
+    assert nc.amplitude_fit(y, precision, m) == pytest.approx(residual @ precision @ residual)
+    diagonal = np.diag(np.diag(precision))
+    assert not np.isclose(nc.amplitude_fit(y, precision, m), nc.amplitude_fit(y, diagonal, m))
+    boundary = nc.profiled_shift_fit(2 * model(0) * (1 + z) ** 6, precision, model, z)
+    assert boundary["alpha_boundary"]
+    assert boundary["alpha"] == 4
+
+
+def test_precision_requires_enough_patches():
+    with pytest.raises(ValueError, match="patches"):
+        nc.jackknife_precision(np.ones((6, 4)))
 
 
 def test_actual_selection_randoms_null():
