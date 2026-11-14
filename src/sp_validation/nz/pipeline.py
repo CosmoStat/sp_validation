@@ -63,6 +63,12 @@ def calibrate(config, cal, src, output, *, workers=1):
 
     ``cal`` and ``src`` are the arrays of :func:`.inputs.calibrators` and
     :func:`.inputs.sources`; ``config`` is a loaded recipe.
+
+    @sc [label:coupling] calibrator-edges-are-source-edges
+    One set of edges, computed from the sources, bins the sources
+    (``model["edges"]``), the calibrators (:func:`.calibration.calibrate`) and,
+    through ``calibration_arrays.npz``, the ensemble; a bin's sources are
+    calibrated only by the spectra in the same BPZ interval.
     """
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)

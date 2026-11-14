@@ -7,6 +7,8 @@ with their PhotoPipe extension, :mod:`sp_validation.hats_collection`) by its
 DR6 object ID. Calibrators are the spectra PhotoPipe matched to its own
 objects (``UNIONS.<tile>_ugriz_photoz_ext_specz.cat``), named by survey
 through the redshift compilation beside them.
+
+@sc [decision:nz.photometry_as_delivered]
 """
 
 import glob
@@ -46,6 +48,8 @@ def calibrators(specz_dir, compilation, surveys, z_min, offset):
     ``UNIONS.<tile>_redshifts-<compilation>.asc``. A spectrum matched in several
     overlapping tiles is kept once. Missing z is filled from z2 + ``offset``, as
     for sources.
+
+    @sc [decision:nz.calibrator_set]
     """
     columns = ["SeqNr", "ALPHA_J2000_spec", "DELTA_J2000_spec", "z_spec_spec", "Z_B"]
     parts = []
@@ -103,6 +107,10 @@ def sources(catalogue, photometry, workers=1):
     for an ID the collection lacks; both keep NaN photometry.
 
     @sc [decision:nz.source_photometry_join]
+    @sc [label:convention] sources-row-aligned
+    Every returned array is in the catalogue's row order, rows without
+    photometry included: ``tom_bin.parquet`` is written in this order, and row
+    order is the only key it has for rows with no ``OBJECT_ID``.
     """
     shear = read_catalogue(catalogue, columns=["TILE_ID", "NUMBER", "w_des"])
     ids = np.asarray(object_id(shear["TILE_ID"], shear["NUMBER"]).fill_null(-1))

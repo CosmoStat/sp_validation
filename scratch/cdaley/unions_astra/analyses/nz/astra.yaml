@@ -1,0 +1,361 @@
+version: "0.0.10"
+name: "v2 tomographic n(z) (SOM direct calibration)"
+tags: [unions, weak-lensing, redshift-calibration, n-of-z]
+
+authors:
+  - "Cail Daley"
+
+narrative:
+  summary: |
+    The source redshift distributions of the v2 tomographic analysis, from
+    the recipe `config/calibration/nz/v2.yaml` run by
+    `scripts/calibration/calibrate_nz.py` (`sp_validation.nz`). Sources and
+    calibrators share one photometry, PhotoPipe's run on the DR6 detections;
+    a self-organising map trained on EGS spectra transfers the spectra's
+    redshifts to the sources of each BPZ bin. The calibration rests on one
+    spectroscopic field, so it serves validation, null tests and mocks, not
+    parameter constraints.
+  methods: |
+    Sources take their photometry by [object ID](#decisions.source_photometry_join),
+    with an undetected z filled from [z2](#decisions.z2_offset), and every
+    magnitude [as delivered](#decisions.photometry_as_delivered). They fall
+    into [four equal-weight BPZ bins](#decisions.tomographic_bins). The
+    [calibrators](#decisions.calibrator_set) train the [SOM](#decisions.som_map);
+    within each bin, [gold](#decisions.gold_selection) groups keep sources
+    whose spectra agree with their BPZ, and the weighted spectra are
+    deposited on the [Δz = 0.05 grid](#decisions.grid_step). The
+    [ensemble](#decisions.ensemble_terms) perturbs that calibration to give
+    its uncertainty.
+  inputs: |
+    The [shear_catalogue](#inputs.shear_catalogue), its
+    [photometry_collection](#inputs.photometry_collection), and the
+    [egs_spectra](#inputs.egs_spectra).
+  outputs: |
+    The binned n(z) [nz_tomo](#outputs.nz_tomo) and its sum
+    [nz_nontomo](#outputs.nz_nontomo), each row's bin in
+    [tom_bin](#outputs.tom_bin), and the n(z)
+    [realisations](#outputs.realisations).
+
+inputs:
+  - id: shear_catalogue
+    type: data
+    label: "Released calibrated v2 shear catalogue"
+    source: "${unions_v2}/v2.0.0/catalogs/calibrated"
+    description: >-
+      The catalogue cosmo_val measures (SP_v2.0): TILE_ID, NUMBER and the
+      shear weight w_des of every row. Its rows are the sources.
+  - id: photometry_collection
+    type: data
+    label: "v2 collection: shapes with the PhotoPipe extension"
+    source: "${unions_v2}/run1-snap3-collection"
+    description: >-
+      The HATS collection of ShapePipe shapes and PhotoPipe's dereddened GAaP
+      ugriz, z2 and BPZ Z_B on Stephen Gwyn's DR6 detections, indexed by
+      OBJECT_ID.
+  - id: egs_spectra
+    type: data
+    label: "DEEP2/DEEP3 spectra in EGS matched by PhotoPipe"
+    source: "${unions_data}/photopipe-dr6-specz"
+    description: >-
+      Per tile, PhotoPipe's spec-z matches to its own objects
+      (UNIONS.<tile>_ugriz_photoz_ext_specz.cat) and the redshift compilation
+      naming each spectrum's survey (UNIONS.<tile>_redshifts-<compilation>.asc).
+
+decisions:
+  source_photometry_join:
+    label: "Source photometry join"
+    tags: [data-selection]
+    rationale: >-
+      Each catalogue row takes PhotoPipe photometry and BPZ from the
+      collection by its DR6 object ID, OBJECT_ID = 10⁶ × tile + NUMBER, an
+      exact integer key. A row with no DR6 number, or an ID the collection
+      lacks, keeps NaN photometry, so it gets no bin, and summary.json's
+      `match` reports its share of the shear weight. The previous run matched
+      by exact float RA/Dec, which depends on two catalogues writing the same
+      bits for a position (Cail, 14 Nov: "Why are we not doing this on object
+      IDs? … concerning to me").
+      Values: nz.inputs.OBJECT_ID = "OBJECT_ID".
+    default: object_id
+    options:
+      object_id:
+        label: "Join on OBJECT_ID"
+        description: "Exact integer key; unmatched rows are counted, never guessed."
+      exact_position:
+        label: "Exact RA/Dec position match"
+        description: >-
+          The previous run's join. A rounding difference between catalogues
+          silently drops or mismatches rows.
+
+  tomographic_bins:
+    label: "Tomographic bin edges"
+    tags: [binning]
+    rationale: >-
+      Four bins cut on the DR6 BPZ point estimate Z_B within [0.10, 1.20).
+      Each run places the interior edges at equal shear weight (quartiles)
+      over sources with complete photometry and BPZ in range, before gold;
+      summary.json records them. The calibrators are split by the same edges.
+      Cail, 14 Nov: "equal weight quartiles is fine. I don't see why we care
+      if they move a little bit. The n(z) are gonna move either way." The
+      population the quartiles are taken over (complete photometry, in range,
+      before gold, in one pass, since gold depends on the bins) is the hub's
+      choice and not yet confirmed by Cail; gold then removes a different
+      share of each bin, so the delivered bins are only roughly equal.
+      The previous hand-set edges 0.10/0.37/0.55/0.76/1.20 were the
+      shear-weight quartiles of the first calibration, kept through later
+      runs.
+      Values: v2.yaml#bins.count = 4; v2.yaml#bins.range = [0.1, 1.2].
+    default: equal_weight_quartiles
+    options:
+      equal_weight_quartiles:
+        label: "Equal shear weight, recomputed per run"
+        description: "Interior edges at the shear-weight quartiles of the run's own sources."
+      fixed_edges:
+        label: "Fixed edges kept across releases"
+        description: >-
+          The previous 0.10/0.37/0.55/0.76/1.20. Bins stay comparable between
+          runs, but drift from equal weight as the catalogue changes.
+      equal_number:
+        label: "Equal galaxy number"
+        description: >-
+          Quantiles of galaxy count rather than shear weight. KiDS-Legacy
+          (Wright et al. 2025, arXiv:2503.19440) chose six approximately
+          equipopulated Z_B bins a priori on the SKiLLS simulations
+          (0.10/0.42/0.58/0.71/0.90/1.14/2.00).
+      som_cell_assignment:
+        label: "Bins assigned by SOM cell"
+        description: >-
+          DES Y3 (Myles et al. 2021, arXiv:2012.08566) assigns each wide SOM
+          cell to the bin where most of its redshift-sample galaxies fall, with
+          edges adjusted to roughly equal galaxy numbers in four bins. Needs a
+          wide-field SOM and a deep-field transfer this calibration lacks.
+      fixed_width:
+        label: "Fixed-width bins"
+        description: >-
+          KiDS-1000 (Hildebrandt et al. 2021, arXiv:2007.15635) cut on the BPZ
+          point estimate Z_B in five bins, Δz_B = 0.2 over 0.1–0.9 and a fifth
+          over 0.9–1.2, calibrated by SOM direct calibration with a gold
+          selection (Wright et al. 2020, arXiv:1909.09632). HSC Y3 (Dalal et
+          al. 2023, arXiv:2304.00701) used four bins of width 0.3 over
+          0.3–1.5 in the DNNz point estimate.
+
+  calibrator_set:
+    label: "Spectroscopic calibration sample"
+    tags: [calibration, data-selection]
+    rationale: >-
+      Calibrators are the DEEP2 and DEEP3 spectra in EGS that PhotoPipe
+      matched to its own objects (compilation 20261019), so they share the
+      sources' photometry: about 9,900 spectra, each kept once, with z >
+      0.002 (removing stars) and complete ugriz. Our code applies no
+      redshift-quality cut; the compilation gives every DEEP2/3 entry
+      confidence 0.99, read as a secure-redshift selection made upstream (not
+      confirmed). One field means no field-to-field variance beyond the
+      ensemble's line-of-sight term and no model of DEEP2/3 targeting or
+      redshift success.
+      Values: v2.yaml#inputs.calibrators.compilation = "20261019";
+      v2.yaml#inputs.calibrators.surveys = ["deep2_final", "deep3_final"];
+      v2.yaml#inputs.calibrators.z_min = 0.002.
+    default: deep2_deep3_egs
+    options:
+      deep2_deep3_egs:
+        label: "DEEP2 + DEEP3 in EGS"
+        description: "PhotoPipe's own matches; one field."
+      add_desi_dr1:
+        label: "Add DESI DR1 on the same tiles"
+        description: >-
+          About 36,000 DESI DR1 spectra on the same photometry, with their own
+          targeting; a separate decision, not taken.
+      other_fields:
+        label: "Add other spectroscopic fields"
+        description: "Field-to-field variance, once PhotoPipe matches spectra elsewhere."
+
+  photometry_as_delivered:
+    label: "PhotoPipe photometry used as delivered"
+    tags: [calibration]
+    rationale: >-
+      [HARDCODED] Sources and calibrators use PhotoPipe's magnitudes with no
+      stellar-locus or zero-point correction; the code has no correction step.
+      EGS sits off the DR6 stellar locus (+0.035 in g−r, +0.055 in i−z) and
+      DR6 tiles carry 9–28 mmag zero-point errors in colours
+      (pando unions/v2-tomographic-nz/egs-off-the-stellar-locus,
+      unions/v2-tomographic-nz/romain-dr6-zero-point-note). These enter as
+      the ensemble's zero_points term and a stated limitation. Correcting EGS
+      by the full stellar offset would raise ⟨z⟩ by up to +0.018, +0.005,
+      +0.007, +0.013 per bin. Cail, 14 Nov: "We don't correct the photometry
+      … this is up to Hendrik to fix. We can do any checks we want, but
+      Hendrik's the photo-z guy."
+      Values: none.
+    default: as_delivered
+    options:
+      as_delivered:
+        label: "As delivered"
+        description: "Zero-point errors enter as an uncertainty term."
+      correct_egs:
+        label: "Correct EGS only"
+        description: >-
+          Shift the calibrators by the EGS stellar-locus offset. Galaxies follow
+          only 0.6–0.9 of a stellar offset, so this over-corrects.
+      per_tile_stellar_locus:
+        label: "Per-tile stellar-locus correction"
+        description: "Romain Paviot's smoothed per-tile solution, applied to sources and calibrators."
+
+  z2_offset:
+    label: "z2 fills an undetected z"
+    tags: [calibration]
+    rationale: >-
+      Where z is undetected, the second z exposure (z2) fills it after a
+      constant offset, for sources and calibrators alike; canonical z takes
+      precedence. Without it, sources measured only in z2 (a third of the
+      gold weight) would lack complete photometry and leave every bin. The
+      constant's error enters the ensemble as its z2_offset term.
+      Values: v2.yaml#z2_offset = -0.1104888916015625.
+    default: offset_z2
+    options:
+      offset_z2:
+        label: "z2 + constant offset"
+        description: "Canonical z first."
+      canonical_only:
+        label: "Canonical z only"
+        description: "Drops the z2-only sources."
+
+  som_map:
+    label: "Self-organising map"
+    tags: [calibration]
+    rationale: >-
+      A planar 101 × 101 batch SOM, 60 epochs with PCA initialisation, seed
+      42, trained on the calibrators alone. [HARDCODED] Its features are the
+      ten pairwise ugriz colours and r, standardised per feature. Ward
+      clustering merges the 10,201 cells into 2,000 groups, about five spectra
+      each, the unit of the calibration weights and the gold test; each
+      source goes to its nearest cell with no distance cut.
+      Values: v2.yaml#som.side = 101; v2.yaml#som.epochs = 60;
+      v2.yaml#som.seed = 42; v2.yaml#groups = 2000.
+    default: calibrator_trained_101
+    options:
+      calibrator_trained_101:
+        label: "101 × 101 on calibrators, 2,000 groups"
+        description: "Ten colours + r."
+      train_on_sources:
+        label: "Train on the sources"
+        description: "Cells follow the source population; most cells then hold no spectrum."
+      no_grouping:
+        label: "Calibrate per cell"
+        description: "About one spectrum per cell: more cells without support, noisier weights."
+
+  gold_selection:
+    label: "Gold selection threshold"
+    tags: [data-selection, calibration]
+    rationale: >-
+      Within a bin, a group is gold when it holds an in-bin spectrum and its
+      spectra's mean spec-z agrees with its sources' weighted mean BPZ within
+      max(0.4, 5 × NMAD(spec-z − BPZ)) over every calibrator; sources outside
+      gold get TOM_BIN_ID 0. Most of gold's loss is groups with no in-bin
+      spectrum, not the agreement test. The
+      factor's range enters the ensemble as its nmad_factor term.
+      Values: v2.yaml#gold_qc.floor = 0.4; v2.yaml#gold_qc.nmad_factor = 5.
+    default: floor_0_4_nmad_5
+    options:
+      floor_0_4_nmad_5:
+        label: "max(0.4, 5 × NMAD)"
+        description: "Fiducial."
+      support_only:
+        label: "Support only"
+        description: "Keep every group with an in-bin spectrum, no agreement test."
+
+  grid_step:
+    label: "Delivered n(z) resolution"
+    tags: [binning]
+    rationale: >-
+      The weighted spectra are deposited linearly on a grid of step 0.05 over
+      [0, 5], which keeps each bin's mass and mean and widens it by about
+      step²/6 in variance. A finer grid resolves the galaxy overdensities
+      along the single EGS sightline, which belong to the calibration field
+      and not to the sources. Against a 0.01 grid, 0.05 moves the ξ± theory
+      (12–83′) by Δχ² < 0.01 without intrinsic alignments and 0.06 with
+      A_IA = 1.
+      Values: v2.yaml#grid.step = 0.05.
+    default: step_0_05
+    options:
+      step_0_05:
+        label: "Δz = 0.05"
+        description: "Smooths the calibration field's line-of-sight structure."
+      step_0_01:
+        label: "Δz = 0.01"
+        description: "Resolves the EGS sightline's spikes into the delivered n(z)."
+
+  ensemble_terms:
+    label: "n(z) realisation terms and sizes"
+    tags: [stats, systematics]
+    rationale: >-
+      2,000 draws perturb the calibration's inputs and recalibrate every bin
+      together. Statistical terms: a bootstrap of the spectra, and a lognormal
+      line-of-sight density through the 2° × 0.25° DEEP2/3 strip with bias
+      1.3. Systematic terms: EGS zero points against the wide field (colour
+      sigmas and correlations from stellar-locus regression on 3.4 deg²
+      patches, plus 0.01 mag grey from Pan-STARRS 3π uniformity), the z2 → z
+      constant (0.02 mag), spec-z failures (1%, from the compilation's 0.99
+      confidence), and the gold factor drawn in [4, 6]. The zero points
+      dominate σ⟨z⟩ and correlate ⟨z⟩ between bins.
+      Unmodelled: spectroscopic selection and incompleteness, and method bias
+      calibrated on simulations, so this is a lower bound. Sizes are argued
+      in scripts/calibration/README.md.
+      Values: v2.yaml#ensemble.draws = 2000; v2.yaml#ensemble.bootstrap = True;
+      v2.yaml#ensemble.density.field = [2.0, 0.25];
+      v2.yaml#ensemble.density.bias = 1.3;
+      v2.yaml#ensemble.zero_points.colour_sigma = [0.0215, 0.0194, 0.0119, 0.0208];
+      v2.yaml#ensemble.zero_points.colour_corr = [[1.0, -0.59, 0.13, -0.13], [-0.59, 1.0, -0.05, 0.16], [0.13, -0.05, 1.0, -0.49], [-0.13, 0.16, -0.49, 1.0]];
+      v2.yaml#ensemble.zero_points.grey = 0.01;
+      v2.yaml#ensemble.z2_offset = 0.02;
+      v2.yaml#ensemble.specz_failure = 0.01;
+      v2.yaml#ensemble.nmad_factor = [4, 6].
+    default: statistical_and_systematic
+    options:
+      statistical_and_systematic:
+        label: "Statistical and systematic terms"
+        description: "Every term above."
+      statistical_only:
+        label: "Bootstrap and density only"
+        description: "Expected Δχ² 0.16 on v2 ξ±, against 1.06 with the systematic terms."
+      delta_z_shifts:
+        label: "Independent per-bin Δz shifts"
+        description: "σ = 0.018 per bin, the 2D analysis's prior: expected Δχ² 4.08, no inter-bin correlation."
+
+outputs:
+  - id: nz_tomo
+    type: data
+    label: "Tomographic n(z)"
+    inputs: [shear_catalogue, photometry_collection, egs_spectra]
+    decisions:
+      [source_photometry_join, tomographic_bins, calibrator_set,
+       photometry_as_delivered, z2_offset, som_map, gold_selection, grid_step]
+    description: >-
+      nz_tomo.txt: z and one density per bin, each integrating to the bin's
+      share of the retained shear weight (cosmo_val's shear.redshift_path).
+  - id: nz_nontomo
+    type: data
+    label: "Non-tomographic n(z)"
+    inputs: [shear_catalogue, photometry_collection, egs_spectra]
+    decisions:
+      [source_photometry_join, tomographic_bins, calibrator_set,
+       photometry_as_delivered, z2_offset, som_map, gold_selection, grid_step]
+    description: "nz_nontomo.txt: the sum of the bins, the n(z) of every TOM_BIN_ID > 0 row."
+  - id: tom_bin
+    type: data
+    label: "Per-row tomographic bin"
+    inputs: [shear_catalogue, photometry_collection, egs_spectra]
+    decisions:
+      [source_photometry_join, tomographic_bins, calibrator_set,
+       photometry_as_delivered, z2_offset, som_map, gold_selection]
+    description: >-
+      tom_bin.parquet: OBJECT_ID, TOM_BIN_ID and ZBAND, row-aligned with the
+      shear catalogue.
+  - id: realisations
+    type: data
+    label: "n(z) realisations"
+    inputs: [shear_catalogue, photometry_collection, egs_spectra]
+    decisions:
+      [source_photometry_join, tomographic_bins, calibrator_set,
+       photometry_as_delivered, z2_offset, som_map, gold_selection, grid_step,
+       ensemble_terms]
+    description: >-
+      realisations.npz: (draws, bins, z) unit-integral n(z), every bin drawn
+      together and recentred on the delivered n(z).

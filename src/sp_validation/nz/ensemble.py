@@ -336,6 +336,8 @@ def realisations(cal, settings, density=None):
     n(z): the terms are zero-mean in their inputs, but the calibration is
     nonlinear in them, and the raw mean is returned so its offset can be
     reported.
+
+    @sc [decision:nz.ensemble_terms]
     """
     rng = np.random.default_rng(settings.get("seed", 0))
     n_draw, n_cal = settings["draws"], len(cal.z)

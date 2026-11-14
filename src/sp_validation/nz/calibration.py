@@ -19,14 +19,20 @@ def detected(mag):
 
 
 def features(mag):
-    """Return the ten ugriz colours and r magnitude, in the training order."""
+    """Return the ten ugriz colours and r magnitude, in the training order.
+
+    @sc [decision:nz.som_map]
+    """
     return np.column_stack(
         [mag[:, i] - mag[:, j] for i in range(5) for j in range(i + 1, 5)] + [mag[:, 2]]
     )
 
 
 def train(mag, side=101, epochs=60, seed=42, workers=1):
-    """Train a planar batch SOM with PCA initialization and Gaussian smoothing."""
+    """Train a planar batch SOM with PCA initialization and Gaussian smoothing.
+
+    @sc [decision:nz.som_map]
+    """
     x = features(mag)
     center, scale = x.mean(0), x.std(0)
     scale[scale == 0] = 1
@@ -60,7 +66,10 @@ def assign(mag, model, workers=1):
 
 
 def group_cells(model, n_groups=2000):
-    """Ward-cluster map code vectors into zero-based calibration groups."""
+    """Ward-cluster map code vectors into zero-based calibration groups.
+
+    @sc [decision:nz.som_map]
+    """
     return (
         fcluster(linkage(model["code"], method="ward"), n_groups, criterion="maxclust")
         - 1
@@ -72,6 +81,8 @@ def z_magnitudes(mag, offset, use_z2=True):
 
     Canonical z takes precedence; z2 + offset enters only when z is undetected.
     Five-column inputs contain canonical z only.
+
+    @sc [decision:nz.z2_offset]
     """
     out = mag[:, :5].astype("f8")
     channel = detected(out[:, 4]).astype(np.int8)
@@ -111,6 +122,14 @@ def source_groups(
     Returns the preliminary bin, the map cell and the z channel of each source;
     ineligible sources have bin and cell -1.
     BPZ intervals include the lower edge and exclude the upper edge.
+
+    @sc [label:convention] bpz-interval-lower-inclusive
+    Every place that bins on BPZ uses [lo, hi): sources here, the weight
+    population of :func:`quantile_edges`, calibrators in :func:`calibrate`,
+    and :func:`.ensemble.members`. BPZ takes discrete values and the interior
+    edges are BPZ values, so objects sit exactly on edges; a source and a
+    calibrator on one edge must land in the same bin, or the gold test and the
+    group weights compare different populations.
     """
     edges = model["edges"]
     prelim = np.full(len(weight), -1, np.int8)
@@ -139,7 +158,10 @@ def source_groups(
 
 
 def gold_threshold(cal_z, cal_photoz, floor=0.4, nmad_factor=5):
-    """Compute max(floor, factor × NMAD) of unnormalized spec-z − BPZ."""
+    """Compute max(floor, factor × NMAD) of unnormalized spec-z − BPZ.
+
+    @sc [decision:nz.gold_selection]
+    """
     residual = cal_z - cal_photoz
     good = np.isfinite(residual) & (cal_photoz >= 0) & (cal_photoz < 5)
     residual = residual[good]
@@ -148,7 +170,10 @@ def gold_threshold(cal_z, cal_photoz, floor=0.4, nmad_factor=5):
 
 
 def gold_mask(source_weight, source_photoz_sum, cal_count, cal_z_sum, threshold):
-    """Keep supported groups whose mean spec-z and source BPZ agree within QC."""
+    """Keep supported groups whose mean spec-z and source BPZ agree within QC.
+
+    @sc [decision:nz.gold_selection]
+    """
     spec = np.divide(
         cal_z_sum, cal_count, out=np.zeros_like(cal_z_sum), where=cal_count > 0
     )
@@ -162,7 +187,13 @@ def gold_mask(source_weight, source_photoz_sum, cal_count, cal_z_sum, threshold)
 
 
 def tom_bin_ids(prelim, group, gold):
-    """Return 1-based gold bin IDs, with zero for every excluded row."""
+    """Return 1-based gold bin IDs, with zero for every excluded row.
+
+    @sc [label:convention] tom-bin-id-numbering
+    TOM_BIN_ID k in 1..n_bin is the k-th BPZ bin in increasing order and 0 is
+    a row in no bin. cosmo_val selects a bin by ``TOM_BIN_ID == k`` and drops
+    IDs ≤ 0, and the GLASS mocks write ``b + 1``.
+    """
     result = np.zeros(len(prelim), np.int8)
     rows = np.flatnonzero(prelim >= 0)
     keep = gold[prelim[rows], group[rows]]
@@ -171,7 +202,14 @@ def tom_bin_ids(prelim, group, gold):
 
 
 def deposit(z, weight, grid):
-    """Linearly deposit mass, conserving its zeroth and first trapezoid moments."""
+    """Linearly deposit mass, conserving its zeroth and first trapezoid moments.
+
+    @sc [decision:nz.grid_step]
+    @sc [label:invariant] deposit-conserves-moments
+    The trapezoid integrals of the deposited density over the grid equal the
+    total weight and the weighted mean redshift exactly, on any grid, so the
+    grid step changes a bin's width but never its mass or mean.
+    """
     if np.any(~np.isfinite(z) | (z < grid[0]) | (z > grid[-1])):
         raise ValueError("calibration redshift outside output grid")
     lo = np.clip(np.searchsorted(grid, z, side="right") - 1, 0, len(grid) - 2)

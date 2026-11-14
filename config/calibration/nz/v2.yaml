@@ -1,6 +1,7 @@
 name: v2_DR6_BPZ_SOM_EGS_tomo
 limitation: EGS-only calibration (DEEP2/3) for validation and null tests; no independent-field variance or spectroscopic-selection model.
 inputs:
+  # @sc [decision:nz.calibrator_set]
   calibrators:
     # PhotoPipe's spec-z matches on Stephen Gwyn's DR6 detections, staged per
     # tile from arc:projects/unions/catalogues/unions/GAaP_photometry/UNIONS_DR6/
@@ -10,28 +11,35 @@ inputs:
     compilation: "20261019"
     surveys: [deep2_final, deep3_final]
     z_min: 0.002  # stars
+  # @sc [decision:nz.source_photometry_join]
   sources:
     # The released calibrated shear catalogue; each row's photometry comes
     # from the v2 collection (shapes with their PhotoPipe extension) by its
     # DR6 object ID.
     catalogue: ${unions_v2}/v2.0.0/catalogs/calibrated
     photometry: ${unions_v2}/run1-snap3-collection
+# @sc [decision:nz.som_map]
 som:
   side: 101
   epochs: 60
   seed: 42
 groups: 2000
+# @sc [decision:nz.tomographic_bins]
 # Tomographic bins: equal shear weight in DR6 BPZ, computed by each run from
 # its sources with complete photometry and BPZ in range, before gold
 # (summary.json records the edges). The README says why.
 bins: {count: 4, range: [0.10, 1.20]}
+# @sc [decision:nz.gold_selection]
 gold_qc:
   floor: 0.4
   nmad_factor: 5
+# @sc [decision:nz.z2_offset]
 # Canonical z takes precedence over z2.
 z2_offset: -0.1104888916015625
+# @sc [decision:nz.grid_step]
 # The step is the delivered n(z) resolution; the README says why 0.05.
 grid: {min: 0, max: 5, step: 0.05}
+# @sc [decision:nz.ensemble_terms]
 # n(z) realisations (sp_validation.nz.ensemble). Each key switches a term on;
 # the README says why each size.
 ensemble:
@@ -41,6 +49,7 @@ ensemble:
   density:                   # line-of-sight density through the DEEP2/3 strip
     field: [2.0, 0.25]       # degrees
     bias: 1.3
+  # @sc [decision:nz.photometry_as_delivered]
   zero_points:               # EGS against the wide field, mag
     # u-g g-r r-i i-z: stellar-locus offsets of 3.4 deg² patches, noise removed
     colour_sigma: [0.0215, 0.0194, 0.0119, 0.0208]

@@ -27,27 +27,35 @@ cosmo_val only reads it. The file has z in column zero and one density per
 bin, each integrating to that bin's retained shear-weight fraction; their sum
 has unit integral.
 
-The recipe for v2 is `config/calibration/nz/v2.yaml`, written with data roots
-(`config/data_roots.yaml`). Run inside the container on an allocation:
+The recipe for v2 is `config/calibration/nz/v2.yaml`: the inputs, every
+choice of the calibration, and the output directory, written with data roots
+(`config/data_roots.yaml`). The choices and their alternatives are recorded as
+decisions in `scratch/cdaley/unions_astra/analyses/nz/astra.yaml`. Run inside
+the container on an allocation:
 
 ```bash
-python scripts/calibration/calibrate_nz.py config/calibration/nz/v2.yaml --prepare --workers 32
+python scripts/calibration/calibrate_nz.py config/calibration/nz/v2.yaml --workers 32
 ```
 
-`--prepare` builds the two inputs (a minute on 32 cores); later runs reuse
-them. `--output DIRECTORY` redirects the products and `--figures DIRECTORY`
-renders diagnostics. The products (`sp_validation.nz.pipeline`) are
-`nz_tomo.txt`, `nz_nontomo.txt` (their sum), `tom_bin.parquet` (`TOM_BIN_ID`
-and `ZBAND` row-aligned with the catalogue; `TOM_BIN_ID` is 1 to 4 for the
-four bins and 0 for a galaxy in no bin, and cosmo_val drops IDs ≤ 0), `realisations.npz`,
-`calibration_arrays.npz`, `som_model.npz` and `summary.json`.
+The products go to the recipe's `output`, the release's `nz/`; `--output
+DIRECTORY` writes them elsewhere and `--figures DIRECTORY` renders
+diagnostics. They are (`sp_validation.nz.pipeline`) `nz_tomo.txt`,
+`nz_nontomo.txt` (their sum), `tom_bin.parquet` (`OBJECT_ID`, `TOM_BIN_ID` and
+`ZBAND`, row-aligned with the catalogue; `TOM_BIN_ID` is 1 to 4 for the four
+bins and 0 for a galaxy in no bin, and cosmo_val drops IDs ≤ 0),
+`realisations.npz`, `calibrators.npz`, `calibration_arrays.npz`,
+`som_model.npz`, `summary.json` and `recipe.yaml`, the recipe file byte for
+byte.
 
-**Sources** are the rows of the catalogue cosmo_val measures, with its `w_des`.
-Sources and calibrators share one photometry: PhotoPipe's run on Stephen
-Gwyn's DR6 detections (`UNIONS.<tile>_ugriz_photoz_ext.cat`, dereddened GAaP
-ugriz, z2 and BPZ). Each catalogue row is found in the ShapePipe HATS
-catalogue by exact position, and the PhotoPipe HATS catalogue beside it
-(built by `scripts/assembly/`) is joined row for row on (tile, `NUMBER` = `SeqNr`) (`sp_validation.nz.inputs`).
+**Sources** are the rows of the released calibrated shear catalogue, with its
+`w_des`. Sources and calibrators share one photometry: PhotoPipe's run on
+Stephen Gwyn's DR6 detections (dereddened GAaP ugriz, z2 and BPZ), used as
+delivered. Each row takes its photometry from the v2 collection (the shapes
+with their PhotoPipe extension, built by `scripts/assembly/`) by its DR6
+object ID, `OBJECT_ID` (`sp_validation.nz.inputs.sources`); no positions are
+compared. `summary.json` reports, under `match`, the shear weight of rows
+with no ID, with an ID the collection lacks, in a tile without PhotoPipe,
+absent from PhotoPipe in a tile it covers, and undetected in each band.
 
 **Calibrators** are the DEEP2 and DEEP3 spectra in the EGS field that
 PhotoPipe matched to its own objects (`UNIONS.<tile>_ugriz_photoz_ext_specz.cat`,
@@ -58,8 +66,12 @@ for the tiles around RA 215°, Dec 52.8°.
 
 **Method.** A 101×101, 60-epoch batch SOM of all ten ugriz colours plus r,
 standardized per feature and trained on the calibrators, grouped into 2,000
-Ward groups. Bins are DR6 BPZ intervals [0.10, 0.37, 0.55, 0.76, 1.20), lower
-edges included. Within a bin, a group is gold when it holds in-bin
+Ward groups. The four bins are intervals of DR6 BPZ between 0.10 and 1.20,
+lower edges included, holding equal shear weight: each run places the three
+inner edges at the quartiles of the weight of its sources with complete
+photometry and BPZ in range, before the gold selection, and records them in
+`summary.json`. Equal weight gives the bins comparable signal-to-noise, and
+the range is where BPZ on ugriz is usable (the KiDS range). Within a bin, a group is gold when it holds in-bin
 calibrators and their mean spec-z agrees with its sources' weighted mean BPZ
 within max(0.4, 5 NMAD of spec-z − BPZ); the test runs on every source of the
 catalogue. Each spectrum carries its group's source shear weight divided by

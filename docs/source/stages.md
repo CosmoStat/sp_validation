@@ -41,7 +41,7 @@ The n(z) is calibrated, not validated:
 
 Configs name data by root, not by machine. `config/data_roots.yaml` lists,
 for each root, the directory that holds it on each cluster; a config writes
-`${nz_v2}/nz_tomo.txt`, and `sp_validation.data_roots.load_yaml` replaces
+`${unions_v2}/v2.0.0/nz/nz_tomo.txt`, and `sp_validation.data_roots.load_yaml` replaces
 the root with the first of its directories that exists. `SPV_ROOT_<NAME>`
 points a root at a copy the file doesn't list. A root found nowhere stays
 written as `${name}`, so the path fails when opened and names what is missing.
