@@ -685,7 +685,8 @@ def calibrate_catalogue(rows, metacal, *, preselection=None, groups=None):
 
     The block declares ``weight_scheme`` (``des`` or ``iv``) and the cuts
     (:meth:`Cuts.from_config`). DES weights use the table at ``weight_table``
-    (a :func:`write_table` product) when given, else a table fitted on these
+    (a :func:`write_table` product on the cells of these cuts and
+    ``des_num_bins``) when given, else a table fitted on these
     rows with ``des_num_bins`` cells a side and ``des_min_count``; IV weights
     use ``sigma_eps_prior`` and the unit table. ``additive_correction: false``
     (constant-shear simulations) leaves ``c_e`` in the calibrated shapes.
@@ -708,6 +709,16 @@ def calibrate_catalogue(rows, metacal, *, preselection=None, groups=None):
         table = unit_table(table_edges(cuts, num_bins))
     elif metacal.get("weight_table"):
         table = read_table(metacal["weight_table"])
+        expected = table_edges(cuts, num_bins)
+        if not all(
+            len(a) == len(b) and np.allclose(a, b, rtol=1e-12, atol=0)
+            for a, b in zip(table[:2], expected, strict=True)
+        ):
+            raise ValueError(
+                f"The table {metacal['weight_table']} spans other cells than this "
+                "selection's cuts and des_num_bins: select as the table's catalogue "
+                "was selected, so that no object takes an edge cell's weight."
+            )
     else:
         table = None
     edges = table_edges(cuts, num_bins) if table is None else table[:2]

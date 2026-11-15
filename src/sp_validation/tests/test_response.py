@@ -480,6 +480,20 @@ def test_calibrate_catalogue(tmp_path, scheme):
     )
 
 
+def test_external_table_must_span_the_selection(tmp_path):
+    """A table from a differently selected catalogue would give objects outside
+    its range an edge cell's weight; calibrate_catalogue refuses it."""
+    wider = Cuts(5.0, 500.0, 0.25, 10.0, CUTS.size_corr_ell)
+    data = synthetic(2000, seed=9)
+    table = fit_table(accumulate(data, wider, response.table_edges(wider, 8)), 3)
+    response.write_table(tmp_path / "table.fits", table)
+    metacal = metacal_block(weight_table=str(tmp_path / "table.fits"))
+    with pytest.raises(ValueError, match="other cells"):
+        response.calibrate_catalogue(data, metacal)
+    with pytest.raises(ValueError, match="other cells"):
+        response.calibrate_catalogue(data, dict(metacal, des_num_bins=10))
+
+
 def test_calibrate_catalogue_needs_a_weight_scheme():
     metacal = metacal_block()
     del metacal["weight_scheme"]
