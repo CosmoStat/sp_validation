@@ -27,39 +27,62 @@ cosmo_val only reads it. The file has z in column zero and one density per
 bin, each integrating to that bin's retained shear-weight fraction; their sum
 has unit integral.
 
-The recipe for v2 is `config/calibration/nz/v2.yaml`, written with data roots
-(`config/data_roots.yaml`). Run inside the container on an allocation:
+The recipe for v2 is `config/calibration/nz/v2.yaml`: the inputs, every
+choice of the calibration, and the output directory, written with data roots
+(`config/data_roots.yaml`). The choices and their alternatives are recorded as
+decisions in `scratch/cdaley/unions_astra/analyses/nz/astra.yaml`. Run inside
+the container on an allocation:
 
 ```bash
-python scripts/calibration/calibrate_nz.py config/calibration/nz/v2.yaml --prepare --workers 32
+python scripts/calibration/calibrate_nz.py config/calibration/nz/v2.yaml --workers 32
 ```
 
-`--prepare` builds the two inputs (a minute on 32 cores); later runs reuse
-them. `--output DIRECTORY` redirects the products and `--figures DIRECTORY`
-renders diagnostics. The products (`sp_validation.nz_pipeline`) are
-`nz_tomo.txt`, `nz_nontomo.txt` (their sum), `tom_bin.parquet` (`TOM_BIN_ID`
-and `ZBAND` row-aligned with the catalogue; `TOM_BIN_ID` is 1 to 4 for the
-four bins and 0 for a galaxy in no bin, and cosmo_val drops IDs ≤ 0), `realisations.npz`,
-`calibration_arrays.npz`, `som_model.npz` and `summary.json`.
+The products go to the recipe's `output`, the release's `nz/`; `--output
+DIRECTORY` writes them elsewhere and `--figures DIRECTORY` renders
+diagnostics. They are (`sp_validation.nz.pipeline`) `nz_tomo.txt`,
+`nz_nontomo.txt` (their sum), `tom_bin.parquet` (`OBJECT_ID`, `TOM_BIN_ID` and
+`ZBAND`, row-aligned with the catalogue; `TOM_BIN_ID` is 1 to 4 for the four
+bins and 0 for a galaxy in no bin, and cosmo_val drops IDs ≤ 0),
+`realisations.npz`, `calibrators.npz`, `calibration_arrays.npz`,
+`som_model.npz`, `summary.json` and `recipe.yaml`, the recipe file byte for
+byte.
 
-**Sources** are the rows of the catalogue cosmo_val measures, with its `w_des`.
-Sources and calibrators share one photometry: PhotoPipe's run on Stephen
-Gwyn's DR6 detections (`UNIONS.<tile>_ugriz_photoz_ext.cat`, dereddened GAaP
-ugriz, z2 and BPZ). Each catalogue row is found in the ShapePipe HATS
-catalogue by exact position, and the PhotoPipe HATS catalogue beside it
-(built by `scripts/assembly/`) is joined row for row on (tile, `NUMBER` = `SeqNr`) (`sp_validation.nz_inputs`).
+A run redefines the bins, so its `nz_tomo.txt` describes its own
+`tom_bin.parquet` and no earlier `TOM_BIN_ID`. Write that column into the
+catalogue (the rows are aligned) whenever the n(z) a `cat_config` entry reads
+is replaced.
 
-**Calibrators** are the DEEP2 and DEEP3 spectra in the EGS field that
-PhotoPipe matched to its own objects (`UNIONS.<tile>_ugriz_photoz_ext_specz.cat`,
-surveys named by the redshift compilation beside it), one row per spectrum,
-with complete ugriz. Stage them from
-`arc:projects/unions/catalogues/unions/GAaP_photometry/UNIONS_DR6/UNIONS.<tile>/`
-for the tiles around RA 215°, Dec 52.8°.
+**On mocks.** `scripts/calibration/nz_mock_ladder.py` runs a recipe's
+calibration on mock galaxies with known redshifts (`sp_validation.nz.mock`)
+and scores each bin's mean redshift against the truth of its own
+`TOM_BIN_ID` sources, over an ensemble of realisations.
+
+**Sources** are the rows of the released calibrated shear catalogue, with its
+`w_des`. Sources and calibrators share one photometry: PhotoPipe's run on
+Stephen Gwyn's DR6 detections (dereddened GAaP ugriz, z2 and BPZ), used as
+delivered. Each row takes its photometry from the v2 collection (the shapes
+with their PhotoPipe extension, built by `scripts/assembly/`) by its DR6
+object ID, `OBJECT_ID` (`sp_validation.nz.inputs.sources`); no positions are
+compared. `summary.json` reports, under `match`, the shear weight of rows
+with no ID, with an ID the collection lacks, in a tile without PhotoPipe,
+absent from PhotoPipe in a tile it covers, and undetected in each band.
+
+**Calibrators** are a selection on the same collection's spec-z extension
+(`specz/`, PhotoPipe's matches to its own objects, joined on `OBJECT_ID`;
+`sp_validation.nz.inputs.calibrators`): spectra from the recipe's surveys
+(DEEP2 and DEEP3) whose position lies in the recipe's field (the EGS; DEEP2's
+Field 2 at RA 252° was colour-preselected to z > 0.7 and stays out), one row
+per spectrum, with complete ugriz after the z2 fill. Nothing is staged
+separately.
 
 **Method.** A 101×101, 60-epoch batch SOM of all ten ugriz colours plus r,
 standardized per feature and trained on the calibrators, grouped into 2,000
-Ward groups. Bins are DR6 BPZ intervals [0.10, 0.37, 0.55, 0.76, 1.20), lower
-edges included. Within a bin, a group is gold when it holds in-bin
+Ward groups. The four bins are intervals of DR6 BPZ between 0.10 and 1.20,
+lower edges included, holding equal shear weight: each run places the three
+inner edges at the quartiles of the weight of its sources with complete
+photometry and BPZ in range, before the gold selection, and records them in
+`summary.json`. Equal weight gives the bins comparable signal-to-noise, and
+the range is where BPZ on ugriz is usable (the KiDS range). Within a bin, a group is gold when it holds in-bin
 calibrators and their mean spec-z agrees with its sources' weighted mean BPZ
 within max(0.4, 5 NMAD of spec-z − BPZ); the test runs on every source of the
 catalogue. Each spectrum carries its group's source shear weight divided by
@@ -76,11 +99,11 @@ fills missing z after the recipe's offset, for sources and calibrators alike.
 **Realisations.** With an `ensemble` section in the recipe, the run also
 writes `realisations.npz`: `z` and `realisations` (n_draw, n_bin, n_z), each
 bin unit-integral, every bin drawn together, plus `ensemble_inputs.npz`, what
-the draws need from the sources. `python -m sp_validation.nz_ensemble <run
+the draws need from the sources. `python -m sp_validation.nz.ensemble <run
 directory> -o realisations.npz [--settings ensemble.yaml]` draws from an
 existing run. A draw perturbs the calibration's inputs and recalibrates: each
 in-bin spectrum of a gold group carries the group's source weight S_kg times
-q_i / Σ_group q_j (`sp_validation.nz_ensemble`). Each key of the `ensemble`
+q_i / Σ_group q_j (`sp_validation.nz.ensemble`). Each key of the `ensemble`
 section switches one term on.
 
 Statistical terms, through q_i = m_i (1 + δ(z_i)):

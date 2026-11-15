@@ -1,56 +1,38 @@
 """Run an n(z) recipe: SOM direct calibration of a shear catalogue's bins.
 
-``prepare`` builds the two inputs (:mod:`sp_validation.nz_inputs`); ``run``
-trains the SOM on the calibrators, groups its cells, assigns every source,
-selects gold groups on the sources themselves, and writes the products:
+A recipe names its inputs, every choice of the calibration and its output
+directory. ``run`` reads the calibrators and sources (:mod:`.inputs`), and
+``calibrate`` trains the SOM on the calibrators, groups its cells, places the
+bin edges, assigns every source, selects gold groups on the sources
+themselves, and writes:
 
 - ``nz_tomo.txt``: z and one density per bin, integrating to the bin's share of
   the retained shear weight (cosmo_val's ``shear.redshift_path``);
 - ``nz_nontomo.txt``: their sum, the n(z) of every ``TOM_BIN_ID > 0`` row;
-- ``tom_bin.parquet``: ``TOM_BIN_ID`` and ``ZBAND`` row-aligned with the
-  catalogue, with its ``TILE_ID`` and ``NUMBER``;
-- ``realisations.npz``: draws of every bin at once (:mod:`nz_ensemble`), from
+- ``tom_bin.parquet``: ``OBJECT_ID``, ``TOM_BIN_ID`` and ``ZBAND``, row-aligned
+  with the catalogue;
+- ``realisations.npz``: draws of every bin at once (:mod:`.ensemble`), from
   ``ensemble_inputs.npz`` (per-group source tables, their response to
   magnitude offsets, and the calibrators' BPZ gradients);
-- ``calibration_arrays.npz``, ``som_model.npz``, ``summary.json`` and the recipe.
+- ``summary.json``: bin edges, means and weights, and the photometry match
+  (:func:`.inputs.match_report`);
+- ``calibrators.npz``, ``som_model.npz`` and ``calibration_arrays.npz``;
+- ``recipe.yaml``: the recipe file, byte for byte.
 """
 
 import argparse
 import json
+import shutil
 from pathlib import Path
 
 import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
-import yaml
 
-from . import nz_calibration as nz
-from .data_roots import load_yaml
-
-
-def prepare(config, workers=1):
-    """Write the calibrator and source files the recipe names."""
-    from . import nz_inputs
-
-    inputs = config["inputs"]
-    cal = inputs["calibrators"]
-    np.savez(
-        cal["output"],
-        **nz_inputs.calibrators(
-            cal["specz_dir"],
-            cal["compilation"],
-            cal["surveys"],
-            cal["z_min"],
-            config["z2_offset"],
-        ),
-    )
-    src = inputs["sources"]
-    np.savez(
-        src["output"],
-        **nz_inputs.sources(
-            src["catalogue"], src["shapes"], src["photometry"], workers=workers
-        ),
-    )
+from ..assembly.object_id import OBJECT_ID
+from ..data_roots import load_yaml
+from . import calibration as nz
+from . import ensemble, inputs
 
 
 def output_grid(config):
@@ -60,13 +42,44 @@ def output_grid(config):
     )
 
 
-def run(config, output, *, workers=1):
-    """Calibrate the recipe's catalogue and write its n(z) products to ``output``."""
+def run(recipe, output=None, *, workers=1):
+    """Calibrate the catalogue of the recipe file ``recipe``.
+
+    Products go to the recipe's ``output`` directory, or to ``output``.
+    """
+    config = load_yaml(recipe)
+    output = Path(output or config["output"])
+    cal = inputs.calibrators(
+        **config["inputs"]["calibrators"], offset=config["z2_offset"], workers=workers
+    )
+    src = inputs.sources(**config["inputs"]["sources"], workers=workers)
+    summary = calibrate(config, cal, src, output, workers=workers)
+    shutil.copyfile(recipe, output / "recipe.yaml")
+    return summary
+
+
+def calibrate(config, cal, src, output, *, workers=1):
+    """Calibrate sources ``src`` on calibrators ``cal`` and write the products.
+
+    ``cal`` and ``src`` are the arrays of :func:`.inputs.calibrators` and
+    :func:`.inputs.sources`; ``config`` is a loaded recipe.
+
+    @sc [label:coupling] calibrator-edges-are-source-edges
+    One set of edges, computed from the sources, bins the sources
+    (``model["edges"]``), the calibrators (:func:`.calibration.calibrate`) and,
+    through ``calibration_arrays.npz``, the ensemble; a bin's sources are
+    calibrated only by the spectra in the same BPZ interval.
+    """
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
-    cal = np.load(config["inputs"]["calibrators"]["output"])
-    src = np.load(config["inputs"]["sources"]["output"])
-    edges = np.asarray(config["edges"], float)
+    np.savez_compressed(output / "calibrators.npz", **cal)
+    edges = nz.quantile_edges(
+        src["mag"],
+        src["photoz"],
+        src["weight"],
+        offset=config["z2_offset"],
+        **config["bins"],
+    )
     grid = output_grid(config)
     n_groups = config["groups"]
 
@@ -112,8 +125,7 @@ def run(config, output, *, workers=1):
     pq.write_table(
         pa.table(
             dict(
-                TILE_ID=src["tile"],
-                NUMBER=src["number"],
+                **{OBJECT_ID: pa.array(src["object_id"], mask=src["object_id"] < 0)},
                 TOM_BIN_ID=tom,
                 ZBAND=channel,
             )
@@ -131,6 +143,7 @@ def run(config, output, *, workers=1):
         cal_group=cal_group,
         grid=grid,
         edges=edges,
+        gold_qc=json.dumps(config["gold_qc"]),
         gold=est["gold"],
         cal_weights=est["cal_weights"],
         bin_hists=est["bin_hists"],
@@ -143,7 +156,6 @@ def run(config, output, *, workers=1):
             minlength=n_cells,
         ),
     )
-    complete = nz.detected(src["mag"][:, :4]).all(1) & (channel > 0) & (weight > 0)
     summary = dict(
         name=config["name"],
         limitation=config["limitation"],
@@ -151,25 +163,23 @@ def run(config, output, *, workers=1):
         n_rows=len(weight),
         n_calibrators=len(cal["z"]),
         total_weight=total_weight,
+        match=inputs.match_report(src["status"], src["mag"], weight),
         retention=dict(
-            complete_photometry=float(weight[complete].sum() / total_weight),
             bpz_bounds=float(weight[prelim >= 0].sum() / total_weight),
             gold=float(np.sum(fractions) / total_weight),
         ),
         tom_bin_counts=np.bincount(tom, minlength=len(edges)).tolist(),
+        edges=edges.tolist(),
         gold_qc_threshold=threshold,
     )
     (output / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
-    (output / "recipe.yaml").write_text(yaml.safe_dump(config, sort_keys=False))
     if "ensemble" in config:
-        from . import nz_ensemble
-
         np.savez_compressed(
             output / "ensemble_inputs.npz",
-            cal_photoz_gradient=nz_ensemble.photoz_gradient(
+            cal_photoz_gradient=ensemble.photoz_gradient(
                 cal["mag"], cal["photoz"], model
             ),
-            **nz_ensemble.ensemble_inputs(
+            **ensemble.ensemble_inputs(
                 src["mag"],
                 photoz,
                 weight,
@@ -181,25 +191,22 @@ def run(config, output, *, workers=1):
                 workers=workers,
             ),
         )
-        nz_ensemble.run(output, output / "realisations.npz", config["ensemble"])
+        ensemble.run(output, output / "realisations.npz", config["ensemble"])
     return summary
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("recipe")
-    parser.add_argument("--prepare", action="store_true", help="build the inputs first")
-    parser.add_argument("--output", help="override the recipe's output directory")
+    parser.add_argument("--output", help="write here, not to the recipe's release")
     parser.add_argument("--workers", type=int, default=1)
     parser.add_argument("--figures", metavar="DIRECTORY")
     args = parser.parse_args(argv)
     config = load_yaml(args.recipe)
-    if args.prepare:
-        prepare(config, workers=args.workers)
     output = Path(args.output or config["output"])
-    run(config, output, workers=args.workers)
+    run(args.recipe, output, workers=args.workers)
     if args.figures:
-        from .nz_diagnostics import render
+        from .diagnostics import render
 
         render(
             dict(
