@@ -447,7 +447,7 @@ publishing a new image changes nothing until you pull again.
 `spv-container status` reads `org.opencontainers.image.revision` — the
 sp_validation commit the image was built from — and places it against your
 checkout's `HEAD`, naming which layer (sandbox or SIF) it read. The image-sims workflow records the same label in
-`m_bias_config.yaml` as `ghcr_revision`, so a result file says which image
+`m_bias_results.yaml` as `ghcr_revision`, so a result file says which image
 produced the number.
 
 #### Running an image other than your own

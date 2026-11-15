@@ -8,7 +8,7 @@ extracts, calibrates and measures the multiplicative/additive shear bias
 
 One image runs the whole chain: the sp_validation image is built ``FROM`` the
 ShapePipe image, so it carries both stacks.  Everything else is parameterised
-under ``config["image_sims"]`` -- repository roots, data roots, the PSF
+under ``config["image_sims"]`` -- the ShapePipe checkout, data roots, the PSF
 dictionary, the explicit ``tile_ids`` list and the sim/calibration knobs -- so
 a fresh user drives it from config alone.  Configuration is fail-fast: a schema
 check at load rejects an unknown key (typo) and a missing science key (see
@@ -46,20 +46,17 @@ _OPERATIONAL_KEYS = {
     "sims_type",
     "branches",
     "shape",
-    "config_dir",
     "psf_model",
     "n_smp",
-    "extract_script",
-    "calibrate_script",
 }
 # Structural keys: paths/identifiers the run must supply (no sensible default).
 _STRUCTURAL_KEYS = {
     "sif",
     "shapepipe_repo",
-    "sp_validation_repo",
     "grids_base",
     "input_sims_base",
     "psf_dict",
+    "config_dir",
     "num",
     "tile_ids",
 }
@@ -97,8 +94,9 @@ if _missing_structural:
 SIF = common.resolve_container(IMSIM["sif"])
 
 # --- repositories (bound into the image; branch code overrides) -----------
+# sp_validation is the checkout that launched the workflow.
 SHAPEPIPE_REPO = IMSIM["shapepipe_repo"]
-SPV_REPO = IMSIM["sp_validation_repo"]
+SPV_REPO = str(common.REPO_ROOT)
 
 # --- data and run directories --------------------------------------------
 GRIDS_BASE = IMSIM["grids_base"]  # run/output root; one sub-dir per sim
@@ -133,17 +131,11 @@ PARAMS_TEMPLATE = f"{SPV_REPO}/workflow/image_sims/params_im_sim.py"
 # ShapePipe cfis_image_sims config dir (per-tile/exposure configs + final_cat.param).
 CONFIG_DIR = IMSIM["config_dir"]
 
-# ShapePipe scripts live in the ShapePipe repo (also baked into its image).
+# Entry points, run from the two checkouts rather than the image's copies.
 CREATE_FINAL_CAT = f"{SHAPEPIPE_REPO}/scripts/python/create_final_cat.py"
 RUN_JOB = f"{SHAPEPIPE_REPO}/scripts/sh/run_job_sp_canfar_v2.0.bash"
-# Extract/calibrate run from the sp_validation *repo* checkout (bind-mounted),
-# not the baked copies: the container tracks the branch but lags it, and the
-# image-sims path needs branch-only fixes (star-catalogue-optional extract,
-# FITS-aware CalibrateCat.read_cat). Overridable for a different checkout.
-EXTRACT_INFO = IMSIM["extract_script"]
-CALIBRATE = IMSIM["calibrate_script"]
-# m-bias is *this branch's* extracted core, injected on PYTHONPATH.
-COMPUTE_M_BIAS = f"{SPV_REPO}/scripts/compute_m_bias_image_sims.py"
+EXTRACT_INFO = f"{SPV_REPO}/scripts/calibration/extract_info.py"
+CALIBRATE = f"{SPV_REPO}/scripts/calibration/calibrate_comprehensive_cat.py"
 
 # --- in-command env prefix -------------------------------------------------
 # Snakemake wraps each rule's whole ``shell:`` string inside the container, so
@@ -151,9 +143,7 @@ COMPUTE_M_BIAS = f"{SPV_REPO}/scripts/compute_m_bias_image_sims.py"
 #
 #   * PYTHONPATH prepends both repos' ``src`` so Python resolves the worktree
 #     build ahead of the copies baked into the image -- the branch's code runs
-#     without an image rebuild. Packages only: the bash and python entry points
-#     are invoked at the repo paths from config (RUN_JOB, CREATE_FINAL_CAT,
-#     EXTRACT_INFO, ...), not shadowed by PYTHONPATH.
+#     without an image rebuild.
 #   * PSF_DICT points the fake_psf module (PSF_DICT_PATH = $PSF_DICT, expanded
 #     via getexpanded) at this run's PSF dictionary.
 #   * OMP_NUM_THREADS=1 rides here rather than in the SLURM profile: the chain
@@ -398,12 +388,15 @@ rule im_calibrate:
         SIF
     shell:
         "cd {params.run_dir} && "
-        "{_ENV_PREFIX} python {CALIBRATE} -s calibrate"
+        "{_ENV_PREFIX} python {CALIBRATE}"
 
 
-rule im_mbias_config:
-    """Assemble ``m_bias_config.yaml`` for the m-bias step: the manifest's
-    shear/branch facts, this run's science knobs, and git/container provenance.
+rule im_mbias:
+    """Multiplicative/additive shear bias from the calibrated grids.
+
+    Produces the workflow's headline artifact, ``m_bias_results.yaml``: m and c
+    of each shear component, their tile-jackknife covariance, and the run's
+    provenance (manifest hash, both repositories' commits, the image).
     """
     input:
         manifest=MANIFEST,
@@ -411,37 +404,18 @@ rule im_mbias_config:
             f"{GRIDS_BASE}/{{sim}}/shape_catalog_cut_{SHAPE}_sums.npz", sim=SIMS
         ),
     output:
-        cfg=f"{GRIDS_BASE}/results/m_bias_config.yaml",
+        results=f"{GRIDS_BASE}/results/m_bias_results.yaml",
     params:
-        grids_base=GRIDS_BASE,
-        num=NUM,
-        sums_name=f"shape_catalog_cut_{SHAPE}_sums.npz",
-        sims_type=SIMS_TYPE,
+        sums={
+            base: f"{GRIDS_BASE}/{sim}/shape_catalog_cut_{SHAPE}_sums.npz"
+            for base, sim in zip(SIM_BASES, SIMS)
+        },
+        weight_table=WEIGHT_TABLE,
+        des_min_count=IMSIM["des_min_count"],
         sif=SIF,
         shapepipe_repo=SHAPEPIPE_REPO,
         sp_validation_repo=SPV_REPO,
-        results=f"{GRIDS_BASE}/results/m_bias_results.yaml",
-        # Science knobs, read bare from the run config (no default here).
-        results_dir=f"{GRIDS_BASE}/results",
-        weight_table=WEIGHT_TABLE,
-        des_min_count=IMSIM["des_min_count"],
     container:
         SIF
     script:
-        "../scripts/im_mbias_config.py"
-
-
-rule im_mbias:
-    """Multiplicative/additive shear bias from the calibrated grids.
-
-    Produces the workflow's headline artifact, ``m_bias_results.yaml``, running
-    the estimator against the config ``im_mbias_config`` assembled.
-    """
-    input:
-        cfg=f"{GRIDS_BASE}/results/m_bias_config.yaml",
-    output:
-        results=f"{GRIDS_BASE}/results/m_bias_results.yaml",
-    container:
-        SIF
-    shell:
-        "{_ENV_PREFIX} python {COMPUTE_M_BIAS} -c {input.cfg} -v"
+        "../scripts/im_mbias.py"

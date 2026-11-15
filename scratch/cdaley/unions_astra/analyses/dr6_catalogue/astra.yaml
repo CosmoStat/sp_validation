@@ -432,7 +432,7 @@ outputs:
       - simulation_weight_table
       - calibration_uncertainties
     description: >-
-      m_bias_results.yaml from scripts/compute_m_bias_image_sims.py: m1, c1,
+      m_bias_results.yaml from the im_mbias rule (workflow/rules/image_sims.smk): m1, c1,
       m2, c2 with their tile-jackknife covariance, for the weight table the
       run config names.
 

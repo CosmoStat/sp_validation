@@ -130,7 +130,7 @@ Each mean uses the full selected population of its simulation with its own weigh
 
 The simulations take the data's selection and the data's DES table, held fixed: `calibrate_catalogue` refuses a `weight_table` whose cells are not those of the selection's cuts and `des_num_bins`, since an object outside the table's range would otherwise enter every mean with an edge cell's weight.
 A table fitted on the simulations' own shapes correlates the weights with the measured shapes and suppresses the shear: for N objects per cell, a self-fitted table gives m = −1/N where an independent one gives zero.
-`scripts/compute_m_bias_image_sims.py` reads the simulations' `_sums.npz` and writes `m_bias_results.yaml` (`m1`, `m1_err`, …, `mc_covariance`, `covariance_order`); the image-sims workflow's `weight_table` key names the table (`self` and `unit` are diagnostics).
+The image-sims workflow's `im_mbias` rule (`workflow/scripts/im_mbias.py`) reads the simulations' `_sums.npz` and writes `m_bias_results.yaml` (`m1`, `m1_err`, …, `mc_covariance`, `covariance_order`); the workflow's `weight_table` key names the table (`self` and `unit` are diagnostics).
 Residual m is a result, not a correction applied to catalogue shapes.
 
 ## Measuring a variant
