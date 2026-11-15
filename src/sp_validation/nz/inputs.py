@@ -3,7 +3,7 @@
 Both come from PhotoPipe's run on Stephen Gwyn's DR6 detections, so sources
 and calibrators share one photometry. Sources are the rows of a calibrated
 shear catalogue; each takes its photometry from the v2 collection (shapes
-with their PhotoPipe extension, :mod:`sp_validation.hats_collection`) by its
+with their PhotoPipe extension, :mod:`sp_validation.assembly.hats_collection`) by its
 DR6 object ID. Calibrators are the objects of the same collection that its
 spec-z extension gives a spectrum from the recipe's surveys.
 
@@ -14,8 +14,8 @@ from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 
+from ..assembly.object_id import OBJECT_ID, object_id
 from ..io import Catalogue, read_catalogue
-from ..object_id import OBJECT_ID, object_id
 from . import calibration as nz
 
 BANDS = ("u", "g", "r", "i", "z", "z2")

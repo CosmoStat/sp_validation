@@ -59,7 +59,7 @@ inputs:
     description: >-
       PhotoPipe's spec-z matches to its own objects (UNIONS_DR6_ugriz_specz.cat,
       compilation of 2026-10-19), joined to the collection on OBJECT_ID by
-      sp_validation.specz_merge: Z_SPEC, Z_SPEC_SURVEY and the spectrum's own
+      sp_validation.assembly.specz_merge: Z_SPEC, Z_SPEC_SURVEY and the spectrum's own
       position, 4.7 million rows over 36 surveys.
 
 decisions:
@@ -168,8 +168,12 @@ decisions:
       deep2_both_fields:
         label: "DEEP2 in EGS and Field 2 + DEEP3"
         description: >-
-          13,800 spectra, but Field 2's colour preselection removes z < 0.7
-          galaxies there; not taken.
+          13,800 spectra, but Field 2's BRI preselection removes z < 0.7
+          galaxies there, and the ugriz SOM does not absorb it: in groups shared
+          with EGS, Field 2's spec-z sit higher by +0.44, +0.31, +0.14 and
+          +0.017 in bins 1-4, and adding Field 2 moves bin 3's mean z by +0.039
+          (3.7 sigma) with sigma barely changed (tested 15 Nov on this
+          calibration's SOM). Not taken.
       add_desi_dr1:
         label: "Add DESI DR1 on the same tiles"
         description: >-
