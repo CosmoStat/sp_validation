@@ -1292,9 +1292,9 @@ GLASS_mock_validation:
     e2_col: e2
     path: /n17data/UNIONS/WL/v1.6.x/unions_shapepipe_star_2024_v1.6.a.fits
   patch_number: 150
-SP_v2.0:
-  blind: unions
-  subdir: ${v2_tomo}
+SP_v2.0.0:
+  blind: ${unions_v2}/v2.0.0/blind/unions.blind.json
+  subdir: ${unions_v2}/v2.0.0/catalogs
   pipeline: SP
   colour: violet
   getdist_colour: 0.0, 0.5, 1.0
@@ -1302,27 +1302,27 @@ SP_v2.0:
   marker: '*'
   patch_number: 100
   cov_th:
-    A: 4689.662867153573
-    n_e: 6.86756988279185
-    sigma_e: 0.28908294714031374
+    A: 5223.409980599079
+    n_e: 6.913058645076711
+    sigma_e: 0.2889864879504185
     sigma_e_convention: per_component
     n_psf: 0.580817039505617
     tomo:
-      A: 3814.775466932069
-      mask: ${v2_tomo}/footprint-tomo-nside4096-ring.fits
+      A: 4582.408065107405
+      mask: ${unions_v2}/v2.0.0/masks/footprint-tomo-nside4096-ring.fits
       n_e:
-      - 0.7427992141190386
-      - 0.9163698955600097
-      - 1.006977964461924
-      - 1.3252290285029567
+      - 0.7467611261683387
+      - 0.9384329181335215
+      - 1.015497772113448
+      - 1.3797702168789165
       sigma_e:
-      - 0.28814703635003425
-      - 0.2851918267345306
-      - 0.28830578863062367
-      - 0.27332974092856765
-  mask: ${v2_tomo}/footprint-nside4096-ring.fits
+      - 0.28783916991940034
+      - 0.28593195162353563
+      - 0.2874425806945281
+      - 0.2735531664497229
+  mask: ${unions_v2}/v2.0.0/masks/footprint-nside4096-ring.fits
   shear:
-    path: shape_catalog_tomo.fits
+    path: calibrated
     R: 1.0
     ra_col: RA
     dec_col: Dec
@@ -1331,10 +1331,10 @@ SP_v2.0:
     e2_col: e2
     e1_PSF_col: e1_PSF
     e2_PSF_col: e2_PSF
-    redshift_path: ${nz_v2}/nz_tomo.txt
+    redshift_path: ${unions_v2}/v2.0.0/nz/nz_tomo.txt
     tomo_bin_col: TOM_BIN_ID
   psf:
-    path: stars.hdf5
+    path: stars
     ra_col: RA
     dec_col: DEC
     e1_PSF_col: HSM_G1_PSF
@@ -1349,7 +1349,7 @@ SP_v2.0:
     mask_cuts:
     - MASK_8_Manual
   star:
-    path: psf_catalog_ngmix.fits
+    path: psf
     ra_col: RA
     dec_col: Dec
     e1_col: e1

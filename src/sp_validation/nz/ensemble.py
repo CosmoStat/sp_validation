@@ -2,7 +2,7 @@
 
 A calibrated bin is a weighted histogram of calibrator redshifts: calibrator
 i in gold SOM group g of bin k carries S_kg / N_kg, the group's source shear
-weight over its number of in-bin calibrators (:func:`nz_calibration.calibrate`).
+weight over its number of in-bin calibrators (:func:`calibration.calibrate`).
 A draw perturbs what enters that sum and recalibrates,
 
     w_i = S_kg q_i / Σ_{j ∈ g, k} q_j,
@@ -38,9 +38,10 @@ Systematic terms:
   so the bins' source selection moves with it;
 - ``specz_selection``: the calibrators are one spectroscopic selection, and
   spectra chosen otherwise put other redshifts at the same colours. A draw
-  adds a Gaussian multiple, of this standard deviation, of the difference
-  between the n(z) calibrated on the recipe's alternative calibrators and the
-  calibration's own (:func:`selection_shift`).
+  adds a Gaussian multiple, of standard deviation ``scale``, of the
+  difference between the n(z) calibrated on alternative calibrators (the
+  spectra of ``surveys`` in the calibrators' field) and the calibration's own
+  (:func:`selection_shift`).
 
 The offsets enter to first order: a draw adds half the difference between
 the recalibrations at +v and -v, which cancels what is even in the offsets
@@ -51,6 +52,7 @@ The SOM and its groups are held fixed.
 """
 
 import argparse
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -58,7 +60,7 @@ import numpy as np
 import yaml
 from scipy.spatial import cKDTree
 
-from . import nz_calibration as nz
+from . import calibration as nz
 
 #: Offsets the source tables respond to: the calibration field's five bands
 #: (as a source offset) and the z2 mapping.
@@ -91,7 +93,7 @@ def ensemble_inputs(
 ):
     """Per-(bin, group) source tables, and the catalogue's response to offsets.
 
-    ``prelim`` and ``channel`` are :func:`nz_calibration.source_groups` of the
+    ``prelim`` and ``channel`` are :func:`calibration.source_groups` of the
     sources at the recipe's z2 ``offset``; ``gold`` is the calibration's gold
     mask. ``source_weight`` and ``source_photoz`` sum every source with BPZ in
     a bin, as the gold test does. ``catalogue_jacobian`` is the derivative, in
@@ -181,7 +183,7 @@ def selection_shift(z, photoz, group, edges, source, grid, fiducial):
 
 
 def gold_masks(z, photoz, group, member, source, source_photoz, floor, factor):
-    """Re-derive every bin's gold mask, as :func:`nz_calibration.calibrate` does."""
+    """Re-derive every bin's gold mask, as :func:`calibration.calibrate` does."""
     n_groups = source.shape[1]
     threshold = nz.gold_threshold(z, photoz, floor, factor)
     masks = []
@@ -303,7 +305,6 @@ class Calibration:
         directory = Path(directory)
         a = np.load(directory / "calibration_arrays.npz")
         e = np.load(directory / "ensemble_inputs.npz")
-        recipe = yaml.safe_load((directory / "recipe.yaml").read_text())
         return cls(
             z=a["z"],
             photoz=a["cal_photoz"],
@@ -316,7 +317,7 @@ class Calibration:
             source_photoz=e["source_photoz"],
             jacobian=e["catalogue_jacobian"],
             photoz_gradient=e["cal_photoz_gradient"],
-            gold_qc=recipe["gold_qc"],
+            gold_qc=json.loads(str(a["gold_qc"])),
             selection=e["selection_shift"] if "selection_shift" in e else None,
         )
 
@@ -363,10 +364,17 @@ def realisations(cal, settings, density=None, diagnostics=None):
 
     ``settings`` is the recipe's ``ensemble`` section; ``density`` is the
     covariance of δ on the grid (:func:`density_covariance`) when the density
-    term is on. Additive draws are recentred on the calibration's n(z), then
-    negative cells are clipped and each draw is normalised. Clipping can move
-    the ensemble mean. ``diagnostics``, when supplied, records per-bin clipping
-    fractions and the nominal and realised selection-only mean-z scatter.
+    term is on. The terms are zero-mean in their inputs, but the calibration
+    is nonlinear in them, so the draws are recentred on the calibration's own
+    n(z) and their raw mean is returned so its offset can be reported. The
+    recentred draws then have their negative cells clipped and are normalised
+    to unit integral, which can move the ensemble mean off the calibration
+    again (:func:`clip_and_normalise`). ``diagnostics``, when given, receives
+    the clipped mass fraction per bin and, with the ``specz_selection`` term,
+    the nominal and realised scatter of ⟨z⟩ from that term alone.
+
+    @sc [decision:nz.ensemble_terms]
+    @sc [decision:nz.nonnegative_draws]
     """
     rng = np.random.default_rng(settings.get("seed", 0))
     n_draw, n_cal = settings["draws"], len(cal.z)
@@ -377,6 +385,7 @@ def realisations(cal, settings, density=None, diagnostics=None):
     if density is not None:
         overdensity = lognormal(density, n_draw, rng)
         step = cal.grid[1] - cal.grid[0]
+    selection = settings.get("specz_selection")
     draws, selection_coefficients = [], []
     for n in range(n_draw):
         z, gold = cal.z, cal.gold
@@ -410,8 +419,8 @@ def realisations(cal, settings, density=None, diagnostics=None):
         h = cal.calibrate(z, q, gold)
         if v.any():
             h = h + 0.5 * (cal.calibrate(z, q, gold, v) - cal.calibrate(z, q, gold, -v))
-        if settings.get("specz_selection"):
-            coefficient = rng.normal(0, settings["specz_selection"])
+        if selection:
+            coefficient = rng.normal(0, selection["scale"])
             selection_coefficients.append(coefficient)
             h = h + coefficient * cal.selection
         draws.append(h)
@@ -421,27 +430,27 @@ def realisations(cal, settings, density=None, diagnostics=None):
     real, clipped = clip_and_normalise(draws - raw + fiducial, cal.grid)
     if diagnostics is not None:
         diagnostics["clipped_mass_fraction"] = clipped
-        if selection_coefficients:
-            coefficients = np.array(selection_coefficients)
-            selection = fiducial + (coefficients - coefficients.mean())[:, None, None] * cal.selection
-            selection, clipped = clip_and_normalise(selection, cal.grid)
-            diagnostics["selection_mean_z_std_nominal"] = settings["specz_selection"] * np.abs(
+        if selection:
+            c = np.array(selection_coefficients)
+            alone = fiducial + (c - c.mean())[:, None, None] * cal.selection
+            alone, clipped = clip_and_normalise(alone, cal.grid)
+            diagnostics["selection_mean_z_std_nominal"] = selection["scale"] * np.abs(
                 np.trapezoid(cal.selection * cal.grid, cal.grid, axis=-1)
             )
             diagnostics["selection_mean_z_std_realised"] = np.trapezoid(
-                selection * cal.grid, cal.grid, axis=-1
+                alone * cal.grid, cal.grid, axis=-1
             ).std(0)
             diagnostics["selection_clipped_mass_fraction"] = clipped
     return real, raw
 
 
 def run(directory, output, settings, cosmo=None):
-    """Write realisations of the calibration in ``directory`` to ``output``."""
+    """Write realisations of the calibration run in ``directory`` to ``output``."""
     cal = Calibration.load(directory)
     density = None
     if settings.get("density"):
         if cosmo is None:
-            from .blinding import cosmology, fiducial
+            from ..blinding import cosmology, fiducial
 
             cosmo = cosmology(fiducial())
         d = settings["density"]
@@ -461,20 +470,17 @@ def run(directory, output, settings, cosmo=None):
 
 
 def main(argv=None):
-    p = argparse.ArgumentParser(prog="python -m sp_validation.nz_ensemble")
+    p = argparse.ArgumentParser(prog="python -m sp_validation.nz.ensemble")
     p.add_argument("directory", help="output directory of a calibration run")
     p.add_argument("-o", "--output", required=True, help="realisations .npz")
     p.add_argument(
         "--settings",
-        help="YAML ensemble section; the run's recipe.yaml ensemble by default",
+        help="YAML ensemble section; the run's recipe ensemble by default",
     )
     a = p.parse_args(argv)
-    if a.settings:
-        settings = yaml.safe_load(Path(a.settings).read_text())
-    else:
-        recipe = yaml.safe_load((Path(a.directory) / "recipe.yaml").read_text())
-        settings = recipe["ensemble"]
-    run(a.directory, Path(a.output), settings)
+    settings = a.settings or Path(a.directory) / "recipe.yaml"
+    settings = yaml.safe_load(Path(settings).read_text())
+    run(a.directory, Path(a.output), settings.get("ensemble", settings))
     return 0
 
 

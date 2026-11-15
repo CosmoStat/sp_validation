@@ -122,7 +122,7 @@ class BaseCat(object):
 
         Returns
         -------
-        numpy.ndarray, astropy.io.fits.FITS_rec, h5py.Dataset or grammar.V2View
+        numpy.ndarray or grammar.V2View
             catalogue data
 
         """
@@ -229,10 +229,6 @@ class BaseCat(object):
 
         """
         self._catalogue.close()
-
-
-# Column-dtype promotion is shared with the catalogue reader in ``io``.
-_promote = sp_io.promote_dtypes
 
 
 def _checked_assign(target, start, end, values, name):
@@ -454,7 +450,7 @@ class JointCat(BaseCat):
             # a later file is not silently truncated or overflowed.
             promoted = subs[0]
             for sub in subs[1:]:
-                promoted = _promote(promoted, sub)
+                promoted = np.promote_types(promoted, sub)
             fields.append((name, self.dtype_out(name, promoted)))
         fields.append(("campaign", np.dtype(f"S{n_char_campaign}")))
 

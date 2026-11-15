@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from sp_validation import nz_clustering as nc
+from sp_validation.nz import clustering as nc
 
 
 def gaussian(z, mean, sigma=0.12):
@@ -17,7 +17,12 @@ def test_estimator_recovers_bias_and_density():
     z = (edges[:-1] + edges[1:]) / 2
     annulus = (1.5, 5.0)
     sel = (nc.R_EDGES[:-1] >= 1.49) & (nc.R_EDGES[1:] <= 5.05)
-    M = np.array([nc.kernel(cosmo, x, nc.R_EDGES[:-1][sel][0], nc.R_EDGES[1:][sel][-1]) for x in z])
+    M = np.array(
+        [
+            nc.kernel(cosmo, x, nc.R_EDGES[:-1][sel][0], nc.R_EDGES[1:][sel][-1])
+            for x in z
+        ]
+    )
     b_r, nb = 2.0, 1.4 * gaussian(z, 0.6)
     xi = np.zeros((len(z), 2, len(nc.R_EDGES) - 1))
     xi[:, 0] = (b_r**2 * M / 0.05)[:, None]
@@ -56,7 +61,9 @@ def test_profiled_shift_with_correlated_noise():
     def model(s):
         return nc.slice_average(grid, nz, lo, hi, s)
 
-    cov = 0.03**2 * (0.8 ** np.abs(np.subtract.outer(np.arange(len(z)), np.arange(len(z)))))
+    cov = 0.03**2 * (
+        0.8 ** np.abs(np.subtract.outer(np.arange(len(z)), np.arange(len(z))))
+    )
     # Generate correlated leave-one-out rows for the fit.
     n = 200
     rows = rng.multivariate_normal(np.zeros(len(z)), cov / (n - 1), n)
@@ -72,17 +79,21 @@ def test_profiled_shift_with_correlated_noise():
     m = model(0)
     A = (m @ precision @ y) / (m @ precision @ m)
     residual = y - A * m
-    assert nc.amplitude_fit(y, precision, m) == pytest.approx(residual @ precision @ residual)
+    assert nc.amplitude_fit(y, precision, m) == pytest.approx(
+        residual @ precision @ residual
+    )
     diagonal = np.diag(np.diag(precision))
-    assert not np.isclose(nc.amplitude_fit(y, precision, m), nc.amplitude_fit(y, diagonal, m))
+    assert not np.isclose(
+        nc.amplitude_fit(y, precision, m), nc.amplitude_fit(y, diagonal, m)
+    )
     boundary = nc.profiled_shift_fit(2 * model(0) * (1 + z) ** 6, precision, model, z)
     assert boundary["alpha_boundary"]
     assert boundary["alpha"] == 4
 
 
 def test_alpha_boundary_includes_entire_shift_interval(monkeypatch):
-    monkeypatch.setattr(nc, "ALPHAS", np.array([-1., 0., 1.]))
-    monkeypatch.setattr(nc, "SHIFTS", np.array([-0.1, 0., 0.1]))
+    monkeypatch.setattr(nc, "ALPHAS", np.array([-1.0, 0.0, 1.0]))
+    monkeypatch.setattr(nc, "SHIFTS", np.array([-0.1, 0.0, 0.1]))
     z = np.linspace(0.2, 1, 8)
 
     def model(s):
@@ -114,16 +125,31 @@ def test_analysis_reports_profile_and_renders_figures(tmp_path, monkeypatch):
     xi = np.ones((n, 5, len(nc.R_EDGES) - 1)) * 0.2
     xi[:, 1:] *= 0.3
     jk = xi + rng.normal(0, 0.002, (80, *xi.shape))
-    out = dict(z_edges=edges, samples=["auto", "bin1", "bin2", "bin3", "bin4"],
-               xi=xi, jackknife=jk)
+    out = dict(
+        z_edges=edges,
+        samples=["auto", "bin1", "bin2", "bin3", "bin4"],
+        xi=xi,
+        jackknife=jk,
+    )
     np.savez(data / "xcorr_LRG.npz", **out)
-    np.savez(data / "xcorr_gate.npz", z_edges=edges, samples=["auto", "half"],
-             xi=xi[:, :2], jackknife=jk[:, :, :2])
+    np.savez(
+        data / "xcorr_gate.npz",
+        z_edges=edges,
+        samples=["auto", "half"],
+        xi=xi[:, :2],
+        jackknife=jk[:, :, :2],
+    )
     np.savez(data / "LRG_dat.npz", z=rng.uniform(0.3, 0.9, 2000), w=np.ones(2000))
-    config = dict(output=str(tmp_path), clustering=dict(
-        output=str(data.parent), reference=dict(slices={"LRG": [0.3, 0.9, 0.05]}),
-        annulus=[1.5, 5], core=[[0.3, 0.9]] * 4, gate=["LRG", 0.3, 0.9, 0.05],
-    ))
+    config = dict(
+        output=str(tmp_path),
+        clustering=dict(
+            output=str(data.parent),
+            reference=dict(slices={"LRG": [0.3, 0.9, 0.05]}),
+            annulus=[1.5, 5],
+            core=[[0.3, 0.9]] * 4,
+            gate=["LRG", 0.3, 0.9, 0.05],
+        ),
+    )
     result = nc.analyse(config, tmp_path / "figures")
     assert "profiled_shift" in result["bins"][0]["fits"]["calibration"]
     assert np.asarray(result["bins"][0]["covariance"]).shape == (n, n)
@@ -134,14 +160,20 @@ def test_analysis_reports_profile_and_renders_figures(tmp_path, monkeypatch):
 
 @pytest.mark.parametrize("window", [(0.31, 0.5), (0.3, 0.51)])
 def test_overlap_edges_must_preserve_nominal_grid(window):
-    cl = dict(reference=dict(slices={"A": [0.2, 0.4, 0.05], "B": [0.4, 0.7, 0.05]},
-                             overlaps=[["A", "B", *window]]))
+    cl = dict(
+        reference=dict(
+            slices={"A": [0.2, 0.4, 0.05], "B": [0.4, 0.7, 0.05]},
+            overlaps=[["A", "B", *window]],
+        )
+    )
     with pytest.raises(ValueError, match="dz=.*grid"):
         nc.reference_edges(cl, "A")
 
 
 @pytest.mark.parametrize("missing", ["dat", "ran"])
-def test_prepare_rejects_unsupported_overlap_before_sources(tmp_path, monkeypatch, missing):
+def test_prepare_rejects_unsupported_overlap_before_sources(
+    tmp_path, monkeypatch, missing
+):
     import healpy as hp
 
     monkeypatch.setattr(hp, "read_map", lambda _: np.ones(12))
@@ -150,31 +182,48 @@ def test_prepare_rejects_unsupported_overlap_before_sources(tmp_path, monkeypatc
         z = np.arange(0.825, 1.1, 0.05)
         if kind == missing:
             z = z[z >= 0.9]
-        cat = np.zeros(len(z), dtype=[(name, "f8") for name in ("RA", "DEC", "Z", "WEIGHT")])
+        cat = np.zeros(
+            len(z), dtype=[(name, "f8") for name in ("RA", "DEC", "Z", "WEIGHT")]
+        )
         cat["Z"], cat["WEIGHT"] = z, 1
         return cat
 
     monkeypatch.setattr(nc, "_read_reference", reference)
-    cl = dict(output=str(tmp_path), footprint="unused", reference=dict(
-        directory="unused", randoms=1,
-        slices={"LRG": [0.4, 0.8, 0.05], "ELG": [0.8, 1.6, 0.05]},
-        overlaps=[["LRG", "ELG", 0.8, 1.1]],
-    ))
+    cl = dict(
+        output=str(tmp_path),
+        footprint="unused",
+        reference=dict(
+            directory="unused",
+            randoms=1,
+            slices={"LRG": [0.4, 0.8, 0.05], "ELG": [0.8, 1.6, 0.05]},
+            overlaps=[["LRG", "ELG", 0.8, 1.1]],
+        ),
+    )
     # No source configuration: preparation must stop at reference support.
     with pytest.raises(ValueError, match=f"LRG {missing} lacks redshift support"):
         nc.prepare(dict(clustering=cl))
 
 
-def test_overlapping_tracers_recover_same_nz_with_different_biases(tmp_path, monkeypatch):
+def test_overlapping_tracers_recover_same_nz_with_different_biases(
+    tmp_path, monkeypatch
+):
     monkeypatch.setattr(nc, "kernel", lambda *args: 0.001)
     data = tmp_path / "data"
     data.mkdir()
-    cl = dict(output=str(tmp_path), annulus=[1.5, 5], reference=dict(
-        slices={"A": [0.2, 0.4, 0.05], "B": [0.4, 0.7, 0.05]},
-        overlaps=[["A", "B", 0.3, 0.5]],
-    ))
-    np.testing.assert_allclose(nc.reference_edges(cl, "A"), nc.slice_edges(0.2, 0.5, 0.05))
-    np.testing.assert_allclose(nc.reference_edges(cl, "B"), nc.slice_edges(0.3, 0.7, 0.05))
+    cl = dict(
+        output=str(tmp_path),
+        annulus=[1.5, 5],
+        reference=dict(
+            slices={"A": [0.2, 0.4, 0.05], "B": [0.4, 0.7, 0.05]},
+            overlaps=[["A", "B", 0.3, 0.5]],
+        ),
+    )
+    np.testing.assert_allclose(
+        nc.reference_edges(cl, "A"), nc.slice_edges(0.2, 0.5, 0.05)
+    )
+    np.testing.assert_allclose(
+        nc.reference_edges(cl, "B"), nc.slice_edges(0.3, 0.7, 0.05)
+    )
     rng = np.random.default_rng(7)
     shared = rng.normal(0, 0.01, (80, 10))
     for tracer, norm, slope in (("A", 1.2, 0.5), ("B", 2.0, 2.5)):
@@ -189,8 +238,13 @@ def test_overlapping_tracers_recover_same_nz_with_different_biases(tmp_path, mon
         jk = np.broadcast_to(xi, (80, *xi.shape)).copy()
         fluctuation = shared[:, index] + rng.normal(0, 0.002, (80, len(z)))
         jk[:, :, 1] += (fluctuation * br * 0.001)[..., None]
-        np.savez(data / f"xcorr_{tracer}.npz", z_edges=edges,
-                 samples=["auto", "bin1"], xi=xi, jackknife=jk)
+        np.savez(
+            data / f"xcorr_{tracer}.npz",
+            z_edges=edges,
+            samples=["auto", "bin1"],
+            xi=xi,
+            jackknife=jk,
+        )
     comparison = dict(bins=[dict(fits={"calibration": dict(amplitude=2, alpha=1.3)})])
     out = nc.tracer_overlaps(dict(clustering=cl), None, comparison)[0]
     result = out["bins"]["bin1"]

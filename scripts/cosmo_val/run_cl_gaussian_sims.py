@@ -205,7 +205,9 @@ def load_catalog_slices(cat_path, columns, tomography, tomo_bin_col):
     ra_col, dec_col, e1_col, e2_col, w_col = columns
 
     if tomography:
-        tomo_bin_ids = np.unique(cat_gal[tomo_bin_col])
+        # TOM_BIN_ID 1..N are the bins; 0 marks a galaxy in no bin.
+        ids = np.unique(cat_gal[tomo_bin_col])
+        tomo_bin_ids = ids[ids > 0]
     else:
         tomo_bin_ids = ["all"]
 

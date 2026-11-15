@@ -15,7 +15,7 @@ from astropy.io import fits
 from cs_util.size import T_to_sigma
 from numpy.lib import recfunctions as rfn
 
-from sp_validation import grammar, io
+from sp_validation import grammar, io, tables
 from sp_validation.grammar import (
     MASK_LABELS,
     SHEARS,
@@ -189,10 +189,14 @@ def test_detect_generation():
 
 
 def test_v2_and_neutral_tables_pass_through_unchanged():
+    """A table with nothing to rename is presented as it is, without copying."""
     _, v2 = _twins()
-    assert adapt(v2) is v2
     neutral = np.zeros(3, dtype=[("e1", "f8"), ("e2", "f8"), ("w", "f8")])
-    assert adapt(neutral) is neutral
+    for table in (v2, neutral):
+        view = adapt(table)
+        assert not view.renames
+        assert view.names == table.dtype.names
+        assert np.shares_memory(view[table.dtype.names[0]], table)
     assert v2_names(v2.dtype.names) == v2.dtype.names
 
 
@@ -209,7 +213,7 @@ def test_catalogue_presents_a_v1_fits_file_in_v2(tmp_path):
     v2_path = tmp_path / "v2.fits"
     fits.BinTableHDU(v2).writeto(v2_path)
     with io.Catalogue(v2_path) as catalogue:
-        assert not isinstance(catalogue.table(), V2View)
+        assert not catalogue.table().renames
 
 
 def test_psf_size_error_matches_between_grammars():
@@ -446,7 +450,7 @@ def test_pre_release_mask_names_match_data_ext_names_and_cuts():
 
 def test_new_mask_names_pass_through_and_both_names_conflict():
     old, new = _data_ext_mask_table()
-    assert adapt(new) is new
+    assert not adapt(new).renames
     with pytest.raises(ValueError, match="two names"):
         adapt(old, new[["MASK_4_Stars"]].copy())
     with pytest.raises(ValueError, match="two names"):
@@ -518,15 +522,15 @@ def _h5py_mask_table(tmp_path, n=1000):
 def test_h5py_selection_reads_each_dataset_once(tmp_path, monkeypatch, block_rows):
     """Selecting rows of an on-disk view reads every column in one pass."""
     old, new = _h5py_mask_table(tmp_path)
-    monkeypatch.setattr(grammar, "BLOCK_BYTES", block_rows * old.dtype.itemsize)
+    monkeypatch.setattr(tables, "BLOCK_BYTES", block_rows * old.dtype.itemsize)
     takes = []
-    original = grammar._take
+    original = tables.HDF5Table.read
 
-    def spy(table, rows, fields=None):
-        takes.append(fields)
-        return original(table, rows, fields)
+    def spy(self, names, rows=None, out=None):
+        takes.append(list(names))
+        return original(self, names, rows, out)
 
-    monkeypatch.setattr(grammar, "_take", spy)
+    monkeypatch.setattr(tables.HDF5Table, "read", spy)
     rng = np.random.default_rng(3)
     mask = rng.random(1000) < 0.3
     mask[400:700] = False
@@ -536,8 +540,8 @@ def test_h5py_selection_reads_each_dataset_once(tmp_path, monkeypatch, block_row
         for key in (mask, index, slice(10, 20, 3), slice(None, None, -7)):
             takes.clear()
             sub = view[key]
-            assert takes == [None]
-            assert not sub._on_disk
+            assert takes == [list(old.dtype.names)]
+            assert not sub.row_major
             for name in new.dtype.names:
                 np.testing.assert_array_equal(sub[name], new[key][name], err_msg=name)
         takes.clear()
