@@ -99,6 +99,8 @@ metacal:
 `scripts/calibration/calibrate_comprehensive_cat.py` calls it grouped by `TILE_ID` and writes the cut catalogue (weight column `w_<scheme>`, calibrated `e1`, `e2`), and beside it the response record (`_response.json`, `response.record`), the sums (`_sums.npz`) and, for DES, the table (`_des_weights.fits`).
 The catalogue header declares `WGHTSCH`, `RAPPLIED` and `MEANSUB`; the configured catalogue reader refuses another weight column or a second response for such a catalogue.
 
+The calibrated v2 sample (`sp_validation.sample.pipeline`, `scripts/calibration/README.md`) is the same calibration on a catalogue read one HEALPix pixel at a time: each pixel accumulates over the tiles it holds, `Sums.gather` adds them into every tile of the snapshot, and the build keeps the sums as `catalogs/response_sums.npz`.
+
 ## Image-simulation m and c
 
 For shear component j, a simulation sheared by +g and one by −g, each with its own sums, give ĝ± = (R±)⁻¹ ⟨e⟩_ns± with each simulation's own response and no additive subtraction, and

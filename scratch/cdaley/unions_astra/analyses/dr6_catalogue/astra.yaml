@@ -340,8 +340,10 @@ outputs:
     decisions: [snapshot_record, overlap_cut, selection_cuts, weights_and_response]
     description: >-
       catalogs/response.json (R and its shear and selection parts, c_e, c_g,
-      branch populations) and catalogs/des_weights.fits (the table, readable
-      as a des_weight_product).
+      branch populations, delete-one-tile jackknife covariance),
+      catalogs/des_weights.fits (the table, read by response.read_table) and
+      catalogs/response_sums.npz (the per-tile, per-cell sums they follow
+      from, read by response.Sums.load).
   - id: footprint
     type: data
     label: "Footprint and survey statistics"

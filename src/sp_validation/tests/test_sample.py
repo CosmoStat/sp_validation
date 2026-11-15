@@ -1,8 +1,8 @@
 """The calibrated sample: its chunked build equals the in-memory calibration.
 
 A synthetic shape catalogue over four neighbouring tiles is calibrated twice:
-by ``calibration.metacal`` on all rows at once, the definition, and by the
-sample build in chunks and from a HATS catalogue. Both must give the same
+by ``response.calibrate_catalogue`` on all rows at once, the definition, and
+by the sample build in chunks and from a HATS catalogue. Both must give the same
 galaxies, weights, response and calibrated shapes.
 """
 
@@ -22,7 +22,7 @@ from cs_util import cfis
 from hats.io.validation import is_valid_catalog
 from numpy.lib.recfunctions import append_fields
 
-from sp_validation import calibration, io, masks, response
+from sp_validation import io, masks, response
 from sp_validation.assembly.object_id import OBJECT_ID, object_id
 from sp_validation.galaxy import classification_galaxy_overlap_ra_dec
 from sp_validation.sample import compare, pipeline, snapshot
@@ -92,7 +92,8 @@ def shapes(seed=3):
 
 
 def in_memory(data):
-    """The definition: the selection and ``calibration.metacal`` on all rows."""
+    """The definition: the selection and ``response.calibrate_catalogue`` on all
+    rows."""
     comprehensive = append_fields(
         data,
         ["overlap", "mag"],
@@ -100,13 +101,11 @@ def in_memory(data):
         usemask=False,
     )
     keep = masks.catalogue_selection(SELECTION, comprehensive)
-    gm = calibration.metacal_from_config(data, keep, SELECTION["metacal"])
-    ns = gm.mask_dict["ns"]
-    g = np.array([gm.ns["g1"][ns], gm.ns["g2"][ns]])
-    e = np.linalg.inv(gm.R) @ (g - gm.c_e[:, None])
-    ids = object_id(data["TILE_ID"][keep][ns], data["NUMBER"][keep][ns]).to_numpy()
+    cal = response.calibrate_catalogue(data, SELECTION["metacal"], preselection=keep)
+    index = cal["index"]
+    ids = object_id(data["TILE_ID"][index], data["NUMBER"][index]).to_numpy()
     order = np.argsort(ids)
-    return gm, dict(id=ids[order], e=e[:, order], w=gm.ns["w_des"][ns][order])
+    return cal, dict(id=ids[order], e=cal["e"][:, order], w=cal["w"][order])
 
 
 def chunked(data, parts, rng):
@@ -117,34 +116,26 @@ def chunked(data, parts, rng):
         name: np.concatenate([r["rows"][name] for r in results])
         for name in results[0]["rows"]
     }
-    total = {key: results[0][key] for key in ("flow", "moments", "sums")}
-    for result in results[1:]:
-        total = response.add_sums(total, {key: result[key] for key in total})
-    metacal = SELECTION["metacal"]
-    table = response.table_from_moments(
-        *total["moments"], *pipeline.table_edges(metacal), min_count=3
-    )
-    return rows, table, response.responses_from_sums(total["sums"], table, 0.01)
+    sums = response.Sums.gather((r["sums"] for r in results), pipeline.tile_key(TILES))
+    table = response.fit_table(sums, 3)
+    return rows, table, response.estimate(sums, table)
 
 
 def test_chunked_build_equals_the_in_memory_calibration():
     data = shapes()
-    gm, expected = in_memory(data)
+    cal, expected = in_memory(data)
     assert 500 < len(expected["id"]) < 0.5 * N
-    assert len(set(map(len, gm.mask_dict.values()))) > 1  # branches select differently
+    counts = cal["result"]["counts"]
+    assert len(set(counts.values())) > 1  # branches select differently
     rows, table, estimate = chunked(data, 7, np.random.default_rng(1))
-    npt.assert_allclose(table[2], gm.W[2], rtol=1e-12)
-    npt.assert_array_equal(table[3], gm.W[3])
-    for name, value in (
-        ("total", gm.R),
-        ("shear", gm.R_shear_global),
-        ("selection", gm.R_selection),
-        ("joint", gm.R_joint),
-        ("c_e", gm.c_e),
-    ):
-        npt.assert_allclose(estimate[name], value, rtol=1e-10, atol=1e-14, err_msg=name)
+    npt.assert_allclose(table.w, cal["table"].w, rtol=1e-12)
+    npt.assert_array_equal(table.count, cal["table"].count)
+    for name in ("total", "shear", "selection", "joint", "c_e"):
+        npt.assert_allclose(
+            estimate[name], cal["result"][name], rtol=1e-10, atol=1e-14, err_msg=name
+        )
     assert abs(estimate["selection"][0, 0]) > 1e-3  # the selection term is exercised
-    assert estimate["counts"] == gm.branch_counts
+    assert estimate["counts"] == counts
     out = pipeline.calibrate(rows, table, estimate).to_pydict()
     order = np.argsort(out[OBJECT_ID])
     npt.assert_array_equal(np.array(out[OBJECT_ID])[order], expected["id"])
@@ -210,7 +201,7 @@ def test_run_writes_the_in_memory_sample_as_hats(built):
         assert len(catalogue.chunks) > 1
         out = catalogue.read()
     assert out.dtype.names == pipeline.COLUMNS
-    gm, expected = in_memory(built["data"])
+    cal, expected = in_memory(built["data"])
     order = np.argsort(out[OBJECT_ID])
     npt.assert_array_equal(out[OBJECT_ID][order], expected["id"])
     npt.assert_allclose(out["w_des"][order], expected["w"], rtol=1e-12)
@@ -219,13 +210,18 @@ def test_run_writes_the_in_memory_sample_as_hats(built):
     npt.assert_array_equal(out["TILE_KEY"], np.rint(out["TILE_ID"] * 1000))
 
     written = json.loads((release / "catalogs/response.json").read_text())
-    npt.assert_allclose(written["R"], gm.R, rtol=1e-10)
+    npt.assert_allclose(written["R"], cal["result"]["total"], rtol=1e-10)
     assert written["selected_rows"] == len(out) == built["result"]["selected_rows"]
     assert written["raw_rows"] == N
-    product = dict(name="test", path=release / "catalogs/des_weights.fits")
-    table, min_count = calibration.load_des_weight_product(product)
-    npt.assert_allclose(table[2], gm.W[2], rtol=1e-12)
-    assert min_count == 3
+    table = response.read_table(release / "catalogs/des_weights.fits")
+    npt.assert_allclose(table.w, cal["table"].w, rtol=1e-12)
+    assert table.min_count == 3
+    # The saved sums, grouped by tile, give the response and its jackknife.
+    sums = response.Sums.load(release / "catalogs/response_sums.npz")
+    npt.assert_array_equal(sums.labels, pipeline.tile_key(TILES))
+    npt.assert_allclose(response.estimate(sums, table)["total"], written["R"])
+    _, _, covariance = response.jackknife(sums, response.refit(3))
+    npt.assert_allclose(written["covariance"], covariance, rtol=1e-10)
     survey = json.loads((release / "catalogs/survey.json").read_text())
     assert survey["rows"] == len(out) and survey["area_deg2"] > 0
     stats = effective_survey_stats(
@@ -347,27 +343,3 @@ def test_compare_pairs_rows_and_finds_a_changed_shape(built, tmp_path):
     pq.write_table(table, files[-1])
     result = compare.compare(changed, target)
     assert result["largest_difference"]["w_des"] == np.inf and not result["agree"]
-
-
-def test_cell_sums_give_the_response_of_table_weights():
-    """With nonfinite coordinates and rows outside the table, which the
-    metacal selection never passes on."""
-    rng = np.random.default_rng(2)
-    n = 400
-    edges = np.logspace(1, 2, 5), np.logspace(0, 1, 4)
-    shapes = {b: tuple(rng.normal(0, 0.2, (2, n))) for b in response.BRANCHES}
-    coordinates = {
-        b: (10 ** rng.uniform(0.8, 2.2, n), 10 ** rng.uniform(-0.2, 1.2, n))
-        for b in response.BRANCHES
-    }
-    coordinates["p1"][0][:5] = np.nan
-    coordinates["ns"][1][5:9] = np.inf
-    selected = {b: np.flatnonzero(rng.uniform(size=n) < 0.7) for b in response.BRANCHES}
-    rg = rng.normal(0.7, 0.1, (2, 2, len(selected["ns"])))
-    table = (*edges, rng.uniform(0.5, 2, (4, 3)), None)
-    weights = {b: response.evaluate_w(table, *coordinates[b]) for b in shapes}
-    expected = response.responses(shapes, selected, weights, rg, 0.01)
-    sums = response.cell_sums(shapes, selected, coordinates, rg, *edges)
-    found = response.responses_from_sums(sums, table, 0.01)
-    for name, value in expected.items():
-        npt.assert_allclose(found[name], value, rtol=1e-10, atol=1e-13, err_msg=name)
