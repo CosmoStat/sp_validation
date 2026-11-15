@@ -20,7 +20,7 @@ library of spectra, in a feature space standardised by the library
   library's spectra say at those colours and magnitude, and no galaxy lies
   outside the library's redshift range.
 - ``bpz``: BPZ and r. The galaxy takes its own BPZ plus a neighbour's
-  spec-z − BPZ, floored at zero: at fixed BPZ and r the redshift does not
+  spec-z − BPZ, kept inside [0, ``z_max``]: at fixed BPZ and r the redshift does not
   depend on colour, and BPZ's error is what the library's is.
 
 A galaxy that is itself in the library never draws its own spectrum.
@@ -68,12 +68,12 @@ def neighbours(kind, library, mag, photoz, object_id, *, k, offset, workers=1):
     return out
 
 
-def paint(kind, library, near, photoz, rng):
+def paint(kind, library, near, photoz, rng, z_max=5.0):
     """One redshift per galaxy, from a random one of its library neighbours."""
     pick = near[np.arange(len(near)), rng.integers(near.shape[1], size=len(near))]
     if kind == "colour":
         return library["z"][pick].astype("f8")
-    return np.maximum(photoz + library["z"][pick] - library["photoz"][pick], 0.0)
+    return np.clip(photoz + library["z"][pick] - library["photoz"][pick], 0, z_max)
 
 
 def score(result, weight, z):

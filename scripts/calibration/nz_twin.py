@@ -157,6 +157,7 @@ def main(argv=None):
     a.output.mkdir(parents=True, exist_ok=True)
     config = load_yaml(RECIPE)
     offset, w = config["z2_offset"], a.workers
+    zmax = config["grid"]["max"]
     data = load_inputs(config, a.output / "inputs.npz", w)
     src, cal = part(data, "src_"), part(data, "cal_")
     libs = {m: part(data, f"lib_{m}_") for m in twin.SPACES}
@@ -212,8 +213,8 @@ def main(argv=None):
 
     def painted(m, seed):
         rng = np.random.default_rng(seed)
-        zs = twin.paint(m, libs[m], near[m]["src"], src["photoz"], rng)
-        zc = twin.paint(m, libs[m], near[m]["cal"], cal["photoz"], rng)
+        zs = twin.paint(m, libs[m], near[m]["src"], src["photoz"], rng, zmax)
+        zc = twin.paint(m, libs[m], near[m]["cal"], cal["photoz"], rng, zmax)
         return zs, zc
 
     def perturbed(dm_src, dm_cal):
