@@ -96,6 +96,22 @@ metacal:
   additive_correction: true # false for constant-shear simulations
 ```
 
+For rows from the catalogue reader (the five `NGMIX_*` metacal branches) and a boolean preselection `keep`:
+
+```python
+import yaml
+from sp_validation import response
+
+with open("config/calibration/mask_v2.0.yaml") as f:
+    metacal = yaml.safe_load(f)["metacal"]
+cal = response.calibrate_catalogue(rows, metacal, preselection=keep, groups=rows["TILE_ID"])
+
+R, c_e = cal["result"]["total"], cal["result"]["c_e"]
+e1, e2 = cal["e"]  # calibrated shapes of the selected rows, rows[cal["index"]]
+w = cal["w"]       # their weights
+labels, deleted, covariance = cal["jackknife"]  # tile jackknife of every estimate
+```
+
 `scripts/calibration/calibrate_comprehensive_cat.py` calls it grouped by `TILE_ID` and writes the cut catalogue (weight column `w_<scheme>`, calibrated `e1`, `e2`), and beside it the response record (`_response.json`, `response.record`), the sums (`_sums.npz`) and, for DES, the table (`_des_weights.fits`).
 The catalogue header declares `WGHTSCH`, `RAPPLIED` and `MEANSUB`; the configured catalogue reader refuses another weight column or a second response for such a catalogue.
 
