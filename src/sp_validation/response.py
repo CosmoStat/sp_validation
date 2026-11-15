@@ -16,8 +16,10 @@ Typical use::
 
     cuts = Cuts.from_config(config["metacal"])
     edges = table_edges(cuts, config["metacal"]["des_num_bins"])
-    sums = sum(accumulate(chunk, cuts, edges, groups=tiles, labels=all_tiles)
-               for chunk, tiles in chunks)
+    sums = Sums.gather(
+        (accumulate(chunk, cuts, edges, groups=tiles) for chunk, tiles in chunks),
+        all_tiles,
+    )
     table = fit_table(sums, min_count=3)
     result = estimate(sums, table)
     labels, deleted, covariance = jackknife(sums, refit(3))
@@ -299,7 +301,8 @@ class Sums:
 
     ``labels`` names the G groups (``None``: one group), ``edges`` the cells,
     ``step`` the metacal shear step and ``sigma_e`` the inverse-variance
-    ``u`` (``None``: ``u = 1``). Sums of disjoint row sets add with ``+``.
+    ``u`` (``None``: ``u = 1``). Sums of disjoint row sets add with ``+``,
+    or with :meth:`gather` when each holds only the groups of its rows.
     """
 
     arrays: dict
@@ -308,13 +311,14 @@ class Sums:
     step: float = 0.01
     sigma_e: float = None
 
-    def _check(self, other):
+    def _check(self, other, groups=True):
         same = (
             self.step == other.step
             and self.sigma_e == other.sigma_e
             and all(map(np.array_equal, self.edges, other.edges))
             and (
-                (self.labels is None and other.labels is None)
+                not groups
+                or (self.labels is None and other.labels is None)
                 or (
                     self.labels is not None
                     and other.labels is not None
@@ -324,6 +328,34 @@ class Sums:
         )
         if not same:
             raise ValueError("Sums differ in groups, cells, step or weights")
+
+    @classmethod
+    def gather(cls, parts, labels):
+        """The sum of ``parts``, each over some of the groups ``labels``.
+
+        ``labels`` are sorted; each part holds the groups of its own rows
+        (:func:`accumulate` without ``labels``), so a part is as small as the
+        groups it holds, and the result holds every group of ``labels``.
+        """
+        labels = np.asarray(labels)
+        total = None
+        for part in parts:
+            if total is None:
+                total = replace(
+                    part,
+                    arrays={
+                        k: np.zeros((*v.shape[:-2], len(labels), v.shape[-1]), v.dtype)
+                        for k, v in part.arrays.items()
+                    },
+                    labels=labels,
+                )
+            total._check(part, groups=False)
+            index = np.searchsorted(labels, part.labels)
+            if np.any(labels[np.minimum(index, len(labels) - 1)] != part.labels):
+                raise ValueError("a part holds a group that labels lacks")
+            for k, v in part.arrays.items():
+                total.arrays[k][..., index, :] += v
+        return total
 
     def __add__(self, other):
         if isinstance(other, int) and other == 0:  # the start value of sum()

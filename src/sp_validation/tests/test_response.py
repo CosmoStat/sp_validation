@@ -234,6 +234,28 @@ def test_sums_add_over_chunks_and_groups():
             whole.total().arrays[key], ungrouped.arrays[key], rtol=1e-12, atol=1e-15
         )
     np.testing.assert_array_equal(chunks.arrays["count"], whole.arrays["count"])
+    # Chunks over only the groups they hold, gathered into every group.
+    gathered = response.Sums.gather(
+        (
+            accumulate(
+                data[a:b],
+                CUTS,
+                edges,
+                preselection=pre[a:b],
+                groups=data["TILE_ID"][a:b],
+            )
+            for a, b in zip(cuts[:-1], cuts[1:], strict=True)
+        ),
+        np.append(labels, "t99"),
+    )
+    np.testing.assert_array_equal(gathered.labels[:-1], labels)
+    for key, value in whole.arrays.items():
+        np.testing.assert_allclose(
+            gathered.arrays[key][..., :-1, :], value, rtol=1e-12, atol=1e-15
+        )
+        assert not gathered.arrays[key][..., -1, :].any()
+    with pytest.raises(ValueError, match="labels lacks"):
+        response.Sums.gather([whole], labels[1:])
     # Rows with nonfinite coordinates on a branch are left out of it alone.
     counts = estimate(ungrouped, unit_table(edges))["counts"]
     assert counts["p1"] < counts["ns"]
