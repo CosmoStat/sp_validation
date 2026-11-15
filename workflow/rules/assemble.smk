@@ -36,7 +36,7 @@ rule collection:
     resources:
         # About 5 GiB per worker for the PhotoPipe join, the largest part.
         mem_mb=lambda wildcards, threads: 20000 + 5000 * threads,
-        # About seven hours at 60 workers.
-        runtime=480,
+        # About ten minutes at 60 workers.
+        runtime=60,
     shell:
         "python {params.script} {input.recipe} --workers {threads}"

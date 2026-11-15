@@ -22,7 +22,7 @@ python scripts/assembly/build_collection.py config/assembly/v2.yaml --workers 60
 `fetch_photopipe.sh` needs a CADC proxy at `~/.ssl/cadcproxy.pem`; its
 extract runs `extract_photopipe.py` in a CANFAR headless session beside the
 tile tree, about 100 minutes from cold, and skips tiles whose files are
-unchanged. `build_collection.py` takes about seven hours at 60 workers and
+unchanged. `build_collection.py` takes about ten minutes at 60 workers and
 300 GiB; the same build is the Snakemake rule `collection`
 (`snakemake --profile workflow/profiles/default -s workflow/assemble/Snakefile -j 60`).
 It keeps each part already on disk (`shapes/`, `photopipe/`, `specz/`, the
