@@ -31,8 +31,8 @@ import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+from ..assembly.object_id import OBJECT_ID
 from ..data_roots import load_yaml
-from ..object_id import OBJECT_ID
 from . import calibration as nz
 from . import ensemble, inputs
 

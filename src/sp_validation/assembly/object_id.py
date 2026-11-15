@@ -1,9 +1,12 @@
-"""The DR6 object ID as one column, and writing it into a HATS catalogue.
+"""The DR6 object ID as one column, and the collection's shapes that carry it.
 
 Stephen Gwyn's DR6 numbers objects within a tile: ``TILE_ID`` (a double such as
 194.248, the tile ``194.248``) and ``NUMBER``. ``OBJECT_ID`` packs the pair into
 one int64, ``10**6 * 194248 + NUMBER``, so a HATS index can be built on it. Rows
 with no DR6 number (``NUMBER`` < 0) have a null ``OBJECT_ID``.
+
+``write_shapes`` writes the shape catalogue into the collection as
+``COLLECTION/shapes``, each pixel file with ``OBJECT_ID`` after ``NUMBER``.
 """
 
 import shutil
@@ -17,6 +20,7 @@ from hats.catalog import TableProperties
 from hats.io.parquet_metadata import write_parquet_metadata
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
+NAME = "shapes"
 OBJECT_ID = "OBJECT_ID"
 NUMBER_LIMIT = 10**6
 
@@ -34,12 +38,6 @@ def object_id(tile_id, number):
             f"NUMBER reaches {number.max()}, OBJECT_ID holds < {NUMBER_LIMIT}"
         )
     return pa.array(tile * NUMBER_LIMIT + number, mask=number < 0)
-
-
-def with_object_id(table):
-    """Return ``table`` with ``OBJECT_ID`` inserted after ``NUMBER``."""
-    ids = object_id(table["TILE_ID"].to_numpy(), table["NUMBER"].to_numpy())
-    return table.add_column(table.schema.get_field_index("NUMBER") + 1, OBJECT_ID, ids)
 
 
 def _encodings(file):
@@ -69,7 +67,11 @@ def add_to_pixel(source, output):
     temporary = output.with_suffix(".tmp")
     writer = None
     for group in range(file.num_row_groups):
-        table = with_object_id(file.read_row_group(group))
+        table = file.read_row_group(group)
+        ids = object_id(table["TILE_ID"].to_numpy(), table["NUMBER"].to_numpy())
+        table = table.add_column(
+            table.schema.get_field_index("NUMBER") + 1, OBJECT_ID, ids
+        )
         if writer is None:
             writer = pq.ParquetWriter(
                 temporary,
@@ -87,21 +89,21 @@ def _add_to_pixel(arguments):
     add_to_pixel(*arguments)
 
 
-def add_to_catalogue(source, output, workers=1, name=None):
-    """Write the HATS catalogue ``source`` to ``output`` with ``OBJECT_ID``.
+def write_shapes(source, collection, workers=1):
+    """Write the shape HATS catalogue ``source`` as ``COLLECTION/shapes``.
 
-    Each pixel file keeps its rows in order, so a catalogue aligned row for row
-    with ``source`` stays aligned with ``output``. The partitioning, sky maps
-    and properties are those of ``source``, with ``OBJECT_ID`` among the default
-    columns, which ``lsdb``'s ``id_search`` needs; ``name`` renames the catalogue.
+    Each pixel file gains ``OBJECT_ID`` and keeps its rows in order. The
+    partitioning, sky maps and properties are those of ``source``, named
+    ``shapes``, with ``OBJECT_ID`` among the default columns, which ``lsdb``'s
+    ``id_search`` needs.
     """
-    source, output = Path(source), Path(output)
+    source, output = Path(source), Path(collection) / NAME
     paths = sorted((source / "dataset").glob("Norder=*/Dir=*/Npix=*.parquet"))
     jobs = [(path, output / path.relative_to(source)) for path in paths]
     with ProcessPoolExecutor(workers) as pool:
         for done, _ in enumerate(pool.map(_add_to_pixel, jobs), 1):
             if done % 100 == 0:
-                print(f"{done}/{len(jobs)} pixels", flush=True)
+                print(f"shapes: {done}/{len(jobs)} pixels", flush=True)
 
     for path in [source / "partition_info.csv", *source.glob("*.fits")]:
         shutil.copy(path, output / path.name)
@@ -110,9 +112,9 @@ def add_to_catalogue(source, output, workers=1, name=None):
     if rows != properties.total_rows:
         raise ValueError(f"wrote {rows} rows, {source} has {properties.total_rows}")
     properties.copy_and_update(
-        catalog_name=name or properties.catalog_name,
+        catalog_name=NAME,
         default_columns=[*(properties.default_columns or []), OBJECT_ID],
         **TableProperties.new_provenance_dict(
-            output, builder="sp_validation.object_id"
+            output, builder="sp_validation.assembly.object_id"
         ),
     ).to_properties_file(output)

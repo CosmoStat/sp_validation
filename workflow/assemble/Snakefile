@@ -1,0 +1,34 @@
+"""Standalone entry point for the assemble stage (workflow/rules/assemble.smk).
+
+Builds the v2 HATS collection::
+
+    snakemake --profile workflow/profiles/default -s workflow/assemble/Snakefile -j 60
+
+``configfile:`` below names the v2 recipe; ``--config assemble='{...}'`` or a
+``--configfile`` of your own overrides it (targets go before ``--configfile``).
+See scripts/assembly/README.md.
+"""
+
+import os
+import sys
+
+sys.path.insert(0, os.path.realpath(os.path.join(str(workflow.basedir), "..")))
+import common
+
+
+configfile: os.path.join(str(workflow.basedir), "config.yaml")
+
+
+# The checkout's src wins over the image's copy of sp_validation.
+common.inject_checkout_pythonpath(config)
+
+
+container: common.resolve_container(config.get("container"))
+
+
+include: "../rules/assemble.smk"
+
+
+rule all:
+    input:
+        rules.collection.output,

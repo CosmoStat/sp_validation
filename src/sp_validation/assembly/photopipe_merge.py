@@ -1,13 +1,17 @@
 """Give every shape object its PhotoPipe row: the PhotoPipe extension of the v2 collection.
 
-The inputs are the shape HATS catalogue and the column extract written by
-``scripts/assembly/extract_photopipe.py``. The output, ``OUTPUT/photopipe``, is
-a HATS catalogue with one row for each shape row, in the same pixel and the
-same order, holding ``_healpix_29``, the DR6 object ID ``OBJECT_ID``
-(``sp_validation.object_id``), the shape coordinates and every PhotoPipe
-column. It is the data of the collection's ``photopipe`` extension
-(``scripts/assembly/build_collection.py``), joined to the shapes on
-``OBJECT_ID``; a PhotoPipe rerun replaces it and leaves the shapes alone.
+The inputs are the collection's shapes, ``COLLECTION/shapes``
+(``sp_validation.assembly.object_id``), and the column extract written by
+``scripts/assembly/extract_photopipe.py``. The output,
+``COLLECTION/photopipe/photopipe``, is a HATS catalogue with one row for each
+shape row, holding ``_healpix_29``, ``OBJECT_ID``, the shape coordinates and
+every PhotoPipe column, with its provenance beside it in
+``COLLECTION/photopipe``. It is the data of the collection's ``photopipe``
+extension, joined to the shapes on ``OBJECT_ID``; a PhotoPipe rerun replaces
+it and leaves the shapes alone. Each pixel file holds the rows of the shape
+file in the same order, so a reader finds a row at the same position
+(``sp_validation.tables.JoinedFile``) instead of joining on the key: an
+optimisation of the write, not a contract the reader relies on.
 
 PhotoPipe columns are null where ``PHOTOPIPE_STATUS`` is not ``MATCHED``.
 ``SeqNr`` becomes ``PHOTOPIPE_SEQNR``, and a PhotoPipe column whose name the
@@ -34,15 +38,16 @@ import pyarrow.compute as pc
 import pyarrow.parquet as pq
 from hats.catalog import TableProperties
 
-from sp_validation.object_id import OBJECT_ID, with_object_id
+from sp_validation.assembly.object_id import NAME as SHAPES
+from sp_validation.assembly.object_id import OBJECT_ID
 
 SANITY_RADIUS_ARCSEC = 0.8
 MATCHED, NO_COUNTERPART, NO_TILE = 0, 1, 2
 NAME = "photopipe"
 PREFIX = "PHOTOPIPE_"
-SHAPE_COLUMNS = ["_healpix_29", "XWIN_WORLD", "YWIN_WORLD", "TILE_ID", "NUMBER"]
 #: The shape columns the extension carries: the keys, in hats-import's order.
 KEYS = ["_healpix_29", OBJECT_ID, "XWIN_WORLD", "YWIN_WORLD"]
+SHAPE_COLUMNS = [*KEYS, "TILE_ID", "NUMBER"]
 #: A float column with at most this fraction of distinct values is stored as a
 #: dictionary (magnitude sentinels, gridded redshifts), any other as split bytes.
 DICTIONARY_FRACTION = 0.01
@@ -142,7 +147,7 @@ def merge_pixel(shape_path, output_path, index, schema):
 
     photo = pa.concat_tables(pieces) if pieces else schema.empty_table()
     taken = photo.take(pa.array(photo_row, mask=status != MATCHED))
-    table = with_object_id(shapes).select(KEYS)
+    table = shapes.select(KEYS)
     table = table.append_column("PHOTOPIPE_STATUS", pa.array(status))
     table = table.append_column(
         "MATCH_SEP_ARCSEC", pa.array(separation, mask=status != MATCHED)
@@ -170,8 +175,9 @@ def merge_pixel(shape_path, output_path, index, schema):
 
 
 def _write_hats_metadata(shapes, catalogue, schema, nrows):
-    for name in ("partition_info.csv", "point_map.fits", "skymap.fits"):
-        shutil.copy(shapes / name, catalogue / name)
+    for path in [shapes / "partition_info.csv", *shapes.glob("*.fits")]:
+        shutil.copy(path, catalogue / path.name)
+    pq.write_metadata(schema, catalogue / "dataset" / "_common_metadata")
     properties = TableProperties.read_from_dir(shapes)
     if nrows != properties.total_rows:
         raise ValueError(f"merged {nrows} rows, shape catalogue has a different count")
@@ -179,17 +185,9 @@ def _write_hats_metadata(shapes, catalogue, schema, nrows):
         catalog_name=NAME,
         default_columns=None,
         **TableProperties.new_provenance_dict(
-            catalogue, builder="sp_validation.photopipe_merge"
+            catalogue, builder="sp_validation.assembly.photopipe_merge"
         ),
     ).to_properties_file(catalogue)
-    pq.write_metadata(schema, catalogue / "dataset" / "_common_metadata")
-
-
-def _property(catalogue, key):
-    for line in (catalogue / "hats.properties").read_text().splitlines():
-        if line.startswith(f"{key}="):
-            return line.split("=", 1)[1]
-    raise KeyError(key)
 
 
 def _commit():
@@ -250,7 +248,6 @@ def _write_provenance(output, shapes, extract, index, counts):
         built_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         code_commit=_commit(),
         shapes=str(shapes),
-        shapes_source_manifest_sha256=_property(shapes, "source_manifest_sha256"),
         extract=str(extract),
         join="(TILE_ID, NUMBER) = (tile, SeqNr)",
         sanity_radius_arcsec=SANITY_RADIUS_ARCSEC,
@@ -268,15 +265,14 @@ def _merge_worker(arguments):
     return merge_pixel(*arguments)
 
 
-def merge(shapes, extract, output, workers=1, pixels=None):
-    """Build the PhotoPipe HATS catalogue under ``output/photopipe``."""
-    shapes, output = Path(shapes), Path(output)
+def merge(collection, extract, workers=1):
+    """Write ``COLLECTION/photopipe``: the catalogue ``photopipe`` and its provenance."""
+    shapes = Path(collection) / SHAPES
+    output = Path(collection) / NAME
     catalogue = output / NAME
     index = load_extract(extract)
     schema = _photopipe_schema(index)
     paths = sorted((shapes / "dataset").glob("Norder=*/Dir=*/Npix=*.parquet"))
-    if pixels is not None:
-        paths = [p for p in paths if int(p.stem.split("=")[1]) in pixels]
     jobs = [
         (path, catalogue / path.relative_to(shapes), index, schema) for path in paths
     ]
@@ -285,10 +281,9 @@ def merge(shapes, extract, output, workers=1, pixels=None):
         for done, result in enumerate(pool.map(_merge_worker, jobs), 1):
             results.append(result)
             if done % 100 == 0:
-                print(f"{done}/{len(jobs)} pixels", flush=True)
+                print(f"photopipe: {done}/{len(jobs)} pixels", flush=True)
     counts = [r[0] for r in results]
     build = _write_provenance(output, shapes, extract, index, counts)
-    if pixels is None:
-        _write_hats_metadata(shapes, catalogue, results[0][1], build["n_shape"])
+    _write_hats_metadata(shapes, catalogue, results[0][1], build["n_shape"])
     print(json.dumps(build, indent=2))
     return build
