@@ -637,8 +637,8 @@ def tracer_overlaps(config, cosmo, comparison):
     return out
 
 
-def analyse(config, figures=None):
-    """Write ``clustering.json`` and, optionally, its figures."""
+def analyse(config):
+    """Write ``clustering.json``."""
     cosmo = fiducial_cosmology()
     cl = config["clustering"]
     result = dict(
@@ -649,112 +649,7 @@ def analyse(config, figures=None):
     (Path(cl["output"]) / "clustering.json").write_text(
         json.dumps(result, indent=1) + "\n"
     )
-    if figures:
-        render(result, *candidates(config["output"]), figures)
     return result
-
-
-def render(result, grid, cands, directory):
-    """``clustering_gate.png`` and ``clustering_nz.png``."""
-    import matplotlib
-
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-
-    from .diagnostics import COLORS, _save
-
-    directory = Path(directory)
-    directory.mkdir(parents=True, exist_ok=True)
-    r_lo, r_hi = result["annulus"]
-
-    g = result["gate"]
-    z, dz = np.array(g["z"]), np.diff(g["z"]).mean()
-    fig, ax = plt.subplots(figsize=(6.5, 3.8), layout="constrained")
-    ax.step(
-        np.r_[z - dz / 2, z[-1] + dz / 2],
-        np.r_[g["truth"], g["truth"][-1]],
-        where="post",
-        color="0.3",
-        lw=1.2,
-        label="true n(z) of the held-out half",
-    )
-    ax.errorbar(
-        z,
-        g["n"],
-        g["err"],
-        fmt="o",
-        ms=4,
-        color=COLORS[0],
-        label=f"clustering, χ² = {g['chi2']:.1f} / {g['dof']}",
-    )
-    ax.axhline(0, color="k", lw=0.5)
-    s = g["shift"]
-    ax.set(
-        xlabel="z",
-        ylabel="n(z)",
-        title=f"Known answer: ⟨z⟩ {g['mean_z']:.3f} ± {g['mean_z_err']:.3f} "
-        f"(true {g['mean_z_truth']:.3f}), shift {s['best']:+.3f} "
-        f"[{s['lo']:+.3f}, {s['hi']:+.3f}]",
-    )
-    ax.title.set_fontsize(9)
-    ax.legend(fontsize=8)
-    _save(fig, directory / "clustering_gate.png")
-
-    lo, hi = np.array(result["z_lo"]), np.array(result["z_hi"])
-    z = (lo + hi) / 2
-    styles = {"calibration": ("k", "-"), "alternative calibrators": (COLORS[1], "--")}
-    labels = {
-        "calibration": "SOM n(z)",
-        "alternative calibrators": "SOM n(z), alternative calibrators",
-    }
-    fig, axes = plt.subplots(
-        len(result["bins"]), 1, figsize=(7, 8.5), sharex=True, layout="constrained"
-    )
-    for k, (b, ax) in enumerate(zip(result["bins"], axes)):
-        fit = b["fits"]["calibration"]
-        tilt = (1 + z) ** fit["alpha"]
-        A = fit["amplitude"]
-        ax.errorbar(
-            z,
-            np.array(b["nb"]) / tilt / A,
-            np.array(b["nb_err"]) / tilt / A,
-            fmt="o",
-            ms=3,
-            lw=1,
-            color=COLORS[0],
-            label="clustering × DESI DR1",
-        )
-        for name, hists in cands.items():
-            ax.plot(
-                grid,
-                hists[k],
-                color=styles[name][0],
-                ls=styles[name][1],
-                lw=1.2,
-                label=labels[name],
-            )
-        ax.axvspan(*b["core"], color=COLORS[0], alpha=0.07, lw=0)
-        ax.axhline(0, color="k", lw=0.5)
-        shift = fit["profiled_shift"]
-        text = (
-            f"bin {k + 1}   χ² = "
-            + ", ".join(f"{f['chi2']:.1f}" for f in b["fits"].values())
-            + f" / {fit['dof']}   profile Δz = {shift['best']:+.3f} [{shift['lo']:+.3f}, {shift['hi']:+.3f}]"
-        )
-        text += f"  α(profile) = {shift['alpha']:.2f}" + (
-            " (interval at prior edge)" if shift["alpha_boundary"] else ""
-        )
-        ax.text(
-            0.99, 0.93, text, transform=ax.transAxes, ha="right", va="top", fontsize=8
-        )
-        ax.set_ylabel("n(z)")
-    axes[0].legend(fontsize=7, loc="center right")
-    axes[-1].set(xlabel="z", xlim=(0, 2.6))
-    fig.suptitle(
-        f"Gold bins × spectroscopic slices, {r_lo:g}–{r_hi:g} Mpc/h; fit window shaded",
-        fontsize=10,
-    )
-    _save(fig, directory / "clustering_nz.png")
 
 
 def main(argv=None):
@@ -763,14 +658,13 @@ def main(argv=None):
     parser.add_argument("--prepare", action="store_true", help="build the inputs first")
     parser.add_argument("--measure", action="store_true", help="count the pairs")
     parser.add_argument("--workers", type=int, default=1)
-    parser.add_argument("--figures", metavar="DIRECTORY")
     args = parser.parse_args(argv)
     config = load_yaml(args.recipe)
     if args.prepare:
         print(json.dumps(prepare(config)))
     if args.measure:
         measure(config, workers=args.workers)
-    analyse(config, args.figures)
+    analyse(config)
 
 
 if __name__ == "__main__":
