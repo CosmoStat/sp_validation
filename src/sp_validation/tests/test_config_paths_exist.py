@@ -12,7 +12,8 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
-import yaml
+
+from sp_validation.data_roots import load_yaml
 
 PATH_KEY_PARTS = (
     "path",
@@ -93,6 +94,8 @@ def _walk_yaml(
     if isinstance(value, dict):
         local_base = base_dir
         subdir = value.get("subdir")
+        if isinstance(subdir, str) and "${" in subdir:
+            return  # its data root is not on this machine
         if isinstance(subdir, str) and _pathish_value(subdir):
             local_base = Path(subdir).expanduser()
         for key, child in value.items():
@@ -108,8 +111,7 @@ def _walk_yaml(
 
 
 def _iter_yaml_paths(config_path: Path) -> Iterator[tuple[Path, str, str, Path | None]]:
-    with config_path.open() as handle:
-        data = yaml.safe_load(handle) or {}
+    data = load_yaml(config_path) or {}
     for key, value, base_dir in _walk_yaml(data):
         if _pathish_value(value):
             yield config_path, key, value, base_dir
@@ -291,12 +293,13 @@ def test_cat_config_columns_exist_on_candide():
 
     from sp_validation.io import Catalogue
 
-    with (_repo_root() / "cosmo_val/cat_config.yaml").open() as handle:
-        config = yaml.safe_load(handle)
+    config = load_yaml(_repo_root() / "cosmo_val/cat_config.yaml")
 
     checked, missing = 0, {}
     for version, entry in config.items():
         if not isinstance(entry, dict) or "subdir" not in entry:
+            continue
+        if "${" in entry["subdir"]:
             continue
         for kind in ("psf", "shear"):
             block = entry.get(kind) or {}
@@ -328,3 +331,13 @@ def test_cat_config_columns_exist_on_candide():
         for (version, kind), detail in unexpected.items()
     )
     assert not healed, f"known column gaps now pass; drop them: {healed}"
+
+
+def test_paths_into_absent_roots_are_skipped():
+    entries = {
+        "local": {"path": "/data/local.fits"},
+        "remote": {"subdir": "${absent}", "path": "remote.fits"},
+    }
+    assert [(key, value) for key, value, _ in _walk_yaml(entries)] == [
+        ("local.path", "/data/local.fits"),
+    ]

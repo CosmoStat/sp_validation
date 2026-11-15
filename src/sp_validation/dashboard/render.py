@@ -9,7 +9,7 @@ per version; the first version is the reference for every other figure.
 
 Usage (inside the container)::
 
-    python -m sp_validation.dashboard.render --run-dir RUN --version SP_v2.0 \\
+    python -m sp_validation.dashboard.render --run-dir RUN --version SP_v2.0.0 \\
         --maps-dir PRODUCTS --out RUN/dashboard-figures
 """
 

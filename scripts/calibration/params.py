@@ -58,6 +58,9 @@ galaxy_column_map = None
 ## Parameter list; optional, set to `None` if not required
 param_list_path = f"{data_dir}/cfis/final_cat.param"
 
+### Explicit published tile_make_cat.json paths for an optional diagnostic audit
+catalogue_match_manifests = None
+
 ### Star and PSF catalog name; optional, set to `None` if not required
 star_cat_path = f"{data_dir}/full_starcat_{campaign}.hdf5"
 

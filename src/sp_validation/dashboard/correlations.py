@@ -30,7 +30,7 @@ jackknife errors and joint covariance, pair counts and a JSON provenance.
 Usage (inside the container)::
 
     python -m sp_validation.dashboard.correlations \\
-        --catalogue-dir run-r425/catalogue --version SP_v2.0 \\
+        --catalogue-dir run-r425/catalogue --version SP_v2.0.0 \\
         --out-dir catpaper/products --gaia gaia_dr3_G20_ruwe1p4_unions20k.fits
 """
 

@@ -20,6 +20,7 @@ import numpy as np
 
 from sp_validation import sacc_io
 from sp_validation.b_modes import load_cosebis_results, load_pure_eb_results
+from sp_validation.data_roots import load_yaml
 
 
 def _one(pattern):
@@ -140,11 +141,10 @@ def declared_blind(cat_config, version):
     stamp, so a stale product of a catalogue that has since been put under a
     blind is refused by the loaders rather than drawn.
     """
-    import yaml
 
     from sp_validation import blinding
 
-    catalogues = yaml.safe_load(Path(cat_config).read_text())
+    catalogues = load_yaml(cat_config)
     return blinding.blind_of(catalogues, catalogue_name(catalogues, version))
 
 
