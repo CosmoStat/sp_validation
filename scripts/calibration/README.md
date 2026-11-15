@@ -11,7 +11,7 @@ selection a redshift distribution. Run them in order. See
 | 2 | `create_joint_comprehensive_cat.py` | Merge the per-campaign comprehensive catalogues into one joint catalogue (front-end of `catalog_builders.JointCat`). |
 | 3 | `demo_apply_hsp_masks.py` | Add the structural and coverage (HealSparse) masks. |
 | 4 | `calibrate_comprehensive_cat.py` | Galaxy selection + metacalibration. Uses the mask configs in `config/calibration/`. |
-| 5 | `calibrate_nz.py` | SOM direct calibration: the tomographic n(z) file, each row's `TOM_BIN_ID` and n(z) realisations; `plot_nz.py` draws its figures. |
+| 5 | `calibrate_nz.py` | SOM direct calibration: the tomographic n(z) file, each row's `TOM_BIN_ID` and n(z) realisations. |
 
 `params.py` is the shared parameter template (paths, column names, survey
 constants) imported by `extract_info.py`; copy and edit it per run.
@@ -45,18 +45,6 @@ DIRECTORY` writes them elsewhere. They are (`sp_validation.nz.pipeline`)
 `realisations.npz`, `calibrators.npz`, `calibration_arrays.npz`,
 `som_model.npz`, `summary.json` and `recipe.yaml`, the recipe file byte for
 byte.
-
-`plot_nz.py` draws a run's figures from those products (the SOM plane, each
-bin's gold groups, BPZ against spec-z, the per-bin n(z) and how source
-occupancy weights the spectra):
-
-```bash
-python scripts/calibration/plot_nz.py RUN_DIR FIGURE_DIR \
-    [--reference NZ_TOMO LABEL] [--published NZ LABEL]
-```
-
-`--reference` overlays an earlier tomographic n(z) on each bin and
-`--published` compares the summed bins with a non-tomographic n(z).
 
 A run redefines the bins, so its `nz_tomo.txt` describes its own
 `tom_bin.parquet` and no earlier `TOM_BIN_ID`. Write that column into the
