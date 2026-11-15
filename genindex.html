@@ -164,6 +164,11 @@
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.weights.html">sp_validation.dashboard.weights</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.mocks.html">sp_validation.mocks</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.mocks.glass.html">sp_validation.mocks.glass</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.mocks.painted.html">sp_validation.mocks.painted</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html">sp_validation.b_modes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.blinding.html">sp_validation.blinding</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.calibration.html">sp_validation.calibration</a></li>
@@ -175,7 +180,6 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.data_roots.html">sp_validation.data_roots</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.format.html">sp_validation.format</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html">sp_validation.galaxy</a></li>
-<li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html">sp_validation.glass_mock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.grammar.html">sp_validation.grammar</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.image_sims.html">sp_validation.image_sims</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html">sp_validation.io</a></li>
@@ -302,6 +306,8 @@
       <li><a href="sp_validation.dashboard.sky.html#sp_validation.dashboard.sky._colorbar">_colorbar() (in module sp_validation.dashboard.sky)</a>
 </li>
       <li><a href="sp_validation.galaxy.html#sp_validation.galaxy._column_names">_column_names() (in module sp_validation.galaxy)</a>
+</li>
+      <li><a href="sp_validation.io.html#sp_validation.io._ColumnarTable">_ColumnarTable (class in sp_validation.io)</a>
 </li>
       <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau._CatalogueLoader._columns">_columns() (_CatalogueLoader method)</a>
 </li>
@@ -658,7 +664,7 @@
 </li>
       <li><a href="sp_validation.tables.html#sp_validation.tables.ArrayTable">ArrayTable (class in sp_validation.tables)</a>
 </li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.As_init">As_init (GlassMockConfig attribute)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.GlassMockConfig.As_init">As_init (GlassMockConfig attribute)</a>
 </li>
       <li><a href="sp_validation.tables.html#sp_validation.tables.as_table">as_table() (in module sp_validation.tables)</a>
 </li>
@@ -675,11 +681,13 @@
   <h2 id="B">B</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.mocks.painted.html#sp_validation.mocks.painted.b_mode_cl">b_mode_cl() (in module sp_validation.mocks.painted)</a>
+</li>
       <li><a href="sp_validation.pseudo_cl.html#sp_validation.pseudo_cl.bandpower_window_from_workspace">bandpower_window_from_workspace() (in module sp_validation.pseudo_cl)</a>
 </li>
       <li><a href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation.basename">basename() (CosmologyValidation method)</a>, <a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.basename">[1]</a>
 </li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.bias">bias (GlassMockConfig attribute)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.GlassMockConfig.bias">bias (GlassMockConfig attribute)</a>
 </li>
       <li><a href="sp_validation.dashboard.object_bias.html#sp_validation.dashboard.object_bias.bias">bias() (in module sp_validation.dashboard.object_bias)</a>
 </li>
@@ -709,13 +717,13 @@
         <li><a href="sp_validation.dashboard.selection_hist.html#sp_validation.dashboard.selection_hist.build">(in module sp_validation.dashboard.selection_hist)</a>
 </li>
       </ul></li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.build_camb_params">build_camb_params() (in module sp_validation.glass_mock)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.build_camb_params">build_camb_params() (in module sp_validation.mocks.glass)</a>
 </li>
       <li><a href="sp_validation.calibration.html#sp_validation.calibration.build_df">build_df() (in module sp_validation.calibration)</a>
 </li>
       <li><a href="sp_validation.container.html#sp_validation.container.build_parser">build_parser() (in module sp_validation.container)</a>
 </li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.build_shells">build_shells() (in module sp_validation.glass_mock)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.build_shells">build_shells() (in module sp_validation.mocks.glass)</a>
 </li>
   </ul></td>
   </tr>
@@ -776,7 +784,7 @@
 </li>
       <li><a href="sp_validation.statistics.html#sp_validation.statistics.calibrate_min_pte">calibrate_min_pte() (in module sp_validation.statistics)</a>
 </li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.camb_sigma8">camb_sigma8() (in module sp_validation.glass_mock)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.camb_sigma8">camb_sigma8() (in module sp_validation.mocks.glass)</a>
 </li>
       <li><a href="sp_validation.dashboard.correlations.html#sp_validation.dashboard.correlations.catalog">catalog() (in module sp_validation.dashboard.correlations)</a>
 </li>
@@ -794,7 +802,9 @@
 </li>
       <li><a href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation.cc">cc (CosmologyValidation attribute)</a>, <a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.cc">[1]</a>
 </li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.check_consistency">check_consistency() (GlassMockConfig method)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.GlassMockConfig.check_consistency">check_consistency() (GlassMockConfig method)</a>
+</li>
+      <li><a href="sp_validation.mocks.painted.html#sp_validation.mocks.painted.check_gaussian_solve">check_gaussian_solve() (in module sp_validation.mocks.painted)</a>
 </li>
       <li><a href="sp_validation.catalog.html#sp_validation.catalog.check_invalid">check_invalid() (in module sp_validation.catalog)</a>
 </li>
@@ -860,23 +870,25 @@
 </li>
       <li><a href="sp_validation.pseudo_cl.html#sp_validation.pseudo_cl.compute_cl_from_field_and_workspace">compute_cl_from_field_and_workspace() (in module sp_validation.pseudo_cl)</a>
 </li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.compute_leakage_harmony">compute_leakage_harmony() (in module sp_validation.glass_mock)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.compute_leakage_harmony">compute_leakage_harmony() (in module sp_validation.mocks.glass)</a>
 </li>
       <li><a href="sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin.compute_survey_stats">compute_survey_stats() (CatalogCharacterizationMixin method)</a>
 </li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.compute_two_point_cl">compute_two_point_cl() (in module sp_validation.glass_mock)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.compute_two_point_cl">compute_two_point_cl() (in module sp_validation.mocks.glass)</a>
 </li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.compute_two_point_cl_map">compute_two_point_cl_map() (in module sp_validation.glass_mock)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.compute_two_point_cl_map">compute_two_point_cl_map() (in module sp_validation.mocks.glass)</a>
 </li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.compute_two_point_xi">compute_two_point_xi() (in module sp_validation.glass_mock)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.compute_two_point_xi">compute_two_point_xi() (in module sp_validation.mocks.glass)</a>
 </li>
       <li><a href="sp_validation.tables.html#sp_validation.tables.ConcatTable">ConcatTable (class in sp_validation.tables)</a>
 </li>
       <li><a href="sp_validation.blinding.html#sp_validation.blinding.conceal">conceal() (in module sp_validation.blinding)</a>
 </li>
-      <li><a href="sp_validation.tables.html#sp_validation.tables.ArrayTable.concurrent">concurrent (ArrayTable attribute)</a>
+      <li><a href="sp_validation.io.html#sp_validation.io._ColumnarTable.concurrent">concurrent (_ColumnarTable attribute)</a>
 
       <ul style="list-style-type:none">
+        <li><a href="sp_validation.tables.html#sp_validation.tables.ArrayTable.concurrent">(ArrayTable attribute)</a>
+</li>
         <li><a href="sp_validation.tables.html#sp_validation.tables.HDF5Table.concurrent">(HDF5Table attribute)</a>
 </li>
         <li><a href="sp_validation.tables.html#sp_validation.tables.JoinedFile.concurrent">(JoinedFile attribute)</a>
@@ -952,7 +964,7 @@
 </li>
       <li><a href="sp_validation.catalog_builders.html#sp_validation.catalog_builders.Mask.create_descr">create_descr() (Mask method)</a>, <a href="sp_validation.masks.html#sp_validation.masks.Mask.create_descr">[1]</a>
 </li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.create_mask_from_catalogue">create_mask_from_catalogue() (in module sp_validation.glass_mock)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.create_mask_from_catalogue">create_mask_from_catalogue() (in module sp_validation.mocks.glass)</a>
 </li>
       <li><a href="sp_validation.calibration.html#sp_validation.calibration.cut_to_bins">cut_to_bins() (in module sp_validation.calibration)</a>
 </li>
@@ -975,11 +987,13 @@
 </li>
       <li><a href="sp_validation.grammar.html#sp_validation.grammar.detect_generation">detect_generation() (in module sp_validation.grammar)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.assembly.photopipe_merge.html#sp_validation.assembly.photopipe_merge.DICTIONARY_FRACTION">DICTIONARY_FRACTION (in module sp_validation.assembly.photopipe_merge)</a>
 </li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.downgrade_mask">downgrade_mask() (in module sp_validation.glass_mock)</a>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.downgrade_mask">downgrade_mask() (in module sp_validation.mocks.glass)</a>
+</li>
+      <li><a href="sp_validation.mocks.painted.html#sp_validation.mocks.painted.draw_b_mode_alm">draw_b_mode_alm() (in module sp_validation.mocks.painted)</a>
 </li>
       <li><a href="sp_validation.dashboard.sky.html#sp_validation.dashboard.sky.draw_map">draw_map() (in module sp_validation.dashboard.sky)</a>
 </li>
@@ -987,7 +1001,7 @@
 </li>
       <li><a href="sp_validation.io.html#sp_validation.io.Catalogue.dtype">dtype() (Catalogue method)</a>
 </li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.dx">dx (GlassMockConfig attribute)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.GlassMockConfig.dx">dx (GlassMockConfig attribute)</a>
 </li>
   </ul></td>
   </tr>
@@ -1015,6 +1029,8 @@
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.blinding.html#sp_validation.blinding.entry_blind">entry_blind() (in module sp_validation.blinding)</a>
+</li>
+      <li><a href="sp_validation.mocks.painted.html#sp_validation.mocks.painted.evaluate_alm">evaluate_alm() (in module sp_validation.mocks.painted)</a>
 </li>
       <li><a href="sp_validation.data_roots.html#sp_validation.data_roots.expand">expand() (in module sp_validation.data_roots)</a>
 </li>
@@ -1073,9 +1089,9 @@
 </li>
       <li><a href="sp_validation.catalog_builders.html#sp_validation.catalog_builders.Mask.from_list">from_list() (Mask class method)</a>, <a href="sp_validation.masks.html#sp_validation.masks.Mask.from_list">[1]</a>
 </li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.from_planck18">from_planck18() (GlassMockConfig class method)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.GlassMockConfig.from_planck18">from_planck18() (GlassMockConfig class method)</a>
 </li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.from_yaml">from_yaml() (GlassMockConfig class method)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.GlassMockConfig.from_yaml">from_yaml() (GlassMockConfig class method)</a>
 </li>
   </ul></td>
   </tr>
@@ -1092,7 +1108,11 @@
 </li>
       <li><a href="sp_validation.dashboard.tangential.html#sp_validation.dashboard.tangential.gamma_tiles">gamma_tiles() (in module sp_validation.dashboard.tangential)</a>
 </li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.generate_matter_maps">generate_matter_maps() (in module sp_validation.glass_mock)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.generate_convergence">generate_convergence() (in module sp_validation.mocks.glass)</a>
+</li>
+      <li><a href="sp_validation.mocks.painted.html#sp_validation.mocks.painted.generate_lensing_maps">generate_lensing_maps() (in module sp_validation.mocks.painted)</a>
+</li>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.generate_matter_maps">generate_matter_maps() (in module sp_validation.mocks.glass)</a>
 </li>
       <li><a href="sp_validation.calibration.html#sp_validation.calibration.get_alpha_leakage_per_object">get_alpha_leakage_per_object() (in module sp_validation.calibration)</a>
 </li>
@@ -1130,7 +1150,7 @@
         <li><a href="sp_validation.masks.html#sp_validation.masks.get_masks_from_config">(in module sp_validation.masks)</a>
 </li>
       </ul></li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.get_n_gal_map">get_n_gal_map() (in module sp_validation.glass_mock)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.get_n_gal_map">get_n_gal_map() (in module sp_validation.mocks.glass)</a>
 
       <ul style="list-style-type:none">
         <li><a href="sp_validation.pseudo_cl.html#sp_validation.pseudo_cl.get_n_gal_map">(in module sp_validation.pseudo_cl)</a>
@@ -1168,14 +1188,14 @@
 </li>
       <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.get_params_rho_tau">get_params_rho_tau() (in module sp_validation.rho_tau)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.pseudo_cl.html#sp_validation.pseudo_cl.get_pixels">get_pixels() (in module sp_validation.pseudo_cl)</a>
 
       <ul style="list-style-type:none">
         <li><a href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.get_pixels">(PseudoClMixin method)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.get_pol_color">get_pol_color() (PseudoClMixin method)</a>
 </li>
       <li><a href="sp_validation.sacc_io.html#sp_validation.sacc_io.get_pseudo_cl">get_pseudo_cl() (in module sp_validation.sacc_io)</a>
@@ -1244,7 +1264,7 @@
 </li>
       <li><a href="sp_validation.cosmo_val.psf_systematics.html#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.get_xi_psf_sys_samples">get_xi_psf_sys_samples() (PSFSystematicsMixin method)</a>
 </li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig">GlassMockConfig (class in sp_validation.glass_mock)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.GlassMockConfig">GlassMockConfig (class in sp_validation.mocks.glass)</a>
 </li>
       <li><a href="sp_validation.statistics.html#sp_validation.statistics.MinPTECalibration.global_pte">global_pte() (MinPTECalibration method)</a>
 </li>
@@ -1254,7 +1274,7 @@
 </li>
       <li><a href="sp_validation.dashboard.correlations.html#sp_validation.dashboard.correlations.group_mean">group_mean() (in module sp_validation.dashboard.correlations)</a>
 </li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.growth_factor">growth_factor() (in module sp_validation.glass_mock)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.growth_factor">growth_factor() (in module sp_validation.mocks.glass)</a>
 </li>
   </ul></td>
   </tr>
@@ -1263,9 +1283,11 @@
   <h2 id="H">H</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.h">h (GlassMockConfig attribute)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.GlassMockConfig.h">h (GlassMockConfig attribute)</a>
 </li>
       <li><a href="sp_validation.dashboard.scale_cuts.html#sp_validation.dashboard.scale_cuts.harmonic">harmonic() (in module sp_validation.dashboard.scale_cuts)</a>
+</li>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.GlassMockConfig.harmonic_lmax">harmonic_lmax (GlassMockConfig attribute)</a>
 </li>
       <li><a href="sp_validation.b_modes.html#sp_validation.b_modes.hartlap_factor">hartlap_factor() (in module sp_validation.b_modes)</a>
 </li>
@@ -1294,9 +1316,9 @@
   <h2 id="I">I</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.ia_bias">ia_bias (GlassMockConfig attribute)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.GlassMockConfig.ia_bias">ia_bias (GlassMockConfig attribute)</a>
 </li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.ia_convergence">ia_convergence() (in module sp_validation.glass_mock)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.ia_convergence">ia_convergence() (in module sp_validation.mocks.glass)</a>
 </li>
       <li><a href="sp_validation.container.html#sp_validation.container.image_labels">image_labels() (in module sp_validation.container)</a>
 </li>
@@ -1374,7 +1396,7 @@
 </li>
       <li><a href="sp_validation.grammar.html#sp_validation.grammar.Rule.kind">kind (Rule attribute)</a>
 </li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.kmax">kmax (GlassMockConfig attribute)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.GlassMockConfig.kmax">kmax (GlassMockConfig attribute)</a>
 </li>
   </ul></td>
   </tr>
@@ -1397,11 +1419,11 @@
 </li>
       <li><a href="sp_validation.statistics.html#id7">level (MinPTECalibration attribute)</a>, <a href="sp_validation.statistics.html#sp_validation.statistics.MinPTECalibration.level">[1]</a>
 </li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.limber">limber (GlassMockConfig attribute)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.GlassMockConfig.limber">limber (GlassMockConfig attribute)</a>
 </li>
       <li><a href="sp_validation.plots.html#sp_validation.plots.SquareRootScale.limit_range_for_scale">limit_range_for_scale() (SquareRootScale method)</a>
 </li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.lmax">lmax (GlassMockConfig property)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.GlassMockConfig.lmax">lmax (GlassMockConfig property)</a>
 </li>
       <li><a href="sp_validation.sacc_io.html#sp_validation.sacc_io.load">load() (in module sp_validation.sacc_io)</a>
 </li>
@@ -1455,7 +1477,7 @@
 </li>
       <li><a href="sp_validation.b_modes.html#sp_validation.b_modes.log_bin_edges">log_bin_edges() (in module sp_validation.b_modes)</a>
 </li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.log_T_AGN">log_T_AGN (GlassMockConfig attribute)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.GlassMockConfig.log_T_AGN">log_T_AGN (GlassMockConfig attribute)</a>
 </li>
   </ul></td>
   </tr>
@@ -1514,7 +1536,7 @@
 </li>
       <li><a href="sp_validation.galaxy.html#sp_validation.galaxy.mask_overlap">mask_overlap() (in module sp_validation.galaxy)</a>
 </li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.mask_path">mask_path (GlassMockConfig attribute)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.GlassMockConfig.mask_path">mask_path (GlassMockConfig attribute)</a>
 </li>
       <li><a href="sp_validation.grammar.html#sp_validation.grammar.MASK_RULES">MASK_RULES (in module sp_validation.grammar)</a>
 </li>
@@ -1530,7 +1552,7 @@
 </li>
       <li><a href="sp_validation.grammar.html#sp_validation.grammar.materialise">materialise() (in module sp_validation.grammar)</a>
 </li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.matter_shell_cls">matter_shell_cls() (in module sp_validation.glass_mock)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.matter_shell_cls">matter_shell_cls() (in module sp_validation.mocks.glass)</a>
 </li>
       <li><a href="sp_validation.tables.html#sp_validation.tables.MAX_READ_THREADS">MAX_READ_THREADS (in module sp_validation.tables)</a>
 </li>
@@ -1566,7 +1588,7 @@
 </li>
       <li><a href="sp_validation.survey.html#sp_validation.survey.missing_tiles">missing_tiles() (in module sp_validation.survey)</a>
 </li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.mnu">mnu (GlassMockConfig attribute)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.GlassMockConfig.mnu">mnu (GlassMockConfig attribute)</a>
 </li>
       <li><a href="sp_validation.statistics.html#id2">mock_min_pte (MinPTECalibration attribute)</a>, <a href="sp_validation.statistics.html#sp_validation.statistics.MinPTECalibration.mock_min_pte">[1]</a>
 </li>
@@ -1672,8 +1694,6 @@
 </li>
         <li><a href="sp_validation.galaxy.html#module-sp_validation.galaxy">sp_validation.galaxy</a>
 </li>
-        <li><a href="sp_validation.glass_mock.html#module-sp_validation.glass_mock">sp_validation.glass_mock</a>
-</li>
         <li><a href="sp_validation.grammar.html#module-sp_validation.grammar">sp_validation.grammar</a>
 </li>
         <li><a href="sp_validation.image_sims.html#module-sp_validation.image_sims">sp_validation.image_sims</a>
@@ -1681,6 +1701,12 @@
         <li><a href="sp_validation.io.html#module-sp_validation.io">sp_validation.io</a>
 </li>
         <li><a href="sp_validation.masks.html#module-sp_validation.masks">sp_validation.masks</a>
+</li>
+        <li><a href="sp_validation.mocks.html#module-sp_validation.mocks">sp_validation.mocks</a>
+</li>
+        <li><a href="sp_validation.mocks.glass.html#module-sp_validation.mocks.glass">sp_validation.mocks.glass</a>
+</li>
+        <li><a href="sp_validation.mocks.painted.html#module-sp_validation.mocks.painted">sp_validation.mocks.painted</a>
 </li>
         <li><a href="sp_validation.plot_style.html#module-sp_validation.plot_style">sp_validation.plot_style</a>
 </li>
@@ -1708,7 +1734,7 @@
   <h2 id="N">N</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.n_arcmin2">n_arcmin2 (GlassMockConfig attribute)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.GlassMockConfig.n_arcmin2">n_arcmin2 (GlassMockConfig attribute)</a>
 </li>
       <li><a href="sp_validation.survey.html#sp_validation.survey.n_eff_density">n_eff_density() (in module sp_validation.survey)</a>
 </li>
@@ -1730,7 +1756,7 @@
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.nbins">nbins (GlassMockConfig attribute)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.GlassMockConfig.nbins">nbins (GlassMockConfig attribute)</a>
 </li>
       <li><a href="sp_validation.sacc_io.html#sp_validation.sacc_io.new_sacc">new_sacc() (in module sp_validation.sacc_io)</a>
 </li>
@@ -1740,13 +1766,13 @@
 </li>
       <li><a href="sp_validation.dashboard.style.html#sp_validation.dashboard.style.note">note() (in module sp_validation.dashboard.style)</a>
 </li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.ns">ns (GlassMockConfig attribute)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.GlassMockConfig.ns">ns (GlassMockConfig attribute)</a>
 </li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.nside">nside (GlassMockConfig attribute)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.GlassMockConfig.nside">nside (GlassMockConfig attribute)</a>
 </li>
       <li><a href="sp_validation.sacc_io.html#sp_validation.sacc_io.nz_config_stanza">nz_config_stanza() (in module sp_validation.sacc_io)</a>
 </li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.nz_path">nz_path (GlassMockConfig attribute)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.GlassMockConfig.nz_path">nz_path (GlassMockConfig attribute)</a>
 </li>
       <li><a href="sp_validation.sacc_io.html#sp_validation.sacc_io.nz_table">nz_table() (in module sp_validation.sacc_io)</a>
 </li>
@@ -1757,13 +1783,13 @@
   <h2 id="O">O</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.Ob">Ob (GlassMockConfig attribute)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.GlassMockConfig.Ob">Ob (GlassMockConfig attribute)</a>
 </li>
       <li><a href="sp_validation.assembly.object_id.html#sp_validation.assembly.object_id.object_id">object_id() (in module sp_validation.assembly.object_id)</a>
 </li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.Oc">Oc (GlassMockConfig property)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.GlassMockConfig.Oc">Oc (GlassMockConfig property)</a>
 </li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.Om">Om (GlassMockConfig attribute)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.GlassMockConfig.Om">Om (GlassMockConfig attribute)</a>
 </li>
       <li><a href="sp_validation.cosmo_val.sacc_writers.html#sp_validation.cosmo_val.sacc_writers.onecov_xi_covariance">onecov_xi_covariance() (in module sp_validation.cosmo_val.sacc_writers)</a>
 </li>
@@ -1783,9 +1809,9 @@
         <li><a href="sp_validation.plots.html#sp_validation.plots.SquareRootScale.SquareRootTransform.output_dims">(SquareRootScale.SquareRootTransform attribute)</a>
 </li>
       </ul></li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.output_path">output_path (GlassMockConfig attribute)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.GlassMockConfig.output_path">output_path (GlassMockConfig attribute)</a>
 </li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.output_prefix">output_prefix (GlassMockConfig attribute)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.GlassMockConfig.output_prefix">output_prefix (GlassMockConfig attribute)</a>
 </li>
   </ul></td>
   </tr>
@@ -1794,6 +1820,10 @@
   <h2 id="P">P</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.mocks.painted.html#sp_validation.mocks.painted.paint_catalogue">paint_catalogue() (in module sp_validation.mocks.painted)</a>
+</li>
+      <li><a href="sp_validation.mocks.painted.html#sp_validation.mocks.painted.paint_shear">paint_shear() (in module sp_validation.mocks.painted)</a>
+</li>
       <li><a href="sp_validation.dashboard.sky.html#sp_validation.dashboard.sky.paper_map_pair">paper_map_pair() (in module sp_validation.dashboard.sky)</a>
 </li>
       <li><a href="sp_validation.tables.html#sp_validation.tables.parquet_dtype">parquet_dtype() (in module sp_validation.tables)</a>
@@ -1808,7 +1838,7 @@
 </li>
       <li><a href="sp_validation.dashboard.render.html#sp_validation.dashboard.render.Figures.path">path() (Figures method)</a>
 </li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.phz_sigma_0">phz_sigma_0 (GlassMockConfig attribute)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.GlassMockConfig.phz_sigma_0">phz_sigma_0 (GlassMockConfig attribute)</a>
 </li>
       <li><a href="sp_validation.dashboard.selection_hist.html#sp_validation.dashboard.selection_hist.plot">plot() (in module sp_validation.dashboard.selection_hist)</a>
 
@@ -1892,10 +1922,10 @@
 </li>
       <li><a href="sp_validation.plots.html#sp_validation.plots.plot_spatial_density">plot_spatial_density() (in module sp_validation.plots)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.cosmo_val.psf_systematics.html#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.plot_tau_stats">plot_tau_stats() (PSFSystematicsMixin method)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin.plot_weights">plot_weights() (CatalogCharacterizationMixin method)</a>
 
       <ul style="list-style-type:none">
@@ -1903,6 +1933,8 @@
 </li>
       </ul></li>
       <li><a href="sp_validation.dashboard.products.html#sp_validation.dashboard.products.powspace_edges">powspace_edges() (in module sp_validation.dashboard.products)</a>
+</li>
+      <li><a href="sp_validation.mocks.painted.html#sp_validation.mocks.painted.prepare_lensing_spectra">prepare_lensing_spectra() (in module sp_validation.mocks.painted)</a>
 </li>
       <li><a href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation.print_blue">print_blue() (CosmologyValidation method)</a>, <a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.print_blue">[1]</a>
 </li>
@@ -1947,6 +1979,10 @@
       <li><a href="sp_validation.catalog_builders.html#sp_validation.catalog_builders.Mask.print_summary">print_summary() (Mask method)</a>, <a href="sp_validation.masks.html#sp_validation.masks.Mask.print_summary">[1]</a>
 </li>
       <li><a href="sp_validation.correlation.html#sp_validation.correlation.process_gg">process_gg() (in module sp_validation.correlation)</a>
+</li>
+      <li><a href="sp_validation.mocks.painted.html#sp_validation.mocks.painted.projected_convergence_weights">projected_convergence_weights() (in module sp_validation.mocks.painted)</a>
+</li>
+      <li><a href="sp_validation.mocks.painted.html#sp_validation.mocks.painted.projected_theory">projected_theory() (in module sp_validation.mocks.painted)</a>
 </li>
       <li><a href="sp_validation.dashboard.sky.html#sp_validation.dashboard.sky.Part.projection">projection (Part attribute)</a>
 </li>
@@ -2016,9 +2052,11 @@
 </li>
       <li><a href="sp_validation.dashboard.sky.html#sp_validation.dashboard.sky.raster">raster() (in module sp_validation.dashboard.sky)</a>
 </li>
-      <li><a href="sp_validation.tables.html#sp_validation.tables.ArrayTable.read">read() (ArrayTable method)</a>
+      <li><a href="sp_validation.io.html#sp_validation.io._ColumnarTable.read">read() (_ColumnarTable method)</a>
 
       <ul style="list-style-type:none">
+        <li><a href="sp_validation.tables.html#sp_validation.tables.ArrayTable.read">(ArrayTable method)</a>
+</li>
         <li><a href="sp_validation.io.html#sp_validation.io.Catalogue.read">(Catalogue method)</a>
 </li>
         <li><a href="sp_validation.tables.html#sp_validation.tables.ConcatTable.read">(ConcatTable method)</a>
@@ -2055,6 +2093,8 @@
       <li><a href="sp_validation.catalog.html#sp_validation.catalog.read_param_file">read_param_file() (in module sp_validation.catalog)</a>
 </li>
       <li><a href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.read_redshift_distribution">read_redshift_distribution() (PseudoClMixin method)</a>
+</li>
+      <li><a href="sp_validation.mocks.painted.html#sp_validation.mocks.painted.read_sky">read_sky() (in module sp_validation.mocks.painted)</a>
 </li>
       <li><a href="sp_validation.assembly.specz_merge.html#sp_validation.assembly.specz_merge.read_spectra">read_spectra() (in module sp_validation.assembly.specz_merge)</a>
 </li>
@@ -2100,9 +2140,11 @@
 </li>
       <li><a href="sp_validation.dashboard.sky.html#sp_validation.dashboard.sky.Zenithal.rotation">rotation (Zenithal attribute)</a>
 </li>
-      <li><a href="sp_validation.tables.html#sp_validation.tables.ArrayTable.row_major">row_major (ArrayTable attribute)</a>
+      <li><a href="sp_validation.io.html#sp_validation.io._ColumnarTable.row_major">row_major (_ColumnarTable attribute)</a>
 
       <ul style="list-style-type:none">
+        <li><a href="sp_validation.tables.html#sp_validation.tables.ArrayTable.row_major">(ArrayTable attribute)</a>
+</li>
         <li><a href="sp_validation.tables.html#sp_validation.tables.HDF5Table.row_major">(HDF5Table attribute)</a>
 </li>
         <li><a href="sp_validation.tables.html#sp_validation.tables.JoinedFile.row_major">(JoinedFile attribute)</a>
@@ -2155,7 +2197,7 @@
 </li>
       <li><a href="sp_validation.sacc_io.html#sp_validation.sacc_io.seal">seal() (in module sp_validation.sacc_io)</a>
 </li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.seed">seed (GlassMockConfig attribute)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.GlassMockConfig.seed">seed (GlassMockConfig attribute)</a>
 </li>
       <li><a href="sp_validation.plots.html#sp_validation.plots.SquareRootScale.set_default_locators_and_formatters">set_default_locators_and_formatters() (SquareRootScale method)</a>
 </li>
@@ -2177,19 +2219,25 @@
 </li>
       <li><a href="sp_validation.blinding.html#sp_validation.blinding.shear">shear() (in module sp_validation.blinding)</a>
 </li>
+      <li><a href="sp_validation.mocks.painted.html#sp_validation.mocks.painted.shear_alm">shear_alm() (in module sp_validation.mocks.painted)</a>
+</li>
       <li><a href="sp_validation.grammar.html#sp_validation.grammar.SHEARS">SHEARS (in module sp_validation.grammar)</a>
 </li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.sigma8">sigma8 (GlassMockConfig attribute)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.GlassMockConfig.sigma8">sigma8 (GlassMockConfig attribute)</a>
 </li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.sigma_e">sigma_e (GlassMockConfig attribute)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.GlassMockConfig.sigma_e">sigma_e (GlassMockConfig attribute)</a>
 </li>
       <li><a href="sp_validation.plots.html#sp_validation.plots.sky_plots">sky_plots() (in module sp_validation.plots)</a>
 </li>
       <li><a href="sp_validation.dashboard.object_bias.html#sp_validation.dashboard.object_bias.slopes">slopes() (in module sp_validation.dashboard.object_bias)</a>
 </li>
+      <li><a href="sp_validation.mocks.painted.html#sp_validation.mocks.painted.solve_shell_spectra">solve_shell_spectra() (in module sp_validation.mocks.painted)</a>
+</li>
       <li><a href="sp_validation.grammar.html#sp_validation.grammar.Rule.source">source (Rule attribute)</a>
 </li>
       <li><a href="sp_validation.sacc_io.html#sp_validation.sacc_io.source_name">source_name() (in module sp_validation.sacc_io)</a>
+</li>
+      <li><a href="sp_validation.mocks.painted.html#sp_validation.mocks.painted.source_shell_weights">source_shell_weights() (in module sp_validation.mocks.painted)</a>
 </li>
       <li><a href="sp_validation.grammar.html#sp_validation.grammar.Rule.sources">sources() (Rule method)</a>
 </li>
@@ -2539,13 +2587,6 @@
 </li>
       </ul></li>
       <li>
-    sp_validation.glass_mock
-
-      <ul style="list-style-type:none">
-        <li><a href="sp_validation.glass_mock.html#module-sp_validation.glass_mock">module</a>
-</li>
-      </ul></li>
-      <li>
     sp_validation.grammar
 
       <ul style="list-style-type:none">
@@ -2571,6 +2612,27 @@
 
       <ul style="list-style-type:none">
         <li><a href="sp_validation.masks.html#module-sp_validation.masks">module</a>
+</li>
+      </ul></li>
+      <li>
+    sp_validation.mocks
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.mocks.html#module-sp_validation.mocks">module</a>
+</li>
+      </ul></li>
+      <li>
+    sp_validation.mocks.glass
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.mocks.glass.html#module-sp_validation.mocks.glass">module</a>
+</li>
+      </ul></li>
+      <li>
+    sp_validation.mocks.painted
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.mocks.painted.html#module-sp_validation.mocks.painted">module</a>
 </li>
       </ul></li>
       <li>
@@ -2833,7 +2895,7 @@
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.dashboard.style.html#sp_validation.dashboard.style.zero_line">zero_line() (in module sp_validation.dashboard.style)</a>
 </li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.zmax">zmax (GlassMockConfig attribute)</a>
+      <li><a href="sp_validation.mocks.glass.html#sp_validation.mocks.glass.GlassMockConfig.zmax">zmax (GlassMockConfig attribute)</a>
 </li>
   </ul></td>
   </tr>

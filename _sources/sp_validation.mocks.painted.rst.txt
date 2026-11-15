@@ -1,0 +1,7 @@
+sp\_validation.mocks.painted
+----------------------------
+
+.. automodule:: sp_validation.mocks.painted
+   :members:
+   :show-inheritance:
+   :undoc-members:

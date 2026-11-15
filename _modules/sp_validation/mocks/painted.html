@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="en" data-content_root="../../../"
+  x-data="{ darkMode: $persist(window.matchMedia('(prefers-color-scheme: dark)').matches), activeSection: ''}"
+  :class="{ 'dark' : darkMode === true }">
+
+<head>
+  <script>
+    (function () {
+      // Set initial color scheme
+      if ((localStorage.getItem("_x_darkMode") === "true") || (window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+        document.documentElement.classList.add("dark");
+      }
+
+      // Watch for media preference changes
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (event) => {
+        localStorage.setItem("_x_darkMode", event.matches);
+        document.documentElement.classList.toggle("dark", event.matches);
+      });
+    })();
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8" />
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#030711" />
+  
+  <title>sp_validation.mocks.painted | sp_validation v0.6.0</title>
+  <meta property="og:title" content="sp_validation.mocks.painted | sp_validation v0.6.0" />
+  <meta name="twitter:title" content="sp_validation.mocks.painted | sp_validation v0.6.0" />
+  <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+  <link rel="stylesheet" type="text/css" href="../../../_static/theme.css?v=009055c6" />
+  <link rel="search" title="Search" href="../../../search.html" />
+  <link rel="index" title="Index" href="../../../genindex.html" />
+</head>
+
+<body x-data="{ showSidebar: false, showScrollTop: false }"
+  class="min-h-screen font-sans antialiased bg-background text-foreground" :class="{ 'overflow-hidden': showSidebar }"@scroll.window="showScrollTop = pageYOffset > 100">
+  <div x-cloak x-show="showSidebar"
+    class="fixed inset-0 z-50 overflow-hidden bg-background/80 backdrop-blur-sm md:hidden"
+    @click.self="showSidebar = false"></div><div id="page" class="relative flex flex-col min-h-screen"><a href="#content"
+      class="absolute top-0 left-0 z-[100] block bg-background p-4 text-xl transition -translate-x-full opacity-0 focus:translate-x-0 focus:opacity-100">
+      Skip to content
+    </a><header class="sticky top-0 z-40 w-full border-b shadow-xs border-border bg-background/90 backdrop-blur"><div class="container flex items-center h-14">
+    <div class="hidden mr-4 md:flex">
+      <a href="../../../index.html" class="flex items-center mr-6"><span class="hidden font-bold sm:inline-block text-clip whitespace-nowrap">sp_validation v0.6.0</span>
+      </a></div><button
+      class="inline-flex items-center justify-center h-10 px-0 py-2 mr-2 text-base font-medium transition-colors rounded-md hover:text-accent-foreground hover:bg-transparent md:hidden"
+      type="button" @click="showSidebar = true">
+      <svg xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 96 960 960" aria-hidden="true"
+        fill="currentColor">
+        <path
+          d="M152.587 825.087q-19.152 0-32.326-13.174t-13.174-32.326q0-19.152 13.174-32.326t32.326-13.174h440q19.152 0 32.326 13.174t13.174 32.326q0 19.152-13.174 32.326t-32.326 13.174h-440Zm0-203.587q-19.152 0-32.326-13.174T107.087 576q0-19.152 13.174-32.326t32.326-13.174h320q19.152 0 32.326 13.174T518.087 576q0 19.152-13.174 32.326T472.587 621.5h-320Zm0-203.587q-19.152 0-32.326-13.174t-13.174-32.326q0-19.152 13.174-32.326t32.326-13.174h440q19.152 0 32.326 13.174t13.174 32.326q0 19.152-13.174 32.326t-32.326 13.174h-440ZM708.913 576l112.174 112.174q12.674 12.674 12.674 31.826t-12.674 31.826Q808.413 764.5 789.261 764.5t-31.826-12.674l-144-144Q600 594.391 600 576t13.435-31.826l144-144q12.674-12.674 31.826-12.674t31.826 12.674q12.674 12.674 12.674 31.826t-12.674 31.826L708.913 576Z" />
+      </svg>
+      <span class="sr-only">Toggle navigation menu</span>
+    </button>
+    <div class="flex items-center justify-between flex-1 gap-2 sm:gap-4 md:justify-end">
+      <div class="flex-1 w-full md:w-auto md:flex-none"><form id="searchbox"
+      action="../../../search.html"
+      method="get"
+      class="relative flex items-center group"
+      @keydown.k.window.meta="$refs.search.focus()">
+  <input x-ref="search"
+          name="q"
+          id="search-input"
+          type="search"
+          aria-label="Search the docs"
+          placeholder="Search ..."
+          class="inline-flex items-center font-medium transition-colors bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background border border-input hover:bg-accent focus:bg-accent hover:text-accent-foreground focus:text-accent-foreground hover:placeholder-accent-foreground py-2 px-4 relative h-9 w-full justify-start rounded-[0.5rem] text-sm text-muted-foreground sm:pr-12 md:w-40 lg:w-64" />
+  <kbd class="pointer-events-none absolute right-1.5 top-2 hidden h-5 select-none text-muted-foreground items-center gap-1 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex group-hover:bg-accent group-hover:text-accent-foreground">
+    <span class="text-xs">⌘</span>
+    K
+  </kbd>
+</form>
+      </div>
+      <nav class="flex items-center gap-1">
+        <button @click="darkMode = !darkMode"
+          class="relative inline-flex items-center justify-center px-0 text-sm font-medium transition-colors rounded-md hover:bg-accent hover:text-accent-foreground h-9 w-9"
+          type="button"
+          title="Toggle color scheme">
+          <svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 96 960 960" fill="currentColor"
+            class="absolute transition-all scale-100 rotate-0 dark:-rotate-90 dark:scale-0">
+            <path
+              d="M480 685q45.456 0 77.228-31.772Q589 621.456 589 576q0-45.456-31.772-77.228Q525.456 467 480 467q-45.456 0-77.228 31.772Q371 530.544 371 576q0 45.456 31.772 77.228Q434.544 685 480 685Zm0 91q-83 0-141.5-58.5T280 576q0-83 58.5-141.5T480 376q83 0 141.5 58.5T680 576q0 83-58.5 141.5T480 776ZM80 621.5q-19.152 0-32.326-13.174T34.5 576q0-19.152 13.174-32.326T80 530.5h80q19.152 0 32.326 13.174T205.5 576q0 19.152-13.174 32.326T160 621.5H80Zm720 0q-19.152 0-32.326-13.174T754.5 576q0-19.152 13.174-32.326T800 530.5h80q19.152 0 32.326 13.174T925.5 576q0 19.152-13.174 32.326T880 621.5h-80Zm-320-320q-19.152 0-32.326-13.174T434.5 256v-80q0-19.152 13.174-32.326T480 130.5q19.152 0 32.326 13.174T525.5 176v80q0 19.152-13.174 32.326T480 301.5Zm0 720q-19.152 0-32.326-13.17Q434.5 995.152 434.5 976v-80q0-19.152 13.174-32.326T480 850.5q19.152 0 32.326 13.174T525.5 896v80q0 19.152-13.174 32.33-13.174 13.17-32.326 13.17ZM222.174 382.065l-43-42Q165.5 327.391 166 308.239t13.174-33.065q13.435-13.674 32.587-13.674t32.065 13.674l42.239 43q12.674 13.435 12.555 31.706-.12 18.272-12.555 31.946-12.674 13.674-31.445 13.413-18.772-.261-32.446-13.174Zm494 494.761-42.239-43q-12.674-13.435-12.674-32.087t12.674-31.565Q686.609 756.5 705.38 757q18.772.5 32.446 13.174l43 41.761Q794.5 824.609 794 843.761t-13.174 33.065Q767.391 890.5 748.239 890.5t-32.065-13.674Zm-42-494.761Q660.5 369.391 661 350.62q.5-18.772 13.174-32.446l41.761-43Q728.609 261.5 747.761 262t33.065 13.174q13.674 13.435 13.674 32.587t-13.674 32.065l-43 42.239q-13.435 12.674-31.706 12.555-18.272-.12-31.946-12.555Zm-495 494.761Q165.5 863.391 165.5 844.239t13.674-32.065l43-42.239q13.435-12.674 32.087-12.674t31.565 12.674Q299.5 782.609 299 801.38q-.5 18.772-13.174 32.446l-41.761 43Q231.391 890.5 212.239 890t-33.065-13.174ZM480 576Z" />
+          </svg>
+          <svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 96 960 960" fill="currentColor"
+            class="absolute transition-all scale-0 rotate-90 dark:rotate-0 dark:scale-100">
+            <path
+              d="M480 936q-151 0-255.5-104.5T120 576q0-138 90-239.5T440 218q25-3 39 18t-1 44q-17 26-25.5 55t-8.5 61q0 90 63 153t153 63q31 0 61.5-9t54.5-25q21-14 43-1.5t19 39.5q-14 138-117.5 229T480 936Zm0-80q88 0 158-48.5T740 681q-20 5-40 8t-40 3q-123 0-209.5-86.5T364 396q0-20 3-40t8-40q-78 32-126.5 102T200 576q0 116 82 198t198 82Zm-10-270Z" />
+          </svg>
+        </button>
+      </nav>
+    </div>
+  </div>
+</header>
+
+    <div class="flex-1"><div
+        class="container md:grid md:grid-cols-[220px_minmax(0,1fr)] md:gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-10"><aside id="left-sidebar"
+  class="fixed inset-y-0 left-0 md:top-14 z-50 md:z-30 bg-background md:bg-transparent transition-all duration-100 -translate-x-full md:translate-x-0 ml-0 p-6 md:p-0 md:-ml-2 md:h-[calc(100vh-3.5rem)] w-5/6 md:w-full overflow-y-auto border-r border-border md:sticky"
+  :aria-hidden="!showSidebar" :class="{ 'translate-x-0': showSidebar }">
+
+    <a href="../../../index.html" class="justify-start text-sm md:!hidden bg-background"><span class="font-bold text-clip whitespace-nowrap">sp_validation v0.6.0</span>
+    </a>
+
+    <div class="relative overflow-hidden md:overflow-auto my-4 md:my-0">
+      <div class="overflow-y-auto h-full w-full relative pr-6"><nav class="table w-full min-w-full my-6 lg:my-8">
+  <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../repository_structure.html">Repository structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../stages.html">Stages</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../using_the_catalogues.html">Using the weak-lensing catalogues</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../run_validation.html">Running shear validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../catalogue_columns.html">Catalogue columns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../post_processing.html">Post-processing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../Leakage_object_Tutorial.html">Leakage_object Tutorial</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../sp_validation.html">sp_validation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.assembly.html">sp_validation.assembly</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.assembly.hats_collection.html">sp_validation.assembly.hats_collection</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.assembly.object_id.html">sp_validation.assembly.object_id</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.assembly.photopipe_merge.html">sp_validation.assembly.photopipe_merge</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.assembly.specz_merge.html">sp_validation.assembly.specz_merge</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.cosmo_val.html">sp_validation.cosmo_val</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.catalog_characterization.html">sp_validation.cosmo_val.catalog_characterization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.core.html">sp_validation.cosmo_val.core</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.cosebis.html">sp_validation.cosmo_val.cosebis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.derived_covariance.html">sp_validation.cosmo_val.derived_covariance</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.diagnostic_plots.html">sp_validation.cosmo_val.diagnostic_plots</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.diagnostic_products.html">sp_validation.cosmo_val.diagnostic_products</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.pseudo_cl.html">sp_validation.cosmo_val.pseudo_cl</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.psf_systematics.html">sp_validation.cosmo_val.psf_systematics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.pure_eb.html">sp_validation.cosmo_val.pure_eb</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.real_space.html">sp_validation.cosmo_val.real_space</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.sacc_writers.html">sp_validation.cosmo_val.sacc_writers</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.dashboard.html">sp_validation.dashboard</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.correlations.html">sp_validation.dashboard.correlations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.cosebis_grid.html">sp_validation.dashboard.cosebis_grid</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.covariance.html">sp_validation.dashboard.covariance</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.data_vectors.html">sp_validation.dashboard.data_vectors</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.field_maps.html">sp_validation.dashboard.field_maps</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.object_bias.html">sp_validation.dashboard.object_bias</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.position_shear.html">sp_validation.dashboard.position_shear</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.products.html">sp_validation.dashboard.products</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.psf.html">sp_validation.dashboard.psf</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.ptes.html">sp_validation.dashboard.ptes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.render.html">sp_validation.dashboard.render</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.scale_cuts.html">sp_validation.dashboard.scale_cuts</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.selection_hist.html">sp_validation.dashboard.selection_hist</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.sky.html">sp_validation.dashboard.sky</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.star_residuals.html">sp_validation.dashboard.star_residuals</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.style.html">sp_validation.dashboard.style</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.tangential.html">sp_validation.dashboard.tangential</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.versions.html">sp_validation.dashboard.versions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.dashboard.weights.html">sp_validation.dashboard.weights</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.mocks.html">sp_validation.mocks</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.mocks.glass.html">sp_validation.mocks.glass</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.mocks.painted.html">sp_validation.mocks.painted</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.b_modes.html">sp_validation.b_modes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.blinding.html">sp_validation.blinding</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.calibration.html">sp_validation.calibration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.catalog.html">sp_validation.catalog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.catalog_builders.html">sp_validation.catalog_builders</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.catalogue_match.html">sp_validation.catalogue_match</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.container.html">sp_validation.container</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.correlation.html">sp_validation.correlation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.data_roots.html">sp_validation.data_roots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.format.html">sp_validation.format</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.galaxy.html">sp_validation.galaxy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.grammar.html">sp_validation.grammar</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.image_sims.html">sp_validation.image_sims</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.io.html">sp_validation.io</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.masks.html">sp_validation.masks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.plot_style.html">sp_validation.plot_style</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.plots.html">sp_validation.plots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.pseudo_cl.html">sp_validation.pseudo_cl</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.rho_tau.html">sp_validation.rho_tau</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.sacc_io.html">sp_validation.sacc_io</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.statistics.html">sp_validation.statistics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.survey.html">sp_validation.survey</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.tables.html">sp_validation.tables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.version.html">sp_validation.version</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../z_ref.html">References</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Guidelines</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing.html">Contributing</a></li>
+</ul>
+
+</nav>
+      </div>
+    </div>
+    <button type="button" @click="showSidebar = false"
+      class="absolute md:hidden right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100">
+      <svg xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 96 960 960" fill="currentColor"
+        stroke="none" class="h-4 w-4">
+        <path
+          d="M480 632 284 828q-11 11-28 11t-28-11q-11-11-11-28t11-28l196-196-196-196q-11-11-11-28t11-28q11-11 28-11t28 11l196 196 196-196q11-11 28-11t28 11q11 11 11 28t-11 28L536 576l196 196q11 11 11 28t-11 28q-11 11-28 11t-28-11L480 632Z" />
+      </svg>
+    </button>
+  </aside>
+          <main class="relative py-6 lg:gap-10 lg:py-8 xl:grid xl:grid-cols-[1fr_300px]">
+<div class="w-full min-w-0 mx-auto">
+<nav aria-label="breadcrumbs"
+     class="flex items-center mb-4 space-x-1 text-sm text-muted-foreground">
+  <a class="overflow-hidden text-ellipsis whitespace-nowrap hover:text-foreground"
+     href="../../../index.html">
+    <span class="hidden md:inline">sp_validation v0.6.0</span>
+    <svg xmlns="http://www.w3.org/2000/svg"
+         height="18"
+         width="18"
+         viewBox="0 96 960 960"
+         aria-label="Home"
+         fill="currentColor"
+         stroke="none"
+         class="md:hidden">
+      <path d="M240 856h120V616h240v240h120V496L480 316 240 496v360Zm-80 80V456l320-240 320 240v480H520V696h-80v240H160Zm320-350Z" />
+    </svg>
+  </a>
+  
+<div class="mr-1">/</div><a class="hover:text-foreground overflow-hidden text-ellipsis whitespace-nowrap"
+       href="../../index.html">Module code</a>
+    
+<div class="mr-1">/</div><span aria-current="page"
+        class="font-medium text-foreground overflow-hidden text-ellipsis whitespace-nowrap">sp_validation.mocks.painted</span>
+</nav>
+
+    <div id="content" role="main">
+      <h1>Source code for sp_validation.mocks.painted</h1><div class="highlight"><pre>
+<span></span><code><span id="line-1"><span class="sd">"""Catalogue-painted GLASS mocks: a known lensing signal on a real catalogue.</span>
+</span><span id="line-2">
+</span><span id="line-3"><span class="sd">A painted mock keeps everything about a real shear catalogue except the</span>
+</span><span id="line-4"><span class="sd">cosmological signal: its galaxy positions, weights, PSF columns and the</span>
+</span><span id="line-5"><span class="sd">modulus of each calibrated ellipticity. Each ellipticity is rotated to a</span>
+</span><span id="line-6"><span class="sd">random angle, which erases the real shear, and a lognormal GLASS sky is</span>
+</span><span id="line-7"><span class="sd">sheared onto it. Every seed draws an independent sky and independent</span>
+</span><span id="line-8"><span class="sd">rotations; only the geometry is fixed, as it is for the one real data vector,</span>
+</span><span id="line-9"><span class="sd">so the scatter across seeds is the variance conditional on the survey's</span>
+</span><span id="line-10"><span class="sd">geometry. The sampled mocks of ``mocks.glass`` draw synthetic galaxies</span>
+</span><span id="line-11"><span class="sd">instead.</span>
+</span><span id="line-12">
+</span><span id="line-13"><span class="sd">Two stages, each with its own CLI and workflow rule:</span>
+</span><span id="line-14">
+</span><span id="line-15"><span class="sd">1. ``generate_lensing_maps`` makes one sky per seed: lognormal matter shells</span>
+</span><span id="line-16"><span class="sd">   from ``mocks.glass``'s cosmology, projected through a single source n(z).</span>
+</span><span id="line-17"><span class="sd">   Its product is the convergence alm (``kappa_alm.npz``); ``spectra.npz``</span>
+</span><span id="line-18"><span class="sd">   holds that alm's realised spectra beside the shell-ensemble theory.</span>
+</span><span id="line-19"><span class="sd">   Seed-independent shell spectra are solved once and cached</span>
+</span><span id="line-20"><span class="sd">   (``prepare_lensing_spectra``).</span>
+</span><span id="line-21"><span class="sd">2. ``paint_catalogue`` streams a catalogue and evaluates convergence and shear</span>
+</span><span id="line-22"><span class="sd">   at each galaxy position with a non-uniform spherical-harmonic transform</span>
+</span><span id="line-23"><span class="sd">   (``evaluate_alm``). No pixel window enters anywhere: the shells are drawn</span>
+</span><span id="line-24"><span class="sd">   from unwindowed spectra and the sky is never read off a pixel grid.</span>
+</span><span id="line-25"><span class="sd">   Optional injections, PSF leakage ``alpha e_PSF``, a constant additive term</span>
+</span><span id="line-26"><span class="sd">   and a pure-B field, are added on top of the same noise, so a catalogue with</span>
+</span><span id="line-27"><span class="sd">   an injection differs from the clean one by exactly the injection.</span>
+</span><span id="line-28">
+</span><span id="line-29"><span class="sd">Skies are kept as alms in npz: they are inputs to painting, not data vectors.</span>
+</span><span id="line-30"><span class="sd">Anything measured on a painted catalogue goes through cosmo_val to SACC.</span>
+</span><span id="line-31"><span class="sd">Maps follow HEALPix; catalogue e2 is ``pol_factor`` times HEALPix gamma2</span>
+</span><span id="line-32"><span class="sd">(``-1`` for UNIONS, as in cosmo_val), and every output records it.</span>
+</span><span id="line-33"><span class="sd">``glass`` and ``ducc0`` are imported inside the functions that use them.</span>
+</span><span id="line-34"><span class="sd">"""</span>
+</span><span id="line-35">
+</span><span id="line-36"><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+</span><span id="line-37">
+</span><span id="line-38"><span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">asdict</span>
+</span><span id="line-39">
+</span><span id="line-40"><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+</span><span id="line-41">
+</span><span id="line-42"><span class="kn">from</span><span class="w"> </span><span class="nn">sp_validation.mocks.glass</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+</span><span id="line-43">    <span class="n">Cosmology_from_camb</span><span class="p">,</span>
+</span><span id="line-44">    <span class="n">build_camb_params</span><span class="p">,</span>
+</span><span id="line-45">    <span class="n">build_shells</span><span class="p">,</span>
+</span><span id="line-46">    <span class="n">generate_convergence</span><span class="p">,</span>
+</span><span id="line-47">    <span class="n">matter_shell_cls</span><span class="p">,</span>
+</span><span id="line-48"><span class="p">)</span>
+</span><span id="line-49">
+</span><span id="line-50"><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="line-51">    <span class="s2">"source_shell_weights"</span><span class="p">,</span>
+</span><span id="line-52">    <span class="s2">"projected_convergence_weights"</span><span class="p">,</span>
+</span><span id="line-53">    <span class="s2">"projected_theory"</span><span class="p">,</span>
+</span><span id="line-54">    <span class="s2">"solve_shell_spectra"</span><span class="p">,</span>
+</span><span id="line-55">    <span class="s2">"check_gaussian_solve"</span><span class="p">,</span>
+</span><span id="line-56">    <span class="s2">"prepare_lensing_spectra"</span><span class="p">,</span>
+</span><span id="line-57">    <span class="s2">"shear_alm"</span><span class="p">,</span>
+</span><span id="line-58">    <span class="s2">"read_sky"</span><span class="p">,</span>
+</span><span id="line-59">    <span class="s2">"evaluate_alm"</span><span class="p">,</span>
+</span><span id="line-60">    <span class="s2">"generate_lensing_maps"</span><span class="p">,</span>
+</span><span id="line-61">    <span class="s2">"draw_b_mode_alm"</span><span class="p">,</span>
+</span><span id="line-62">    <span class="s2">"b_mode_cl"</span><span class="p">,</span>
+</span><span id="line-63">    <span class="s2">"paint_shear"</span><span class="p">,</span>
+</span><span id="line-64">    <span class="s2">"paint_catalogue"</span><span class="p">,</span>
+</span><span id="line-65"><span class="p">]</span>
+</span><span id="line-66">
+</span><span id="line-67">
+<div class="viewcode-block" id="source_shell_weights">
+<a class="viewcode-back" href="../../../sp_validation.mocks.painted.html#sp_validation.mocks.painted.source_shell_weights">[docs]</a>
+</span><span id="line-68"><span class="k">def</span><span class="w"> </span><span class="nf">source_shell_weights</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">nz</span><span class="p">,</span> <span class="n">shells</span><span class="p">):</span>
+</span><span id="line-69"><span class="w">    </span><span class="sd">"""Normalized non-negative GLASS partition of a single source n(z)."""</span>
+</span><span id="line-70">    <span class="kn">import</span><span class="w"> </span><span class="nn">glass</span>
+</span><span id="line-71">
+</span><span id="line-72">    <span class="n">z</span><span class="p">,</span> <span class="n">nz</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">z</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">nz</span><span class="p">)</span>
+</span><span id="line-73">    <span class="k">if</span> <span class="n">z</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">1</span> <span class="ow">or</span> <span class="n">nz</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">z</span><span class="o">.</span><span class="n">shape</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">z</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">):</span>
+</span><span id="line-74">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"n(z) needs matching 1D arrays and increasing redshifts"</span><span class="p">)</span>
+</span><span id="line-75">    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">nz</span><span class="p">))</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">nz</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">):</span>
+</span><span id="line-76">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"n(z) must be finite and non-negative"</span><span class="p">)</span>
+</span><span id="line-77">    <span class="n">norm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">trapezoid</span><span class="p">(</span><span class="n">nz</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
+</span><span id="line-78">    <span class="k">if</span> <span class="n">norm</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="line-79">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"n(z) has zero integral"</span><span class="p">)</span>
+</span><span id="line-80">    <span class="n">weights</span> <span class="o">=</span> <span class="n">glass</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">nz</span> <span class="o">/</span> <span class="n">norm</span><span class="p">,</span> <span class="n">shells</span><span class="p">)</span>
+</span><span id="line-81">    <span class="k">return</span> <span class="n">weights</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">weights</span><span class="p">)</span></div>
+
+</span><span id="line-82">
+</span><span id="line-83">
+<div class="viewcode-block" id="projected_convergence_weights">
+<a class="viewcode-back" href="../../../sp_validation.mocks.painted.html#sp_validation.mocks.painted.projected_convergence_weights">[docs]</a>
+</span><span id="line-84"><span class="k">def</span><span class="w"> </span><span class="nf">projected_convergence_weights</span><span class="p">(</span><span class="n">pars</span><span class="p">,</span> <span class="n">shells</span><span class="p">,</span> <span class="n">weights</span><span class="p">):</span>
+</span><span id="line-85"><span class="w">    </span><span class="sd">"""Linear response of the n(z)-averaged convergence to matter shells."""</span>
+</span><span id="line-86">    <span class="kn">import</span><span class="w"> </span><span class="nn">glass</span>
+</span><span id="line-87">
+</span><span id="line-88">    <span class="n">convergence</span> <span class="o">=</span> <span class="n">glass</span><span class="o">.</span><span class="n">MultiPlaneConvergence</span><span class="p">(</span><span class="n">Cosmology_from_camb</span><span class="p">(</span><span class="n">pars</span><span class="p">))</span>
+</span><span id="line-89">    <span class="n">transfer</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">shells</span><span class="p">))</span>
+</span><span id="line-90">    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">shell</span><span class="p">,</span> <span class="n">weight</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">shells</span><span class="p">,</span> <span class="n">weights</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">)):</span>
+</span><span id="line-91">        <span class="n">basis</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">shells</span><span class="p">))</span>
+</span><span id="line-92">        <span class="n">basis</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+</span><span id="line-93">        <span class="n">convergence</span><span class="o">.</span><span class="n">add_window</span><span class="p">(</span><span class="n">basis</span><span class="p">,</span> <span class="n">shell</span><span class="p">)</span>
+</span><span id="line-94">        <span class="n">transfer</span> <span class="o">+=</span> <span class="n">weight</span> <span class="o">*</span> <span class="n">convergence</span><span class="o">.</span><span class="n">kappa</span>
+</span><span id="line-95">    <span class="k">return</span> <span class="n">transfer</span></div>
+
+</span><span id="line-96">
+</span><span id="line-97">
+<div class="viewcode-block" id="projected_theory">
+<a class="viewcode-back" href="../../../sp_validation.mocks.painted.html#sp_validation.mocks.painted.projected_theory">[docs]</a>
+</span><span id="line-98"><span class="k">def</span><span class="w"> </span><span class="nf">projected_theory</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">transfer</span><span class="p">,</span> <span class="n">lmax</span><span class="p">,</span> <span class="n">ncorr</span><span class="o">=</span><span class="mi">3</span><span class="p">):</span>
+</span><span id="line-99"><span class="w">    </span><span class="sd">"""Exact shell-ensemble convergence and shear-E spectra.</span>
+</span><span id="line-100">
+</span><span id="line-101"><span class="sd">    The source partition and the finite ``ncorr`` covariance are identical to</span>
+</span><span id="line-102"><span class="sd">    the map generator's. The spin-2 / convergence conversion is spherical,</span>
+</span><span id="line-103"><span class="sd">    including its low-ell factor (not the flat-sky approximation).</span>
+</span><span id="line-104"><span class="sd">    """</span>
+</span><span id="line-105">    <span class="kn">import</span><span class="w"> </span><span class="nn">glass</span>
+</span><span id="line-106">
+</span><span id="line-107">    <span class="n">kk</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">lmax</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+</span><span id="line-108">    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">ti</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">transfer</span><span class="p">):</span>
+</span><span id="line-109">        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">i</span> <span class="o">-</span> <span class="n">ncorr</span><span class="p">),</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+</span><span id="line-110">            <span class="n">kk</span> <span class="o">+=</span> <span class="p">(</span>
+</span><span id="line-111">                <span class="p">(</span><span class="mi">1</span> <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="n">j</span> <span class="k">else</span> <span class="mi">2</span><span class="p">)</span>
+</span><span id="line-112">                <span class="o">*</span> <span class="n">ti</span>
+</span><span id="line-113">                <span class="o">*</span> <span class="n">transfer</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+</span><span id="line-114">                <span class="o">*</span> <span class="n">glass</span><span class="o">.</span><span class="n">getcl</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">lmax</span><span class="o">=</span><span class="n">lmax</span><span class="p">)</span>
+</span><span id="line-115">            <span class="p">)</span>
+</span><span id="line-116">    <span class="n">ell</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">lmax</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span><span id="line-117">    <span class="n">factor</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">ell</span><span class="p">)</span>
+</span><span id="line-118">    <span class="n">factor</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span> <span class="o">=</span> <span class="p">(</span><span class="n">ell</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span> <span class="o">+</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">ell</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">ell</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span> <span class="o">*</span> <span class="p">(</span><span class="n">ell</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+</span><span id="line-119">    <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="n">ell</span><span class="o">=</span><span class="n">ell</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">),</span> <span class="n">cl_kk</span><span class="o">=</span><span class="n">kk</span><span class="p">,</span> <span class="n">cl_ee</span><span class="o">=</span><span class="n">kk</span> <span class="o">*</span> <span class="n">factor</span><span class="p">)</span></div>
+
+</span><span id="line-120">
+</span><span id="line-121">
+</span><span id="line-122"><span class="k">def</span><span class="w"> </span><span class="nf">_solve_shell_spectrum</span><span class="p">(</span><span class="n">task</span><span class="p">):</span>
+</span><span id="line-123"><span class="w">    </span><span class="sd">"""Solve one independent GLASS transformation pair in a worker process."""</span>
+</span><span id="line-124">    <span class="kn">import</span><span class="w"> </span><span class="nn">glass.grf</span>
+</span><span id="line-125">
+</span><span id="line-126">    <span class="n">index</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">cl</span><span class="p">,</span> <span class="n">first</span><span class="p">,</span> <span class="n">second</span> <span class="o">=</span> <span class="n">task</span>
+</span><span id="line-127">    <span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">cl</span><span class="p">):</span>
+</span><span id="line-128">        <span class="k">return</span> <span class="n">index</span><span class="p">,</span> <span class="n">cl</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span> <span class="n">cl</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span> <span class="mi">3</span>
+</span><span id="line-129">    <span class="n">gl</span><span class="p">,</span> <span class="n">realized</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="n">glass</span><span class="o">.</span><span class="n">grf</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span>
+</span><span id="line-130">        <span class="n">cl</span><span class="p">,</span>
+</span><span id="line-131">        <span class="n">first</span><span class="p">,</span>
+</span><span id="line-132">        <span class="n">second</span><span class="p">,</span>
+</span><span id="line-133">        <span class="n">pad</span><span class="o">=</span><span class="mi">2</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">cl</span><span class="p">),</span>
+</span><span id="line-134">        <span class="n">monopole</span><span class="o">=</span><span class="mf">0.0</span> <span class="k">if</span> <span class="n">cl</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="line-135">    <span class="p">)</span>
+</span><span id="line-136">    <span class="k">return</span> <span class="n">index</span><span class="p">,</span> <span class="n">gl</span><span class="p">,</span> <span class="n">realized</span><span class="p">[:</span> <span class="nb">len</span><span class="p">(</span><span class="n">cl</span><span class="p">)],</span> <span class="n">info</span>
+</span><span id="line-137">
+</span><span id="line-138">
+<div class="viewcode-block" id="solve_shell_spectra">
+<a class="viewcode-back" href="../../../sp_validation.mocks.painted.html#sp_validation.mocks.painted.solve_shell_spectra">[docs]</a>
+</span><span id="line-139"><span class="k">def</span><span class="w"> </span><span class="nf">solve_shell_spectra</span><span class="p">(</span><span class="n">fields</span><span class="p">,</span> <span class="bp">cls</span><span class="p">,</span> <span class="n">workers</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+</span><span id="line-140"><span class="w">    </span><span class="sd">"""GLASS's padded solver, parallel over independent shell pairs.</span>
+</span><span id="line-141">
+</span><span id="line-142"><span class="sd">    Returns Gaussian spectra, achieved matter spectra, and solver status.</span>
+</span><span id="line-143"><span class="sd">    Spawned processes each use one native thread; the caller's OpenMP setting</span>
+</span><span id="line-144"><span class="sd">    is restored before map generation. No fork follows CAMB's OpenMP runtime.</span>
+</span><span id="line-145"><span class="sd">    """</span>
+</span><span id="line-146">    <span class="kn">import</span><span class="w"> </span><span class="nn">multiprocessing</span>
+</span><span id="line-147">    <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+</span><span id="line-148">    <span class="kn">from</span><span class="w"> </span><span class="nn">concurrent.futures</span><span class="w"> </span><span class="kn">import</span> <span class="n">ProcessPoolExecutor</span>
+</span><span id="line-149">
+</span><span id="line-150">    <span class="kn">import</span><span class="w"> </span><span class="nn">glass</span>
+</span><span id="line-151">
+</span><span id="line-152">    <span class="n">tasks</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="line-153">        <span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">cl</span><span class="p">,</span> <span class="n">fields</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">fields</span><span class="p">[</span><span class="n">j</span><span class="p">])</span>
+</span><span id="line-154">        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">cl</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">glass</span><span class="o">.</span><span class="n">enumerate_spectra</span><span class="p">(</span><span class="bp">cls</span><span class="p">))</span>
+</span><span id="line-155">    <span class="p">]</span>
+</span><span id="line-156">    <span class="n">results</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">tasks</span><span class="p">)</span>
+</span><span id="line-157">    <span class="k">if</span> <span class="n">workers</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
+</span><span id="line-158">        <span class="n">solved</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="n">_solve_shell_spectrum</span><span class="p">,</span> <span class="n">tasks</span><span class="p">)</span>
+</span><span id="line-159">        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">gl</span><span class="p">,</span> <span class="n">realized</span><span class="p">,</span> <span class="n">info</span> <span class="ow">in</span> <span class="n">solved</span><span class="p">:</span>
+</span><span id="line-160">            <span class="n">results</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="n">gl</span><span class="p">,</span> <span class="n">realized</span><span class="p">,</span> <span class="n">info</span>
+</span><span id="line-161">    <span class="k">else</span><span class="p">:</span>
+</span><span id="line-162">        <span class="n">native_threads</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"OMP_NUM_THREADS"</span><span class="p">,</span> <span class="s2">"OPENBLAS_NUM_THREADS"</span><span class="p">,</span> <span class="s2">"MKL_NUM_THREADS"</span><span class="p">)</span>
+</span><span id="line-163">        <span class="n">saved_threads</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">native_threads</span><span class="p">}</span>
+</span><span id="line-164">        <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">key</span><span class="p">:</span> <span class="s2">"1"</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">native_threads</span><span class="p">})</span>
+</span><span id="line-165">        <span class="k">try</span><span class="p">:</span>
+</span><span id="line-166">            <span class="k">with</span> <span class="n">ProcessPoolExecutor</span><span class="p">(</span>
+</span><span id="line-167">                <span class="n">max_workers</span><span class="o">=</span><span class="n">workers</span><span class="p">,</span> <span class="n">mp_context</span><span class="o">=</span><span class="n">multiprocessing</span><span class="o">.</span><span class="n">get_context</span><span class="p">(</span><span class="s2">"spawn"</span><span class="p">)</span>
+</span><span id="line-168">            <span class="p">)</span> <span class="k">as</span> <span class="n">pool</span><span class="p">:</span>
+</span><span id="line-169">                <span class="k">for</span> <span class="n">done</span><span class="p">,</span> <span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="n">gl</span><span class="p">,</span> <span class="n">realized</span><span class="p">,</span> <span class="n">info</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span>
+</span><span id="line-170">                    <span class="n">pool</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">_solve_shell_spectrum</span><span class="p">,</span> <span class="n">tasks</span><span class="p">),</span> <span class="mi">1</span>
+</span><span id="line-171">                <span class="p">):</span>
+</span><span id="line-172">                    <span class="n">results</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="n">gl</span><span class="p">,</span> <span class="n">realized</span><span class="p">,</span> <span class="n">info</span>
+</span><span id="line-173">                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">gl</span><span class="p">):</span>
+</span><span id="line-174">                        <span class="nb">print</span><span class="p">(</span>
+</span><span id="line-175">                            <span class="sa">f</span><span class="s2">"Solved shell spectrum </span><span class="si">{</span><span class="n">done</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">tasks</span><span class="p">)</span><span class="si">}</span><span class="s2"> (status </span><span class="si">{</span><span class="n">info</span><span class="si">}</span><span class="s2">)"</span><span class="p">,</span>
+</span><span id="line-176">                            <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="line-177">                        <span class="p">)</span>
+</span><span id="line-178">        <span class="k">finally</span><span class="p">:</span>
+</span><span id="line-179">            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">saved_threads</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="line-180">                <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-181">                    <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+</span><span id="line-182">                <span class="k">else</span><span class="p">:</span>
+</span><span id="line-183">                    <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+</span><span id="line-184">    <span class="n">gaussian</span><span class="p">,</span> <span class="n">realized</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">results</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-185">    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">gaussian</span><span class="p">),</span> <span class="nb">list</span><span class="p">(</span><span class="n">realized</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">info</span><span class="p">)</span></div>
+
+</span><span id="line-186">
+</span><span id="line-187">
+</span><span id="line-188"><span class="c1"># Largest tolerated scale-relative difference between achieved and requested.</span>
+</span><span id="line-189"><span class="n">SOLVER_TOLERANCE</span> <span class="o">=</span> <span class="mf">1e-4</span>
+</span><span id="line-190">
+</span><span id="line-191">
+<div class="viewcode-block" id="check_gaussian_solve">
+<a class="viewcode-back" href="../../../sp_validation.mocks.painted.html#sp_validation.mocks.painted.check_gaussian_solve">[docs]</a>
+</span><span id="line-192"><span class="k">def</span><span class="w"> </span><span class="nf">check_gaussian_solve</span><span class="p">(</span><span class="n">requested</span><span class="p">,</span> <span class="n">achieved</span><span class="p">):</span>
+</span><span id="line-193"><span class="w">    </span><span class="sd">"""Worst residual of the lognormal solve; raises above ``SOLVER_TOLERANCE``.</span>
+</span><span id="line-194">
+</span><span id="line-195"><span class="sd">    The residual of each pair is ``max_l |achieved - requested| /</span>
+</span><span id="line-196"><span class="sd">    sqrt(C_ii C_jj)``. Scaling by the autos rather than the pair's own</span>
+</span><span id="line-197"><span class="sd">    spectrum keeps it finite where a cross-spectrum crosses zero, which is</span>
+</span><span id="line-198"><span class="sd">    where GLASS's own convergence flag misfires.</span>
+</span><span id="line-199"><span class="sd">    """</span>
+</span><span id="line-200">    <span class="kn">import</span><span class="w"> </span><span class="nn">glass</span>
+</span><span id="line-201">
+</span><span id="line-202">    <span class="n">pairs</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">glass</span><span class="o">.</span><span class="n">enumerate_spectra</span><span class="p">(</span><span class="n">requested</span><span class="p">))</span>
+</span><span id="line-203">    <span class="n">autos</span> <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">cl</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">cl</span> <span class="ow">in</span> <span class="n">pairs</span> <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="n">j</span><span class="p">}</span>
+</span><span id="line-204">    <span class="n">worst</span> <span class="o">=</span> <span class="mf">0.0</span>
+</span><span id="line-205">    <span class="k">for</span> <span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">wanted</span><span class="p">),</span> <span class="n">got</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">pairs</span><span class="p">,</span> <span class="n">achieved</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+</span><span id="line-206">        <span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">wanted</span><span class="p">):</span>
+</span><span id="line-207">            <span class="k">continue</span>
+</span><span id="line-208">        <span class="n">scale</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">autos</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">autos</span><span class="p">[</span><span class="n">j</span><span class="p">]))[:</span> <span class="nb">len</span><span class="p">(</span><span class="n">wanted</span><span class="p">)]</span>
+</span><span id="line-209">        <span class="n">keep</span> <span class="o">=</span> <span class="n">scale</span> <span class="o">&gt;</span> <span class="mi">0</span>
+</span><span id="line-210">        <span class="n">residual</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">got</span><span class="p">)[:</span> <span class="nb">len</span><span class="p">(</span><span class="n">wanted</span><span class="p">)]</span> <span class="o">-</span> <span class="n">wanted</span><span class="p">)[</span><span class="n">keep</span><span class="p">]</span> <span class="o">/</span> <span class="n">scale</span><span class="p">[</span><span class="n">keep</span><span class="p">]</span>
+</span><span id="line-211">        <span class="n">worst</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">worst</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">residual</span><span class="p">,</span> <span class="n">initial</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)))</span>
+</span><span id="line-212">    <span class="k">if</span> <span class="n">worst</span> <span class="o">&gt;</span> <span class="n">SOLVER_TOLERANCE</span><span class="p">:</span>
+</span><span id="line-213">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Lognormal solve misses the requested spectra by </span><span class="si">{</span><span class="n">worst</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="line-214">    <span class="k">return</span> <span class="n">worst</span></div>
+
+</span><span id="line-215">
+</span><span id="line-216">
+<div class="viewcode-block" id="prepare_lensing_spectra">
+<a class="viewcode-back" href="../../../sp_validation.mocks.painted.html#sp_validation.mocks.painted.prepare_lensing_spectra">[docs]</a>
+</span><span id="line-217"><span class="k">def</span><span class="w"> </span><span class="nf">prepare_lensing_spectra</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">cache_dir</span><span class="p">,</span> <span class="n">workers</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+</span><span id="line-218"><span class="w">    </span><span class="sd">"""Cache seed-independent matter/Gaussian spectra and source theory.</span>
+</span><span id="line-219">
+</span><span id="line-220"><span class="sd">    A lock serializes writers. The key includes cosmology, shell geometry,</span>
+</span><span id="line-221"><span class="sd">    resolution, n(z) contents, GLASS version and the correlation truncation.</span>
+</span><span id="line-222"><span class="sd">    No seed enters the key. Cache files contain numeric arrays only.</span>
+</span><span id="line-223"><span class="sd">    The spectra are unwindowed: the shells are sampled at pixel centres,</span>
+</span><span id="line-224"><span class="sd">    never averaged over pixels, so the map's alm carries no pixel window.</span>
+</span><span id="line-225"><span class="sd">    Every call checks the cached solve (``check_gaussian_solve``) and returns</span>
+</span><span id="line-226"><span class="sd">    its worst residual as ``spectra["solver_residual"]``.</span>
+</span><span id="line-227"><span class="sd">    """</span>
+</span><span id="line-228">    <span class="kn">import</span><span class="w"> </span><span class="nn">fcntl</span>
+</span><span id="line-229">    <span class="kn">import</span><span class="w"> </span><span class="nn">hashlib</span>
+</span><span id="line-230">    <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+</span><span id="line-231">    <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+</span><span id="line-232">
+</span><span id="line-233">    <span class="kn">import</span><span class="w"> </span><span class="nn">glass</span>
+</span><span id="line-234">
+</span><span id="line-235">    <span class="n">nz_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">nz_path</span><span class="p">)</span>
+</span><span id="line-236">    <span class="n">physics</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="line-237">        <span class="n">key</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+</span><span id="line-238">        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">(</span>
+</span><span id="line-239">            <span class="s2">"dx"</span><span class="p">,</span>
+</span><span id="line-240">            <span class="s2">"zmax"</span><span class="p">,</span>
+</span><span id="line-241">            <span class="s2">"h"</span><span class="p">,</span>
+</span><span id="line-242">            <span class="s2">"Om"</span><span class="p">,</span>
+</span><span id="line-243">            <span class="s2">"Ob"</span><span class="p">,</span>
+</span><span id="line-244">            <span class="s2">"ns"</span><span class="p">,</span>
+</span><span id="line-245">            <span class="s2">"sigma8"</span><span class="p">,</span>
+</span><span id="line-246">            <span class="s2">"mnu"</span><span class="p">,</span>
+</span><span id="line-247">            <span class="s2">"log_T_AGN"</span><span class="p">,</span>
+</span><span id="line-248">            <span class="s2">"As_init"</span><span class="p">,</span>
+</span><span id="line-249">            <span class="s2">"kmax"</span><span class="p">,</span>
+</span><span id="line-250">            <span class="s2">"limber"</span><span class="p">,</span>
+</span><span id="line-251">        <span class="p">)</span>
+</span><span id="line-252">    <span class="p">}</span>
+</span><span id="line-253">    <span class="n">physics</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">lmax</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">lmax</span><span class="p">,</span> <span class="n">ncorr</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">glass</span><span class="o">=</span><span class="n">glass</span><span class="o">.</span><span class="n">__version__</span><span class="p">,</span> <span class="n">schema</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+</span><span id="line-254">    <span class="n">digest</span> <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">(</span>
+</span><span id="line-255">        <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">physics</span><span class="p">,</span> <span class="n">sort_keys</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span> <span class="o">+</span> <span class="n">nz_path</span><span class="o">.</span><span class="n">read_bytes</span><span class="p">()</span>
+</span><span id="line-256">    <span class="p">)</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()[:</span><span class="mi">20</span><span class="p">]</span>
+</span><span id="line-257">    <span class="n">root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">cache_dir</span><span class="p">)</span>
+</span><span id="line-258">    <span class="n">root</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-259">    <span class="n">path</span> <span class="o">=</span> <span class="n">root</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"cls_</span><span class="si">{</span><span class="n">digest</span><span class="si">}</span><span class="s2">.npz"</span>
+</span><span id="line-260">    <span class="c1"># Shells and the background also define the multi-plane propagation.</span>
+</span><span id="line-261">    <span class="n">pars</span> <span class="o">=</span> <span class="n">build_camb_params</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+</span><span id="line-262">    <span class="n">shells</span> <span class="o">=</span> <span class="n">build_shells</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">pars</span><span class="p">)</span>
+</span><span id="line-263">    <span class="k">with</span> <span class="p">(</span><span class="n">root</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"cls_</span><span class="si">{</span><span class="n">digest</span><span class="si">}</span><span class="s2">.lock"</span><span class="p">)</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">"w"</span><span class="p">)</span> <span class="k">as</span> <span class="n">lock</span><span class="p">:</span>
+</span><span id="line-264">        <span class="n">fcntl</span><span class="o">.</span><span class="n">flock</span><span class="p">(</span><span class="n">lock</span><span class="p">,</span> <span class="n">fcntl</span><span class="o">.</span><span class="n">LOCK_EX</span><span class="p">)</span>
+</span><span id="line-265">        <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+</span><span id="line-266">            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Computing seed-independent matter spectra: </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-267">            <span class="n">matter_path</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="s2">".matter.npz"</span><span class="p">)</span>
+</span><span id="line-268">            <span class="k">if</span> <span class="n">matter_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+</span><span id="line-269">                <span class="k">with</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">matter_path</span><span class="p">)</span> <span class="k">as</span> <span class="n">saved</span><span class="p">:</span>
+</span><span id="line-270">                    <span class="bp">cls</span> <span class="o">=</span> <span class="p">[</span><span class="n">saved</span><span class="p">[</span><span class="sa">f</span><span class="s2">"cl_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">"</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">saved</span><span class="o">.</span><span class="n">files</span><span class="p">))]</span>
+</span><span id="line-271">            <span class="k">else</span><span class="p">:</span>
+</span><span id="line-272">                <span class="bp">cls</span> <span class="o">=</span> <span class="n">matter_shell_cls</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">pars</span><span class="p">,</span> <span class="n">shells</span><span class="p">,</span> <span class="n">limber</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">limber</span><span class="p">)</span>
+</span><span id="line-273">                <span class="n">matter_tmp</span> <span class="o">=</span> <span class="n">matter_path</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="s2">".tmp.npz"</span><span class="p">)</span>
+</span><span id="line-274">                <span class="n">np</span><span class="o">.</span><span class="n">savez</span><span class="p">(</span><span class="n">matter_tmp</span><span class="p">,</span> <span class="o">**</span><span class="p">{</span><span class="sa">f</span><span class="s2">"cl_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">"</span><span class="p">:</span> <span class="n">c</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">cls</span><span class="p">)})</span>
+</span><span id="line-275">                <span class="n">matter_tmp</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">matter_path</span><span class="p">)</span>
+</span><span id="line-276">            <span class="n">nz</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">nz_path</span><span class="p">)</span>
+</span><span id="line-277">            <span class="k">if</span> <span class="n">nz</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">2</span> <span class="ow">or</span> <span class="n">nz</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+</span><span id="line-278">                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Projected non-tomographic maps need two-column n(z)"</span><span class="p">)</span>
+</span><span id="line-279">            <span class="k">if</span> <span class="n">nz</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">config</span><span class="o">.</span><span class="n">zmax</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">nz</span><span class="p">[</span><span class="n">nz</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">config</span><span class="o">.</span><span class="n">zmax</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">):</span>
+</span><span id="line-280">                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"zmax truncates nonzero source n(z)"</span><span class="p">)</span>
+</span><span id="line-281">            <span class="n">weights</span> <span class="o">=</span> <span class="n">source_shell_weights</span><span class="p">(</span><span class="n">nz</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">nz</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">shells</span><span class="p">)</span>
+</span><span id="line-282">            <span class="n">transfer</span> <span class="o">=</span> <span class="n">projected_convergence_weights</span><span class="p">(</span><span class="n">pars</span><span class="p">,</span> <span class="n">shells</span><span class="p">,</span> <span class="n">weights</span><span class="p">)</span>
+</span><span id="line-283">            <span class="n">theory</span> <span class="o">=</span> <span class="n">projected_theory</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">transfer</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">lmax</span><span class="p">)</span>
+</span><span id="line-284">            <span class="n">requested</span> <span class="o">=</span> <span class="n">glass</span><span class="o">.</span><span class="n">discretized_cls</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">lmax</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">lmax</span><span class="p">,</span> <span class="n">ncorr</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+</span><span id="line-285">            <span class="n">gls</span><span class="p">,</span> <span class="n">achieved</span><span class="p">,</span> <span class="n">solver_info</span> <span class="o">=</span> <span class="n">solve_shell_spectra</span><span class="p">(</span>
+</span><span id="line-286">                <span class="n">glass</span><span class="o">.</span><span class="n">lognormal_fields</span><span class="p">(</span><span class="n">shells</span><span class="p">),</span> <span class="n">requested</span><span class="p">,</span> <span class="n">workers</span><span class="o">=</span><span class="n">workers</span>
+</span><span id="line-287">            <span class="p">)</span>
+</span><span id="line-288">            <span class="n">arrays</span> <span class="o">=</span> <span class="p">{</span><span class="sa">f</span><span class="s2">"matter_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">"</span><span class="p">:</span> <span class="n">c</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">cls</span><span class="p">)}</span>
+</span><span id="line-289">            <span class="n">arrays</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="sa">f</span><span class="s2">"achieved_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">"</span><span class="p">:</span> <span class="n">c</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">achieved</span><span class="p">)})</span>
+</span><span id="line-290">            <span class="n">arrays</span><span class="p">[</span><span class="s2">"solver_info"</span><span class="p">]</span> <span class="o">=</span> <span class="n">solver_info</span>
+</span><span id="line-291">            <span class="n">arrays</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="sa">f</span><span class="s2">"gaussian_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">"</span><span class="p">:</span> <span class="n">c</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">gls</span><span class="p">)})</span>
+</span><span id="line-292">            <span class="n">arrays</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">theory</span><span class="p">)</span>
+</span><span id="line-293">            <span class="n">arrays</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">,</span> <span class="n">transfer</span><span class="o">=</span><span class="n">transfer</span><span class="p">,</span> <span class="n">nspectra</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="bp">cls</span><span class="p">))</span>
+</span><span id="line-294">            <span class="n">temporary</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="s2">".tmp.npz"</span><span class="p">)</span>
+</span><span id="line-295">            <span class="n">np</span><span class="o">.</span><span class="n">savez</span><span class="p">(</span><span class="n">temporary</span><span class="p">,</span> <span class="o">**</span><span class="n">arrays</span><span class="p">)</span>
+</span><span id="line-296">            <span class="n">temporary</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</span><span id="line-297">            <span class="n">path</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="s2">".json"</span><span class="p">)</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">physics</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+</span><span id="line-298">    <span class="k">with</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="k">as</span> <span class="n">cached</span><span class="p">:</span>
+</span><span id="line-299">        <span class="n">spectra</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">cached</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">cached</span><span class="o">.</span><span class="n">files</span><span class="p">}</span>
+</span><span id="line-300">    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Using spectra cache: </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-301">    <span class="n">count</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">spectra</span><span class="p">[</span><span class="s2">"nspectra"</span><span class="p">])</span>
+</span><span id="line-302">    <span class="n">requested</span> <span class="o">=</span> <span class="n">glass</span><span class="o">.</span><span class="n">discretized_cls</span><span class="p">(</span>
+</span><span id="line-303">        <span class="p">[</span><span class="n">spectra</span><span class="p">[</span><span class="sa">f</span><span class="s2">"matter_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">"</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">count</span><span class="p">)],</span> <span class="n">lmax</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">lmax</span><span class="p">,</span> <span class="n">ncorr</span><span class="o">=</span><span class="mi">3</span>
+</span><span id="line-304">    <span class="p">)</span>
+</span><span id="line-305">    <span class="n">spectra</span><span class="p">[</span><span class="s2">"solver_residual"</span><span class="p">]</span> <span class="o">=</span> <span class="n">check_gaussian_solve</span><span class="p">(</span>
+</span><span id="line-306">        <span class="n">requested</span><span class="p">,</span> <span class="p">[</span><span class="n">spectra</span><span class="p">[</span><span class="sa">f</span><span class="s2">"achieved_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">"</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">count</span><span class="p">)]</span>
+</span><span id="line-307">    <span class="p">)</span>
+</span><span id="line-308">    <span class="k">return</span> <span class="n">pars</span><span class="p">,</span> <span class="n">shells</span><span class="p">,</span> <span class="n">spectra</span><span class="p">,</span> <span class="n">path</span></div>
+
+</span><span id="line-309">
+</span><span id="line-310">
+<div class="viewcode-block" id="shear_alm">
+<a class="viewcode-back" href="../../../sp_validation.mocks.painted.html#sp_validation.mocks.painted.shear_alm">[docs]</a>
+</span><span id="line-311"><span class="k">def</span><span class="w"> </span><span class="nf">shear_alm</span><span class="p">(</span><span class="n">kappa_alm</span><span class="p">):</span>
+</span><span id="line-312"><span class="w">    </span><span class="sd">"""Shear E-mode alm of a convergence alm.</span>
+</span><span id="line-313">
+</span><span id="line-314"><span class="sd">    The spherical spin factor ``-sqrt((l+2)(l-1)/(l(l+1)))``, as GLASS's</span>
+</span><span id="line-315"><span class="sd">    ``shear_from_convergence`` applies it. The shear maps and the painted</span>
+</span><span id="line-316"><span class="sd">    catalogue both derive from this function.</span>
+</span><span id="line-317"><span class="sd">    """</span>
+</span><span id="line-318">    <span class="kn">import</span><span class="w"> </span><span class="nn">healpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">hp</span>
+</span><span id="line-319">
+</span><span id="line-320">    <span class="n">lmax</span> <span class="o">=</span> <span class="n">hp</span><span class="o">.</span><span class="n">Alm</span><span class="o">.</span><span class="n">getlmax</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">kappa_alm</span><span class="p">))</span>
+</span><span id="line-321">    <span class="n">ell</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">lmax</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span><span id="line-322">    <span class="n">factor</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">ell</span><span class="p">)</span>
+</span><span id="line-323">    <span class="n">factor</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">ell</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span> <span class="o">+</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">ell</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">ell</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span> <span class="o">*</span> <span class="p">(</span><span class="n">ell</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)))</span>
+</span><span id="line-324">    <span class="k">return</span> <span class="n">hp</span><span class="o">.</span><span class="n">almxfl</span><span class="p">(</span><span class="n">kappa_alm</span><span class="p">,</span> <span class="n">factor</span><span class="p">)</span></div>
+
+</span><span id="line-325">
+</span><span id="line-326">
+<div class="viewcode-block" id="read_sky">
+<a class="viewcode-back" href="../../../sp_validation.mocks.painted.html#sp_validation.mocks.painted.read_sky">[docs]</a>
+</span><span id="line-327"><span class="k">def</span><span class="w"> </span><span class="nf">read_sky</span><span class="p">(</span><span class="n">maps_dir</span><span class="p">):</span>
+</span><span id="line-328"><span class="w">    </span><span class="sd">"""The convergence alm saved by ``generate_lensing_maps`` in ``maps_dir``."""</span>
+</span><span id="line-329">    <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+</span><span id="line-330">
+</span><span id="line-331">    <span class="k">with</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">maps_dir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">"kappa_alm.npz"</span><span class="p">)</span> <span class="k">as</span> <span class="n">saved</span><span class="p">:</span>
+</span><span id="line-332">        <span class="k">return</span> <span class="n">saved</span><span class="p">[</span><span class="s2">"alm"</span><span class="p">]</span></div>
+
+</span><span id="line-333">
+</span><span id="line-334">
+<div class="viewcode-block" id="evaluate_alm">
+<a class="viewcode-back" href="../../../sp_validation.mocks.painted.html#sp_validation.mocks.painted.evaluate_alm">[docs]</a>
+</span><span id="line-335"><span class="k">def</span><span class="w"> </span><span class="nf">evaluate_alm</span><span class="p">(</span><span class="n">alm</span><span class="p">,</span> <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">epsilon</span><span class="o">=</span><span class="mf">1e-10</span><span class="p">,</span> <span class="n">nthreads</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+</span><span id="line-336"><span class="w">    </span><span class="sd">"""Non-uniform spherical-harmonic synthesis at sky positions (degrees).</span>
+</span><span id="line-337">
+</span><span id="line-338"><span class="sd">    ``alm`` has shape ``(1, nalm)`` for a scalar field or ``(2, nalm)`` for the</span>
+</span><span id="line-339"><span class="sd">    ``(E, B)`` pair of a spin-2 field, in healpy ordering. Returns ``(1, N)``</span>
+</span><span id="line-340"><span class="sd">    or HEALPix-convention ``(Q, U)`` = ``(gamma1, gamma2)`` of shape ``(2, N)``.</span>
+</span><span id="line-341"><span class="sd">    This is ``ducc0.sht.experimental.synthesis_general``: the band-limited sum</span>
+</span><span id="line-342"><span class="sd">    at each position to relative accuracy ``epsilon``, with no pixel window</span>
+</span><span id="line-343"><span class="sd">    (a nearest-pixel lookup of a map would add one). Each call</span>
+</span><span id="line-344"><span class="sd">    has a fixed setup of about one full-sky synthesis (~4 s at lmax 8192 on 28</span>
+</span><span id="line-345"><span class="sd">    threads, ~75 s on one) and a negligible per-point cost (16M points in</span>
+</span><span id="line-346"><span class="sd">    under 5 s on 28 threads), so callers pass millions of positions at a time.</span>
+</span><span id="line-347"><span class="sd">    """</span>
+</span><span id="line-348">    <span class="kn">import</span><span class="w"> </span><span class="nn">ducc0</span>
+</span><span id="line-349">    <span class="kn">import</span><span class="w"> </span><span class="nn">healpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">hp</span>
+</span><span id="line-350">
+</span><span id="line-351">    <span class="n">alm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="n">alm</span><span class="p">)</span>
+</span><span id="line-352">    <span class="k">if</span> <span class="n">alm</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">):</span>
+</span><span id="line-353">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"alm needs one scalar or two (E, B) rows"</span><span class="p">)</span>
+</span><span id="line-354">    <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">dec</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span><span id="line-355">    <span class="k">if</span> <span class="n">ra</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">dec</span><span class="o">.</span><span class="n">shape</span> <span class="ow">or</span> <span class="n">ra</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+</span><span id="line-356">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Positions must be matching 1D arrays"</span><span class="p">)</span>
+</span><span id="line-357">    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">ra</span><span class="p">))</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">dec</span><span class="p">))):</span>
+</span><span id="line-358">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Galaxy positions must be finite"</span><span class="p">)</span>
+</span><span id="line-359">    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">dec</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">90</span><span class="p">):</span>
+</span><span id="line-360">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Declination lies outside [-90, 90]"</span><span class="p">)</span>
+</span><span id="line-361">    <span class="n">loc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">ra</span><span class="p">),</span> <span class="mi">2</span><span class="p">))</span>
+</span><span id="line-362">    <span class="n">loc</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="mi">90</span> <span class="o">-</span> <span class="n">dec</span><span class="p">)</span>
+</span><span id="line-363">    <span class="n">loc</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mod</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="mi">360</span><span class="p">))</span>
+</span><span id="line-364">    <span class="k">return</span> <span class="n">ducc0</span><span class="o">.</span><span class="n">sht</span><span class="o">.</span><span class="n">experimental</span><span class="o">.</span><span class="n">synthesis_general</span><span class="p">(</span>
+</span><span id="line-365">        <span class="n">alm</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span><span class="n">alm</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">complex</span><span class="p">),</span>
+</span><span id="line-366">        <span class="n">spin</span><span class="o">=</span><span class="mi">0</span> <span class="k">if</span> <span class="n">alm</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="mi">2</span><span class="p">,</span>
+</span><span id="line-367">        <span class="n">lmax</span><span class="o">=</span><span class="n">hp</span><span class="o">.</span><span class="n">Alm</span><span class="o">.</span><span class="n">getlmax</span><span class="p">(</span><span class="n">alm</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span>
+</span><span id="line-368">        <span class="n">loc</span><span class="o">=</span><span class="n">loc</span><span class="p">,</span>
+</span><span id="line-369">        <span class="n">epsilon</span><span class="o">=</span><span class="n">epsilon</span><span class="p">,</span>
+</span><span id="line-370">        <span class="n">nthreads</span><span class="o">=</span><span class="n">nthreads</span><span class="p">,</span>
+</span><span id="line-371">    <span class="p">)</span></div>
+
+</span><span id="line-372">
+</span><span id="line-373">
+<div class="viewcode-block" id="generate_lensing_maps">
+<a class="viewcode-back" href="../../../sp_validation.mocks.painted.html#sp_validation.mocks.painted.generate_lensing_maps">[docs]</a>
+</span><span id="line-374"><span class="k">def</span><span class="w"> </span><span class="nf">generate_lensing_maps</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">,</span> <span class="n">cache_dir</span><span class="p">,</span> <span class="n">workers</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+</span><span id="line-375"><span class="w">    </span><span class="sd">"""Save the projected convergence alm, its maps, and its spectra.</span>
+</span><span id="line-376">
+</span><span id="line-377"><span class="sd">    Matter shells are lognormal, with three neighbouring cross-correlations.</span>
+</span><span id="line-378"><span class="sd">    Source-plane convergence is integrated before the linear shear transform,</span>
+</span><span id="line-379"><span class="sd">    avoiding a spherical transform for every source shell.</span>
+</span><span id="line-380"><span class="sd">    ``kappa_alm.npz`` (complex128 healpy-ordered ``alm`` of the convergence</span>
+</span><span id="line-381"><span class="sd">    map up to ``lmax``, and ``nside``) is the sky that ``paint_catalogue``</span>
+</span><span id="line-382"><span class="sd">    evaluates. The float32 ``gamma1``/``gamma2`` maps are its shear E mode</span>
+</span><span id="line-383"><span class="sd">    synthesised on the grid; ``kappa`` is GLASS's pixel convergence, of which</span>
+</span><span id="line-384"><span class="sd">    the alm is the band-limited transform. The ``realization_*`` spectra are</span>
+</span><span id="line-385"><span class="sd">    the alm's own full-sky power (KK, EE, KE; gamma has no B mode), what a</span>
+</span><span id="line-386"><span class="sd">    catalogue painted with ``shear='gamma'`` carries; ``cl_kk``/``cl_ee`` are</span>
+</span><span id="line-387"><span class="sd">    the shell-ensemble theory they scatter around, with no pixel window.</span>
+</span><span id="line-388"><span class="sd">    A statistic measured on a footprint scatters around the realisation by</span>
+</span><span id="line-389"><span class="sd">    that footprint's sample variance; the same statistic of the noise-free</span>
+</span><span id="line-390"><span class="sd">    ``g*_true`` columns is the exact answer for one footprint. Reduced shear</span>
+</span><span id="line-391"><span class="sd">    adds its own EE and BB.</span>
+</span><span id="line-392"><span class="sd">    """</span>
+</span><span id="line-393">    <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+</span><span id="line-394">    <span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+</span><span id="line-395">    <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+</span><span id="line-396">
+</span><span id="line-397">    <span class="kn">import</span><span class="w"> </span><span class="nn">healpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">hp</span>
+</span><span id="line-398">
+</span><span id="line-399">    <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
+</span><span id="line-400">    <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">lmax</span> <span class="o">&gt;</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">config</span><span class="o">.</span><span class="n">nside</span> <span class="o">-</span> <span class="mi">1</span> <span class="ow">or</span> <span class="n">config</span><span class="o">.</span><span class="n">lmax</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+</span><span id="line-401">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"lmax must be between 2 and 3*nside-1"</span><span class="p">)</span>
+</span><span id="line-402">    <span class="n">out</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+</span><span id="line-403">    <span class="n">out</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-404">    <span class="n">pars</span><span class="p">,</span> <span class="n">shells</span><span class="p">,</span> <span class="n">spectra</span><span class="p">,</span> <span class="n">cache</span> <span class="o">=</span> <span class="n">prepare_lensing_spectra</span><span class="p">(</span>
+</span><span id="line-405">        <span class="n">config</span><span class="p">,</span> <span class="n">cache_dir</span><span class="p">,</span> <span class="n">workers</span><span class="o">=</span><span class="n">workers</span>
+</span><span id="line-406">    <span class="p">)</span>
+</span><span id="line-407">    <span class="n">gls</span> <span class="o">=</span> <span class="p">[</span><span class="n">spectra</span><span class="p">[</span><span class="sa">f</span><span class="s2">"gaussian_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">"</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">spectra</span><span class="p">[</span><span class="s2">"nspectra"</span><span class="p">]))]</span>
+</span><span id="line-408">    <span class="n">kappa</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">hp</span><span class="o">.</span><span class="n">nside2npix</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">nside</span><span class="p">))</span>
+</span><span id="line-409">    <span class="n">shell_maps</span> <span class="o">=</span> <span class="n">generate_convergence</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">pars</span><span class="p">,</span> <span class="n">shells</span><span class="p">,</span> <span class="n">gls</span><span class="p">)</span>
+</span><span id="line-410">    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">_</span><span class="p">,</span> <span class="n">kappa_i</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">shell_maps</span><span class="p">):</span>
+</span><span id="line-411">        <span class="n">kappa</span> <span class="o">+=</span> <span class="n">spectra</span><span class="p">[</span><span class="s2">"weights"</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">kappa_i</span>
+</span><span id="line-412">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Matter shell </span><span class="si">{</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">shells</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-413">    <span class="n">kappa_alm</span> <span class="o">=</span> <span class="n">hp</span><span class="o">.</span><span class="n">map2alm</span><span class="p">(</span><span class="n">kappa</span><span class="p">,</span> <span class="n">lmax</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">lmax</span><span class="p">,</span> <span class="n">pol</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="nb">iter</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+</span><span id="line-414">    <span class="n">elm</span> <span class="o">=</span> <span class="n">shear_alm</span><span class="p">(</span><span class="n">kappa_alm</span><span class="p">)</span>
+</span><span id="line-415">    <span class="n">gamma1</span><span class="p">,</span> <span class="n">gamma2</span> <span class="o">=</span> <span class="n">hp</span><span class="o">.</span><span class="n">alm2map_spin</span><span class="p">(</span>
+</span><span id="line-416">        <span class="p">[</span><span class="n">elm</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">elm</span><span class="p">)],</span> <span class="n">config</span><span class="o">.</span><span class="n">nside</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">lmax</span>
+</span><span id="line-417">    <span class="p">)</span>
+</span><span id="line-418">    <span class="n">np</span><span class="o">.</span><span class="n">savez</span><span class="p">(</span><span class="n">out</span> <span class="o">/</span> <span class="s2">"kappa_alm.npz"</span><span class="p">,</span> <span class="n">alm</span><span class="o">=</span><span class="n">kappa_alm</span><span class="p">,</span> <span class="n">nside</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">nside</span><span class="p">)</span>
+</span><span id="line-419">    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">values</span> <span class="ow">in</span> <span class="p">((</span><span class="s2">"kappa"</span><span class="p">,</span> <span class="n">kappa</span><span class="p">),</span> <span class="p">(</span><span class="s2">"gamma1"</span><span class="p">,</span> <span class="n">gamma1</span><span class="p">),</span> <span class="p">(</span><span class="s2">"gamma2"</span><span class="p">,</span> <span class="n">gamma2</span><span class="p">)):</span>
+</span><span id="line-420">        <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">out</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">.npy"</span><span class="p">,</span> <span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">))</span>
+</span><span id="line-421">    <span class="k">del</span> <span class="n">kappa</span><span class="p">,</span> <span class="n">gamma1</span><span class="p">,</span> <span class="n">gamma2</span><span class="p">,</span> <span class="n">shell_maps</span>
+</span><span id="line-422">    <span class="n">np</span><span class="o">.</span><span class="n">savez</span><span class="p">(</span>
+</span><span id="line-423">        <span class="n">out</span> <span class="o">/</span> <span class="s2">"spectra.npz"</span><span class="p">,</span>
+</span><span id="line-424">        <span class="o">**</span><span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">spectra</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"ell"</span><span class="p">,</span> <span class="s2">"cl_kk"</span><span class="p">,</span> <span class="s2">"cl_ee"</span><span class="p">)},</span>
+</span><span id="line-425">        <span class="n">realization_kk</span><span class="o">=</span><span class="n">hp</span><span class="o">.</span><span class="n">alm2cl</span><span class="p">(</span><span class="n">kappa_alm</span><span class="p">),</span>
+</span><span id="line-426">        <span class="n">realization_ee</span><span class="o">=</span><span class="n">hp</span><span class="o">.</span><span class="n">alm2cl</span><span class="p">(</span><span class="n">elm</span><span class="p">),</span>
+</span><span id="line-427">        <span class="n">realization_ke</span><span class="o">=</span><span class="n">hp</span><span class="o">.</span><span class="n">alm2cl</span><span class="p">(</span><span class="n">kappa_alm</span><span class="p">,</span> <span class="n">elm</span><span class="p">),</span>
+</span><span id="line-428">    <span class="p">)</span>
+</span><span id="line-429">    <span class="n">metadata</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+</span><span id="line-430">        <span class="n">config</span><span class="o">=</span><span class="n">asdict</span><span class="p">(</span><span class="n">config</span><span class="p">),</span>
+</span><span id="line-431">        <span class="n">lmax</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">lmax</span><span class="p">,</span>
+</span><span id="line-432">        <span class="n">spectra_cache</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">cache</span><span class="p">),</span>
+</span><span id="line-433">        <span class="n">source_weights</span><span class="o">=</span><span class="n">spectra</span><span class="p">[</span><span class="s2">"weights"</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
+</span><span id="line-434">        <span class="n">pol_factor</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+</span><span id="line-435">        <span class="n">convention</span><span class="o">=</span><span class="s2">"RING HEALPix maps; gamma2 = pol_factor * HEALPix gamma2"</span><span class="p">,</span>
+</span><span id="line-436">        <span class="n">sky</span><span class="o">=</span><span class="s2">"kappa_alm.npz; gamma E alm = shear_alm(kappa_alm)"</span><span class="p">,</span>
+</span><span id="line-437">        <span class="n">theory</span><span class="o">=</span><span class="s2">"GLASS shell ensemble, ncorr=3, spherical spin factor, no pixel window"</span><span class="p">,</span>
+</span><span id="line-438">        <span class="n">solver_residual</span><span class="o">=</span><span class="n">spectra</span><span class="p">[</span><span class="s2">"solver_residual"</span><span class="p">],</span>
+</span><span id="line-439">        <span class="n">seconds</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span><span class="p">,</span>
+</span><span id="line-440">    <span class="p">)</span>
+</span><span id="line-441">    <span class="p">(</span><span class="n">out</span> <span class="o">/</span> <span class="s2">"maps.json"</span><span class="p">)</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">metadata</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+</span><span id="line-442">    <span class="k">return</span> <span class="n">metadata</span></div>
+
+</span><span id="line-443">
+</span><span id="line-444">
+<div class="viewcode-block" id="draw_b_mode_alm">
+<a class="viewcode-back" href="../../../sp_validation.mocks.painted.html#sp_validation.mocks.painted.draw_b_mode_alm">[docs]</a>
+</span><span id="line-445"><span class="k">def</span><span class="w"> </span><span class="nf">draw_b_mode_alm</span><span class="p">(</span><span class="n">cl_bb</span><span class="p">,</span> <span class="n">seed</span><span class="p">):</span>
+</span><span id="line-446"><span class="w">    </span><span class="sd">"""Seeded Gaussian B-mode alm with power spectrum ``cl_bb``.</span>
+</span><span id="line-447">
+</span><span id="line-448"><span class="sd">    Painting evaluates the alm at each galaxy, so ``cl_bb`` is the injected</span>
+</span><span id="line-449"><span class="sd">    spectrum with no pixel window.</span>
+</span><span id="line-450"><span class="sd">    This uses a local Generator, not healpy's process-global RNG.</span>
+</span><span id="line-451"><span class="sd">    """</span>
+</span><span id="line-452">    <span class="kn">import</span><span class="w"> </span><span class="nn">healpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">hp</span>
+</span><span id="line-453">
+</span><span id="line-454">    <span class="n">cl_bb</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">cl_bb</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span><span id="line-455">    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">cl_bb</span><span class="p">))</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">cl_bb</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">):</span>
+</span><span id="line-456">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"C_BB must be finite and non-negative"</span><span class="p">)</span>
+</span><span id="line-457">    <span class="n">lmax</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">cl_bb</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+</span><span id="line-458">    <span class="k">if</span> <span class="n">lmax</span> <span class="o">&lt;</span> <span class="mi">2</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">cl_bb</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">):</span>
+</span><span id="line-459">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Spin-2 C_BB needs ell 0,1 zero and lmax &gt;= 2"</span><span class="p">)</span>
+</span><span id="line-460">    <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+</span><span id="line-461">    <span class="n">ell</span><span class="p">,</span> <span class="n">emm</span> <span class="o">=</span> <span class="n">hp</span><span class="o">.</span><span class="n">Alm</span><span class="o">.</span><span class="n">getlm</span><span class="p">(</span><span class="n">lmax</span><span class="p">)</span>
+</span><span id="line-462">    <span class="n">alm</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">ell</span><span class="p">))</span> <span class="o">+</span> <span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="n">rng</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">ell</span><span class="p">))</span>
+</span><span id="line-463">    <span class="n">alm</span> <span class="o">*=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">cl_bb</span><span class="p">[</span><span class="n">ell</span><span class="p">]</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+</span><span id="line-464">    <span class="n">zero</span> <span class="o">=</span> <span class="n">emm</span> <span class="o">==</span> <span class="mi">0</span>
+</span><span id="line-465">    <span class="n">alm</span><span class="p">[</span><span class="n">zero</span><span class="p">]</span> <span class="o">=</span> <span class="n">alm</span><span class="p">[</span><span class="n">zero</span><span class="p">]</span><span class="o">.</span><span class="n">real</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+</span><span id="line-466">    <span class="k">return</span> <span class="n">alm</span></div>
+
+</span><span id="line-467">
+</span><span id="line-468">
+<div class="viewcode-block" id="b_mode_cl">
+<a class="viewcode-back" href="../../../sp_validation.mocks.painted.html#sp_validation.mocks.painted.b_mode_cl">[docs]</a>
+</span><span id="line-469"><span class="k">def</span><span class="w"> </span><span class="nf">b_mode_cl</span><span class="p">(</span><span class="n">lmax</span><span class="p">,</span> <span class="n">amplitude</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+</span><span id="line-470"><span class="w">    </span><span class="sd">"""Injected C_BB on ``ell = 0..lmax``, or ``None`` when nothing is injected.</span>
+</span><span id="line-471">
+</span><span id="line-472"><span class="sd">    ``amplitude`` gives ``A exp[-(ell/2000)^2]``; ``path`` names a two-column</span>
+</span><span id="line-473"><span class="sd">    ``ell C_BB`` text file, interpolated linearly and zero outside its range.</span>
+</span><span id="line-474"><span class="sd">    """</span>
+</span><span id="line-475">    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">amplitude</span> <span class="ow">or</span> <span class="n">path</span><span class="p">):</span>
+</span><span id="line-476">        <span class="k">return</span> <span class="kc">None</span>
+</span><span id="line-477">    <span class="n">ell</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">lmax</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+</span><span id="line-478">    <span class="k">if</span> <span class="n">path</span><span class="p">:</span>
+</span><span id="line-479">        <span class="n">supplied</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</span><span id="line-480">        <span class="n">cl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="n">ell</span><span class="p">,</span> <span class="n">supplied</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">supplied</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">left</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">right</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</span><span id="line-481">    <span class="k">else</span><span class="p">:</span>
+</span><span id="line-482">        <span class="n">cl</span> <span class="o">=</span> <span class="n">amplitude</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="p">((</span><span class="n">ell</span> <span class="o">/</span> <span class="mi">2000</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))</span>
+</span><span id="line-483">    <span class="n">cl</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span id="line-484">    <span class="k">return</span> <span class="n">cl</span></div>
+
+</span><span id="line-485">
+</span><span id="line-486">
+<div class="viewcode-block" id="paint_shear">
+<a class="viewcode-back" href="../../../sp_validation.mocks.painted.html#sp_validation.mocks.painted.paint_shear">[docs]</a>
+</span><span id="line-487"><span class="k">def</span><span class="w"> </span><span class="nf">paint_shear</span><span class="p">(</span>
+</span><span id="line-488">    <span class="n">e1</span><span class="p">,</span>
+</span><span id="line-489">    <span class="n">e2</span><span class="p">,</span>
+</span><span id="line-490">    <span class="n">signal</span><span class="p">,</span>
+</span><span id="line-491">    <span class="n">rng</span><span class="p">,</span>
+</span><span id="line-492">    <span class="o">*</span><span class="p">,</span>
+</span><span id="line-493">    <span class="n">psf</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-494">    <span class="n">alpha</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+</span><span id="line-495">    <span class="n">additive</span><span class="o">=</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+</span><span id="line-496">    <span class="n">b_signal</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-497">    <span class="n">shear</span><span class="o">=</span><span class="s2">"gamma"</span><span class="p">,</span>
+</span><span id="line-498">    <span class="n">pol_factor</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+</span><span id="line-499"><span class="p">):</span>
+</span><span id="line-500"><span class="w">    </span><span class="sd">"""Paint one block of rows, with all returned components in catalogue convention.</span>
+</span><span id="line-501">
+</span><span id="line-502"><span class="sd">    ``signal=(kappa, gamma1, gamma2)`` and ``b_signal=(b1, b2)`` are the</span>
+</span><span id="line-503"><span class="sd">    HEALPix-convention fields at the rows' positions (``evaluate_alm``).</span>
+</span><span id="line-504"><span class="sd">    The calibrated input |e| is preserved by the uniform spin-2 rotation, one</span>
+</span><span id="line-505"><span class="sd">    ``rng.uniform`` draw per row in row order.</span>
+</span><span id="line-506"><span class="sd">    ``shear='gamma'`` applies gamma directly for pure-E unit-test skies;</span>
+</span><span id="line-507"><span class="sd">    ``shear='reduced'`` applies gamma/(1-kappa). The selected signal is stored</span>
+</span><span id="line-508"><span class="sd">    as ``g1_true/g2_true`` in either case.</span>
+</span><span id="line-509"><span class="sd">    ``e_noise`` is the intrinsic rotated epsilon, not e_mock minus g, because</span>
+</span><span id="line-510"><span class="sd">    ellipticity composition is nonlinear. ``e_injected`` is added afterwards.</span>
+</span><span id="line-511"><span class="sd">    Catalogue e2 is ``pol_factor`` times the HEALPix component.</span>
+</span><span id="line-512"><span class="sd">    """</span>
+</span><span id="line-513">    <span class="n">kap</span><span class="p">,</span> <span class="n">gamma1</span><span class="p">,</span> <span class="n">gamma2</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">signal</span><span class="p">)</span>
+</span><span id="line-514">    <span class="n">e1</span><span class="p">,</span> <span class="n">e2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">e1</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">e2</span><span class="p">)</span>
+</span><span id="line-515">    <span class="n">size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">kap</span><span class="p">)</span>
+</span><span id="line-516">    <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="o">!=</span> <span class="p">(</span><span class="n">size</span><span class="p">,)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">(</span><span class="n">gamma1</span><span class="p">,</span> <span class="n">gamma2</span><span class="p">,</span> <span class="n">e1</span><span class="p">,</span> <span class="n">e2</span><span class="p">)):</span>
+</span><span id="line-517">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Signal and ellipticity columns must have matching shapes"</span><span class="p">)</span>
+</span><span id="line-518">    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">e1</span><span class="p">))</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">e2</span><span class="p">))):</span>
+</span><span id="line-519">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Galaxy ellipticities must be finite"</span><span class="p">)</span>
+</span><span id="line-520">    <span class="k">if</span> <span class="n">shear</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"gamma"</span><span class="p">,</span> <span class="s2">"reduced"</span><span class="p">):</span>
+</span><span id="line-521">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"shear must be 'gamma' or 'reduced'"</span><span class="p">)</span>
+</span><span id="line-522">    <span class="k">if</span> <span class="n">pol_factor</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+</span><span id="line-523">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"pol_factor must be 1 or -1"</span><span class="p">)</span>
+</span><span id="line-524">    <span class="k">if</span> <span class="n">shear</span> <span class="o">==</span> <span class="s2">"reduced"</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">kap</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1e-8</span><span class="p">):</span>
+</span><span id="line-525">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Reduced shear is singular at kappa=1"</span><span class="p">)</span>
+</span><span id="line-526">    <span class="n">g</span> <span class="o">=</span> <span class="n">gamma1</span> <span class="o">+</span> <span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="n">pol_factor</span> <span class="o">*</span> <span class="n">gamma2</span>
+</span><span id="line-527">    <span class="k">if</span> <span class="n">shear</span> <span class="o">==</span> <span class="s2">"reduced"</span><span class="p">:</span>
+</span><span id="line-528">        <span class="n">g</span> <span class="o">/=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">kap</span>
+</span><span id="line-529">    <span class="n">noise</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hypot</span><span class="p">(</span><span class="n">e1</span><span class="p">,</span> <span class="n">e2</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="mi">2</span><span class="n">j</span> <span class="o">*</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">size</span><span class="p">))</span>
+</span><span id="line-530">    <span class="n">mock</span> <span class="o">=</span> <span class="p">(</span><span class="n">g</span> <span class="o">+</span> <span class="n">noise</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">conj</span><span class="p">(</span><span class="n">g</span><span class="p">)</span> <span class="o">*</span> <span class="n">noise</span><span class="p">)</span>
+</span><span id="line-531">    <span class="n">injection</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="nb">complex</span><span class="p">(</span><span class="o">*</span><span class="n">additive</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">complex</span><span class="p">)</span>
+</span><span id="line-532">    <span class="k">if</span> <span class="n">alpha</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="line-533">        <span class="k">if</span> <span class="n">psf</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-534">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"PSF leakage needs two PSF ellipticity columns"</span><span class="p">)</span>
+</span><span id="line-535">        <span class="n">injection</span> <span class="o">+=</span> <span class="n">alpha</span> <span class="o">*</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">psf</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">+</span> <span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">psf</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+</span><span id="line-536">    <span class="k">if</span> <span class="n">b_signal</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-537">        <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="o">!=</span> <span class="p">(</span><span class="n">size</span><span class="p">,)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">b_signal</span><span class="p">):</span>
+</span><span id="line-538">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"B-mode signal and row counts differ"</span><span class="p">)</span>
+</span><span id="line-539">        <span class="n">injection</span> <span class="o">+=</span> <span class="n">b_signal</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="n">pol_factor</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">b_signal</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+</span><span id="line-540">    <span class="n">mock</span> <span class="o">+=</span> <span class="n">injection</span>
+</span><span id="line-541">    <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span>
+</span><span id="line-542">        <span class="n">e1</span><span class="o">=</span><span class="n">mock</span><span class="o">.</span><span class="n">real</span><span class="p">,</span>
+</span><span id="line-543">        <span class="n">e2</span><span class="o">=</span><span class="n">mock</span><span class="o">.</span><span class="n">imag</span><span class="p">,</span>
+</span><span id="line-544">        <span class="n">e1_noise</span><span class="o">=</span><span class="n">noise</span><span class="o">.</span><span class="n">real</span><span class="p">,</span>
+</span><span id="line-545">        <span class="n">e2_noise</span><span class="o">=</span><span class="n">noise</span><span class="o">.</span><span class="n">imag</span><span class="p">,</span>
+</span><span id="line-546">        <span class="n">g1_true</span><span class="o">=</span><span class="n">g</span><span class="o">.</span><span class="n">real</span><span class="p">,</span>
+</span><span id="line-547">        <span class="n">g2_true</span><span class="o">=</span><span class="n">g</span><span class="o">.</span><span class="n">imag</span><span class="p">,</span>
+</span><span id="line-548">        <span class="n">kappa_true</span><span class="o">=</span><span class="n">kap</span><span class="p">,</span>
+</span><span id="line-549">        <span class="n">e1_injected</span><span class="o">=</span><span class="n">injection</span><span class="o">.</span><span class="n">real</span><span class="p">,</span>
+</span><span id="line-550">        <span class="n">e2_injected</span><span class="o">=</span><span class="n">injection</span><span class="o">.</span><span class="n">imag</span><span class="p">,</span>
+</span><span id="line-551">    <span class="p">)</span></div>
+
+</span><span id="line-552">
+</span><span id="line-553">
+</span><span id="line-554"><span class="c1"># Mock shapes are written under the shape columns and these calibrated aliases.</span>
+</span><span id="line-555"><span class="n">ALIASES</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"e1_leak_corrected"</span><span class="p">,</span> <span class="s2">"e2_leak_corrected"</span><span class="p">)</span>
+</span><span id="line-556"><span class="c1"># Rows evaluated per synthesis_general call: amortises its ~one-SHT setup.</span>
+</span><span id="line-557"><span class="n">BLOCK_SIZE</span> <span class="o">=</span> <span class="mi">8_000_000</span>
+</span><span id="line-558">
+</span><span id="line-559">
+</span><span id="line-560"><span class="k">def</span><span class="w"> </span><span class="nf">default_threads</span><span class="p">():</span>
+</span><span id="line-561"><span class="w">    </span><span class="sd">"""``OMP_NUM_THREADS`` when set, else the CPUs this process may run on."""</span>
+</span><span id="line-562">    <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+</span><span id="line-563">
+</span><span id="line-564">    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"OMP_NUM_THREADS"</span><span class="p">):</span>
+</span><span id="line-565">        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">"OMP_NUM_THREADS"</span><span class="p">])</span>
+</span><span id="line-566">    <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">sched_getaffinity</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+</span><span id="line-567">
+</span><span id="line-568">
+<div class="viewcode-block" id="paint_catalogue">
+<a class="viewcode-back" href="../../../sp_validation.mocks.painted.html#sp_validation.mocks.painted.paint_catalogue">[docs]</a>
+</span><span id="line-569"><span class="k">def</span><span class="w"> </span><span class="nf">paint_catalogue</span><span class="p">(</span>
+</span><span id="line-570">    <span class="n">input_path</span><span class="p">,</span>
+</span><span id="line-571">    <span class="n">output_path</span><span class="p">,</span>
+</span><span id="line-572">    <span class="n">maps_dir</span><span class="p">,</span>
+</span><span id="line-573">    <span class="n">seed</span><span class="p">,</span>
+</span><span id="line-574">    <span class="o">*</span><span class="p">,</span>
+</span><span id="line-575">    <span class="n">ra_col</span><span class="o">=</span><span class="s2">"RA"</span><span class="p">,</span>
+</span><span id="line-576">    <span class="n">dec_col</span><span class="o">=</span><span class="s2">"Dec"</span><span class="p">,</span>
+</span><span id="line-577">    <span class="n">e1_col</span><span class="o">=</span><span class="s2">"e1"</span><span class="p">,</span>
+</span><span id="line-578">    <span class="n">e2_col</span><span class="o">=</span><span class="s2">"e2"</span><span class="p">,</span>
+</span><span id="line-579">    <span class="n">w_col</span><span class="o">=</span><span class="s2">"w_des"</span><span class="p">,</span>
+</span><span id="line-580">    <span class="n">psf_cols</span><span class="o">=</span><span class="p">(</span><span class="s2">"e1_PSF"</span><span class="p">,</span> <span class="s2">"e2_PSF"</span><span class="p">),</span>
+</span><span id="line-581">    <span class="n">alpha</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+</span><span id="line-582">    <span class="n">additive</span><span class="o">=</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+</span><span id="line-583">    <span class="n">b_cl</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-584">    <span class="n">b_seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-585">    <span class="n">chunk_size</span><span class="o">=</span><span class="mi">250_000</span><span class="p">,</span>
+</span><span id="line-586">    <span class="n">block_size</span><span class="o">=</span><span class="n">BLOCK_SIZE</span><span class="p">,</span>
+</span><span id="line-587">    <span class="n">nthreads</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-588">    <span class="n">epsilon</span><span class="o">=</span><span class="mf">1e-10</span><span class="p">,</span>
+</span><span id="line-589">    <span class="n">column_map</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-590">    <span class="n">overwrite</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+</span><span id="line-591">    <span class="n">shear</span><span class="o">=</span><span class="s2">"gamma"</span><span class="p">,</span>
+</span><span id="line-592">    <span class="n">pol_factor</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+</span><span id="line-593">    <span class="n">keep</span><span class="o">=</span><span class="p">(),</span>
+</span><span id="line-594"><span class="p">):</span>
+</span><span id="line-595"><span class="w">    </span><span class="sd">"""Stream a FITS/HDF5 catalogue into an HDF5 mock (root ``data`` table).</span>
+</span><span id="line-596">
+</span><span id="line-597"><span class="sd">    Uses the same lazy ``Catalogue`` reader as ``read_catalogue`` with bounded</span>
+</span><span id="line-598"><span class="sd">    row slices, including single-dataset 138M-row HDF5 catalogues.</span>
+</span><span id="line-599"><span class="sd">    The sky is the convergence alm in ``maps_dir`` (``kappa_alm.npz``). Its</span>
+</span><span id="line-600"><span class="sd">    convergence, shear E mode (``shear_alm``) and any injected B mode are</span>
+</span><span id="line-601"><span class="sd">    evaluated at each galaxy position (``evaluate_alm``), so the sky's</span>
+</span><span id="line-602"><span class="sd">    ``realization_*`` spectra and the B alm's power are what the catalogue</span>
+</span><span id="line-603"><span class="sd">    carries (see ``generate_lensing_maps``).</span>
+</span><span id="line-604"><span class="sd">    Rotation angles come from ``SeedSequence(seed, spawn_key=(1,))``, a stream</span>
+</span><span id="line-605"><span class="sd">    independent of the sky's ``default_rng(seed)``, one uniform per row in row</span>
+</span><span id="line-606"><span class="sd">    order, so a seed gives the same noise whatever the chunk and block sizes.</span>
+</span><span id="line-607"><span class="sd">    Rows are read in ``chunk_size`` slices of the needed columns and evaluated</span>
+</span><span id="line-608"><span class="sd">    in blocks of ``block_size`` rows on ``nthreads`` threads (default</span>
+</span><span id="line-609"><span class="sd">    ``default_threads()``): each evaluation pays a fixed setup of about one</span>
+</span><span id="line-610"><span class="sd">    full-sky synthesis (~4 s at lmax 8192 on 28 threads) and almost nothing</span>
+</span><span id="line-611"><span class="sd">    per row; memory grows by a few hundred bytes per block row on top of an</span>
+</span><span id="line-612"><span class="sd">    lmax-dependent constant (~7 GB at lmax 8192).</span>
+</span><span id="line-613"><span class="sd">    The mock carries an allowlist of input columns, in the reader's canonical</span>
+</span><span id="line-614"><span class="sd">    grammar: position, weight, PSF ellipticities and any ``keep`` names. Every</span>
+</span><span id="line-615"><span class="sd">    other column is dropped. A mock is measured under its own throwaway blind,</span>
+</span><span id="line-616"><span class="sd">    so a measured shape passed through (``e*_uncal``, say) would reach</span>
+</span><span id="line-617"><span class="sd">    cosmo_val outside the data blind; the allowlist is what prevents that, and</span>
+</span><span id="line-618"><span class="sd">    it gives the mock a fixed schema. ``e1_col/e2_col`` and ``e*_leak_corrected`` hold the</span>
+</span><span id="line-619"><span class="sd">    mock shapes. Catalogue e2 is ``pol_factor`` times HEALPix gamma2 (``-1``</span>
+</span><span id="line-620"><span class="sd">    for UNIONS). Output is atomic; the HDF5 attributes and a JSON sidecar</span>
+</span><span id="line-621"><span class="sd">    record the injection and ``pol_factor``.</span>
+</span><span id="line-622"><span class="sd">    """</span>
+</span><span id="line-623">    <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+</span><span id="line-624">    <span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+</span><span id="line-625">    <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+</span><span id="line-626">
+</span><span id="line-627">    <span class="kn">import</span><span class="w"> </span><span class="nn">h5py</span>
+</span><span id="line-628">    <span class="kn">import</span><span class="w"> </span><span class="nn">healpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">hp</span>
+</span><span id="line-629">
+</span><span id="line-630">    <span class="kn">from</span><span class="w"> </span><span class="nn">sp_validation.grammar</span><span class="w"> </span><span class="kn">import</span> <span class="n">materialise</span>
+</span><span id="line-631">    <span class="kn">from</span><span class="w"> </span><span class="nn">sp_validation.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">Catalogue</span>
+</span><span id="line-632">
+</span><span id="line-633">    <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
+</span><span id="line-634">    <span class="n">output</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">output_path</span><span class="p">)</span>
+</span><span id="line-635">    <span class="k">if</span> <span class="n">output</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">overwrite</span><span class="p">:</span>
+</span><span id="line-636">        <span class="k">raise</span> <span class="ne">FileExistsError</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+</span><span id="line-637">    <span class="k">if</span> <span class="n">Path</span><span class="p">(</span><span class="n">input_path</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span> <span class="o">==</span> <span class="n">output</span><span class="o">.</span><span class="n">resolve</span><span class="p">():</span>
+</span><span id="line-638">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Cannot overwrite the input catalogue"</span><span class="p">)</span>
+</span><span id="line-639">    <span class="k">if</span> <span class="n">chunk_size</span> <span class="o">&lt;=</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">block_size</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="line-640">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"chunk_size and block_size must be positive"</span><span class="p">)</span>
+</span><span id="line-641">    <span class="n">nthreads</span> <span class="o">=</span> <span class="n">default_threads</span><span class="p">()</span> <span class="k">if</span> <span class="n">nthreads</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">int</span><span class="p">(</span><span class="n">nthreads</span><span class="p">)</span>
+</span><span id="line-642">    <span class="n">output</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-643">    <span class="n">root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">maps_dir</span><span class="p">)</span>
+</span><span id="line-644">    <span class="n">kappa_alm</span> <span class="o">=</span> <span class="n">read_sky</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>
+</span><span id="line-645">    <span class="n">sky</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+</span><span id="line-646">        <span class="n">kappa</span><span class="o">=</span><span class="n">kappa_alm</span><span class="p">[</span><span class="kc">None</span><span class="p">],</span>
+</span><span id="line-647">        <span class="n">gamma</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">shear_alm</span><span class="p">(</span><span class="n">kappa_alm</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">kappa_alm</span><span class="p">)]),</span>
+</span><span id="line-648">    <span class="p">)</span>
+</span><span id="line-649">    <span class="k">if</span> <span class="n">b_cl</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-650">        <span class="k">if</span> <span class="n">b_seed</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-651">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"B-mode injection requires an explicit b_seed"</span><span class="p">)</span>
+</span><span id="line-652">        <span class="n">b_alm</span> <span class="o">=</span> <span class="n">draw_b_mode_alm</span><span class="p">(</span><span class="n">b_cl</span><span class="p">,</span> <span class="n">b_seed</span><span class="p">)</span>
+</span><span id="line-653">        <span class="n">sky</span><span class="p">[</span><span class="s2">"b"</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">b_alm</span><span class="p">),</span> <span class="n">b_alm</span><span class="p">])</span>
+</span><span id="line-654">        <span class="n">b_spectra_path</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="n">output</span><span class="o">.</span><span class="n">suffix</span> <span class="o">+</span> <span class="s2">".bmode_spectra.npz"</span><span class="p">)</span>
+</span><span id="line-655">        <span class="n">np</span><span class="o">.</span><span class="n">savez</span><span class="p">(</span>
+</span><span id="line-656">            <span class="n">b_spectra_path</span><span class="p">,</span>
+</span><span id="line-657">            <span class="n">ell</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">b_cl</span><span class="p">)),</span>
+</span><span id="line-658">            <span class="n">target_bb</span><span class="o">=</span><span class="n">b_cl</span><span class="p">,</span>
+</span><span id="line-659">            <span class="n">realization_bb</span><span class="o">=</span><span class="n">hp</span><span class="o">.</span><span class="n">alm2cl</span><span class="p">(</span><span class="n">b_alm</span><span class="p">),</span>
+</span><span id="line-660">            <span class="n">seed</span><span class="o">=</span><span class="n">b_seed</span><span class="p">,</span>
+</span><span id="line-661">        <span class="p">)</span>
+</span><span id="line-662">    <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">SeedSequence</span><span class="p">(</span><span class="n">seed</span><span class="p">,</span> <span class="n">spawn_key</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,)))</span>
+</span><span id="line-663">    <span class="n">temporary</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="n">output</span><span class="o">.</span><span class="n">suffix</span> <span class="o">+</span> <span class="s2">".partial"</span><span class="p">)</span>
+</span><span id="line-664">    <span class="n">extra</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="line-665">        <span class="s2">"e1_noise"</span><span class="p">,</span>
+</span><span id="line-666">        <span class="s2">"e2_noise"</span><span class="p">,</span>
+</span><span id="line-667">        <span class="s2">"g1_true"</span><span class="p">,</span>
+</span><span id="line-668">        <span class="s2">"g2_true"</span><span class="p">,</span>
+</span><span id="line-669">        <span class="s2">"kappa_true"</span><span class="p">,</span>
+</span><span id="line-670">        <span class="s2">"e1_injected"</span><span class="p">,</span>
+</span><span id="line-671">        <span class="s2">"e2_injected"</span><span class="p">,</span>
+</span><span id="line-672">    <span class="p">)</span>
+</span><span id="line-673">    <span class="n">metadata</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+</span><span id="line-674">        <span class="nb">input</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">input_path</span><span class="p">),</span>
+</span><span id="line-675">        <span class="n">maps</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">root</span><span class="p">),</span>
+</span><span id="line-676">        <span class="n">painting</span><span class="o">=</span><span class="sa">f</span><span class="s2">"non-uniform SHT (ducc0 synthesis_general), epsilon=</span><span class="si">{</span><span class="n">epsilon</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+</span><span id="line-677">        <span class="n">rotation_seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
+</span><span id="line-678">        <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">,</span>
+</span><span id="line-679">        <span class="n">additive</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">additive</span><span class="p">),</span>
+</span><span id="line-680">        <span class="n">b_seed</span><span class="o">=</span><span class="n">b_seed</span><span class="p">,</span>
+</span><span id="line-681">        <span class="n">b_cl</span><span class="o">=</span><span class="kc">None</span> <span class="k">if</span> <span class="n">b_cl</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">b_cl</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
+</span><span id="line-682">        <span class="n">b_realization_spectra</span><span class="o">=</span><span class="kc">None</span> <span class="k">if</span> <span class="n">b_cl</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">str</span><span class="p">(</span><span class="n">b_spectra_path</span><span class="p">),</span>
+</span><span id="line-683">        <span class="n">columns</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+</span><span id="line-684">            <span class="n">ra</span><span class="o">=</span><span class="n">ra_col</span><span class="p">,</span> <span class="n">dec</span><span class="o">=</span><span class="n">dec_col</span><span class="p">,</span> <span class="n">e1</span><span class="o">=</span><span class="n">e1_col</span><span class="p">,</span> <span class="n">e2</span><span class="o">=</span><span class="n">e2_col</span><span class="p">,</span> <span class="n">w</span><span class="o">=</span><span class="n">w_col</span><span class="p">,</span> <span class="n">psf</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">psf_cols</span><span class="p">)</span>
+</span><span id="line-685">        <span class="p">),</span>
+</span><span id="line-686">        <span class="n">kept</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">keep</span><span class="p">),</span>
+</span><span id="line-687">        <span class="n">pol_factor</span><span class="o">=</span><span class="n">pol_factor</span><span class="p">,</span>
+</span><span id="line-688">        <span class="n">convention</span><span class="o">=</span><span class="s2">"catalogue e2 = pol_factor * HEALPix gamma2"</span><span class="p">,</span>
+</span><span id="line-689">        <span class="n">shear</span><span class="o">=</span><span class="n">shear</span><span class="p">,</span>
+</span><span id="line-690">        <span class="n">shape_composition</span><span class="o">=</span><span class="s2">"(g+e_noise)/(1+conj(g)*e_noise)+e_injected"</span><span class="p">,</span>
+</span><span id="line-691">    <span class="p">)</span>
+</span><span id="line-692">    <span class="k">with</span> <span class="p">(</span>
+</span><span id="line-693">        <span class="n">Catalogue</span><span class="p">(</span><span class="n">input_path</span><span class="p">,</span> <span class="n">column_map</span><span class="o">=</span><span class="n">column_map</span><span class="p">)</span> <span class="k">as</span> <span class="n">cat</span><span class="p">,</span>
+</span><span id="line-694">        <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">temporary</span><span class="p">,</span> <span class="s2">"w"</span><span class="p">)</span> <span class="k">as</span> <span class="n">dst</span><span class="p">,</span>
+</span><span id="line-695">    <span class="p">):</span>
+</span><span id="line-696">        <span class="n">dtype</span> <span class="o">=</span> <span class="n">cat</span><span class="o">.</span><span class="n">dtype</span><span class="p">()</span>
+</span><span id="line-697">        <span class="n">required</span> <span class="o">=</span> <span class="p">[</span><span class="n">ra_col</span><span class="p">,</span> <span class="n">dec_col</span><span class="p">,</span> <span class="n">e1_col</span><span class="p">,</span> <span class="n">e2_col</span><span class="p">,</span> <span class="n">w_col</span><span class="p">]</span>
+</span><span id="line-698">        <span class="k">if</span> <span class="n">alpha</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="line-699">            <span class="n">required</span> <span class="o">+=</span> <span class="nb">list</span><span class="p">(</span><span class="n">psf_cols</span><span class="p">)</span>
+</span><span id="line-700">        <span class="n">missing</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">required</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">dtype</span><span class="o">.</span><span class="n">names</span><span class="p">)</span>
+</span><span id="line-701">        <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
+</span><span id="line-702">            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Missing painting columns: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">missing</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="line-703">        <span class="k">if</span> <span class="nb">set</span><span class="p">(</span><span class="n">extra</span><span class="p">)</span> <span class="o">&amp;</span> <span class="nb">set</span><span class="p">(</span><span class="n">dtype</span><span class="o">.</span><span class="n">names</span><span class="p">):</span>
+</span><span id="line-704">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Input already contains mock truth/noise columns"</span><span class="p">)</span>
+</span><span id="line-705">        <span class="n">kept</span> <span class="o">=</span> <span class="p">[</span><span class="n">ra_col</span><span class="p">,</span> <span class="n">dec_col</span><span class="p">,</span> <span class="n">w_col</span><span class="p">,</span> <span class="o">*</span><span class="n">keep</span><span class="p">]</span>
+</span><span id="line-706">        <span class="n">kept</span> <span class="o">+=</span> <span class="p">[</span><span class="n">name</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">psf_cols</span> <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">dtype</span><span class="o">.</span><span class="n">names</span><span class="p">]</span>
+</span><span id="line-707">        <span class="n">kept</span> <span class="o">=</span> <span class="p">[</span><span class="n">name</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">dtype</span><span class="o">.</span><span class="n">names</span> <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">set</span><span class="p">(</span><span class="n">kept</span><span class="p">)]</span>
+</span><span id="line-708">        <span class="k">if</span> <span class="n">missing</span> <span class="o">:=</span> <span class="nb">set</span><span class="p">(</span><span class="n">keep</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">dtype</span><span class="o">.</span><span class="n">names</span><span class="p">):</span>
+</span><span id="line-709">            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Missing kept columns: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">missing</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="line-710">        <span class="n">needed</span> <span class="o">=</span> <span class="p">[</span><span class="n">name</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">dtype</span><span class="o">.</span><span class="n">names</span> <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">{</span><span class="o">*</span><span class="n">kept</span><span class="p">,</span> <span class="o">*</span><span class="n">required</span><span class="p">}]</span>
+</span><span id="line-711">        <span class="n">shapes</span> <span class="o">=</span> <span class="p">[</span><span class="n">e1_col</span><span class="p">,</span> <span class="n">e2_col</span><span class="p">,</span> <span class="o">*</span><span class="n">ALIASES</span><span class="p">]</span>
+</span><span id="line-712">        <span class="n">output_dtype</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span>
+</span><span id="line-713">            <span class="p">[(</span><span class="n">name</span><span class="p">,</span> <span class="n">dtype</span><span class="p">[</span><span class="n">name</span><span class="p">])</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">kept</span><span class="p">]</span>
+</span><span id="line-714">            <span class="o">+</span> <span class="p">[(</span><span class="n">name</span><span class="p">,</span> <span class="n">dtype</span><span class="p">[</span><span class="n">e1_col</span><span class="p">])</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">shapes</span><span class="p">]</span>
+</span><span id="line-715">            <span class="o">+</span> <span class="p">[(</span><span class="n">name</span><span class="p">,</span> <span class="s2">"f4"</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">extra</span><span class="p">]</span>
+</span><span id="line-716">        <span class="p">)</span>
+</span><span id="line-717">        <span class="n">table</span> <span class="o">=</span> <span class="n">dst</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span>
+</span><span id="line-718">            <span class="s2">"data"</span><span class="p">,</span>
+</span><span id="line-719">            <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">cat</span><span class="p">),),</span>
+</span><span id="line-720">            <span class="n">dtype</span><span class="o">=</span><span class="n">output_dtype</span><span class="p">,</span>
+</span><span id="line-721">            <span class="n">chunks</span><span class="o">=</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">chunk_size</span><span class="p">,</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">cat</span><span class="p">))),),</span>
+</span><span id="line-722">        <span class="p">)</span>
+</span><span id="line-723">        <span class="n">offset</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span id="line-724">
+</span><span id="line-725">        <span class="k">def</span><span class="w"> </span><span class="nf">paint_block</span><span class="p">(</span><span class="n">rows</span><span class="p">):</span>
+</span><span id="line-726">            <span class="k">nonlocal</span> <span class="n">offset</span>
+</span><span id="line-727">            <span class="n">fields</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="line-728">                <span class="n">key</span><span class="p">:</span> <span class="n">evaluate_alm</span><span class="p">(</span>
+</span><span id="line-729">                    <span class="n">alm</span><span class="p">,</span> <span class="n">rows</span><span class="p">[</span><span class="n">ra_col</span><span class="p">],</span> <span class="n">rows</span><span class="p">[</span><span class="n">dec_col</span><span class="p">],</span> <span class="n">epsilon</span><span class="o">=</span><span class="n">epsilon</span><span class="p">,</span> <span class="n">nthreads</span><span class="o">=</span><span class="n">nthreads</span>
+</span><span id="line-730">                <span class="p">)</span>
+</span><span id="line-731">                <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">alm</span> <span class="ow">in</span> <span class="n">sky</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+</span><span id="line-732">            <span class="p">}</span>
+</span><span id="line-733">            <span class="n">painted</span> <span class="o">=</span> <span class="n">paint_shear</span><span class="p">(</span>
+</span><span id="line-734">                <span class="n">rows</span><span class="p">[</span><span class="n">e1_col</span><span class="p">],</span>
+</span><span id="line-735">                <span class="n">rows</span><span class="p">[</span><span class="n">e2_col</span><span class="p">],</span>
+</span><span id="line-736">                <span class="p">(</span><span class="n">fields</span><span class="p">[</span><span class="s2">"kappa"</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="o">*</span><span class="n">fields</span><span class="p">[</span><span class="s2">"gamma"</span><span class="p">]),</span>
+</span><span id="line-737">                <span class="n">rng</span><span class="p">,</span>
+</span><span id="line-738">                <span class="n">psf</span><span class="o">=</span><span class="p">(</span><span class="n">rows</span><span class="p">[</span><span class="n">psf_cols</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span> <span class="n">rows</span><span class="p">[</span><span class="n">psf_cols</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span> <span class="k">if</span> <span class="n">alpha</span> <span class="o">!=</span> <span class="mi">0</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="line-739">                <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">,</span>
+</span><span id="line-740">                <span class="n">additive</span><span class="o">=</span><span class="n">additive</span><span class="p">,</span>
+</span><span id="line-741">                <span class="n">b_signal</span><span class="o">=</span><span class="n">fields</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"b"</span><span class="p">),</span>
+</span><span id="line-742">                <span class="n">shear</span><span class="o">=</span><span class="n">shear</span><span class="p">,</span>
+</span><span id="line-743">                <span class="n">pol_factor</span><span class="o">=</span><span class="n">pol_factor</span><span class="p">,</span>
+</span><span id="line-744">            <span class="p">)</span>
+</span><span id="line-745">            <span class="k">del</span> <span class="n">fields</span>
+</span><span id="line-746">            <span class="n">mock</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">output_dtype</span><span class="p">)</span>
+</span><span id="line-747">            <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">kept</span><span class="p">:</span>
+</span><span id="line-748">                <span class="n">mock</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">rows</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+</span><span id="line-749">            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">component</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">shapes</span><span class="p">,</span> <span class="p">(</span><span class="s2">"e1"</span><span class="p">,</span> <span class="s2">"e2"</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+</span><span id="line-750">                <span class="n">mock</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">painted</span><span class="p">[</span><span class="n">component</span><span class="p">]</span>
+</span><span id="line-751">            <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">extra</span><span class="p">:</span>
+</span><span id="line-752">                <span class="n">mock</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">painted</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+</span><span id="line-753">            <span class="k">del</span> <span class="n">painted</span>
+</span><span id="line-754">            <span class="n">table</span><span class="p">[</span><span class="n">offset</span> <span class="p">:</span> <span class="n">offset</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)]</span> <span class="o">=</span> <span class="n">mock</span>
+</span><span id="line-755">            <span class="n">offset</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
+</span><span id="line-756">            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Painted </span><span class="si">{</span><span class="n">offset</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">cat</span><span class="p">)</span><span class="si">}</span><span class="s2"> rows"</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-757">
+</span><span id="line-758">        <span class="n">pending</span><span class="p">,</span> <span class="n">size</span> <span class="o">=</span> <span class="p">[],</span> <span class="mi">0</span>
+</span><span id="line-759">        <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="n">cat</span><span class="o">.</span><span class="n">chunks</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+</span><span id="line-760">            <span class="k">for</span> <span class="n">lo</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">part</span><span class="p">),</span> <span class="n">chunk_size</span><span class="p">):</span>
+</span><span id="line-761">                <span class="n">pending</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">materialise</span><span class="p">(</span><span class="n">part</span><span class="p">[</span><span class="n">lo</span> <span class="p">:</span> <span class="n">lo</span> <span class="o">+</span> <span class="n">chunk_size</span><span class="p">],</span> <span class="n">needed</span><span class="p">))</span>
+</span><span id="line-762">                <span class="n">size</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">pending</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+</span><span id="line-763">                <span class="k">if</span> <span class="n">size</span> <span class="o">&gt;=</span> <span class="n">block_size</span><span class="p">:</span>
+</span><span id="line-764">                    <span class="n">paint_block</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">pending</span><span class="p">))</span>
+</span><span id="line-765">                    <span class="n">pending</span><span class="p">,</span> <span class="n">size</span> <span class="o">=</span> <span class="p">[],</span> <span class="mi">0</span>
+</span><span id="line-766">        <span class="k">if</span> <span class="n">size</span><span class="p">:</span>
+</span><span id="line-767">            <span class="n">paint_block</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">pending</span><span class="p">))</span>
+</span><span id="line-768">        <span class="n">metadata</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">rows</span><span class="o">=</span><span class="n">offset</span><span class="p">,</span> <span class="n">seconds</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span><span class="p">)</span>
+</span><span id="line-769">        <span class="n">dst</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">"mock_metadata"</span><span class="p">]</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">metadata</span><span class="p">)</span>
+</span><span id="line-770">        <span class="n">dst</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">"is_mock"</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+</span><span id="line-771">        <span class="n">dst</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">"pol_factor"</span><span class="p">]</span> <span class="o">=</span> <span class="n">pol_factor</span>
+</span><span id="line-772">    <span class="n">temporary</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+</span><span id="line-773">    <span class="n">output</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="n">output</span><span class="o">.</span><span class="n">suffix</span> <span class="o">+</span> <span class="s2">".json"</span><span class="p">)</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span>
+</span><span id="line-774">        <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">metadata</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+</span><span id="line-775">    <span class="p">)</span>
+</span><span id="line-776">    <span class="k">return</span> <span class="n">metadata</span></div>
+
+</span></code></pre></div>
+    </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
+</div></div>
+          </main>
+        </div>
+      </div><footer class="py-6 border-t border-border md:py-0">
+    <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
+      <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
+        <p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini&nbsp;Last updated: 15 Nov, 2026.&nbsp;Built with <a class="font-medium underline underline-offset-4"
+    href="https://www.sphinx-doc.org"
+    rel="noreferrer">Sphinx 9.1.1</a></p>
+</div>
+</div>
+</footer>
+    </div><button id="scrolltop"
+        x-cloak
+        @click="window.scrollTo({top: 0, behavior: 'smooth'})"
+        class="fixed bottom-8 right-8 p-2 z-10 rounded-sm bg-gray-700 text-xs text-white transition-all duration-1000 hover:bg-gray-950 focus:bg-gray-950"
+        :class="{'opacity-0 invisible' : !showScrollTop}"
+>
+  <svg xmlns="http://www.w3.org/2000/svg"
+       height="14"
+       viewBox="0 96 960 960"
+       width="14"
+       class="inline fill-current mb-[2px]"
+       aria-hidden="true">
+    <path d="M450 896V370L202 618l-42-42 320-320 320 320-42 42-248-248v526h-60Z" />
+  </svg>
+  Back to top
+</button>
+    
+    <script src="../../../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script defer="defer" src="../../../_static/theme.js?v=49cc6205"></script>
+    
+</body>
+
+</html>

@@ -164,6 +164,11 @@
 <li class="toctree-l3"><a class="reference internal" href="../../sp_validation.dashboard.weights.html">sp_validation.dashboard.weights</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.mocks.html">sp_validation.mocks</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../sp_validation.mocks.glass.html">sp_validation.mocks.glass</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../sp_validation.mocks.painted.html">sp_validation.mocks.painted</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.b_modes.html">sp_validation.b_modes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.blinding.html">sp_validation.blinding</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.calibration.html">sp_validation.calibration</a></li>
@@ -175,7 +180,6 @@
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.data_roots.html">sp_validation.data_roots</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.format.html">sp_validation.format</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.galaxy.html">sp_validation.galaxy</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.glass_mock.html">sp_validation.glass_mock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.grammar.html">sp_validation.grammar</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.image_sims.html">sp_validation.image_sims</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.io.html">sp_validation.io</a></li>
@@ -676,14 +680,20 @@
 </span><span id="line-368">    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"command"</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="p">(</span><span class="s2">"init"</span><span class="p">,))</span>
 </span><span id="line-369">    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"blind"</span><span class="p">)</span>
 </span><span id="line-370">    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--cat-config"</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">REPO_CAT_CONFIG</span><span class="p">))</span>
-</span><span id="line-371">    <span class="n">a</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">(</span><span class="n">argv</span><span class="p">)</span>
-</span><span id="line-372">    <span class="n">init</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">blind</span><span class="p">,</span> <span class="n">load_yaml</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">cat_config</span><span class="p">))</span>
-</span><span id="line-373">    <span class="k">return</span> <span class="mi">0</span></div>
+</span><span id="line-371">    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+</span><span id="line-372">        <span class="s2">"--registry"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"draw into this directory, not the config's paths.blinds"</span>
+</span><span id="line-373">    <span class="p">)</span>
+</span><span id="line-374">    <span class="n">a</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">(</span><span class="n">argv</span><span class="p">)</span>
+</span><span id="line-375">    <span class="n">catalogues</span> <span class="o">=</span> <span class="n">load_yaml</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">cat_config</span><span class="p">)</span>
+</span><span id="line-376">    <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">registry</span><span class="p">:</span>
+</span><span id="line-377">        <span class="n">catalogues</span><span class="p">[</span><span class="s2">"paths"</span><span class="p">][</span><span class="s2">"blinds"</span><span class="p">]</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">registry</span>
+</span><span id="line-378">    <span class="n">init</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">blind</span><span class="p">,</span> <span class="n">catalogues</span><span class="p">)</span>
+</span><span id="line-379">    <span class="k">return</span> <span class="mi">0</span></div>
 
-</span><span id="line-374">
-</span><span id="line-375">
-</span><span id="line-376"><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
-</span><span id="line-377">    <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
+</span><span id="line-380">
+</span><span id="line-381">
+</span><span id="line-382"><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
+</span><span id="line-383">    <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
 </span></code></pre></div>
     </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
 </div></div>

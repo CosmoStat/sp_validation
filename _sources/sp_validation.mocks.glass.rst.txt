@@ -1,7 +1,7 @@
-sp\_validation.glass\_mock
+sp\_validation.mocks.glass
 --------------------------
 
-.. automodule:: sp_validation.glass_mock
+.. automodule:: sp_validation.mocks.glass
    :members:
    :show-inheritance:
    :undoc-members:

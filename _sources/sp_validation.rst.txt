@@ -16,6 +16,7 @@ Subpackages
    sp_validation.assembly
    sp_validation.cosmo_val
    sp_validation.dashboard
+   sp_validation.mocks
 
 Submodules
 ----------
@@ -34,7 +35,6 @@ Submodules
    sp_validation.data_roots
    sp_validation.format
    sp_validation.galaxy
-   sp_validation.glass_mock
    sp_validation.grammar
    sp_validation.image_sims
    sp_validation.io
