@@ -1256,7 +1256,7 @@ class metacal:
             delta = vectors - vectors.mean(axis=0)
             cov = (len(labels) - 1) / len(labels) * delta.T @ delta
             return labels, estimates, cov
-        return response.jackknife(
+        return response.row_jackknife(
             self.branches,
             self.mask_dict,
             self.branch_weights,

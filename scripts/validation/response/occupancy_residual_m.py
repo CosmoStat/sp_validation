@@ -82,7 +82,7 @@ def measure(gm, tiles, w, snr_range=None):
         np.testing.assert_array_equal(gm.mask_dict["ns"][pos], masks["ns"])
         rg = gm.R_shear[:, :, pos]
     point = response.responses(gm.branches, masks, w, rg, gm._step)
-    labels, jk, _ = response.jackknife(gm.branches, masks, w, rg, gm._step, tiles)
+    labels, jk, _ = response.row_jackknife(gm.branches, masks, w, rg, gm._step, tiles)
     return point["c_g"], jk["c_g"], labels, {b: len(v) for b, v in masks.items()}
 
 

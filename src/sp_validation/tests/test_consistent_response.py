@@ -159,7 +159,7 @@ def test_spatial_jackknife_shared_selection_and_covariance():
     groups = np.array(["a", "b", "c", "d"])
     masks["p1"] = np.array([0, 1, 2])
     masks["m1"] = np.array([1, 2, 3])
-    labels, estimates, cov = response.jackknife(b, masks, w, rg, 0.01, groups)
+    labels, estimates, cov = response.row_jackknife(b, masks, w, rg, 0.01, groups)
     brute = [response.responses(b, masks, w, rg, 0.01, groups != g) for g in labels]
     for key in estimates:
         np.testing.assert_allclose(estimates[key], [x[key] for x in brute])
