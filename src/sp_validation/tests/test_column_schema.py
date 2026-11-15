@@ -51,6 +51,9 @@ NOT_COLUMNS = {
     "Z_SPEC_DEC",
     "Z_SPEC_RA",
     "Z_SPEC_SURVEY",
+    # DESI LSS catalogue columns (nz.clustering reads the tracer catalogues)
+    "WEIGHT",
+    "Z",
     # FITS header keywords
     "EXTNAME",
     "R_S11",
