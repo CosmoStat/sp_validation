@@ -24,8 +24,8 @@ one row for each shape object that has a spectrum, in the shapes' row order:
 ``Z_SPEC_ERR``, ``Z_SPEC_CONFIDENCE`` (``wspec``), ``Z_SPEC_SURVEY`` (``ref``),
 and the spectrum's position ``Z_SPEC_RA``, ``Z_SPEC_DEC``, which identifies it:
 a spectrum matched to several objects is on each of them. It is the data of the
-collection's ``specz`` extension (``scripts/assembly/build_collection.py``),
-joined to the shapes on ``OBJECT_ID``; pixels without a spectrum have no file.
+collection's ``specz`` extension, joined to the shapes on ``OBJECT_ID``;
+pixels without a spectrum have no file.
 """
 
 import json
@@ -171,7 +171,7 @@ def _merge_worker(arguments):
 
 
 def merge(collection, matches, compilation, workers=1):
-    """Build ``COLLECTION/specz``: the catalogue ``specz`` and its ``BUILD.json``.
+    """Write ``COLLECTION/specz``: the catalogue ``specz`` and its ``BUILD.json``.
 
     Needs the collection's PhotoPipe extension, ``COLLECTION/photopipe``.
     """
@@ -190,21 +190,6 @@ def merge(collection, matches, compilation, workers=1):
         catalogue / "partition_info.csv"
     )
     rows = write_parquet_metadata(catalogue)
-    coordinates = TableProperties.read_from_dir(photopipe)
-    TableProperties(
-        catalog_name=NAME,
-        catalog_type="object",
-        total_rows=rows,
-        ra_column=coordinates.ra_column,
-        dec_column=coordinates.dec_column,
-        healpix_column=coordinates.healpix_column,
-        healpix_order=coordinates.healpix_order,
-        hats_max_rows=max(n for _, n, _ in written),
-        **TableProperties.new_provenance_dict(
-            catalogue, builder="sp_validation.assembly.specz_merge"
-        ),
-    ).to_properties_file(catalogue)
-
     used = np.concatenate([m for _, _, m in written])
     surveys = spectra["survey"].iloc[used].fillna("(not in the compilation)")
     build = dict(
@@ -225,5 +210,19 @@ def merge(collection, matches, compilation, workers=1):
         rows_by_survey=surveys.value_counts().to_dict(),
     )
     (output / "BUILD.json").write_text(json.dumps(build, indent=2) + "\n")
+    coordinates = TableProperties.read_from_dir(photopipe)
+    TableProperties(
+        catalog_name=NAME,
+        catalog_type="object",
+        total_rows=rows,
+        ra_column=coordinates.ra_column,
+        dec_column=coordinates.dec_column,
+        healpix_column=coordinates.healpix_column,
+        healpix_order=coordinates.healpix_order,
+        hats_max_rows=max(n for _, n, _ in written),
+        **TableProperties.new_provenance_dict(
+            catalogue, builder="sp_validation.assembly.specz_merge"
+        ),
+    ).to_properties_file(catalogue)
     print(json.dumps(build, indent=2))
     return build
