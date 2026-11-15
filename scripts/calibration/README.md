@@ -10,8 +10,8 @@ selection a redshift distribution. Run them in order. See
 | Step | Script | Does |
 |------|--------|------|
 | 1 | `calibrate_sample.py` | The calibrated shear sample from a snapshot's shapes: selection, weights, metacalibration, HATS catalogue ([below](#the-calibrated-sample-v2)). |
-| 2 | `calibrate_nz.py` | SOM direct calibration: the tomographic n(z) file, each row's `TOM_BIN_ID` and n(z) realisations; `plot_nz.py` draws its figures. |
-| 2b | `clustering_nz.py` | Check of step 2: clustering redshifts of the gold bins against DESI DR1; `plot_clustering.py` draws its figures. |
+| 2 | `calibrate_nz.py` | SOM direct calibration: the tomographic n(z) file, each row's `TOM_BIN_ID` and n(z) realisations. |
+| 2b | `clustering_nz.py` | Check of step 2: clustering redshifts of the gold bins against DESI DR1 ([below](#clustering-redshifts)). |
 
 `compare_samples.py` compares two samples object by object.
 
@@ -153,18 +153,6 @@ DIRECTORY` writes them elsewhere. They are (`sp_validation.nz.pipeline`)
 `som_model.npz`, `summary.json` and `recipe.yaml`, the recipe file byte for
 byte.
 
-`plot_nz.py` draws a run's figures from those products (the SOM plane, each
-bin's gold groups, BPZ against spec-z, the per-bin n(z) and how source
-occupancy weights the spectra):
-
-```bash
-python scripts/calibration/plot_nz.py RUN_DIR FIGURE_DIR \
-    [--reference NZ_TOMO LABEL] [--published NZ LABEL]
-```
-
-`--reference` overlays an earlier tomographic n(z) on each bin and
-`--published` compares the summed bins with a non-tomographic n(z).
-
 A run redefines the bins, so its `nz_tomo.txt` describes its own
 `tom_bin.parquet` and no earlier `TOM_BIN_ID`. Write that column into the
 catalogue (the rows are aligned) whenever the n(z) a `cat_config` entry reads
@@ -287,7 +275,7 @@ Systematic terms:
   `clipped_mass_fraction` reports the same quantity for the full ensemble.
   Bin 1's shift is set by catastrophic outliers, spectra above z = 1.5 that
   are rare among DEEP2/3 calibrators and common among the other surveys'.
-  Clustering redshifts (step 5b) cannot see these tails, so the size is a
+  Clustering redshifts (below) cannot see these tails, so the size is a
   prior.
 
 The zero-point and z2 offsets enter to first order: each draw adds half the
@@ -312,7 +300,7 @@ is for validation, null tests and mocks, not parameter constraints. It
 describes only `TOM_BIN_ID > 0` rows; a non-tomographic measurement pairs
 `nz_nontomo.txt` with those rows, not with the whole catalogue.
 
-## Clustering redshifts (step 5b)
+## Clustering redshifts
 
 Clustering redshifts provide a separate diagnostic estimate compared with SOM, not combined with it; they do not update the delivered n(z), constrain its ensemble or supply priors.
 Configure `sp_validation.nz.clustering` with the recipe's `clustering` section.
@@ -323,7 +311,6 @@ It reads the n(z) run in the recipe's `output` (`tom_bin.parquet`,
 ```bash
 python scripts/calibration/clustering_nz.py config/calibration/nz/v2.yaml \
     --prepare --measure --workers 32
-python scripts/calibration/plot_clustering.py config/calibration/nz/v2.yaml DIRECTORY
 ```
 
 `--prepare` cuts the DESI DR1 clustering catalogues (BGS_BRIGHT, LRG,
@@ -333,7 +320,6 @@ Gold sources are selected by the union of random-occupied `source_nside` pixels 
 This is an approximate union footprint, not a tracer-specific overlap definition.
 `--measure` counts pairs in redshift slices of the reference.
 Without either flag the script only redoes the analysis, which writes `clustering.json`.
-`plot_clustering.py` draws two figures from that file and the run's SOM n(z): the known-answer gate (`clustering_gate.png`) and each bin against the SOM n(z) (`clustering_nz.png`).
 
 **Estimator.** In each reference slice the annulus is fixed at 1.5–5 Mpc/h
 comoving. The slice's autocorrelation gives the reference bias, and its
