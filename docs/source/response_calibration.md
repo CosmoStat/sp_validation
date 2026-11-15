@@ -152,9 +152,7 @@ Zeroing the table selects each branch on its own S/N, so objects that migrate ac
 The response of a subsample, such as a tomographic bin, is the same estimator on the subsample's rows with the full sample's table held fixed, so the weights are those applied to the catalogue:
 
 ```python
-sums_bin = response.accumulate(
-    rows, cuts, table[:2], preselection=in_bin, groups=tiles
-)
+sums_bin = response.accumulate(rows, cuts, table[:2], preselection=in_bin, groups=tiles)
 result_bin = response.estimate(sums_bin, table)
 labels, deleted, covariance = response.jackknife(sums_bin, table)
 ```
