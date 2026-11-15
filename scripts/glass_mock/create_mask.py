@@ -1,11 +1,11 @@
 """CLI: build a HEALPix footprint mask from a GLASS-mock galaxy catalogue.
 
-Thin wrapper around ``sp_validation.glass_mock.create_mask_from_catalogue``.
+Thin wrapper around ``sp_validation.mocks.glass.create_mask_from_catalogue``.
 """
 
 import argparse
 
-from sp_validation.glass_mock import create_mask_from_catalogue
+from sp_validation.mocks.glass import create_mask_from_catalogue
 
 
 def get_parser():

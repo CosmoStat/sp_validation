@@ -9,9 +9,8 @@ import pytest
 # directories. Empty pre-reorg by design: the harness is the invariant.
 #
 # Entries here are *fully retired* paths: the old path string must no longer
-# appear anywhere. Extractions-in-place do NOT belong here. The GLASS-mock
-# generation core was lifted into the library at ``src/sp_validation/glass_mock.py``
-# and the top-level ``glass_mock/`` runner scripts moved to ``scripts/glass_mock/``.
+# appear anywhere. Extractions-in-place do NOT belong here. The top-level
+# ``glass_mock/`` runner scripts live in ``scripts/glass_mock/``.
 # The bare string ``glass_mock`` is still live across the workflow, config
 # (``glass_mocks:``), and data paths (``results/glass_mock``, mock filenames),
 # so registering it would be a false move; the retired path is the top-level
@@ -42,6 +41,8 @@ MOVE_MAP: tuple[tuple[str, str], ...] = (
     # retired module — its next char is a space, never the ``a`` of ``catalog`` —
     # so it traps the dangling import without catching the new name.
     ("sp_validation.cat import", "sp_validation.catalog import"),
+    ("sp_validation.glass_mock", "sp_validation.mocks.glass"),
+    ("sp_validation/glass_mock.py", "sp_validation/mocks/glass.py"),
 )
 EXCLUDED_DIRS = {
     ".git",

@@ -1,11 +1,11 @@
 """Generate a GLASS mock source catalogue.
 
-Thin CLI wrapper around the generation core in ``sp_validation.glass_mock``:
+Thin CLI wrapper around the generation core in ``sp_validation.mocks.glass``:
 this script owns argument parsing, the mask downgrade, galaxy sampling, and FITS
 catalogue I/O. The reproducibility surface — the fixed cosmology, the
 ``sigma8``-rescaled CAMB power spectrum, and the lognormal matter / lensing-map
 generation — lives in the library and is pinned by
-``src/sp_validation/tests/test_glass_mock.py``.
+``src/sp_validation/tests/test_mocks_glass.py``.
 
 Run inside an image that has GLASS installed (the production sp_validation
 container does not yet ship GLASS).
@@ -24,7 +24,7 @@ import healpy as hp
 import numpy as np
 from tqdm import tqdm
 
-from sp_validation.glass_mock import (
+from sp_validation.mocks.glass import (
     Cosmology_from_camb,
     GlassMockConfig,
     build_camb_params,
