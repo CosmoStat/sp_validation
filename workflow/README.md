@@ -70,13 +70,15 @@ snakemake --profile workflow/profiles/candide \
     <target> --configfile <run config>
 ```
 
-For example, the image-sim m-bias chain end to end (`im_mbias` fans out one
-SLURM job per branch × tile, MPI-free):
+On Fir, `profiles/fir/config.yaml` runs every job on the node of the
+allocation snakemake is launched from; the image-sim m-bias chain, from
+ShapePipe's merged catalogues of the five shear branches to m, is
 
 ```bash
-snakemake --profile workflow/profiles/candide \
-    -s workflow/image_sims/Snakefile \
-    im_mbias --configfile my_run.yaml
+srun --jobid=<allocation> --overlap -n 1 -c 8 \
+    snakemake --profile workflow/profiles/fir \
+    -s workflow/image_sims/Snakefile -j 8 \
+    im_results --configfile workflow/image_sims/fir.yaml
 ```
 
 Give the target *before* `--configfile`: `--configfile` takes one-or-more

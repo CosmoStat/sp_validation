@@ -1,0 +1,127 @@
+# Declared delta: image-sim mask/calibration config vs the v2 data config.
+#
+# The image-sim calibration reuses the data config (mask_v2.0.yaml, the cuts
+# of the v2.0.0 release) and changes only what the sims genuinely differ on.
+# `im_compose_mask.py` applies these ops to mask_v2.0.yaml and reproduces
+# mask_v2.0_im_sim.yaml byte-for-byte; a test locks that, so the runtime file
+# and this declaration cannot diverge.
+#
+# Each op anchors to a block of base text (matched verbatim, and required to
+# occur exactly once) and either drops it or replaces it.  `why` is prose for
+# the human reader; the compose ignores it.  Ordering follows the base file.
+# Block scalars keep their trailing newlines (|2+), so the ops follow one
+# another without blank lines.
+
+base: mask_v2.0.yaml
+
+ops:
+  - why: >-
+      The header describes the data's mask columns; the sims carry none.
+    replace: |2+
+      # Config file for masking and calibration, ShapePipe v2 catalogues.
+      #
+      # ShapePipe v2 replaces the single IMAFLAGS_ISO column with per-reason boolean
+      # mask columns MASK_<bit>_<label>, where True means MASKED. They are therefore
+      # cut with `kind: equal, value: False` (keep the un-masked objects):
+      #
+      # ShapePipe mask reason bits:
+      #
+      #   MASK_1_Faint_star_halos     faint star halos (bit 0; value 1)
+      #   MASK_2_Bright_star_halos    bright star halos (bit 1; value 2)
+      #   MASK_4_Stars                star bodies (bit 2; value 4)
+      #   MASK_8_Manual               manual galaxy mask
+      #   MASK_64_r                   r-band coverage
+      #   MASK_1024_Maximask          MaxiMask
+      #
+      # Per-band coverage flags and Pan-STARRS:
+      #
+      #   MASK_16_u, MASK_32_g, MASK_64_r, MASK_128_i, MASK_256_z
+      #                               u, g, r, i, HSC z-band coverage
+      #   MASK_2048_z2                no Pan-STARRS z-band (z2) coverage
+      #
+      # The default external-mask cut (see sp_validation.galaxy.DEFAULT_MASK_COLUMNS)
+      # uses bits 4 + 8 + 64 + 1024: star bodies, manual masks, r-band coverage and
+      # MaxiMask. It excludes star-halo bits 1 and 2. Other coverage flags and bit
+      # 2048 are listed here but commented out, since ORing all of them masks
+      # essentially everything.
+
+    with: |2+
+      # Config file for masking and calibration of the image simulations.
+      #
+      # The v2 data's cuts (mask_v2.0.yaml) wherever they apply to simulated tiles,
+      # composed from that file and mask_v2.0_im_sim.overlay.yaml by
+      # workflow/scripts/im_compose_mask.py; do not edit by hand.
+
+  - why: >-
+      Sims read the comprehensive catalogue the workflow extracts in each simulation's run directory.
+    replace: |2+
+        input_path: unions_shapepipe_comprehensive_2025_v2.0.hdf5
+    with: |2+
+        input_path: shape_catalog_comprehensive_ngmix.fits
+  - why: >-
+      No sky maps on sims: the mask maps are survey products.
+    drop: |2+
+      # Sky maps for mask columns a catalogue lacks: a cut on such a column reads
+      # the map (True = masked) at each object's position. Galaxy catalogues carry
+      # MASK_8_Manual; ShapePipe's PSF-star catalogue does not, so stars selected
+      # with this config (a cat_config psf block's mask_config/mask_cuts) take the
+      # manual mask from the DR6 bit-8 map. Values are paths or arc:/vos: URLs,
+      # fetched once into ~/.cache/sp_validation/masks (sp_validation.masks.map_path).
+      maps:
+        MASK_8_Manual: arc:home/mhudson/masks/mask_ugriz_nside131072_n8.hsp
+
+  - why: >-
+      No sky-mask columns on sims: star bodies, manual masks, Maximask and per-band coverage are survey masks with no analogue in simulated tiles.
+    drop: |2+
+        # ShapePipe masks (boolean, True = masked)
+        - col_name: MASK_4_Stars
+          label: "star bodies"
+          kind: equal
+          value: False
+        - col_name: MASK_8_Manual
+          label: "manual mask"
+          kind: equal
+          value: False
+        - col_name: MASK_1024_Maximask
+          label: "maximask"
+          kind: equal
+          value: False
+
+        # r-band coverage.
+        - col_name: MASK_64_r
+          label: "r-band imaging"
+          kind: equal
+          value: False
+
+        # Other per-band coverage flags and Pan-STARRS z2; enable as required.
+        # Cutting on all of them at once leaves essentially no objects.
+        # - col_name: MASK_16_u
+        #   label: "u coverage"
+        #   kind: equal
+        #   value: False
+        # - col_name: MASK_2048_z2
+        #   label: "no PS-z2"
+        #   kind: equal
+        #   value: False
+        #
+        # v1.X also applied a rough pointing-coverage cut, 'npoint3' >= 3, from an
+        # external post-processing catalogue. ShapePipe v2 emits no such column and
+        # no mask bit encodes it, so that cut has no v2 counterpart; add it back
+        # here if an external pointing-coverage map is ever joined onto the
+        # catalogue.
+
+  - why: >-
+      Image sims are weighted with the data's DES table, which the workflow names; constant-shear simulations keep their mean shear.
+    replace: |2+
+        # DES weights: one table fitted on the no-shear branch, evaluated on each
+        # branch's own S/N and size (docs/source/response_calibration.md).
+        weight_scheme: des
+        des_num_bins: 20
+    with: |2+
+        # DES weights: the data's table, which the image-sims workflow names
+        # (weight_table), evaluated on each branch's own S/N and size.
+        weight_scheme: des
+        des_num_bins: 20
+
+        # Constant-shear simulations keep their mean shear.
+        additive_correction: False

@@ -2,14 +2,14 @@
 """Compose the image-sim mask/calibration config from base + declared overlay.
 
 The image-sim calibration differs from the data calibration in only a handful
-of places (input path, dropped coverage cuts, unweighted global response,
-additive-bias off).  Instead of maintaining a second full copy of the config --
+of places (input path, the sky-mask cuts and maps dropped, the data's weight
+table, additive-bias off).  Instead of maintaining a second full copy of the config --
 which can silently drift from the base it was branched from -- we keep the
-*data* config (``mask_v1.X.9.yaml``) as the single home for the shared cuts and
+*data* config (``mask_v2.0.yaml``) as the single home for the shared cuts and
 declare the sim-specific delta in an overlay
-(``mask_v1.X.9_im_sim.overlay.yaml``).  This script applies the overlay to the
+(``mask_v2.0_im_sim.overlay.yaml``).  This script applies the overlay to the
 base and emits the resolved config, which is byte-for-byte the committed runtime
-file ``mask_v1.X.9_im_sim.yaml``.  A test locks that equality, so the declaration
+file ``mask_v2.0_im_sim.yaml``.  A test locks that equality, so the declaration
 and the runtime file cannot diverge.
 
 The overlay is a list of block operations on the base *text* (not on parsed
@@ -78,7 +78,7 @@ def main(argv=None):
     ap.add_argument(
         "overlay",
         help="overlay yaml declaring base + block ops "
-        "(e.g. mask_v1.X.9_im_sim.overlay.yaml)",
+        "(e.g. mask_v2.0_im_sim.overlay.yaml)",
     )
     ap.add_argument(
         "-o",

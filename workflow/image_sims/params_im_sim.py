@@ -59,8 +59,9 @@ print(f"Galaxy catalogue = {galaxy_cat_path}")
 ### the catalogue carries the ShapePipe v2 names
 galaxy_column_map = None
 
-## Parameter list; optional, set to `None` if not required
-param_list_path = f"{data_dir}/cfis/final_cat.param"
+## Parameter list; `None` reads every column. ShapePipe's merge has already
+## selected the columns of its final_cat.param.
+param_list_path = None
 
 ### Star and PSF catalog name; optional, set to `None` if not required
 star_cat_path = None

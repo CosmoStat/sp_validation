@@ -16,6 +16,7 @@ import os
 import re
 import subprocess
 
+import h5py
 import yaml
 
 params = snakemake.params  # noqa: F821
@@ -62,6 +63,16 @@ def _sif_revision():
     return None
 
 
+def _code_stamp(path):
+    """The ``code_*`` attributes ShapePipe's merge writes on a catalogue."""
+    with h5py.File(path, "r") as hf:
+        return {
+            key.removeprefix("code_"): str(value)
+            for key, value in hf.attrs.items()
+            if key.startswith("code_")
+        }
+
+
 with open(manifest_path) as fh:
     manifest = yaml.safe_load(fh)
 with open(manifest_path, "rb") as fh:
@@ -88,9 +99,10 @@ mbias_cfg = {
             ),
             "commit": _git(params.sp_validation_repo, "rev-parse", "HEAD"),
         },
+        # ShapePipe's code stamp on each simulation's merged catalogue.
         "shapepipe": {
-            "branch": _git(params.shapepipe_repo, "rev-parse", "--abbrev-ref", "HEAD"),
-            "commit": _git(params.shapepipe_repo, "rev-parse", "HEAD"),
+            os.path.basename(os.path.dirname(path)): _code_stamp(path)
+            for path in snakemake.input["cats"]  # noqa: F821
         },
         "container": {
             "sif": params.sif,

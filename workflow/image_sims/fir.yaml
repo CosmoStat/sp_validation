@@ -1,0 +1,17 @@
+# Image simulations on Fir: the five shear branches of grid 1, processed by
+# ShapePipe (branch feat/fir-image-sims, `sp run` per branch, machines.fir),
+# measured with the v2 data's cuts and DES weight table.
+#
+#   snakemake --profile workflow/profiles/fir -s workflow/image_sims/Snakefile \
+#       -j 8 im_results --configfile workflow/image_sims/fir.yaml
+image_sims:
+  sif: /project/rrg-kyi/cdaley/unions/containers/sp_validation-develop.sif
+  sp_validation_repo: /scratch/cdaley/imsim/wt-spv
+  catalogues: /scratch/cdaley/imsim/products/{sim}/final_cat_{sim}.hdf5
+  input_sims_base: /scratch/cdaley/imsim/sims
+  grids_base: /scratch/cdaley/imsim/measure
+  num: 1
+
+  mask_config: config/calibration/mask_v2.0_im_sim.yaml
+  weight_table: /project/rrg-kyi/cdaley/unions/analyses/calibrated-sample-build/v2.0.0/catalogs/des_weights.fits
+  des_min_count: 3

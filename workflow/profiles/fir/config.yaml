@@ -1,0 +1,9 @@
+# Fir (Digital Research Alliance): every job runs on the node of the
+# allocation snakemake is launched from (local executor), inside the image.
+# Launch from an allocation with
+#   srun --jobid=<id> --overlap -n 1 -c <K> snakemake --profile workflow/profiles/fir -j <K> ...
+# /project/rrg-kyi is a symlink into /project/<gid>, so /project is bound whole.
+software-deployment-method: apptainer
+apptainer-args: "--cleanenv --bind /home,/project,/scratch"
+rerun-triggers: ["mtime", "params", "input", "code"]
+latency-wait: 60

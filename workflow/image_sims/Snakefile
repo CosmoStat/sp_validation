@@ -1,22 +1,21 @@
 """Standalone entry point for the image-simulation m-bias workflow.
 
-Run the sp_validation-side chain (merge -> extract -> calibrate -> m-bias),
-optionally including the ShapePipe pipeline stage, without pulling in the
-cosmology-validation config the top-level ``workflow/Snakefile`` requires.
+Measures the shear bias from ShapePipe's merged catalogues of the simulations
+(manifest -> extract -> calibrate -> m-bias, and im_measure), without pulling
+in the cosmology-validation config the top-level ``workflow/Snakefile``
+requires. ShapePipe's own workflow makes those catalogues first, one
+``sp run`` per shear branch.
 
-The one drive command on candide, with the committed SLURM profile owning
-scheduling and container wrapping:
+On Fir, from an allocation (``workflow/image_sims/fir.yaml`` says what runs):
 
-    snakemake --profile workflow/profiles/candide \\
-        -s workflow/image_sims/Snakefile \\
-        im_mbias --configfile my_run.yaml
+    snakemake --profile workflow/profiles/fir -s workflow/image_sims/Snakefile \
+        -j 8 im_results --configfile workflow/image_sims/fir.yaml
 
-``configfile:`` below loads the operational defaults, so ``my_run.yaml`` need
-only carry the science knobs (and any operational override); Snakemake
-deep-merges the two.  Off-cluster, drop ``--profile`` and add ``-j N``.
+``configfile:`` below loads the operational defaults, so the run config need
+only carry the paths and the science knobs; Snakemake deep-merges the two.
 
 Put targets *before* ``--configfile``: it takes one-or-more paths, so a target
-after it is swallowed as a config path ("No such file: im_mbias").  Always
+after it is swallowed as a config path ("No such file: im_results").  Always
 dry-run first with ``-n``.
 
 The same rules are also included in the main workflow under
@@ -42,4 +41,4 @@ include: "../rules/image_sims.smk"
 
 rule all:
     input:
-        f"{GRIDS_BASE}/results/m_bias_results.yaml",
+        rules.im_results.input,

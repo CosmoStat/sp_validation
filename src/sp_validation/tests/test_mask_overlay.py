@@ -1,11 +1,11 @@
 """The image-sim mask config is a declared overlay on the data mask config.
 
 The image-sim calibration does not keep an independent copy of the mask /
-calibration config: it keeps the *data* config (``mask_v1.X.9.yaml``) as the one
+calibration config: it keeps the *data* config (``mask_v2.0.yaml``) as the one
 home for the shared cuts, and declares the sim-specific delta in an overlay
-(``mask_v1.X.9_im_sim.overlay.yaml``).  ``im_compose_mask.py`` applies the
+(``mask_v2.0_im_sim.overlay.yaml``).  ``im_compose_mask.py`` applies the
 overlay to the base and must reproduce the committed runtime file
-(``mask_v1.X.9_im_sim.yaml``) **byte-for-byte**.
+(``mask_v2.0_im_sim.yaml``) **byte-for-byte**.
 
 This guard locks that equality, so the two artefacts cannot drift:
 
@@ -35,9 +35,9 @@ def _repo_root() -> Path:
 
 
 _CALIB_DIR = _repo_root() / "config" / "calibration"
-_BASE = _CALIB_DIR / "mask_v1.X.9.yaml"
-_OVERLAY = _CALIB_DIR / "mask_v1.X.9_im_sim.overlay.yaml"
-_RUNTIME = _CALIB_DIR / "mask_v1.X.9_im_sim.yaml"
+_BASE = _CALIB_DIR / "mask_v2.0.yaml"
+_OVERLAY = _CALIB_DIR / "mask_v2.0_im_sim.overlay.yaml"
+_RUNTIME = _CALIB_DIR / "mask_v2.0_im_sim.yaml"
 
 
 def _compose_module():
@@ -60,8 +60,8 @@ def test_compose_reproduces_runtime_byte_identical():
     composed = compose(base_text, overlay)
 
     assert composed == _RUNTIME.read_text(), (
-        "compose(mask_v1.X.9.yaml, overlay) no longer reproduces "
-        "mask_v1.X.9_im_sim.yaml byte-for-byte -- the runtime file and its "
+        "compose(mask_v2.0.yaml, overlay) no longer reproduces "
+        "mask_v2.0_im_sim.yaml byte-for-byte -- the runtime file and its "
         "declared overlay have drifted; reconcile one against the other."
     )
 
@@ -77,9 +77,9 @@ def test_compose_fails_loud_on_stale_anchor():
 
     module = _compose_module()
     overlay = yaml.safe_load(_OVERLAY.read_text())
-    # Drop the IMAFLAGS_ISO cut from the base text so its overlay anchor no
-    # longer matches; compose must abort (SystemExit from die()).
-    mangled = _BASE.read_text().replace("IMAFLAGS_ISO", "SOMETHING_ELSE")
+    # Rename the star-body mask column in the base text so its overlay anchor
+    # no longer matches; compose must abort (SystemExit from die()).
+    mangled = _BASE.read_text().replace("MASK_4_Stars", "SOMETHING_ELSE")
 
     with pytest.raises(SystemExit, match="out of sync with the base"):
         module.compose(mangled, overlay)
