@@ -23,9 +23,8 @@ from io import StringIO
 
 import numpy as np
 
-from sp_validation import calibration
 from sp_validation import catalog_builders as sp_joint
-from sp_validation.calibration import metacal
+from sp_validation import response
 
 # %%
 # Initialize calibration class instance
@@ -425,26 +424,10 @@ if dat is not None:
 # Call metacal if data is available
 if dat is not None:
     cm = config["metacal"]
-    gal_metacal = metacal(
-        dat,
-        masks_basic_combined._mask,
-        snr_min=cm["gal_snr_min"],
-        snr_max=cm["gal_snr_max"],
-        rel_size_min=cm["gal_rel_size_min"],
-        rel_size_max=cm["gal_rel_size_max"],
-        size_corr_ell=cm["gal_size_corr_ell"],
-        sigma_eps=cm["sigma_eps_prior"],
-        global_R_weight=cm["global_R_weight"],
-        verbose=True,
+    # The metacal selection of the no-shear branch, after the basic masks.
+    mask_metacal_bool = masks_basic_combined._mask & response.select(
+        response.branch_columns(dat, "ns"), response.Cuts.from_config(cm)
     )
-
-    g_corr_mc, g_uncorr, w, mask_metacal, c, c_err = calibration.get_calibrated_m_c(
-        gal_metacal
-    )
-
-    # Convert index array to boolean mask
-    mask_metacal_bool = np.zeros(len(dat), dtype=bool)
-    mask_metacal_bool[mask_metacal] = True
 
     mask_tmp._mask = mask_metacal_bool
 

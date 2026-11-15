@@ -22,7 +22,21 @@ selection a redshift distribution. Run them in order. See
 | 1 | `extract_info.py` | Extract metacal + diagnostic info for one campaign; create pre-calibration shear catalogues. Configured via `params.py`. |
 | 2 | `create_joint_comprehensive_cat.py` | Merge the per-campaign comprehensive catalogues into one joint catalogue (front-end of `catalog_builders.JointCat`). |
 | 3 | `demo_apply_hsp_masks.py` | Add the structural and coverage (HealSparse) masks. |
-| 4 | `calibrate_comprehensive_cat.py` | Galaxy selection + metacalibration. Uses the mask configs in `config/calibration/`. |
+| 4 | `calibrate_comprehensive_cat.py` | Galaxy selection + metacalibration (`sp_validation.response.calibrate_catalogue`). Uses the mask configs in `config/calibration/`, whose `metacal` block must declare `weight_scheme: des` or `iv`. |
+| 5 | `calibrate_nz.py` | SOM direct calibration: the tomographic n(z) file, each row's `TOM_BIN_ID` and n(z) realisations. |
+
+Step 4 writes the cut catalogue `shape_catalog_cut_<shape>.fits` and beside it:
+
+- `<stem>_response.json`: R, its shear, selection and joint parts, `c_e`,
+  `c_g`, the branch populations, and (with `TILE_ID`) the tile-jackknife
+  covariance;
+- `<stem>_sums.npz`: the per-tile response sums (`response.Sums`), from which
+  `scripts/compute_m_bias_image_sims.py` measures image-simulation m;
+- `<stem>_des_weights.fits`: the DES weight table (`response.write_table`),
+  for `weight_scheme: des`.
+
+A `metacal.weight_table` path makes step 4 weight with that table instead of
+fitting one (image simulations use the data's table).
 
 `params.py` is the shared parameter template (paths, column names, survey
 constants) imported by `extract_info.py`; copy and edit it per run.
@@ -75,18 +89,23 @@ snakemake --profile workflow/profiles/default -s workflow/calibrate/Snakefile -j
 
 What it does (`sp_validation.sample.pipeline`): reads the shapes one HEALPix
 pixel at a time, in parallel; cuts tile overlaps against every tile of the
-snapshot; applies the selection; sums, over all pixels, the per-cell moments
-that give the DES weight table and the response `R = R_shear + R_selection`
-and additive bias `c_e` of the whole sample; then writes each pixel with
-`w_des` and `e = R⁻¹(g − c_e)`. The products, laid out as a release:
+snapshot; applies the selection; reduces each pixel to per-(tile, cell) sums
+(`sp_validation.response`, `docs/source/response_calibration.md`), whose total
+gives the DES weight table, the response `R = R_shear + R_selection` and the
+additive bias `c_e` of the whole sample, and their delete-one-tile jackknife;
+then writes each pixel with `w_des` and `e = R⁻¹(g − c_e)`. The products, laid out as a release:
 
 - `catalogs/calibrated/`: HATS catalogue of `RA`, `Dec`, `e1`, `e2`, `w_des`,
   `e1_PSF`, `e2_PSF`, `SIZE_RATIO`, `SNR`, `N_EPOCH`, `TILE_KEY`, `TILE_ID`,
   `NUMBER` and `OBJECT_ID`, the DR6 object ID that joins it to the collection.
   It has no `TOM_BIN_ID`: the n(z) step assigns bins, by `OBJECT_ID`.
 - `catalogs/response.json`, `catalogs/des_weights.fits`: the response and its
-  parts, `c_e`, the branch populations; the weight table, readable as a
-  `des_weight_product`.
+  parts, `c_e`, the branch populations and their jackknife covariance
+  (`response.record`); the weight table (`response.read_table` reads it).
+- `catalogs/response_sums.npz`: the sums, grouped by `TILE_KEY`
+  (`response.Sums.load` reads them). The response, `c_e` and jackknife of
+  any table on the same cells (unit weights, a refitted or reweighted table,
+  a restricted S/N range) follow from them without the catalogue.
 - `catalogs/survey.json`, `masks/footprint-nside4096-ring.fits`: area, n_eff
   and σ_e over the occupied pixels, and those pixels.
 - `catalogs/config_mask.yaml`, `provenance/calibrated_recipe.yaml`: the

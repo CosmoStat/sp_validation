@@ -7,7 +7,8 @@ authors:
 
 narrative:
   summary: |
-    The calibrated shear sample of the DR6 ShapePipe v2 catalogue: the recipe
+    The calibrated shear sample of the DR6 ShapePipe v2 catalogue, and the
+    image-simulation test of its calibration: the recipe
     `config/calibration/sample/v2.yaml`, run by
     `scripts/calibration/calibrate_sample.py` (`sp_validation.sample`), selects
     galaxies from a ShapePipe snapshot's shapes with
@@ -17,8 +18,8 @@ narrative:
   methods: |
     The build reads a [whole snapshot and records it](#decisions.snapshot_record),
     cuts tile overlaps against [every tile of the snapshot](#decisions.overlap_cut),
-    applies the [selection](#decisions.selection_cuts), weights and calibrates
-    with [one weight table and one response](#decisions.weights_and_response),
+    applies the [selection](#decisions.selection_cuts), calibrates with
+    [one weight table and one response for the whole sample](#decisions.sample_wide_calibration),
     subtracts [one additive bias](#decisions.additive_bias) and applies
     [no object-wise leakage correction](#decisions.leakage_correction), as
     [a rule of the Snakemake workflow](#decisions.orchestrator). The
@@ -27,14 +28,41 @@ narrative:
     ShapePipe's external-catalogue join counts per tile; the
     [paired-fraction tile selection](#decisions.catalogue_match_tile_selection)
     keeps that fraction diagnostic-only.
+
+    Calibration is metacalibration, defined once in `sp_validation.response`
+    (`docs/source/response_calibration.md`). Each galaxy is measured on five
+    versions of its image, the metacal branches: unsheared, and sheared by
+    ±h (h = 0.01) along each shear component. Galaxies are weighted by
+    [a table in S/N and size evaluated on every branch](#decisions.galaxy_weights),
+    [fitted on the unsheared branch](#decisions.weight_table); the
+    [response](#decisions.response_estimator) is the derivative of the
+    weighted mean shear it calibrates; the [additive bias](#decisions.additive_bias)
+    is subtracted once; [errors](#decisions.calibration_uncertainties) are
+    tile jackknifes. Image simulations measure the residual multiplicative
+    bias m with [the estimator applied to data](#decisions.simulation_shear_bias)
+    and [the data's weight table](#decisions.simulation_weight_table); a
+    [residual m](#findings.residual_image_sim_m) remains unexplained and is
+    not applied.
+
+    Sources of the numbers quoted here. Data: the v2.0.0 release sample
+    (191,016,178 galaxies), measured on 15 November 2026 with
+    `sp_validation.response`. Image simulations: the October 2026 runs on
+    Martin Kilbinger's four v2 simulation grids, archived on the repository
+    branch `archive/pr425-validation-ca09a18c` (`docs/validation/response/`);
+    m values are (m1, m2) × 10⁻³ combined over the four grids. Synthetic
+    tests: `src/sp_validation/tests/test_response.py`.
   inputs: |
     The snapshot's [manifest](#inputs.snapshot_manifest) and
-    [shapes](#inputs.shapes), and the published
-    [tile_manifests](#inputs.tile_manifests).
+    [shapes](#inputs.shapes), the [v2_catalogue](#inputs.v2_catalogue), its
+    published [tile_manifests](#inputs.tile_manifests), and the
+    [image_sims](#inputs.image_sims).
   outputs: |
     The [calibrated_sample](#outputs.calibrated_sample) with its
-    [response](#outputs.response) and [footprint](#outputs.footprint), and the
-    [catalogue_match_audit](#outputs.catalogue_match_audit) table.
+    [response](#outputs.response) and [footprint](#outputs.footprint), the
+    [catalogue_match_audit](#outputs.catalogue_match_audit) table, the
+    [selected_catalogue](#outputs.selected_catalogue) with its
+    [response_record](#outputs.response_record), and the
+    [image_sim_shear_bias](#outputs.image_sim_shear_bias).
 
 inputs:
   - id: snapshot_manifest
@@ -53,6 +81,13 @@ inputs:
       ngmix and metacal branches, flags, mask bits), as the assemble stage
       wrote it: a HATS catalogue whose properties name the manifest it was
       built from.
+  - id: v2_catalogue
+    type: data
+    label: "ShapePipe v2 comprehensive catalogue (DR6)"
+    source: "unions_shapepipe_comprehensive_2025_v2.0.hdf5"
+    description: >-
+      The comprehensive ShapePipe v2 catalogue named by mask_v2.0.yaml's
+      input_path, before galaxy selection and metacalibration.
   - id: tile_manifests
     type: data
     label: "Published ShapePipe tile manifests"
@@ -61,6 +96,15 @@ inputs:
       Per-tile manifests; those written by ShapePipe with external-catalogue
       matching carry a catalogue_match block of join counts, the external
       paired fraction and the warning budget.
+  - id: image_sims
+    type: data
+    label: "v2 image-simulation grids"
+    source: "Martin Kilbinger's four v2 simulation grids"
+    description: >-
+      ShapePipe v2 catalogues of image simulations in four grids, each with
+      a simulation at no input shear and simulations sheared by +g and -g
+      along each shear component; the simulated galaxies sit on a lattice at
+      least 7.85 arcsec apart.
 
 decisions:
   snapshot_record:
@@ -145,52 +189,189 @@ decisions:
         label: "Also cut star halos (bits 1 and 2)"
         description: "Removes about 13% of the area; Paper III found the masking added B-modes in v1."
 
-  weights_and_response:
-    label: "One weight table and one response for the sample"
+  sample_wide_calibration:
+    label: "One weight table and one response for the whole sample"
     tags: [calibration]
     rationale: >-
-      DES-style weights (case d of CosmoStat/sp_validation#425): one table
-      W(S/N, T/T_PSF) on 20 × 20 logarithmic cells between the cuts, fitted on
-      the no-shear selection of the whole sample as mean(trace R/2)² /
-      mean(|e|²/2), cells with fewer than 3 galaxies pooled with their
-      neighbours; each metacal branch is weighted by the table at its own S/N
-      and size. R = R_shear + R_selection is one 2 × 2 matrix for the sample,
-      every branch mean normalised by its own weights. The table is fitted
-      on the galaxies it weights; #425 measures what that costs in image
-      simulations. Because a weight depends on a galaxy only through its
-      cell, table and response follow from per-cell sums that add over
-      chunks of the catalogue.
-      Values: mask_v2.0.yaml#metacal.weight_scheme = "des";
-      mask_v2.0.yaml#metacal.des_num_bins = 20.
-    default: des_table_on_the_sample
+      The sample is calibrated as one population: one weight table
+      (decision weight_table), one response (decision response_estimator)
+      and one additive bias (decision additive_bias), fitted on every
+      selected galaxy of the snapshot, not per region or per tomographic bin.
+      Because a weight depends on a galaxy only through its (S/N, size)
+      cell, the table, the response and their tile jackknife follow from
+      per-(tile, cell) sums that add over chunks of the catalogue, so the
+      build reads it one HEALPix pixel at a time and its result does not
+      depend on the pixelisation; the sums are kept as
+      catalogs/response_sums.npz.
+      Values: none.
+    default: one_for_the_sample
     options:
-      des_table_on_the_sample:
-        label: "DES table fitted on the sample"
-        description: "Case d."
-      inverse_variance:
-        label: "Inverse-variance weights"
-        description: "weight_scheme iv: no fitted table; R falls from 0.79 to about 0.71 (#425)."
+      one_for_the_sample:
+        label: "One table and one R for the sample"
+        description: "Every galaxy is calibrated by the sample's mean response."
       refit_per_region:
         label: "Table and response per region"
         description: "Follows depth variations, at the cost of noisier tables and a response that differs across the footprint."
+      per_tomographic_bin:
+        label: "Response per tomographic bin"
+        description: >-
+          With bin membership held fixed across the metacal branches, the
+          v2.0.0 bins 1–4 have R/R_sample = 1.086, 1.092, 1.057, 0.987
+          (± 0.0004; measured on data, 15 November 2026), so one R
+          miscalibrates each bin by up to 9%.
 
-  additive_bias:
-    label: "Additive bias subtracted once for the sample"
+  response_estimator:
+    label: "Metacalibration response of the weighted mean"
     tags: [calibration]
     rationale: >-
-      The catalogue's e is R⁻¹(g − c_e), with c_e the weighted mean of the
-      uncalibrated no-shear ellipticity over the whole sample (1.8e-5 and
-      1.1e-4 on v2.0.0). Patches of the footprint scatter around it by about
-      3e-4, which validation measures; no spatially varying c is removed.
+      Metacalibration measures each galaxy on five versions of its image, the
+      branches: unsheared, and sheared by ±h (h = 0.01) along each shear
+      component. The catalogue's shear estimate is a weighted mean
+      ⟨e⟩ = Σ w e / Σ w over a selection, and the 2 × 2 response R calibrates
+      it. R = R_shear + R_sel. R_shear is the weighted mean, over the
+      unsheared selection, of each galaxy's finite-difference response
+      (e⁺ − e⁻)/2h. R_sel is the finite difference of the weighted mean
+      unsheared ellipticity taken under each sheared branch's own selection
+      and weights, each branch mean divided by its own weight sum (separate
+      normalisation). Shear moves galaxies across the cuts and changes their
+      weights, so the weight sum differs between branches; with separate
+      normalisation R is the derivative of the weighted mean it calibrates,
+      including the term from the change of Σ w. On the v2.0.0 sample
+      (191,016,178 galaxies, measured on data on 15 November 2026) the
+      diagonal of R is 0.78576, 0.78795. Definitions are in
+      docs/source/response_calibration.md.
+      Values: none.
+    default: separate_normalisation
+    options:
+      separate_normalisation:
+        label: "R_shear + R_sel, each branch mean on its own weight sum"
+        description: "The derivative of the weighted mean applied to the catalogue."
+      joint:
+        label: "Joint estimator (diagnostic)"
+        description: >-
+          Each sheared branch's own ellipticity, under its own selection and
+          weights. Computed beside the chosen R as a diagnostic: on the
+          v2.0.0 sample its diagonal is 0.78598, 0.78820 against 0.78576,
+          0.78795 for the chosen estimator, agreeing to 0.03% (measured on
+          data).
+      common_denominator:
+        label: "One weight sum for both sheared branches"
+        description: >-
+          Divides both branch sums by a common denominator, which drops the
+          term from the change of the weight sum under shear.
+      ivw_shear_unweighted_selection:
+        label: "Inverse-variance R_shear with unweighted R_sel"
+        description: >-
+          The earlier sp_validation practice: R_shear weighted by inverse
+          variance, R_sel unweighted. Together they calibrate a mean other
+          than the weighted mean applied to the catalogue.
+
+  galaxy_weights:
+    label: "Galaxy weights from one table, evaluated on every branch"
+    tags: [calibration]
+    rationale: >-
+      Galaxies are weighted by a DES-Y3-style table W(S/N, size), with
+      S/N = FLUX/FLUX_ERR and size = T/T_PSF (T_PSF of the reconvolved PSF),
+      both from the ngmix fit. The
+      table is fitted once on the unsheared branch (decision weight_table)
+      and evaluated on every branch at that branch's own S/N and size (case d
+      of CosmoStat/sp_validation#425, Martin Kilbinger). A galaxy's weight
+      therefore changes under shear, and the response includes that change.
+      With unit weights instead, the v2.0.0 sample has R = 0.6889 ± 0.0003
+      (R_shear 0.6351, R_sel +0.0538), against R = 0.7869 ± 0.0002
+      (R_shear 0.7581, R_sel +0.0287) with the table (measured on data,
+      delete-one-tile jackknife errors over 22,901 tiles).
+      Values: mask_v2.0.yaml#metacal.weight_scheme = "des".
+    default: des_table_on_every_branch
+    options:
+      des_table_on_every_branch:
+        label: "DES table at each branch's own S/N and size"
+        description: "Case d: the response includes the change of the weights under shear."
+      inverse_variance:
+        label: "Inverse-variance weights from each branch's errors"
+        description: >-
+          1/(2σ_e² + σ_g1² + σ_g2²) with each branch's own measured
+          ellipticity errors. Supported by the library and tested on
+          synthetic catalogues; on the image simulations it gives
+          m = (−16.1 ± 4.1, −17.0 ± 4.7) × 10⁻³ (measured on image
+          simulations). It cannot run on the v2 catalogue, which does not
+          keep the sheared branches' error columns.
+      frozen_weights:
+        label: "Weights frozen at their unsheared values"
+        description: >-
+          Every branch takes each galaxy's unsheared weight, which removes
+          the weight response from R. For inverse-variance weights this
+          shifts m by +0.2 to +0.4 percentage points (measured on image
+          simulations).
+      unit:
+        label: "Unit weights"
+        description: >-
+          On the v2.0.0 sample R = 0.6889 ± 0.0003 against 0.7869 ± 0.0002
+          with the table (measured on data).
+
+  weight_table:
+    label: "The DES weight table"
+    tags: [calibration]
+    rationale: >-
+      In each (S/N, size) cell, W = (Σ r)² / (n Σ |e|²/2), from unweighted
+      moments of the n galaxies of the unsheared selection in the cell, with
+      r the mean of the two diagonal elements of the galaxy's response and e
+      its unsheared ellipticity. The table has 20 × 20 logarithmic cells
+      between the S/N and size cuts; the size coordinate is T/T_PSF without
+      the ellipticity correction. A cell with fewer than 3 training galaxies
+      takes the moments of the smallest square of cells centred on it that
+      holds 3. On the image-simulation grids, without this pooling one cell
+      with two galaxies inflated one grid's error on m2 fivefold (0.0512
+      against 0.0098); the errors are stable for minimum counts 3 to 10
+      (varying by at most 6.8%), and m moves by at most 0.21σ between no
+      minimum and 3 (measured on image simulations). On the public v1.4.6.3
+      catalogue the rule affects 3 objects.
+      Values: mask_v2.0.yaml#metacal.des_num_bins = 20;
+      response.calibrate_catalogue#des_min_count = 3.
+    default: pooled_min_3
+    options:
+      pooled_min_3:
+        label: "Cells with fewer than 3 galaxies pooled"
+        description: "Removes single-cell outliers in the error at negligible cost in m."
+      no_pooling:
+        label: "No pooling"
+        description: >-
+          Martin Kilbinger's reference implementation. A sparse cell can
+          carry an extreme weight: on one grid it inflated the error on m2
+          fivefold (measured on image simulations).
+      pooled_min_10:
+        label: "Minimum count 10"
+        description: "Moves m by up to 0.66σ for no gain in stability (measured on image simulations)."
+      pooled_min_100:
+        label: "Minimum count 100"
+        description: "Moves m by up to 0.86σ for no gain in stability (measured on image simulations)."
+
+  additive_bias:
+    label: "Additive bias subtracted once for the catalogue"
+    tags: [calibration]
+    rationale: >-
+      c_e is the weighted mean of the unsheared, uncalibrated ellipticity
+      over the selected sample, and the calibrated shear is R⁻¹(e − c_e).
+      Constant-shear image simulations skip the subtraction, since their mean
+      ellipticity is the signal. The error of c_e is reported both as shape
+      noise, √(Σ w² (e − c_e)²)/Σ w, and as a delete-one-group jackknife,
+      which includes spatially correlated contributions (Martin Kilbinger,
+      CosmoStat/sp_validation#408). On the v2.0.0 sample
+      c_e = (0.18 ± 0.23, 1.09 ± 0.23) × 10⁻⁴ with tile-jackknife errors
+      (measured on data). Patches of the footprint scatter around it by
+      about 3 × 10⁻⁴, which validation measures; no spatially varying c is
+      removed.
       Values: none.
     default: global_mean
     options:
       global_mean:
-        label: "One c_e for the sample"
+        label: "One c_e for the catalogue"
         description: "The catalogue's weighted mean ellipticity is zero by construction."
       not_subtracted:
         label: "Leave c in the catalogue"
-        description: "Estimators must subtract it themselves."
+        description: >-
+          Estimators must subtract it themselves. The setting for
+          constant-shear image simulations (additive_correction: false).
 
   leakage_correction:
     label: "No object-wise PSF-leakage correction"
@@ -320,13 +501,107 @@ decisions:
           Unmatched external objects carry no shapes; their absence alone does
           not justify masking retained neighbours.
 
+  simulation_shear_bias:
+    label: "Image-simulation multiplicative bias from full populations"
+    tags: [calibration, validation]
+    rationale: >-
+      For each shear component, the simulations sheared by +g and by −g are
+      each calibrated on their full selected population with their own
+      response and weights, giving mean shears ĝ⁺ and ĝ⁻, and
+      m = (ĝ⁺ − ĝ⁻)/(2 g_in) − 1, with g_in the input shear. This is the same
+      weighted mean that is applied to data, so m tests the calibration the
+      catalogue receives. Matching objects between the +g and −g simulations
+      with a symmetric pair weight cancels the change of the weight that the
+      response keeps, and keeps only objects selected in both: it gives
+      m = (−4, 0) × 10⁻³ where the full populations give
+      (−19.3 ± 4.0, −14.3 ± 4.7) × 10⁻³ with the same table (measured on
+      image simulations). Pair matching was dropped by agreement with Martin
+      Kilbinger on 26 October 2026.
+      Values: none.
+    default: full_populations
+    options:
+      full_populations:
+        label: "Each simulation on its full selection, own response"
+        description: "The estimator applied to data."
+      matched_pairs:
+        label: "Matched ±g objects with weight ½(w₊ + w₋)"
+        description: >-
+          Cancels the weight response and drops objects selected in only one
+          simulation; gives (−4, 0) × 10⁻³ against (−19.3 ± 4.0,
+          −14.3 ± 4.7) × 10⁻³ (measured on image simulations).
+      pair_mean_response:
+        label: "Both simulations calibrated with the mean of their responses"
+        description: >-
+          Axel Guinot's variant. Gives the same m to ≤ 1.4 × 10⁻³, within
+          1.2σ of the paired jackknife error (measured on image
+          simulations), so the choice between it and the per-simulation
+          response does not matter.
+
+  simulation_weight_table:
+    label: "Simulations weighted with the data's table"
+    tags: [calibration, validation]
+    rationale: >-
+      The simulations take the data's selection and the data's weight table
+      (decision weight_table), held fixed, so they are weighted as the data
+      are. A table fitted on the simulations' own shapes correlates the
+      weights with the measured shapes and suppresses the shear: for N
+      galaxies per cell it gives m = −1/N where an independent table gives 0
+      (shown on a synthetic test, test_response.py::
+      test_self_fitted_table_bias_is_inverse_cell_occupancy). On the grids, a
+      self-fitted table gives m = (−19.3 ± 4.0, −14.3 ± 4.7) × 10⁻³, the v2
+      data table (−9.2 ± 3.2, −8.9 ± 3.6) × 10⁻³, and a table fitted on the
+      other three grids (−11.2 ± 3.3, −8.1 ± 3.9) × 10⁻³ (measured on image
+      simulations). The image-sims workflow requires the run config to name
+      the table (weight_table); self and unit are diagnostics.
+      Values: none.
+    default: data_table
+    options:
+      data_table:
+        label: "The v2 data's table, fixed"
+        description: "m = (−9.2 ± 3.2, −8.9 ± 3.6) × 10⁻³ (measured on image simulations)."
+      self_fitted:
+        label: "Each simulation's own table"
+        description: >-
+          Biased by −1/N per cell (synthetic test); m = (−19.3 ± 4.0,
+          −14.3 ± 4.7) × 10⁻³ (measured on image simulations).
+      other_grids_table:
+        label: "A table fitted on the other three grids"
+        description: >-
+          Independent of the simulation it weights; m = (−11.2 ± 3.3,
+          −8.1 ± 3.9) × 10⁻³ (measured on image simulations).
+
+  calibration_uncertainties:
+    label: "Tile-jackknife errors with the response recomputed"
+    tags: [calibration, stats]
+    rationale: >-
+      Errors on R, c and m are delete-one-tile jackknifes: each tile is
+      removed from every metacal branch at once (and, for m, from every
+      simulation), and the response is recomputed for each deletion. A table
+      fitted on the catalogue itself is refitted for each deletion, so its
+      training noise enters the error; an independent table, such as the
+      data's table applied to simulations, stays fixed. On the v2.0.0 sample
+      the jackknife errors of R are 1.8 × 10⁻⁴ with the table fixed and
+      1.5 × 10⁻⁴ with it refitted (measured on data).
+      Values: none.
+    default: tile_jackknife
+    options:
+      tile_jackknife:
+        label: "Delete-one-tile jackknife, response recomputed"
+        description: "Includes the response's own uncertainty and spatially correlated noise."
+      object_bootstrap:
+        label: "Object bootstrap with the response held fixed"
+        description: >-
+          Leaves out the uncertainty of the response itself and spatial
+          correlations between galaxies.
+
 outputs:
   - id: calibrated_sample
     type: data
     label: "Calibrated shear sample"
     inputs: [snapshot_manifest, shapes]
     decisions:
-      [snapshot_record, overlap_cut, selection_cuts, weights_and_response,
+      [snapshot_record, overlap_cut, selection_cuts, sample_wide_calibration,
+       response_estimator, galaxy_weights, weight_table,
        additive_bias, leakage_correction, catalogue_match_tile_selection,
        orchestrator]
     description: >-
@@ -337,17 +612,23 @@ outputs:
     type: data
     label: "Response, additive bias and weight table"
     inputs: [snapshot_manifest, shapes]
-    decisions: [snapshot_record, overlap_cut, selection_cuts, weights_and_response]
+    decisions:
+      [snapshot_record, overlap_cut, selection_cuts, sample_wide_calibration,
+       response_estimator, galaxy_weights, weight_table,
+       calibration_uncertainties, additive_bias]
     description: >-
       catalogs/response.json (R and its shear and selection parts, c_e, c_g,
-      branch populations) and catalogs/des_weights.fits (the table, readable
-      as a des_weight_product).
+      branch populations, delete-one-tile jackknife covariance),
+      catalogs/des_weights.fits (the table, read by response.read_table) and
+      catalogs/response_sums.npz (the per-tile, per-cell sums they follow
+      from, read by response.Sums.load).
   - id: footprint
     type: data
     label: "Footprint and survey statistics"
     inputs: [snapshot_manifest, shapes]
     decisions:
-      [snapshot_record, overlap_cut, selection_cuts, weights_and_response,
+      [snapshot_record, overlap_cut, selection_cuts, sample_wide_calibration,
+       galaxy_weights, weight_table,
        additive_bias, footprint]
     description: >-
       masks/footprint-nside4096-ring.fits and catalogs/survey.json: occupied
@@ -355,10 +636,88 @@ outputs:
   - id: catalogue_match_audit
     type: table
     label: "Per-tile catalogue-match audit"
-    inputs: [tile_manifests]
+    inputs: [v2_catalogue, tile_manifests]
     decisions: [catalogue_match_tile_selection]
     description: >-
       catalogue_match_audit.csv from scripts/calibration/extract_info.py when
       catalogue_match_manifests is set: per-tile catalogue rows, join counts
       and warnings, distinguishing a missing manifest, missing match metadata
       and a measured empty external catalogue.
+  - id: selected_catalogue
+    type: data
+    label: "Selected, metacalibrated DR6 shear catalogue"
+    inputs: [v2_catalogue]
+    decisions:
+      - catalogue_match_tile_selection
+      - response_estimator
+      - galaxy_weights
+      - weight_table
+      - additive_bias
+    description: >-
+      Output of scripts/calibration/calibrate_comprehensive_cat.py under
+      mask_v2.0.yaml, including its N_EPOCH >= 2 cut: weight column w_des and
+      calibrated e1, e2.
+  - id: response_record
+    type: data
+    label: "Response record, sums and weight table of the catalogue"
+    inputs: [v2_catalogue]
+    decisions:
+      - response_estimator
+      - galaxy_weights
+      - weight_table
+      - calibration_uncertainties
+      - additive_bias
+    description: >-
+      Written beside the selected catalogue by
+      calibrate_comprehensive_cat.py: the response record (_response.json:
+      R, R_shear, R_selection, R_joint, c_e, c_g and their tile-jackknife
+      covariance), the per-tile sums (_sums.npz) and the DES weight table
+      (_des_weights.fits).
+  - id: image_sim_shear_bias
+    type: table
+    label: "Image-simulation multiplicative and additive bias"
+    inputs: [image_sims]
+    decisions:
+      - response_estimator
+      - galaxy_weights
+      - weight_table
+      - simulation_shear_bias
+      - simulation_weight_table
+      - calibration_uncertainties
+    description: >-
+      m_bias_results.yaml from scripts/compute_m_bias_image_sims.py: m1, c1,
+      m2, c2 with their tile-jackknife covariance, for the weight table the
+      run config names.
+
+findings:
+  residual_image_sim_m:
+    id: residual_image_sim_m
+    label: "Unexplained residual m in image simulations"
+    claim: >-
+      With the chosen calibration and the v2 data's weight table, the image
+      simulations leave m = (−9.2 ± 3.2, −8.9 ± 3.6) × 10⁻³, concentrated at
+      low S/N, whose cause is not identified; no value of m is adopted or
+      applied to the catalogue.
+    created_at: "2026-11-15T00:00:00"
+    derived: true
+    scope: >-
+      The four v2 image-simulation grids, October 2026 runs; m combined
+      over the grids.
+    tags: [calibration, validation, open]
+    notes: >-
+      The bias sits at low S/N: −18 ± 4 × 10⁻³ at S/N 10–20 in a rebuild from
+      the simulated image stamps, both components pooled. Ruled out as its
+      cause: blending (the simulated galaxies sit on a lattice at least
+      7.85 arcsec apart); the SExtractor FLAGS cut (changes m by +0.2 ± 0.7,
+      +0.4 ± 0.5 × 10⁻³); self-fitted weights (decision
+      simulation_weight_table); the choice between per-simulation and
+      pair-mean response (decision simulation_shear_bias); and the centroid
+      convention and CCD padding of the stamp rebuild. Idealising the
+      measurement inputs (true noise level, no background, true centroid, no
+      masking) removes +13 ± 6 × 10⁻³ of the faint-end bias, which is 2.3σ
+      and not decisive. All measured on image simulations.
+    evidence:
+      - id: e1
+        artifact: image_sim_shear_bias
+        snapshot: "archive/pr425-validation-ca09a18c:docs/validation/response/"
+        source_commit: "ca09a18c"

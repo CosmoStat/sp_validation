@@ -3,6 +3,15 @@
 
 Usage:
     compute_m_bias_image_sims.py -c config.yaml [-v] [--cumulative] [--n_tiles N]
+
+Each simulation's calibration step (``calibrate_comprehensive_cat.py``) leaves
+its per-tile response sums beside its cut catalogue (``sums_name``). For every
+shear component the ``+g`` and ``-g`` simulations give ``m`` and ``c``
+(``sp_validation.response.shear_bias``), and deleting each tile from all
+simulations at once gives their covariance (``shear_bias_jackknife``). The
+config's ``weight_table`` names the table every simulation is weighted with: a
+DES weight-table product, ``self`` (each simulation's own table, refitted per
+deletion, with ``des_min_count``) or ``unit``.
 """
 
 import argparse
@@ -18,7 +27,7 @@ matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 
-from sp_validation.image_sims import ImageSimMBias
+from sp_validation import response
 
 
 def to_python(obj):
@@ -38,6 +47,43 @@ def to_python(obj):
     if isinstance(obj, (np.integer, np.floating)):
         return float(obj)
     return obj
+
+
+def measure(config, verbose=False):
+    """m, c and their tile-jackknife covariance from the simulations' sums."""
+    num = config["num"]
+    grid = config.get("sims_type", "grid") == "grid"
+    suffix = f"_grid_{num}" if grid else f"_{num}"
+
+    def sums(branch):
+        path = f"{config['grids_dir']}/{branch}{suffix}/{config['sums_name']}"
+        if verbose:
+            print(f"  Loading {path}")
+        return response.Sums.load(path)
+
+    pairs = {
+        p["component"]: (sums(p["plus"]), sums(p["minus"])) for p in config["pairs"]
+    }
+    choice = config["weight_table"]
+    if choice == "self":
+        table = response.refit(config["des_min_count"])
+    elif choice == "unit":
+        table = response.unit_table(next(iter(pairs.values()))[0].edges)
+    else:
+        table = response.read_table(choice)
+    g_in = config["shear_amplitude"]
+    values = response.shear_bias(pairs, g_in, table)
+    labels, _, covariance = response.shear_bias_jackknife(pairs, g_in, table)
+    results = dict(values)
+    for key, error in zip(values, np.sqrt(np.diag(covariance)), strict=True):
+        results[f"{key}_err"] = error
+    results.update(
+        mc_covariance=covariance,
+        covariance_order=list(values),
+        jackknife_tiles=[str(t) for t in labels],
+        weight_table=choice,
+    )
+    return results
 
 
 def parse_args():
@@ -267,27 +313,15 @@ def main():
             args.n_tiles = n_tiles
             print(f"Auto-detected {n_tiles} tiles")
 
-    mb = ImageSimMBias(config)
-
-    print("Loading catalogues...")
-    mb.load_catalogs(verbose=args.verbose)
-
-    # ``run`` returns a document with the primary scheme's m/c mirrored at the
-    # top level plus a per-scheme ``weights`` block. Cast the whole tree to
-    # plain Python floats so the YAML/text output is human-readable (raw numpy
-    # scalars serialise as !!python/object binary).
-    results = to_python(mb.run(verbose=True))
+    print("Loading response sums...")
+    results = to_python(measure(config, verbose=args.verbose))
 
     print()
     print("=" * 40)
-    print("  Results")
+    print(f"  Results (weights: {config['weight_table']})")
     print("=" * 40)
-    for scheme, res in results["weights"].items():
-        print(f"  weights: {scheme}")
-        print(f"    m1 = {res['m1']:+.4f} +-{res['m1_err']:.4f}")
-        print(f"    c1 = {res['c1']:+.4f} +-{res['c1_err']:.4f}")
-        print(f"    m2 = {res['m2']:+.4f} +-{res['m2_err']:.4f}")
-        print(f"    c2 = {res['c2']:+.4f} +-{res['c2_err']:.4f}")
+    for key in results["covariance_order"]:
+        print(f"    {key} = {results[key]:+.4f} +-{results[key + '_err']:.4f}")
     print("=" * 40)
 
     # Cumulative tracking
@@ -329,15 +363,12 @@ def main():
     with open(txt_path, "w") as f:
         f.write("Multiplicative and additive shear bias from image simulations\n")
         f.write("=" * 60 + "\n")
-        for scheme, res in results["weights"].items():
-            f.write(f"\nweights: {scheme}\n")
-            f.write(f"  m1 = {res['m1']:+.6f} ± {res['m1_err']:.6f}\n")
-            f.write(f"  c1 = {res['c1']:+.6f} ± {res['c1_err']:.6f}\n")
-            f.write(f"  m2 = {res['m2']:+.6f} ± {res['m2_err']:.6f}\n")
-            f.write(f"  c2 = {res['c2']:+.6f} ± {res['c2_err']:.6f}\n")
+        f.write(f"\nweights: {config['weight_table']}\n")
+        for key in results["covariance_order"]:
+            f.write(f"  {key} = {results[key]:+.6f} ± {results[key + '_err']:.6f}\n")
         f.write(
-            "\nErrors computed via bootstrap resampling "
-            f"(n={config['n_bootstrap']} resamples)\n"
+            "\nErrors from deleting each tile from every simulation "
+            f"({len(results['jackknife_tiles'])} tiles)\n"
         )
     print(f"Results written to {txt_path}")
 

@@ -35,26 +35,6 @@ def _git(repo, *args):
         return None
 
 
-def _repo_provenance(repo):
-    """Branch and commit of ``repo``. A code snapshot taken by ``spv run`` or
-    ``sp run`` has no .git; its ``snapshot.json`` records the checkout it was
-    copied from, including whether that checkout had uncommitted changes."""
-    snap = os.path.join(repo, "snapshot.json")
-    if os.path.isfile(snap):
-        with open(snap) as fh:
-            info = yaml.safe_load(fh) or {}
-        return {
-            "branch": info.get("branch"),
-            "commit": info.get("head"),
-            "dirty": info.get("dirty"),
-            "snapshot_of": info.get("source"),
-        }
-    return {
-        "branch": _git(repo, "rev-parse", "--abbrev-ref", "HEAD"),
-        "commit": _git(repo, "rev-parse", "HEAD"),
-    }
-
-
 def _sif_revision():
     """``org.opencontainers.image.revision`` from the running image's OCI labels.
 
@@ -90,22 +70,28 @@ with open(manifest_path, "rb") as fh:
 mbias_cfg = {
     "grids_dir": params.grids_base,
     "num": params.num,
-    "catalog_name": params.cat_name,
+    "sims_type": params.sims_type,
+    "sums_name": params.sums_name,
     # Injected shear: from the manifest, the single source of truth.
     "shear_amplitude": manifest["shear_amplitude"],
     "branches": list(manifest["branches"]),
     "pairs": manifest["pairs"],
-    "match_radius_deg": params.match_radius_deg,
-    "w_cols": list(params.w_cols),
-    "pair_match": params.pair_match,
-    "n_bootstrap": params.n_bootstrap,
-    "bootstrap_seed": params.bootstrap_seed,
+    "weight_table": params.weight_table,
+    "des_min_count": params.des_min_count,
     "results_dir": params.results_dir,
     "output_path": params.results,
     "provenance": {
         "manifest_sha256": manifest_sha256,
-        "sp_validation": _repo_provenance(params.sp_validation_repo),
-        "shapepipe": _repo_provenance(params.shapepipe_repo),
+        "sp_validation": {
+            "branch": _git(
+                params.sp_validation_repo, "rev-parse", "--abbrev-ref", "HEAD"
+            ),
+            "commit": _git(params.sp_validation_repo, "rev-parse", "HEAD"),
+        },
+        "shapepipe": {
+            "branch": _git(params.shapepipe_repo, "rev-parse", "--abbrev-ref", "HEAD"),
+            "commit": _git(params.shapepipe_repo, "rev-parse", "HEAD"),
+        },
         "container": {
             "sif": params.sif,
             "ghcr_revision": _sif_revision(),

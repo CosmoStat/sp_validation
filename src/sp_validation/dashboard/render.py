@@ -123,10 +123,10 @@ CORRELATIONS = [
         "psf_alpha_mag",
         "leakage",
         "Scale-dependent PSF leakage α(θ) = τ₀,₊/ρ₀,₊ for all galaxies and in "
-        "tertiles of galaxy r magnitude, with jackknife errors. Each bin is "
-        "calibrated with its own shear response plus the global selection "
-        "response; the faint bin's selection response is larger, so its |α| is "
-        "likely underestimated by about 10–20%.",
+        "tertiles of galaxy r magnitude, with jackknife errors. Every bin is "
+        "calibrated with the catalogue's one response and weighted by w_des; a "
+        "bin whose own response differs from the catalogue's scales its α by "
+        "their ratio.",
         "full",
     ),
     (

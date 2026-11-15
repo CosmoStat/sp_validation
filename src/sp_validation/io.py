@@ -368,18 +368,26 @@ def open_catalogue(path, hdu=None, column_map=None):
 
 
 def validate_calibrated_entry(entry):
-    """Validate response/weight identity, also for file-based reader adapters,
-    and the snapshot the entry expects its catalogue to be built from."""
+    """Refuse a calibrated catalogue read with another weight or a second R,
+    or built from another snapshot than the entry expects.
+
+    A FITS catalogue whose header says ``RAPPLIED`` already carries ``R^-1``;
+    its statistic weight is ``w_<WGHTSCH>``, the weight its response was
+    measured with. HATS and HDF5 catalogues carry no such header.
+    """
     from sp_validation.sample import snapshot
 
     snapshot.check(entry)
-    if "w_col" in entry and not (is_hats(entry["path"]) or h5py.is_hdf5(entry["path"])):
+    path = entry["path"]
+    if "w_col" in entry and not is_hats(path) and not h5py.is_hdf5(path):
         with fits.open(entry["path"], memmap=True) as hdus:
             header = hdus[0].header
             if header.get("RAPPLIED", False):
-                from sp_validation.response import validate_weight_scheme
-
-                validate_weight_scheme(header["WGHTSCH"], entry["w_col"])
+                if entry["w_col"] != f"w_{header['WGHTSCH']}":
+                    raise ValueError(
+                        f"{entry['path']} is calibrated with w_{header['WGHTSCH']}"
+                        f" weights, not {entry['w_col']}"
+                    )
                 if (
                     entry.get("R", 1) != 1
                     or entry.get("R11") is not None

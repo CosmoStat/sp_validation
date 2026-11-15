@@ -81,16 +81,36 @@ ops:
 
   # --- metacal -----------------------------------------------------------
   - why: >-
-      Unweighted for image sims: no weights anywhere in the sim m-bias (#227),
-      and the w_des-weighted global R had only N_eff ~ 20-100 objects.
+      The simulations take the selection of the v2 data (the metacal block of
+      mask_v2.0.yaml): the data's DES table spans exactly these cuts, so an
+      object outside them would enter m with an edge cell's weight.
+    replace: |2
+        # Signal-to-noise range
+        gal_snr_min: 5
+        gal_snr_max: 500
+
+        # Relative-size (hlr / hlr_psf) range
+        gal_rel_size_min: 0.25
+        gal_rel_size_max: 10
+    with: |2
+        # Signal-to-noise range: the v2 data's (mask_v2.0.yaml)
+        gal_snr_min: 10
+        gal_snr_max: 500
+
+        # Moment ratio T_gal / T_PSF: the v2 data's (mask_v2.0.yaml)
+        gal_rel_size_min: 0.707
+        gal_rel_size_max: 9
+
+  - why: >-
+      Image sims are weighted with the data's DES table, which the workflow
+      names; constant-shear simulations keep their mean shear.
     replace: |2
         # Weight for global response matrix, None for unweighted mean
         global_R_weight: w
     with: |2
-        # Weight for global response matrix, None for unweighted mean.
-        # Unweighted for image sims: no weights anywhere in sim m-bias (#227),
-        # and the w_des-weighted R had N_eff ~ 20-100 objects.
-        global_R_weight: null
+        # DES weights. The image-sims workflow names the data's table
+        # (weight_table), which then weights every simulation.
+        weight_scheme: des
 
         # Subtract additive bias (mean shear)? Use False for constant-shear
         # image sims
