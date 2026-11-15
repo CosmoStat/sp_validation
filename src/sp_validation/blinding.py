@@ -368,8 +368,14 @@ def main(argv=None):
     parser.add_argument("command", choices=("init",))
     parser.add_argument("blind")
     parser.add_argument("--cat-config", default=str(REPO_CAT_CONFIG))
+    parser.add_argument(
+        "--registry", help="draw into this directory, not the config's paths.blinds"
+    )
     a = parser.parse_args(argv)
-    init(a.blind, load_yaml(a.cat_config))
+    catalogues = load_yaml(a.cat_config)
+    if a.registry:
+        catalogues["paths"]["blinds"] = a.registry
+    init(a.blind, catalogues)
     return 0
 
 

@@ -98,7 +98,8 @@ COSMOLOGY_PARAMS = "results/cosmology/planck18.json"
 # Patterns must match all expected values; overly restrictive patterns cause
 # silent failures. Apply with: wildcard_constraints: **WILDCARD_CONSTRAINTS
 WILDCARD_CONSTRAINTS = {
-    "version": r"SP_v[\d.]+(_[ABC])?(_w_iv)?(_ecut\d+)?(_leak_corr)?",
+    "version": r"SP_v[\d.]+(_[ABC])?(_w_iv)?(_ecut\d+)?(_glass_[a-z]+)?(_seed\d+)?"
+    r"(_leak_corr)?",
     "nbins": r"\d+",
     # Without this, npatch greedily swallows a trailing {tomo_suffix}.
     "npatch": r"\d+",
@@ -421,13 +422,13 @@ def pseudo_cl_tag(config):
 
 
 def get_shear_catalog(wildcards):
-    """Resolve shear catalog path from config for a given version."""
-    cat_config = CATALOG_CONFIG[wildcards.version.replace("_leak_corr", "")]
-    shear_path = cat_config["shear"]["path"]
-    if shear_path.startswith("/"):
-        return shear_path
-    subdir = cat_config.get("subdir", "")
-    return str(Path(subdir) / shear_path)
+    """The shear catalogue of ``wildcards.version``; a ``_seed<N>`` variant
+    fills its entry's ``shear.path_template``."""
+    entry = catalogue_entry(wildcards.version)
+    seed = re.search(r"_seed(\d+)", wildcards.version)
+    shear = entry["shear"]
+    path = shear["path_template"].format(seed=int(seed[1])) if seed else shear["path"]
+    return str(Path(entry.get("subdir", "")) / path)
 
 
 # ---------------------------------------------------------------------------
