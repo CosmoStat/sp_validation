@@ -124,11 +124,11 @@ TILE_IDS = list(IMSIM["tile_ids"])
 
 # --- calibration / m-bias knobs ------------------------------------------
 SHAPE = IMSIM["shape"]
-MASK_CONFIG = IMSIM["mask_config"]
+MASK_CONFIG = IMSIM["mask_config"]  # e.g. config/calibration/mask_v1.X.9_im_sim.yaml
 # The table the m-bias step weights every simulation with: a DES weight-table
 # product (path), ``self`` or ``unit``. A product is also the table the
 # calibration step weights each simulation's catalogue with.
-WEIGHT_TABLE = IMSIM["weight_table"]  # e.g. config/calibration/mask_v1.X.9_im_sim.yaml
+WEIGHT_TABLE = IMSIM["weight_table"]
 PARAMS_TEMPLATE = f"{SPV_REPO}/workflow/image_sims/params_im_sim.py"
 # ShapePipe cfis_image_sims config dir (per-tile/exposure configs + final_cat.param).
 CONFIG_DIR = IMSIM["config_dir"]
@@ -422,6 +422,7 @@ rule im_mbias_config:
         sp_validation_repo=SPV_REPO,
         results=f"{GRIDS_BASE}/results/m_bias_results.yaml",
         # Science knobs, read bare from the run config (no default here).
+        results_dir=f"{GRIDS_BASE}/results",
         weight_table=WEIGHT_TABLE,
         des_min_count=IMSIM["des_min_count"],
     container:
