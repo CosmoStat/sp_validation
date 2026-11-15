@@ -157,7 +157,7 @@ metacal:
   # Correct relative size for ellipticity?
   gal_size_corr_ell: False
 
-  # DES case d: one fixed no-shear W, evaluated on each branch's SNR/size.
+  # DES weights: one table fitted on the no-shear branch, evaluated on each
+  # branch's own S/N and size (docs/source/response_calibration.md).
   weight_scheme: des
-  w_col: w_des
   des_num_bins: 20

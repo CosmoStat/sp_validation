@@ -1,14 +1,9 @@
 """The metacal response core (``sp_validation.response``), against its definitions.
 
-The first part tests the core from definitions: small hand-computable cases,
-additivity over chunks and groups, the table's pooling rule, the jackknife
-against brute-force deletion, the self-weighting bias of a self-fitted table
-and the recovery of a known shear from synthetic simulations.
-
-The second part (``Equivalence with the row-array implementations``) compares
-the core with ``response.responses``/``row_jackknife``, ``calibration.metacal``,
-``des_jackknife.DESJackknife``, ``image_sims.ImageSimMBias`` and the per-cell
-sums of the calibrated-sample build, on synthetic catalogues.
+Small hand-computable cases, additivity over chunks and groups, the table's
+pooling rule, the jackknife against brute-force deletion, the self-weighting
+bias of a self-fitted table, the recovery of a known shear from synthetic
+simulations, and the in-memory catalogue calibration.
 """
 
 from itertools import product
@@ -405,315 +400,88 @@ def test_known_shear_is_recovered(sigma_e):
             )
 
 
-# Equivalence with the row-array implementations
+def test_sums_save_and_load(tmp_path):
+    data = synthetic(500)
+    edges = response.table_edges(CUTS, 4)
+    for sums in (
+        accumulate(data, CUTS, edges, groups=data["TILE_ID"]),
+        accumulate(data, CUTS, edges, sigma_e=SIGMA_E),
+    ):
+        sums.save(tmp_path / "sums.npz")
+        loaded = response.Sums.load(tmp_path / "sums.npz")
+        assert loaded.step == sums.step and loaded.sigma_e == sums.sigma_e
+        np.testing.assert_array_equal(
+            loaded.labels if sums.labels is not None else [],
+            sums.labels if sums.labels is not None else [],
+        )
+        for key, value in sums.arrays.items():
+            np.testing.assert_array_equal(loaded.arrays[key], value)
+        loaded + sums  # same groups, cells, step and weights
 
 
-def old_metacal(data, pre, scheme, min_count=3, product=None):
-    from sp_validation import calibration
-
-    return calibration.metacal(
-        data,
-        pre,
-        snr_min=CUTS.snr_min,
-        snr_max=CUTS.snr_max,
-        rel_size_min=CUTS.size_min,
-        rel_size_max=CUTS.size_max,
-        size_corr_ell=CUTS.size_corr_ell,
-        sigma_eps=SIGMA_E,
-        weight_scheme=scheme,
-        des_num_bins=20,
-        des_min_count=min_count,
-        des_weight_product=product,
+def metacal_block(**overrides):
+    block = dict(
+        weight_scheme="des",
+        gal_snr_min=CUTS.snr_min,
+        gal_snr_max=CUTS.snr_max,
+        gal_rel_size_min=CUTS.size_min,
+        gal_rel_size_max=CUTS.size_max,
+        gal_size_corr_ell=CUTS.size_corr_ell,
+        sigma_eps_prior=SIGMA_E,
+        des_num_bins=8,
+        des_min_count=3,
     )
+    return {**block, **overrides}
 
 
-def preselected(n=4000, seed=0):
-    data = synthetic(n, seed=seed)
-    pre = np.random.default_rng(seed + 5).random(n) < 0.95
-    return data, pre
-
-
-def assert_estimates(new, old, rtol=1e-12):
-    for key in ESTIMATES:
-        difference = relative(new[key], old[key])
-        print(f"  {key}: {difference:.1e}")
-        assert difference < rtol, key
-
-
-@pytest.mark.parametrize("scheme", ["des", "iv"])
-def test_metacal_responses_and_fixed_jackknife(scheme):
-    """``metacal`` (``response.responses``) and ``row_jackknife``, fixed weights."""
-    data, pre = preselected()
-    gm = old_metacal(data, pre, scheme)
-    groups = data["TILE_ID"][pre]
-    sigma_e = SIGMA_E if scheme == "iv" else None
-    sums = accumulate(
-        data,
-        CUTS,
-        response.table_edges(CUTS),
-        preselection=pre,
-        groups=data["TILE_ID"],
-        sigma_e=sigma_e,
-    )
-    if scheme == "des":
-        table = fit_table(sums, 3)
-        np.testing.assert_array_equal(table.count, gm.W[3])
-        print(f"\ntable: {relative(table.w, gm.W[2]):.1e}")
-        assert relative(table.w, gm.W[2]) < 1e-12
+@pytest.mark.parametrize("scheme", ["des", "iv", "external"])
+def test_calibrate_catalogue(tmp_path, scheme):
+    """Per-object weights and shapes are those the response was measured with."""
+    data = synthetic(3000)
+    pre = np.random.default_rng(4).random(len(data)) < 0.9
+    edges = response.table_edges(CUTS, 8)
+    if scheme == "external":
+        table = fit_table(accumulate(synthetic(3000, seed=9), CUTS, edges), 3)
+        response.write_table(tmp_path / "table.fits", table)
+        metacal = metacal_block(weight_table=str(tmp_path / "table.fits"))
     else:
-        table = unit_table(sums.edges)
-    result = estimate(sums, table)
-    old = dict(
-        shear=gm.R_shear_global,
-        selection=gm.R_selection,
-        total=gm.R,
-        joint=gm.R_joint,
-        c_e=gm.c_e,
-        c_g=gm.c_g,
+        metacal = metacal_block(weight_scheme=scheme)
+    cal = response.calibrate_catalogue(
+        data, metacal, preselection=pre, groups=data["TILE_ID"]
     )
-    print(f"\n{scheme} point")
-    assert_estimates(result, old)
-    assert result["counts"] == gm.branch_counts
-    for b in BRANCHES:
-        assert relative(result["weight_sums"][b], gm.branch_weight_sums[b]) < 1e-12
-    old_labels, old_deleted, old_cov = gm.response_jackknife(groups)
-    labels, deleted, cov = jackknife(sums, table)
-    np.testing.assert_array_equal(labels, old_labels)
-    print(f"{scheme} fixed jackknife")
-    assert_estimates(deleted, old_deleted)
-    print(f"  covariance: {relative(cov, old_cov):.1e}")
-    assert relative(cov, old_cov) < 1e-10
-
-
-@pytest.mark.parametrize("min_count", [0, 3, 30, 10_000])
-def test_metacal_refit_jackknife(min_count):
-    """``response_jackknife(refit_w=True)``: ``DESJackknife`` and the K rescans."""
-    data, pre = preselected()
-    gm = old_metacal(data, pre, "des", min_count)
-    groups = data["TILE_ID"][pre]
-    sums = accumulate(
-        data,
-        CUTS,
-        response.table_edges(CUTS),
-        preselection=pre,
-        groups=data["TILE_ID"],
+    result = cal["result"]
+    assert pre[cal["index"]].all()
+    assert len(cal["index"]) == result["counts"]["ns"]
+    assert cal["w"].sum() == pytest.approx(result["weight_sums"]["ns"], rel=1e-12)
+    np.testing.assert_allclose(
+        np.average(cal["g"], axis=1, weights=cal["w"]), result["c_e"], rtol=1e-12
     )
-    labels, deleted, cov = jackknife(sums, refit(min_count))
-    for reference in (False, True):
-        old_labels, old_deleted, old_cov = gm.response_jackknife(
-            groups, refit_w=True, reference=reference
-        )
-        np.testing.assert_array_equal(labels, old_labels)
-        print(f"\nrefit jackknife, min_count={min_count}, reference={reference}")
-        assert_estimates(deleted, old_deleted)
-        print(f"  covariance: {relative(cov, old_cov):.1e}")
-        assert relative(cov, old_cov) < 1e-10
-
-
-def test_pooling_matches_both_old_rules():
-    """``pool`` equals ``response.fit_w``'s loop and ``des_jackknife``'s integral
-    image on random sparse grids."""
-    from sp_validation.des_jackknife import pooled_weight
-
-    rng = np.random.default_rng(1)
-    worst = [0, 0]
-    for _ in range(200):
-        shape = tuple(rng.integers(1, 21, 2))
-        dense = rng.random(shape) < rng.uniform(0, 1)
-        count = np.where(dense, rng.integers(0, 2000, shape), rng.integers(0, 4, shape))
-        cell = np.repeat(np.arange(count.size), count.ravel())
-        snr, size = np.unravel_index(cell, shape)
-        e = rng.normal(0, 0.3, (2, len(cell)))
-        r = rng.uniform(0.3, 1.0, len(cell))
-        edges = np.arange(shape[0] + 1.0), np.arange(shape[1] + 1.0)
-        min_count = int(rng.choice([0, 1, 3, 30, 10**4, 10**8]))
-        loop = response.fit_w(snr + 0.5, size + 0.5, e, r, *edges, min_count)[2]
-        moments = np.array(
-            [
-                np.bincount(cell, weights=x, minlength=count.size)
-                for x in (np.ones(len(cell)), r, np.mean(e**2, axis=0))
-            ]
-        )
-        new = response.pool(*moments.reshape(3, *shape), min_count)
-        integral = pooled_weight(moments, shape, min_count).reshape(shape)
-        if loop.any():
-            worst[0] = max(worst[0], relative(new, loop))
-            worst[1] = max(worst[1], relative(new, integral))
-    print(f"\npool vs fit_w loop: {worst[0]:.1e}; vs integral image: {worst[1]:.1e}")
-    assert worst[0] < 1e-12
-    assert worst[1] < 1e-12
-
-
-def calibrated_sample_sums(branches, masks, coordinates, rg, edges_s, edges_r):
-    """``response.cell_sums`` of the calibrated-sample build (PR #490)."""
-    n_cells = (len(edges_s) - 1) * (len(edges_r) - 1)
-    sums = {"n": {}, "ns_e": {}, "own_e": {}}
-    for b, idx in masks.items():
-        snr, size = (x[idx] for x in coordinates[b])
-        finite = np.isfinite(snr) & np.isfinite(size)
-        idx = idx[finite]
-        cell = response.cell_index(snr[finite], edges_s) * (len(edges_r) - 1)
-        cell += response.cell_index(size[finite], edges_r)
-
-        def total(values, cell=cell):
-            return np.bincount(cell, weights=values, minlength=n_cells)
-
-        sums["n"][b] = np.bincount(cell, minlength=n_cells)
-        sums["ns_e"][b] = np.array([total(x[idx]) for x in branches["ns"]])
-        sums["own_e"][b] = np.array([total(x[idx]) for x in branches[b]])
-        if b == "ns":
-            sums["rg"] = np.array(
-                [[total(rg[i, j, finite]) for j in range(2)] for i in range(2)]
-            )
-    return sums
-
-
-def calibrated_sample_responses(sums, table, step):
-    """``response.responses_from_sums`` of the calibrated-sample build."""
-    w = table[2].ravel()
-    den = {b: n @ w for b, n in sums["n"].items()}
-    shear = sums["rg"] @ w / den["ns"]
-    selection = np.empty((2, 2))
-    joint = np.empty((2, 2))
-    for j, (p, m) in enumerate((("p1", "m1"), ("p2", "m2"))):
-        for name, out in (("ns_e", selection), ("own_e", joint)):
-            plus, minus = (sums[name][b] @ w / den[b] for b in (p, m))
-            out[:, j] = (plus - minus) / (2 * step)
-    total = shear + selection
-    ce = sums["ns_e"]["ns"] @ w / den["ns"]
-    return dict(
-        shear=shear,
-        selection=selection,
-        total=total,
-        joint=joint,
-        c_e=ce,
-        c_g=np.linalg.solve(total, ce),
-        counts={b: int(n.sum()) for b, n in sums["n"].items()},
-        weight_sums={b: float(d) for b, d in den.items()},
+    np.testing.assert_allclose(
+        np.average(cal["e"], axis=1, weights=cal["w"]), 0, atol=1e-15
+    )
+    np.testing.assert_allclose(
+        np.average(cal["R_g"], axis=2, weights=cal["w"]), result["shear"], rtol=1e-12
+    )
+    labels, deleted, cov = cal["jackknife"]
+    np.testing.assert_array_equal(labels, np.unique(data["TILE_ID"][pre]))
+    if scheme == "external":
+        np.testing.assert_array_equal(cal["table"].w, table.w)
+    # A self-fitted table is refitted on every deletion.
+    rule = refit(3) if scheme == "des" else cal["table"]
+    np.testing.assert_allclose(cov, jackknife(cal["sums"], rule)[2])
+    record = response.record(result, cov)
+    assert record["R"] == result["total"].tolist()
+    assert record["covariance_order"] == list(ESTIMATES)
+    sim = response.calibrate_catalogue(
+        data, dict(metacal, additive_correction=False), preselection=pre
+    )
+    np.testing.assert_allclose(
+        np.average(sim["e"], axis=1, weights=sim["w"]), result["c_g"], rtol=1e-10
     )
 
 
-def test_calibrated_sample_sums():
-    """The per-cell sums that built the v2.0.0 calibrated sample (PR #490)."""
-    data, pre = preselected()
-    gm = old_metacal(data, pre, "des")
-    coordinates = {
-        b: (getattr(gm, b)["flux"] / getattr(gm, b)["flux_err"],) for b in BRANCHES
-    }
-    coordinates = {
-        b: (c[0], getattr(gm, b)["T"] / getattr(gm, b)["Tpsf"])
-        for b, c in coordinates.items()
-    }
-    old_sums = calibrated_sample_sums(
-        gm.branches, gm.mask_dict, coordinates, gm.R_shear, *gm.W[:2]
-    )
-    old = calibrated_sample_responses(old_sums, gm.W, gm._step)
-    result = estimate(
-        accumulate(data, CUTS, gm.W[:2], preselection=pre), fit_table_like(gm)
-    )
-    print("\ncalibrated-sample sums")
-    assert_estimates(result, old)
-    assert result["counts"] == old["counts"]
-
-
-def fit_table_like(gm):
-    es, er, w, count = gm.W
-    return Table(es, er, w, count, gm._des_min_count)
-
-
-def write_simulation(directory, data, pre, scheme, min_count, product):
-    """Calibrate one simulation as the image-simulation chain does."""
-    from sp_validation import calibration
-
-    gm = old_metacal(data, pre, scheme, min_count, product)
-    shear, raw, w, selected, _, _ = calibration.get_calibrated_m_c(gm, False)
-    tiles = data["TILE_ID"][pre]
-    columns = dict(
-        RA=data["RA"][pre][selected],
-        Dec=data["Dec"][pre][selected],
-        e1=shear[0],
-        e2=shear[1],
-        e1_uncal=raw[0],
-        e2_uncal=raw[1],
-        **{f"w_{scheme}": w},
-    )
-    directory.mkdir()
-    path = directory / "cat.fits"
-    fits.HDUList(
-        [
-            fits.PrimaryHDU(),
-            fits.BinTableHDU.from_columns(
-                [fits.Column(name=k, array=v, format="D") for k, v in columns.items()]
-                + [fits.Column(name="TILE_ID", array=tiles[selected], format="8A")]
-            ),
-        ]
-    ).writeto(path)
-    calibration.save_response_product(path, gm, tiles)
-
-
-@pytest.mark.parametrize("weights", ["self", "external", "iv"])
-def test_image_sim_bias(tmp_path, weights):
-    """``ImageSimMBias`` on catalogues calibrated by ``metacal`` and its R_JK."""
-    from sp_validation.image_sims import ImageSimMBias
-
-    g_in, n, min_count = 0.02, 6000, 3
-    scheme = "iv" if weights == "iv" else "des"
-    product, table = None, None
-    edges = response.table_edges(CUTS)
-    if weights == "external":
-        table = fit_table(accumulate(synthetic(n, seed=100), CUTS, edges), min_count)
-        product = dict(name="independent", path=str(tmp_path / "table.fits"))
-        response.write_table(product["path"], table)
-    names = dict(zip(range(2), (("1p2z", "1m2z"), ("1z2p", "1z2m")), strict=True))
-    pairs = {}
-    for j, sims in names.items():
-        pairs[j] = []
-        for name, sign in zip(sims, (1, -1), strict=True):
-            shear = np.zeros(2)
-            shear[j] = sign * g_in
-            data, pre = synthetic(n, shear, seed=7 + j), np.ones(n, bool)
-            pre[::17] = False
-            write_simulation(
-                tmp_path / f"{name}_grid_1", data, pre, scheme, min_count, product
-            )
-            pairs[j].append(
-                accumulate(
-                    data,
-                    CUTS,
-                    edges,
-                    preselection=pre,
-                    groups=data["TILE_ID"],
-                    labels=np.unique(data["TILE_ID"]),
-                    sigma_e=SIGMA_E if scheme == "iv" else None,
-                )
-            )
-    estimator = ImageSimMBias(
-        dict(
-            grids_dir=str(tmp_path),
-            num=1,
-            catalog_name="cat.fits",
-            shear_amplitude=g_in,
-            match_radius_deg=0.0002,
-            pair_match=False,
-            w_cols=[f"w_{scheme}"],
-            n_bootstrap=2,
-            bootstrap_seed=1,
-            branches=[name for sims in names.values() for name in sims],
-        )
-    )
-    estimator.load_catalogs(False)
-    old = estimator.run(False)
-    rule = dict(self=refit(min_count), external=table, iv=unit_table(edges))[weights]
-    new = shear_bias(pairs, g_in, rule)
-    labels, deleted, cov = shear_bias_jackknife(pairs, g_in, rule)
-    assert list(new) == old["covariance_order"]
-    np.testing.assert_array_equal(labels, old["jackknife_tiles"])
-    print(f"\nImageSimMBias, {weights}")
-    for key in new:
-        print(f"  {key}: {relative(new[key], old[key]):.1e}")
-        assert relative(new[key], old[key]) < 1e-12
-    draws = np.array(list(deleted.values())).T
-    print(f"  jackknife: {relative(draws, old['mc_jackknife']):.1e}")
-    print(f"  covariance: {relative(cov, old['mc_covariance']):.1e}")
-    assert relative(draws, old["mc_jackknife"]) < 1e-12
-    assert relative(cov, old["mc_covariance"]) < 1e-10
+def test_calibrate_catalogue_needs_a_weight_scheme():
+    metacal = metacal_block()
+    del metacal["weight_scheme"]
+    with pytest.raises(ValueError, match="weight_scheme"):
+        response.calibrate_catalogue(synthetic(100), metacal)

@@ -14,8 +14,8 @@ ngmix review's ``test_scripts_import.py``:
    fails here immediately.
 
 2. **Standalone scripts** (``scripts/*.py``) are *not executed* — several do
-   real work at module level and one isn't even a valid module name
-   (``shear_calibration+leakage_correction_ellipticities.py``). Executing them
+   real work at module level, and a file name need not be a valid module
+   name. Executing them
    would conflate runtime failures (missing cluster data, argparse) with the
    thing we actually care about: does a move break an intra-repo import?
    Instead each script is parsed with :mod:`ast` (which also asserts it is

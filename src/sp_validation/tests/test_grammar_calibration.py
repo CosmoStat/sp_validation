@@ -21,8 +21,7 @@ import yaml
 from astropy.io import fits
 from cs_util.size import T_to_sigma
 
-from sp_validation import galaxy, grammar, io
-from sp_validation.calibration import get_calibrated_quantities, metacal
+from sp_validation import galaxy, grammar, io, response
 from sp_validation.catalog_builders import CalibrateCat, JointCat
 from sp_validation.masks import Mask, get_masks_from_config
 
@@ -182,52 +181,25 @@ def test_v1_configs_cut_every_mask_column_they_name(comprehensive):
                 assert cut["col_name"] in names, (path.name, cut["col_name"])
 
 
+def _calibrate(table, config):
+    """``response.calibrate_catalogue`` of ``table`` under mask config ``config``,
+    with IV weights, since the v1 configs predate the weight scheme."""
+    masks, _ = get_masks_from_config(config, table)
+    metacal = dict(config["metacal"], weight_scheme="iv")
+    return response.calibrate_catalogue(
+        table, metacal, preselection=Mask.from_list(masks)._mask
+    )
+
+
 def test_metacal_inputs_are_identical(comprehensive):
     config = yaml.safe_load((CONFIG_DIR / "mask_v1.X.6.yaml").read_text())
-    cm = config["metacal"]
-    results = {}
-    for label, table in comprehensive.items():
-        masks, _ = get_masks_from_config(config, table)
-        selection = Mask.from_list(masks)._mask
-        results[label] = metacal(
-            table,
-            selection,
-            snr_min=cm["gal_snr_min"],
-            snr_max=cm["gal_snr_max"],
-            rel_size_min=cm["gal_rel_size_min"],
-            rel_size_max=cm["gal_rel_size_max"],
-            size_corr_ell=cm["gal_size_corr_ell"],
-            sigma_eps=cm["sigma_eps_prior"],
-            global_R_weight=None,
-        )
-    mc_v1, mc_v2 = results["v1"], results["v2"]
-    assert mc_v1._n_input == mc_v2._n_input > 0
-    assert np.all(np.isfinite(mc_v1.R))
-    for attr in ("m1", "p1", "m2", "p2", "ns"):
-        d1, d2 = getattr(mc_v1, attr), getattr(mc_v2, attr)
-        assert d1.keys() == d2.keys()
-        for key in d1:
-            np.testing.assert_array_equal(d1[key], d2[key], err_msg=f"{attr}.{key}")
-    np.testing.assert_array_equal(mc_v1.R, mc_v2.R)
-
-
-def _calibrate(table, config):
-    """Return (metacal, calibrated g) for ``table`` under mask config ``config``."""
-    cm = config["metacal"]
-    masks, _ = get_masks_from_config(config, table)
-    mc = metacal(
-        table,
-        Mask.from_list(masks)._mask,
-        snr_min=cm["gal_snr_min"],
-        snr_max=cm["gal_snr_max"],
-        rel_size_min=cm["gal_rel_size_min"],
-        rel_size_max=cm["gal_rel_size_max"],
-        size_corr_ell=cm["gal_size_corr_ell"],
-        sigma_eps=cm["sigma_eps_prior"],
-        global_R_weight=None,
-    )
-    g_corr, _, _, _ = get_calibrated_quantities(mc)
-    return mc, g_corr
+    results = {label: _calibrate(t, config) for label, t in comprehensive.items()}
+    v1, v2 = results["v1"], results["v2"]
+    assert len(v1["index"]) == len(v2["index"]) > 0
+    assert np.all(np.isfinite(v1["result"]["total"]))
+    for key, value in v1["sums"].arrays.items():
+        np.testing.assert_array_equal(value, v2["sums"].arrays[key], err_msg=key)
+    np.testing.assert_array_equal(v1["e"], v2["e"])
 
 
 def test_foreign_names_with_a_column_map_calibrate_like_v2(tmp_path):
@@ -235,7 +207,7 @@ def test_foreign_names_with_a_column_map_calibrate_like_v2(tmp_path):
 
     The v2 twin is written with every ``NGMIX_*`` column renamed ``MYFIT_*`` and
     RA/Dec renamed; ``CalibrateCat`` reads it with a map holding one pattern
-    and two explicit entries, and metacal gives the same calibrated shear.
+    and two explicit entries, and the response core gives the same calibrated shear.
     """
     _, _, v2 = _twins()
     renames = {"RA": "ALPHA", "Dec": "DELTA"}
@@ -261,11 +233,10 @@ def test_foreign_names_with_a_column_map_calibrate_like_v2(tmp_path):
     config = yaml.safe_load((CONFIG_DIR / "mask_v1.X.6.yaml").read_text())
     available = set(v2.dtype.names)
     config["dat"] = [cut for cut in config["dat"] if cut["col_name"] in available]
-    mc_foreign, g_foreign = _calibrate(table, config)
-    mc_v2, g_v2 = _calibrate(v2, config)
-    assert mc_v2._n_input > 0
-    np.testing.assert_array_equal(mc_foreign.R, mc_v2.R)
-    np.testing.assert_array_equal(g_foreign, g_v2)
+    foreign, twin = _calibrate(table, config), _calibrate(v2, config)
+    assert len(twin["index"]) > 0
+    np.testing.assert_array_equal(foreign["result"]["total"], twin["result"]["total"])
+    np.testing.assert_array_equal(foreign["e"], twin["e"])
 
 
 def test_load_into_memory_matches_the_view(comprehensive, tmp_path):

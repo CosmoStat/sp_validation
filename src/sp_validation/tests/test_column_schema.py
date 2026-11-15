@@ -41,32 +41,15 @@ NOT_COLUMNS = {
     "R",
     "R11",
     "R22",
-    # FITS header keywords (response/c units, weighting and spatial products)
-    "CE_{}",
-    "CG_{}",
-    "CMUNITS",
+    # FITS header keywords and extensions of calibrated catalogues and tables
     "DESMERGE",
     "DESNMIN",
-    "IVPOLICY",
-    "MCSTEP",
     "MEANSUB",
-    "MIG_{}",
-    "N_{}",
-    "ORDER",
     "RAPPLIED",
-    "RJ_{}{}",
-    "R_{}{}",  # derived response-product matrix, not parent shape columns
-    "R_JK",  # response-product FITS extension name
-    "RLEGACY",
-    "SW_{}",
     "WGHTSCH",
-    "WPOLICY",
     "WSNRCOL",
     "WSIZDEF",
-    "WSOURCE",
-    "WPRODUCT",
-    "WPRODPTH",
-    "W_DES",  # response-product FITS images, not parent catalogue columns
+    "W_DES",
     "W_COUNT",
     "W_EDGES",
     # DR6 photometry and spec-z match columns, outside the ShapePipe schema
@@ -76,10 +59,6 @@ NOT_COLUMNS = {
     "N_1",
     "PHOTOPIPE_SEQNR",
     "EXTNAME",
-    "R_S11",
-    "R_S12",
-    "R_S21",
-    "R_S22",
     "TTYPE{}",
     # Gaia magnitude-bin keys of the position-shear product
     "G{}",
@@ -98,10 +77,7 @@ NOT_COLUMNS = {
     "NAME_{}",
     "STRT_{}",
     # in-memory tables sp_validation builds itself
-    "C11",
-    "C22",
     "SNR",
-    "T",
     # NaMaster field/workspace dicts keyed by bin; cosmology parameter dicts
     "W{}",
     "H0",

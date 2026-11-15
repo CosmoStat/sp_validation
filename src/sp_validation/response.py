@@ -1,8 +1,6 @@
 """Metacalibration response, weights, additive bias and image-simulation bias.
 
-The definitions are in ``docs/source/response_calibration.md`` (Martin
-Kilbinger's slide S1, 6 October 2026, and case d of
-``scripts/validation/wdes_response/wdes_response.py``).
+The definitions are in ``docs/source/response_calibration.md``.
 
 Every weight is ``w = u * W[cell]``: ``cell`` is the object's (S/N, size) cell
 on the branch being averaged, ``W`` a :class:`Table` on those cells, and ``u``
@@ -100,7 +98,10 @@ class Cuts(NamedTuple):
 
 
 def select(columns, cuts):
-    """Boolean selection of :func:`branch_columns` under ``cuts``."""
+    """Boolean selection of :func:`branch_columns` under ``cuts``.
+
+    A selected row also has finite table coordinates.
+    """
     size = columns["size"]
     if cuts.size_corr_ell:
         e2 = columns["g1"] ** 2 + columns["g2"] ** 2
@@ -113,6 +114,8 @@ def select(columns, cuts):
             & (snr < cuts.snr_max)
             & (size > cuts.size_min)
             & (size < cuts.size_max)
+            & np.isfinite(snr)
+            & np.isfinite(columns["size"])
         )
 
 
@@ -353,6 +356,32 @@ class Sums:
                 labels=None,
             )
 
+    def save(self, path):
+        """Write the sums to an ``.npz`` file that :meth:`load` reads."""
+        extra = {} if self.labels is None else {"labels": self.labels}
+        np.savez(
+            path,
+            **{f"array_{k}": v for k, v in self.arrays.items()},
+            snr_edges=self.edges[0],
+            size_edges=self.edges[1],
+            step=self.step,
+            sigma_e=np.nan if self.sigma_e is None else self.sigma_e,
+            **extra,
+        )
+
+    @classmethod
+    def load(cls, path):
+        """Read sums written by :meth:`save`."""
+        with np.load(path) as npz:
+            sigma_e = float(npz["sigma_e"])
+            return cls(
+                {k[6:]: npz[k] for k in npz.files if k.startswith("array_")},
+                (npz["snr_edges"], npz["size_edges"]),
+                npz["labels"] if "labels" in npz.files else None,
+                float(npz["step"]),
+                None if np.isnan(sigma_e) else sigma_e,
+            )
+
 
 def _empty(groups, cells):
     def zeros(*shape, dtype=float):
@@ -414,7 +443,7 @@ def accumulate(
     step : float
         metacal shear step h
 
-    Rows with a nonfinite coordinate on a branch are left out of that branch.
+    Each branch's rows are its own :func:`select`.
     """
     columns = {b: branch_columns(rows, b) for b in BRANCHES}
     if preselection is not None:
@@ -437,9 +466,7 @@ def accumulate(
     e_ns = np.array([columns["ns"]["g1"], columns["ns"]["g2"]])
     for k, b in enumerate(BRANCHES):
         c = columns[b]
-        rows_b = np.flatnonzero(
-            select(c, cuts) & np.isfinite(c["snr"]) & np.isfinite(c["size"])
-        )
+        rows_b = np.flatnonzero(select(c, cuts))
         index = group[rows_b] * cells + (
             cell_index(c["snr"][rows_b], edges[0]) * n_size
             + cell_index(c["size"][rows_b], edges[1])
@@ -540,6 +567,25 @@ def jackknife(sums, table):
     return sums.labels, deleted, _covariance(vectors)
 
 
+def record(result, covariance=None):
+    """The JSON record of an :func:`estimate`, with its :func:`jackknife`
+    covariance when given (in :data:`ESTIMATES` order, matrices row-major)."""
+    out = dict(
+        R=result["total"].tolist(),
+        R_shear=result["shear"].tolist(),
+        R_selection=result["selection"].tolist(),
+        R_joint=result["joint"].tolist(),
+        c_e=result["c_e"].tolist(),
+        c_g=result["c_g"].tolist(),
+        branch_counts=result["counts"],
+        branch_weight_sums=result["weight_sums"],
+    )
+    if covariance is not None:
+        out["covariance"] = np.asarray(covariance).tolist()
+        out["covariance_order"] = list(ESTIMATES)
+    return out
+
+
 # Image-simulation shear bias
 
 
@@ -606,175 +652,70 @@ def calibrate(g, result, additive=True):
     return np.linalg.solve(result["total"], g)
 
 
-# Row-array implementations, checked against the core in test_response.py
+# A catalogue held in memory
 
 
-def branch_error_columns(data):
-    """Carry available sheared G_ERRs through extraction without requiring them.
+def calibrate_catalogue(rows, metacal, *, preselection=None, groups=None):
+    """Calibrate catalogue rows under a ``metacal`` config block.
 
-    Historical merged products omitted them. DES can still use those products;
-    modern IV independently requires a complete set and never freezes weights.
+    The block declares ``weight_scheme`` (``des`` or ``iv``) and the cuts
+    (:meth:`Cuts.from_config`). DES weights use the table at ``weight_table``
+    (a :func:`write_table` product) when given, else a table fitted on these
+    rows with ``des_num_bins`` cells a side and ``des_min_count``; IV weights
+    use ``sigma_eps_prior`` and the unit table. ``additive_correction: false``
+    (constant-shear simulations) leaves ``c_e`` in the calibrated shapes.
+
+    Returns a dict: ``sums``, ``table``, ``result`` (:func:`estimate`), with
+    ``groups`` also ``jackknife`` (:func:`jackknife`; a self-fitted table is
+    refitted per deletion), and for the selected no-shear rows their
+    positions ``index`` in ``rows``, weights ``w``, uncalibrated shapes ``g``
+    (2, n), calibrated shapes ``e`` (2, n) and per-object response ``R_g``
+    (2, 2, n).
     """
-    return {
-        key: data[key]
-        for shear in ("1P", "1M", "2P", "2M")
-        for i in (1, 2)
-        if (key := f"NGMIX_G{i}_ERR_{shear}") in data.dtype.names
-    }
-
-
-def evaluate_w(table, snr, size):
-    """Evaluate one fixed table, including rows absent from the training sample.
-
-    Unpooled empty/invalid cells and nonfinite coordinates get zero weight.
-    """
-    es, er, values, _ = table
-    w = values[cell_index(snr, es), cell_index(size, er)].copy()
-    w[~np.isfinite(snr) | ~np.isfinite(size) | ~np.isfinite(w)] = 0
-    return w
-
-
-def fit_w(snr, size, e, response, edges_s, edges_r, min_count=0):
-    """Fit W = mean(trace R/2)^2 / mean(|e|^2/2), unweighted per cell.
-
-    Uses second moments, not centered variances. Fitting and evaluation share
-    the same boundary convention. Below min_count, pool moments over the
-    smallest clipped concentric square of cells reaching min_count; if the
-    entire training set is smaller, use its moments. Populated cells are exact.
-    The returned counts are unmerged training counts.
-    """
-    shape = (len(edges_s) - 1, len(edges_r) - 1)
-    idx = cell_index(snr, edges_s) * shape[1] + cell_index(size, edges_r)
-    valid = np.isfinite(snr) & np.isfinite(size)
-    valid &= np.all(np.isfinite(e), axis=0) & np.isfinite(response)
-    idx = idx[valid]
-    count = np.bincount(idx, minlength=np.prod(shape))
-    rsum = np.bincount(idx, weights=response[valid], minlength=len(count))
-    esum = np.bincount(
-        idx, weights=np.mean(e[:, valid] ** 2, axis=0), minlength=len(count)
-    )
-    w = np.divide(
-        rsum**2, count * esum, out=np.zeros_like(rsum), where=(count * esum) > 0
-    )
-    if min_count < 0:
-        raise ValueError("min_count must be nonnegative")
-    # Smallest concentric square in cell-index space (clipped at the edges).
-    # Pool sufficient statistics, never weights; retain the original counts.
-    if min_count:
-        counts, rsums, esums = (x.reshape(shape) for x in (count, rsum, esum))
-        for i, j in np.argwhere(counts < min_count):
-            for radius in range(1, max(shape)):
-                window = (
-                    slice(max(0, i - radius), min(shape[0], i + radius + 1)),
-                    slice(max(0, j - radius), min(shape[1], j + radius + 1)),
-                )
-                n = counts[window].sum()
-                if n >= min_count or radius == max(shape) - 1:
-                    r, e2 = rsums[window].sum(), esums[window].sum()
-                    w[i * shape[1] + j] = r**2 / (n * e2) if n * e2 > 0 else 0
-                    break
-    return edges_s, edges_r, w.reshape(shape), count.reshape(shape)
-
-
-def responses(branches, masks, weights, rg, step, keep=None):
-    """S1 split and joint derivatives, each mean separately normalized.
-
-    rg is the per-object response on no-shear-selected rows, aligned to
-    masks['ns']. All other arrays are aligned to the common parent rows.
-    """
-    selected = {b: idx if keep is None else idx[keep[idx]] for b, idx in masks.items()}
-
-    def mean(data, b):
-        idx = selected[b]
-        w = weights[b][idx]
-        if not len(idx) or not np.isfinite(w).all() or w.sum() <= 0:
-            raise ValueError(f"Empty or invalid weighted population: {b}")
-        return np.array([np.average(x[idx], weights=w) for x in data])
-
-    ns = masks["ns"]
-    k = np.ones(len(ns), bool) if keep is None else keep[ns]
-    shear = np.average(rg[:, :, k], axis=2, weights=weights["ns"][ns][k])
-    selection = np.empty((2, 2))
-    joint = np.empty((2, 2))
-    for j, (p, m) in enumerate((("p1", "m1"), ("p2", "m2"))):
-        selection[:, j] = (mean(branches["ns"], p) - mean(branches["ns"], m)) / (
-            2 * step
-        )
-        joint[:, j] = (mean(branches[p], p) - mean(branches[m], m)) / (2 * step)
-    total = shear + selection
-    ce = mean(branches["ns"], "ns")
-    cg = np.linalg.solve(total, ce)
-    return dict(
-        shear=shear, selection=selection, total=total, joint=joint, c_e=ce, c_g=cg
-    )
-
-
-def row_jackknife(branches, masks, weights, rg, step, groups):
-    """Delete common spatial groups in all branches; conditional on fixed W.
-
-    Covariance order: shear, selection, total, joint (row-major), c_e, c_g.
-    Extends Martin's response_jackknife to additive bias and full covariance.
-    """
-    if len(groups) != len(branches["ns"][0]):
-        raise ValueError("Spatial groups must align to the common parent rows")
-    labels, group_index = np.unique(groups, return_inverse=True)
-    if len(labels) < 2:
-        raise ValueError("Response jackknife requires at least two spatial groups")
-
-    # Fixed-W sufficient sums: O(N) rather than rereading N rows K times.
-    def deleted_sum(values, index):
-        sums = np.bincount(index, weights=values, minlength=len(labels))
-        return sums.sum() - sums
-
-    den = {}
-    for b in masks:
-        idx = masks[b]
-        den[b] = deleted_sum(weights[b][idx], group_index[idx])
-        if np.any(den[b] <= 0):
-            raise ValueError(f"Empty weighted population after spatial deletion: {b}")
-
-    def means(data, b):
-        idx = masks[b]
-        return np.array(
-            [
-                deleted_sum(x[idx] * weights[b][idx], group_index[idx]) / den[b]
-                for x in data
-            ]
-        ).T
-
-    ns = masks["ns"]
-    shear = np.empty((len(labels), 2, 2))
-    selection = np.empty_like(shear)
-    joint = np.empty_like(shear)
-    for i in range(2):
-        for j in range(2):
-            shear[:, i, j] = (
-                deleted_sum(rg[i, j] * weights["ns"][ns], group_index[ns]) / den["ns"]
-            )
-    for j, (p, m) in enumerate((("p1", "m1"), ("p2", "m2"))):
-        selection[:, :, j] = (means(branches["ns"], p) - means(branches["ns"], m)) / (
-            2 * step
-        )
-        joint[:, :, j] = (means(branches[p], p) - means(branches[m], m)) / (2 * step)
-    total = shear + selection
-    ce = means(branches["ns"], "ns")
-    cg = np.linalg.solve(total, ce[..., None])[..., 0]
-    estimates = dict(
-        shear=shear, selection=selection, total=total, joint=joint, c_e=ce, c_g=cg
-    )
-    vectors = np.concatenate(
-        [estimates[k].reshape(len(labels), -1) for k in estimates], axis=1
-    )
-    delta = vectors - vectors.mean(axis=0)
-    cov = (len(labels) - 1) / len(labels) * delta.T @ delta
-    return labels, estimates, cov
-
-
-def validate_weight_scheme(scheme, w_col):
-    """Reject statistic/calibration mismatches, rather than relabel a response."""
+    scheme = metacal.get("weight_scheme")
     if scheme not in ("des", "iv"):
-        raise ValueError("weight_scheme must be des or iv")
-    if w_col != f"w_{scheme}":
-        raise ValueError(
-            f"Calibration weight_scheme={scheme} disagrees with w_col={w_col}"
-        )
+        raise ValueError("The metacal block must declare weight_scheme: des or iv.")
+    cuts = Cuts.from_config(metacal)
+    num_bins = metacal.get("des_num_bins", 20)
+    min_count = metacal.get("des_min_count", 3)
+    sigma_e = metacal["sigma_eps_prior"] if scheme == "iv" else None
+    if scheme == "iv":
+        table = unit_table(table_edges(cuts, num_bins))
+    elif metacal.get("weight_table"):
+        table = read_table(metacal["weight_table"])
+    else:
+        table = None
+    edges = table_edges(cuts, num_bins) if table is None else table[:2]
+    sums = accumulate(
+        rows,
+        cuts,
+        edges,
+        preselection=preselection,
+        groups=groups,
+        sigma_e=sigma_e,
+        step=metacal.get("step", 0.01),
+    )
+    rule = table
+    if table is None:
+        table, rule = fit_table(sums, min_count), refit(min_count)
+    result = estimate(sums, table)
+    out = dict(sums=sums, table=table, result=result)
+    if groups is not None:
+        out["jackknife"] = jackknife(sums, rule)
+
+    n = len(rows["NGMIX_G1_NOSHEAR"])
+    rows_in = np.arange(n) if preselection is None else np.flatnonzero(preselection)
+    ns = {k: v[rows_in] for k, v in branch_columns(rows, "ns").items()}
+    index = rows_in[select(ns, cuts)]
+    columns = {
+        b: {k: v[index] for k, v in branch_columns(rows, b).items()} for b in BRANCHES
+    }
+    g = np.array([columns["ns"]["g1"], columns["ns"]["g2"]])
+    out.update(
+        index=index,
+        w=weights(table, columns["ns"], sigma_e),
+        g=g,
+        e=calibrate(g, result, metacal.get("additive_correction", True)),
+        R_g=shear_response(columns, sums.step),
+    )
+    return out

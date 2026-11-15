@@ -14,6 +14,7 @@ if ipython is not None:
 
 
 # %%
+import json
 import sys
 
 import healpy as hp
@@ -23,8 +24,8 @@ from astropy.io import fits
 from cs_util import cat as cs_cat
 
 import sp_validation.catalog as cat
-from sp_validation import calibration
 from sp_validation import catalog_builders as sp_joint
+from sp_validation import response
 
 # %%
 # Initialize calibration class instance
@@ -75,66 +76,58 @@ if obj._params["sky_regions"]:
 
 # %%
 # ### Calibration
+#
+# One pass of the response core: per-tile sums of the five metacal branches,
+# the weight table, the response R and additive bias c_e with their tile
+# jackknife, and the calibrated shapes of the selected galaxies.
 
-# Call metacal
 cm = config["metacal"]
-
-# %%
-gal_metacal = calibration.metacal_from_config(
-    dat, mask_combined._mask, cm, verbose=True
+tiles = (
+    np.char.strip(np.asarray(dat["TILE_ID"]).astype(str))
+    if "TILE_ID" in dat.dtype.names
+    else None
 )
-
-# %%
-additive_correction = cm.get("additive_correction", True)
-if not additive_correction:
-    print("Additive bias correction disabled (additive_correction: False)")
-
-g_corr_mc, g_uncorr, w, mask_metacal, c, c_err = calibration.get_calibrated_m_c(
-    gal_metacal,
-    additive_correction=additive_correction,
+cal = response.calibrate_catalogue(
+    dat, cm, preselection=mask_combined._mask, groups=tiles
 )
+scheme = cm["weight_scheme"]
+index = cal["index"]
+print("R =", cal["result"]["total"], "c_e =", cal["result"]["c_e"])
 
-num_ok = len(g_corr_mc[0])
+num_ok = len(index)
 num_obj = len(dat)
 sp_joint.Mask.print_strings(
     "metacal", "gal selection", str(num_ok), f"{num_ok / num_obj:10.2%}"
 )
 
 # %%
-# Compute DES weights
+# Per-object columns of the selected galaxies
 
-cat_gal = {}
-
-sp_joint.compute_weights_gatti(
-    cat_gal,
-    g_uncorr,
-    gal_metacal,
-    dat,
-    mask_combined,
-    mask_metacal,
-    num_bins=20,
-    snr_min=cm["gal_snr_min"],
-    snr_max=cm["gal_snr_max"],
-    size_ratio_min=cm["gal_rel_size_min"],
-    size_ratio_max=cm["gal_rel_size_max"],
+cat_gal = {
+    f"w_{scheme}": cal["w"],
+    "e1_uncal": cal["g"][0],
+    "e2_uncal": cal["g"][1],
+    "NGMIX_T_NOSHEAR": np.asarray(dat["NGMIX_T_NOSHEAR"])[index],
+    "NGMIX_T_PSF_RECONV_NOSHEAR": np.asarray(dat["NGMIX_T_PSF_RECONV_NOSHEAR"])[index],
+}
+cat_gal["snr"] = (
+    np.asarray(dat["NGMIX_FLUX_NOSHEAR"])[index]
+    / np.asarray(dat["NGMIX_FLUX_ERR_NOSHEAR"])[index]
 )
+for i in range(2):
+    for j in range(2):
+        cat_gal[f"R_g{i + 1}{j + 1}"] = cal["R_g"][i, j]
 
 # %%
 # Correct for PSF leakage
 
 alpha_1, alpha_2 = sp_joint.compute_PSF_leakage(
-    cat_gal,
-    g_corr_mc,
-    dat,
-    mask_combined,
-    mask_metacal,
-    num_bins=20,
-    weight_type=gal_metacal.weight_scheme or "des",
+    cat_gal, cal["e"], dat, index, num_bins=20, weight_type=scheme
 )
 
 # Compute leakage-corrected ellipticities
-e1_leak_corrected = g_corr_mc[0] - alpha_1 * cat_gal["e1_PSF"]
-e2_leak_corrected = g_corr_mc[1] - alpha_2 * cat_gal["e2_PSF"]
+e1_leak_corrected = cal["e"][0] - alpha_1 * cat_gal["e1_PSF"]
+e2_leak_corrected = cal["e"][1] - alpha_2 * cat_gal["e2_PSF"]
 
 # %%
 # Get some memory back
@@ -143,9 +136,9 @@ for mask in masks:
 
 # %%
 # Additional quantities
-ra = cat.get_col(dat, "RA", mask_combined._mask, mask_metacal)
-dec = cat.get_col(dat, "Dec", mask_combined._mask, mask_metacal)
-mag = cat.get_col(dat, "mag", mask_combined._mask, mask_metacal)
+ra = np.asarray(dat["RA"])[index]
+dec = np.asarray(dat["Dec"])[index]
+mag = np.asarray(dat["mag"])[index]
 
 
 # %%
@@ -166,58 +159,38 @@ else:
 
 # %%
 # Additional data columns to write to output cat
-add_cols = [
-    "FLUX_RADIUS",
-    "MAGERR_AUTO",
-    "NGMIX_T_NOSHEAR",
-    "NGMIX_T_PSF_RECONV_NOSHEAR",
-    "fwhm_PSF",
-]
-add_cols_data = {}
-for key in add_cols:
-    add_cols_data[key] = cat.get_col(dat, key, mask_combined._mask, mask_metacal)
-
-# %%
-# Never copy stale unsquared IV weights from a comprehensive input.
-if gal_metacal.weight_scheme != "iv":
-    add_cols_data["w_iv"] = gal_metacal.ns["w_iv"][mask_metacal]
+add_cols_data = {
+    key: np.asarray(dat[key])[index]
+    for key in (
+        "FLUX_RADIUS",
+        "MAGERR_AUTO",
+        "NGMIX_T_NOSHEAR",
+        "NGMIX_T_PSF_RECONV_NOSHEAR",
+        "fwhm_PSF",
+    )
+}
 add_cols_format = {}
-if "TILE_ID" in dat.dtype.names:
-    add_cols_data["TILE_ID"] = np.asarray(
-        cat.get_col(dat, "TILE_ID", mask_combined._mask, mask_metacal)
-    ).astype(str)
-    add_cols_format["TILE_ID"] = f"{max(map(len, add_cols_data['TILE_ID']))}A"
-
-# Additional post-processing columns to write to output cat
-add_cols_post = [
-    "R_g11",
-    "R_g12",
-    "R_g21",
-    "R_g22",
-    "e1_PSF",
-    "e2_PSF",
-]
-for key in add_cols_post:
+if tiles is not None:
+    add_cols_data["TILE_ID"] = tiles[index]
+    add_cols_format["TILE_ID"] = f"{max(map(len, tiles[index]))}A"
+for key in ("R_g11", "R_g12", "R_g21", "R_g22", "e1_PSF", "e2_PSF"):
     add_cols_data[key] = cat_gal[key]
-
-# %%
-# Other additional columns
 add_cols_data["e1_leak_corrected"] = e1_leak_corrected
 add_cols_data["e2_leak_corrected"] = e2_leak_corrected
 
 # %%
-# Add information to FITS header
-
-# Generate new header
+# FITS header: the configuration, the masks, and the calibration contract
+# (weight scheme, response applied, additive bias subtracted).
 header = fits.Header()
-
-# Add general and metacal config information to FITS header
 obj.add_params_to_FITS_header(header, cm=cm)
-
-# %%
-# Add mask information to FITS header
 for my_mask in masks:
     my_mask.add_summary_to_FITS_header(header)
+header["WGHTSCH"] = (scheme, "weight scheme of the response and w column")
+header["RAPPLIED"] = (True, "e1, e2 carry the inverse response")
+header["MEANSUB"] = (
+    cm.get("additive_correction", True),
+    "e1, e2 have c_e subtracted",
+)
 
 # %%
 output_shape_cat_path = obj._params["input_path"].replace("comprehensive", "cut")
@@ -227,30 +200,29 @@ cat.write_shape_catalog(
     output_shape_cat_path,
     ra,
     dec,
-    cat_gal["w_des"] if gal_metacal._legacy_response else w,
+    cal["w"],
     mag=mag,
     snr=cat_gal["snr"],
-    g=g_corr_mc,
-    g1_uncal=g_uncorr[0],
-    g2_uncal=g_uncorr[1],
-    R=gal_metacal.R,
-    R_shear=gal_metacal.R_shear_global,
-    R_select=gal_metacal.R_selection,
-    c=c,
-    c_err=c_err,
-    w_type=gal_metacal.weight_scheme or "des",
+    g=cal["e"],
+    g1_uncal=cal["g"][0],
+    g2_uncal=cal["g"][1],
+    w_type=scheme,
     add_cols=add_cols_data,
     add_cols_format=add_cols_format,
     add_header=header,
 )
 
 # %%
-groups = (
-    np.asarray(dat["TILE_ID"][mask_combined._mask])
-    if "TILE_ID" in dat.dtype.names
-    else None
-)
-calibration.save_response_product(output_shape_cat_path, gal_metacal, groups)
+# Products beside the catalogue: the response record (with its tile-jackknife
+# covariance), the per-tile sums the image-simulation m reads, and the DES
+# weight table.
+stem = output_shape_cat_path.removesuffix(".fits")
+covariance = cal["jackknife"][2] if "jackknife" in cal else None
+with open(f"{stem}_response.json", "w") as f:
+    json.dump(response.record(cal["result"], covariance), f, indent=2)
+cal["sums"].save(f"{stem}_sums.npz")
+if scheme == "des":
+    response.write_table(f"{stem}_des_weights.fits", cal["table"])
 
 # Write mask information to ASCII file
 with open("masks.txt", "w") as f_out:

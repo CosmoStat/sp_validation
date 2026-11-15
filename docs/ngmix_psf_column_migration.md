@@ -201,25 +201,16 @@ did rename the `GALSIM_*` family onto the grammar (`GALSIM_GAL_ELL_*` /
 `GALSIM_*_SIGMA_*` → scalar `GALSIM_G1/G2_*`, `GALSIM_T*`), but that is cheap
 serialization symmetry, not a live capability.
 
-On the consumer side the galsim reader was **dead and already broken**: `shape` is
-hardcoded to `"ngmix"`, `extract_info.py` raises for any other value, nothing
-outside `scratch/` instantiates `metacal(prefix="GALSIM")` or calls
-`classification_galaxy_galsim`, and the shared
-`col_1p = f"{prefix}_T_PSF_RECONV_1P"` read in `metacal._read_data` never matched
-the galsim producer output (`GALSIM_T_PSF_*`, not `..._T_PSF_RECONV_*`). Carrying
-an untestable, already-broken path onto the new grammar is a worse end state than
-deleting it, so sp_validation has none. Absent by design:
+On the consumer side sp_validation reads no galsim columns: the metacal response
+(`sp_validation.response`) reads the `NGMIX_*` branch columns only, and
+`extract_info.py` raises for any shape method other than ngmix. Absent by design:
 
-- `calibration.metacal._read_data_galsim`, the `prefix == "GALSIM"` dispatch
-  branch (now `else: raise` — unknown prefixes fail loudly), and the two galsim
-  ellipticity-sign flips in `_shear_response` / `_selection_response`;
+- a galsim reader or galsim ellipticity-sign convention in the response;
 - `galaxy.classification_galaxy_galsim`;
 - the `sh == "galsim"` branch in `catalog.get_snr` (now `else: raise`);
-- the unused `shape_method` argument on `get_calibrated_quantities` /
-  `get_calibrated_m_c`, and the `galsim` mentions in `params.py` / `extract_info.py`.
+- the `galsim` mentions in `params.py` / `extract_info.py`.
 
-ngmix is the sole estimator sp_validation supports; the `prefix` parameter stays
-(it names the column family and could serve a future `NGMIXm` moments family).
+ngmix is the sole estimator sp_validation supports.
 To revive galsim shapes, the capability must return **end-to-end**: a galsim
 shape-measurement runner in ShapePipe (so the columns are producible at all), then
 a migrated-and-tested consumer here — restore commit `e0eaa9f`, rename onto the
