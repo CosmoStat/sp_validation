@@ -58,11 +58,15 @@ def run(recipe, output=None, *, workers=1):
     return summary
 
 
-def calibrate(config, cal, src, output, *, workers=1):
-    """Calibrate sources ``src`` on calibrators ``cal`` and write the products.
+def estimate(config, cal, src, *, workers=1):
+    """Calibrate sources ``src`` on calibrators ``cal``, in memory.
 
     ``cal`` and ``src`` are the arrays of :func:`.inputs.calibrators` and
-    :func:`.inputs.sources`; ``config`` is a loaded recipe.
+    :func:`.inputs.sources`; ``config`` is a loaded recipe. Returns the bin
+    edges, the SOM ``model`` (with ``group_map`` and ``edges``), the
+    calibrators' cells and groups, each source's preliminary bin, cell, group
+    and z channel, the gold threshold, the calibration ``est``
+    (:func:`.calibration.calibrate`) and each source's ``TOM_BIN_ID``.
 
     @sc [label:coupling] calibrator-edges-are-source-edges
     One set of edges, computed from the sources, bins the sources
@@ -70,9 +74,6 @@ def calibrate(config, cal, src, output, *, workers=1):
     through ``calibration_arrays.npz``, the ensemble; a bin's sources are
     calibrated only by the spectra in the same BPZ interval.
     """
-    output = Path(output)
-    output.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(output / "calibrators.npz", **cal)
     edges = nz.quantile_edges(
         src["mag"],
         src["photoz"],
@@ -80,20 +81,16 @@ def calibrate(config, cal, src, output, *, workers=1):
         offset=config["z2_offset"],
         **config["bins"],
     )
-    grid = output_grid(config)
     n_groups = config["groups"]
-
     model = nz.train(cal["mag"], workers=workers, **config["som"])
     model["group_map"] = nz.group_cells(model, n_groups)
     model["edges"] = edges
     _, cal_cell = nz.assign(cal["mag"], model, workers=workers)
     cal_group = model["group_map"][cal_cell]
-
-    weight, photoz = src["weight"], src["photoz"]
     prelim, cell, channel = nz.source_groups(
         src["mag"],
-        photoz,
-        weight,
+        src["photoz"],
+        src["weight"],
         model,
         offset=config["z2_offset"],
         workers=workers,
@@ -103,17 +100,45 @@ def calibrate(config, cal, src, output, *, workers=1):
     est = nz.calibrate(
         prelim,
         group,
-        weight,
-        photoz,
+        src["weight"],
+        src["photoz"],
         cal["z"],
         cal["photoz"],
         cal_group,
         edges,
         n_groups,
-        grid,
+        output_grid(config),
         threshold=threshold,
     )
-    tom = nz.tom_bin_ids(prelim, group, est["gold"])
+    return dict(
+        edges=edges,
+        model=model,
+        cal_cell=cal_cell,
+        cal_group=cal_group,
+        prelim=prelim,
+        cell=cell,
+        group=group,
+        channel=channel,
+        threshold=threshold,
+        est=est,
+        tom=nz.tom_bin_ids(prelim, group, est["gold"]),
+    )
+
+
+def calibrate(config, cal, src, output, *, workers=1):
+    """Calibrate sources ``src`` on calibrators ``cal`` (:func:`estimate`) and
+    write the products to ``output``."""
+    output = Path(output)
+    output.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(output / "calibrators.npz", **cal)
+    r = estimate(config, cal, src, workers=workers)
+    edges, model, est, tom = r["edges"], r["model"], r["est"], r["tom"]
+    cal_cell, cal_group, prelim, cell, channel = (
+        r[k] for k in ("cal_cell", "cal_group", "prelim", "cell", "channel")
+    )
+    threshold = r["threshold"]
+    grid = output_grid(config)
+    weight, photoz = src["weight"], src["photoz"]
     total_weight = float(weight.sum())
     for b in est["bins"]:
         b["weight_fraction_of_all"] = b["weight_sum"] / total_weight
