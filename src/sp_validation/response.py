@@ -531,6 +531,12 @@ def estimate(sums, table):
         selection[:, j] = (ns_e[p] - ns_e[m]) / (2 * sums.step)
         joint[:, j] = (own_e[p] - own_e[m]) / (2 * sums.step)
     total = shear + selection
+    if not all(np.isfinite(x).all() for x in (shear, selection, joint, ns_e[0])):
+        raise ValueError(
+            "The response or c_e is not finite: a selected row has a nonfinite "
+            "shape on a branch it enters, typically a failed metacal fit; the "
+            "NGMIX_MCAL_TYPES_FAIL == 0 preselection removes them."
+        )
     return dict(
         shear=shear,
         selection=selection,

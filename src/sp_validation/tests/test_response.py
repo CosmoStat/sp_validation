@@ -577,3 +577,14 @@ def test_calibrate_catalogue_default_min_count_is_three():
     assert cal["table"].min_count == 3
     np.testing.assert_array_equal(cal["table"].w, fit_table(cal["sums"], 3).w)
     assert not np.array_equal(cal["table"].w, fit_table(cal["sums"], 0).w)
+
+
+def test_nonfinite_shape_in_the_selection_is_loud():
+    """A failed fit on a sheared branch of a selected row raises, not NaN."""
+    data = synthetic(2000)
+    edges = response.table_edges(CUTS, 8)
+    sums = accumulate(data, CUTS, edges)
+    row = np.flatnonzero(response.select(response.branch_columns(data, "ns"), CUTS))[0]
+    data["NGMIX_G2_1P"][row] = np.nan
+    with pytest.raises(ValueError, match="failed metacal fit"):
+        estimate(accumulate(data, CUTS, edges), fit_table(sums, 3))
