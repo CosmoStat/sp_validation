@@ -76,6 +76,7 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="repository_structure.html">Repository structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stages.html">Stages</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul>
@@ -88,6 +89,13 @@
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="current">
 <li class="toctree-l1 current" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.html">sp_validation<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul class="current" x-show="expanded">
+<li class="toctree-l2" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.assembly.html">sp_validation.assembly<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul x-cloak="" x-show="expanded">
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.assembly.hats_collection.html">sp_validation.assembly.hats_collection</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.assembly.object_id.html">sp_validation.assembly.object_id</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.assembly.photopipe_merge.html">sp_validation.assembly.photopipe_merge</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.assembly.specz_merge.html">sp_validation.assembly.specz_merge</a></li>
+</ul>
+</li>
 <li class="toctree-l2" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.cosmo_val.html">sp_validation.cosmo_val<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul x-cloak="" x-show="expanded">
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.catalog_characterization.html">sp_validation.cosmo_val.catalog_characterization</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html">sp_validation.cosmo_val.core</a></li>
@@ -288,9 +296,11 @@ column-wise with <code class="docutils literal notranslate"><span class="pre">da
 as ShapePipe writes campaign galaxy and star catalogues), found by
 <code class="docutils literal notranslate"><span class="pre">find_dataset_group</span></code>, concatenated in dataset-name order, and
 checked against a declared <code class="docutils literal notranslate"><span class="pre">n_tiles</span></code> or <code class="docutils literal notranslate"><span class="pre">n_exposures</span></code> count;</p></li>
-<li><p>HATS catalogue directory, or an lsdb collection holding one: one chunk
+<li><p>HATS catalogue directory, or a collection holding one: one chunk
 per HEALPix partition (named by its path, <code class="docutils literal notranslate"><span class="pre">"Norder=5/Npix=1151"</span></code>), in
-<code class="docutils literal notranslate"><span class="pre">partition_info.csv</span></code> order. Rows come in sky order, not the tile
+<code class="docutils literal notranslate"><span class="pre">partition_info.csv</span></code> order. A collection’s extensions join its
+primary column-wise, each pixel file joined to the primary’s on the
+join columns (<code class="docutils literal notranslate"><span class="pre">tables.JoinedFile</span></code>). Rows come in sky order, not the tile
 order of the HDF5 the catalogue was built from; a <code class="docutils literal notranslate"><span class="pre">_source_row</span></code>
 column, where the builder wrote one, maps them back.</p></li>
 </ul>
@@ -439,7 +449,22 @@ primary catalogue is returned.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.io._hats_parts">
 <span class="sig-name descname"><span class="pre">_hats_parts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/io.html#_hats_parts"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.io._hats_parts" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.io._hats_parts'">¶</a></dt>
-<dd><p>Return {partition: (its ParquetFile,)} of a HATS catalogue.</p>
+<dd><p>Return {partition: (its ParquetFile, …)} of a HATS catalogue.</p>
+<p>For a collection with extensions (<code class="docutils literal notranslate"><span class="pre">all_extensions</span></code>), each partition’s
+tuple holds the primary’s file, then for each extension a <code class="docutils literal notranslate"><span class="pre">JoinedFile</span></code>
+presenting the extension’s own columns (<code class="docutils literal notranslate"><span class="pre">hats_ext_cols</span></code>) of that pixel,
+joined to the primary on the join columns. An extension holding fewer rows
+than the primary leaves rows null, so its integer columns read as float64.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.io._hats_pixels">
+<span class="sig-name descname"><span class="pre">_hats_pixels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/io.html#_hats_pixels"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.io._hats_pixels" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.io._hats_pixels'">¶</a></dt>
+<dd><p>Return the (order, pixel) rows of a HATS catalogue’s <code class="docutils literal notranslate"><span class="pre">partition_info.csv</span></code>.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.io._hats_files">
+<span class="sig-name descname"><span class="pre">_hats_files</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pixels</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/io.html#_hats_files"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.io._hats_files" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.io._hats_files'">¶</a></dt>
+<dd><p>Return the ParquetFile of each of <code class="docutils literal notranslate"><span class="pre">pixels</span></code> of the HATS catalogue <code class="docutils literal notranslate"><span class="pre">path</span></code>.</p>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.io._first_table_hdu">
@@ -553,6 +578,8 @@ catalogue truncated by an interrupted merge job or file transfer.</p>
 <li><a :data-current="activeSection === '#sp_validation.io.is_hats'" class="reference internal" href="#sp_validation.io.is_hats"><code class="docutils literal notranslate"><span class="pre">is_hats()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.io._fits_parts'" class="reference internal" href="#sp_validation.io._fits_parts"><code class="docutils literal notranslate"><span class="pre">_fits_parts()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.io._hats_parts'" class="reference internal" href="#sp_validation.io._hats_parts"><code class="docutils literal notranslate"><span class="pre">_hats_parts()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.io._hats_pixels'" class="reference internal" href="#sp_validation.io._hats_pixels"><code class="docutils literal notranslate"><span class="pre">_hats_pixels()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.io._hats_files'" class="reference internal" href="#sp_validation.io._hats_files"><code class="docutils literal notranslate"><span class="pre">_hats_files()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.io._first_table_hdu'" class="reference internal" href="#sp_validation.io._first_table_hdu"><code class="docutils literal notranslate"><span class="pre">_first_table_hdu()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.io._hdf5_parts'" class="reference internal" href="#sp_validation.io._hdf5_parts"><code class="docutils literal notranslate"><span class="pre">_hdf5_parts()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.io._chunk_numbers'" class="reference internal" href="#sp_validation.io._chunk_numbers"><code class="docutils literal notranslate"><span class="pre">_chunk_numbers()</span></code></a></li>

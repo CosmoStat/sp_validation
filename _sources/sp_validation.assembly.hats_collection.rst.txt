@@ -1,0 +1,7 @@
+sp\_validation.assembly.hats\_collection
+----------------------------------------
+
+.. automodule:: sp_validation.assembly.hats_collection
+   :members:
+   :show-inheritance:
+   :undoc-members:

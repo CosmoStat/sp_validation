@@ -62,6 +62,7 @@ ShapePipe galaxy catalogue: the campaign catalogue (`final_cat_<campaign>.hdf5`)
 | `XWIN_WORLD` | SExtractor windowed right ascension [deg]; tile-overlap cut. |
 | `YWIN_WORLD` | SExtractor windowed declination [deg]; tile-overlap cut. |
 | `TILE_ID` | Tile the object was detected on. |
+| `NUMBER` | Object number within its tile. |
 | `FLAGS` | SExtractor extraction flags. |
 | `MAG_AUTO` | SExtractor magnitude. |
 | `N_EPOCH` | Number of exposures covering the object. |

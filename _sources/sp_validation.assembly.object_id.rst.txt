@@ -1,0 +1,7 @@
+sp\_validation.assembly.object\_id
+----------------------------------
+
+.. automodule:: sp_validation.assembly.object_id
+   :members:
+   :show-inheritance:
+   :undoc-members:

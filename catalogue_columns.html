@@ -76,6 +76,7 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="repository_structure.html">Repository structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stages.html">Stages</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul class="current">
@@ -88,6 +89,13 @@
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul>
 <li class="toctree-l1" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.html">sp_validation<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul x-cloak="" x-show="expanded">
+<li class="toctree-l2" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.assembly.html">sp_validation.assembly<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul x-cloak="" x-show="expanded">
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.assembly.hats_collection.html">sp_validation.assembly.hats_collection</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.assembly.object_id.html">sp_validation.assembly.object_id</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.assembly.photopipe_merge.html">sp_validation.assembly.photopipe_merge</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.assembly.specz_merge.html">sp_validation.assembly.specz_merge</a></li>
+</ul>
+</li>
 <li class="toctree-l2" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.cosmo_val.html">sp_validation.cosmo_val<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul x-cloak="" x-show="expanded">
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.catalog_characterization.html">sp_validation.cosmo_val.catalog_characterization</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html">sp_validation.cosmo_val.core</a></li>
@@ -250,175 +258,178 @@ detection and overrides any rule for the same canonical name.</p>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">TILE_ID</span></code></p></td>
 <td><p>Tile the object was detected on.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">FLAGS</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NUMBER</span></code></p></td>
+<td><p>Object number within its tile.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">FLAGS</span></code></p></td>
 <td><p>SExtractor extraction flags.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MAG_AUTO</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MAG_AUTO</span></code></p></td>
 <td><p>SExtractor magnitude.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">N_EPOCH</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">N_EPOCH</span></code></p></td>
 <td><p>Number of exposures covering the object.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MASK_1_Faint_star_halos</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MASK_1_Faint_star_halos</span></code></p></td>
 <td><p>Mask bit 1 (faint-star halo); True = masked.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MASK_2_Bright_star_halos</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MASK_2_Bright_star_halos</span></code></p></td>
 <td><p>Mask bit 2 (bright-star halo); True = masked.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MASK_4_Stars</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MASK_4_Stars</span></code></p></td>
 <td><p>Mask bit 4 (star body); True = masked.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MASK_8_Manual</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MASK_8_Manual</span></code></p></td>
 <td><p>Mask bit 8 (manual mask); True = masked.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MASK_64_r</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MASK_64_r</span></code></p></td>
 <td><p>Mask bit 64 (no r-band coverage); True = masked.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MASK_1024_Maximask</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MASK_1024_Maximask</span></code></p></td>
 <td><p>Mask bit 1024 (MaxiMask artefact); True = masked.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_N_EPOCH</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_N_EPOCH</span></code></p></td>
 <td><p>Number of epochs ngmix fit; 0 = never fit.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_MCAL_FLAGS</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_MCAL_FLAGS</span></code></p></td>
 <td><p>ngmix metacal fit flags.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_MCAL_TYPES_FAIL</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_MCAL_TYPES_FAIL</span></code></p></td>
 <td><p>Number of metacal types whose fit failed.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_G1_ERR_NOSHEAR</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_G1_ERR_NOSHEAR</span></code></p></td>
 <td><p>Error on g1 of the unsheared fit; inverse-variance weight.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_G2_ERR_NOSHEAR</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_G2_ERR_NOSHEAR</span></code></p></td>
 <td><p>Error on g2 of the unsheared fit; inverse-variance weight.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_G1_PSF_ORIG_NOSHEAR</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_G1_PSF_ORIG_NOSHEAR</span></code></p></td>
 <td><p>g1 of the original PSF; -10 = no PSF fit.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_G2_PSF_ORIG_NOSHEAR</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_G2_PSF_ORIG_NOSHEAR</span></code></p></td>
 <td><p>g2 of the original PSF.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_T_PSF_ORIG_NOSHEAR</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_T_PSF_ORIG_NOSHEAR</span></code></p></td>
 <td><p>Size T of the original PSF.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_G1_NOSHEAR</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_G1_NOSHEAR</span></code></p></td>
 <td><p>Ellipticity g1, unsheared image.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_G2_NOSHEAR</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_G2_NOSHEAR</span></code></p></td>
 <td><p>Ellipticity g2, unsheared image.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_T_NOSHEAR</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_T_NOSHEAR</span></code></p></td>
 <td><p>Galaxy size T = 2 sigma^2, unsheared image.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_T_ERR_NOSHEAR</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_T_ERR_NOSHEAR</span></code></p></td>
 <td><p>Error on T, unsheared image.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_FLUX_NOSHEAR</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_FLUX_NOSHEAR</span></code></p></td>
 <td><p>Flux, unsheared image.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_FLUX_ERR_NOSHEAR</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_FLUX_ERR_NOSHEAR</span></code></p></td>
 <td><p>Error on the flux, unsheared image.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_FLAGS_NOSHEAR</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_FLAGS_NOSHEAR</span></code></p></td>
 <td><p>Fit flags, unsheared image.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_T_PSF_RECONV_NOSHEAR</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_T_PSF_RECONV_NOSHEAR</span></code></p></td>
 <td><p>Size T of the reconvolution PSF, unsheared image.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_G1_1P</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_G1_1P</span></code></p></td>
 <td><p>Ellipticity g1, image sheared by +h along g1.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_G2_1P</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_G2_1P</span></code></p></td>
 <td><p>Ellipticity g2, image sheared by +h along g1.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_T_1P</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_T_1P</span></code></p></td>
 <td><p>Galaxy size T = 2 sigma^2, image sheared by +h along g1.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_T_ERR_1P</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_T_ERR_1P</span></code></p></td>
 <td><p>Error on T, image sheared by +h along g1.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_FLUX_1P</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_FLUX_1P</span></code></p></td>
 <td><p>Flux, image sheared by +h along g1.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_FLUX_ERR_1P</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_FLUX_ERR_1P</span></code></p></td>
 <td><p>Error on the flux, image sheared by +h along g1.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_FLAGS_1P</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_FLAGS_1P</span></code></p></td>
 <td><p>Fit flags, image sheared by +h along g1.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_T_PSF_RECONV_1P</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_T_PSF_RECONV_1P</span></code></p></td>
 <td><p>Size T of the reconvolution PSF, image sheared by +h along g1.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_G1_1M</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_G1_1M</span></code></p></td>
 <td><p>Ellipticity g1, image sheared by -h along g1.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_G2_1M</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_G2_1M</span></code></p></td>
 <td><p>Ellipticity g2, image sheared by -h along g1.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_T_1M</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_T_1M</span></code></p></td>
 <td><p>Galaxy size T = 2 sigma^2, image sheared by -h along g1.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_T_ERR_1M</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_T_ERR_1M</span></code></p></td>
 <td><p>Error on T, image sheared by -h along g1.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_FLUX_1M</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_FLUX_1M</span></code></p></td>
 <td><p>Flux, image sheared by -h along g1.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_FLUX_ERR_1M</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_FLUX_ERR_1M</span></code></p></td>
 <td><p>Error on the flux, image sheared by -h along g1.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_FLAGS_1M</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_FLAGS_1M</span></code></p></td>
 <td><p>Fit flags, image sheared by -h along g1.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_T_PSF_RECONV_1M</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_T_PSF_RECONV_1M</span></code></p></td>
 <td><p>Size T of the reconvolution PSF, image sheared by -h along g1.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_G1_2P</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_G1_2P</span></code></p></td>
 <td><p>Ellipticity g1, image sheared by +h along g2.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_G2_2P</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_G2_2P</span></code></p></td>
 <td><p>Ellipticity g2, image sheared by +h along g2.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_T_2P</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_T_2P</span></code></p></td>
 <td><p>Galaxy size T = 2 sigma^2, image sheared by +h along g2.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_T_ERR_2P</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_T_ERR_2P</span></code></p></td>
 <td><p>Error on T, image sheared by +h along g2.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_FLUX_2P</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_FLUX_2P</span></code></p></td>
 <td><p>Flux, image sheared by +h along g2.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_FLUX_ERR_2P</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_FLUX_ERR_2P</span></code></p></td>
 <td><p>Error on the flux, image sheared by +h along g2.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_FLAGS_2P</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_FLAGS_2P</span></code></p></td>
 <td><p>Fit flags, image sheared by +h along g2.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_T_PSF_RECONV_2P</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_T_PSF_RECONV_2P</span></code></p></td>
 <td><p>Size T of the reconvolution PSF, image sheared by +h along g2.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_G1_2M</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_G1_2M</span></code></p></td>
 <td><p>Ellipticity g1, image sheared by -h along g2.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_G2_2M</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_G2_2M</span></code></p></td>
 <td><p>Ellipticity g2, image sheared by -h along g2.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_T_2M</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_T_2M</span></code></p></td>
 <td><p>Galaxy size T = 2 sigma^2, image sheared by -h along g2.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_T_ERR_2M</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_T_ERR_2M</span></code></p></td>
 <td><p>Error on T, image sheared by -h along g2.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_FLUX_2M</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_FLUX_2M</span></code></p></td>
 <td><p>Flux, image sheared by -h along g2.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_FLUX_ERR_2M</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_FLUX_ERR_2M</span></code></p></td>
 <td><p>Error on the flux, image sheared by -h along g2.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_FLAGS_2M</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_FLAGS_2M</span></code></p></td>
 <td><p>Fit flags, image sheared by -h along g2.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_T_PSF_RECONV_2M</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NGMIX_T_PSF_RECONV_2M</span></code></p></td>
 <td><p>Size T of the reconvolution PSF, image sheared by -h along g2.</p></td>
 </tr>
 </tbody>

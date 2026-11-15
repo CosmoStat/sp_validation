@@ -1,0 +1,7 @@
+sp\_validation.assembly.photopipe\_merge
+----------------------------------------
+
+.. automodule:: sp_validation.assembly.photopipe_merge
+   :members:
+   :show-inheritance:
+   :undoc-members:

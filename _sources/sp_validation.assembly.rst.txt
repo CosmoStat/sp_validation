@@ -1,0 +1,19 @@
+sp\_validation.assembly
+=======================
+
+
+.. automodule:: sp_validation.assembly
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   sp_validation.assembly.hats_collection
+   sp_validation.assembly.object_id
+   sp_validation.assembly.photopipe_merge
+   sp_validation.assembly.specz_merge

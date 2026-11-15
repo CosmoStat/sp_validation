@@ -28,7 +28,7 @@
 <link href="_static/theme.css?v=009055c6" rel="stylesheet" type="text/css"/>
 <link href="search.html" rel="search" title="Search"/>
 <link href="genindex.html" rel="index" title="Index"/>
-<link href="sp_validation.cosmo_val.html" rel="next" title="sp_validation.cosmo_val"/>
+<link href="sp_validation.assembly.html" rel="next" title="sp_validation.assembly"/>
 <link href="Leakage_object_Tutorial.html" rel="prev" title="Leakage_object Tutorial"/>
 </head>
 <body :class="{ 'overflow-hidden': showSidebar }" @scroll.window="showScrollTop = pageYOffset &gt; 100" class="min-h-screen font-sans antialiased bg-background text-foreground" x-data="{ showSidebar: false, showScrollTop: false }">
@@ -76,6 +76,7 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="repository_structure.html">Repository structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stages.html">Stages</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul>
@@ -88,6 +89,13 @@
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="current">
 <li class="toctree-l1 current" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="current reference internal expandable" href="#">sp_validation<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul x-cloak="" x-show="expanded">
+<li class="toctree-l2" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.assembly.html">sp_validation.assembly<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul x-cloak="" x-show="expanded">
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.assembly.hats_collection.html">sp_validation.assembly.hats_collection</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.assembly.object_id.html">sp_validation.assembly.object_id</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.assembly.photopipe_merge.html">sp_validation.assembly.photopipe_merge</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.assembly.specz_merge.html">sp_validation.assembly.specz_merge</a></li>
+</ul>
+</li>
 <li class="toctree-l2" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.cosmo_val.html">sp_validation.cosmo_val<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul x-cloak="" x-show="expanded">
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.catalog_characterization.html">sp_validation.cosmo_val.catalog_characterization</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html">sp_validation.cosmo_val.core</a></li>
@@ -184,6 +192,47 @@
 <h2>Subpackages<a class="headerlink" href="#subpackages" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#subpackages'">¶</a></h2>
 <div class="toctree-wrapper compound">
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="sp_validation.assembly.html">sp_validation.assembly</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.assembly.html#submodules">Submodules</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.assembly.hats_collection.html">sp_validation.assembly.hats_collection</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.assembly.object_id.html">sp_validation.assembly.object_id</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.assembly.object_id.html#sp_validation.assembly.object_id.object_id"><code class="docutils literal notranslate"><span class="pre">object_id()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.assembly.object_id.html#sp_validation.assembly.object_id._encodings"><code class="docutils literal notranslate"><span class="pre">_encodings()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.assembly.object_id.html#sp_validation.assembly.object_id.add_to_pixel"><code class="docutils literal notranslate"><span class="pre">add_to_pixel()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.assembly.object_id.html#sp_validation.assembly.object_id._add_to_pixel"><code class="docutils literal notranslate"><span class="pre">_add_to_pixel()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.assembly.object_id.html#sp_validation.assembly.object_id.write_shapes"><code class="docutils literal notranslate"><span class="pre">write_shapes()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.assembly.photopipe_merge.html">sp_validation.assembly.photopipe_merge</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.assembly.photopipe_merge.html#sp_validation.assembly.photopipe_merge.KEYS"><code class="docutils literal notranslate"><span class="pre">KEYS</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.assembly.photopipe_merge.html#sp_validation.assembly.photopipe_merge.DICTIONARY_FRACTION"><code class="docutils literal notranslate"><span class="pre">DICTIONARY_FRACTION</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.assembly.photopipe_merge.html#sp_validation.assembly.photopipe_merge.tile_name"><code class="docutils literal notranslate"><span class="pre">tile_name()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.assembly.photopipe_merge.html#sp_validation.assembly.photopipe_merge.load_extract"><code class="docutils literal notranslate"><span class="pre">load_extract()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.assembly.photopipe_merge.html#sp_validation.assembly.photopipe_merge._photopipe_schema"><code class="docutils literal notranslate"><span class="pre">_photopipe_schema()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.assembly.photopipe_merge.html#sp_validation.assembly.photopipe_merge._separation_arcsec"><code class="docutils literal notranslate"><span class="pre">_separation_arcsec()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.assembly.photopipe_merge.html#sp_validation.assembly.photopipe_merge._encodings"><code class="docutils literal notranslate"><span class="pre">_encodings()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.assembly.photopipe_merge.html#sp_validation.assembly.photopipe_merge.merge_pixel"><code class="docutils literal notranslate"><span class="pre">merge_pixel()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.assembly.photopipe_merge.html#sp_validation.assembly.photopipe_merge._write_hats_metadata"><code class="docutils literal notranslate"><span class="pre">_write_hats_metadata()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.assembly.photopipe_merge.html#sp_validation.assembly.photopipe_merge._commit"><code class="docutils literal notranslate"><span class="pre">_commit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.assembly.photopipe_merge.html#sp_validation.assembly.photopipe_merge._write_provenance"><code class="docutils literal notranslate"><span class="pre">_write_provenance()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.assembly.photopipe_merge.html#sp_validation.assembly.photopipe_merge._merge_worker"><code class="docutils literal notranslate"><span class="pre">_merge_worker()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.assembly.photopipe_merge.html#sp_validation.assembly.photopipe_merge.merge"><code class="docutils literal notranslate"><span class="pre">merge()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.assembly.specz_merge.html">sp_validation.assembly.specz_merge</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.assembly.specz_merge.html#sp_validation.assembly.specz_merge.MATCH_COLUMNS"><code class="docutils literal notranslate"><span class="pre">MATCH_COLUMNS</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.assembly.specz_merge.html#sp_validation.assembly.specz_merge._read_compilation_file"><code class="docutils literal notranslate"><span class="pre">_read_compilation_file()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.assembly.specz_merge.html#sp_validation.assembly.specz_merge.read_spectra"><code class="docutils literal notranslate"><span class="pre">read_spectra()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.assembly.specz_merge.html#sp_validation.assembly.specz_merge.match_pixel"><code class="docutils literal notranslate"><span class="pre">match_pixel()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.assembly.specz_merge.html#sp_validation.assembly.specz_merge.merge_pixel"><code class="docutils literal notranslate"><span class="pre">merge_pixel()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.assembly.specz_merge.html#sp_validation.assembly.specz_merge._merge_worker"><code class="docutils literal notranslate"><span class="pre">_merge_worker()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.assembly.specz_merge.html#sp_validation.assembly.specz_merge.merge"><code class="docutils literal notranslate"><span class="pre">merge()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="sp_validation.cosmo_val.html">sp_validation.cosmo_val</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation</span></code></a><ul>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.versions"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.versions</span></code></a></li>
@@ -839,6 +888,8 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io.is_hats"><code class="docutils literal notranslate"><span class="pre">is_hats()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io._fits_parts"><code class="docutils literal notranslate"><span class="pre">_fits_parts()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io._hats_parts"><code class="docutils literal notranslate"><span class="pre">_hats_parts()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io._hats_pixels"><code class="docutils literal notranslate"><span class="pre">_hats_pixels()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io._hats_files"><code class="docutils literal notranslate"><span class="pre">_hats_files()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io._first_table_hdu"><code class="docutils literal notranslate"><span class="pre">_first_table_hdu()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io._hdf5_parts"><code class="docutils literal notranslate"><span class="pre">_hdf5_parts()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html#sp_validation.io._chunk_numbers"><code class="docutils literal notranslate"><span class="pre">_chunk_numbers()</span></code></a></li>
@@ -1085,6 +1136,12 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.tables.html#sp_validation.tables.parquet_dtype"><code class="docutils literal notranslate"><span class="pre">parquet_dtype()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.tables.html#sp_validation.tables.JoinedFile"><code class="docutils literal notranslate"><span class="pre">JoinedFile</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.tables.html#sp_validation.tables.JoinedFile.row_major"><code class="docutils literal notranslate"><span class="pre">JoinedFile.row_major</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.tables.html#sp_validation.tables.JoinedFile.concurrent"><code class="docutils literal notranslate"><span class="pre">JoinedFile.concurrent</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.tables.html#sp_validation.tables.JoinedFile.read"><code class="docutils literal notranslate"><span class="pre">JoinedFile.read()</span></code></a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.tables.html#sp_validation.tables.ConcatTable"><code class="docutils literal notranslate"><span class="pre">ConcatTable</span></code></a><ul>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.tables.html#sp_validation.tables.ConcatTable.read"><code class="docutils literal notranslate"><span class="pre">ConcatTable.read()</span></code></a></li>
 </ul>
@@ -1107,8 +1164,8 @@
       </a>
 </div>
 <div class="ml-auto">
-<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="sp_validation.cosmo_val.html">
-        sp_validation.cosmo_val
+<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="sp_validation.assembly.html">
+        sp_validation.assembly
         <svg class="ml-2 h-4 w-4" fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
 <polyline points="9 18 15 12 9 6"></polyline>
 </svg>

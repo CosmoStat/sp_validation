@@ -13,6 +13,7 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
+   sp_validation.assembly
    sp_validation.cosmo_val
    sp_validation.dashboard
 

@@ -108,6 +108,7 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="repository_structure.html">Repository structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stages.html">Stages</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul>
@@ -120,6 +121,13 @@
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="sp_validation.html">sp_validation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.assembly.html">sp_validation.assembly</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.assembly.hats_collection.html">sp_validation.assembly.hats_collection</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.assembly.object_id.html">sp_validation.assembly.object_id</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.assembly.photopipe_merge.html">sp_validation.assembly.photopipe_merge</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.assembly.specz_merge.html">sp_validation.assembly.specz_merge</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.html">sp_validation.cosmo_val</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.catalog_characterization.html">sp_validation.cosmo_val.catalog_characterization</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html">sp_validation.cosmo_val.core</a></li>
@@ -237,6 +245,8 @@
 </li>
       <li><a href="sp_validation.sacc_io.html#sp_validation.sacc_io._add_theta_series">_add_theta_series() (in module sp_validation.sacc_io)</a>
 </li>
+      <li><a href="sp_validation.assembly.object_id.html#sp_validation.assembly.object_id._add_to_pixel">_add_to_pixel() (in module sp_validation.assembly.object_id)</a>
+</li>
       <li><a href="sp_validation.cosmo_val.psf_systematics.html#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin._alpha_summaries">_alpha_summaries() (PSFSystematicsMixin static method)</a>
 </li>
       <li><a href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl._apply_pixel_window_to_fiducial_cl">_apply_pixel_window_to_fiducial_cl() (in module sp_validation.cosmo_val.pseudo_cl)</a>
@@ -295,6 +305,8 @@
 </li>
       <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau._CatalogueLoader._columns">_columns() (_CatalogueLoader method)</a>
 </li>
+      <li><a href="sp_validation.assembly.photopipe_merge.html#sp_validation.assembly.photopipe_merge._commit">_commit() (in module sp_validation.assembly.photopipe_merge)</a>
+</li>
       <li><a href="sp_validation.calibration.html#sp_validation.calibration.metacal._compute_calibration">_compute_calibration() (metacal method)</a>
 </li>
       <li><a href="sp_validation.cosmo_val.psf_systematics.html#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin._compute_scale_dependent_xi_psf_sys">_compute_scale_dependent_xi_psf_sys() (PSFSystematicsMixin method)</a>
@@ -323,6 +335,12 @@
 </li>
       <li><a href="sp_validation.blinding.html#sp_validation.blinding._ell">_ell() (in module sp_validation.blinding)</a>
 </li>
+      <li><a href="sp_validation.assembly.object_id.html#sp_validation.assembly.object_id._encodings">_encodings() (in module sp_validation.assembly.object_id)</a>
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.assembly.photopipe_merge.html#sp_validation.assembly.photopipe_merge._encodings">(in module sp_validation.assembly.photopipe_merge)</a>
+</li>
+      </ul></li>
       <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau._extract_xip">_extract_xip() (in module sp_validation.rho_tau)</a>
 </li>
       <li><a href="sp_validation.dashboard.sky.html#sp_validation.dashboard.sky._far_side">_far_side() (in module sp_validation.dashboard.sky)</a>
@@ -369,7 +387,11 @@
 </li>
       <li><a href="sp_validation.sacc_io.html#sp_validation.sacc_io._grid_groups">_grid_groups() (in module sp_validation.sacc_io)</a>
 </li>
+      <li><a href="sp_validation.io.html#sp_validation.io._hats_files">_hats_files() (in module sp_validation.io)</a>
+</li>
       <li><a href="sp_validation.io.html#sp_validation.io._hats_parts">_hats_parts() (in module sp_validation.io)</a>
+</li>
+      <li><a href="sp_validation.io.html#sp_validation.io._hats_pixels">_hats_pixels() (in module sp_validation.io)</a>
 </li>
       <li><a href="sp_validation.io.html#sp_validation.io._hdf5_parts">_hdf5_parts() (in module sp_validation.io)</a>
 </li>
@@ -437,6 +459,12 @@
 </li>
       <li><a href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin._merge_iNKA_covariance">_merge_iNKA_covariance() (PseudoClMixin method)</a>
 </li>
+      <li><a href="sp_validation.assembly.photopipe_merge.html#sp_validation.assembly.photopipe_merge._merge_worker">_merge_worker() (in module sp_validation.assembly.photopipe_merge)</a>
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.assembly.specz_merge.html#sp_validation.assembly.specz_merge._merge_worker">(in module sp_validation.assembly.specz_merge)</a>
+</li>
+      </ul></li>
       <li><a href="sp_validation.statistics.html#sp_validation.statistics._min_pte">_min_pte() (in module sp_validation.statistics)</a>
 </li>
       <li><a href="sp_validation.dashboard.cosebis_grid.html#sp_validation.dashboard.cosebis_grid._modes">_modes() (in module sp_validation.dashboard.cosebis_grid)</a>
@@ -473,6 +501,8 @@
 </li>
       <li><a href="sp_validation.dashboard.cosebis_grid.html#sp_validation.dashboard.cosebis_grid._paths">_paths() (in module sp_validation.dashboard.cosebis_grid)</a>
 </li>
+      <li><a href="sp_validation.assembly.photopipe_merge.html#sp_validation.assembly.photopipe_merge._photopipe_schema">_photopipe_schema() (in module sp_validation.assembly.photopipe_merge)</a>
+</li>
       <li><a href="sp_validation.dashboard.psf.html#sp_validation.dashboard.psf._power_of_ten">_power_of_ten() (in module sp_validation.dashboard.psf)</a>
 </li>
       <li><a href="sp_validation.io.html#sp_validation.io._properties">_properties() (in module sp_validation.io)</a>
@@ -480,6 +510,8 @@
       <li><a href="sp_validation.dashboard.sky.html#sp_validation.dashboard.sky._ratio">_ratio() (in module sp_validation.dashboard.sky)</a>
 </li>
       <li><a href="sp_validation.cosmo_val.real_space.html#sp_validation.cosmo_val.real_space.RealSpaceMixin._ratio_xi_sys_xi_x_y_plot_function">_ratio_xi_sys_xi_x_y_plot_function() (RealSpaceMixin method)</a>
+</li>
+      <li><a href="sp_validation.assembly.specz_merge.html#sp_validation.assembly.specz_merge._read_compilation_file">_read_compilation_file() (in module sp_validation.assembly.specz_merge)</a>
 </li>
       <li><a href="sp_validation.calibration.html#sp_validation.calibration.metacal._read_data">_read_data() (metacal method)</a>
 </li>
@@ -508,6 +540,8 @@
       <li><a href="sp_validation.cosmo_val.psf_systematics.html#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin._scale_dependent_xi_psf_sys_x_y_plot_function">_scale_dependent_xi_psf_sys_x_y_plot_function() (PSFSystematicsMixin method)</a>
 </li>
       <li><a href="sp_validation.calibration.html#sp_validation.calibration.metacal._selection_response">_selection_response() (metacal method)</a>
+</li>
+      <li><a href="sp_validation.assembly.photopipe_merge.html#sp_validation.assembly.photopipe_merge._separation_arcsec">_separation_arcsec() (in module sp_validation.assembly.photopipe_merge)</a>
 </li>
       <li><a href="sp_validation.dashboard.versions.html#sp_validation.dashboard.versions._series">_series() (in module sp_validation.dashboard.versions)</a>
 </li>
@@ -549,6 +583,10 @@
 </li>
       <li><a href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation._write_catalog_config">_write_catalog_config() (CosmologyValidation method)</a>, <a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._write_catalog_config">[1]</a>
 </li>
+      <li><a href="sp_validation.assembly.photopipe_merge.html#sp_validation.assembly.photopipe_merge._write_hats_metadata">_write_hats_metadata() (in module sp_validation.assembly.photopipe_merge)</a>
+</li>
+      <li><a href="sp_validation.assembly.photopipe_merge.html#sp_validation.assembly.photopipe_merge._write_provenance">_write_provenance() (in module sp_validation.assembly.photopipe_merge)</a>
+</li>
       <li><a href="sp_validation.blinding.html#sp_validation.blinding._xi">_xi() (in module sp_validation.blinding)</a>
 </li>
       <li><a href="sp_validation.cosmo_val.psf_systematics.html#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin._xi_psf_sys_mean_and_std_x_y_plot_function">_xi_psf_sys_mean_and_std_x_y_plot_function() (PSFSystematicsMixin method)</a>
@@ -585,6 +623,8 @@
       <li><a href="sp_validation.catalog_builders.html#sp_validation.catalog_builders.Mask.add_summary_to_FITS_header">add_summary_to_FITS_header() (Mask method)</a>, <a href="sp_validation.masks.html#sp_validation.masks.Mask.add_summary_to_FITS_header">[1]</a>
 </li>
       <li><a href="sp_validation.sacc_io.html#sp_validation.sacc_io.add_tau">add_tau() (in module sp_validation.sacc_io)</a>
+</li>
+      <li><a href="sp_validation.assembly.object_id.html#sp_validation.assembly.object_id.add_to_pixel">add_to_pixel() (in module sp_validation.assembly.object_id)</a>
 </li>
       <li><a href="sp_validation.sacc_io.html#sp_validation.sacc_io.add_xi">add_xi() (in module sp_validation.sacc_io)</a>
 </li>
@@ -790,10 +830,10 @@
 </li>
       <li><a href="sp_validation.container.html#sp_validation.container.cmd_pull">cmd_pull() (in module sp_validation.container)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.container.html#sp_validation.container.cmd_sandbox">cmd_sandbox() (in module sp_validation.container)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.container.html#sp_validation.container.cmd_status">cmd_status() (in module sp_validation.container)</a>
 </li>
       <li><a href="sp_validation.dashboard.sky.html#sp_validation.dashboard.sky.coarsen">coarsen() (in module sp_validation.dashboard.sky)</a>
@@ -834,6 +874,8 @@
 
       <ul style="list-style-type:none">
         <li><a href="sp_validation.tables.html#sp_validation.tables.HDF5Table.concurrent">(HDF5Table attribute)</a>
+</li>
+        <li><a href="sp_validation.tables.html#sp_validation.tables.JoinedFile.concurrent">(JoinedFile attribute)</a>
 </li>
         <li><a href="sp_validation.tables.html#sp_validation.tables.ParquetFile.concurrent">(ParquetFile attribute)</a>
 </li>
@@ -931,6 +973,8 @@
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.assembly.photopipe_merge.html#sp_validation.assembly.photopipe_merge.DICTIONARY_FRACTION">DICTIONARY_FRACTION (in module sp_validation.assembly.photopipe_merge)</a>
+</li>
       <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.downgrade_mask">downgrade_mask() (in module sp_validation.glass_mock)</a>
 </li>
       <li><a href="sp_validation.dashboard.sky.html#sp_validation.dashboard.sky.draw_map">draw_map() (in module sp_validation.dashboard.sky)</a>
@@ -1301,6 +1345,8 @@
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.statistics.html#sp_validation.statistics.jackknife_patch_centers">jackknife_patch_centers() (in module sp_validation.statistics)</a>
 </li>
+      <li><a href="sp_validation.tables.html#sp_validation.tables.JoinedFile">JoinedFile (class in sp_validation.tables)</a>
+</li>
   </ul></td>
   </tr>
       </table>
@@ -1311,6 +1357,8 @@
       <li><a href="sp_validation.statistics.html#id5">k_eff (MinPTECalibration attribute)</a>, <a href="sp_validation.statistics.html#sp_validation.statistics.MinPTECalibration.k_eff">[1]</a>
 </li>
       <li><a href="sp_validation.statistics.html#id6">k_eff_interval (MinPTECalibration attribute)</a>, <a href="sp_validation.statistics.html#sp_validation.statistics.MinPTECalibration.k_eff_interval">[1]</a>
+</li>
+      <li><a href="sp_validation.assembly.photopipe_merge.html#sp_validation.assembly.photopipe_merge.KEYS">KEYS (in module sp_validation.assembly.photopipe_merge)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
@@ -1361,9 +1409,11 @@
 </li>
       <li><a href="sp_validation.dashboard.products.html#sp_validation.dashboard.products.load_cosebis_grid">load_cosebis_grid() (in module sp_validation.dashboard.products)</a>
 </li>
+      <li><a href="sp_validation.b_modes.html#sp_validation.b_modes.load_cosebis_results">load_cosebis_results() (in module sp_validation.b_modes)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
-      <li><a href="sp_validation.b_modes.html#sp_validation.b_modes.load_cosebis_results">load_cosebis_results() (in module sp_validation.b_modes)</a>
+      <li><a href="sp_validation.assembly.photopipe_merge.html#sp_validation.assembly.photopipe_merge.load_extract">load_extract() (in module sp_validation.assembly.photopipe_merge)</a>
 </li>
       <li><a href="sp_validation.cosmo_val.diagnostic_products.html#sp_validation.cosmo_val.diagnostic_products.load_footprint">load_footprint() (in module sp_validation.cosmo_val.diagnostic_products)</a>
 </li>
@@ -1462,6 +1512,10 @@
 </li>
       <li><a href="sp_validation.catalog.html#sp_validation.catalog.match_catalogs_radec">match_catalogs_radec() (in module sp_validation.catalog)</a>
 </li>
+      <li><a href="sp_validation.assembly.specz_merge.html#sp_validation.assembly.specz_merge.MATCH_COLUMNS">MATCH_COLUMNS (in module sp_validation.assembly.specz_merge)</a>
+</li>
+      <li><a href="sp_validation.assembly.specz_merge.html#sp_validation.assembly.specz_merge.match_pixel">match_pixel() (in module sp_validation.assembly.specz_merge)</a>
+</li>
       <li><a href="sp_validation.catalog.html#sp_validation.catalog.match_stars2">match_stars2() (in module sp_validation.catalog)</a>
 </li>
       <li><a href="sp_validation.catalog.html#sp_validation.catalog.match_subsample">match_subsample() (in module sp_validation.catalog)</a>
@@ -1480,10 +1534,22 @@
 </li>
       <li><a href="sp_validation.dashboard.sky.html#sp_validation.dashboard.sky.median_quantity">median_quantity() (in module sp_validation.dashboard.sky)</a>
 </li>
-      <li><a href="sp_validation.sacc_io.html#sp_validation.sacc_io.merge">merge() (in module sp_validation.sacc_io)</a>
+      <li><a href="sp_validation.assembly.photopipe_merge.html#sp_validation.assembly.photopipe_merge.merge">merge() (in module sp_validation.assembly.photopipe_merge)</a>
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.assembly.specz_merge.html#sp_validation.assembly.specz_merge.merge">(in module sp_validation.assembly.specz_merge)</a>
 </li>
+        <li><a href="sp_validation.sacc_io.html#sp_validation.sacc_io.merge">(in module sp_validation.sacc_io)</a>
+</li>
+      </ul></li>
       <li><a href="sp_validation.dashboard.correlations.html#sp_validation.dashboard.correlations.merge_detections">merge_detections() (in module sp_validation.dashboard.correlations)</a>
 </li>
+      <li><a href="sp_validation.assembly.photopipe_merge.html#sp_validation.assembly.photopipe_merge.merge_pixel">merge_pixel() (in module sp_validation.assembly.photopipe_merge)</a>
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.assembly.specz_merge.html#sp_validation.assembly.specz_merge.merge_pixel">(in module sp_validation.assembly.specz_merge)</a>
+</li>
+      </ul></li>
       <li><a href="sp_validation.calibration.html#sp_validation.calibration.metacal">metacal (class in sp_validation.calibration)</a>
 </li>
       <li><a href="sp_validation.format.html#sp_validation.format.millify">millify() (in module sp_validation.format)</a>
@@ -1501,6 +1567,14 @@
 
       <ul style="list-style-type:none">
         <li><a href="sp_validation.html#module-sp_validation">sp_validation</a>
+</li>
+        <li><a href="sp_validation.assembly.html#module-sp_validation.assembly">sp_validation.assembly</a>
+</li>
+        <li><a href="sp_validation.assembly.object_id.html#module-sp_validation.assembly.object_id">sp_validation.assembly.object_id</a>
+</li>
+        <li><a href="sp_validation.assembly.photopipe_merge.html#module-sp_validation.assembly.photopipe_merge">sp_validation.assembly.photopipe_merge</a>
+</li>
+        <li><a href="sp_validation.assembly.specz_merge.html#module-sp_validation.assembly.specz_merge">sp_validation.assembly.specz_merge</a>
 </li>
         <li><a href="sp_validation.b_modes.html#module-sp_validation.b_modes">sp_validation.b_modes</a>
 </li>
@@ -1675,6 +1749,8 @@
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.Ob">Ob (GlassMockConfig attribute)</a>
 </li>
+      <li><a href="sp_validation.assembly.object_id.html#sp_validation.assembly.object_id.object_id">object_id() (in module sp_validation.assembly.object_id)</a>
+</li>
       <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.Oc">Oc (GlassMockConfig property)</a>
 </li>
       <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.Om">Om (GlassMockConfig attribute)</a>
@@ -1683,10 +1759,10 @@
 </li>
       <li><a href="sp_validation.blinding.html#sp_validation.blinding.open_blind">open_blind() (in module sp_validation.blinding)</a>
 </li>
-      <li><a href="sp_validation.io.html#sp_validation.io.open_catalogue">open_catalogue() (in module sp_validation.io)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.io.html#sp_validation.io.open_catalogue">open_catalogue() (in module sp_validation.io)</a>
+</li>
       <li><a href="sp_validation.io.html#sp_validation.io.open_entry">open_entry() (in module sp_validation.io)</a>
 </li>
       <li><a href="sp_validation.io.html#sp_validation.io.open_stats_file">open_stats_file() (in module sp_validation.io)</a>
@@ -1939,6 +2015,8 @@
 </li>
         <li><a href="sp_validation.tables.html#sp_validation.tables.HDF5Table.read">(HDF5Table method)</a>
 </li>
+        <li><a href="sp_validation.tables.html#sp_validation.tables.JoinedFile.read">(JoinedFile method)</a>
+</li>
         <li><a href="sp_validation.tables.html#sp_validation.tables.ParquetFile.read">(ParquetFile method)</a>
 </li>
         <li><a href="sp_validation.grammar.html#sp_validation.grammar.V2View.read">(V2View method)</a>
@@ -1968,6 +2046,8 @@
 </li>
       <li><a href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.read_redshift_distribution">read_redshift_distribution() (PseudoClMixin method)</a>
 </li>
+      <li><a href="sp_validation.assembly.specz_merge.html#sp_validation.assembly.specz_merge.read_spectra">read_spectra() (in module sp_validation.assembly.specz_merge)</a>
+</li>
       <li><a href="sp_validation.dashboard.correlations.html#sp_validation.dashboard.correlations.read_stars">read_stars() (in module sp_validation.dashboard.correlations)</a>
 </li>
       <li><a href="sp_validation.tables.html#sp_validation.tables.read_structured">read_structured() (in module sp_validation.tables)</a>
@@ -1976,10 +2056,10 @@
 </li>
       <li><a href="sp_validation.blinding.html#sp_validation.blinding.Blind.record">record() (Blind method)</a>
 </li>
-      <li><a href="sp_validation.blinding.html#sp_validation.blinding.registry">registry() (in module sp_validation.blinding)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.blinding.html#sp_validation.blinding.registry">registry() (in module sp_validation.blinding)</a>
+</li>
       <li><a href="sp_validation.grammar.html#sp_validation.grammar.V2View.renames">renames (V2View property)</a>
 </li>
       <li><a href="sp_validation.dashboard.render.html#sp_validation.dashboard.render.render">render() (in module sp_validation.dashboard.render)</a>
@@ -2014,6 +2094,8 @@
 
       <ul style="list-style-type:none">
         <li><a href="sp_validation.tables.html#sp_validation.tables.HDF5Table.row_major">(HDF5Table attribute)</a>
+</li>
+        <li><a href="sp_validation.tables.html#sp_validation.tables.JoinedFile.row_major">(JoinedFile attribute)</a>
 </li>
         <li><a href="sp_validation.tables.html#sp_validation.tables.ParquetFile.row_major">(ParquetFile attribute)</a>
 </li>
@@ -2106,6 +2188,34 @@
 
       <ul style="list-style-type:none">
         <li><a href="sp_validation.html#module-sp_validation">module</a>
+</li>
+      </ul></li>
+      <li>
+    sp_validation.assembly
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.assembly.html#module-sp_validation.assembly">module</a>
+</li>
+      </ul></li>
+      <li>
+    sp_validation.assembly.object_id
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.assembly.object_id.html#module-sp_validation.assembly.object_id">module</a>
+</li>
+      </ul></li>
+      <li>
+    sp_validation.assembly.photopipe_merge
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.assembly.photopipe_merge.html#module-sp_validation.assembly.photopipe_merge">module</a>
+</li>
+      </ul></li>
+      <li>
+    sp_validation.assembly.specz_merge
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.assembly.specz_merge.html#module-sp_validation.assembly.specz_merge">module</a>
 </li>
       </ul></li>
       <li>
@@ -2248,6 +2358,8 @@
         <li><a href="sp_validation.cosmo_val.sacc_writers.html#module-sp_validation.cosmo_val.sacc_writers">module</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li>
     sp_validation.dashboard
 
@@ -2262,8 +2374,6 @@
         <li><a href="sp_validation.dashboard.correlations.html#module-sp_validation.dashboard.correlations">module</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li>
     sp_validation.dashboard.cosebis_grid
 
@@ -2556,8 +2666,12 @@
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.dashboard.correlations.html#sp_validation.dashboard.correlations.tile_centres">tile_centres() (in module sp_validation.dashboard.correlations)</a>
 </li>
-      <li><a href="sp_validation.dashboard.correlations.html#sp_validation.dashboard.correlations.tile_name">tile_name() (in module sp_validation.dashboard.correlations)</a>
+      <li><a href="sp_validation.assembly.photopipe_merge.html#sp_validation.assembly.photopipe_merge.tile_name">tile_name() (in module sp_validation.assembly.photopipe_merge)</a>
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.dashboard.correlations.html#sp_validation.dashboard.correlations.tile_name">(in module sp_validation.dashboard.correlations)</a>
 </li>
+      </ul></li>
       <li><a href="sp_validation.catalog_builders.html#sp_validation.catalog_builders.Mask.to_bool">to_bool() (Mask method)</a>, <a href="sp_validation.masks.html#sp_validation.masks.Mask.to_bool">[1]</a>
 </li>
       <li><a href="sp_validation.grammar.html#sp_validation.grammar.V2View.to_structured">to_structured() (V2View method)</a>
@@ -2629,10 +2743,10 @@
 </li>
       <li><a href="sp_validation.statistics.html#sp_validation.statistics.wilson_interval">wilson_interval() (in module sp_validation.statistics)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.io.html#sp_validation.io.write_binned_quantity">write_binned_quantity() (in module sp_validation.io)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.catalogue_match.html#sp_validation.catalogue_match.write_catalogue_match_audit">write_catalogue_match_audit() (in module sp_validation.catalogue_match)</a>
 </li>
       <li><a href="sp_validation.catalog.html#sp_validation.catalog.write_galaxy_cat">write_galaxy_cat() (in module sp_validation.catalog)</a>
@@ -2644,6 +2758,8 @@
       <li><a href="sp_validation.catalog.html#sp_validation.catalog.write_PSF_cat">write_PSF_cat() (in module sp_validation.catalog)</a>
 </li>
       <li><a href="sp_validation.catalog.html#sp_validation.catalog.write_shape_catalog">write_shape_catalog() (in module sp_validation.catalog)</a>
+</li>
+      <li><a href="sp_validation.assembly.object_id.html#sp_validation.assembly.object_id.write_shapes">write_shapes() (in module sp_validation.assembly.object_id)</a>
 </li>
       <li><a href="sp_validation.survey.html#sp_validation.survey.write_tile_id_gal_counts">write_tile_id_gal_counts() (in module sp_validation.survey)</a>
 </li>

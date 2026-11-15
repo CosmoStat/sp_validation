@@ -1,0 +1,7 @@
+sp\_validation.assembly.specz\_merge
+------------------------------------
+
+.. automodule:: sp_validation.assembly.specz_merge
+   :members:
+   :show-inheritance:
+   :undoc-members:

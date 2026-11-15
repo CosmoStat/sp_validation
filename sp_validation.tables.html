@@ -76,6 +76,7 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
 <li class="toctree-l1"><a class="reference internal" href="repository_structure.html">Repository structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stages.html">Stages</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul>
@@ -88,6 +89,13 @@
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="current">
 <li class="toctree-l1 current" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.html">sp_validation<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul class="current" x-show="expanded">
+<li class="toctree-l2" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.assembly.html">sp_validation.assembly<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul x-cloak="" x-show="expanded">
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.assembly.hats_collection.html">sp_validation.assembly.hats_collection</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.assembly.object_id.html">sp_validation.assembly.object_id</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.assembly.photopipe_merge.html">sp_validation.assembly.photopipe_merge</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.assembly.specz_merge.html">sp_validation.assembly.specz_merge</a></li>
+</ul>
+</li>
 <li class="toctree-l2" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.cosmo_val.html">sp_validation.cosmo_val<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul x-cloak="" x-show="expanded">
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.catalog_characterization.html">sp_validation.cosmo_val.catalog_characterization</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html">sp_validation.cosmo_val.core</a></li>
@@ -199,7 +207,8 @@ parallel threads.</p></li>
 </ul>
 <p><code class="docutils literal notranslate"><span class="pre">ArrayTable</span></code> (a numpy structured array or FITS_rec, in memory or
 memory-mapped), <code class="docutils literal notranslate"><span class="pre">HDF5Table</span></code> (an h5py compound dataset) and <code class="docutils literal notranslate"><span class="pre">ParquetFile</span></code>
-store rows; <code class="docutils literal notranslate"><span class="pre">ConcatTable</span></code> stacks tables end to end. <code class="docutils literal notranslate"><span class="pre">grammar.V2View</span></code>
+store rows; <code class="docutils literal notranslate"><span class="pre">JoinedFile</span></code> is a HATS extension’s pixel file joined to its
+primary’s on a key; <code class="docutils literal notranslate"><span class="pre">ConcatTable</span></code> stacks tables end to end. <code class="docutils literal notranslate"><span class="pre">grammar.V2View</span></code>
 presents any of them in the v2 column grammar, and is itself a table.</p>
 <dl class="py data">
 <dt class="sig sig-object py" id="sp_validation.tables.MAX_READ_THREADS">
@@ -290,7 +299,8 @@ reads on one lock, so datasets are not read concurrently.</p>
 every column’s statistics (~2 MB each on run1-snap3-hats, GBs over a
 catalogue), so each read parses it afresh, once for all its columns. A
 read touches only the row groups spanning its rows. Null values read as
-NaN in floating columns and raise in any other.</p>
+NaN in floating columns (an integer column holding nulls reads as float64,
+see <code class="docutils literal notranslate"><span class="pre">parquet_dtype</span></code>), as None in string columns, and raise in any other.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="sp_validation.tables.ParquetFile.row_major">
 <span class="sig-name descname"><span class="pre">row_major</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></span><a class="headerlink" href="#sp_validation.tables.ParquetFile.row_major" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.tables.ParquetFile.row_major'">¶</a></dt>
@@ -310,8 +320,36 @@ NaN in floating columns and raise in any other.</p>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.tables.parquet_dtype">
-<span class="sig-name descname"><span class="pre">parquet_dtype</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schema</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/tables.html#parquet_dtype"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.tables.parquet_dtype" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.tables.parquet_dtype'">¶</a></dt>
+<span class="sig-name descname"><span class="pre">parquet_dtype</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schema</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">footers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/tables.html#parquet_dtype"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.tables.parquet_dtype" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.tables.parquet_dtype'">¶</a></dt>
 <dd><p>Return the numpy structured dtype of a parquet schema.</p>
+<p>An integer column holding nulls in any of the files <code class="docutils literal notranslate"><span class="pre">footers</span></code> reads as
+float64, NaN where null, as a float column’s nulls do.</p>
+</dd></dl>
+<dl class="py class">
+<dt class="sig sig-object py" id="sp_validation.tables.JoinedFile">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">JoinedFile</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">primary</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keys</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/tables.html#JoinedFile"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.tables.JoinedFile" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.tables.JoinedFile'">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>A HATS extension’s pixel file, joined to its primary’s on a key.</p>
+<p><code class="docutils literal notranslate"><span class="pre">dtype</span></code> names the extension’s own columns. A read returns them for the
+primary’s rows: each row takes the extension row whose join column equals
+its own (<code class="docutils literal notranslate"><span class="pre">keys</span></code>: this file’s join column, the primary’s), and a row with
+none takes null (NaN in a floating column, None in a string column;
+another column cannot hold null, and a read that needs one raises).
+<code class="docutils literal notranslate"><span class="pre">file</span></code> is <code class="docutils literal notranslate"><span class="pre">None</span></code> where the extension has no file for the pixel. An
+extension may hold the primary’s rows in its own order or only some of
+them; one holding them in the same order is read at the same rows.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.tables.JoinedFile.row_major">
+<span class="sig-name descname"><span class="pre">row_major</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></span><a class="headerlink" href="#sp_validation.tables.JoinedFile.row_major" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.tables.JoinedFile.row_major'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.tables.JoinedFile.concurrent">
+<span class="sig-name descname"><span class="pre">concurrent</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">True</span></span><a class="headerlink" href="#sp_validation.tables.JoinedFile.concurrent" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.tables.JoinedFile.concurrent'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.tables.JoinedFile.read">
+<span class="sig-name descname"><span class="pre">read</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">names</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rows</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/tables.html#JoinedFile.read"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.tables.JoinedFile.read" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.tables.JoinedFile.read'">¶</a></dt>
+<dd></dd></dl>
 </dd></dl>
 <dl class="py class">
 <dt class="sig sig-object py" id="sp_validation.tables.ConcatTable">
@@ -384,6 +422,12 @@ first table. Raises <code class="docutils literal notranslate"><span class="pre"
 </ul>
 </li>
 <li><a :data-current="activeSection === '#sp_validation.tables.parquet_dtype'" class="reference internal" href="#sp_validation.tables.parquet_dtype"><code class="docutils literal notranslate"><span class="pre">parquet_dtype()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.tables.JoinedFile'" class="reference internal" href="#sp_validation.tables.JoinedFile"><code class="docutils literal notranslate"><span class="pre">JoinedFile</span></code></a><ul>
+<li><a :data-current="activeSection === '#sp_validation.tables.JoinedFile.row_major'" class="reference internal" href="#sp_validation.tables.JoinedFile.row_major"><code class="docutils literal notranslate"><span class="pre">JoinedFile.row_major</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.tables.JoinedFile.concurrent'" class="reference internal" href="#sp_validation.tables.JoinedFile.concurrent"><code class="docutils literal notranslate"><span class="pre">JoinedFile.concurrent</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.tables.JoinedFile.read'" class="reference internal" href="#sp_validation.tables.JoinedFile.read"><code class="docutils literal notranslate"><span class="pre">JoinedFile.read()</span></code></a></li>
+</ul>
+</li>
 <li><a :data-current="activeSection === '#sp_validation.tables.ConcatTable'" class="reference internal" href="#sp_validation.tables.ConcatTable"><code class="docutils literal notranslate"><span class="pre">ConcatTable</span></code></a><ul>
 <li><a :data-current="activeSection === '#sp_validation.tables.ConcatTable.read'" class="reference internal" href="#sp_validation.tables.ConcatTable.read"><code class="docutils literal notranslate"><span class="pre">ConcatTable.read()</span></code></a></li>
 </ul>
