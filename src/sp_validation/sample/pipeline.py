@@ -4,12 +4,15 @@ A recipe (``config/calibration/sample/``) names the snapshot, its shape
 catalogue, the selection config and the output directory. ``run`` makes two
 passes over the catalogue's HEALPix pixels, in parallel:
 
-1. :func:`measure` selects each pixel's galaxies and reduces them to per-cell
-   sums (``response.cell_moments``, ``response.cell_sums``) and a per-tile cut
-   flow, staging the selected rows. The sums of all pixels give the DES weight
-   table, the response ``R`` and the additive bias ``c_e`` of the whole sample.
+1. :func:`measure` selects each pixel's galaxies and reduces them to
+   per-(tile, cell) sums (:func:`sp_validation.response.accumulate`) and a
+   per-tile cut flow, staging the selected rows. The sums of all pixels give
+   the DES weight table (``fit_table``), the response ``R`` and the additive
+   bias ``c_e`` of the whole sample (``estimate``), and their delete-one-tile
+   jackknife covariance, with the table refitted per deletion.
 2. :func:`write` gives each staged row its weight and calibrated ellipticity
-   ``R⁻¹ (g − c_e)`` and writes its pixel of the HATS catalogue.
+   ``R⁻¹ (g − c_e)`` (``response.calibrate``) and writes its pixel of the HATS
+   catalogue.
 
 The pixels of the output are those of the input, so no row is ever moved
 between files and the catalogue is never held in memory.
@@ -19,9 +22,15 @@ Products, under the output directory, laid out as a release:
 - ``catalogs/calibrated/``: the HATS catalogue (:data:`COLUMNS`), its
   properties recording the snapshot (:mod:`.snapshot`);
 - ``catalogs/response.json``: ``R`` and its shear and selection parts, the
-  additive bias, the branch populations and the row counts;
-- ``catalogs/des_weights.fits``: the weight table, a product
-  ``calibration.load_des_weight_product`` reads;
+  additive bias, the branch populations, their jackknife covariance
+  (``response.record``) and the row counts; :mod:`.bins` adds the same record
+  for each tomographic bin under ``bins``, once the n(z) stage has assigned
+  them;
+- ``catalogs/des_weights.fits``: the weight table (``response.write_table``,
+  read by ``response.read_table``);
+- ``catalogs/response_sums.npz``: the sums themselves, grouped by
+  ``TILE_KEY`` (``response.Sums.save``), from which any table's response,
+  additive bias and jackknife follow without the catalogue;
 - ``catalogs/survey.json`` and ``masks/footprint-nside<N>-ring.fits``: area,
   n_eff and σ_e, and the occupied pixels they are taken over;
 - ``catalogs/config_mask.yaml`` and ``provenance/calibrated_recipe.yaml``: the
@@ -51,7 +60,7 @@ from hats.pixel_math.spatial_index import (
     compute_spatial_index,
 )
 
-from .. import calibration, io, masks, response
+from .. import io, masks, response
 from ..assembly.object_id import OBJECT_ID, object_id
 from ..data_roots import load_yaml
 from ..galaxy import classification_galaxy_overlap_ra_dec
@@ -81,13 +90,11 @@ COLUMNS = (
     SPATIAL_INDEX_COLUMN,
 )
 
-_SHEARS = ("NOSHEAR", "1P", "1M", "2P", "2M")
 _METACAL = [
-    f"NGMIX_{quantity}_{shear}"
-    for shear in _SHEARS
+    f"NGMIX_{quantity}_{response.SUFFIX[branch]}"
+    for branch in response.BRANCHES
     for quantity in ("FLAGS", "G1", "G2", "FLUX", "FLUX_ERR", "T", "T_PSF_RECONV")
-] + ["NGMIX_T_ERR_NOSHEAR", "NGMIX_G1_ERR_NOSHEAR", "NGMIX_G2_ERR_NOSHEAR"]
-_METACAL += [f"NGMIX_T_ERR_{shear}" for shear in _SHEARS[1:]]
+]
 _SOURCE = {
     "RA": "XWIN_WORLD",
     "Dec": "YWIN_WORLD",
@@ -128,19 +135,15 @@ def with_derived(data, tiles):
     return columns
 
 
-def table_edges(metacal):
-    """Return the (S/N, size) edges of the weight table of a ``metacal``
-    selection block: logarithmic cells between its cuts."""
-    bins = metacal.get("des_num_bins", 20)
-    return (
-        np.logspace(
-            *np.log10([metacal["gal_snr_min"], metacal["gal_snr_max"]]), bins + 1
-        ),
-        np.logspace(
-            *np.log10([metacal["gal_rel_size_min"], metacal["gal_rel_size_max"]]),
-            bins + 1,
-        ),
-    )
+def preselect(data, selection, tiles):
+    """Return ``data``'s columns with the derived ones (:func:`with_derived`),
+    and the rows kept before the catalogue cuts of ``selection`` and after
+    each in turn."""
+    columns = with_derived(data, tiles)
+    kept = [np.ones(len(data), dtype=bool)]
+    for cut in masks.get_masks_from_config(selection, columns)[0]:
+        kept.append(kept[-1] & np.asarray(cut._mask, dtype=bool))
+    return columns, kept
 
 
 def select(data, selection, tiles):
@@ -159,60 +162,51 @@ def select(data, selection, tiles):
     -------
     dict
         ``flow`` (stage, tile), the rows of each tile left after each cut;
-        ``moments`` and ``sums``, the weight-table and response sums
-        (:mod:`sp_validation.response`); ``step``, the metacal shear step;
-        and ``rows``, the selected galaxies with their uncalibrated shapes
-        ``g1``, ``g2``
+        ``sums``, the :class:`~sp_validation.response.Sums` of the rows, over
+        the ``TILE_KEY`` of the tiles they hold; and ``rows``, the selected
+        galaxies with their uncalibrated shapes ``g1``, ``g2``
 
-    @sc [label:invariant] sample-sums-add-over-chunks
-    ``moments`` and ``sums`` of disjoint sets of rows add to those of their
-    union, so the sample's weights, response and additive bias do not depend
-    on how the catalogue is cut into pixels.
+    @sc [decision:dr6_catalogue.sample_wide_calibration] sample-sums-add-over-chunks
+    ``sums`` of disjoint sets of rows add to those of their union
+    (``Sums.gather``), so the sample's one table, response and additive bias
+    do not depend on how the catalogue is cut into pixels.
     """
     keys = tile_key(tiles)
-    tile = np.searchsorted(keys, tile_key(data["TILE_ID"]))
-    if np.any(keys[np.minimum(tile, len(keys) - 1)] != tile_key(data["TILE_ID"])):
+    key = tile_key(data["TILE_ID"])
+    tile = np.searchsorted(keys, key)
+    if np.any(keys[np.minimum(tile, len(keys) - 1)] != key):
         raise ValueError("the catalogue holds a tile the snapshot does not list")
 
     def per_tile(index):
         return np.bincount(index, minlength=len(keys))
 
-    columns = with_derived(data, tiles)
-    keep = np.ones(len(data), dtype=bool)
-    flow = [per_tile(tile)]
-    for cut in masks.get_masks_from_config(selection, columns)[0]:
-        keep &= np.asarray(cut._mask, dtype=bool)
-        flow.append(per_tile(tile[keep]))
+    columns, kept = preselect(data, selection, tiles)
+    flow = [per_tile(tile[keep]) for keep in kept]
+    keep = kept[-1]
 
-    with np.errstate(divide="ignore", invalid="ignore"):
-        gm = calibration.metacal_from_config(
-            data, keep, selection["metacal"], global_response=False
-        )
-        branches = {b: getattr(gm, b) for b in response.BRANCHES}
-        coordinates = {
-            b: (d["flux"] / d["flux_err"], d["T"] / d["Tpsf"])
-            for b, d in branches.items()
-        }
-    shapes = {b: (d["g1"], d["g2"]) for b, d in branches.items()}
-    ns = gm.mask_dict["ns"]
-    snr, size = (x[ns] for x in coordinates["ns"])
-    g1, g2 = (x[ns] for x in shapes["ns"])
-    edges = table_edges(selection["metacal"])
-    rows = {name: columns[name][keep][ns] for name in ("RA", "Dec", "e1_PSF", "e2_PSF")}
+    metacal = selection["metacal"]
+    cuts = response.Cuts.from_config(metacal)
+    edges = response.table_edges(cuts, metacal.get("des_num_bins", 20))
+    sums = response.accumulate(
+        data,
+        cuts,
+        edges,
+        preselection=keep,
+        groups=key,
+        step=metacal.get("step", 0.01),
+    )
+    ns = response.branch_columns(data, "ns")
+    keep = keep & response.select(ns, cuts)
+    flow.append(per_tile(tile[keep]))
+    names = ("RA", "Dec", "e1_PSF", "e2_PSF", "N_EPOCH", "TILE_ID", "NUMBER")
+    rows = {name: columns[name][keep] for name in names}
     rows.update(
-        {name: data[name][keep][ns] for name in ("N_EPOCH", "TILE_ID", "NUMBER")}
+        g1=ns["g1"][keep],
+        g2=ns["g2"][keep],
+        SNR=ns["snr"][keep],
+        SIZE_RATIO=ns["size"][keep],
     )
-    rows.update(g1=g1, g2=g2, SNR=snr, SIZE_RATIO=size)
-    flow.append(per_tile(tile[keep][ns]))
-    return dict(
-        flow=np.array(flow),
-        moments=response.cell_moments(
-            snr, size, np.array([g1, g2]), (gm.R11 + gm.R22) / 2, *edges
-        ),
-        sums=response.cell_sums(shapes, gm.mask_dict, coordinates, gm.R_shear, *edges),
-        step=gm._step,
-        rows=rows,
-    )
+    return dict(flow=np.array(flow), sums=sums, rows=rows)
 
 
 def calibrate(rows, table, estimate):
@@ -222,14 +216,13 @@ def calibrate(rows, table, estimate):
     ``(e1, e2) = R⁻¹ (g − c_e)`` with the sample's one ``R`` and ``c_e``, and
     ``w_des`` is the sample's table at the galaxy's own S/N and size.
     """
-    g = np.array([rows["g1"], rows["g2"]])
-    e1, e2 = np.linalg.inv(estimate["total"]) @ (g - estimate["c_e"][:, None])
+    e1, e2 = response.calibrate(np.array([rows["g1"], rows["g2"]]), estimate)
     healpix = compute_spatial_index(rows["RA"], rows["Dec"])
     out = dict(
         rows,
         e1=e1,
         e2=e2,
-        w_des=response.evaluate_w(table, rows["SNR"], rows["SIZE_RATIO"]),
+        w_des=table.evaluate(rows["SNR"], rows["SIZE_RATIO"]),
         N_EPOCH=np.asarray(rows["N_EPOCH"], dtype=np.int16),
         TILE_KEY=tile_key(rows["TILE_ID"]).astype(np.int32),
     )
@@ -397,27 +390,27 @@ def run(recipe, output=None, *, workers=1):
     with io.Catalogue(source) as catalogue:
         pixels = list(catalogue.chunks)
     start = (source, selection, tiles, staging)
+    flow = 0
     with ProcessPoolExecutor(workers, initializer=_start, initargs=start) as pool:
-        total = None
-        for done, result in enumerate(pool.map(measure, pixels), 1):
-            step = result.pop("step")
-            total = result if total is None else response.add_sums(total, result)
-            if done % 100 == 0:
-                print(f"measured {done}/{len(pixels)} pixels", flush=True)
 
-        flow = total["flow"]
+        def parts():
+            nonlocal flow
+            for done, result in enumerate(pool.map(measure, pixels), 1):
+                flow = flow + result["flow"]
+                if done % 100 == 0:
+                    print(f"measured {done}/{len(pixels)} pixels", flush=True)
+                yield result["sums"]
+
+        sums = response.Sums.gather(parts(), tile_key(tiles))
         expected = np.array([snap["objects"][tile] for tile in tiles])
         if not np.array_equal(flow[0], expected):
             differ = [tile for tile, a, b in zip(tiles, flow[0], expected) if a != b]
             raise ValueError(
                 f"{len(differ)} tiles hold other rows than the manifest: {differ[:5]}"
             )
-        table = response.table_from_moments(
-            *total["moments"],
-            *table_edges(metacal),
-            min_count=metacal.get("des_min_count", 3),
-        )
-        estimate = response.responses_from_sums(total["sums"], table, step)
+        min_count = metacal.get("des_min_count", 3)
+        table = response.fit_table(sums, min_count)
+        estimate = response.estimate(sums, table)
 
         jobs = [(pixel, target, table, estimate) for pixel in pixels]
         written = list(pool.map(write, jobs))
@@ -431,23 +424,16 @@ def run(recipe, output=None, *, workers=1):
     stages = ["catalogue"]
     stages += [cut["label"] for cut in masks.catalogue_cuts(selection)]
     stages += [_METACAL_STAGE]
+    _, _, covariance = response.jackknife(sums, response.refit(min_count))
     result = dict(
-        R=estimate["total"],
-        R_shear=estimate["shear"],
-        R_selection=estimate["selection"],
-        R_joint=estimate["joint"],
-        c_e=estimate["c_e"],
-        c_g=estimate["c_g"],
-        branch_counts=estimate["counts"],
-        branch_weight_sums=estimate["weight_sums"],
+        response.record(estimate, covariance),
         raw_rows=int(flow[0].sum()),
         preselection=int(flow[-2].sum()),
         selected_rows=selected,
     )
     _dump(catalogs / "response.json", result)
-    calibration.save_des_weight_product(
-        catalogs / "des_weights.fits", table, metacal.get("des_min_count", 3)
-    )
+    response.write_table(catalogs / "des_weights.fits", table)
+    sums.save(catalogs / "response_sums.npz")
     nside = config["footprint_nside"]
     footprint = output / "masks" / f"footprint-nside{nside}-ring.fits"
     _dump(catalogs / "survey.json", survey(target, nside, footprint))

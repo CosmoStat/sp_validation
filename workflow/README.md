@@ -159,13 +159,13 @@ Two rules, opt-in from a run config:
 ```yaml
 glass_paint:
   output_dir: results/glass_painted
-  nz: /path/to/nz_B.txt
+  nz: /path/to/v2.0.0/nz/nz_nontomo.txt
   threads: 28          # map generation
   paint_threads: 16    # catalogue painting
   map_config: {nside: 4096, harmonic_lmax: 8192, zmax: 3.5, limber: true}
   catalogues:
-    sample:
-      path: /path/to/calibrated_catalogue.fits
+    calibrated:
+      path: /path/to/v2.0.0/catalogs/calibrated
       ra_col: RA
       dec_col: Dec
       w_col: w_des
@@ -180,10 +180,24 @@ glass_paint:
     additive_b: {b_amplitude: 2.6e-11, b_seed: 401}
 ```
 
-The target is then `results/glass_painted/seed_00001/sample_none.h5`. The same
+The target is then `results/glass_painted/seed_00001/calibrated_none.h5`. The same
 two stages run without Snakemake as `scripts/glass_mock/paint_catalogue.py
-{maps,paint}`. Painted catalogues are measured like any other: register them
-in `cat_config.yaml` and run cosmo_val, which writes SACC.
+{maps,paint}`. Painted catalogues are measured like any other, through one
+`cat_config.yaml` entry whose `shear.path_template` leaves the seed open:
+`SP_v2.0.0_glass_painted` reads `results/glass_painted/seed_{seed:05d}/calibrated_none.h5`
+under a throwaway blind kept in the run directory, `blinds/glass-painted.blind.json`
+(`python -m sp_validation.blinding init glass-painted --registry blinds`, once per
+run directory). Every SACC is stamped with the blind's name only, so an ensemble
+measured in several run directories or machines must share one record: copy
+`blinds/glass-painted.blind.json` into each instead of drawing a new one. With
+`glass_paint.catalogues.calibrated` as above, asking for a statistic of
+`SP_v2.0.0_glass_painted_seed1` paints seed 1 first:
+
+```bash
+COSMO_VAL=$PWD/cosmo_val snakemake --profile workflow/profiles/default -s workflow/Snakefile \
+    -j 32 --configfile <run config> \
+    $PWD/cosmo_val/SP_v2.0.0_glass_painted_seed1_xi_minsep=1.0_maxsep=250.0_nbins=20_npatch=1.sacc
+```
 
 | output | holds |
 |---|---|
@@ -208,9 +222,10 @@ in `cat_config.yaml` and run cosmo_val, which writes SACC.
   spectrum; a footprint measurement scatters around it by the footprint's
   sample variance, and the same pipeline on the noise-free `g*_true` columns
   gives that footprint's exact answer.
-- **Allowlisted columns.** Mock registry entries run with `blind: none`, so a
-  measured shape carried through (`e*_uncal`, say) would be measured
-  unblinded. Only position, weight, PSF and explicit `keep` columns survive.
+- **Allowlisted columns.** A painted mock is measured under its own throwaway
+  blind, not the data's, so a measured shape carried through (`e*_uncal`,
+  say) would be measured outside the data blind. Only position, weight, PSF
+  and explicit `keep` columns survive.
 - **Signs.** Maps follow HEALPix; catalogue e2 is `pol_factor` times HEALPix
   gamma2, `-1` for UNIONS, matching cosmo_val's `pol_factor: -1`.
 - **Spectra cache.** The lognormal solve is checked against its request to
@@ -461,7 +476,7 @@ publishing a new image changes nothing until you pull again.
 `spv-container status` reads `org.opencontainers.image.revision` — the
 sp_validation commit the image was built from — and places it against your
 checkout's `HEAD`, naming which layer (sandbox or SIF) it read. The image-sims workflow records the same label in
-`m_bias_config.yaml` as `ghcr_revision`, so a result file says which image
+`m_bias_results.yaml` as `ghcr_revision`, so a result file says which image
 produced the number.
 
 #### Running an image other than your own

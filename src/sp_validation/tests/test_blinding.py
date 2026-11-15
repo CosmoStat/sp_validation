@@ -103,6 +103,19 @@ def test_distinct_blinds_and_determinism(tmp_path):
     np.testing.assert_array_equal(s.mean, np.zeros(len(s.mean)))
 
 
+def test_init_draws_into_a_named_registry(tmp_path, monkeypatch):
+    """``--registry`` draws a record a catalogue entry names by path."""
+    monkeypatch.chdir(tmp_path)
+    bd.main(["init", "mock", "--registry", "blinds"])
+    catalogues = {
+        "paths": {"blinds": "~/unused"},
+        "mock": {"blind": "blinds/mock.blind.json"},
+    }
+    blind = bd.entry_blind(catalogues, "mock")
+    assert blind.name == "mock"
+    assert blind.record()["envelope"] == bd.ENVELOPE
+
+
 def test_smokescreen_draw_stays_in_envelope(tmp_path):
     from smokescreen.datavector import concealing_factor
 

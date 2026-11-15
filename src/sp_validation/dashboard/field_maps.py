@@ -13,7 +13,7 @@ read by the renderers in :mod:`sp_validation.dashboard`:
 
 ``weight_cells_<version>.npz``
     The galaxy weight on the SNR x size-ratio grid it is built on
-    (:func:`sp_validation.calibration.get_w_des`): per-cell counts and the
+    (the DES table cells of :mod:`sp_validation.response`): per-cell counts and the
     weight range within each cell, the grid edges, and the distinct weight
     values with their multiplicities. Also contains response histograms,
     equal-count leakage-cell regression sums and binned additive-bias sums.
@@ -39,6 +39,7 @@ import healpy as hp
 import numpy as np
 
 from sp_validation.io import read_catalogue
+from sp_validation.response import cell_index
 
 GALAXY_COLUMNS = [
     "RA",
@@ -115,19 +116,6 @@ def weight_grid_edges(n_bins, snr_range, size_ratio_range):
     snr_edges = np.logspace(*np.log10(snr_range), n_bins + 1)
     size_edges = np.logspace(*np.log10(size_ratio_range), n_bins + 1)
     return snr_edges, size_edges
-
-
-def weight_cell_index(values, edges):
-    """Cell index of each value, matching ``calibration.cut_to_bins``.
-
-    Bins are right-closed, ``(edge[i], edge[i+1]]``; a value outside the
-    edges belongs to the last cell, as ``cut_to_bins`` assigns it.
-    """
-    n_bins = len(edges) - 1
-    index = np.searchsorted(edges, values, side="left") - 1
-    outside = (index < 0) | (index >= n_bins) | ~np.isfinite(values)
-    index[outside] = n_bins - 1
-    return index
 
 
 def _accumulate(total, pixels, weights, npix):
@@ -210,8 +198,8 @@ def galaxy_products(path, nside, n_bins, snr_range, size_ratio_range, chunk):
             out_of_range["snr_high"] += int(np.sum(snr > snr_range[1]))
             out_of_range["size_low"] += int(np.sum(size_ratio <= size_ratio_range[0]))
             out_of_range["size_high"] += int(np.sum(size_ratio > size_ratio_range[1]))
-            i = weight_cell_index(snr, snr_edges)
-            j = weight_cell_index(size_ratio, size_edges)
+            i = cell_index(snr, snr_edges)
+            j = cell_index(size_ratio, size_edges)
             flat = i * n_bins + j
             cell_count += np.bincount(flat, minlength=n_bins**2).reshape(n_bins, -1)
             response = 0.5 * (rows["R_g11"] + rows["R_g22"])

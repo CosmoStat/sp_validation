@@ -138,7 +138,9 @@ def test_fresh_cv_merges_tomographic_covariance(tmp_path, monkeypatch):
     )
     # Shear calibration is not under test: read the stub catalogue as is.
     monkeypatch.setattr(
-        cv, "_pseudo_cl_catalogue", lambda ver: pseudo_cl.open_entry(None)
+        cv,
+        "_pseudo_cl_catalogue",
+        lambda ver, tomography=False: pseudo_cl.open_entry(None),
     )
     monkeypatch.setattr(
         pseudo_cl.spv_pseudo_cl,

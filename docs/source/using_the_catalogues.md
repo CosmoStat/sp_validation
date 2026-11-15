@@ -62,6 +62,18 @@ Selections that do *not* correlate with galaxy properties — spatial sub-areas,
 regions around clusters, and so on — are fine. If you need property-dependent
 cuts, recalibrate using the extended catalogue (Section 2).
 
+Tomographic bins are property-dependent samples, and each has its own response.
+From v2.0.0 the release ships it: `e1`, `e2` carry the whole sample's response
+R_all, and `catalogs/response.json` holds R_all (`R`) and, under
+`bins.records["k"]["R"]`, the 2 × 2 response R_k of bin k
+(`TOM_BIN_ID == k`). The shear of bin k is
+
+    g = R_k⁻¹ R_all e − ⟨R_k⁻¹ R_all e⟩_k,
+
+the weighted mean taken over the bin's galaxies with their weights `w_des`
+({func}`sp_validation.response.calibrated_shear`; see
+[Response per sample](response_calibration.md#response-per-sample)).
+
 ### Open the file and inspect it
 
 ```python
@@ -135,21 +147,10 @@ _ = plt.ylabel(r"$\xi_\pm(\theta)$")
 ## 2. Extended catalogue
 
 This catalogue must be **calibrated before use**.
-A cut catalogue containing only per-object R_g and one global selection response does **not** contain enough information to recalibrate a changed sample or weight scheme.
-Use the parent five-branch comprehensive catalogue and `calibration.metacal_from_config` with matching cuts and `weight_scheme: des` (or `iv`).
+A cut catalogue holding per-object R_g and one global selection response cannot recalibrate a changed sample or weight scheme: the selection response of the new population needs the five metacal branches.
+Calibrate from the parent five-branch comprehensive catalogue with {func}`sp_validation.response.calibrate_catalogue`, with the cuts of the new sample and `weight_scheme: des` (or `iv`).
 See [Response definitions](response_calibration.md).
-The historical recipe below is retained only to explain the released columns; its reuse of global R_s after new cuts is not a valid new calibration.
-
-```{tip}
-The `sp_validation` library performs every step below for you:
-{func}`sp_validation.calibration.get_calibrated_m_c` calibrates an in-memory
-catalogue for multiplicative and additive bias, and
-{func}`sp_validation.calibration.get_calibrate_e_from_cat` does the same from a
-catalogue on disk when its stored weight identity matches.
-Unknown/mismatched selection-response metadata is refused, as are changed row counts or weight sums.
-Even a historically zero selection response does not establish that it stays zero after new cuts.
-Neither function reconstructs missing five-branch inputs after new cuts.
-```
+The recipe below explains the released columns; its reuse of a global R_s after new cuts is not a valid new calibration.
 
 ### Open the file
 

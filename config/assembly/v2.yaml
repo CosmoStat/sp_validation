@@ -1,0 +1,14 @@
+# The v2 HATS collection: run-1 shapes with PhotoPipe's DR6 photometry and
+# spec-z as extensions (sp_validation.assembly.hats_collection.build).
+# scripts/assembly/fetch_photopipe.sh stages the PhotoPipe inputs.
+
+# Shape HATS catalogue of ShapePipe v2 run 1, snapshot 3.
+shapes: ${unions_data}/v2.x/run1-snap3-hats/catalogue
+# PhotoPipe's columns of every DR6 tile (scripts/assembly/extract_photopipe.py).
+photopipe_extract: ${unions_data}/photopipe-dr6-extract
+# PhotoPipe's match of DR6 objects to spectra over every tile, and the
+# per-tile redshift compilation of 19 Oct 2026 it used.
+specz_matches: ${unions_data}/photopipe-dr6-specz-all/UNIONS_DR6_ugriz_specz.cat
+specz_compilation: ${unions_data}/photopipe-dr6-specz-all/asc
+# The collection.
+collection: ${unions_data}/v2.x/run1-snap3-collection

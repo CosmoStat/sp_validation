@@ -1,17 +1,16 @@
 # Calibration scripts
 
 The calibrate stage: the scripts that turn a final `ShapePipe` output
-catalogue into a science-ready, metacalibrated shear catalogue, and give its
-selection a redshift distribution. Run them in order. See
-`docs/source/post_processing.md` for the full prose.
+catalogue into a science-ready, metacalibrated shear catalogue. Run them in
+order. See `docs/source/post_processing.md` for the full prose.
 
 **ShapePipe v2** (one snapshot of every tile, with mask columns):
 
 | Step | Script | Does |
 |------|--------|------|
 | 1 | `calibrate_sample.py` | The calibrated shear sample from a snapshot's shapes: selection, weights, metacalibration, HATS catalogue ([below](#the-calibrated-sample-v2)). |
-| 2 | `calibrate_nz.py` | SOM direct calibration: the tomographic n(z) file, each row's `TOM_BIN_ID` and n(z) realisations; `plot_nz.py` draws its figures. |
-| 2b | `clustering_nz.py` | Check of step 2: clustering redshifts of the gold bins against DESI DR1; `plot_clustering.py` draws its figures. |
+| 2 | `calibrate_nz.py` | The tomographic bins and their n(z) ([below](#redshift-distribution-step-5)). |
+| 3 | `bin_responses.py` | The response of each tomographic bin, into `catalogs/response.json` ([below](#the-response-of-each-bin)). |
 
 `compare_samples.py` compares two samples object by object.
 
@@ -22,7 +21,21 @@ selection a redshift distribution. Run them in order. See
 | 1 | `extract_info.py` | Extract metacal + diagnostic info for one campaign; create pre-calibration shear catalogues. Configured via `params.py`. |
 | 2 | `create_joint_comprehensive_cat.py` | Merge the per-campaign comprehensive catalogues into one joint catalogue (front-end of `catalog_builders.JointCat`). |
 | 3 | `demo_apply_hsp_masks.py` | Add the structural and coverage (HealSparse) masks. |
-| 4 | `calibrate_comprehensive_cat.py` | Galaxy selection + metacalibration. Uses the mask configs in `config/calibration/`. |
+| 4 | `calibrate_comprehensive_cat.py` | Galaxy selection + metacalibration (`sp_validation.response.calibrate_catalogue`). Uses the mask configs in `config/calibration/`, whose `metacal` block must declare `weight_scheme: des` or `iv`. |
+| 5 | `calibrate_nz.py` | SOM direct calibration: the tomographic n(z) file, each row's `TOM_BIN_ID` and n(z) realisations. |
+
+Step 4 writes the cut catalogue `shape_catalog_cut_<shape>.fits` and beside it:
+
+- `<stem>_response.json`: R, its shear, selection and joint parts, `c_e`,
+  `c_g`, the branch populations, and (with `TILE_ID`) the tile-jackknife
+  covariance;
+- `<stem>_sums.npz`: the per-tile response sums (`response.Sums`), from which the
+  image-sims workflow (`workflow/rules/image_sims.smk`) measures m;
+- `<stem>_des_weights.fits`: the DES weight table (`response.write_table`),
+  for `weight_scheme: des`.
+
+A `metacal.weight_table` path makes step 4 weight with that table instead of
+fitting one (image simulations use the data's table).
 
 `params.py` is the shared parameter template (paths, column names, survey
 constants) imported by `extract_info.py`; copy and edit it per run.
@@ -75,18 +88,23 @@ snakemake --profile workflow/profiles/default -s workflow/calibrate/Snakefile -j
 
 What it does (`sp_validation.sample.pipeline`): reads the shapes one HEALPix
 pixel at a time, in parallel; cuts tile overlaps against every tile of the
-snapshot; applies the selection; sums, over all pixels, the per-cell moments
-that give the DES weight table and the response `R = R_shear + R_selection`
-and additive bias `c_e` of the whole sample; then writes each pixel with
-`w_des` and `e = R⁻¹(g − c_e)`. The products, laid out as a release:
+snapshot; applies the selection; reduces each pixel to per-(tile, cell) sums
+(`sp_validation.response`, `docs/source/response_calibration.md`), whose total
+gives the DES weight table, the response `R = R_shear + R_selection` and the
+additive bias `c_e` of the whole sample, and their delete-one-tile jackknife;
+then writes each pixel with `w_des` and `e = R⁻¹(g − c_e)`. The products, laid out as a release:
 
 - `catalogs/calibrated/`: HATS catalogue of `RA`, `Dec`, `e1`, `e2`, `w_des`,
   `e1_PSF`, `e2_PSF`, `SIZE_RATIO`, `SNR`, `N_EPOCH`, `TILE_KEY`, `TILE_ID`,
   `NUMBER` and `OBJECT_ID`, the DR6 object ID that joins it to the collection.
   It has no `TOM_BIN_ID`: the n(z) step assigns bins, by `OBJECT_ID`.
 - `catalogs/response.json`, `catalogs/des_weights.fits`: the response and its
-  parts, `c_e`, the branch populations; the weight table, readable as a
-  `des_weight_product`.
+  parts, `c_e`, the branch populations and their jackknife covariance
+  (`response.record`); the weight table (`response.read_table` reads it).
+- `catalogs/response_sums.npz`: the sums, grouped by `TILE_KEY`
+  (`response.Sums.load` reads them). The response, `c_e` and jackknife of
+  any table on the same cells (unit weights, a refitted or reweighted table,
+  a restricted S/N range) follow from them without the catalogue.
 - `catalogs/survey.json`, `masks/footprint-nside4096-ring.fits`: area, n_eff
   and σ_e over the occupied pixels, and those pixels.
 - `catalogs/config_mask.yaml`, `provenance/calibrated_recipe.yaml`: the
@@ -107,7 +125,59 @@ Outside the workflow, the same build is
 inside the container, and the comparison
 `python scripts/calibration/compare_samples.py <new> <reference> --output comparison.json --workers N`.
 
-## Redshift distribution
+## The response of each bin
+
+A tomographic bin has its own response: the sample's estimator on the bin's
+rows, with the sample's cuts, cells and weight table held fixed
+(`docs/source/response_calibration.md`). `sp_validation.sample.bins`
+measures them after the n(z) stage has put its bins in the release, as the
+rule `bin_responses`:
+
+```bash
+snakemake --profile workflow/profiles/default -s workflow/calibrate/Snakefile -j 96 \
+    -d /path/to/a/working/directory \
+    --apptainer-args "--cleanenv --bind /home,/project,/scratch" \
+    bin_responses
+```
+
+or, inside the container,
+`python scripts/calibration/bin_responses.py config/calibration/sample/v2.yaml --workers 96`
+(`--output DIRECTORY` for a sample built elsewhere). It reads, under the
+release directory, the sample's `catalogs/response.json`, `des_weights.fits`
+and `response_sums.npz`, and the n(z) stage's `nz/tom_bin.parquet` and
+`provenance/nz_som_model.npz`, `nz_calibration_arrays.npz` and
+`nz_recipe.yaml`. One pass over the shapes takes about 3 minutes on 96 cores
+and 40 GiB plus 2.5 GiB per core.
+
+The selection response needs the rows a sheared metacal branch selects and
+the no-shear branch does not, which have no `TOM_BIN_ID`. So every
+preselected row gets its bin from its PhotoPipe photometry with the n(z)
+stage's saved model, as that stage assigns it (a row without an object ID has
+no photometry and is in no bin), and keeps that bin on every branch. The rows
+are reduced to sums per (tile, bin) and cell, and the run stops unless
+
+- every galaxy of `nz/tom_bin.parquet` with an object ID is selected with
+  its `TOM_BIN_ID`, and the selected galaxies it does not name by ID are as
+  many as its rows without one (those rows are in its bin 0, as the n(z)
+  stage joins photometry by ID; here they keep the bin of their photometry,
+  recorded as `unnamed_per_bin`), and
+- the bins' sums, bin 0 included, add to `catalogs/response_sums.npz`.
+
+Each bin's R, its shear and selection parts, `c_e`, the branch populations
+and their delete-one-tile jackknife covariance (`response.record`) go into
+`catalogs/response.json` under `bins`:
+`{"column": "TOM_BIN_ID", "records": {"1": {...}, ..., "4": {...}}}`; the
+rest of the file is the whole sample's record, unchanged.
+`provenance/bin_response_checks.json` records what the checks compared and is
+written last. The response of the bin assignment itself is not included:
+the photometry has no sheared versions.
+
+Rerun it whenever the bins, the cuts or the weights change: after every n(z)
+run, and after every rebuild of the sample (which rewrites `response.json`
+without `bins`). Snakemake reruns it when the sample or the n(z) products are
+newer than its checks.
+
+## Redshift distribution (step 5)
 
 The n(z) file is this stage's output. A `cosmo_val/cat_config.yaml` entry
 names it in `shear.redshift_path` and its bin column in `tomo_bin_col`;
@@ -133,18 +203,6 @@ DIRECTORY` writes them elsewhere. They are (`sp_validation.nz.pipeline`)
 `realisations.npz`, `calibrators.npz`, `calibration_arrays.npz`,
 `som_model.npz`, `summary.json` and `recipe.yaml`, the recipe file byte for
 byte.
-
-`plot_nz.py` draws a run's figures from those products (the SOM plane, each
-bin's gold groups, BPZ against spec-z, the per-bin n(z) and how source
-occupancy weights the spectra):
-
-```bash
-python scripts/calibration/plot_nz.py RUN_DIR FIGURE_DIR \
-    [--reference NZ_TOMO LABEL] [--published NZ LABEL]
-```
-
-`--reference` overlays an earlier tomographic n(z) on each bin and
-`--published` compares the summed bins with a non-tomographic n(z).
 
 A run redefines the bins, so its `nz_tomo.txt` describes its own
 `tom_bin.parquet` and no earlier `TOM_BIN_ID`. Write that column into the
@@ -246,30 +304,11 @@ Systematic terms:
   redshift, so this term is a one-sided bias more than a scatter: the raw
   ensemble mean moves bin 1 by +0.004, and the delivered n(z), which already
   holds the real failures, is biased by about as much the other way. The
-  recentred draws keep only the scatter, up to the small mean shift clipping
-  can add (below).
+  recentred draws keep only the scatter.
 - `nmad_factor`: the gold-QC factor drawn uniformly in [4, 6] around the
   fiducial 5 (threshold 0.40–0.56 with the 0.4 floor); gold is re-derived at
   that factor, so the bins' source selection moves with it. The other terms
   keep the catalogue's gold selection.
-- `specz_selection`: DEEP2/3 are one spectroscopic selection, and spectra
-  chosen otherwise put other redshifts at the same colours. The alternative
-  calibrators are the calibrators' own selection on the spec-z extension
-  (same EGS field, z_min and z2 fill) with the term's `surveys`: every survey
-  with 100 or more spectra in the field, 35,553 spectra against 9,917 (DESI
-  DR1 17,069 of them). The run writes them to `calibrators_selection.npz`, and
-  calibrating the same gold sources on them gives each bin's shift
-  (`selection_shift` in `ensemble_inputs.npz`). A Gaussian coefficient with
-  σ = `scale` = 0.5 sets the input perturbation along that difference.
-  DEEP2/3 cannot measure most redshifts above 1.4, and targeted surveys over-represent them.
-  Negative cells are clipped and each draw is renormalised, which can change the mean and scatter.
-  The saved per-bin `selection_mean_z_std_nominal` and `selection_mean_z_std_realised` compare the input mean-z width with the width after clipping for the selection term alone.
-  `selection_clipped_mass_fraction` reports the removed negative mass divided by absolute input mass, averaged over selection-only draws.
-  `clipped_mass_fraction` reports the same quantity for the full ensemble.
-  Bin 1's shift is set by catastrophic outliers, spectra above z = 1.5 that
-  are rare among DEEP2/3 calibrators and common among the other surveys'.
-  Clustering redshifts (step 5b) cannot see these tails, so the size is a
-  prior.
 
 The zero-point and z2 offsets enter to first order: each draw adds half the
 difference between the recalibrations at +v and −v. That keeps the
@@ -278,76 +317,17 @@ catalogue's response linear (its source tables are; central differences at
 even in the offsets: a group whose last in-bin spectrum leaves the bin loses
 its sources' weight at either sign. Every term but `nmad_factor` keeps the
 catalogue's selection, its gold sources wherever the offsets move them. The
-draws are additively recentred on the calibration's n(z), then negative cells are clipped and each draw is normalised to unit integral.
-Clipping can move the ensemble mean and alter its width; it does not force zero-fiducial cells to remain zero.
-The saved raw mean describes the additive draws before recentring and clipping.
+draws are recentred on the calibration's n(z); the raw ensemble mean moves by
+up to 0.004 in ⟨z⟩, mostly from spec-z failures.
 
-Held fixed: the SOM and its groups. Left out: method bias calibrated on
+Held fixed: the SOM and its groups. Left out: spectroscopic selection and
+incompleteness (DEEP2's [OII] leaves the spectral window above z ≈ 1.4, so
+spectra at higher redshift are missing, not wrong), method bias calibrated on
 simulations, SOM training stochasticity (on v2, seeds move ⟨z⟩ by up to
 0.0015 in bin 4), redshift-space smearing of δ, and bias evolution.
 
 **Limits.** The calibrators are about 9,900 EGS DEEP2/3 spectra: no
-field-to-field variance, and spectroscopic selection enters only as the
-`specz_selection` prior, so the n(z)
+field-to-field variance and no model of spectroscopic selection, so the n(z)
 is for validation, null tests and mocks, not parameter constraints. It
 describes only `TOM_BIN_ID > 0` rows; a non-tomographic measurement pairs
 `nz_nontomo.txt` with those rows, not with the whole catalogue.
-
-## Clustering redshifts (step 5b)
-
-Clustering redshifts provide a separate diagnostic estimate compared with SOM, not combined with it; they do not update the delivered n(z), constrain its ensemble or supply priors.
-Configure `sp_validation.nz.clustering` with the recipe's `clustering` section.
-It reads the n(z) run in the recipe's `output` (`tom_bin.parquet`,
-`calibration_arrays.npz`, `ensemble_inputs.npz`) and the catalogue in
-`inputs.sources`, and writes to `clustering.output`, outside the release:
-
-```bash
-python scripts/calibration/clustering_nz.py config/calibration/nz/v2.yaml \
-    --prepare --measure --workers 32
-python scripts/calibration/plot_clustering.py config/calibration/nz/v2.yaml DIRECTORY
-```
-
-`--prepare` cuts the DESI DR1 clustering catalogues (BGS_BRIGHT, LRG,
-ELG_LOPnotqso, QSO; data and randoms) and the run's gold sources to their
-overlap and draws 100 jackknife patches.
-Gold sources are selected by the union of random-occupied `source_nside` pixels (default 256); rerun preparation and measurement at 512 or 1024 to check footprint-resolution stability.
-This is an approximate union footprint, not a tracer-specific overlap definition.
-`--measure` counts pairs in redshift slices of the reference.
-Without either flag the script only redoes the analysis, which writes `clustering.json`.
-`plot_clustering.py` draws two figures from that file and the run's SOM n(z): the known-answer gate (`clustering_gate.png`) and each bin against the SOM n(z) (`clustering_nz.png`).
-
-**Estimator.** In each reference slice the annulus is fixed at 1.5–5 Mpc/h
-comoving. The slice's autocorrelation gives the reference bias, and its
-cross-correlation with a bin gives n(z) b_u(z) of that bin, both against the
-nonlinear matter correlation at the fiducial cosmology. The sources' bias is
-unknown, modelled as b_u ∝ (1+z)^α, so only the shape of each bin inside its
-core window is tested.
-Fits use the full slice jackknife covariance within that window, with the precision multiplied by (N_patch − N_slice − 2)/(N_patch − 1).
-This Hartlap correction is approximate for spatial jackknife patches; mock coverage validation is still needed.
-`profiled_shift` reports the shift n(z − Δz) after profiling over amplitude and α ∈ [−3, 4], a grid-based Δχ² = 1 interval, and whether α reaches the prior boundary anywhere inside that interval.
-`shift_boundary` flags intervals reaching the shift search limits [−0.2, 0.2].
-Fixed-α fits remain as sensitivity diagnostics, but the figure quotes the profiled result.
-Plotted point errors are marginal jackknife standard deviations; they do not imply diagonal fitting.
-
-**Gate.** A random half of DESI LRG plays the unknown sample against the other
-half; its n(z) is known and must be recovered.
-Both halves share tracer selection and bias, and their bias ratio cancels the matter kernel.
-Passing this gate does not validate that kernel or rule out tracer-side distortions for gold sources.
-Read it before the bins.
-
-**Overlapping tracers.** `clustering.reference.overlaps` optionally lists `[tracer1, tracer2, z_min, z_max]` windows.
-For example, `[[LRG, ELG_LOPnotqso, 0.80, 1.10]]` measures both tracers over the same slices.
-Both input catalogues must actually contain data and randoms in those windows; changing the recipe cannot undo a catalogue's hard redshift cut.
-Window edges must lie on each tracer's nominal dz grid, with matching slice widths.
-Preparation checks data and randoms for redshift support in every requested overlap slice after the footprint cut, and fails if any is empty.
-Rerun preparation and measurement after enabling the windows.
-Extra slices are excluded from the nominal SOM-comparison fit, so overlap points are not counted twice there.
-`tracer_overlaps` reports each source bin's reference-bias-corrected n(z)b_u(z), the covariance of the paired jackknife differences, χ², degrees of freedom and PTE.
-`consistent_95` records PTE ≥ 0.05; this threshold is a diagnostic, not evidence that all tracer systematics are absent.
-The common source bias cancels in this equality test even when the two reference biases evolve differently.
-For display, each tracer's `n` and `n_err` divide by the same amplitude and (1+z)^α fitted in the nominal comparison.
-That common scaling leaves the consistency statistic unchanged; its uncertainty is not included in the displayed conditional n(z) errors.
-
-**Reach.** The check tests each bin's core. It cannot see the high-redshift
-tails (QSO slices are too sparse and magnification competes there), and
-scales below 1.5 Mpc/h fail the gate.

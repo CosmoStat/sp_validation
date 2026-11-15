@@ -8,7 +8,15 @@ from pathlib import Path
 
 import pytest
 import yaml
-from conftest import REPO, UNDECLARED, VERSIONS, _load_module, on_candide, parse_jobs
+from conftest import (
+    REPO,
+    SEEDED,
+    UNDECLARED,
+    VERSIONS,
+    _load_module,
+    on_candide,
+    parse_jobs,
+)
 
 
 @pytest.fixture(scope="module")
@@ -154,6 +162,24 @@ def test_a_blind_flip_reruns_the_catalogues_parts(toy, grids, tmp_path):
         cat_config.write_text(declared)
     assert rules == ["xi"], output
     assert "params have changed" in output.lower(), output
+
+
+def test_a_seed_variant_reads_its_entrys_template(toy, grids):
+    """``<entry>_seed<N>`` measures the catalogue its entry's template names for
+    seed N."""
+    reporting = toy.common.grid_binning(grids["reporting"])
+    part = toy.cosmo_val / f"{SEEDED}_seed3_xi_{reporting}.sacc"
+    catalogue = toy.rundir / "painted" / "seed_00003" / "calibrated_none.h5"
+    catalogue.parent.mkdir(parents=True)
+    catalogue.touch()
+    try:
+        result = toy.snakemake("-n", str(part))
+    finally:
+        catalogue.unlink()
+    assert result.returncode == 0, result.stdout
+    (job,) = parse_jobs(result.stdout)
+    assert job.rule == "xi"
+    assert job.input == ["painted/seed_00003/calibrated_none.h5"], job.input
 
 
 def test_a_launch_stops_on_a_catalogue_declaring_no_blind(toy):
@@ -323,3 +349,78 @@ def test_papers_resolve_on_candide(paper, targets):
     """The real paper DAGs resolve against the real catalogues and your image."""
     result = _real_dry_run(paper, targets)
     assert result.returncode == 0, result.stdout
+
+
+def test_the_assemble_stage_builds_the_recipes_collection(toy, tmp_path):
+    """The collection rule reads the recipe's inputs and declares only
+    ``collection.properties``, which a build writes last."""
+    recipe = tmp_path / "recipe.yaml"
+    inputs = dict(
+        shapes=tmp_path / "shapes",
+        photopipe_extract=tmp_path / "extract",
+        specz_matches=tmp_path / "specz.cat",
+        specz_compilation=tmp_path / "asc",
+        collection=tmp_path / "collection",
+    )
+    for path in (
+        inputs["shapes"],
+        inputs["photopipe_extract"],
+        inputs["specz_compilation"],
+    ):
+        path.mkdir()
+    (inputs["shapes"] / "hats.properties").touch()
+    (inputs["photopipe_extract"] / "COMPLETE").touch()
+    inputs["specz_matches"].touch()
+    recipe.write_text(yaml.safe_dump({key: str(path) for key, path in inputs.items()}))
+
+    result = toy.snakemake(
+        "-n",
+        "-s",
+        str(toy.root / "workflow" / "assemble" / "Snakefile"),
+        config=[f"assemble={{recipe: {recipe}}}"],
+        cwd=toy.root,
+    )
+    assert result.returncode == 0, result.stdout
+    (job,) = [j for j in parse_jobs(result.stdout) if j.rule == "collection"]
+    assert job.output == [str(inputs["collection"] / "collection.properties")]
+    assert str(inputs["photopipe_extract"] / "COMPLETE") in job.input
+
+
+def test_the_bin_responses_follow_the_sample_and_its_bins(toy, tmp_path):
+    """The bin rule reads the built sample and the n(z) stage's products, and
+    declares only its checks: never ``catalogs/response.json``, which holds the
+    whole sample's record and which it rewrites."""
+    out = tmp_path / "release"
+    snap = tmp_path / "snap"
+    snap.mkdir()
+    (snap / "MANIFEST.json").touch()
+    (toy.root / "config" / "selection.yaml").touch()
+    recipe = tmp_path / "recipe.yaml"
+    recipe.write_text(
+        yaml.safe_dump(
+            dict(snapshot=str(snap), selection="config/selection.yaml", output=str(out))
+        )
+    )
+    inputs = [
+        out / "provenance" / "calibrated_recipe.yaml",
+        out / "nz" / "tom_bin.parquet",
+        out / "provenance" / "nz_som_model.npz",
+        out / "provenance" / "nz_calibration_arrays.npz",
+        out / "provenance" / "nz_recipe.yaml",
+    ]
+    for path in inputs:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.touch()
+
+    result = toy.snakemake(
+        "-n",
+        "bin_responses",
+        "-s",
+        str(toy.root / "workflow" / "calibrate" / "Snakefile"),
+        config=[f"calibrate={{recipe: {recipe}}}"],
+        cwd=toy.root,
+    )
+    assert result.returncode == 0, result.stdout
+    (job,) = [j for j in parse_jobs(result.stdout) if j.rule == "bin_responses"]
+    assert job.output == [str(out / "provenance" / "bin_response_checks.json")]
+    assert set(map(str, inputs)) <= set(job.input), job.input

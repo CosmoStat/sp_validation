@@ -1,8 +1,11 @@
 """The calibrate stage: the calibrated shear sample of a ShapePipe snapshot.
 
 One rule runs a sample recipe (``config/calibration/sample/``) through
-``sp_validation.sample.pipeline``, which lists the products; a second compares the sample with a reference catalogue when the config names
-one. Everything is parameterised under ``config["calibrate"]``:
+``sp_validation.sample.pipeline``, which lists the products; a second
+measures the response of each tomographic bin once the n(z) stage has put its
+bins in the release (``sp_validation.sample.bins``); a third compares the
+sample with a reference catalogue when the config names one. Everything is
+parameterised under ``config["calibrate"]``:
 
 - ``recipe``: the recipe file, relative to the repository root;
 - ``output``: directory to build under, default the recipe's own ``output``
@@ -44,6 +47,36 @@ rule calibrated_sample:
         # About 2 GiB per worker at the v2 pixel size, plus the survey pass.
         mem_mb=lambda wildcards, threads: 20000 + 2500 * threads,
         runtime=120,
+    shell:
+        "python {params.script} {input.recipe} --output {params.out}"
+        " --workers {threads}"
+
+
+rule bin_responses:
+    """Measure the response of each tomographic bin with the sample's cuts and
+    weights, check the bins and sums against the release's, and write the
+    records into catalogs/response.json (sp_validation.sample.bins)."""
+    input:
+        recipe=CALIBRATE_RECIPE,
+        sample=rules.calibrated_sample.output.done,
+        bins=f"{CALIBRATE_OUT}/nz/tom_bin.parquet",
+        model=f"{CALIBRATE_OUT}/provenance/nz_som_model.npz",
+        arrays=f"{CALIBRATE_OUT}/provenance/nz_calibration_arrays.npz",
+        nz_recipe=f"{CALIBRATE_OUT}/provenance/nz_recipe.yaml",
+    output:
+        # Written last. catalogs/response.json, which the run rewrites, is not
+        # declared: Snakemake removes a job's declared outputs before it runs,
+        # and the file holds the whole sample's record.
+        checks=f"{CALIBRATE_OUT}/provenance/bin_response_checks.json",
+    params:
+        script=_REPO / "scripts/calibration/bin_responses.py",
+        out=CALIBRATE_OUT,
+    threads: workflow.cores
+    resources:
+        # The sums of every (tile, bin), five times the sample's, plus about
+        # 2 GiB per worker.
+        mem_mb=lambda wildcards, threads: 40000 + 2500 * threads,
+        runtime=60,
     shell:
         "python {params.script} {input.recipe} --output {params.out}"
         " --workers {threads}"

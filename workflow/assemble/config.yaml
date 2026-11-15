@@ -1,0 +1,8 @@
+# The assemble stage's defaults (workflow/rules/assemble.smk).
+assemble:
+  # The collection recipe: inputs and the collection directory.
+  recipe: config/assembly/v2.yaml
+
+# The image every rule runs in; default as `spv-container` resolves it
+# (workflow/README.md). A path to a .sif overrides it.
+# container: /path/to/sp_validation.sif

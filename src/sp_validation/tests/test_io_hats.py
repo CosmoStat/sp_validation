@@ -141,3 +141,10 @@ def test_windows_read_only_their_row_groups(tmp_path):
     index = rng.integers(0, 100, 50)
     npt.assert_array_equal(table.read(["x"], index)["x"], values[index])
     npt.assert_array_equal(table[index][::-3]["x"], values[index][::-3])
+
+
+def test_open_entry_reads_a_hats_directory(paths, catalogue):
+    """A cat_config entry naming a HATS directory opens like any catalogue."""
+    _, hats = paths
+    table = io.open_entry({"path": str(hats), "w_col": "w", "R": 1.0})
+    assert len(table) == N

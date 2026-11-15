@@ -1,7 +1,5 @@
 """Real- and harmonic-space estimators share calibrated shear."""
 
-from types import SimpleNamespace
-
 import numpy as np
 import pytest
 
@@ -22,11 +20,8 @@ def test_pseudo_cl_uses_xi_shear(monkeypatch, response, mean_subtracted):
     obj.cc = {
         "test": {"shear": {"e1_col": "e1", "e2_col": "e2", "w_col": "w", "R": response}}
     }
-    obj._results = {"test": SimpleNamespace(dat_shear=catalog)}
-    obj._c1 = {"test": np.average(catalog["e1"] / response, weights=catalog["w"])}
-    obj._c2 = {"test": np.average(catalog["e2"] / response, weights=catalog["w"])}
     monkeypatch.setattr(pseudo_cl, "open_entry", lambda entry: catalog)
-    xi = obj._calibrated_g("test")
+    xi = obj._calibrated_g("test", catalog)
     harmonic = obj._pseudo_cl_catalogue("test")
     np.testing.assert_allclose(harmonic["e1"], xi[0])
     np.testing.assert_allclose(harmonic["e2"], xi[1])

@@ -73,13 +73,13 @@ def test_add_to_pixel_keeps_rows_groups_encodings_and_metadata(tmp_path):
     assert result["OBJECT_ID"].to_pylist() == [24237000000 + n for n in [5, 3, 4, 1, 2]]
 
 
-def test_add_to_catalogue_writes_a_valid_hats_catalogue(tmp_path):
+def test_write_shapes_writes_a_valid_hats_catalogue(tmp_path):
     import hats
     from hats.catalog import PartitionInfo, TableProperties
     from hats.io.validation import is_valid_catalog
     from hats.pixel_math import HealpixPixel
 
-    from sp_validation.assembly.object_id import add_to_catalogue
+    from sp_validation.assembly.object_id import write_shapes
 
     source = tmp_path / "source"
     pixel = source / "dataset/Norder=0/Dir=0/Npix=4.parquet"
@@ -109,10 +109,10 @@ def test_add_to_catalogue_writes_a_valid_hats_catalogue(tmp_path):
         default_columns=["ra", "dec"],
     ).to_properties_file(source)
 
-    add_to_catalogue(source, tmp_path / "out", name="shapes")
+    write_shapes(source, tmp_path)
 
-    assert is_valid_catalog(tmp_path / "out", strict=True)
-    catalogue = hats.read_hats(tmp_path / "out")
+    assert is_valid_catalog(tmp_path / "shapes", strict=True)
+    catalogue = hats.read_hats(tmp_path / "shapes")
     assert catalogue.catalog_name == "shapes"
     assert catalogue.catalog_info.default_columns == ["ra", "dec", "OBJECT_ID"]
     assert "OBJECT_ID" in catalogue.schema.names

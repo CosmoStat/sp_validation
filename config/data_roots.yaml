@@ -6,8 +6,10 @@
 # nowhere stays `${name}` and fails when opened.
 # The same relative layout must hold under every directory of a root.
 
-# UNIONS data staged on a cluster: v2.x/ (the run-1 collection),
-# photopipe-dr6-specz/.
+# UNIONS data staged on a cluster, the inputs and output of the v2 collection
+# (config/assembly/v2.yaml): v2.x/ (run-1 shapes and the collection),
+# photopipe-dr6-extract/ and photopipe-dr6-specz-all/ (PhotoPipe's DR6 columns
+# and spec-z match, staged by scripts/assembly/fetch_photopipe.sh).
 unions_data:
   - /project/rrg-kyi/cdaley/unions/data                                     # fir
 
