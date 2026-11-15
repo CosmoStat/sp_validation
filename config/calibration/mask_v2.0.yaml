@@ -157,7 +157,7 @@ metacal:
   # Correct relative size for ellipticity?
   gal_size_corr_ell: False
 
-  # @sc [decision:dr6_catalogue.weights_and_response]
+  # @sc [decision:dr6_catalogue.galaxy_weights,decision:dr6_catalogue.weight_table]
   # DES weights: one table fitted on the no-shear branch, evaluated on each
   # branch's own S/N and size (docs/source/response_calibration.md).
   weight_scheme: des

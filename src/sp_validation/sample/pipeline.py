@@ -153,10 +153,10 @@ def select(data, selection, tiles):
         the ``TILE_KEY`` of the tiles they hold; and ``rows``, the selected
         galaxies with their uncalibrated shapes ``g1``, ``g2``
 
-    @sc [label:invariant] sample-sums-add-over-chunks
+    @sc [decision:dr6_catalogue.sample_wide_calibration] sample-sums-add-over-chunks
     ``sums`` of disjoint sets of rows add to those of their union
-    (``Sums.gather``), so the sample's weights, response and additive bias do
-    not depend on how the catalogue is cut into pixels.
+    (``Sums.gather``), so the sample's one table, response and additive bias
+    do not depend on how the catalogue is cut into pixels.
     """
     keys = tile_key(tiles)
     key = tile_key(data["TILE_ID"])

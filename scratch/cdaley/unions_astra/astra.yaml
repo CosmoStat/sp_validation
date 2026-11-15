@@ -37,7 +37,8 @@ narrative:
     full modelling stack (non-linear power, baryons, intrinsic alignment).
     A fourth sub-analysis, [dr6_catalogue](#analyses.dr6_catalogue), records
     the selection of the DR6 ShapePipe v2 catalogue, which no paper here
-    consumes.
+    consumes; a fifth, [nz](#analyses.nz), records the SOM direct
+    calibration of the v2 tomographic n(z), which none consumes either.
   inputs: |
     The common [shear_catalog](#inputs.shear_catalog) (ShapePipe v1.4.6.3,
     61,378,891 galaxies over 2894 deg² effective, n_eff ≈ 4.96 arcmin⁻²,
@@ -233,3 +234,5 @@ analyses:
     path: ./analyses/harmonic
   dr6_catalogue:
     path: ./analyses/dr6_catalogue
+  nz:
+    path: ./analyses/nz

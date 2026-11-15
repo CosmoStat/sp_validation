@@ -81,6 +81,27 @@ ops:
 
   # --- metacal -----------------------------------------------------------
   - why: >-
+      The simulations take the selection of the v2 data (the metacal block of
+      mask_v2.0.yaml): the data's DES table spans exactly these cuts, so an
+      object outside them would enter m with an edge cell's weight.
+    replace: |2
+        # Signal-to-noise range
+        gal_snr_min: 5
+        gal_snr_max: 500
+
+        # Relative-size (hlr / hlr_psf) range
+        gal_rel_size_min: 0.25
+        gal_rel_size_max: 10
+    with: |2
+        # Signal-to-noise range: the v2 data's (mask_v2.0.yaml)
+        gal_snr_min: 10
+        gal_snr_max: 500
+
+        # Moment ratio T_gal / T_PSF: the v2 data's (mask_v2.0.yaml)
+        gal_rel_size_min: 0.707
+        gal_rel_size_max: 9
+
+  - why: >-
       Image sims are weighted with the data's DES table, which the workflow
       names; constant-shear simulations keep their mean shear.
     replace: |2

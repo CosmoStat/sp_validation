@@ -371,14 +371,15 @@ def validate_calibrated_entry(entry):
     """Refuse a calibrated catalogue read with another weight or a second R,
     or built from another snapshot than the entry expects.
 
-    A catalogue whose header says ``RAPPLIED`` already carries ``R^-1``; its
-    statistic weight is ``w_<WGHTSCH>``, the weight its response was measured
-    with.
+    A FITS catalogue whose header says ``RAPPLIED`` already carries ``R^-1``;
+    its statistic weight is ``w_<WGHTSCH>``, the weight its response was
+    measured with. HATS and HDF5 catalogues carry no such header.
     """
     from sp_validation.sample import snapshot
 
     snapshot.check(entry)
-    if "w_col" in entry and not (is_hats(entry["path"]) or h5py.is_hdf5(entry["path"])):
+    path = entry["path"]
+    if "w_col" in entry and not is_hats(path) and not h5py.is_hdf5(path):
         with fits.open(entry["path"], memmap=True) as hdus:
             header = hdus[0].header
             if header.get("RAPPLIED", False):

@@ -225,6 +225,10 @@ def fit_table(sums, min_count):
 
     The moments are unweighted, over no-shear-selected rows whose coordinates,
     shapes and response are all finite; :func:`pool` gives ``W``.
+
+    @sc [decision:dr6_catalogue.weight_table] table-from-unweighted-no-shear-moments
+    ``W = (sum r)^2 / (n sum |e|^2/2)`` per cell from unweighted no-shear
+    moments; a cell under ``min_count`` takes its pooled window's moments.
     """
     total = sums.total().arrays
     shape = (len(sums.edges[0]) - 1, len(sums.edges[1]) - 1)
@@ -476,6 +480,10 @@ def accumulate(
         metacal shear step h
 
     Each branch's rows are its own :func:`select`.
+
+    @sc [decision:dr6_catalogue.galaxy_weights] weight-at-each-branch-own-cell
+    Every branch's rows are binned in the cells of that branch's own S/N and
+    size, so a table weights each branch at its own coordinates.
     """
     columns = {b: branch_columns(rows, b) for b in BRANCHES}
     if preselection is not None:
@@ -548,6 +556,10 @@ def estimate(sums, table):
     averaged on no-shear), ``selection``, ``total = shear + selection``,
     ``joint``, ``c_e`` (raw no-shear mean), ``c_g = total^-1 c_e``, and per
     branch the selected row ``counts`` and ``weight_sums``.
+
+    @sc [decision:dr6_catalogue.response_estimator] response-of-the-weighted-mean
+    ``total = shear + selection``, every branch mean divided by its own branch's
+    weight sum, so ``total`` is the derivative of the weighted mean.
     """
     w = _table(sums, table).w.ravel()
     a = {k: v.sum(axis=-2) for k, v in sums.arrays.items()}
@@ -563,6 +575,12 @@ def estimate(sums, table):
         selection[:, j] = (ns_e[p] - ns_e[m]) / (2 * sums.step)
         joint[:, j] = (own_e[p] - own_e[m]) / (2 * sums.step)
     total = shear + selection
+    if not all(np.isfinite(x).all() for x in (shear, selection, joint, ns_e[0])):
+        raise ValueError(
+            "The response or c_e is not finite: a selected row has a nonfinite "
+            "shape on a branch it enters, typically a failed metacal fit; the "
+            "NGMIX_MCAL_TYPES_FAIL == 0 preselection removes them."
+        )
     return dict(
         shear=shear,
         selection=selection,
@@ -588,6 +606,10 @@ def jackknife(sums, table):
     each deletion's retained training moments. Returns the group labels, the
     deleted :data:`ESTIMATES` stacked along a first axis, and their covariance
     in :data:`ESTIMATES` order, matrices row-major (20 elements).
+
+    @sc [decision:dr6_catalogue.calibration_uncertainties] jackknife-recomputes-response
+    Each deletion removes the group from every branch and recomputes the
+    response; only a table rule is refitted.
     """
     if sums.labels is None or len(sums.labels) < 2:
         raise ValueError("A jackknife needs at least two groups")
@@ -656,6 +678,12 @@ def shear_bias(pairs, g_in, table, response="total"):
     subtraction; then ``m_j = (g_j^+ - g_j^-) / 2 g_in - 1`` and
     ``c_j = (g_j^+ + g_j^-) / 2``. ``table`` is as in :func:`estimate`, used
     by every simulation. Returns ``{m1, c1, m2, c2}`` for the given components.
+
+    @sc [decision:dr6_catalogue.simulation_shear_bias] m-from-full-populations
+    Each simulation's mean is over its whole selection with its own response
+    and weights; no objects are matched between simulations.
+    @sc [decision:dr6_catalogue.simulation_weight_table] one-table-for-every-simulation
+    The one ``table`` weights every simulation of every pair.
     """
     result = {}
     for j, sims in pairs.items():
@@ -674,6 +702,9 @@ def shear_bias_jackknife(pairs, g_in, table, response="total"):
     All simulations' sums must share their group labels (the tiles the
     simulations share). Returns the labels, the deleted values of
     :func:`shear_bias` keyed by name, and their covariance in that key order.
+
+    @sc [decision:dr6_catalogue.calibration_uncertainties] tile-deleted-from-every-simulation
+    Each deletion removes the same group from every simulation at once.
     """
     sims = [sums for pair in pairs.values() for sums in pair]
     labels = sims[0].labels
@@ -702,7 +733,12 @@ def weights(table, columns, sigma_e=None):
 def calibrate(g, result, additive=True):
     """Calibrated shear ``R^-1 (g - c_e)`` of shapes ``g`` (2, n), with the
     ``total`` response and ``c_e`` of an :func:`estimate`; ``R^-1 g`` without
-    the ``additive`` correction (constant-shear simulations)."""
+    the ``additive`` correction (constant-shear simulations).
+
+    @sc [decision:dr6_catalogue.additive_bias] calibrated-shear-is-inverse-R-of-centred-e
+    Calibrated shear is ``R_total^-1 (e - c_e)``, with ``c_e`` the weighted
+    no-shear mean of the selected sample, unless ``additive`` is false.
+    """
     g = np.asarray(g)
     if additive:
         g = g - result["c_e"][:, None]
@@ -717,7 +753,8 @@ def calibrate_catalogue(rows, metacal, *, preselection=None, groups=None):
 
     The block declares ``weight_scheme`` (``des`` or ``iv``) and the cuts
     (:meth:`Cuts.from_config`). DES weights use the table at ``weight_table``
-    (a :func:`write_table` product) when given, else a table fitted on these
+    (a :func:`write_table` product on the cells of these cuts and
+    ``des_num_bins``) when given, else a table fitted on these
     rows with ``des_num_bins`` cells a side and ``des_min_count``; IV weights
     use ``sigma_eps_prior`` and the unit table. ``additive_correction: false``
     (constant-shear simulations) leaves ``c_e`` in the calibrated shapes.
@@ -740,6 +777,16 @@ def calibrate_catalogue(rows, metacal, *, preselection=None, groups=None):
         table = unit_table(table_edges(cuts, num_bins))
     elif metacal.get("weight_table"):
         table = read_table(metacal["weight_table"])
+        expected = table_edges(cuts, num_bins)
+        if not all(
+            len(a) == len(b) and np.allclose(a, b, rtol=1e-12, atol=0)
+            for a, b in zip(table[:2], expected, strict=True)
+        ):
+            raise ValueError(
+                f"The table {metacal['weight_table']} spans other cells than this "
+                "selection's cuts and des_num_bins: select as the table's catalogue "
+                "was selected, so that no object takes an edge cell's weight."
+            )
     else:
         table = None
     edges = table_edges(cuts, num_bins) if table is None else table[:2]

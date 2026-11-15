@@ -502,6 +502,20 @@ def test_calibrate_catalogue(tmp_path, scheme):
     )
 
 
+def test_external_table_must_span_the_selection(tmp_path):
+    """A table from a differently selected catalogue would give objects outside
+    its range an edge cell's weight; calibrate_catalogue refuses it."""
+    wider = Cuts(5.0, 500.0, 0.25, 10.0, CUTS.size_corr_ell)
+    data = synthetic(2000, seed=9)
+    table = fit_table(accumulate(data, wider, response.table_edges(wider, 8)), 3)
+    response.write_table(tmp_path / "table.fits", table)
+    metacal = metacal_block(weight_table=str(tmp_path / "table.fits"))
+    with pytest.raises(ValueError, match="other cells"):
+        response.calibrate_catalogue(data, metacal)
+    with pytest.raises(ValueError, match="other cells"):
+        response.calibrate_catalogue(data, dict(metacal, des_num_bins=10))
+
+
 def test_calibrate_catalogue_needs_a_weight_scheme():
     metacal = metacal_block()
     del metacal["weight_scheme"]
@@ -530,3 +544,69 @@ def test_additive_bias_of_rows_is_the_estimate_of_sums():
     # Unit weights: sigma_e / sqrt(n).
     flat = response.additive_bias(e, np.ones(len(w)))
     np.testing.assert_allclose(flat["shape_noise"], e.std(axis=1) / np.sqrt(len(w)))
+
+
+def test_table_value_from_rows():
+    """W = (sum r)^2 / (n sum |e|^2/2) with r = (R_g11 + R_g22) / 2, from rows."""
+    e = np.array([[0.3, -0.1, 0.2], [0.1, 0.2, -0.4]])
+    r11, r22 = np.array([0.8, 0.6, 0.7]), np.array([0.4, 0.5, 0.6])
+    r12, r21 = np.array([0.05, -0.02, 0.0]), np.array([0.01, 0.03, -0.04])
+    columns = {
+        ("p1", 0): r11, ("p1", 1): r21, ("p2", 0): r12, ("p2", 1): r22,
+    }  # fmt: skip
+    g = {"ns": e}
+    for p, m in response.PAIRS:
+        shift = STEP * np.array([columns[(p, 0)], columns[(p, 1)]])
+        g[p], g[m] = e + shift, e - shift
+    ones = {b: np.full(3, 20.0) for b in BRANCHES}
+    rows = rows_from(g, ones, {b: np.ones(3) for b in BRANCHES})
+    edges = (np.array([10.0, 500.0]), np.array([0.5, 3.0]))
+    table = fit_table(accumulate(rows, Cuts(10, 500, 0.5, 3, False), edges), 0)
+    r = (r11 + r22) / 2
+    expected = r.sum() ** 2 / (3 * (0.5 * (e**2).sum()))
+    assert table.w[0, 0] == pytest.approx(expected, rel=1e-12)
+    assert table.count[0, 0] == 3
+
+
+def test_table_edges_are_logarithmic_between_the_cuts():
+    snr, size = response.table_edges(Cuts(10.0, 1000.0, 0.5, 8.0, False), 2)
+    np.testing.assert_allclose(snr, [10, 100, 1000], rtol=1e-14)
+    np.testing.assert_allclose(size, [0.5, 2, 8], rtol=1e-14)
+
+
+def test_pooling_threshold():
+    """A cell with exactly min_count objects keeps its own moments, and a window
+    holding exactly min_count objects is enough; fewer pools further."""
+    count = np.array([[3], [0], [0], [40]])
+    rsum = np.array([[2.4], [0.0], [0.0], [30.0]])
+    esum = np.array([[0.3], [0.0], [0.0], [5.0]])
+    pooled = response.pool(count, rsum, esum, 3)
+    own = 2.4**2 / (3 * 0.3)
+    # Cell 0 holds 3; cell 1's radius-1 window (cells 0-2) holds exactly 3.
+    np.testing.assert_allclose(pooled[:2, 0], own, rtol=1e-14)
+    # Cell 2's radius-1 window (cells 1-3) holds 40.
+    assert pooled[2, 0] == pytest.approx(30.0**2 / (40 * 5.0))
+    assert pooled[3, 0] == pytest.approx(30.0**2 / (40 * 5.0))
+
+
+def test_calibrate_catalogue_default_min_count_is_three():
+    """The release's metacal block sets no des_min_count; the default pools
+    below three training objects."""
+    data = synthetic(1500)
+    metacal = metacal_block(des_num_bins=20)
+    del metacal["des_min_count"]
+    cal = response.calibrate_catalogue(data, metacal)
+    assert cal["table"].min_count == 3
+    np.testing.assert_array_equal(cal["table"].w, fit_table(cal["sums"], 3).w)
+    assert not np.array_equal(cal["table"].w, fit_table(cal["sums"], 0).w)
+
+
+def test_nonfinite_shape_in_the_selection_is_loud():
+    """A failed fit on a sheared branch of a selected row raises, not NaN."""
+    data = synthetic(2000)
+    edges = response.table_edges(CUTS, 8)
+    sums = accumulate(data, CUTS, edges)
+    row = np.flatnonzero(response.select(response.branch_columns(data, "ns"), CUTS))[0]
+    data["NGMIX_G2_1P"][row] = np.nan
+    with pytest.raises(ValueError, match="failed metacal fit"):
+        estimate(accumulate(data, CUTS, edges), fit_table(sums, 3))

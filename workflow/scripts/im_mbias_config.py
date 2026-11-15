@@ -74,9 +74,11 @@ mbias_cfg = {
     "sums_name": params.sums_name,
     # Injected shear: from the manifest, the single source of truth.
     "shear_amplitude": manifest["shear_amplitude"],
+    "branches": list(manifest["branches"]),
     "pairs": manifest["pairs"],
     "weight_table": params.weight_table,
     "des_min_count": params.des_min_count,
+    "results_dir": params.results_dir,
     "output_path": params.results,
     "provenance": {
         "manifest_sha256": manifest_sha256,

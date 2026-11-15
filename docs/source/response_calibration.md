@@ -114,7 +114,7 @@ c_j = \frac{\hat g_j^+ + \hat g_j^-}{2}.
 `shear_bias(pairs, g_in, table)` measures them; `shear_bias_jackknife` deletes the same tile from every simulation at once and returns the full (m1, c1, m2, c2) covariance.
 Each mean uses the full selected population of its simulation with its own weights, as the data estimator does, so m includes the selection response of the weighted mean.
 
-The table is the data's DES table, fixed.
+The simulations take the data's selection and the data's DES table, held fixed: `calibrate_catalogue` refuses a `weight_table` whose cells are not those of the selection's cuts and `des_num_bins`, since an object outside the table's range would otherwise enter every mean with an edge cell's weight.
 A table fitted on the simulations' own shapes correlates the weights with the measured shapes and suppresses the shear: for N objects per cell, a self-fitted table gives m = −1/N where an independent one gives zero.
 `scripts/compute_m_bias_image_sims.py` reads the simulations' `_sums.npz` and writes `m_bias_results.yaml` (`m1`, `m1_err`, …, `mc_covariance`, `covariance_order`); the image-sims workflow's `weight_table` key names the table (`self` and `unit` are diagnostics).
 Residual m is a result, not a correction applied to catalogue shapes.
@@ -150,3 +150,13 @@ labels, deleted, covariance = response.shear_bias_jackknife(pairs, g_in, table)
 ```
 
 Zeroing the table selects each branch on its own S/N, so objects that migrate across the range edge under shear contribute to the selection response, as a cut would.
+
+The response of a subsample, such as a tomographic bin, is the same estimator on the subsample's rows with the full sample's table held fixed, so the weights are those applied to the catalogue:
+
+```python
+sums_bin = response.accumulate(rows, cuts, table[:2], preselection=in_bin, groups=tiles)
+result_bin = response.estimate(sums_bin, table)
+labels, deleted, covariance = response.jackknife(sums_bin, table)
+```
+
+The preselection holds the subsample's membership fixed across the five metacal branches: the result includes the response of the metacal cuts and of the weights within the subsample, not the response of whatever assigned the subsample (photometric redshifts, magnitudes measured on the unsheared image).
