@@ -1,13 +1,24 @@
 """Run the SOM n(z) calibration on twins of the v2 catalogue (``nz.twin``).
 
 The twin keeps the recipe's sources and EGS calibrators as they are and
-paints their redshifts with a model (``colour``: a DEEP2/3 neighbour's
-redshift in the SOM's colour space; ``bpz``: BPZ plus a neighbour's
-spec-z − BPZ in (BPZ, r), from the spectra of lensing sources). Rungs add
-one ingredient each; realisation s paints with seed s on every rung, so
-rungs pair by seed. Δ⟨z⟩ is the calibrated minus the true mean of a bin.
+paints their redshifts with a model (:data:`MODELS`), a feature space of
+``nz.twin`` and a library of spectra:
 
-Rungs, with what was predicted before the first run:
+- ``colour``: a DEEP2/3 neighbour's redshift in the SOM's colour space;
+- ``bpz``: BPZ plus a DEEP2/3 neighbour's spec-z − BPZ in (BPZ, r);
+- ``bpz_desi``: the same, with the neighbours from every galaxy redshift
+  survey matched to a lensing source, which at r > 22 is almost all DESI.
+  DESI targets galaxies by colour for z ≈ 0.6–1.6, so at faint r and low BPZ
+  this library carries 8–20% of redshifts above 1.4: a stress model for
+  catastrophic outliers the magnitude-limited DEEP2/3 cannot show. It was
+  added after its first two realisations, which ran as ``bpz``.
+
+Rungs add one ingredient each; realisation s paints with seed s on every
+rung, so rungs pair by seed. Δ⟨z⟩ is the calibrated minus the true mean of a
+bin.
+
+Rungs, with what was predicted before the first run, for ``colour`` and
+the model now called ``bpz_desi``:
 
 - ``representative``: calibrators are as many sources drawn at random, any
   BPZ. Prediction: |mean Δ| ≤ 0.003 in every bin under both models (gold
@@ -19,7 +30,7 @@ Rungs, with what was predicted before the first run:
   redshift.
 - ``success``: ``egs`` without calibrators painted above z = 1.4, where DEEP2
   measures almost nothing. Prediction: no change under ``colour`` (its
-  library has almost no such spectra); under ``bpz`` bin 4 low by 0.01–0.03.
+  library has almost no such spectra); under ``bpz_desi`` bin 4 low by 0.01–0.03.
 - ``zp_patch``: ``success`` with the i-band patch of Romain Paviot's note
   (+20 mmag over RA 140–230, Dec 30–60) on sources and calibrators, taken up
   by galaxies at ``UPTAKE``; BPZ moves along its gradient in each SOM cell.
@@ -52,18 +63,25 @@ from sp_validation.object_id import NUMBER_LIMIT
 RECIPE = Path(__file__).parents[2] / "config/calibration/nz/v2.yaml"
 K = 16
 SKY = {"ra": [0.0, 360.0], "dec": [-90.0, 90.0]}
-#: The ``colour`` model's library: every DEEP2/3 spectrum, both fields.
-COLOUR_SURVEYS = ["deep2_final", "deep3_final"]
-#: The ``bpz`` model's library: galaxy redshift surveys of the compilation
-#: (no QSO or AGN catalogue, no literature aggregator that may carry
-#: photometric redshifts), restricted to objects that are lensing sources.
-BPZ_SURVEYS = [
+DEEP2 = ["deep2_final", "deep3_final"]
+#: Galaxy redshift surveys of the compilation: no QSO or AGN catalogue, no
+#: literature aggregator that may carry photometric redshifts.
+GALAXY_SURVEYS = [
     "DESI_dr1_iron", "rcsed_final", "SDSS_SPECOBJ_None", "saga_dr3", "hecate",
     "HETDEX_PSC_PDR1_V1.5", "SPITZER_DATAFUSION", "herschel_help", "LAMOST_LRS_dr12",
     "uzc_final", "gogreen_dr2", "candels_v2", "mosdef_final", "c3r2_dr2", "c3r2_dr3",
     "MMT_NEPW", "shels_f2_final", "JADES_DR4", "3dhst", "THRILS",
-    *COLOUR_SURVEYS,
+    *DEEP2,
 ]  # fmt: skip
+#: Libraries: every DEEP2/3 spectrum (both fields), and the galaxy surveys'
+#: spectra of objects that are themselves lensing sources.
+LIBRARIES = {"deep2": DEEP2, "lensing": GALAXY_SURVEYS}
+#: Redshift models: (feature space of ``nz.twin``, library).
+MODELS = {
+    "colour": ("colour", "deep2"),
+    "bpz": ("bpz", "deep2"),
+    "bpz_desi": ("bpz", "lensing"),
+}
 Z_SUCCESS = 1.4
 UPTAKE = 0.75  # galaxies follow 0.6-0.9 of the stellar zero-point offset
 #: Stellar per-tile scatter in u g r i z, mag (r fixed by the note's
@@ -91,11 +109,11 @@ def load_inputs(config, path, workers):
         & (src["weight"] > 0)
     )
     libs = {}
-    for name, surveys in (("colour", COLOUR_SURVEYS), ("bpz", BPZ_SURVEYS)):
+    for name, surveys in LIBRARIES.items():
         lib = inputs.calibrators(
             rc["photometry"], surveys, SKY, rc["z_min"], offset, workers=workers
         )
-        if name == "bpz":
+        if name == "lensing":
             keep = np.isin(lib["object_id"], src["object_id"][rows])
             lib = {k: v[keep] for k, v in lib.items()}
         libs.update(
@@ -160,7 +178,7 @@ def main(argv=None):
     zmax = config["grid"]["max"]
     data = load_inputs(config, a.output / "inputs.npz", w)
     src, cal = part(data, "src_"), part(data, "cal_")
-    libs = {m: part(data, f"lib_{m}_") for m in twin.SPACES}
+    libs = {name: part(data, f"lib_{name}_") for name in LIBRARIES}
 
     path = a.output / "reference.npz"
     if not path.exists():
@@ -183,14 +201,14 @@ def main(argv=None):
     cal_cell = nz.assign(cal["mag"], base["model"])[1]
 
     near = {}
-    for m in twin.SPACES:
+    for m, (kind, lib) in MODELS.items():
         path = a.output / f"near_{m}.npz"
         if not path.exists():
             np.savez(
                 path,
                 src=twin.neighbours(
-                    m,
-                    libs[m],
+                    kind,
+                    libs[lib],
                     src["mag"],
                     src["photoz"],
                     src["object_id"],
@@ -199,8 +217,8 @@ def main(argv=None):
                     workers=w,
                 ),
                 cal=twin.neighbours(
-                    m,
-                    libs[m],
+                    kind,
+                    libs[lib],
                     cal["mag"],
                     cal["photoz"],
                     cal["object_id"],
@@ -212,9 +230,10 @@ def main(argv=None):
         near[m] = dict(np.load(path))
 
     def painted(m, seed):
+        kind, lib = MODELS[m]
         rng = np.random.default_rng(seed)
-        zs = twin.paint(m, libs[m], near[m]["src"], src["photoz"], rng, zmax)
-        zc = twin.paint(m, libs[m], near[m]["cal"], cal["photoz"], rng, zmax)
+        zs = twin.paint(kind, libs[lib], near[m]["src"], src["photoz"], rng, zmax)
+        zc = twin.paint(kind, libs[lib], near[m]["cal"], cal["photoz"], rng, zmax)
         return zs, zc
 
     def perturbed(dm_src, dm_cal):
@@ -263,9 +282,9 @@ def main(argv=None):
 
     zp_patch = None
     for seed in range(a.realisations):
-        paints = {m: painted(m, seed) for m in twin.SPACES}
+        paints = {m: painted(m, seed) for m in MODELS}
         for rung in a.rungs:
-            todo = [m for m in twin.SPACES if (rung, m, seed) not in done]
+            todo = [m for m in MODELS if (rung, m, seed) not in done]
             if not todo:
                 continue
             if rung == "representative":
