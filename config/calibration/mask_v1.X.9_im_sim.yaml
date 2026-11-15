@@ -1,8 +1,12 @@
-# Config file for masking and calibration.
-# Less conservative cuts, type v1.X.9 (e.g. for matching with spectroscopic sample).
+# Masking and calibration of the image simulations (the image-sims workflow's
+# mask_config). The cuts of the data config mask_v1.X.9.yaml, without the
+# survey-only ones the simulated tiles do not carry (IMAFLAGS_ISO and the
+# HealSparse mask bits), and the metacal selection of the v2 data
+# (mask_v2.0.yaml), whose DES table weights the simulations.
 
-# General parameters (can also given on command line)
+# General parameters
 params:
+  # The comprehensive catalogue im_extract writes in each simulation's run dir
   input_path: shape_catalog_comprehensive_ngmix.fits
   cmatrices: False
   sky_regions: False
