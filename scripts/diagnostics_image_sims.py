@@ -9,12 +9,10 @@ For each requested grid catalogue, produces:
   - PSF leakage scatter (e1 vs e1_PSF, e2 vs e2_PSF)
   - additive bias (weighted mean e1, e2)
 
-Shares the estimator's config schema (``sp_validation.image_sims``): the same
-``grids_dir`` / ``num`` / ``catalog_name`` keys, the ``branches`` list (the sim
-map, not a hard-coded five), and the same ``w_col`` weight semantics -- a column
-name, or ``null`` for unit weights.  Reading ``w_col`` (rather than hard-coding
-``w_des``) means the diagnostics never KeyError on a catalogue that lacks the
-weight column, and they weight exactly as the m-bias run they accompany.
+Reads the same config as ``compute_m_bias_image_sims.py`` (``grids_dir``,
+``num``, ``catalog_name``, the ``branches`` list) plus ``w_col``, the weight
+column to plot with, or ``null`` for unit weights; a catalogue without the
+column then plots unweighted instead of raising KeyError.
 
 Usage:
     diagnostics_image_sims.py -c config.yaml [-v]
@@ -45,9 +43,7 @@ def load(path):
 def weights(cat, w_col):
     """Per-object weights: the ``w_col`` column, or unit weights when null.
 
-    Mirrors the estimator's ``w_col`` contract (image_sims._load_cat): ``None``
-    -> every object unit weight (the no-weighting mode, #227).  Reading it here
-    means the diagnostics never KeyError when the weight column is absent.
+    ``w_col`` is ``None`` for unit weights.
     """
     return cat[w_col].copy() if w_col else np.ones(len(cat["RA"]))
 
