@@ -224,24 +224,8 @@ def main(argv=None):
     parser.add_argument("recipe")
     parser.add_argument("--output", help="write here, not to the recipe's release")
     parser.add_argument("--workers", type=int, default=1)
-    parser.add_argument("--figures", metavar="DIRECTORY")
     args = parser.parse_args(argv)
-    config = load_yaml(args.recipe)
-    output = Path(args.output or config["output"])
-    run(args.recipe, output, workers=args.workers)
-    if args.figures:
-        from .diagnostics import render
-
-        render(
-            dict(
-                config.get("diagnostics", {}),
-                calibration_arrays=output / "calibration_arrays.npz",
-                model=output / "som_model.npz",
-                summary=output / "summary.json",
-                side=config["som"]["side"],
-            ),
-            args.figures,
-        )
+    run(args.recipe, args.output, workers=args.workers)
 
 
 if __name__ == "__main__":

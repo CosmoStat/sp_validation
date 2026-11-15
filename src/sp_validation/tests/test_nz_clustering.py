@@ -109,8 +109,8 @@ def test_alpha_boundary_includes_entire_shift_interval(monkeypatch):
     assert not tight["alpha_boundary"]
 
 
-def test_analysis_reports_profile_and_renders_figures(tmp_path, monkeypatch):
-    """Exercise the profiled fit's JSON output and diagnostic figures."""
+def test_analysis_reports_profile(tmp_path, monkeypatch):
+    """Exercise the profiled fit's JSON output."""
     monkeypatch.setattr(nc, "fiducial_cosmology", lambda: None)
     monkeypatch.setattr(nc, "kernel", lambda *args: 0.01)
     rng = np.random.default_rng(5)
@@ -150,12 +150,10 @@ def test_analysis_reports_profile_and_renders_figures(tmp_path, monkeypatch):
             gate=["LRG", 0.3, 0.9, 0.05],
         ),
     )
-    result = nc.analyse(config, tmp_path / "figures")
+    result = nc.analyse(config)
     assert "profiled_shift" in result["bins"][0]["fits"]["calibration"]
     assert np.asarray(result["bins"][0]["covariance"]).shape == (n, n)
     assert (data.parent / "clustering.json").exists()
-    for name in ("clustering_gate.png", "clustering_nz.png"):
-        assert (tmp_path / "figures" / name).stat().st_size > 1000
 
 
 @pytest.mark.parametrize("window", [(0.31, 0.5), (0.3, 0.51)])

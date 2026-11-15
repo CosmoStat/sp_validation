@@ -10,8 +10,8 @@ selection a redshift distribution. Run them in order. See
 | Step | Script | Does |
 |------|--------|------|
 | 1 | `calibrate_sample.py` | The calibrated shear sample from a snapshot's shapes: selection, weights, metacalibration, HATS catalogue ([below](#the-calibrated-sample-v2)). |
-| 2 | `calibrate_nz.py` | SOM direct calibration: the tomographic n(z) file, each row's `TOM_BIN_ID` and n(z) realisations. |
-| 2b | `clustering_nz.py` | Check of step 2: clustering redshifts of the gold bins against DESI DR1. |
+| 2 | `calibrate_nz.py` | SOM direct calibration: the tomographic n(z) file, each row's `TOM_BIN_ID` and n(z) realisations; `plot_nz.py` draws its figures. |
+| 2b | `clustering_nz.py` | Check of step 2: clustering redshifts of the gold bins against DESI DR1; `plot_clustering.py` draws its figures. |
 
 `compare_samples.py` compares two samples object by object.
 
@@ -126,24 +126,30 @@ python scripts/calibration/calibrate_nz.py config/calibration/nz/v2.yaml --worke
 ```
 
 The products go to the recipe's `output`, the release's `nz/`; `--output
-DIRECTORY` writes them elsewhere and `--figures DIRECTORY` renders
-diagnostics. They are (`sp_validation.nz.pipeline`) `nz_tomo.txt`,
-`nz_nontomo.txt` (their sum), `tom_bin.parquet` (`OBJECT_ID`, `TOM_BIN_ID` and
-`ZBAND`, row-aligned with the catalogue; `TOM_BIN_ID` is 1 to 4 for the four
-bins and 0 for a galaxy in no bin, and cosmo_val drops IDs ≤ 0),
+DIRECTORY` writes them elsewhere. They are (`sp_validation.nz.pipeline`)
+`nz_tomo.txt`, `nz_nontomo.txt` (their sum), `tom_bin.parquet` (`OBJECT_ID`,
+`TOM_BIN_ID` and `ZBAND`, row-aligned with the catalogue; `TOM_BIN_ID` is 1 to
+4 for the four bins and 0 for a galaxy in no bin, and cosmo_val drops IDs ≤ 0),
 `realisations.npz`, `calibrators.npz`, `calibration_arrays.npz`,
 `som_model.npz`, `summary.json` and `recipe.yaml`, the recipe file byte for
 byte.
+
+`plot_nz.py` draws a run's figures from those products (the SOM plane, each
+bin's gold groups, BPZ against spec-z, the per-bin n(z) and how source
+occupancy weights the spectra):
+
+```bash
+python scripts/calibration/plot_nz.py RUN_DIR FIGURE_DIR \
+    [--reference NZ_TOMO LABEL] [--published NZ LABEL]
+```
+
+`--reference` overlays an earlier tomographic n(z) on each bin and
+`--published` compares the summed bins with a non-tomographic n(z).
 
 A run redefines the bins, so its `nz_tomo.txt` describes its own
 `tom_bin.parquet` and no earlier `TOM_BIN_ID`. Write that column into the
 catalogue (the rows are aligned) whenever the n(z) a `cat_config` entry reads
 is replaced.
-
-**On mocks.** `scripts/calibration/nz_mock_ladder.py` runs a recipe's
-calibration on mock galaxies with known redshifts (`sp_validation.nz.mock`)
-and scores each bin's mean redshift against the truth of its own
-`TOM_BIN_ID` sources, over an ensemble of realisations.
 
 **Sources** are the rows of the released calibrated shear catalogue, with its
 `w_des`. Sources and calibrators share one photometry: PhotoPipe's run on
@@ -297,7 +303,8 @@ It reads the n(z) run in the recipe's `output` (`tom_bin.parquet`,
 
 ```bash
 python scripts/calibration/clustering_nz.py config/calibration/nz/v2.yaml \
-    --prepare --measure --workers 32 --figures DIRECTORY
+    --prepare --measure --workers 32
+python scripts/calibration/plot_clustering.py config/calibration/nz/v2.yaml DIRECTORY
 ```
 
 `--prepare` cuts the DESI DR1 clustering catalogues (BGS_BRIGHT, LRG,
@@ -306,7 +313,8 @@ overlap and draws 100 jackknife patches.
 Gold sources are selected by the union of random-occupied `source_nside` pixels (default 256); rerun preparation and measurement at 512 or 1024 to check footprint-resolution stability.
 This is an approximate union footprint, not a tracer-specific overlap definition.
 `--measure` counts pairs in redshift slices of the reference.
-Without either flag the script only redoes the analysis, which writes `clustering.json` and two figures.
+Without either flag the script only redoes the analysis, which writes `clustering.json`.
+`plot_clustering.py` draws two figures from that file and the run's SOM n(z): the known-answer gate (`clustering_gate.png`) and each bin against the SOM n(z) (`clustering_nz.png`).
 
 **Estimator.** In each reference slice the annulus is fixed at 1.5–5 Mpc/h
 comoving. The slice's autocorrelation gives the reference bias, and its
