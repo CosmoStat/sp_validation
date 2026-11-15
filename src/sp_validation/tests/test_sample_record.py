@@ -4,14 +4,18 @@ Every ``@sc`` decision citation of ``dr6_catalogue`` names a decision the
 ASTRA record defines, every decision has a tagged site, and every ``Values:``
 pin equals the committed value. A pin is ``mask_v2.0.yaml#path`` (the selection
 config; ``dat.<column>.<key>`` reads that column's cut), ``v2.yaml#path`` (the
-sample recipe) or ``module.CONSTANT`` (under ``sp_validation``). The
+sample recipe), ``module.CONSTANT`` (under ``sp_validation``) or
+``module.function#key``, the default of ``<config>.get("key", default)`` in that
+function. The
 paired-fraction decision's pins are checked by ``test_catalogue_match``.
 """
 
 import ast
 import copy
 import importlib
+import inspect
 import re
+import textwrap
 from pathlib import Path
 
 import pytest
@@ -70,6 +74,21 @@ def committed(name, configs):
         module, constant = name.rsplit(".", 1)
         return getattr(importlib.import_module(f"sp_validation.{module}"), constant)
     file, path = name.split("#")
+    if file not in configs:
+        module, function = file.rsplit(".", 1)
+        source = inspect.getsource(
+            getattr(importlib.import_module(f"sp_validation.{module}"), function)
+        )
+        (default,) = [
+            node.args[1]
+            for node in ast.walk(ast.parse(textwrap.dedent(source)))
+            if isinstance(node, ast.Call)
+            and getattr(node.func, "attr", None) == "get"
+            and len(node.args) == 2
+            and isinstance(node.args[0], ast.Constant)
+            and node.args[0].value == path
+        ]
+        return ast.literal_eval(default)
     value = configs[file]
     for key in path.split("."):
         if isinstance(value, list):
