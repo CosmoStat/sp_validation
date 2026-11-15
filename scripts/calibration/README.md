@@ -11,8 +11,8 @@ selection a redshift distribution. Run them in order. See
 | 2 | `create_joint_comprehensive_cat.py` | Merge the per-campaign comprehensive catalogues into one joint catalogue (front-end of `catalog_builders.JointCat`). |
 | 3 | `demo_apply_hsp_masks.py` | Add the structural and coverage (HealSparse) masks. |
 | 4 | `calibrate_comprehensive_cat.py` | Galaxy selection + metacalibration. Uses the mask configs in `config/calibration/`. |
-| 5 | `calibrate_nz.py` | SOM direct calibration: the tomographic n(z) file, each row's `TOM_BIN_ID` and n(z) realisations; `plot_nz.py` draws its figures. |
-| 5b | `clustering_nz.py` | Check of step 5: clustering redshifts of the gold bins against DESI DR1; `plot_clustering.py` draws its figures. |
+| 5 | `calibrate_nz.py` | SOM direct calibration: the tomographic n(z) file, each row's `TOM_BIN_ID` and n(z) realisations. |
+| 5b | `clustering_nz.py` | Check of step 5: clustering redshifts of the gold bins against DESI DR1. |
 
 `params.py` is the shared parameter template (paths, column names, survey
 constants) imported by `extract_info.py`; copy and edit it per run.
@@ -46,18 +46,6 @@ DIRECTORY` writes them elsewhere. They are (`sp_validation.nz.pipeline`)
 `realisations.npz`, `calibrators.npz`, `calibration_arrays.npz`,
 `som_model.npz`, `summary.json` and `recipe.yaml`, the recipe file byte for
 byte.
-
-`plot_nz.py` draws a run's figures from those products (the SOM plane, each
-bin's gold groups, BPZ against spec-z, the per-bin n(z) and how source
-occupancy weights the spectra):
-
-```bash
-python scripts/calibration/plot_nz.py RUN_DIR FIGURE_DIR \
-    [--reference NZ_TOMO LABEL] [--published NZ LABEL]
-```
-
-`--reference` overlays an earlier tomographic n(z) on each bin and
-`--published` compares the summed bins with a non-tomographic n(z).
 
 A run redefines the bins, so its `nz_tomo.txt` describes its own
 `tom_bin.parquet` and no earlier `TOM_BIN_ID`. Write that column into the
@@ -217,7 +205,6 @@ It reads the n(z) run in the recipe's `output` (`tom_bin.parquet`,
 ```bash
 python scripts/calibration/clustering_nz.py config/calibration/nz/v2.yaml \
     --prepare --measure --workers 32
-python scripts/calibration/plot_clustering.py config/calibration/nz/v2.yaml DIRECTORY
 ```
 
 `--prepare` cuts the DESI DR1 clustering catalogues (BGS_BRIGHT, LRG,
@@ -227,7 +214,6 @@ Gold sources are selected by the union of random-occupied `source_nside` pixels 
 This is an approximate union footprint, not a tracer-specific overlap definition.
 `--measure` counts pairs in redshift slices of the reference.
 Without either flag the script only redoes the analysis, which writes `clustering.json`.
-`plot_clustering.py` draws two figures from that file and the run's SOM n(z): the known-answer gate (`clustering_gate.png`) and each bin against the SOM n(z) (`clustering_nz.png`).
 
 **Estimator.** In each reference slice the annulus is fixed at 1.5–5 Mpc/h
 comoving. The slice's autocorrelation gives the reference bias, and its
