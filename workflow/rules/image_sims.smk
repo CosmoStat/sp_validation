@@ -403,6 +403,7 @@ rule im_mbias:
         sums=expand(
             f"{GRIDS_BASE}/{{sim}}/shape_catalog_cut_{SHAPE}_sums.npz", sim=SIMS
         ),
+        table=[] if WEIGHT_TABLE in ("self", "unit") else [WEIGHT_TABLE],
     output:
         results=f"{GRIDS_BASE}/results/m_bias_results.yaml",
     params:

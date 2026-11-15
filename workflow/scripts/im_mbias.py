@@ -45,7 +45,9 @@ def image_revision():
     path = os.environ.get("APPTAINER_CONTAINER")
     if not path or not os.path.isfile(path):
         return None
-    pattern = re.compile(rb'org\.opencontainers\.image\.revision"?[:=]"?([0-9a-f]{7,40})')
+    pattern = re.compile(
+        rb'org\.opencontainers\.image\.revision"?[:=]"?([0-9a-f]{7,40})'
+    )
     tail = b""
     with open(path, "rb") as fh:
         while chunk := fh.read(8 << 20):
