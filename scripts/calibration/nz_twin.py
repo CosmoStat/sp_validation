@@ -73,11 +73,11 @@ from pathlib import Path
 import healpy as hp
 import numpy as np
 
+from sp_validation.assembly.object_id import NUMBER_LIMIT
 from sp_validation.data_roots import load_yaml
 from sp_validation.io import read_catalogue
 from sp_validation.nz import calibration as nz
 from sp_validation.nz import ensemble, inputs, pipeline, twin
-from sp_validation.object_id import NUMBER_LIMIT
 
 RECIPE = Path(__file__).parents[2] / "config/calibration/nz/v2.yaml"
 K = 16
