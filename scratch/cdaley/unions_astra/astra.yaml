@@ -35,6 +35,9 @@ narrative:
     and [blinding](#decisions.blinding). Each paper owns its statistic,
     scale cuts, estimator, binning, covariance method, and (for III/IV) the
     full modelling stack (non-linear power, baryons, intrinsic alignment).
+    A fourth sub-analysis, [dr6_catalogue](#analyses.dr6_catalogue), records
+    the selection of the DR6 ShapePipe v2 catalogue, which no paper here
+    consumes.
   inputs: |
     The common [shear_catalog](#inputs.shear_catalog) (ShapePipe v1.4.6.3,
     61,378,891 galaxies over 2894 deg² effective, n_eff ≈ 4.96 arcmin⁻²,
@@ -228,3 +231,5 @@ analyses:
     path: ./analyses/cosmic_shear_2d
   harmonic:
     path: ./analyses/harmonic
+  dr6_catalogue:
+    path: ./analyses/dr6_catalogue

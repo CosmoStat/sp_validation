@@ -9,6 +9,7 @@
   installation
   quickstart
   repository_structure
+  stages
 
 .. toctree::
   :hidden:

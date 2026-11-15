@@ -6,8 +6,9 @@ drawn once, ``python -m sp_validation.blinding init <name>``, and never
 committed (``*.blind.json`` is gitignored). The private
 ``git@github.com:UNIONS-WL/blinds.git`` repository is cloned on each machine to
 ``~/.sp_validation/blinds`` (mode 0700), the catalogue config's ``paths.blinds``.
-Each catalogue entry declares ``blind: none`` (public) or ``blind: <name>``
-(:func:`blind_of`).
+Each catalogue entry declares ``blind: none`` (public), ``blind: <name>`` (the
+registry's record) or ``blind: <path>/<name>.blind.json`` (a record shipped
+with the data, as in a release; :func:`blind_of`, :func:`entry_blind`).
 
 :func:`conceal` adds the blind's shift, t(hidden) − t(fiducial), to every row
 of a SACC; Smokescreen draws the hidden point from the seed and evaluates the
@@ -82,27 +83,51 @@ def _shear_file(entry):
     return os.path.realpath(os.path.join(str(entry.get("subdir", "")), shear["path"]))
 
 
+def _declared(entry):
+    blind = entry.get("blind") if isinstance(entry, dict) else None
+    return blind if isinstance(blind, str) else None
+
+
+def _name(blind):
+    """The name of a declared blind: itself, or a record path's file stem."""
+    return Path(blind).name.removesuffix(".blind.json")
+
+
 def blind_of(catalogues, entry):
-    """The ``blind:`` of catalogue-config entry ``entry``.
+    """The name of the blind catalogue-config entry ``entry`` declares.
 
     Refuses an entry that declares none, and entries reading one shear file
     under different blinds.
     """
-    blind = catalogues[entry].get("blind")
-    if not isinstance(blind, str):
+    blind = _declared(catalogues[entry])
+    if blind is None:
         raise ValueError(
             f"{entry} declares no `blind:`; declare `blind: none` (public) or "
             "`blind: <name>` in its catalogue config entry"
         )
     path = _shear_file(catalogues[entry])
     readers = {
-        name: other.get("blind")
+        name: _name(declared) if (declared := _declared(other)) else declared
         for name, other in catalogues.items()
         if path and _shear_file(other) == path
     }
     if len(set(readers.values())) > 1:
         raise ValueError(f"{path} is read under different blinds: {readers}")
-    return blind
+    return _name(blind)
+
+
+def entry_blind(catalogues, entry):
+    """The :class:`Blind` of catalogue-config entry ``entry``: the record its
+    ``blind:`` path names, or the registry's record of its blind name."""
+    name, blind = blind_of(catalogues, entry), _declared(catalogues[entry])
+    if blind == name:
+        return open_blind(name, catalogues)
+    from .data_roots import local
+
+    path = Path(local(blind))
+    if not os.access(path, os.R_OK):
+        raise BlindingError(f"cannot read blind {name} at {path}")
+    return Blind(name, path)
 
 
 def registry(catalogues):
@@ -337,14 +362,14 @@ def _cl(params, s, rows):
 
 
 def main(argv=None):
-    import yaml
+    from sp_validation.data_roots import load_yaml
 
     parser = argparse.ArgumentParser(prog="python -m sp_validation.blinding")
     parser.add_argument("command", choices=("init",))
     parser.add_argument("blind")
     parser.add_argument("--cat-config", default=str(REPO_CAT_CONFIG))
     a = parser.parse_args(argv)
-    init(a.blind, yaml.safe_load(Path(a.cat_config).read_text()))
+    init(a.blind, load_yaml(a.cat_config))
     return 0
 
 
