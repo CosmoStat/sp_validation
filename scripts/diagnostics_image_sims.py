@@ -11,8 +11,7 @@ For each requested grid catalogue, produces:
 
 Reads the same config as ``compute_m_bias_image_sims.py`` (``grids_dir``,
 ``num``, ``catalog_name``, the ``branches`` list) plus ``w_col``, the weight
-column to plot with, or ``null`` for unit weights; a catalogue without the
-column then plots unweighted instead of raising KeyError.
+column to plot with, or ``null`` for unit weights.
 
 Usage:
     diagnostics_image_sims.py -c config.yaml [-v]
