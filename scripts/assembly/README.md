@@ -25,9 +25,11 @@ tile tree, about 100 minutes from cold, and skips tiles whose files are
 unchanged. `build_collection.py` takes about ten minutes at 60 workers and
 300 GiB; the same build is the Snakemake rule `collection`
 (`snakemake --profile workflow/profiles/default -s workflow/assemble/Snakefile -j 60`).
-It keeps each part already on disk (`shapes/`, `photopipe/`, `specz/`, the
-index), so a PhotoPipe rerun is: remove `photopipe/` and `specz/`, build again;
-the shapes stay. A new ShapePipe or PhotoPipe version is a new recipe.
+It keeps each part already on disk (`shapes/`, `photopipe/`, `specz/`) and
+rebuilds the index, so a PhotoPipe rerun is: remove `photopipe/` and `specz/`
+(and `collection.properties`, for the Snakemake rule), build again; the shapes
+stay. A changed input never rewrites a part on its own. A new ShapePipe or
+PhotoPipe version is a new recipe.
 
 ```
 COLLECTION/

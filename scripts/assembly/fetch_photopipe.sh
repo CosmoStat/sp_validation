@@ -62,10 +62,13 @@ fi
 if has_stage stage; then
     mkdir -p "$DATA/photopipe-dr6-extract"
     cd "$DATA/photopipe-dr6-extract"
-    vls "arc:$ARC/extract" | grep -E '^(ra=[0-9]+\.(parquet|json)|COMPLETE)$' |
+    rm -f COMPLETE
+    vls "arc:$ARC/extract" | grep -E '^ra=[0-9]+\.(parquet|json)$' |
         sed "s|^|$ARC/extract/|" > remote.txt
     xargs -P "$STREAMS" -I{} bash -c 'get "$1"' _ {} < remote.txt
-    [[ $(ls ra=*.parquet ra=*.json COMPLETE | wc -l) == $(wc -l < remote.txt) ]]
+    [[ $(ls ra=*.parquet ra=*.json | wc -l) == $(wc -l < remote.txt) ]]
+    # Last, so COMPLETE marks a staged extract that is whole.
+    get "$ARC/extract/COMPLETE"
 fi
 
 if has_stage specz; then
