@@ -35,7 +35,8 @@ The n(z) is calibrated, not validated:
 2. **Calibrate** runs the SOM recipe (`config/calibration/nz/v2.yaml`,
    `scripts/calibration/` step 5) on that photometry and the spectra
    PhotoPipe matched to the same objects, and writes the n(z) file, its
-   realisations and each row's `TOM_BIN_ID`.
+   realisations and each row's `TOM_BIN_ID`; `plot_nz.py` draws its figures
+   from those files.
 3. **Validate** reads the file through `shear.redshift_path` and the bins
    through `tomo_bin_col`.
 
