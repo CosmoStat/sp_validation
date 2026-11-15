@@ -15,6 +15,8 @@ SP Validation is a Python package for validating weak-lensing catalogues (galaxy
 
 **This codebase is yours.** Redesign what you touch into the shape it would have had if the change had been assumed from the start; don't staple onto a design that no longer fits. Push small, checked changes straight to `develop` and watch them in production. Better to break `develop`, notice quickly and fix it than never to have made the change. Open a PR when a human needs to think the change through: a new interface, a change in a scientific quantity, anything a collaborator runs by hand. Leave what you write clear enough that a person can run it by hand.
 
+**The repository holds the library and its workflows, not a PR's evidence.** Comparisons with someone else's code, reference outputs, validation figures and one-off analysis scripts go in the PR description (figures in a public gist), made by a few calls to the library; they are not committed as scripts, test data or tests. Tests are self-contained known-answer checks. Data is committed only as part of an official workflow.
+
 ## ASTRA and Lightcone first
 Build analysis stages (n(z) generation included) as ASTRA specs (`astra.yaml`)
 run with Lightcone (`lc`), and record analysis choices there as decisions,

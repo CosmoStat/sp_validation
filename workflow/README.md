@@ -187,7 +187,9 @@ two stages run without Snakemake as `scripts/glass_mock/paint_catalogue.py
 `SP_v2.0.0_glass_painted` reads `results/glass_painted/seed_{seed:05d}/calibrated_none.h5`
 under a throwaway blind kept in the run directory, `blinds/glass-painted.blind.json`
 (`python -m sp_validation.blinding init glass-painted --registry blinds`, once per
-run directory). With
+run directory). Every SACC is stamped with the blind's name only, so an ensemble
+measured in several run directories or machines must share one record: copy
+`blinds/glass-painted.blind.json` into each instead of drawing a new one. With
 `glass_paint.catalogues.calibrated` as above, asking for a statistic of
 `SP_v2.0.0_glass_painted_seed1` paints seed 1 first:
 
