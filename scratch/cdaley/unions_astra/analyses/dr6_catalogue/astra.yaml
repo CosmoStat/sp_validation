@@ -397,7 +397,7 @@ decisions:
       R_k⁻¹ R_all e minus the bin's weighted mean of that quantity
       (sp_validation.response.calibrated_shear). A tomographic measurement of
       a bin its record lacks is an error. Owner's decision, 15 November 2026.
-      Values: cosmo_val/cat_config.yaml#SP_v2.0.0.shear.response = "response.json".
+      Values: none.
     default: per_sample_at_measurement
     options:
       per_sample_at_measurement:
