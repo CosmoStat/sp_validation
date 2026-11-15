@@ -305,10 +305,13 @@ decisions:
       patches, plus 0.01 mag grey from Pan-STARRS 3π uniformity), the z2 → z
       constant (0.02 mag), spec-z failures (1%, from the compilation's 0.99
       confidence), and the gold factor drawn in [4, 6]. The zero points
-      dominate σ⟨z⟩ and correlate ⟨z⟩ between bins.
-      Unmodelled: spectroscopic selection and incompleteness, and method bias
-      calibrated on simulations, so this is a lower bound. Sizes are argued
-      in scripts/calibration/README.md.
+      dominate σ⟨z⟩ and correlate ⟨z⟩ between bins. Spectroscopic selection
+      enters as its own term ([specz_selection](#decisions.specz_selection)),
+      and the draws are kept non-negative
+      ([nonnegative_draws](#decisions.nonnegative_draws)). Unmodelled:
+      incompleteness beyond that term, and method bias calibrated on
+      simulations, so this is a lower bound. Sizes are argued in
+      scripts/calibration/README.md.
       Values: v2.yaml#ensemble.draws = 2000; v2.yaml#ensemble.bootstrap = True;
       v2.yaml#ensemble.density.field = [2.0, 0.25];
       v2.yaml#ensemble.density.bias = 1.3;
@@ -329,6 +332,59 @@ decisions:
       delta_z_shifts:
         label: "Independent per-bin Δz shifts"
         description: "σ = 0.018 per bin, the 2D analysis's prior: expected Δχ² 4.08, no inter-bin correlation."
+
+  specz_selection:
+    label: "Spectroscopic-selection term"
+    tags: [systematics, calibration]
+    rationale: >-
+      DEEP2/3 are one spectroscopic selection, and spectra chosen otherwise
+      put other redshifts at the same colours. Alternative calibrators are
+      the same selection on the collection's spec-z extension (same EGS
+      field, z_min and z2 fill) with every survey with 100 or more spectra there (13 surveys, 35,553
+      calibrators against the fiducial 9,917, DESI DR1 17,069 of them);
+      calibrating the same gold sources on them gives a shift of each bin's
+      n(z). A draw adds a Gaussian multiple of that shift with σ = 0.5: half
+      the difference, since neither sample is the sources' true redshift
+      population (the targeted surveys over-represent rare high-z objects,
+      and DEEP2/3 cannot measure most redshifts above 1.4). The size is a
+      prior: clustering redshifts cannot see the high-z tails that dominate
+      bin 1's shift.
+      Values: v2.yaml#ensemble.specz_selection.scale = 0.5;
+      v2.yaml#ensemble.specz_selection.surveys = ["deep2_final", "deep3_final", "DESI_dr1_iron", "NED", "SIMBAD", "herschel_help", "SPITZER_DATAFUSION", "HETDEX_PSC_PDR1_V1.5", "SDSS_QSO", "c3r2_dr2", "rcsed_final", "SDSS_BHM_v6_2_1", "candels_v2"].
+    default: half_alternative_difference
+    options:
+      half_alternative_difference:
+        label: "σ = 0.5 × (alternative − fiducial)"
+        description: "One Gaussian coefficient per draw along the alternative calibrators' shift."
+      full_alternative_difference:
+        label: "σ = 1 × (alternative − fiducial)"
+        description: "Treats the alternative calibrators as as likely as DEEP2/3."
+      none:
+        label: "No selection term"
+        description: "Spectroscopic selection left as a stated limitation."
+
+  nonnegative_draws:
+    label: "Non-negative realisations"
+    tags: [stats]
+    rationale: >-
+      [HARDCODED] The additive terms (offset differences, the selection
+      shift, recentring on the delivered n(z)) can push cells of a draw
+      below zero. Negative cells are clipped and each draw renormalised to
+      unit integral, after recentring, so every realisation is a valid n(z)
+      for theory codes. Clipping can move the ensemble mean off the
+      delivered n(z) and change its width, and lets cells where the fiducial
+      is zero carry mass; realisations.npz records the clipped mass
+      fraction per bin, and for the selection term alone its nominal and
+      realised ⟨z⟩ scatter.
+      Values: none.
+    default: clip_and_normalise
+    options:
+      clip_and_normalise:
+        label: "Clip negative cells, renormalise"
+        description: "Every draw non-negative and unit-integral; mean can move."
+      keep_negative:
+        label: "Keep negative cells"
+        description: "Mean exactly the delivered n(z); some draws are not densities."
 
 outputs:
   - id: nz_tomo
@@ -366,7 +422,8 @@ outputs:
     decisions:
       [source_photometry_join, tomographic_bins, calibrator_set,
        photometry_as_delivered, z2_offset, som_map, gold_selection, grid_step,
-       ensemble_terms]
+       ensemble_terms, specz_selection, nonnegative_draws]
     description: >-
-      realisations.npz: (draws, bins, z) unit-integral n(z), every bin drawn
-      together and recentred on the delivered n(z).
+      realisations.npz: (draws, bins, z) unit-integral, non-negative n(z),
+      every bin drawn together, recentred on the delivered n(z) before
+      clipping; raw_mean and the clipping diagnostics alongside.

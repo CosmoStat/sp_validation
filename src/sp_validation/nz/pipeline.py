@@ -13,10 +13,12 @@ themselves, and writes:
   with the catalogue;
 - ``realisations.npz``: draws of every bin at once (:mod:`.ensemble`), from
   ``ensemble_inputs.npz`` (per-group source tables, their response to
-  magnitude offsets, and the calibrators' BPZ gradients);
+  magnitude offsets, the calibrators' BPZ gradients and, with the
+  ``specz_selection`` term, the n(z) shift of the alternative calibrators);
 - ``summary.json``: bin edges, means and weights, and the photometry match
   (:func:`.inputs.match_report`);
-- ``calibrators.npz``, ``som_model.npz`` and ``calibration_arrays.npz``;
+- ``calibrators.npz`` (and ``calibrators_selection.npz``, the alternative
+  calibrators), ``som_model.npz`` and ``calibration_arrays.npz``;
 - ``recipe.yaml``: the recipe file, byte for byte.
 """
 
@@ -49,20 +51,27 @@ def run(recipe, output=None, *, workers=1):
     """
     config = load_yaml(recipe)
     output = Path(output or config["output"])
-    cal = inputs.calibrators(
-        **config["inputs"]["calibrators"], offset=config["z2_offset"], workers=workers
-    )
+    spectra = dict(config["inputs"]["calibrators"], offset=config["z2_offset"])
+    cal = inputs.calibrators(**spectra, workers=workers)
+    selection = config.get("ensemble", {}).get("specz_selection")
+    alternative = None
+    if selection:
+        alternative = inputs.calibrators(
+            **dict(spectra, surveys=selection["surveys"]), workers=workers
+        )
     src = inputs.sources(**config["inputs"]["sources"], workers=workers)
-    summary = calibrate(config, cal, src, output, workers=workers)
+    summary = calibrate(config, cal, src, output, alternative, workers=workers)
     shutil.copyfile(recipe, output / "recipe.yaml")
     return summary
 
 
-def calibrate(config, cal, src, output, *, workers=1):
+def calibrate(config, cal, src, output, alternative=None, *, workers=1):
     """Calibrate sources ``src`` on calibrators ``cal`` and write the products.
 
     ``cal`` and ``src`` are the arrays of :func:`.inputs.calibrators` and
-    :func:`.inputs.sources`; ``config`` is a loaded recipe.
+    :func:`.inputs.sources`; ``config`` is a loaded recipe. ``alternative``
+    holds the alternative calibrators of the ensemble's ``specz_selection``
+    term, which needs them.
 
     @sc [label:coupling] calibrator-edges-are-source-edges
     One set of edges, computed from the sources, bins the sources
@@ -73,6 +82,8 @@ def calibrate(config, cal, src, output, *, workers=1):
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(output / "calibrators.npz", **cal)
+    if alternative:
+        np.savez_compressed(output / "calibrators_selection.npz", **alternative)
     edges = nz.quantile_edges(
         src["mag"],
         src["photoz"],
@@ -174,22 +185,35 @@ def calibrate(config, cal, src, output, *, workers=1):
     )
     (output / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     if "ensemble" in config:
+        tables = ensemble.ensemble_inputs(
+            src["mag"],
+            photoz,
+            weight,
+            prelim,
+            channel,
+            model,
+            est["gold"],
+            offset=config["z2_offset"],
+            workers=workers,
+        )
+        if alternative:
+            on_grid = alternative["z"] <= grid[-1]
+            _, alt_cell = nz.assign(alternative["mag"][on_grid], model, workers=workers)
+            tables["selection_shift"] = ensemble.selection_shift(
+                alternative["z"][on_grid],
+                alternative["photoz"][on_grid],
+                model["group_map"][alt_cell],
+                edges,
+                tables["source_weight"] * est["gold"],
+                grid,
+                est["bin_hists"],
+            )
         np.savez_compressed(
             output / "ensemble_inputs.npz",
             cal_photoz_gradient=ensemble.photoz_gradient(
                 cal["mag"], cal["photoz"], model
             ),
-            **ensemble.ensemble_inputs(
-                src["mag"],
-                photoz,
-                weight,
-                prelim,
-                channel,
-                model,
-                est["gold"],
-                offset=config["z2_offset"],
-                workers=workers,
-            ),
+            **tables,
         )
         ensemble.run(output, output / "realisations.npz", config["ensemble"])
     return summary
