@@ -50,12 +50,14 @@ def _repo_root() -> Path:
 
 
 def _package_modules() -> list[str]:
-    """Every importable ``sp_validation`` submodule, excluding the test package."""
+    """Every importable ``sp_validation`` module, subpackages included, excluding tests."""
     names = []
-    for _finder, name, ispkg in pkgutil.iter_modules(sp_validation.__path__):
-        if ispkg or name == "tests":
+    for _finder, name, ispkg in pkgutil.walk_packages(
+        sp_validation.__path__, prefix="sp_validation."
+    ):
+        if ispkg or name.startswith("sp_validation.tests"):
             continue
-        names.append(f"sp_validation.{name}")
+        names.append(name)
     return sorted(names)
 
 

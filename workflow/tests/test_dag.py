@@ -349,3 +349,38 @@ def test_papers_resolve_on_candide(paper, targets):
     """The real paper DAGs resolve against the real catalogues and your image."""
     result = _real_dry_run(paper, targets)
     assert result.returncode == 0, result.stdout
+
+
+def test_the_assemble_stage_builds_the_recipes_collection(toy, tmp_path):
+    """The collection rule reads the recipe's inputs and declares only
+    ``collection.properties``, which a build writes last."""
+    recipe = tmp_path / "recipe.yaml"
+    inputs = dict(
+        shapes=tmp_path / "shapes",
+        photopipe_extract=tmp_path / "extract",
+        specz_matches=tmp_path / "specz.cat",
+        specz_compilation=tmp_path / "asc",
+        collection=tmp_path / "collection",
+    )
+    for path in (
+        inputs["shapes"],
+        inputs["photopipe_extract"],
+        inputs["specz_compilation"],
+    ):
+        path.mkdir()
+    (inputs["shapes"] / "hats.properties").touch()
+    (inputs["photopipe_extract"] / "COMPLETE").touch()
+    inputs["specz_matches"].touch()
+    recipe.write_text(yaml.safe_dump({key: str(path) for key, path in inputs.items()}))
+
+    result = toy.snakemake(
+        "-n",
+        "-s",
+        str(toy.root / "workflow" / "assemble" / "Snakefile"),
+        config=[f"assemble={{recipe: {recipe}}}"],
+        cwd=toy.root,
+    )
+    assert result.returncode == 0, result.stdout
+    (job,) = [j for j in parse_jobs(result.stdout) if j.rule == "collection"]
+    assert job.output == [str(inputs["collection"] / "collection.properties")]
+    assert str(inputs["photopipe_extract"] / "COMPLETE") in job.input

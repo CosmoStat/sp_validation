@@ -1587,6 +1587,27 @@ wheels = [
 ]
 
 [[package]]
+name = "hats-import"
+version = "0.11.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cloudpickle" },
+    { name = "dask", extra = ["complete"] },
+    { name = "deprecated" },
+    { name = "hats" },
+    { name = "nested-pandas" },
+    { name = "numpy" },
+    { name = "packaging" },
+    { name = "pandas" },
+    { name = "tqdm" },
+    { name = "universal-pathlib" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/2a/9c/6272ecff9eed88b6120d025ee20a5aa9f3687d04c33347885adcff5ea9ad/hats_import-0.11.1.tar.gz", hash = "sha256:6f569fc891abeeb04d6f715eb364bdd0ae67313277c175b752ba3f5daff5ee88", size = 3673022, upload-time = "2026-10-22T19:26:19.433Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/09/a9/fbc5e60ade7159ab221948b1ab9326cdf4c6777a4388b9fd8cd44d6ac865/hats_import-0.11.1-py3-none-any.whl", hash = "sha256:dbf22e031852dc6d134d3c0e349c17ff27e0971c2da44292be9daf0377e19326", size = 83140, upload-time = "2026-10-22T19:26:17.903Z" },
+]
+
+[[package]]
 name = "healpix"
 version = "2025.1"
 source = { registry = "https://pypi.org/simple" }
@@ -4573,6 +4594,7 @@ dependencies = [
 
 [package.optional-dependencies]
 develop = [
+    { name = "hats-import" },
     { name = "lsdb" },
     { name = "myst-parser" },
     { name = "numpydoc" },
@@ -4600,6 +4622,7 @@ glass = [
     { name = "glass-ext-camb" },
 ]
 test = [
+    { name = "hats-import" },
     { name = "lsdb" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -4630,6 +4653,7 @@ requires-dist = [
     { name = "glass", marker = "extra == 'glass'", specifier = "==2026.4" },
     { name = "glass-ext-camb", marker = "extra == 'glass'", specifier = "==2023.6" },
     { name = "h5py" },
+    { name = "hats-import", marker = "extra == 'test'" },
     { name = "healpy" },
     { name = "healsparse" },
     { name = "importlib-metadata" },
