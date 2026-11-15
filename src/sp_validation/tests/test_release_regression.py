@@ -10,8 +10,8 @@ form one contiguous run of released rows, found by (RA, Dec).
 Globally calibrated columns (``e1``, ``e2``, the weights, the leakage-corrected
 ellipticities) depend on the whole-survey response and weights, not on the
 window, and are not compared; the release's config predates ``weight_scheme``,
-so the test declares DES weights, which leave the selection unchanged. Everything the release derives object by object
-is, including the no-shear reconvolved-PSF size, which the release took from
+so the test declares DES weights, which leave the selection unchanged.
+Everything the release derives object by object is, including the no-shear reconvolved-PSF size, which the release took from
 ``NGMIX_Tpsf_1P`` (``sp_validation.grammar``).
 
 Skipped where the release products are absent.
