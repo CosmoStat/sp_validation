@@ -188,8 +188,61 @@
 <div class="mr-1">/</div><span aria-current="page" class="font-medium text-foreground overflow-hidden text-ellipsis whitespace-nowrap">sp_validation.assembly.hats_collection</span>
 </nav>
 <div id="content" role="main">
-<section id="sp-validation-assembly-hats-collection">
-<h1>sp_validation.assembly.hats_collection<a class="headerlink" href="#sp-validation-assembly-hats-collection" title="Link to this heading">¶</a></h1>
+<section id="module-sp_validation.assembly.hats_collection">
+<span id="sp-validation-assembly-hats-collection"></span><h1>sp_validation.assembly.hats_collection<a class="headerlink" href="#module-sp_validation.assembly.hats_collection" title="Link to this heading">¶</a></h1>
+<p>The v2 catalogue as one HATS collection: shapes, their ID index, PhotoPipe and spec-z.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><code><span id="line-1">COLLECTION/
+</span><span id="line-2">├── shapes/                primary: the shape catalogue with OBJECT_ID
+</span><span id="line-3">│                          (sp_validation.assembly.object_id)
+</span><span id="line-4">├── shapes_OBJECT_ID/      index: OBJECT_ID -&gt; pixel, the default index
+</span><span id="line-5">├── photopipe/             extension data, a collection of its own, holding
+</span><span id="line-6">│   ├── photopipe/         the PhotoPipe catalogue (sp_validation.assembly.photopipe_merge)
+</span><span id="line-7">│   └── collection.properties
+</span><span id="line-8">├── specz/                 extension data: the spec-z catalogue
+</span><span id="line-9">│   ├── specz/             (sp_validation.assembly.specz_merge)
+</span><span id="line-10">│   └── collection.properties
+</span><span id="line-11">├── photopipe.properties   the extensions, each joined to the primary on OBJECT_ID
+</span><span id="line-12">├── specz.properties
+</span><span id="line-13">└── collection.properties
+</span></code></pre></div>
+</div>
+<p>This is the layout <code class="docutils literal notranslate"><span class="pre">hats_import</span></code>’s extension split writes. Each extension
+file is on a pixel of the shapes. A PhotoPipe file holds the rows of the shape
+file in the same order; a spec-z file holds only the objects with a spectrum,
+in the same order, and a pixel without one has no file.</p>
+<p><code class="docutils literal notranslate"><span class="pre">build</span></code> writes it from a recipe (<code class="docutils literal notranslate"><span class="pre">config/assembly/</span></code>) naming the inputs and
+the collection:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">shapes</span></code>: the shape HATS catalogue;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">photopipe_extract</span></code>: the PhotoPipe column extract
+(<code class="docutils literal notranslate"><span class="pre">scripts/assembly/extract_photopipe.py</span></code>);</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">specz_matches</span></code>, <code class="docutils literal notranslate"><span class="pre">specz_compilation</span></code>: PhotoPipe’s match of DR6 objects
+to spectra and the redshift compilation it used
+(<code class="docutils literal notranslate"><span class="pre">sp_validation.assembly.specz_merge</span></code>);</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">collection</span></code>: the directory to write.</p></li>
+</ul>
+<dl class="py data">
+<dt class="sig sig-object py" id="sp_validation.assembly.hats_collection.EXTENSIONS">
+<span class="sig-name descname"><span class="pre">EXTENSIONS</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'photopipe':</span> <span class="pre">'photometry',</span> <span class="pre">'specz':</span> <span class="pre">'redshifts'}</span></span><a class="headerlink" href="#sp_validation.assembly.hats_collection.EXTENSIONS" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.assembly.hats_collection.EXTENSIONS'">¶</a></dt>
+<dd><p>Each extension’s name and the kind of data it serves.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.assembly.hats_collection.build">
+<span class="sig-name descname"><span class="pre">build</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">recipe</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">workers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/assembly/hats_collection.html#build"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.assembly.hats_collection.build" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.assembly.hats_collection.build'">¶</a></dt>
+<dd><p>Write the collection the recipe file <code class="docutils literal notranslate"><span class="pre">recipe</span></code> describes.</p>
+<p>Writes the shapes with <code class="docutils literal notranslate"><span class="pre">OBJECT_ID</span></code>, then the PhotoPipe extension from
+them, then the spec-z extension from that, then the <code class="docutils literal notranslate"><span class="pre">OBJECT_ID</span></code> index
+and every properties file. A part already written (its catalogue’s
+<code class="docutils literal notranslate"><span class="pre">hats.properties</span></code> exists) is kept, so remove it to rewrite it and what
+is built from it.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.assembly.hats_collection.index">
+<span class="sig-name descname"><span class="pre">index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">collection</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">workers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/assembly/hats_collection.html#index"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.assembly.hats_collection.index" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.assembly.hats_collection.index'">¶</a></dt>
+<dd><p>Index <code class="docutils literal notranslate"><span class="pre">COLLECTION/shapes</span></code> on <code class="docutils literal notranslate"><span class="pre">OBJECT_ID</span></code> and list the extensions.</p>
+<p>Writes the index and every properties file of the collection; the index is
+rebuilt on every run.</p>
+</dd></dl>
 </section>
 </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
 <div class="mr-auto">
@@ -208,7 +261,15 @@
 </svg>
 </a>
 </div>
-</div></div>
+</div></div><aside class="hidden text-sm xl:block" id="right-sidebar">
+<div class="sticky top-16 -mt-10 max-h-[calc(100vh-5rem)] h-full overflow-y-auto pt-6 space-y-2"><p class="font-medium">On this page</p>
+<ul>
+<li><a :data-current="activeSection === '#sp_validation.assembly.hats_collection.EXTENSIONS'" class="reference internal" href="#sp_validation.assembly.hats_collection.EXTENSIONS"><code class="docutils literal notranslate"><span class="pre">EXTENSIONS</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.assembly.hats_collection.build'" class="reference internal" href="#sp_validation.assembly.hats_collection.build"><code class="docutils literal notranslate"><span class="pre">build()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.assembly.hats_collection.index'" class="reference internal" href="#sp_validation.assembly.hats_collection.index"><code class="docutils literal notranslate"><span class="pre">index()</span></code></a></li>
+</ul>
+</div>
+</aside>
 </main>
 </div>
 </div><footer class="py-6 border-t border-border md:py-0">
