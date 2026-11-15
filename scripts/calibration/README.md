@@ -52,11 +52,6 @@ A run redefines the bins, so its `nz_tomo.txt` describes its own
 catalogue (the rows are aligned) whenever the n(z) a `cat_config` entry reads
 is replaced.
 
-**On mocks.** `scripts/calibration/nz_mock_ladder.py` runs a recipe's
-calibration on mock galaxies with known redshifts (`sp_validation.nz.mock`)
-and scores each bin's mean redshift against the truth of its own
-`TOM_BIN_ID` sources, over an ensemble of realisations.
-
 **Sources** are the rows of the released calibrated shear catalogue, with its
 `w_des`. Sources and calibrators share one photometry: PhotoPipe's run on
 Stephen Gwyn's DR6 detections (dereddened GAaP ugriz, z2 and BPZ), used as
