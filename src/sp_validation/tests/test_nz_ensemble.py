@@ -5,12 +5,12 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from sp_validation import nz_ensemble as ne
-from sp_validation import nz_pipeline
+from sp_validation.nz import ensemble as ne
+from sp_validation.nz import pipeline
 
 
 def toy_run(tmp_path, n_cal=1500, n_src=30_000, seed=0):
-    """A small calibration run through :func:`nz_pipeline.run`."""
+    """A small calibration run through :func:`pipeline.run`."""
     rng = np.random.default_rng(seed)
 
     def galaxies(n):
@@ -28,37 +28,28 @@ def toy_run(tmp_path, n_cal=1500, n_src=30_000, seed=0):
     sz, smag = galaxies(n_src)
     smag = np.column_stack([smag, smag[:, 4] + 0.1])  # z2 = z + 0.1
     smag[: n_src // 3, 4] = np.nan  # a third measured through z2 only
-    np.savez(
-        tmp_path / "cal.npz",
-        z=cz,
-        photoz=cz + rng.normal(0, 0.03, n_cal),
-        mag=cmag,
-    )
-    np.savez(
-        tmp_path / "src.npz",
+    cal = dict(z=cz, photoz=cz + rng.normal(0, 0.03, n_cal), mag=cmag)
+    src = dict(
         mag=smag,
         photoz=sz + rng.normal(0, 0.03, n_src),
         weight=rng.uniform(0.5, 1.5, n_src),
-        tile=np.zeros(n_src),
-        number=np.arange(n_src),
+        status=np.zeros(n_src, np.int8),
+        object_id=np.arange(n_src),
     )
     config = dict(
         name="toy",
         limitation="toy",
-        inputs=dict(
-            calibrators=dict(output=str(tmp_path / "cal.npz")),
-            sources=dict(output=str(tmp_path / "src.npz")),
-        ),
         som=dict(side=8, epochs=10, seed=1),
         groups=30,
-        edges=[0.1, 0.37, 0.55, 0.76, 1.2],
+        bins=dict(count=4, range=[0.1, 1.2]),
         gold_qc=dict(floor=0.05, nmad_factor=5),
         z2_offset=-0.1,
         grid=dict(min=0, max=5, step=0.05),
         ensemble=dict(draws=3, seed=0),
     )
     out = tmp_path / "run"
-    nz_pipeline.run(config, out)
+    # Alternative calibrators: the same spectra, 0.05 further away.
+    pipeline.calibrate(config, cal, src, out, dict(cal, z=cz + 0.05))
     return ne.Calibration.load(out), config
 
 
@@ -158,12 +149,17 @@ def test_selection_shift_scales_the_draws(run):
     np.testing.assert_allclose(ne.selection_shift(cal.z, *args), 0, atol=1e-12)
     shifted = replace(cal, selection=ne.selection_shift(cal.z + 0.05, *args))
     np.testing.assert_allclose(mean_z(cal, shifted.selection), 0.05, atol=1e-3)
-    real, _ = draw(shifted, n=400, specz_selection=1.0)
-    narrower, _ = draw(shifted, n=400, specz_selection=0.5)
+    real, _ = draw(shifted, n=400, specz_selection=dict(scale=1.0))
+    narrower, _ = draw(shifted, n=400, specz_selection=dict(scale=0.5))
     assert np.all(real >= 0)
     np.testing.assert_allclose(np.trapezoid(real, cal.grid, axis=-1), 1, atol=1e-12)
     assert np.all(mean_z(cal, real).std(0) > mean_z(cal, narrower).std(0))
     assert np.any(real[:, cal.fiducial() == 0] > 0)
+
+
+def test_pipeline_calibrates_the_alternative_calibrators(run):
+    cal, _ = run
+    np.testing.assert_allclose(mean_z(cal, cal.selection), 0.05, atol=1e-3)
 
 
 def test_selection_width_without_clipping_is_recorded(run, tmp_path, monkeypatch):
@@ -173,19 +169,23 @@ def test_selection_width_without_clipping_is_recorded(run, tmp_path, monkeypatch
     cal = replace(cal, selection=selection)
     monkeypatch.setattr(ne.Calibration, "load", lambda _: cal)
     path = tmp_path / "ensemble.npz"
-    real = ne.run(tmp_path, path, dict(draws=400, seed=1, specz_selection=0.05))
+    real = ne.run(
+        tmp_path, path, dict(draws=400, seed=1, specz_selection=dict(scale=0.05))
+    )
     saved = np.load(path)
     nominal = 0.05 * np.abs(mean_z(cal, selection))
     np.testing.assert_allclose(mean_z(cal, real).std(0), nominal, rtol=0.15)
     np.testing.assert_allclose(saved["selection_mean_z_std_nominal"], nominal)
-    np.testing.assert_allclose(saved["selection_mean_z_std_realised"], mean_z(cal, real).std(0))
+    np.testing.assert_allclose(
+        saved["selection_mean_z_std_realised"], mean_z(cal, real).std(0)
+    )
     np.testing.assert_array_equal(saved["selection_clipped_mass_fraction"], 0)
     np.testing.assert_array_equal(saved["clipped_mass_fraction"], 0)
 
 
 def test_clipping_preserves_positive_support_and_reports_removed_mass():
-    grid = np.array([0., 1., 2.])
-    draws = np.array([[[-1., 1., 1.]], [[1., -1., 3.]]])
+    grid = np.array([0.0, 1.0, 2.0])
+    draws = np.array([[[-1.0, 1.0, 1.0]], [[1.0, -1.0, 3.0]]])
     positive, clipped = ne.clip_and_normalise(draws, grid)
     assert np.all(positive >= 0)
     np.testing.assert_allclose(np.trapezoid(positive, grid, axis=-1), 1)

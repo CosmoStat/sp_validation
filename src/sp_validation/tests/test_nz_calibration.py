@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from sp_validation import nz_calibration as nz
+from sp_validation.nz import calibration as nz
 
 
 @pytest.mark.parametrize("n_z", [501, 101])
@@ -132,3 +132,37 @@ def test_nz_file_cosmo_val_and_sacc_roundtrip(tmp_path):
         tracer = loaded.get_tracer(f"source_{k}")
         np.testing.assert_array_equal(tracer.z, z)
         np.testing.assert_array_equal(tracer.nz, densities[:, k])
+
+
+def test_quantile_edges_hold_equal_weight_on_bpz_values():
+    """Edges are BPZ values splitting the eligible weight as evenly as its
+    quantisation allows; ineligible sources carry no weight in them."""
+    rng = np.random.default_rng(0)
+    n = 200_000
+    photoz = np.round(rng.gamma(4, 0.15, n), 2)
+    weight = rng.uniform(0.5, 1.5, n)
+    mag = np.full((n, 5), 22.0)
+    edges = nz.quantile_edges(
+        mag, photoz, weight, range=(0.1, 1.2), count=4, offset=0.0
+    )
+    assert edges[0] == 0.1 and edges[-1] == 1.2
+    np.testing.assert_array_equal(edges, np.round(edges, 2))
+    inside = (photoz >= 0.1) & (photoz < 1.2)
+    share = np.histogram(photoz[inside], edges, weights=weight[inside])[0]
+    np.testing.assert_allclose(share / share.sum(), 0.25, atol=0.01)
+
+    # Heavy sources without u, and heavy sources outside the range, move nothing.
+    extra = np.full(n, 0.2)
+    no_u = np.full((n, 5), 22.0)
+    no_u[:, 0] = -99.0
+    np.testing.assert_array_equal(
+        nz.quantile_edges(
+            np.vstack([mag, no_u, mag]),
+            np.r_[photoz, extra, np.full(n, 1.3)],
+            np.r_[weight, np.full(2 * n, 100.0)],
+            range=(0.1, 1.2),
+            count=4,
+            offset=0.0,
+        ),
+        edges,
+    )

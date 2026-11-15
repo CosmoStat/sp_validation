@@ -2,7 +2,7 @@
 
 WZ is a diagnostic estimate compared with SOM, not combined with it, and does
 not update the delivered n(z) or supply priors.
-It checks the SOM n(z) (:mod:`sp_validation.nz_pipeline`): the
+It checks the SOM n(z) (:mod:`.pipeline`): the
 gold sources of each bin are cross-correlated with a spectroscopic reference
 sample cut into thin redshift slices. Run from the recipe's ``clustering``
 section:
@@ -35,7 +35,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .data_roots import load_yaml
+from ..data_roots import load_yaml
 
 # Comoving separations, Mpc/h: six bins per decade over 0.5-23.
 R_EDGES = 0.5 * 10 ** (np.arange(11) / 6)
@@ -46,7 +46,7 @@ GATE_SEED = 2026
 
 
 def fiducial_cosmology():
-    from .blinding import cosmology, fiducial
+    from ..blinding import cosmology, fiducial
 
     return cosmology(fiducial())
 
@@ -63,8 +63,13 @@ def reference_edges(cl, tracer):
         if tracer in (first, second):
             steps = (np.array([window_lo, window_hi]) - origin) / dz
             if not np.allclose(steps, np.rint(steps), rtol=0, atol=1e-6):
-                raise ValueError(f"{tracer} overlap edges must lie on its dz={dz:g} grid")
-            if not np.isclose(cl["reference"]["slices"][first][2], cl["reference"]["slices"][second][2]):
+                raise ValueError(
+                    f"{tracer} overlap edges must lie on its dz={dz:g} grid"
+                )
+            if not np.isclose(
+                cl["reference"]["slices"][first][2],
+                cl["reference"]["slices"][second][2],
+            ):
                 raise ValueError("Overlap tracers need matching slice widths")
             lo, hi = min(lo, window_lo), max(hi, window_hi)
     return slice_edges(lo, hi, dz)
@@ -121,10 +126,11 @@ def prepare(config):
     Patches are k-means clusters of the nside-1024 pixels that hold a random
     and are more than half inside the footprint.
     """
-    import fitsio
     import healpy as hp
     import pyarrow.parquet as pq
     import treecorr
+
+    from ..io import read_catalogue
 
     cl = config["clustering"]
     for tracer in cl["reference"]["slices"]:
@@ -153,13 +159,15 @@ def prepare(config):
                 w=d["WEIGHT"].astype("f8"),
             )
 
-    cat = fitsio.read(
-        config["inputs"]["sources"]["catalogue"], ext=1, columns=["RA", "Dec", "w_des"]
+    cat = read_catalogue(
+        config["inputs"]["sources"]["catalogue"], columns=["RA", "Dec", "w_des"]
     )
     tom = pq.read_table(
         Path(config["output"]) / "tom_bin.parquet", columns=["TOM_BIN_ID"]
     )["TOM_BIN_ID"].to_numpy()
-    keep = (tom > 0) & coarse[hp.ang2pix(source_nside, cat["RA"], cat["Dec"], lonlat=True)]
+    keep = (tom > 0) & coarse[
+        hp.ang2pix(source_nside, cat["RA"], cat["Dec"], lonlat=True)
+    ]
     np.savez(
         data / "sources.npz",
         ra=cat["RA"][keep].astype("f8"),
@@ -224,7 +232,9 @@ def correlate(dat, ran, unknowns, edges, centers, cosmo, threads=1):
         sd = (dat["z"] >= lo) & (dat["z"] < hi)
         sr = (ran["z"] >= lo) & (ran["z"] < hi)
         if not sd.any() or not sr.any():
-            raise ValueError(f"Empty reference slice [{lo:g}, {hi:g}); check catalogue redshift support")
+            raise ValueError(
+                f"Empty reference slice [{lo:g}, {hi:g}); check catalogue redshift support"
+            )
         D = catalog(dat["ra"][sd], dat["dec"][sd], dat["w"][sd])
         R = catalog(ran["ra"][sr], ran["dec"][sr], ran["w"][sr])
         dd, dr, rr = (treecorr.NNCorrelation(**kw) for _ in range(3))
@@ -264,13 +274,19 @@ def measure(config, workers=1):
         for k in range(1, src["bin"].max() + 1)
     }
     for tracer in cl["reference"]["slices"]:
-        dat, ran = np.load(data / f"{tracer}_dat.npz"), np.load(data / f"{tracer}_ran.npz")
+        dat, ran = (
+            np.load(data / f"{tracer}_dat.npz"),
+            np.load(data / f"{tracer}_ran.npz"),
+        )
         edges = reference_edges(cl, tracer)
         out = correlate(dat, ran, bins, edges, centers, cosmo, workers)
         np.savez(data / f"xcorr_{tracer}.npz", **out)
 
     tracer, lo, hi, dz = cl["gate"]
-    dat, ran = dict(np.load(data / f"{tracer}_dat.npz")), np.load(data / f"{tracer}_ran.npz")
+    dat, ran = (
+        dict(np.load(data / f"{tracer}_dat.npz")),
+        np.load(data / f"{tracer}_ran.npz"),
+    )
     half = _gate_half(len(dat["z"]))
     unknown = {"half": tuple(dat[c][half] for c in ("ra", "dec", "w"))}
     dat = {k: v[~half] for k, v in dat.items()}
@@ -328,7 +344,9 @@ class Measurement:
     def nb(self, sample, jk=False):
         """n_u b_u per slice, per unit redshift."""
         s = self.samples.index(sample)
-        w, auto = (self.jk[..., s], self.jk[..., 0]) if jk else (self.w[:, s], self.w[:, 0])
+        w, auto = (
+            (self.jk[..., s], self.jk[..., 0]) if jk else (self.w[:, s], self.w[:, 0])
+        )
         return w / np.sqrt(np.clip(auto, 1e-6, None) * self.dz * self.M)
 
 
@@ -400,8 +418,11 @@ def profiled_shift_fit(y, precision, model_at, z):
     inside = SHIFTS[accepted]
     boundary = (alpha_indices == 0) | (alpha_indices == len(ALPHAS) - 1)
     return dict(
-        best=float(SHIFTS[i]), lo=float(inside.min()), hi=float(inside.max()),
-        chi2=float(prof[i]), alpha=float(ALPHAS[j]),
+        best=float(SHIFTS[i]),
+        lo=float(inside.min()),
+        hi=float(inside.max()),
+        chi2=float(prof[i]),
+        alpha=float(ALPHAS[j]),
         alpha_boundary=bool(boundary[accepted].any()),
         alpha_prior=[float(ALPHAS[0]), float(ALPHAS[-1])],
         shift_boundary=bool(inside.min() == SHIFTS[0] or inside.max() == SHIFTS[-1]),
@@ -448,7 +469,9 @@ def gate(config, cosmo):
         mean_z=float(mean(n)),
         mean_z_err=float(np.sqrt(jackknife_covariance(mean(rows)[:, None])[0, 0])),
         mean_z_truth=float(mean(truth)),
-        shift=shift_fit(n, precision, lambda s: slice_average(centres, density, lo, hi, s)),
+        shift=shift_fit(
+            n, precision, lambda s: slice_average(centres, density, lo, hi, s)
+        ),
     )
 
 
@@ -476,7 +499,9 @@ def compare(config, cosmo):
         m = Measurement(np.load(data / f"xcorr_{name}.npz"), cl["annulus"], cosmo)
         bins = m.samples[1:]
         nominal_lo, nominal_hi, _ = cl["reference"]["slices"][name]
-        nominal = (m.edges[:-1] >= nominal_lo - 1e-6) & (m.edges[1:] <= nominal_hi + 1e-6)
+        nominal = (m.edges[:-1] >= nominal_lo - 1e-6) & (
+            m.edges[1:] <= nominal_hi + 1e-6
+        )
         lo += list(m.edges[:-1][nominal])
         hi += list(m.edges[1:][nominal])
         tracer += [name] * int(nominal.sum())
@@ -502,11 +527,14 @@ def compare(config, cosmo):
         y = nb[k, core]
         fits = {}
         for name, hists in cands.items():
+
             def model_at(s):
                 return slice_average(grid, hists[k], lo[core], hi[core], s)
 
             base = model_at(0)
-            chi2 = np.array([amplitude_fit(y, precision, base * (1 + z[core]) ** a) for a in ALPHAS])
+            chi2 = np.array(
+                [amplitude_fit(y, precision, base * (1 + z[core]) ** a) for a in ALPHAS]
+            )
             alpha = float(ALPHAS[chi2.argmin()])
             fits[name] = dict(
                 chi2=float(chi2.min()),
@@ -524,8 +552,14 @@ def compare(config, cosmo):
                 },
             )
         out["bins"].append(
-            dict(nb=nb[k].tolist(), nb_err=np.sqrt(var).tolist(), covariance=cov.tolist(),
-                 core=list(window), patches=len(rows[k]), fits=fits)
+            dict(
+                nb=nb[k].tolist(),
+                nb_err=np.sqrt(var).tolist(),
+                covariance=cov.tolist(),
+                core=list(window),
+                patches=len(rows[k]),
+                fits=fits,
+            )
         )
     return out
 
@@ -545,13 +579,22 @@ def tracer_overlaps(config, cosmo, comparison):
     for first, second, lo, hi in cl["reference"].get("overlaps", []):
         measurements, indices = [], []
         for tracer in (first, second):
-            m = Measurement(np.load(_data(cl) / f"xcorr_{tracer}.npz"), cl["annulus"], cosmo)
-            sel = np.flatnonzero((m.edges[:-1] >= lo - 1e-6) & (m.edges[1:] <= hi + 1e-6))
+            m = Measurement(
+                np.load(_data(cl) / f"xcorr_{tracer}.npz"), cl["annulus"], cosmo
+            )
+            sel = np.flatnonzero(
+                (m.edges[:-1] >= lo - 1e-6) & (m.edges[1:] <= hi + 1e-6)
+            )
             measurements.append(m)
             indices.append(sel)
         a, b = measurements
         ia, ib = indices
-        if not len(ia) or len(ia) != len(ib) or not np.allclose(a.edges[:-1][ia], b.edges[:-1][ib]) or not np.allclose(a.dz[ia], b.dz[ib]):
+        if (
+            not len(ia)
+            or len(ia) != len(ib)
+            or not np.allclose(a.edges[:-1][ia], b.edges[:-1][ib])
+            or not np.allclose(a.dz[ia], b.dz[ib])
+        ):
             raise ValueError("Overlap tracers need identical non-empty redshift slices")
         bins = {}
         for k, sample in enumerate(a.samples[1:]):
@@ -566,14 +609,31 @@ def tracer_overlaps(config, cosmo, comparison):
             bins[sample] = dict(
                 nb={first: ya.tolist(), second: yb.tolist()},
                 n={first: (ya / scale).tolist(), second: (yb / scale).tolist()},
-                n_err={first: (np.sqrt(np.diag(jackknife_covariance(ja))) / np.abs(scale)).tolist(),
-                       second: (np.sqrt(np.diag(jackknife_covariance(jb))) / np.abs(scale)).tolist()},
-                source_amplitude=fit["amplitude"], source_alpha=fit["alpha"],
-                difference=diff.tolist(), difference_covariance=cov.tolist(),
-                chi2=statistic, dof=len(diff), pte=pte, consistent_95=pte >= 0.05,
+                n_err={
+                    first: (
+                        np.sqrt(np.diag(jackknife_covariance(ja))) / np.abs(scale)
+                    ).tolist(),
+                    second: (
+                        np.sqrt(np.diag(jackknife_covariance(jb))) / np.abs(scale)
+                    ).tolist(),
+                },
+                source_amplitude=fit["amplitude"],
+                source_alpha=fit["alpha"],
+                difference=diff.tolist(),
+                difference_covariance=cov.tolist(),
+                chi2=statistic,
+                dof=len(diff),
+                pte=pte,
+                consistent_95=pte >= 0.05,
             )
-        out.append(dict(tracers=[first, second], z_lo=a.edges[:-1][ia].tolist(),
-                        z_hi=a.edges[1:][ia].tolist(), bins=bins))
+        out.append(
+            dict(
+                tracers=[first, second],
+                z_lo=a.edges[:-1][ia].tolist(),
+                z_hi=a.edges[1:][ia].tolist(),
+                bins=bins,
+            )
+        )
     return out
 
 
@@ -581,10 +641,14 @@ def analyse(config, figures=None):
     """Write ``clustering.json`` and, optionally, its figures."""
     cosmo = fiducial_cosmology()
     cl = config["clustering"]
-    result = dict(annulus=cl["annulus"], gate=gate(config, cosmo), **compare(config, cosmo))
+    result = dict(
+        annulus=cl["annulus"], gate=gate(config, cosmo), **compare(config, cosmo)
+    )
     if cl["reference"].get("overlaps"):
         result["tracer_overlaps"] = tracer_overlaps(config, cosmo, result)
-    (Path(cl["output"]) / "clustering.json").write_text(json.dumps(result, indent=1) + "\n")
+    (Path(cl["output"]) / "clustering.json").write_text(
+        json.dumps(result, indent=1) + "\n"
+    )
     if figures:
         render(result, *candidates(config["output"]), figures)
     return result
@@ -597,7 +661,7 @@ def render(result, grid, cands, directory):
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    from .nz_diagnostics import COLORS, _save
+    from .diagnostics import COLORS, _save
 
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
@@ -606,10 +670,23 @@ def render(result, grid, cands, directory):
     g = result["gate"]
     z, dz = np.array(g["z"]), np.diff(g["z"]).mean()
     fig, ax = plt.subplots(figsize=(6.5, 3.8), layout="constrained")
-    ax.step(np.r_[z - dz / 2, z[-1] + dz / 2], np.r_[g["truth"], g["truth"][-1]],
-            where="post", color="0.3", lw=1.2, label="true n(z) of the held-out half")
-    ax.errorbar(z, g["n"], g["err"], fmt="o", ms=4, color=COLORS[0],
-                label=f"clustering, χ² = {g['chi2']:.1f} / {g['dof']}")
+    ax.step(
+        np.r_[z - dz / 2, z[-1] + dz / 2],
+        np.r_[g["truth"], g["truth"][-1]],
+        where="post",
+        color="0.3",
+        lw=1.2,
+        label="true n(z) of the held-out half",
+    )
+    ax.errorbar(
+        z,
+        g["n"],
+        g["err"],
+        fmt="o",
+        ms=4,
+        color=COLORS[0],
+        label=f"clustering, χ² = {g['chi2']:.1f} / {g['dof']}",
+    )
     ax.axhline(0, color="k", lw=0.5)
     s = g["shift"]
     ax.set(
@@ -626,31 +703,57 @@ def render(result, grid, cands, directory):
     lo, hi = np.array(result["z_lo"]), np.array(result["z_hi"])
     z = (lo + hi) / 2
     styles = {"calibration": ("k", "-"), "alternative calibrators": (COLORS[1], "--")}
-    labels = {"calibration": "SOM n(z)", "alternative calibrators": "SOM n(z), alternative calibrators"}
-    fig, axes = plt.subplots(len(result["bins"]), 1, figsize=(7, 8.5), sharex=True,
-                             layout="constrained")
+    labels = {
+        "calibration": "SOM n(z)",
+        "alternative calibrators": "SOM n(z), alternative calibrators",
+    }
+    fig, axes = plt.subplots(
+        len(result["bins"]), 1, figsize=(7, 8.5), sharex=True, layout="constrained"
+    )
     for k, (b, ax) in enumerate(zip(result["bins"], axes)):
         fit = b["fits"]["calibration"]
         tilt = (1 + z) ** fit["alpha"]
         A = fit["amplitude"]
-        ax.errorbar(z, np.array(b["nb"]) / tilt / A, np.array(b["nb_err"]) / tilt / A,
-                    fmt="o", ms=3, lw=1, color=COLORS[0], label="clustering × DESI DR1")
+        ax.errorbar(
+            z,
+            np.array(b["nb"]) / tilt / A,
+            np.array(b["nb_err"]) / tilt / A,
+            fmt="o",
+            ms=3,
+            lw=1,
+            color=COLORS[0],
+            label="clustering × DESI DR1",
+        )
         for name, hists in cands.items():
-            ax.plot(grid, hists[k], color=styles[name][0], ls=styles[name][1], lw=1.2,
-                    label=labels[name])
+            ax.plot(
+                grid,
+                hists[k],
+                color=styles[name][0],
+                ls=styles[name][1],
+                lw=1.2,
+                label=labels[name],
+            )
         ax.axvspan(*b["core"], color=COLORS[0], alpha=0.07, lw=0)
         ax.axhline(0, color="k", lw=0.5)
         shift = fit["profiled_shift"]
-        text = f"bin {k + 1}   χ² = " + ", ".join(
-            f"{f['chi2']:.1f}" for f in b["fits"].values()
-        ) + f" / {fit['dof']}   profile Δz = {shift['best']:+.3f} [{shift['lo']:+.3f}, {shift['hi']:+.3f}]"
-        text += f"  α(profile) = {shift['alpha']:.2f}" + (" (interval at prior edge)" if shift["alpha_boundary"] else "")
-        ax.text(0.99, 0.93, text, transform=ax.transAxes, ha="right", va="top", fontsize=8)
+        text = (
+            f"bin {k + 1}   χ² = "
+            + ", ".join(f"{f['chi2']:.1f}" for f in b["fits"].values())
+            + f" / {fit['dof']}   profile Δz = {shift['best']:+.3f} [{shift['lo']:+.3f}, {shift['hi']:+.3f}]"
+        )
+        text += f"  α(profile) = {shift['alpha']:.2f}" + (
+            " (interval at prior edge)" if shift["alpha_boundary"] else ""
+        )
+        ax.text(
+            0.99, 0.93, text, transform=ax.transAxes, ha="right", va="top", fontsize=8
+        )
         ax.set_ylabel("n(z)")
     axes[0].legend(fontsize=7, loc="center right")
     axes[-1].set(xlabel="z", xlim=(0, 2.6))
-    fig.suptitle(f"Gold bins × spectroscopic slices, {r_lo:g}–{r_hi:g} Mpc/h; "
-                 "fit window shaded", fontsize=10)
+    fig.suptitle(
+        f"Gold bins × spectroscopic slices, {r_lo:g}–{r_hi:g} Mpc/h; fit window shaded",
+        fontsize=10,
+    )
     _save(fig, directory / "clustering_nz.png")
 
 

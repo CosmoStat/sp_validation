@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.text import Text
 
-from sp_validation import nz_diagnostics
+from sp_validation.nz import diagnostics
 
 
 def test_recipe_map_labels_and_percentages(tmp_path, monkeypatch):
@@ -66,9 +66,9 @@ def test_recipe_map_labels_and_percentages(tmp_path, monkeypatch):
         texts.extend(label.get_text() for label in labels)
         plt.close(fig)
 
-    monkeypatch.setattr(nz_diagnostics, "_save", inspect_and_close)
+    monkeypatch.setattr(diagnostics, "_save", inspect_and_close)
     with matplotlib.rc_context({"text.usetex": True}):
-        nz_diagnostics.render(config, tmp_path / "figures")
+        diagnostics.render(config, tmp_path / "figures")
         assert matplotlib.rcParams["text.usetex"]
     assert any("% weight lost" in text for text in texts)
     assert any("outliers" in text and "%" in text for text in texts)

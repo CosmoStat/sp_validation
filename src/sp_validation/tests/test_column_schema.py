@@ -79,8 +79,13 @@ NOT_COLUMNS = {
     "N_0",
     "N_1",
     "PHOTOPIPE_SEQNR",
+    "PHOTOPIPE_STATUS",
     "Z_B",
-    # DESI LSS catalogue columns (nz_clustering reads the tracer catalogues)
+    "Z_SPEC",
+    "Z_SPEC_DEC",
+    "Z_SPEC_RA",
+    "Z_SPEC_SURVEY",
+    # DESI LSS catalogue columns (nz.clustering reads the tracer catalogues)
     "WEIGHT",
     "Z",
     # FITS header keywords
