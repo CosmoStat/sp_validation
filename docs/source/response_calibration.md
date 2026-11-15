@@ -96,6 +96,22 @@ metacal:
   additive_correction: true # false for constant-shear simulations
 ```
 
+For rows from the catalogue reader (the five `NGMIX_*` metacal branches) and a boolean preselection `keep`:
+
+```python
+import yaml
+from sp_validation import response
+
+with open("config/calibration/mask_v2.0.yaml") as f:
+    metacal = yaml.safe_load(f)["metacal"]
+cal = response.calibrate_catalogue(rows, metacal, preselection=keep, groups=rows["TILE_ID"])
+
+R, c_e = cal["result"]["total"], cal["result"]["c_e"]
+e1, e2 = cal["e"]  # calibrated shapes of the selected rows, rows[cal["index"]]
+w = cal["w"]       # their weights
+labels, deleted, covariance = cal["jackknife"]  # tile jackknife of every estimate
+```
+
 `scripts/calibration/calibrate_comprehensive_cat.py` calls it grouped by `TILE_ID` and writes the cut catalogue (weight column `w_<scheme>`, calibrated `e1`, `e2`), and beside it the response record (`_response.json`, `response.record`), the sums (`_sums.npz`) and, for DES, the table (`_des_weights.fits`).
 The catalogue header declares `WGHTSCH`, `RAPPLIED` and `MEANSUB`; the configured catalogue reader refuses another weight column or a second response for such a catalogue.
 
@@ -118,7 +134,7 @@ Each mean uses the full selected population of its simulation with its own weigh
 
 The simulations take the data's selection and the data's DES table, held fixed: `calibrate_catalogue` refuses a `weight_table` whose cells are not those of the selection's cuts and `des_num_bins`, since an object outside the table's range would otherwise enter every mean with an edge cell's weight.
 A table fitted on the simulations' own shapes correlates the weights with the measured shapes and suppresses the shear: for N objects per cell, a self-fitted table gives m = −1/N where an independent one gives zero.
-`scripts/compute_m_bias_image_sims.py` reads the simulations' `_sums.npz` and writes `m_bias_results.yaml` (`m1`, `m1_err`, …, `mc_covariance`, `covariance_order`); the image-sims workflow's `weight_table` key names the table (`self` and `unit` are diagnostics).
+The image-sims workflow's `im_mbias` rule (`workflow/scripts/im_mbias.py`) reads the simulations' `_sums.npz` and writes `m_bias_results.yaml` (`m1`, `m1_err`, …, `mc_covariance`, `covariance_order`); the workflow's `weight_table` key names the table (`self` and `unit` are diagnostics).
 Residual m is a result, not a correction applied to catalogue shapes.
 
 ## Measuring a variant
@@ -162,3 +178,30 @@ labels, deleted, covariance = response.jackknife(sums_bin, table)
 ```
 
 The preselection holds the subsample's membership fixed across the five metacal branches: the result includes the response of the metacal cuts and of the weights within the subsample, not the response of whatever assigned the subsample (photometric redshifts, magnitudes measured on the unsheared image).
+
+## Response per sample
+
+The response belongs to a sample, not a galaxy: it is the derivative of that sample's weighted mean shear.
+A shear statistic of a sample is calibrated with that sample's own R_total and its own additive bias.
+The v2.0.0 tomographic bins have responses 0.855, 0.859, 0.832 and 0.776 against 0.787 for the whole sample, so the whole sample's R applied to bins 1–3 overestimates their shear by 6–9%.
+
+A release catalogue's `e1`, `e2` are R_all⁻¹(e − c_e) with the whole sample's R_all.
+Its response record (`catalogs/response.json`) holds R_all at the top level and, under `bins`, the record of each tomographic bin: `{"column": "TOM_BIN_ID", "records": {"1": {...}, ...}}`, each in the layout of {func}`~sp_validation.response.record`.
+The shear of a galaxy measured as a member of bin k is
+
+    g = R_k⁻¹ R_all e − ⟨R_k⁻¹ R_all e⟩_k,
+
+the weighted mean taken over bin k; as a member of the whole sample it is e − ⟨e⟩.
+{func}`~sp_validation.response.sample_response` reads R_k from the record and {func}`~sp_validation.response.calibrated_shear` applies it:
+
+```python
+record = json.load(open("catalogs/response.json"))
+in_bin = cat["TOM_BIN_ID"] == k
+e = np.array([cat["e1"][in_bin], cat["e2"][in_bin]])
+g = response.calibrated_shear(
+    e, cat["w_des"][in_bin], response.sample_response(record, "TOM_BIN_ID", k), record["R"]
+)
+```
+
+cosmo_val calibrates this way every sample it measures: an entry of `cosmo_val/cat_config.yaml` names its record with `shear.response`, and a tomographic measurement of a bin the record lacks is an error.
+An entry without a record gives a scalar `shear.R`, applied to its `e1`, `e2` as they are.

@@ -793,7 +793,7 @@ def test__measure_pseudo_cl_catalog_end_to_end(cv, tmp_path, monkeypatch):
     monkeypatch.setattr(
         cv,
         "_calibrated_g",
-        lambda ver, cat: (cat[shear["e1_col"]], cat[shear["e2_col"]]),
+        lambda ver, cat, tomography=False: (cat[shear["e1_col"]], cat[shear["e2_col"]]),
     )
     cv.cell_method = "catalog"
     cv._pseudo_cls = {ver: {"tomo_bin_all_tomo_bin_all": {}}}
@@ -964,7 +964,7 @@ def test__measure_pseudo_cl_catalog_end_to_end_tomo(cv, tmp_path, monkeypatch):
     monkeypatch.setattr(
         cv,
         "_calibrated_g",
-        lambda ver, cat: (cat[shear["e1_col"]], cat[shear["e2_col"]]),
+        lambda ver, cat, tomography=False: (cat[shear["e1_col"]], cat[shear["e2_col"]]),
     )
     cv._pseudo_cls = {
         ver: {

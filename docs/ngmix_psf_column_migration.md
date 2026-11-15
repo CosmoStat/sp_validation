@@ -180,12 +180,12 @@ dropping the argument here is what keeps the container green once #27 lands.)
   `src/sp_validation/mocks/glass.py`.
 - **Scripts** — `scripts/calibration/{extract_info,params,calibrate_comprehensive_cat}.py`,
   `scripts/apply_alpha_snr_size_bin.py`, `scripts/examples/demo_*.py`.
-- **Papers** — `papers/catalog/2025_12_*`, `papers/catalog/{hist_mag,2025_09_19_alpha_leakage_correction}.py`,
+- **Papers** — `papers/catalog/2025_12_*`, `papers/catalog/2025_09_19_alpha_leakage_correction.py`,
   `papers/harmonic/2025_09_11_psf_leakage_cell.py`.
 - **Notebooks** — `cosmo_inference/notebooks/cfis_analysis.ipynb`
   (`E1/E2_PSF_HSM` → `HSM_G1/G2_PSF`); a sweep of all tracked notebooks found no
   other old tokens.
-- **Tests** — `src/sp_validation/tests/{test_calibration,test_cosmo_val}.py`
+- **Tests** — `src/sp_validation/tests/{test_response,test_cosmo_val}.py`
   (synthetic catalogues + configs updated in lock-step; this is the migration's
   internal-consistency check).
 

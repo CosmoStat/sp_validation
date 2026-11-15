@@ -62,6 +62,18 @@ Selections that do *not* correlate with galaxy properties — spatial sub-areas,
 regions around clusters, and so on — are fine. If you need property-dependent
 cuts, recalibrate using the extended catalogue (Section 2).
 
+Tomographic bins are property-dependent samples, and each has its own response.
+From v2.0.0 the release ships it: `e1`, `e2` carry the whole sample's response
+R_all, and `catalogs/response.json` holds R_all (`R`) and, under
+`bins.records["k"]["R"]`, the 2 × 2 response R_k of bin k
+(`TOM_BIN_ID == k`). The shear of bin k is
+
+    g = R_k⁻¹ R_all e − ⟨R_k⁻¹ R_all e⟩_k,
+
+the weighted mean taken over the bin's galaxies with their weights `w_des`
+({func}`sp_validation.response.calibrated_shear`; see
+[Response per sample](response_calibration.md#response-per-sample)).
+
 ### Open the file and inspect it
 
 ```python
