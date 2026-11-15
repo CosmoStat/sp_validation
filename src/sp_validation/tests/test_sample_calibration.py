@@ -6,6 +6,7 @@ different response, each its own bin, are sheared by a known shear through
 metacal branches; cosmo_val recovers that shear in each bin.
 """
 
+import contextlib
 import json
 
 import numpy as np
@@ -95,13 +96,19 @@ def recovered(g, sign):
     return (g[:, sign > 0].mean(axis=1) - g[:, sign < 0].mean(axis=1)) / 2
 
 
+def assert_each_bin_recovers_its_input_shear(g, sign, tomo_bin):
+    for k in (1, 2):
+        rows = tomo_bin == k
+        np.testing.assert_allclose(recovered(g[:, rows], sign[rows]), G_IN, rtol=1e-9)
+
+
 def test_each_bin_recovers_its_input_shear(release):
     cv, catalogue, sign, tomo_bin = release
     g = cv._calibrated_g("SP", catalogue, tomography=True)
     whole = cv._calibrated_g("SP", catalogue)
+    assert_each_bin_recovers_its_input_shear(g, sign, tomo_bin)
     for k in (1, 2):
         rows = tomo_bin == k
-        np.testing.assert_allclose(recovered(g[:, rows], sign[rows]), G_IN, rtol=1e-9)
         np.testing.assert_allclose(g[:, rows].mean(axis=1), 0, atol=1e-15)
         # The whole sample's response applied to a bin misses its shear by
         # that bin's response relative to the whole sample's.
@@ -114,6 +121,60 @@ def test_whole_sample_is_the_released_shear_centred(release):
     e = np.array([catalogue["e1"], catalogue["e2"]])
     g = cv._calibrated_g("SP", catalogue)
     np.testing.assert_allclose(g, e - e.mean(axis=1)[:, None], atol=1e-15)
+
+
+def test_xi_measures_each_bins_own_shear(release):
+    cv, catalogue, sign, tomo_bin = release
+    n = len(sign)
+    dat = dict(catalogue, RA=np.zeros(n), Dec=np.zeros(n))
+
+    class Results:
+        dat_shear = dat
+
+        @contextlib.contextmanager
+        def temporarily_read_data(self):
+            yield
+
+    cv._results = {"SP": Results()}
+    cols = cv._shear_columns("SP", compute_tomography=True)
+    g = np.array([cols["g1"], cols["g2"]])
+    assert_each_bin_recovers_its_input_shear(g, sign, cols["tomo_bin"])
+
+
+def test_pseudo_cl_measures_each_bins_own_shear(release, monkeypatch):
+    from sp_validation.cosmo_val import pseudo_cl
+
+    cv, catalogue, sign, tomo_bin = release
+    monkeypatch.setattr(pseudo_cl, "open_entry", lambda entry: catalogue)
+    cat = cv._pseudo_cl_catalogue("SP", tomography=True)
+    g = np.array([cat["e1"], cat["e2"]])
+    assert_each_bin_recovers_its_input_shear(g, sign, tomo_bin)
+
+
+def test_tau_measures_each_bins_own_shear(release, monkeypatch, tmp_path):
+    from sp_validation.cosmo_val import psf_systematics
+
+    cv, catalogue, sign, tomo_bin = release
+    handed = []
+
+    def measure(*args, shear, **kwargs):
+        handed.append(shear)
+        raise StopIteration
+
+    monkeypatch.setattr(psf_systematics, "open_entry", lambda entry: catalogue)
+    monkeypatch.setattr(psf_systematics, "get_rho_tau_w_cov", measure)
+    cv.cc["paths"] = {"output": str(tmp_path)}
+    cv.versions = ["SP"]
+    cv.treecorr_config = cv.npatch = cv.cov_estimate_method = None
+    cv.compute_cov_rho = False
+    for name in ("print_start", "print_cyan"):
+        setattr(cv, name, lambda msg: None)
+    cv._get_tomo_bins = lambda ver: ([1, 2], [(1, 1), (1, 2), (2, 2)])
+    cv._get_star_mask = cv._get_galaxy_mask = lambda *args: None
+    cv.basename = lambda *args, **kwargs: "base"
+    with pytest.raises(StopIteration):
+        cv.calculate_rho_tau_stats(tomography=True)
+    assert_each_bin_recovers_its_input_shear(handed[0], sign, tomo_bin)
 
 
 def test_a_bin_missing_from_the_record_is_an_error(release, tmp_path):
