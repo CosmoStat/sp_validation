@@ -35,23 +35,16 @@ def calibrated_catalogue(tmp_path):
     return path, cal["e"]
 
 
-def test_downstream_c_is_calibrated_not_raw():
-    from types import SimpleNamespace
-
+def test_scalar_response_entry_is_calibrated_as_one_sample():
     from sp_validation.cosmo_val.core import CosmologyValidation
 
-    e = np.array([[0.12, -0.04], [0.08, 0.16]])
-    cg = np.array([0.02, -0.03])
-    obj = SimpleNamespace(
-        _read_shear_cols=lambda *args: e,
-        _component_responses=lambda ver: (0.8, 0.8),
-        cc={"external": {"shear": {"R": 0.8}}},
-        c1={"external": cg[0]},
-        c2={"external": cg[1]},
-    )
-    result = CosmologyValidation._calibrated_g(obj, "external")
-    np.testing.assert_allclose(result, e / 0.8 - cg[:, None])
-    assert not np.allclose(result, (e - cg[:, None]) / 0.8)
+    obj = object.__new__(CosmologyValidation)
+    obj.cc = {"external": {"shear": dict(e1_col="e1", e2_col="e2", w_col="w", R=0.8)}}
+    e = np.array([[0.12, -0.04, 0.03], [0.08, 0.16, -0.02]])
+    w = np.array([1.0, 2.0, 0.5])
+    g = obj._calibrated_g("external", dict(e1=e[0], e2=e[1], w=w))
+    expected = e / 0.8 - ((e / 0.8) @ w / w.sum())[:, None]
+    np.testing.assert_allclose(g, expected)
 
 
 @pytest.mark.parametrize("adapter", ["xi", "pseudo_cl", "rho_tau", "leakage"])

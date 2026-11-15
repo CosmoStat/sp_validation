@@ -1,6 +1,7 @@
 # %%
 import copy
 import itertools
+import json
 import os
 import re
 from pathlib import Path
@@ -19,7 +20,7 @@ from ..b_modes import (
     covariance_label,
     find_conservative_scale_cut_key,
 )
-from ..response import additive_bias
+from ..response import calibrated_shear, sample_response
 from ..statistics import chi2_and_pte
 from ..version import __version__
 from .catalog_characterization import CatalogCharacterizationMixin
@@ -408,6 +409,10 @@ class CosmologyValidation(
                     section["path"] = (
                         str(path) if path.is_absolute() else str(subdir / path)
                     )
+            # A shear block's response record sits beside its catalogue.
+            shear = cc[ver].get("shear")
+            if isinstance(shear, dict) and "response" in shear:
+                shear["response"] = str(subdir / shear["response"])
             # A psf block's mask config is a config file, not data: relative
             # to the catalogue config, not to subdir.
             psf = cc[ver].get("psf")
@@ -688,43 +693,56 @@ class CosmologyValidation(
         )
         return cols[0] if len(cols) == 1 else cols
 
-    def _calibrated_g(self, ver, catalog=None):
-        """Calibrated shear components ``(g1, g2)`` for a catalog version.
+    def _calibrated_g(self, ver, catalog, tomography=False):
+        """Calibrated shear ``(g1, g2)`` of every row of ``catalog``.
 
-        Applies additive-bias subtraction and the multiplicative response:
-        ``g = e / R − c_g``. Stored c is in calibrated shear units. For DES the response is the catalog-averaged
-        per-component ``R11``/``R22`` (column names in the config); for every
-        other version it is the scalar ``R`` from the config.
-
-        Without ``catalog``, call inside ``temporarily_read_data()``. With a
-        catalogue, calculate the same weighted mean directly from its full
-        population before any tomographic selection.
+        ``catalog`` maps the entry's column names to arrays: rows of the
+        version's shear catalogue. Each sample measured is calibrated with its
+        own response and additive bias
+        (:func:`sp_validation.response.calibrated_shear`). Without
+        ``tomography`` the sample is every row of ``catalog``; with it, each
+        tomographic bin (``tomo_bin_col`` equal to k > 0) is a sample, and a
+        row in no bin has NaN shear.
         """
-        if catalog is None:
-            e1, e2 = self._read_shear_cols(ver, "e1_col", "e2_col")
-            R1, R2 = self._component_responses(ver)
-            c1, c2 = self.c1[ver], self.c2[ver]
-        else:
-            shear = self.cc[ver]["shear"]
-            e1, e2 = catalog[shear["e1_col"]], catalog[shear["e2_col"]]
-            R1, R2 = self._component_responses(ver, catalog)
-            w = catalog[shear["w_col"]]
-            c1, c2 = additive_bias(np.array([e1 / R1, e2 / R2]), w)["c"]
-        return e1 / R1 - c1, e2 / R2 - c2
+        shear = self.cc[ver]["shear"]
+        e = np.array([catalog[shear["e1_col"]], catalog[shear["e2_col"]]], float)
+        w = (
+            np.ones(e.shape[1])
+            if shear["w_col"] == "one"
+            else np.asarray(catalog[shear["w_col"]])
+        )
+        if not tomography:
+            return calibrated_shear(e, w, *self._responses(ver, catalog))
+        tomo_bin = np.asarray(catalog[shear["tomo_bin_col"]])
+        g = np.full_like(e, np.nan)
+        for b in np.unique(tomo_bin[tomo_bin > 0]):
+            rows = tomo_bin == b
+            g[:, rows] = calibrated_shear(
+                e[:, rows], w[rows], *self._responses(ver, catalog, b, rows)
+            )
+        return g
 
-    def _component_responses(self, ver, catalog=None):
-        """Resolve responses identically for mean-c production and subtraction.
+    def _responses(self, ver, catalog, tomo_bin="all", rows=slice(None)):
+        """``(response, applied)`` of one sample: its own 2 × 2 response, and
+        the one the catalogue's ``e1``, ``e2`` already carry.
 
-        Called within the catalogue's temporarily_read_data context.
+        An entry with a response record (``shear.response``) takes both from
+        it: ``applied`` is the whole sample's ``R``, ``response`` that of the
+        sample (:func:`sp_validation.response.sample_response`). An entry with
+        per-object ``R11``, ``R22`` columns takes their mean over the sample's
+        ``rows`` of ``catalog``; any other its scalar ``R``. Their ``e1``,
+        ``e2`` carry no response.
         """
-        if ver == "DES":
-            if catalog is None:
-                catalog = self.results[ver].dat_shear
-            R1 = np.average(catalog[self.cc[ver]["shear"]["R11"]])
-            R2 = np.average(catalog[self.cc[ver]["shear"]["R22"]])
-        else:
-            R1 = R2 = self.cc[ver]["shear"]["R"]
-        return R1, R2
+        shear = self.cc[ver]["shear"]
+        if "response" in shear:
+            with open(shear["response"]) as f:
+                record = json.load(f)
+            column = None if tomo_bin == "all" else shear["tomo_bin_col"]
+            return sample_response(record, column, tomo_bin), record["R"]
+        if "R11" in shear:
+            R = [np.mean(np.asarray(catalog[shear[k]])[rows]) for k in ("R11", "R22")]
+            return np.diag(R), None
+        return shear["R"] * np.eye(2), None
 
     @property
     def colors(self):

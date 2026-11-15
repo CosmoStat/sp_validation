@@ -35,13 +35,14 @@ def test_tomographic_rho_tau_part(tmp_path, monkeypatch):
         return SimpleNamespace(rho_stats=rho), SimpleNamespace(tau_stats=tau)
 
     monkeypatch.setattr(psf, "get_rho_tau_w_cov", measure)
+    monkeypatch.setattr(psf, "open_entry", lambda entry: None)
     saved = {}
     monkeypatch.setattr(
         sacc_io, "save", lambda s, path, **kw: saved.update(part=s, path=path, **kw)
     )
 
     class CV(psf.PSFSystematicsMixin):
-        cc = {"paths": {"output": str(tmp_path)}}
+        cc = {"paths": {"output": str(tmp_path)}, "v": {"shear": {}}}
         versions = ["v"]
         treecorr_config = {}
         cov_estimate_method = "th"
@@ -52,6 +53,9 @@ def test_tomographic_rho_tau_part(tmp_path, monkeypatch):
             return [9, 2, 5], [(2, 2)]
 
         def _get_star_mask(self, v):
+            return None
+
+        def _calibrated_g(self, v, catalog, tomography):
             return None
 
         def _get_galaxy_mask(self, v, i):

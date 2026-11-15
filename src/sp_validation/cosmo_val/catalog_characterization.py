@@ -19,7 +19,7 @@ from cs_util import plots as cs_plots
 from uncertainties import ufloat
 
 from ..io import open_entry
-from ..response import additive_bias
+from ..response import additive_bias, recalibrate
 from ..survey import (
     area_from_coords,
     effective_survey_stats,
@@ -337,15 +337,9 @@ class CatalogCharacterizationMixin:
             bins = np.linspace(-1.1, 1.1, nbins + 1)
             for ver in self.versions:
                 self.print_magenta(ver)
-                R = self.cc[ver]["shear"]["R"]
                 with self.results[ver].temporarily_read_data():
-                    e1 = (
-                        self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]] / R
-                    )
-                    e2 = (
-                        self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]] / R
-                    )
-                    w = self.results[ver].dat_shear[self.cc[ver]["shear"]["w_col"]]
+                    e1, e2 = self._calibrated_g(ver, self.results[ver].dat_shear)
+                    w = self._read_shear_cols(ver, "w_col")
 
                     axs[0].hist(
                         e1,
@@ -420,8 +414,10 @@ class CatalogCharacterizationMixin:
             self.print_magenta(ver)
             with self.results[ver].temporarily_read_data():
                 e1, e2, w = self._read_shear_cols(ver, "e1_col", "e2_col", "w_col")
-                R1, R2 = self._component_responses(ver)
-                c = additive_bias(np.array([e1 / R1, e2 / R2]), w)["c"]
+                g = recalibrate(
+                    [e1, e2], *self._responses(ver, self.results[ver].dat_shear)
+                )
+                c = additive_bias(g, w)["c"]
                 self._c1[ver], self._c2[ver] = map(float, c)
         self.print_done("Finished additive bias calculation.")
 
@@ -446,7 +442,9 @@ class CatalogCharacterizationMixin:
             self.print_magenta(ver)
             with self.results[ver].temporarily_read_data():
                 e1, e2, w = self._read_shear_cols(ver, "e1_col", "e2_col", "w_col")
-                R1, R2 = self._component_responses(ver)
+                g = recalibrate(
+                    [e1, e2], *self._responses(ver, self.results[ver].dat_shear)
+                )
                 patch = None
                 if npatch > 1:
                     cols = {
@@ -461,7 +459,7 @@ class CatalogCharacterizationMixin:
                         dec_units=self.treecorr_config["dec_units"],
                         patch_centers=self._patch_centers(cols, npatch),
                     ).patch
-                c = additive_bias(np.array([e1 / R1, e2 / R2]), w, groups=patch)
+                c = additive_bias(g, w, groups=patch)
                 self._c_err[ver] = {
                     "sn": tuple(map(float, c["shape_noise"])),
                     "jk": tuple(map(float, c["jackknife"])) if npatch > 1 else None,
