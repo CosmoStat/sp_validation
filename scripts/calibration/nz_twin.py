@@ -29,16 +29,30 @@ the model now called ``bpz_desi``:
   deeper g and z put calibrators in different cells from sources of the same
   redshift.
 - ``success``: ``egs`` without calibrators painted above z = 1.4, where DEEP2
-  measures almost nothing. Prediction: no change under ``colour`` (its
-  library has almost no such spectra); under ``bpz_desi`` bin 4 low by 0.01–0.03.
-- ``zp_patch``: ``success`` with the i-band patch of Romain Paviot's note
-  (+20 mmag over RA 140–230, Dec 30–60) on sources and calibrators, taken up
-  by galaxies at ``UPTAKE``; BPZ moves along its gradient in each SOM cell.
-  Prediction: Δ moves by ≤ 0.005 per bin.
-- ``zp_map``: ``success`` with a new zero-point map per realisation (a
-  coherent field and per-tile scatter at the note's amplitudes, plus the
-  patch). Prediction: Δ moves by 0.002–0.005 rms over maps; a bin's true
-  mean varies across the sky by 0.005–0.01 rms between 54 deg² regions.
+  measures almost nothing; only for ``bpz_desi``, whose library reaches
+  beyond DEEP2 (the DEEP2/3 library already has DEEP2's reach: 1.9% of it,
+  and 1.8% of the real calibrators, lie above 1.4). Prediction (for
+  ``bpz_desi``): bin 4 low by 0.01–0.03.
+- ``zp_patch``: ``egs`` (``success`` for ``bpz_desi``) with the i-band patch
+  of Romain Paviot's note (+20 mmag over RA 140–230, Dec 30–60) on sources
+  and calibrators, taken up by galaxies at ``UPTAKE``; BPZ moves along its
+  gradient in each SOM cell, and the SOM is retrained. Prediction: Δ moves
+  by ≤ 0.005 per bin.
+- ``zp_map``: the same with a new zero-point map per realisation (a coherent
+  field and per-tile scatter at the note's amplitudes, plus the patch).
+  Prediction: Δ moves by 0.002–0.005 rms over maps; a bin's true mean varies
+  across the sky by 0.005–0.01 rms between 54 deg² regions.
+- ``zp_ensemble``: the same with the offset the recipe's ensemble draws for
+  the EGS against the wide field (``ensemble.zero_points``: correlated colour
+  offsets and a grey term, on the calibrators only, no uptake). Its rms over
+  realisations is what the ensemble's zero-point term should be. Prediction,
+  written after a reviewer's linear fit to ``zp_map``: 1.0–1.4 times the
+  ensemble's term (0.009, 0.0045, 0.009, 0.011), the larger factor in bins
+  2–3.
+
+Every zero-point record carries the calibrators' mean offset and, per bin,
+the rms over sky regions (nside 8) of the change in a region's true mean,
+about the bin's change over the whole sky.
 
 Stages write under ``--output`` and are skipped when their products exist:
 ``inputs.npz`` (sources with complete photometry, calibrators, libraries),
@@ -57,7 +71,7 @@ import numpy as np
 from sp_validation.data_roots import load_yaml
 from sp_validation.io import read_catalogue
 from sp_validation.nz import calibration as nz
-from sp_validation.nz import inputs, pipeline, twin
+from sp_validation.nz import ensemble, inputs, pipeline, twin
 from sp_validation.object_id import NUMBER_LIMIT
 
 RECIPE = Path(__file__).parents[2] / "config/calibration/nz/v2.yaml"
@@ -76,13 +90,14 @@ GALAXY_SURVEYS = [
 #: Libraries: every DEEP2/3 spectrum (both fields), and the galaxy surveys'
 #: spectra of objects that are themselves lensing sources.
 LIBRARIES = {"deep2": DEEP2, "lensing": GALAXY_SURVEYS}
-#: Redshift models: (feature space of ``nz.twin``, library).
-MODELS = {
-    "colour": ("colour", "deep2"),
-    "bpz": ("bpz", "deep2"),
-    "bpz_desi": ("bpz", "lensing"),
-}
 Z_SUCCESS = 1.4
+#: Redshift models: (feature space of ``nz.twin``, library, the redshift
+#: above which DEEP2 measures nothing, for a library that reaches beyond it).
+MODELS = {
+    "colour": ("colour", "deep2", None),
+    "bpz": ("bpz", "deep2", None),
+    "bpz_desi": ("bpz", "lensing", Z_SUCCESS),
+}
 UPTAKE = 0.75  # galaxies follow 0.6-0.9 of the stellar zero-point offset
 #: Stellar per-tile scatter in u g r i z, mag (r fixed by the note's
 #: regression; u from our own EGS-against-wide u-g term).
@@ -168,7 +183,14 @@ def main(argv=None):
     p.add_argument(
         "--rungs",
         nargs="+",
-        default=["representative", "egs", "success", "zp_patch", "zp_map"],
+        default=[
+            "representative",
+            "egs",
+            "success",
+            "zp_patch",
+            "zp_map",
+            "zp_ensemble",
+        ],
     )
     p.add_argument("--workers", type=int, default=1)
     a = p.parse_args(argv)
@@ -201,7 +223,7 @@ def main(argv=None):
     cal_cell = nz.assign(cal["mag"], base["model"])[1]
 
     near = {}
-    for m, (kind, lib) in MODELS.items():
+    for m, (kind, lib, _) in MODELS.items():
         path = a.output / f"near_{m}.npz"
         if not path.exists():
             np.savez(
@@ -230,7 +252,7 @@ def main(argv=None):
         near[m] = dict(np.load(path))
 
     def painted(m, seed):
-        kind, lib = MODELS[m]
+        kind, lib, _ = MODELS[m]
         rng = np.random.default_rng(seed)
         zs = twin.paint(kind, libs[lib], near[m]["src"], src["photoz"], rng, zmax)
         zc = twin.paint(kind, libs[lib], near[m]["cal"], cal["photoz"], rng, zmax)
@@ -280,11 +302,45 @@ def main(argv=None):
             f.write(json.dumps(rec) + "\n")
         print(rung, m, seed, [round(b["delta"], 4) for b in rec["bins"]], flush=True)
 
-    zp_patch = None
+    zp = config["ensemble"]["zero_points"]
+    colour_cov = np.outer(zp["colour_sigma"], zp["colour_sigma"]) * np.asarray(
+        zp["colour_corr"]
+    )
+    n = len(src["ra"])
+    ra, dec = np.r_[src["ra"], cal["ra"]], np.r_[src["dec"], cal["dec"]]
+    tiles = tile_of(np.r_[src["object_id"], cal["object_id"]])
+
+    def offsets(rung, seed):
+        """Zero-point offsets (sources, calibrators) of a zero-point rung."""
+        if rung == "zp_patch":
+            dm = twin.zero_point_offsets(ra, dec, tiles, [0] * 5, None, patch=PATCH)
+            return dm[:n] * UPTAKE, dm[n:] * UPTAKE
+        rng = np.random.default_rng(20_000 + seed)
+        if rung == "zp_map":
+            dm = twin.zero_point_offsets(ra, dec, tiles, SIGMA, rng, patch=PATCH)
+            return dm[:n] * UPTAKE, dm[n:] * UPTAKE
+        colours = rng.multivariate_normal(np.zeros(4), colour_cov)
+        band = ensemble.band_offsets(colours, rng.normal(0, zp["grey"]))
+        return np.zeros((n, 5)), np.tile(band, (len(cal["z"]), 1))
+
+    def shift_rms(result, r0, z):
+        """Per bin, the weighted rms over sky regions of the change in the
+        region's true mean, about the bin's change over the whole sky."""
+        out = []
+        for (wz1, ww1), (wz0, ww0) in zip(regional(result, z), regional(r0, z)):
+            both = (ww1 > 0) & (ww0 > 0)
+            d = wz1[both] / ww1[both] - wz0[both] / ww0[both]
+            d -= np.average(d, weights=ww0[both])
+            out.append(float(np.sqrt(np.average(d**2, weights=ww0[both]))))
+        return out
+
+    perturbed_runs = {}
     for seed in range(a.realisations):
         paints = {m: painted(m, seed) for m in MODELS}
         for rung in a.rungs:
             todo = [m for m in MODELS if (rung, m, seed) not in done]
+            if rung == "success":
+                todo = [m for m in todo if MODELS[m][2]]
             if not todo:
                 continue
             if rung == "representative":
@@ -298,87 +354,43 @@ def main(argv=None):
                 )
                 result = pipeline.estimate(config, rep, src, workers=w)
                 for m in todo:
-                    write(
-                        rung,
-                        m,
-                        seed,
-                        twin.recalibrate(
-                            config, result, src, dict(rep, z=paints[m][0][rows])
-                        ),
-                        paints[m][0],
-                    )
+                    rep_m = dict(rep, z=paints[m][0][rows])
+                    r = twin.recalibrate(config, result, src, rep_m)
+                    write(rung, m, seed, r, paints[m][0])
                 continue
+            if rung.startswith("zp_"):
+                key = (rung, 0 if rung == "zp_patch" else seed)
+                if key not in perturbed_runs:
+                    for k in [k for k in perturbed_runs if k[0] != "zp_patch"]:
+                        del perturbed_runs[k]
+                    dm_s, dm_c = offsets(rung, seed)
+                    s, c = perturbed(dm_s, dm_c)
+                    perturbed_runs[key] = (
+                        s,
+                        c,
+                        pipeline.estimate(config, c, s, workers=w),
+                        dm_c.mean(0).tolist(),
+                    )
+                s, c, result_zp, cal_offset = perturbed_runs[key]
             for m in todo:
                 zs, zc = paints[m]
-                ok = np.ones(len(zc), bool) if rung == "egs" else zc <= Z_SUCCESS
-                if rung in ("egs", "success"):
-                    c = {k: v[ok] for k, v in dict(cal, z=zc).items()}
-                    write(
-                        rung,
-                        m,
-                        seed,
-                        twin.recalibrate(config, base, src, c),
-                        zs,
-                        n_cal=int(ok.sum()),
-                    )
-                    continue
-                if rung == "zp_patch":
-                    if zp_patch is None:
-                        dm_s = (
-                            twin.zero_point_offsets(
-                                src["ra"],
-                                src["dec"],
-                                tile_of(src["object_id"]),
-                                [0] * 5,
-                                None,
-                                patch=PATCH,
-                            )
-                            * UPTAKE
-                        )
-                        dm_c = (
-                            twin.zero_point_offsets(
-                                cal["ra"],
-                                cal["dec"],
-                                tile_of(cal["object_id"]),
-                                [0] * 5,
-                                None,
-                                patch=PATCH,
-                            )
-                            * UPTAKE
-                        )
-                        s, c = perturbed(dm_s, dm_c)
-                        zp_patch = (s, c, pipeline.estimate(config, c, s, workers=w))
-                    s, c, result = zp_patch
-                    keep = {k: v[ok] for k, v in dict(c, z=zc).items()}
-                    write(rung, m, seed, twin.recalibrate(config, result, s, keep), zs)
-                    continue
-                # zp_map: one map per seed, shared by the models
-                if m == todo[0]:
-                    rng = np.random.default_rng(20_000 + seed)
-                    ra = np.r_[src["ra"], cal["ra"]]
-                    dec = np.r_[src["dec"], cal["dec"]]
-                    tiles = tile_of(np.r_[src["object_id"], cal["object_id"]])
-                    dm = (
-                        twin.zero_point_offsets(ra, dec, tiles, SIGMA, rng, patch=PATCH)
-                        * UPTAKE
-                    )
-                    n = len(src["ra"])
-                    s, c = perturbed(dm[:n], dm[n:])
-                    result_map = pipeline.estimate(config, c, s, workers=w)
-                    egs_offset = dm[n:].mean(0).tolist()
-                keep = {k: v[ok] for k, v in dict(c, z=zc).items()}
-                result = twin.recalibrate(config, result_map, s, keep)
+                reach = MODELS[m][2]
+                ok = zc <= reach if reach and rung != "egs" else np.ones(len(zc), bool)
                 c0 = {k: v[ok] for k, v in dict(cal, z=zc).items()}
                 r0 = twin.recalibrate(config, base, src, c0)
-                spread = []
-                for (wz1, ww1), (wz0, ww0) in zip(
-                    regional(result, zs), regional(r0, zs)
-                ):
-                    both = (ww1 > 0) & (ww0 > 0)
-                    d = wz1[both] / ww1[both] - wz0[both] / ww0[both]
-                    spread.append(float(np.sqrt(np.average(d**2, weights=ww0[both]))))
+                if not rung.startswith("zp_"):
+                    write(rung, m, seed, r0, zs, n_cal=int(ok.sum()))
+                    continue
+                keep = {k: v[ok] for k, v in dict(c, z=zc).items()}
+                r = twin.recalibrate(config, result_zp, s, keep)
                 write(
-                    rung, m, seed, result, zs, egs_offset=egs_offset, region_rms=spread
+                    rung,
+                    m,
+                    seed,
+                    r,
+                    zs,
+                    cal_offset=cal_offset,
+                    region_rms=shift_rms(r, r0, zs),
                 )
 
 

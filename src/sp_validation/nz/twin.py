@@ -90,10 +90,11 @@ def score(result, weight, z):
     return out
 
 
-def recalibrate(config, result, src, cal):
+def recalibrate(config, result, src, cal, gold=None):
     """:func:`.pipeline.estimate`'s calibration step again, for new calibrator
     redshifts or a subset of the calibrators, with the SOM, its groups, the
-    edges and the sources' cells kept."""
+    edges and the sources' cells kept. A ``gold`` (n_bin, n_groups) mask is
+    used as it is instead of the recipe's selection."""
     model = result["model"]
     cal_group = model["group_map"][nz.assign(cal["mag"], model)[1]]
     threshold = nz.gold_threshold(cal["z"], cal["photoz"], **config["gold_qc"])
@@ -109,6 +110,7 @@ def recalibrate(config, result, src, cal):
         config["groups"],
         output_grid(config),
         threshold=threshold,
+        gold=gold,
     )
     tom = nz.tom_bin_ids(result["prelim"], result["group"], est["gold"])
     return dict(result, est=est, tom=tom, threshold=threshold)
