@@ -9,6 +9,8 @@ order. See `docs/source/post_processing.md` for the full prose.
 | Step | Script | Does |
 |------|--------|------|
 | 1 | `calibrate_sample.py` | The calibrated shear sample from a snapshot's shapes: selection, weights, metacalibration, HATS catalogue ([below](#the-calibrated-sample-v2)). |
+| 2 | `calibrate_nz.py` | The tomographic bins and their n(z) ([below](#redshift-distribution-step-5)). |
+| 3 | `bin_responses.py` | The response of each tomographic bin, into `catalogs/response.json` ([below](#the-response-of-each-bin)). |
 
 `compare_samples.py` compares two samples object by object.
 
@@ -122,6 +124,58 @@ Outside the workflow, the same build is
 `python scripts/calibration/calibrate_sample.py <recipe> --output <directory> --workers N`
 inside the container, and the comparison
 `python scripts/calibration/compare_samples.py <new> <reference> --output comparison.json --workers N`.
+
+## The response of each bin
+
+A tomographic bin has its own response: the sample's estimator on the bin's
+rows, with the sample's cuts, cells and weight table held fixed
+(`docs/source/response_calibration.md`). `sp_validation.sample.bins`
+measures them after the n(z) stage has put its bins in the release, as the
+rule `bin_responses`:
+
+```bash
+snakemake --profile workflow/profiles/default -s workflow/calibrate/Snakefile -j 96 \
+    -d /path/to/a/working/directory \
+    --apptainer-args "--cleanenv --bind /home,/project,/scratch" \
+    bin_responses
+```
+
+or, inside the container,
+`python scripts/calibration/bin_responses.py config/calibration/sample/v2.yaml --workers 96`
+(`--output DIRECTORY` for a sample built elsewhere). It reads, under the
+release directory, the sample's `catalogs/response.json`, `des_weights.fits`
+and `response_sums.npz`, and the n(z) stage's `nz/tom_bin.parquet` and
+`provenance/nz_som_model.npz`, `nz_calibration_arrays.npz` and
+`nz_recipe.yaml`. One pass over the shapes takes about 3 minutes on 96 cores
+and 40 GiB plus 2.5 GiB per core.
+
+The selection response needs the rows a sheared metacal branch selects and
+the no-shear branch does not, which have no `TOM_BIN_ID`. So every
+preselected row gets its bin from its PhotoPipe photometry with the n(z)
+stage's saved model, as that stage assigns it (a row without an object ID has
+no photometry and is in no bin), and keeps that bin on every branch. The rows
+are reduced to sums per (tile, bin) and cell, and the run stops unless
+
+- every galaxy of `nz/tom_bin.parquet` with an object ID is selected with
+  its `TOM_BIN_ID`, and the selected galaxies it does not name by ID are as
+  many as its rows without one (those rows are in its bin 0, as the n(z)
+  stage joins photometry by ID; here they keep the bin of their photometry,
+  recorded as `unnamed_per_bin`), and
+- the bins' sums, bin 0 included, add to `catalogs/response_sums.npz`.
+
+Each bin's R, its shear and selection parts, `c_e`, the branch populations
+and their delete-one-tile jackknife covariance (`response.record`) go into
+`catalogs/response.json` under `bins`:
+`{"column": "TOM_BIN_ID", "records": {"1": {...}, ..., "4": {...}}}`; the
+rest of the file is the whole sample's record, unchanged.
+`provenance/bin_response_checks.json` records what the checks compared and is
+written last. The response of the bin assignment itself is not included:
+the photometry has no sheared versions.
+
+Rerun it whenever the bins, the cuts or the weights change: after every n(z)
+run, and after every rebuild of the sample (which rewrites `response.json`
+without `bins`). Snakemake reruns it when the sample or the n(z) products are
+newer than its checks.
 
 ## Redshift distribution (step 5)
 

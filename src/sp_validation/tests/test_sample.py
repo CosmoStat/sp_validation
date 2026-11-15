@@ -159,8 +159,12 @@ def test_overlap_neighbours_come_from_the_tile_set():
 @pytest.fixture(scope="module")
 def built(tmp_path_factory):
     """A snapshot, its shapes as HATS, a recipe, and the sample built from it."""
-    root = tmp_path_factory.mktemp("sample")
-    data = shapes()
+    return build(tmp_path_factory.mktemp("sample"), shapes())
+
+
+def build(root, data):
+    """Write a snapshot of ``data``, its shapes as HATS (``root/shapes``) and a
+    recipe under ``root``, and build the sample into ``root/release``."""
     snap = root / "snap"
     snap.mkdir()
     counts = {t: int((data["TILE_ID"] == float(t)).sum()) for t in TILES}

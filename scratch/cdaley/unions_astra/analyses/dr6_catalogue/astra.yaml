@@ -202,7 +202,11 @@ decisions:
       per-(tile, cell) sums that add over chunks of the catalogue, so the
       build reads it one HEALPix pixel at a time and its result does not
       depend on the pixelisation; the sums are kept as
-      catalogs/response_sums.npz.
+      catalogs/response_sums.npz. The build also measures R for each sample
+      the release ships: after the n(z) stage, each tomographic bin's R, c_e
+      and tile jackknife with the sample's table held fixed, bin membership
+      held fixed across the metacal branches (sp_validation.sample.bins,
+      catalogs/response.json under bins).
       Values: none.
     default: one_for_the_sample
     options:

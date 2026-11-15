@@ -23,7 +23,9 @@ Products, under the output directory, laid out as a release:
   properties recording the snapshot (:mod:`.snapshot`);
 - ``catalogs/response.json``: ``R`` and its shear and selection parts, the
   additive bias, the branch populations, their jackknife covariance
-  (``response.record``) and the row counts;
+  (``response.record``) and the row counts; :mod:`.bins` adds the same record
+  for each tomographic bin under ``bins``, once the n(z) stage has assigned
+  them;
 - ``catalogs/des_weights.fits``: the weight table (``response.write_table``,
   read by ``response.read_table``);
 - ``catalogs/response_sums.npz``: the sums themselves, grouped by
@@ -133,6 +135,17 @@ def with_derived(data, tiles):
     return columns
 
 
+def preselect(data, selection, tiles):
+    """Return ``data``'s columns with the derived ones (:func:`with_derived`),
+    and the rows kept before the catalogue cuts of ``selection`` and after
+    each in turn."""
+    columns = with_derived(data, tiles)
+    kept = [np.ones(len(data), dtype=bool)]
+    for cut in masks.get_masks_from_config(selection, columns)[0]:
+        kept.append(kept[-1] & np.asarray(cut._mask, dtype=bool))
+    return columns, kept
+
+
 def select(data, selection, tiles):
     """Select the galaxies of ``data`` and reduce them to sums and staged rows.
 
@@ -167,12 +180,9 @@ def select(data, selection, tiles):
     def per_tile(index):
         return np.bincount(index, minlength=len(keys))
 
-    columns = with_derived(data, tiles)
-    keep = np.ones(len(data), dtype=bool)
-    flow = [per_tile(tile)]
-    for cut in masks.get_masks_from_config(selection, columns)[0]:
-        keep &= np.asarray(cut._mask, dtype=bool)
-        flow.append(per_tile(tile[keep]))
+    columns, kept = preselect(data, selection, tiles)
+    flow = [per_tile(tile[keep]) for keep in kept]
+    keep = kept[-1]
 
     metacal = selection["metacal"]
     cuts = response.Cuts.from_config(metacal)
@@ -186,7 +196,7 @@ def select(data, selection, tiles):
         step=metacal.get("step", 0.01),
     )
     ns = response.branch_columns(data, "ns")
-    keep &= response.select(ns, cuts)
+    keep = keep & response.select(ns, cuts)
     flow.append(per_tile(tile[keep]))
     names = ("RA", "Dec", "e1_PSF", "e2_PSF", "N_EPOCH", "TILE_ID", "NUMBER")
     rows = {name: columns[name][keep] for name in names}

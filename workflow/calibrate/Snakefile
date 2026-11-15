@@ -8,7 +8,9 @@ top-level ``workflow/Snakefile`` requires::
 ``configfile:`` below names the v2 recipe; ``--config calibrate='{...}'`` or a
 ``--configfile`` of your own overrides it (targets go before ``--configfile``).
 The same rules are included in the main workflow under
-``if "calibrate" in config``. See scripts/calibration/README.md.
+``if "calibrate" in config``. ``all`` builds the sample; once the n(z) stage
+has put its bins in the release, the target ``bin_responses`` measures the
+response of each bin. See scripts/calibration/README.md.
 """
 
 import os

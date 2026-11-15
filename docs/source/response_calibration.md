@@ -100,6 +100,8 @@ metacal:
 The catalogue header declares `WGHTSCH`, `RAPPLIED` and `MEANSUB`; the configured catalogue reader refuses another weight column or a second response for such a catalogue.
 
 The calibrated v2 sample (`sp_validation.sample.pipeline`, `scripts/calibration/README.md`) is the same calibration on a catalogue read one HEALPix pixel at a time: each pixel accumulates over the tiles it holds, `Sums.gather` adds them into every tile of the snapshot, and the build keeps the sums as `catalogs/response_sums.npz`.
+Once the n(z) stage has assigned the tomographic bins, `sp_validation.sample.bins` measures each bin's response as a subsample's ([below](#measuring-a-variant)), in one pass grouped by (tile, bin), and writes each bin's `response.record` into `catalogs/response.json` under `bins` (`{"column": "TOM_BIN_ID", "records": {"1": ..., ...}}`).
+It stops unless every selected galaxy the n(z) stage names by object ID has its released `TOM_BIN_ID` and the bins' sums add to `response_sums.npz`.
 
 ## Image-simulation m and c
 
