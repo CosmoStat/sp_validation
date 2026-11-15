@@ -612,10 +612,10 @@ def paint_catalogue(
     lmax-dependent constant (~7 GB at lmax 8192).
     The mock carries an allowlist of input columns, in the reader's canonical
     grammar: position, weight, PSF ellipticities and any ``keep`` names. Every
-    other column is dropped. Mock registry entries run with ``blind: none``,
+    other column is dropped. A mock is measured under its own throwaway blind,
     so a measured shape passed through (``e*_uncal``, say) would reach
-    cosmo_val unblinded; the allowlist is what prevents that, and it gives the
-    mock a fixed schema. ``e1_col/e2_col`` and ``e*_leak_corrected`` hold the
+    cosmo_val outside the data blind; the allowlist is what prevents that, and
+    it gives the mock a fixed schema. ``e1_col/e2_col`` and ``e*_leak_corrected`` hold the
     mock shapes. Catalogue e2 is ``pol_factor`` times HEALPix gamma2 (``-1``
     for UNIONS). Output is atomic; the HDF5 attributes and a JSON sidecar
     record the injection and ``pol_factor``.

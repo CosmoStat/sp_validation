@@ -35,6 +35,8 @@ REPO = Path(__file__).resolve().parents[2]
 VERSIONS = ("SP_v0.1", "SP_v0.1_leak_corr")
 # Declares no blind.
 UNDECLARED = "SP_v0.5"
+# A mock with its seed left open (`shear.path_template`), under its own blind.
+SEEDED = "SP_v0.1_glass_painted"
 
 
 @dataclasses.dataclass
@@ -161,8 +163,13 @@ def _cat_config(data):
             **declaration,
         }
 
+    seeded = entry(SEEDED, blind="toy-mock")
+    seeded["subdir"] = "painted"
+    seeded["shear"]["path_template"] = "seed_{seed:05d}/calibrated_none.h5"
+    del seeded["shear"]["path"]
     return {
         VERSIONS[0]: entry(VERSIONS[0], blind="toy"),
+        SEEDED: seeded,
         UNDECLARED: entry(UNDECLARED),
         "paths": {"output": "./output"},
     }
