@@ -27,7 +27,9 @@ narrative:
     [fitted on the unsheared branch](#decisions.weight_table); the
     [response](#decisions.response_estimator) is the derivative of the
     weighted mean shear it calibrates; the [additive bias](#decisions.additive_bias)
-    is subtracted once; [errors](#decisions.calibration_uncertainties) are
+    is subtracted once; [each sample measured](#decisions.sample_calibration)
+    is calibrated with its own response and additive bias;
+    [errors](#decisions.calibration_uncertainties) are
     tile jackknifes. Image simulations measure the residual multiplicative
     bias m with [the estimator applied to data](#decisions.simulation_shear_bias)
     and [the data's weight table](#decisions.simulation_weight_table); a
@@ -379,6 +381,43 @@ decisions:
           Estimators must subtract it themselves. The setting for
           constant-shear image simulations (additive_correction: false).
 
+  sample_calibration:
+    label: "Each sample calibrated with its own response when it is measured"
+    tags: [calibration]
+    rationale: >-
+      The response belongs to a sample, not a galaxy: it is the derivative of
+      that sample's weighted mean shear. The v2.0.0 tomographic bins have
+      responses 0.855, 0.859, 0.832 and 0.776 against 0.787 for the whole
+      sample (measured on data), so the whole sample's response applied to
+      bins 1–3 overestimates their shear by 6–9%. The release keeps e1, e2
+      calibrated with the whole sample's R_all and writes each bin's response
+      into its response record (under bins); cosmo_val calibrates each sample
+      it measures, the whole catalogue or one tomographic bin, with that
+      sample's own R and additive bias: a galaxy of bin k has shear
+      R_k⁻¹ R_all e minus the bin's weighted mean of that quantity
+      (sp_validation.response.calibrated_shear). A tomographic measurement of
+      a bin its record lacks is an error. Owner's decision, 15 November 2026.
+      Values: cosmo_val/cat_config.yaml#SP_v2.0.0.shear.response = "response.json".
+    default: per_sample_at_measurement
+    options:
+      per_sample_at_measurement:
+        label: "Per-sample R and c applied by cosmo_val"
+        description: >-
+          One released shear column; every statistic of a sample uses that
+          sample's response from the record.
+      calibrate_in_release:
+        label: "Per-bin calibrated columns in the release"
+        description: >-
+          The release ships each galaxy's shear calibrated with its own bin's
+          response. A galaxy then carries one calibration, valid for its bin
+          only, and the whole sample built from such columns is no longer
+          calibrated with its own response.
+      whole_sample:
+        label: "The whole sample's R for every sample"
+        description: >-
+          Biases the shear of each bin by its response relative to the whole
+          sample's, 6–9% for bins 1–3 of v2.0.0.
+
 outputs:
   - id: catalogue_match_audit
     type: table
@@ -414,11 +453,13 @@ outputs:
       - weight_table
       - calibration_uncertainties
       - additive_bias
+      - sample_calibration
     description: >-
       Written beside the selected catalogue by
       calibrate_comprehensive_cat.py: the response record (_response.json:
       R, R_shear, R_selection, R_joint, c_e, c_g and their tile-jackknife
-      covariance), the per-tile sums (_sums.npz) and the DES weight table
+      covariance, and under bins the same record for each tomographic bin),
+      the per-tile sums (_sums.npz) and the DES weight table
       (_des_weights.fits).
   - id: image_sim_shear_bias
     type: table

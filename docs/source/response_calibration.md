@@ -158,3 +158,30 @@ labels, deleted, covariance = response.jackknife(sums_bin, table)
 ```
 
 The preselection holds the subsample's membership fixed across the five metacal branches: the result includes the response of the metacal cuts and of the weights within the subsample, not the response of whatever assigned the subsample (photometric redshifts, magnitudes measured on the unsheared image).
+
+## Response per sample
+
+The response belongs to a sample, not a galaxy: it is the derivative of that sample's weighted mean shear.
+A shear statistic of a sample is calibrated with that sample's own R_total and its own additive bias.
+The v2.0.0 tomographic bins have responses 0.855, 0.859, 0.832 and 0.776 against 0.787 for the whole sample, so the whole sample's R applied to bins 1–3 overestimates their shear by 6–9%.
+
+A release catalogue's `e1`, `e2` are R_all⁻¹(e − c_e) with the whole sample's R_all.
+Its response record (`catalogs/response.json`) holds R_all at the top level and, under `bins`, the record of each tomographic bin: `{"column": "TOM_BIN_ID", "records": {"1": {...}, ...}}`, each in the layout of {func}`~sp_validation.response.record`.
+The shear of a galaxy measured as a member of bin k is
+
+    g = R_k⁻¹ R_all e − ⟨R_k⁻¹ R_all e⟩_k,
+
+the weighted mean taken over bin k; as a member of the whole sample it is e − ⟨e⟩.
+{func}`~sp_validation.response.sample_response` reads R_k from the record and {func}`~sp_validation.response.calibrated_shear` applies it:
+
+```python
+record = json.load(open("catalogs/response.json"))
+in_bin = cat["TOM_BIN_ID"] == k
+e = np.array([cat["e1"][in_bin], cat["e2"][in_bin]])
+g = response.calibrated_shear(
+    e, cat["w_des"][in_bin], response.sample_response(record, "TOM_BIN_ID", k), record["R"]
+)
+```
+
+cosmo_val calibrates this way every sample it measures: an entry of `cosmo_val/cat_config.yaml` names its record with `shear.response`, and a tomographic measurement of a bin the record lacks is an error.
+An entry without a record gives a scalar `shear.R`, applied to its `e1`, `e2` as they are.
