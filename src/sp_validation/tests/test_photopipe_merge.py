@@ -4,7 +4,7 @@ import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from sp_validation import photopipe_merge as pm
+from sp_validation.assembly import photopipe_merge as pm
 
 
 def write_extract(directory):
@@ -35,6 +35,9 @@ def write_shapes(path):
         pa.table(
             dict(
                 _healpix_29=np.arange(4),
+                OBJECT_ID=np.array(
+                    [24237000002, 24237000001, 24237000009, 300250000001]
+                ),
                 XWIN_WORLD=np.array([10.01, 10.0, 10.01, 10.0]),
                 YWIN_WORLD=np.array([20.0, 20.0 + 0.2 / 3600, 20.0, 20.0]),
                 TILE_ID=np.array([24.237, 24.237, 24.237, 300.25]),
