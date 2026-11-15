@@ -82,8 +82,8 @@ def build(recipe, workers=1):
 def index(collection, workers=1):
     """Index ``COLLECTION/shapes`` on ``OBJECT_ID`` and list the extensions.
 
-    Writes the index and every properties file of the collection. An index
-    already at ``COLLECTION/shapes_OBJECT_ID`` is kept, so remove it to rebuild.
+    Writes the index and every properties file of the collection; the index is
+    rebuilt on every run.
     """
     collection = Path(collection)
     args = (
