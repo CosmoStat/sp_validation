@@ -58,6 +58,13 @@ NOT_COLUMNS = {
     "N_0",
     "N_1",
     "PHOTOPIPE_SEQNR",
+    "PHOTOPIPE_STATUS",
+    "Z_B",
+    "Z_SPEC",
+    "Z_SPEC_DEC",
+    "Z_SPEC_RA",
+    "Z_SPEC_SURVEY",
+    # FITS header keywords
     "EXTNAME",
     "TTYPE{}",
     # Gaia magnitude-bin keys of the position-shear product
