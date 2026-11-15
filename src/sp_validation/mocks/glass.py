@@ -6,7 +6,7 @@ spectrum) and the lognormal matter / lensing-map generation that turns a seed
 into a sky. Galaxy sampling and catalogue I/O are a thin layer downstream
 (``scripts/glass_mock/make_unions_glass_sim.py``), so that the load-bearing
 config can be characterized in isolation — see
-``tests/test_glass_mock.py``.
+``tests/test_mocks_glass.py``.
 
 This module also collects the reusable two-point and PSF-leakage helpers the
 mock post-processing runners in ``scripts/glass_mock/`` share (configuration-
@@ -29,6 +29,7 @@ __all__ = [
     "camb_sigma8",
     "build_shells",
     "matter_shell_cls",
+    "generate_convergence",
     "generate_matter_maps",
     "downgrade_mask",
     "growth_factor",
@@ -60,6 +61,7 @@ class GlassMockConfig:
 
     # --- resolution / sampling ---
     nside: int = 32
+    harmonic_lmax: int | None = None
     seed: int = 42
     # --- shell construction ---
     dx: float = 200.0  # comoving shell thickness [Mpc]
@@ -123,8 +125,8 @@ class GlassMockConfig:
 
     @property
     def lmax(self) -> int:
-        """``lmax`` is tied to ``nside`` in the production mocks."""
-        return self.nside
+        """Harmonic ceiling; defaults to ``nside`` for the sampled mocks."""
+        return self.nside if self.harmonic_lmax is None else self.harmonic_lmax
 
     @property
     def Oc(self) -> float:
@@ -243,29 +245,41 @@ def matter_shell_cls(config: GlassMockConfig, pars, shells, limber=False):
     return glass.ext.camb.matter_cls(pars, config.lmax, shells, limber=limber)
 
 
+def generate_convergence(config: GlassMockConfig, pars, shells, gls):
+    """Yield ``(delta, kappa)`` HEALPix maps, shell by shell.
+
+    The seeded core shared by every GLASS mock here: lognormal matter fields
+    (``ncorr=3``) drawn from the Gaussian spectra ``gls`` with
+    ``default_rng(config.seed)``, accumulated into the convergence at each
+    shell's source plane by ``MultiPlaneConvergence``.
+    """
+    import glass
+
+    rng = np.random.default_rng(config.seed)
+    fields = glass.lognormal_fields(shells)
+    matter = glass.generate(fields, gls, config.nside, ncorr=3, rng=rng)
+    convergence = glass.MultiPlaneConvergence(Cosmology_from_camb(pars))
+    for delta_i, shell in zip(matter, shells):
+        convergence.add_window(delta_i, shell)
+        yield delta_i, convergence.kappa
+
+
 def generate_matter_maps(config: GlassMockConfig, pars, shells, cls):
     """Yield ``(delta, kappa, gamma1, gamma2)`` HEALPix maps, shell by shell.
 
-    This is the deterministic core of the mock at the map level: a seeded RNG
-    drives lognormal matter fields (``ncorr=3``), accumulated into convergence
-    via ``MultiPlaneConvergence`` and shear via ``shear_from_convergence``. For
-    a fixed config + seed the emitted maps are bit-for-bit reproducible within
-    a GLASS/NumPy version, which is what the self-consistency test asserts.
+    This is the deterministic core of the mock at the map level: the Gaussian
+    spectra solved from ``cls`` drive ``generate_convergence``, and each
+    shell's shear comes from ``shear_from_convergence``. For a fixed config +
+    seed the emitted maps are bit-for-bit reproducible within a GLASS/NumPy
+    version, which is what the self-consistency test asserts.
 
     The galaxy sampling that consumes these maps lives in the production script;
     keeping it out of this generator is what makes the map level testable.
     """
     import glass
 
-    rng = np.random.default_rng(config.seed)
-    fields = glass.lognormal_fields(shells)
-    gls = glass.solve_gaussian_spectra(fields, cls)
-    matter = glass.generate(fields, gls, config.nside, ncorr=3, rng=rng)
-    convergence = glass.MultiPlaneConvergence(Cosmology_from_camb(pars))
-
-    for i, delta_i in enumerate(matter):
-        convergence.add_window(delta_i, shells[i])
-        kappa_i = convergence.kappa
+    gls = glass.solve_gaussian_spectra(glass.lognormal_fields(shells), cls)
+    for delta_i, kappa_i in generate_convergence(config, pars, shells, gls):
         gamma1_i, gamma2_i = glass.shear_from_convergence(kappa_i)
         yield delta_i, kappa_i, gamma1_i, gamma2_i
 

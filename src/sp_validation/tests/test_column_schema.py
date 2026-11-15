@@ -34,6 +34,8 @@ READING_CODE = [
 
 #: Column-shaped keys that index something other than a catalogue.
 NOT_COLUMNS = {
+    # environment variables
+    "OMP_NUM_THREADS",
     # cat_config and other configuration keys
     "A",
     "R",
