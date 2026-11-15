@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+
+<html :class="{ 'dark' : darkMode === true }" data-content_root="./" lang="en" x-data="{ darkMode: $persist(window.matchMedia('(prefers-color-scheme: dark)').matches), activeSection: ''}">
+<head>
+<script>
+    (function () {
+      // Set initial color scheme
+      if ((localStorage.getItem("_x_darkMode") === "true") || (window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+        document.documentElement.classList.add("dark");
+      }
+
+      // Watch for media preference changes
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (event) => {
+        localStorage.setItem("_x_darkMode", event.matches);
+        document.documentElement.classList.toggle("dark", event.matches);
+      });
+    })();
+  </script>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta charset="utf-8"/>
+<meta content="#ffffff" media="(prefers-color-scheme: light)" name="theme-color"/>
+<meta content="#030711" media="(prefers-color-scheme: dark)" name="theme-color"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>sp_validation.nz.ensemble | sp_validation v0.6.0</title>
+<meta content="sp_validation.nz.ensemble | sp_validation v0.6.0" property="og:title"/>
+<meta content="sp_validation.nz.ensemble | sp_validation v0.6.0" name="twitter:title"/>
+<link href="_static/pygments.css?v=b86133f3" rel="stylesheet" type="text/css"/>
+<link href="_static/theme.css?v=009055c6" rel="stylesheet" type="text/css"/>
+<link href="search.html" rel="search" title="Search"/>
+<link href="genindex.html" rel="index" title="Index"/>
+<link href="sp_validation.nz.inputs.html" rel="next" title="sp_validation.nz.inputs"/>
+<link href="sp_validation.nz.calibration.html" rel="prev" title="sp_validation.nz.calibration"/>
+</head>
+<body :class="{ 'overflow-hidden': showSidebar }" @scroll.window="showScrollTop = pageYOffset &gt; 100" class="min-h-screen font-sans antialiased bg-background text-foreground" x-data="{ showSidebar: false, showScrollTop: false }">
+<div @click.self="showSidebar = false" class="fixed inset-0 z-50 overflow-hidden bg-background/80 backdrop-blur-sm md:hidden" x-cloak="" x-show="showSidebar"></div><div class="relative flex flex-col min-h-screen" id="page"><a class="absolute top-0 left-0 z-[100] block bg-background p-4 text-xl transition -translate-x-full opacity-0 focus:translate-x-0 focus:opacity-100" href="#content">
+      Skip to content
+    </a><header class="sticky top-0 z-40 w-full border-b shadow-xs border-border bg-background/90 backdrop-blur"><div class="container flex items-center h-14">
+<div class="hidden mr-4 md:flex">
+<a class="flex items-center mr-6" href="index.html"><span class="hidden font-bold sm:inline-block text-clip whitespace-nowrap">sp_validation v0.6.0</span>
+</a></div><button @click="showSidebar = true" class="inline-flex items-center justify-center h-10 px-0 py-2 mr-2 text-base font-medium transition-colors rounded-md hover:text-accent-foreground hover:bg-transparent md:hidden" type="button">
+<svg aria-hidden="true" fill="currentColor" height="24" viewbox="0 96 960 960" width="24" xmlns="http://www.w3.org/2000/svg">
+<path d="M152.587 825.087q-19.152 0-32.326-13.174t-13.174-32.326q0-19.152 13.174-32.326t32.326-13.174h440q19.152 0 32.326 13.174t13.174 32.326q0 19.152-13.174 32.326t-32.326 13.174h-440Zm0-203.587q-19.152 0-32.326-13.174T107.087 576q0-19.152 13.174-32.326t32.326-13.174h320q19.152 0 32.326 13.174T518.087 576q0 19.152-13.174 32.326T472.587 621.5h-320Zm0-203.587q-19.152 0-32.326-13.174t-13.174-32.326q0-19.152 13.174-32.326t32.326-13.174h440q19.152 0 32.326 13.174t13.174 32.326q0 19.152-13.174 32.326t-32.326 13.174h-440ZM708.913 576l112.174 112.174q12.674 12.674 12.674 31.826t-12.674 31.826Q808.413 764.5 789.261 764.5t-31.826-12.674l-144-144Q600 594.391 600 576t13.435-31.826l144-144q12.674-12.674 31.826-12.674t31.826 12.674q12.674 12.674 12.674 31.826t-12.674 31.826L708.913 576Z"></path>
+</svg>
+<span class="sr-only">Toggle navigation menu</span>
+</button>
+<div class="flex items-center justify-between flex-1 gap-2 sm:gap-4 md:justify-end">
+<div class="flex-1 w-full md:w-auto md:flex-none"><form @keydown.k.window.meta="$refs.search.focus()" action="search.html" class="relative flex items-center group" id="searchbox" method="get">
+<input aria-label="Search the docs" class="inline-flex items-center font-medium transition-colors bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background border border-input hover:bg-accent focus:bg-accent hover:text-accent-foreground focus:text-accent-foreground hover:placeholder-accent-foreground py-2 px-4 relative h-9 w-full justify-start rounded-[0.5rem] text-sm text-muted-foreground sm:pr-12 md:w-40 lg:w-64" id="search-input" name="q" placeholder="Search ..." type="search" x-ref="search"/>
+<kbd class="pointer-events-none absolute right-1.5 top-2 hidden h-5 select-none text-muted-foreground items-center gap-1 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex group-hover:bg-accent group-hover:text-accent-foreground">
+<span class="text-xs">⌘</span>
+    K
+  </kbd>
+</form>
+</div>
+<nav class="flex items-center gap-1">
+<button @click="darkMode = !darkMode" class="relative inline-flex items-center justify-center px-0 text-sm font-medium transition-colors rounded-md hover:bg-accent hover:text-accent-foreground h-9 w-9" title="Toggle color scheme" type="button">
+<svg class="absolute transition-all scale-100 rotate-0 dark:-rotate-90 dark:scale-0" fill="currentColor" height="16" viewbox="0 96 960 960" width="16" xmlns="http://www.w3.org/2000/svg">
+<path d="M480 685q45.456 0 77.228-31.772Q589 621.456 589 576q0-45.456-31.772-77.228Q525.456 467 480 467q-45.456 0-77.228 31.772Q371 530.544 371 576q0 45.456 31.772 77.228Q434.544 685 480 685Zm0 91q-83 0-141.5-58.5T280 576q0-83 58.5-141.5T480 376q83 0 141.5 58.5T680 576q0 83-58.5 141.5T480 776ZM80 621.5q-19.152 0-32.326-13.174T34.5 576q0-19.152 13.174-32.326T80 530.5h80q19.152 0 32.326 13.174T205.5 576q0 19.152-13.174 32.326T160 621.5H80Zm720 0q-19.152 0-32.326-13.174T754.5 576q0-19.152 13.174-32.326T800 530.5h80q19.152 0 32.326 13.174T925.5 576q0 19.152-13.174 32.326T880 621.5h-80Zm-320-320q-19.152 0-32.326-13.174T434.5 256v-80q0-19.152 13.174-32.326T480 130.5q19.152 0 32.326 13.174T525.5 176v80q0 19.152-13.174 32.326T480 301.5Zm0 720q-19.152 0-32.326-13.17Q434.5 995.152 434.5 976v-80q0-19.152 13.174-32.326T480 850.5q19.152 0 32.326 13.174T525.5 896v80q0 19.152-13.174 32.33-13.174 13.17-32.326 13.17ZM222.174 382.065l-43-42Q165.5 327.391 166 308.239t13.174-33.065q13.435-13.674 32.587-13.674t32.065 13.674l42.239 43q12.674 13.435 12.555 31.706-.12 18.272-12.555 31.946-12.674 13.674-31.445 13.413-18.772-.261-32.446-13.174Zm494 494.761-42.239-43q-12.674-13.435-12.674-32.087t12.674-31.565Q686.609 756.5 705.38 757q18.772.5 32.446 13.174l43 41.761Q794.5 824.609 794 843.761t-13.174 33.065Q767.391 890.5 748.239 890.5t-32.065-13.674Zm-42-494.761Q660.5 369.391 661 350.62q.5-18.772 13.174-32.446l41.761-43Q728.609 261.5 747.761 262t33.065 13.174q13.674 13.435 13.674 32.587t-13.674 32.065l-43 42.239q-13.435 12.674-31.706 12.555-18.272-.12-31.946-12.555Zm-495 494.761Q165.5 863.391 165.5 844.239t13.674-32.065l43-42.239q13.435-12.674 32.087-12.674t31.565 12.674Q299.5 782.609 299 801.38q-.5 18.772-13.174 32.446l-41.761 43Q231.391 890.5 212.239 890t-33.065-13.174ZM480 576Z"></path>
+</svg>
+<svg class="absolute transition-all scale-0 rotate-90 dark:rotate-0 dark:scale-100" fill="currentColor" height="16" viewbox="0 96 960 960" width="16" xmlns="http://www.w3.org/2000/svg">
+<path d="M480 936q-151 0-255.5-104.5T120 576q0-138 90-239.5T440 218q25-3 39 18t-1 44q-17 26-25.5 55t-8.5 61q0 90 63 153t153 63q31 0 61.5-9t54.5-25q21-14 43-1.5t19 39.5q-14 138-117.5 229T480 936Zm0-80q88 0 158-48.5T740 681q-20 5-40 8t-40 3q-123 0-209.5-86.5T364 396q0-20 3-40t8-40q-78 32-126.5 102T200 576q0 116 82 198t198 82Zm-10-270Z"></path>
+</svg>
+</button>
+</nav>
+</div>
+</div>
+</header>
+<div class="flex-1"><div class="container md:grid md:grid-cols-[220px_minmax(0,1fr)] md:gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-10"><aside :aria-hidden="!showSidebar" :class="{ 'translate-x-0': showSidebar }" class="fixed inset-y-0 left-0 md:top-14 z-50 md:z-30 bg-background md:bg-transparent transition-all duration-100 -translate-x-full md:translate-x-0 ml-0 p-6 md:p-0 md:-ml-2 md:h-[calc(100vh-3.5rem)] w-5/6 md:w-full overflow-y-auto border-r border-border md:sticky" id="left-sidebar">
+<a class="justify-start text-sm md:!hidden bg-background" href="index.html"><span class="font-bold text-clip whitespace-nowrap">sp_validation v0.6.0</span>
+</a>
+<div class="relative overflow-hidden md:overflow-auto my-4 md:my-0">
+<div class="overflow-y-auto h-full w-full relative pr-6"><nav class="table w-full min-w-full my-6 lg:my-8">
+<p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="repository_structure.html">Repository structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stages.html">Stages</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="using_the_catalogues.html">Using the weak-lensing catalogues</a></li>
+<li class="toctree-l1"><a class="reference internal" href="run_validation.html">Running shear validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="catalogue_columns.html">Catalogue columns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="post_processing.html">Post-processing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Leakage_object_Tutorial.html">Leakage_object Tutorial</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="current">
+<li class="toctree-l1 current" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.html">sp_validation<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul class="current" x-show="expanded">
+<li class="toctree-l2" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.assembly.html">sp_validation.assembly<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul x-cloak="" x-show="expanded">
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.assembly.hats_collection.html">sp_validation.assembly.hats_collection</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.assembly.object_id.html">sp_validation.assembly.object_id</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.assembly.photopipe_merge.html">sp_validation.assembly.photopipe_merge</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.assembly.specz_merge.html">sp_validation.assembly.specz_merge</a></li>
+</ul>
+</li>
+<li class="toctree-l2" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.cosmo_val.html">sp_validation.cosmo_val<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul x-cloak="" x-show="expanded">
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.catalog_characterization.html">sp_validation.cosmo_val.catalog_characterization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html">sp_validation.cosmo_val.core</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.cosebis.html">sp_validation.cosmo_val.cosebis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.derived_covariance.html">sp_validation.cosmo_val.derived_covariance</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.diagnostic_plots.html">sp_validation.cosmo_val.diagnostic_plots</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.diagnostic_products.html">sp_validation.cosmo_val.diagnostic_products</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html">sp_validation.cosmo_val.pseudo_cl</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.psf_systematics.html">sp_validation.cosmo_val.psf_systematics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pure_eb.html">sp_validation.cosmo_val.pure_eb</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.real_space.html">sp_validation.cosmo_val.real_space</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.sacc_writers.html">sp_validation.cosmo_val.sacc_writers</a></li>
+</ul>
+</li>
+<li class="toctree-l2" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.dashboard.html">sp_validation.dashboard<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul x-cloak="" x-show="expanded">
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.correlations.html">sp_validation.dashboard.correlations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.cosebis_grid.html">sp_validation.dashboard.cosebis_grid</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.covariance.html">sp_validation.dashboard.covariance</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.data_vectors.html">sp_validation.dashboard.data_vectors</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.field_maps.html">sp_validation.dashboard.field_maps</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.object_bias.html">sp_validation.dashboard.object_bias</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.position_shear.html">sp_validation.dashboard.position_shear</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.products.html">sp_validation.dashboard.products</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.psf.html">sp_validation.dashboard.psf</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.ptes.html">sp_validation.dashboard.ptes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.render.html">sp_validation.dashboard.render</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.scale_cuts.html">sp_validation.dashboard.scale_cuts</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.selection_hist.html">sp_validation.dashboard.selection_hist</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.sky.html">sp_validation.dashboard.sky</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.star_residuals.html">sp_validation.dashboard.star_residuals</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.style.html">sp_validation.dashboard.style</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.tangential.html">sp_validation.dashboard.tangential</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.versions.html">sp_validation.dashboard.versions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.dashboard.weights.html">sp_validation.dashboard.weights</a></li>
+</ul>
+</li>
+<li class="toctree-l2" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.mocks.html">sp_validation.mocks<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul x-cloak="" x-show="expanded">
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.mocks.glass.html">sp_validation.mocks.glass</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.mocks.painted.html">sp_validation.mocks.painted</a></li>
+</ul>
+</li>
+<li class="toctree-l2 current" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.nz.html">sp_validation.nz<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul class="current" x-show="expanded">
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.nz.calibration.html">sp_validation.nz.calibration</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">sp_validation.nz.ensemble</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.nz.inputs.html">sp_validation.nz.inputs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.nz.pipeline.html">sp_validation.nz.pipeline</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html">sp_validation.b_modes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.blinding.html">sp_validation.blinding</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.calibration.html">sp_validation.calibration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html">sp_validation.catalog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog_builders.html">sp_validation.catalog_builders</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.catalogue_match.html">sp_validation.catalogue_match</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.container.html">sp_validation.container</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.correlation.html">sp_validation.correlation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.data_roots.html">sp_validation.data_roots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.format.html">sp_validation.format</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html">sp_validation.galaxy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.grammar.html">sp_validation.grammar</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.image_sims.html">sp_validation.image_sims</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html">sp_validation.io</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.masks.html">sp_validation.masks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.plot_style.html">sp_validation.plot_style</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.plots.html">sp_validation.plots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.pseudo_cl.html">sp_validation.pseudo_cl</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.rho_tau.html">sp_validation.rho_tau</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.sacc_io.html">sp_validation.sacc_io</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.statistics.html">sp_validation.statistics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.survey.html">sp_validation.survey</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.tables.html">sp_validation.tables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.version.html">sp_validation.version</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="z_ref.html">References</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Guidelines</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
+</ul>
+</nav>
+</div>
+</div>
+<button @click="showSidebar = false" class="absolute md:hidden right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100" type="button">
+<svg class="h-4 w-4" fill="currentColor" height="24" stroke="none" viewbox="0 96 960 960" width="24" xmlns="http://www.w3.org/2000/svg">
+<path d="M480 632 284 828q-11 11-28 11t-28-11q-11-11-11-28t11-28l196-196-196-196q-11-11-11-28t11-28q11-11 28-11t28 11l196 196 196-196q11-11 28-11t28 11q11 11 11 28t-11 28L536 576l196 196q11 11 11 28t-11 28q-11 11-28 11t-28-11L480 632Z"></path>
+</svg>
+</button>
+</aside>
+<main class="relative py-6 lg:gap-10 lg:py-8 xl:grid xl:grid-cols-[1fr_300px]">
+<div class="w-full min-w-0 mx-auto">
+<nav aria-label="breadcrumbs" class="flex items-center mb-4 space-x-1 text-sm text-muted-foreground">
+<a class="overflow-hidden text-ellipsis whitespace-nowrap hover:text-foreground" href="index.html">
+<span class="hidden md:inline">sp_validation v0.6.0</span>
+<svg aria-label="Home" class="md:hidden" fill="currentColor" height="18" stroke="none" viewbox="0 96 960 960" width="18" xmlns="http://www.w3.org/2000/svg">
+<path d="M240 856h120V616h240v240h120V496L480 316 240 496v360Zm-80 80V456l320-240 320 240v480H520V696h-80v240H160Zm320-350Z"></path>
+</svg>
+</a>
+<div class="mr-1">/</div><a class="hover:text-foreground overflow-hidden text-ellipsis whitespace-nowrap" href="sp_validation.html">sp_validation</a>
+<div class="mr-1">/</div><a class="hover:text-foreground overflow-hidden text-ellipsis whitespace-nowrap" href="sp_validation.nz.html">sp_validation.nz</a>
+<div class="mr-1">/</div><span aria-current="page" class="font-medium text-foreground overflow-hidden text-ellipsis whitespace-nowrap">sp_validation.nz.ensemble</span>
+</nav>
+<div id="content" role="main">
+<section id="module-sp_validation.nz.ensemble">
+<span id="sp-validation-nz-ensemble"></span><h1>sp_validation.nz.ensemble<a class="headerlink" href="#module-sp_validation.nz.ensemble" title="Link to this heading">¶</a></h1>
+<p>Realisations of the SOM n(z) calibration, every bin in each draw.</p>
+<p>A calibrated bin is a weighted histogram of calibrator redshifts: calibrator
+i in gold SOM group g of bin k carries S_kg / N_kg, the group’s source shear
+weight over its number of in-bin calibrators (<code class="xref py py-func docutils literal notranslate"><span class="pre">calibration.calibrate()</span></code>).
+A draw perturbs what enters that sum and recalibrates,</p>
+<blockquote>
+<div><p>w_i = S_kg q_i / Σ_{j ∈ g, k} q_j,</p>
+</div></blockquote>
+<p>so a gold group whose calibrators all leave it drops out, as an unsupported
+group does in the calibration. Each term is switched on by its key in the
+recipe’s <code class="docutils literal notranslate"><span class="pre">ensemble</span></code> section.</p>
+<p>Statistical terms, through the factors q_i = m_i (1 + δ(z_i)):</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">bootstrap</span></code>: m_i are multinomial bootstrap counts (calibrator shot noise);</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">density</span></code>: δ(z) is the galaxy density contrast along the line of sight
+through the spectroscopic footprint, a lognormal field on the output grid
+whose covariance is the nonlinear matter power seen through the footprint
+and each grid cell, times a linear bias squared (<a class="reference internal" href="#sp_validation.nz.ensemble.density_covariance" title="sp_validation.nz.ensemble.density_covariance"><code class="xref py py-func docutils literal notranslate"><span class="pre">density_covariance()</span></code></a>).</p></li>
+</ul>
+<p>Systematic terms:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">zero_points</span></code>: a zero-point error δ of the calibration field relative to
+the sources, drawn as Gaussian colour offsets (u-g, g-r, r-i, i-z) with
+standard deviations <code class="docutils literal notranslate"><span class="pre">colour_sigma</span></code> and correlations <code class="docutils literal notranslate"><span class="pre">colour_corr</span></code>, and a
+grey offset of standard deviation <code class="docutils literal notranslate"><span class="pre">grey</span></code>. The calibrators
+trained the SOM, and training is translation-equivariant, so correcting
+their photometry by -δ moves the cells with them: every source moves by +δ
+against the SOM, shifting the catalogue’s weight between groups, and each
+calibrator’s BPZ, and so its bin, moves by -δ along its local gradient;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">z2_offset</span></code>: an error ε in the constant that maps z2 onto z, offsetting
+the z band of every source measured through z2 (the calibrators have none);</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">specz_failure</span></code>: each calibrator’s redshift is, with this probability,
+replaced by the redshift of a random calibrator;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">nmad_factor</span></code>: the gold-QC factor drawn uniformly from a range; gold is
+re-derived at that factor from the calibration’s own spectra and sources,
+so the bins’ source selection moves with it.</p></li>
+</ul>
+<p>The offsets enter to first order: a draw adds half the difference between
+the recalibrations at +v and -v, which cancels what is even in the offsets
+(groups losing their last in-bin calibrator at either sign). Every term but
+<code class="docutils literal notranslate"><span class="pre">nmad_factor</span></code> keeps the catalogue’s selection: the gold groups’ sources, wherever the
+offsets move them, calibrated by whichever calibrators share their group.
+The SOM and its groups are held fixed.</p>
+<dl class="py data">
+<dt class="sig sig-object py" id="sp_validation.nz.ensemble.DIRECTIONS">
+<span class="sig-name descname"><span class="pre">DIRECTIONS</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">('u',</span> <span class="pre">'g',</span> <span class="pre">'r',</span> <span class="pre">'i',</span> <span class="pre">'z',</span> <span class="pre">'z2')</span></span><a class="headerlink" href="#sp_validation.nz.ensemble.DIRECTIONS" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.nz.ensemble.DIRECTIONS'">¶</a></dt>
+<dd><p>the calibration field’s five bands
+(as a source offset) and the z2 mapping.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Offsets the source tables respond to</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.nz.ensemble.histograms">
+<span class="sig-name descname"><span class="pre">histograms</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cal_z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cal_weights</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/nz/ensemble.html#histograms"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.nz.ensemble.histograms" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.nz.ensemble.histograms'">¶</a></dt>
+<dd><p>Unit-integral n(z) per bin from calibrator weights.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.nz.ensemble.members">
+<span class="sig-name descname"><span class="pre">members</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">photoz</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">edges</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/nz/ensemble.html#members"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.nz.ensemble.members" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.nz.ensemble.members'">¶</a></dt>
+<dd><p>Calibrators in each bin’s BPZ interval, (n_bin, n_cal).</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.nz.ensemble.group_tables">
+<span class="sig-name descname"><span class="pre">group_tables</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prelim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">group</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weight</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">photoz</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_bin</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_groups</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/nz/ensemble.html#group_tables"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.nz.ensemble.group_tables" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.nz.ensemble.group_tables'">¶</a></dt>
+<dd><p>Source weight and weighted BPZ summed per (bin, group).</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.nz.ensemble.ensemble_inputs">
+<span class="sig-name descname"><span class="pre">ensemble_inputs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mag</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">photoz</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weight</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prelim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">channel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gold</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">step</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.02</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">workers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/nz/ensemble.html#ensemble_inputs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.nz.ensemble.ensemble_inputs" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.nz.ensemble.ensemble_inputs'">¶</a></dt>
+<dd><p>Per-(bin, group) source tables, and the catalogue’s response to offsets.</p>
+<p><code class="docutils literal notranslate"><span class="pre">prelim</span></code> and <code class="docutils literal notranslate"><span class="pre">channel</span></code> are <code class="xref py py-func docutils literal notranslate"><span class="pre">calibration.source_groups()</span></code> of the
+sources at the recipe’s z2 <code class="docutils literal notranslate"><span class="pre">offset</span></code>; <code class="docutils literal notranslate"><span class="pre">gold</span></code> is the calibration’s gold
+mask. <code class="docutils literal notranslate"><span class="pre">source_weight</span></code> and <code class="docutils literal notranslate"><span class="pre">source_photoz</span></code> sum every source with BPZ in
+a bin, as the gold test does. <code class="docutils literal notranslate"><span class="pre">catalogue_jacobian</span></code> is the derivative, in
+each of <a class="reference internal" href="#sp_validation.nz.ensemble.DIRECTIONS" title="sp_validation.nz.ensemble.DIRECTIONS"><code class="xref py py-data docutils literal notranslate"><span class="pre">DIRECTIONS</span></code></a>, of the weight per (bin, group) of the catalogue’s
+own sources (those in gold at the fiducial), so the selection stays the
+catalogue’s while its sources move between groups. A direction is a
+magnitude offset of the sources against the SOM: one band for every
+source, or z for the sources measured through z2. Sources fill the cells
+densely, so the tables move linearly over a few hundredths of a magnitude;
+central differences at ±``step`` give the derivatives.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.nz.ensemble.photoz_gradient">
+<span class="sig-name descname"><span class="pre">photoz_gradient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mag</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">photoz</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">128</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/nz/ensemble.html#photoz_gradient"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.nz.ensemble.photoz_gradient" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.nz.ensemble.photoz_gradient'">¶</a></dt>
+<dd><p>d BPZ / d m (n_cal, 5) of each calibrator, from its k nearest in the SOM space.</p>
+<p>A least-squares plane of BPZ in ugriz through the neighbours.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.nz.ensemble.calibrator_weights">
+<span class="sig-name descname"><span class="pre">calibrator_weights</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">group</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">member</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/nz/ensemble.html#calibrator_weights"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.nz.ensemble.calibrator_weights" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.nz.ensemble.calibrator_weights'">¶</a></dt>
+<dd><p>Weights (n_bin, n_cal): S_kg q_i / Σ_{j ∈ g, k} q_j.</p>
+<p><code class="docutils literal notranslate"><span class="pre">source</span></code> is the weight to calibrate per (bin, group), zero outside the
+selection; a group with weight but no in-bin calibrator drops out.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.nz.ensemble.gold_masks">
+<span class="sig-name descname"><span class="pre">gold_masks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">photoz</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">group</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">member</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_photoz</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">floor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">factor</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/nz/ensemble.html#gold_masks"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.nz.ensemble.gold_masks" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.nz.ensemble.gold_masks'">¶</a></dt>
+<dd><p>Re-derive every bin’s gold mask, as <code class="xref py py-func docutils literal notranslate"><span class="pre">calibration.calibrate()</span></code> does.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.nz.ensemble.band_offsets">
+<span class="sig-name descname"><span class="pre">band_offsets</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">colours</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grey</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/nz/ensemble.html#band_offsets"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.nz.ensemble.band_offsets" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.nz.ensemble.band_offsets'">¶</a></dt>
+<dd><p>Offsets of (u, g, r, i, z) from colour offsets (u-g, g-r, r-i, i-z) and r.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.nz.ensemble.density_covariance">
+<span class="sig-name descname"><span class="pre">density_covariance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">grid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bias</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cosmo</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_phi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4096</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_sep</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">500.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/nz/ensemble.html#density_covariance"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.nz.ensemble.density_covariance" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.nz.ensemble.density_covariance'">¶</a></dt>
+<dd><p>Covariance of δ_g averaged over each grid cell of the footprint.</p>
+<p>The footprint is a <code class="docutils literal notranslate"><span class="pre">field</span> <span class="pre">=</span> <span class="pre">(width,</span> <span class="pre">height)</span></code> rectangle in degrees; each
+cell is the slab between midpoints of neighbouring grid redshifts. With
+W̃ the cell’s Fourier window,</p>
+<blockquote>
+<div><p>C_ij = b² ∫ d³k/(2π)³ P(k, z̄_ij) W̃_i(k) W̃_j*(k),</p>
+</div></blockquote>
+<p>P the nonlinear matter power at the pair’s mean redshift. Separating the
+transverse window (angle-averaged, a function of k⊥χ only) leaves one
+integral over k⊥ and one over k∥. The first grid point (z = 0) has no
+volume and gets zero variance. Cells more than <code class="docutils literal notranslate"><span class="pre">max_sep</span></code> Mpc apart are
+uncorrelated.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.nz.ensemble.lognormal">
+<span class="sig-name descname"><span class="pre">lognormal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cov</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_draw</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rng</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/nz/ensemble.html#lognormal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.nz.ensemble.lognormal" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.nz.ensemble.lognormal'">¶</a></dt>
+<dd><p>Draws of 1 + δ with covariance <code class="docutils literal notranslate"><span class="pre">cov</span></code> and unit mean in every cell.</p>
+</dd></dl>
+<dl class="py class">
+<dt class="sig sig-object py" id="sp_validation.nz.ensemble.Calibration">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">Calibration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><span class="pre">ndarray</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">photoz</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><span class="pre">ndarray</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">group</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><span class="pre">ndarray</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">weights</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><span class="pre">ndarray</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">gold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><span class="pre">ndarray</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">edges</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><span class="pre">ndarray</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><span class="pre">ndarray</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">source</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><span class="pre">ndarray</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_photoz</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><span class="pre">ndarray</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">jacobian</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><span class="pre">ndarray</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">photoz_gradient</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><span class="pre">ndarray</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">gold_qc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.15)"><span class="pre">dict</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/nz/ensemble.html#Calibration"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.nz.ensemble.Calibration" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.nz.ensemble.Calibration'">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>A calibration run’s state: what a draw perturbs and recalibrates.</p>
+<p><code class="docutils literal notranslate"><span class="pre">source</span></code> and <code class="docutils literal notranslate"><span class="pre">source_photoz</span></code> are the (n_bin, n_groups) tables of every
+source with BPZ in a bin, <code class="docutils literal notranslate"><span class="pre">jacobian</span></code> the catalogue’s response in
+<a class="reference internal" href="#sp_validation.nz.ensemble.DIRECTIONS" title="sp_validation.nz.ensemble.DIRECTIONS"><code class="xref py py-data docutils literal notranslate"><span class="pre">DIRECTIONS</span></code></a> (<a class="reference internal" href="#sp_validation.nz.ensemble.ensemble_inputs" title="sp_validation.nz.ensemble.ensemble_inputs"><code class="xref py py-func docutils literal notranslate"><span class="pre">ensemble_inputs()</span></code></a>), and <code class="docutils literal notranslate"><span class="pre">photoz_gradient</span></code> each
+calibrator’s d BPZ / d m.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.nz.ensemble.Calibration.z">
+<span class="sig-name descname"><span class="pre">z</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><span class="pre">ndarray</span></a></span><a class="headerlink" href="#sp_validation.nz.ensemble.Calibration.z" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.nz.ensemble.Calibration.z'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.nz.ensemble.Calibration.photoz">
+<span class="sig-name descname"><span class="pre">photoz</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><span class="pre">ndarray</span></a></span><a class="headerlink" href="#sp_validation.nz.ensemble.Calibration.photoz" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.nz.ensemble.Calibration.photoz'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.nz.ensemble.Calibration.group">
+<span class="sig-name descname"><span class="pre">group</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><span class="pre">ndarray</span></a></span><a class="headerlink" href="#sp_validation.nz.ensemble.Calibration.group" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.nz.ensemble.Calibration.group'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.nz.ensemble.Calibration.weights">
+<span class="sig-name descname"><span class="pre">weights</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><span class="pre">ndarray</span></a></span><a class="headerlink" href="#sp_validation.nz.ensemble.Calibration.weights" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.nz.ensemble.Calibration.weights'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.nz.ensemble.Calibration.gold">
+<span class="sig-name descname"><span class="pre">gold</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><span class="pre">ndarray</span></a></span><a class="headerlink" href="#sp_validation.nz.ensemble.Calibration.gold" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.nz.ensemble.Calibration.gold'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.nz.ensemble.Calibration.edges">
+<span class="sig-name descname"><span class="pre">edges</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><span class="pre">ndarray</span></a></span><a class="headerlink" href="#sp_validation.nz.ensemble.Calibration.edges" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.nz.ensemble.Calibration.edges'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.nz.ensemble.Calibration.grid">
+<span class="sig-name descname"><span class="pre">grid</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><span class="pre">ndarray</span></a></span><a class="headerlink" href="#sp_validation.nz.ensemble.Calibration.grid" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.nz.ensemble.Calibration.grid'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.nz.ensemble.Calibration.source">
+<span class="sig-name descname"><span class="pre">source</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><span class="pre">ndarray</span></a></span><a class="headerlink" href="#sp_validation.nz.ensemble.Calibration.source" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.nz.ensemble.Calibration.source'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.nz.ensemble.Calibration.source_photoz">
+<span class="sig-name descname"><span class="pre">source_photoz</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><span class="pre">ndarray</span></a></span><a class="headerlink" href="#sp_validation.nz.ensemble.Calibration.source_photoz" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.nz.ensemble.Calibration.source_photoz'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.nz.ensemble.Calibration.jacobian">
+<span class="sig-name descname"><span class="pre">jacobian</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><span class="pre">ndarray</span></a></span><a class="headerlink" href="#sp_validation.nz.ensemble.Calibration.jacobian" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.nz.ensemble.Calibration.jacobian'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.nz.ensemble.Calibration.photoz_gradient">
+<span class="sig-name descname"><span class="pre">photoz_gradient</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><span class="pre">ndarray</span></a></span><a class="headerlink" href="#sp_validation.nz.ensemble.Calibration.photoz_gradient" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.nz.ensemble.Calibration.photoz_gradient'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.nz.ensemble.Calibration.gold_qc">
+<span class="sig-name descname"><span class="pre">gold_qc</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.15)"><span class="pre">dict</span></a></span><a class="headerlink" href="#sp_validation.nz.ensemble.Calibration.gold_qc" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.nz.ensemble.Calibration.gold_qc'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.nz.ensemble.Calibration.load">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directory</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/nz/ensemble.html#Calibration.load"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.nz.ensemble.Calibration.load" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.nz.ensemble.Calibration.load'">¶</a></dt>
+<dd><p>Read a calibration run’s output directory.</p>
+</dd></dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="sp_validation.nz.ensemble.Calibration.member">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">member</span></span><a class="headerlink" href="#sp_validation.nz.ensemble.Calibration.member" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.nz.ensemble.Calibration.member'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.nz.ensemble.Calibration.fiducial">
+<span class="sig-name descname"><span class="pre">fiducial</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/nz/ensemble.html#Calibration.fiducial"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.nz.ensemble.Calibration.fiducial" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.nz.ensemble.Calibration.fiducial'">¶</a></dt>
+<dd><p>The calibration’s own unit-integral n(z) per bin.</p>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.nz.ensemble.Calibration.calibrate">
+<span class="sig-name descname"><span class="pre">calibrate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">v</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/nz/ensemble.html#Calibration.calibrate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.nz.ensemble.Calibration.calibrate" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.nz.ensemble.Calibration.calibrate'">¶</a></dt>
+<dd><p>Unit-integral n(z) per bin of the selection <code class="docutils literal notranslate"><span class="pre">gold</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">v</span></code> holds offsets in <a class="reference internal" href="#sp_validation.nz.ensemble.DIRECTIONS" title="sp_validation.nz.ensemble.DIRECTIONS"><code class="xref py py-data docutils literal notranslate"><span class="pre">DIRECTIONS</span></code></a>: the calibration field’s
+(u, g, r, i, z) zero-point error and the z2 mapping error. The
+catalogue’s sources move between groups along the Jacobian, and each
+calibrator’s BPZ moves by -grad·δ, the change correcting its
+photometry would make.</p>
+</dd></dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.nz.ensemble.realisations">
+<span class="sig-name descname"><span class="pre">realisations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cal</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">settings</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">density</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/nz/ensemble.html#realisations"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.nz.ensemble.realisations" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.nz.ensemble.realisations'">¶</a></dt>
+<dd><p>Draws (n_draw, n_bin, n_z) and their raw mean before recentring.</p>
+<p><code class="docutils literal notranslate"><span class="pre">settings</span></code> is the recipe’s <code class="docutils literal notranslate"><span class="pre">ensemble</span></code> section; <code class="docutils literal notranslate"><span class="pre">density</span></code> is the
+covariance of δ on the grid (<a class="reference internal" href="#sp_validation.nz.ensemble.density_covariance" title="sp_validation.nz.ensemble.density_covariance"><code class="xref py py-func docutils literal notranslate"><span class="pre">density_covariance()</span></code></a>) when the density
+term is on. The draws are recentred so their mean is the calibration’s own
+n(z): the terms are zero-mean in their inputs, but the calibration is
+nonlinear in them, and the raw mean is returned so its offset can be
+reported.</p>
+<p>@sc [decision:nz.ensemble_terms]</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.nz.ensemble.run">
+<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directory</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">settings</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cosmo</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/nz/ensemble.html#run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.nz.ensemble.run" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.nz.ensemble.run'">¶</a></dt>
+<dd><p>Write realisations of the calibration run in <code class="docutils literal notranslate"><span class="pre">directory</span></code> to <code class="docutils literal notranslate"><span class="pre">output</span></code>.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.nz.ensemble.main">
+<span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">argv</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/nz/ensemble.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.nz.ensemble.main" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.nz.ensemble.main'">¶</a></dt>
+<dd></dd></dl>
+</section>
+</div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
+<div class="mr-auto">
+<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="sp_validation.nz.calibration.html">
+<svg class="mr-2 h-4 w-4" fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+<polyline points="15 18 9 12 15 6"></polyline>
+</svg>
+        sp_validation.nz.calibration
+      </a>
+</div>
+<div class="ml-auto">
+<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="sp_validation.nz.inputs.html">
+        sp_validation.nz.inputs
+        <svg class="ml-2 h-4 w-4" fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+<polyline points="9 18 15 12 9 6"></polyline>
+</svg>
+</a>
+</div>
+</div></div><aside class="hidden text-sm xl:block" id="right-sidebar">
+<div class="sticky top-16 -mt-10 max-h-[calc(100vh-5rem)] h-full overflow-y-auto pt-6 space-y-2"><p class="font-medium">On this page</p>
+<ul>
+<li><a :data-current="activeSection === '#sp_validation.nz.ensemble.DIRECTIONS'" class="reference internal" href="#sp_validation.nz.ensemble.DIRECTIONS"><code class="docutils literal notranslate"><span class="pre">DIRECTIONS</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.nz.ensemble.histograms'" class="reference internal" href="#sp_validation.nz.ensemble.histograms"><code class="docutils literal notranslate"><span class="pre">histograms()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.nz.ensemble.members'" class="reference internal" href="#sp_validation.nz.ensemble.members"><code class="docutils literal notranslate"><span class="pre">members()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.nz.ensemble.group_tables'" class="reference internal" href="#sp_validation.nz.ensemble.group_tables"><code class="docutils literal notranslate"><span class="pre">group_tables()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.nz.ensemble.ensemble_inputs'" class="reference internal" href="#sp_validation.nz.ensemble.ensemble_inputs"><code class="docutils literal notranslate"><span class="pre">ensemble_inputs()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.nz.ensemble.photoz_gradient'" class="reference internal" href="#sp_validation.nz.ensemble.photoz_gradient"><code class="docutils literal notranslate"><span class="pre">photoz_gradient()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.nz.ensemble.calibrator_weights'" class="reference internal" href="#sp_validation.nz.ensemble.calibrator_weights"><code class="docutils literal notranslate"><span class="pre">calibrator_weights()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.nz.ensemble.gold_masks'" class="reference internal" href="#sp_validation.nz.ensemble.gold_masks"><code class="docutils literal notranslate"><span class="pre">gold_masks()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.nz.ensemble.band_offsets'" class="reference internal" href="#sp_validation.nz.ensemble.band_offsets"><code class="docutils literal notranslate"><span class="pre">band_offsets()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.nz.ensemble.density_covariance'" class="reference internal" href="#sp_validation.nz.ensemble.density_covariance"><code class="docutils literal notranslate"><span class="pre">density_covariance()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.nz.ensemble.lognormal'" class="reference internal" href="#sp_validation.nz.ensemble.lognormal"><code class="docutils literal notranslate"><span class="pre">lognormal()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.nz.ensemble.Calibration'" class="reference internal" href="#sp_validation.nz.ensemble.Calibration"><code class="docutils literal notranslate"><span class="pre">Calibration</span></code></a><ul>
+<li><a :data-current="activeSection === '#sp_validation.nz.ensemble.Calibration.z'" class="reference internal" href="#sp_validation.nz.ensemble.Calibration.z"><code class="docutils literal notranslate"><span class="pre">Calibration.z</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.nz.ensemble.Calibration.photoz'" class="reference internal" href="#sp_validation.nz.ensemble.Calibration.photoz"><code class="docutils literal notranslate"><span class="pre">Calibration.photoz</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.nz.ensemble.Calibration.group'" class="reference internal" href="#sp_validation.nz.ensemble.Calibration.group"><code class="docutils literal notranslate"><span class="pre">Calibration.group</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.nz.ensemble.Calibration.weights'" class="reference internal" href="#sp_validation.nz.ensemble.Calibration.weights"><code class="docutils literal notranslate"><span class="pre">Calibration.weights</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.nz.ensemble.Calibration.gold'" class="reference internal" href="#sp_validation.nz.ensemble.Calibration.gold"><code class="docutils literal notranslate"><span class="pre">Calibration.gold</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.nz.ensemble.Calibration.edges'" class="reference internal" href="#sp_validation.nz.ensemble.Calibration.edges"><code class="docutils literal notranslate"><span class="pre">Calibration.edges</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.nz.ensemble.Calibration.grid'" class="reference internal" href="#sp_validation.nz.ensemble.Calibration.grid"><code class="docutils literal notranslate"><span class="pre">Calibration.grid</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.nz.ensemble.Calibration.source'" class="reference internal" href="#sp_validation.nz.ensemble.Calibration.source"><code class="docutils literal notranslate"><span class="pre">Calibration.source</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.nz.ensemble.Calibration.source_photoz'" class="reference internal" href="#sp_validation.nz.ensemble.Calibration.source_photoz"><code class="docutils literal notranslate"><span class="pre">Calibration.source_photoz</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.nz.ensemble.Calibration.jacobian'" class="reference internal" href="#sp_validation.nz.ensemble.Calibration.jacobian"><code class="docutils literal notranslate"><span class="pre">Calibration.jacobian</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.nz.ensemble.Calibration.photoz_gradient'" class="reference internal" href="#sp_validation.nz.ensemble.Calibration.photoz_gradient"><code class="docutils literal notranslate"><span class="pre">Calibration.photoz_gradient</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.nz.ensemble.Calibration.gold_qc'" class="reference internal" href="#sp_validation.nz.ensemble.Calibration.gold_qc"><code class="docutils literal notranslate"><span class="pre">Calibration.gold_qc</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.nz.ensemble.Calibration.load'" class="reference internal" href="#sp_validation.nz.ensemble.Calibration.load"><code class="docutils literal notranslate"><span class="pre">Calibration.load()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.nz.ensemble.Calibration.member'" class="reference internal" href="#sp_validation.nz.ensemble.Calibration.member"><code class="docutils literal notranslate"><span class="pre">Calibration.member</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.nz.ensemble.Calibration.fiducial'" class="reference internal" href="#sp_validation.nz.ensemble.Calibration.fiducial"><code class="docutils literal notranslate"><span class="pre">Calibration.fiducial()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.nz.ensemble.Calibration.calibrate'" class="reference internal" href="#sp_validation.nz.ensemble.Calibration.calibrate"><code class="docutils literal notranslate"><span class="pre">Calibration.calibrate()</span></code></a></li>
+</ul>
+</li>
+<li><a :data-current="activeSection === '#sp_validation.nz.ensemble.realisations'" class="reference internal" href="#sp_validation.nz.ensemble.realisations"><code class="docutils literal notranslate"><span class="pre">realisations()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.nz.ensemble.run'" class="reference internal" href="#sp_validation.nz.ensemble.run"><code class="docutils literal notranslate"><span class="pre">run()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.nz.ensemble.main'" class="reference internal" href="#sp_validation.nz.ensemble.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
+</ul>
+</div>
+</aside>
+</main>
+</div>
+</div><footer class="py-6 border-t border-border md:py-0">
+<div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
+<div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 15 Nov, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.1</a></p>
+</div>
+</div>
+</footer>
+</div><button :class="{'opacity-0 invisible' : !showScrollTop}" @click="window.scrollTo({top: 0, behavior: 'smooth'})" class="fixed bottom-8 right-8 p-2 z-10 rounded-sm bg-gray-700 text-xs text-white transition-all duration-1000 hover:bg-gray-950 focus:bg-gray-950" id="scrolltop" x-cloak="">
+<svg aria-hidden="true" class="inline fill-current mb-[2px]" height="14" viewbox="0 96 960 960" width="14" xmlns="http://www.w3.org/2000/svg">
+<path d="M450 896V370L202 618l-42-42 320-320 320 320-42 42-248-248v526h-60Z"></path>
+</svg>
+  Back to top
+</button>
+<script src="_static/documentation_options.js?v=5929fcd5"></script>
+<script src="_static/doctools.js?v=fd6eb6e6"></script>
+<script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+<script defer="defer" src="_static/theme.js?v=49cc6205"></script>
+</body>
+</html>

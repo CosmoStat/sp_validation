@@ -137,6 +137,13 @@
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.mocks.painted.html">sp_validation.mocks.painted</a></li>
 </ul>
 </li>
+<li class="toctree-l2" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.nz.html">sp_validation.nz<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul x-cloak="" x-show="expanded">
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.nz.calibration.html">sp_validation.nz.calibration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.nz.ensemble.html">sp_validation.nz.ensemble</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.nz.inputs.html">sp_validation.nz.inputs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.nz.pipeline.html">sp_validation.nz.pipeline</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html">sp_validation.b_modes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.blinding.html">sp_validation.blinding</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.calibration.html">sp_validation.calibration</a></li>
@@ -614,6 +621,62 @@
 <li class="toctree-l4"><a class="reference internal" href="sp_validation.mocks.painted.html#sp_validation.mocks.painted.b_mode_cl"><code class="docutils literal notranslate"><span class="pre">b_mode_cl()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="sp_validation.mocks.painted.html#sp_validation.mocks.painted.paint_shear"><code class="docutils literal notranslate"><span class="pre">paint_shear()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="sp_validation.mocks.painted.html#sp_validation.mocks.painted.paint_catalogue"><code class="docutils literal notranslate"><span class="pre">paint_catalogue()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="sp_validation.nz.html">sp_validation.nz</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.nz.html#submodules">Submodules</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.nz.calibration.html">sp_validation.nz.calibration</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.calibration.html#sp_validation.nz.calibration.detected"><code class="docutils literal notranslate"><span class="pre">detected()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.calibration.html#sp_validation.nz.calibration.features"><code class="docutils literal notranslate"><span class="pre">features()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.calibration.html#sp_validation.nz.calibration.train"><code class="docutils literal notranslate"><span class="pre">train()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.calibration.html#sp_validation.nz.calibration.assign"><code class="docutils literal notranslate"><span class="pre">assign()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.calibration.html#sp_validation.nz.calibration.group_cells"><code class="docutils literal notranslate"><span class="pre">group_cells()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.calibration.html#sp_validation.nz.calibration.z_magnitudes"><code class="docutils literal notranslate"><span class="pre">z_magnitudes()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.calibration.html#sp_validation.nz.calibration.quantile_edges"><code class="docutils literal notranslate"><span class="pre">quantile_edges()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.calibration.html#sp_validation.nz.calibration.source_groups"><code class="docutils literal notranslate"><span class="pre">source_groups()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.calibration.html#sp_validation.nz.calibration.gold_threshold"><code class="docutils literal notranslate"><span class="pre">gold_threshold()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.calibration.html#sp_validation.nz.calibration.gold_mask"><code class="docutils literal notranslate"><span class="pre">gold_mask()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.calibration.html#sp_validation.nz.calibration.tom_bin_ids"><code class="docutils literal notranslate"><span class="pre">tom_bin_ids()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.calibration.html#sp_validation.nz.calibration.deposit"><code class="docutils literal notranslate"><span class="pre">deposit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.calibration.html#sp_validation.nz.calibration.calibrate"><code class="docutils literal notranslate"><span class="pre">calibrate()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.calibration.html#sp_validation.nz.calibration.write_nz"><code class="docutils literal notranslate"><span class="pre">write_nz()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.nz.ensemble.html">sp_validation.nz.ensemble</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.ensemble.html#sp_validation.nz.ensemble.DIRECTIONS"><code class="docutils literal notranslate"><span class="pre">DIRECTIONS</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.ensemble.html#sp_validation.nz.ensemble.histograms"><code class="docutils literal notranslate"><span class="pre">histograms()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.ensemble.html#sp_validation.nz.ensemble.members"><code class="docutils literal notranslate"><span class="pre">members()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.ensemble.html#sp_validation.nz.ensemble.group_tables"><code class="docutils literal notranslate"><span class="pre">group_tables()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.ensemble.html#sp_validation.nz.ensemble.ensemble_inputs"><code class="docutils literal notranslate"><span class="pre">ensemble_inputs()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.ensemble.html#sp_validation.nz.ensemble.photoz_gradient"><code class="docutils literal notranslate"><span class="pre">photoz_gradient()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.ensemble.html#sp_validation.nz.ensemble.calibrator_weights"><code class="docutils literal notranslate"><span class="pre">calibrator_weights()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.ensemble.html#sp_validation.nz.ensemble.gold_masks"><code class="docutils literal notranslate"><span class="pre">gold_masks()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.ensemble.html#sp_validation.nz.ensemble.band_offsets"><code class="docutils literal notranslate"><span class="pre">band_offsets()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.ensemble.html#sp_validation.nz.ensemble.density_covariance"><code class="docutils literal notranslate"><span class="pre">density_covariance()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.ensemble.html#sp_validation.nz.ensemble.lognormal"><code class="docutils literal notranslate"><span class="pre">lognormal()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.ensemble.html#sp_validation.nz.ensemble.Calibration"><code class="docutils literal notranslate"><span class="pre">Calibration</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.ensemble.html#sp_validation.nz.ensemble.realisations"><code class="docutils literal notranslate"><span class="pre">realisations()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.ensemble.html#sp_validation.nz.ensemble.run"><code class="docutils literal notranslate"><span class="pre">run()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.ensemble.html#sp_validation.nz.ensemble.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.nz.inputs.html">sp_validation.nz.inputs</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.inputs.html#sp_validation.nz.inputs.NO_ID"><code class="docutils literal notranslate"><span class="pre">NO_ID</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.inputs.html#sp_validation.nz.inputs.UNMATCHED"><code class="docutils literal notranslate"><span class="pre">UNMATCHED</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.inputs.html#sp_validation.nz.inputs.calibrators"><code class="docutils literal notranslate"><span class="pre">calibrators()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.inputs.html#sp_validation.nz.inputs.sources"><code class="docutils literal notranslate"><span class="pre">sources()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.inputs.html#sp_validation.nz.inputs.match_report"><code class="docutils literal notranslate"><span class="pre">match_report()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.nz.pipeline.html">sp_validation.nz.pipeline</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.pipeline.html#sp_validation.nz.pipeline.output_grid"><code class="docutils literal notranslate"><span class="pre">output_grid()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.pipeline.html#sp_validation.nz.pipeline.run"><code class="docutils literal notranslate"><span class="pre">run()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.pipeline.html#sp_validation.nz.pipeline.calibrate"><code class="docutils literal notranslate"><span class="pre">calibrate()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.nz.pipeline.html#sp_validation.nz.pipeline.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
 </ul>
 </li>
 </ul>

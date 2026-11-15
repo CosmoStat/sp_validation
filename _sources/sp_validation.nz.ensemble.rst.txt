@@ -1,0 +1,7 @@
+sp\_validation.nz.ensemble
+--------------------------
+
+.. automodule:: sp_validation.nz.ensemble
+   :members:
+   :show-inheritance:
+   :undoc-members:

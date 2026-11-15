@@ -17,6 +17,7 @@ Subpackages
    sp_validation.cosmo_val
    sp_validation.dashboard
    sp_validation.mocks
+   sp_validation.nz
 
 Submodules
 ----------

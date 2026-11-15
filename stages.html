@@ -137,6 +137,13 @@
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.mocks.painted.html">sp_validation.mocks.painted</a></li>
 </ul>
 </li>
+<li class="toctree-l2" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.nz.html">sp_validation.nz<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul x-cloak="" x-show="expanded">
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.nz.calibration.html">sp_validation.nz.calibration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.nz.ensemble.html">sp_validation.nz.ensemble</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.nz.inputs.html">sp_validation.nz.inputs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.nz.pipeline.html">sp_validation.nz.pipeline</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html">sp_validation.b_modes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.blinding.html">sp_validation.blinding</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.calibration.html">sp_validation.calibration</a></li>
@@ -212,7 +219,7 @@ does not yet match.</p>
 </tr>
 <tr class="row-odd"><td><p><strong>Calibrate</strong></p></td>
 <td><p>Selection, metacal response and weights, PSF-leakage correction, multiplicative bias from image sims, and the redshift distribution</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">scripts/calibration/</span></code> step 4; <code class="docutils literal notranslate"><span class="pre">calibration.py</span></code>, <code class="docutils literal notranslate"><span class="pre">catalog_builders.CalibrateCat</span></code>; <code class="docutils literal notranslate"><span class="pre">config/calibration/</span></code> (<code class="docutils literal notranslate"><span class="pre">mask_*.yaml</span></code>); <code class="docutils literal notranslate"><span class="pre">scripts/apply_alpha*.py</span></code>; <code class="docutils literal notranslate"><span class="pre">image_sims.py</span></code>, <code class="docutils literal notranslate"><span class="pre">workflow/rules/image_sims.smk</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">scripts/calibration/</span></code> steps 4–5; <code class="docutils literal notranslate"><span class="pre">calibration.py</span></code>, <code class="docutils literal notranslate"><span class="pre">catalog_builders.CalibrateCat</span></code>, <code class="docutils literal notranslate"><span class="pre">nz/inputs.py</span></code>, <code class="docutils literal notranslate"><span class="pre">nz/calibration.py</span></code>, <code class="docutils literal notranslate"><span class="pre">nz/pipeline.py</span></code>, <code class="docutils literal notranslate"><span class="pre">nz/ensemble.py</span></code>; <code class="docutils literal notranslate"><span class="pre">config/calibration/</span></code> (<code class="docutils literal notranslate"><span class="pre">mask_*.yaml</span></code>, <code class="docutils literal notranslate"><span class="pre">nz/*.yaml</span></code>); <code class="docutils literal notranslate"><span class="pre">scripts/apply_alpha*.py</span></code>; <code class="docutils literal notranslate"><span class="pre">image_sims.py</span></code>, <code class="docutils literal notranslate"><span class="pre">workflow/rules/image_sims.smk</span></code></p></td>
 <td><p>a <code class="docutils literal notranslate"><span class="pre">cosmo_val/cat_config.yaml</span></code> entry: shear catalogue, PSF and star catalogues, footprint mask, n(z) file and bin column, blind</p></td>
 </tr>
 <tr class="row-even"><td><p><strong>Validate</strong></p></td>
@@ -236,6 +243,23 @@ entry; it never changes validation code.</p>
 <code class="docutils literal notranslate"><span class="pre">scripts/glass_mock/</span></code>, <code class="docutils literal notranslate"><span class="pre">workflow/rules/glass_mock.smk</span></code>) are registered as
 catalogue entries and go through validate exactly as data do. Image
 simulations feed calibrate’s multiplicative bias.</p>
+<section id="redshifts">
+<h2>Redshifts<a class="headerlink" href="#redshifts" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#redshifts'">¶</a></h2>
+<p>The n(z) is calibrated, not validated:</p>
+<ol class="arabic simple">
+<li><p><strong>Assemble</strong> gives each shape its PhotoPipe row (<code class="docutils literal notranslate"><span class="pre">scripts/assembly/</span></code>). ShapePipe v2 and the
+<code class="docutils literal notranslate"><span class="pre">UNIONS.&lt;tile&gt;_ugriz_photoz_ext.cat</span></code> PhotoPipe run both number objects with
+Stephen Gwyn’s DR6 IDs, so the join is exact on (tile, <code class="docutils literal notranslate"><span class="pre">NUMBER</span></code> = <code class="docutils literal notranslate"><span class="pre">SeqNr</span></code>).
+The spectra PhotoPipe matched to those objects on every tile become the
+collection’s spec-z extension, on the same <code class="docutils literal notranslate"><span class="pre">OBJECT_ID</span></code>.</p></li>
+<li><p><strong>Calibrate</strong> runs the SOM recipe (<code class="docutils literal notranslate"><span class="pre">config/calibration/nz/v2.yaml</span></code>,
+<code class="docutils literal notranslate"><span class="pre">scripts/calibration/</span></code> step 5) on that photometry and the spectra
+PhotoPipe matched to the same objects, and writes the n(z) file, its
+realisations and each row’s <code class="docutils literal notranslate"><span class="pre">TOM_BIN_ID</span></code>.</p></li>
+<li><p><strong>Validate</strong> reads the file through <code class="docutils literal notranslate"><span class="pre">shear.redshift_path</span></code> and the bins
+through <code class="docutils literal notranslate"><span class="pre">tomo_bin_col</span></code>.</p></li>
+</ol>
+</section>
 <section id="paths-across-machines">
 <h2>Paths across machines<a class="headerlink" href="#paths-across-machines" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#paths-across-machines'">¶</a></h2>
 <p>Configs name data by root, not by machine. <code class="docutils literal notranslate"><span class="pre">config/data_roots.yaml</span></code> lists,
@@ -290,6 +314,7 @@ with roots; the others move as their data land on a reachable machine.</p></li>
 </div></div><aside class="hidden text-sm xl:block" id="right-sidebar">
 <div class="sticky top-16 -mt-10 max-h-[calc(100vh-5rem)] h-full overflow-y-auto pt-6 space-y-2"><p class="font-medium">On this page</p>
 <ul>
+<li><a :data-current="activeSection === '#redshifts'" class="reference internal" href="#redshifts">Redshifts</a></li>
 <li><a :data-current="activeSection === '#paths-across-machines'" class="reference internal" href="#paths-across-machines">Paths across machines</a></li>
 <li><a :data-current="activeSection === '#where-the-code-does-not-match-yet'" class="reference internal" href="#where-the-code-does-not-match-yet">Where the code does not match yet</a></li>
 </ul>
