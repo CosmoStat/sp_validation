@@ -73,7 +73,6 @@ NOT_COLUMNS = {
     "N_0",
     "N_1",
     "PHOTOPIPE_SEQNR",
-    "Z_B",
     # FITS header keywords
     "EXTNAME",
     "R_S11",
