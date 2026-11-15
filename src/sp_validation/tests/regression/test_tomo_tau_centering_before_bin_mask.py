@@ -84,11 +84,6 @@ def _stars(n=2000, seed=1):
     return st
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="CosmoStat/shear_psf_leakage#52: centring precedes bin masking",
-)
 def test_masked_galaxy_catalog_is_centred_on_bin_mean():
     """A bin's TreeCorr galaxy catalogue must have zero weighted mean e1.
 
@@ -107,11 +102,6 @@ def test_masked_galaxy_catalog_is_centred_on_bin_mean():
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="CosmoStat/shear_psf_leakage#52: full-catalogue mean biases bin tau",
-)
 def test_tomographic_tau0_plus_vanishes_for_bin_constant_ellipticity(tmp_path):
     """TauStat must give tau_0+ = 0 for a bin with constant galaxy e1.
 

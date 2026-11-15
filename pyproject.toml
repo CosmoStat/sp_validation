@@ -81,11 +81,8 @@ dependencies = [
     "sacc>=2.4,<3",
     "scipy",
     "seaborn",
-    # Intentionally tracks the mutable `develop` branch (NOT SHA-pinned):
-    # shear_psf_leakage is actively co-developed CosmoStat code we want to stay
-    # current with, so freezing it would only create bump-churn. (Contrast the
-    # getdist feature-branch below, which is an external fork we pin for repro.)
-    "shear_psf_leakage @ git+https://github.com/CosmoStat/shear_psf_leakage.git@develop",
+    # Centred galaxy-position alpha template (shear_psf_leakage PR #59).
+    "shear_psf_leakage @ git+https://github.com/CosmoStat/shear_psf_leakage.git@d0e10d83ecb1978ed56599f0b46326e3d000680e",
     "skyproj",
     # UNIONS-WL fork of DESC Smokescreen. Tracks the fork's main; uv.lock
     # freezes the exact commit, so updates land via
