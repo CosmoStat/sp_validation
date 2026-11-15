@@ -586,6 +586,31 @@ def record(result, covariance=None):
     return out
 
 
+def additive_bias(e, w, groups=None):
+    """Additive bias of catalogue rows held in memory, with its errors.
+
+    ``e`` (2, n) are the shapes and ``w`` their weights. Returns ``c``, the
+    weighted mean; ``shape_noise``, ``sqrt(sum w^2 (e - c)^2) / sum w``; and
+    with ``groups``, the delete-one-group jackknife ``covariance`` (2, 2) and
+    errors ``jackknife``, over the groups present. On the selected no-shear
+    rows with their weights this is the ``c_e`` of :func:`estimate` and
+    :func:`jackknife`.
+    """
+    e, w = np.asarray(e, dtype=float), np.asarray(w, dtype=float)
+    c = e @ w / w.sum()
+    out = dict(
+        c=c, shape_noise=np.sqrt((w**2 * (e - c[:, None]) ** 2).sum(1)) / w.sum()
+    )
+    if groups is not None:
+        _, group = np.unique(groups, return_inverse=True)
+        sw = np.bincount(group, weights=w)
+        swe = np.array([np.bincount(group, weights=w * x) for x in e])
+        deleted = ((swe.sum(1)[:, None] - swe) / (sw.sum() - sw)).T
+        out["covariance"] = _covariance(deleted)
+        out["jackknife"] = np.sqrt(np.diag(out["covariance"]))
+    return out
+
+
 # Image-simulation shear bias
 
 

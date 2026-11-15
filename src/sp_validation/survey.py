@@ -266,34 +266,6 @@ def ellipticity_dispersion(e1, e2, w):
     )
 
 
-def additive_bias(e1, e2, w, R):
-    """Weighted additive-bias estimates ``(c1, c2)``.
-
-    Returns the weighted mean of the response-corrected ellipticities
-    ``⟨e1 / R⟩`` and ``⟨e2 / R⟩``, weighted by ``w``.
-
-    Parameters
-    ----------
-    e1, e2 : array of float
-        Ellipticity components (before response correction).
-    w : array of float
-        Per-galaxy weights.
-    R : float
-        Multiplicative shear response.
-
-    Returns
-    -------
-    tuple of float
-        ``(c1, c2)`` additive-bias estimates.
-    """
-    e1 = np.asarray(e1, dtype=float)
-    e2 = np.asarray(e2, dtype=float)
-    w = np.asarray(w, dtype=float)
-    c1 = float(np.average(e1 / R, weights=w))
-    c2 = float(np.average(e2 / R, weights=w))
-    return c1, c2
-
-
 def effective_survey_stats(e1, e2, w, area_deg2):
     """Effective survey statistics for a shear catalogue.
 

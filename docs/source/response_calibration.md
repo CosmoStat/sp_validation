@@ -80,6 +80,8 @@ Training counts stay unpooled, and a cell whose pooled n Σ|e|² is zero gets ze
 A table passed as a {class}`~sp_validation.response.Table` stays fixed; the rule `refit(min_count)` refits the table on each deletion's retained training moments, so the error includes the table's own noise.
 A table independent of the catalogue (the data's table, applied to simulations) stays fixed: its training noise is not part of the simulations' error.
 
+`additive_bias(e, w, groups)` gives c of rows held in memory with its shape-noise error √(Σw²(e−c)²)/Σw and its delete-one-group jackknife error; on the selected no-shear rows with their weights it equals c_e and its jackknife from the sums.
+
 ## Catalogue calibration
 
 `calibrate_catalogue(rows, metacal, preselection=, groups=)` runs all of this for a catalogue in memory under a `metacal` config block:

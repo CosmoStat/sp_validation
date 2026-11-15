@@ -19,8 +19,8 @@ from ..b_modes import (
     covariance_label,
     find_conservative_scale_cut_key,
 )
+from ..response import additive_bias
 from ..statistics import chi2_and_pte
-from ..survey import additive_bias
 from ..version import __version__
 from .catalog_characterization import CatalogCharacterizationMixin
 from .cosebis import CosebisMixin
@@ -674,10 +674,17 @@ class CosmologyValidation(
         ``dat_shear`` directly.
 
         Returns one array per key (a bare array, not a 1-tuple, when a single
-        key is requested).
+        key is requested). A column name ``one`` gives unit values, e.g.
+        ``w_col: one`` for unweighted statistics.
         """
+        dat = self.results[ver].dat_shear
         cols = tuple(
-            self.results[ver].dat_shear[self.cc[ver]["shear"][key]] for key in keys
+            (
+                np.ones(len(dat))
+                if self.cc[ver]["shear"][key] == "one"
+                else dat[self.cc[ver]["shear"][key]]
+            )
+            for key in keys
         )
         return cols[0] if len(cols) == 1 else cols
 
@@ -701,7 +708,8 @@ class CosmologyValidation(
             shear = self.cc[ver]["shear"]
             e1, e2 = catalog[shear["e1_col"]], catalog[shear["e2_col"]]
             R1, R2 = self._component_responses(ver, catalog)
-            c1, c2 = additive_bias(e1 / R1, e2 / R2, catalog[shear["w_col"]], 1)
+            w = catalog[shear["w_col"]]
+            c1, c2 = additive_bias(np.array([e1 / R1, e2 / R2]), w)["c"]
         return e1 / R1 - c1, e2 / R2 - c2
 
     def _component_responses(self, ver, catalog=None):

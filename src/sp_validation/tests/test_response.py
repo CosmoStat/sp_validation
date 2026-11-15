@@ -485,3 +485,26 @@ def test_calibrate_catalogue_needs_a_weight_scheme():
     del metacal["weight_scheme"]
     with pytest.raises(ValueError, match="weight_scheme"):
         response.calibrate_catalogue(synthetic(100), metacal)
+
+
+def test_additive_bias_of_rows_is_the_estimate_of_sums():
+    """``additive_bias`` on the selected no-shear rows and their weights gives
+    the ``c_e`` and jackknife of ``estimate`` and ``jackknife`` on the sums."""
+    data = synthetic(3000)
+    cal = response.calibrate_catalogue(data, metacal_block(), groups=data["TILE_ID"])
+    rows = response.additive_bias(cal["g"], cal["w"], data["TILE_ID"][cal["index"]])
+    np.testing.assert_allclose(rows["c"], cal["result"]["c_e"], rtol=1e-12)
+    # A refitted table moves the weights per deletion; with the table fixed the
+    # deleted means are those of the rows. c_e is elements 16, 17 of 20.
+    _, _, fixed_cov = jackknife(cal["sums"], cal["table"])
+    c_e = slice(16, 18)
+    np.testing.assert_allclose(rows["covariance"], fixed_cov[c_e, c_e], rtol=1e-10)
+    np.testing.assert_allclose(
+        rows["jackknife"], np.sqrt(np.diag(fixed_cov[c_e, c_e])), rtol=1e-10
+    )
+    w, e = cal["w"], cal["g"]
+    expected = np.sqrt((w**2 * (e - rows["c"][:, None]) ** 2).sum(1)) / w.sum()
+    np.testing.assert_allclose(rows["shape_noise"], expected)
+    # Unit weights: sigma_e / sqrt(n).
+    flat = response.additive_bias(e, np.ones(len(w)))
+    np.testing.assert_allclose(flat["shape_noise"], e.std(axis=1) / np.sqrt(len(w)))
