@@ -6,6 +6,11 @@
 # nowhere stays `${name}` and fails when opened.
 # The same relative layout must hold under every directory of a root.
 
+# UNIONS data staged on a cluster: v2.x/ (the run-1 collection),
+# photopipe-dr6-specz/.
+unions_data:
+  - /project/rrg-kyi/cdaley/unions/data                                     # fir
+
 # UNIONS v2 releases, one directory per release (v2.0.0/, v2.0.1/, ...), each
 # laid out as on VOSpace (vos:cfis/weak_lensing/ShapePipe/v2.x/): catalogs/,
 # masks/, nz/, data_vector/, blind/. A cat_config entry SP_v<x.y.z> reads

@@ -81,6 +81,8 @@ def _non_path_key(key: str) -> bool:
 def _pathish_value(value: str) -> bool:
     if not value or any(part in value for part in SKIP_VALUE_PARTS):
         return False
+    if value.startswith(("arc:", "vos:", "https://", "http://")):
+        return False
     return (
         value.startswith(("/", "./", "../", "~"))
         or "/" in value
@@ -341,3 +343,9 @@ def test_paths_into_absent_roots_are_skipped():
     assert [(key, value) for key, value, _ in _walk_yaml(entries)] == [
         ("local.path", "/data/local.fits"),
     ]
+
+
+@pytest.mark.parametrize("scheme", ["arc:", "vos:", "https://", "http://"])
+def test_remote_urls_are_not_local_paths(scheme):
+    assert not _pathish_value(f"{scheme}home/masks/manual.hsp")
+    assert _pathish_value("/data/masks/manual.hsp")

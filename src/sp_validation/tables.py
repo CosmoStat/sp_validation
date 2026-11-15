@@ -17,7 +17,8 @@ A table is anything with
 
 ``ArrayTable`` (a numpy structured array or FITS_rec, in memory or
 memory-mapped), ``HDF5Table`` (an h5py compound dataset) and ``ParquetFile``
-store rows; ``ConcatTable`` stacks tables end to end. ``grammar.V2View``
+store rows; ``JoinedFile`` is a HATS extension's pixel file joined to its
+primary's on a key; ``ConcatTable`` stacks tables end to end. ``grammar.V2View``
 presents any of them in the v2 column grammar, and is itself a table.
 """
 
@@ -174,7 +175,8 @@ class ParquetFile:
     every column's statistics (~2 MB each on run1-snap3-hats, GBs over a
     catalogue), so each read parses it afresh, once for all its columns. A
     read touches only the row groups spanning its rows. Null values read as
-    NaN in floating columns and raise in any other.
+    NaN in floating columns (an integer column holding nulls reads as float64,
+    see ``parquet_dtype``), as None in string columns, and raise in any other.
     """
 
     row_major = False
@@ -216,20 +218,89 @@ class ParquetFile:
         columns = {}
         for name in names:
             column = table.column(name)
-            if column.null_count and self.dtype[name].kind != "f":
+            if column.null_count and self.dtype[name].kind not in "fO":
                 raise ValueError(
                     f"Column {name!r} of {self.path} holds nulls, which a"
                     + f" {column.type} numpy column cannot represent"
                 )
-            columns[name] = column.to_numpy()
+            columns[name] = column.to_numpy().astype(self.dtype[name], copy=False)
         return columns
 
 
-def parquet_dtype(schema):
-    """Return the numpy structured dtype of a parquet schema."""
+def parquet_dtype(schema, footers=()):
+    """Return the numpy structured dtype of a parquet schema.
+
+    An integer column holding nulls in any of the files ``footers`` reads as
+    float64, NaN where null, as a float column's nulls do.
+    """
+    nulls = np.zeros(len(schema), np.int64)
+    for footer in footers:
+        for group in range(footer.num_row_groups):
+            row_group = footer.row_group(group)
+            nulls += [
+                row_group.column(i).statistics.null_count for i in range(len(schema))
+            ]
+    kinds = [np.dtype(field.type.to_pandas_dtype()) for field in schema]
     return np.dtype(
-        [(field.name, np.dtype(field.type.to_pandas_dtype())) for field in schema]
+        [
+            (field.name, np.float64 if count and kind.kind in "iu" else kind)
+            for field, kind, count in zip(schema, kinds, nulls, strict=True)
+        ]
     )
+
+
+class JoinedFile:
+    """A HATS extension's pixel file, joined to its primary's on a key.
+
+    ``dtype`` names the extension's own columns. A read returns them for the
+    primary's rows: each row takes the extension row whose join column equals
+    its own (``keys``: this file's join column, the primary's), and a row with
+    none takes null (NaN in a floating column, None in a string column;
+    another column cannot hold null, and a read that needs one raises).
+    ``file`` is ``None`` where the extension has no file for the pixel. An
+    extension may hold the primary's rows in its own order or only some of
+    them; one holding them in the same order is read at the same rows.
+    """
+
+    row_major = False
+    concurrent = True
+
+    def __init__(self, file, primary, keys, dtype):
+        self.file, self.primary, self.keys, self.dtype = file, primary, keys, dtype
+
+    def __len__(self):
+        return len(self.primary)
+
+    def read(self, names, rows=None, out=None):
+        ids = self.primary.read([self.keys[1]], rows)[self.keys[1]]
+        out = _outputs(self.dtype, names, len(ids), out)
+        found = np.zeros(len(ids), bool)
+        if self.file is not None:
+            if len(self.file) == len(self.primary):
+                own = self.file.read([self.keys[0]], rows)[self.keys[0]]
+                if np.array_equal(own, ids):
+                    return self.file.read(names, rows, out)
+            own = self.file.read([self.keys[0]])[self.keys[0]]
+            order = np.argsort(own, kind="stable")
+            at = order[
+                np.minimum(np.searchsorted(own, ids, sorter=order), len(own) - 1)
+            ]
+            found = own[at] == ids
+            columns = self.file.read(names, at[found])
+        missing = ~found
+        for name in names:
+            target = out[name]
+            if missing.any():
+                if target.dtype.kind not in "fO":
+                    raise ValueError(
+                        f"The extension beside {self.primary.path} has no row for"
+                        + f" {missing.sum()} primary rows, and its {target.dtype}"
+                        + f" column {name!r} cannot hold null"
+                    )
+                target[missing] = np.nan if target.dtype.kind == "f" else None
+            if found.any():
+                target[found] = columns[name]
+        return out
 
 
 class ConcatTable:
