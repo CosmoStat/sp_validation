@@ -96,6 +96,22 @@ metacal:
   additive_correction: true # false for constant-shear simulations
 ```
 
+For rows from the catalogue reader (the five `NGMIX_*` metacal branches) and a boolean preselection `keep`:
+
+```python
+import yaml
+from sp_validation import response
+
+with open("config/calibration/mask_v2.0.yaml") as f:
+    metacal = yaml.safe_load(f)["metacal"]
+cal = response.calibrate_catalogue(rows, metacal, preselection=keep, groups=rows["TILE_ID"])
+
+R, c_e = cal["result"]["total"], cal["result"]["c_e"]
+e1, e2 = cal["e"]  # calibrated shapes of the selected rows, rows[cal["index"]]
+w = cal["w"]       # their weights
+labels, deleted, covariance = cal["jackknife"]  # tile jackknife of every estimate
+```
+
 `scripts/calibration/calibrate_comprehensive_cat.py` calls it grouped by `TILE_ID` and writes the cut catalogue (weight column `w_<scheme>`, calibrated `e1`, `e2`), and beside it the response record (`_response.json`, `response.record`), the sums (`_sums.npz`) and, for DES, the table (`_des_weights.fits`).
 The catalogue header declares `WGHTSCH`, `RAPPLIED` and `MEANSUB`; the configured catalogue reader refuses another weight column or a second response for such a catalogue.
 
@@ -114,7 +130,7 @@ Each mean uses the full selected population of its simulation with its own weigh
 
 The simulations take the data's selection and the data's DES table, held fixed: `calibrate_catalogue` refuses a `weight_table` whose cells are not those of the selection's cuts and `des_num_bins`, since an object outside the table's range would otherwise enter every mean with an edge cell's weight.
 A table fitted on the simulations' own shapes correlates the weights with the measured shapes and suppresses the shear: for N objects per cell, a self-fitted table gives m = −1/N where an independent one gives zero.
-`scripts/compute_m_bias_image_sims.py` reads the simulations' `_sums.npz` and writes `m_bias_results.yaml` (`m1`, `m1_err`, …, `mc_covariance`, `covariance_order`); the image-sims workflow's `weight_table` key names the table (`self` and `unit` are diagnostics).
+The image-sims workflow's `im_mbias` rule (`workflow/scripts/im_mbias.py`) reads the simulations' `_sums.npz` and writes `m_bias_results.yaml` (`m1`, `m1_err`, …, `mc_covariance`, `covariance_order`); the workflow's `weight_table` key names the table (`self` and `unit` are diagnostics).
 Residual m is a result, not a correction applied to catalogue shapes.
 
 ## Measuring a variant

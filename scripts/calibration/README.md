@@ -18,8 +18,8 @@ Step 4 writes the cut catalogue `shape_catalog_cut_<shape>.fits` and beside it:
 - `<stem>_response.json`: R, its shear, selection and joint parts, `c_e`,
   `c_g`, the branch populations, and (with `TILE_ID`) the tile-jackknife
   covariance;
-- `<stem>_sums.npz`: the per-tile response sums (`response.Sums`), from which
-  `scripts/compute_m_bias_image_sims.py` measures image-simulation m;
+- `<stem>_sums.npz`: the per-tile response sums (`response.Sums`), from which the
+  image-sims workflow (`workflow/rules/image_sims.smk`) measures m;
 - `<stem>_des_weights.fits`: the DES weight table (`response.write_table`),
   for `weight_scheme: des`.
 

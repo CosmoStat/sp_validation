@@ -1,17 +1,9 @@
 # %%
 # Calibrate comprehensive catalogue
-
-# %%
-from IPython import get_ipython
-
-# %%
-# enable autoreload for interactive sessions
-ipython = get_ipython()
-if ipython is not None:
-    ipython.run_line_magic("reload_ext", "autoreload")
-    ipython.run_line_magic("autoreload", "2")
-    ipython.run_line_magic("reload_ext", "log_cell_time")
-
+#
+# Reads config_mask.yaml from the working directory: the input catalogue
+# (params.input_path), the cuts, and the metacal block of
+# sp_validation.response.calibrate_catalogue.
 
 # %%
 import json
@@ -37,18 +29,8 @@ config = obj.read_config_set_params("config_mask.yaml")
 
 
 # %%
-obj._params
-
-# %%
 # Get data. Set load_into_memory to False for very large files
 dat = obj.read_cat(load_into_memory=False)
-
-# %%
-n_test = -1
-# n_test = 100000
-if n_test > 0:
-    print(f"MKDEBUG testing only first {n_test} objects")
-    dat = dat[:n_test]
 
 
 # ## Masking
@@ -128,11 +110,6 @@ alpha_1, alpha_2 = sp_joint.compute_PSF_leakage(
 # Compute leakage-corrected ellipticities
 e1_leak_corrected = cal["e"][0] - alpha_1 * cat_gal["e1_PSF"]
 e2_leak_corrected = cal["e"][1] - alpha_2 * cat_gal["e2_PSF"]
-
-# %%
-# Get some memory back
-for mask in masks:
-    del mask
 
 # %%
 # Additional quantities

@@ -36,6 +36,9 @@ import common
 
 configfile: "workflow/image_sims/config.yaml"
 
+# The m-bias step is a ``script:`` rule: it imports this checkout's sp_validation.
+common.inject_checkout_pythonpath(config)
+
 
 include: "../rules/image_sims.smk"
 
