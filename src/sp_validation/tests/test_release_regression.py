@@ -7,9 +7,10 @@ released cut catalogue holds from that window, in the same order, with the same
 per-object values. The release preserves input order, so the window's objects
 form one contiguous run of released rows, found by (RA, Dec).
 
-Globally calibrated columns (``e1``, ``e2``, ``w_des``, the leakage-corrected
+Globally calibrated columns (``e1``, ``e2``, the weights, the leakage-corrected
 ellipticities) depend on the whole-survey response and weights, not on the
-window, and are not compared. Everything the release derives object by object
+window, and are not compared; the release's config predates ``weight_scheme``,
+so the test declares DES weights, which leave the selection unchanged. Everything the release derives object by object
 is, including the no-shear reconvolved-PSF size, which the release took from
 ``NGMIX_Tpsf_1P`` (``sp_validation.grammar``).
 
@@ -45,7 +46,6 @@ PER_OBJECT = {
         "snr",
         "e1_uncal",
         "e2_uncal",
-        "w_iv",
         "FLUX_RADIUS",
         "MAGERR_AUTO",
         "NGMIX_T_NOSHEAR",
@@ -91,6 +91,7 @@ def _run_calibration(run_dir):
     window_keys = _window_file(comprehensive)
     config = yaml.safe_load(CONFIG.read_text())
     config["params"]["input_path"] = str(comprehensive)
+    config["metacal"]["weight_scheme"] = "des"
     (run_dir / "config_mask.yaml").write_text(yaml.safe_dump(config))
 
     cwd = os.getcwd()
