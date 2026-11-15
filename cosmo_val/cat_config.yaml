@@ -1110,6 +1110,12 @@ SP_v1.4.6.3_uncal:
   psf:
     path: unions_shapepipe_psf_2024_v1.4.a.fits
     hdu: 1
+  star:
+    ra_col: RA
+    dec_col: Dec
+    e1_col: e1
+    e2_col: e2
+    path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
   patch_number: 100
 SP_v1.4.6.3_uncal_w_iv:
   blind: none
@@ -1126,6 +1132,12 @@ SP_v1.4.6.3_uncal_w_iv:
   psf:
     path: unions_shapepipe_psf_2024_v1.4.a.fits
     hdu: 1
+  star:
+    ra_col: RA
+    dec_col: Dec
+    e1_col: e1
+    e2_col: e2
+    path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
   patch_number: 100
 SP_v1.4.6.3_uncal_w_1:
   blind: none
@@ -1142,6 +1154,12 @@ SP_v1.4.6.3_uncal_w_1:
   psf:
     path: unions_shapepipe_psf_2024_v1.4.a.fits
     hdu: 1
+  star:
+    ra_col: RA
+    dec_col: Dec
+    e1_col: e1
+    e2_col: e2
+    path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
   patch_number: 100
 SP_v1.4.5_uncal:
   blind: none
@@ -1356,6 +1374,59 @@ SP_v2.0.0:
     - MASK_8_Manual
   star:
     path: psf
+    ra_col: RA
+    dec_col: Dec
+    e1_col: e1
+    e2_col: e2
+# A GLASS sky painted on SP_v2.0.0's calibrated sample (sp_validation.mocks.painted),
+# one per seed: ask for SP_v2.0.0_glass_painted_seed<N>. The workflow's
+# glass_paint rules write it into the run directory (catalogue `calibrated`,
+# injection `none`; workflow/README.md). Its blind is a throwaway record in the
+# run directory, drawn there once with
+# `python -m sp_validation.blinding init glass-painted --registry blinds`.
+SP_v2.0.0_glass_painted:
+  blind: blinds/glass-painted.blind.json
+  subdir: results/glass_painted
+  pipeline: SP
+  colour: darkgreen
+  getdist_colour: 0.0, 0.7, 0.0
+  ls: dashed
+  marker: d
+  patch_number: 100
+  cov_th:
+    A: 5223.409980599079
+    n_e: 6.913058645076711
+    sigma_e: 0.2889864879504185
+    sigma_e_convention: per_component
+    n_psf: 0.580817039505617
+  mask: ${unions_v2}/v2.0.0/masks/footprint-nside4096-ring.fits
+  shear:
+    path_template: seed_{seed:05d}/calibrated_none.h5
+    R: 1.0
+    ra_col: RA
+    dec_col: Dec
+    w_col: w_des
+    e1_col: e1
+    e2_col: e2
+    e1_PSF_col: e1_PSF
+    e2_PSF_col: e2_PSF
+    e1_col_corrected: e1_leak_corrected
+    e2_col_corrected: e2_leak_corrected
+    redshift_path: ${unions_v2}/v2.0.0/nz/nz_nontomo.txt
+  psf:
+    path: ${unions_v2}/v2.0.0/catalogs/stars
+    ra_col: RA
+    dec_col: DEC
+    e1_PSF_col: HSM_G1_PSF
+    e2_PSF_col: HSM_G2_PSF
+    e1_star_col: HSM_G1_STAR
+    e2_star_col: HSM_G2_STAR
+    PSF_size: HSM_T_PSF
+    star_size: HSM_T_STAR
+    PSF_flag: HSM_FLAG_PSF
+    star_flag: HSM_FLAG_STAR
+  star:
+    path: ${unions_v2}/v2.0.0/catalogs/psf
     ra_col: RA
     dec_col: Dec
     e1_col: e1

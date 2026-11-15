@@ -1,6 +1,6 @@
 """CLI: two-point statistics (xi, pseudo-Cl, map-Cl) for one GLASS mock.
 
-Thin wrapper around the two-point helpers in ``sp_validation.glass_mock``.
+Thin wrapper around the two-point helpers in ``sp_validation.mocks.glass``.
 """
 
 import argparse
@@ -8,7 +8,7 @@ import argparse
 import numpy as np
 from astropy.io import fits
 
-from sp_validation.glass_mock import (
+from sp_validation.mocks.glass import (
     compute_two_point_cl,
     compute_two_point_cl_map,
     compute_two_point_xi,

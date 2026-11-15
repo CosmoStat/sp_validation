@@ -158,7 +158,7 @@ metacal:
   gal_size_corr_ell: False
 
   # @sc [decision:dr6_catalogue.weights_and_response]
-  # DES case d: one fixed no-shear W, evaluated on each branch's SNR/size.
+  # DES weights: one table fitted on the no-shear branch, evaluated on each
+  # branch's own S/N and size (docs/source/response_calibration.md).
   weight_scheme: des
-  w_col: w_des
   des_num_bins: 20

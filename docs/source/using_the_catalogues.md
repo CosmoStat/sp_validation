@@ -135,21 +135,10 @@ _ = plt.ylabel(r"$\xi_\pm(\theta)$")
 ## 2. Extended catalogue
 
 This catalogue must be **calibrated before use**.
-A cut catalogue containing only per-object R_g and one global selection response does **not** contain enough information to recalibrate a changed sample or weight scheme.
-Use the parent five-branch comprehensive catalogue and `calibration.metacal_from_config` with matching cuts and `weight_scheme: des` (or `iv`).
+A cut catalogue holding per-object R_g and one global selection response cannot recalibrate a changed sample or weight scheme: the selection response of the new population needs the five metacal branches.
+Calibrate from the parent five-branch comprehensive catalogue with {func}`sp_validation.response.calibrate_catalogue`, with the cuts of the new sample and `weight_scheme: des` (or `iv`).
 See [Response definitions](response_calibration.md).
-The historical recipe below is retained only to explain the released columns; its reuse of global R_s after new cuts is not a valid new calibration.
-
-```{tip}
-The `sp_validation` library performs every step below for you:
-{func}`sp_validation.calibration.get_calibrated_m_c` calibrates an in-memory
-catalogue for multiplicative and additive bias, and
-{func}`sp_validation.calibration.get_calibrate_e_from_cat` does the same from a
-catalogue on disk when its stored weight identity matches.
-Unknown/mismatched selection-response metadata is refused, as are changed row counts or weight sums.
-Even a historically zero selection response does not establish that it stays zero after new cuts.
-Neither function reconstructs missing five-branch inputs after new cuts.
-```
+The recipe below explains the released columns; its reuse of a global R_s after new cuts is not a valid new calibration.
 
 ### Open the file
 

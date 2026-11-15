@@ -97,7 +97,6 @@ comprehensive:
     mag: Magnitude.
     MAGERR_AUTO: SExtractor magnitude error.
     FLUX_RADIUS: SExtractor half-light radius [pixel].
-    w_iv: Inverse-variance shape weight.
     e1_PSF: PSF ellipticity e1 at the galaxy position.
     e2_PSF: PSF ellipticity e2 at the galaxy position.
     fwhm_PSF: PSF FWHM at the galaxy position.

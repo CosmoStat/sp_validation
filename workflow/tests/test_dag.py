@@ -8,7 +8,15 @@ from pathlib import Path
 
 import pytest
 import yaml
-from conftest import REPO, UNDECLARED, VERSIONS, _load_module, on_candide, parse_jobs
+from conftest import (
+    REPO,
+    SEEDED,
+    UNDECLARED,
+    VERSIONS,
+    _load_module,
+    on_candide,
+    parse_jobs,
+)
 
 
 @pytest.fixture(scope="module")
@@ -154,6 +162,24 @@ def test_a_blind_flip_reruns_the_catalogues_parts(toy, grids, tmp_path):
         cat_config.write_text(declared)
     assert rules == ["xi"], output
     assert "params have changed" in output.lower(), output
+
+
+def test_a_seed_variant_reads_its_entrys_template(toy, grids):
+    """``<entry>_seed<N>`` measures the catalogue its entry's template names for
+    seed N."""
+    reporting = toy.common.grid_binning(grids["reporting"])
+    part = toy.cosmo_val / f"{SEEDED}_seed3_xi_{reporting}.sacc"
+    catalogue = toy.rundir / "painted" / "seed_00003" / "calibrated_none.h5"
+    catalogue.parent.mkdir(parents=True)
+    catalogue.touch()
+    try:
+        result = toy.snakemake("-n", str(part))
+    finally:
+        catalogue.unlink()
+    assert result.returncode == 0, result.stdout
+    (job,) = parse_jobs(result.stdout)
+    assert job.rule == "xi"
+    assert job.input == ["painted/seed_00003/calibrated_none.h5"], job.input
 
 
 def test_a_launch_stops_on_a_catalogue_declaring_no_blind(toy):

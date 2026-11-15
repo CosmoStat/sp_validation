@@ -2,13 +2,10 @@
 
 import healpy as hp
 import numpy as np
-import pandas as pd
 import pytest
 
 from sp_validation.dashboard.field_maps import (
     leakage_cells,
-    weight_cell_index,
-    weight_grid_edges,
 )
 from sp_validation.dashboard.object_bias import bias_fit, leakage_fit, slopes
 from sp_validation.dashboard.sky import Zenithal, coarsen, footprint_parts, quantity
@@ -93,16 +90,6 @@ def test_size_residual_uses_model_normalised_sum():
     pixels, values = quantity(maps, "dT_over_T", 128)
     np.testing.assert_array_equal(pixels, [0])
     np.testing.assert_allclose(values, [-0.2])
-
-
-def test_weight_cells_match_calibration_binning():
-    """Cell indices reproduce cut_to_bins: right-closed, outside -> last cell."""
-    snr_edges, _ = weight_grid_edges(20, (10, 500), (0.707, 3))
-    rng = np.random.default_rng(1)
-    values = np.concatenate([rng.uniform(5, 700, 2000), snr_edges, [np.nan]])
-    expected = pd.cut(values, snr_edges, labels=False)
-    expected = np.where(np.isnan(expected), 19, expected).astype(int)
-    np.testing.assert_array_equal(weight_cell_index(values.copy(), snr_edges), expected)
 
 
 @pytest.mark.parametrize("rotation", [0.0, 37.0, -80.0])
