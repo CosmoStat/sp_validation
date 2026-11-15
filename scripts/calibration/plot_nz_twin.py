@@ -26,7 +26,15 @@ import yaml
 
 from sp_validation.nz import ensemble
 
-RUNGS = ["representative", "egs", "success", "zp_patch", "zp_map", "zp_ensemble"]
+RUNGS = [
+    "representative",
+    "egs",
+    "gold_independent",
+    "success",
+    "zp_patch",
+    "zp_map",
+    "zp_ensemble",
+]
 ZP = ["zp_patch", "zp_map", "zp_ensemble"]
 MODELS = ["colour", "bpz", "bpz_desi"]
 
@@ -88,7 +96,7 @@ def main(argv=None):
         ax.set_xticks(bins)
         ax.set_xlabel("tomographic bin")
         ax.set_title(f"redshift model: {m}")
-        ax.legend(fontsize=7, loc="lower left")
+        ax.legend(fontsize=7, loc="upper left")
     axes[0].set_ylabel("Δ⟨z⟩ = calibrated − true")
     fig.suptitle("SOM n(z) on the catalogue twin: Δ⟨z⟩ per rung (mean ± scatter)")
     fig.tight_layout()

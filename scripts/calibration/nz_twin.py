@@ -28,6 +28,11 @@ the model now called ``bpz_desi``:
   Prediction: |Δ| ≤ 0.01 under both models, largest in bins 3–4, where EGS's
   deeper g and z put calibrators in different cells from sources of the same
   redshift.
+- ``gold_independent``: ``egs`` (``success`` for ``bpz_desi``) with each
+  bin's gold groups decided by an independent painting of the calibrators
+  (seed + 500), not by the calibrators the bins are weighted with. Not a
+  rung of the data's ladder but a diagnosis of ``egs``: written after
+  ``egs`` came out low in bin 1. Prediction: bin 1 rises by 0.005–0.02.
 - ``success``: ``egs`` without calibrators painted above z = 1.4, where DEEP2
   measures almost nothing; only for ``bpz_desi``, whose library reaches
   beyond DEEP2 (the DEEP2/3 library already has DEEP2's reach: 1.9% of it,
@@ -186,6 +191,7 @@ def main(argv=None):
         default=[
             "representative",
             "egs",
+            "gold_independent",
             "success",
             "zp_patch",
             "zp_map",
@@ -378,6 +384,11 @@ def main(argv=None):
                 ok = zc <= reach if reach and rung != "egs" else np.ones(len(zc), bool)
                 c0 = {k: v[ok] for k, v in dict(cal, z=zc).items()}
                 r0 = twin.recalibrate(config, base, src, c0)
+                if rung == "gold_independent":
+                    zc2 = painted(m, 500 + seed)[1]
+                    c2 = {k: v[ok] for k, v in dict(cal, z=zc2).items()}
+                    gold = twin.recalibrate(config, base, src, c2)["est"]["gold"]
+                    r0 = twin.recalibrate(config, base, src, c0, gold=gold)
                 if not rung.startswith("zp_"):
                     write(rung, m, seed, r0, zs, n_cal=int(ok.sum()))
                     continue
