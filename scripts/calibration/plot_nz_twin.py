@@ -66,7 +66,7 @@ def main(argv=None):
     bins = np.arange(1, len(sigma) + 1)
     print("data σ⟨z⟩", sigma.round(4), " zero-point term alone", sigma_zp.round(4))
 
-    fig, axes = plt.subplots(1, 3, figsize=(14, 4), sharey=True)
+    fig, axes = plt.subplots(1, 3, figsize=(14, 5.5), sharey=True)
     for ax, m in zip(axes, MODELS):
         ax.fill_between(
             bins, -sigma, sigma, step="mid", color="0.88", label="data's ±σ⟨z⟩"
@@ -96,7 +96,7 @@ def main(argv=None):
         ax.set_xticks(bins)
         ax.set_xlabel("tomographic bin")
         ax.set_title(f"redshift model: {m}")
-        ax.legend(fontsize=7, loc="upper left")
+        ax.legend(fontsize=7, loc="upper center", bbox_to_anchor=(0.5, -0.15), ncol=2)
     axes[0].set_ylabel("Δ⟨z⟩ = calibrated − true")
     fig.suptitle("SOM n(z) on the catalogue twin: Δ⟨z⟩ per rung (mean ± scatter)")
     fig.tight_layout()
