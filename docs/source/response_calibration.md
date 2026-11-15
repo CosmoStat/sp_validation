@@ -147,4 +147,16 @@ m_iv = response.shear_bias(iv_pairs, g_in, response.unit_table(table[:2]))
 labels, deleted, covariance = response.shear_bias_jackknife(pairs, g_in, table)
 ```
 
+The response of a subsample, such as a tomographic bin, is the same estimator on the subsample's rows with the full sample's table held fixed, so the weights are those applied to the catalogue:
+
+```python
+sums_bin = response.accumulate(
+    rows, cuts, table[:2], preselection=in_bin, groups=tiles
+)
+result_bin = response.estimate(sums_bin, table)
+labels, deleted, covariance = response.jackknife(sums_bin, table)
+```
+
+The preselection holds the subsample's membership fixed across the five metacal branches: the result includes the response of the metacal cuts and of the weights within the subsample, not the response of whatever assigned the subsample (photometric redshifts, magnitudes measured on the unsheared image).
+
 Zeroing the table selects each branch on its own S/N, so objects that migrate across the range edge under shear contribute to the selection response, as a cut would.
