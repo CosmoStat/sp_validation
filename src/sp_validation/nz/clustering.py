@@ -485,6 +485,39 @@ def candidates(run):
     return arrays["grid"], out
 
 
+def source_slices(cl, cosmo):
+    """n_u b_u of every source sample on the tracers' nominal slices.
+
+    Returns the slice edges ``lo`` and ``hi``, each slice's ``tracer`` and
+    reference ``bias``, ``samples``, ``nb`` (sample, slice) and its jackknife
+    ``rows`` (sample, patch, slice).
+    """
+    data = _data(cl)
+    lo, hi, tracer, nb, rows, bias = [], [], [], [], [], []
+    for name in cl["reference"]["slices"]:
+        m = Measurement(np.load(data / f"xcorr_{name}.npz"), cl["annulus"], cosmo)
+        samples = m.samples[1:]
+        nominal_lo, nominal_hi, _ = cl["reference"]["slices"][name]
+        nominal = (m.edges[:-1] >= nominal_lo - 1e-6) & (
+            m.edges[1:] <= nominal_hi + 1e-6
+        )
+        lo += list(m.edges[:-1][nominal])
+        hi += list(m.edges[1:][nominal])
+        tracer += [name] * int(nominal.sum())
+        nb.append([m.nb(sample)[nominal] for sample in samples])
+        rows.append([m.nb(sample, jk=True)[:, nominal] for sample in samples])
+        bias.append(m.bias()[nominal])
+    return dict(
+        lo=np.array(lo),
+        hi=np.array(hi),
+        tracer=tracer,
+        bias=np.concatenate(bias),
+        samples=samples,
+        nb=np.concatenate(nb, 1),
+        rows=np.concatenate(rows, 2),
+    )
+
+
 def compare(config, cosmo):
     """n(z) b(z) comparisons on the reference slices.
 
@@ -493,24 +526,10 @@ def compare(config, cosmo):
     Fits use the full slice covariance with a finite-patch precision correction.
     """
     cl = config["clustering"]
-    data = _data(cl)
-    lo, hi, tracer, nb, rows, bias = [], [], [], [], [], []
-    for name in cl["reference"]["slices"]:
-        m = Measurement(np.load(data / f"xcorr_{name}.npz"), cl["annulus"], cosmo)
-        bins = m.samples[1:]
-        nominal_lo, nominal_hi, _ = cl["reference"]["slices"][name]
-        nominal = (m.edges[:-1] >= nominal_lo - 1e-6) & (
-            m.edges[1:] <= nominal_hi + 1e-6
-        )
-        lo += list(m.edges[:-1][nominal])
-        hi += list(m.edges[1:][nominal])
-        tracer += [name] * int(nominal.sum())
-        nb.append([m.nb(sample)[nominal] for sample in bins])
-        rows.append([m.nb(sample, jk=True)[:, nominal] for sample in bins])
-        bias.append(m.bias()[nominal])
-    lo, hi = np.array(lo), np.array(hi)
+    s = source_slices(cl, cosmo)
+    lo, hi, tracer, nb, rows = s["lo"], s["hi"], s["tracer"], s["nb"], s["rows"]
+    bias = [s["bias"]]
     z = (lo + hi) / 2
-    nb, rows = np.concatenate(nb, 1), np.concatenate(rows, 2)  # (bin, [patch,] slice)
     grid, cands = candidates(config["output"])
     out = dict(
         z_lo=lo.tolist(),
