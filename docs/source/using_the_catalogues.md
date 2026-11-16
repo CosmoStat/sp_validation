@@ -70,7 +70,7 @@ the response of that sample. Each bin's shear is therefore read as it is, and
 so is the whole catalogue's, which is the union of separately calibrated
 samples rather than one sample calibrated with its own response.
 `catalogs/response.json` records the response of every bin under
-`bins.records["k"]`, says which is applied to which rows, names the weight
+`bins.records["k"]` (the one each row of bin k carries), names the weight
 the responses were measured with (`weights`; the weight column is
 `w_<weights>`), and keeps the whole sample's response at the top level as a
 reported number ([Response per sample](response_calibration.md#response-per-sample)).

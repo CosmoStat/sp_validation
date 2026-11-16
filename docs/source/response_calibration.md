@@ -189,8 +189,8 @@ The release build therefore writes each row's shear calibrated with the response
 
 with g its no-shear shape and R_k, c_k the response and weighted mean no-shear shape of bin k, measured on the bin's rows with the sample's weight table held fixed (as a subsample above).
 Bin 0, the rows in no tomographic bin, is a sample like the others, so every row is calibrated and the weighted mean of `e` over each bin, and over the catalogue, is zero.
-The response record (`catalogs/response.json`) holds every bin's record under `bins` (`{"column": "TOM_BIN_ID", "records": {"0": {...}, "1": {...}, ...}}`, each in the layout of {func}`~sp_validation.response.record`), and `applied` says which response each row carries; with it `g = R_k e + c_k` undoes the calibration.
-The record's top-level R and c_e are the whole sample's: a reported number, not what `e1`, `e2` carry.
+The response record (`catalogs/response.json`) holds every bin's record under `bins` (`{"column": "TOM_BIN_ID", "records": {"0": {...}, "1": {...}, ...}}`, each in the layout of {func}`~sp_validation.response.record`), and a record with `bins` means `e1`, `e2` carry each row's bin's R_k and c_k, so `g = R_k e + c_k` undoes the calibration; a record without `bins` means they carry the top-level R and c_e.
+Beside `bins`, the record's top-level R and c_e are the whole sample's: a reported number, not what `e1`, `e2` carry.
 
 Consumers read the columns: cosmo_val applies no response and subtracts no mean for an entry with a record, whether it measures one bin or the whole catalogue.
 The whole catalogue so read is the union of separately calibrated samples; its statistics differ from those of the sample calibrated with its own R_all by the spread of the bins' responses about R_all, weighted by their shear signal.
