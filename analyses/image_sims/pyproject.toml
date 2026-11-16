@@ -1,0 +1,28 @@
+[project]
+name = "image-sims"
+version = "0.0.1"
+requires-python = ">=3.12"
+dependencies = [
+    "sp-validation",
+    "shapepipe",
+    "snakemake==9.23.1",
+]
+
+[tool.uv]
+required-version = ">=0.12"
+# sp_validation and ShapePipe name cs_util's develop branch by two spellings of one URL.
+override-dependencies = ["cs-util @ git+https://github.com/CosmoStat/cs_util.git@develop"]
+
+[tool.uv.sources]
+sp-validation = { git = "https://github.com/CosmoStat/sp_validation.git", rev = "32e637fa" }
+shapepipe = { git = "https://github.com/CosmoStat/shapepipe.git", rev = "1a9fa243" }
+
+[tool.lightcone.image]
+# The image of the pure_eb project (LightconeResearch/Reproductions): the
+# sp_validation CI image at fefaf005, FROM ShapePipe's image (source-extractor,
+# psfex), plus CosmoCov. Python packages come from this project's lock. Kept
+# identical so its archive, built off Fir, serves here: Fir cannot build images.
+base = "ghcr.io/cosmostat/sp_validation@sha256:d136a922242ab48bd15a1cf281058852cfb96288adfd4253f471831c006a4ff0"
+run-commands = [
+    "git clone -q https://github.com/CosmoLike/CosmoCov.git /opt/CosmoCov && git -C /opt/CosmoCov checkout -q a341942edec0dbe2a4f4a1ea54c81a2a1c888b93 && make -C /opt/CosmoCov/covs cov_curved",
+]

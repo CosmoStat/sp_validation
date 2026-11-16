@@ -1,0 +1,5 @@
+[datalad "dataset"]
+	id = f851ac36-349e-42ca-9511-54f26ef2b461
+[datalad "containers.lc-env-74944f7459471224"]
+	image = .datalad/environments/lc-env-74944f7459471224/image
+	cmdexec = podman run --rm -v {{pwd}}:{{pwd}} -w {{pwd}} docker-archive:{img} {cmd}

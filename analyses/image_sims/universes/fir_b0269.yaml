@@ -1,0 +1,17 @@
+id: fir_b0269
+description: |
+  The first twin: the 25 tiles of the v2 Fir campaign fir-b0269 on a 10″
+  lattice, r 18.5–26.0, Moffat PSFs matched to each CCD's v2 stars. Its
+  15 November 2026 run, outside Lightcone, gave m = (+0.6 ± 8.1, −8.2 ± 4.8)
+  × 10⁻³ with the v2 weight table; this universe reproduces it.
+decisions:
+  field: fir_b0269
+  galaxy_layout: lattice_10arcsec
+  magnitude_range: r18p5_26p0
+  psf_model: moffat_ccd_stars
+  noise_model: gaussian_ccd_rms
+  shear_amplitude: g0p025
+  generator: twin_c90c5b3
+  shapepipe: v2_here
+  selection: v2
+  simulation_weights: v2_table

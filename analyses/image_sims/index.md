@@ -1,0 +1,18 @@
+# image_sims
+
+> **TODO:** this report was scaffolded by `lc init`. It references the
+> analysis elements declared in `astra.yaml` *by path* — figures, decisions,
+> and numbers stay single-sourced in the analysis, so never hard-type a
+> measured value here. Preview with `myst start` (requires the MyST CLI).
+
+## Introduction
+
+TODO: the research question, its context, and why it matters.
+
+## Methods
+
+TODO: describe the approach.
+
+## Results
+
+TODO: present the outputs.
