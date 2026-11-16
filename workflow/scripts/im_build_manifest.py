@@ -209,7 +209,7 @@ def parse_args():
     p.add_argument(
         "--sims-type", required=True, help="'grid' -> _grid_{num} suffix, else _{num}"
     )
-    p.add_argument("--num", required=True, type=int, help="run number")
+    p.add_argument("--num", required=True, help="simulation tag (sim_num), e.g. 1 or 1-psfex")
     p.add_argument(
         "--branch",
         required=True,
