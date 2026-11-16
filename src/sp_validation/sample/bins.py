@@ -23,13 +23,21 @@ hold:
 
 Each bin's response, additive bias and delete-one-tile jackknife covariance
 (``response.record``) go into ``catalogs/response.json`` under ``bins``,
-``{"column": "TOM_BIN_ID", "records": {"1": ..., "2": ...}}``; the rest of
-the file, the whole sample's record, is kept as it is.
-``provenance/bin_response_checks.json`` records what the checks compared.
+``{"column": "TOM_BIN_ID", "records": {"0": ..., "1": ...}}``, bin 0 being
+the galaxies in no bin; the rest of the file, the whole sample's record, is
+kept as it is. ``provenance/bin_response_checks.json`` records what the checks
+compared.
+
+The run then rewrites the catalogue (:func:`recalibrate`): every row gets its
+``TOM_BIN_ID`` from ``nz/tom_bin.parquet`` and the shear of its own bin,
+``e = R_k⁻¹ (g − c_e,k)``, where the sample build wrote ``R⁻¹ (g − c_e)`` with
+the whole sample's. A record with ``bins`` therefore says the catalogue's
+``e1``, ``e2`` carry each row's bin's ``R`` and ``c_e``; one without, the top
+level's.
 
 The run reads, under the release directory, the sample's
-``catalogs/response.json``, ``des_weights.fits`` and ``response_sums.npz``,
-and the n(z) stage's ``nz/tom_bin.parquet`` and
+``catalogs/calibrated``, ``catalogs/response.json``, ``des_weights.fits`` and
+``response_sums.npz``, and the n(z) stage's ``nz/tom_bin.parquet`` and
 ``provenance/nz_som_model.npz``, ``nz_calibration_arrays.npz`` and
 ``nz_recipe.yaml``. It is rerun whenever the bins, the cuts or the weights
 change.
@@ -37,13 +45,17 @@ change.
 
 import argparse
 import json
+import os
+import shutil
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
+import pyarrow as pa
 import pyarrow.parquet as pq
 import yaml
+from hats.io import write_parquet_metadata
 
 from .. import io, response
 from ..assembly.object_id import OBJECT_ID, object_id
@@ -192,11 +204,91 @@ def check_sums(per_bin, release):
         raise ValueError("the bins' sums do not add to catalogs/response_sums.npz")
 
 
+def applied(record, width):
+    """Return the response (``width``, 2, 2) and additive bias (``width``, 2)
+    the catalogue of ``record`` carries for a row of each bin: each bin's own
+    when the record holds ``bins``, else the whole sample's."""
+    if "bins" in record:
+        records = [record["bins"]["records"][str(b)] for b in range(width)]
+    else:
+        records = [record] * width
+    return (
+        np.array([r["R"] for r in records]),
+        np.array([r["c_e"] for r in records]),
+    )
+
+
+def _start_recalibrate(ids, bins, before, after):
+    _state.update(ids=np.load(ids, mmap_mode="r"), bins=np.load(bins, mmap_mode="r"))
+    _state.update(before=before, after=after)
+
+
+def recalibrate(job):
+    """Rewrite one pixel file of the catalogue to ``staged``: each row's
+    ``TOM_BIN_ID`` (0 for one ``nz/tom_bin.parquet`` does not name by object
+    ID), and ``e1``, ``e2`` calibrated
+    with its bin's response and additive bias in place of those the file
+    carries.
+
+    @sc [decision:dr6_catalogue.sample_calibration] each-row-its-bins-response
+    ``e = R_k⁻¹ (g − c_e,k)`` for a row of bin k, with ``g = R e + c_e``
+    recovered from the shear and the calibration the file carries.
+    """
+    path, staged = job
+    table = pq.read_table(path)
+    ids = np.asarray(table[OBJECT_ID].fill_null(-1))
+    at = np.minimum(np.searchsorted(_state["ids"], ids), len(_state["ids"]) - 1)
+    named = _state["ids"][at] == ids
+    tom = np.where(named, _state["bins"][at], 0).astype(_state["bins"].dtype)
+    old = np.asarray(table[COLUMN]) if COLUMN in table.column_names else tom
+    (R_old, c_old), (R_new, c_new) = _state["before"], _state["after"]
+    e = np.array([table["e1"].to_numpy(), table["e2"].to_numpy()])
+    g = np.einsum("nij,jn->in", R_old[old], e) + c_old[old].T
+    e = np.einsum("nij,jn->in", np.linalg.inv(R_new)[tom], g - c_new[tom].T)
+    for name, values in (("e1", e[0]), ("e2", e[1]), (COLUMN, tom)):
+        if name in table.column_names:
+            table = table.drop_columns(name)
+        table = table.append_column(name, pa.array(values))
+    staged.parent.mkdir(parents=True, exist_ok=True)
+    pq.write_table(
+        table, staged, compression="zstd", compression_level=3, row_group_size=100_000
+    )
+    return np.bincount(tom, minlength=len(R_new))
+
+
+def recalibrate_catalogue(release, before, after, workers):
+    """Rewrite the catalogue of ``release`` from the calibration ``before`` to
+    ``after`` (:func:`applied`), with the bins of its ``nz/tom_bin.parquet``.
+    Every file is staged before any is replaced. Returns the rows per bin."""
+    target = release / "catalogs/calibrated"
+    staging = release / "catalogs/calibrated.staging"
+    shutil.rmtree(staging, ignore_errors=True)  # left by an interrupted run
+    staging.mkdir()
+    table = pq.read_table(release / NZ["bins"], columns=[OBJECT_ID, COLUMN])
+    table = table.filter(table[OBJECT_ID].is_valid())
+    ids = np.asarray(table[OBJECT_ID])
+    order = np.argsort(ids)
+    np.save(staging / "ids.npy", ids[order])
+    np.save(staging / "bins.npy", np.asarray(table[COLUMN])[order])
+    files = sorted((target / "dataset").rglob("*.parquet"))
+    jobs = [(path, staging / path.relative_to(target)) for path in files]
+    start = (staging / "ids.npy", staging / "bins.npy", before, after)
+    with ProcessPoolExecutor(
+        workers, initializer=_start_recalibrate, initargs=start
+    ) as pool:
+        rows = sum(pool.map(recalibrate, jobs))
+    for path, staged in jobs:
+        os.replace(staged, path)
+    shutil.rmtree(staging)
+    write_parquet_metadata(target)
+    return rows
+
+
 def run(recipe, output=None, *, workers=1):
     """Measure the response of each bin of the sample of the recipe file
-    ``recipe``, built under its ``output`` directory or under ``output``, and
-    write it into the sample's ``catalogs/response.json``. Returns the
-    ``bins`` entry.
+    ``recipe``, built under its ``output`` directory or under ``output``,
+    write it into the sample's ``catalogs/response.json`` and calibrate each
+    row of the catalogue with its bin's. Returns the ``bins`` entry.
 
     @sc [decision:dr6_catalogue.sample_wide_calibration] bins-on-the-sample-table
     Each bin's sums are those of the sample's rows in the bin, and its
@@ -235,21 +327,27 @@ def run(recipe, output=None, *, workers=1):
     compared = check_bins(ids, bins, release, width)
     check_sums(per_bin, release)
 
+    path = release / "catalogs/response.json"
+    whole = json.loads(path.read_text())
     records = {}
-    for b in range(1, width):
+    for b in range(width):
         _, _, covariance = response.jackknife(per_bin[b], table)
         records[str(b)] = response.record(
-            response.estimate(per_bin[b], table), covariance
+            response.estimate(per_bin[b], table), whole["weights"], covariance
         )
     entry = dict(column=COLUMN, records=records)
-    path = release / "catalogs/response.json"
-    pipeline._dump(path, json.loads(path.read_text()) | dict(bins=entry))
+    after = whole | dict(bins=entry)
+    written = recalibrate_catalogue(
+        release, applied(whole, width), applied(after, width), workers
+    )
+    pipeline._dump(path, after)
     pipeline._dump(
         release / "provenance/bin_response_checks.json",
         dict(
             selected_rows=len(ids),
             without_object_id=int(np.count_nonzero(ids < 0)),
             selected_per_bin=np.bincount(bins, minlength=width),
+            catalogue_rows_per_bin=written,
             bins_match=NZ["bins"],
             **compared,
             sums_add_to="catalogs/response_sums.npz",

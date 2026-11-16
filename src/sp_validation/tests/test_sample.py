@@ -249,11 +249,11 @@ def test_sample_records_its_snapshot_and_an_entry_is_checked_against_it(built):
     target = built["root"] / "release/catalogs/calibrated"
     record = dict(name="snap", tiles=len(TILES), manifest_sha256=built["sha"])
     assert snapshot.recorded(target) == record
-    io.validate_calibrated_entry(dict(path=target, snapshot=record))
-    io.validate_calibrated_entry(dict(path=target))  # nothing expected, no check
+    snapshot.check(dict(path=target, snapshot=record))
+    snapshot.check(dict(path=target))  # nothing expected, no check
     for wrong in (dict(tiles=3), dict(manifest_sha256="0" * 64), dict(name="other")):
         with pytest.raises(ValueError, match="was built from snapshot"):
-            io.validate_calibrated_entry(dict(path=target, snapshot=record | wrong))
+            snapshot.check(dict(path=target, snapshot=record | wrong))
     # A catalogue that records no snapshot fails an entry that expects one.
     with pytest.raises(ValueError, match="was built from snapshot None"):
         snapshot.check(dict(path=built["root"] / "shapes", snapshot=record))

@@ -2,8 +2,9 @@
 
 A synthetic sample (``test_sample``) is given photometry, binned by the n(z)
 stage's own code, and measured per bin by ``sample.bins``. The bins' responses
-must equal the estimator on each bin's rows in memory, and a run whose bins or
-sums are not the release's must fail.
+must equal the estimator on each bin's rows in memory, the catalogue must
+carry each row's bin and the shear calibrated with that bin's response, and a
+run whose bins or sums are not the release's must fail.
 """
 
 import json
@@ -87,8 +88,16 @@ def release(tmp_path_factory):
     shutil.copyfile(root / "nz_run/calibration_arrays.npz", out / bins.NZ["arrays"])
     (out / bins.NZ["recipe"]).write_text(yaml.safe_dump(NZ_CONFIG))
     before = json.loads((out / "catalogs/response.json").read_text())
+    sample = catalogue(out)
     entry = bins.run(built["recipe"], workers=2)
-    return dict(built, data=data, entry=entry, before=before)
+    return dict(built, data=data, entry=entry, before=before, sample=sample)
+
+
+def catalogue(out):
+    """The catalogue's columns, in the order of its files."""
+    files = sorted((out / "catalogs/calibrated/dataset").rglob("*.parquet"))
+    table = pa.concat_tables(pq.read_table(path) for path in files)
+    return {name: table[name].to_numpy() for name in table.column_names}
 
 
 def in_memory_bins(data, out):
@@ -127,7 +136,7 @@ def test_each_bins_response_is_the_estimator_on_its_rows(release):
     assert {k: v for k, v in written.items() if k != "bins"} == release["before"]
     assert written["bins"]["column"] == "TOM_BIN_ID"
     records = written["bins"]["records"]
-    assert sorted(records) == ["1", "2", "3", "4"]
+    assert sorted(records) == ["0", "1", "2", "3", "4"]
     for b, record in records.items():
         sums = response.accumulate(
             data,
@@ -150,9 +159,53 @@ def test_each_bins_response_is_the_estimator_on_its_rows(release):
     checks = json.loads((out / "provenance/bin_response_checks.json").read_text())
     assert checks["without_object_id"] > 0
     assert sum(checks["selected_per_bin"]) == written["selected_rows"]
-    assert checks["selected_per_bin"][1:] == [
-        records[b]["branch_counts"]["ns"] for b in "1234"
+    assert checks["selected_per_bin"] == [
+        records[b]["branch_counts"]["ns"] for b in "01234"
     ]
+
+
+def test_each_row_carries_its_bin_and_the_shear_of_its_bins_response(release):
+    out = release["root"] / "release"
+    before, sample, cat = release["before"], release["sample"], catalogue(out)
+    records = release["entry"]["records"]
+    released = pq.read_table(out / bins.NZ["bins"])
+    binned = dict(
+        zip(released[OBJECT_ID].to_pylist(), released["TOM_BIN_ID"].to_pylist())
+    )
+    tom = np.array([binned.get(i, 0) for i in cat[OBJECT_ID].tolist()])
+    npt.assert_array_equal(cat["TOM_BIN_ID"], tom)
+    assert len(np.unique(tom)) == 5
+    for name in ("RA", "w_des", "NUMBER"):
+        npt.assert_array_equal(cat[name], sample[name])
+
+    # The sample build wrote R⁻¹ (g − c_e) with the whole sample's R and c_e.
+    g = np.array(before["R"]) @ [sample["e1"], sample["e2"]]
+    g += np.array(before["c_e"])[:, None]
+    responses = []
+    for b in range(5):
+        rows = tom == b
+        record = {k: np.array(records[str(b)][k]) for k in ("R", "c_e")}
+        expected = np.linalg.solve(record["R"], g[:, rows] - record["c_e"][:, None])
+        e = np.array([cat["e1"][rows], cat["e2"][rows]])
+        npt.assert_allclose(e, expected, rtol=1e-10, atol=1e-13)
+        # c_e is the bin's weighted mean shape, so its calibrated mean is zero.
+        npt.assert_allclose(
+            np.average(e, weights=cat["w_des"][rows], axis=1), 0, atol=1e-12
+        )
+        responses.append(record["R"][0, 0])
+    assert np.ptp(responses) > 1e-3  # the bins' responses differ
+
+
+def test_a_second_run_leaves_the_catalogue_as_it_is(release, tmp_path):
+    out = tmp_path / "release"
+    shutil.copytree(release["root"] / "release", out)
+    first = catalogue(out)
+    entry = bins.run(release["recipe"], out, workers=2)
+    assert entry == json.loads(json.dumps(release["entry"]))
+    second = catalogue(out)
+    for name in ("e1", "e2"):
+        npt.assert_allclose(second[name], first[name], rtol=1e-10, atol=1e-13)
+    npt.assert_array_equal(second["TOM_BIN_ID"], first["TOM_BIN_ID"])
 
 
 def test_bin_sums_add_to_the_whole_sample(release):
@@ -200,6 +253,7 @@ def mutated(release, tmp_path, change):
     ):
         (tmp_path / name).parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(out / name, tmp_path / name)
+    shutil.copytree(out / "catalogs/calibrated", tmp_path / "catalogs/calibrated")
     change(tmp_path)
     return bins.run(release["recipe"], tmp_path)
 

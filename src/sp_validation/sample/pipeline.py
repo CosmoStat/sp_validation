@@ -426,7 +426,7 @@ def run(recipe, output=None, *, workers=1):
     stages += [_METACAL_STAGE]
     _, _, covariance = response.jackknife(sums, response.refit(min_count))
     result = dict(
-        response.record(estimate, covariance),
+        response.record(estimate, "des", covariance),
         raw_rows=int(flow[0].sum()),
         preselection=int(flow[-2].sum()),
         selected_rows=selected,
