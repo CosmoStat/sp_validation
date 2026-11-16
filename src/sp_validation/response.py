@@ -475,7 +475,8 @@ def accumulate(
         labels present in ``groups``
     sigma_e : float, optional
         ``u = 1 / (2 sigma_e^2 + g1_err^2 + g2_err^2)`` from each branch's own
-        errors; ``None`` makes ``u = 1`` (DES and unit weights)
+        errors, which the rows must carry; ``None`` makes ``u = 1`` (DES and
+        unit weights)
     step : float
         metacal shear step h
 
@@ -486,6 +487,18 @@ def accumulate(
     size, so a table weights each branch at its own coordinates.
     """
     columns = {b: branch_columns(rows, b) for b in BRANCHES}
+    if sigma_e is not None:
+        missing = [
+            f"NGMIX_G{i}_ERR_{SUFFIX[b]}"
+            for b in BRANCHES
+            for i in (1, 2)
+            if f"g{i}_err" not in columns[b]
+        ]
+        if missing:
+            raise ValueError(
+                "Inverse-variance weights need every metacal branch's own shape "
+                f"errors; the rows lack {missing}."
+            )
     if preselection is not None:
         columns = {
             b: {k: v[preselection] for k, v in c.items()} for b, c in columns.items()

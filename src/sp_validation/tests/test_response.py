@@ -179,6 +179,40 @@ def test_estimate_by_hand(sigma_e):
     assert np.all(np.abs(expected_selection) > 1)
 
 
+def test_iv_calibration_weights_each_branch_with_its_own_errors():
+    """IV weights through ``calibrate_catalogue`` take each metacal branch's own
+    shape errors; DES weights run on rows with no-shear errors only, and IV
+    on them names the missing columns."""
+    rows, g, snr, flags, errors, matrix, _, _, cuts = hand_case()
+    metacal = dict(
+        weight_scheme="iv",
+        gal_snr_min=cuts.snr_min,
+        gal_snr_max=cuts.snr_max,
+        gal_rel_size_min=cuts.size_min,
+        gal_rel_size_max=cuts.size_max,
+        gal_size_corr_ell=cuts.size_corr_ell,
+        sigma_eps_prior=0.3,
+        des_num_bins=2,
+    )
+    result = response.calibrate_catalogue(rows, metacal)["result"]
+
+    def mean(b):
+        u = 1 / (2 * 0.3**2 + errors[b][0] ** 2 + errors[b][1] ** 2)
+        keep = flags[b] == 0
+        return np.average(g["ns"][:, keep], axis=1, weights=u[keep])
+
+    expected = np.array([(mean(p) - mean(m)) / 0.02 for p, m in response.PAIRS]).T
+    np.testing.assert_allclose(result["selection"], expected, rtol=1e-12)
+
+    sheared = {f"NGMIX_G{i}_ERR_{SUFFIX[b]}" for b in BRANCHES[1:] for i in (1, 2)}
+    no_shear_only = {k: v for k, v in rows.items() if k not in sheared}
+    response.calibrate_catalogue(
+        no_shear_only, dict(metacal, weight_scheme="des", des_min_count=1)
+    )
+    with pytest.raises(ValueError, match="NGMIX_G1_ERR_1P"):
+        response.calibrate_catalogue(no_shear_only, metacal)
+
+
 def test_unit_table_and_weights():
     rows, g, snr, flags, errors, matrix, edges, table, cuts = hand_case()
     unit = estimate(accumulate(rows, cuts, edges), unit_table(edges))
