@@ -616,7 +616,7 @@ decisions:
       the release build writes the catalogue's one e1, e2 as R_k⁻¹(g − c_k)
       with the response and additive bias of the row's own bin, measured with
       the sample's weight table held fixed. The response record holds every
-      bin's response, says which is applied to which rows, and keeps the
+      bin's response under bins, which means each row carries its bin's, and keeps the
       whole sample's R as a reported number. Consumers read the columns:
       cosmo_val applies no response and subtracts no mean. A statistic of the
       whole catalogue so read is that of the union of separately calibrated
