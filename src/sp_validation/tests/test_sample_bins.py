@@ -89,6 +89,7 @@ def release(tmp_path_factory):
     (out / bins.NZ["recipe"]).write_text(yaml.safe_dump(NZ_CONFIG))
     before = json.loads((out / "catalogs/response.json").read_text())
     sample = catalogue(out)
+    shutil.copytree(out, root / "before_bins")
     entry = bins.run(built["recipe"], workers=2)
     return dict(built, data=data, entry=entry, before=before, sample=sample)
 
@@ -194,6 +195,42 @@ def test_each_row_carries_its_bin_and_the_shear_of_its_bins_response(release):
         )
         responses.append(record["R"][0, 0])
     assert np.ptp(responses) > 1e-3  # the bins' responses differ
+    survey = json.loads((out / "catalogs/survey.json").read_text())
+    sigma_e = np.sqrt(
+        np.sum(cat["w_des"] ** 2 * (cat["e1"] ** 2 + cat["e2"] ** 2))
+        / (2 * np.sum(cat["w_des"] ** 2))
+    )
+    npt.assert_allclose(survey["samples"]["all"]["sigma_e"], sigma_e, rtol=1e-12)
+
+
+def test_an_interrupted_rewrite_is_completed_by_the_next_run(
+    release, tmp_path, monkeypatch
+):
+    """A run stopped while it installs the rewritten files leaves some of the
+    catalogue rewritten and the record not; the next run installs the rest
+    before it reads either."""
+    out = tmp_path / "release"
+    shutil.copytree(release["root"] / "before_bins", out)
+    staging = out / "catalogs/calibrated.staging"
+
+    def stop(release_dir):
+        staged = sorted((staging / "dataset").rglob("*.parquet"))[0]
+        target = out / "catalogs/calibrated" / staged.relative_to(staging)
+        staged.replace(target)
+        raise KeyboardInterrupt
+
+    with monkeypatch.context() as patch:
+        patch.setattr(bins, "install", stop)
+        with pytest.raises(KeyboardInterrupt):
+            bins.run(release["recipe"], out, workers=2)
+    assert "bins" not in json.loads((out / "catalogs/response.json").read_text())
+    entry = bins.run(release["recipe"], out, workers=2)
+    assert entry == json.loads(json.dumps(release["entry"]))
+    assert not staging.exists()
+    done, expected = catalogue(out), catalogue(release["root"] / "release")
+    for name in ("e1", "e2"):
+        npt.assert_allclose(done[name], expected[name], rtol=1e-10, atol=1e-13)
+    npt.assert_array_equal(done["TOM_BIN_ID"], expected["TOM_BIN_ID"])
 
 
 def test_a_second_run_leaves_the_catalogue_as_it_is(release, tmp_path):
@@ -249,6 +286,7 @@ def mutated(release, tmp_path, change):
         "catalogs/response.json",
         "catalogs/des_weights.fits",
         "catalogs/response_sums.npz",
+        "catalogs/survey.json",
         *bins.NZ.values(),
     ):
         (tmp_path / name).parent.mkdir(parents=True, exist_ok=True)

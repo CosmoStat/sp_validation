@@ -33,7 +33,10 @@ The run then rewrites the catalogue (:func:`recalibrate`): every row gets its
 ``e = R_k⁻¹ (g − c_e,k)``, where the sample build wrote ``R⁻¹ (g − c_e)`` with
 the whole sample's. A record with ``bins`` therefore says the catalogue's
 ``e1``, ``e2`` carry each row's bin's ``R`` and ``c_e``; one without, the top
-level's.
+level's. The rewrite is staged whole and then installed with its record
+(:func:`install`), so the record always describes the catalogue beside it.
+The whole sample's statistics in ``catalogs/survey.json`` (σ_e) are then
+taken again from the rewritten shear.
 
 The run reads, under the release directory, the sample's
 ``catalogs/calibrated``, ``catalogs/response.json``, ``des_weights.fits`` and
@@ -62,6 +65,7 @@ from ..assembly.object_id import OBJECT_ID, object_id
 from ..data_roots import load_yaml
 from ..nz import calibration as nz
 from ..nz.inputs import MAGS
+from ..survey import effective_survey_stats
 from . import pipeline, snapshot
 
 COLUMN = "TOM_BIN_ID"
@@ -236,7 +240,10 @@ def recalibrate(job):
     """
     path, staged = job
     table = pq.read_table(path)
-    ids = np.asarray(table[OBJECT_ID].fill_null(-1))
+    ids = object_id(
+        table["TILE_ID"].to_numpy(zero_copy_only=False), table["NUMBER"].to_numpy()
+    )
+    ids = np.asarray(ids.fill_null(-1))
     at = np.minimum(np.searchsorted(_state["ids"], ids), len(_state["ids"]) - 1)
     named = _state["ids"][at] == ids
     tom = np.where(named, _state["bins"][at], 0).astype(_state["bins"].dtype)
@@ -256,14 +263,31 @@ def recalibrate(job):
     return np.bincount(tom, minlength=len(R_new))
 
 
-def recalibrate_catalogue(release, before, after, workers):
-    """Rewrite the catalogue of ``release`` from the calibration ``before`` to
-    ``after`` (:func:`applied`), with the bins of its ``nz/tom_bin.parquet``.
-    Every file is staged before any is replaced. Returns the rows per bin."""
+def install(release):
+    """Install a staged rewrite of the catalogue of ``release``: every staged
+    file over the catalogue's, then the staged record over
+    ``catalogs/response.json``. The record is staged after every file, so a
+    staging directory holding one is a whole rewrite, and installing it again
+    after an interruption completes it."""
     target = release / "catalogs/calibrated"
     staging = release / "catalogs/calibrated.staging"
-    shutil.rmtree(staging, ignore_errors=True)  # left by an interrupted run
+    for staged in sorted((staging / "dataset").rglob("*.parquet")):
+        os.replace(staged, target / staged.relative_to(staging))
+    write_parquet_metadata(target)
+    os.replace(staging / "response.json", release / "catalogs/response.json")
+    shutil.rmtree(staging)
+
+
+def recalibrate_catalogue(release, record, workers):
+    """Rewrite the catalogue of ``release`` from the calibration its
+    ``catalogs/response.json`` records to that of ``record``
+    (:func:`applied`), with the bins of its ``nz/tom_bin.parquet``, and make
+    ``record`` its record (:func:`install`). Returns the rows per bin."""
+    target = release / "catalogs/calibrated"
+    staging = release / "catalogs/calibrated.staging"
     staging.mkdir()
+    width = len(record["bins"]["records"])
+    before = json.loads((release / "catalogs/response.json").read_text())
     table = pq.read_table(release / NZ["bins"], columns=[OBJECT_ID, COLUMN])
     table = table.filter(table[OBJECT_ID].is_valid())
     ids = np.asarray(table[OBJECT_ID])
@@ -272,15 +296,18 @@ def recalibrate_catalogue(release, before, after, workers):
     np.save(staging / "bins.npy", np.asarray(table[COLUMN])[order])
     files = sorted((target / "dataset").rglob("*.parquet"))
     jobs = [(path, staging / path.relative_to(target)) for path in files]
-    start = (staging / "ids.npy", staging / "bins.npy", before, after)
+    start = (
+        staging / "ids.npy",
+        staging / "bins.npy",
+        applied(before, width),
+        applied(record, width),
+    )
     with ProcessPoolExecutor(
         workers, initializer=_start_recalibrate, initargs=start
     ) as pool:
         rows = sum(pool.map(recalibrate, jobs))
-    for path, staged in jobs:
-        os.replace(staged, path)
-    shutil.rmtree(staging)
-    write_parquet_metadata(target)
+    pipeline._dump(staging / "response.json", record)
+    install(release)
     return rows
 
 
@@ -297,6 +324,10 @@ def run(recipe, output=None, *, workers=1):
     """
     config = load_yaml(recipe)
     release = Path(output or config["output"])
+    staging = release / "catalogs/calibrated.staging"
+    if (staging / "response.json").exists():
+        install(release)  # a rewrite an earlier run staged and did not finish
+    shutil.rmtree(staging, ignore_errors=True)
     selection = yaml.safe_load((pipeline.ROOT / config["selection"]).read_text())
     tiles = sorted(snapshot.read(config["snapshot"])["objects"])
     # The collection, so the shapes' rows come with their PhotoPipe extension.
@@ -336,11 +367,16 @@ def run(recipe, output=None, *, workers=1):
             response.estimate(per_bin[b], table), whole["weights"], covariance
         )
     entry = dict(column=COLUMN, records=records)
-    after = whole | dict(bins=entry)
-    written = recalibrate_catalogue(
-        release, applied(whole, width), applied(after, width), workers
+    written = recalibrate_catalogue(release, whole | dict(bins=entry), workers)
+    survey = json.loads((release / "catalogs/survey.json").read_text())
+    data = io.read_catalogue(
+        release / "catalogs/calibrated", columns=["e1", "e2", "w_des"]
     )
-    pipeline._dump(path, after)
+    stats = effective_survey_stats(
+        data["e1"], data["e2"], data["w_des"], survey["area_deg2"]
+    )
+    survey["samples"]["all"] = {name: float(value) for name, value in stats.items()}
+    pipeline._dump(release / "catalogs/survey.json", survey)
     pipeline._dump(
         release / "provenance/bin_response_checks.json",
         dict(
