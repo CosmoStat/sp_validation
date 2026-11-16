@@ -41,13 +41,13 @@ galaxy:
     NGMIX_N_EPOCH: Number of epochs ngmix fit; 0 = never fit.
     NGMIX_MCAL_FLAGS: ngmix metacal fit flags.
     NGMIX_MCAL_TYPES_FAIL: Number of metacal types whose fit failed.
-    NGMIX_G1_ERR_NOSHEAR: Error on g1 of the unsheared fit; inverse-variance weight.
-    NGMIX_G2_ERR_NOSHEAR: Error on g2 of the unsheared fit; inverse-variance weight.
     NGMIX_G1_PSF_ORIG_NOSHEAR: g1 of the original PSF; -10 = no PSF fit.
     NGMIX_G2_PSF_ORIG_NOSHEAR: g2 of the original PSF.
     NGMIX_T_PSF_ORIG_NOSHEAR: Size T of the original PSF.
     NGMIX_G1_NOSHEAR: Ellipticity g1, unsheared image.
     NGMIX_G2_NOSHEAR: Ellipticity g2, unsheared image.
+    NGMIX_G1_ERR_NOSHEAR: Error on g1, unsheared image; inverse-variance weight.
+    NGMIX_G2_ERR_NOSHEAR: Error on g2, unsheared image; inverse-variance weight.
     NGMIX_T_NOSHEAR: Galaxy size T = 2 sigma^2, unsheared image.
     NGMIX_T_ERR_NOSHEAR: Error on T, unsheared image.
     NGMIX_FLUX_NOSHEAR: Flux, unsheared image.
@@ -56,6 +56,8 @@ galaxy:
     NGMIX_T_PSF_RECONV_NOSHEAR: Size T of the reconvolution PSF, unsheared image.
     NGMIX_G1_1P: Ellipticity g1, image sheared by +h along g1.
     NGMIX_G2_1P: Ellipticity g2, image sheared by +h along g1.
+    NGMIX_G1_ERR_1P: Error on g1, image sheared by +h along g1; inverse-variance weight.
+    NGMIX_G2_ERR_1P: Error on g2, image sheared by +h along g1; inverse-variance weight.
     NGMIX_T_1P: Galaxy size T = 2 sigma^2, image sheared by +h along g1.
     NGMIX_T_ERR_1P: Error on T, image sheared by +h along g1.
     NGMIX_FLUX_1P: Flux, image sheared by +h along g1.
@@ -64,6 +66,8 @@ galaxy:
     NGMIX_T_PSF_RECONV_1P: Size T of the reconvolution PSF, image sheared by +h along g1.
     NGMIX_G1_1M: Ellipticity g1, image sheared by -h along g1.
     NGMIX_G2_1M: Ellipticity g2, image sheared by -h along g1.
+    NGMIX_G1_ERR_1M: Error on g1, image sheared by -h along g1; inverse-variance weight.
+    NGMIX_G2_ERR_1M: Error on g2, image sheared by -h along g1; inverse-variance weight.
     NGMIX_T_1M: Galaxy size T = 2 sigma^2, image sheared by -h along g1.
     NGMIX_T_ERR_1M: Error on T, image sheared by -h along g1.
     NGMIX_FLUX_1M: Flux, image sheared by -h along g1.
@@ -72,6 +76,8 @@ galaxy:
     NGMIX_T_PSF_RECONV_1M: Size T of the reconvolution PSF, image sheared by -h along g1.
     NGMIX_G1_2P: Ellipticity g1, image sheared by +h along g2.
     NGMIX_G2_2P: Ellipticity g2, image sheared by +h along g2.
+    NGMIX_G1_ERR_2P: Error on g1, image sheared by +h along g2; inverse-variance weight.
+    NGMIX_G2_ERR_2P: Error on g2, image sheared by +h along g2; inverse-variance weight.
     NGMIX_T_2P: Galaxy size T = 2 sigma^2, image sheared by +h along g2.
     NGMIX_T_ERR_2P: Error on T, image sheared by +h along g2.
     NGMIX_FLUX_2P: Flux, image sheared by +h along g2.
@@ -80,6 +86,8 @@ galaxy:
     NGMIX_T_PSF_RECONV_2P: Size T of the reconvolution PSF, image sheared by +h along g2.
     NGMIX_G1_2M: Ellipticity g1, image sheared by -h along g2.
     NGMIX_G2_2M: Ellipticity g2, image sheared by -h along g2.
+    NGMIX_G1_ERR_2M: Error on g1, image sheared by -h along g2; inverse-variance weight.
+    NGMIX_G2_ERR_2M: Error on g2, image sheared by -h along g2; inverse-variance weight.
     NGMIX_T_2M: Galaxy size T = 2 sigma^2, image sheared by -h along g2.
     NGMIX_T_ERR_2M: Error on T, image sheared by -h along g2.
     NGMIX_FLUX_2M: Flux, image sheared by -h along g2.

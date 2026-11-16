@@ -789,12 +789,6 @@ def test_apply_random_rotation_reproducible_with_seed(cv, cat_and_params):
 def test__measure_pseudo_cl_catalog_end_to_end(cv, tmp_path, monkeypatch):
     """Catalog SACC output retains the unwindowed workspace bandpower window."""
     ver = cv._test_version
-    shear = cv.cc[ver]["shear"]
-    monkeypatch.setattr(
-        cv,
-        "_calibrated_g",
-        lambda ver, cat, tomography=False: (cat[shear["e1_col"]], cat[shear["e2_col"]]),
-    )
     cv.cell_method = "catalog"
     cv._pseudo_cls = {ver: {"tomo_bin_all_tomo_bin_all": {}}}
     saved = {}
@@ -951,7 +945,7 @@ def test_calculate_pseudo_cl_tomography_requires_one_nz_per_bin(cv):
         cv.calculate_pseudo_cl(compute_tomography=True)
 
 
-def test__measure_pseudo_cl_catalog_end_to_end_tomo(cv, tmp_path, monkeypatch):
+def test__measure_pseudo_cl_catalog_end_to_end_tomo(cv, tmp_path):
     """End-to-end catalog path: SACC round-trip of ell + EE/EB/BB.
 
     The catalog method has no random noise debiasing, so it is reproducible to
@@ -959,13 +953,6 @@ def test__measure_pseudo_cl_catalog_end_to_end_tomo(cv, tmp_path, monkeypatch):
     (it drops the BE row); we pin the round-tripped table.
     """
     ver = cv._test_version
-    shear = cv.cc[ver]["shear"]
-    # This round-trip regression pins the historical uncentered input.
-    monkeypatch.setattr(
-        cv,
-        "_calibrated_g",
-        lambda ver, cat, tomography=False: (cat[shear["e1_col"]], cat[shear["e2_col"]]),
-    )
     cv._pseudo_cls = {
         ver: {
             "tomo_bin_1_tomo_bin_1": {},

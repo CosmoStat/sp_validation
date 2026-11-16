@@ -100,10 +100,6 @@ class PSFSystematicsMixin:
 
             # Get the selection for stars
             mask_star = self._get_star_mask(ver)
-            # Each source sample's own calibrated shear
-            shear = self._calibrated_g(
-                ver, open_entry(self.cc[ver]["shear"]), tomography
-            )
 
             tau_tables = []
             tau_covariances = []
@@ -128,7 +124,6 @@ class PSFSystematicsMixin:
                     method=self.cov_estimate_method,
                     cov_rho=self.compute_cov_rho,
                     npatch=self.npatch,
-                    shear=shear,
                 )
                 tau_tables.append((index, tau_stat_handler.tau_stats))
                 tau_covariances.append((index, base_tau))
@@ -329,10 +324,7 @@ class PSFSystematicsMixin:
             with results_obj.temporarily_read_data(selection=selection):
                 # Use the regression primitive, not PSF_leakage: that driver
                 # also fits unrelated 1D models and writes exploratory plots.
-                _, weights = results_obj.get_ellipticity_weights()
-                e = self._calibrated_g(
-                    ver, results_obj._dat, tomography=tomo_bin_id != "all"
-                )
+                e, weights = results_obj.get_ellipticity_weights()
                 x = [
                     results_obj._dat[results_obj._params[key]]
                     for key in ("e1_PSF_col", "e2_PSF_col")

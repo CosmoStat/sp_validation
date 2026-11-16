@@ -245,13 +245,6 @@ if add_cols_pre_cal:
     for key in add_cols_pre_cal:
         ext_cols_pre_cal[key] = dd[key]
 
-# Carry the sheared branches' shape errors when the merge has them: IV
-# calibration weights each branch with its own errors.
-for suffix in ("1P", "1M", "2P", "2M"):
-    for i in (1, 2):
-        if (key := f"NGMIX_G{i}_ERR_{suffix}") in dd.dtype.names:
-            ext_cols_pre_cal[key] = dd[key]
-
 # Flag to cut duplicate objects in overlapping region with neighbouring tiles
 ext_cols_pre_cal["overlap"] = cut_overlap
 add_cols_pre_cal_format["overlap"] = "I"

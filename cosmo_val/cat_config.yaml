@@ -1,9 +1,11 @@
 # One entry per catalogue. `blind:` is `none` (public) or the name of the blind
 # its signal is concealed under (sp_validation.blinding).
-# shear.response names a catalogue's response record (relative to subdir): its
-# e1, e2 carry the record's R, and each sample measured (the whole catalogue or
-# one tomographic bin) is calibrated with its own R from it. A catalogue with no
-# record gives a scalar shear.R, applied to its e1, e2 as they are.
+# shear.response names the response record (relative to subdir) of a catalogue
+# calibrated on disk: its e1, e2 are read as they are, each row already
+# calibrated with the response of the sample it belongs to, and its weight
+# column is w_<weights> of the record, so the entry declares no w_col. A
+# catalogue with no record declares w_col and a scalar shear.R (or DES's R11,
+# R22 columns), with which cosmo_val calibrates it as one sample.
 # cov_th.sigma_e is the per-component dispersion. DES and SP_axel_v0.0
 # preserve their former OneCovariance inputs; their original convention is unknown.
 DES:
@@ -1354,7 +1356,6 @@ SP_v2.0.0:
     response: response.json
     ra_col: RA
     dec_col: Dec
-    w_col: w_des
     e1_col: e1
     e2_col: e2
     e1_PSF_col: e1_PSF

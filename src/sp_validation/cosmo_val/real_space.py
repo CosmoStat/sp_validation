@@ -174,14 +174,12 @@ class RealSpaceMixin:
         """Positions, calibrated shears, weights and bin labels of a version.
 
         All arrays come from the same rows of the version's shear catalogue, as
-        read by ``self.results[ver]``. The shear is that of each sample measured
-        (:meth:`_calibrated_g`): the whole catalogue, or with
-        ``compute_tomography`` each tomographic bin. The bin labels are ``None``
-        unless ``compute_tomography``.
+        read by ``self.results[ver]``. The bin labels are ``None`` unless
+        ``compute_tomography``.
         """
         with self.results[ver].temporarily_read_data():
             dat = self.results[ver].dat_shear
-            g1, g2 = self._calibrated_g(ver, dat, compute_tomography)
+            g1, g2 = self._calibrated_g(ver)
             return {
                 "ra": np.asarray(dat["RA"]),
                 "dec": np.asarray(dat["Dec"]),
@@ -209,11 +207,7 @@ class RealSpaceMixin:
         return jackknife_patch_centers(cat, int(npatch))
 
     def _bin_catalog(self, cols, tomo_bin_id, npatch, patch_centers=None):
-        """TreeCorr catalogue of one tomographic bin (``"all"``: every row).
-
-        The shear is the one :meth:`_shear_columns` calibrated, so ``"all"``
-        takes non-tomographic columns and a bin tomographic ones.
-        """
+        """TreeCorr catalogue of one tomographic bin (``"all"``: every row)."""
         mask = slice(None) if tomo_bin_id == "all" else cols["tomo_bin"] == tomo_bin_id
         return treecorr.Catalog(
             ra=cols["ra"][mask],
