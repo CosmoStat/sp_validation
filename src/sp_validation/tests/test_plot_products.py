@@ -97,7 +97,6 @@ def test_objectwise_compute_uses_regression_not_plot_driver(tmp_path, monkeypatc
     )
     cv = PSFSystematicsMixin()
     cv.print_cyan = lambda *args: None
-    cv._calibrated_g = lambda ver, catalog, tomography: np.zeros((2, 4))
     result = cv._objectwise_leakage_bin(obj, "synthetic", "all", True, "lin")
     assert len(calls) == 1
     assert result["aii_mean"].nominal_value == pytest.approx(0.01)

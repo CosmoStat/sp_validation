@@ -621,10 +621,15 @@ def jackknife(sums, table):
     return sums.labels, deleted, _covariance(vectors)
 
 
-def record(result, covariance=None):
+def record(result, weights, covariance=None):
     """The JSON record of an :func:`estimate`, with its :func:`jackknife`
-    covariance when given (in :data:`ESTIMATES` order, matrices row-major)."""
+    covariance when given (in :data:`ESTIMATES` order, matrices row-major).
+
+    ``weights`` names the weight scheme the response was measured with
+    (``des`` or ``iv``); the catalogue's weight column is ``w_<weights>``.
+    """
     out = dict(
+        weights=weights,
         R=result["total"].tolist(),
         R_shear=result["shear"].tolist(),
         R_selection=result["selection"].tolist(),
@@ -743,58 +748,6 @@ def calibrate(g, result, additive=True):
     if additive:
         g = g - result["c_e"][:, None]
     return np.linalg.solve(result["total"], g)
-
-
-# Samples of a calibrated catalogue
-
-
-def sample_response(record, column=None, value=None):
-    """The 2 × 2 response of one sample in a :func:`record` file's contents.
-
-    Without ``column`` the sample is the whole catalogue (the top-level
-    ``R``). Otherwise it is the rows whose ``column`` equals ``value``, whose
-    record is ``record["bins"]["records"][str(value)]``, with
-    ``record["bins"]["column"]`` naming that column.
-    """
-    if column is None:
-        return np.array(record["R"])
-    bins = record.get("bins", {})
-    if bins.get("column") != column or str(value) not in bins.get("records", {}):
-        raise KeyError(
-            f"The response record holds no response for the sample {column} == "
-            f"{value}; that sample is calibrated with its own response, which the "
-            "release build writes under the record's 'bins'."
-        )
-    return np.array(bins["records"][str(value)]["R"])
-
-
-def recalibrate(e, response, applied=None):
-    """``response^-1 applied e``: shapes ``e`` (2, n) that carry the 2 × 2
-    response ``applied`` (none: raw shapes) calibrated with ``response``
-    instead, before any additive correction."""
-    g = np.asarray(e, dtype=float)
-    if applied is not None:
-        g = np.asarray(applied) @ g
-    return np.linalg.solve(response, g)
-
-
-def calibrated_shear(e, w, response, applied=None):
-    """Calibrated shear of one sample: ``response^-1 applied e`` minus its
-    weighted mean.
-
-    ``e`` (2, n) are the sample's shapes and ``w`` their weights; the shapes
-    carry the 2 × 2 response ``applied`` (none: raw shapes), and ``response``
-    is the sample's own (:func:`sample_response`). A released catalogue's
-    ``e1``, ``e2`` carry the whole sample's ``R``, so the shear of one of its
-    tomographic bins is ``calibrated_shear(e, w, sample_response(record,
-    "TOM_BIN_ID", k), record["R"])``.
-
-    @sc [decision:dr6_catalogue.sample_calibration] per-sample-at-measurement
-    Each sample measured is calibrated with its own response and additive
-    bias.
-    """
-    g = recalibrate(e, response, applied)
-    return g - additive_bias(g, w)["c"][:, None]
 
 
 # A catalogue held in memory

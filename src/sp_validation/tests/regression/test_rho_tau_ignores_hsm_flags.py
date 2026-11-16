@@ -8,7 +8,6 @@ import inspect
 import numpy as np
 from astropy.io import fits
 
-from sp_validation.cosmo_val.core import CosmologyValidation
 from sp_validation.cosmo_val.psf_systematics import PSFSystematicsMixin
 
 VERSION = "SP_synthetic"
@@ -74,9 +73,6 @@ def _write_catalogues(tmp_path):
 
 class _Validation(PSFSystematicsMixin):
     """Minimal host carrying the configuration read by the real entry point."""
-
-    _calibrated_g = CosmologyValidation._calibrated_g
-    _responses = CosmologyValidation._responses
 
     def __init__(self, cc):
         self.cc = cc
@@ -148,7 +144,6 @@ def test_flagged_stars_excluded_from_rho_1_and_tau_2(tmp_path):
                 "w_col": "w_des",
                 "e1_col": "e1",
                 "e2_col": "e2",
-                "R": 1.0,
             },
         },
     }

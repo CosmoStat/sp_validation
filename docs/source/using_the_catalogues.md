@@ -63,16 +63,17 @@ regions around clusters, and so on — are fine. If you need property-dependent
 cuts, recalibrate using the extended catalogue (Section 2).
 
 Tomographic bins are property-dependent samples, and each has its own response.
-From v2.0.0 the release ships it: `e1`, `e2` carry the whole sample's response
-R_all, and `catalogs/response.json` holds R_all (`R`) and, under
-`bins.records["k"]["R"]`, the 2 × 2 response R_k of bin k
-(`TOM_BIN_ID == k`). The shear of bin k is
-
-    g = R_k⁻¹ R_all e − ⟨R_k⁻¹ R_all e⟩_k,
-
-the weighted mean taken over the bin's galaxies with their weights `w_des`
-({func}`sp_validation.response.calibrated_shear`; see
-[Response per sample](response_calibration.md#response-per-sample)).
+From v2.0.0 the release is calibrated per bin: the `e1`, `e2` of a galaxy with
+`TOM_BIN_ID == k` are R_k⁻¹(e − c_k), with the 2 × 2 response R_k and additive
+bias c_k of bin k, and those of a galaxy in no bin (`TOM_BIN_ID == 0`) carry
+the response of that sample. Each bin's shear is therefore read as it is, and
+so is the whole catalogue's, which is the union of separately calibrated
+samples rather than one sample calibrated with its own response.
+`catalogs/response.json` records the response of every bin under
+`bins.records["k"]`, says which is applied to which rows, names the weight
+the responses were measured with (`weights`; the weight column is
+`w_<weights>`), and keeps the whole sample's response at the top level as a
+reported number ([Response per sample](response_calibration.md#response-per-sample)).
 
 ### Open the file and inspect it
 

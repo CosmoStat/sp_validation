@@ -27,8 +27,9 @@ narrative:
     [fitted on the unsheared branch](#decisions.weight_table); the
     [response](#decisions.response_estimator) is the derivative of the
     weighted mean shear it calibrates; the [additive bias](#decisions.additive_bias)
-    is subtracted once; [each sample measured](#decisions.sample_calibration)
-    is calibrated with its own response and additive bias;
+    is subtracted once; [each row](#decisions.sample_calibration)
+    is calibrated in the release with the response and additive bias of its
+    own tomographic bin;
     [errors](#decisions.calibration_uncertainties) are
     tile jackknifes. Image simulations measure the residual multiplicative
     bias m with [the estimator applied to data](#decisions.simulation_shear_bias)
@@ -361,7 +362,9 @@ decisions:
     tags: [calibration]
     rationale: >-
       c_e is the weighted mean of the unsheared, uncalibrated ellipticity
-      over the selected sample, and the calibrated shear is R⁻¹(e − c_e).
+      over a calibrated sample, and its calibrated shear is R⁻¹(e − c_e) with
+      that sample's R (each tomographic bin of the release, see
+      sample_calibration).
       Constant-shear image simulations skip the subtraction, since their mean
       ellipticity is the signal. The error of c_e is reported both as shape
       noise, √(Σ w² (e − c_e)²)/Σ w, and as a delete-one-group jackknife,
@@ -373,8 +376,8 @@ decisions:
     default: global_mean
     options:
       global_mean:
-        label: "One c_e for the catalogue"
-        description: "The catalogue's weighted mean ellipticity is zero by construction."
+        label: "One c_e per calibrated sample"
+        description: "Each calibrated sample's weighted mean ellipticity is zero by construction."
       not_subtracted:
         label: "Leave c in the catalogue"
         description: >-
@@ -382,36 +385,42 @@ decisions:
           constant-shear image simulations (additive_correction: false).
 
   sample_calibration:
-    label: "Each sample calibrated with its own response when it is measured"
+    label: "Each row calibrated with the response of its own sample, in the release"
     tags: [calibration]
     rationale: >-
       The response belongs to a sample, not a galaxy: it is the derivative of
       that sample's weighted mean shear. The v2.0.0 tomographic bins have
       responses 0.855, 0.859, 0.832 and 0.776 against 0.787 for the whole
       sample (measured on data), so the whole sample's response applied to
-      bins 1–3 overestimates their shear by 6–9%. The release keeps e1, e2
-      calibrated with the whole sample's R_all and writes each bin's response
-      into its response record (under bins); cosmo_val calibrates each sample
-      it measures, the whole catalogue or one tomographic bin, with that
-      sample's own R and additive bias: a galaxy of bin k has shear
-      R_k⁻¹ R_all e minus the bin's weighted mean of that quantity
-      (sp_validation.response.calibrated_shear). A tomographic measurement of
-      a bin its record lacks is an error. Owner's decision, 15 November 2026.
+      bins 1–3 overestimates their shear by 6–9%. Every row belongs to
+      exactly one sample by TOM_BIN_ID, bin 0 (rows in no bin) included, and
+      the release build writes the catalogue's one e1, e2 as R_k⁻¹(g − c_k)
+      with the response and additive bias of the row's own bin, measured with
+      the sample's weight table held fixed. The response record holds every
+      bin's response, says which is applied to which rows, and keeps the
+      whole sample's R as a reported number. Consumers read the columns:
+      cosmo_val applies no response and subtracts no mean. A statistic of the
+      whole catalogue so read is that of the union of separately calibrated
+      bins, not of the sample calibrated with its own R. Owner's decision,
+      15 November 2026.
       Values: none.
-    default: per_sample_at_measurement
+    default: calibrate_in_release
     options:
-      per_sample_at_measurement:
-        label: "Per-sample R and c applied by cosmo_val"
-        description: >-
-          One released shear column; every statistic of a sample uses that
-          sample's response from the record.
       calibrate_in_release:
         label: "Per-bin calibrated columns in the release"
         description: >-
           The release ships each galaxy's shear calibrated with its own bin's
-          response. A galaxy then carries one calibration, valid for its bin
-          only, and the whole sample built from such columns is no longer
-          calibrated with its own response.
+          response. A galaxy then carries one calibration, valid for its bin,
+          and the whole catalogue is the union of the calibrated bins rather
+          than a sample calibrated with its own response.
+      per_sample_at_measurement:
+        label: "Per-sample R and c applied by the consumer"
+        description: >-
+          The release ships shear calibrated with the whole sample's R, and
+          every statistic of a sample recalibrates it with that sample's
+          response from the record. Each consumer must then repeat the
+          calibration, and a reader that takes the columns as they are
+          measures a bin with the whole sample's response.
       whole_sample:
         label: "The whole sample's R for every sample"
         description: >-
@@ -458,7 +467,7 @@ outputs:
       Written beside the selected catalogue by
       calibrate_comprehensive_cat.py: the response record (_response.json:
       R, R_shear, R_selection, R_joint, c_e, c_g and their tile-jackknife
-      covariance, and under bins the same record for each tomographic bin),
+      covariance, and the weight scheme it was measured with),
       the per-tile sums (_sums.npz) and the DES weight table
       (_des_weights.fits).
   - id: image_sim_shear_bias

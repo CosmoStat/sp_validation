@@ -41,11 +41,9 @@ NOT_COLUMNS = {
     "R",
     "R11",
     "R22",
-    # FITS header keywords and extensions of calibrated catalogues and tables
+    # FITS header keywords and extensions of DES weight tables
     "DESMERGE",
     "DESNMIN",
-    "MEANSUB",
-    "RAPPLIED",
     "WGHTSCH",
     "WSNRCOL",
     "WSIZDEF",

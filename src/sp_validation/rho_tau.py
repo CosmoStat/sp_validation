@@ -88,15 +88,12 @@ class _CatalogueLoader:
     grammar or the entry's ``column_map``, passes through unchanged. Any other
     (another HDU, HDF5, a v1 or foreign naming convention) is read through
     ``io.Catalogue``, keeping only the configured columns, into a temporary
-    FITS file. ``shear``, when given, is the calibrated shear (2, n) of the
-    shear block's rows in :func:`io.open_entry` order, written in place of its
-    ``e1_col``, ``e2_col``.
+    FITS file.
     """
 
-    def __init__(self, info, params, shear=None):
+    def __init__(self, info, params):
         self._info = info
         self._params = params
-        self._shear = shear
         self._cache = {}
         self._temporary_directory = None
 
@@ -157,16 +154,10 @@ class _CatalogueLoader:
     def __call__(self, block):
         if block not in self._cache:
             entry = self._info[block]
-            io.validate_calibrated_entry(entry)
             with io.Catalogue(
                 entry["path"], hdu=entry.get("hdu"), column_map=entry.get("column_map")
             ) as catalogue:
-                calibrated = block == "shear" and self._shear is not None
-                if (
-                    catalogue.hdu == 1
-                    and not catalogue.table().renames
-                    and not calibrated
-                ):
+                if catalogue.hdu == 1 and not catalogue.table().renames:
                     self._cache[block] = catalogue.path
                 else:
                     if self._temporary_directory is None:
@@ -174,10 +165,6 @@ class _CatalogueLoader:
                             "use the catalogue loader inside a with block"
                         )
                     table = catalogue.read(columns=self._columns(block))
-                    if calibrated:
-                        table = Table(table, copy=False)
-                        table[self._params["e1_col"]] = self._shear[0]
-                        table[self._params["e2_col"]] = self._shear[1]
                     output = Path(self._temporary_directory.name) / f"{block}.fits"
                     with fits.HDUList(
                         [fits.PrimaryHDU(), fits.BinTableHDU(data=table)]
@@ -187,12 +174,11 @@ class _CatalogueLoader:
         return self._cache[block]
 
 
-def get_params_rho_tau(cat, calibrated=False):
+def get_params_rho_tau(cat):
     """Rho/tau parameters for one catalogue-config entry ``cat``.
 
     The jackknife patch count is the entry's ``patch_number``; a missing key
-    raises ``KeyError``. ``calibrated``: the galaxy shear is handed over
-    calibrated, so no per-object response is applied to it.
+    raises ``KeyError``.
     """
     params = {"patch_number": cat["patch_number"]}
     params["ra_PSF_col"] = cat["psf"]["ra_col"]
@@ -214,8 +200,8 @@ def get_params_rho_tau(cat, calibrated=False):
     params["e1_col"] = cat["shear"]["e1_col"]
     params["e2_col"] = cat["shear"]["e2_col"]
     params["tomo_bin_col"] = cat["shear"].get("tomo_bin_col")
-    params["R11"] = None if calibrated else cat["shear"].get("R11")
-    params["R22"] = None if calibrated else cat["shear"].get("R22")
+    params["R11"] = cat["shear"].get("R11")
+    params["R22"] = cat["shear"].get("R22")
 
     return params
 
@@ -232,14 +218,9 @@ def get_rho_tau_w_cov(
     mask_gal=None,
     cov_rho=False,
     ncov=100,
-    shear=None,
     **kwargs,
 ):
-    """Compute rho/tau statistics and, if requested, their covariance.
-
-    ``shear`` is the galaxies' calibrated shear, as :class:`_CatalogueLoader`
-    takes it.
-    """
+    """Compute rho/tau statistics and, if requested, their covariance."""
     if method == "th":
         nbin_ang, nbin_rad = kwargs.get("nbin_ang", 100), kwargs.get("nbin_rad", 200)
         compute_minus = kwargs.get("compute_minus", True)
@@ -253,7 +234,6 @@ def get_rho_tau_w_cov(
             cov_rho=cov_rho,
             mask_star=mask_star,
             mask_gal=mask_gal,
-            shear=shear,
         )
         get_theory_cov(
             config,
@@ -266,7 +246,6 @@ def get_rho_tau_w_cov(
             compute_minus=compute_minus,
             mask_star=mask_star,
             mask_gal=mask_gal,
-            shear=shear,
         )
         return rho_stat_handler, tau_stat_handler
     elif method == "jk":
@@ -282,7 +261,6 @@ def get_rho_tau_w_cov(
             ncov=ncov,
             mask_star=mask_star,
             mask_gal=mask_gal,
-            shear=shear,
         )
     elif method == "sim":
         tau_cov_path = Path(outdir) / f"cov_tau_{base_tau}_th.npy"
@@ -300,7 +278,6 @@ def get_rho_tau_w_cov(
                 cov_rho=cov_rho,
                 mask_star=mask_star,
                 mask_gal=mask_gal,
-                shear=shear,
             )
         else:
             raise ValueError(
@@ -321,7 +298,6 @@ def get_rho_tau(
     mask_gal=None,
     cov_rho=False,
     force_run=False,
-    shear=None,
 ):
     """
     Compute rho and tau statistics for a given version of the catalogue.
@@ -350,13 +326,9 @@ def get_rho_tau(
         If True, compute the covariance of rho statistics.
     force_run : bool, optional
         If True, force the computation even if output files already exist.
-    shear : array-like, optional
-        Calibrated shear (2, n) of the ``shear`` entry's rows, in the order
-        ``io.open_entry`` reads them, used in place of its ``e1_col``,
-        ``e2_col`` and response. If None, those columns are used as they are.
     """
 
-    params = get_params_rho_tau(config[version], calibrated=shear is not None)
+    params = get_params_rho_tau(config[version])
 
     print("Compute Rho and Tau statistics for the version: ", version)
     start_time = time.time()
@@ -370,7 +342,7 @@ def get_rho_tau(
         output=outdir, treecorr_config=treecorr_config, verbose=True
     )
 
-    with _CatalogueLoader(config[version], params, shear) as load:
+    with _CatalogueLoader(config[version], params) as load:
         rho_stats_exists = measurement_matches(rho_path, treecorr_config)
         cov_exists = True if not cov_rho else cov_rho_path.exists()
         need_compute = (not rho_stats_exists) or (not cov_exists) or force_run
@@ -435,7 +407,6 @@ def get_theory_cov(
     compute_minus=True,
     mask_star=None,
     mask_gal=None,
-    shear=None,
 ):
     """
     Compute an analytical estimate of the covariance matrix of rho and tau-statistics.
@@ -445,7 +416,7 @@ def get_theory_cov(
     ``get_rho_tau``.
     """
 
-    params = get_params_rho_tau(config[version], calibrated=shear is not None)
+    params = get_params_rho_tau(config[version])
 
     info = config[version]
 
@@ -458,7 +429,7 @@ def get_theory_cov(
     print("Computing the covariance matrix for the version: ", version)
     start_time = time.time()
 
-    with _CatalogueLoader(info, params, shear) as load:
+    with _CatalogueLoader(info, params) as load:
         cov_tau_th = CovTauTh(
             path_gal=load("shear"),
             path_psf=load("psf"),
@@ -510,7 +481,6 @@ def get_jackknife_cov(
     mask_star=None,
     mask_gal=None,
     force_run=False,
-    shear=None,
 ):
     """
     Compute the covariance matrix of rho and tau-statistics using the jackknife method.
@@ -547,7 +517,7 @@ def get_jackknife_cov(
             tau_stat_handler.load_tau_stats(tau_path.name)
         return rho_stat_handler, tau_stat_handler
 
-    params = get_params_rho_tau(config[version], calibrated=shear is not None)
+    params = get_params_rho_tau(config[version])
     params["patch_number"] = npatch
 
     rho_stat_handler = RhoStat(
@@ -585,7 +555,7 @@ def get_jackknife_cov(
         ]
 
     rho_means = tau_means = None
-    with _CatalogueLoader(config[version], params, shear) as load:
+    with _CatalogueLoader(config[version], params) as load:
         for i in range(ncov):
             if not all(os.path.exists(chunk) for chunk in chunks(i)):
                 print(f"Computing rho-statistics for {version} (patch {i + 1}/{ncov})")

@@ -156,18 +156,11 @@ add_cols_data["e1_leak_corrected"] = e1_leak_corrected
 add_cols_data["e2_leak_corrected"] = e2_leak_corrected
 
 # %%
-# FITS header: the configuration, the masks, and the calibration contract
-# (weight scheme, response applied, additive bias subtracted).
+# FITS header: the configuration and the masks.
 header = fits.Header()
 obj.add_params_to_FITS_header(header, cm=cm)
 for my_mask in masks:
     my_mask.add_summary_to_FITS_header(header)
-header["WGHTSCH"] = (scheme, "weight scheme of the response and w column")
-header["RAPPLIED"] = (True, "e1, e2 carry the inverse response")
-header["MEANSUB"] = (
-    cm.get("additive_correction", True),
-    "e1, e2 have c_e subtracted",
-)
 
 # %%
 output_shape_cat_path = obj._params["input_path"].replace("comprehensive", "cut")
@@ -191,12 +184,12 @@ cat.write_shape_catalog(
 
 # %%
 # Products beside the catalogue: the response record (with its tile-jackknife
-# covariance), the per-tile sums the image-simulation m reads, and the DES
-# weight table.
+# covariance and the weights it was measured with, the catalogue's w_<scheme>),
+# the per-tile sums the image-simulation m reads, and the DES weight table.
 stem = output_shape_cat_path.removesuffix(".fits")
 covariance = cal["jackknife"][2] if "jackknife" in cal else None
 with open(f"{stem}_response.json", "w") as f:
-    json.dump(response.record(cal["result"], covariance), f, indent=2)
+    json.dump(response.record(cal["result"], scheme, covariance), f, indent=2)
 cal["sums"].save(f"{stem}_sums.npz")
 if scheme == "des":
     response.write_table(f"{stem}_des_weights.fits", cal["table"])

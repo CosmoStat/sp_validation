@@ -97,34 +97,7 @@ def _spectra(part, bins=(0, 0)):
     return {"ELL": ell, "EE": ee, "EB": eb, "BE": eb.copy(), "BB": bb}
 
 
-class _ShearCatalogue:
-    """Override shear columns without modifying the source catalogue."""
-
-    def __init__(self, catalog, columns):
-        self.catalog = catalog
-        self.columns = columns
-
-    def __getitem__(self, key):
-        if isinstance(key, str):
-            if key in self.columns:
-                return self.columns[key]
-            return self.catalog[key]
-        return _ShearCatalogue(
-            self.catalog[key],
-            {name: value[key] for name, value in self.columns.items()},
-        )
-
-
 class PseudoClMixin:
-    def _pseudo_cl_catalogue(self, ver, tomography=False):
-        """Read the catalogue with the same calibrated shear used for ξ±: the
-        whole catalogue's, or with ``tomography`` each bin's own
-        (:meth:`_calibrated_g`)."""
-        catalog = open_entry(self.cc[ver]["shear"])
-        g1, g2 = self._calibrated_g(ver, catalog, tomography)
-        shear = self.cc[ver]["shear"]
-        return _ShearCatalogue(catalog, {shear["e1_col"]: g1, shear["e2_col"]: g2})
-
     # ---------------- Pseudo-Cl properties ---------------- #
     @property
     def pseudo_cls(self):
@@ -253,7 +226,7 @@ class PseudoClMixin:
         )
 
         # Load data and create shear and noise maps
-        cat_gal = self._pseudo_cl_catalogue(ver, tomography=tomo_bin_a != "all")
+        cat_gal = open_entry(self.cc[ver]["shear"])
 
         # Get the tomographic bin
         cat_gal_a = self._get_tomographic_bin(params, cat_gal, tomo_bin_a)
@@ -342,7 +315,7 @@ class PseudoClMixin:
         params = get_params_rho_tau(self.cc[ver])
 
         # Load data and create shear and noise maps
-        cat_gal = self._pseudo_cl_catalogue(ver, tomography=tomo_bin_a != "all")
+        cat_gal = open_entry(self.cc[ver]["shear"])
 
         ell_eff, cl_shear, wsp = self.get_pseudo_cls_catalog(
             catalog=cat_gal, params=params, tomo_bin_a=tomo_bin_a, tomo_bin_b=tomo_bin_b
@@ -461,7 +434,7 @@ class PseudoClMixin:
             self.print_cyan(f"Method used: {self.noise_bias_method}")
 
             params = get_params_rho_tau(self.cc[ver])
-            cat_gal = self._pseudo_cl_catalogue(ver, compute_tomography)
+            cat_gal = open_entry(self.cc[ver]["shear"])
 
             lmin, lmax, b_lmax = spv_pseudo_cl.pseudo_cl_geometry(self.nside)
             b = self.get_namaster_bin(lmin, lmax, b_lmax)

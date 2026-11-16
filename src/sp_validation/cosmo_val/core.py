@@ -20,7 +20,6 @@ from ..b_modes import (
     covariance_label,
     find_conservative_scale_cut_key,
 )
-from ..response import calibrated_shear, sample_response
 from ..statistics import chi2_and_pte
 from ..version import __version__
 from .catalog_characterization import CatalogCharacterizationMixin
@@ -410,9 +409,10 @@ class CosmologyValidation(
                         str(path) if path.is_absolute() else str(subdir / path)
                     )
             # A shear block's response record sits beside its catalogue.
-            shear = cc[ver].get("shear")
-            if isinstance(shear, dict) and "response" in shear:
-                shear["response"] = str(subdir / shear["response"])
+            if "response" in cc[ver].get("shear", {}):
+                cc[ver]["shear"]["response"] = str(
+                    subdir / cc[ver]["shear"]["response"]
+                )
             # A psf block's mask config is a config file, not data: relative
             # to the catalogue config, not to subdir.
             psf = cc[ver].get("psf")
@@ -424,6 +424,12 @@ class CosmologyValidation(
             for key, value in cc[ver].items():
                 if key not in ("subdir", "blind"):
                     cc[ver][key] = localise(value)
+            # The weight a record's response was measured with is the
+            # catalogue's statistic weight.
+            if "response" in cc[ver].get("shear", {}):
+                with open(cc[ver]["shear"]["response"]) as f:
+                    weights = json.load(f)["weights"]
+                cc[ver]["shear"]["w_col"] = f"w_{weights}"
 
         resolve_paths_for_version("nz")
         processed = {"nz"}
@@ -679,70 +685,34 @@ class CosmologyValidation(
         ``dat_shear`` directly.
 
         Returns one array per key (a bare array, not a 1-tuple, when a single
-        key is requested). A column name ``one`` gives unit values, e.g.
-        ``w_col: one`` for unweighted statistics.
+        key is requested).
         """
-        dat = self.results[ver].dat_shear
         cols = tuple(
-            (
-                np.ones(len(dat))
-                if self.cc[ver]["shear"][key] == "one"
-                else dat[self.cc[ver]["shear"][key]]
-            )
-            for key in keys
+            self.results[ver].dat_shear[self.cc[ver]["shear"][key]] for key in keys
         )
         return cols[0] if len(cols) == 1 else cols
 
-    def _calibrated_g(self, ver, catalog, tomography=False):
-        """Calibrated shear ``(g1, g2)`` of every row of ``catalog``.
+    def _calibrated_g(self, ver):
+        """Calibrated shear components ``(g1, g2)`` for a catalog version.
 
-        ``catalog`` maps the entry's column names to arrays: rows of the
-        version's shear catalogue. Each sample measured is calibrated with its
-        own response and additive bias
-        (:func:`sp_validation.response.calibrated_shear`). Without
-        ``tomography`` the sample is every row of ``catalog``; with it, each
-        tomographic bin (``tomo_bin_col`` equal to k > 0) is a sample, and a
-        row in no bin has NaN shear.
+        A catalogue with a response record (``shear.response``) is calibrated
+        on disk, and its ``e1_col``, ``e2_col`` are returned as they are. Any
+        other is calibrated here as one sample, ``g = (e − c) / R``, with ``c``
+        its weighted mean shape (:meth:`calculate_additive_bias`) and ``R`` the
+        mean of per-object ``R11``/``R22`` columns (DES) or the scalar ``R``.
+
+        Must be called inside a ``self.results[ver].temporarily_read_data()``
+        context, since it reads ``dat_shear`` columns.
         """
         shear = self.cc[ver]["shear"]
-        e = np.array([catalog[shear["e1_col"]], catalog[shear["e2_col"]]], float)
-        w = (
-            np.ones(e.shape[1])
-            if shear["w_col"] == "one"
-            else np.asarray(catalog[shear["w_col"]])
-        )
-        if not tomography:
-            return calibrated_shear(e, w, *self._responses(ver, catalog))
-        tomo_bin = np.asarray(catalog[shear["tomo_bin_col"]])
-        g = np.full_like(e, np.nan)
-        for b in np.unique(tomo_bin[tomo_bin > 0]):
-            rows = tomo_bin == b
-            g[:, rows] = calibrated_shear(
-                e[:, rows], w[rows], *self._responses(ver, catalog, b, rows)
-            )
-        return g
-
-    def _responses(self, ver, catalog, tomo_bin="all", rows=slice(None)):
-        """``(response, applied)`` of one sample: its own 2 × 2 response, and
-        the one the catalogue's ``e1``, ``e2`` already carry.
-
-        An entry with a response record (``shear.response``) takes both from
-        it: ``applied`` is the whole sample's ``R``, ``response`` that of the
-        sample (:func:`sp_validation.response.sample_response`). An entry with
-        per-object ``R11``, ``R22`` columns takes their mean over the sample's
-        ``rows`` of ``catalog``; any other its scalar ``R``. Their ``e1``,
-        ``e2`` carry no response.
-        """
-        shear = self.cc[ver]["shear"]
+        e1, e2 = self._read_shear_cols(ver, "e1_col", "e2_col")
         if "response" in shear:
-            with open(shear["response"]) as f:
-                record = json.load(f)
-            column = None if tomo_bin == "all" else shear["tomo_bin_col"]
-            return sample_response(record, column, tomo_bin), record["R"]
+            return e1, e2
         if "R11" in shear:
-            R = [np.mean(np.asarray(catalog[shear[k]])[rows]) for k in ("R11", "R22")]
-            return np.diag(R), None
-        return shear["R"] * np.eye(2), None
+            R1, R2 = (np.mean(self._read_shear_cols(ver, k)) for k in ("R11", "R22"))
+        else:
+            R1 = R2 = shear["R"]
+        return (e1 - self.c1[ver]) / R1, (e2 - self.c2[ver]) / R2
 
     @property
     def colors(self):

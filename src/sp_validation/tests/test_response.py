@@ -491,7 +491,8 @@ def test_calibrate_catalogue(tmp_path, scheme):
     # A self-fitted table is refitted on every deletion.
     rule = refit(3) if scheme == "des" else cal["table"]
     np.testing.assert_allclose(cov, jackknife(cal["sums"], rule)[2])
-    record = response.record(result, cov)
+    record = response.record(result, metacal["weight_scheme"], cov)
+    assert record["weights"] == metacal["weight_scheme"]
     assert record["R"] == result["total"].tolist()
     assert record["covariance_order"] == list(ESTIMATES)
     sim = response.calibrate_catalogue(

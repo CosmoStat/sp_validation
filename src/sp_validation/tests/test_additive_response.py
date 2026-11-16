@@ -30,6 +30,7 @@ def test_des_additive_bias_producer_to_consumer():
     }
     obj.print_start = obj.print_done = obj.print_magenta = lambda *args: None
     obj.calculate_additive_bias()
-    np.testing.assert_allclose([obj.c1["DES"], obj.c2["DES"]], [0.04 / 0.8, 0.12 / 0.7])
-    g = obj._calibrated_g("DES", data)
+    np.testing.assert_allclose([obj.c1["DES"], obj.c2["DES"]], [0.04, 0.12])
+    g = np.array(obj._calibrated_g("DES"))
+    np.testing.assert_allclose(g[:, 0], [0.08 / 0.8, -0.04 / 0.7])
     np.testing.assert_allclose(np.average(g, axis=1, weights=data["w"]), 0, atol=1e-16)
