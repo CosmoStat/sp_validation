@@ -1,0 +1,7 @@
+sp\_validation.nz.modes
+-----------------------
+
+.. automodule:: sp_validation.nz.modes
+   :members:
+   :show-inheritance:
+   :undoc-members:

@@ -16,4 +16,5 @@ Submodules
    sp_validation.nz.calibration
    sp_validation.nz.ensemble
    sp_validation.nz.inputs
+   sp_validation.nz.modes
    sp_validation.nz.pipeline
