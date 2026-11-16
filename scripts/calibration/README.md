@@ -166,8 +166,14 @@ are reduced to sums per (tile, bin) and cell, and the run stops unless
 Each bin's R, its shear and selection parts, `c_e`, the branch populations
 and their delete-one-tile jackknife covariance (`response.record`) go into
 `catalogs/response.json` under `bins`:
-`{"column": "TOM_BIN_ID", "records": {"1": {...}, ..., "4": {...}}}`; the
-rest of the file is the whole sample's record, unchanged.
+`{"column": "TOM_BIN_ID", "records": {"0": {...}, ..., "4": {...}}}`, bin 0
+being the galaxies in no bin; the rest of the file is the whole sample's
+record, unchanged. The run then rewrites `catalogs/calibrated`: every row
+gets its `TOM_BIN_ID` from `nz/tom_bin.parquet` and `e1`, `e2` calibrated with
+its own bin's R and `c_e` in place of the whole sample's, and the whole
+sample's σ_e in `catalogs/survey.json` is taken again. The rewrite is staged
+whole and installed together with the record, and an interrupted run is
+completed by the next.
 `provenance/bin_response_checks.json` records what the checks compared and is
 written last. The response of the bin assignment itself is not included:
 the photometry has no sheared versions.

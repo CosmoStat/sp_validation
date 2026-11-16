@@ -54,8 +54,9 @@ rule calibrated_sample:
 
 rule bin_responses:
     """Measure the response of each tomographic bin with the sample's cuts and
-    weights, check the bins and sums against the release's, and write the
-    records into catalogs/response.json (sp_validation.sample.bins)."""
+    weights, check the bins and sums against the release's, write the records
+    into catalogs/response.json and rewrite catalogs/calibrated with each row's
+    bin and the shear of its bin's response (sp_validation.sample.bins)."""
     input:
         recipe=CALIBRATE_RECIPE,
         sample=rules.calibrated_sample.output.done,
@@ -64,9 +65,9 @@ rule bin_responses:
         arrays=f"{CALIBRATE_OUT}/provenance/nz_calibration_arrays.npz",
         nz_recipe=f"{CALIBRATE_OUT}/provenance/nz_recipe.yaml",
     output:
-        # Written last. catalogs/response.json, which the run rewrites, is not
-        # declared: Snakemake removes a job's declared outputs before it runs,
-        # and the file holds the whole sample's record.
+        # Written last. catalogs/response.json and catalogs/calibrated, which
+        # the run rewrites, are not declared: Snakemake removes a job's declared
+        # outputs before it runs, and the run reads both.
         checks=f"{CALIBRATE_OUT}/provenance/bin_response_checks.json",
     params:
         script=_REPO / "scripts/calibration/bin_responses.py",

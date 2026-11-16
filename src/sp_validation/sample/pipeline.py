@@ -23,16 +23,17 @@ Products, under the output directory, laid out as a release:
   properties recording the snapshot (:mod:`.snapshot`);
 - ``catalogs/response.json``: ``R`` and its shear and selection parts, the
   additive bias, the branch populations, their jackknife covariance
-  (``response.record``) and the row counts; :mod:`.bins` adds the same record
-  for each tomographic bin under ``bins``, once the n(z) stage has assigned
-  them;
+  (``response.record``) and the row counts. Once the n(z) stage has assigned
+  the tomographic bins, :mod:`.bins` adds each bin's record under ``bins``
+  and rewrites the catalogue's ``e1``, ``e2`` with each row's bin's;
 - ``catalogs/des_weights.fits``: the weight table (``response.write_table``,
   read by ``response.read_table``);
 - ``catalogs/response_sums.npz``: the sums themselves, grouped by
   ``TILE_KEY`` (``response.Sums.save``), from which any table's response,
   additive bias and jackknife follow without the catalogue;
 - ``catalogs/survey.json`` and ``masks/footprint-nside<N>-ring.fits``: area,
-  n_eff and σ_e, and the occupied pixels they are taken over;
+  n_eff and σ_e, and the occupied pixels they are taken over (:mod:`.bins`
+  takes σ_e again from the shear it rewrites);
 - ``catalogs/config_mask.yaml`` and ``provenance/calibrated_recipe.yaml``: the
   selection config and the recipe, byte for byte;
 - ``provenance/calibrated_tile_accounting.json``: rows of every snapshot tile

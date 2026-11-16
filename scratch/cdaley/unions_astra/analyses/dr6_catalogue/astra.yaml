@@ -18,9 +18,10 @@ narrative:
   methods: |
     The build reads a [whole snapshot and records it](#decisions.snapshot_record),
     cuts tile overlaps against [every tile of the snapshot](#decisions.overlap_cut),
-    applies the [selection](#decisions.selection_cuts), calibrates with
-    [one weight table and one response for the whole sample](#decisions.sample_wide_calibration),
-    subtracts [one additive bias](#decisions.additive_bias) and applies
+    applies the [selection](#decisions.selection_cuts), weights with
+    [one table fitted on the whole sample](#decisions.sample_wide_calibration),
+    calibrates [each row with the response and additive bias of its own tomographic bin](#decisions.sample_calibration)
+    once the n(z) stage has assigned the bins, and applies
     [no object-wise leakage correction](#decisions.leakage_correction), as
     [a rule of the Snakemake workflow](#decisions.orchestrator). The
     survey area is that of the [occupied pixels](#decisions.footprint). The
@@ -193,13 +194,14 @@ decisions:
         description: "Removes about 13% of the area; Paper III found the masking added B-modes in v1."
 
   sample_wide_calibration:
-    label: "One weight table and one response for the whole sample"
+    label: "One weight table for the whole sample, held fixed for every bin"
     tags: [calibration]
     rationale: >-
-      The sample is calibrated as one population: one weight table
-      (decision weight_table), one response (decision response_estimator)
-      and one additive bias (decision additive_bias), fitted on every
-      selected galaxy of the snapshot, not per region or per tomographic bin.
+      The sample is weighted as one population: one weight table
+      (decision weight_table), fitted on every selected galaxy of the
+      snapshot, not per region or per tomographic bin. The whole sample's
+      response (decision response_estimator) and additive bias (decision
+      additive_bias) are measured with it and recorded.
       Because a weight depends on a galaxy only through its (S/N, size)
       cell, the table, the response and their tile jackknife follow from
       per-(tile, cell) sums that add over chunks of the catalogue, so the
@@ -209,23 +211,20 @@ decisions:
       the release ships: after the n(z) stage, each tomographic bin's R, c_e
       and tile jackknife with the sample's table held fixed, bin membership
       held fixed across the metacal branches (sp_validation.sample.bins,
-      catalogs/response.json under bins).
+      catalogs/response.json under bins), and each row's shear is calibrated
+      with its bin's (decision sample_calibration).
       Values: none.
     default: one_for_the_sample
     options:
       one_for_the_sample:
-        label: "One table and one R for the sample"
-        description: "Every galaxy is calibrated by the sample's mean response."
+        label: "One table for the sample"
+        description: "Every galaxy is weighted by the sample's table; the response of any subsample is measured with it."
       refit_per_region:
         label: "Table and response per region"
         description: "Follows depth variations, at the cost of noisier tables and a response that differs across the footprint."
-      per_tomographic_bin:
-        label: "Response per tomographic bin"
-        description: >-
-          With bin membership held fixed across the metacal branches, the
-          v2.0.0 bins 1–4 have R/R_sample = 1.086, 1.092, 1.057, 0.987
-          (± 0.0004; measured on data, 15 November 2026), so one R
-          miscalibrates each bin by up to 9%.
+      refit_per_tomographic_bin:
+        label: "Table per tomographic bin"
+        description: "A galaxy's weight would then depend on its bin, and the bins on the weights the n(z) stage reads."
 
   response_estimator:
     label: "Metacalibration response of the weighted mean"
@@ -354,7 +353,7 @@ decisions:
         description: "Moves m by up to 0.86σ for no gain in stability (measured on image simulations)."
 
   additive_bias:
-    label: "Additive bias subtracted once for the catalogue"
+    label: "Additive bias subtracted once per calibrated sample"
     tags: [calibration]
     rationale: >-
       c_e is the weighted mean of the unsheared, uncalibrated ellipticity
@@ -654,12 +653,15 @@ outputs:
     decisions:
       [snapshot_record, overlap_cut, selection_cuts, sample_wide_calibration,
        response_estimator, galaxy_weights, weight_table,
-       additive_bias, leakage_correction, catalogue_match_tile_selection,
-       orchestrator]
+       additive_bias, sample_calibration, leakage_correction,
+       catalogue_match_tile_selection, orchestrator]
     description: >-
       catalogs/calibrated/: a HATS catalogue of RA, Dec, calibrated e1, e2,
       w_des, e1_PSF, e2_PSF, SIZE_RATIO, SNR, N_EPOCH, TILE_KEY, TILE_ID,
-      NUMBER and OBJECT_ID, recording its snapshot in its properties.
+      NUMBER and OBJECT_ID, recording its snapshot in its properties. Once
+      the n(z) stage has written nz/tom_bin.parquet, the bins step adds
+      TOM_BIN_ID and replaces e1, e2, calibrated with the whole sample's
+      response, by those calibrated with each row's bin's.
   - id: response
     type: data
     label: "Response, additive bias and weight table"
@@ -667,10 +669,12 @@ outputs:
     decisions:
       [snapshot_record, overlap_cut, selection_cuts, sample_wide_calibration,
        response_estimator, galaxy_weights, weight_table,
-       calibration_uncertainties, additive_bias]
+       calibration_uncertainties, additive_bias, sample_calibration]
     description: >-
-      catalogs/response.json (R and its shear and selection parts, c_e, c_g,
-      branch populations, delete-one-tile jackknife covariance),
+      catalogs/response.json (the weight scheme, R and its shear and
+      selection parts, c_e, c_g, branch populations, delete-one-tile
+      jackknife covariance, and the same record for each tomographic bin
+      under bins, which means the catalogue carries each row's bin's),
       catalogs/des_weights.fits (the table, read by response.read_table) and
       catalogs/response_sums.npz (the per-tile, per-cell sums they follow
       from, read by response.Sums.load).

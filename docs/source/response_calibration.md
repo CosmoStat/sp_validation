@@ -118,7 +118,7 @@ A response record names the weight scheme its response was measured with (`weigh
 A `cosmo_val/cat_config.yaml` entry that names its record (`shear.response`) declares no `w_col`: cosmo_val takes the weight column from the record, so the statistic weight is the one the response was measured with.
 
 The calibrated v2 sample (`sp_validation.sample.pipeline`, `scripts/calibration/README.md`) is the same calibration on a catalogue read one HEALPix pixel at a time: each pixel accumulates over the tiles it holds, `Sums.gather` adds them into every tile of the snapshot, and the build keeps the sums as `catalogs/response_sums.npz`.
-Once the n(z) stage has assigned the tomographic bins, `sp_validation.sample.bins` measures each bin's response as a subsample's ([below](#measuring-a-variant)), in one pass grouped by (tile, bin), and writes each bin's `response.record` into `catalogs/response.json` under `bins` (`{"column": "TOM_BIN_ID", "records": {"1": ..., ...}}`).
+Once the n(z) stage has assigned the tomographic bins, `sp_validation.sample.bins` measures each bin's response as a subsample's ([below](#measuring-a-variant)), in one pass grouped by (tile, bin), writes each bin's `response.record` into `catalogs/response.json` under `bins` (`{"column": "TOM_BIN_ID", "records": {"0": ..., "1": ..., ...}}`, bin 0 being the rows in no bin), and rewrites the catalogue so that each row carries its `TOM_BIN_ID` and the shear of its own bin's response ([Response per sample](#response-per-sample)).
 It stops unless every selected galaxy the n(z) stage names by object ID has its released `TOM_BIN_ID` and the bins' sums add to `response_sums.npz`.
 
 ## Image-simulation m and c
