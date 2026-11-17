@@ -12,6 +12,7 @@
 # and spec-z match, staged by scripts/assembly/fetch_photopipe.sh).
 unions_data:
   - /project/rrg-kyi/cdaley/unions/data                                     # fir
+  - /project/6001537/cdaley/unions/data                                     # nibi
 
 # UNIONS v2 releases, one directory per release (v2.0.0/, v2.0.1/, ...), each
 # laid out as on VOSpace (vos:cfis/weak_lensing/ShapePipe/v2.x/): catalogs/,
@@ -19,4 +20,14 @@ unions_data:
 # `${unions_v2}/v<x.y.z>/`; a new release is a new directory, not a new root.
 unions_v2:
   - /project/rrg-kyi/cdaley/unions/data/v2.x                                 # fir
+  - /project/6001537/cdaley/unions/data/v2.x                                 # nibi
   - vos:cfis/weak_lensing/ShapePipe/v2.x                                     # anywhere else
+
+# Named analysis products, `<name>/<version>/` with a README.md and MD5SUMS,
+# sealed once and never changed (a rebuild is a new version). The same tree
+# sits on each cluster and on the vault, which is how products move between
+# machines; a product with no local copy is read from the vault.
+unions_products:
+  - /project/rrg-kyi/cdaley/unions/data/products                            # fir
+  - /project/6001537/cdaley/unions/data/products                            # nibi
+  - vos:cfis/cosmostat/sp-transfer/products                                  # anywhere else
