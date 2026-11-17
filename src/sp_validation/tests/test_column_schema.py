@@ -41,6 +41,15 @@ NOT_COLUMNS = {
     "R",
     "R11",
     "R22",
+    # FITS header keywords and extensions of DES weight tables
+    "DESMERGE",
+    "DESNMIN",
+    "WGHTSCH",
+    "WSNRCOL",
+    "WSIZDEF",
+    "W_DES",
+    "W_COUNT",
+    "W_EDGES",
     # DR6 photometry and spec-z match columns, outside the ShapePipe schema
     "ALPHA_J2000",
     "DELTA_J2000",
@@ -55,10 +64,6 @@ NOT_COLUMNS = {
     "Z_SPEC_SURVEY",
     # FITS header keywords
     "EXTNAME",
-    "R_S11",
-    "R_S12",
-    "R_S21",
-    "R_S22",
     "TTYPE{}",
     # Gaia magnitude-bin keys of the position-shear product
     "G{}",
@@ -77,10 +82,7 @@ NOT_COLUMNS = {
     "NAME_{}",
     "STRT_{}",
     # in-memory tables sp_validation builds itself
-    "C11",
-    "C22",
     "SNR",
-    "T",
     # NaMaster field/workspace dicts keyed by bin; cosmology parameter dicts
     "W{}",
     "H0",

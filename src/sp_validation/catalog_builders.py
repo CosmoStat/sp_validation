@@ -1053,71 +1053,20 @@ class ReadCat:
         pass
 
 
-def compute_weights_gatti(
-    cat_gal,
-    g_uncorr,
-    gal_metacal,
-    dat,
-    mask_combined,
-    mask_metacal,
-    num_bins=20,
-    snr_min=10,
-    snr_max=500,
-    size_ratio_min=0.707,
-    size_ratio_max=3,
-):
-    """Compute Weights Gatti.
+def compute_PSF_leakage(cat_gal, e, dat, index, num_bins=20, weight_type="des"):
+    """Per-object PSF leakage of calibrated shapes ``e`` of rows ``index``.
 
-    Compute Gatti et al. (2021) DES-like weights.
-
+    Adds ``e1``, ``e2``, ``e1_PSF`` and ``e2_PSF`` to ``cat_gal``, which holds
+    the selected galaxies' ``w_<weight_type>``, ``snr`` and NGMIX sizes, and
+    returns ``(alpha_1, alpha_2)``, or ``(-99, -99)`` when the fit fails.
     """
-    calibration.fill_cat_gal(
-        cat_gal,
-        dat,
-        g_uncorr,
-        gal_metacal,
-        mask_combined._mask,
-        mask_metacal,
-        purpose="weights",
-    )
-
-    cat_gal["w_des"] = calibration.get_w_des(
-        cat_gal,
-        num_bins,
-        snr_min=snr_min,
-        snr_max=snr_max,
-        size_ratio_min=size_ratio_min,
-        size_ratio_max=size_ratio_max,
-    )
-
-
-def compute_PSF_leakage(
-    cat_gal,
-    g_corr_mc,
-    dat,
-    mask_combined,
-    mask_metacal,
-    num_bins=20,
-):
-    """Compute PSF Leakage."""
-    cat_gal["e1"] = g_corr_mc[0]
-    cat_gal["e2"] = g_corr_mc[1]
-    cat_gal["e1_PSF"] = sp_cat.get_col(dat, "e1_PSF", mask_combined._mask, mask_metacal)
-    cat_gal["e2_PSF"] = sp_cat.get_col(dat, "e2_PSF", mask_combined._mask, mask_metacal)
-
-    weight_type = "des"
-    key = f"w_{weight_type}"
-    if key not in cat_gal:
-        raise KeyError("Key '{key}' not found in cat_gal")
-
+    cat_gal["e1"], cat_gal["e2"] = e
+    for key in ("e1_PSF", "e2_PSF"):
+        cat_gal[key] = np.asarray(dat[key])[index]
     try:
-        alpha_1, alpha_2 = calibration.get_alpha_leakage_per_object(
-            cat_gal, num_bins, weight_type
-        )
+        return calibration.get_alpha_leakage_per_object(cat_gal, num_bins, weight_type)
     except Exception:
-        alpha_1, alpha_2 = -99, -99
-
-    return alpha_1, alpha_2
+        return -99, -99
 
 
 def run_joint_comprehensive_cat(*args):

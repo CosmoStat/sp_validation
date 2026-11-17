@@ -22,8 +22,8 @@ catalogue-paper correlation tests, all on the same k-means jackknife patches
     galaxy-magnitude tertiles; ρ₀ from the PSF model at the stars, τ₀ the
     galaxy–PSF-model correlation, both as in :mod:`sp_validation.rho_tau`.
 
-Galaxy shapes are the calibrated ``e1``, ``e2`` with ``w_des``; in the α
-magnitude bins they are rescaled to the bin's own shear response. Each
+Galaxy shapes are the calibrated ``e1``, ``e2`` with ``w_des``, in every α
+magnitude bin as calibrated with the catalogue's one response. Each
 measurement writes ``<name>_<version>.npz`` with θ, the correlations, their
 jackknife errors and joint covariance, pair counts and a JSON provenance.
 
@@ -55,7 +55,7 @@ from sp_validation.statistics import jackknife_patch_centers
 
 from .position_shear import measure
 
-GALAXY_COLUMNS = ["RA", "Dec", "e1", "e2", "w_des", "mag", "R_g11", "R_g22"]
+GALAXY_COLUMNS = ["RA", "Dec", "e1", "e2", "w_des", "mag"]
 STAR_COLUMNS = [
     "RA",
     "DEC",
@@ -198,7 +198,7 @@ def quantile_edges(values, n):
     return edges
 
 
-def alpha_measurement(gal, stars, centres, n_bins, threads, r_selection):
+def alpha_measurement(gal, stars, centres, n_bins, threads):
     """τ₀ per magnitude bin, ρ₀, and α = τ₀/ρ₀ with a joint jackknife covariance."""
     config = dict(
         TC, sep_units="arcmin", var_method="jackknife", cross_patch_weight="match"
@@ -218,35 +218,17 @@ def alpha_measurement(gal, stars, centres, n_bins, threads, r_selection):
         (f"mag{i}", (gal["mag"] >= lo) & (gal["mag"] < hi))
         for i, (lo, hi) in enumerate(zip(edges[:-1], edges[1:]))
     ]
-    r_global = None
-    taus, responses = [], {}
+    taus = []
     for label, sel in selections:
         w = gal["w_des"][sel]
-        r_shear = np.array(
-            [
-                np.average(gal["R_g11"][sel], weights=w),
-                np.average(gal["R_g22"][sel], weights=w),
-            ]
-        )
-        r_bin = r_shear + r_selection
-        if r_global is None:
-            r_global = r_bin
-        # Calibrated e is (e_uncal - c)/R_global; rescale to the bin's response.
-        scale = r_global / r_bin
         g = []
-        for i, key in enumerate(("e1", "e2")):
-            e = gal[key][sel] * scale[i]
+        for key in ("e1", "e2"):
+            e = gal[key][sel]
             g.append(e - np.average(e, weights=w))
         cat = catalog(gal["RA"][sel], gal["Dec"][sel], centres, g1=g[0], g2=g[1], w=w)
         tau0 = treecorr.GGCorrelation(config)
         tau0.process(cat, psf, num_threads=threads)
         taus.append(tau0)
-        responses[label] = {
-            "n": int(sel.sum()),
-            "R_shear": r_shear.tolist(),
-            "R": r_bin.tolist(),
-            "rescale": scale.tolist(),
-        }
         del cat
         log(f"tau0 {label} done")
     n = TC["nbins"]
@@ -282,10 +264,9 @@ def alpha_measurement(gal, stars, centres, n_bins, threads, r_selection):
     results["joint"] = dict(alpha_covariance=cov, raw_covariance=raw_cov)
     provenance = {
         "galaxy_mag_edges": edges.tolist(),
-        "responses": responses,
-        "R_selection_global": r_selection.tolist(),
-        "shapes": "calibrated e1, e2 rescaled by R_global/R_bin, weighted mean "
-        "subtracted per bin (as rho_tau TauStat); w_des",
+        "galaxies": {label: int(sel.sum()) for label, sel in selections},
+        "shapes": "calibrated e1, e2 (the catalogue's one response), weighted "
+        "mean subtracted per bin (as rho_tau TauStat); w_des",
         "stars": "PSF validation stars, HSM_FLAG_STAR == 0 & HSM_FLAG_PSF == 0, "
         "every exposure detection (as the dashboard rho/tau)",
         "rho0": "xi+ of HSM_G*_PSF x HSM_G*_PSF",
@@ -549,10 +530,8 @@ def main(argv=None):
 
     if "alpha" in todo:
         t = time.time()
-        calib = json.loads((cdir / "calibration.json").read_text())
-        r_sel = np.diag(np.asarray(calib["R_selection"]))
         results, prov = alpha_measurement(
-            gal, stars, centres, args.mag_bins, args.threads, r_sel
+            gal, stars, centres, args.mag_bins, args.threads
         )
         timings["alpha"] = time.time() - t
         save(

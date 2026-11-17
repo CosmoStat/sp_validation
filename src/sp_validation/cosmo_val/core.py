@@ -1,6 +1,7 @@
 # %%
 import copy
 import itertools
+import json
 import os
 import re
 from pathlib import Path
@@ -407,6 +408,11 @@ class CosmologyValidation(
                     section["path"] = (
                         str(path) if path.is_absolute() else str(subdir / path)
                     )
+            # A shear block's response record sits beside its catalogue.
+            if "response" in cc[ver].get("shear", {}):
+                cc[ver]["shear"]["response"] = str(
+                    subdir / cc[ver]["shear"]["response"]
+                )
             # A psf block's mask config is a config file, not data: relative
             # to the catalogue config, not to subdir.
             psf = cc[ver].get("psf")
@@ -418,6 +424,12 @@ class CosmologyValidation(
             for key, value in cc[ver].items():
                 if key not in ("subdir", "blind"):
                     cc[ver][key] = localise(value)
+            # The weight a record's response was measured with is the
+            # catalogue's statistic weight.
+            if "response" in cc[ver].get("shear", {}):
+                with open(cc[ver]["shear"]["response"]) as f:
+                    weights = json.load(f)["weights"]
+                cc[ver]["shear"]["w_col"] = f"w_{weights}"
 
         resolve_paths_for_version("nz")
         processed = {"nz"}
@@ -683,20 +695,23 @@ class CosmologyValidation(
     def _calibrated_g(self, ver):
         """Calibrated shear components ``(g1, g2)`` for a catalog version.
 
-        Applies additive-bias subtraction and the multiplicative response:
-        ``g = (e − c) / R``. For DES the response is the catalog-averaged
-        per-component ``R11``/``R22`` (column names in the config); for every
-        other version it is the scalar ``R`` from the config.
+        A catalogue with a response record (``shear.response``) is calibrated
+        on disk, and its ``e1_col``, ``e2_col`` are returned as they are. Any
+        other is calibrated here as one sample, ``g = (e − c) / R``, with ``c``
+        its weighted mean shape (:meth:`calculate_additive_bias`) and ``R`` the
+        mean of per-object ``R11``/``R22`` columns (DES) or the scalar ``R``.
 
         Must be called inside a ``self.results[ver].temporarily_read_data()``
         context, since it reads ``dat_shear`` columns.
         """
+        shear = self.cc[ver]["shear"]
         e1, e2 = self._read_shear_cols(ver, "e1_col", "e2_col")
-        if ver == "DES":
-            R1 = np.average(self.results[ver].dat_shear[self.cc[ver]["shear"]["R11"]])
-            R2 = np.average(self.results[ver].dat_shear[self.cc[ver]["shear"]["R22"]])
+        if "response" in shear:
+            return e1, e2
+        if "R11" in shear:
+            R1, R2 = (np.mean(self._read_shear_cols(ver, k)) for k in ("R11", "R22"))
         else:
-            R1 = R2 = self.cc[ver]["shear"]["R"]
+            R1 = R2 = shear["R"]
         return (e1 - self.c1[ver]) / R1, (e2 - self.c2[ver]) / R2
 
     @property

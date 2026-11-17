@@ -1,11 +1,10 @@
 # Image-simulation m-bias workflow configuration.
 #
 # OPERATIONAL keys default here and nowhere else -- the .smk reads them bare, so
-# this file is their single home. SCIENCE keys have no default anywhere and
-# appear below only as commented template lines: they fix the estimator's
-# behaviour, so each run must state them in a run config layered on top. A run
-# config that omits one fails at DAG parse, naming the key; an unknown key under
-# `image_sims:` fails as a typo.
+# this file is their single home. PATH and SCIENCE keys have no default: they
+# appear below only as commented template lines, and each run states them in a
+# run config layered on top. A run config that omits one fails at DAG parse,
+# naming the key; an unknown key under `image_sims:` fails as a typo.
 
 image_sims:
 
@@ -23,17 +22,18 @@ image_sims:
   # branch's own CI image.
   sif: null
 
-  # --- repositories -----------------------------------------------------
-  # Bound into the image; both repos' src go on PYTHONPATH so this branch's
-  # code wins over the baked copies.
-  shapepipe_repo: /n17data/cdaley/unions/code/shapepipe
-  sp_validation_repo: /n17data/cdaley/unions/code/sp_validation
-
-  # --- data and run directories ----------------------------------------
-  # grids_base is the run/output root: one sub-directory per simulation.
-  grids_base: /n17data/cdaley/unions/scratch-wf/imsims-run/grids
-  input_sims_base: /n09data/hervas/skills_out
-  psf_dict: /home/hervas/fhervas/workdir_skills/input/psf_files/Full_psf_dict.pickle
+  # --- paths (REQUIRED in the run config; no default) ------------------
+  # sp_validation is the checkout that launches the workflow; its src and the
+  # ShapePipe checkout's go on PYTHONPATH, so both branches' code wins over the
+  # image's copies. grids_base is the run/output root, one sub-directory per
+  # simulation; config_dir holds ShapePipe's cfis_image_sims configs
+  # (final_cat.param etc.).
+  #
+  # shapepipe_repo: /path/to/shapepipe
+  # grids_base: /path/to/run/grids
+  # input_sims_base: /path/to/skills_out        # SKiLLS simulation images
+  # psf_dict: /path/to/Full_psf_dict.pickle
+  # config_dir: /path/to/cfis_image_sims
 
   # --- simulation grid --------------------------------------------------
   sims_type: grid        # 'grid' -> *_grid_{num}; anything else -> *_{num}  [operational]
@@ -47,16 +47,8 @@ image_sims:
 
   # --- calibration ------------------------------------------------------
   shape: ngmix           # [operational]
-  # ShapePipe cfis configs (final_cat.param etc.); default is
-  # {shapepipe_repo}/example/cfis_image_sims once #766 lands.  [operational]
-  config_dir: /n17data/cdaley/unions/scratch-wf/imsims-run/grids/_cfis_image_sims
   psf_model: psfex       # [operational]
   n_smp: -1              # [operational]
-  # Extract/calibrate scripts run from the sp_validation repo checkout (branch
-  # code, not the baked copies).  Point elsewhere for a different checkout.
-  # [operational]
-  extract_script: /n17data/cdaley/unions/code/sp_validation/scripts/calibration/extract_info.py
-  calibrate_script: /n17data/cdaley/unions/code/sp_validation/scripts/calibration/calibrate_comprehensive_cat.py
 
   # --- science knobs (REQUIRED in the run config; no default) -----------
   # Copy these into your run config and set them.  There is deliberately no
@@ -64,13 +56,11 @@ image_sims:
   # state it.  The injected |g| is separate -- parsed from basic_info.txt by
   # im_manifest, never set here.
   #
-  # mask_config: config/calibration/mask_v1.X.9_im_sim.yaml  # relative to sp_validation_repo
-  # match_radius_deg: 0.0002   # RA/Dec pair-match radius, degrees
-  # w_cols: [none, w_iv]       # weight schemes to compute in one run; "none"
-  #                            # (or null) = unit weights (#227); first entry is
-  #                            # the primary/headline result -- lead with "none"
-  #                            # for the fiducial unweighted estimator.  The
-  #                            # deprecated scalar `w_col` is still accepted.
-  # pair_match: true           # match +g/-g object-by-object (per-object cancellation)
-  # n_bootstrap: 500           # bootstrap resamples for the errors
-  # bootstrap_seed: 42         # seed for the bootstrap RNG (makes errors reproducible)
+  # mask_config: config/calibration/mask_v1.X.9_im_sim.yaml  # relative to the checkout
+  # weight_table: /path/to/data/des_weights.fits  # DES weight-table product of the
+  #                            # data (response.write_table); `self` weights each
+  #                            # simulation with its own table (biased by
+  #                            # -1/N_cell, diagnostic only); `unit` gives unit
+  #                            # weights (IV weights when the mask config's
+  #                            # weight_scheme is iv)
+  # des_min_count: 3           # pooling threshold of `self` tables

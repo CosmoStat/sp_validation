@@ -36,13 +36,10 @@ import h5py
 
 # from sp_validation.catalog import *
 from sp_validation import catalog as spv_cat
-from sp_validation import galaxy
-from sp_validation.calibration import *
-from sp_validation.calibration import metacal
-from sp_validation.galaxy import *
-from sp_validation.io import *
-from sp_validation.io import read_catalogue
-from sp_validation.survey import *
+from sp_validation import galaxy, response
+from sp_validation.galaxy import T_to_fwhm, classification_galaxy_overlap_ra_dec
+from sp_validation.io import open_stats_file, print_stats, read_catalogue
+from sp_validation.survey import get_area, missing_tiles
 
 # ## 1. Set-up
 
@@ -248,6 +245,13 @@ if add_cols_pre_cal:
     for key in add_cols_pre_cal:
         ext_cols_pre_cal[key] = dd[key]
 
+# Carry the sheared branches' shape errors when the merge has them: IV
+# calibration weights each branch with its own errors.
+for suffix in ("1P", "1M", "2P", "2M"):
+    for i in (1, 2):
+        if (key := f"NGMIX_G{i}_ERR_{suffix}") in dd.dtype.names:
+            ext_cols_pre_cal[key] = dd[key]
+
 # Flag to cut duplicate objects in overlapping region with neighbouring tiles
 ext_cols_pre_cal["overlap"] = cut_overlap
 add_cols_pre_cal_format["overlap"] = "I"
@@ -257,7 +261,7 @@ ext_cols_pre_cal["e1_PSF"] = dd[key_PSF_g1]
 ext_cols_pre_cal["e2_PSF"] = dd[key_PSF_g2]
 ext_cols_pre_cal["fwhm_PSF"] = size_to_fwhm(dd[key_PSF_size])
 
-_, _, iv_w = metacal.get_variance_ivweights(dd, sigma_eps_prior, mask=None)
+iv_w = response.inverse_variance(response.branch_columns(dd, "ns"), sigma_eps_prior)
 
 mag = spv_cat.get_col(dd, "MAG_AUTO", None, None)
 snr = spv_cat.get_snr(shape, dd, None, None)

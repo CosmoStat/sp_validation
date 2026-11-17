@@ -377,11 +377,6 @@ def write_shape_catalog(
     R_g22=None,
     R_g12=None,
     R_g21=None,
-    R=None,
-    R_shear=None,
-    R_select=None,
-    c=None,
-    c_err=None,
     alpha_leakage=None,
     sigma_epsilon=None,
     w_type="iv",
@@ -414,7 +409,7 @@ def write_shape_catalog(
         signal-to-noise ratio, default is `None`
     g : np.ndarray, optional
         calibrated reduced shear estimate components, corrected for
-        multiplicative and additive bias, g = R^-1 g_uncal - c;
+        multiplicative and additive bias, g = R^-1 (g_uncal - c_e);
         expected type is arrays(2, ngal) of float;
         default is ``None`` (no calibrated shears written)
     g1_uncal, g2_uncal : np.ndarray, optional
@@ -425,16 +420,6 @@ def write_shape_catalog(
         shear response matrix elements per galaxy;
         expected format is arrays(ngal) of float;
          default is ``None``
-    R : 2x2 matrix of float, optional
-        Mean full response matrix, default is ``None``
-    R_shear : 2x2 matrix of float, optional
-        Mean shear response matrix, default is ``None``
-    R_select : 2x2 matrix of float, optional
-        Global selection response matrix, default is ``None``
-    c : array(2) of float, optional, default is ``None``
-        additive shear bias
-    c_err : array(2) of float, optional, default is ``None``
-        error of c
     alpha_leakage : float, optional
         Mean scale-dependent PSF leakage, default is ``None``
     sigma_epsilon: float, optional
@@ -559,14 +544,6 @@ def write_shape_catalog(
             if add_header:
                 for key, val in add_header.items():
                     f.attrs[key] = str(val)
-            if all(v is not None for v in (R, R_shear, R_select, c)):
-                f.attrs["R"] = R
-                f.attrs["R_shear"] = R_shear
-                f.attrs["R_select"] = R_select
-                f.attrs["c"] = c
-            if c_err is not None:
-                f.attrs["c1_err"] = c_err[0]
-                f.attrs["c2_err"] = c_err[1]
             if sigma_epsilon is not None:
                 f.attrs["sig_eps"] = sigma_epsilon
             if alpha_leakage is not None:
@@ -597,13 +574,7 @@ def write_shape_catalog(
             author=getpass.getuser(),
         )
 
-        if all(v is not None for v in (R, R_shear, R_select, c)):
-            cat.add_shear_bias_to_header(primary_header, R, R_shear, R_select, c)
-        if c_err is not None:
-            primary_header["c1_err"] = (c_err[0], "Standard deviation of c_1")
-            primary_header["c2_err"] = (c_err[1], "Standard deviation of c_2")
-
-        primary_header["w"] = "DES weight"
+        primary_header["w"] = f"{w_type} weight"
 
         if sigma_epsilon is not None:
             primary_header["sig_eps"] = (sigma_epsilon, "Shape noise RMS")
