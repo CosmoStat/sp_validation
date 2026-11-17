@@ -1328,7 +1328,7 @@ SP_v2.0.0:
   cov_th:
     A: 5223.409980599079
     n_e: 6.913058645076711
-    sigma_e: 0.2889864879504185
+    sigma_e: 0.28806747120470233
     sigma_e_convention: per_component
     n_psf: 0.580817039505617
     tomo:
