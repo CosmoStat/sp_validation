@@ -21,9 +21,8 @@ from astropy.io import fits
 from matplotlib import scale as mscale
 from matplotlib.gridspec import GridSpec
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from sp_validation.utils_cosmo_val import SquareRootScale
 from tqdm import tqdm
-
-from sp_validation.rho_tau import SquareRootScale
 
 mscale.register_scale(SquareRootScale)
 
@@ -36,8 +35,8 @@ if ipython is not None:
 
 # %%
 blind = "B"
-path_cov_namaster = f"/home/guerrini/sp_validation/cosmo_val/output/pseudo_cl_cov_SP_v1.4.6.3_{blind}_leak_corr.fits"
-path_glass_sims_output = "/n09data/guerrini/glass_mock_v1.4.6.3_v2/results/"
+path_cov_namaster = f"/home/guerrini/sp_validation/notebooks/cosmo_val/output/pseudo_cl_cov_SP_v1.4.6.3_{blind}_leak_corr.fits"
+path_glass_sims_output = "/n09data/guerrini/glass_mocks_v1.4.6.3_v4/results/"
 
 cov_namaster = fits.open(path_cov_namaster)
 
@@ -86,7 +85,7 @@ ell_eff = cls[0]
 
 # %%
 cov_one_cov = np.genfromtxt(
-    f"/home/guerrini/sp_validation/cosmo_val/output/pseudo_cl_cov_onecov_SP_v1.4.6.3_{blind}_leak_corr/covariance_list_3x2pt_pure_Cell.dat"
+    f"/home/guerrini/sp_validation/notebooks/cosmo_val/output/pseudo_cl_cov_onecov_SP_v1.4.6.3_{blind}_leak_corr/covariance_list_3x2pt_pure_Cell.dat"
 )
 
 gaussian_one_cov = get_cov_from_one_cov(cov_one_cov, gaussian=True)
@@ -489,7 +488,7 @@ ax2.axhline(0, color="C1", linestyle="-")
 
 # Set ticks and scales for the y-axis
 ax2.set_yticks([-0.3, -0.2, -0.1, 0.0, 0.1, 0.2, 0.3])
-ax2.set_ylim(-0.3, 0.3)
+ax2.set_ylim(-0.2, 0.1)
 ax2.set_ylabel(r"$ \Delta \hat{\sigma} / \sigma$")
 ax2.set_xlabel(r"Multipole $\ell$")
 
@@ -502,9 +501,7 @@ plt.show()
 
 # Validation against Gaussian simulations
 
-path_gaussian_sims = (
-    "/n17data/sguerrini/sp_validation/cosmo_val/harmonic_covariance_gaussian_sims_v1463"
-)
+path_gaussian_sims = "/n17data/sguerrini/sp_validation/notebooks/cosmo_val/harmonic_covariance_gaussian_sims_v1463"
 
 n_sims = 10_000
 covs = {}
@@ -871,4 +868,78 @@ plt.savefig(
 )
 plt.show()
 
+# %%
+# Save gaussian simulation covariance for bb
+cov_gaussian_bb = cov_sim_gaussian[96:, 96:]
+np.save(
+    "/home/guerrini/sp_validation/notebooks/cosmo_val/harmonic_covariance_gaussian_sims/cov_gaussian_sims_BB.npy",
+    cov_gaussian_bb,
+)
+cov_gaussian_eb = cov_sim_gaussian[64:96, 64:96]
+np.save(
+    "/home/guerrini/sp_validation/notebooks/cosmo_val/harmonic_covariance_gaussian_sims/cov_gaussian_sims_EB.npy",
+    cov_gaussian_eb,
+)
+
+# %%
+# Compare map-based and catalogue-based Cl covariance
+n_sims = 350
+cls_all_map = np.array([]).reshape((0, 32))
+for i in tqdm(range(n_sims)):
+    cls_map = np.load(
+        f"{path_glass_sims_output}/cl_map_glass_mock_{str(i + 1).zfill(5)}_4096.npy"
+    )
+    cls_all_map = np.vstack((cls_all_map, cls_map[1]))
+
+cov_sim_map = np.cov(cls_all_map.T)
+
+# %%
+fig = plt.figure()
+
+gs = GridSpec(2, 1, height_ratios=[3, 1], hspace=0.0)
+
+ax1 = fig.add_subplot(gs[0])
+ax2 = fig.add_subplot(gs[1], sharex=ax1)
+
+ax1.plot(ell, np.sqrt(np.diag(cov_sim)), label="Cov sim")
+ax1.plot(ell, np.sqrt(np.diag(cov_sim_map)), label="Cov sim map")
+
+# Set ticks and scales for the x-axis
+ax1.set_xscale("squareroot")
+ax1.set_xticks(np.array([100, 400, 900, 1600]))
+ax1.minorticks_on()
+ax1.tick_params(axis="x", which="minor", length=2, width=0.8)
+minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
+ax1.set_xticks(minor_ticks, minor=True)
+
+# Set ticks and scale for the y-axis
+ax1.set_yscale("log")
+ax1.set_yticks([1e-11, 1e-11, 1e-10, 1e-9])
+ax1.tick_params(axis="y", which="minor", length=2, width=0.8)
+minor_ticks = (
+    [i * 1e-11 for i in range(1, 10)]
+    + [i * 1e-10 for i in range(1, 10)]
+    + [i * 1e-9 for i in range(1, 8)]
+)
+ax1.set_yticks(minor_ticks, minor=True)
+
+# Set labels and legend
+ax1.set_ylabel(r"$\sigma(C_\ell^{EE})$")
+ax1.legend(fontsize=10)
+
+baseline = np.sqrt(np.diag(cov_sim))
+
+relative_error = np.sqrt(np.diag(cov_sim)) / baseline
+ax2.plot(ell, relative_error - 1, label="cov sim")
+
+relative_error_map = np.sqrt(np.diag(cov_sim_map)) / baseline
+ax2.plot(ell, relative_error_map - 1, label="cov sim map")
+
+# Set ticks and scales for the y-axis
+ax2.set_yticks([-0.1, -0.05, 0.0, 0.05, 0.1])
+ax2.set_ylim(-0.1, 0.1)
+ax2.set_ylabel(r"$ \Delta \hat{\sigma} / \sigma$")
+ax2.set_xlabel(r"Multipole $\ell$")
+
+plt.show()
 # %%

@@ -20,9 +20,8 @@ import numpy as np
 import seaborn as sns
 from astropy.io import fits
 from matplotlib import scale as mscale
+from sp_validation.utils_cosmo_val import SquareRootScale
 from utils import get_chi2_and_pte
-
-from sp_validation.rho_tau import SquareRootScale
 
 mscale.register_scale(SquareRootScale)
 
@@ -38,7 +37,7 @@ if ipython is not None:
 
 
 # %%
-base_dir = "/home/guerrini/sp_validation/cosmo_val/output/"
+base_dir = "/home/guerrini/sp_validation/notebooks/cosmo_val/output/"
 
 versions = ["SP_v1.4.5_leak_corr", "SP_v1.4.6_leak_corr", "SP_v1.4.8_leak_corr"]
 labels = [
@@ -194,24 +193,61 @@ plt.savefig("./plots/data_vectors_cell_bb.png", dpi=200)
 plt.show()
 
 # %%
+# Load the Gaussian sims covariance
+from tqdm import tqdm
+
+path_gaussian_sims = "/n17data/sguerrini/sp_validation/notebooks/cosmo_val/harmonic_covariance_gaussian_sims_v1463"
+
+n_sims = 10_000
+covs = {}
+
+for blind in ["A", "B", "C"]:
+    path_folder = path_gaussian_sims + "_" + blind
+    cls_all_gaussian = np.array([]).reshape((0, 4, 32))
+    cls_noise_gaussian = np.array([]).reshape((0, 4, 32))
+    for i in tqdm(range(n_sims)):
+        try:
+            cls = np.load(f"{path_folder}/sample_{i}.npz")
+            cls_all_gaussian = np.vstack((cls_all_gaussian, cls["cl_all"][None, ...]))
+            cls_noise_gaussian = np.vstack(
+                (cls_noise_gaussian, cls["cl_noise"][None, ...])
+            )
+        except Exception as e:
+            print(f"Error loading {i}: {e}")
+    cls_all_gaussian = cls_all_gaussian - np.mean(cls_noise_gaussian, axis=0)
+    cls_all_gaussian = cls_all_gaussian.reshape((n_sims, -1))
+    cov_gaussian = np.cov(cls_all_gaussian.T)
+    covs[blind] = {}
+    covs[blind]["cov_gaussian"] = cov_gaussian
+    covs[blind]["diag_EE"] = np.sqrt(np.diag(cov_gaussian[:32, :32]))
+    covs[blind]["diag_BB"] = np.sqrt(np.diag(cov_gaussian[96:, 96:]))
+    covs[blind]["diag_EB"] = np.sqrt(np.diag(cov_gaussian[64:96, 64:96]))
+# %%
 
 # Same plot with EB and BB modes only of v1.4.6
 fig, (ax1, ax2) = plt.subplots(ncols=1, nrows=2, figsize=(8, 6), sharex=True)
 
-version_paper_plot = ["SP_v1.4.6.3_A", "SP_v1.4.6.3_leak_corr_A"]
+version_paper_plot = ["SP_v1.4.6.3_B", "SP_v1.4.6.3_B_leak_corr"]
 labels = ["W/o leakage correction", "With leakage correction"]
-colors = ["C0", "C1"]
-markers = ["o", "h"]
-offset = 0.2
+colors = ["C1", "C7"]
+markers = ["o", "v"]
+offset = 0.30
 for i, ver in enumerate(version_paper_plot):
     cell = fits.getdata(f"{base_dir}/pseudo_cl_{ver}.fits")
     cov_cell = fits.open(f"{base_dir}/pseudo_cl_cov_{ver}.fits")
 
     ell = cell["ell"]
+    n_bins = len(ell)
     cl_eb = cell["EB"]
     cov_cl_eb = cov_cell["COVAR_EB_EB"].data
+    cov_cl_eb_sims = covs["B"]["cov_gaussian"][
+        2 * n_bins : 3 * n_bins, 2 * n_bins : 3 * n_bins
+    ]
     cl_bb = cell["BB"]
     cov_cl_bb = cov_cell["COVAR_BB_BB"].data
+    cov_cl_bb_sims = covs["B"]["cov_gaussian"][
+        3 * n_bins : 4 * n_bins, 3 * n_bins : 4 * n_bins
+    ]
 
     ell_widths = np.diff(ell)
     ell_widths = np.append(ell_widths, ell_widths[-1])
@@ -219,39 +255,66 @@ for i, ver in enumerate(version_paper_plot):
     jitter_fraction = (i - (len(version_paper_plot) - 1) / 2) * offset
     jiterred_ell = ell + jitter_fraction * ell_widths
 
-    chi2, reduced_chi2, pte = get_chi2_and_pte(cl_eb, cov_cl_eb, verbose=False)
+    chi2_inka, reduced_chi2_inka, pte_inka = get_chi2_and_pte(
+        cl_eb, cov_cl_eb, verbose=False
+    )
+    print(
+        f"Version: {ver}, EB iNKA chi2: {chi2_inka:.3f}, reduced chi2: {reduced_chi2_inka:.3f}, PTE: {pte_inka:.3f}"
+    )
+    chi2_sim, reduced_chi2_sim, pte_sim = get_chi2_and_pte(
+        cl_eb, cov_cl_eb_sims, verbose=False
+    )
+    print(
+        f"Version: {ver}, EB Gaussian sims chi2: {chi2_sim:.3f}, reduced chi2: {reduced_chi2_sim:.3f}, PTE: {pte_sim:.3f}"
+    )
 
     ax1.errorbar(
         jiterred_ell,
         cl_eb * ell,
-        yerr=np.sqrt(np.diag(cov_cl_eb)) * ell,
+        yerr=np.sqrt(np.diag(cov_cl_eb_sims)) * ell,
         label=labels[i],
         color=colors[i],
         fmt=markers[i],
         capsize=2,
+        markersize=5,
     )
     ax1.text(
-        100,
-        -0.5e-7 - i * 0.25e-7,
-        rf"$\chi^2_\nu={reduced_chi2:.3f}$ | PTE={pte:.3f}",
+        10,
+        -0.9e-7 - i * 0.28e-7,
+        rf"$\chi^2_{{\nu, \mathrm{{iNKA}}}}={reduced_chi2_inka:.3f}$, ${{\rm PTE}}_{{\rm iNKA}}={pte_inka:.3f}$ | $\chi^2_{{\nu, \textrm{{sim.}}}}={reduced_chi2_sim:.3f}$, ${{\rm PTE}}_{{\rm sim.}}={pte_sim:.3f}$",
         color=colors[i],
+        fontsize=15,
     )
 
-    chi2, reduced_chi2, pte = get_chi2_and_pte(cl_bb, cov_cl_bb, verbose=False)
+    chi2_inka, reduced_chi2_inka, pte_inka = get_chi2_and_pte(
+        cl_bb, cov_cl_bb, verbose=False
+    )
+    print(
+        f"Version: {ver}, BB iNKA chi2: {chi2_inka:.3f}, reduced chi2: {reduced_chi2_inka:.3f}, PTE: {pte_inka:.3f}"
+    )
+    chi2_sim, reduced_chi2_sim, pte_sim = get_chi2_and_pte(
+        cl_bb, cov_cl_bb_sims, verbose=False
+    )
+    print(
+        f"Version: {ver}, BB Gaussian sims chi2: {chi2_sim:.3f}, reduced chi2: {reduced_chi2_sim:.3f}, PTE: {pte_sim:.3f}"
+    )
+
     ax2.errorbar(
         jiterred_ell,
         cl_bb * ell,
-        yerr=np.sqrt(np.diag(cov_cl_bb)) * ell,
+        yerr=np.sqrt(np.diag(cov_cl_bb_sims)) * ell,
         label=labels[i],
         color=colors[i],
         fmt=markers[i],
         capsize=2,
+        markersize=5,
     )
     ax2.text(
-        100,
-        1.25e-7 - i * 0.25e-7,
-        rf"$\chi^2_\nu={reduced_chi2:.3f}$ | PTE={pte:.3f}",
+        10,
+        1.5e-7 - i * 0.28e-7,
+        rf"$\chi^2_{{\nu, \mathrm{{iNKA}}}}={reduced_chi2_inka:.3f}$, ${{\rm PTE}}_{{\rm iNKA}}={pte_inka:.3f}$ | $\chi^2_{{\nu, \mathrm{{sim.}}}}={reduced_chi2_sim:.3f}$, ${{\rm PTE}}_{{\rm sim.}}={pte_sim:.3f}$",
         color=colors[i],
+        fontsize=15,
     )
 
 ax1.set_xscale("squareroot")
@@ -261,6 +324,7 @@ minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
 ax1.set_xticks(minor_ticks, minor=True)
 ax1.tick_params(axis="x", which="minor", length=2, width=0.8)
 ax1.axhline(0, color="gray", linestyle="--", linewidth=1)
+ax1.set_ylim(-1.35e-7, 7.32e-8)
 
 ax2.set_xscale("squareroot")
 ax2.set_xticks(np.array([100, 400, 900, 1600]))
@@ -269,7 +333,14 @@ minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
 ax2.set_xticks(minor_ticks, minor=True)
 ax2.tick_params(axis="x", which="minor", length=2, width=0.8)
 ax2.axhline(0, color="gray", linestyle="--", linewidth=1)
-ax2.legend(fontsize=14)
+ax2.legend(
+    fontsize=18,
+    bbox_to_anchor=(0.5, -0.5),
+    loc="lower center",
+    ncol=2,
+    frameon=False,
+)
+ax2.set_ylim(-3.56e-8, 1.83e-7)
 
 ax2.set_xlabel(r"Multipole $\ell$", fontsize=16)
 ax1.set_ylabel(r"$\ell \, C_\ell^{EB} \times 10^{-7}$", fontsize=16)
@@ -284,4 +355,21 @@ plt.savefig("./plots/paperplot_data_vectors_eb_bb.pdf", bbox_inches="tight")
 plt.show()
 
 
+# %%
+mask = (ell > 300) & (ell < 1600)
+
+chi2_inka, reduced_chi2_inka, pte_inka = get_chi2_and_pte(
+    cl_bb[:-4], cov_cl_bb[:-4, :-4], verbose=True
+)
+chi2_sim, reduced_chi2_sim, pte_sim = get_chi2_and_pte(
+    cl_bb[:-4], cov_cl_bb_sims[:-4, :-4], verbose=True
+)
+print(
+    f"Version: {ver}, BB iNKA chi2: {chi2_inka:.3f}, reduced chi2: {reduced_chi2_inka:.3f}, PTE: {pte_inka:.3f}"
+)
+print(
+    f"Version: {ver}, BB Gaussian sims chi2: {chi2_sim:.3f}, reduced chi2: {reduced_chi2_sim:.3f}, PTE: {pte_sim:.3f}"
+)
+# %%
+ell
 # %%

@@ -23,8 +23,8 @@ import seaborn as sns
 from astropy.io import fits
 from matplotlib import scale as mscale
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-
-from sp_validation.rho_tau import SquareRootScale
+from sp_validation.utils_cosmo_val import SquareRootScale
+from utils import get_chi2_and_pte
 
 mscale.register_scale(SquareRootScale)
 
@@ -103,7 +103,7 @@ f_gal = nmt.NmtFieldCatalog(
 f_psf = nmt.NmtFieldCatalog(
     positions=[cat_star["RA"], cat_star["DEC"]],
     weights=np.ones_like(cat_star["RA"]),
-    field=[cat_star["HSM_G1_PSF"], -cat_star["HSM_G2_PSF"]],
+    field=[cat_star["E1_PSF_HSM"], -cat_star["E2_PSF_HSM"]],
     lmax=b_lmax,
     lmax_mask=b_lmax,
     spin=2,
@@ -235,7 +235,7 @@ def compute_iNKA_covariance(field1, field2, coupled=False):
 
 
 # %%
-field_psf_map = get_field_catalog(cat_star, "HSM_G1_PSF", "HSM_G2_PSF", nside=1024)
+field_psf_map = get_field_catalog(cat_star, "E1_PSF_HSM", "E2_PSF_HSM", nside=1024)
 field_gal_map = get_field_catalog(cat_gal, "e1", "e2", nside=1024, w_col="w_des")
 field_gal_corrected_map = get_field_catalog(
     cat_gal, "e1_leak_corrected", "e2_leak_corrected", nside=1024, w_col="w_des"
@@ -370,80 +370,159 @@ plt.legend()
 plt.savefig("rho_0_cl.png", dpi=300)
 
 plt.show()
+
+
+# %%
+def sci_notation(x, sig=2):
+    if x == 0:
+        return "0"
+    exponent = int(np.floor(np.log10(abs(x))))
+    mantissa = x / 10**exponent
+    return rf"{mantissa:.{sig}f} \times 10^{{{exponent}}}"
+
+
 # %%
 # Paper plot tau_0
-plt.figure(figsize=(10, 6))
+fig, (ax1, ax2) = plt.subplots(
+    2,
+    1,
+    figsize=(10, 6),
+    sharex=True,
+    gridspec_kw={"hspace": 0.0},  # tighten vertical space between panels
+)
 
-offset = 0.15
+offset = 0.2
 
 ell_widths = np.diff(ell_eff)
 ell_widths = np.append(ell_widths, ell_widths[-1])
 
 list_offset = []
 
-for i in range(4):
-    # Better jittering: symmetric around original ell values
-    jitter_fraction = (i - (4 - 1) / 2) * offset
+for i in range(2):
+    jitter_fraction = (i - (2 - 1) / 2) * offset
     jittered_ell = ell_eff + jitter_fraction * ell_widths
     list_offset.append(jittered_ell)
 
-
-plt.errorbar(
+# --- Top panel ---
+chi2, reduced_chi2, pte = get_chi2_and_pte(tau_cl[0], cov_tau_0_ee, verbose=True)
+chi2_corr, reduced_chi2_corr, pte_corr = get_chi2_and_pte(
+    tau_cl_corrected[0], cov_tau_0_ee, verbose=True
+)
+ax1.errorbar(
     list_offset[0],
     ell_eff * tau_cl[0],
     yerr=ell_eff * np.sqrt(cov_tau_0_ee.diagonal()),
     label=r"$\tau_0$ EE",
     fmt="o",
     capsize=2,
+    color="C1",
+    markersize=5,
 )
-plt.errorbar(
+ax1.errorbar(
     list_offset[1],
     ell_eff * tau_cl_corrected[0],
     yerr=ell_eff * np.sqrt(cov_tau_0_ee.diagonal()),
     label=r"$\tau_0$ corrected EE",
-    fmt="o",
+    fmt="v",
     capsize=2,
+    color="C7",
+    markersize=5,
 )
-plt.errorbar(
-    list_offset[2],
+
+ax1.set_xscale("squareroot")
+ax1.set_xticks(np.array([100, 400, 900, 1600]))
+ax1.minorticks_on()
+ax1.tick_params(axis="x", which="minor", length=2, width=0.8)
+minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
+ax1.set_xticks(minor_ticks, minor=True)
+
+ax1.axhline(0, c="k", ls="--", alpha=0.7)
+ax1.tick_params(axis="both", which="major", labelsize=16)
+ax1.yaxis.get_offset_text().set_visible(False)
+
+ax1.text(
+    400,
+    -2.6e-7,
+    rf"$\chi^2_\nu={reduced_chi2:.3f}$, ${{\rm PTE}}={sci_notation(pte)}$",
+    color="C1",
+    fontsize=18,
+)
+ax1.text(
+    400,
+    -2.6e-7 - 1.5e-7,
+    rf"$\chi^2_\nu={reduced_chi2_corr:.3f}$, ${{\rm PTE}}={sci_notation(pte_corr)}$",
+    color="C7",
+    fontsize=18,
+)
+
+ax1.set_ylabel(r"$\ell C^{\tau_0}_\ell \times 10^{-7}$", fontsize=20)
+ax1.set_xlim(1, 2048)
+ax1.set_ylim(-5e-7, 5e-7)
+ax1.legend(fontsize=16)
+
+# hide the shared x tick labels on the top panel
+ax1.tick_params(axis="x", which="both", labelbottom=False)
+
+# --- Bottom panel ---
+chi2, reduced_chi2, pte = get_chi2_and_pte(tau_cl[3], cov_tau_0_bb, verbose=True)
+chi2_corr, reduced_chi2_corr, pte_corr = get_chi2_and_pte(
+    tau_cl_corrected[3], cov_tau_0_bb, verbose=True
+)
+ax2.errorbar(
+    list_offset[0],
     ell_eff * tau_cl[3],
     yerr=ell_eff * np.sqrt(cov_tau_0_bb.diagonal()),
     label=r"$\tau_0$ BB",
     fmt="o",
     capsize=2,
+    color="C2",
+    markersize=5,
 )
-plt.errorbar(
-    list_offset[3],
+ax2.errorbar(
+    list_offset[1],
     ell_eff * tau_cl_corrected[3],
     yerr=ell_eff * np.sqrt(cov_tau_0_bb.diagonal()),
     label=r"$\tau_0$ corrected BB",
-    fmt="o",
+    fmt="v",
     capsize=2,
+    color="C3",
+    markersize=5,
 )
 
-plt.xscale("squareroot")
-plt.xticks(np.array([100, 400, 900, 1600]))
-plt.minorticks_on()
-plt.tick_params(axis="x", which="minor", length=2, width=0.8)
-minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
-plt.xticks(minor_ticks, minor=True)
+ax2.set_xscale("squareroot")
+ax2.set_xticks(np.array([100, 400, 900, 1600]))
+ax2.minorticks_on()
+ax2.tick_params(axis="x", which="minor", length=2, width=0.8)
+ax2.set_xticks(minor_ticks, minor=True)
 
-plt.axhline(0, c="k", ls="--", alpha=0.7)
-
-plt.tick_params(axis="both", which="major", labelsize=16)
-
-plt.gca().yaxis.get_offset_text().set_visible(False)
+ax2.axhline(0, c="k", ls="--", alpha=0.7)
+ax2.tick_params(axis="both", which="major", labelsize=16)
+ax2.yaxis.get_offset_text().set_visible(False)
 
 
-plt.xlabel(r"Multipole $\ell$", fontsize=20)
-plt.ylabel(r"$\ell C^{\tau_0}_\ell \times 10^{-7}$", fontsize=20)
-plt.xlim(1, 2048)
-plt.ylim(-5e-7, 5e-7)
-plt.legend(fontsize=16)
+ax2.text(
+    400,
+    -2.6e-7,
+    rf"$\chi^2_\nu={reduced_chi2:.3f}$, ${{\rm PTE}}={sci_notation(pte)}$",
+    color="C2",
+    fontsize=18,
+)
+ax2.text(
+    400,
+    -2.6e-7 - 1.5e-7,
+    rf"$\chi^2_\nu={reduced_chi2_corr:.3f}$, ${{\rm PTE}}={sci_notation(pte_corr)}$",
+    color="C3",
+    fontsize=18,
+)
+
+ax2.set_xlabel(r"Multipole $\ell$", fontsize=20)
+ax2.set_ylabel(r"$\ell C^{\tau_0}_\ell \times 10^{-7}$", fontsize=20)
+ax2.set_xlim(1, 2048)
+ax2.set_ylim(-5e-7, 5e-7)
+ax2.legend(fontsize=16)
+
 plt.savefig("./plots/tau_0_cl.png", dpi=300)
-# Save pdf
 plt.savefig("./plots/tau_0_cl.pdf")
-
 plt.show()
 
 # %%
@@ -631,6 +710,7 @@ leakage_bias_corrected_mean = np.mean(leakage_bias_corrected_samples, axis=0)
 leakage_bias_corrected_std = np.std(leakage_bias_corrected_samples, axis=0)
 
 # %%
+# Paper plot ratio w.r.t the data vector.
 plt.figure()
 
 leakage_bias = tau_cl[0] ** 2 / rho_cl[0]
@@ -642,17 +722,19 @@ plt.errorbar(
     yerr=leakage_bias_std / cell_cl[0],
     label=r"Without object-wise leakage correction",
     fmt="o",
-    markersize=3,
+    markersize=5,
     capsize=2,
+    color="C1",
 )
 plt.errorbar(
     list_offset[1],
     leakage_bias_corrected / cell_cl_corrected[0],
     yerr=leakage_bias_corrected_std / cell_cl_corrected[0],
     label="With object-wise leakage correction",
-    fmt="o",
-    markersize=3,
+    fmt="v",
+    markersize=5,
     capsize=2,
+    color="C7",
 )
 
 threshold = 0.05
@@ -683,6 +765,72 @@ plt.legend(loc="upper center", fontsize=12)
 plt.savefig("./plots/leakage_bias_fraction_ee.png", dpi=300)
 # Save PDF
 plt.savefig("./plots/leakage_bias_fraction_ee.pdf")
+plt.show()
+
+# %%
+# Paper plot
+# Plot the ratio w.r.t the error bars
+
+# Load the covariance
+path_cov = "/home/guerrini/sp_validation/notebooks/cosmo_val/output/pseudo_cl_cov_g_ng_iNKA_SP_v1.4.6.3_B.fits"
+path_cov_corr = "/home/guerrini/sp_validation/notebooks/cosmo_val/output/pseudo_cl_cov_g_ng_iNKA_SP_v1.4.6.3_leak_corr_B.fits"
+cov_cl = fits.open(path_cov)["COVAR_FULL"].data
+cov_cl_corrected = fits.open(path_cov_corr)["COVAR_FULL"].data
+
+plt.figure()
+
+leakage_bias = tau_cl[0] ** 2 / rho_cl[0]
+leakage_bias_corrected = tau_cl_corrected[0] ** 2 / rho_cl[0]
+
+plt.errorbar(
+    list_offset[0],
+    leakage_bias / np.sqrt(cov_cl.diagonal()),
+    yerr=leakage_bias_std / np.sqrt(cov_cl.diagonal()),
+    label=r"Without object-wise leakage correction",
+    fmt="o",
+    markersize=5,
+    capsize=2,
+    color="C1",
+)
+plt.errorbar(
+    list_offset[1],
+    leakage_bias_corrected / np.sqrt(cov_cl_corrected.diagonal()),
+    yerr=leakage_bias_corrected_std / np.sqrt(cov_cl_corrected.diagonal()),
+    label="With object-wise leakage correction",
+    fmt="v",
+    markersize=5,
+    capsize=2,
+    color="C7",
+)
+
+threshold = 0.20
+plt.fill_between(
+    np.arange(7, 2050),
+    -threshold,
+    threshold,
+    color="lightgray",
+    alpha=0.5,
+    label=rf"{int(threshold * 100)}\% threshold",
+)
+plt.xscale("squareroot")
+
+plt.axhline(threshold, color="black", linestyle="--", alpha=0.6)
+plt.axhline(-threshold, color="black", linestyle="--", alpha=0.6)
+plt.xticks(np.array([100, 400, 900, 1600]))
+plt.minorticks_on()
+plt.tick_params(axis="x", which="minor", length=2, width=0.8)
+minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
+plt.xticks(minor_ticks, minor=True)
+plt.xlim(ell_eff[0], ell_eff[-1])
+plt.xlabel(r"Multipole $\ell$", fontsize=16)
+plt.xlim(7, 2050)
+plt.ylabel(r"$C_\ell^{\rm sys} / \sigma(C_\ell)$", fontsize=16)
+plt.ylim(-0.50, 0.50)
+plt.gca().yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1))
+plt.legend(loc="lower right", fontsize=12)
+plt.savefig("./plots/leakage_bias_fraction_wrt_cov_ee.png", dpi=300)
+# Save PDF
+plt.savefig("./plots/leakage_bias_fraction_wrt_cov_ee.pdf")
 plt.show()
 
 # %%
@@ -787,10 +935,10 @@ plt.show()
 # %%
 # Plot signal with errorbars
 pseudo_cl = fits.getdata(
-    "/home/guerrini/sp_validation/cosmo_val/output/pseudo_cl_SP_v1.4.5_leak_corr.fits"
+    "/home/guerrini/sp_validation/notebooks/cosmo_val/output/pseudo_cl_SP_v1.4.5_leak_corr.fits"
 )
 cov_cl = fits.open(
-    "/home/guerrini/sp_validation/cosmo_val/output/pseudo_cl_cov_SP_v1.4.5_leak_corr.fits"
+    "/home/guerrini/sp_validation/notebooks/cosmo_val/output/pseudo_cl_cov_SP_v1.4.5_leak_corr.fits"
 )
 
 plt.figure()
