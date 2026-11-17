@@ -384,3 +384,43 @@ def test_the_assemble_stage_builds_the_recipes_collection(toy, tmp_path):
     (job,) = [j for j in parse_jobs(result.stdout) if j.rule == "collection"]
     assert job.output == [str(inputs["collection"] / "collection.properties")]
     assert str(inputs["photopipe_extract"] / "COMPLETE") in job.input
+
+
+def test_the_bin_responses_follow_the_sample_and_its_bins(toy, tmp_path):
+    """The bin rule reads the built sample and the n(z) stage's products, and
+    declares only its checks: never ``catalogs/response.json``, which holds the
+    whole sample's record and which it rewrites."""
+    out = tmp_path / "release"
+    snap = tmp_path / "snap"
+    snap.mkdir()
+    (snap / "MANIFEST.json").touch()
+    (toy.root / "config" / "selection.yaml").touch()
+    recipe = tmp_path / "recipe.yaml"
+    recipe.write_text(
+        yaml.safe_dump(
+            dict(snapshot=str(snap), selection="config/selection.yaml", output=str(out))
+        )
+    )
+    inputs = [
+        out / "provenance" / "calibrated_recipe.yaml",
+        out / "nz" / "tom_bin.parquet",
+        out / "provenance" / "nz_som_model.npz",
+        out / "provenance" / "nz_calibration_arrays.npz",
+        out / "provenance" / "nz_recipe.yaml",
+    ]
+    for path in inputs:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.touch()
+
+    result = toy.snakemake(
+        "-n",
+        "bin_responses",
+        "-s",
+        str(toy.root / "workflow" / "calibrate" / "Snakefile"),
+        config=[f"calibrate={{recipe: {recipe}}}"],
+        cwd=toy.root,
+    )
+    assert result.returncode == 0, result.stdout
+    (job,) = [j for j in parse_jobs(result.stdout) if j.rule == "bin_responses"]
+    assert job.output == [str(out / "provenance" / "bin_response_checks.json")]
+    assert set(map(str, inputs)) <= set(job.input), job.input

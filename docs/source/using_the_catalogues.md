@@ -62,9 +62,18 @@ Selections that do *not* correlate with galaxy properties — spatial sub-areas,
 regions around clusters, and so on — are fine. If you need property-dependent
 cuts, recalibrate using the extended catalogue (Section 2).
 
-`catalogs/response.json` records the response and additive bias of the sample
-and names the weight they were measured with (`weights`; the weight column is
-`w_<weights>`).
+Tomographic bins are property-dependent samples, and each has its own response.
+From v2.0.0 the release is calibrated per bin: the `e1`, `e2` of a galaxy with
+`TOM_BIN_ID == k` are R_k⁻¹(e − c_k), with the 2 × 2 response R_k and additive
+bias c_k of bin k, and those of a galaxy in no bin (`TOM_BIN_ID == 0`) carry
+the response of that sample. Each bin's shear is therefore read as it is, and
+so is the whole catalogue's, which is the union of separately calibrated
+samples rather than one sample calibrated with its own response.
+`catalogs/response.json` records the response of every bin under
+`bins.records["k"]` (the one each row of bin k carries), names the weight
+the responses were measured with (`weights`; the weight column is
+`w_<weights>`), and keeps the whole sample's response at the top level as a
+reported number ([Response per sample](response_calibration.md#response-per-sample)).
 
 ### Open the file and inspect it
 

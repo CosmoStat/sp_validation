@@ -1,8 +1,9 @@
 # One entry per catalogue. `blind:` is `none` (public) or the name of the blind
 # its signal is concealed under (sp_validation.blinding).
 # shear.response names the response record (relative to subdir) of a catalogue
-# calibrated on disk: its e1, e2 are read as they are, and its weight column
-# is w_<weights> of the record, so the entry declares no w_col. A
+# calibrated on disk: its e1, e2 are read as they are, each row already
+# calibrated with the response of the sample it belongs to, and its weight
+# column is w_<weights> of the record, so the entry declares no w_col. A
 # catalogue with no record declares w_col and a scalar shear.R (or DES's R11,
 # R22 columns), with which cosmo_val calibrates it as one sample.
 # cov_th.sigma_e is the per-component dispersion. DES and SP_axel_v0.0
@@ -1327,7 +1328,7 @@ SP_v2.0.0:
   cov_th:
     A: 5223.409980599079
     n_e: 6.913058645076711
-    sigma_e: 0.2889864879504185
+    sigma_e: 0.28806747120470233
     sigma_e_convention: per_component
     n_psf: 0.580817039505617
     tomo:
@@ -1339,13 +1340,19 @@ SP_v2.0.0:
       - 0.9418314989045704
       - 1.446199630299088
       sigma_e:
-      - 0.28801759730295784
-      - 0.28577852170435375
-      - 0.2885654645547759
-      - 0.2737663491785384
+      - 0.2651812480509175
+      - 0.2617909431457377
+      - 0.27293430209138053
+      - 0.27743847633754687
   mask: ${unions_v2}/v2.0.0/masks/footprint-nside4096-ring.fits
   shear:
     path: calibrated
+    # The ShapePipe snapshot the catalogue must have been built from
+    # (sp_validation.sample.snapshot); a catalogue recording another fails.
+    snapshot:
+      name: run1-snap3
+      tiles: 22901
+      manifest_sha256: 44884ea3e8ecff0786ab5b911c911d685efb55932b84f9540bc9c443283f90c7
     response: response.json
     ra_col: RA
     dec_col: Dec

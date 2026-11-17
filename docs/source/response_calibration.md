@@ -117,6 +117,10 @@ labels, deleted, covariance = cal["jackknife"]  # tile jackknife of every estima
 A response record names the weight scheme its response was measured with (`weights`: `des` or `iv`), and the catalogue it describes carries that weight as `w_<weights>`.
 A `cosmo_val/cat_config.yaml` entry that names its record (`shear.response`) declares no `w_col`: cosmo_val takes the weight column from the record, so the statistic weight is the one the response was measured with.
 
+The calibrated v2 sample (`sp_validation.sample.pipeline`, `scripts/calibration/README.md`) is the same calibration on a catalogue read one HEALPix pixel at a time: each pixel accumulates over the tiles it holds, `Sums.gather` adds them into every tile of the snapshot, and the build keeps the sums as `catalogs/response_sums.npz`.
+Once the n(z) stage has assigned the tomographic bins, `sp_validation.sample.bins` measures each bin's response as a subsample's ([below](#measuring-a-variant)), in one pass grouped by (tile, bin), writes each bin's `response.record` into `catalogs/response.json` under `bins` (`{"column": "TOM_BIN_ID", "records": {"0": ..., "1": ..., ...}}`, bin 0 being the rows in no bin), and rewrites the catalogue so that each row carries its `TOM_BIN_ID` and the shear of its own bin's response ([Response per sample](#response-per-sample)).
+It stops unless every selected galaxy the n(z) stage names by object ID has its released `TOM_BIN_ID` and the bins' sums add to `response_sums.npz`.
+
 ## Image-simulation m and c
 
 For shear component j, a simulation sheared by +g and one by −g, each with its own sums, give ĝ± = (R±)⁻¹ ⟨e⟩_ns± with each simulation's own response and no additive subtraction, and
@@ -177,4 +181,21 @@ labels, deleted, covariance = response.jackknife(sums_bin, table)
 
 The preselection holds the subsample's membership fixed across the five metacal branches: the result includes the response of the metacal cuts and of the weights within the subsample, not the response of whatever assigned the subsample (photometric redshifts, magnitudes measured on the unsheared image).
 
-A sample whose S/N and size mix differs from the whole sample's has another response, so a statistic of a subsample is calibrated with the subsample's own R and additive bias.
+## Response per sample
+
+The response belongs to a sample, not a galaxy: it is the derivative of that sample's weighted mean shear.
+A shear statistic of a sample is calibrated with that sample's own R_total and its own additive bias.
+The v2.0.0 tomographic bins have responses 0.855, 0.859, 0.832 and 0.776 against 0.787 for the whole sample, so the whole sample's R applied to bins 1–3 overestimates their shear by 6–9%.
+
+The release build therefore writes each row's shear calibrated with the response of its own sample: a row with `TOM_BIN_ID == k` has
+
+    e = R_k⁻¹ (g − c_k),
+
+with g its no-shear shape and R_k, c_k the response and weighted mean no-shear shape of bin k, measured on the bin's rows with the sample's weight table held fixed (as a subsample above).
+Bin 0, the rows in no tomographic bin, is a sample like the others, so every row is calibrated and the weighted mean of `e` over each bin, and over the catalogue, is zero.
+The response record (`catalogs/response.json`) holds every bin's record under `bins` (`{"column": "TOM_BIN_ID", "records": {"0": {...}, "1": {...}, ...}}`, each in the layout of {func}`~sp_validation.response.record`), and a record with `bins` means `e1`, `e2` carry each row's bin's R_k and c_k, so `g = R_k e + c_k` undoes the calibration; a record without `bins` means they carry the top-level R and c_e.
+Beside `bins`, the record's top-level R and c_e are the whole sample's: a reported number, not what `e1`, `e2` carry.
+
+Consumers read the columns: cosmo_val applies no response and subtracts no mean for an entry with a record, whether it measures one bin or the whole catalogue.
+The whole catalogue so read is the union of separately calibrated samples; its statistics differ from those of the sample calibrated with its own R_all by the spread of the bins' responses about R_all, weighted by their shear signal.
+An entry without a record is calibrated as one sample when it is read: `(e − c)/R` with its scalar `shear.R` (or DES's mean `R11`, `R22`) and its weighted mean shape `c`.

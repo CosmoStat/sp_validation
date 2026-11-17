@@ -20,6 +20,7 @@ from ..b_modes import (
     covariance_label,
     find_conservative_scale_cut_key,
 )
+from ..sample import snapshot
 from ..statistics import chi2_and_pte
 from ..version import __version__
 from .catalog_characterization import CatalogCharacterizationMixin
@@ -424,6 +425,10 @@ class CosmologyValidation(
             for key, value in cc[ver].items():
                 if key not in ("subdir", "blind"):
                     cc[ver][key] = localise(value)
+            # A catalogue built from another snapshot than its entry names
+            # stops the run here, before anything is measured.
+            if isinstance(cc[ver].get("shear"), dict):
+                snapshot.check(cc[ver]["shear"])
             # The weight a record's response was measured with is the
             # catalogue's statistic weight.
             if "response" in cc[ver].get("shear", {}):

@@ -1,9 +1,20 @@
 # Calibration scripts
 
 The calibrate stage: the scripts that turn a final `ShapePipe` output
-catalogue into a science-ready, metacalibrated shear catalogue, and give its
-selection a redshift distribution. Run them in order. See
-`docs/source/post_processing.md` for the full prose.
+catalogue into a science-ready, metacalibrated shear catalogue. Run them in
+order. See `docs/source/post_processing.md` for the full prose.
+
+**ShapePipe v2** (one snapshot of every tile, with mask columns):
+
+| Step | Script | Does |
+|------|--------|------|
+| 1 | `calibrate_sample.py` | The calibrated shear sample from a snapshot's shapes: selection, weights, metacalibration, HATS catalogue ([below](#the-calibrated-sample-v2)). |
+| 2 | `calibrate_nz.py` | The tomographic bins and their n(z) ([below](#redshift-distribution-step-5)). |
+| 3 | `bin_responses.py` | The response of each tomographic bin, into `catalogs/response.json` ([below](#the-response-of-each-bin)). |
+
+`compare_samples.py` compares two samples object by object.
+
+**ShapePipe v1 and the image simulations** (per-patch catalogues):
 
 | Step | Script | Does |
 |------|--------|------|
@@ -29,8 +40,148 @@ fitting one (image simulations use the data's table).
 `params.py` is the shared parameter template (paths, column names, survey
 constants) imported by `extract_info.py`; copy and edit it per run.
 
-> **v2.0 note:** ShapePipe v2 has no patches. Step 1 runs per campaign and
-> step 2 merges a list of campaign catalogues (`final_cat_<campaign>.hdf5`).
+## The calibrated sample (v2)
+
+The sample is one rule of the Snakemake workflow, driven by a recipe. The
+recipe for v2 is `config/calibration/sample/v2.yaml`: the ShapePipe snapshot
+(the directory holding `MANIFEST.json`), its shapes (the v2 collection built
+by `scripts/assembly/`), the selection config
+(`config/calibration/mask_v2.0.yaml`) and the release directory to write
+under, with data roots (`config/data_roots.yaml`). The choices and their
+alternatives are recorded as decisions in
+`scratch/cdaley/unions_astra/analyses/dr6_catalogue/astra.yaml`.
+
+To build it you need this checkout, `apptainer` and `snakemake` on the host
+(`uv tool install --python 3.12 snakemake`, or `uvx --python 3.12 snakemake`
+in place of `snakemake` below to run it without installing), the image
+(`spv-container pull`, see `workflow/README.md`), and the snapshot and its
+collection under the `unions_v2` data root. From the repository root:
+
+```bash
+snakemake --profile workflow/profiles/default -s workflow/calibrate/Snakefile -j 32 \
+    -d /path/to/a/working/directory \
+    --apptainer-args "--cleanenv --bind /home,/project,/scratch" \
+    --config calibrate='{recipe: config/calibration/sample/v2.yaml, output: /path/to/a/new/directory, reference: /path/to/catalogs/calibrated}' \
+        container=/path/to/sp_validation.sif
+```
+
+- `-j` is the number of cores. The build is one job that uses all of them:
+  3 minutes on 60 cores and 6.5 minutes on 16 for v2, comparison included,
+  with about 2.5 GiB per core.
+- On a cluster, the whole command runs inside an allocation, since the profile
+  runs jobs where Snakemake runs:
+  `srun --jobid=<allocation> -n 1 -c 32 bash -c 'module load apptainer && snakemake ... -j 32'`.
+- `-d` keeps Snakemake's state (`.snakemake/`) out of the checkout. `recipe`
+  stays relative to the repository root.
+- `--bind` lists the disks that hold the data, the checkout and the output,
+  after `/home`.
+- `output` is where the products go. Without it they go to the recipe's own
+  `output`, the release directory `${unions_v2}/v2.0.0`. The build refuses to
+  write over an existing `catalogs/calibrated`, a partial one left by an
+  interrupted build included: remove it yourself to build there again.
+- `reference` is optional: a catalogue the sample should reproduce. The two
+  are compared object by object into `provenance/calibrated_comparison.json`,
+  and the run fails unless its `agree` is true (the report is then kept as
+  `calibrated_comparison.json.failed`).
+- `container` is optional: an image other than your own
+  (`~/.cache/sp_validation/sp_validation.sif`).
+
+What it does (`sp_validation.sample.pipeline`): reads the shapes one HEALPix
+pixel at a time, in parallel; cuts tile overlaps against every tile of the
+snapshot; applies the selection; reduces each pixel to per-(tile, cell) sums
+(`sp_validation.response`, `docs/source/response_calibration.md`), whose total
+gives the DES weight table, the response `R = R_shear + R_selection` and the
+additive bias `c_e` of the whole sample, and their delete-one-tile jackknife;
+then writes each pixel with `w_des` and `e = R⁻¹(g − c_e)`. The products, laid out as a release:
+
+- `catalogs/calibrated/`: HATS catalogue of `RA`, `Dec`, `e1`, `e2`, `w_des`,
+  `e1_PSF`, `e2_PSF`, `SIZE_RATIO`, `SNR`, `N_EPOCH`, `TILE_KEY`, `TILE_ID`,
+  `NUMBER` and `OBJECT_ID`, the DR6 object ID that joins it to the collection.
+  It has no `TOM_BIN_ID`: the n(z) step assigns bins, by `OBJECT_ID`.
+- `catalogs/response.json`, `catalogs/des_weights.fits`: the response and its
+  parts, `c_e`, the branch populations and their jackknife covariance
+  (`response.record`); the weight table (`response.read_table` reads it).
+- `catalogs/response_sums.npz`: the sums, grouped by `TILE_KEY`
+  (`response.Sums.load` reads them). The response, `c_e` and jackknife of
+  any table on the same cells (unit weights, a refitted or reweighted table,
+  a restricted S/N range) follow from them without the catalogue.
+- `catalogs/survey.json`, `masks/footprint-nside4096-ring.fits`: area, n_eff
+  and σ_e over the occupied pixels, and those pixels.
+- `catalogs/config_mask.yaml`, `provenance/calibrated_recipe.yaml`: the
+  selection config and the recipe, byte for byte.
+- `provenance/calibrated_tile_accounting.json`: rows of every snapshot tile
+  after each cut, and for each tile without galaxies the cut that empties it.
+
+**The snapshot is checked twice.** The build stops unless the shapes name the
+manifest's SHA-256 as their source and hold exactly the manifest's object
+count of every tile. The catalogue then records the snapshot (name, tile
+count, manifest SHA-256) in its HATS properties, and a
+`cosmo_val/cat_config.yaml` entry names the snapshot it expects under
+`shear.snapshot`; cosmo_val stops at start when the catalogue records another
+(`sp_validation.sample.snapshot`).
+
+Outside the workflow, the same build is
+`python scripts/calibration/calibrate_sample.py <recipe> --output <directory> --workers N`
+inside the container, and the comparison
+`python scripts/calibration/compare_samples.py <new> <reference> --output comparison.json --workers N`.
+
+## The response of each bin
+
+A tomographic bin has its own response: the sample's estimator on the bin's
+rows, with the sample's cuts, cells and weight table held fixed
+(`docs/source/response_calibration.md`). `sp_validation.sample.bins`
+measures them after the n(z) stage has put its bins in the release, as the
+rule `bin_responses`:
+
+```bash
+snakemake --profile workflow/profiles/default -s workflow/calibrate/Snakefile -j 96 \
+    -d /path/to/a/working/directory \
+    --apptainer-args "--cleanenv --bind /home,/project,/scratch" \
+    bin_responses
+```
+
+or, inside the container,
+`python scripts/calibration/bin_responses.py config/calibration/sample/v2.yaml --workers 96`
+(`--output DIRECTORY` for a sample built elsewhere). It reads, under the
+release directory, the sample's `catalogs/response.json`, `des_weights.fits`
+and `response_sums.npz`, and the n(z) stage's `nz/tom_bin.parquet` and
+`provenance/nz_som_model.npz`, `nz_calibration_arrays.npz` and
+`nz_recipe.yaml`. One pass over the shapes takes about 3 minutes on 96 cores
+and 40 GiB plus 2.5 GiB per core.
+
+The selection response needs the rows a sheared metacal branch selects and
+the no-shear branch does not, which have no `TOM_BIN_ID`. So every
+preselected row gets its bin from its PhotoPipe photometry with the n(z)
+stage's saved model, as that stage assigns it (a row without an object ID has
+no photometry and is in no bin), and keeps that bin on every branch. The rows
+are reduced to sums per (tile, bin) and cell, and the run stops unless
+
+- every galaxy of `nz/tom_bin.parquet` with an object ID is selected with
+  its `TOM_BIN_ID`, and the selected galaxies it does not name by ID are as
+  many as its rows without one (those rows are in its bin 0, as the n(z)
+  stage joins photometry by ID; here they keep the bin of their photometry,
+  recorded as `unnamed_per_bin`), and
+- the bins' sums, bin 0 included, add to `catalogs/response_sums.npz`.
+
+Each bin's R, its shear and selection parts, `c_e`, the branch populations
+and their delete-one-tile jackknife covariance (`response.record`) go into
+`catalogs/response.json` under `bins`:
+`{"column": "TOM_BIN_ID", "records": {"0": {...}, ..., "4": {...}}}`, bin 0
+being the galaxies in no bin; the rest of the file is the whole sample's
+record, unchanged. The run then rewrites `catalogs/calibrated`: every row
+gets its `TOM_BIN_ID` from `nz/tom_bin.parquet` and `e1`, `e2` calibrated with
+its own bin's R and `c_e` in place of the whole sample's, and the whole
+sample's σ_e in `catalogs/survey.json` is taken again. The rewrite is staged
+whole and installed together with the record, and an interrupted run is
+completed by the next.
+`provenance/bin_response_checks.json` records what the checks compared and is
+written last. The response of the bin assignment itself is not included:
+the photometry has no sheared versions.
+
+Rerun it whenever the bins, the cuts or the weights change: after every n(z)
+run, and after every rebuild of the sample (which rewrites `response.json`
+without `bins`). Snakemake reruns it when the sample or the n(z) products are
+newer than its checks.
 
 ## Redshift distribution (step 5)
 
