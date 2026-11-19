@@ -1,19 +1,23 @@
 import gc
+import hashlib
+import json
 import os
 import time
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import numpy as np
+import treecorr
 from astropy.io import fits
 from astropy.table import Table
 from shear_psf_leakage.rho_tau_cov import CovTauTh
 from shear_psf_leakage.rho_tau_stat import RhoStat, TauStat
 
-from sp_validation import io
+from sp_validation import io, leakage_fit
 from sp_validation.correlation import (
     measure_with_patches,
     measurement_matches,
+    selection_digest,
     write_measurement_metadata,
 )
 
@@ -22,6 +26,36 @@ from sp_validation.correlation import (
 from sp_validation.plots import SquareRootScale  # noqa: F401
 from sp_validation.statistics import jackknife_patch_centers
 
+TAU_FIELD_DEFINITION = "selected-weighted-mean-v1"
+ALPHA_TEMPLATE_DEFINITION = "centred-galaxy-psf-v1"
+
+
+def tau_field_definition(params):
+    """Selected galaxy field, including column names and component responses."""
+    return {
+        "centring": TAU_FIELD_DEFINITION,
+        **{
+            key: params.get(key)
+            for key in (
+                "ra_col",
+                "dec_col",
+                "w_col",
+                "e1_col",
+                "e2_col",
+                "R11",
+                "R22",
+                "ra_PSF_col",
+                "dec_PSF_col",
+                "e1_PSF_col",
+                "e2_PSF_col",
+                "e1_star_col",
+                "e2_star_col",
+                "PSF_size",
+                "star_size",
+            )
+        },
+    }
+
 
 def _extract_xip(correlations):
     """Return flattened array of xip values from a list of correlations."""
@@ -29,7 +63,7 @@ def _extract_xip(correlations):
 
 
 def _compute_stats_with_patches(
-    handler, kind, catalog_id, filename, save_cov=False, means=None
+    handler, kind, catalog_id, filename, save_cov=False, means=None, selection=None
 ):
     """Publish unpatched ρ/τ means with the patched variances and covariance.
 
@@ -76,7 +110,14 @@ def _compute_stats_with_patches(
     setattr(handler, attribute, table)
     getattr(handler, f"save_{kind}_stats")(filename)
     getattr(handler, f"load_{kind}_stats")(filename)
-    write_measurement_metadata(Path(handler.catalogs._output) / filename, config)
+    write_measurement_metadata(
+        Path(handler.catalogs._output) / filename,
+        config,
+        selection=selection,
+        definition=tau_field_definition(handler.catalogs._params)
+        if kind == "tau"
+        else None,
+    )
     return means
 
 
@@ -122,7 +163,15 @@ class _CatalogueLoader:
                 "star_flag",
             )
         elif block == "shear":
-            keys = ("ra_col", "dec_col", "w_col", "e1_col", "e2_col")
+            keys = (
+                "ra_col",
+                "dec_col",
+                "w_col",
+                "e1_col",
+                "e2_col",
+                "e1_gal_PSF_col",
+                "e2_gal_PSF_col",
+            )
         else:
             raise KeyError(f"unknown rho/tau catalogue block {block!r}")
 
@@ -199,6 +248,8 @@ def get_params_rho_tau(cat):
     params["w_col"] = cat["shear"]["w_col"]
     params["e1_col"] = cat["shear"]["e1_col"]
     params["e2_col"] = cat["shear"]["e2_col"]
+    params["e1_gal_PSF_col"] = cat["shear"].get("e1_PSF_col")
+    params["e2_gal_PSF_col"] = cat["shear"].get("e2_PSF_col")
     params["tomo_bin_col"] = cat["shear"].get("tomo_bin_col")
     params["R11"] = cat["shear"].get("R11")
     params["R22"] = cat["shear"].get("R22")
@@ -343,7 +394,11 @@ def get_rho_tau(
     )
 
     with _CatalogueLoader(config[version], params) as load:
-        rho_stats_exists = measurement_matches(rho_path, treecorr_config)
+        rho_selection = selection_digest(mask_star)
+        tau_selection = selection_digest(mask_star, mask_gal)
+        rho_stats_exists = measurement_matches(
+            rho_path, treecorr_config, selection=rho_selection
+        )
         cov_exists = True if not cov_rho else cov_rho_path.exists()
         need_compute = (not rho_stats_exists) or (not cov_exists) or force_run
 
@@ -354,7 +409,12 @@ def get_rho_tau(
             )
 
             _compute_stats_with_patches(
-                rho_stat_handler, "rho", catalog_id, rho_path.name, save_cov=cov_rho
+                rho_stat_handler,
+                "rho",
+                catalog_id,
+                rho_path.name,
+                save_cov=cov_rho,
+                selection=rho_selection,
             )
             rho_stat_handler.load_rho_stats(rho_path.name)
         else:
@@ -371,7 +431,15 @@ def get_rho_tau(
             verbose=True,
         )
 
-        if measurement_matches(tau_path, treecorr_config) and not force_run:
+        if (
+            measurement_matches(
+                tau_path,
+                treecorr_config,
+                selection=tau_selection,
+                definition=tau_field_definition(params),
+            )
+            and not force_run
+        ):
             print(
                 f"Skipping tau statistics computation, file {tau_path} already exists."
             )
@@ -390,10 +458,331 @@ def get_rho_tau(
                 load("shear"), cat_type="gal", catalog_id=version, mask=mask_gal
             )
 
-            _compute_stats_with_patches(tau_stat_handler, "tau", version, tau_path.name)
+            _compute_stats_with_patches(
+                tau_stat_handler,
+                "tau",
+                version,
+                tau_path.name,
+                selection=tau_selection,
+            )
 
     print(f"Time to compute rho and tau statistics: {time.time() - start_time:.2f} s")
     return rho_stat_handler, tau_stat_handler
+
+
+# The correlations of the joint leakage measurement, as (first, second)
+# catalogue types of shear_psf_leakage's Catalogs: p = "psf",
+# de = "psf_error", q = "psf_size_error", galaxies = "gal", and the PSF-size
+# slope field u de = "psf_error_size_slope".
+LEAKAGE_RHO_PAIRS = (
+    ("psf", "psf"),
+    ("psf_error", "psf_error"),
+    ("psf_error", "psf"),
+    ("psf_size_error", "psf_size_error"),
+    ("psf_error", "psf_size_error"),
+    ("psf", "psf_size_error"),
+)
+LEAKAGE_TAU_PAIRS = (("gal", "psf"), ("gal", "psf_error"), ("gal", "psf_size_error"))
+LEAKAGE_SLOPE_PAIRS = (
+    ("psf_error_size_slope", "psf"),
+    ("psf_error_size_slope", "psf_error"),
+    ("psf_error_size_slope", "psf_size_error"),
+)
+LEAKAGE_SLOPE_AUTO = ("psf_error_size_slope", "psf_error_size_slope")
+
+
+def leakage_cache_key(
+    treecorr_config,
+    npatch_fine,
+    patch_counts,
+    beta_psf_size,
+    mask_star=None,
+    mask_gal=None,
+    *,
+    params,
+):
+    """The settings and row selections that identify a joint leakage measurement.
+
+    ``mask_star``/``mask_gal`` are the star and galaxy selections the
+    measurement uses, recorded as `selection_digest`s. TreeCorr settings the
+    measurement overrides (``var_method``, ``cross_patch_weight``) or that
+    only change round-off (``num_threads``) are left out.
+    """
+    config = {
+        key: value
+        for key, value in treecorr_config.items()
+        if key not in ("num_threads", "var_method", "cross_patch_weight")
+    }
+    return {
+        "field_definition": tau_field_definition(params),
+        "alpha_template": {
+            "mode": ALPHA_TEMPLATE_DEFINITION,
+            "e1": params.get("e1_gal_PSF_col"),
+            "e2": params.get("e2_gal_PSF_col"),
+        },
+        "treecorr_config": config,
+        "npatch_fine": int(npatch_fine),
+        "patch_counts": sorted(int(n) for n in patch_counts),
+        "beta_psf_size": bool(beta_psf_size),
+        "selection": {
+            "stars": selection_digest(mask_star),
+            "stars_galaxies": selection_digest(mask_star, mask_gal),
+        },
+    }
+
+
+def read_leakage_jackknife(path, key):
+    """Products of a cached joint leakage measurement made with ``key``, or None."""
+    path = Path(path)
+    metadata_path = path.with_suffix(".json")
+    if not (path.exists() and metadata_path.exists()):
+        return None
+    if json.loads(metadata_path.read_text()).get("key") != key:
+        return None
+    with np.load(path) as data:
+        return dict(data)
+
+
+def measure_leakage_jackknife(
+    config,
+    version,
+    treecorr_config,
+    path,
+    key,
+    mask_star=None,
+    mask_gal=None,
+):
+    """Measure the rho/tau vector and its joint delete-one jackknife rows.
+
+    ``key`` (from `leakage_cache_key` with these masks) holds the settings:
+    TreeCorr configuration, ``npatch_fine``, ``patch_counts``,
+    ``beta_psf_size``, and the selections of ``mask_star``/``mask_gal``.
+    Stars and galaxies are built into TreeCorr catalogues exactly as
+    `get_rho_tau` builds them (``shear_psf_leakage`` field definitions;
+    galaxy ellipticities are centred on the selected weighted mean), sharing one
+    set of ``npatch_fine`` k-means patch centres found on the selected stars. One
+    pass of GG correlations, with 'match' cross-patch weights, measures
+    rho0..rho5 and tau0, tau2, tau5 and, with ``beta_psf_size``, the
+    correlations of u de (u = T_PSF / <T_PSF> - 1 over the selected stars)
+    with p, de, q and itself. Delete-one jackknife rows come from the
+    per-patch-pair results at ``npatch_fine`` and, for every count in
+    ``patch_counts``, at Ward-linkage unions of the fine patches.
+
+    Writes the NPZ products and JSON metadata.
+    Alpha point values and matched rows are saved separately as alpha_vector
+    and alpha_rows_<N>; they replace the alpha design column only.
+    Returns the products as a dict: ``theta``, ``vector`` (rho0..rho5, tau0, tau2, tau5
+    xi+, flattened), ``rho_xim``, ``rows_<N>`` (one row per patch, the
+    vector's order followed, with the slope, by the three u de templates),
+    ``centres``, ``groups_<N>``, and with the slope ``template_vector``,
+    ``slope_xip`` and ``slope_xim`` (u de with p, de, q, u de).
+    """
+    path = Path(path)
+    metadata_path = path.with_suffix(".json")
+    npatch_fine = key["npatch_fine"]
+    patch_counts = key["patch_counts"]
+    beta_psf_size = key["beta_psf_size"]
+    start_time = time.time()
+    params = get_params_rho_tau(config[version])
+    params["patch_number"] = npatch_fine
+    measurement_config = {
+        **treecorr_config,
+        "var_method": "shot",
+        "cross_patch_weight": "match",
+    }
+    rho_handler = RhoStat(output=str(path.parent), treecorr_config=measurement_config)
+    tau_handler = TauStat(
+        catalogs=rho_handler.catalogs,
+        output=str(path.parent),
+        treecorr_config=measurement_config,
+    )
+    catalogs = rho_handler.catalogs
+    catalogs.set_params(params, str(path.parent))
+    with _CatalogueLoader(config[version], params) as load:
+        rho_handler.build_cat_to_compute_rho(
+            load("psf"), catalog_id="leakage", mask=mask_star
+        )
+        tau_handler.build_cat_to_compute_tau(
+            load("shear"), cat_type="gal", catalog_id="leakage", mask=mask_gal
+        )
+        tau_handler.build_cat_to_compute_tau(
+            load("shear"), cat_type="gal_psf", catalog_id="leakage", mask=mask_gal
+        )
+        cats = {
+            name.removesuffix("_leakage"): cat
+            for name, cat in catalogs.catalogs_dict.items()
+        }
+        centres = cats["psf"].patch_centers
+        mean_psf_size = None
+        if beta_psf_size:
+            stars = catalogs.read_shear_cat(path_gal=None, path_psf=load("psf"))
+            size = np.asarray(stars[params["PSF_size"]], dtype=float)
+            if mask_star is not None:
+                size = size[mask_star]
+            del stars
+            mean_psf_size = float(size.mean())
+            u = size / mean_psf_size - 1
+            de = cats["psf_error"]
+            if u.size != de.ntot:
+                raise ValueError(
+                    f"PSF-size template has {u.size} rows but the de catalogue "
+                    f"{de.ntot}; the two must be the same selected stars"
+                )
+            cats["psf_error_size_slope"] = treecorr.Catalog(
+                ra=de.ra,
+                dec=de.dec,
+                ra_units="rad",
+                dec_units="rad",
+                g1=u * de.g1,
+                g2=u * de.g2,
+                w=de.w,
+                patch_centers=centres,
+            )
+            del size, u
+
+    groups = {n: leakage_fit.ward_group_map(centres, n) for n in patch_counts}
+    counts = [npatch_fine, *patch_counts]
+    pairs = list(LEAKAGE_RHO_PAIRS + LEAKAGE_TAU_PAIRS)
+    if beta_psf_size:
+        pairs += [*LEAKAGE_SLOPE_PAIRS, LEAKAGE_SLOPE_AUTO]
+    xip, xim, rows = [], [], {n: [] for n in counts}
+    theta = None
+    max_check_error = 0.0
+    for first, second in pairs:
+        print(f"Joint leakage correlation <{first}, {second}>", flush=True)
+        corr = treecorr.GGCorrelation(measurement_config)
+        corr.process(cats[first], cats[second])
+        xip.append(corr.xip.copy())
+        xim.append(corr.xim.copy())
+        if (first, second) == LEAKAGE_TAU_PAIRS[0]:
+            theta = corr.meanr.copy()
+        if (first, second) != LEAKAGE_SLOPE_AUTO:
+            fine, error = leakage_fit.treecorr_jackknife_rows([corr])
+            max_check_error = max(max_check_error, error)
+            rows[npatch_fine].append(fine)
+            for n in patch_counts:
+                grouped, _ = leakage_fit.treecorr_jackknife_rows(
+                    [corr], groups=groups[n], check_rows=False
+                )
+                rows[n].append(grouped)
+        del corr
+        gc.collect()
+
+    n_joint = len(LEAKAGE_RHO_PAIRS) + len(LEAKAGE_TAU_PAIRS)
+    products = {
+        "theta": theta,
+        "vector": np.concatenate(xip[:n_joint]),
+        "rho_xim": np.array(xim[: len(LEAKAGE_RHO_PAIRS)]),
+        "centres": centres,
+        **{f"rows_{n}": np.concatenate(rows[n], axis=1) for n in counts},
+        **{f"groups_{n}": groups[n] for n in patch_counts},
+    }
+    if beta_psf_size:
+        products["template_vector"] = np.concatenate(xip[n_joint : n_joint + 3])
+        products["slope_xip"] = np.array(xip[n_joint:])
+        products["slope_xim"] = np.array(xim[n_joint:])
+
+    # Release the shear tree before building the galaxy-PSF tree.
+    cats["gal"].clear_cache()
+    alpha_correlations = tau_handler.compute_alpha_template("leakage")
+    products["alpha_vector"] = np.concatenate([c.xip for c in alpha_correlations])
+    for n in counts:
+        alpha_rows, error = leakage_fit.treecorr_jackknife_rows(
+            alpha_correlations, groups=None if n == npatch_fine else groups[n]
+        )
+        products[f"alpha_rows_{n}"] = alpha_rows
+        max_check_error = max(max_check_error, error)
+    del alpha_correlations
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(path, **products)
+    metadata = {
+        "key": key,
+        "version": version,
+        "stars": int(cats["psf"].nobj),
+        "galaxies": int(cats["gal"].nobj),
+        "mean_psf_size": mean_psf_size,
+        "order": [f"<{a}, {b}>" for a, b in pairs],
+        "jackknife_row_check_max_abs_error": max_check_error,
+        "treecorr_version": treecorr.__version__,
+        "seconds": time.time() - start_time,
+    }
+    metadata_path.write_text(json.dumps(metadata, indent=2) + "\n")
+    print(f"Joint leakage measurement written to {path} in {metadata['seconds']:.0f} s")
+    return products
+
+
+def fit_leakage(products, npatch, beta_psf_size=False, cross_term=True):
+    """Joint EIV fit of `measure_leakage_jackknife` products at ``npatch``.
+
+    Returns the `leakage_fit.fit_joint_eiv` result dict, whose
+    ``parameters`` are (alpha, beta, eta), or (alpha, beta0, eta, beta1)
+    with the PSF-size slope.
+    """
+    rows = np.asarray(products[f"rows_{npatch}"])
+    n_joint = len(products["vector"])
+    template = {}
+    if beta_psf_size:
+        template = dict(
+            template_vector=products["template_vector"],
+            template_rows=rows[:, n_joint:],
+        )
+    return leakage_fit.fit_joint_eiv(
+        products["vector"],
+        rows[:, :n_joint],
+        alpha_vector=products["alpha_vector"],
+        alpha_rows=products[f"alpha_rows_{npatch}"],
+        cross_term=cross_term,
+        **template,
+    )
+
+
+def get_samples_eiv(
+    products, patch_counts, fiducial_npatch, beta_psf_size=False, nsamples=10000, seed=0
+):
+    """Joint EIV fits at each patch count and Gaussian samples at the fiducial.
+
+    Returns ``(samples, fits, quantiles)``: ``nsamples`` draws (generator
+    ``seed``) from N(mu, Sigma_p) of the ``fiducial_npatch`` fit, the fit
+    results keyed by patch count, and the 16/50/84 per cent sample quantiles
+    per parameter. Raises if the fiducial fit's profile Hessian is not
+    positive definite, since it then has no parameter covariance.
+    """
+    fits = {
+        int(n): fit_leakage(products, n, beta_psf_size=beta_psf_size)
+        for n in patch_counts
+    }
+    for n, result in fits.items():
+        errors = ", ".join(
+            f"{mu:.4g} +/- {sigma:.2g}" if sigma is not None else f"{mu:.4g} +/- ?"
+            for mu, sigma in zip(result["parameters"], result["sigma"])
+        )
+        flags = [
+            message
+            for ok, message in (
+                (result["bfgs_success"], "BFGS did not converge"),
+                (result["profile_hessian_positive"], "Hessian not positive definite"),
+            )
+            if not ok
+        ]
+        print(
+            f"EIV leakage fit, {n} patches: chi2 = {result['chi2']:.2f}/"
+            f"{result['dof']} (PTE {result['pte']:.3g}), parameters {errors}"
+            + (f" [{'; '.join(flags)}]" if flags else "")
+        )
+    fiducial = fits[int(fiducial_npatch)]
+    if not fiducial["profile_hessian_positive"]:
+        raise ValueError(
+            f"The {fiducial_npatch}-patch EIV leakage fit has a profile Hessian "
+            "that is not positive definite (eigenvalues "
+            f"{fiducial['profile_hessian_eigenvalues']}); its parameters are not "
+            "constrained, so no samples can be drawn."
+        )
+    samples = np.random.default_rng(seed).multivariate_normal(
+        fiducial["parameters"], fiducial["parameter_covariance"], size=nsamples
+    )
+    quantiles = np.percentile(samples, [16, 50, 84], axis=0)
+    return samples, fits, quantiles
 
 
 def get_theory_cov(
@@ -413,7 +802,8 @@ def get_theory_cov(
 
     ``CovTauTh`` takes the survey area and effective galaxy density from the
     galaxy catalogue after ``mask_gal``. The masks select rows as in
-    ``get_rho_tau``.
+    ``get_rho_tau``; their `selection_digest` is recorded beside the cached
+    covariance, which is reused only for the same selection.
     """
 
     params = get_params_rho_tau(config[version])
@@ -421,8 +811,14 @@ def get_theory_cov(
     info = config[version]
 
     target_cov = Path(outdir) / f"cov_tau_{base}_th.npy"
+    metadata = Path(str(target_cov) + ".json")
+    selection = selection_digest(mask_star, mask_gal)
 
-    if target_cov.exists():
+    if (
+        target_cov.exists()
+        and metadata.exists()
+        and json.loads(metadata.read_text()).get("selection") == selection
+    ):
         print(f"Skipping covariance computation, file {target_cov} already exists.")
         return
 
@@ -449,23 +845,26 @@ def get_theory_cov(
         print(f"--- Covariance matrix assembled in {time.time() - start_time:.2f}s ---")
         target_cov.parent.mkdir(parents=True, exist_ok=True)
         np.save(target_cov, cov)
+        metadata.write_text(json.dumps({"selection": selection}) + "\n")
         print("Saved covariance matrix of version: ", version)
         del cov_tau_th
     gc.collect()
     return
 
 
-def rho_cache_valid(rho_path, cov_rho_path, treecorr_config, force_run=False):
+def rho_cache_valid(
+    rho_path, cov_rho_path, treecorr_config, force_run=False, selection=None
+):
     """Whether a cached ρ measurement and its jackknife covariance can be reused.
 
-    The ρ FITS must record the current means and patched configurations
-    (:func:`~sp_validation.correlation.measurement_matches`); the PSF-only
+    The ρ FITS must record the current means, patched configurations and star
+    selection (:func:`~sp_validation.correlation.measurement_matches`); the PSF-only
     result is then shared by every source bin of a tomographic run.
     """
     return (
         not force_run
         and Path(cov_rho_path).exists()
-        and measurement_matches(rho_path, treecorr_config)
+        and measurement_matches(rho_path, treecorr_config, selection=selection)
     )
 
 
@@ -489,12 +888,21 @@ def get_jackknife_cov(
     rho_filename = f"rho_stats_{base_rho}.fits"
     tau_filename = f"tau_stats_{base_tau}.fits"
     tau_cov_path = Path(outdir) / f"cov_tau_{base_tau}_jk.npy"
+    rho_selection = selection_digest(mask_star)
+    tau_selection = selection_digest(mask_star, mask_gal)
 
     if (
         tau_cov_path.exists()
         and (Path(outdir) / f"cov_rho_{base_rho}_jk.npy").exists()
-        and measurement_matches(Path(outdir) / rho_filename, treecorr_config)
-        and measurement_matches(Path(outdir) / tau_filename, treecorr_config)
+        and measurement_matches(
+            Path(outdir) / rho_filename, treecorr_config, selection=rho_selection
+        )
+        and measurement_matches(
+            Path(outdir) / tau_filename,
+            treecorr_config,
+            selection=tau_selection,
+            definition=tau_field_definition(get_params_rho_tau(config[version])),
+        )
         and not force_run
     ):
         print(f"Skipping covariance computation, file {tau_cov_path} already exists.")
@@ -537,7 +945,9 @@ def get_jackknife_cov(
 
     rho_path = Path(outdir) / rho_filename
     cov_rho_path = Path(outdir) / f"cov_rho_{base_rho}_jk.npy"
-    reuse_rho = rho_cache_valid(rho_path, cov_rho_path, treecorr_config, force_run)
+    reuse_rho = rho_cache_valid(
+        rho_path, cov_rho_path, treecorr_config, force_run, selection=rho_selection
+    )
     if reuse_rho:
         rho_stat_handler.load_rho_stats(rho_filename)
         cached_rho_cov = np.load(cov_rho_path)
@@ -611,6 +1021,7 @@ def get_jackknife_cov(
                         rho_filename,
                         save_cov=True,
                         means=rho_means,
+                        selection=rho_selection,
                     )
                 tau_means = _compute_stats_with_patches(
                     tau_stat_handler,
@@ -619,6 +1030,7 @@ def get_jackknife_cov(
                     tau_filename,
                     save_cov=True,
                     means=tau_means,
+                    selection=tau_selection,
                 )
 
                 # Update the keys in the dictionaries
@@ -651,6 +1063,29 @@ def get_jackknife_cov(
         np.save(cov_rho_path, cov_rho)
 
     return rho_stat_handler, tau_stat_handler
+
+
+def _sample_cache_name(psf_fitter, base_tau, sampler, cov_type):
+    """Name of a sample cache, keyed on the tau statistics' row selection.
+
+    The selection is the `selection_digest` recorded beside
+    ``tau_stats_<base_tau>.fits`` (stars and galaxies), so samples of a
+    different selection are never reused.
+    """
+    name = f"{base_tau}_sampler_{sampler}_cov_tau_type_{cov_type}"
+    metadata = (
+        Path(psf_fitter.tau_stat_handler.catalogs._output)
+        / f"tau_stats_{base_tau}.fits.json"
+    )
+    if not metadata.exists():
+        return name
+    record = json.loads(metadata.read_text())
+    selection = record.get("selection")
+    definition = hashlib.sha256(
+        json.dumps(record.get("definition"), sort_keys=True).encode()
+    ).hexdigest()[:12]
+    name = f"{name}_field={definition}"
+    return name if selection is None else f"{name}_selection={selection[:12]}"
 
 
 def get_samples(
@@ -741,7 +1176,7 @@ def get_samples_emcee(
     psf_fitter.load_tau_stat(f"tau_stats_{base_tau}.fits")
 
     # Check if the path exists (use base for cache key to account for different TreeCorr configs)
-    base_sample = f"{base_tau}_sampler_emcee_cov_tau_type_{cov_type}"
+    base_sample = _sample_cache_name(psf_fitter, base_tau, "emcee", cov_type)
     sample_file_path = psf_fitter.get_sample_path(base_sample)
     if os.path.exists(sample_file_path):
         print(f"Skipping sampling; {sample_file_path} exists.")
@@ -793,7 +1228,7 @@ def get_samples_lsq(
     psf_fitter.load_rho_stat(f"rho_stats_{base_rho}.fits")
     psf_fitter.load_tau_stat(f"tau_stats_{base_tau}.fits")
 
-    base_sample = f"{base_tau}_sampler_lsq_cov_tau_type_{cov_type}"
+    base_sample = _sample_cache_name(psf_fitter, base_tau, "lsq", cov_type)
     # Check if the path exists (use base for cache key to account for different TreeCorr configs)
     sample_file_path = psf_fitter.get_sample_path(base_sample)
     if os.path.exists(sample_file_path):

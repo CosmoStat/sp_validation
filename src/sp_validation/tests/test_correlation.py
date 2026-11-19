@@ -9,6 +9,7 @@ from sp_validation.correlation import (
     measure_with_patches,
     measurement_matches,
     process_gg,
+    selection_digest,
     write_measurement_metadata,
 )
 
@@ -114,6 +115,21 @@ def test_measurement_metadata_records_both_tolerance_settings(tmp_path):
 
     metadata_path.write_text(json.dumps({"means": "unpatched", "config": config}))
     assert not measurement_matches(path, config)
+
+
+def test_measurement_cache_is_keyed_by_row_selection(tmp_path):
+    path = tmp_path / "measurement.txt"
+    path.write_text("cached")
+    config = dict(min_sep=1, max_sep=10, nbins=4, bin_slop=0.1)
+    unmasked = np.ones(10, dtype=bool)
+    masked = unmasked.copy()
+    masked[3] = False
+
+    write_measurement_metadata(path, config, selection=selection_digest(unmasked))
+    assert measurement_matches(path, config, selection=selection_digest(unmasked))
+    assert not measurement_matches(path, config, selection=selection_digest(masked))
+    assert not measurement_matches(path, config)
+    assert selection_digest(None) != selection_digest(unmasked)
 
 
 def test_unpatched_gg_matches_direct_measurement():
