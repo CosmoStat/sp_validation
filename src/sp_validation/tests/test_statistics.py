@@ -21,6 +21,7 @@ from sp_validation.statistics import (
     cov_from_one_covariance,
     effective_number_of_tests,
     jackknif_weighted_average2,
+    jackknife_weighted_mean,
 )
 
 
@@ -335,3 +336,42 @@ def test_global_pte_is_calibrated_under_the_null():
     p = np.array([cal.global_pte(row)[0] for row in data])
     npt.assert_allclose(np.mean(p <= 0.05), 0.05, atol=0.012)
     assert 1.0 < cal.k_eff < 5.0
+
+
+def test_jackknife_weighted_mean_white_noise_matches_shot_noise():
+    """Uncorrelated values: the patch jackknife gives the shot-noise error."""
+    rng = np.random.default_rng(1)
+    n, npatch, sigma = 200_000, 50, 0.3
+    x = rng.normal(0.0, sigma, n)
+    w = rng.uniform(0.5, 1.5, n)
+    patch = rng.integers(0, npatch, n)
+
+    mean, err = jackknife_weighted_mean(x, w, patch)
+
+    shot = np.sqrt(np.sum(w**2 * (x - np.average(x, weights=w)) ** 2)) / w.sum()
+    npt.assert_allclose(mean, np.average(x, weights=w), atol=1e-5)
+    npt.assert_allclose(err, shot, rtol=0.25)
+
+
+def test_jackknife_weighted_mean_sees_patch_offsets():
+    """A constant offset per patch raises the error by its scatter / sqrt(K)."""
+    rng = np.random.default_rng(2)
+    n, npatch = 200_000, 50
+    patch = rng.integers(0, npatch, n)
+    w = np.ones(n)
+    offset = rng.normal(0.0, 0.01, npatch)
+
+    _, err = jackknife_weighted_mean(offset[patch], w, patch)
+
+    npt.assert_allclose(err, offset.std(ddof=1) / np.sqrt(npatch), rtol=0.05)
+
+
+def test_jackknife_weighted_mean_skips_empty_patches():
+    x = np.array([1.0, 2.0, 3.0, 4.0])
+    w = np.ones(4)
+    with_gap = np.array([0, 0, 2, 2])
+    without_gap = np.array([0, 0, 1, 1])
+    npt.assert_allclose(
+        jackknife_weighted_mean(x, w, with_gap),
+        jackknife_weighted_mean(x, w, without_gap),
+    )
