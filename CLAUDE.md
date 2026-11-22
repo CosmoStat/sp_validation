@@ -38,6 +38,10 @@ CI runs this same suite inside the freshly-built image before publishing it
 - Check code style: `ruff check`
 - Auto-fix issues: `ruff check --fix`
 - Line length limit: 88 characters
+- On a same-repo PR, the lint gate pushes ruff's fixes back to the branch with
+  `GITHUB_TOKEN`, which triggers no workflows: that commit has no image build or
+  test run, so read CI from its parent (`gh run list --branch <b>`), and pull
+  before pushing again.
 
 ### Installation
 The package is managed with `uv` (see `uv.lock`); the primary runtime environment
@@ -120,6 +124,19 @@ elsewhere). The `sp_validation` a rule imports comes from the *launched
 checkout*, not the image.
 
 `workflow/README.md` is the full story — profiles, image resolution, refresh.
+
+## Traps
+- At v2 full area (~170M galaxies), several stages need far more memory than
+  the workflow rules request: ξ± with 100 jackknife patches over 128 GB, the
+  analytic τ covariance (`CovTauTh`) over 187 GB, integration-grid pair counts
+  about 121 GB. Size the allocation for these before launching.
+- OneCovariance writes `alms_lens.ascii` into its `mask_directory`, which
+  `workflow/rules/covariance.smk` sets to the footprint's own directory. Point
+  the footprint at a scratch directory of symlinks, never at a shared mask or
+  release directory.
+- A `_leak_corr` catalogue version is not automatically cleaner: check that it
+  lowers the τ statistics it targets before adopting it as fiducial (on v2 the
+  object-wise correction raises τ_0).
 
 ## Notebook Configuration
 - The CosmologyValidation class must be initialized in cosmo_val
