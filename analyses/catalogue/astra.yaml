@@ -101,7 +101,11 @@ outputs:
       catalogs/survey.json, masks/footprint-nside4096-ring.fits (the occupied
       pixels) and provenance/calibrated_tile_accounting.json (every tile's
       rows after each cut). The recipe file config/calibration/sample/v2.yaml
-      names the snapshot, the collection and the selection config.
+      names the snapshot, the collection and the selection config. v2.0.0's
+      sample was built on Nibi by bound9_stream.py (sp_validation fbb2b3e8)
+      from the comprehensive HDF5 catalogue, not from the collection
+      (provenance/calibrated_BUILD.md); the selection and response are the
+      ones this recipe applies.
     inputs: [sp.shapepipe_run1, collection, sp.selection_v2]
     decisions:
       [overlap_cut, selection_cuts, catalogue_match_tile_selection,

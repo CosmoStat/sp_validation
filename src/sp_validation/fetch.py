@@ -2,16 +2,17 @@
 
 A delivered product (a ShapePipe snapshot, PhotoPipe's photometry, a mask
 ladder) is too large, or has too many files, to commit with the analysis. Its
-ASTRA output is therefore this manifest: where the product is on this machine,
-its source and version, and the size and SHA-256 of every file. The manifest's
-content changes exactly when the product's bytes do, so everything that reads
-it goes stale when the product changes.
+ASTRA output is therefore this manifest: the product's source and version, and
+the size and SHA-256 of every file. It names no machine-local path, so the same
+bytes give the same manifest everywhere; a recipe that reads the product
+resolves ``source`` with :mod:`sp_validation.data_roots`.
 
 ``source`` is written as in ``config/data_roots.yaml`` (``${unions_data}/...``)
 and resolved by :mod:`sp_validation.data_roots`, which fetches a ``vos:`` path
-into the local cache. With ``--md5sums``, every file the checksum list names
-under the product is checked against it, and a mismatch or a missing file is
-an error.
+into the local cache. That cache is not refreshed, so for a ``vos:`` product
+pass ``--md5sums``: the checksum list is fetched afresh every time, and a file
+the list names under the product that is missing or differs (a stale cached
+copy included) is an error.
 
     python -m sp_validation.fetch '${unions_v2}/v2.0.0/nz' --version v2.0.0 \
         --md5sums '${unions_v2}/v2.0.0/MD5SUMS' --out nz.json
@@ -58,12 +59,17 @@ def manifest(source, version, md5sums=None):
         entries[name] = {"size": path.stat().st_size, "sha256": sha}
         md5_of[name] = md5
     if md5sums:
-        listed = Path(data_roots.local(data_roots.expand(md5sums)))
+        md5sums = data_roots.expand(md5sums)
+        if md5sums.startswith(data_roots.VOS):
+            cached = data_roots.CACHE / md5sums.removeprefix(data_roots.VOS).strip("/")
+            cached.unlink(missing_ok=True)
+        listed = Path(data_roots.local(md5sums))
         prefix = root.relative_to(listed.parent).as_posix()
+        under = "" if prefix == "." else prefix + "/"
         expected = {
-            name.removeprefix(prefix + "/") if root.is_dir() else Path(name).name: md5
+            Path(name).name if not root.is_dir() else name.removeprefix(under): md5
             for name, md5 in read_md5sums(listed).items()
-            if name == prefix or name.startswith(prefix + "/")
+            if name == prefix or name.startswith(under)
         }
         missing = sorted(set(expected) - set(md5_of))
         wrong = sorted(n for n, m in expected.items() if n in md5_of and md5_of[n] != m)
@@ -72,7 +78,7 @@ def manifest(source, version, md5sums=None):
                 f"{source} does not match {md5sums}: "
                 f"{len(missing)} missing {missing[:5]}, {len(wrong)} differ {wrong[:5]}"
             )
-    return {"source": source, "version": version, "path": str(root), "files": entries}
+    return {"source": source, "version": version, "files": entries}
 
 
 def main(argv=None):

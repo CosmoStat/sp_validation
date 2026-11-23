@@ -242,8 +242,7 @@ findings:
     claim: >-
       The PSF leakage α of the four v2.0.0 bins is 0.044, 0.025, 0.012 and
       0.051, each with an error of 0.011–0.013, and the α, β, η model fits
-      bin 3's τ poorly
-      (PTE 0.0025).
+      τ poorly in bin 3 (PTE 0.0025) and in bin 1 (PTE 0.021).
     evidence:
       - artifact: psf_systematics.leakage_fit#v2_0_0
         quote: { exact: "\"alpha\": 0.04434460490244715" }
@@ -255,12 +254,14 @@ findings:
         quote: { exact: "\"alpha\": 0.051489340289596716" }
       - artifact: psf_systematics.leakage_fit#v2_0_0
         quote: { exact: "\"pte\": 0.0025183236218070336" }
+      - artifact: psf_systematics.leakage_fit#v2_0_0
+        quote: { exact: "\"pte\": 0.021297311557925382" }
 
   onecov_matches_jackknife:
     claim: >-
       The OneCovariance ξ± variances of v2.0.0 agree with the data's
-      100-patch jackknife: the median ratio over bin pairs is 0.994 below
-      10 arcmin and 1.011 within 12–83 arcmin.
+      100-patch jackknife: the median ratio over every bin pair, ξ+ and ξ−,
+      and θ is 0.994 below 10 arcmin and 1.011 within 12–83 arcmin.
     evidence:
       - artifact: validation.jackknife_comparison#v2_0_0
         quote: { exact: "\"median_small\": 0.9942354258799797" }

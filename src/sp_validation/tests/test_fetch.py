@@ -48,3 +48,11 @@ def test_missing_file_fails(release):
     (release / "nz" / "sub" / "b.txt").unlink()
     with pytest.raises(SystemExit, match="1 missing"):
         fetch.manifest(str(release / "nz"), "v9", str(release / "MD5SUMS"))
+
+
+def test_product_beside_its_checksum_list(release):
+    record = fetch.manifest(str(release), "v9", str(release / "MD5SUMS"))
+    assert set(record["files"]) >= {"nz/a.txt", "other.txt"}
+    (release / "other.txt").write_text("GAMMA")
+    with pytest.raises(SystemExit, match="1 differ"):
+        fetch.manifest(str(release), "v9", str(release / "MD5SUMS"))
