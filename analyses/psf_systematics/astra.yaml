@@ -93,9 +93,8 @@ outputs:
       resources: { cpus: 12, memory: 30GB, time_limit: 3h }
 
   # ShapePipe's diagnostics, on the 27 south-cap tiles of the ShapePipe patch
-  # testbed (chosen to span sharp and typical seeing). Each is made in every
-  # ShapePipe universe; until ShapePipe's spec is on ASTRA 0.1 they read the
-  # delivered run 1 (sp.shapepipe_run1), restricted to the patch.
+  # testbed (chosen to span sharp and typical seeing). Each reads ShapePipe's
+  # outputs by pin to its baseline_run1 universe (declared on sp as shapepipe).
   psf_residuals:
     label: PSF model residuals on reserve stars
     type: figure
@@ -104,13 +103,12 @@ outputs:
       Star-minus-model size and ellipticity on the 20 % reserve stars held
       out of the PSFEx fit, against flux, seeing, g−i colour and position on
       the CCD. Judges star selection, PSF sampling, chromaticity and model
-      complexity. Once ShapePipe is on ASTRA 0.1 it reads
-      shapepipe.star_catalogue#<universe> by pin, one figure per ShapePipe
-      universe.
-    inputs: [sp.shapepipe_run1]
+      complexity. Reads sp.shapepipe.star_catalogue#baseline_run1 by pin.
+    inputs: [sp.shapepipe.star_catalogue#baseline_run1]
     recipe:
       command: >-
-        python -m sp_validation.patch stars --run {inputs.sp.shapepipe_run1}
+        python -m sp_validation.patch stars
+        --stars {inputs.sp.shapepipe.star_catalogue#baseline_run1}
         --out {output}
 
   rho_tau_statistics:
@@ -120,13 +118,17 @@ outputs:
     description: >-
       ρ statistics of the reserve stars' PSF-model residuals and τ
       correlations of the patch's galaxy shapes with them, the additive PSF
-      systematics the shear inherits from a ShapePipe choice. Once ShapePipe
-      is on ASTRA 0.1 it reads shapepipe.final_cat#<universe> and
-      shapepipe.star_catalogue#<universe> by pin.
-    inputs: [sp.shapepipe_run1]
+      systematics the shear inherits from a ShapePipe choice. Reads
+      sp.shapepipe.final_cat#baseline_run1 and
+      sp.shapepipe.star_catalogue#baseline_run1 by pin.
+    inputs:
+      - sp.shapepipe.final_cat#baseline_run1
+      - sp.shapepipe.star_catalogue#baseline_run1
     recipe:
       command: >-
-        python -m sp_validation.patch rho_tau --run {inputs.sp.shapepipe_run1}
+        python -m sp_validation.patch rho_tau
+        --cat {inputs.sp.shapepipe.final_cat#baseline_run1}
+        --stars {inputs.sp.shapepipe.star_catalogue#baseline_run1}
         --out {output}
 
   galaxy_sample:
@@ -136,12 +138,13 @@ outputs:
     description: >-
       The number, size and S/N distribution of galaxies with a shape
       measurement, per tile: what a change to detection, masking or shape
-      measurement does to the sample. Once ShapePipe is on ASTRA 0.1 it
-      reads shapepipe.final_cat#<universe> by pin.
-    inputs: [sp.shapepipe_run1]
+      measurement does to the sample. Reads
+      sp.shapepipe.final_cat#baseline_run1 by pin.
+    inputs: [sp.shapepipe.final_cat#baseline_run1]
     recipe:
       command: >-
-        python -m sp_validation.patch galaxies --run {inputs.sp.shapepipe_run1}
+        python -m sp_validation.patch galaxies
+        --cat {inputs.sp.shapepipe.final_cat#baseline_run1}
         --out {output}
 
   shape_shifts:
@@ -151,15 +154,16 @@ outputs:
     description: >-
       Object-matched differences in calibrated shape and PSF quantities
       between a ShapePipe universe and baseline_run1, with the metacal
-      response, against S/N and size. Against run 1 itself it is the
-      reproduction check of the patch. Once ShapePipe is on ASTRA 0.1 it
-      reads shapepipe.final_cat#<universe> and
-      shapepipe.final_cat#baseline_run1 by pin.
-    inputs: [sp.shapepipe_run1]
+      response, against S/N and size. Against baseline_run1 itself it is the
+      reproduction check of the patch. Reads
+      sp.shapepipe.final_cat#baseline_run1 by pin.
+    inputs: [sp.shapepipe.final_cat#baseline_run1]
     recipe:
       command: >-
-        python -m sp_validation.patch shapes --run {inputs.sp.shapepipe_run1}
-        --baseline {inputs.sp.shapepipe_run1} --out {output}
+        python -m sp_validation.patch shapes
+        --run {inputs.sp.shapepipe.final_cat#baseline_run1}
+        --baseline {inputs.sp.shapepipe.final_cat#baseline_run1}
+        --out {output}
 
 decisions:
   tau_covariance:

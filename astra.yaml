@@ -68,6 +68,9 @@ inputs:
     description: The Gaussian priors on the nuisance parameters and ω_b.
 
 analyses:
+  shapepipe:
+    url: https://github.com/CosmoStat/shapepipe.git
+    commit: e5baff101973fbdabea270e6051d4b55f9375be9
   catalogue:
     path: analyses/catalogue
   shear_calibration:
@@ -99,10 +102,10 @@ outputs:
       969 campaigns: the shear catalogue final_cat_latest.hdf5 (772,677,301
       objects), the star catalogue full_starcat_latest.hdf5, the coverage
       maps (nexp, nflagged, npoint, ntaken) and MANIFEST.json. It is
-      ShapePipe's universe baseline_run1 as it ran (CosmoStat/shapepipe,
-      astra.yaml and universes/baseline_run1.yaml), made by Snakemake on
-      Nibi and Fir in October 2026, so it is fetched rather than read
-      through a ShapePipe record. The result is the manifest of what
+      ShapePipe's universe baseline_run1 as it ran (declared above as
+      shapepipe, imported into universes as baseline_run1), made by Snakemake
+      on Nibi and Fir in October 2026, so the release data are fetched rather
+      than read through an lc record. The result is the manifest of what
       arrived: where it is, and every file's size and SHA-256.
     recipe:
       command: >-
@@ -269,13 +272,16 @@ findings:
         quote: { exact: "\"median_cut\": 1.0111948400140864" }
 
 universes:
+  baseline_run1:
+    analysis: shapepipe
+    universe: baseline_run1
   v2_0_0:
     label: v2.0.0 as made
     description: >-
       The choices that made the v2.0.0 release from ShapePipe's run 1
-      (run1-snap3): the calibrated sample, its four tomographic bins and
-      n(z), the footprints and the blinded tomographic data vector
-      SP_v2.0_tomo.sacc with its covariance.
+      (run1-snap3, ShapePipe universe baseline_run1): the calibrated sample,
+      its four tomographic bins and n(z), the footprints and the blinded
+      tomographic data vector SP_v2.0_tomo.sacc with its covariance.
     decisions:
       fiducial_cosmology: planck18
       blinding: theory_shift

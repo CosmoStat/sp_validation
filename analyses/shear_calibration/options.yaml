@@ -30,7 +30,7 @@ generator:
 shapepipe:
   v2_here:
     shapepipe_repository: https://github.com/CosmoStat/shapepipe.git
-    shapepipe_commit: PLACEHOLDER
+    shapepipe_commit: 7f68451e6198089793ba2fc867e45d3c5c39bf18
     ngmix_chunks: 16
 
 selection:
