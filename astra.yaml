@@ -1,0 +1,180 @@
+# sp_validation as an ASTRA 0.1 analysis: everything UNIONS weak lensing makes
+# from ShapePipe's shear catalogue, from the calibrated sample to the blinded
+# data vectors, their covariances, their validation and the inference.
+#
+# Sections are sub-analyses in analyses/<section>/, in the order the data
+# flow. What is given to us is an output whose recipe fetches it and records
+# what arrived (sp_validation.fetch); what we compute is an output; what we
+# choose is a decision. Products used by several sections are fetched here,
+# the rest in the section that reads them.
+#
+# Recipes run in their own analysis's folder and call the package
+# (python -m sp_validation...) or the scripts the Snakemake workflow calls,
+# so the two runners share code. The Snakemake workflow is unchanged.
+#
+# Validate with `uvx --prerelease allow astra-tools@0.3.0rc4 validate`.
+
+spec_version: "0.1.0"
+label: UNIONS weak lensing from ShapePipe's catalogue
+description: >-
+  The UNIONS cosmic-shear analysis downstream of shape measurement. ShapePipe
+  (CosmoStat/shapepipe, its own ASTRA analysis) makes the shear catalogue;
+  this analysis calibrates and selects the sample, bins it in redshift and
+  calibrates the n(z), builds the footprint and the GLASS digital twins of
+  the data, measures the PSF systematics, measures every two-point statistic
+  blinded, builds and validates their covariances, runs the null tests
+  calibrated on the mocks, and feeds the inference. Universe v2_0_0 holds the
+  choices that made the v2.0.0 release
+  (vos:cfis/weak_lensing/ShapePipe/v2.x/v2.0.0/) from ShapePipe's run 1.
+tags: [unions, weak-lensing, cosmic-shear, sp_validation]
+
+inputs:
+  # Committed configs read by the sections (paths from the repository root).
+  # -- catalogue, shear_calibration, redshifts, footprint
+  # -- mocks, psf_systematics, data_vectors, covariance, validation, inference
+
+analyses:
+  catalogue:
+    path: analyses/catalogue
+  shear_calibration:
+    path: analyses/shear_calibration
+  redshifts:
+    path: analyses/redshifts
+  footprint:
+    path: analyses/footprint
+  mocks:
+    path: analyses/mocks
+  psf_systematics:
+    path: analyses/psf_systematics
+  data_vectors:
+    path: analyses/data_vectors
+  covariance:
+    path: analyses/covariance
+  validation:
+    path: analyses/validation
+  inference:
+    path: analyses/inference
+
+outputs:
+  shapepipe_run1:
+    label: ShapePipe run 1, snapshot 3
+    type: data
+    format: json
+    description: >-
+      ShapePipe's run-1 products on all 22,901 DR6 tiles, merged across its
+      969 campaigns: the shear catalogue final_cat_latest.hdf5 (772,677,301
+      objects), the star catalogue full_starcat_latest.hdf5, the coverage
+      maps (nexp, nflagged, npoint, ntaken) and MANIFEST.json. It is
+      ShapePipe's universe baseline_run1 as it ran (CosmoStat/shapepipe,
+      astra.yaml and universes/baseline_run1.yaml), made by Snakemake on
+      Nibi and Fir in October 2026, so it is fetched rather than read
+      through a ShapePipe record. The result is the manifest of what
+      arrived: where it is, and every file's size and SHA-256.
+    recipe:
+      command: >-
+        python -m sp_validation.fetch '${unions_data}/v2.x/run1-snap3'
+        --version run1-snap3 --out {output}
+      resources: { cpus: 1, memory: 4GB, time_limit: 4h }
+
+  photopipe_dr6:
+    label: PhotoPipe DR6 photometry and photo-z
+    type: data
+    format: json
+    description: >-
+      PhotoPipe's DR6 catalogue (Hendrik Hildebrandt's group,
+      hendrik1008/PhotoPipeUNIONS, CANFAR branch): GAaP u g r i z z2
+      photometry and BPZ photo-z of every DR6 tile, joined to ShapePipe's
+      objects on (TILE_ID, NUMBER), with its match table and build record.
+      The catalogue section joins it to the shapes and the redshifts
+      section bins and calibrates from its colours.
+    recipe:
+      command: >-
+        python -m sp_validation.fetch '${unions_data}/photopipe-dr6'
+        --version dr6 --out {output}
+      resources: { cpus: 1, memory: 4GB, time_limit: 2h }
+
+  photopipe_specz:
+    label: PhotoPipe DR6 spec-z matches
+    type: data
+    format: json
+    description: >-
+      PhotoPipe's match of DR6 objects to spectroscopic redshifts over every
+      tile, UNIONS_DR6_ugriz_specz.cat, and the per-tile redshift compilation
+      of 19 Oct 2026 it used (asc/). The calibration sample of the SOM n(z)
+      and the spec-z extension of the HATS collection.
+    recipe:
+      command: >-
+        python -m sp_validation.fetch '${unions_data}/photopipe-dr6-specz-all'
+        --version 2026-10-19 --out {output}
+      resources: { cpus: 1, memory: 2GB, time_limit: 1h }
+
+  blind:
+    label: The UNIONS blind
+    type: data
+    format: json
+    description: >-
+      The blind every cosmological statistic is shifted by as it is
+      measured, t(hidden) − t(fiducial) (sp_validation.blinding). Nobody
+      opens it: the manifest holds its path and hash, and the recipes that
+      measure signal pass the path to sp_validation, which conceals what it
+      writes.
+    recipe:
+      command: >-
+        python -m sp_validation.fetch '${unions_v2}/v2.0.0/blind/unions.blind.json'
+        --version v2.0.0 --md5sums '${unions_v2}/v2.0.0/MD5SUMS' --out {output}
+
+decisions:
+  fiducial_cosmology:
+    label: Fiducial cosmology
+    rationale: >-
+      The cosmology at which the blind is centred, the GLASS mocks are drawn,
+      the analytic covariances are evaluated and the PSF-leakage and B-mode
+      tests are interpreted. results/cosmology/planck18.json, made from
+      cs_util.cosmo.PLANCK18, is what the workflow reads.
+    options:
+      planck18:
+        label: Planck 2018 ΛCDM
+        description: astropy's Planck18 parameters (TT,TE,EE+lowE+lensing+BAO).
+        insights: [planck18_cosmology]
+
+  blinding:
+    label: Blinding
+    rationale: >-
+      v2 cosmic shear is blind. Every cosmological statistic is shifted by
+      t(hidden) − t(fiducial) before it is written, so no unblinded E-mode
+      statistic exists on disk; B-modes, covariances and n(z) are not
+      shifted. Unblinding is a collaboration decision, not an analysis
+      choice, so it is not an option here.
+    options:
+      theory_shift:
+        label: Shift by a hidden cosmology at measurement
+        description: >-
+          sp_validation.blinding.conceal adds t(hidden) − t(fiducial) to
+          every ξ±, Cℓ_EE and statistic derived from them as it is saved.
+      unblinded:
+        label: Unblinded
+        excluded: The analysis is blind until the collaboration unblinds it.
+
+prior_insights:
+  planck18_cosmology:
+    claim: >-
+      The Planck 2018 results give the ΛCDM parameters used as the fiducial
+      cosmology.
+    evidence:
+      - doi: "10.1051/0004-6361/201833910"
+        quote:
+          exact: "Planck 2018 results"
+
+universes:
+  v2_0_0:
+    label: v2.0.0 as made
+    description: >-
+      The choices that made the v2.0.0 release from ShapePipe's run 1
+      (run1-snap3): the calibrated sample, its four tomographic bins and
+      n(z), the footprints and the blinded tomographic data vector
+      SP_v2.0_tomo.sacc with its covariance.
+    decisions:
+      fiducial_cosmology: planck18
+      blinding: theory_shift
+      # -- catalogue, shear_calibration, redshifts, footprint
+      # -- mocks, psf_systematics, data_vectors, covariance, validation, inference
