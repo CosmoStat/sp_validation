@@ -7,7 +7,7 @@ with their PhotoPipe extension, :mod:`sp_validation.assembly.hats_collection`) b
 DR6 object ID. Calibrators are the objects of the same collection that its
 spec-z extension gives a spectrum from the recipe's surveys.
 
-@sc [decision:nz.photometry_as_delivered]
+@sc [decision:redshifts.photometry_as_delivered]
 """
 
 from concurrent.futures import ThreadPoolExecutor
@@ -40,7 +40,7 @@ def calibrators(photometry, surveys, field, z_min, offset, workers=1):
     from the compilation. Missing z is filled from z2 + ``offset``, as for
     sources. Rows come in ``OBJECT_ID`` order.
 
-    @sc [decision:nz.calibrator_set]
+    @sc [decision:redshifts.calibrator_set]
     """
     spectrum = ["Z_SPEC", "Z_SPEC_SURVEY", "Z_SPEC_RA", "Z_SPEC_DEC"]
     columns = [OBJECT_ID, *spectrum, "Z_B", *MAGS]
@@ -91,7 +91,7 @@ def sources(catalogue, photometry, workers=1):
     no PhotoPipe), ``NO_ID`` for a row with no DR6 number and ``UNMATCHED``
     for an ID the collection lacks; both keep NaN photometry.
 
-    @sc [decision:nz.source_photometry_join]
+    @sc [decision:redshifts.source_photometry_join]
     @sc [label:convention] sources-row-aligned
     Every returned array is in the catalogue's row order, rows without
     photometry included: ``tom_bin.parquet`` is written in this order, and row

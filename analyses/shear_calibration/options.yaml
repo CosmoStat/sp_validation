@@ -1,0 +1,40 @@
+# The concrete settings of each option of the decisions in astra.yaml, keyed
+# decision -> option. sp_validation.image_sims.options merges the selected
+# options' settings; an option astra.yaml lists and this file does not is not
+# implemented.
+
+field:
+  fir_b0269: {seed: 1}
+  interior_253_246: {seed: 2}
+
+galaxy_layout:
+  lattice_10arcsec: {layout: grid, grid_spacing_arcsec: 10.0}
+
+magnitude_range:
+  r18p5_26p0: {mag_column: r_SDSS_apparent_corr, mag_range: [18.5, 26.0]}
+
+psf_model:
+  moffat_ccd_stars: {psf_stamp: 51}
+
+noise_model:
+  gaussian_ccd_rms: {}
+
+shear_amplitude:
+  g0p025: {shear: 0.025}
+
+generator:
+  twin_c90c5b3:
+    generator_repository: https://github.com/UNIONS-WL/MultiBand_ImSim.git
+    generator_commit: c90c5b3
+
+shapepipe:
+  v2_here:
+    shapepipe_repository: https://github.com/CosmoStat/shapepipe.git
+    shapepipe_commit: 7f68451e6198089793ba2fc867e45d3c5c39bf18
+    ngmix_chunks: 16
+
+selection:
+  v2: {}
+
+simulation_weights:
+  v2_table: {}

@@ -1,0 +1,158 @@
+# The null tests and checks the data vector has to pass before inference:
+# B-modes, the analytic covariance against the jackknife and the mocks, the
+# additive bias, and the recovery of known inputs on the mocks.
+
+spec_version: "0.1.0"
+label: Validation
+description: >-
+  B-mode null tests of every bin pair and of all pairs jointly, in COSEBIs,
+  pure-mode ξ±^B, pseudo-Cℓ^BB and Cℓ^EB, by χ² against the analytic
+  covariance and against the mock ensemble; the check of the OneCovariance ξ±
+  covariance against the data's jackknife; the spatial variation of the
+  additive bias; and the recovery of the input signal, a zero B-mode and the
+  designed blind shift on the mocks. Nothing here reads an E-mode value.
+tags: [null-tests, b-modes, validation]
+
+analyses:
+  sp:
+    path: ../..
+  catalogue:
+    path: ../catalogue
+  redshifts:
+    path: ../redshifts
+  mocks:
+    path: ../mocks
+  covariance:
+    path: ../covariance
+  data_vectors:
+    path: ../data_vectors
+
+outputs:
+  bmode_ptes:
+    label: B-mode null tests
+    type: metric
+    format: json
+    description: >-
+      The PTE of χ² = bᵀC⁻¹b with the data vector's covariance, per bin pair
+      and jointly over all ten pairs with the full cross-pair covariance,
+      for COSEBIs B_n, pure-mode ξ+^B, ξ−^B and both combined at the
+      configuration-space scale cut, ξ±^B at 2–20 arcmin, and Cℓ^BB and
+      Cℓ^EB over the harmonic scale cut; and the number of per-pair PTEs
+      below the threshold against the number expected. v2.0.0's table is
+      report/summary.json of analyses/cosmo-val-v2-tomo-perbin, made by its
+      report script; cv_summarize_bmodes reads only the whole sample.
+    inputs: [data_vectors.data_vector]
+    decisions: [data_vectors.config_scale_cut, harmonic_scale_cut, pte_threshold, look_elsewhere]
+    recipe:
+      command: >-
+        python ../../workflow/scripts/cv_summarize_bmodes.py
+        --sacc {inputs.data_vectors.data_vector} --scale-cut 12 83
+        --ell-range {decisions.harmonic_scale_cut} --tomo --out {output}
+      resources: { cpus: 1, memory: 8GB, time_limit: 20m }
+
+  mock_calibrated_ptes:
+    label: Null tests against the mock ensemble
+    type: metric
+    format: json
+    description: >-
+      Each B-mode statistic of the data placed in the distribution of the
+      same statistic over the mock ensemble, which has no B-modes: the
+      fraction of mocks with a larger χ², and the analytic PTEs of the mocks
+      themselves, which should be uniform if the analytic covariance is
+      right.
+    inputs: [data_vectors.data_vector, mocks.mock_statistics, covariance.mock_covariance]
+    decisions: [data_vectors.config_scale_cut, harmonic_scale_cut]
+    recipe:
+      command: >-
+        python ../../workflow/scripts/mock_placement.py
+        --data {inputs.data_vectors.data_vector}
+        --mocks {inputs.mocks.mock_statistics}
+        --mock-cov {inputs.covariance.mock_covariance} --out {output}
+      resources: { cpus: 4, memory: 32GB, time_limit: 2h }
+
+  jackknife_comparison:
+    label: OneCovariance against the jackknife
+    type: metric
+    format: json
+    description: >-
+      Per bin pair, the median ratio of the OneCovariance ξ± variance to the
+      100-patch jackknife variance of the measured ξ±, below 10 arcmin and
+      inside the scale cut, and whether the small-scale median lies within
+      15 % of one. On small scales the covariance is noise-dominated and
+      the jackknife is reliable, so this tests the shape-noise term.
+    inputs: [data_vectors.xi_reporting, covariance.xi_covariance]
+    recipe:
+      command: >-
+        python ../../workflow/scripts/covariance_check.py
+        --xi {inputs.data_vectors.xi_reporting}
+        --cov {inputs.covariance.xi_covariance} --out {output}
+
+  additive_bias:
+    label: Additive bias and its variation
+    type: metric
+    format: json
+    description: >-
+      The weighted mean ellipticity c1, c2 of each bin after calibration,
+      which should vanish, and its scatter across patches of the footprint,
+      which the catalogue's single global c leaves in the shear.
+    inputs: [sp.cat_config, catalogue.calibrated_catalogue, redshifts.bin_responses]
+    recipe:
+      command: >-
+        python ../../workflow/scripts/cv_additive_bias.py --ver SP_v2.0.0
+        --cat-config {inputs.sp.cat_config} --tomo --out {output}
+      resources: { cpus: 1, memory: 16GB, time_limit: 30m }
+
+  mock_recovery:
+    label: Known answers on the mocks
+    type: metric
+    format: json
+    description: >-
+      On the mock ensemble: the mean EE pseudo-Cℓ and ξ± of each pair
+      against the input sky's spectra once the mock blind's designed shift
+      is removed, χ² per pair; the mean B-modes of every statistic against
+      zero at σ/√N; the blinded-minus-clean difference against the designed
+      shift, and the B response of the finite-grid E/B transforms to it.
+    inputs: [mocks.mock_statistics, mocks.skies, mocks.mock_blind, covariance.mock_covariance]
+    recipe:
+      command: >-
+        python ../../workflow/scripts/mock_cosebis_bias_test.py
+        --mocks {inputs.mocks.mock_statistics} --skies {inputs.mocks.skies}
+        --blind {inputs.mocks.mock_blind} --out {output}
+      resources: { cpus: 4, memory: 32GB, time_limit: 2h }
+
+decisions:
+  harmonic_scale_cut:
+    label: Multipole range of the Cℓ null tests
+    rationale: >-
+      Paper II's fiducial 300 < ℓ < 1600 excluded v1.4's low-ℓ outliers and
+      the excess power above ℓ ≈ 1600. v2.0.0's Cℓ^BB and Cℓ^EB PTEs use all
+      32 bandpowers, 8 ≤ ℓ ≤ 2048 (320 points over ten pairs).
+    options:
+      ell_8_2048:
+        label: 8 ≤ ℓ ≤ 2048, every bandpower
+      ell_300_1600:
+        label: 300 < ℓ < 1600
+
+  pte_threshold:
+    label: PTE threshold
+    rationale: >-
+      A statistic fails when its PTE is below 0.05, the same threshold for
+      every statistic, with χ² = bᵀC⁻¹b and as many degrees of freedom as
+      data points.
+    options:
+      p0p05:
+        label: PTE < 0.05 fails
+
+  look_elsewhere:
+    label: Many tests at once
+    rationale: >-
+      Seventy per-pair tests and seven joint ones are strongly correlated.
+      Paper II applied no correction and asked that the adopted cuts lie in
+      a broad region where every statistic passes. With ten pairs, v2.0.0
+      reads the joint all-pair PTEs and compares the number of per-pair
+      failures with the number expected at the threshold.
+    options:
+      joint_and_count:
+        label: Joint all-pair PTEs, and per-pair failures against the expected count
+      stable_region:
+        label: No correction; the adopted cuts lie in a stable passing region

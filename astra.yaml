@@ -1,0 +1,333 @@
+# sp_validation as an ASTRA 0.1 analysis: everything UNIONS weak lensing makes
+# from ShapePipe's shear catalogue, from the calibrated sample to the blinded
+# data vectors, their covariances, their validation and the inference.
+#
+# Sections are sub-analyses in analyses/<section>/, in the order the data
+# flow. What is given to us is an output whose recipe fetches it and records
+# what arrived (sp_validation.fetch); what we compute is an output; what we
+# choose is a decision. Products used by several sections are fetched here,
+# the rest in the section that reads them.
+#
+# Recipes run in their own analysis's folder and call the package
+# (python -m sp_validation...) or the scripts the Snakemake workflow calls,
+# so the two runners share code. The Snakemake workflow is unchanged.
+#
+# Validate with `uvx --prerelease allow astra-tools@0.3.0rc4 validate`.
+
+spec_version: "0.1.0"
+label: UNIONS weak lensing from ShapePipe's catalogue
+description: >-
+  The UNIONS cosmic-shear analysis downstream of shape measurement. ShapePipe
+  (CosmoStat/shapepipe, its own ASTRA analysis) makes the shear catalogue;
+  this analysis calibrates and selects the sample, bins it in redshift and
+  calibrates the n(z), builds the footprint and the GLASS digital twins of
+  the data, measures the PSF systematics, measures every two-point statistic
+  blinded, builds and validates their covariances, runs the null tests
+  calibrated on the mocks, and feeds the inference. Universe v2_0_0 holds the
+  choices that made the v2.0.0 release
+  (vos:cfis/weak_lensing/ShapePipe/v2.x/v2.0.0/) from ShapePipe's run 1.
+tags: [unions, weak-lensing, cosmic-shear, sp_validation]
+
+inputs:
+  # Committed configs read by the sections (paths from the repository root).
+  # -- catalogue, shear_calibration, redshifts, footprint
+  assembly_v2:
+    path: config/assembly/v2.yaml
+    description: >-
+      The v2 HATS collection's recipe: the run-1 shape catalogue, PhotoPipe's
+      DR6 extract and spec-z match, and where the collection goes.
+  selection_v2:
+    path: config/calibration/mask_v2.0.yaml
+    description: >-
+      The v2 galaxy selection (column cuts, mask bits, N_EPOCH, magnitude,
+      ngmix flags) and the metacal block (S/N and size range, weight
+      scheme), read by the sample build.
+  nz_v2:
+    path: config/calibration/nz/v2.yaml
+    description: >-
+      The v2 n(z) recipe: sources, calibrators, SOM, bins, gold, grid and
+      ensemble, read by sp_validation.nz.pipeline.
+  # -- mocks, psf_systematics, data_vectors, covariance, validation, inference
+  cat_config:
+    path: cosmo_val/cat_config.yaml
+    description: >-
+      The catalogue config every cosmo_val measurement reads. Its SP_v2.0.0
+      entry names the release's calibrated, star and PSF catalogues, the
+      footprints, the tomographic n(z), the blind, the columns and the
+      OneCovariance survey parameters (cov_th: area, n_eff, σ_e per bin).
+  cosmosis_pipeline:
+    path: cosmo_inference/cosmosis_config/templates/cosmosis_pipeline_A_psf.ini
+    description: >-
+      The CosmoSIS pipeline: CAMB with HMCode2020, NLA, Δz shifts, m bias,
+      the ξ_sys PSF term and the 2pt likelihood with its angular cuts.
+  cosmosis_values:
+    path: cosmo_inference/cosmosis_config/templates/values_psf.ini
+    description: The sampled parameters' ranges and starting values.
+  cosmosis_priors:
+    path: cosmo_inference/cosmosis_config/templates/priors_psf.ini
+    description: The Gaussian priors on the nuisance parameters and ω_b.
+
+analyses:
+  shapepipe:
+    url: https://github.com/CosmoStat/shapepipe.git
+    commit: fa6a53dc9444d3b8d8d16c796ec8e327df19523f
+  catalogue:
+    path: analyses/catalogue
+  shear_calibration:
+    path: analyses/shear_calibration
+  redshifts:
+    path: analyses/redshifts
+  footprint:
+    path: analyses/footprint
+  mocks:
+    path: analyses/mocks
+  psf_systematics:
+    path: analyses/psf_systematics
+  data_vectors:
+    path: analyses/data_vectors
+  covariance:
+    path: analyses/covariance
+  validation:
+    path: analyses/validation
+  inference:
+    path: analyses/inference
+
+outputs:
+  shapepipe_run1:
+    label: ShapePipe run 1, snapshot 3
+    type: data
+    format: json
+    description: >-
+      ShapePipe's run-1 products on all 22,901 DR6 tiles, merged across its
+      969 campaigns: the shear catalogue final_cat_latest.hdf5 (772,677,301
+      objects), the star catalogue full_starcat_latest.hdf5, the coverage
+      maps (nexp, nflagged, npoint, ntaken) and MANIFEST.json. It is
+      ShapePipe's universe baseline_run1 as it ran (declared above as
+      shapepipe, imported into universes as baseline_run1), made by Snakemake
+      on Nibi and Fir in October 2026, so the release data are fetched rather
+      than read through an lc record. The result is the manifest of what
+      arrived: where it is, and every file's size and SHA-256.
+    recipe:
+      command: >-
+        python -m sp_validation.fetch '${{unions_data}}/v2.x/run1-snap3'
+        --version run1-snap3 --out {output}
+      resources: { cpus: 1, memory: 4GB, time_limit: 4h }
+
+  photopipe_dr6:
+    label: PhotoPipe DR6 photometry and photo-z
+    type: data
+    format: json
+    description: >-
+      PhotoPipe's DR6 catalogue (Hendrik Hildebrandt's group,
+      hendrik1008/PhotoPipeUNIONS, CANFAR branch): GAaP u g r i z z2
+      photometry and BPZ photo-z of every DR6 tile, joined to ShapePipe's
+      objects on (TILE_ID, NUMBER), with its match table and build record.
+      The catalogue section joins it to the shapes and the redshifts
+      section bins and calibrates from its colours.
+    recipe:
+      command: >-
+        python -m sp_validation.fetch '${{unions_data}}/photopipe-dr6-extract'
+        --version dr6 --out {output}
+      resources: { cpus: 1, memory: 4GB, time_limit: 2h }
+
+  photopipe_specz:
+    label: PhotoPipe DR6 spec-z matches
+    type: data
+    format: json
+    description: >-
+      PhotoPipe's match of DR6 objects to spectroscopic redshifts over every
+      tile, UNIONS_DR6_ugriz_specz.cat, and the per-tile redshift compilation
+      of 19 Oct 2026 it used (asc/). The calibration sample of the SOM n(z)
+      and the spec-z extension of the HATS collection.
+    recipe:
+      command: >-
+        python -m sp_validation.fetch '${{unions_data}}/photopipe-dr6-specz-all'
+        --version 2026-10-19 --out {output}
+      resources: { cpus: 1, memory: 2GB, time_limit: 1h }
+
+  blind:
+    label: The UNIONS blind
+    type: data
+    format: json
+    description: >-
+      The blind every cosmological statistic is shifted by as it is
+      measured, t(hidden) − t(fiducial) (sp_validation.blinding). Nobody
+      opens it: the manifest holds its path and hash, and the recipes that
+      measure signal pass the path to sp_validation, which conceals what it
+      writes.
+    recipe:
+      command: >-
+        python -m sp_validation.fetch '${{unions_v2}}/v2.0.0/blind/unions.blind.json'
+        --version v2.0.0 --md5sums '${{unions_v2}}/v2.0.0/MD5SUMS' --out {output}
+
+decisions:
+  fiducial_cosmology:
+    label: Fiducial cosmology
+    rationale: >-
+      The cosmology at which the blind is centred, the GLASS mocks are drawn,
+      the analytic covariances are evaluated and the PSF-leakage and B-mode
+      tests are interpreted. results/cosmology/planck18.json, made from
+      cs_util.cosmo.PLANCK18, is what the workflow reads.
+    options:
+      planck18:
+        label: Planck 2018 ΛCDM
+        description: astropy's Planck18 parameters (TT,TE,EE+lowE+lensing+BAO).
+        insights: [planck18_cosmology]
+
+  blinding:
+    label: Blinding
+    rationale: >-
+      v2 cosmic shear is blind. Every cosmological statistic is shifted by
+      t(hidden) − t(fiducial) before it is written, so no unblinded E-mode
+      statistic exists on disk; B-modes, covariances and n(z) are not
+      shifted. Unblinding is a collaboration decision, not an analysis
+      choice, so it is not an option here.
+    options:
+      theory_shift:
+        label: Shift by a hidden cosmology at measurement
+        description: >-
+          sp_validation.blinding.conceal adds t(hidden) − t(fiducial) to
+          every ξ±, Cℓ_EE and statistic derived from them as it is saved.
+      unblinded:
+        label: Unblinded
+        excluded: The analysis is blind until the collaboration unblinds it.
+
+prior_insights:
+  planck18_cosmology:
+    claim: >-
+      The Planck 2018 results give the ΛCDM parameters used as the fiducial
+      cosmology.
+    evidence:
+      - doi: "10.48550/arXiv.1807.06209"
+        quote:
+          exact: "We present cosmological parameter results from the final full-mission Planck measurements of the cosmic microwave background"
+
+findings:
+  # Claims about v2.0.0, pinned to the root universe that made it.
+  # -- catalogue, shear_calibration, redshifts, footprint
+  # -- mocks, psf_systematics, data_vectors, covariance, validation, inference
+  bmode_joint_ptes:
+    claim: >-
+      Every joint B-mode null test of v2.0.0, over all ten bin pairs with the
+      full cross-pair covariance, passes: PTE 0.84 for COSEBIs, 0.26 for
+      pseudo-Cℓ^BB, 0.14 for Cℓ^EB, 0.45 for pure-mode ξ+^B, 0.15 for ξ−^B,
+      0.20 for both, and 0.71 for ξ±^B at 2–20 arcmin.
+    evidence:
+      - artifact: validation.bmode_ptes#v2_0_0
+        quote: { exact: "0.8401519895938314" }
+      - artifact: validation.bmode_ptes#v2_0_0
+        quote: { exact: "0.25724936314554675" }
+      - artifact: validation.bmode_ptes#v2_0_0
+        quote: { exact: "0.1376981103184307" }
+      - artifact: validation.bmode_ptes#v2_0_0
+        quote: { exact: "0.4508334598492315" }
+      - artifact: validation.bmode_ptes#v2_0_0
+        quote: { exact: "0.15155861935448933" }
+      - artifact: validation.bmode_ptes#v2_0_0
+        quote: { exact: "0.19880867196194899" }
+      - artifact: validation.bmode_ptes#v2_0_0
+        quote: { exact: "0.7096449253453415" }
+
+  bmode_pair_failures:
+    claim: >-
+      Three of the 70 per-pair B-mode PTEs of v2.0.0 fall below 0.05, against
+      3.5 expected by chance: ξ−^B (0.045) and both ξ±^B combined (0.021) of
+      bins 1×3, and ξ+^B of bins 1×4 (0.031).
+    evidence:
+      - artifact: validation.bmode_ptes#v2_0_0
+        quote: { exact: "\"xim_B\": 0.04457311145664132" }
+      - artifact: validation.bmode_ptes#v2_0_0
+        quote: { exact: "\"combined\": 0.02081724210714618" }
+      - artifact: validation.bmode_ptes#v2_0_0
+        quote: { exact: "\"xip_B\": 0.030772179374044716" }
+
+  leakage_alpha:
+    claim: >-
+      The PSF leakage α of the four v2.0.0 bins is 0.044, 0.025, 0.012 and
+      0.051, each with an error of 0.011–0.013, and the α, β, η model fits
+      τ poorly in bin 3 (PTE 0.0025) and in bin 1 (PTE 0.021).
+    evidence:
+      - artifact: psf_systematics.leakage_fit#v2_0_0
+        quote: { exact: "\"alpha\": 0.04434460490244715" }
+      - artifact: psf_systematics.leakage_fit#v2_0_0
+        quote: { exact: "\"alpha\": 0.025199337526039454" }
+      - artifact: psf_systematics.leakage_fit#v2_0_0
+        quote: { exact: "\"alpha\": 0.012235017786358961" }
+      - artifact: psf_systematics.leakage_fit#v2_0_0
+        quote: { exact: "\"alpha\": 0.051489340289596716" }
+      - artifact: psf_systematics.leakage_fit#v2_0_0
+        quote: { exact: "\"pte\": 0.0025183236218070336" }
+      - artifact: psf_systematics.leakage_fit#v2_0_0
+        quote: { exact: "\"pte\": 0.021297311557925382" }
+
+  onecov_matches_jackknife:
+    claim: >-
+      The OneCovariance ξ± variances of v2.0.0 agree with the data's
+      100-patch jackknife: the median ratio over every bin pair, ξ+ and ξ−,
+      and θ is 0.994 below 10 arcmin and 1.011 within 12–83 arcmin.
+    evidence:
+      - artifact: validation.jackknife_comparison#v2_0_0
+        quote: { exact: "\"median_small\": 0.9942354258799797" }
+      - artifact: validation.jackknife_comparison#v2_0_0
+        quote: { exact: "\"median_cut\": 1.0111948400140864" }
+
+universes:
+  baseline_run1:
+    analysis: shapepipe
+    universe: baseline_run1
+  v2_0_0:
+    label: v2.0.0 as made
+    description: >-
+      The choices that made the v2.0.0 release from ShapePipe's run 1
+      (run1-snap3, ShapePipe universe baseline_run1): the calibrated sample,
+      its four tomographic bins and n(z), the footprints and the blinded
+      tomographic data vector SP_v2.0_tomo.sacc with its covariance.
+    decisions:
+      fiducial_cosmology: planck18
+      blinding: theory_shift
+      # The image-sim m, the mock ensemble and the inference did not make
+      # v2.0.0, so this universe sets none of their decisions.
+      # -- catalogue, shear_calibration, redshifts, footprint
+      catalogue.overlap_cut: snapshot_tiles
+      catalogue.selection_cuts: bound_9_bit_16_ignored
+      catalogue.catalogue_match_tile_selection: no_cut
+      catalogue.sample_wide_calibration: one_for_the_sample
+      catalogue.galaxy_weights: des_table_on_every_branch
+      catalogue.weight_table: pooled_min_3
+      catalogue.response_estimator: separate_normalisation
+      catalogue.additive_bias: global_mean
+      catalogue.calibration_uncertainties: tile_jackknife
+      catalogue.leakage_correction: uncorrected
+      redshifts.source_photometry_join: object_id
+      redshifts.tomographic_bins: equal_weight_quartiles
+      redshifts.calibrator_set: deep2_deep3_egs
+      redshifts.photometry_as_delivered: as_delivered
+      redshifts.z2_offset: offset_z2
+      redshifts.som_map: calibrator_trained_101
+      redshifts.gold_selection: floor_0_4_nmad_5
+      redshifts.grid_step: step_0_05
+      redshifts.ensemble_terms: statistical_and_systematic
+      redshifts.sample_calibration: per_sample_at_measurement
+      footprint.footprint_definition: occupied_nside_4096
+      footprint.tomographic_footprint: binned_tiles
+      # -- mocks, psf_systematics, data_vectors, covariance, validation, inference
+      psf_systematics.tau_covariance: th
+      psf_systematics.leakage_fit_method: lsq
+      data_vectors.xi_reporting_grid: log20_1_250
+      data_vectors.xi_jackknife_patches: npatch_100
+      data_vectors.integration_grid: log1000_0p08_300
+      data_vectors.config_scale_cut: arcmin_12_83
+      data_vectors.cosebis_modes: n20
+      data_vectors.pure_eb_method: schneider22
+      data_vectors.cl_estimator: catalog
+      data_vectors.cl_binning: powspace
+      data_vectors.noise_bias: analytic
+      covariance.reporting_terms: full
+      covariance.integration_terms: gaussian
+      covariance.shape_noise: pair_counts
+      covariance.survey_mask: masked
+      covariance.covariance_power_spectrum: hmcode2020_feedback
+      covariance.cl_covariance_method: inka
+      validation.harmonic_scale_cut: ell_8_2048
+      validation.pte_threshold: p0p05
+      validation.look_elsewhere: joint_and_count
