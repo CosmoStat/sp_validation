@@ -1,0 +1,211 @@
+# PSF systematics: the ρ/τ statistics of the survey and the PSF-leakage fit
+# they feed, the object-wise leakage regression, and the four diagnostics
+# that judge ShapePipe's decisions on a 27-tile patch of DR6.
+#
+# The patch diagnostics are made today by the ShapePipe patch testbed's
+# compare/compare.py (analyses/shapepipe-patch-testbed on Fir), across
+# ShapePipe's universes. Their recipes below name the module they belong in.
+
+spec_version: "0.1.0"
+label: PSF systematics
+description: >-
+  How the PSF enters the shear. ρ statistics correlate PSF-model residuals at
+  star positions; τ statistics correlate each bin's galaxy shapes with them.
+  Fitting τ with ρ templates gives the leakage α (shear ∝ PSF ellipticity),
+  β and η of each bin, from which the additive ξ_sys follows. The object-wise
+  regression measures α against S/N and size. On a 27-tile patch, four
+  diagnostics compare ShapePipe's universes: PSF residuals on reserve stars,
+  ρ/τ, the selected galaxies and object-matched shape shifts against the
+  baseline. ρ and τ carry no cosmological signal and are not blinded.
+tags: [psf, systematics, rho-tau, leakage]
+
+analyses:
+  sp:
+    path: ../..
+  catalogue:
+    path: ../catalogue
+  redshifts:
+    path: ../redshifts
+
+outputs:
+  rho_tau_part:
+    label: ρ and τ statistics (SACC part)
+    type: data
+    format: sacc
+    description: >-
+      ρ_0…ρ_5 of the PSF catalogue's stars (PSF-only, shared by all bins)
+      and τ_0, τ_2, τ_5 of each tomographic bin, on the reporting grid, with
+      their covariance: the jackknife of ρ over 100 patches and the τ
+      covariance of tau_covariance. The ρ/τ block of the data vector.
+    inputs:
+      - sp.cat_config
+      - catalogue.calibrated_catalogue
+      - redshifts.bin_responses
+      - catalogue.star_catalogue
+      - catalogue.psf_catalogue
+    decisions: [tau_covariance, catalogue.leakage_correction]
+    recipe:
+      command: >-
+        python ../../workflow/scripts/run_rho_tau.py --ver SP_v2.0.0
+        --cat-config {inputs.sp.cat_config} --min-sep 1.0 --max-sep 250.0
+        --nbins 20 --npatch 100 --tomo
+        --cov-estimate-method {decisions.tau_covariance} --out {output}
+      resources: { cpus: 48, memory: 64GB, time_limit: 6h }
+
+  leakage_fit:
+    label: PSF-leakage α, β, η per bin
+    type: metric
+    format: json
+    description: >-
+      Per tomographic bin, the fit of τ_{0,2,5} by α, β and η times the ρ
+      templates (τ_0 = αρ_0 + βρ_2 + ηρ_5, τ_2 = αρ_2 + βρ_1 + ηρ_4,
+      τ_5 = αρ_5 + βρ_4 + ηρ_3, ξ+ components): the parameters, their errors,
+      the fit's χ², degrees of freedom and PTE. v2.0.0's values were computed
+      by the run's report script (analyses/cosmo-val-v2-tomo-perbin/report/
+      figures.py, report/summary.json `leakage`) from the data vector's ρ/τ
+      block.
+    inputs: [rho_tau_part]
+    decisions: [leakage_fit_method]
+    recipe:
+      command: >-
+        python ../../workflow/scripts/cv_rho_tau_fits.py
+        --rho-tau {inputs.rho_tau_part} --method {decisions.leakage_fit_method}
+        --out {output}
+      resources: { cpus: 1, memory: 16GB, time_limit: 2h }
+
+  objectwise_leakage:
+    label: Object-wise leakage regression
+    type: data
+    format: json
+    description: >-
+      Weighted regression of each galaxy's shear on its PSF ellipticity in
+      bins of S/N and size ratio, and the scale-dependent α(θ) from ρ/τ:
+      where in the sample the leakage sits.
+    inputs:
+      - sp.cat_config
+      - catalogue.calibrated_catalogue
+      - rho_tau_part
+    recipe:
+      command: >-
+        python ../../workflow/scripts/cv_objectwise_leakage.py --ver SP_v2.0.0
+        --cat-config {inputs.sp.cat_config} --rho-tau {inputs.rho_tau_part}
+        --out {output}
+      resources: { cpus: 12, memory: 30GB, time_limit: 3h }
+
+  # ShapePipe's diagnostics, on the 27 south-cap tiles of the ShapePipe patch
+  # testbed (chosen to span sharp and typical seeing). Each is made in every
+  # ShapePipe universe; until ShapePipe's spec is on ASTRA 0.1 they read the
+  # delivered run 1 (sp.shapepipe_run1), restricted to the patch.
+  psf_residuals:
+    label: PSF model residuals on reserve stars
+    type: figure
+    format: png
+    description: >-
+      Star-minus-model size and ellipticity on the 20 % reserve stars held
+      out of the PSFEx fit, against flux, seeing, g−i colour and position on
+      the CCD. Judges star selection, PSF sampling, chromaticity and model
+      complexity. Once ShapePipe is on ASTRA 0.1 it reads
+      shapepipe.star_catalogue#<universe> by pin, one figure per ShapePipe
+      universe.
+    inputs: [sp.shapepipe_run1]
+    recipe:
+      command: >-
+        python -m sp_validation.patch stars --run {inputs.sp.shapepipe_run1}
+        --out {output}
+
+  rho_tau_statistics:
+    label: ρ and τ statistics on the patch
+    type: figure
+    format: png
+    description: >-
+      ρ statistics of the reserve stars' PSF-model residuals and τ
+      correlations of the patch's galaxy shapes with them, the additive PSF
+      systematics the shear inherits from a ShapePipe choice. Once ShapePipe
+      is on ASTRA 0.1 it reads shapepipe.final_cat#<universe> and
+      shapepipe.star_catalogue#<universe> by pin.
+    inputs: [sp.shapepipe_run1]
+    recipe:
+      command: >-
+        python -m sp_validation.patch rho_tau --run {inputs.sp.shapepipe_run1}
+        --out {output}
+
+  galaxy_sample:
+    label: Selected galaxies on the patch
+    type: table
+    format: csv
+    description: >-
+      The number, size and S/N distribution of galaxies with a shape
+      measurement, per tile: what a change to detection, masking or shape
+      measurement does to the sample. Once ShapePipe is on ASTRA 0.1 it
+      reads shapepipe.final_cat#<universe> by pin.
+    inputs: [sp.shapepipe_run1]
+    recipe:
+      command: >-
+        python -m sp_validation.patch galaxies --run {inputs.sp.shapepipe_run1}
+        --out {output}
+
+  shape_shifts:
+    label: Shape shifts against the baseline
+    type: figure
+    format: png
+    description: >-
+      Object-matched differences in calibrated shape and PSF quantities
+      between a ShapePipe universe and baseline_run1, with the metacal
+      response, against S/N and size. Against run 1 itself it is the
+      reproduction check of the patch. Once ShapePipe is on ASTRA 0.1 it
+      reads shapepipe.final_cat#<universe> and
+      shapepipe.final_cat#baseline_run1 by pin.
+    inputs: [sp.shapepipe_run1]
+    recipe:
+      command: >-
+        python -m sp_validation.patch shapes --run {inputs.sp.shapepipe_run1}
+        --baseline {inputs.sp.shapepipe_run1} --out {output}
+
+decisions:
+  tau_covariance:
+    label: Covariance of the τ statistics
+    rationale: >-
+      τ is a cross-correlation of galaxy shapes with PSF residuals, whose
+      analytic Gaussian covariance follows from the measured ρ, the shape
+      noise and the pair counts. The jackknife needs many patches for the
+      ~60 τ points of a bin; the simulation estimate draws 300 Gaussian
+      realisations and needs the Hartlap factor.
+    options:
+      th:
+        label: Analytic
+      jk:
+        label: Jackknife
+      sim:
+        label: Simulations (300, Hartlap-corrected)
+
+  leakage_fit_method:
+    label: Fit of the leakage parameters
+    rationale: >-
+      τ = (α, β, η) · ρ is linear in the parameters, so a least-squares fit
+      with ρ held fixed and the τ covariance as weight gives them and their
+      errors directly. The errors-in-variables fit (PR #454) fits ρ and τ
+      jointly on their jackknife, which accounts for the noise of the ρ
+      templates; MCMC samples the same likelihood as the least-squares fit.
+    options:
+      lsq:
+        label: Least squares in τ, ρ fixed
+        insights: [tau_leakage]
+      eiv:
+        label: Joint errors-in-variables fit of ρ and τ
+        description: >-
+          PR #454 (open, origin/edge). The v2.0.0 run configured
+          rho_tau_method eiv, but its DAG made no fit product; the per-bin
+          values of v2.0.0 are the least-squares fit.
+      emcee:
+        label: MCMC (emcee) on the least-squares likelihood
+
+prior_insights:
+  tau_leakage:
+    claim: >-
+      The τ statistics constrain the PSF-leakage α, β and η of a shape
+      catalogue against the ρ statistics of its PSF model; α arises from an
+      imperfect deconvolution of the PSF.
+    evidence:
+      - doi: "10.48550/arXiv.2011.03408"
+        quote:
+          exact: "from errors in the deconvolution of the PSF model from the galaxy"

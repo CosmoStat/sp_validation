@@ -1,0 +1,440 @@
+# The catalogue section: from ShapePipe's run-1 snapshot to the calibrated
+# shear sample, and the PSF and star catalogues beside it.
+#
+# Recipes run in this folder. A product given to the analysis (a sp.* fetch,
+# or a HATS conversion made outside this repository) is read through its
+# manifest, and commands name it by its data-root path, which the scripts
+# resolve through sp_validation.data_roots.
+
+spec_version: "0.1.0"
+label: Calibrated shear sample
+description: >-
+  ShapePipe's run-1 snapshot (772,677,301 objects on 22,901 DR6 tiles) as a
+  HATS shape catalogue; the v2 HATS collection that adds PhotoPipe's DR6
+  photometry and photo-z and PhotoPipe's spec-z matches to it, joined on the
+  DR6 object ID; the comprehensive catalogue of every object with every
+  ShapePipe and PhotoPipe column; and the calibrated cosmic-shear sample:
+  the galaxy selection, the DES weight table, the metacalibration response
+  of the weighted mean shear, the additive bias, and the calibrated shear
+  R⁻¹(g − c_e) of each selected galaxy. Metacalibration measures each galaxy
+  on five versions of its image, the branches: unsheared, and sheared by ±h
+  (h = 0.01) along each shear component. The PSF and star catalogues come
+  from the same snapshot. The tomographic bins, and the response of each bin,
+  are made in the redshifts section.
+
+analyses:
+  sp:
+    path: ../..
+
+outputs:
+  shapes:
+    label: Run-1 shape catalogue (HATS)
+    type: data
+    format: json
+    description: >-
+      ShapePipe's final_cat_latest.hdf5 converted to a HATS catalogue at
+      HEALPix order 5 (data/v2.x/run1-snap3-hats/catalogue), with every
+      ShapePipe column. The conversion ran on Nibi with code outside this
+      repository, and its BUILD.json names the snapshot manifest's SHA-256
+      it was made from, so it is fetched: the result is the manifest of what
+      arrived.
+    inputs: [sp.shapepipe_run1]
+    recipe:
+      command: >-
+        python -m sp_validation.fetch '${{unions_data}}/v2.x/run1-snap3-hats'
+        --version run1-snap3 --out {output}
+      resources: { cpus: 1, memory: 4GB, time_limit: 8h }
+
+  collection:
+    label: The v2 HATS collection
+    type: data
+    format: hats
+    description: >-
+      The shapes with the DR6 object ID (OBJECT_ID = 10⁶ × tile + NUMBER) as
+      the primary catalogue, an OBJECT_ID index, and two extensions joined on
+      OBJECT_ID: PhotoPipe's dereddened GAaP u g r i z z2 photometry and BPZ
+      photo-z (dense, one row per shape), and PhotoPipe's spec-z matches
+      (sparse, 4,733,015 rows). The redshifts section takes the sources'
+      photometry and the calibrators' spectra from it, so sources and
+      calibrators share one photometry. config/assembly/v2.yaml names the
+      inputs and where the collection goes.
+    inputs: [sp.assembly_v2, shapes, sp.photopipe_dr6, sp.photopipe_specz]
+    recipe:
+      command: >-
+        python ../../scripts/assembly/build_collection.py {inputs.sp.assembly_v2}
+        --workers 60
+      resources: { cpus: 60, memory: 320GB, time_limit: 1h }
+
+  comprehensive_catalogue:
+    label: Comprehensive catalogue
+    type: data
+    format: hats
+    description: >-
+      Every run-1 object (772,677,301) with every ShapePipe column
+      (uncalibrated ngmix and metacal output, flags, mask bits) and every
+      PhotoPipe DR6 column, joined on (TILE_ID, NUMBER) = (tile, SeqNr);
+      PHOTOPIPE_STATUS is 0 for a joined row, 1 when the tile has no row with
+      that ID, 2 when the tile has no PhotoPipe file. HATS at HEALPix order 5:
+      the release's catalogs/comprehensive/.
+    inputs: [shapes, sp.photopipe_dr6]
+    recipe:
+      command: >-
+        python ../../scripts/assembly/join_photopipe.py
+        '${{unions_data}}/photopipe-dr6-extract'
+        --shapes '${{unions_data}}/v2.x/run1-snap3-hats/catalogue'
+        --output {output} --workers 24
+      resources: { cpus: 32, memory: 500GB, time_limit: 8h }
+
+  calibrated_catalogue:
+    label: Calibrated shear sample
+    type: data
+    format: dir
+    description: >-
+      The calibrated sample in the release layout. catalogs/calibrated/ is a
+      HATS catalogue (order 5) of every selected galaxy: RA, Dec, calibrated
+      e1, e2 = R⁻¹(g − c_e) with the whole sample's response, weight w_des,
+      e1_PSF, e2_PSF, SIZE_RATIO, SNR, N_EPOCH, TILE_KEY, TILE_ID, NUMBER.
+      Beside it: catalogs/response.json (R, R_shear, R_selection, R_joint,
+      c_e, c_g, branch populations and delete-one-tile jackknife covariance),
+      catalogs/des_weights.fits (the weight table), catalogs/response_sums.npz
+      (the per-tile, per-cell sums R and the table follow from),
+      catalogs/survey.json, masks/footprint-nside4096-ring.fits (the occupied
+      pixels) and provenance/calibrated_tile_accounting.json (every tile's
+      rows after each cut). The recipe file config/calibration/sample/v2.yaml
+      names the snapshot, the collection and the selection config.
+    inputs: [sp.shapepipe_run1, collection, sp.selection_v2]
+    decisions:
+      [overlap_cut, selection_cuts, catalogue_match_tile_selection,
+       sample_wide_calibration, galaxy_weights, weight_table,
+       response_estimator, additive_bias, calibration_uncertainties,
+       leakage_correction]
+    recipe:
+      command: >-
+        python ../../scripts/calibration/calibrate_sample.py
+        ../../config/calibration/sample/v2.yaml --output {output} --workers 60
+      resources: { cpus: 60, memory: 160GB, time_limit: 1h }
+
+  response:
+    label: Response and additive bias of the sample
+    type: data
+    format: json
+    description: >-
+      catalogs/response.json of the calibrated sample: the weight scheme, the
+      2 × 2 response R = R_shear + R_selection and the joint estimator R_joint,
+      the additive bias c_e (uncalibrated) and c_g (calibrated), the
+      population and weight sum of each metacal branch, the raw, preselected
+      and selected row counts, and the delete-one-tile jackknife covariance
+      of all of them.
+    inputs: [calibrated_catalogue]
+    recipe:
+      command: cp {inputs.calibrated_catalogue}/catalogs/response.json {output}
+
+  weight_table:
+    label: DES weight table
+    type: data
+    format: fits
+    description: >-
+      The 20 × 20 table W(S/N, T/T_PSF) the sample is weighted with, and the
+      sample's occupancy of each cell. The image simulations are weighted
+      with it.
+    inputs: [calibrated_catalogue]
+    recipe:
+      command: cp {inputs.calibrated_catalogue}/catalogs/des_weights.fits {output}
+
+  psf_catalogue:
+    label: PSF catalogue
+    type: data
+    format: json
+    description: >-
+      The 5,565,959 stars of the snapshot's shape catalogue with the PSF
+      model's ellipticity and size at each, HATS at order 5: the release's
+      catalogs/psf/. It is extracted from the shape catalogue and converted
+      to HATS outside this repository, so it is fetched and checked against
+      the release's MD5SUMS.
+    inputs: [sp.shapepipe_run1]
+    recipe:
+      command: >-
+        python -m sp_validation.fetch '${{unions_v2}}/v2.0.0/catalogs/psf'
+        --version v2.0.0 --md5sums '${{unions_v2}}/v2.0.0/MD5SUMS' --out {output}
+      resources: { cpus: 1, memory: 2GB, time_limit: 1h }
+
+  star_catalogue:
+    label: Star catalogue
+    type: data
+    format: json
+    description: >-
+      ShapePipe's full_starcat_latest.hdf5 (11,194,784 stars, held-out and
+      training, with star and PSF-model moments per CCD, by EXPOSURE) as a
+      HATS catalogue at order 5: the release's catalogs/stars/. Converted
+      outside this repository, so it is fetched and checked against the
+      release's MD5SUMS.
+    inputs: [sp.shapepipe_run1]
+    recipe:
+      command: >-
+        python -m sp_validation.fetch '${{unions_v2}}/v2.0.0/catalogs/stars'
+        --version v2.0.0 --md5sums '${{unions_v2}}/v2.0.0/MD5SUMS' --out {output}
+      resources: { cpus: 1, memory: 2GB, time_limit: 1h }
+
+decisions:
+  overlap_cut:
+    label: Tile-overlap cut on the snapshot's tile set
+    rationale: >-
+      Neighbouring tiles share a strip of sky, so an object there is detected
+      and measured in both, and ShapePipe keeps both rows. Each object is kept
+      only on its own tile's side of the RA midpoint to each neighbour and
+      inside its tile's Dec range. A tile's neighbours are looked up among
+      every tile of the snapshot, so the cut does not depend on how the
+      catalogue is chunked, and a sample cannot be grown by appending tiles:
+      297 tiles lost 39,781 galaxies when run 1 grew from 20,515 to 22,901
+      tiles, each to a new neighbour.
+    options:
+      snapshot_tiles:
+        label: Neighbours among the snapshot's tiles
+        description: The same cut however the catalogue is read.
+      tiles_in_hand:
+        label: Neighbours among the tiles being processed
+        description: >-
+          Keeps both copies wherever the neighbour is in another batch;
+          correct only with the whole catalogue in memory at once.
+
+  selection_cuts:
+    label: Galaxy selection
+    rationale: >-
+      config/calibration/mask_v2.0.yaml: SExtractor FLAGS ≤ 2 ignoring bit 16
+      (incomplete aperture data, which preferentially flags large galaxies
+      and biases m in image simulations); the overlap cut; outside star
+      bodies, manual masks, MaxiMask and r-band gaps (mask bits 4, 8, 1024
+      and 64; the star-halo bits 1 and 2 are not cut); N_EPOCH ≥ 2;
+      15 ≤ mag ≤ 30; no ngmix moments failure, fitted at least once, and a
+      valid PSF ellipticity; then on each metacal branch 10 < S/N < 500 and
+      0.707 < T/T_PSF < 9 with the branch's fit flag zero. The selection
+      config is the input, so this decision is attached to the sample it
+      makes. The release's catalogs/config_mask.yaml records these cuts as
+      they ran.
+    options:
+      bound_9_bit_16_ignored:
+        label: T/T_PSF < 9, FLAGS ignoring bit 16, no halo cut
+        description: The v2.0.0 selection.
+      bound_3_strict_flags:
+        label: T/T_PSF < 3, FLAGS ≤ 2 on every bit
+        description: >-
+          The v1 selection; drops large galaxies and biases m in image
+          simulations.
+      with_star_halos:
+        label: Also cut star halos (bits 1 and 2)
+        description: >-
+          Removes about 13% of the area; Paper III found the halo masking
+          added B-modes in v1.
+
+  catalogue_match_tile_selection:
+    label: Tiles kept whatever their external paired fraction
+    rationale: >-
+      ShapePipe pairs each tile's detections with an external catalogue and
+      records the paired fraction. No tile is removed on it. On the v2.0.0
+      selection all 18 measured tiles below 0.98 pairing yield no selected
+      galaxy, because the N_EPOCH ≥ 2 cut empties them, so a 0.98 cut would
+      remove nothing; stricter thresholds remove galaxies with no measured
+      improvement. Reassess if the N_EPOCH cut is relaxed.
+    options:
+      no_cut:
+        label: No paired-fraction cut
+        description: The paired fraction is a diagnostic.
+      cut_below_0_99:
+        label: Reject tiles below 0.99
+        description: >-
+          Removes 198 tiles and 675,307 selected galaxies (0.354% of the
+          sample).
+      cut_below_0_995:
+        label: Reject tiles below 0.995
+        description: >-
+          Removes 3,072 tiles and 20,855,054 selected galaxies (10.92% of the
+          sample).
+
+  sample_wide_calibration:
+    label: One weight table and one response for the whole sample
+    rationale: >-
+      The sample is weighted and calibrated as one population: one weight
+      table fitted on every selected galaxy of the snapshot, and the whole
+      sample's R and c_e applied to every row, not a table or response per
+      region of the footprint. A weight depends on a galaxy only through its
+      (S/N, size) cell, so the table and R follow from per-(tile, cell) sums
+      that add over chunks of the catalogue. Each tomographic bin's own
+      response is measured with this table held fixed, in the redshifts
+      section.
+    options:
+      one_for_the_sample:
+        label: One table and one response for the sample
+      refit_per_region:
+        label: Table and response per region of the footprint
+        description: >-
+          Follows depth variations, at the cost of noisier tables and a
+          response that changes across the footprint.
+
+  galaxy_weights:
+    label: DES weight table evaluated on every branch
+    rationale: >-
+      Galaxies are weighted by a table W(S/N, size), with S/N = FLUX/FLUX_ERR
+      and size = T/T_PSF of the ngmix fit, fitted on the unsheared branch and
+      evaluated on every metacal branch at that branch's own S/N and size. A
+      galaxy's weight therefore changes under shear, and the response
+      includes that change. With unit weights the v2.0.0 sample has
+      R = 0.6889, against 0.7869 with the table.
+    options:
+      des_table_on_every_branch:
+        label: DES table at each branch's own S/N and size
+      frozen_weights:
+        label: Weights frozen at their unsheared values
+        description: Removes the weight response from R.
+      inverse_variance:
+        label: Inverse-variance weights from each branch's errors
+        excluded: >-
+          The v2 shape catalogue does not keep the sheared branches' error
+          columns.
+      unit:
+        label: Unit weights
+        description: Lower response and higher noise per galaxy.
+
+  weight_table:
+    label: The DES weight table
+    rationale: >-
+      In each (S/N, size) cell, W = (Σ r)² / (n Σ |e|²/2) over the n galaxies
+      of the unsheared selection in it, with r the mean diagonal element of a
+      galaxy's response and e its unsheared ellipticity; 20 × 20 logarithmic
+      cells between the S/N and size cuts. A cell with fewer than 3 galaxies
+      takes the moments of the smallest square of cells centred on it that
+      holds 3. On the image-simulation grids, one cell of two galaxies
+      without this pooling inflated one grid's error on m2 fivefold.
+    options:
+      pooled_min_3:
+        label: 20 × 20 cells, sparse cells pooled to 3 galaxies
+      no_pooling:
+        label: No pooling
+        description: A sparse cell can carry an extreme weight.
+      pooled_min_10:
+        label: Sparse cells pooled to 10 galaxies
+        description: >-
+          Moves m in image simulations by up to 0.66σ for no gain in
+          stability.
+
+  response_estimator:
+    label: Response of the weighted mean shear
+    rationale: >-
+      The catalogue's shear estimate is a weighted mean ⟨e⟩ = Σ w e / Σ w
+      over a selection, and R calibrates it. R = R_shear + R_selection:
+      R_shear is the weighted mean over the unsheared selection of each
+      galaxy's (e⁺ − e⁻)/2h; R_selection is the finite difference of the
+      weighted mean unsheared ellipticity under each sheared branch's own
+      selection and weights, each branch normalised by its own weight sum.
+      Shear moves galaxies across the cuts and changes their weights, so the
+      weight sum differs between branches; with separate normalisation R is
+      the derivative of the weighted mean it calibrates. The joint estimator
+      is computed beside it as a check.
+    options:
+      separate_normalisation:
+        label: R_shear + R_selection, each branch on its own weight sum
+        insights: [metacal_response, metacal_selection]
+      joint:
+        label: Each sheared branch's own ellipticity under its own selection
+        description: >-
+          Agrees with the chosen R to 0.03% on v2.0.0; kept as a diagnostic.
+      common_denominator:
+        label: One weight sum for both sheared branches
+        description: Drops the term from the change of the weight sum under shear.
+      ivw_shear_unweighted_selection:
+        label: Inverse-variance R_shear with unweighted R_selection
+        description: >-
+          The earlier sp_validation practice; it calibrates a mean other than
+          the weighted mean applied to the catalogue.
+
+  additive_bias:
+    label: Additive bias subtracted once per calibrated sample
+    rationale: >-
+      c_e is the weighted mean unsheared, uncalibrated ellipticity of the
+      sample, and the calibrated shear is R⁻¹(e − c_e). No spatially varying
+      c is removed; patches of the footprint scatter around the global value
+      by about 3 × 10⁻⁴, which the validation section measures.
+    options:
+      global_mean:
+        label: One c_e per calibrated sample
+      not_subtracted:
+        label: Leave c in the catalogue
+        description: >-
+          Estimators must subtract it themselves; the setting for
+          constant-shear image simulations, where the mean is the signal.
+
+  calibration_uncertainties:
+    label: Delete-one-tile jackknife with the response recomputed
+    rationale: >-
+      The errors of R and c are delete-one-tile jackknifes: each tile leaves
+      every metacal branch at once and R is recomputed for each deletion,
+      with the weight table refitted, so the error includes the response's
+      own noise and spatially correlated noise.
+    options:
+      tile_jackknife:
+        label: Delete-one-tile jackknife, response recomputed
+      object_bootstrap:
+        label: Object bootstrap with the response held fixed
+        description: Leaves out the response's own uncertainty and spatial correlations.
+
+  leakage_correction:
+    label: No object-wise PSF-leakage correction
+    rationale: >-
+      [HARDCODED] The sample build has no leakage step: e1, e2 carry whatever
+      PSF leakage the shapes have, and e1_PSF, e2_PSF ride along so the PSF
+      systematics section can measure it (ρ and τ statistics, leakage α).
+      The v1 catalogue subtracted a binned object-wise correction.
+    options:
+      uncorrected:
+        label: Uncorrected, PSF ellipticity carried
+      object_wise:
+        label: Binned object-wise correction
+        description: >-
+          α(S/N, size) × e_PSF subtracted from each galaxy, as v1
+          (calibration.get_alpha_leakage_per_object).
+
+prior_insights:
+  metacal_response:
+    claim: >-
+      Metacalibration measures the shear response of a weighted-mean shear
+      estimator from the survey images themselves, by shearing them by a
+      known amount.
+    evidence:
+      - doi: "10.48550/arXiv.1702.02600"
+        quote:
+          exact: "Our technique infers multiplicative shear calibration parameters by modifying the actual survey data to simulate the effects of a known shear."
+  metacal_selection:
+    claim: >-
+      The response of a selected sample has a selection term, measured by
+      applying the selection to the sheared images.
+    evidence:
+      - doi: "10.48550/arXiv.1702.02601"
+        quote:
+          exact: "In this work we introduce a formalism to correct for both shear response and selection biases."
+
+findings:
+  sample_size:
+    claim: >-
+      The v2.0.0 calibrated sample holds 191,016,178 galaxies of the
+      snapshot's 772,677,301 objects; 573,175,974 pass the cuts before the
+      metacal S/N and size cuts.
+    evidence:
+      - artifact: response
+        quote: { exact: "\"selected_rows\": 191016178" }
+      - artifact: response
+        quote: { exact: "\"raw_rows\": 772677301" }
+      - artifact: response
+        quote: { exact: "\"preselection\": 573175974" }
+  sample_response:
+    claim: >-
+      The v2.0.0 sample's response has diagonal 0.7858 and 0.7880, of which
+      the selection term is 0.0284 and 0.0291; c_e is 1.8 × 10⁻⁵ and
+      1.09 × 10⁻⁴.
+    evidence:
+      - artifact: response
+        quote: { exact: "0.7857610750514785" }
+      - artifact: response
+        quote: { exact: "0.7879529463898727" }
+      - artifact: response
+        quote: { exact: "0.02837166269534242" }
+      - artifact: response
+        quote: { exact: "1.8385967562799894e-05" }

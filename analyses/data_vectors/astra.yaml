@@ -1,0 +1,356 @@
+# The blinded two-point data vectors of the tomographic sample and the SACC
+# file that carries them with their covariance.
+#
+# Measurement scripts read the catalogue through the SP_v2.0.0 entry of the
+# catalogue config (sp.cat_config): its paths, columns and blind. The
+# catalogue, n(z), footprint and blind outputs are listed as inputs so that a
+# change to any of them makes these outputs stale. Numeric settings (θ grids,
+# patch and mode counts) are written into the commands; the decision that
+# sets each one is attached to the output.
+
+spec_version: "0.1.0"
+label: Data vectors
+description: >-
+  ξ±(θ) on two angular grids, COSEBIs, pure-mode E/B correlation functions
+  and pseudo-Cℓ for every pair of the four tomographic bins, each blinded as
+  it is measured, and the SACC file that joins them with the ρ/τ PSF
+  statistics and their covariances. Every E-mode statistic is shifted by the
+  UNIONS blind before it is written (sp_validation.blinding); B-modes, EB and
+  the covariances are not. Universe v2_0_0 is the release's
+  data_vector/SP_v2.0_tomo.sacc (3,680 points).
+tags: [two-point, cosmic-shear, blinded]
+
+analyses:
+  sp:
+    path: ../..
+  catalogue:
+    path: ../catalogue
+  redshifts:
+    path: ../redshifts
+  footprint:
+    path: ../footprint
+  covariance:
+    path: ../covariance
+  psf_systematics:
+    path: ../psf_systematics
+
+outputs:
+  xi_reporting:
+    label: ξ± on the reporting grid
+    type: data
+    format: sacc
+    description: >-
+      TreeCorr ξ±(θ) of every tomographic bin pair on the reporting grid,
+      blinded, as a SACC part. With patches, the part carries the
+      jackknife covariance it was measured with; the analysis file replaces
+      it with the OneCovariance matrix (data_vector). Each bin's shear is
+      calibrated by its own response and has its weighted mean subtracted
+      (redshifts.sample_calibration).
+    inputs:
+      - sp.cat_config
+      - catalogue.calibrated_catalogue
+      - redshifts.bin_responses
+      - redshifts.nz_tomo
+      - sp.blind
+    decisions: [xi_reporting_grid, xi_jackknife_patches, redshifts.sample_calibration, sp.blinding]
+    recipe:
+      command: >-
+        d=$(mktemp -d) &&
+        python ../../workflow/scripts/run_2pcf.py --ver SP_v2.0.0
+        --min-sep 1.0 --max-sep 250.0 --nbins 20 --npatch 100 --tomo
+        --grid reporting --cat-config {inputs.sp.cat_config} --out "$d" &&
+        mv "$d"/*.sacc {output}
+      resources: { cpus: 24, memory: 30GB, time_limit: 6h }
+
+  xi_integration:
+    label: ξ± on the integration grid
+    type: data
+    format: sacc
+    description: >-
+      ξ±(θ) of every bin pair on the fine logarithmic grid the COSEBIs and
+      pure-mode transforms integrate over, blinded, without patches. An
+      intermediate: it is not in the analysis file.
+    inputs:
+      - sp.cat_config
+      - catalogue.calibrated_catalogue
+      - redshifts.bin_responses
+      - redshifts.nz_tomo
+      - sp.blind
+    decisions: [integration_grid, redshifts.sample_calibration, sp.blinding]
+    recipe:
+      command: >-
+        d=$(mktemp -d) &&
+        python ../../workflow/scripts/run_2pcf.py --ver SP_v2.0.0
+        --min-sep 0.08 --max-sep 300.0 --nbins 1000 --npatch 1 --tomo
+        --grid integration --cat-config {inputs.sp.cat_config} --out "$d" &&
+        mv "$d"/*.sacc {output}
+      resources: { cpus: 24, memory: 40GB, time_limit: 10h }
+
+  cosebis:
+    label: COSEBIs
+    type: data
+    format: sacc
+    description: >-
+      COSEBIs E_n and B_n of every bin pair from the integration-grid ξ±
+      over the configuration-space scale cut, with the Gaussian
+      OneCovariance ξ± matrix of the same grid pushed through the same
+      kernel as their covariance. E_n inherit the blind of ξ±.
+    inputs: [xi_integration, covariance.xi_covariance_integration, sp.blind]
+    decisions: [cosebis_modes, config_scale_cut, sp.blinding]
+    recipe:
+      command: >-
+        python ../../workflow/scripts/cv_cosebis.py
+        --xi {inputs.xi_integration}
+        --cov {inputs.covariance.xi_covariance_integration}
+        --nmodes 20 --scale-cut 12 83 --out {output}
+      resources: { cpus: 24, memory: 48GB, time_limit: 10h }
+
+  pure_eb:
+    label: Pure-mode E/B correlation functions
+    type: data
+    format: sacc
+    description: >-
+      ξ±^E, ξ±^B and the ambiguous components of every bin pair on the
+      reporting bins, from the integration-grid ξ± by the linear operator of
+      Schneider et al. (2022), with the integration-grid covariance pushed
+      exactly through it. The covariance block is rank-deficient (E, B and
+      ambiguous modes share the same ξ±).
+    inputs: [xi_integration, covariance.xi_covariance_integration, sp.blind]
+    decisions: [pure_eb_method, xi_reporting_grid, config_scale_cut, sp.blinding]
+    recipe:
+      command: >-
+        python ../../workflow/scripts/cv_pure_eb.py
+        --xi {inputs.xi_integration}
+        --cov {inputs.covariance.xi_covariance_integration}
+        --min-sep 1.0 --max-sep 250.0 --nbins 20 --scale-cut 12 83
+        --out {output}
+      resources: { cpus: 1, memory: 8GB, time_limit: 20m }
+
+  pseudo_cl:
+    label: Pseudo-Cℓ
+    type: data
+    format: sacc
+    description: >-
+      NaMaster pseudo-Cℓ EE, EB and BB of every bin pair with their
+      bandpower windows, blinded (EE). The shear field is evaluated at the
+      galaxy positions or on a HEALPix map (cl_estimator); the noise bias is
+      subtracted (noise_bias); e2 is multiplied by −1 before NaMaster, the
+      UNIONS sign convention.
+    inputs:
+      - sp.cat_config
+      - catalogue.calibrated_catalogue
+      - redshifts.bin_responses
+      - redshifts.nz_tomo
+      - covariance.cosmology_params
+      - sp.blind
+    decisions: [cl_estimator, cl_binning, noise_bias, redshifts.sample_calibration, sp.blinding]
+    recipe:
+      command: >-
+        d=$(mktemp -d) &&
+        python ../../workflow/scripts/generate_pseudo_cl.py --ver SP_v2.0.0
+        --cat-config {inputs.sp.cat_config} --nside 1024
+        --binning {decisions.cl_binning} --nbins 32 --power 0.5 --tomo
+        --cell-method {decisions.cl_estimator}
+        --noise-bias {decisions.noise_bias}
+        --cosmo-json {inputs.covariance.cosmology_params} --out "$d" &&
+        mv "$d"/*.sacc {output}
+      resources: { cpus: 12, memory: 32GB, time_limit: 2h }
+
+  data_vector:
+    label: Tomographic data vector (SACC)
+    type: data
+    format: sacc
+    description: >-
+      The analysis file: ξ± on the reporting grid, pseudo-Cℓ, COSEBIs, pure
+      E/B and the ρ/τ statistics in that order, with one block-diagonal
+      covariance. ξ± takes the non-Gaussian OneCovariance matrix and
+      pseudo-Cℓ the NaMaster Gaussian matrix (EE, BB, EB auto-blocks; the
+      cross-spectrum blocks are dropped); the other parts keep the
+      covariance they were born with. Every part must carry the catalogue's
+      blind. v2.0.0's is data_vector/SP_v2.0_tomo.sacc of the release (MD5
+      5aad93e5d6704ebebc4535d71ed1d1bd), made on Fir on 16 Nov 2026 by
+      analyses/cosmo-val-v2-tomo-perbin (code 51f96128, branch
+      run/remeasure-tomo-perbin).
+    inputs:
+      - xi_reporting
+      - covariance.xi_covariance
+      - pseudo_cl
+      - covariance.pseudo_cl_covariance
+      - cosebis
+      - pure_eb
+      - psf_systematics.rho_tau_part
+      - sp.blind
+    decisions: [sp.blinding]
+    recipe:
+      command: >-
+        python ../../workflow/scripts/assemble_sacc.py --version SP_v2.0.0
+        --blind unions
+        --xi-reporting {inputs.xi_reporting}
+        --xi-cov {inputs.covariance.xi_covariance}
+        --pseudo-cl {inputs.pseudo_cl}
+        --pseudo-cl-cov {inputs.covariance.pseudo_cl_covariance}
+        --cosebis {inputs.cosebis} --pure-eb {inputs.pure_eb}
+        --rho-tau {inputs.psf_systematics.rho_tau_part}
+        --out {output}
+      resources: { cpus: 1, memory: 8GB, time_limit: 20m }
+
+decisions:
+  xi_reporting_grid:
+    label: ξ± reporting grid
+    rationale: >-
+      20 logarithmic bins over 1–250 arcmin carry the ξ± that enter the
+      analysis file and the bins the pure-mode functions are reported on.
+      TreeCorr bins with bin_slop set so each bin's tolerance is 0.01 of its
+      width (b_target).
+    options:
+      log20_1_250:
+        label: 20 log bins, 1–250 arcmin
+
+  xi_jackknife_patches:
+    label: Jackknife patches of the reporting ξ±
+    rationale: >-
+      The reporting ξ± is measured on K-means patches so that it carries a
+      jackknife covariance. The analysis file replaces that covariance with
+      OneCovariance, so the patches serve the check of OneCovariance against
+      the jackknife (covariance.jackknife_comparison); without them the part
+      carries the shot-noise diagonal.
+    options:
+      npatch_100:
+        label: 100 patches
+      npatch_1:
+        label: No patches
+        description: Shot-noise variance only; what the mock measurements use.
+
+  integration_grid:
+    label: ξ± integration grid
+    rationale: >-
+      COSEBIs and the pure-mode functions are integrals of ξ± over the
+      fiducial angular range, so ξ± is measured on a fine logarithmic grid
+      that extends beyond it; the mocks are measured on the same grid, node
+      for node. Paper II's v1.4 analysis integrated over 0.5–300 arcmin.
+    options:
+      log1000_0p08_300:
+        label: 1000 log bins, 0.08–300 arcmin
+      log1000_0p5_300:
+        label: 1000 log bins, 0.5–300 arcmin
+        description: The grid of Paper II (v1.4.6.3) and papers/bmodes.
+
+  config_scale_cut:
+    label: Configuration-space scale cut
+    rationale: >-
+      The angular range of the COSEBIs and of the B-mode PTEs of the
+      pure-mode functions. 12–83 arcmin is Paper II's fiducial: the lower cut
+      excludes most intra-CCD pair separations (MegaCam's CCDs span about
+      6–14 arcmin), where v1.4's B-mode contamination concentrated. The
+      cosmo_val config also scans COSEBIs over 1, 2, 5, 10, 15 and 20–250
+      arcmin.
+    options:
+      arcmin_12_83:
+        label: 12–83 arcmin
+      arcmin_1_250:
+        label: 1–250 arcmin, the full reporting range
+
+  cosebis_modes:
+    label: COSEBIs modes
+    rationale: >-
+      The E-mode signal saturates by n ≈ 5–6, so the first six modes carry
+      most of the cosmological information; the B-mode null test uses all 20.
+    options:
+      n20:
+        label: n ≤ 20
+        insights: [cosebis_complete]
+      n6:
+        label: n ≤ 6
+        description: The information-carrying modes, as for inference.
+
+  pure_eb_method:
+    label: Pure-mode E/B decomposition
+    rationale: >-
+      The pure-mode correlation functions are a fixed linear operator on the
+      finely binned ξ± over a finite angular range, so they need no
+      extrapolation or model and their covariance is exact.
+    options:
+      schneider22:
+        label: Schneider et al. (2022), from the binned ξ±
+        insights: [pure_mode_cfs]
+
+  cl_estimator:
+    label: Pseudo-Cℓ field construction
+    rationale: >-
+      The catalogue-based estimator evaluates the spin-2 transforms of the
+      shear and weights at the source positions, avoiding the pixel window,
+      aliasing and the Poisson noise of sparsely filled pixels.
+    options:
+      catalog:
+        label: Catalogue-based (Wolz et al. 2025)
+        insights: [catalog_pseudo_cl]
+      map:
+        label: HEALPix map
+        description: Pixelised shear map at nside 1024 (cell_method map).
+
+  cl_binning:
+    label: Pseudo-Cℓ bandpowers
+    rationale: >-
+      32 bandpowers spaced in ℓ^0.5 between ℓ = 8 and 2048 (ℓmax = 2 nside at
+      nside 1024), following DES (Doux et al. 2022). The code also bins
+      linearly (2040 bands, for the harmonic COSEBIs) and logarithmically.
+    options:
+      powspace:
+        label: 32 bands spaced in ℓ^0.5, 8 ≤ ℓ ≤ 2048
+        insights: [namaster]
+      linear:
+        label: Linear bands
+        excluded: >-
+          The 2040-band linear binning serves the harmonic COSEBIs, not the
+          analysis bandpowers.
+      logspace:
+        label: Logarithmic bands
+
+  noise_bias:
+    label: Pseudo-Cℓ noise bias
+    rationale: >-
+      The shape-noise bias of the pseudo-Cℓ is subtracted analytically from
+      the weighted ellipticities (Nicola et al. 2021), which accounts for
+      number-density variation across the sky; random rotations of the
+      shapes (100 realisations) estimate the same term numerically.
+    options:
+      analytic:
+        label: Analytic
+      randoms:
+        label: Random rotations
+
+prior_insights:
+  cosebis_complete:
+    claim: >-
+      COSEBIs are complete orthogonal sets of E/B-mode integrals over a
+      finite angular range, so they hold all the E/B-separable information
+      of ξ± on that range.
+    evidence:
+      - doi: "10.48550/arXiv.1002.2136"
+        quote:
+          exact: "Complete Orthogonal Sets of E-/B-mode Integrals (COSEBIs)"
+
+  pure_mode_cfs:
+    claim: >-
+      Pure-mode correlation functions separate ξ± on a finite interval into
+      pure E, pure B and ambiguous parts directly from the data.
+    evidence:
+      - doi: "10.48550/arXiv.2110.09774"
+        quote:
+          exact: "These pure-mode correlation functions can thus be obtained directly from the data without extrapolation or modeling"
+
+  catalog_pseudo_cl:
+    claim: >-
+      Estimating the harmonic transforms at the source positions makes the
+      pseudo-Cℓ immune to pixelisation and aliasing.
+    evidence:
+      - doi: "10.48550/arXiv.2407.21013"
+        quote:
+          exact: "The resulting estimator is immune to small-scale pixelization effects and aliasing"
+
+  namaster:
+    claim: NaMaster is a validated public implementation of the pseudo-Cℓ framework.
+    evidence:
+      - doi: "10.48550/arXiv.1809.09603"
+        quote:
+          exact: "This paper presents NaMaster, a public, validated"

@@ -1,0 +1,287 @@
+# The covariances of the data vectors: analytic (OneCovariance for ξ±,
+# NaMaster for pseudo-Cℓ) and from the mock ensemble.
+#
+# The OneCovariance configuration is written by the workflow's covariance_ini
+# rule (workflow/rules/covariance.smk) from the catalogue config's cov_th
+# block and these decisions; run_onecovariance.py below stands for that rule
+# and the OneCovariance call, which have no command-line entry point yet.
+# The check of OneCovariance against the data's jackknife is in validation.
+
+spec_version: "0.1.0"
+label: Covariance
+description: >-
+  The covariance of every statistic in the data vector. ξ±: OneCovariance
+  (Reischke et al. 2025) at the fiducial cosmology, non-Gaussian with
+  super-sample covariance on the reporting grid and Gaussian on the
+  integration grid the B-mode statistics are built from, with the shape-noise
+  term from the measured pair counts. Pseudo-Cℓ: the NaMaster iNKA Gaussian
+  covariance. The mock ensemble gives an empirical covariance of every
+  statistic.
+  Covariances carry no blind.
+tags: [covariance, onecovariance, namaster]
+
+analyses:
+  sp:
+    path: ../..
+  catalogue:
+    path: ../catalogue
+  redshifts:
+    path: ../redshifts
+  footprint:
+    path: ../footprint
+  mocks:
+    path: ../mocks
+
+outputs:
+  cosmology_params:
+    label: Fiducial cosmological parameters
+    type: data
+    format: json
+    description: >-
+      The fiducial cosmology as the workflow reads it
+      (results/cosmology/planck18.json): cs_util.cosmo.PLANCK18 with
+      Ω_v = 1 − Ω_m.
+    decisions: [sp.fiducial_cosmology]
+    recipe:
+      command: >-
+        python -c "import json; from cs_util.cosmo import PLANCK18 as p;
+        json.dump(dict(p, Omega_v=1 - p['Omega_m']), open('{output}', 'w'), indent=2)"
+
+  pair_counts:
+    label: Effective pair counts per bin pair
+    type: data
+    format: npz
+    description: >-
+      Weighted galaxy pair counts of every bin pair on the reporting and the
+      integration grids, from positions and weights only (no shapes, no
+      blind). OneCovariance takes its shape-noise term from them, which
+      carries the survey's real geometry and weight distribution in place of
+      an area and a mean density.
+    inputs: [sp.cat_config, catalogue.calibrated_catalogue]
+    recipe:
+      command: >-
+        python ../../workflow/scripts/measure_pair_counts.py
+        --cat-config {inputs.sp.cat_config} --ver SP_v2.0.0 --tomo
+        --grids 1.0,250.0,20 0.08,300.0,1000 --out {output}
+      resources: { cpus: 24, memory: 40GB, time_limit: 10h }
+
+  xi_covariance:
+    label: ξ± covariance, reporting grid
+    type: data
+    format: dat
+    description: >-
+      The OneCovariance ξ± matrix of every bin pair on the reporting grid,
+      the covariance of ξ± in the analysis file, with the survey parameters
+      of the tomographic sample (per-bin n_eff and σ_e, area 4,582.17 deg²,
+      footprint_tomo as the mask) and the tomographic n(z).
+    inputs:
+      - sp.cat_config
+      - redshifts.nz_tomo
+      - footprint.footprint_tomo
+      - pair_counts
+      - cosmology_params
+    decisions: [reporting_terms, shape_noise, survey_mask, covariance_power_spectrum, sp.fiducial_cosmology]
+    recipe:
+      command: >-
+        python ../../workflow/scripts/run_onecovariance.py
+        --cat-config {inputs.sp.cat_config} --ver SP_v2.0.0 --tomo
+        --nz {inputs.redshifts.nz_tomo} --mask {inputs.footprint.footprint_tomo}
+        --pair-counts {inputs.pair_counts} --cosmology {inputs.cosmology_params}
+        --theta 1.0 250.0 20 --terms {decisions.reporting_terms}
+        --shape-noise {decisions.shape_noise} --out {output}
+      resources: { cpus: 8, memory: 32GB, time_limit: 12h }
+
+  xi_covariance_integration:
+    label: ξ± covariance, integration grid
+    type: data
+    format: dat
+    description: >-
+      The OneCovariance ξ± matrix on the integration grid, which the COSEBIs
+      and pure-mode operators propagate into the covariance of the B-mode
+      statistics.
+    inputs:
+      - sp.cat_config
+      - redshifts.nz_tomo
+      - footprint.footprint_tomo
+      - pair_counts
+      - cosmology_params
+    decisions: [integration_terms, shape_noise, survey_mask, covariance_power_spectrum, sp.fiducial_cosmology]
+    recipe:
+      command: >-
+        python ../../workflow/scripts/run_onecovariance.py
+        --cat-config {inputs.sp.cat_config} --ver SP_v2.0.0 --tomo
+        --nz {inputs.redshifts.nz_tomo} --mask {inputs.footprint.footprint_tomo}
+        --pair-counts {inputs.pair_counts} --cosmology {inputs.cosmology_params}
+        --theta 0.08 300.0 1000 --terms {decisions.integration_terms}
+        --shape-noise {decisions.shape_noise} --out {output}
+      resources: { cpus: 8, memory: 64GB, time_limit: 24h }
+
+  pseudo_cl_covariance:
+    label: Pseudo-Cℓ covariance
+    type: data
+    format: fits
+    description: >-
+      The Gaussian covariance of the pseudo-Cℓ EE, EB and BB of every bin
+      pair (COVAR_EE_EE, COVAR_BB_BB, COVAR_EB_EB, ...), from NaMaster's
+      improved narrow-kernel approximation with the mode-coupled fiducial
+      spectra as input, at the fiducial cosmology (CAMB, HMCode2020 with
+      log T_AGN = 7.8).
+    inputs:
+      - sp.cat_config
+      - catalogue.calibrated_catalogue
+      - redshifts.bin_responses
+      - redshifts.nz_tomo
+      - cosmology_params
+    decisions: [cl_covariance_method, sp.fiducial_cosmology]
+    recipe:
+      command: >-
+        d=$(mktemp -d) &&
+        python ../../workflow/scripts/generate_pseudo_cl_cov.py --ver SP_v2.0.0
+        --cat-config {inputs.sp.cat_config} --nside 1024 --binning powspace
+        --nbins 32 --power 0.5 --tomo --gaussian-part {decisions.cl_covariance_method}
+        --cosmo-json {inputs.cosmology_params} --out "$d" &&
+        mv "$d"/*.fits {output}
+      resources: { cpus: 12, memory: 16GB, time_limit: 3h }
+
+  mock_covariance:
+    label: Mock-ensemble covariance
+    type: data
+    format: npz
+    description: >-
+      The sample covariance of every statistic of the data vector (ξ±,
+      pseudo-Cℓ, COSEBIs, pure E/B) across the mock ensemble, and its mean,
+      with the Hartlap factor its inverse needs. It tests the analytic
+      covariances and calibrates the null tests; the analysis file does not
+      use it.
+    inputs: [mocks.mock_statistics]
+    recipe:
+      command: >-
+        python ../../workflow/scripts/compute_glass_mock_covariance.py
+        --mocks {inputs.mocks.mock_statistics} --out {output}
+      resources: { cpus: 1, memory: 16GB, time_limit: 1h }
+
+decisions:
+  reporting_terms:
+    label: Terms of the reporting-grid ξ± covariance
+    rationale: >-
+      The covariance used for inference includes the connected
+      non-Gaussian term and super-sample covariance, which add to the
+      Gaussian term on the scales where the signal is measured.
+    options:
+      full:
+        label: Gaussian, non-Gaussian and super-sample
+        insights: [onecovariance]
+      gaussian:
+        label: Gaussian only
+
+  integration_terms:
+    label: Terms of the integration-grid ξ± covariance
+    rationale: >-
+      The integration-grid covariance feeds the B-mode statistics, whose
+      covariance is noise-dominated; non-Gaussian terms act on the E-mode
+      signal. Paper II kept only the Gaussian part for every B-mode null
+      test, which makes the PTEs conservative.
+    options:
+      gaussian:
+        label: Gaussian only
+      full:
+        label: Gaussian, non-Gaussian and super-sample
+      jackknife:
+        label: Jackknife ξ± covariance with the Hartlap factor
+        description: >-
+          The B-mode statistics take the covariance of the part's own
+          patches, and every χ² its inverse enters carries the Hartlap
+          factor (sp_validation.b_modes.hartlap_factor).
+        insights: [hartlap]
+
+  shape_noise:
+    label: Shape-noise term
+    rationale: >-
+      The noise term of the ξ± covariance needs the number of galaxy pairs
+      in each θ bin. Measured pair counts carry the real footprint, its
+      holes and the weight distribution; the analytic term assumes a uniform
+      density over the area. The two differ most on small scales and near
+      the mask edges.
+    options:
+      pair_counts:
+        label: Measured pair counts (pair_counts)
+        description: >-
+          On origin/edge and the v2.0.0 run's branch; not on develop.
+      analytic:
+        label: n_eff, σ_e and area of the sample
+
+  survey_mask:
+    label: Survey geometry of the ξ± covariance
+    rationale: >-
+      OneCovariance takes the footprint's mask to compute the survey window
+      of the super-sample and Gaussian terms; without it only the area
+      enters. The tomographic covariance reads the binned sample's footprint.
+    options:
+      masked:
+        label: The footprint as the mask
+      area_only:
+        label: Area only
+        description: Paper III (v1.4) shows the unmasked covariance for comparison.
+
+  covariance_power_spectrum:
+    label: Non-linear power spectrum of the analytic covariances
+    rationale: >-
+      HMCode2020 with baryonic feedback, at log T_AGN = 7.75 in the
+      OneCovariance configuration. The pseudo-Cℓ covariance and the GLASS
+      mocks use log T_AGN = 7.8.
+    options:
+      hmcode2020_feedback:
+        label: HMCode2020 with feedback
+        insights: [hmcode2020]
+
+  cl_covariance_method:
+    label: Pseudo-Cℓ covariance
+    rationale: >-
+      NaMaster's iNKA gives the Gaussian covariance of the coupled
+      bandpowers on the real mask. The code can add the OneCovariance
+      non-Gaussian terms to it (calculate_pseudo_cl_g_ng_cov), or take the
+      Gaussian part from OneCovariance as well; in v1.4 the iNKA and
+      OneCovariance Gaussian terms differed by about 25 %.
+    options:
+      inka:
+        label: iNKA Gaussian (NaMaster)
+        insights: [namaster]
+      inka_plus_onecov:
+        label: iNKA Gaussian plus OneCovariance non-Gaussian
+      onecov:
+        label: OneCovariance Gaussian and non-Gaussian
+
+prior_insights:
+  onecovariance:
+    claim: >-
+      OneCovariance computes the Gaussian, non-Gaussian and super-sample
+      covariance of projected large-scale-structure observables.
+    evidence:
+      - doi: "10.48550/arXiv.2410.06962"
+        quote:
+          exact: "incorporating all Gaussian, non-Gaussian, and super-sample covariance terms"
+
+  hartlap:
+    claim: >-
+      The inverse of a covariance estimated from a finite number of
+      realisations is biased and needs the Hartlap factor.
+    evidence:
+      - doi: "10.48550/arXiv.astro-ph/0608064"
+        quote:
+          exact: "We find that the inverse of the maximum-likelihood estimator of the covariance is biased"
+
+  hmcode2020:
+    claim: >-
+      HMCode2020 models the non-linear matter power spectrum with baryonic
+      feedback set by the AGN temperature.
+    evidence:
+      - doi: "10.48550/arXiv.2009.01858"
+        quote:
+          exact: "the power spectrum response to feedback is matched at the < 1 per cent level for z < 1"
+
+  namaster:
+    claim: NaMaster is a validated public implementation of the pseudo-Cℓ framework.
+    evidence:
+      - doi: "10.48550/arXiv.1809.09603"
+        quote:
+          exact: "This paper presents NaMaster, a public, validated"

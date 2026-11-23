@@ -1,0 +1,231 @@
+# Cosmological inference from the blinded data vector with CosmoSIS.
+#
+# Not yet run on v2. The v2_0_0 selections are the settings of the committed
+# CosmoSIS templates (cosmo_inference/cosmosis_config/templates/, made for
+# the v1.4.6.3 2D analysis); the m and Δz priors come from the
+# shear_calibration and redshifts sections instead of the templates' v1.4
+# numbers. SACC-based tomographic inference is PR #461 (open,
+# feat/inference-leg); develop's converter reads single-bin ξ± FITS files.
+
+spec_version: "0.1.0"
+label: Inference
+description: >-
+  The posterior of the cosmological parameters given the blinded
+  tomographic data vector: the SACC converted to a CosmoSIS 2pt FITS file,
+  a nested-sampling chain over the cosmological, intrinsic-alignment,
+  baryonic, shear-calibration, redshift and PSF-leakage parameters, and its
+  summary. Since the data vector is blinded, so are the constraints. Not yet
+  run on v2.
+tags: [inference, cosmosis]
+
+analyses:
+  sp:
+    path: ../..
+  data_vectors:
+    path: ../data_vectors
+  redshifts:
+    path: ../redshifts
+  shear_calibration:
+    path: ../shear_calibration
+  psf_systematics:
+    path: ../psf_systematics
+
+outputs:
+  cosmosis_data:
+    label: CosmoSIS data file
+    type: data
+    format: fits
+    description: >-
+      The data vector's statistic chosen for inference, every bin pair in
+      type-major order with the covariance permuted to match, one n(z)
+      column per bin, and the ρ/τ statistics with their covariance for the
+      PSF-systematics term.
+    inputs: [data_vectors.data_vector, redshifts.nz_tomo]
+    decisions: [inference_statistic]
+    recipe:
+      command: >-
+        python ../../cosmo_inference/scripts/cosmosis_fitting.py
+        --sacc {inputs.data_vectors.data_vector}
+        --statistic {decisions.inference_statistic} --out {output}
+
+  chain:
+    label: Posterior chain
+    type: data
+    format: txt
+    description: >-
+      The nested-sampling chain of CosmoSIS (CSL fork UNIONS-WL b7b1552a):
+      CAMB with the chosen non-linear model, NLA intrinsic alignments,
+      additive Δz shifts per bin, a multiplicative bias per bin and the
+      additive PSF term ξ_sys built from the ρ/τ statistics, with a
+      Gaussian likelihood at fixed covariance and the angular cuts of the
+      template.
+    inputs:
+      - cosmosis_data
+      - sp.cosmosis_pipeline
+      - sp.cosmosis_values
+      - sp.cosmosis_priors
+      - shear_calibration.shear_bias
+      - redshifts.realisations
+      - psf_systematics.leakage_fit
+    decisions:
+      - sampler
+      - nonlinear_model
+      - ia_model
+      - ia_prior
+      - psf_leakage_model
+      - m_prior
+      - dz_prior
+      - cosmology_priors
+      - inference_scale_cut
+    recipe:
+      command: >-
+        python ../../cosmo_inference/scripts/run_cosmosis.py
+        --data {inputs.cosmosis_data} --pipeline {inputs.sp.cosmosis_pipeline}
+        --values {inputs.sp.cosmosis_values} --priors {inputs.sp.cosmosis_priors}
+        --m-bias {inputs.shear_calibration.shear_bias}
+        --nz-realisations {inputs.redshifts.realisations}
+        --leakage {inputs.psf_systematics.leakage_fit}
+        --sampler {decisions.sampler} --out {output}
+      resources: { cpus: 192, memory: 300GB, time_limit: 48h }
+
+  constraints:
+    label: Parameter constraints
+    type: table
+    format: json
+    description: >-
+      Marginal summaries of S8, Ω_m and the nuisance parameters from the
+      chain: the weighted mean and 68 % interval, and the 2D-marginal mode
+      for S8 and Ω_m. Blinded.
+    inputs: [chain]
+    recipe:
+      command: >-
+        python ../../cosmo_inference/scripts/chain_postprocessing.py
+        --chain {inputs.chain} --out {output}
+
+decisions:
+  inference_statistic:
+    label: Statistic for inference
+    rationale: >-
+      ξ± is the configuration-space data vector; pseudo-Cℓ needs the
+      bandpower windows in the likelihood (not yet supported by the
+      converter); COSEBIs compress ξ± into a few modes. The templates fit ξ±.
+    options:
+      xi_pm:
+        label: ξ±
+      pseudo_cl:
+        label: Pseudo-Cℓ
+      cosebis:
+        label: COSEBIs
+
+  sampler:
+    label: Sampler
+    rationale: >-
+      Nested sampling gives the evidence and handles the projection effects
+      of a many-parameter posterior. The templates use PolyChord with 192
+      live points; PR #461 runs Nautilus, which v1.4's 2D analysis used as a
+      consistency check.
+    options:
+      polychord:
+        label: PolyChord, 192 live points
+      nautilus:
+        label: Nautilus
+
+  nonlinear_model:
+    label: Non-linear matter power spectrum
+    rationale: >-
+      HMCode2020 models baryonic feedback with one parameter, log T_AGN,
+      marginalised over a uniform 7.3–8.0. In v1.4 Halofit and HMCode
+      without feedback were robustness checks.
+    options:
+      hmcode2020_feedback:
+        label: HMCode2020, log T_AGN ~ U(7.3, 8.0)
+      halofit:
+        label: Halofit
+      hmcode2020_no_feedback:
+        label: HMCode2020 without baryonic feedback
+
+  ia_model:
+    label: Intrinsic-alignment model
+    rationale: >-
+      The non-linear alignment model with amplitude A_IA and no redshift
+      dependence. TATT's higher-order terms are not modelled.
+    options:
+      nla:
+        label: NLA, η_IA = 0
+      none:
+        label: No intrinsic alignments
+
+  ia_prior:
+    label: Prior on A_IA
+    rationale: >-
+      A direct measurement of red and blue galaxies' alignments gives
+      A_IA = 0.83 ± 0.39; the templates double the width to 0.7. A flat prior
+      lets A_IA trade against S8.
+    options:
+      gaussian_0p83_0p7:
+        label: A_IA ~ N(0.83, 0.7)
+      flat:
+        label: A_IA ~ U(−5, 5)
+
+  psf_leakage_model:
+    label: PSF systematics in the model
+    rationale: >-
+      The additive ξ_sys from α and β times the ρ statistics is added to the
+      model, with α and β sampled under Gaussian priors from the leakage fit
+      (η fixed at zero). The template's priors are v1.4's single-bin values;
+      four bins need one α and β per bin.
+    options:
+      gaussian_alpha_beta:
+        label: α, β sampled with Gaussian priors from the leakage fit
+      flat_alpha_beta:
+        label: α, β sampled with flat priors
+      none:
+        label: No ξ_sys term
+
+  m_prior:
+    label: Multiplicative-bias prior
+    rationale: >-
+      A Gaussian prior per bin on the residual multiplicative bias m from
+      the image simulations (shear_calibration.shear_bias), which rescales each
+      ξ±_ij by (1 + m_i)(1 + m_j).
+    options:
+      image_sims_gaussian:
+        label: Gaussian per bin from shear_calibration.shear_bias
+      none:
+        label: m = 0
+
+  dz_prior:
+    label: Redshift uncertainty
+    rationale: >-
+      Each bin's n(z) is shifted by Δz_i with a Gaussian prior whose width
+      comes from the n(z) realisations; alternatively the realisations are
+      marginalised directly, or compressed into the few n(z) modes the data
+      can see (sp_validation.nz.modes).
+    options:
+      gaussian_shift:
+        label: Additive Δz per bin, Gaussian prior from the realisations
+      realisations:
+        label: Marginalise over the n(z) realisations
+      modes:
+        label: Likelihood-aware n(z) modes
+
+  cosmology_priors:
+    label: Sampled cosmological parameters and priors
+    rationale: >-
+      ω_c, ω_b, h, n_s and S8 are sampled with KiDS-Legacy's prior ranges
+      and a BBN Gaussian on ω_b (0.0244 ± 0.00038); τ_reio = 0.0544,
+      Σm_ν = 0.06 eV, w = −1.
+    options:
+      kids_legacy:
+        label: KiDS-Legacy ranges with a BBN prior on ω_b
+
+  inference_scale_cut:
+    label: Angular range of ξ± in the likelihood
+    rationale: >-
+      The templates cut ξ± to 12–83 arcmin, the range that passed the v1.4
+      B-mode tests. In v1.4, 5–83 arcmin also passed and gave a worse fit.
+    options:
+      arcmin_12_83:
+        label: 12–83 arcmin
+      arcmin_5_83:
+        label: 5–83 arcmin

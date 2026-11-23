@@ -1,0 +1,163 @@
+# The footprint section: the footprints of the full and tomographic samples,
+# their survey statistics, and the structural masks as delivered.
+
+spec_version: "0.1.0"
+label: Footprints and survey statistics
+description: >-
+  The footprint of the calibrated sample and of its tomographic sample as
+  HEALPix maps at nside 4096 (RING, 0.86′ pixels), the area, effective number
+  density and shape noise of each sample over them, and the structural masks
+  the selection's mask bits come from. The covariance and mock sections take
+  their survey geometry and noise from here.
+
+analyses:
+  sp:
+    path: ../..
+  catalogue:
+    path: ../catalogue
+  redshifts:
+    path: ../redshifts
+
+outputs:
+  structural_masks:
+    label: Structural masks
+    type: data
+    format: json
+    description: >-
+      The mask group's DR6 masks as components, one boolean healsparse map
+      per bit at nside 131072: 1 and 2 star halos, 4 bright stars, 8 manual,
+      64 r-band, 1024 MaxiMask, and the coverage bits 16, 32, 128, 256 and
+      2048 as delivered. ShapePipe writes the same bits into its MASK_*
+      columns, which the selection cuts on; the bit-8 map also masks the PSF
+      stars, which lack that column. The result is the manifest of the
+      release's masks/structural/, checked against its MD5SUMS.
+    recipe:
+      command: >-
+        python -m sp_validation.fetch '${{unions_v2}}/v2.0.0/masks/structural'
+        --version v2.0.0 --md5sums '${{unions_v2}}/v2.0.0/MD5SUMS' --out {output}
+      resources: { cpus: 1, memory: 2GB, time_limit: 2h }
+
+  footprint:
+    label: Footprint of the calibrated sample
+    type: data
+    format: fits
+    description: >-
+      The nside-4096 RING pixels holding at least one galaxy of the
+      calibrated sample (uint8), written by the sample build at the recipe's
+      footprint_nside.
+    inputs: [catalogue.calibrated_catalogue]
+    decisions: [footprint_definition]
+    recipe:
+      command: >-
+        cp {inputs.catalogue.calibrated_catalogue}/masks/footprint-nside4096-ring.fits
+        {output}
+
+  footprint_tomo:
+    label: Footprint of the tomographic sample
+    type: data
+    format: fits
+    description: >-
+      The occupied nside-4096 pixels of the galaxies on tiles that hold at
+      least one galaxy in bins 1–4 (header SAMPLE = 'TOM_BIN_ID>0 tiles').
+      Tiles whose galaxies all fall outside the bins, mostly tiles without
+      PhotoPipe photometry or with incomplete photometry, leave the
+      tomographic footprint whole.
+    inputs: [redshifts.tomographic_sample]
+    decisions: [footprint_definition, tomographic_footprint]
+    recipe:
+      command: >-
+        mkdir -p fp && python ../../workflow/scripts/footprint_masks.py
+        {inputs.redshifts.tomographic_sample}/catalogs/calibrated fp
+        && mv fp/tomo.fits {output}
+      resources: { cpus: 32, memory: 128GB, time_limit: 1h }
+
+  survey:
+    label: Survey statistics on the full footprint
+    type: data
+    format: json
+    description: >-
+      Rows, area, and n_eff, σ_e, Σw and Σw² of the whole sample and of each
+      bin over the full footprint. Each sample's σ_e is that of its own
+      calibrated shear as cosmo_val measures it (a bin's R_k⁻¹ R_all e minus
+      its weighted mean).
+    inputs: [redshifts.tomographic_sample, footprint, footprint_tomo]
+    recipe:
+      command: >-
+        mkdir -p stats && python ../../workflow/scripts/survey_stats.py
+        {inputs.redshifts.tomographic_sample} stats && mv stats/survey.json {output}
+      resources: { cpus: 32, memory: 128GB, time_limit: 1h }
+
+  survey_tomo:
+    label: Survey statistics on the tomographic footprint
+    type: data
+    format: json
+    description: >-
+      The tomographic footprint's area and tile count, and each bin's n_eff,
+      σ_e, Σw and Σw² over it, with the ratio of analytic to measured
+      shape-noise variance at nside 256 on both footprints.
+    inputs: [redshifts.tomographic_sample, footprint, footprint_tomo]
+    recipe:
+      command: >-
+        mkdir -p stats && python ../../workflow/scripts/survey_stats.py
+        {inputs.redshifts.tomographic_sample} stats && mv stats/survey_tomo.json {output}
+      resources: { cpus: 32, memory: 128GB, time_limit: 1h }
+
+decisions:
+  footprint_definition:
+    label: Footprint from occupied pixels at nside 4096
+    rationale: >-
+      A footprint is the set of nside-4096 pixels holding at least one
+      galaxy, and areas and densities are taken over those pixels. At about 7
+      galaxies per arcmin² a pixel inside the survey is empty by chance about
+      0.6% of the time, so the area is slightly underestimated, and holes
+      smaller than a pixel are not resolved. It needs only the catalogue.
+    options:
+      occupied_nside_4096:
+        label: Occupied pixels, nside 4096
+      coverage_and_masks:
+        label: ShapePipe coverage maps with the structural masks
+        description: >-
+          The geometric footprint, independent of galaxy density; needs the
+          coverage maps and masks at nside 131072 degraded with a coverage
+          threshold.
+
+  tomographic_footprint:
+    label: Tomographic footprint by tile
+    rationale: >-
+      The tomographic sample covers less sky than the full one, because
+      tiles without PhotoPipe photometry, or whose galaxies all fail the BPZ
+      range or gold, have no binned galaxy. Its footprint keeps every
+      occupied pixel of a tile holding a binned galaxy, so a pixel within a
+      binned tile is not lost because none of its few galaxies landed in a
+      bin. At the binned sample's 5.1 galaxies per arcmin² a pixel holds 3.8
+      binned galaxies on average, so a footprint of pixels holding one would
+      lose about 2% of its interior pixels by chance.
+    options:
+      binned_tiles:
+        label: Occupied pixels of tiles holding a binned galaxy
+      binned_pixels:
+        label: Pixels holding a binned galaxy
+        description: Empties about 2% of interior pixels by chance.
+      full_footprint:
+        label: The full sample's footprint
+        description: >-
+          Counts as survey area the tiles with no binned galaxy, which lowers
+          every bin's n_eff.
+
+findings:
+  survey_area:
+    claim: >-
+      The v2.0.0 calibrated sample covers 5,223 deg² with n_eff = 6.91
+      arcmin⁻² and σ_e = 0.289 per component; its tomographic sample covers
+      4,582 deg² on 19,034 of the 22,200 tiles that hold a galaxy.
+    evidence:
+      - artifact: survey
+        quote: { exact: "\"area_deg2\": 5223.409980599079" }
+      - artifact: survey
+        quote: { exact: "\"n_eff\": 6.913058645076713" }
+      - artifact: survey
+        quote: { exact: "\"sigma_e\": 0.28898648795041854" }
+      - artifact: survey_tomo
+        quote: { exact: "\"area_deg2\": 4582.166071505111" }
+      - artifact: survey_tomo
+        quote: { exact: "\"tomographic\": 19034" }

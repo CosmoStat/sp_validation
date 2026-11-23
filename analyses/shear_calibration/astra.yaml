@@ -1,0 +1,374 @@
+# The shear-calibration section: the multiplicative shear bias m of the
+# calibrated sample, measured on image simulations that twin a real UNIONS
+# campaign, processed by ShapePipe and selected and weighted as the data are.
+#
+# options.yaml gives the concrete settings of each option the simulation
+# code reads (sp_validation.image_sims.options); the recipes select one
+# option per decision, and fixed settings with no live alternative are
+# written into the commands. Commands name a fetched product by the path its
+# manifest records.
+
+spec_version: "0.1.0"
+label: Multiplicative shear bias from image simulations
+description: >-
+  Twin image simulations of a real campaign: every CCD of every real exposure
+  keeps its WCS, zero point, weight and flag maps and its noise level, and
+  carries SKiLLS galaxies sheared by a known g, convolved with a PSF matched
+  to that CCD's v2 stars. Five shear branches (g = 0, ±g₁, ±g₂, |g| = 0.025)
+  share their noise and are each processed by ShapePipe's own workflow at the
+  code that made the v2 data, then selected, weighted with the data's weight
+  table and metacalibrated as the data are. m and c follow from the
+  calibrated mean shear of the ±g branches. The galaxies sit on a 10″
+  lattice, so m measures the shape measurement and the selection without
+  blending.
+
+analyses:
+  sp:
+    path: ../..
+  catalogue:
+    path: ../catalogue
+
+inputs:
+  options:
+    path: options.yaml
+    description: What each option of each simulation decision sets.
+
+outputs:
+  twin_field:
+    label: Staged real campaign
+    type: data
+    format: json
+    description: >-
+      The real campaign the simulation twins, staged from CADC by
+      sp_validation.image_sims.stage: tiles/CFIS.XXX.YYY.r.fits (WCS, size,
+      and HISTORY cards naming each tile's exposures) and
+      exposures/NNNNNNNp{,.weight,.flag}.fits.fz (CCD headers, weights,
+      flags, and the pixels the noise level is measured on).
+    decisions: [field]
+    recipe:
+      command: >-
+        python -m sp_validation.fetch '${{unions_data}}/image-sims/fields/{decisions.field}'
+        --version {decisions.field} --out {output}
+      resources: { cpus: 1, memory: 2GB, time_limit: 2h }
+
+  skills:
+    label: SKiLLS input galaxies
+    type: data
+    format: json
+    description: >-
+      The SKiLLS v07Ds input galaxy catalogue (six feather files): Sérsic
+      index, effective radius, axis ratio and magnitudes, drawn at random
+      onto the layout's positions.
+    recipe:
+      command: >-
+        python -m sp_validation.fetch '${{unions_data}}/image-sims/skills'
+        --version v07Ds --out {output}
+      resources: { cpus: 1, memory: 2GB, time_limit: 1h }
+
+  swarp:
+    label: SWarp 2.41.5
+    type: data
+    format: json
+    description: >-
+      SWarp from conda-forge (astromatic-swarp 2.41.5), which coadds the
+      simulated exposures onto the real tiles' pixel grids as the real tiles
+      were made; the image lacks it.
+    recipe:
+      command: >-
+        python -m sp_validation.fetch '${{unions_data}}/image-sims/tools/swarp'
+        --version 2.41.5 --out {output}
+      resources: { cpus: 1, memory: 2GB, time_limit: 1h }
+
+  truth:
+    label: Input galaxies
+    type: data
+    format: fits
+    description: >-
+      Every simulated galaxy: ID, RA, Dec, magnitude, flux, Sérsic n, size,
+      axis ratio, angle and intrinsic shear.
+    inputs: [options, twin_field, catalogue.star_catalogue, skills, swarp]
+    decisions: [field, galaxy_layout, magnitude_range, psf_model]
+    recipe:
+      command: >-
+        python -m sp_validation.image_sims.simulate truth
+        --options {inputs.options}
+        --select field={decisions.field} galaxy_layout={decisions.galaxy_layout}
+        magnitude_range={decisions.magnitude_range} psf_model={decisions.psf_model}
+        noise_model=gaussian_ccd_rms shear_amplitude=g0p025 generator=twin_c90c5b3
+        shapepipe=v2_here selection=v2 simulation_weights=v2_table
+        --field "$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["path"])' {inputs.twin_field})"
+        --stars "$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["path"])' {inputs.catalogue.star_catalogue})"/dataset
+        --skills "$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["path"])' {inputs.skills})"
+        --swarp "$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["path"])' {inputs.swarp})"/bin/swarp
+        --output {output}
+      resources: { cpus: 1, memory: 16GB }
+
+  catalogue_1z2z:
+    label: ShapePipe catalogue, no shear
+    type: data
+    format: hdf5
+    description: >-
+      ShapePipe's merged catalogue of branch 1z2z (no shear): the generator draws
+      the branch's exposures and coadds its tiles in a temporary directory,
+      and `sp run --here` processes them; the images go with the directory.
+    inputs: [options, twin_field, catalogue.star_catalogue, skills, swarp]
+    decisions: [field, galaxy_layout, magnitude_range, psf_model]
+    recipe:
+      command: >-
+        python -m sp_validation.image_sims.simulate catalogue --branch 1z2z
+        --options {inputs.options}
+        --select field={decisions.field} galaxy_layout={decisions.galaxy_layout}
+        magnitude_range={decisions.magnitude_range} psf_model={decisions.psf_model}
+        noise_model=gaussian_ccd_rms shear_amplitude=g0p025 generator=twin_c90c5b3
+        shapepipe=v2_here selection=v2 simulation_weights=v2_table
+        --field "$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["path"])' {inputs.twin_field})"
+        --stars "$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["path"])' {inputs.catalogue.star_catalogue})"/dataset
+        --skills "$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["path"])' {inputs.skills})"
+        --swarp "$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["path"])' {inputs.swarp})"/bin/swarp
+        --cores 48 --memory-mb 150000 --output {output}
+      resources: { cpus: 48, memory: 160GB }
+
+  catalogue_1p2z:
+    label: ShapePipe catalogue, g₁ = +g
+    type: data
+    format: hdf5
+    description: >-
+      ShapePipe's merged catalogue of branch 1p2z (g₁ = +g): the generator draws
+      the branch's exposures and coadds its tiles in a temporary directory,
+      and `sp run --here` processes them; the images go with the directory.
+    inputs: [options, twin_field, catalogue.star_catalogue, skills, swarp]
+    decisions: [field, galaxy_layout, magnitude_range, psf_model]
+    recipe:
+      command: >-
+        python -m sp_validation.image_sims.simulate catalogue --branch 1p2z
+        --options {inputs.options}
+        --select field={decisions.field} galaxy_layout={decisions.galaxy_layout}
+        magnitude_range={decisions.magnitude_range} psf_model={decisions.psf_model}
+        noise_model=gaussian_ccd_rms shear_amplitude=g0p025 generator=twin_c90c5b3
+        shapepipe=v2_here selection=v2 simulation_weights=v2_table
+        --field "$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["path"])' {inputs.twin_field})"
+        --stars "$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["path"])' {inputs.catalogue.star_catalogue})"/dataset
+        --skills "$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["path"])' {inputs.skills})"
+        --swarp "$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["path"])' {inputs.swarp})"/bin/swarp
+        --cores 48 --memory-mb 150000 --output {output}
+      resources: { cpus: 48, memory: 160GB }
+
+  catalogue_1m2z:
+    label: ShapePipe catalogue, g₁ = −g
+    type: data
+    format: hdf5
+    description: >-
+      ShapePipe's merged catalogue of branch 1m2z (g₁ = −g): the generator draws
+      the branch's exposures and coadds its tiles in a temporary directory,
+      and `sp run --here` processes them; the images go with the directory.
+    inputs: [options, twin_field, catalogue.star_catalogue, skills, swarp]
+    decisions: [field, galaxy_layout, magnitude_range, psf_model]
+    recipe:
+      command: >-
+        python -m sp_validation.image_sims.simulate catalogue --branch 1m2z
+        --options {inputs.options}
+        --select field={decisions.field} galaxy_layout={decisions.galaxy_layout}
+        magnitude_range={decisions.magnitude_range} psf_model={decisions.psf_model}
+        noise_model=gaussian_ccd_rms shear_amplitude=g0p025 generator=twin_c90c5b3
+        shapepipe=v2_here selection=v2 simulation_weights=v2_table
+        --field "$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["path"])' {inputs.twin_field})"
+        --stars "$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["path"])' {inputs.catalogue.star_catalogue})"/dataset
+        --skills "$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["path"])' {inputs.skills})"
+        --swarp "$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["path"])' {inputs.swarp})"/bin/swarp
+        --cores 48 --memory-mb 150000 --output {output}
+      resources: { cpus: 48, memory: 160GB }
+
+  catalogue_1z2p:
+    label: ShapePipe catalogue, g₂ = +g
+    type: data
+    format: hdf5
+    description: >-
+      ShapePipe's merged catalogue of branch 1z2p (g₂ = +g): the generator draws
+      the branch's exposures and coadds its tiles in a temporary directory,
+      and `sp run --here` processes them; the images go with the directory.
+    inputs: [options, twin_field, catalogue.star_catalogue, skills, swarp]
+    decisions: [field, galaxy_layout, magnitude_range, psf_model]
+    recipe:
+      command: >-
+        python -m sp_validation.image_sims.simulate catalogue --branch 1z2p
+        --options {inputs.options}
+        --select field={decisions.field} galaxy_layout={decisions.galaxy_layout}
+        magnitude_range={decisions.magnitude_range} psf_model={decisions.psf_model}
+        noise_model=gaussian_ccd_rms shear_amplitude=g0p025 generator=twin_c90c5b3
+        shapepipe=v2_here selection=v2 simulation_weights=v2_table
+        --field "$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["path"])' {inputs.twin_field})"
+        --stars "$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["path"])' {inputs.catalogue.star_catalogue})"/dataset
+        --skills "$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["path"])' {inputs.skills})"
+        --swarp "$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["path"])' {inputs.swarp})"/bin/swarp
+        --cores 48 --memory-mb 150000 --output {output}
+      resources: { cpus: 48, memory: 160GB }
+
+  catalogue_1z2m:
+    label: ShapePipe catalogue, g₂ = −g
+    type: data
+    format: hdf5
+    description: >-
+      ShapePipe's merged catalogue of branch 1z2m (g₂ = −g): the generator draws
+      the branch's exposures and coadds its tiles in a temporary directory,
+      and `sp run --here` processes them; the images go with the directory.
+    inputs: [options, twin_field, catalogue.star_catalogue, skills, swarp]
+    decisions: [field, galaxy_layout, magnitude_range, psf_model]
+    recipe:
+      command: >-
+        python -m sp_validation.image_sims.simulate catalogue --branch 1z2m
+        --options {inputs.options}
+        --select field={decisions.field} galaxy_layout={decisions.galaxy_layout}
+        magnitude_range={decisions.magnitude_range} psf_model={decisions.psf_model}
+        noise_model=gaussian_ccd_rms shear_amplitude=g0p025 generator=twin_c90c5b3
+        shapepipe=v2_here selection=v2 simulation_weights=v2_table
+        --field "$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["path"])' {inputs.twin_field})"
+        --stars "$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["path"])' {inputs.catalogue.star_catalogue})"/dataset
+        --skills "$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["path"])' {inputs.skills})"
+        --swarp "$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["path"])' {inputs.swarp})"/bin/swarp
+        --cores 48 --memory-mb 150000 --output {output}
+      resources: { cpus: 48, memory: 160GB }
+
+  shear_bias:
+    label: Multiplicative and additive shear bias
+    type: data
+    format: yaml
+    description: >-
+      m₁, c₁, m₂, c₂ with their delete-one-tile jackknife covariance: each
+      branch selected with the sample's cuts, weighted with the data's table
+      and calibrated with its own response, and m = (ĝ⁺ − ĝ⁻)/(2 g_in) − 1
+      per component.
+    inputs:
+      [catalogue_1z2z, catalogue_1p2z, catalogue_1m2z, catalogue_1z2p,
+       catalogue_1z2m, catalogue.weight_table, sp.selection_v2]
+    decisions:
+      [simulation_weight_table, simulation_shear_bias,
+       catalogue.selection_cuts, catalogue.response_estimator,
+       catalogue.galaxy_weights, catalogue.calibration_uncertainties]
+    recipe:
+      command: >-
+        python ../../scripts/compute_m_bias_image_sims.py -c m_bias_config.yaml -v
+        && cp results/m_bias_results.yaml {output}
+      resources: { cpus: 8, memory: 64GB, time_limit: 2h }
+
+decisions:
+  field:
+    label: Real campaign twinned
+    rationale: >-
+      The simulation takes its geometry, depth, masks and PSF from a real
+      campaign, so the field sets how representative m is of the survey. A
+      small field is a cheap end-to-end test; the survey interior, at typical
+      depth and away from the footprint's edge, is what m is quoted on. Edge
+      tiles of a small field are single-epoch and fail the N_EPOCH ≥ 2 cut.
+    options:
+      fir_b0269:
+        label: fir-b0269, 25 tiles
+        description: >-
+          The 25 tiles of the v2 Fir campaign fir-b0269 around 204.240 and
+          their 16 exposures, ten of them single-epoch edge tiles.
+      interior_253_246:
+        label: Survey interior around 253.246, 150 tiles
+        description: >-
+          The 150 v2 tiles nearest tile 253.246 and their 175 exposures, at
+          typical depth.
+
+  galaxy_layout:
+    label: Galaxy positions
+    rationale: >-
+      A lattice of isolated galaxies measures the bias of the shape
+      measurement and the selection without blending; realistic positions
+      add blending and the detection of neighbours.
+    options:
+      lattice_10arcsec:
+        label: Square lattice, 10″
+        description: On the tangent plane at the field centre, over the tiles' footprint.
+      skills_positions:
+        label: SKiLLS positions with stars
+        description: Blending and neighbour detection; not implemented.
+
+  magnitude_range:
+    label: Input galaxy magnitudes
+    rationale: >-
+      The faint limit sets which undetected or barely detected galaxies are
+      drawn. r < 26.0 is about a magnitude below the sample's faint end, so
+      the selection's faint edge is populated; it leaves out the background
+      of fainter undetected galaxies.
+    options:
+      r18p5_26p0:
+        label: 18.5 < r < 26.0
+      r18p5_27p5:
+        label: 18.5 < r < 27.5
+        description: Adds the undetected faint background; not implemented.
+
+  psf_model:
+    label: Simulated PSF
+    rationale: >-
+      ShapePipe is given the true PSF, so m measures the shape measurement
+      and the selection, not PSF modelling. The simulated PSF is matched per
+      CCD to the v2 stars' size and ellipticity and is constant over the CCD.
+    options:
+      moffat_ccd_stars:
+        label: Moffat matched to each CCD's stars
+        description: >-
+          Elliptical Moffat whose HSM T, g₁, g₂ equal the median of the CCD's
+          v2 stars; one β for the field from their median ρ₄.
+      psfex_stamps:
+        label: PSFEx model of the real exposures
+        description: Varies over the CCD; not implemented.
+
+  simulation_weight_table:
+    label: Simulations weighted with the data's table
+    rationale: >-
+      The simulations take the data's selection and the data's weight table,
+      held fixed, so they are weighted as the data are. A table fitted on the
+      simulations' own shapes correlates the weights with the measured shapes
+      and suppresses the shear: for N galaxies per cell it gives m = −1/N
+      where an independent table gives 0. On the four SKiLLS v2 grids
+      (October 2026), a self-fitted table gives m = (−19.3 ± 4.0,
+      −14.3 ± 4.7) × 10⁻³, the data's table (−9.2 ± 3.2, −8.9 ± 3.6) × 10⁻³,
+      and a table fitted on the other three grids (−11.2 ± 3.3,
+      −8.1 ± 3.9) × 10⁻³.
+    options:
+      data_table:
+        label: The data's table, fixed
+      self_fitted:
+        label: Each simulation's own table
+        description: Biased by −1/N per cell.
+      other_grids_table:
+        label: A table fitted on independent simulations
+        description: Independent of the simulation it weights.
+
+  simulation_shear_bias:
+    label: m from full populations, each with its own response
+    rationale: >-
+      For each component, the +g and −g simulations are each calibrated on
+      their full selected population with their own response and weights,
+      giving ĝ⁺ and ĝ⁻; this is the weighted mean applied to data, so m tests
+      the calibration the catalogue receives. Matching objects between the
+      ±g simulations with a symmetric pair weight cancels the change of the
+      weight that the response keeps and drops objects selected in only one:
+      on the SKiLLS grids it gives m = (−4, 0) × 10⁻³ where the full
+      populations give (−19.3 ± 4.0, −14.3 ± 4.7) × 10⁻³ with the same table.
+    options:
+      full_populations:
+        label: Each simulation on its full selection, own response
+      matched_pairs:
+        label: Matched ±g objects weighted ½(w₊ + w₋)
+        description: Cancels the weight response the data calibration keeps.
+      pair_mean_response:
+        label: Both simulations calibrated with the mean of their responses
+        description: Gives the same m to ≤ 1.4 × 10⁻³, within 1.2σ.
+
+  multiplicative_bias_correction:
+    label: m measured, not applied
+    rationale: >-
+      Metacalibration calibrates the sample's shear from the data; the image
+      simulations test it. They leave a residual m of about −9 × 10⁻³ on the
+      SKiLLS grids, concentrated at low S/N, whose cause is not identified,
+      so no m is applied to the catalogue; how m enters the likelihood is the
+      inference section's prior.
+    options:
+      not_applied:
+        label: Not applied to the catalogue
+      divide_by_one_plus_m:
+        label: Shear divided by 1 + m
+        description: Applies the simulations' m to every galaxy.

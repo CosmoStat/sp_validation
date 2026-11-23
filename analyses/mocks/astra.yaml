@@ -1,0 +1,206 @@
+# The GLASS mock ensemble: digital twins of the data with a known lensing
+# signal, measured exactly as the data are.
+#
+# Each ensemble output is a directory with one file per seed.
+
+spec_version: "0.1.0"
+label: Mocks
+description: >-
+  An ensemble of lognormal GLASS skies (Tessore et al. 2023) at the fiducial
+  cosmology through the tomographic n(z), turned into shear catalogues that
+  share the data's geometry, and measured with the data's code and settings.
+  Painted mocks keep the real catalogue's positions, weights, PSF columns
+  and the modulus of each calibrated ellipticity, rotate each ellipticity to
+  a random angle and shear the GLASS sky onto it; sampled mocks draw
+  galaxies on the footprint with each bin's n_eff and σ_e. Every mock
+  statistic is sealed under a throwaway mock blind, so mocks and data pass
+  through the same concealment. The ensemble gives the empirical covariance,
+  the calibration of the null tests and the known-answer recovery tests.
+tags: [mocks, glass, lognormal]
+
+analyses:
+  sp:
+    path: ../..
+  catalogue:
+    path: ../catalogue
+  redshifts:
+    path: ../redshifts
+  footprint:
+    path: ../footprint
+
+outputs:
+  mock_blind:
+    label: Mock blind
+    type: data
+    format: json
+    description: >-
+      A throwaway blind drawn for the mocks
+      (python -m sp_validation.blinding init). Its shift is known, so the
+      blinded mock statistics can be compared with the input truth after
+      removing it.
+    recipe:
+      command: >-
+        d=$(mktemp -d) && python -m sp_validation.blinding init mock-ensemble
+        --registry "$d" && mv "$d"/mock-ensemble.blind.json {output}
+
+  skies:
+    label: GLASS skies
+    type: data
+    format: npz
+    description: >-
+      One lognormal convergence sky per seed: matter shells to z = 3 from
+      the fiducial cosmology (CAMB, HMCode2020 with log T_AGN = 7.8, σ8
+      rescaled), projected through the tomographic n(z) of each bin. Each
+      seed's kappa_alm.npz and its realised spectra beside the shell
+      theory.
+    inputs: [redshifts.nz_tomo]
+    decisions: [mock_count, shell_thickness, limber, sp.fiducial_cosmology]
+    recipe:
+      command: >-
+        mkdir -p {output} && for s in $(seq 1 100); do
+        python ../../scripts/glass_mock/paint_catalogue.py maps
+        --nz {inputs.redshifts.nz_tomo} --seed $s --nside 4096 --dx 120
+        --zmax 3.0 --output {output}/seed_$(printf %05d $s)
+        --cache {output}/cache || exit 1; done
+      resources: { cpus: 28, memory: 160GB, time_limit: 400h }
+
+  painted_catalogues:
+    label: Painted catalogues
+    type: data
+    format: h5
+    description: >-
+      The calibrated catalogue painted with each seed's sky: real positions,
+      weights, bins and PSF columns; each ellipticity's modulus rotated to a
+      random angle and sheared by γ (not reduced shear) evaluated exactly at
+      the galaxy by a non-uniform spherical-harmonic transform. e2 is −1
+      times HEALPix γ2, the UNIONS convention.
+    inputs: [skies, catalogue.calibrated_catalogue]
+    decisions: [mock_count]
+    recipe:
+      command: >-
+        mkdir -p {output} && for s in $(seq 1 100); do
+        n=$(printf %05d $s);
+        python ../../scripts/glass_mock/paint_catalogue.py paint
+        --input {inputs.catalogue.calibrated_catalogue} --maps {inputs.skies}/seed_$n
+        --seed $s --shear gamma --output {output}/seed_$n.h5 || exit 1; done
+      resources: { cpus: 16, memory: 32GB, time_limit: 100h }
+
+  sampled_catalogues:
+    label: Sampled catalogues
+    type: data
+    format: fits
+    description: >-
+      Galaxies drawn on the tomographic footprint from each seed's matter
+      and lensing shells, with each bin's n_eff and per-component σ_e, a
+      linear galaxy bias of 1.2 and a photo-z scatter of 0.03(1 + z), by
+      scripts/glass_mock/make_glass_sim.py.
+    inputs: [redshifts.nz_tomo, footprint.footprint_tomo, sp.cat_config]
+    decisions: [mock_count, shell_thickness, limber, sp.fiducial_cosmology]
+    recipe:
+      command: >-
+        mkdir -p {output} && for s in $(seq 1 100); do
+        python ../../scripts/glass_mock/make_glass_sim.py
+        -c {output}/glass_v2_tomo.yaml -s $((1000 + s)) -N $s || exit 1; done
+      resources: { cpus: 24, memory: 64GB, time_limit: 100h }
+
+  mock_catalogues:
+    label: Mock catalogues
+    switch: mock_method
+    cases:
+      painted: painted_catalogues
+      sampled: sampled_catalogues
+
+  mock_statistics:
+    label: Mock data vectors
+    type: data
+    format: sacc
+    description: >-
+      Each mock's tomographic data vector, measured by the data's code with
+      the data's settings (the θ grids, COSEBIs modes and scale cut,
+      pure-mode operator, pseudo-Cℓ estimator and bandpowers of
+      data_vectors), without patches, and sealed under the mock blind; one
+      SACC per seed with the analytic covariance of the data.
+    inputs: [mock_catalogues, mock_blind, redshifts.nz_tomo, sp.cat_config]
+    decisions: [mock_count]
+    recipe:
+      command: >-
+        python ../../workflow/scripts/measure_mock_ensemble.py
+        --catalogues {inputs.mock_catalogues} --blind {inputs.mock_blind}
+        --cat-config {inputs.sp.cat_config} --out {output}
+      resources: { cpus: 48, memory: 90GB, time_limit: 200h }
+
+decisions:
+  mock_method:
+    label: How the mock galaxies are made
+    rationale: >-
+      A painted mock is a digital twin of the data: it keeps the real
+      positions, weights, bins and shape-noise distribution, so the scatter
+      across seeds is the variance conditional on the survey's geometry, and
+      its PSF columns allow leakage to be injected. A sampled mock draws
+      galaxies from n_eff and σ_e per bin on the footprint, which is cheaper
+      and ignores the real positions and weights.
+    options:
+      sampled:
+        label: Sampled galaxies on the footprint
+        description: >-
+          The ensemble beside v2.0.0
+          (analyses/mock-ensemble-sampled-alltiles, 100 mocks), made for the
+          earlier n(z) and bins (v2.0.0-old-nz), not for v2.0.0's.
+      painted:
+        label: Painted on the calibrated catalogue
+        description: >-
+          sp_validation.mocks.painted; the seed-1 known-answer gate passed
+          on the first calibrated v2 sample (analyses/mock-ensemble-tomo).
+      precomputed_v1_4:
+        label: The v1.4.6.3 GLASS suite (350 mocks)
+        excluded: Made for the v1.4.6.3 catalogue, footprint and n(z).
+
+  mock_count:
+    label: Ensemble size
+    rationale: >-
+      The ensemble sets how well the mock covariance and the tails of the
+      null-test distributions are resolved: a variance from N mocks is good
+      to √(2/N), 14 % at N = 100, and an empirical PTE cannot resolve tails
+      below about 1/N. Paper II used 350 v1.4 mocks.
+    options:
+      n100:
+        label: 100 mocks
+      n20:
+        label: 20 mocks
+      n350:
+        label: 350 mocks
+
+  shell_thickness:
+    label: GLASS shell thickness
+    rationale: >-
+      The lognormal matter field is drawn in comoving shells; thinner shells
+      follow the lensing kernel more closely at a higher cost. The v2
+      ensemble uses 120 Mpc; GlassMockConfig defaults to 200 Mpc.
+    options:
+      dx_120:
+        label: 120 Mpc
+        insights: [glass]
+      dx_200:
+        label: 200 Mpc
+
+  limber:
+    label: Shell spectra
+    rationale: >-
+      The angular spectra of the matter shells are computed in the Limber
+      approximation, or exactly (slower), which matters on the largest
+      scales.
+    options:
+      limber:
+        label: Limber
+      exact:
+        label: Exact (non-Limber) shell spectra
+
+prior_insights:
+  glass:
+    claim: >-
+      GLASS draws lognormal matter shells and integrates the weak-lensing
+      fields along the line of sight.
+    evidence:
+      - doi: "10.48550/arXiv.2302.01942"
+        quote:
+          exact: "the weak lensing fields are subsequently computed by a line-of-sight integration"
