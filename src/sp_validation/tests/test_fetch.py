@@ -18,7 +18,11 @@ def release(tmp_path):
     (tmp_path / "v9" / "other.txt").write_text("gamma")
     lines = [
         f"{hashlib.md5(text.encode()).hexdigest()}  ./{name}"
-        for name, text in [("nz/a.txt", "alpha"), ("nz/sub/b.txt", "beta"), ("other.txt", "gamma")]
+        for name, text in [
+            ("nz/a.txt", "alpha"),
+            ("nz/sub/b.txt", "beta"),
+            ("other.txt", "gamma"),
+        ]
     ]
     (tmp_path / "v9" / "MD5SUMS").write_text("\n".join(lines) + "\n")
     return tmp_path / "v9"
@@ -26,10 +30,23 @@ def release(tmp_path):
 
 def test_manifest_hashes_every_file(release, tmp_path):
     out = tmp_path / "m.json"
-    fetch.main([str(release / "nz"), "--version", "v9", "--md5sums", str(release / "MD5SUMS"), "--out", str(out)])
+    fetch.main(
+        [
+            str(release / "nz"),
+            "--version",
+            "v9",
+            "--md5sums",
+            str(release / "MD5SUMS"),
+            "--out",
+            str(out),
+        ]
+    )
     record = json.loads(out.read_text())
     assert record["version"] == "v9"
-    assert record["files"]["sub/b.txt"] == {"size": 4, "sha256": hashlib.sha256(b"beta").hexdigest()}
+    assert record["files"]["sub/b.txt"] == {
+        "size": 4,
+        "sha256": hashlib.sha256(b"beta").hexdigest(),
+    }
     assert set(record["files"]) == {"a.txt", "sub/b.txt"}
 
 

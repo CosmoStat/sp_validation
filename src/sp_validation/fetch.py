@@ -51,7 +51,9 @@ def read_md5sums(path):
 def manifest(source, version, md5sums=None):
     """The manifest of ``source``: its local path and every file's size and hash."""
     root = Path(data_roots.local(data_roots.expand(source)))
-    files = sorted(p for p in root.rglob("*") if p.is_file()) if root.is_dir() else [root]
+    files = (
+        sorted(p for p in root.rglob("*") if p.is_file()) if root.is_dir() else [root]
+    )
     entries, md5_of = {}, {}
     for path in files:
         name = path.relative_to(root).as_posix() if root.is_dir() else path.name

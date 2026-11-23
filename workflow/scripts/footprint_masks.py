@@ -29,7 +29,9 @@ def write(path, pixels, sample):
     m = np.zeros(hp.nside2npix(NSIDE), np.uint8)
     m[pixels] = 1
     header = [("MASKTYPE", "OCCUPIED")] + ([("SAMPLE", sample)] if sample else [])
-    hp.write_map(path, m, dtype=np.uint8, overwrite=True, nest=False, extra_header=header)
+    hp.write_map(
+        path, m, dtype=np.uint8, overwrite=True, nest=False, extra_header=header
+    )
     area = m.sum() * hp.nside2pixarea(NSIDE, degrees=True)
     print(f"{path}: {int(m.sum())} pixels, {area:.1f} deg2")
 
