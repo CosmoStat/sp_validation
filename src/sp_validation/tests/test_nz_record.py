@@ -1,10 +1,11 @@
-"""Record integrity of the ``nz`` sub-analysis: its decisions, tags and pins agree.
+"""Record integrity of the ``redshifts`` n(z) decisions: tags and pins agree.
 
-Every ``@sc`` decision citation of ``nz`` names a decision the ASTRA record
-defines, every decision has a tagged site, every ``Values:`` pin sits in a file
-that cites its decision and equals the committed value there, and contract ids
-are unique. A pin is ``v2.yaml#dotted.key`` (the n(z) recipe) or
-``module.CONSTANT`` (under ``sp_validation``).
+Every ``@sc`` decision citation of ``redshifts`` names a decision the ASTRA
+record defines for ``nz_calibration``, every such decision has a tagged site,
+every ``Values:`` pin sits in a file that cites its decision and equals the
+committed value there, and contract ids are unique. A pin is
+``v2.yaml#dotted.key`` (the n(z) recipe) or ``module.CONSTANT`` (under
+``sp_validation``).
 """
 
 import ast
@@ -17,15 +18,23 @@ import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[3]
-RECORD = ROOT / "scratch/cdaley/unions_astra"
+ANALYSIS = "redshifts"
 RECIPE = "config/calibration/nz/v2.yaml"
 TAG = re.compile(r"@sc \[([^\]]*)\][ \t]*([\w.-]*)")
 
 
 def read_record():
-    project = yaml.safe_load((RECORD / "astra.yaml").read_text())
-    path = RECORD / project["analyses"]["nz"]["path"] / "astra.yaml"
-    return yaml.safe_load(path.read_text())["decisions"]
+    project = yaml.safe_load((ROOT / "astra.yaml").read_text())
+    path = ROOT / project["analyses"][ANALYSIS]["path"] / "astra.yaml"
+    spec = yaml.safe_load(path.read_text())
+    universe = project["universes"]["v2_0_0"]["decisions"]
+    nz_decisions = [
+        d for d in spec["outputs"]["nz_calibration"]["decisions"] if "." not in d
+    ]
+    return {
+        name: {**spec["decisions"][name], "chosen": universe[f"{ANALYSIS}.{name}"]}
+        for name in nz_decisions
+    }
 
 
 def read_sites():
@@ -79,8 +88,10 @@ def check(record, sites, recipe):
         for meta, contract in TAG.findall(text):
             for item in meta.split(","):
                 key, _, value = item.strip().partition(":")
-                if key == "decision" and value.startswith("nz."):
-                    cited.setdefault(value.removeprefix("nz."), set()).add(path)
+                if key == "decision" and value.startswith(f"{ANALYSIS}."):
+                    cited.setdefault(value.removeprefix(f"{ANALYSIS}."), set()).add(
+                        path
+                    )
             if contract:
                 contracts.append(contract)
     assert not set(cited) - set(record), f"undefined: {set(cited) - set(record)}"
@@ -88,7 +99,7 @@ def check(record, sites, recipe):
     repeated = {c for c in contracts if contracts.count(c) > 1}
     assert not repeated, f"repeated contract ids: {repeated}"
     for name, decision in record.items():
-        assert decision["default"] in decision["options"]
+        assert decision["chosen"] in decision["options"]
         for pin, value in pins(decision).items():
             assert site(pin) in cited[name], f"{pin}: no {name} tag there"
             assert committed(pin, recipe) == value, f"{pin} drifted"
@@ -123,14 +134,14 @@ def test_detects_record_drift():
 
 def test_detects_a_removed_pinned_site():
     sites = read_sites()
-    tag = "@sc [decision:nz." + "gold_selection]"
+    tag = f"@sc [decision:{ANALYSIS}." + "gold_selection]"
     sites[RECIPE] = sites[RECIPE].replace(tag, "")
     with pytest.raises(AssertionError, match="no gold_selection tag there"):
         check(read_record(), sites, read_recipe())
 
 
 def test_detects_an_untagged_decision():
-    tag = "@sc [decision:nz." + "grid_step]"
+    tag = f"@sc [decision:{ANALYSIS}." + "grid_step]"
     sites = {path: text.replace(tag, "") for path, text in read_sites().items()}
     with pytest.raises(AssertionError, match="untagged: {'grid_step'}"):
         check(read_record(), sites, read_recipe())
@@ -138,7 +149,7 @@ def test_detects_an_untagged_decision():
 
 def test_detects_an_undefined_decision():
     sites = read_sites()
-    sites["extra.py"] = "# @sc [decision:nz." + "unrecorded]\n"
+    sites["extra.py"] = f"# @sc [decision:{ANALYSIS}." + "unrecorded]\n"
     with pytest.raises(AssertionError, match="undefined: {'unrecorded'}"):
         check(read_record(), sites, read_recipe())
 

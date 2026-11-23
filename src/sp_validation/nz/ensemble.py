@@ -337,7 +337,7 @@ def realisations(cal, settings, density=None):
     nonlinear in them, and the raw mean is returned so its offset can be
     reported.
 
-    @sc [decision:nz.ensemble_terms]
+    @sc [decision:redshifts.ensemble_terms]
     """
     rng = np.random.default_rng(settings.get("seed", 0))
     n_draw, n_cal = settings["draws"], len(cal.z)

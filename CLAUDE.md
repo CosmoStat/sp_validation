@@ -20,7 +20,10 @@ SP Validation is a Python package for validating weak-lensing catalogues (galaxy
 ## ASTRA and Lightcone first
 Build analysis stages (n(z) generation included) as ASTRA specs (`astra.yaml`)
 run with Lightcone (`lc`), and record analysis choices there as decisions,
-using the `astra`/`lc` tools wherever they fit.
+using the `astra`/`lc` tools wherever they fit. Decision-record tests
+(`test_catalogue_match.py`, `test_nz_record.py`) verify `@sc [decision:...]`
+tags and `Values:` pins against root `astra.yaml` and its sub-analyses, so run
+`pytest -m "not slow"` inside the container after editing or moving ASTRA specs.
 
 ## Development Commands
 

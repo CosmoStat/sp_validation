@@ -21,7 +21,7 @@ def detected(mag):
 def features(mag):
     """Return the ten ugriz colours and r magnitude, in the training order.
 
-    @sc [decision:nz.som_map]
+    @sc [decision:redshifts.som_map]
     """
     return np.column_stack(
         [mag[:, i] - mag[:, j] for i in range(5) for j in range(i + 1, 5)] + [mag[:, 2]]
@@ -31,7 +31,7 @@ def features(mag):
 def train(mag, side=101, epochs=60, seed=42, workers=1):
     """Train a planar batch SOM with PCA initialization and Gaussian smoothing.
 
-    @sc [decision:nz.som_map]
+    @sc [decision:redshifts.som_map]
     """
     x = features(mag)
     center, scale = x.mean(0), x.std(0)
@@ -68,7 +68,7 @@ def assign(mag, model, workers=1):
 def group_cells(model, n_groups=2000):
     """Ward-cluster map code vectors into zero-based calibration groups.
 
-    @sc [decision:nz.som_map]
+    @sc [decision:redshifts.som_map]
     """
     return (
         fcluster(linkage(model["code"], method="ward"), n_groups, criterion="maxclust")
@@ -82,7 +82,7 @@ def z_magnitudes(mag, offset, use_z2=True):
     Canonical z takes precedence; z2 + offset enters only when z is undetected.
     Five-column inputs contain canonical z only.
 
-    @sc [decision:nz.z2_offset]
+    @sc [decision:redshifts.z2_offset]
     """
     out = mag[:, :5].astype("f8")
     channel = detected(out[:, 4]).astype(np.int8)
@@ -102,7 +102,7 @@ def quantile_edges(mag, photoz, weight, *, range, count, offset):
     edge is the BPZ value at which the weight below it is nearest to k/count,
     so it is one of the values BPZ takes.
 
-    @sc [decision:nz.tomographic_bins]
+    @sc [decision:redshifts.tomographic_bins]
     """
     lo, hi = range
     m, _ = z_magnitudes(mag, offset)
@@ -160,7 +160,7 @@ def source_groups(
 def gold_threshold(cal_z, cal_photoz, floor=0.4, nmad_factor=5):
     """Compute max(floor, factor × NMAD) of unnormalized spec-z − BPZ.
 
-    @sc [decision:nz.gold_selection]
+    @sc [decision:redshifts.gold_selection]
     """
     residual = cal_z - cal_photoz
     good = np.isfinite(residual) & (cal_photoz >= 0) & (cal_photoz < 5)
@@ -172,7 +172,7 @@ def gold_threshold(cal_z, cal_photoz, floor=0.4, nmad_factor=5):
 def gold_mask(source_weight, source_photoz_sum, cal_count, cal_z_sum, threshold):
     """Keep supported groups whose mean spec-z and source BPZ agree within QC.
 
-    @sc [decision:nz.gold_selection]
+    @sc [decision:redshifts.gold_selection]
     """
     spec = np.divide(
         cal_z_sum, cal_count, out=np.zeros_like(cal_z_sum), where=cal_count > 0
@@ -204,7 +204,7 @@ def tom_bin_ids(prelim, group, gold):
 def deposit(z, weight, grid):
     """Linearly deposit mass, conserving its zeroth and first trapezoid moments.
 
-    @sc [decision:nz.grid_step]
+    @sc [decision:redshifts.grid_step]
     @sc [label:invariant] deposit-conserves-moments
     The trapezoid integrals of the deposited density over the grid equal the
     total weight and the weighted mean redshift exactly, on any grid, so the

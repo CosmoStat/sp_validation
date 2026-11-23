@@ -239,6 +239,7 @@ decisions:
       galaxy, because the N_EPOCH ≥ 2 cut empties them, so a 0.98 cut would
       remove nothing; stricter thresholds remove galaxies with no measured
       improvement. Reassess if the N_EPOCH cut is relaxed.
+      Values: MIN_EXTERNAL_PAIRED_FRACTION = None; mask_v2.0.yaml#N_EPOCH = 2.
     options:
       no_cut:
         label: No paired-fraction cut

@@ -1,7 +1,7 @@
 # Catalogue-match tile selection
 
-Decision `dr6_catalogue.catalogue_match_tile_selection` keeps the external paired fraction diagnostic-only and applies no tile cut.
-Its rationale, alternatives with their measured costs, and `Values` pins live in the [ASTRA record](../scratch/cdaley/unions_astra/analyses/dr6_catalogue/astra.yaml); this page holds the audit coverage and tile-level evidence behind it.
+Decision `catalogue.catalogue_match_tile_selection` keeps the external paired fraction diagnostic-only and applies no tile cut.
+Its rationale, alternatives with their measured costs, and `Values` pins live in the [ASTRA record](../analyses/catalogue/astra.yaml); this page holds the audit coverage and tile-level evidence behind it.
 The optional audit records published match counts, warnings and catalogue row counts without removing objects.
 Missing metadata remains distinct from a measured empty external catalogue.
 

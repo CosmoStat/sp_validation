@@ -30,7 +30,7 @@ has unit integral.
 The recipe for v2 is `config/calibration/nz/v2.yaml`: the inputs, every
 choice of the calibration, and the output directory, written with data roots
 (`config/data_roots.yaml`). The choices and their alternatives are recorded as
-decisions in `scratch/cdaley/unions_astra/analyses/nz/astra.yaml`. Run inside
+decisions in `analyses/redshifts/astra.yaml`. Run inside
 the container on an allocation:
 
 ```bash

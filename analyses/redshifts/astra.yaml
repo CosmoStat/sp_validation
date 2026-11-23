@@ -3,7 +3,7 @@
 #
 # config/calibration/nz/v2.yaml (sp.nz_v2) is the recipe sp_validation.nz
 # runs: it names the inputs and sets every value of the calibration, and its
-# `@sc [decision:nz.*]` tags name the decisions below. The script reads only
+# `@sc [decision:redshifts.*]` tags name the decisions below. The script reads only
 # that file, so the decisions are attached to the outputs it makes.
 
 spec_version: "0.1.0"
@@ -153,6 +153,7 @@ decisions:
       row with no DR6 number, or an ID the collection lacks, keeps NaN
       photometry and gets no bin; summary.json reports its share of the
       shear weight.
+      Values: nz.inputs.OBJECT_ID = "OBJECT_ID".
     options:
       object_id:
         label: Join on OBJECT_ID
@@ -174,6 +175,7 @@ decisions:
       share of each bin, so the delivered bins hold only roughly equal
       weight. Equal weight gives the bins comparable signal-to-noise; the
       range is where BPZ on ugriz is usable.
+      Values: v2.yaml#bins.count = 4; v2.yaml#bins.range = [0.1, 1.2].
     options:
       equal_weight_quartiles:
         label: Equal shear weight, recomputed per run
@@ -208,6 +210,9 @@ decisions:
       applied: the compilation gives every DEEP2/3 entry confidence 0.99. One
       field means no field-to-field variance beyond the ensemble's
       line-of-sight term, and no model of the spectroscopic selection.
+      Values: v2.yaml#inputs.calibrators.surveys = ["deep2_final", "deep3_final"];
+      v2.yaml#inputs.calibrators.field = {"ra": [213.0, 217.0], "dec": [51.5, 54.0]};
+      v2.yaml#inputs.calibrators.z_min = 0.002.
     options:
       deep2_deep3_egs:
         label: DEEP2 + DEEP3 in the EGS
@@ -231,6 +236,7 @@ decisions:
       enter the ensemble as its zero-point term. Correcting the EGS by the
       full stellar offset would raise ⟨z⟩ by up to +0.018, +0.005, +0.007 and
       +0.013 in bins 1–4. The photometry is PhotoPipe's to correct.
+      Values: none.
     options:
       as_delivered:
         label: As delivered
@@ -250,6 +256,7 @@ decisions:
       canonical z takes precedence. Without it the sources measured only in
       z2, a third of the gold weight, lack complete photometry and leave
       every bin.
+      Values: v2.yaml#z2_offset = -0.1104888916015625.
     options:
       offset_z2:
         label: z2 plus a constant offset
@@ -266,6 +273,8 @@ decisions:
       2,000 groups of about five spectra, the unit of the calibration weights
       and of the gold test; each source goes to its nearest cell with no
       distance cut.
+      Values: v2.yaml#som.side = 101; v2.yaml#som.epochs = 60;
+      v2.yaml#som.seed = 42; v2.yaml#groups = 2000.
     options:
       calibrator_trained_101:
         label: 101 × 101 on the calibrators, 2,000 groups
@@ -286,6 +295,7 @@ decisions:
       outside gold get TOM_BIN_ID 0. Most of gold's loss is groups with no
       in-bin spectrum, not the agreement test. The factor's range enters the
       ensemble.
+      Values: v2.yaml#gold_qc.floor = 0.4; v2.yaml#gold_qc.nmad_factor = 5.
     options:
       floor_0_4_nmad_5:
         label: max(0.4, 5 × NMAD)
@@ -304,6 +314,7 @@ decisions:
       and not to the sources. Against a 0.01 grid, 0.05 moves the ξ± theory
       (12–83′) by Δχ² < 0.01 without intrinsic alignments and 0.06 with
       A_IA = 1.
+      Values: v2.yaml#grid.step = 0.05.
     options:
       step_0_05:
         label: Δz = 0.05
@@ -324,6 +335,15 @@ decisions:
       points dominate σ⟨z⟩ and correlate ⟨z⟩ between bins. Spectroscopic
       selection and method bias calibrated on simulations are not modelled,
       so the spread is a lower bound.
+      Values: v2.yaml#ensemble.draws = 2000; v2.yaml#ensemble.bootstrap = True;
+      v2.yaml#ensemble.density.field = [2.0, 0.25];
+      v2.yaml#ensemble.density.bias = 1.3;
+      v2.yaml#ensemble.zero_points.colour_sigma = [0.0215, 0.0194, 0.0119, 0.0208];
+      v2.yaml#ensemble.zero_points.colour_corr = [[1.0, -0.59, 0.13, -0.13], [-0.59, 1.0, -0.05, 0.16], [0.13, -0.05, 1.0, -0.49], [-0.13, 0.16, -0.49, 1.0]];
+      v2.yaml#ensemble.zero_points.grey = 0.01;
+      v2.yaml#ensemble.z2_offset = 0.02;
+      v2.yaml#ensemble.specz_failure = 0.01;
+      v2.yaml#ensemble.nmad_factor = [4, 6].
     options:
       statistical_and_systematic:
         label: Statistical and systematic terms

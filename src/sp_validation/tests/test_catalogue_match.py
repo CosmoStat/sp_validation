@@ -144,18 +144,18 @@ def test_missing_unit_and_missing_vs_present_metadata(tmp_path):
         cm.read_catalogue_match_manifests([missing])
 
 
-DECISION = "dr6_catalogue.catalogue_match_tile_selection"
+DECISION = "catalogue.catalogue_match_tile_selection"
 
 
 def record_pins(root):
     """Return the decision's ``Values:`` pins from the composed ASTRA record."""
     analysis_id, decision_id = DECISION.split(".")
-    project_root = root / "scratch/cdaley/unions_astra"
-    project = yaml.safe_load((project_root / "astra.yaml").read_text())
-    analysis_root = project_root / project["analyses"][analysis_id]["path"]
+    project = yaml.safe_load((root / "astra.yaml").read_text())
+    analysis_root = root / project["analyses"][analysis_id]["path"]
     spec = yaml.safe_load((analysis_root / "astra.yaml").read_text())
     decision = spec["decisions"][decision_id]
-    assert decision["default"] in decision["options"]
+    chosen = project["universes"]["v2_0_0"]["decisions"][DECISION]
+    assert chosen in decision["options"]
     rationale = decision["rationale"]
     assert rationale.count("Values:") == 1
     values = rationale.split("Values:", 1)[1].strip().removesuffix(".")

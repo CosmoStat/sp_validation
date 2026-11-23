@@ -70,7 +70,7 @@ inputs:
 analyses:
   shapepipe:
     url: https://github.com/CosmoStat/shapepipe.git
-    commit: e5baff101973fbdabea270e6051d4b55f9375be9
+    commit: fa6a53dc9444d3b8d8d16c796ec8e327df19523f
   catalogue:
     path: analyses/catalogue
   shear_calibration:
