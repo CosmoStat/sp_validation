@@ -1,0 +1,28 @@
+"""Standalone entry point for the CLOE JAX forecast, GLASS 3x2pt mocks and chains
+(workflow/rules/cloe.smk)::
+
+    snakemake --profile workflow/profiles/default -s workflow/cloe/Snakefile -j 192 cloe_all
+
+``configfile:`` below names the UNIONS v2 x LSx recipe and its chains; a
+``--configfile`` of your own overrides it (targets go before ``--configfile``).
+"""
+
+import os
+import sys
+
+sys.path.insert(0, os.path.realpath(os.path.join(str(workflow.basedir), "..")))
+import common
+from common import REPO_ROOT
+
+
+configfile: os.path.join(str(workflow.basedir), "config.yaml")
+
+
+# The checkout's src wins over the image's copy of sp_validation.
+common.inject_checkout_pythonpath(config)
+
+
+container: common.resolve_container(config.get("container"))
+
+
+include: "../rules/cloe.smk"

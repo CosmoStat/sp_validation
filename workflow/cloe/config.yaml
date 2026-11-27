@@ -1,0 +1,18 @@
+# The CLOE JAX forecast and mocks (workflow/rules/cloe.smk).
+cloe:
+  recipe: config/cloe/unions_v2_lsx.yaml   # the survey, relative to the checkout
+  output_dir: results/cloe/unions_v2_lsx
+  # name: {cut (the recipe's cuts), families (default GG, GL, LL), mock (a GLASS
+  # seed; default the noiseless forecast), n_eff (default 4000), seed (default 1)}
+  chains:
+    first_3x2: {cut: first, n_eff: 16000}
+    first_LL: {cut: first, families: [LL], n_eff: 16000}
+    glass_0001_3x2: {cut: first, mock: 1}
+  fishers:
+    - [first, [GG, GL, LL]]
+    - [first, [LL]]
+    - [wide, [GG, GL, LL]]
+
+# The image every rule runs in; default as `spv-container` resolves it
+# (workflow/README.md). A path to a .sif or sandbox overrides it.
+# container: /path/to/sp_validation.sif
