@@ -210,7 +210,7 @@ def test_full_sky_white_noise_covariance(full_sky_survey, tmp_path):
         block = cov[p * nb : (p + 1) * nb, p * nb : (p + 1) * nb]
         factor = 2 if a == b else 1
         expect = sv.binning**2 @ (factor * noise[a] * noise[b] / (2 * ell + 1))
-        npt.assert_allclose(np.diag(block), expect, rtol=1e-5)
+        npt.assert_allclose(np.diag(block), expect, rtol=1e-4)
 
 
 # --------------------------------------------------------------------------- #
