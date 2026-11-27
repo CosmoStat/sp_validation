@@ -197,7 +197,12 @@ def _call_row(i):
 
 def super_sample(survey, masks, op, processes=24):
     """The super-sample covariance of the bands (layout of :func:`gaussian`);
-    ``op`` from :func:`operators`."""
+    ``op`` from :func:`operators`.
+
+    Lens magnification is not in this term: a counts tracer here carries its bias
+    in the halo-model response, which a magnification kernel (bias one, matter
+    response) cannot share, so it would need each spectrum split into its density
+    and magnification parts. It vanishes for slopes s = 0.4 (5s - 2 = 0)."""
     import healpy as hp
     import pyccl as ccl
     from scipy.interpolate import CubicSpline
@@ -221,8 +226,9 @@ def super_sample(survey, masks, op, processes=24):
             )
         ),
     )
-    # tracers: unit bias (bias is in the response), NLA (pyccl's sign), no
-    # magnification
+    # tracers: unit bias (bias is in the response) and NLA (pyccl's sign);
+    # magnification is left out (see super_sample)
+    pivot, eta = survey["probe"]["ia_z_pivot"], c["eta_IA"]
     tracers, bias = {}, {}
     for f in survey.fields:
         nz, z = survey.nz[f], survey.z
@@ -232,7 +238,7 @@ def super_sample(survey, masks, op, processes=24):
             )
             bias[f] = survey["lenses"]["bias"][int(f[1:])]
         else:
-            ia = (z, c["A_IA"] * np.ones_like(z))
+            ia = (z, c["A_IA"] * ((1 + z) / (1 + pivot)) ** eta)
             tracers[f] = ccl.WeakLensingTracer(cosmo, dndz=(z, nz), ia_bias=ia)
             bias[f] = 1.0
 

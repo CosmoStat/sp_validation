@@ -45,7 +45,7 @@ def spectra(survey):
     import jax.numpy as jnp
 
     from .theory.vector import interpolation_matrix
-    from .vector import Block, Theory, Vector
+    from .vector import Block, Theory, Vector, reads
 
     lmax = survey["lmax"]
     labels = [tuple(map(survey.label, p)) for p in survey.pairs]
@@ -57,7 +57,8 @@ def spectra(survey):
         magnification=survey["probe"]["magnification"],
         engine=survey["probe"]["engine"],
     )
-    theory = Theory(vector, [], fixed=survey.truth)
+    fixed = {k: v for k, v in survey.truth.items() if reads(vector, k)}
+    theory = Theory(vector, [], fixed=fixed)
     nodes, _ = theory.spectra(jnp.zeros(0))
     cl = np.asarray(nodes) @ interpolation_matrix(vector.ells, lmax).T
     return cl, dict(zip(theory.DERIVED, np.asarray(theory.derived(jnp.zeros(0)))))

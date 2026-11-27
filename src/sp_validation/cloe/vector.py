@@ -190,11 +190,12 @@ class Vector:
 
     @classmethod
     def from_sacc(cls, s, **kw):
-        """The harmonic spectra of SACC ``s`` (:data:`FAMILY`): each spectrum's
-        bandpower windows are its operator, its means the data, and ``s``'s
-        covariance on them the covariance."""
+        """The harmonic E-mode spectra of SACC ``s`` (the data types of
+        :data:`FAMILY`; B modes and any other statistic it holds are left out):
+        each spectrum's bandpower windows are its operator, its means the data, and
+        ``s``'s covariance on them the covariance."""
         blocks, index = [], []
-        for dtype in s.get_data_types():
+        for dtype in [d for d in s.get_data_types() if d in FAMILY]:
             for pair in s.get_tracer_combinations(dtype):
                 idx = s.indices(dtype, pair)
                 window = s.get_bandpower_windows(idx)
@@ -214,12 +215,17 @@ TRACER_PARAMETER = re.compile(r"(bias|mag_slope|m|delta_z_[GL]|stretch_[GL])_(\d
 
 def reads(vector, name):
     """Whether the theory of ``vector`` reads parameter ``name``: a per-bin
-    parameter of a tracer it has, IA with a shear bin, or anything else."""
+    parameter of a tracer it has (a magnification slope only with magnification),
+    IA with a shear bin, log T_AGN under the feedback engine, or anything else."""
     match = TRACER_PARAMETER.fullmatch(name)
     if match:
         stem, i = match.groups()
+        if stem == "mag_slope" and not vector.include_mag_bias:
+            return False
         galaxy = stem in ("bias", "mag_slope", "delta_z_G", "stretch_G")
         return int(i) in (vector.gc_bins if galaxy else vector.wl_bins)
+    if name == "HMCode_logT_AGN":
+        return vector.grid.nonlinear_model == "mead2020_feedback"
     return name not in ("A_IA", "eta_IA") or bool(vector.wl_bins)
 
 
@@ -280,7 +286,7 @@ def cut(
 ):
     """A copy of SACC ``s`` with the bands of a scale-cut configuration.
 
-    Kept: spectra of ``families``; in shear spectra the bands with ``shear[0] <
+    Kept: harmonic E-mode spectra (:data:`FAMILY`) of ``families``; in shear spectra the bands with ``shear[0] <
     ell < shear[1]``; in spectra with a lens leg, galaxy autos only, galaxy-shear
     pairs ``(lens, source)`` of ``lens_source_pairs`` only, and bands with
     ``lens_ell_min < ell < k_max h chi(<z>)``: the linear-bias cut, ``k_max`` of
@@ -298,7 +304,7 @@ def cut(
     pairs = {tuple(p) for p in lens_source_pairs or ()}
     keep = []
     for i, point in enumerate(s.data):
-        family = FAMILY[point.data_type]
+        family = FAMILY.get(point.data_type)
         if family not in families:
             continue
         a, b = sorted(map(tracer, point.tracers))

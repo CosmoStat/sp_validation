@@ -2,8 +2,8 @@
 
 Lognormal matter shells, every pair of shells correlated, combine linearly into
 every field: the lens density contrast of each lens bin (linear bias times the
-shells it spans) and the convergence of each source bin (lensing through the
-shells in front, plus NLA). Lenses are Poisson counts at the survey's density,
+shells it spans, plus magnification by the shells in front) and the convergence of
+each source bin (lensing through the shells in front, plus NLA). Lenses are Poisson counts at the survey's density,
 mean ``b (1 + delta)`` clipped at zero, inside the lens footprint; sources are E-mode
 shear from the convergence with Gaussian shape noise inside the source footprint.
 Each mock is measured with the forecast's estimator (:mod:`sp_validation.cloe.covariance`:
@@ -94,8 +94,10 @@ def spin_factor(lmax):
 
 def mixing(survey, params, windows):
     """(n_field, n_shell): each field as a combination of the shell density
-    contrasts, lens bias b X and source kappa X W + X F(z) (X the n(z) partition
-    into shells, W GLASS's multi-plane lensing matrix, F the NLA factor)."""
+    contrasts: lens density b X + (5s - 2) X W (linear bias and magnification),
+    source convergence X W + X F(z) (X the n(z) partition into shells, W GLASS's
+    multi-plane lensing matrix, F the NLA factor with its (1 + z) power about the
+    probe's pivot). The shells must reach the top of every n(z)."""
     import camb
     import glass
     from scipy.interpolate import Akima1DInterpolator
@@ -112,18 +114,26 @@ def mixing(survey, params, windows):
 
     from sp_validation.cloe.theory.cloe import C1_RHO_CRIT
 
-    nla = -survey["cosmology"]["A_IA"] * C1_RHO_CRIT * float(cosmo.Omega_m0)
+    c, pivot = survey["cosmology"], survey["probe"]["ia_z_pivot"]
+    nla = -c["A_IA"] * C1_RHO_CRIT * float(cosmo.Omega_m0) / growth(zeff)
+    nla = nla * ((1 + zeff) / (1 + pivot)) ** c["eta_IA"]
     lensing = np.asarray(glass.multi_plane_matrix(windows, cosmo))
+    magnification = 5 * survey["lenses"]["mag_slope"] - 2
     out = np.zeros((len(survey.fields), len(windows)))
     for a, f in enumerate(survey.fields):
+        if np.any(survey.nz[f][survey.z > ZNODES[-1]] > 0):
+            raise ValueError(
+                f"n(z) of {f} reaches above the top shell, z = {ZNODES[-1]}"
+            )
         n = np.nan_to_num(Akima1DInterpolator(survey.z, survey.nz[f])(Z_FINE))
         n[(Z_FINE < survey.z[0]) | (Z_FINE > survey.z[-1])] = 0
         x = np.asarray(glass.partition(Z_FINE, n / np.trapezoid(n, Z_FINE), windows))
         x = x / x.sum()
         if f[0] == "g":
             out[a] = survey["lenses"]["bias"][int(f[1:])] * x
+            out[a] = out[a] + magnification * (x @ lensing)
         else:
-            out[a] = x @ lensing + x * nla / growth(zeff)
+            out[a] = x @ lensing + x * nla
     return out, zeff
 
 

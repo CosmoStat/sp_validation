@@ -126,6 +126,42 @@ def test_vector_from_sacc_reads_windows_data_and_covariance():
     )
 
 
+def test_vector_reads_e_modes_only():
+    """A pseudo-C_ell SACC with EE, BB and EB gives the Vector of its EE alone,
+    and cut drops the B modes."""
+    rng = np.random.default_rng(2)
+    z = np.linspace(0.01, 2.0, 200)
+    nz = [(z, np.exp(-((z - m) ** 2) / 0.02)) for m in (0.4, 0.8)]
+    ell, w = np.arange(51.0), rng.uniform(size=(51, 3))
+    cl = rng.normal(size=(3, 3))
+    a = rng.normal(size=(9, 9))
+    cov = a @ a.T + 9 * np.eye(9)
+    full, ee = sacc_io.new_sacc(nz), sacc_io.new_sacc(nz)
+    kw = dict(window_ells=ell, window_weights=w)
+    sacc_io.add_pseudo_cl(full, (0, 1), [10.0, 25.0, 40.0], *cl, **kw)
+    sacc_io.add_pseudo_cl(ee, (0, 1), [10.0, 25.0, 40.0], cl[0], **kw)
+    full.add_covariance(cov)
+    ee.add_covariance(cov[:3, :3])
+    a, b = v.Vector.from_sacc(full), v.Vector.from_sacc(ee)
+    assert a.keys == b.keys == [f"{sacc_io.CL_EE}:L0xL1"]
+    npt.assert_array_equal(a.operators, b.operators)
+    npt.assert_array_equal(a.data, b.data)
+    npt.assert_allclose(a.icov, b.icov)
+    kept = v.cut(full, families=("LL",), shear=(0, 100))
+    assert {d.data_type for d in kept.data} == {sacc_io.CL_EE}
+
+
+def test_reads_follows_magnification_and_engine():
+    z = np.arange(0.005, 2.0, 0.01)
+    nz = {"G0": (z, np.exp(-((z - 0.3) ** 2) / 0.01))}
+    block = [v.Block("cl", [("G0", "G0")], np.ones((1, 101)))]
+    on = v.Vector(block, nz, magnification=True)
+    off = v.Vector(block, nz, engine="camb_mead2020")
+    assert v.reads(on, "mag_slope_0") and v.reads(on, "HMCode_logT_AGN")
+    assert not v.reads(off, "mag_slope_0") and not v.reads(off, "HMCode_logT_AGN")
+    assert v.reads(off, "bias_0") and not v.reads(off, "bias_1")
+
+
 def test_cut_keeps_shear_range_lens_autos_and_pairs():
     s, _ = three_by_two(["gg", "gl0", "ll01"])
     shear = v.cut(s, families=("LL",), shear=(20, 50))
