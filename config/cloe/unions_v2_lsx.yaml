@@ -1,0 +1,74 @@
+# UNIONS v2 sources x LSx lenses, 3x2pt in harmonic space: the survey of the CLOE
+# JAX forecast and of the GLASS 3x2pt mocks (sp_validation.cloe.survey).
+#
+# Sources: the v2.0.0 release. Lenses: Calum Murray's LSx v0.92 SPHEREx-selected
+# sample as the first 3x2pt work recorded it (lens/RESULT.md, on nibi). Entries
+# marked ESTIMATED stand in for lens files that are only on nibi.
+
+nside: 1024
+lmax: 2600                       # band limit of fields, couplings and spectra
+bands: {ell_min: 10, ell_max: 2000, n: 40}   # uniform in sqrt(ell), (2l+1)-weighted
+z_grid: [0.005, 3.995, 0.01]     # the common n(z) grid [first, last, step]
+
+sources:
+  nz: ${unions_v2}/v2.0.0/nz/nz_tomo.txt
+  survey: ${unions_v2}/v2.0.0/catalogs/survey_tomo.json    # n_eff, sigma_e per bin
+  footprint: ${unions_v2}/v2.0.0/masks/footprint-tomo-nside4096-ring.fits
+
+lenses:
+  count: 8530000                 # LSx v0.92 total
+  area_deg2: 4099.0              # its area; the lens mask is ESTIMATED as the source
+                                 # footprint above the galactic latitude leaving it
+  edges: [0.05, 0.15, 0.25, 0.35, 0.45, 0.55]
+  bias: [1.05, 1.19, 1.37, 1.35, 1.53]           # linear bias from w(theta)
+  fractions: [0.092, 0.154, 0.152, 0.118, 0.061] # relative counts, v0.92 shell counts
+  mag_slope: 0.4                 # magnification slope s of every bin
+  dndz_z0: 0.165                 # ESTIMATED dN/dz ∝ z^2 exp(-(z/z0)^1.5)
+  sigma_z: 0.012                 # ESTIMATED redshift scatter / (1 + z)
+
+# The input cosmology of the noiseless vector and of the mocks.
+cosmology:
+  logA: 3.044
+  omch2: 0.12057
+  ombh2: 0.0219961
+  h: 0.67
+  n_s: 0.96
+  HMCode_logT_AGN: 7.7
+  m_nu: 0.06
+  A_IA: 0.83
+  eta_IA: 0.0
+
+probe:
+  engine: cosmopower_mead2020_feedback
+  ia_z_pivot: 0.62
+  magnification: true
+
+priors:
+  cosmology:
+    logA: {dist: flat, min: 1.609, max: 3.664}
+    omch2: {dist: flat, min: 0.085, max: 0.2}
+    ombh2: {dist: norm, loc: 0.0219961, scale: 0.00055}
+    h: {dist: flat, min: 0.4, max: 0.91}
+    n_s: {dist: norm, loc: 0.96, scale: 0.042}
+    HMCode_logT_AGN: {dist: flat, min: 7.3, max: 8.5}
+    A_IA: {dist: norm, loc: 0.83, scale: 0.78}
+    eta_IA: {dist: flat, min: -5.0, max: 5.0}
+  lenses:
+    bias_{i}: {dist: flat, min: 0.5, max: 3.0}
+    delta_z_G_{i}: {dist: norm, loc: 0.0, scale: 0.008}
+    mag_slope_{i}: {dist: norm, loc: 0.4, scale: 0.2}
+  sources:
+    delta_z_L_{i}: {dist: norm, loc: 0.0, scale: 0.024}
+    m_{i}: {dist: norm, loc: 0.0, scale: 0.01}
+
+# Scale cuts (sp_validation.cloe.vector.cut). Lenses: 20 < ell < k_max h chi(<z>),
+# galaxy autos only, and the lens-source pairs with the lens in front of the source.
+lens_cuts: &lens
+  lens_ell_min: 20
+  lens_k_max: {GG: 0.2, GL: 0.15}
+  lens_source_pairs: [[0, 0], [0, 1], [0, 2], [0, 3], [1, 1], [1, 2], [1, 3],
+                      [2, 2], [2, 3], [3, 2], [3, 3], [4, 3]]
+cuts:
+  first: {shear: [300, 1600], <<: *lens}   # the first-release shear cut
+  mid: {shear: [100, 1600], <<: *lens}
+  wide: {shear: [20, 2000], <<: *lens}

@@ -49,10 +49,12 @@ is the container (full scientific stack pre-built). For a local dev environment:
 
 ### Core Package Structure (`src/sp_validation/`)
 - `b_modes.py`: Pure E-/B-mode decomposition (COSEBIS, pseudo-Cℓ)
+- `cloe/`: the CLOE JAX likelihood: the vendored theory (`cloe/theory/`, with the separable `cloelib_patches`), SACC data vectors and scale cuts (`vector.py`), the cloerun probe, and the harmonic 3x2pt forecast (`survey.py`, `covariance.py`, `forecast.py`); `workflow/cloe/` runs it
 - `calibration.py`: Shear calibration — the `metacal` response class, galaxy selection masks (size/SNR), and m/c calibration routines
 - `cat.py`: Catalogue handling and manipulation
 - `cosmo_val.py`: Cosmology validation routines
 - `cosmology.py`: Cosmological calculations and theory
+- `mocks/glass_3x2pt.py`: GLASS 3x2pt mocks of a `cloe` survey (lognormal shells, lenses and sources, the forecast's estimator)
 - `nz/modes.py`: Likelihood-aware n(z) modes (William d'Assignies Doumerg's method): the few n(z) distortions a data vector can see, as nuisance parameters
 - `blinding.py`: Blinds, the theory `theory(params, s)` they shift by, and `conceal`, which shifts a SACC by one
 - `galaxy.py`: Galaxy-specific processing

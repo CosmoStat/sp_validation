@@ -36,6 +36,11 @@ READING_CODE = [
 NOT_COLUMNS = {
     # environment variables
     "OMP_NUM_THREADS",
+    "XLA_FLAGS",
+    # cloe tracer families (galaxy, lensing, magnification)
+    "G",
+    "L",
+    "M",
     # cat_config and other configuration keys
     "A",
     "R",

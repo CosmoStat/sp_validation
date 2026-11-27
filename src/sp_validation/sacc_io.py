@@ -103,6 +103,9 @@ XI_MINUS = "galaxy_shear_xi_minus"
 CL_EE = "galaxy_shear_cl_ee"
 CL_BB = "galaxy_shear_cl_bb"
 CL_EB = "galaxy_shear_cl_eb"
+# Galaxy-density (lens) spectra: lens auto/cross, and galaxy-shear (source, lens).
+CL_GG = "galaxy_density_cl"
+CL_GE = "galaxy_shearDensity_cl_e"
 COSEBI_EE = "galaxy_shear_cosebi_ee"
 COSEBI_BB = "galaxy_shear_cosebi_bb"
 
@@ -136,7 +139,12 @@ def source_name(i):
     return f"source_{i}"
 
 
-def new_sacc(nz, metadata=None):
+def lens_name(i):
+    """SACC tracer name for lens (galaxy-density) bin ``i`` (0-based)."""
+    return f"lens_{i}"
+
+
+def new_sacc(nz, metadata=None, lens_nz=()):
     """Create a Sacc with the survey's NZ (and PSF) tracers.
 
     Parameters
@@ -148,6 +156,9 @@ def new_sacc(nz, metadata=None):
         ``source_{i}``.
     metadata : dict, optional
         Key/value pairs stored on ``s.metadata``.
+    lens_nz : dict or sequence, optional
+        Lens-bin redshift distributions, in the layout of ``nz``. Tracers are
+        named ``lens_{i}``.
 
     Returns
     -------
@@ -159,6 +170,9 @@ def new_sacc(nz, metadata=None):
     s = sacc.Sacc()
     for i, (z, nz_i) in items:
         s.add_tracer("NZ", source_name(i), np.asarray(z), np.asarray(nz_i))
+    items = lens_nz.items() if isinstance(lens_nz, dict) else enumerate(lens_nz)
+    for i, (z, nz_i) in items:
+        s.add_tracer("NZ", lens_name(i), np.asarray(z), np.asarray(nz_i))
     # The PSF star sample sits alongside the source bins because a Sacc has a
     # single tracer namespace — every data point references tracers from one
     # flat list. This is bookkeeping, not physics: psf_stars is a Misc tracer
@@ -291,26 +305,46 @@ def add_pseudo_cl(
         joining ``merge``'s ℓ-consistency group; variant ℓ binnings belong
         under different tag values.
     """
-    _check_ascending("ell_eff", ell_eff)
     tracers = _pair(bins)
     window = sacc.BandpowerWindow(np.asarray(window_ells), np.asarray(window_weights))
-    # add_ell_cl accepts no extra tags, so inline its per-point insertion
-    # (ell + shared window + window_ind column index) plus the grid tag.
     components = [(CL_EE, cl_ee)]
     components += [
         (dtype, cl) for dtype, cl in ((CL_BB, cl_bb), (CL_EB, cl_eb)) if cl is not None
     ]
     for dtype, cl in components:
-        for n, (ell, value) in enumerate(zip(ell_eff, cl)):
-            s.add_data_point(
-                dtype,
-                tracers,
-                float(value),
-                ell=float(ell),
-                window=window,
-                window_ind=n,
-                grid=grid,
-            )
+        _add_windowed(s, dtype, tracers, ell_eff, cl, window, grid)
+
+
+def add_cl(s, data_type, tracers, ell_eff, cl, *, window_ells, window_weights):
+    """Add one harmonic spectrum between any two tracers, with its window.
+
+    The general form of :func:`add_pseudo_cl`, for spectra with a lens leg:
+    ``data_type`` is :data:`CL_GG`, :data:`CL_GE` (tracers ``(source, lens)``)
+    or :data:`CL_EE`, ``tracers`` two tracer names, and ``window_weights`` the
+    ``(nell, nbp)`` window on ``window_ells``, one column per bandpower. Points
+    carry ``grid='reporting'``.
+    """
+    window = sacc.BandpowerWindow(np.asarray(window_ells), np.asarray(window_weights))
+    _add_windowed(s, data_type, tuple(tracers), ell_eff, cl, window, "reporting")
+
+
+def _add_windowed(s, dtype, tracers, ell_eff, values, window, grid):
+    """Insert one bandpower series sharing ``window``, column ``n`` for point ``n``.
+
+    ``add_ell_cl`` accepts no extra tags, so its per-point insertion (ell + shared
+    window + window_ind column index) is inlined here with the grid tag.
+    """
+    _check_ascending("ell_eff", ell_eff)
+    for n, (ell, value) in enumerate(zip(ell_eff, values)):
+        s.add_data_point(
+            dtype,
+            tracers,
+            float(value),
+            ell=float(ell),
+            window=window,
+            window_ind=n,
+            grid=grid,
+        )
 
 
 def add_cosebis(s, bins, En, scale_cut, Bn=None):

@@ -72,7 +72,8 @@ WORKDIR /sp_validation
 # our lock — instead of pruning them. Copy the lock + manifest first so this
 # layer caches independently of source edits. Extras: test (CI unit suite),
 # glass (GLASS map-level mock — pulls glass.ext.camb + the cosmology wrapper),
-# workflow (mpi4py, CosmoSIS and the other rule-script runners). cs_util and a
+# workflow (mpi4py, CosmoSIS and the other rule-script runners), cloe (the CLOE
+# JAX likelihood: jax, cloelib, cloerun). cs_util and a
 # numba-safe numpy come straight from the lock.
 COPY pyproject.toml uv.lock /sp_validation/
 
@@ -85,7 +86,7 @@ COPY pyproject.toml uv.lock /sp_validation/
 ENV MPIFC=/opt/ompi/bin/mpif90
 
 RUN uv sync --frozen --inexact --no-install-project \
-    --extra test --extra glass --extra workflow
+    --extra test --extra glass --extra workflow --extra cloe
 
 # The CosmoSIS Standard Library: the module files (camb interface, projection,
 # 2pt likelihood, ...) the cosmo_inference pipelines name. The `workflow` extra
@@ -131,3 +132,7 @@ RUN bash -c 'set -eo pipefail; \
 # satisfied by the sync above.
 COPY . /sp_validation
 RUN uv pip install --no-deps -e .
+
+# The CosmoPower-JAX networks of the CLOE theory, checked against their pins,
+# into cloelib's data directory (cloelib would otherwise fetch moved bytes).
+RUN /app/.venv/bin/python -m sp_validation.cloe.networks

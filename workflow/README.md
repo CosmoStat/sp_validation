@@ -230,6 +230,35 @@ COSMO_VAL=$PWD/cosmo_val snakemake --profile workflow/profiles/default -s workfl
 - **Spectra cache.** The lognormal solve is checked against its request to
   1e-4 and cached by cosmology, shells, n(z), lmax and GLASS version.
 
+### CLOE JAX forecast, GLASS 3x2pt mocks and chains
+
+`workflow/cloe/Snakefile` runs the harmonic 3x2pt forecast of a survey recipe
+(`config/cloe/unions_v2_lsx.yaml`: v2.0.0 sources, LSx lenses) through the CLOE
+JAX likelihood (`sp_validation.cloe`), and GLASS 3x2pt mocks of it
+(`sp_validation.mocks.glass_3x2pt`). One allocation runs it all, the 3x2pt chain
+taking about 10 minutes:
+
+```bash
+srun --jobid=<id> -n 1 -c 192 snakemake --profile workflow/profiles/default \
+    -s workflow/cloe/Snakefile -j 192 cloe_all
+```
+
+| output (`results/cloe/<survey>/`) | holds |
+|---|---|
+| `masks.npz`, `spectra.npz` | source and lens coverage maps; the theory's C_ell at the input cosmology |
+| `gaussian.npz`, `ssc.npz`, `couplings/` | windows of the coupled bandpowers, Gaussian (iNKA) and super-sample covariance, NaMaster couplings |
+| `forecast.sacc` | the noiseless data vector, windows, n(z) and covariance (stamped `none`) |
+| `fisher_<cut>_<families>.json` | Fisher widths of sigma8, S8, Omega_m |
+| `glass/shells.npz`, `glass/gls.npz` | the mock's shell spectra and mixing; lognormal Gaussian spectra and the mock's expectation |
+| `glass/seed_NNNN.{sacc,npz}` | one mock: the forecast SACC with the mock's bands; bands with and without noise |
+| `chains/<name>.{npz,json}` | cloerun's nautilus chain; posterior means and widths |
+
+`cloe.chains` in the config names each chain (its cut, spectrum families, and a
+GLASS seed to fit instead of the noiseless vector). The likelihood reads any SACC
+of harmonic spectra with bandpower windows (`sacc_io.CL_EE`, `CL_GE`, `CL_GG`),
+through the cloerun probe `sp_validation.cloe.probe`; the image needs the `cloe`
+extra and the networks `python -m sp_validation.cloe.networks` fetches.
+
 ### Which `sp_validation` a rule imports: the launched checkout
 
 The image is the frozen *dependency stack*; the `sp_validation` that runs is

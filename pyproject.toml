@@ -149,6 +149,19 @@ glass = [
     # ducc0: paint_catalogue evaluates the sky alm at each galaxy position.
     "ducc0",
 ]
+# The CLOE JAX likelihood (sp_validation.cloe): cloelib's theory traced by JAX,
+# the CosmoPower-JAX networks (fetched by checksum, sp_validation.cloe.networks),
+# and cloerun (CLOE's chain runner, Cail's fork with external probes) driving
+# nautilus. interpax 0.3.16 is the first to allow numpy 2.5.
+cloe = [
+    "jax==0.12.1",
+    "jaxlib==0.12.1",
+    "cloelib==0.11",
+    "cosmopower-jax==0.5.8",
+    "interpax==0.3.16",
+    "nautilus-sampler==1.0.6",
+    "cloerun @ git+https://github.com/cailmdaley/cloerun@56ac7bc66a9c8d7f8d87362d57f2b0dc5c6f64eb",
+]
 # Cosmo-inference workflow runners (workflow/scripts/*). Kept optional: the core
 # library resolves without them, but the container installs this extra so the
 # workflow's rule scripts and cross-validation runners are available. No
@@ -197,6 +210,9 @@ markers = [
 [tool.ruff]
 line-length = 88
 target-version = "py312"
+# Vendored byte for byte from euclid-spt-6x2pt (its __init__ says from where), so
+# that a diff against the source shows any local change: not linted or formatted.
+extend-exclude = ["src/sp_validation/cloe/theory/*.py"]
 
 # Snakemake injects a `snakemake` object into rule scripts at runtime, so ruff
 # can't see where it's defined. Declaring it a builtin silences the false
